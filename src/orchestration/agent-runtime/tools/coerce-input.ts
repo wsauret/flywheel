@@ -9,11 +9,14 @@
  * Repairs never invent content or choose between possible meanings.
  * Unions keep valid members, select a tagged case, or accept exactly one
  * successful conversion. Objects, open maps, and lists convert recursively.
+ * An object or list sent as JSON text reads through the same repair tier as
+ * tool arguments, because models leave raw line breaks and backslashes in it.
  * Every repair reports how the input was read. The dispatcher keeps repairs
  * only after tool-owned repair and final validation, and leads the result
  * with their notes. Safety, permission, policy, and containment remain unchanged.
  */
 
+import { readJsonValue } from "../../../infra/llm/json-parse.js";
 import { definitionText } from "../llm/tool-definition-text.js";
 import type { ToolInputRepair } from "../llm/types.js";
 import { discriminatedBranch, schemaProblems, toSchemaNode, type SchemaNode, type SchemaProperties } from "./validate-input.js";
@@ -123,7 +126,7 @@ function unwrapSingleWrapper(
   if (schema.properties && Object.hasOwn(schema.properties, key)) return input;
 
   const inner = input[key];
-  const parsed = typeof inner === "string" ? tryJsonParse(inner) : inner;
+  const parsed = typeof inner === "string" ? readJsonValue(inner)?.value : inner;
   if (!isPlainObject(parsed)) return input;
   onRepair({ kind: "unwrapped", path: key });
   return parsed;
@@ -260,7 +263,7 @@ function parsedScalar(text: string, parsed: string | number | boolean, type: "nu
 function coerceMaybeObject(value: UnknownFields[string], schema: SchemaNode, path: string, coercion: Coercion): UnknownFields[string] {
   if (isPlainObject(value)) return coerceObject(value, schema, path, coercion);
   if (typeof value === "string") {
-    const parsed = tryJsonParse(value);
+    const parsed = readJsonValue(value)?.value;
     if (isPlainObject(parsed)) {
       coercion.onRepair({ kind: "parsed_value", path, type: "object" });
       return coerceObject(parsed, schema, path, coercion);
@@ -272,7 +275,7 @@ function coerceMaybeObject(value: UnknownFields[string], schema: SchemaNode, pat
 function coerceMaybeArray(value: UnknownFields[string], schema: SchemaNode, path: string, coercion: Coercion): UnknownFields[string] {
   if (Array.isArray(value)) return coerceArray(value, schema, path, coercion);
   if (typeof value === "string") {
-    const parsed = tryJsonParse(value);
+    const parsed = readJsonValue(value)?.value;
     if (Array.isArray(parsed)) {
       coercion.onRepair({ kind: "parsed_value", path, type: "array" });
       return coerceArray(parsed, schema, path, coercion);
@@ -428,14 +431,6 @@ function isAsciiLetter(character: string | undefined): boolean {
 
 function isHostEnd(character: string): boolean {
   return character === "\\" || character === "/" || character.trim().length === 0;
-}
-
-function tryJsonParse(s: string): UnknownFields[string] {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return null;
-  }
 }
 
 function isPlainObject(value: UnknownFields[string]): value is UnknownFields {

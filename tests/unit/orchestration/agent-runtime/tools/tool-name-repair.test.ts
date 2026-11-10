@@ -114,7 +114,19 @@ describe("repairToolCall and prepareToolCall integration", () => {
     const edit = prepareToolCall({ id: "r2", name: "edit", input: { file_path: "a.ts", old_text: "x", new_string: "y" } }, realTools);
     await preparedToolAdmission(edit, makeContext());
     expect(edit.validationResult).toBeUndefined();
-    expect(edit.input).toEqual({ path: "a.ts", old_string: "x", new_string: "y" });
+    expect(edit.input).toEqual({ path: "a.ts", edits: [{ old_string: "x", new_string: "y" }] });
+    expect(edit.repairNotice).toBe("Note: `file_path` was read as `path`.\nNote: `old_text` was read as `old_string`.\nNote: `old_string`, `new_string` were read as the one entry of `edits`.");
+    const replaceAll = prepareToolCall({ id: "r2b", name: "edit", input: { path: "a.ts", old_string: "x", new_string: "y", replace_all: "true" } }, realTools);
+    await preparedToolAdmission(replaceAll, makeContext());
+    expect(replaceAll.validationResult).toBeUndefined();
+    expect(replaceAll.input).toEqual({ path: "a.ts", edits: [{ old_string: "x", new_string: "y", replace_all: true }] });
+    const batch = prepareToolCall({ id: "r2c", name: "edit", input: { file_path: "a.ts", edits: [{ old_text: "x", new_string: "y" }] } }, realTools);
+    await preparedToolAdmission(batch, makeContext());
+    expect(batch.input).toEqual({ path: "a.ts", edits: [{ old_string: "x", new_string: "y" }] });
+    expect(batch.call.inputRepairs).toEqual([
+      { kind: "renamed_key", path: "path", from: "file_path" },
+      { kind: "renamed_key", path: "edits.0.old_string", from: "old_text" },
+    ]);
 
     const search = prepareToolCall({ id: "r3", name: "search", input: { pattern: "x", output_mode: "files_with_matches" } }, realTools);
     await preparedToolAdmission(search, makeContext());

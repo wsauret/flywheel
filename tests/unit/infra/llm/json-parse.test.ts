@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseToolArguments } from "../../../../../src/orchestration/agent-runtime/llm/json-parse.js";
+import { parseToolArguments } from "../../../../src/infra/llm/json-parse.js";
 
 describe("parseToolArguments", () => {
   test("parses bare valid JSON", () => {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ToolInputRepair } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { coerceToolInput } from "../../../../../src/orchestration/agent-runtime/tools/coerce-input.js";
+import { createEditDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
 
 describe("coerceToolInput", () => {
@@ -166,6 +167,10 @@ describe("coerceToolInput", () => {
       });
       const unparsed = { limit: "0x10", count: "3.5", all: "yes", options: "[1]" };
       expect(repairsOf(unparsed, schema)).toEqual({ output: unparsed, repairs: [] });
+      // A model that writes a list of edits as JSON text often leaves raw line breaks and
+      // regex backslashes unescaped in it; the text reads with the tool-argument repair tier.
+      const editInput = coerceToolInput({ path: "a.ts", edits: "[{\"old_string\": \"a\n\tb\", \"new_string\": \"\\d+\"}]" }, createEditDefinition().inputSchema);
+      expect(editInput).toEqual({ path: "a.ts", edits: [{ old_string: "a\n\tb", new_string: "\\d+" }] });
     });
 
     test("decodes double-escaped non-ASCII \\uXXXX escapes in a text value, and records it", () => {

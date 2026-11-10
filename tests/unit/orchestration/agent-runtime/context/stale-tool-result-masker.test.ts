@@ -346,17 +346,21 @@ describe("tool-use input masking (mutation payloads)", () => {
     expect(liveBlock.input.content).toBe(BIG);
   });
 
-  test("current edit payloads mask and reconstruct while small and reference writes stay intact", () => {
+  test("edit payloads of every input shape mask and reconstruct while small and reference writes stay intact", () => {
     const messages: ConversationMessage[] = [
       { kind: "user", content: "edit files" },
       ...toolTurn("e-1", "edit", { path: "src/a.ts", old_string: BIG, new_string: BIG }, "edited"),
+      ...toolTurn("e-2", "edit", { path: "src/b.ts", edits: [{ old_string: "small", new_string: BIG }, { old_string: BIG, new_string: "small" }] }, "edited"),
+      ...toolTurn("e-3", "edit", { path: "src/b.ts", edits: JSON.stringify([{ old_string: "small", new_string: BIG }, { old_string: BIG, new_string: "small" }]) }, "edited"),
+      ...toolTurn("e-4", "edit", { path: "src/b.ts", edits: [{ old_string: "small", new_string: BIG }, { old_string: BIG, new_string: "small" }].map((entry) => JSON.stringify(entry)) }, "edited"),
+      ...toolTurn("e-5", "edit", { path: "src/b.ts", edits: { old_string: "small", new_string: BIG } }, "edited"),
       ...toolTurn("p-1", "apply_patch", { input: BIG }, "patched"),
       ...toolTurn("s-1", "write", { path: "src/tiny.ts", content: "short" }, "wrote"),
       ...toolTurn("ref-1", "write", { path: "AGENTS.md", content: BIG }, "wrote"),
     ];
     const result = maskStaleToolResults(messages, messages.length);
     expect(result).not.toBeNull();
-    expect(result!.maskedToolUseInputIds).toEqual(["e-1", "p-1"]);
+    expect(result!.maskedToolUseInputIds).toEqual(["e-1", "e-2", "e-3", "e-4", "e-5", "p-1"]);
 
     const editAssistant = result!.messages[1];
     if (editAssistant?.kind !== "assistant" || !Array.isArray(editAssistant.content)) throw new Error("expected edit assistant");
@@ -366,7 +370,29 @@ describe("tool-use input masking (mutation payloads)", () => {
     expect(editBlock.input.new_string).toContain("[stale-masked edit.new_string]");
     expect(editBlock.input.path).toBe("src/a.ts");
 
-    const patchAssistant = result!.messages[3];
+    const batchAssistant = result!.messages[3];
+    if (batchAssistant?.kind !== "assistant" || !Array.isArray(batchAssistant.content)) throw new Error("expected edit assistant");
+    const batchBlock = batchAssistant.content[0];
+    if (batchBlock?.type !== "tool_use") throw new Error("expected edit tool_use");
+    expect(batchBlock.input.edits).toEqual([
+      { old_string: "small", new_string: expect.stringContaining("[stale-masked edit.edits.0.new_string]") },
+      { old_string: expect.stringContaining("[stale-masked edit.edits.1.old_string]"), new_string: "small" },
+    ]);
+    expect(batchBlock.input.path).toBe("src/b.ts");
+    // An edits list sent as JSON text masks as the list that dispatch read from it.
+    const textAssistant = result!.messages[5];
+    if (textAssistant?.kind !== "assistant" || !Array.isArray(textAssistant.content)) throw new Error("expected edit assistant");
+    expect(textAssistant.content[0]).toEqual({ ...batchBlock, id: "e-3" });
+    const entriesAssistant = result!.messages[7];
+    if (entriesAssistant?.kind !== "assistant" || !Array.isArray(entriesAssistant.content)) throw new Error("expected edit assistant");
+    expect(entriesAssistant.content[0]).toEqual({ ...batchBlock, id: "e-4" });
+    const bareAssistant = result!.messages[9];
+    if (bareAssistant?.kind !== "assistant" || !Array.isArray(bareAssistant.content)) throw new Error("expected edit assistant");
+    const bareBlock = bareAssistant.content[0];
+    if (bareBlock?.type !== "tool_use") throw new Error("expected edit tool_use");
+    expect(bareBlock.input.edits).toEqual([{ old_string: "small", new_string: expect.stringContaining("[stale-masked edit.edits.0.new_string]") }]);
+
+    const patchAssistant = result!.messages[11];
     if (patchAssistant?.kind !== "assistant" || !Array.isArray(patchAssistant.content)) throw new Error("expected patch assistant");
     const patchBlock = patchAssistant.content[0];
     if (patchBlock?.type !== "tool_use") throw new Error("expected apply_patch tool_use");

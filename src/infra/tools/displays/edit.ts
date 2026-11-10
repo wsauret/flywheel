@@ -33,7 +33,7 @@ export const editDisplay: ToolDisplay = {
   }),
   fileChangeKind: (input) => strField(input, "input") === undefined ? "replace" : "patch",
   streamingInput: {
-    bodyFields: { new_string: "content", input: "diff" },
+    bodyFields: { "edits.*.old_string": "content", "edits.*.new_string": "content", old_string: "content", new_string: "content", input: "diff" },
     presentationFields: ["path", "input"],
   },
   getPresentation: (input, executionCwd) => {

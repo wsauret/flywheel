@@ -21,7 +21,7 @@ const selected = new Set(["bash", "read", "write", "edit", "search", "list"])
 const notifications: string[] = []
 const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({
   kind: "chat",
-  enqueueNotification: (text: string) => { notifications.push(text) },
+  enqueueNotification: (notification: string) => { notifications.push(notification) },
 }))
 const foregroundBashHold = createForegroundBashHoldController(() => {})
 const capabilityAccess: CapabilityAccess = {
@@ -214,7 +214,7 @@ try {
   })
 
   await check("edit", async () => {
-    requireOk(await tool("edit").execute({ path: "sample.txt", old_string: "alpha", new_string: "ALPHA" }, context))
+    requireOk(await tool("edit").execute({ path: "sample.txt", edits: [{ old_string: "alpha", new_string: "ALPHA" }] }, context))
     if (await Bun.file(join(workspace, "sample.txt")).text() !== "ALPHA\nbeta\n") throw new Error("edit content differs")
   })
 

@@ -43,9 +43,16 @@ function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** The declared name of a decoded field path: `edits.2.old_string` is declared as `edits.*.old_string`. */
+export function declaredFieldName(path: string): string {
+  return path.replace(/\.\d+\./, ".*.");
+}
+
 /**
- * Incrementally decodes top-level JSON string fields. A declared boolean or
- * object field is exposed whole once its value completes.
+ * Incrementally decodes top-level JSON string fields. A declared boolean,
+ * object, or list field is exposed whole once its value completes. A declared
+ * `list.*.field` streams the string `field` of each object item of the
+ * top-level list `list`, under the path `list.<index>.field`.
  *
  * The decoder accepts each source character once, preserves escape state across
  * appends, and stops exposing data after malformed top-level input.
@@ -63,10 +70,18 @@ export class TopLevelJsonStringDecoder {
   private skippedChunks: string[] = [];
   private decodedFields: JsonObject = {};
   private readonly declaredFields: ReadonlySet<string>;
+  /** Item fields that stream, by the top-level list that holds the items. */
+  private readonly itemFields = new Map<string, Set<string>>();
+  /** Scan of a top-level list whose item fields stream; undefined outside one. */
+  private list?: { item: number; phase: "key" | "value"; itemKey: string; text?: { readonly kind: "key" | "value" | "other"; chunks: string[] } };
   private acceptedByteTotal = 0;
 
   constructor(fields: readonly string[], private readonly maxInputBytes = MAX_STREAMING_TOOL_INPUT_BYTES) {
     this.declaredFields = new Set(fields);
+    for (const field of fields) {
+      const [list, item] = field.split(".*.");
+      if (list !== undefined && item !== undefined) this.itemFields.set(list, (this.itemFields.get(list) ?? new Set()).add(item));
+    }
   }
 
   get fields(): Readonly<JsonObject> {
@@ -86,7 +101,7 @@ export class TopLevelJsonStringDecoder {
   }
 
   field(name: string): string | boolean | undefined {
-    if (!this.declaredFields.has(name)) return undefined;
+    if (!this.declaredFields.has(declaredFieldName(name))) return undefined;
     if (this.state === "string_value" && this.key === name) return this.valueChunks.join("");
     const value = this.decodedFields[name];
     return typeof value === "string" || typeof value === "boolean" ? value : undefined;
@@ -149,8 +164,13 @@ export class TopLevelJsonStringDecoder {
           }
           break;
         case "skip_value":
+          if (this.list && this.consumeListCharacter(char, additions, completedFields)) {
+            this.skippedChunks.push(char);
+            break;
+          }
           this.consumeSkippedValue(char, (value) => {
-            if ((typeof value === "boolean" || isJsonObject(value)) && this.declaredFields.has(this.key)) {
+            this.list = undefined;
+            if ((typeof value === "boolean" || isJsonObject(value) || Array.isArray(value)) && this.declaredFields.has(this.key)) {
               this.decodedFields[this.key] = value;
               completedFields.push(this.key);
             }
@@ -250,6 +270,7 @@ export class TopLevelJsonStringDecoder {
   }
 
   private beginSkippedValue(char: string): void {
+    if (char === "[" && this.itemFields.has(this.key)) this.list = { item: -1, phase: "key", itemKey: "" };
     if (char === "{" || char === "[") {
       this.skipStack = [char];
       this.skippedChunks = [char];
@@ -263,6 +284,45 @@ export class TopLevelJsonStringDecoder {
       this.skippedChunks = [char];
       this.state = "skip_value";
     }
+  }
+
+  /** Decodes the strings of a streamed list and tracks which item and key they belong to. Returns
+   *  true for a character of a string, which the skipped-value scan then only records; brackets
+   *  and separators stay with that scan. Depth 1 is inside the list, depth 2 inside an item. */
+  private consumeListCharacter(char: string, additions: DecodedStringFields, completedFields: string[]): boolean {
+    // SAFETY: the caller checked that a list scan is active.
+    const list = this.list!;
+    const text = list.text;
+    if (text) {
+      const path = `${this.key}.${list.item}.${list.itemKey}`;
+      const emit = (decoded: string): void => {
+        text.chunks.push(decoded);
+        if (text.kind === "value") additions[path] = (additions[path] ?? "") + decoded;
+      };
+      if (!this.consumeStringCharacter(char, emit, "skip_value")) return true;
+      this.flushPendingSurrogate(emit);
+      if (text.kind === "key") list.itemKey = text.chunks.join("");
+      if (text.kind === "value") {
+        this.decodedFields[path] = text.chunks.join("");
+        completedFields.push(path);
+      }
+      list.text = undefined;
+      return true;
+    }
+    const depth = this.skipStack.length;
+    if (char === '"') {
+      this.resetEscape();
+      const streamed = depth === 2 && list.phase === "value" && this.itemFields.get(this.key)?.has(list.itemKey) === true;
+      list.text = { kind: depth === 2 && list.phase === "key" ? "key" : streamed ? "value" : "other", chunks: [] };
+      return true;
+    }
+    if (char === "{" && depth === 1) {
+      list.item += 1;
+      list.phase = "key";
+    } else if (depth === 2 && (char === ":" || char === ",")) {
+      list.phase = char === ":" ? "value" : "key";
+    }
+    return false;
   }
 
   private consumeSkippedValue(char: string, complete: (value: unknown) => void): void {
@@ -317,6 +377,7 @@ export class TopLevelJsonStringDecoder {
 
   private fail(): void {
     this.state = "failed";
+    this.list = undefined;
     this.valueChunks = [];
     this.skippedChunks = [];
     this.decodedFields = {};

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { join, resolve } from "node:path";
 import { runPackageSmoke, tarExecutable, verifyPackagedTokenizer, verifyStringEditPlanner, type PackageSmokeDependencies } from "../../../scripts/readiness-package-smoke.js";
-import { planStringEdit } from "../../../src/infra/file-edit/string-edit.js";
+import { planStringEdits } from "../../../src/infra/file-edit/string-edit.js";
 
 const SMOKE = resolve("/scratch/smoke");
 const workspace = {
@@ -52,9 +52,9 @@ describe("readiness package smoke", () => {
 
   test("defines exact, CRLF, and tab-indentation planner probes that the TypeScript planner passes", () => {
     const calls: Array<{ source: string; oldString: string; newString: string }> = [];
-    const summary = verifyStringEditPlanner((source, edit) => {
-      calls.push({ source, oldString: edit.oldString, newString: edit.newString });
-      return planStringEdit(source, edit);
+    const summary = verifyStringEditPlanner((source, edits) => {
+      for (const edit of edits) calls.push({ source, oldString: edit.oldString, newString: edit.newString });
+      return planStringEdits(source, edits);
     });
 
     expect(calls).toEqual([
@@ -63,7 +63,7 @@ describe("readiness package smoke", () => {
       { source: "fn main() {\n\tone\n\ttwo\n}\n", oldString: "one\ntwo", newString: "uno\ndos" },
     ]);
     expect(summary).toBe("exact,line-ending,uniform-indent");
-    expect(() => verifyStringEditPlanner(() => ({ content: "wrong", matchKind: "exact" }))).toThrow("string edit planner failed exact probe");
+    expect(() => verifyStringEditPlanner(() => ({ content: "wrong", matchKinds: ["exact"] }))).toThrow("string edit planner failed exact probe");
   });
 
   test("runs the planner probe on its own", async () => {

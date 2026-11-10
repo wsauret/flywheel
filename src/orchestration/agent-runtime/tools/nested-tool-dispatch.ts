@@ -13,7 +13,7 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../infra/runtime-fac
 import { extractToolContentFact, type ExtractedToolContentFact } from "../../../infra/tool-content-extraction.js";
 import { runInTaskSlices, type TaskSliceScheduling } from "../../../infra/task-scheduling.js";
 import { bridgeExternalPromise } from "../external-promise-bridge.js";
-import { readJsonValue } from "../llm/json-parse.js";
+import { readJsonValue } from "../../../infra/llm/json-parse.js";
 import { asRecord } from "../../../infra/record.js";
 import { describeInputRepair } from "./coerce-input.js";
 import type { ExecutionWhitelist } from "./tool-policy.js";

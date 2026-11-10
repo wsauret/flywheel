@@ -72,7 +72,7 @@
           "tool": {
             "name": "edit",
             "action": "file_edit",
-            "description": "Replace exact text in one existing file. The old_string must identify one match unless replace_all is true. The file is changed only if the captured content still matches at publication.",
+            "description": "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap, and an entry cannot match text that another entry of the same call produces. All entries apply together or none do. The file is changed only if the captured content still matches at publication.",
             "promptSnippet": "Replace exact text in one existing file.",
             "promptGuidelines": [],
             "promptExamples": null,

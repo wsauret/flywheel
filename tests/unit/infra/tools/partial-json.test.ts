@@ -38,6 +38,23 @@ describe("TopLevelJsonStringDecoder", () => {
     expect(decoder.field("replace_all")).toBeUndefined();
   });
 
+  test("streams the declared string fields of each object item of a declared list and exposes the list whole", () => {
+    const decoder = new TopLevelJsonStringDecoder(["path", "edits", "edits.*.old_string"]);
+    const source = JSON.stringify({ path: "a", edits: [{ old_string: "x\"}]", other: { old_string: "nested" }, new_string: "y" }, { old_string: "\uD83D\uDE00" }] });
+    const additions: { [field: string]: string } = {};
+    const completed: string[] = [];
+    for (const char of source) {
+      const decoded = decoder.append(char);
+      for (const [field, text] of Object.entries(decoded.additions)) additions[field] = (additions[field] ?? "") + text;
+      completed.push(...decoded.completedFields);
+    }
+    expect(additions).toEqual({ path: "a", "edits.0.old_string": "x\"}]", "edits.1.old_string": "\uD83D\uDE00" });
+    expect(completed).toEqual(["path", "edits.0.old_string", "edits.1.old_string", "edits"]);
+    expect(decoder.field("edits.1.old_string")).toBe("\uD83D\uDE00");
+    expect(decoder.fields.edits).toEqual(JSON.parse(source).edits);
+    expect(decoder.completed).toBe(true);
+  });
+
   test("decodes split escapes once and reports accepted UTF-8 bytes", () => {
     const decoder = new TopLevelJsonStringDecoder(["content"]);
 

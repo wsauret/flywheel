@@ -83,7 +83,7 @@ describe("experiment gate through tool dispatch", () => {
 
   it("vetoes charter-protected and sealed calls from the context guard", async () => {
     const provider = () => guard
-    const charterEdit = await dispatch("edit", { path: ".experiment/charter.md", old_string: "Charter", new_string: "Mine" }, provider)
+    const charterEdit = await dispatch("edit", { path: ".experiment/charter.md", edits: [{ old_string: "Charter", new_string: "Mine" }] }, provider)
     expect(charterEdit).toEqual({ content: "experiment guard: .experiment/charter.md is protected by the charter", outcome: "error" })
     expect(fs.readFileSync(path.join(workDir, ".experiment", "charter.md"), "utf8")).toBe("# Charter\n")
 
@@ -136,7 +136,7 @@ describe("experiment gate through tool dispatch", () => {
     const linked = () => ({ ...guard, protectedPaths: ["linked/**"] })
     const expected = { content: "experiment guard: actual/a is protected by the charter", outcome: "error" as const }
     expect(await dispatch("bash", { command: "echo changed > linked/a" }, linked)).toEqual(expected)
-    expect(await dispatch("edit", { path: "linked/a", old_string: "kept", new_string: "changed" }, linked)).toEqual(expected)
+    expect(await dispatch("edit", { path: "linked/a", edits: [{ old_string: "kept", new_string: "changed" }] }, linked)).toEqual(expected)
     expect(fs.readFileSync(path.join(workDir, "actual", "a"), "utf8")).toBe("kept\n")
   })
 
@@ -152,7 +152,7 @@ describe("experiment gate through tool dispatch", () => {
   })
 
   it("allows in-scope mutation under an active guard and everything without a provider", async () => {
-    const allowed = await dispatch("edit", { path: "notes.txt", old_string: "draft", new_string: "final" }, () => guard)
+    const allowed = await dispatch("edit", { path: "notes.txt", edits: [{ old_string: "draft", new_string: "final" }] }, () => guard)
     expect(allowed.outcome).toBe("ok")
     expect(fs.readFileSync(path.join(workDir, "notes.txt"), "utf8")).toBe("final\n")
 

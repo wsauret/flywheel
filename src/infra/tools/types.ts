@@ -30,8 +30,9 @@ interface ToolStreamingBodyFields {
 }
 
 interface ToolStreamingInput {
-  /** Top-level string fields that can own the live row body. Field presence
-   * selects the body, so one display can cover distinct input shapes. */
+  /** String fields that can own the live row body: top-level fields, or
+   *  `list.*.field` for a field of each item of a top-level list. Field
+   *  presence selects the body, so one display can cover distinct input shapes. */
   bodyFields: ToolStreamingBodyFields;
   /** Top-level fields whose values can refine the row presentation: a string
    *  field as it streams, and a boolean or object field once it completes. */

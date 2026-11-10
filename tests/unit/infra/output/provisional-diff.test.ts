@@ -99,6 +99,34 @@ describe("provisional create and replace normalization", () => {
     expect(alignments).toBe(1);
   });
 
+  it("streams each edits entry as its own replacement and aligns each once both sides complete", () => {
+    const decoder = new TopLevelJsonStringDecoder(["path", "edits.*.old_string", "edits.*.new_string"]);
+    const input = createProvisionalDiffInput("replace");
+    const call = { path: "a.txt", edits: [{ old_string: "keep\nold", new_string: "keep\nnew" }, { old_string: "tail", new_string: "end" }] };
+    const kinds = () => input.snapshot().files[0]?.hunks.map((hunk) => hunk.lines.map((line) => [line.kind, line.text]));
+    for (const char of JSON.stringify(call)) {
+      const decoded = decoder.append(char);
+      input.append(decoded.additions, decoded.completedFields);
+      if (decoded.completedFields.includes("edits.1.old_string")) expect(kinds()).toEqual([[["context", "keep"], ["remove", "old"], ["add", "new"]], [["remove", "tail"]]]);
+    }
+    const settled = kinds();
+    expect(settled).toEqual([[["context", "keep"], ["remove", "old"], ["add", "new"]], [["remove", "tail"], ["add", "end"]]]);
+    input.complete(call);
+    expect(kinds()).toEqual(settled);
+    const recorded = createProvisionalDiffInput("replace");
+    recorded.complete({ path: "a.txt", old_string: "keep\nold", new_string: "keep\nnew" });
+    expect(recorded.snapshot().files[0]?.hunks.map((hunk) => hunk.lines.map((line) => [line.kind, line.text]))).toEqual(settled?.slice(0, 1));
+    const asText = createProvisionalDiffInput("replace");
+    asText.complete({ path: "a.txt", edits: JSON.stringify(call.edits) });
+    expect(asText.snapshot().files[0]?.hunks.map((hunk) => hunk.lines.map((line) => [line.kind, line.text]))).toEqual(settled);
+    const entriesAsText = createProvisionalDiffInput("replace");
+    entriesAsText.complete({ path: "a.txt", edits: call.edits.map((entry) => JSON.stringify(entry)) });
+    expect(entriesAsText.snapshot().files[0]?.hunks.map((hunk) => hunk.lines.map((line) => [line.kind, line.text]))).toEqual(settled);
+    const bareEntry = createProvisionalDiffInput("replace");
+    bareEntry.complete({ path: "a.txt", edits: call.edits[0] });
+    expect(bareEntry.snapshot().files[0]?.hunks.map((hunk) => hunk.lines.map((line) => [line.kind, line.text]))).toEqual(settled?.slice(0, 1));
+  });
+
   it("decodes split escapes and recovers once from different authoritative input", () => {
     const decoder = new TopLevelJsonStringDecoder(["path", "content"]);
     const input = createProvisionalDiffInput("create");

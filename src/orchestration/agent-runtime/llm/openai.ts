@@ -7,7 +7,7 @@ import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-
 import type { ModelInfo, ModelsClient } from "../../../infra/llm/models.js";
 import { Log } from "../../../infra/log.js";
 import { LlmStreamError } from "./errors.js";
-import { parseToolArguments } from "./json-parse.js";
+import { parseToolArguments } from "../../../infra/llm/json-parse.js";
 import { withStreamAttempt } from "./stream-attempt.js";
 import { isHeartbeatStreamEvent } from "./stream-watchdog.js";
 import { mapChatGptAdapterEvents } from "./chatgpt-adapter/sse.js";

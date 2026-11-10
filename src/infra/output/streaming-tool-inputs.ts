@@ -1,7 +1,7 @@
 import type { ProvisionalDiff } from "../output-blocks.js";
 import { getToolDisplay } from "../tools/tool-display-registry.js";
 import type { ToolInput } from "./output-projection-events.js";
-import { MAX_STREAMING_TOOL_INPUT_BYTES, TopLevelJsonStringDecoder, type DecodedStringAppend } from "./partial-json.js";
+import { declaredFieldName, MAX_STREAMING_TOOL_INPUT_BYTES, TopLevelJsonStringDecoder, type DecodedStringAppend } from "./partial-json.js";
 import { createProvisionalDiffInput, type ProvisionalDiffInput, type ProvisionalDiffInputKind } from "./provisional-diff-input.js";
 import { provisionalDiffDisplayPaths } from "./display-paths.js";
 
@@ -145,7 +145,9 @@ export class StreamingToolInputs {
     if (typeof contract.fileChangeKind !== "function") return undefined;
     const { decoder } = entry;
     const bodyFields = Object.keys(contract.streamingInput?.bodyFields ?? {});
-    if (!bodyFields.some((field) => decoded.additions[field] !== undefined || decoder.field(field) !== undefined)) return undefined;
+    const bodyStarted = Object.keys(decoded.additions).some((field) => bodyFields.includes(declaredFieldName(field)))
+      || bodyFields.some((field) => decoder.field(field) !== undefined);
+    if (!bodyStarted) return undefined;
     const partialInput: ToolInput = { ...decoder.fields };
     for (const field of bodyFields) {
       const value = decoder.field(field);

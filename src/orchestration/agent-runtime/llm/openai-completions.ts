@@ -24,7 +24,7 @@ import { Log } from "../../../infra/log.js";
 import { asRecord } from "../../../infra/record.js";
 import { classifyQuotaError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
 import type { CompletedStopReason } from "./messages.js";
-import { parseToolArguments } from "./json-parse.js";
+import { parseToolArguments } from "../../../infra/llm/json-parse.js";
 import { httpStatusOf, normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { invokeProviderAttempt, normalizeProviderAttemptIterator } from "./provider-attempt-boundary.js";
 import { withStreamAttempt } from "./stream-attempt.js";

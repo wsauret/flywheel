@@ -29,7 +29,7 @@
  */
 
 import { isRecord } from "../../../infra/record.js";
-import { parseToolArguments, readJsonValue, unfinishedToolArguments, type ParsedToolArguments } from "./json-parse.js";
+import { parseToolArguments, readJsonValue, unfinishedToolArguments, type ParsedToolArguments } from "../../../infra/llm/json-parse.js";
 
 interface UnknownFields {
   [key: string]: unknown;

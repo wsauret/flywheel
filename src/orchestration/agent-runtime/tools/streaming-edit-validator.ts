@@ -2,9 +2,10 @@ import { FileEditPlanError } from "../../../infra/file-edit/contract.js";
 import type { FileSnapshot } from "../../../infra/file-edit/patch-plan.js";
 import { PatchPlanningCursor } from "../../../infra/file-edit/patch-plan.js";
 import type { PreparedOperation } from "../../../infra/file-edit/patch-parser.js";
-import { matchStringEdit, finishStringEdit, type StringEditMatch } from "../../../infra/file-edit/string-edit.js";
+import { editInputEntries, parseStringEdits } from "../../../infra/file-edit/edit-input.js";
+import { assertStringEditable, matchStringEdit, planStringEdits } from "../../../infra/file-edit/string-edit.js";
 import { StreamingPatch } from "../../../infra/file-edit/streaming-patch.js";
-import { TopLevelJsonStringDecoder } from "../../../infra/output/partial-json.js";
+import { declaredFieldName, TopLevelJsonStringDecoder } from "../../../infra/output/partial-json.js";
 
 export type StreamingEditValidationResult =
   | { readonly status: "clear" }
@@ -29,10 +30,9 @@ export class StreamingEditValidator {
   private readonly snapshots = new Map<string, FileSnapshot>();
   private readonly touchedPatchPaths = new Set<string>();
   private readonly patchOperations: PreparedOperation[] = [];
-  private stringContents?: string;
-  private stringMatch?: StringEditMatch;
-  private stringMatchStarted = false;
-  private readonly completedStringFields = new Set<string>();
+  private pathSealed = false;
+  /** Closed old_string fields that wait for the path to close before they are matched. */
+  private readonly unmatchedOldStrings: string[] = [];
   private disposed = false;
   private unavailable = false;
   private advisory?: StreamingEditValidationResult & { readonly status: "advisory" };
@@ -41,7 +41,7 @@ export class StreamingEditValidator {
     private readonly tool: StreamingEditTool,
     private readonly readSnapshot: StreamingEditSnapshotReader,
   ) {
-    this.decoder = new TopLevelJsonStringDecoder(tool === "apply_patch" ? ["input"] : ["path", "old_string", "new_string", "replace_all"]);
+    this.decoder = new TopLevelJsonStringDecoder(tool === "apply_patch" ? ["input"] : ["path", "edits", "edits.*.old_string", "old_string", "new_string", "replace_all"]);
     if (tool === "apply_patch") {
       this.patch = new StreamingPatch();
       this.patchPlanner = new PatchPlanningCursor([]);
@@ -81,8 +81,7 @@ export class StreamingEditValidator {
     this.snapshots.clear();
     this.touchedPatchPaths.clear();
     this.patchOperations.length = 0;
-    this.stringContents = undefined;
-    this.stringMatch = undefined;
+    this.unmatchedOldStrings.length = 0;
     this.advisory = undefined;
   }
 
@@ -121,35 +120,51 @@ export class StreamingEditValidator {
     this.patchPlanner?.admitSnapshot(normalized);
   }
 
+  /** Matches each entry's old_string against one snapshot of the file as soon as both the path and
+   *  that old_string close, so a missing match is advised while later entries still stream. Once the
+   *  input completes, plans the whole call, which alone decides uniqueness, overlap, and the result.
+   *  Reads either edit input shape. */
   private async appendString(completedFields: readonly string[], completedObject: boolean): Promise<StreamingEditValidationResult> {
     const decoder = this.decoder;
     if (!decoder) return UNAVAILABLE;
-    for (const field of completedFields) this.completedStringFields.add(field);
+    for (const field of completedFields) {
+      if (field === "path") this.pathSealed = true;
+      else if (field === "old_string" || declaredFieldName(field) === "edits.*.old_string") this.unmatchedOldStrings.push(field);
+    }
     const path = decoder.field("path");
-    const oldString = decoder.field("old_string");
-    const pathComplete = this.completedStringFields.has("path");
-    const oldComplete = this.completedStringFields.has("old_string");
-
-    if (!this.stringMatchStarted && pathComplete && oldComplete && typeof path === "string" && typeof oldString === "string") {
-      this.stringMatchStarted = true;
-      const snapshot = await this.readSnapshot(path);
-      this.snapshots.set(path, snapshot.path === path ? snapshot : { ...snapshot, path });
-      if (snapshot.content === undefined) throw new FileEditPlanError(`file does not exist: ${path}`);
-      this.stringContents = snapshot.content;
-      this.stringMatch = matchStringEdit(snapshot.content, oldString);
+    if (this.pathSealed && typeof path === "string") {
+      for (const field of this.unmatchedOldStrings.splice(0)) {
+        const oldString = decoder.field(field);
+        if (typeof oldString !== "string") continue;
+        const contents = await this.snapshotContents(path);
+        assertStringEditable(contents);
+        try {
+          matchStringEdit(contents, oldString);
+        } catch (error) {
+          // Execution wraps the single-edit shape as entry 0, so its advice names that entry too.
+          const entry = /^edits\.(\d+)\./.exec(field)?.[1] ?? "0";
+          throw error instanceof FileEditPlanError ? new FileEditPlanError(`edits[${entry}]: ${error.message}`) : error;
+        }
+      }
     }
-
-    if (!completedObject || this.stringContents === undefined || this.stringMatch === undefined) return CLEAR;
-    const newString = decoder.field("new_string");
-    const replaceAll = decoder.field("replace_all");
-    if (typeof path !== "string" || typeof oldString !== "string" || typeof newString !== "string" || (replaceAll !== undefined && typeof replaceAll !== "boolean")) {
-      return this.markAdvisory("edit expects string path, old_string, and new_string fields with an optional boolean replace_all");
+    if (!completedObject) return CLEAR;
+    const edits = parseStringEdits(editInputEntries(decoder.fields));
+    if (typeof path !== "string" || edits === undefined) {
+      return this.markAdvisory("edit expects a string path and edits entries with string old_string and new_string fields and an optional boolean replace_all");
     }
-    if (replaceAll === true && this.stringMatch.matchKind !== "exact" && this.stringMatch.matchKind !== "line-ending") {
-      throw new FileEditPlanError(`replace_all matched only through the ${this.stringMatch.matchKind} tier; every occurrence must match exactly. Copy old_string exactly, or edit each occurrence on its own.`);
-    }
-    finishStringEdit(this.stringContents, this.stringMatch, { newString, ...(replaceAll === true ? { replaceAll: true } : {}) });
+    planStringEdits(await this.snapshotContents(path), edits);
     return CLEAR;
+  }
+
+  private async snapshotContents(path: string): Promise<string> {
+    let snapshot = this.snapshots.get(path);
+    if (snapshot === undefined) {
+      const read = await this.readSnapshot(path);
+      snapshot = read.path === path ? read : { ...read, path };
+      this.snapshots.set(path, snapshot);
+    }
+    if (snapshot.content === undefined) throw new FileEditPlanError(`file does not exist: ${path}`);
+    return snapshot.content;
   }
 
   private markAdvisory(message: string): StreamingEditValidationResult {
@@ -165,8 +180,7 @@ export class StreamingEditValidator {
     this.patchPlanner = undefined;
     this.snapshots.clear();
     this.patchOperations.length = 0;
-    this.stringContents = undefined;
-    this.stringMatch = undefined;
+    this.unmatchedOldStrings.length = 0;
     return UNAVAILABLE;
   }
 }

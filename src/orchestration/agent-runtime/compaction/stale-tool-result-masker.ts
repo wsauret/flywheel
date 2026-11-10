@@ -28,6 +28,7 @@
 
 import type { ContentBlock, ConversationMessage } from "../llm/types.js";
 import { DELIVERY_CONFIRMATION } from "../../../infra/delivery-confirmation.js";
+import { editInputEntries } from "../../../infra/file-edit/edit-input.js";
 
 interface ToolInput {
   [key: string]: unknown;
@@ -70,7 +71,11 @@ const REFERENCE_PATH_SUBSTRINGS: readonly string[] = [
 ];
 
 /** Heavy payload fields per mutation tool. Only these fields mask; the rest
- *  of the input (paths, counts) stays visible as the recover handle. */
+ *  of the input (paths, counts) stays visible as the recover handle. The
+ *  `edit` fields mask in each entry of its `edits` list, and beside `path` in
+ *  its single-edit shape, which calls recorded before 2026-11-09 hold and
+ *  which a model can still write; remove the single-edit masking after
+ *  2027-05-09 only if the edit tool no longer accepts that shape. */
 const MASKABLE_INPUT_FIELDS: Readonly<MaskableInputFields> = {
   write: ["content"],
   edit: ["old_string", "new_string"],
@@ -329,13 +334,24 @@ function maskedToolUseInput(block: ToolUseBlock): { block: ToolUseBlock; bytesSa
   const fields = MASKABLE_INPUT_FIELDS[block.name];
   if (!fields || isReferenceWriteTarget(block)) return null;
   let bytesSaved = 0;
+  const maskFields = (target: ToolInput, names: readonly string[], label: (field: string) => string): void => {
+    for (const field of names) {
+      const value = target[field];
+      if (typeof value !== "string" || value.length < MIN_MASK_TEXT_LENGTH) continue;
+      const placeholder = `[stale-masked ${block.name}.${label(field)}] (${countLines(value)} lines, ${formatSize(value.length)}); input masked as stale, read the file for its current contents`;
+      target[field] = placeholder;
+      bytesSaved += Math.max(0, value.length - placeholder.length);
+    }
+  };
   const input: ToolInput = { ...block.input };
-  for (const field of fields) {
-    const value = input[field];
-    if (typeof value !== "string" || value.length < MIN_MASK_TEXT_LENGTH) continue;
-    const placeholder = `[stale-masked ${block.name}.${field}] (${countLines(value)} lines, ${formatSize(value.length)}); input masked as stale, read the file for its current contents`;
-    input[field] = placeholder;
-    bytesSaved += Math.max(0, value.length - placeholder.length);
+  maskFields(input, fields, (field) => field);
+  // The entries read as dispatch read them, so a list sent as JSON text masks like a list.
+  if (block.name === "edit" && input.edits !== undefined) {
+    input.edits = editInputEntries(input).map((entry, index) => {
+      const masked: ToolInput = { ...entry };
+      maskFields(masked, fields, (field) => `edits.${index}.${field}`);
+      return masked;
+    });
   }
   if (bytesSaved === 0) return null;
   return { block: { ...block, input }, bytesSaved };

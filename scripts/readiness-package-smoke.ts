@@ -9,8 +9,8 @@ import { zstdDecompressSync } from "node:zlib";
 interface GrepResult { readonly matches: readonly { readonly path: string }[]; readonly traversalIssues: number }
 interface RipgrepAddon { readonly grep: (options: { readonly pattern: string; readonly path: string; readonly mode: string; readonly protectedTraversalRoots: readonly string[]; readonly cpuLimitMs: number; readonly timeoutMs: number }) => Promise<GrepResult> }
 interface CommandResult { readonly exitCode: number; readonly stdout: string; readonly stderr: string }
-interface StringEditProbePlan { readonly content: string; readonly matchKind: string }
-type StringEditPlanner = (source: string, edit: { readonly oldString: string; readonly newString: string }) => StringEditProbePlan;
+interface StringEditProbePlan { readonly content: string; readonly matchKinds: readonly string[] }
+type StringEditPlanner = (source: string, edits: readonly { readonly oldString: string; readonly newString: string }[]) => StringEditProbePlan;
 interface StringEditProbeCase {
   readonly name: string;
   readonly source: string;
@@ -204,14 +204,14 @@ const STRING_EDIT_PROBE_CASES: readonly StringEditProbeCase[] = [
 ];
 
 /** Exercise the string edit planner behaviors whose loss would corrupt user text. */
-export function verifyStringEditPlanner(planStringEdit: StringEditPlanner): string {
+export function verifyStringEditPlanner(planStringEdits: StringEditPlanner): string {
   const matchKinds: string[] = [];
   for (const probe of STRING_EDIT_PROBE_CASES) {
-    const plan = planStringEdit(probe.source, { oldString: probe.oldString, newString: probe.newString });
-    if (plan.content !== probe.expectedContent || plan.matchKind !== probe.expectedMatchKind) {
+    const plan = planStringEdits(probe.source, [{ oldString: probe.oldString, newString: probe.newString }]);
+    if (plan.content !== probe.expectedContent || plan.matchKinds.join(",") !== probe.expectedMatchKind) {
       throw new Error(`string edit planner failed ${probe.name} probe: ${JSON.stringify(plan)}`);
     }
-    matchKinds.push(plan.matchKind);
+    matchKinds.push(probe.expectedMatchKind);
   }
   return matchKinds.join(",");
 }
@@ -219,8 +219,8 @@ export function verifyStringEditPlanner(planStringEdit: StringEditPlanner): stri
 /** The planners are TypeScript compiled into every binary; this probe runs them from source. The import
  *  is resolved only here, so the harness stays self-contained when a container mounts it alone. */
 async function probeStringEditPlanner(): Promise<string> {
-  const { planStringEdit } = await import("../src/infra/file-edit/string-edit.js");
-  return verifyStringEditPlanner(planStringEdit);
+  const { planStringEdits } = await import("../src/infra/file-edit/string-edit.js");
+  return verifyStringEditPlanner(planStringEdits);
 }
 
 /** Exercise one staged addon or complete release archive through its installed public commands. */

@@ -4,7 +4,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { assertStringEditReplaceAll, createEditDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
+import { createEditDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
+import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js";
 import { canonicalMutationPath, withMutationQueueKey } from "../../../../../src/infra/file-mutation-queue.js";
@@ -16,25 +17,24 @@ describe("edit tool", () => {
   beforeEach(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-tools-edit-")); });
   afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
 
-  it("exposes the final replace_all policy without changing its diagnostic", () => {
-    expect(() => assertStringEditReplaceAll(true, "trailing-whitespace")).toThrow(
-      "replace_all matched only through the trailing-whitespace tier; every occurrence must match exactly. Copy old_string exactly, or edit each occurrence on its own.",
-    );
-    expect(() => assertStringEditReplaceAll(false, "trailing-whitespace")).not.toThrow();
-    expect(() => assertStringEditReplaceAll(true, "line-ending")).not.toThrow();
-  });
-
   it("advertises the exact string replacement contract", () => {
     const definition = createEditDefinition();
     expect(definition.inputSchema).toEqual({
       type: "object",
       properties: {
         path: expect.any(Object),
-        old_string: expect.any(Object),
-        new_string: expect.any(Object),
-        replace_all: expect.any(Object),
+        edits: {
+          type: "array",
+          minItems: 1,
+          description: expect.any(String),
+          items: {
+            type: "object",
+            properties: { old_string: expect.any(Object), new_string: expect.any(Object), replace_all: expect.any(Object) },
+            required: ["old_string", "new_string"],
+          },
+        },
       },
-      required: ["path", "old_string", "new_string"],
+      required: ["path", "edits"],
     });
   });
 
@@ -43,7 +43,7 @@ describe("edit tool", () => {
     fs.writeFileSync(target, "before one before");
     const recorder = createRecordingFileMutationStore();
     const result = await createEditDefinition().execute(
-      { path: "file.txt", old_string: "one", new_string: "two" },
+      { path: "file.txt", edits: [{ old_string: "one", new_string: "two" }] },
       makeContext({ executionCwd: tmpDir, toolUseId: "edit-1", sessionEventWriter: recorder.writer }),
     );
     expect(result.outcome).toBe("ok");
@@ -51,17 +51,64 @@ describe("edit tool", () => {
     expect(recorder.changes).toHaveLength(1);
   });
 
+  it("applies several entries in one publication with one diff", async () => {
+    const target = path.join(tmpDir, "file.txt");
+    fs.writeFileSync(target, `alpha\n${"keep\n".repeat(10)}omega\n`);
+    const result = await createEditDefinition().execute(
+      { path: "file.txt", edits: [{ old_string: "omega", new_string: "OMEGA" }, { old_string: "alpha", new_string: "ALPHA" }] },
+      makeContext({ executionCwd: tmpDir }),
+    );
+    expect(result.outcome).toBe("ok");
+    expect(fs.readFileSync(target, "utf8")).toBe(`ALPHA\n${"keep\n".repeat(10)}OMEGA\n`);
+    expect(result.content).toStartWith("Updated file.txt\n@@ -1,4 +1,4 @@\n-alpha\n+ALPHA\n");
+    expect(result.content).toContain("-omega\n+OMEGA");
+    expect(String(result.content).match(/^Updated /gm)).toHaveLength(1);
+  });
+
+  it("runs a call in the single-edit shape through dispatch as one entry and says how it read it", async () => {
+    const target = path.join(tmpDir, "file.txt");
+    fs.writeFileSync(target, "before one before");
+    const edit = createEditDefinition();
+    const prepared = prepareToolCall({ id: "old-shape", name: "edit", input: { path: "file.txt", old_string: "one", new_string: "two" } }, new Map([["edit", edit]]));
+    const result = await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir }));
+    expect(result.outcome).toBe("ok");
+    expect(String(result.content)).toStartWith("Note: `old_string`, `new_string` were read as the one entry of `edits`.\nUpdated file.txt");
+    expect(fs.readFileSync(target, "utf8")).toBe("before two before");
+  });
+
+  it.each([
+    ["a missing match", [{ old_string: "alpha", new_string: "A" }, { old_string: "absent", new_string: "B" }], "edits[1]: string edit refused: no match"],
+    ["an ambiguous match", [{ old_string: "beta", new_string: "B" }, { old_string: "alpha", new_string: "A" }], "edits[0]: string edit refused at exact tier: 2 matches"],
+    ["overlapping entries", [{ old_string: "alpha beta", new_string: "A" }, { old_string: "beta gamma", new_string: "B" }], "edits[0] and edits[1] overlap"],
+    ["an unchanged entry with a missing match", [{ old_string: "alpha", new_string: "A" }, { old_string: "absent", new_string: "absent" }], "edits[1]: string edit refused: no match"],
+    ["an unchanged entry with an ambiguous match", [{ old_string: "alpha", new_string: "A" }, { old_string: "beta", new_string: "beta" }], "edits[1]: string edit refused at exact tier: 2 matches"],
+    ["an all-unchanged call with a missing match", [{ old_string: "alpha", new_string: "alpha" }, { old_string: "absent", new_string: "absent" }], "edits[1]: string edit refused: no match"],
+    ["an unchanged entry that overlaps another", [{ old_string: "alpha beta", new_string: "A" }, { old_string: "alpha", new_string: "alpha" }], "edits[0] and edits[1] overlap"],
+  ] as const)("refuses the whole call for %s and leaves the file unchanged", async (_case, edits, refusal) => {
+    const target = path.join(tmpDir, "file.txt");
+    fs.writeFileSync(target, "alpha beta gamma beta\n");
+    const recorder = createRecordingFileMutationStore();
+    const result = await createEditDefinition().execute(
+      { path: "file.txt", edits },
+      makeContext({ executionCwd: tmpDir, toolUseId: "edit-refused", sessionEventWriter: recorder.writer }),
+    );
+    expect(result.outcome).toBe("error");
+    expect(result.content).toContain(refusal);
+    expect(fs.readFileSync(target, "utf8")).toBe("alpha beta gamma beta\n");
+    expect(recorder.facts).toEqual([]);
+  });
+
   it("reports identical strings as unchanged after admitting the existing file, without mutation facts", async () => {
-    fs.writeFileSync(path.join(tmpDir, "file.txt"), "one one");
+    fs.writeFileSync(path.join(tmpDir, "file.txt"), "one two");
     const recorder = createRecordingFileMutationStore();
     const tool = createEditDefinition();
     const context = makeContext({ executionCwd: tmpDir, toolUseId: "same-edit", sessionEventWriter: recorder.writer });
-    const result = await tool.execute({ path: "file.txt", old_string: "one", new_string: "one" }, context);
-    expect(result).toMatchObject({ outcome: "ok", content: "Note: old_string and new_string are identical; file.txt is unchanged." });
-    expect(fs.readFileSync(path.join(tmpDir, "file.txt"), "utf8")).toBe("one one");
+    const result = await tool.execute({ path: "file.txt", edits: [{ old_string: "one", new_string: "one" }] }, context);
+    expect(result).toMatchObject({ outcome: "ok", content: "Note: every old_string equals its new_string; file.txt is unchanged." });
+    expect(fs.readFileSync(path.join(tmpDir, "file.txt"), "utf8")).toBe("one two");
     expect(recorder.facts).toEqual([]);
     expect(recorder.prepared).toEqual([]);
-    expect((await tool.execute({ path: "missing.txt", old_string: "one", new_string: "one" }, context)).outcome).toBe("error");
+    expect((await tool.execute({ path: "missing.txt", edits: [{ old_string: "one", new_string: "one" }] }, context)).outcome).toBe("error");
   });
 
   it("keeps unchanged credentials out of durable previews without changing read or edit bytes", async () => {
@@ -74,7 +121,7 @@ describe("edit tool", () => {
     const context = makeContext({ executionCwd: tmpDir, sessionId: "test", toolUseId: "config-edit", sessionEventWriter: recorder.writer, projectionReader: recorder.reader });
     const read = await readDefinition.execute({ path: "config.env" }, context);
     expect(read.content).toContain(credential);
-    const result = await createEditDefinition().execute({ path: "config.env", old_string: "setting=old", new_string: "setting=new" }, context);
+    const result = await createEditDefinition().execute({ path: "config.env", edits: [{ old_string: "setting=old", new_string: "setting=new" }] }, context);
     expect(result.outcome).toBe("ok");
     expect(fs.readFileSync(target)).toEqual(Buffer.from(after));
     expect(result.content).toContain("-setting=old\n+setting=new");
@@ -99,8 +146,10 @@ describe("edit tool", () => {
     const result = await createEditDefinition().execute(
       {
         path: "query.sql",
-        old_string: `SELECT id\nFROM users\nWHERE ${condition}\nORDER BY id;`,
-        new_string: "SELECT id\nFROM users\nWHERE verified = 1\nORDER BY id;",
+        edits: [{
+          old_string: `SELECT id\nFROM users\nWHERE ${condition}\nORDER BY id;`,
+          new_string: "SELECT id\nFROM users\nWHERE verified = 1\nORDER BY id;",
+        }],
       },
       makeContext({ executionCwd: tmpDir, toolUseId: "edit-mismatch", sessionEventWriter: recorder.writer }),
     );
@@ -128,7 +177,7 @@ describe("edit tool", () => {
     await acquired;
 
     const editing = createEditDefinition().execute(
-      { path: "queued.txt", old_string: "before", new_string: "after" },
+      { path: "queued.txt", edits: [{ old_string: "before", new_string: "after" }] },
       makeContext({ executionCwd: tmpDir, toolUseId: "queued-edit", sessionEventWriter: recorder.writer, signal: controller.signal }),
     );
     while (recorder.prepared.length === 0) await Bun.sleep(1);
@@ -153,7 +202,7 @@ describe("edit tool", () => {
     fs.writeFileSync(target, bytes);
 
     const result = await createEditDefinition().execute(
-      { path: "invalid.txt", old_string: "foo", new_string: "bar" },
+      { path: "invalid.txt", edits: [{ old_string: "foo", new_string: "bar" }] },
       makeContext({ executionCwd: tmpDir }),
     );
 
@@ -167,7 +216,7 @@ describe("edit tool", () => {
     fs.writeFileSync(target, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("one\r\ntwo\nthree\r\n")]));
 
     const result = await createEditDefinition().execute(
-      { path: "mixed.txt", old_string: "two", new_string: "changed" },
+      { path: "mixed.txt", edits: [{ old_string: "two", new_string: "changed" }] },
       makeContext({ executionCwd: tmpDir }),
     );
 
@@ -182,7 +231,7 @@ describe("edit tool", () => {
     fs.chmodSync(target, 0o754);
 
     const result = await createEditDefinition().execute(
-      { path: "mode.txt", old_string: "before", new_string: "after" },
+      { path: "mode.txt", edits: [{ old_string: "before", new_string: "after" }] },
       makeContext({ executionCwd: tmpDir }),
     );
 
@@ -198,26 +247,26 @@ describe("edit tool", () => {
     const context = makeContext({ executionCwd: tmpDir, readLedger });
     const edit = createEditDefinition();
 
-    const unread = await edit.execute({ path: "ledger.txt", old_string: "one", new_string: "uno" }, context);
+    const unread = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "one", new_string: "uno" }] }, context);
     expect(unread.outcome).toBe("ok");
     expect(unread.content).toStartWith("Updated ledger.txt\n@@ -1,4 +1,4 @@\n-one\n+uno\n");
     expect(unread.content).toEndWith("\nWarning: ledger.txt was not read in this session; the change was applied to the current file content.");
 
-    const again = await edit.execute({ path: "ledger.txt", old_string: "uno", new_string: "ONE" }, context);
+    const again = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "uno", new_string: "ONE" }] }, context);
     expect(again.content).toStartWith("Updated ledger.txt\n@@");
     expect(again.content).not.toContain("Warning:");
 
     fs.writeFileSync(target, `ONE\ntwo\nthree\nfour\n${tail}\nline 45\n`);
-    const stale = await edit.execute({ path: "ledger.txt", old_string: "two", new_string: "dos" }, context);
+    const stale = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "two", new_string: "dos" }] }, context);
     expect(stale.content).toEndWith("\nWarning: ledger.txt changed after it was last read; the change was applied to the current content.");
 
     fs.writeFileSync(target, `ONE\ndos\nthree\nfour\n${tail}\nline 45 external\n`);
     expect((await readDefinition.execute({ path: "ledger.txt:1-2" }, context)).outcome).toBe("ok");
-    const partial = await edit.execute({ path: "ledger.txt", old_string: "line 45 external", new_string: "line forty-five" }, context);
+    const partial = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "line 45 external", new_string: "line forty-five" }] }, context);
     expect(partial.content).toEndWith("\nWarning: the last read of ledger.txt did not cover lines 45-45, which this change replaced.");
 
     expect((await readDefinition.execute({ path: "ledger.txt" }, context)).outcome).toBe("ok");
-    const covered = await edit.execute({ path: "ledger.txt", old_string: "three", new_string: "tres" }, context);
+    const covered = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "three", new_string: "tres" }] }, context);
     expect(covered.content).not.toContain("Warning:");
   });
 
@@ -225,7 +274,7 @@ describe("edit tool", () => {
     const target = path.join(tmpDir, "fuzzy.txt");
     fs.writeFileSync(target, "alpha\nbeta\nalpha\n");
     const result = await createEditDefinition().execute(
-      { path: "fuzzy.txt", old_string: "alpha  ", new_string: "gamma", replace_all: true },
+      { path: "fuzzy.txt", edits: [{ old_string: "alpha  ", new_string: "gamma", replace_all: true }] },
       makeContext({ executionCwd: tmpDir }),
     );
     expect(result.outcome).toBe("error");
@@ -238,10 +287,10 @@ describe("edit tool", () => {
     fs.writeFileSync(target, "same same");
     const definition = createEditDefinition();
     const context = makeContext({ executionCwd: tmpDir });
-    const refused = await definition.execute({ path: "file.txt", old_string: "same", new_string: "new" }, context);
+    const refused = await definition.execute({ path: "file.txt", edits: [{ old_string: "same", new_string: "new" }] }, context);
     expect(refused.outcome).toBe("error");
     expect(fs.readFileSync(target, "utf8")).toBe("same same");
-    const applied = await definition.execute({ path: "file.txt", old_string: "same", new_string: "new", replace_all: true }, context);
+    const applied = await definition.execute({ path: "file.txt", edits: [{ old_string: "same", new_string: "new", replace_all: true }] }, context);
     expect(applied.outcome).toBe("ok");
     expect(fs.readFileSync(target, "utf8")).toBe("new new");
   });

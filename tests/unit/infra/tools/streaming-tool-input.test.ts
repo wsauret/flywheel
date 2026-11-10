@@ -467,7 +467,10 @@ describe("RuntimeEventProjector streaming tool input", () => {
     }
   });
 
-  test("string edit streams new_string with the path filetype", () => {
+  test.each([
+    ["edits list", ['{"path":"test.ts","edits":[{"old_string":"a",', '"new_string":"b"}]}']],
+    ["single-edit shape", ['{"path":"test.ts","old_string":"a",', '"new_string":"b"}']],
+  ])("string edit streams both sides of its %s as a provisional diff", (_input, deltas) => {
     const projector = new OutputProjector({ executionCwd: "/workspace" });
     const parser = new RuntimeEventProjector(projector);
 
@@ -475,14 +478,14 @@ describe("RuntimeEventProjector streaming tool input", () => {
       { type: "tool_use", id: "tc-edit", name: "edit", input: {} },
     ]));
 
-    parser.dispatch(toolInputDeltaEvent("tc-edit", '{"path":"test.ts","old_string":"a",'));
-    parser.dispatch(toolInputDeltaEvent("tc-edit", '"new_string":"b"}'));
+    for (const delta of deltas) parser.dispatch(toolInputDeltaEvent("tc-edit", delta));
 
     expect(projector.snapshot().streamingToolText["tc-edit"]).toMatchObject({
       proposedDiff: {
-        files: [{ path: "test.ts", action: "update", hunks: [{ lines: expect.arrayContaining([
+        files: [{ path: "test.ts", action: "update", hunks: [{ lines: [
+          expect.objectContaining({ kind: "remove", text: "a" }),
           expect.objectContaining({ kind: "add", text: "b" }),
-        ]) }] }],
+        ] }] }],
       },
     });
   });

@@ -55,8 +55,59 @@ describe("StreamingEditValidator", () => {
     expect(await validator.append(json.slice(0, beforeBoolean))).toEqual({ status: "clear" });
     expect(await validator.append(json.slice(beforeBoolean))).toEqual({
       status: "advisory",
-      message: "string edit refused at exact tier: 2 matches; nearest lines: line 1: x x; line 1: x x",
+      message: "edits[0]: string edit refused at exact tier: 2 matches; nearest lines: line 1: x x; line 1: x x",
     });
+  });
+
+  it("advises on a sealed edits entry whose old_string has no match before the call closes, from one snapshot", async () => {
+    let reads = 0;
+    const validator = new StreamingEditValidator("edit", async path => {
+      reads += 1;
+      return { path, content: "alpha beta\n" };
+    });
+    const json = JSON.stringify({ path: "a", edits: [{ old_string: "alpha", new_string: "A" }, { old_string: "gamma", new_string: "G" }] });
+    const firstSealed = json.indexOf("alpha") + "alpha\"".length;
+    const secondSealed = json.indexOf("gamma") + "gamma\"".length;
+
+    expect(await validator.append(json.slice(0, firstSealed))).toEqual({ status: "clear" });
+    expect(await validator.append(json.slice(firstSealed, secondSealed))).toEqual({ status: "advisory", message: "edits[1]: string edit refused: no match after escape-normalized tier; nearest lines: none" });
+    expect(reads).toBe(1);
+  });
+
+  it.each([
+    ["a binary file", "a\0b", { path: "a", edits: [{ old_string: "zzz", new_string: "y" }] }, "binary content cannot be edited"],
+    ["a one-entry list", "alpha\n", { path: "a", edits: [{ old_string: "zzz", new_string: "y" }] }, "edits[0]: string edit refused: no match after escape-normalized tier; nearest lines: none"],
+    ["the single-edit shape", "alpha\n", { path: "a", old_string: "zzz", new_string: "y" }, "edits[0]: string edit refused: no match after escape-normalized tier; nearest lines: none"],
+    ["an empty old_string", "alpha\n", { path: "a", edits: [{ old_string: "", new_string: "y" }] }, "edits[0]: old_string must not be empty"],
+  ])("gives early advice for %s in the words of the planner", async (_, content, input, message) => {
+    const validator = new StreamingEditValidator("edit", async path => ({ path, content }));
+    const json = JSON.stringify(input);
+    const oldSealed = json.indexOf("\"new_string\"");
+
+    expect(await validator.append(json.slice(0, oldSealed))).toEqual({ status: "advisory", message });
+  });
+
+  it("decides uniqueness and overlap of edits entries once the call completes", async () => {
+    const validator = new StreamingEditValidator("edit", async path => ({ path, content: "alpha beta\n" }));
+    const json = JSON.stringify({ path: "a", edits: [{ old_string: "alpha beta", new_string: "A" }, { old_string: "beta", new_string: "B" }] });
+
+    expect(await validator.append(json.slice(0, -2))).toEqual({ status: "clear" });
+    expect(await validator.append(json.slice(-2))).toEqual({ status: "advisory", message: "edits[0] and edits[1] overlap, so no entry was applied. Each old_string matches the file as it was before this call; merge overlapping entries into one." });
+  });
+
+  it("plans an edits list sent as JSON text, raw line breaks included, as dispatch reads it", async () => {
+    const validator = new StreamingEditValidator("edit", async path => ({ path, content: "alpha\nbeta\n" }));
+    const edits = "[{\"old_string\": \"alpha\nbeta\", \"new_string\": \"A\"}]";
+
+    expect(await validator.append(JSON.stringify({ path: "a", edits }))).toEqual({ status: "clear" });
+  });
+
+  it("plans edits entries sent as JSON text and a bare entry object as dispatch reads them", async () => {
+    const reader: StreamingEditSnapshotReader = async path => ({ path, content: "alpha beta\n" });
+    const entries = [{ old_string: "alpha beta", new_string: "A" }, { old_string: "beta", new_string: "B" }].map((entry) => JSON.stringify(entry));
+
+    expect(await new StreamingEditValidator("edit", reader).append(JSON.stringify({ path: "a", edits: entries }))).toEqual({ status: "advisory", message: "edits[0] and edits[1] overlap, so no entry was applied. Each old_string matches the file as it was before this call; merge overlapping entries into one." });
+    expect(await new StreamingEditValidator("edit", reader).append(JSON.stringify({ path: "a", edits: { old_string: "beta", new_string: "B" } }))).toEqual({ status: "clear" });
   });
 
   it("preserves virtual patch files and reads each initial path once", async () => {

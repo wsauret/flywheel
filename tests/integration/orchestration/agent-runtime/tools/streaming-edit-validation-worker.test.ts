@@ -147,7 +147,7 @@ describe("streaming edit validation worker", () => {
     try {
       const turn = service.openTurn({ executionCwd: root, onAdvice: event => firstAdvice.resolve(event) })
       const identity = { attemptToken: "stale", toolToken: "edit", inputToken: "target" }
-      const input = { path: "target.txt", old_string: "current snapshot", new_string: "published" }
+      const input = { path: "target.txt", edits: [{ old_string: "current snapshot", new_string: "published" }] }
       turn.start({ ...identity, tool: "edit" })
       turn.append({ ...identity, suffix: JSON.stringify(input) })
       expect(await firstAdvice.promise).toMatchObject({ advice: { type: "set", message: expect.stringContaining("no match") } })

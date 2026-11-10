@@ -33,8 +33,10 @@ export interface StringEdit {
 
 export interface StringEditPlan {
   readonly content: string;
+  /** The source spans that the call rewrites, in file order. */
   readonly spans: readonly ByteSpan[];
-  readonly matchKind: StringMatchKind;
+  /** The deciding tier of each edit, in edit order. */
+  readonly matchKinds: readonly StringMatchKind[];
 }
 
 /** Spans one tier found, with the replacement text each span takes. */
@@ -43,14 +45,14 @@ interface TierMatches {
   readonly replacementFor: (newString: string, index: number) => string;
 }
 
-export interface StringEditMatch extends TierMatches {
+interface StringEditMatch extends TierMatches {
   readonly matchKind: StringMatchKind;
-  readonly oldString: string;
 }
 
-export interface StringEditReplacement {
-  readonly newString: string;
-  readonly replaceAll?: boolean;
+/** One source span and the text that takes its place. */
+interface Replacement {
+  readonly span: TextSpan;
+  readonly text: string;
 }
 
 interface LogicalLine {
@@ -478,56 +480,93 @@ const TIERS = {
   "escape-normalized": escapeNormalizedMatches,
 } satisfies { readonly [K in StringMatchKind]: Tier };
 
-export function finishStringEdit(contents: string, match: StringEditMatch, replacement: StringEditReplacement, limits: FileEditLimits = FILE_EDIT_LIMITS): StringEditPlan {
-  if (utf8Length(match.oldString) + utf8Length(replacement.newString) > limits.maxOutputBytes) throw limitExceeded("string edit bytes");
-  const spans = match.spans;
-  if (replacement.replaceAll !== true && spans.length !== 1) {
-    throw new FileEditPlanError(`string edit refused at ${match.matchKind} tier: ${spans.length} matches; nearest lines: ${matchedCandidates(contents, spans)}`);
-  }
-  for (let index = 1; index < spans.length; index += 1) {
-    if ((spans[index]?.start ?? 0) < (spans[index - 1]?.end ?? 0)) throw new FileEditPlanError("replacement spans overlap");
-  }
-  const selected = replacement.replaceAll === true ? spans : spans.slice(0, 1);
-  const endings = new LineEndingRestorer(contents);
-  let output = "";
-  let cursor = 0;
-  for (const [index, span] of selected.entries()) {
-    output += contents.slice(cursor, span.start) + endings.restore(match.replacementFor(replacement.newString, index), span);
-    cursor = span.end;
-  }
-  output += contents.slice(cursor);
-  if (output === contents) throw new FileEditPlanError("the replacement produced no change");
-  if (utf8Length(output) > limits.maxOutputBytes) throw limitExceeded("output bytes");
-  const byteOffsets = utf8ByteOffsets(contents, selected.flatMap((span) => [span.start, span.end]));
-  const byteSpans = selected.map((_, index) => ({ start: byteOffsets[index * 2] ?? 0, end: byteOffsets[index * 2 + 1] ?? 0 }));
-  return { content: output, spans: byteSpans, matchKind: match.matchKind };
+/** One edit's deciding tier and the replacements it makes. */
+interface PlannedEdit {
+  readonly matchKind: StringMatchKind;
+  readonly replacements: readonly Replacement[];
 }
 
-function findStringEditMatch(contents: string, oldString: string): StringEditMatch {
+/** The spans of `contents` that one edit replaces, each with the text that takes its place, before
+ *  its line endings are restored. */
+function editReplacements(contents: string, edit: StringEdit, limits: FileEditLimits): PlannedEdit {
+  if (utf8Length(edit.oldString) + utf8Length(edit.newString) > limits.maxOutputBytes) throw limitExceeded("string edit bytes");
+  const match = matchStringEdit(contents, edit.oldString, limits);
+  const spans = match.spans;
+  if (edit.replaceAll !== true && spans.length !== 1) {
+    throw new FileEditPlanError(`string edit refused at ${match.matchKind} tier: ${spans.length} matches; nearest lines: ${matchedCandidates(contents, spans)}`);
+  }
+  if (edit.replaceAll === true && match.matchKind !== "exact" && match.matchKind !== "line-ending") {
+    throw new FileEditPlanError(`replace_all matched only through the ${match.matchKind} tier; every occurrence must match exactly. Copy old_string exactly, or edit each occurrence on its own.`);
+  }
+  const selected = edit.replaceAll === true ? spans : spans.slice(0, 1);
+  return { matchKind: match.matchKind, replacements: selected.map((span, index) => ({ span, text: match.replacementFor(edit.newString, index) })) };
+}
+
+/** Throws `FileEditPlanError` when no string edit may change `contents`: binary content, or more
+ *  bytes than the output limit. */
+export function assertStringEditable(contents: string, limits: FileEditLimits = FILE_EDIT_LIMITS): void {
+  if (contents.includes("\0")) throw new FileEditPlanError("binary content cannot be edited");
+  if (utf8Length(contents) > limits.maxOutputBytes) throw limitExceeded("input bytes");
+}
+
+/** The matches of `oldString` in editable `contents` at the first tier of the recovery ladder that
+ *  finds any. Throws `FileEditPlanError` for an empty or oversized `oldString`, or naming the nearest
+ *  lines when no tier finds a match. Uniqueness is the caller's check, because it depends on the
+ *  edit's replace_all. */
+export function matchStringEdit(contents: string, oldString: string, limits: FileEditLimits = FILE_EDIT_LIMITS): StringEditMatch {
+  if (oldString.length === 0) throw new FileEditPlanError("old_string must not be empty");
+  if (utf8Length(oldString) > limits.maxOutputBytes) throw limitExceeded("string edit bytes");
   for (const matchKind of STRING_MATCH_KINDS) {
     const matches = TIERS[matchKind](contents, oldString);
-    if (matches !== undefined && matches.spans.length > 0) return { ...matches, matchKind, oldString };
+    if (matches !== undefined && matches.spans.length > 0) return { ...matches, matchKind };
   }
   const lastTier = STRING_MATCH_KINDS[STRING_MATCH_KINDS.length - 1];
   throw new FileEditPlanError(`string edit refused: no match after ${lastTier} tier; nearest lines: ${nearestCandidates(contents, oldString)}`);
 }
 
-/** Selects the first matching tier using only the source and old string. */
-export function matchStringEdit(contents: string, oldString: string, limits: FileEditLimits = FILE_EDIT_LIMITS): StringEditMatch {
-  if (oldString.length === 0) throw new FileEditPlanError("old_string must not be empty");
-  if (contents.includes("\0")) throw new FileEditPlanError("binary content cannot be edited");
-  if (utf8Length(contents) > limits.maxOutputBytes) throw limitExceeded("input bytes");
-  if (utf8Length(oldString) > limits.maxOutputBytes) throw limitExceeded("string edit bytes");
-  return findStringEditMatch(contents, oldString);
-}
-
-/** Plans the replacement of `oldString` in `contents`. Unique mode refuses more than one match at
- *  the deciding tier and names up to three of them; no match at any tier names the nearest lines. */
-export function planStringEdit(contents: string, edit: StringEdit, limits: FileEditLimits = FILE_EDIT_LIMITS): StringEditPlan {
-  if (edit.oldString.length === 0) throw new FileEditPlanError("old_string must not be empty");
-  if (contents.includes("\0")) throw new FileEditPlanError("binary content cannot be edited");
-  if (utf8Length(contents) > limits.maxOutputBytes) throw limitExceeded("input bytes");
-  if (utf8Length(edit.oldString) + utf8Length(edit.newString) > limits.maxOutputBytes) throw limitExceeded("string edit bytes");
-  if (edit.oldString === edit.newString) return { content: contents, spans: [], matchKind: "exact" };
-  return finishStringEdit(contents, findStringEditMatch(contents, edit.oldString), edit, limits);
+/** Plans every edit of one call against `contents` as it was before the call, so the edits apply
+ *  together or not at all. Each `oldString` matches through the first tier of the recovery ladder
+ *  that finds it; unique mode refuses more than one match there and names up to three of them, and
+ *  no match at any tier names the nearest lines. Matched spans must not overlap. An edit whose
+ *  `oldString` equals its `newString` is matched and checked like any other but writes nothing,
+ *  so that an invalid entry refuses the call whatever its text. A refusal of one entry names it as
+ *  `edits[i]`. */
+export function planStringEdits(contents: string, edits: readonly StringEdit[], limits: FileEditLimits = FILE_EDIT_LIMITS): StringEditPlan {
+  assertStringEditable(contents, limits);
+  const refusal = (index: number, message: string) => new FileEditPlanError(`edits[${index}]: ${message}`);
+  const matchKinds: StringMatchKind[] = [];
+  const replacements: (Replacement & { readonly index: number; readonly writes: boolean })[] = [];
+  for (const [index, edit] of edits.entries()) {
+    try {
+      const planned = editReplacements(contents, edit, limits);
+      matchKinds.push(planned.matchKind);
+      const writes = edit.oldString !== edit.newString;
+      for (const replacement of planned.replacements) replacements.push({ ...replacement, index, writes });
+    } catch (error) {
+      throw error instanceof FileEditPlanError ? refusal(index, error.message) : error;
+    }
+  }
+  replacements.sort((left, right) => left.span.start - right.span.start);
+  for (const [position, replacement] of replacements.entries()) {
+    const previous = replacements[position - 1];
+    if (previous && replacement.span.start < previous.span.end) {
+      throw previous.index === replacement.index ? refusal(replacement.index, "replacement spans overlap") : new FileEditPlanError(`edits[${previous.index}] and edits[${replacement.index}] overlap, so no entry was applied. Each old_string matches the file as it was before this call; merge overlapping entries into one.`);
+    }
+  }
+  const written = replacements.filter((replacement) => replacement.writes);
+  if (written.length === 0) return { content: contents, spans: [], matchKinds };
+  // The restorer's cursor only moves forward, so endings are restored in span order.
+  const endings = new LineEndingRestorer(contents);
+  let output = "";
+  let cursor = 0;
+  for (const replacement of written) {
+    output += contents.slice(cursor, replacement.span.start) + endings.restore(replacement.text, replacement.span);
+    cursor = replacement.span.end;
+  }
+  output += contents.slice(cursor);
+  if (output === contents) throw new FileEditPlanError("the replacement produced no change");
+  if (utf8Length(output) > limits.maxOutputBytes) throw limitExceeded("output bytes");
+  const byteOffsets = utf8ByteOffsets(contents, written.flatMap(({ span }) => [span.start, span.end]));
+  const spans = written.map((_, index) => ({ start: byteOffsets[index * 2] ?? 0, end: byteOffsets[index * 2 + 1] ?? 0 }));
+  return { content: output, spans, matchKinds };
 }
