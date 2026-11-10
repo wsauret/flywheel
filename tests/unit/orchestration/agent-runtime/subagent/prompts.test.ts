@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
-import { renderSubagentRoster, SUBAGENT_DESCRIPTION } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
+import { renderSubagentRoster, subagentDescription } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 
 const PLAN_DESIGN_REVIEWER = {
   kind: "persona",
@@ -25,7 +25,7 @@ const SHIP = {
 
 /** What a dispatcher reads: the tool description and the roster its system prompt carries. */
 function modelVisible(agents: ReadonlyMap<string, AgentDefinition>, has: (term: string) => boolean = () => true): string {
-  return `${SUBAGENT_DESCRIPTION}\n\n${renderSubagentRoster(agents, has)}`;
+  return `${subagentDescription(has)}\n\n${renderSubagentRoster(agents, has)}`;
 }
 
 describe("subagent prompt", () => {

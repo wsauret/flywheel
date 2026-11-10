@@ -190,7 +190,7 @@ describe("subagent failure summary integration", () => {
         summaryPurposes.push(options.purpose.kind);
         return newTestRunner({ ...options, agentsMd: "", resolveEnvSnapshot: undefined }, createLLMClient, undefined, capture);
       },
-    });
+    }, () => true);
 
     await tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "fix the test" }, {
       ...makeContext({ toolUseId: "tc_root" }),

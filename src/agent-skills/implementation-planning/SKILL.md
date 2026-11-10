@@ -9,7 +9,7 @@ Turn one approved design into milestones, each with its own proof, ordered so th
 ## Milestones
 
 - Give each milestone one purpose and one independently verifiable outcome.
-- Size each milestone for one implementer agent in one run. A write set past roughly ten files, production code bundled with corpus or fixture regeneration, or code bundled with ADR or instruction rewrites is evidence that the milestone needs a real dependency split.
+- Size each milestone for one agent in one run. A write set past roughly ten files, production code bundled with corpus or fixture regeneration, or code bundled with ADR or instruction rewrites is evidence that the milestone needs a real dependency split.
 - Put shared foundations before their consumers, and state the exact surface each later milestone consumes instead of coupling milestones through unstated internals. A milestone that cannot pass checks without its consumer belongs with that consumer, not behind an approval request or a temporary lint exception.
 - Give each milestone its prerequisites: the milestones whose output it consumes, or `None.` Then group the milestones into waves. A wave holds every milestone whose prerequisites are in earlier waves and whose files do not overlap the files of another milestone in the same wave. Two milestones that change the same file go in different waves. The order in which milestones commit is not a prerequisite.
 - Keep tests with the feature-bearing milestone they prove. Do not defer all testing to a final milestone.

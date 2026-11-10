@@ -71,7 +71,9 @@ interface ModelAssignmentController {
   listModelOptions(slot: ModelSelectionSlot): Promise<readonly ModelOptionRow[]>;
   listEffortOptions(slot: ModelSelectionSlot, model: string | null): Promise<readonly EffortOptionRow[]>;
   saveEffort(slot: ModelSelectionSlot, model: string | null, effort: ModelAssignmentPatch["effort"]): Promise<SaveEffortResult>;
-  resetDefaults(slots: readonly ModelSelectionSlot[]): Promise<readonly ModelAssignmentRow[]>;
+  /** Resets each role that `resets` names to its detected default and answers for `slots`. A role that `resets`
+   *  does not name keeps its saved value. */
+  resetDefaults(slots: readonly ModelSelectionSlot[], resets: (roleId: string) => boolean): Promise<readonly ModelAssignmentRow[]>;
 }
 
 export function createModelAssignmentController(
@@ -117,8 +119,8 @@ function createDefaultsController(deps: ModelAssignmentControllerDeps): ModelAss
       await deps.afterGlobalConfigWrite?.();
       return { label: slotLabel(slot) };
     },
-    async resetDefaults(slots) {
-      await resetRoleAssignmentsToDetectedDefaults(configDeps);
+    async resetDefaults(slots, resets) {
+      await resetRoleAssignmentsToDetectedDefaults(configDeps, resets);
       const config = await deps.afterGlobalConfigWrite?.() ?? configDeps.config;
       return listModelAssignments({ ...configDeps, config, slots });
     },
@@ -242,8 +244,10 @@ function createSessionController(
       );
       return { label: slotLabel(slot) };
     },
-    async resetDefaults(slots) {
-      await roleCaptureStore.replaceRoleSnapshot(sessionId, {}, {});
+    async resetDefaults(slots, resets) {
+      const snapshot = (await roleCaptureStore.read(sessionId))?.roleAssignments;
+      const kept = (roles: RoleSettings = {}): RoleSettings => Object.fromEntries(Object.entries(roles).filter(([roleId]) => !resets(roleId)));
+      await roleCaptureStore.replaceRoleSnapshot(sessionId, kept(snapshot?.defaults), kept(snapshot?.overrides));
       return loadAssignments(slots);
     },
   };

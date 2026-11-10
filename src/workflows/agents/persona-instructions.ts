@@ -1,6 +1,6 @@
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
-import { renderSkillClosure } from "../skill-context.js";
+import { renderSkillClosure } from "../skill-render.js";
 import type { SkillRegistryRevision } from "../skill-schema.js";
 
 /** The instructions that one persona brings to every run of it: the context

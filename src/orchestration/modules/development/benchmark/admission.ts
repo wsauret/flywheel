@@ -112,6 +112,7 @@ export async function admitBenchmark(
     accountHome: deps.accountHome,
     definitions: deps.definitions,
     moduleSelection: deps.moduleSelection,
+    captureRuntimeConfig: deps.captureRuntimeConfig,
     runOwnedCommand: deps.runOwnedCommand,
     profileId: deps.profileId,
     authorityIncarnation: deps.authorityIncarnation,

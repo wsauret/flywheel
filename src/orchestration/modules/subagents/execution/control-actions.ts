@@ -1,5 +1,6 @@
 import type { ConversationMessage } from "../../../agent-runtime/llm/types.js"
 import type { CapabilityAccess } from "../../../agent-runtime/tools/types.js"
+import type { CapabilityCheck } from "../../../../infra/capability-text.js"
 import type { ContextAdmission } from "../../../agent-runtime/compaction/compaction-policy.js"
 import type { ToolOutcome } from "../../../../infra/tool-outcome.js"
 import { errorMessage } from "../../../../infra/error-message.js"
@@ -32,6 +33,8 @@ export interface SubagentContext {
   snapshotConversation?: () => Promise<ConversationMessage[]>
   contextAdmission?: ContextAdmission
   capabilityAccess?: CapabilityAccess
+  /** The dispatcher's agent check, for the text of a refusal that only it reads. */
+  capabilities?: CapabilityCheck
 }
 
 /** The saved run that a Resume continues: the same run after a cut, or a

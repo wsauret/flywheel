@@ -1,4 +1,5 @@
 import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
+import { fixedAvailability } from "../../../helpers/project-definitions.js"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
@@ -104,7 +105,7 @@ function makeWorker(createAgent: AgentFactory, workerSessionId = sessionId, even
     return createWorkerCallback({
     ...base,
     skills: base.definitions.skills(),
-    personas: base.definitions.personas(),
+    availability: () => fixedAvailability({ skills: base.definitions.skills(), personas: base.definitions.personas() }),
     planCapabilities: planEveryCapability,
     createAgent,
     auth: testAuthContext(),

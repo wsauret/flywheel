@@ -116,6 +116,14 @@ export function installedDefinitionBundles(modules: readonly FirstPartyModule[] 
     contribution.domain === "definitions" && contribution.value.kind === "bundle" ? [{ id: contribution.id, root: contribution.value.root }] : []))
 }
 
+/** The agent types that `config` turns off, as the installed module that owns dispatch reads them: a decoded
+ *  configuration, or the module sections of a request capture. Only the inputs of the availability owner read
+ *  them (ARCH-STRUCTURE-044). */
+export function disabledAgentTypes(config: { readonly [section: string]: unknown }, modules: readonly FirstPartyModule[] = installedModules()): readonly string[] {
+  return modules.flatMap((module) => module.contributions.flatMap((contribution) =>
+    contribution.domain === "definitions" && "disabledTypes" in contribution.value ? contribution.value.disabledTypes(config) : []))
+}
+
 /** Every config section the installed catalog contributes, whether or not a
  *  project enables the owner: the loader decodes them all, so a section a
  *  disabled module owns keeps its bytes and its meaning, and only the module's

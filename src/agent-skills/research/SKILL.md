@@ -6,7 +6,7 @@ description: Use when investigating a broad or unfamiliar question from authorit
 
 Start with one research question, its scope and constraints, and known source boundaries. Decompose it into non-overlapping subquestions. Enumerate plausible authoritative sources before deep reading. Inspect enough primary evidence to answer each subquestion, cite every material claim, reconcile contradictions through underlying source and recency, and distinguish verified fact, inference, and unresolved gap. Prefer empirical evidence over static reasoning: analyze available data, run actual code paths, and use focused experiments in scratch when they can answer the question more reliably than code reading alone. Consolidate the answer around the original question.
 
-{{if:subagent}}
+{{if:subagent&type:explorer}}
 This skill owns the research explorer dispatch: whether to dispatch explorers at all, how to split the question into facets, what each explorer brief carries, and how their findings consolidate. The protocol below states that method; a caller composes it and does not restate or override it.
 {{end}}
 {{if:workflow}}

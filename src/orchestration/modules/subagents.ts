@@ -10,7 +10,7 @@ import { holdSubagentParentRuns, readSubagentParentReconciliationRuns } from "./
 import { recoverStaleSubagentRuns } from "./subagents/history/subagent-run-recovery.js"
 import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
 import type { ServingModel } from "../agent-runtime/tools/kernel-tool-deps.js"
-import { createSubagentTool, createSubagentResume, SUBAGENT_TOOL_DEFINITION, subagentToolWith } from "./subagents/tool.js"
+import { createSubagentTool, createSubagentResume, subagentToolDefinition, subagentToolWith } from "./subagents/tool.js"
 import type { SubagentDispatchDeps } from "./subagents/execution/dispatch-deps.js"
 import { deliverSessionInput } from "../session/session-input-delivery.js"
 import { createSubagentContinuationService, subagentContinuationService } from "./subagents/execution/continuation-service.js"
@@ -31,6 +31,7 @@ import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-a
 import { availableToolNames } from "../agent-runtime/persona-tool-rules.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { CapabilityCheck } from "../../infra/capability-text.js"
+import { disabledTypesOf, subagentsConfigSection } from "./subagents/config.js"
 
 const EMPTY_ROLE_RESOLVER: RoleResolver = async () => new Map()
 
@@ -167,7 +168,7 @@ function createSubagentsRuntime(services: ModuleRuntimeServices): SubagentsRunti
       // Only a running host's runtime is reachable for a Resume, and a capability plan registers with no host.
       if (!services.servingModel) throw new Error("A capability plan has no serving model to resume a child on.")
       const { definitionAvailabilityOf } = await import("../app-service/definition-availability.js")
-      const availability = definitionAvailabilityOf(services.definitions.captureRevision(), services.moduleSelection().enabledModuleIds)
+      const availability = definitionAvailabilityOf(services.definitions.captureRevision(), services.moduleSelection().enabledModuleIds, disabledTypesOf(services.captureRuntimeConfig().moduleSections))
       return createSubagentResume({ ...toolDeps(services.servingModel, availability), ...admission })(childSessionId, {
         executionCwd: services.executionCwd, projectRoot: services.projectRoot,
         artifactScopeId: services.conversation.artifactScopeId, conversationId, signal: owner.signal,
@@ -190,11 +191,15 @@ const subagent = {
     subagent: {
       capabilities: ["subagents"],
       create: ({ kernel, modules }) => {
+        // While the tree's capture turns every agent type off, the tree has nothing to dispatch, so it plans no
+        // dispatch tool, as with this module off (PI-CAP-023). The tree's capture decides, so every agent of the tree
+        // plans the same tools (ARCH-CONTEXT-018).
+        if (kernel.definitionAvailability.tree.availablePersonas.size === 0) return { reason: "every agent type is turned off in subagents.disabled_types" }
         const runtime = modules.get(subagentsRuntime)
-        if (!runtime) return { unusable: { tool: SUBAGENT_TOOL_DEFINITION, reason: "no subagent registry available" } }
+        if (!runtime) return { unusable: { tool: subagentToolDefinition(kernel.treeCapabilities), reason: "no subagent registry available" } }
         // A capability plan (`planRunCapabilities`) reads only whether the tool is usable and calls nothing.
-        if (!kernel.servingModel) return { tool: subagentToolWith(() => Promise.reject(new Error("A capability plan runs no tool."))) }
-        return { tool: createSubagentTool(runtime.toolDeps(kernel.servingModel, kernel.definitionAvailability.live)) }
+        if (!kernel.servingModel) return { tool: subagentToolWith(() => Promise.reject(new Error("A capability plan runs no tool.")), kernel.treeCapabilities) }
+        return { tool: createSubagentTool(runtime.toolDeps(kernel.servingModel, kernel.definitionAvailability.live), kernel.treeCapabilities) }
       },
     },
   },
@@ -274,7 +279,8 @@ export const subagentsModule = {
         ? renderSubagentRoster(rosterAgents(scopedAgentRegistry(kernel.personas ?? new Map(), kernel.allowedSubagentTypes), capabilities, kernel.moduleSnapshot), capabilities)
         : undefined,
     } },
-    { domain: "definitions", id: "subagents", value: { kind: "subagents", roles: true, retainInstalled: true } },
+    { domain: "definitions", id: "subagents", value: { kind: "subagents", roles: true, retainInstalled: true, disabledTypes: disabledTypesOf } },
+    { domain: "config", id: subagentsConfigSection.key, value: subagentsConfigSection },
     { domain: "settings", id: "subagents", value: { control: "binary", label: "Subagents", description: "Allow agents to delegate focused work" } },
   ],
   observers: [],

@@ -24,8 +24,8 @@ phases:
       fields:
         findings:
           type: list
-          # The cap only bounds the worst case. Keep it high enough that a
-          # reviewer never drops a real defect.
+          # The cap only bounds the worst case. Keep it high enough that no
+          # real defect is dropped.
           max: 20
           unique: site
           of:

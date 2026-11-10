@@ -461,7 +461,7 @@ describe("skill tool own validation through dispatch", () => {
   };
   const revision = publishSkillRevision(1, new Map([[legacy.id, legacy]]));
   const tools = new Map<string, RuntimeTool>(testBaseTools())
-    .set("skill", createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: {} }));
+    .set("skill", createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: new Map() }, revision }));
 
   it("refuses an unknown parameter through the tool's own validation", async () => {
     const context = makeContext({ capabilityAccess: capabilityAccessHolding(["skills"]), capabilities: () => true });
@@ -492,7 +492,7 @@ describe("capability admission of a model tool call", () => {
     };
     const revision = publishSkillRevision(1, new Map([[gated.id, gated]]));
     return new Map<string, RuntimeTool>(testBaseTools())
-      .set("skill", createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: {} }));
+      .set("skill", createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: new Map() }, revision }));
   };
 
   it("admits a call whose capability is enabled", async () => {

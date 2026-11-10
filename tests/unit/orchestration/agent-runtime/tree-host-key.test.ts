@@ -221,7 +221,7 @@ async function hostPlace(name: string, cwd: string, variation: Variation = {}): 
 describe("the host key of a chat tree", () => {
   it("is one key for every kind of agent and side call of the tree, whatever its model, effort, and directory, and splits only on a listed exception", async () => {
     // The tree's host holds the tree's module capture while the tree's agents run.
-    const { release } = holdSharedTree(ROOT, () => ({ modules: MODULES, shellWriteGuard: true, allowPersistentProcesses: false }))
+    const { release } = holdSharedTree(ROOT, () => ({ modules: MODULES, shellWriteGuard: true, allowPersistentProcesses: false, disabledTypes: [] }))
     try {
       const cwd = directory("tree-host-")
       const reference = await hostPlace("persona subagent", cwd)

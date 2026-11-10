@@ -22,6 +22,7 @@ import { invokeBenchmarkAgent } from "./invocation.js";
 import { agentCapabilityCheck } from "../../../agent-runtime/capability-checks.js";
 import { availableToolNames } from "../../../agent-runtime/persona-tool-rules.js";
 import { definitionAvailabilityOf } from "../../../app-service/definition-availability.js";
+import { disabledAgentTypes } from "../../../module-catalog.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
 import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
 
@@ -38,7 +39,7 @@ const DURABLE_EVENT_TYPES: ReadonlySet<RuntimeEvent["type"]> = new Set(DURABLE_R
  *  no config, auth, or refresh authority it does not own. */
 export type BenchmarkRuntime = Pick<
   WorkflowDeps,
-  "userDataRoot" | "accountHome" | "definitions" | "createAgent" | "createLLMClient" | "runOwnedCommand" | "moduleSelection"
+  "userDataRoot" | "accountHome" | "definitions" | "createAgent" | "createLLMClient" | "runOwnedCommand" | "moduleSelection" | "captureRuntimeConfig"
 > & {
   readonly profileId?: string;
   readonly authorityIncarnation?: string;
@@ -150,21 +151,32 @@ export interface PersonaTaskGuidance {
 /** Renders the exact system task sent to a persona runner. Campaign identity
  * uses this same function, so skill or persona guidance cannot drift silently.
  * The persona's tools narrow to the runtime's modules and its instructions
- * render for that grant, as a subagent dispatch of it does. */
+ * render for that grant and the agent types its configuration turns off, as a
+ * subagent dispatch of it does. */
 export function renderPersonaTaskGuidance(
   persona: PersonaDefinition,
   agentRegistry: ReadonlyMap<string, AgentDefinition>,
-  runtime: Pick<BenchmarkRuntime, "definitions" | "moduleSelection">,
+  runtime: Pick<BenchmarkRuntime, "definitions" | "moduleSelection" | "captureRuntimeConfig">,
   tasks: ModuleAgentTasks = installedAgentTasks(),
 ): PersonaTaskGuidance {
   const modules = runtime.moduleSelection();
   const revision = runtime.definitions.captureRevision();
-  const toolNames = availableToolNames(personaToolNames(persona, agentRegistry), modules);
-  const has = agentCapabilityCheck(new Set(toolNames), definitionAvailabilityOf(revision, modules.enabledModuleIds));
+  const { availability, dispatchable } = personaRunAvailability(agentRegistry, runtime);
+  const toolNames = availableToolNames(personaToolNames(persona, dispatchable), modules);
+  const has = agentCapabilityCheck(new Set(toolNames), availability, grantedSubagentTypes(persona, dispatchable));
   return {
     task: tasks.task(personaInstructions(persona, revision.skills, has), has, persona.maxTurns),
     toolNames,
   };
+}
+
+/** The availability of a persona run under the runtime's modules and configuration, and the agents of
+ *  `agentRegistry` it can dispatch. A benchmark registry can hold a persona variant that the installed catalog lacks,
+ *  so only an agent that the availability refuses leaves it. */
+function personaRunAvailability(agentRegistry: ReadonlyMap<string, AgentDefinition>, runtime: Pick<BenchmarkRuntime, "definitions" | "moduleSelection" | "captureRuntimeConfig">) {
+  const availability = definitionAvailabilityOf(runtime.definitions.captureRevision(), runtime.moduleSelection().enabledModuleIds, disabledAgentTypes(runtime.captureRuntimeConfig().moduleSections));
+  const dispatchable = new Map([...agentRegistry].filter(([name]) => availability.personas.get(name)?.available !== false));
+  return { availability, dispatchable };
 }
 
 function installedAgentTasks(): ModuleAgentTasks {
@@ -178,6 +190,11 @@ function installedAgentTasks(): ModuleAgentTasks {
  *  failure after partial output, so the partial accounting survives. */
 export async function runPersonaTask(deps: BenchmarkRuntime, request: PersonaTaskRequest): Promise<PersonaRunOutcome> {
   const { persona, seat, label, timeoutMs, signal } = request;
+  const agentRegistry = request.agentRegistry ?? new Map<string, AgentDefinition>();
+  const { availability, dispatchable } = personaRunAvailability(agentRegistry, deps);
+  // A persona whose agent type is off cannot run, as a dispatch of it cannot; the run builds no runner.
+  const refusal = availability.personas.get(persona.name)?.reason;
+  if (refusal !== undefined) throw new Error(`${label} cannot run persona ${persona.name}: ${refusal}`);
   const { transcriptPath } = request;
   const captureProviderConnection = deps.captureProviderConnection;
   const usage = createBenchmarkAccounting();
@@ -193,8 +210,7 @@ export async function runPersonaTask(deps: BenchmarkRuntime, request: PersonaTas
   };
   let capturedHandoff: PersonaHandoff | undefined;
   const skills = deps.definitions.skills();
-  const agentRegistry = request.agentRegistry ?? new Map<string, AgentDefinition>();
-  const allowedSubagentTypes = grantedSubagentTypes(persona, agentRegistry);
+  const allowedSubagentTypes = grantedSubagentTypes(persona, dispatchable);
   const { task, toolNames } = renderPersonaTaskGuidance(persona, agentRegistry, deps, tasks);
   let stop: AttemptTerminal | undefined;
   request.onPhase?.("ready");

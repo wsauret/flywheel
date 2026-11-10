@@ -36,8 +36,8 @@ export function toolNotice(request: Pick<ReturnType<RequestToolSurfaceOwner["cur
  *  The entry is `tool-notice` framing: every request reads it, whatever
  *  route serves it, but it states this agent's own grants, so the transcript
  *  echo and reply debt look past it to the task, and a fork does not copy it.
- *  A due narrowing statement joins the notice, so the modules that the
- *  first plan turned off are stated once and no later statement repeats them.
+ *  A due narrowing statement joins the notice, so the modules and agent types
+ *  that the first plan turned off are stated once and no later statement repeats them.
  *  A conversation that holds the entry, or does not end in a user turn (a
  *  restored wait), commits nothing. */
 export async function commitToolNotice(
@@ -53,6 +53,6 @@ export async function commitToolNotice(
   const content = narrowing === undefined ? notice : `${notice}\n\n${narrowing.statement}`;
   const message: ConversationMessage = { kind: "user", content, origin: "system", framing: "tool-notice" };
   await conversation.persistence.history.append(message, entryId);
-  if (narrowing !== undefined) recordNarrowing(conversation.sessionId, narrowing.moduleIds, "tool-notice");
+  if (narrowing !== undefined) recordNarrowing(conversation.sessionId, narrowing, "tool-notice");
   return { kind: "resume", priorMessages: [...seed.priorMessages, message] };
 }

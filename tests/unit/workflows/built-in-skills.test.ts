@@ -4,14 +4,13 @@ import { join } from "node:path";
 import { isQualifiedSkillId } from "../../../src/infra/skill-id.js";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import { loadStandalonePersonaRegistry } from "../../../src/workflows/agents/registry.js";
-import { getPersonaMetadataIndex } from "../../../src/workflows/agents/agent-roles.js";
 import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/skill.js";
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";
-import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../helpers/project-definitions.js";
+import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoDefinitions, workflowIn } from "../../helpers/project-definitions.js";
 import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
-import { renderSkillClosure } from "../../../src/workflows/skill-context.js";
+import { renderSkillClosure } from "../../../src/workflows/skill-render.js";
 import { publishSkillRevision, type SkillRegistryRevision } from "../../../src/workflows/skill-schema.js";
 import { bodyFor, bundled, bundledLoad, bundleRoots, SKILL_ROOTS } from "./_bundled-skills.js";
 
@@ -317,7 +316,7 @@ describe("bundled skill packages", () => {
   // tool call, so the advertisement carries every installed skill's trigger
   // line; a partial roster reads as complete and defeats scan-then-load.
   it("advertises every installed skill's trigger line", () => {
-    const guidelines = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: getPersonaMetadataIndex() }).promptGuidelines?.join("\n") ?? "";
+    const guidelines = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: repoDefinitions().personas() }, revision }).promptGuidelines?.join("\n") ?? "";
 
     for (const skill of revision.modelInvocable) {
       expect(guidelines, skill.id).toContain(`- ${skill.id}: `);

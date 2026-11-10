@@ -1,3 +1,4 @@
+{{if:skill:code-review}}
 # Review Briefs
 
 Read this when you write a brief for a phase that reviews a plan or a code change, or that refines a plan from review findings.
@@ -38,3 +39,4 @@ phases:
         plan: { type: path }
         changed: { type: boolean }
 ```
+{{end}}

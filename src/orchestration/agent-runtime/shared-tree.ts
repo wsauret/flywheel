@@ -29,6 +29,10 @@ export interface SharedTreeCapture {
    *  whether the shell schema offers `persist_after_exit`, so the tree keeps one value for all its agents; execution
    *  still refuses from the live policy (ARCH-TOOLS-034). */
   readonly allowPersistentProcesses: boolean;
+  /** The agent types turned off (`[subagents] disabled_types`). They decide the roster and the skill catalog that
+   *  every agent of the tree shares, so the tree keeps one value; dispatch refuses from each agent's current
+   *  configuration (ARCH-CONTEXT-033). */
+  readonly disabledTypes: readonly string[];
 }
 
 /** One holder's use of its chat tree's shared state. */

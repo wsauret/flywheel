@@ -149,6 +149,7 @@ function harness(cells: CellBehavior = "blocks") {
     authorityIncarnation: "test-incarnation",
     definitions: fixedDefinitions(),
     moduleSelection: sourceModuleSelection,
+    captureRuntimeConfig: testRuntimeConfigCapture,
     // Only a research cell's snapshot of the pinned corpus runs commands here, as no-ops: an archive and its extraction.
     runOwnedCommand: async (command) => {
       if (!(command[0] === "git" && command.includes("archive")) && command[0] !== "tar") throw new Error("no other command may be launched in this harness");

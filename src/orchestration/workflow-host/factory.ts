@@ -35,7 +35,8 @@ import { buildArtifactContext } from "./artifact-context.js"
 import { conversationsWithServedResponse, memberConversationCheckpoint } from "./attempt-progress.js"
 import { createCommandEvidenceSource } from "./command-evidence.js"
 import { resolveSessionRoles } from "../config/session-role-resolver.js"
-import { workflowRunReader } from "../module-catalog.js"
+import { disabledAgentTypes, workflowRunReader } from "../module-catalog.js"
+import { definitionAvailabilityOf } from "../app-service/definition-availability.js"
 import { createConversationTreeWriterController } from "../chat/tree-writer.js"
 import type { AttachChildSessionProjection } from "../module-seams.js"
 import type { WorkflowDefinition } from "../../workflows/workflow-schema.js"
@@ -185,7 +186,9 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
       onBackgroundCommandsChanged: input.onBackgroundCommandsChanged,
       resolvedAgents,
       skills,
-      personas,
+      // The workflow's admitted modules and the agent types turned off now: an agent that starts after a type was
+      // turned off is judged as a dispatch of it is.
+      availability: () => definitionAvailabilityOf(revision, moduleSelection.enabledModuleIds, disabledAgentTypes(deps.captureRuntimeConfig().moduleSections)),
       eventStore: input.eventStore,
       projectionReader: input.projectionReader,
       eventWriter: input.eventWriter,

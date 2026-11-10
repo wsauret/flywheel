@@ -34,6 +34,7 @@ import { EffortSchema } from "../../../../../src/infra/workflow-types.js";
 import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js";
 import { subscribeSessionRuntimeFacts } from "../../../../../src/orchestration/session/create-session-infra.js";
 import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js";
+import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
 
 interface UnknownRecord { [key: string]: unknown }
 let nextTestChildId = 0;
@@ -74,6 +75,7 @@ export interface SubagentContext {
   availableTools?: ReadonlySet<string>;
   snapshotConversation?: () => Promise<ConversationMessage[]>;
   capabilityAccess?: CapabilityAccess;
+  capabilities?: CapabilityCheck;
 }
 
 /** A capability boundary that records every admission it was asked for. `admit`
@@ -298,7 +300,7 @@ export function makeDeps(overrides?: Partial<SubagentDispatchDeps>): SubagentDis
     moduleSelection: () => composeFirstPartyModules(),
     createRunner: () => { throw new Error("createRunner not provided in test deps"); },
     // A child's plan here lets it call every tool of its grant, under the dispatcher's live availability.
-    planChildCapabilities: async (child) => agentCapabilityCheck(new Set(child.toolGrant), deps.definitionAvailability),
+    planChildCapabilities: async (child) => agentCapabilityCheck(new Set(child.toolGrant), deps.definitionAvailability, child.allowedSubagentTypes),
     subagentSessions: testSubagentSessionAuthority(() => deps),
     ...overrides,
   };

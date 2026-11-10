@@ -64,6 +64,7 @@ export function dryRunBenchmarkAdmission(seats: readonly BenchmarkModelSeat[]): 
     userDataRoot: join(tmpdir(), "flywheel-dry-run-user"),
     accountHome: tmpdir(),
     moduleSelection: composeFirstPartyModules,
+    captureRuntimeConfig: testRuntimeConfigCapture,
     createAgent: paidCall,
     createLLMClient: paidCall,
     runOwnedCommand: paidCall,

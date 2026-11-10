@@ -31,7 +31,7 @@ When the change is larger than one bounded pass, decompose it with the composed 
 
 ## Sizing
 
-{{if:subagent}}
+{{if:subagent&type:implementer}}
 When you can dispatch implementer subagents, size the work before you edit. Without that grant, implement every unit yourself.
 
 - Implement one bounded unit inline.

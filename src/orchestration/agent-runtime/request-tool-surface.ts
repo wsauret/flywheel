@@ -188,18 +188,18 @@ interface StaticTokenCache {
   };
 }
 
-/** One request's tool plan with the definition availability its kernel was planned under. */
-export type PlannedRequest = ToolExposurePlan & { readonly definitionAvailability: KernelToolDeps["definitionAvailability"] };
+/** One request's tool plan with the definition availability and the dispatch set its kernel was planned under. */
+export type PlannedRequest = ToolExposurePlan & Pick<KernelToolDeps, "definitionAvailability" | "allowedSubagentTypes">;
 
 /** The logical identities of the tools that a planned request can call. */
 function usableIdentities(plan: PlannedRequest): ReadonlySet<string> {
   return new Set([...plan.usable].map((name) => plan.registrationIdentities.get(name) ?? name));
 }
 
-/** The agent check of a planned request (ARCH-CONTEXT-033): the tools that it can call and the availability of the
- *  agent's own selection. */
+/** The agent check of a planned request (ARCH-CONTEXT-033): the tools that it can call, the availability of the
+ *  agent's own selection, and the personas it may dispatch. */
 export function requestCapabilities(plan: PlannedRequest): CapabilityCheck {
-  return agentCapabilityCheck(usableIdentities(plan), plan.definitionAvailability.live);
+  return agentCapabilityCheck(usableIdentities(plan), plan.definitionAvailability.live, plan.allowedSubagentTypes);
 }
 
 function pin(

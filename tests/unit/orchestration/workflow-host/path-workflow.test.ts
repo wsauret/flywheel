@@ -86,7 +86,7 @@ function phaseOutput(workflow: WorkflowDefinition, index: number): WorkflowPhase
 }
 
 function authority(actions: readonly ToolAction[] = ToolActionSchema.literals, personas: readonly string[] = []): LaunchingSessionAuthority {
-  return { toolActions: new Set(actions), personas: new Set(personas) }
+  return { toolActions: new Set(actions), personas: new Set(personas), unavailable: new Map() }
 }
 
 describe("the path of a workflow file", () => {

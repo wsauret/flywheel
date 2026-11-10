@@ -45,11 +45,9 @@ export const HOST_REWRITES: ReadonlyMap<string, string> = new Map([
     "- Design intent (fixed): use the approved intent and decisions that the runtime carries from the parent's checkpoint.",
     "- Design intent (fixed): [the approved Design intent and the user's dated decisions, verbatim]",
   ],
-  // The host's dispatched agents are agents, and its general agent is general-purpose. Workflow-file passages need no
-  // rewrite: the host check drops them, because the host runs no workflow files.
+  // The host's dispatched agents are agents. Workflow-file passages need no rewrite: the host check drops them,
+  // because the host runs no workflow files.
   ["   - a subagent;", "   - an agent dispatched with `Agent`;"],
-  ["Implementation subagents (`implementer`, `general`) inherit the parent model.", "Implementation agents (`general-purpose`) inherit the parent model."],
-  ["dispatch general instead", "dispatch general-purpose instead"],
   ["Dispatch a subagent or add a reviewer only", "Dispatch an agent or add a reviewer only"],
   // A dispatched agent cannot message its parent mid-run, and it returns its result as its final message.
   ["message your parent with message_session and wait for its reply", "stop and return to your parent with the evidence and the decision that it needs"],

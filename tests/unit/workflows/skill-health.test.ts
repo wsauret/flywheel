@@ -117,6 +117,16 @@ describe("inspectSkillLibrary", () => {
     expect(inspect().find((entry) => entry.kind === "body-over-budget")).toMatchObject({ skill: "workflow-authoring" });
   });
 
+  it("measures a bundled body by its longest render, since no reader loads a block and its else branch together", () => {
+    const branch = "word ".repeat(1_400);
+    writeSkill("branched", `# Method\n\n{{if:type:advisor}}\n${branch}\n{{else}}\n${branch}\n{{end}}\n`);
+    const bundled = loadSkillDefinitions({ roots: [{ authority: "bundled", dir: ownedSkillStoreDirs(DIRS).project, reach: "global", sourceKind: "agent" }] });
+    const bundledFindings = inspectSkillLibrary({ revision: publishSkillRevision(1, bundled.skills), directories: DIRS, includeUnowned: true });
+
+    expect(kinds(bundledFindings)).not.toContain("body-over-budget");
+    expect(inspect().find((entry) => entry.kind === "body-over-budget")).toMatchObject({ skill: "branched" });
+  });
+
   it("finds a body crowding the budget before it is over it", () => {
     writeSkill("crowded", "# Method\n\n" + "word ".repeat(2_000));
 

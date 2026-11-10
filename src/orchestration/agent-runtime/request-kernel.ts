@@ -4,6 +4,7 @@ import { attendedClosureMembers } from "../../workflows/skill-closure.js";
 import type { ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js";
 import { definitionAvailabilityOf } from "../app-service/definition-availability.js";
 import { canonicalModuleIds } from "../../protocol/module-ids.js";
+import { disabledAgentTypes } from "../module-catalog.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "./capability-checks.js";
 import type { CapabilityAccess } from "./tools/types.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
@@ -67,6 +68,9 @@ export interface KernelRequestFacts {
   /** The persistent-process policy that the shell schema states: the tree's captured value for a tree-hosted
    *  request, else the request's configuration (`SharedTreeCapture`). */
   readonly persistentProcessesAdvertised: boolean;
+  /** The agent types turned off for the tree's shared text: the tree's captured value for a tree-hosted request, else
+   *  the request's configuration (`SharedTreeCapture`). */
+  readonly treeDisabledTypes: readonly string[];
   /** The definitions this request advertises and executes, read once when the request is planned. */
   readonly definitions: ProjectDefinitionRegistryRevision;
   /** Absent for a capability plan, which plans the run's tools with no model route (`planRunCapabilities`). */
@@ -96,11 +100,11 @@ function withoutAttendedSkills(revision: ProjectDefinitionRegistryRevision): Pro
 }
 
 /** What an agent's own selection holds now: a module that `live` enables and its capability access admits, and the
- *  definitions those modules make available. */
-function liveSelection(live: FirstPartyModuleComposition, capabilityAccess: CapabilityAccess | undefined, definitions: ProjectDefinitionRegistryRevision) {
+ *  definitions those modules make available while its configuration turns `disabledTypes` off. */
+function liveSelection(live: FirstPartyModuleComposition, capabilityAccess: CapabilityAccess | undefined, definitions: ProjectDefinitionRegistryRevision, disabledTypes: readonly string[]) {
   const moduleIds = new Set(live.enabledModuleIds);
   const available = (capability: ModuleId): boolean => moduleIds.has(capability) && (capabilityAccess?.available(capability) ?? true);
-  return { available, definitions: definitionAvailabilityOf(definitions, canonicalModuleIds(live.enabledModuleIds).filter(available)) };
+  return { available, definitions: definitionAvailabilityOf(definitions, canonicalModuleIds(live.enabledModuleIds).filter(available), disabledTypes) };
 }
 
 /** The kernel facts of one request (`KernelToolDeps`). A run builds them per request, not per turn, because the tools
@@ -109,8 +113,8 @@ function liveSelection(live: FirstPartyModuleComposition, capabilityAccess: Capa
 export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts): KernelToolDeps {
   const { options, surfaces } = run;
   const definitions = options.capabilityAccess?.unattended ? withoutAttendedSkills(request.definitions) : request.definitions;
-  const { available, definitions: live } = liveSelection(request.live, options.capabilityAccess, definitions);
-  const tree = definitionAvailabilityOf(definitions, request.moduleSnapshot.enabledModuleIds);
+  const { available, definitions: live } = liveSelection(request.live, options.capabilityAccess, definitions, disabledAgentTypes(request.runtimeConfig.moduleSections));
+  const tree = definitionAvailabilityOf(definitions, request.moduleSnapshot.enabledModuleIds, request.treeDisabledTypes);
   return {
     userDataRoot: options.userDataRoot,
     ...(run.captureProviderConnection ? { captureProviderConnection: run.captureProviderConnection } : {}),

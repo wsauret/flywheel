@@ -45,6 +45,7 @@ const workflows = new Map<string, WorkflowDefinition>([
 async function harness(
   selected: readonly ModuleId[],
   onMinted?: (change: (next: readonly ModuleId[]) => void) => void,
+  disabledTypes: readonly string[] = [],
 ) {
   let live = [...selected]
   const requests: CapabilityRequest[] = []
@@ -78,6 +79,7 @@ async function harness(
   const availability = await createDefinitionAvailability({
     definitions: { captureRevision: () => definitionRevision },
     modules: repoModules,
+    agentTypes: { disabled: () => disabledTypes },
     capabilities: { state: () => ({ capabilities: live, moduleIds: live, requireWorkflowConfirmation: true, workflowsMode: "ask", identity: live.join("+") }) },
   })
   return { capabilities, availability, requests }
@@ -86,6 +88,30 @@ async function harness(
 const FULL: readonly ModuleId[] = ["workflows", "skills", "subagents"]
 
 describe("workflow admission", () => {
+  test.each([
+    ["runs as", { phase: "review", persona: "reviewer", brief: "Review the change.", name: "review", writes: [] }],
+    ["dispatches", { phase: "review", subagents: ["reviewer"], brief: "Review the change.", name: "review", writes: [] }],
+  ] as const)("refuses a workflow whose agent %s a type that is off, and admits it with the type on", async (_, phase) => {
+    const workflow: WorkflowDefinition = { id: "review-flow", name: "review-flow", description: "review-flow", phases: [phase] }
+    const admit = async (disabledTypes: readonly string[]) => {
+      const wired = await harness(FULL, undefined, disabledTypes)
+      return admitWorkflowOperation({ capabilities: wired.capabilities, availability: wired.availability, operation: "the review-flow workflow", resolve: () => ({ ok: true, workflow }) })
+    }
+
+    expect(await admit(["reviewer"])).toEqual({
+      ok: false,
+      reason: "the review-flow workflow is unavailable: agent type reviewer is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on",
+    })
+    expect((await admit(["explorer"])).ok).toBe(true)
+  })
+
+  test("admits a workflow whose agents run as no persona while every agent type is off", async () => {
+    const workflow: WorkflowDefinition = { id: "plain-flow", name: "plain-flow", description: "plain-flow", phases: [{ phase: "work", brief: "Do the work.", name: "work", writes: [] }] }
+    const wired = await harness(FULL, undefined, ["general", "reviewer", "advisor", "explorer", "implementer", "ship"])
+
+    expect((await admitWorkflowOperation({ capabilities: wired.capabilities, availability: wired.availability, operation: "the plain-flow workflow", resolve: () => ({ ok: true, workflow }) })).ok).toBe(true)
+  })
+
   test("admits the definition's complete transitive requirement set in one request", async () => {
     const wired = await harness(FULL)
 

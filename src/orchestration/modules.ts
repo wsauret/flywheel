@@ -119,7 +119,8 @@ interface PromptRosterContribution {
 
 type DefinitionContribution =
   | { readonly kind: "skills"; readonly retainInstalled: true }
-  | { readonly kind: "subagents"; readonly roles: true; readonly retainInstalled: true }
+  /** `disabledTypes` reads the agent types that a configuration turns off (ARCH-STRUCTURE-044). */
+  | { readonly kind: "subagents"; readonly roles: true; readonly retainInstalled: true; readonly disabledTypes: (config: { readonly [section: string]: unknown }) => readonly string[] }
   | { readonly kind: "workflows" }
   /** A module-owned definition root. The registry loads its skills and retains
    *  its workflow directory for file brief resolution (ARCH-STRUCTURE-031). */

@@ -5,7 +5,7 @@ import { chmodSync, mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync, st
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js";
-import { renderSkillContext } from "../../../../src/workflows/skill-context.js";
+import { renderSkillContext } from "../../../../src/workflows/skill-render.js";
 import { publishSkillRevision, SKILL_LIMITS, type SkillSource } from "../../../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions, skillStoreRoots } from "../../../../src/workflows/skills.js";
 import { testDirectories } from "../../../helpers/directories.js";

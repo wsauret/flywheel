@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getPersonaMetadataIndex } from "../../../src/workflows/agents/agent-roles.js";
+import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { assembleSkillInvocation } from "../../../src/workflows/skill-invocation.js";
 import { assembleAgentPrompt } from "../../../src/workflows/context-bundle/prompt-assembly.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
 import { hashContent } from "../../../src/workflows/definition-hash.js";
-import { renderSkillClosure, renderSkillContext } from "../../../src/workflows/skill-context.js";
+import { renderSkillClosure, renderSkillContext } from "../../../src/workflows/skill-render.js";
 import type { SkillDefinition } from "../../../src/workflows/skill-schema.js";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import type { AttemptRow } from "../../../src/workflows/view/types.js";
@@ -27,7 +27,7 @@ const ROOT = fileTemporaryDirectory("flywheel-skill-composition-test-");
 const PREFERRED_ROOT = fileTemporaryDirectory("flywheel-skill-composition-test-preferred-");
 // A project root with no definition overlay under it.
 const PROJECT_ROOT = fileTemporaryDirectory("flywheel-skill-composition-test-project-");
-const personaIndex = getPersonaMetadataIndex();
+const agents = repoDefinitions().personas();
 
 let registry: ProjectDefinitionRegistry | undefined;
 
@@ -95,7 +95,7 @@ function fixtureStep(): AttemptRow {
 describe("canonical skill context", () => {
   it("is the exact text the model's skill tool loads", async () => {
     const revision = owner().skills();
-    const tool = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex });
+    const tool = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: agents }, revision });
 
     const context: ToolContext = { ...testDirectories(PROJECT_ROOT), artifactScopeId: "skill-composition", retrievalSessionId: "skill-composition", capabilities: () => true };
     const loaded = await tool.execute({ action: "load", skill_id: "alpha" }, context);
@@ -146,7 +146,7 @@ describe("worker prompt composition", () => {
   });
 
   it("puts dependency context ahead of the directly invoked body", () => {
-    const prompt = assembleSkillInvocation(installed("fixture"), undefined, { skills: owner().skills(), personaIndex, capabilities: () => true });
+    const prompt = assembleSkillInvocation(installed("fixture"), undefined, { skills: owner().skills(), agents, capabilities: () => true });
 
     expect(prompt).toContain(renderSkillContext(installed("alpha")));
     expect(prompt.indexOf("Alpha procedure.")).toBeLessThan(prompt.indexOf("Do the fixture work."));

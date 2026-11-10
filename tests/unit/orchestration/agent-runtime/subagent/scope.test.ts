@@ -10,16 +10,18 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/child-slot-registry.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { fixedAvailability } from "../../../../helpers/project-definitions.js";
 import { grantOf, makeCapabilityAccess, makeDeps } from "./_fixtures.js";
 
-function agent(name: string, tools: readonly string[]): AgentDefinition {
+function agent(name: string, tools: readonly string[], role = name): AgentDefinition {
   return {
     kind: "persona",
     name,
     description: `${name} agent`,
     systemPrompt: `${name} prompt`,
     tools,
-    role: name === "implementer" ? "implementer" : name,
+    role,
     maxTurns: 10,
   };
 }
@@ -112,6 +114,28 @@ describe("subagent scope enforcement", () => {
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("No subagent registered as 'implementer'");
     expect(result.content).toContain("explorer");
+    expect(calls).toHaveLength(0);
+  });
+
+  test("lists only the names the caller can dispatch when it names none of them", async () => {
+    const calls: AgentOptions[] = [];
+    const agentRegistry = new Map<string, AgentDefinition>([
+      ["explorer", agent("explorer", ["read"])],
+      ["advisor", agent("advisor", ["read"])],
+      ["reviewer-code-quality", agent("reviewer-code-quality", ["read"], "reviewer-quality")],
+    ]);
+    const dispatchWith = (disabledTypes: readonly string[]) => createSubagentDispatch({
+      ...deps(calls),
+      agentRegistry,
+      definitionAvailability: fixedAvailability({ personas: agentRegistry }, composeFirstPartyModules().enabledModuleIds, disabledTypes),
+    });
+    const input = { persona: "planner", rationale: "test fixture: an unknown name is refused with the dispatchable names", prompt: "plan" };
+
+    expect((await dispatchWith([]).execute(input, context())).content).toContain("Available persona values: explorer, advisor, reviewer-code-quality.");
+    const refused = await dispatchWith(["advisor", "reviewer"]).execute(input, context());
+    expect(refused.content).toContain("Available persona values: explorer.");
+    expect(refused.content).not.toContain("advisor");
+    expect(refused.content).not.toContain("reviewer");
     expect(calls).toHaveLength(0);
   });
 });

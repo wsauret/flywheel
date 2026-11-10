@@ -8,9 +8,13 @@ The `workflow` prompt decides whether a workflow fits.
 
 This body lists every file key. `references/reducers.md` gives join parameters and outputs. Examples under `examples/` that this body names launch as written: read one with the skill tool's resource action.
 
-{{if:subagent}}
+{{if:subagent&skill:code-review}}
 Before you write a brief that changes files, reviews a plan or a change, or writes a specification, read `references/implement-briefs.md`, `references/review-briefs.md`, or `references/spec-briefs.md`.
-{{else}}
+{{end}}
+{{if:subagent&!skill:code-review}}
+Before you write a brief that changes files or writes a specification, read `references/implement-briefs.md` or `references/spec-briefs.md`. Compose the method of a review brief in `dependencies`: `code-review-method` or `plan-review` with the principles skill of the lens that it names.
+{{end}}
+{{if:!subagent}}
 Compose each brief's method in `dependencies`: `implementation` to change files, `verification` to verify a repair, `implementation-planning` for a specification, and `code-review-method` or `plan-review` with the principles skill of the lens that a review brief names.
 {{end}}
 
@@ -68,9 +72,17 @@ A phase of one agent, a named agent in its long form, and a phase over a list ar
 | `output` | Beside `brief`: one object of `summary` (what the summary holds), `fields`, and optional `commands: { min }`. Without it the agent hands its summary on. |
 | `output.submit` | `file`: the agent writes its output as one JSON object in session scratch and hands off only `{ "path": "<absolute path>" }`, with no `commands`. |
 | `dependencies` | Beside `brief`: the skills that the brief composes. |
-{{if:subagent}}
+{{if:subagent&type:reviewer-quality&type:reviewer-security&type:reviewer-performance&type:reviewer-elegance}}
 | `persona` | Runs the agent as that persona: its instructions, required skills, tool limits, turn limit, and model seat apply, and the brief states the task and the output contract. Never in `runs`. Each lens agent of the Design and Review shapes runs as its reviewer persona, such as `reviewer-code-quality` or `reviewer-plan-quality` (`examples/lens-review.workflow.yaml`). |
+{{end}}
+{{if:subagent&!type:reviewer-quality|subagent&!type:reviewer-security|subagent&!type:reviewer-performance|subagent&!type:reviewer-elegance}}
+| `persona` | Runs the agent as that persona: its instructions, required skills, tool limits, turn limit, and model seat apply, and the brief states the task and the output contract. Never in `runs`. |
+{{end}}
+{{if:subagent&type:advisor}}
 | `subagents` | Beside `brief`: the personas that the agent may dispatch as subagents, which composing a skill never grants and the skeletons under `references/` omit. On trial, every workflow agent except the advisor can also dispatch `advisor`. |
+{{end}}
+{{if:subagent&!type:advisor}}
+| `subagents` | Beside `brief`: the personas that the agent may dispatch as subagents, which composing a skill never grants and the skeletons under `references/` omit. |
 {{end}}
 | `writes` | Absent: one transient artifact named after the record id. Durable: `[{ id: <name>, lifetime: durable, supersedes: [] }]`. A transient write takes only absent or empty `supersedes`. Section 7 states who receives each. |
 | `reads` | Earlier outputs for this agent, by phase or agent id (section 7). |
@@ -217,7 +229,11 @@ Attempts that wait on no other run at the same time. Declare `guardrails.max_par
 - Follow the result: every agent follows each result into the code that consumes it, also outside its file. A test or a doc comment that asserts a behavior shows intent, not correctness. Give each finding `evidence` and a `scenario`. A synthesis checks each cross-file claim in code before it states it.
 - Dedupe before verify: finders, a `dedupe` barrier, then work on each kept finding. `examples/review-changes.workflow.yaml` verifies each finding of a file review, and `examples/dedupe-before-verify.workflow.yaml` reproduces and judges each bug in a stream.
 - Adversarial verify: several independent refuters for each finding, and `quorum` keeps a finding only when the vote passes. An unsure refuter votes `abstain`. Set `votes` on the phase (`examples/adversarial-quorum.workflow.yaml`).
+{{if:type:reviewer}}
 - Lens-diverse verify: named agents that each review through a distinct lens, which catch what identical reviewers miss.
+{{else}}
+- Lens-diverse verify: named agents that each review through a distinct lens, which catch what identical agents miss.
+{{end}}
 - Build until verified: a build, lens reviews, checks, a triage by cause, then fix and verify rounds that end on a verify.
 - Judge panel: independent attempts from different angles, scored by judges, and a synthesis. It wins when the options are many (`examples/judge-panel.workflow.yaml`).
 - Curated variants: one workflow runs an agent for each variant (`examples/curated-variants.workflow.yaml`), you ask the person which one to keep, and a second workflow takes it as `input`.

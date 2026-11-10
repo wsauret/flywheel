@@ -12,7 +12,7 @@ import { subagentChildHarnesses, completedRunner, createRoot, waitForSettled, ch
 import { createSubagentToolSummaryReader } from "../../../../../src/orchestration/modules/subagents/history/tool-summary.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { createSubagentSessionAuthority } from "../../../../../src/orchestration/modules/subagents/execution/session-authority.js"
-import { repoDefinitions } from "../../../../helpers/project-definitions.js"
+import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { asModelClient } from "../../agent-runtime/_model-client.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js"
@@ -222,18 +222,24 @@ describe("explicit child Resume", () => {
     } finally { await host.close(); await harness.close() }
   })
 
-  test("refuses a changed persona kind without publishing a new continuation", async () => {
+  const changedKind = new Map([["general", { kind: "persona", name: "general", description: "Changed persona", role: "explorer", tools: ["read"], systemPrompt: "Inspect", maxTurns: 10 } as const]])
+  const personas = repoDefinitions().personas()
+  test.each([
+    ["a changed persona kind", { agentRegistry: changedKind }, "persona kind general is now persona"],
+    // A continuation keeps the modules its dispatch was admitted with, but an agent type turned off since then keeps
+    // it from resuming.
+    ["an agent type turned off after the dispatch", { agentRegistry: personas, definitionAvailability: fixedAvailability({ personas }, undefined, ["general"]) }, "Subagent 'general' cannot run: agent type general is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on."],
+    ["a module turned off after the dispatch", { agentRegistry: personas, definitionAvailability: fixedAvailability({ personas }, composeFirstPartyModules(undefined, ["subagents"]).enabledModuleIds) }, undefined],
+  ] as const)("judges a resume after %s, publishing nothing when it refuses", async (_, deps, refusal) => {
     const runner = heldRunner()
     const harness = createHarness(runner.createAgent)
     const { child, root, context } = await pausedGeneral(harness)
     const original = runs(harness.store, child)
-    const tool = harness.tool(root.sessionId, {
-      agentRegistry: new Map([["general", { kind: "persona", name: "general", description: "Changed persona", role: "explorer", tools: ["read"], systemPrompt: "Inspect", maxTurns: 10 }]]),
-    })
     try {
-      const result = await tool.processResume(child, { ...context, toolUseId: "resume-changed-kind" })
-      expect(result.outcome).toBe("error")
-      expect(result.content).toContain("persona kind general is now persona")
+      const result = await harness.tool(root.sessionId, deps).processResume(child, { ...context, toolUseId: "resume-judged" })
+      expect([result.outcome, liveChildRun(harness.reader, child) !== undefined]).toEqual(refusal === undefined ? ["ok", true] : ["error", false])
+      if (refusal === undefined) return await liveChildRun(harness.reader, child)?.child.interrupt("person")
+      expect(result.content).toContain(refusal)
       expect(runs(harness.store, child)).toEqual(original)
     } finally { await harness.close() }
   })

@@ -47,11 +47,15 @@ async function usableTools(source: ReturnType<typeof runSource>, scope: Scope.Sc
   return (await (await opened.build()).request.tools.resolve()).usableToolNames
 }
 
-/** The kernel of one tree-hosted agent whose tree captured `ALL` and whose own selection is `live`. */
-const siblingKernel = (live: FirstPartyModuleComposition) => requestKernel(
-  { options: { userDataRoot: "/scratch/account", purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call" } }, surfaces: {}, personas: new Map(), treeHosted: true },
-  { moduleSnapshot: ALL, live, runtimeConfig: testRuntimeConfigCapture(), shellWriteGuard: true, persistentProcessesAdvertised: false, definitions, servingModel: { model: "test", modelFamily: "anthropic" }, fileEditContract: "edit" },
-)
+/** The kernel of one tree-hosted agent whose tree captured `ALL` with `treeDisabledTypes` off, and whose own
+ *  selection is `live` with `disabledTypes` off in its configuration. */
+const siblingKernel = (live: FirstPartyModuleComposition, types: { readonly tree?: readonly string[]; readonly live?: readonly string[] } = {}) => {
+  const config = testRuntimeConfigCapture()
+  return requestKernel(
+    { options: { userDataRoot: "/scratch/account", purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call" } }, surfaces: {}, personas: new Map(), treeHosted: true },
+    { moduleSnapshot: ALL, live, runtimeConfig: { ...config, moduleSections: { ...config.moduleSections, subagents: { disabled_types: types.live ?? [] } } }, shellWriteGuard: true, persistentProcessesAdvertised: false, treeDisabledTypes: types.tree ?? [], definitions, servingModel: { model: "test", modelFamily: "anthropic" }, fileEditContract: "edit" },
+  )
+}
 
 describe("capability checks", () => {
   it("gives two agents of one tree the same tree check when their own selections differ", () => {
@@ -68,24 +72,50 @@ describe("capability checks", () => {
     expect(second.definitionAvailability.live.skills.get("code-review")?.available).toBe(false)
   })
 
+  it("reads the tree's agent types for shared text and the agent's own configuration for what it may dispatch", () => {
+    const before = siblingKernel(ALL)
+    const turnedOffSince = siblingKernel(ALL, { live: ["advisor", "reviewer"] })
+    // The tree captured every type on: its shared check, roster terms included, stays the same value.
+    expect(turnedOffSince.treeCapabilities).toBe(before.treeCapabilities)
+    expect(turnedOffSince.treeCapabilities("persona:advisor")).toBe(true)
+    expect(turnedOffSince.definitionAvailability.live.personas.get("advisor")?.available).toBe(false)
+    expect(turnedOffSince.definitionAvailability.live.personas.get("reviewer-code-security")?.available).toBe(false)
+    // A tree that captured the types off leaves them out of the roster terms of every agent.
+    const capturedOff = siblingKernel(ALL, { tree: ["advisor"], live: ["advisor"] })
+    expect(capturedOff.treeCapabilities("persona:advisor")).toBe(false)
+    expect(capturedOff.treeCapabilities("persona:explorer")).toBe(true)
+  })
+
   it("holds a skill term for an agent only with the skill tool, and a skill that declares agents only with the subagent tool", () => {
-    const availability = definitionAvailabilityOf(definitions, ALL.enabledModuleIds)
-    const withDispatch = agentCapabilityCheck(new Set(["skill", "subagent"]), availability)
-    const withoutDispatch = agentCapabilityCheck(new Set(["skill"]), availability)
+    const availability = definitionAvailabilityOf(definitions, ALL.enabledModuleIds, [])
+    const withDispatch = agentCapabilityCheck(new Set(["skill", "subagent"]), availability, undefined)
+    const withoutDispatch = agentCapabilityCheck(new Set(["skill"]), availability, undefined)
 
     expect(withDispatch("skill:code-review")).toBe(true)
     expect(withoutDispatch("skill:code-review")).toBe(false)
     expect(withoutDispatch("skill:verification")).toBe(true)
-    expect(agentCapabilityCheck(new Set(["subagent"]), availability)("skill:verification")).toBe(false)
+    expect(agentCapabilityCheck(new Set(["subagent"]), availability, undefined)("skill:verification")).toBe(false)
     expect(withoutDispatch("persona:implementer")).toBe(true)
     expect(withoutDispatch("bash")).toBe(false)
+  })
+
+  it("holds a skill that declares agents for an agent with a restricted dispatch set only while the set holds each declared agent", () => {
+    const availability = definitionAvailabilityOf(definitions, ALL.enabledModuleIds, [])
+    const declared = definitions.skills.skills.get("code-review")?.agents ?? []
+    expect(declared.length).toBeGreaterThan(1)
+    const dispatching = (allowed: readonly string[]) => agentCapabilityCheck(new Set(["skill", "subagent"]), availability, new Set(allowed))
+
+    expect(dispatching(["advisor"])("skill:code-review")).toBe(false)
+    expect(dispatching(declared.slice(1))("skill:code-review")).toBe(false)
+    expect(dispatching([...declared, "advisor"])("skill:code-review")).toBe(true)
+    expect(dispatching(["advisor"])("skill:verification")).toBe(true)
   })
 
   it("answers a workflow agent's opening check, before any model route, as its first request's plan leaves each tool usable", async () => {
     const BASH_OFF = composeFirstPartyModules(undefined, ["bash"])
     const policyDenies = { available: () => false, admit: async () => { throw new Error("unused in this test") } }
     // A tree that a sibling agent holds, captured with every module on.
-    const sibling = holdSharedTree("workflow-tree", () => ({ modules: ALL, shellWriteGuard: true, allowPersistentProcesses: false }))
+    const sibling = holdSharedTree("workflow-tree", () => ({ modules: ALL, shellWriteGuard: true, allowPersistentProcesses: false, disabledTypes: [] }))
     // An agent of a workflow has no workflow starter, and this host has no web retrieval backend.
     const cases = [
       { name: "all on" },

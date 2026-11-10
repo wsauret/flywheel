@@ -3,6 +3,7 @@ import { skillsConfigSection, memoryConfigSection } from "../../../../src/orches
 import { describe, expect, test } from "bun:test";
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js";
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
+import { subagentsConfigSection } from "../../../../src/orchestration/modules/subagents/config.js";
 
 const snapshot = (revision: number) => ({
   revision,
@@ -34,7 +35,7 @@ describe("runtime config request capture", () => {
       allowTrainingRoutes: false,
       budget: source.config.budget,
       workflow: source.config.workflow,
-      moduleSections: { skills: configSection(source.config, skillsConfigSection), memory: configSection(source.config, memoryConfigSection) },
+      moduleSections: { skills: configSection(source.config, skillsConfigSection), memory: configSection(source.config, memoryConfigSection), subagents: configSection(source.config, subagentsConfigSection) },
     });
     expect(Object.isFrozen(capture)).toBe(true);
   });
@@ -43,7 +44,7 @@ describe("runtime config request capture", () => {
     const source = snapshot(12);
     const config = { ...source.config, mcp: { access_token: "fixture-secret" }, future: { password: "fixture-password" } };
     const capture = captureRuntimeConfigRequest({ ...source, config }, "work");
-    expect(Object.keys(capture.moduleSections).sort()).toEqual(["memory", "skills"]);
+    expect(Object.keys(capture.moduleSections).sort()).toEqual(["memory", "skills", "subagents"]);
     expect(JSON.stringify(capture)).not.toContain("fixture-secret");
     expect(JSON.stringify(capture)).not.toContain("fixture-password");
     expect(Object.isFrozen(capture.moduleSections)).toBe(true);

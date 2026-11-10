@@ -1,5 +1,4 @@
 import type { CapabilityCheck } from "../../infra/capability-text.js"
-import { getPersonaMetadataIndex } from "../../workflows/agents/agent-roles.js"
 import { assembleSkillInvocation, skillInvocationRefusal } from "../../workflows/skill-invocation.js"
 import type { DefinitionAvailabilitySnapshot } from "./definition-availability.js"
 
@@ -28,6 +27,6 @@ export async function skillMethod(
   if (refusal !== undefined) return { kind: "unavailable", reason: refusal }
   return {
     kind: "ready",
-    text: assembleSkillInvocation(skill, args, { skills: availability.skillRevision, personaIndex: getPersonaMetadataIndex(), capabilities: has }),
+    text: assembleSkillInvocation(skill, args, { skills: availability.skillRevision, agents: availability.availablePersonas, capabilities: has }),
   }
 }

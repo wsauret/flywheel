@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readSkillResource } from "../../../src/workflows/skill-context.js";
 import { bodyFor, bundled } from "./_bundled-skills.js";
 
 describe("capability branches of bundled skill packages", () => {
@@ -67,8 +68,8 @@ describe("capability branches of bundled skill packages", () => {
     const grant = "which composing a skill never grants and the skeletons under `references/` omit.";
     expect(bodyFor(skill)).toContain(grant);
     expect(bodyFor(skill, ["subagent"])).not.toMatch(/subagent/i);
-    // References are resources, which go out byte for byte, so they name the
-    // personas a phase may use and leave the key to the conditioned body.
+    // References name the personas a phase may use and leave the key to the
+    // conditioned body.
     const { canonicalDir } = skill.source;
     const references = skill.resources.filter(({ path }) => path.startsWith("references/"));
     expect(references.map(({ path }) => path)).toEqual(expect.arrayContaining(["references/implement-briefs.md", "references/review-briefs.md", "references/spec-briefs.md"]));
@@ -91,8 +92,7 @@ describe("capability branches of bundled skill packages", () => {
     expect(off).toContain("`- { phase: review, agents: [quality, elegance], join: { reducer: dedupe, with: { items: findings, by: site } } }`");
     expect(off).toContain("`code-review-method` or `plan-review` with the principles skill of the lens that a review brief names");
     expect(off).toContain("they follow\nWorkflow Agent.");
-    // Resources go out byte for byte, so none of them can hold a marker.
-    const { canonicalDir } = skill.source;
-    for (const { path } of skill.resources) expect(readFileSync(join(canonicalDir, path), "utf8"), path).not.toMatch(/^\s*\{\{(?:if:|else\}|end\})/m);
+    // A resource renders its markers for its reader, as the body does, so no marker reaches an agent.
+    for (const { path } of skill.resources) expect(readSkillResource(skill, path, 0, Number.MAX_SAFE_INTEGER, () => true).content, path).not.toMatch(/^\s*\{\{(?:if:|else\}|end\})/m);
   });
 });

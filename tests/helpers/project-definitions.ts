@@ -104,10 +104,10 @@ export function fixedDefinitions(fixed: { readonly skills?: SkillRegistryRevisio
 }
 
 /** The availability of {@link fixedDefinitions} under `moduleIds`, by
- *  default the default selection of the realm's catalog, as a workflow host
- *  or a dispatcher derives it from its own selection. */
-export function fixedAvailability(fixed: Parameters<typeof fixedDefinitions>[0] = {}, moduleIds: Iterable<string> = composeFirstPartyModules().enabledModuleIds): DefinitionAvailabilitySnapshot {
-  return definitionAvailabilityOf(fixedDefinitions(fixed).captureRevision(), moduleIds);
+ *  default the default selection of the realm's catalog, with `disabledTypes`
+ *  off, as a workflow host or a dispatcher derives it from its own selection. */
+export function fixedAvailability(fixed: Parameters<typeof fixedDefinitions>[0] = {}, moduleIds: Iterable<string> = composeFirstPartyModules().enabledModuleIds, disabledTypes: readonly string[] = []): DefinitionAvailabilitySnapshot {
+  return definitionAvailabilityOf(fixedDefinitions(fixed).captureRevision(), moduleIds, disabledTypes);
 }
 
 /** Reads one test project's explicit workflow file with the captured skill and brief sources. Throws on an invalid file. */

@@ -11,7 +11,8 @@ import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.
 import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
-import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { testCapabilityModules, testDefinitionAvailability, testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { makeContext as toolContext } from "../tools/_fixtures.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
@@ -26,6 +27,8 @@ function planChildTools(grant: readonly string[], withheld: readonly string[] = 
   return planToolExposure({
     kernel: testKernelToolDeps({
       treeHosted: true,
+      // A tree with an agent type to dispatch plans the dispatch tool (PI-CAP-023).
+      definitionAvailability: testDefinitionAvailability(repoDefinitions().captureRevision(), testCapabilityModules().enabledModuleIds),
       capabilities: { available: () => true },
       backgroundTasks: createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })).tasks,
     }),

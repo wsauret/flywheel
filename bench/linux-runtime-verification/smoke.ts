@@ -46,7 +46,7 @@ const definitionAvailability = definitionAvailabilityOf({
   personaRevision: { revision: "none", personas: new Map(), resolutions: [] },
   personas: new Map(),
   resolutions: [],
-}, moduleSnapshot.enabledModuleIds)
+}, moduleSnapshot.enabledModuleIds, [])
 const tools = (await planToolExposure({
   kernel: {
     userDataRoot: workspace,

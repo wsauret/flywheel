@@ -15,7 +15,10 @@ import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
+import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps.js"
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js"
+import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js"
 import { readWorkflowControl } from "../../../../src/workflows/vm/recovery-fold.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { cleanupProjectRoots, createDeps, makeWorkflowDeps, noConversationRecall, until } from "./_workflow-controller-fixtures.js"
@@ -31,23 +34,25 @@ afterEach(async () => {
   }
 })
 
-async function workflowRun(firstReport: "pending" | "fails" | "delayed", resumeStartFailure = false, summary?: string) {
+/** A launched run of `options.workflow` on `options.workflowDeps`, by default a zero-agent workflow over an empty list.
+ *  `options.beforeStart` runs after publication, before the host starts the run. */
+async function workflowRun(firstReport: "pending" | "fails" | "delayed", resumeStartFailure = false, summary?: string, options: { readonly workflow?: WorkflowDefinition; readonly workflowDeps?: WorkflowDeps; readonly beforeStart?: () => void } = {}) {
   const ctx = createSupervisorTestContext()
   contexts.push(ctx)
   const reader = ctx.runtime.runSync(EventReaderService)
   const parentSessionId = await ctx.manager.createChat({ id: "parent", name: "Parent" })
   const parent = await ctx.manager.read(parentSessionId)
   if (parent?.kind !== "chat") throw new Error("missing parent")
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = options.workflow ?? Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
     id: "empty-list", name: "Empty list",
     input: { fields: { items: { type: "list", description: "Targets", max: 1, unique: "id", of: { type: "object", fields: { id: { type: "string", description: "Target" } } } } } },
     phases: [{ phase: "work", over: "input.items", brief: "Do the work.", writes: [] }],
   })
-  const base = makeWorkflowDeps()
+  const base = options.workflowDeps ?? makeWorkflowDeps()
   const definitionRevision = base.definitions.captureRevision()
   const prepared = await prepareWorkflowLaunch({
-    workflow, description: "No targets", deps: base, authProfileId: "default",
-    projectRoot: ctx.baseDir, definitionRevision, input: { items: resumeStartFailure ? [{ id: "one" }] : [] },
+    workflow, description: "No targets", deps: base, authProfileId: "default", projectRoot: ctx.baseDir, definitionRevision,
+    ...options.workflow === undefined ? { input: { items: resumeStartFailure ? [{ id: "one" }] : [] } } : {},
   })
   const input = { workflow_definition_id: workflow.id, description: "No targets", summary: "No targets" }
   const evidence = contentEvidence(JSON.stringify(input))
@@ -124,6 +129,7 @@ async function workflowRun(firstReport: "pending" | "fails" | "delayed", resumeS
     },
   }))
   const tracking = await lifecycle.track("child", workflow.name, "new")
+  options.beforeStart?.()
   const ended = Promise.withResolvers<void>()
   const names: { label: string; shortLabel: string }[] = []
   await workflowHosts.start({
@@ -240,6 +246,41 @@ describe("workflow durable completion ownership", () => {
     await run.workflowHosts.disposeAll(() => "replacement")
     expect(liveWorkflowControl(run.reader, "child")).toBeUndefined()
     expect(abortReasons(run)).toEqual(["Workflow paused for a runtime replacement"])
+  })
+})
+
+// The subagents table belongs to the subagents module, so the kernel config type does not declare it; a returned
+// value, unlike an inline literal, is not checked for excess properties.
+function configWith(disabled_types: readonly string[]) {
+  return { ...CONFIG_DEFAULTS, subagents: { disabled_types } }
+}
+
+describe("workflow agents and agent types", () => {
+  // The run is published with every agent type on; the live configuration turns the reviewer type off before the
+  // host starts the agent, as a person's change after launch admission does.
+  it("never starts an agent as a persona whose type was turned off after launch", async () => {
+    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      id: "review", name: "Review", phases: [{ phase: "review", persona: "reviewer-code-quality", brief: "Review the change.", writes: [] }],
+    })
+    const base = makeWorkflowDeps()
+    let disabled: readonly string[] = []
+    let built = 0
+    const workflowDeps = {
+      ...base,
+      captureRuntimeConfig: () => captureRuntimeConfigRequest({ revision: 0, config: configWith(disabled), warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" } }, "default"),
+      createAgent: (options: Parameters<typeof base.createAgent>[0]) => { built += 1; return base.createAgent(options) },
+    }
+    const run = await workflowRun("pending", false, "Review", { workflow, workflowDeps, beforeStart: () => { disabled = ["reviewer"] } })
+    try {
+      await run.reported
+      await run.reconcile()
+      await run.ended
+      expect(await run.tracking.done).toMatchObject({ status: "failed" })
+      expect(JSON.stringify(run.ctx.store.read({ aggregateId: "workflow:child" }).map(({ payload }) => payload))).toContain("agent type reviewer is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on")
+      expect(built).toBe(0)
+    } finally {
+      await run.workflowHosts.disposeAll(() => "runtime")
+    }
   })
 })
 

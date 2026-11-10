@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Executes a fully specified implementation task - writing code, running tests, making changes - with full tool access. For open-ended work that needs your own judgment and conversation context, dispatch general instead.
+description: Executes a fully specified implementation task - writing code, running tests, making changes - with full tool access.
 role: implementer
 requiredSkills:
   - implementation

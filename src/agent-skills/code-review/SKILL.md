@@ -18,14 +18,13 @@ agents:
   - reviewer-plan-elegance
   - reviewer-plan-design
   - reviewer-mechanism
-  - advisor
 ---
 
 # Code Review
 
 Review a completed code change, or an implementation plan before code exists, against the request or settled design with a reviewer set sized to the actual target. This is the canonical review method after every implementation route, and for a plan that descends from a settled design.
 
-Each reviewer's read-only evidence and findings contract comes from the individual method it composes: `code-review-method` for `reviewer-code-*`, `plan-review` for `reviewer-plan-*`. This parent skill owns dispatch and synthesis. During review, do not edit target implementation files or dispatch implementers. Complete and synthesize the review first. A review-only request ends with the report. Only when review is part of an already-authorized implementation task, leave review mode afterward, fix valid findings, and run the narrowest verification that proves each correction.
+Each reviewer's read-only evidence and findings contract comes from the individual method it composes: `code-review-method` for `reviewer-code-*`, `plan-review` for `reviewer-plan-*`. This parent skill owns dispatch and synthesis. During review, do not edit target implementation files or dispatch agents to change them. Complete and synthesize the review first. A review-only request ends with the report. Only when review is part of an already-authorized implementation task, leave review mode afterward, fix valid findings, and run the narrowest verification that proves each correction.
 
 Reviewer dispatch is mandatory for every nontrivial target. A trivial target shrinks the set to one reviewer, never to zero.
 
@@ -57,7 +56,11 @@ Dispatch every selected reviewer in parallel.
 {{if:workflow}}
 When you can launch a workflow file, run them as one workflow in the Review shape of `workflow-authoring`.
 {{end}}
+{{if:type:general}}
 Use self-contained prompts and never `fork: true`. Inline the target, project context paths, design rationale, constraints, assigned claims, and location format. Include this instruction; for a plan target, name the plan and plan-scope locations instead:
+{{else}}
+Use self-contained prompts. Inline the target, project context paths, design rationale, constraints, assigned claims, and location format. Include this instruction; for a plan target, name the plan and plan-scope locations instead:
+{{end}}
 
 ```text
 Review this completed change.
@@ -73,7 +76,7 @@ ASSIGNED CLAIMS (verify each with the narrowest tool you already hold before wri
 
 DESIGN CONTEXT:
 - Design intent (fixed): use the approved intent and decisions that the runtime carries from the parent's checkpoint.
-- implementation design (revisable): [the spec shape, illustrative detail, and planned approach the implementer could revise]
+- implementation design (revisable): [the spec shape, illustrative detail, and planned approach the author could revise]
 - patterns: [established patterns]
 - constraints: [user requirements, rejected alternatives, and Deferred entries]
 - recorded deviations: [the implementation's recorded deviations from the plan or assignment, each with its stated reason, or none]
@@ -81,7 +84,7 @@ DESIGN CONTEXT:
 Check the change against the Design intent and the authorities in PROJECT CONTEXT PATHS as well as for defects. A contradiction with an authority is drift; cite its file and line. Classify each recorded deviation and each discrepancy you find as consistent with the Design intent or as drift, with evidence; a deviation from implementation design alone is not drift. Report the classification and do not decide whether a deviation is acceptable.
 
 Use code-scope locations: <repo-relative-path> or <repo-relative-path>:<line>.
-Investigate ambiguous, incomplete, or unverified evidence with targeted commands or mechanism verification before reporting it. If evidence remains unavailable, name the checks attempted, the missing proof, and the concrete failure mode. Do not pass the evidence gap to an implementer. Do not write files. Return prose findings, one block each with Title, Severity, Location, Failure, and Fix, or state No findings.
+Investigate ambiguous, incomplete, or unverified evidence with targeted commands or mechanism verification before reporting it. If evidence remains unavailable, name the checks attempted, the missing proof, and the concrete failure mode. Do not leave the evidence gap for the repair to close. Do not write files. Return prose findings, one block each with Title, Severity, Location, Failure, and Fix, or state No findings.
 
 Apply the constraint rules in the reviewer protocol block to the supplied user requirements, rejected alternatives, and Deferred entries.
 
@@ -90,7 +93,7 @@ Failure must state a recognized principle, intended behavior, observed discrepan
 
 For `reviewer-uat`, provide changed paths without source content, acceptance criteria, and runnable verification commands. Tell it not to inspect source, to use observable locations, to choose one decisive live scenario rather than the full product surface, and to stop on decisive evidence or a failed primary check.
 
-Investigate ambiguous runtime evidence within the review budget. If an acceptance criterion still cannot be verified, report the missing evidence and the narrowest command or probe attempted. Do not defer an unverified acceptance claim to implementers.
+Investigate ambiguous runtime evidence within the review budget. If an acceptance criterion still cannot be verified, report the missing evidence and the narrowest command or probe attempted. Do not defer an unverified acceptance claim to the repair.
 
 {{ref:reviewer-protocol}}
 

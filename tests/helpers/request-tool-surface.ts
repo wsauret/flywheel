@@ -11,6 +11,7 @@ import { createToolRegistry } from "../../src/orchestration/tool-catalog.js";
 import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definition-availability.js";
 import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/capability-checks.js";
 import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definition-registry.js";
+import type { AgentDefinition } from "../../src/infra/agent-definition.js";
 import { publishSkillRevision } from "../../src/workflows/skill-schema.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());
 
@@ -25,18 +26,21 @@ export const testRuntimeConfigCapture: CaptureRuntimeConfig = () => captureRunti
   status: { kind: "valid" },
 }, "default");
 
-/** A definition revision that holds no skill and no persona. */
+/** The general agent, which every installed persona registry holds. */
+const GENERAL: ReadonlyMap<string, AgentDefinition> = new Map([["general", { kind: "general", name: "general", description: "A clone of the dispatching agent.", maxTurns: 200 }]]);
+
+/** A definition revision that holds no skill and no persona beside the general agent. */
 const NO_DEFINITIONS: ProjectDefinitionRegistryRevision = {
   skills: publishSkillRevision(1, new Map()),
-  personaRevision: { revision: "none", personas: new Map(), resolutions: [] },
-  personas: new Map(),
+  personaRevision: { revision: "none", personas: GENERAL, resolutions: [] },
+  personas: GENERAL,
   resolutions: [],
 };
 
 /** The definition availability of a test request: `definitions` under `moduleIds`, for both the tree and the agent.
- *  By default no definition exists, so no skill or persona term holds. */
+ *  By default only the general agent exists, as in every installed registry, so no skill term holds. */
 export function testDefinitionAvailability(definitions: ProjectDefinitionRegistryRevision = NO_DEFINITIONS, moduleIds: Iterable<string> = []): KernelToolDeps["definitionAvailability"] {
-  const snapshot = definitionAvailabilityOf(definitions, moduleIds);
+  const snapshot = definitionAvailabilityOf(definitions, moduleIds, []);
   return { tree: snapshot, live: snapshot };
 }
 
@@ -51,9 +55,7 @@ export function testKernelToolDeps(overrides: Partial<KernelToolDeps> = {}): Ker
   const deps = {
     userDataRoot: "/scratch/flywheel-test-account",
     capabilities: NO_CAPABILITY_ACCESS,
-    definitionAvailability: overrides.skills
-      ? testDefinitionAvailability({ ...NO_DEFINITIONS, skills: overrides.skills }, moduleSnapshot.enabledModuleIds)
-      : testDefinitionAvailability(),
+    definitionAvailability: testDefinitionAvailability(overrides.skills ? { ...NO_DEFINITIONS, skills: overrides.skills } : NO_DEFINITIONS, moduleSnapshot.enabledModuleIds),
     moduleSnapshot,
     runtimeConfig: testRuntimeConfigCapture(),
     shellWriteGuard: true,

@@ -19,6 +19,7 @@ import type { BenchmarkRuntime } from "../../../src/orchestration/modules/develo
 import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
+import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 import { roleCapture } from "../../helpers/role-capture.js";
 import {
   benchmarkDeps as deps,
@@ -240,6 +241,7 @@ describe("persona benchmark service", () => {
       accountHome: tmpdir(),
       profileId: "persona-test",
       moduleSelection: composeFirstPartyModules,
+      captureRuntimeConfig: testRuntimeConfigCapture,
       authorityIncarnation: "persona-test-incarnation",
       // One cell is stopped while its runner works, and the other while it
       // still extracts its workspace: the stop ends that command as it ends a
@@ -304,6 +306,7 @@ describe("persona benchmark service", () => {
       accountHome: tmpdir(),
       profileId: "persona-test",
       moduleSelection: composeFirstPartyModules,
+      captureRuntimeConfig: testRuntimeConfigCapture,
       authorityIncarnation: "persona-test-incarnation",
       runOwnedCommand: succeedingCommands,
       createLLMClient: () => { throw new Error("a cancelled run creates no judge client"); },

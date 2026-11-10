@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import * as path from "node:path";
 import type { Node } from "web-tree-sitter";
 import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
-import { createDefinitionAvailability } from "../src/orchestration/app-service/definition-availability.js";
+import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import { agentTypeOf, createDefinitionAvailability } from "../src/orchestration/app-service/definition-availability.js";
+import { parentRoleId } from "../src/orchestration/config/roles.js";
 import { decodeModuleState } from "../src/orchestration/config/module-descriptor.js";
 import { installedDefinitionBundles } from "../src/orchestration/module-catalog.js";
 import type { FirstPartyModule } from "../src/orchestration/modules.js";
@@ -105,6 +107,52 @@ export const CAPABILITY_PHRASES: CapabilityPhraseTable = {
   },
 };
 
+/** How an agent type is spelled in model text, keyed by type: the word for a reader that works without the type.
+ *  Each role under a listed parent role also gets its own entry, spelled by the names of its personas and its role
+ *  id, so a text that names one reviewer persona needs that role.
+ *
+ *  `general` and `ship` are ordinary English words, so their entries spell a reference to the type and not the
+ *  word: the name in backticks or quotes or as a persona value, a roster line, the name beside a noun for an agent
+ *  ("the general agent", "the Ship agent"), and the name as the object of a dispatch ("dispatch general", "ask
+ *  Ship"). Ship as a name is capitalized, so a capitalized "Ship" that no object follows names the agent ("Ship
+ *  returns", "to Ship."), while "Ship it" and "Ship the change" are the verb. Forked conversation history belongs to
+ *  `general`: a fork makes a clone of the dispatcher, the general agent's own method, and the dispatch tool offers
+ *  `fork` only while the general agent is available. So the fork field and a fork of an agent's conversation are
+ *  references to it, and a fork of a repository is not. */
+export const AGENT_TYPE_PHRASES = {
+  advisor: [/\badvisors?\b/i],
+  explorer: [/\bexplorers?\b/i],
+  general: [
+    /`general`/,
+    /(["'])general\1/,
+    /\bpersona:\s*["']?general\b/,
+    /^\s*- general:/m,
+    /\bgeneral (?:agent|subagent|persona)s?\b/i,
+    /\b(?:dispatch|send|prefer|delegate to)(?:es|s|ed|ing)? (?:the )?general\b/i,
+    /`fork`|\bfork:\s*true\b|\b(?:use|uses|using) fork\b/i,
+    /\bfork(?:s|ed|ing)?\b[^.\n]{0,40}\bconversation\b/i,
+    /\bfork(?:ed)? (?:history|child|children|subagents?|dispatch(?:es)?|work)\b/i,
+  ],
+  implementer: [/\bimplementers?\b/i],
+  reviewer: [/\breviewers?\b/i],
+  ship: [
+    /`ship`/,
+    /(["'])ship\1/,
+    /\bpersona:\s*["']?ship\b/,
+    /^\s*- ship:/m,
+    /\bShip\b(?! (?:it|them|the|this|that|these|those|a|an|your|our|each|every|all|to)\b)/,
+    /\bship(?:'s)? (?:agent|subagent|persona|phase)s?\b/i,
+    /\b(?:dispatch|send|use|ask|wait for)(?:es|s|ed|ing)? (?:the )?ship\b/i,
+  ],
+} satisfies { readonly [type: string]: readonly RegExp[] };
+
+/** A type's own text outside a definition file, as `CapabilityPhrases` gives it for a module: the general agent is
+ *  defined in code, and a `fork` value holds only where the dispatch tool offered the field, which it does only while
+ *  the general agent is available. */
+const AGENT_TYPE_TEXT = new Map<string, Pick<CapabilityPhrases, "guards" | "sources">>([
+  ["general", { guards: ["fork"], sources: ["src/workflows/agents/registry.ts"] }],
+]);
+
 /** One optional module's model-text vocabulary. */
 export interface CapabilityModuleTerms {
   readonly id: string;
@@ -122,10 +170,13 @@ export interface CapabilityModuleTerms {
 
 export interface CapabilityVocabulary {
   readonly modules: readonly CapabilityModuleTerms[];
-  /** The modules that one capability term needs: a tool identity, `skill:<id>`, or `persona:<name>`. Undefined for
-   *  a name that is no term. */
+  /** The agent types whose spelling `AGENT_TYPE_PHRASES` gives, each as a capability with the id `type:<id>`, no
+   *  tools, skills, guards, or homes: a type's own text is a definition that needs it. */
+  readonly types: readonly CapabilityModuleTerms[];
+  /** The capabilities that one capability term needs, modules and `type:<id>` alike: a tool identity, `skill:<id>`,
+   *  `persona:<name>`, or `type:<id>`. Undefined for a name that is no term. */
   readonly termModules: (term: string) => readonly string[] | undefined;
-  /** Bundled definition files and directories, each with the modules its availability closure requires. A path
+  /** Bundled definition files and directories, each with the capabilities its availability closure requires. A path
    *  that ends in "/" names a directory. */
   readonly definitions: readonly { readonly path: string; readonly requires: readonly string[] }[];
 }
@@ -161,6 +212,10 @@ const MASK = "`·`";
 
 const tableCells = (row: string): string[] => row.trim().replace(/^\||\|$/g, "").split("|");
 
+/** `text` with each code span masked, except the name of an agent type: "the `general` type" names the type, which
+ *  is what its vocabulary looks for. */
+const maskSpans = (text: string): string => text.replace(/`([^`\n]+)`/g, (span, name: string) => Object.hasOwn(AGENT_TYPE_PHRASES, name) ? span : MASK);
+
 /** `text` with each code span that its syntax names as grammar, not as a tool, masked: a span that a kind noun
  *  follows or that "one of" or a kind noun introduces (the `write` key, one of `subagent` or `headless`), and a
  *  span in a table column whose heading is a grammar heading (Type, Keys). A workflow file's `write` and `list`
@@ -177,9 +232,9 @@ export function maskGrammarNames(text: string): string {
       grammarColumns = new Set(tableCells(line).flatMap((cell, column) => GRAMMAR_HEADING.test(cell.trim()) ? [column] : []));
     } else if (grammarColumns && grammarColumns.size > 0) {
       const columns = grammarColumns;
-      lines[index] = `|${tableCells(line).map((cell, column) => columns.has(column) ? cell.replace(/`[^`\n]+`/g, MASK) : cell).join("|")}|`;
+      lines[index] = `|${tableCells(line).map((cell, column) => columns.has(column) ? maskSpans(cell) : cell).join("|")}|`;
     }
-    lines[index] = (lines[index] ?? "").replace(KIND_NAMED_SPANS, MASK);
+    lines[index] = (lines[index] ?? "").replace(KIND_NAMED_SPANS, maskSpans);
   }
   return lines.join("\n");
 }
@@ -238,6 +293,9 @@ const TEXT_ROOTS = ["src/orchestration/agent-runtime", "src/infra/agent-assets",
 const TEXT_FILES = /^src\/workflows\/skill-[^/]+\.ts$/;
 const MARKDOWN_FILE = /\.(?:md|ya?ml)$/;
 const MODULE_DEFINITIONS = /^src\/orchestration\/modules\/[^/]+\/definitions\//;
+/** A file of a bundled skill package, whatever its extension: the skill tool offers every file that the package
+ *  holds outside dot-named entries as a resource and renders its markers for the reader. */
+const BUNDLED_SKILL_FILE = /^src\/(?:agent-skills|orchestration\/modules\/[^/]+\/definitions\/skills)\/(?:[^./][^/]*\/)+[^./][^/]*$/;
 /** Text that no Flywheel reader is guided by: the Claude engine's own text, which Flywheel copies byte for byte so
  *  that history can find it. */
 const UNSCANNED: readonly string[] = ["src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.ts"];
@@ -269,22 +327,27 @@ function intersection(sets: readonly ReadonlySet<string>[]): Set<string> {
   return new Set([...first ?? []].filter((item) => rest.every((set) => set.has(item))));
 }
 
-/** A frontmatter `related:` line: the skill header names each related skill only while it holds (renderSkillContext). */
-const RELATED_FRONTMATTER = /^related:/;
+/** The frontmatter fields that a reader is shown: a definition's name and description, in the skill header, the skill
+ *  catalog, and the roster. Every other field is configuration, such as `related:`, whose skills the header names only
+ *  while they hold (renderSkillContext), or a grant such as `subagentRoles:`, which drops a type that is off. */
+const MODEL_TEXT_FRONTMATTER = /^(?:name|description):/;
 
 function markdownFindings(relPath: string, source: string, vocabulary: CapabilityVocabulary, fileCovers: (module: string) => boolean): CapabilityTermViolation[] {
   const findings: CapabilityTermViolation[] = [];
+  const capabilities = [...vocabulary.modules, ...vocabulary.types];
   let block: { readonly modules: ReadonlySet<string>; inElse: boolean } | undefined;
   const lines = maskGrammarNames(source).split("\n");
   let frontmatter = lines[0] === "---";
   for (const [index, line] of lines.entries()) {
     if (frontmatter && index > 0 && line === "---") frontmatter = false;
-    if (frontmatter && RELATED_FRONTMATTER.test(line)) continue;
+    if (frontmatter && !MODEL_TEXT_FRONTMATTER.test(line)) continue;
     const marker = line.trim();
     const opened = IF_MARKER.exec(marker);
     if (opened) {
-      // `{{if:a|b}}` renders when any one term holds, so it guarantees only what every term needs.
-      block = { modules: intersection((opened[1] ?? "").split("|").map((term) => new Set(vocabulary.termModules(term.trim())))), inElse: false };
+      // `{{if:a&!b|c}}` renders when every condition of any one alternative holds, so it guarantees only what every
+      // alternative needs; an alternative needs what each of its terms needs, and a negated term guarantees nothing.
+      const alternatives = (opened[1] ?? "").split("|").map((alternative) => new Set(alternative.split("&").map((term) => term.trim()).flatMap((term) => term.startsWith("!") ? [] : vocabulary.termModules(term) ?? [])));
+      block = { modules: intersection(alternatives), inElse: false };
       continue;
     }
     if (marker === "{{else}}" && block) {
@@ -296,7 +359,7 @@ function markdownFindings(relPath: string, source: string, vocabulary: Capabilit
       continue;
     }
     const open = block;
-    findings.push(...lineFindings(relPath, index + 1, line, vocabulary.modules, (module) => fileCovers(module) || (open !== undefined && !open.inElse && open.modules.has(module))));
+    findings.push(...lineFindings(relPath, index + 1, line, capabilities, (module) => fileCovers(module) || (open !== undefined && !open.inElse && open.modules.has(module))));
   }
   return findings;
 }
@@ -346,7 +409,7 @@ function typescriptGuards(root: Node, vocabulary: CapabilityVocabulary) {
       if (!declares) references.set(node.text, [...references.get(node.text) ?? [], node]);
     }
   });
-  const guardModules = new Map<string, string>(vocabulary.modules.flatMap((module) => module.guards.map((guard) => [guard, module.id] as const)));
+  const guardModules = new Map<string, string>([...vocabulary.modules, ...vocabulary.types].flatMap((module) => module.guards.map((guard) => [guard, module.id] as const)));
 
   /** The modules that the capability terms and guards an expression spells need. With `followBindings`, a name that
    *  the file binds counts for what its value needs. */
@@ -356,8 +419,9 @@ function typescriptGuards(root: Node, vocabulary: CapabilityVocabulary) {
       if (node.type === "string_fragment") {
         // A quoted skill id is the term of that skill. A `skill:` or `persona:` term whose id is spelled elsewhere,
         // as in has(`skill:${WORKTREE_LIFECYCLE_SKILL_ID}`), still holds only with the skill or subagent tool.
-        const prefixTool = node.text.startsWith("skill:") ? "skill" : node.text.startsWith("persona:") ? "subagent" : undefined;
-        for (const module of [...vocabulary.termModules(node.text) ?? vocabulary.termModules(`skill:${node.text}`) ?? [], ...prefixTool ? vocabulary.termModules(prefixTool) ?? [] : []]) modules.add(module);
+        // A quoted type id, as in roles.has("advisor"), is the term of that type.
+        const prefixTool = node.text.startsWith("skill:") ? "skill" : node.text.startsWith("persona:") || node.text.startsWith("type:") ? "subagent" : undefined;
+        for (const module of [...vocabulary.termModules(node.text) ?? vocabulary.termModules(`skill:${node.text}`) ?? vocabulary.termModules(`type:${node.text}`) ?? [], ...prefixTool ? vocabulary.termModules(prefixTool) ?? [] : []]) modules.add(module);
       }
       if (node.type === "identifier" || node.type === "property_identifier" || node.type === "shorthand_property_identifier") {
         for (const module of vocabulary.termModules(node.text) ?? []) modules.add(module);
@@ -449,8 +513,8 @@ function typescriptGuards(root: Node, vocabulary: CapabilityVocabulary) {
 
 const LOGGERS = new Set(["log", "logger", "console", "Log"]);
 
-/** How a literal reaches a reader. `silent`: no model reads it (a log record, or a settings label that a person
- *  reads). `refusal`: a thrown error, a constructed refusal, the `error` of a result, a tool result whose outcome is
+/** How a literal reaches a reader. `silent`: no model reads it (a log record, a settings label that a person
+ *  reads, or a configuration schema annotation, which describes a key to the person who edits flywheel.toml). `refusal`: a thrown error, a constructed refusal, the `error` of a result, a tool result whose outcome is
  *  an error, or the text of a function named for a refusal, which may also name a capability that a guard on its
  *  path found off. */
 function literalRole(node: Node): "silent" | "refusal" | "text" {
@@ -460,6 +524,7 @@ function literalRole(node: Node): "silent" | "refusal" | "text" {
       const callee = parent.childForFieldName("function");
       const receiver = callee?.type === "member_expression" ? callee.childForFieldName("object") : undefined;
       if (receiver && LOGGERS.has(receiver.text)) return "silent";
+      if (callee?.text === "Schema.annotate") return "silent";
     }
     if (parent.type === "pair" && parent.childForFieldName("key")?.text === "label" && within(node, parent.childForFieldName("value"))) return "silent";
     if (parent.type === "throw_statement") role = "refusal";
@@ -483,7 +548,7 @@ async function typescriptFindings(relPath: string, source: string, vocabulary: C
   if (!tree) throw new Error(`${relPath}: cannot parse`);
   try {
     const coveredAt = typescriptGuards(tree.rootNode, vocabulary);
-    const uncovered = vocabulary.modules.filter((module) => !fileCovers(module.id));
+    const uncovered = [...vocabulary.modules, ...vocabulary.types].filter((module) => !fileCovers(module.id));
     const findings: CapabilityTermViolation[] = [];
     descendants(tree.rootNode, (node) => {
       if (node.type !== "string" && node.type !== "template_string") return;
@@ -517,17 +582,46 @@ export async function findCapabilityTermViolations(repoRoot: string, vocabulary:
   const findings: CapabilityTermViolation[] = [];
   for (const relPath of [...files].toSorted()) {
     if (isUnderAny(relPath, UNSCANNED) || vocabulary.modules.some((module) => isUnderAny(relPath, module.harnesses.map((harness) => `${harness}/`)))) continue;
-    const markdown = MARKDOWN_FILE.test(relPath) && MARKDOWN_ROOTS.some((root) => relPath.startsWith(`${root}/`)) && (!relPath.startsWith("src/orchestration/modules/") || MODULE_DEFINITIONS.test(relPath));
+    const markdown = BUNDLED_SKILL_FILE.test(relPath) || (MARKDOWN_FILE.test(relPath) && MARKDOWN_ROOTS.some((root) => relPath.startsWith(`${root}/`)) && (!relPath.startsWith("src/orchestration/modules/") || MODULE_DEFINITIONS.test(relPath)));
     // A migration holds the retired bytes it converts, which no current reader is shown.
     const text = /\.tsx?$/.test(relPath) && !/\.(?:test|d)\.tsx?$/.test(relPath) && !relPath.includes("/migrations/") && (TEXT_FILES.test(relPath) || TEXT_ROOTS.some((root) => relPath.startsWith(`${root}/`)));
     if (!markdown && !text) continue;
     const requires = new Set(vocabulary.definitions.filter((definition) => isUnderAny(relPath, [definition.path])).flatMap((definition) => definition.requires));
-    const homes = new Set(vocabulary.modules.filter((module) => isUnderAny(relPath, module.homes)).map((module) => module.id));
+    const homes = new Set([...vocabulary.modules, ...vocabulary.types].filter((module) => isUnderAny(relPath, module.homes)).map((module) => module.id));
     const fileCovers = (module: string): boolean => requires.has(module) || homes.has(module);
     const source = fs.readFileSync(path.join(repoRoot, relPath), "utf8");
     findings.push(...markdown ? markdownFindings(relPath, source, vocabulary, fileCovers) : await typescriptFindings(relPath, source, vocabulary, fileCovers));
   }
   return findings;
+}
+
+/** The capability ids of `types`: `type:<id>` for each, and for the parent role that covers it. */
+function typeCapabilities(types: readonly string[]): string[] {
+  return types.flatMap((type) => {
+    const parent = parentRoleId(type);
+    return parent === undefined ? [`type:${type}`] : [`type:${type}`, `type:${parent}`];
+  });
+}
+
+/** What one definition's availability needs, as capability ids: its modules and its agent types. */
+function needs(entry: { readonly requires: readonly string[]; readonly types: readonly string[] } | undefined): readonly string[] | undefined {
+  return entry === undefined ? undefined : [...entry.requires, ...typeCapabilities(entry.types)];
+}
+
+/** One capability per agent type that `AGENT_TYPE_PHRASES` spells, and one per role under a listed parent role. */
+function typeTerms(personas: ReadonlyMap<string, AgentDefinition>): CapabilityModuleTerms[] {
+  const nameOf = (name: string): RegExp => new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`);
+  const roles = new Map<string, string[]>();
+  for (const persona of personas.values()) {
+    const type = agentTypeOf(persona);
+    const parent = parentRoleId(type);
+    if (parent !== undefined && Object.hasOwn(AGENT_TYPE_PHRASES, parent)) roles.set(type, [...roles.get(type) ?? [], persona.name]);
+  }
+  const term = (type: string, phrases: readonly RegExp[]): CapabilityModuleTerms => ({ id: `type:${type}`, tools: [], skills: [], phrases, guards: AGENT_TYPE_TEXT.get(type)?.guards ?? [], homes: AGENT_TYPE_TEXT.get(type)?.sources ?? [], harnesses: [] });
+  return [
+    ...Object.entries(AGENT_TYPE_PHRASES).map(([type, phrases]) => term(type, phrases)),
+    ...[...roles].toSorted(([a], [b]) => a.localeCompare(b)).map(([role, names]) => term(role, [...names, role].map(nameOf))),
+  ];
 }
 
 /** The vocabulary of `modules`, the whole catalog that the containment check reads: each module's tools, bundled
@@ -563,7 +657,7 @@ export async function realCapabilityVocabulary(repoRoot: string, modules: readon
     // A shared reference renders inside every skill that expands it, so it needs what all of them need.
     const referenceRequires = new Map<string, Set<string>>();
     for (const skill of revision.skills.skills.values()) {
-      const requires = availability.skills.get(skill.id)?.requires ?? [];
+      const requires = needs(availability.skills.get(skill.id)) ?? [];
       for (const match of skill.body.matchAll(/\{\{ref:([a-z0-9-]+)\}\}/g)) {
         const name = match[1] ?? "";
         const held = referenceRequires.get(name);
@@ -573,14 +667,21 @@ export async function realCapabilityVocabulary(repoRoot: string, modules: readon
     const personaDir = "src/workflows/agents/personas";
     return {
       modules: terms,
+      types: typeTerms(revision.personaRevision.personas),
       termModules: (term) => {
-        if (term.startsWith("skill:")) return availability.skills.get(term.slice("skill:".length))?.requires;
-        if (term.startsWith("persona:")) return availability.personas.get(term.slice("persona:".length))?.requires;
+        if (term.startsWith("skill:")) return needs(availability.skills.get(term.slice("skill:".length)));
+        if (term.startsWith("persona:")) return needs(availability.personas.get(term.slice("persona:".length)));
+        if (term.startsWith("type:")) {
+          const type = term.slice("type:".length);
+          // A type holds while one of its personas is available, which needs what every persona needs: dispatch.
+          const persona = [...revision.personaRevision.personas.values()].find((agent) => agentTypeOf(agent) === type || parentRoleId(agentTypeOf(agent)) === type);
+          return persona === undefined ? undefined : [...availability.personas.get(persona.name)?.requires ?? [], ...typeCapabilities([type])];
+        }
         return toolModules.get(term);
       },
       definitions: [
-        ...[...skillDirs].map(([id, dir]) => ({ path: dir, requires: availability.skills.get(id)?.requires ?? [] })),
-        ...[...availability.personas].map(([name, entry]) => ({ path: `${personaDir}/${name}.md`, requires: entry.requires })),
+        ...[...skillDirs].map(([id, dir]) => ({ path: dir, requires: needs(availability.skills.get(id)) ?? [] })),
+        ...[...availability.personas].map(([name, entry]) => ({ path: `${personaDir}/${name}.md`, requires: needs(entry) ?? [] })),
         ...[...referenceRequires].map(([name, requires]) => ({ path: `src/agent-skills/references/${name}.md`, requires: [...requires] })),
       ],
     };

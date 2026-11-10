@@ -123,7 +123,7 @@ function commitments(has: CapabilityCheck, host: ChatHost): string {
   const design = has("skill:design");
   const designStates = design ? ", as the `design` skill states" : "";
   const canDeliver = ["subagent", "workflow", "edit", "write"].some((term) => has(term));
-  const orchestration = [...(has("subagent") ? ["dispatch a subagent"] : []), "add a reviewer", ...(has("workflow") ? ["start a workflow"] : [])];
+  const orchestration = [...(has("subagent") ? ["dispatch a subagent"] : []), ...(has("type:reviewer") ? ["add a reviewer"] : []), ...(has("workflow") ? ["start a workflow"] : [])];
   const probe = has("bash")
     ? "when a cheap throwaway probe against the real thing can settle that, run it in the scratchpad before you design on the claim and again after you build on it"
     : "settle that with the tools you have, or report it as an unverified assumption";

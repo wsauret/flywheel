@@ -18,12 +18,11 @@ import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js"
 import { moduleDescriptor } from "../../../../src/orchestration/config/module-descriptor.js"
 import { MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../src/protocol/module-ids.js"
-import { getPersonaMetadataIndex } from "../../../../src/workflows/agents/agent-roles.js"
 import { assembleSkillInvocation } from "../../../../src/workflows/skill-invocation.js"
 import { agentCapabilityCheck, contributedToolIdentities } from "../../../../src/orchestration/agent-runtime/capability-checks.js"
 import { experimentToolOmissions } from "../../../../src/orchestration/modules/experiments/tool-execution-gate.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import { repoModules, sourceRunDefinitions } from "../../../helpers/project-definitions.js"
+import { repoDefinitions, repoModules, sourceRunDefinitions } from "../../../helpers/project-definitions.js"
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
@@ -302,7 +301,7 @@ describe("command invocation", () => {
     const rendered = (id: string, args?: string) => {
       const skill = skills.skills.get(id)
       if (!skill) throw new Error(`the repository installs ${id}`)
-      return assembleSkillInvocation(skill, args, { skills, personaIndex: getPersonaMetadataIndex(), capabilities: () => true })
+      return assembleSkillInvocation(skill, args, { skills, agents: repoDefinitions().personas(), capabilities: () => true })
     }
     expect(sent).toEqual([
       { text: rendered("experiment-charter", "make tests faster"), invocation: { label: "/experiment design", args: "make tests faster" } },
@@ -333,7 +332,7 @@ describe("command invocation", () => {
     expect([...omitted.keys()].toSorted()).toEqual(["bash", "subagent"])
     const run = async (usable: ReadonlySet<string>) => {
       const sent: ChatInputLike[] = []
-      const check = agentCapabilityCheck(usable, all.snapshot())
+      const check = agentCapabilityCheck(usable, all.snapshot(), undefined)
       const { invoke } = service({ availability: all, moduleSelection: () => composition, supervisor: supervisorDouble({
         ensureChatRunner: async (sessionId) => mockRunner(sessionId, { capabilities: async () => check }),
         sendChat: async (_sessionId, input) => { sent.push(input); return { ok: true } },
@@ -351,7 +350,7 @@ describe("command invocation", () => {
     const skill = all.snapshot().skillRevision.skills.get("code-review")
     if (!skill) throw new Error("the repository installs code-review")
     expect(everything.sent.map((input) => typeof input === "string" ? input : input.text)).toEqual([
-      assembleSkillInvocation(skill, undefined, { skills: all.snapshot().skillRevision, personaIndex: getPersonaMetadataIndex(), capabilities: everything.check }),
+      assembleSkillInvocation(skill, undefined, { skills: all.snapshot().skillRevision, agents: all.snapshot().availablePersonas, capabilities: everything.check }),
     ])
   })
 

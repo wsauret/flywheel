@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { renderSubagentRoster, SUBAGENT_DESCRIPTION } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
+import { renderSubagentRoster, subagentDescription } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { makeDeps } from "./_fixtures.js";
 
 describe("subagent tool — registry", () => {
@@ -12,7 +12,7 @@ describe("subagent tool — registry", () => {
       expect(roster).toContain("read-only");
       expect(roster).toContain("- implementer: ");
       // The roster renders in the session tier, so the tool bytes are the same for every agent.
-      expect(SUBAGENT_DESCRIPTION).not.toContain("- explorer: ");
+      expect(subagentDescription(() => true)).not.toContain("- explorer: ");
     });
 
     it("tells an agent with no dispatchable type to do the work directly", () => {

@@ -1,6 +1,33 @@
 import type { RoleCaptureStore } from "../../../../src/orchestration/config/model-assignment-controller.js"
 import type { SessionManager } from "../../../../src/orchestration/session/manager.js"
 import { normalizeRoleAssignments, type RoleSettings, type RoleAssignments, type RoleAssignmentSnapshot, type Session } from "../../../../src/orchestration/session/schemas.js"
+import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
+import { createDefinitionAvailability, type DefinitionAvailabilityOwner } from "../../../../src/orchestration/app-service/definition-availability.js"
+import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"
+import type { ModuleId } from "../../../../src/orchestration/modules.js"
+import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
+import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
+import type { ModelFamily } from "../../../../src/infra/llm/model-family.js"
+import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
+
+export const EXPLORER: Extract<AgentDefinition, { readonly kind: "persona" }> = {
+  kind: "persona", name: "explorer", description: "Investigates.", systemPrompt: "Investigate.",
+  tools: ["read"], role: "explorer", maxTurns: 20,
+}
+
+/** The availability of a project whose personas are `installed`, by default the explorer alone, under `capabilities`
+ *  and with the agent types that `disabledTypes` reads turned off. */
+export function availabilityOwner(capabilities: readonly ModuleId[], disabledTypes: () => readonly string[] = () => [], installed: readonly AgentDefinition[] = [EXPLORER]): Promise<DefinitionAvailabilityOwner> {
+  const skills = testSkillRevision([testSkill("plan"), testSkill("fly.spec-create"), testSkill("fly.spec-review")])
+  const personas = { revision: installed.map(({ name }) => name).join(","), personas: new Map(installed.map((persona) => [persona.name, persona])), resolutions: [] }
+  const definitionRevision = { ...repoDefinitions().captureRevision(), skills, personaRevision: personas, personas: personas.personas }
+  return createDefinitionAvailability({
+    definitions: { captureRevision: () => definitionRevision },
+    modules: repoModules,
+    capabilities: { state: () => ({ ...decodeModuleState(""), capabilities, moduleIds: capabilities }) },
+    agentTypes: { disabled: disabledTypes },
+  })
+}
 
 type CreateChatOptions = Parameters<SessionManager["createChat"]>[0]
 
@@ -95,4 +122,33 @@ function chatSession(id: string, opts: { conversationId?: string; roleAssignment
 
 function roleSnapshot(roles: RoleSettings): RoleAssignmentSnapshot {
   return { defaults: {}, overrides: normalizeRoleAssignments(roles) }
+}
+
+export const AVAILABLE_MODELS: ReadonlyMap<ModelFamily, ReadonlySet<string>> = new Map([
+  ["openai", new Set(["gpt-5.5", "gpt-5-mini"])],
+])
+
+/** Every model of {@link AVAILABLE_MODELS} eligible for the picker through the OpenAI API. */
+export function pickerEligibility() {
+  return new Map([...AVAILABLE_MODELS.values()].flatMap((models) => [...models].map((model) => [model, {
+    explicitlyEnabled: false,
+    transport: "openai-responses" as const,
+    offering: {
+      candidate: { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" },
+      wireModelId: model,
+      dataUse: "standard",
+      transport: "openai-responses",
+      resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
+    },
+  }] as const)))
+}
+
+export function providerModelCatalogs() {
+  return new Map([["openai_api", {
+    catalog: new Set(["gpt-5.5", "gpt-5-mini"]),
+    curatedDefault: new Set(["gpt-5.5", "gpt-5-mini"]),
+    enabled: new Set<string>(),
+    disabled: new Set<string>(),
+    effective: new Set(["gpt-5.5", "gpt-5-mini"]),
+  }]] as const)
 }

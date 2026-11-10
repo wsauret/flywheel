@@ -4,14 +4,8 @@ import { mkdirSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, w
 import { join } from "node:path";
 import type { ContainedDirectoryContract } from "../../../src/infra/descriptor-directory-contract.js";
 import type { SkillDirectoryEntry } from "../../../src/workflows/skill-context.js";
-import {
-  readSkillPackage,
-  readSkillPackageFiles,
-  readSkillResource,
-  renderSkillClosure,
-  renderSkillContext,
-  withSkillRoot,
-} from "../../../src/workflows/skill-context.js";
+import { readSkillPackage, readSkillPackageFiles, readSkillResource, withSkillRoot } from "../../../src/workflows/skill-context.js";
+import { renderSkillClosure, renderSkillContext } from "../../../src/workflows/skill-render.js";
 import type { SkillDefinition, SkillPackageBinding } from "../../../src/workflows/skill-schema.js";
 import { publishSkillRevision, SKILL_LIMITS } from "../../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
@@ -126,10 +120,10 @@ describe("renderSkillContext", () => {
       "Settle it with your tools.",
       "{{end}}",
       "{{if:subagent}}",
-      "{{ref:reviewer-protocol}}",
+      "{{ref:plan-review-orchestration}}",
       "{{end}}",
     ].join("\n");
-    const REFERENCE_LINE = "dispatch every chosen reviewer in parallel through multiple `subagent` calls";
+    const REFERENCE_LINE = "A plan or implementation spec is a review target before code exists.";
 
     function conditioned(authority: "bundled" | "external"): SkillDefinition {
       const skill = authority === "bundled"
@@ -142,18 +136,18 @@ describe("renderSkillContext", () => {
       return skill;
     }
 
-    it("renders a bundled body for its reader after expanding references, and names each tested term", () => {
+    it("renders a bundled body for its reader after expanding references, and names no tested term", () => {
       const skill = conditioned("bundled");
 
       const off = renderSkillContext(skill, () => false);
-      expect(off).toContain("conditions: bash=off subagent=off");
+      expect(off).not.toContain("conditions:");
       expect(off).toContain("Always do this.\nSettle it with your tools.");
       expect(off).not.toContain("Run the probe script.");
       expect(off).not.toContain(REFERENCE_LINE);
       expect(off).not.toContain("{{");
 
       const on = renderSkillContext(skill, () => true);
-      expect(on).toContain("conditions: bash=on subagent=on");
+      expect(on).not.toContain("conditions:");
       expect(on).toContain("Always do this.\nRun the probe script.");
       expect(on).toContain(REFERENCE_LINE);
       expect(on).not.toContain("Settle it with your tools.");
@@ -180,7 +174,7 @@ describe("renderSkillContext", () => {
     it("leaves an external body and a bundled resource byte for byte", () => {
       const external = renderSkillContext(conditioned("external"), () => false);
       expect(external).toContain("{{if:bash}}\nRun the probe script.\n{{else}}");
-      expect(external).toContain("{{ref:reviewer-protocol}}");
+      expect(external).toContain("{{ref:plan-review-orchestration}}");
       expect(external).not.toContain("conditions:");
 
       expect(readSkillResource(conditioned("bundled"), "references/api.md", 0, 1_000).content).toBe("{{if:bash}}\nraw\n{{end}}\n");

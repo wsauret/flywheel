@@ -55,6 +55,7 @@ function createBenchmarkRuntime(services: ModuleRuntimeServices): BenchmarkAdmis
     definitions: services.definitions,
     availableModels: services.availableModels,
     moduleSelection: services.moduleSelection,
+    captureRuntimeConfig: services.captureRuntimeConfig,
     runOwnedCommand: ownedCommandRunner(launcher),
     profileId: usageProfile.profileId,
     authorityIncarnation: usageProfile.authorityIncarnation,

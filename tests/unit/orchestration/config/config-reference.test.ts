@@ -4,6 +4,7 @@ import { configReference, configReferenceFor } from "../../../../src/orchestrati
 import { decodeConfigObject } from "../../../../src/orchestration/config/loader.js";
 import { flywheelConfigKeys } from "../../../../src/orchestration/config/schema.js";
 import { McpConfigSchema } from "../../../../src/orchestration/modules/mcp/config.js";
+import { disabledAgentTypes } from "../../../../src/orchestration/module-catalog.js";
 import { isRecord, type UnknownRecord } from "../../../../src/infra/record.js";
 
 function tomlTable(text: string): UnknownRecord {
@@ -36,6 +37,15 @@ describe("configuration reference", () => {
     expect(thresholds?.example).toContain("alert_thresholds = [70, 90, 100]");
     expect(configReference().example).toContain("alert_thresholds = [70, 90, 100]");
     expect(() => decodeConfigObject(tomlTable(configReference().example), [], "/configuration.md")).not.toThrow();
+  });
+
+  test("decodes the agent types that [subagents] turns off, none when the section is absent, and documents the key", () => {
+    expect(disabledAgentTypes(decodeConfigObject(tomlTable('[subagents]\ndisabled_types = ["advisor", "reviewer"]'), [], "/flywheel.toml").config)).toEqual(["advisor", "reviewer"]);
+    expect(disabledAgentTypes(decodeConfigObject({}, [], "/flywheel.toml").config)).toEqual([]);
+    expect(() => decodeConfigObject(tomlTable("[subagents]\ndisabled_types = [1]"), [], "/flywheel.toml")).toThrow();
+    const entry = configReference().entries.find(({ path }) => path === "subagents.disabled_types");
+    expect(entry?.defaultValue).toEqual([]);
+    expect(entry?.description).toContain("`reviewer` turns off every reviewer role");
   });
 
   test("fails when a definition and schema conflict on descriptions", () => {

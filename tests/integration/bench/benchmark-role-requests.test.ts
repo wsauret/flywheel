@@ -12,6 +12,7 @@ import { newTestRunner } from "../../helpers/agent-runner.js";
 import { roleCapture } from "../../helpers/role-capture.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { testDirectories } from "../../helpers/directories.js";
+import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 
 let root: string | undefined;
 let work: Promise<void> | undefined;
@@ -51,6 +52,7 @@ async function verifyRoleRequests(): Promise<void> {
   const admission = await admitBenchmark({
     ...directories, profileId: "default", authorityIncarnation: "test-incarnation", definitions: repoDefinitions(),
     moduleSelection: () => composeFirstPartyModules([...SHIPPED_MODULES, ...DEVELOPMENT_MODULES]),
+    captureRuntimeConfig: testRuntimeConfigCapture,
     runOwnedCommand: () => { throw new Error("no command may be launched in this harness"); },
     captureProviderConnection: async () => ({
       ...roleCapture(models, { explorer: { model: "gpt-6.1-sol", effort: "low" }, "benchmark-judge": { model: "lost-judge", effort: "low" } }),

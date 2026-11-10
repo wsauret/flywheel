@@ -1,3 +1,4 @@
+{{if:type:reviewer-security&type:reviewer-performance&type:reviewer-elegance}}
 # A lens-diverse review. Each named agent reviews the same change for one
 # way it can fail, which catches failures that identical reviewers miss.
 # Each agent runs as a reviewer persona: the persona brings its review
@@ -39,3 +40,4 @@ phases:
       with: { items: findings, by: site }
   - phase: summarize
     brief: Order the kept findings by severity, highest first, and name the agent of each one from its `branch` field. Then name each agent that has no kept finding.
+{{end}}

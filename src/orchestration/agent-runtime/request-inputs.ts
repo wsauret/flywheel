@@ -24,7 +24,7 @@ import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { SkillDefinition } from "../../workflows/skill-schema.js";
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../modules.js";
 import { createToolRegistry } from "../tool-catalog.js";
-import { installedModules } from "../module-catalog.js";
+import { disabledAgentTypes, installedModules } from "../module-catalog.js";
 import { skillLoadedFact } from "../../workflows/skill-facts.js";
 import { selectedToolNames } from "./tools/tool-dispatch.js";
 import { callerToolGrant, planToolExposure, type ToolGrant } from "./tools/tool-exposure-planner.js";
@@ -53,6 +53,7 @@ import { createModelFallbackNotice } from "./model-fallback-notice.js";
 import { ModelUnavailable } from "./errors.js";
 import { commitToolNotice, toolNotice } from "./tool-notice.js";
 import { createCapabilityNarrowing, narrowingStatements, recordingNarrowings } from "./capability-narrowing.js";
+import { agentTypesTurnedOffSince } from "../app-service/definition-availability.js";
 import { holdSharedTree, treeLogin, type SharedTree, type SharedTreeCapture } from "./shared-tree.js";
 
 /** What builds the inputs of a run's requests: the same for a send and for a pre-start. */
@@ -208,7 +209,7 @@ function requestModulesOf(options: RunnableAgentOptions, tree: SharedTree | unde
 
 function treeCaptureOf(options: RunnableAgentOptions): SharedTreeCapture {
   const config = options.captureRuntimeConfig();
-  return { modules: options.moduleSelection(), shellWriteGuard: config.shellWriteGuard, allowPersistentProcesses: config.allowPersistentProcesses };
+  return { modules: options.moduleSelection(), shellWriteGuard: config.shellWriteGuard, allowPersistentProcesses: config.allowPersistentProcesses, disabledTypes: disabledAgentTypes(config.moduleSections) };
 }
 
 async function runtimeIdentityOf(options: RunnableAgentOptions, sessionId: string | undefined): Promise<RunToolsSource["runtimeIdentity"]> {
@@ -338,6 +339,7 @@ function runToolPlanner(source: RunToolsSource) {
     moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, definitions: definitionRevision,
     shellWriteGuard: tree?.shellWriteGuard ?? runtimeConfig.shellWriteGuard,
     persistentProcessesAdvertised: tree?.allowPersistentProcesses ?? runtimeConfig.allowPersistentProcesses,
+    treeDisabledTypes: tree?.disabledTypes ?? disabledAgentTypes(runtimeConfig.moduleSections),
     ...source.serving(providerRuntime),
   });
   const planRequestTools = async (
@@ -358,7 +360,7 @@ function runToolPlanner(source: RunToolsSource) {
       ...(granted ? { granted } : {}),
       ...(options.toolProfile ? { profile: options.toolProfile } : {}),
     });
-    return { ...plan, definitionAvailability: kernel.definitionAvailability };
+    return { ...plan, definitionAvailability: kernel.definitionAvailability, ...(kernel.allowedSubagentTypes ? { allowedSubagentTypes: kernel.allowedSubagentTypes } : {}) };
   };
   return { planRequestTools, kernelOf, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources };
 }
@@ -619,9 +621,15 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       // notice also states the modules that the first plan turned off.
       const notice = treeHosted ? toolNotice(toolSurface.current(), options.readOnly === true) : undefined;
       // The narrowing reads the modules that the current request's plan refuses
-      // as turned off, so the statement and the refusals of one request agree.
+      // as turned off, and the agent types that its live availability refuses
+      // while the tree's text offers them, so the statement and the refusals of
+      // one request agree.
       const narrowing = treeHosted ? createCapabilityNarrowing(() => toolSurface.current().moduleSnapshot) : undefined;
-      const narrowingOf = (messages: readonly ConversationMessage[]) => narrowing?.due(messages, toolSurface.current().turnedOff);
+      const narrowingOf = (messages: readonly ConversationMessage[]) => {
+        const request = toolSurface.current();
+        const { definitionAvailability } = request;
+        return narrowing?.due(messages, { moduleIds: request.turnedOff, types: agentTypesTurnedOffSince(definitionAvailability.tree, definitionAvailability.live) });
+      };
       const opening = await conversation.seed();
       const seed = notice === undefined ? opening : await commitToolNotice(conversation, opening, notice, narrowingOf(opening.kind === "resume" ? opening.priorMessages : []));
 

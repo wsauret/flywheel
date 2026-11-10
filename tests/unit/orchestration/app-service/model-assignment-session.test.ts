@@ -1,47 +1,22 @@
 import { describe, expect, test } from "bun:test"
 import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-service.js"
-import { createDefinitionAvailability, type DefinitionAvailabilityOwner } from "../../../../src/orchestration/app-service/definition-availability.js"
 import { CONFIG_DEFAULTS, FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js"
 import { parseSchema } from "../../../helpers/schema-assertions.js"
-import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js"
 import type { RoleAssignments } from "../../../../src/orchestration/session/schemas.js"
-import { composeFirstPartyModules, type ModuleId } from "../../../../src/orchestration/modules.js"
-import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { chatEntry } from "./app-service-doubles.js"
-import { managerDouble, type ManagerDouble } from "./model-assignment-service-fixtures.js"
+import { availabilityOwner, managerDouble, type ManagerDouble } from "./model-assignment-service-fixtures.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
 
 const DEFAULT_ROLES = {
   chat: { model: "gpt-5.5", effort: "medium", provider: "openai_api" },
   "workflow-agent": { model: "gpt-5.5", effort: "high", provider: "openai_api" },
 } satisfies RoleAssignments
-
-const EXPLORER: AgentDefinition = {
-  kind: "persona", name: "explorer", description: "Investigates.", systemPrompt: "Investigate.",
-  tools: ["read"], role: "explorer", maxTurns: 20,
-}
-
-async function availabilityOwner(capabilities: readonly ModuleId[]): Promise<DefinitionAvailabilityOwner> {
-  const skills = testSkillRevision([testSkill("plan"), testSkill("fly.spec-create"), testSkill("fly.spec-review")])
-  const personas = { revision: "explorer", personas: new Map([["explorer", EXPLORER]]), resolutions: [] }
-  return createDefinitionAvailability({
-    definitions: { captureRevision: () => ({
-      ...repoDefinitions().captureRevision(), skills, personaRevision: personas, personas: personas.personas,
-    }) },
-    modules: repoModules,
-    capabilities: { state: () => {
-      const state = decodeModuleState("")
-      return { ...state, capabilities, moduleIds: capabilities }
-    } },
-  })
-}
 
 const FULL_AVAILABILITY = await availabilityOwner(["workflows", "skills", "subagents", "learning", "background-commands"])
 const EVENT_WRITER = {

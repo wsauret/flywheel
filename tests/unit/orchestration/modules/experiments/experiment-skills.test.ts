@@ -5,7 +5,7 @@ import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/
 import { createSkillTool } from "../../../../../src/orchestration/agent-runtime/tools/skill.js"
 import { createFinalizeChildGrant, type FinalizeGroups } from "../../../../../src/orchestration/modules/experiments/finalize-child-run.js"
 import { shippedDefinitionBundles } from "../../../../../src/orchestration/modules.js"
-import { getPersonaMetadataIndex } from "../../../../../src/workflows/agents/agent-roles.js"
+import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { readSkillPackageFiles } from "../../../../../src/workflows/skill-context.js"
 import type { SkillDefinition } from "../../../../../src/workflows/skill-schema.js"
 import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js"
@@ -187,7 +187,7 @@ describe("createFinalizeChildGrant", () => {
       seen.push(command[0]!)
       return result("done")
     })
-    const tool = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: getPersonaMetadataIndex(), childGrant: grant })
+    const tool = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: repoDefinitions().personas() }, revision, childGrant: grant })
 
     const context = makeContext()
     const refused = await tool.execute({ action: "child-run", skill_id: "ship", script: "finalize.sh", input: groups }, context)

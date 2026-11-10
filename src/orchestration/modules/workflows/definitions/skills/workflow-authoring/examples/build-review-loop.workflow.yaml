@@ -1,3 +1,4 @@
+{{if:type:reviewer-quality&type:reviewer-elegance&type:implementer}}
 # Build, review, and repair until verified. One implementer owns the build
 # and sizes it by the `implementation` skill: it builds a bounded unit
 # itself, and delegates separable parts to more implementers. One reviewer
@@ -18,7 +19,7 @@
 # `while` field belongs to one verify agent, not to a dedupe join: in a
 # repeat, a dedupe join drops each key that an earlier round saw, so a
 # finding that the repair did not fix would end the loop as dry. Add a lens
-# agent when the change crosses its trigger in `code-review`, such as
+# agent when the change crosses its trigger, such as
 # data-integrity for durable state, performance for a hot path, security for
 # a trust boundary, or design for a rendered surface. Write the file once and
 # launch it by path for each unit, with that unit's input. Live checks that
@@ -135,3 +136,4 @@ phases:
       - phase: refix
         runs: fix
         persona: implementer
+{{end}}

@@ -5,11 +5,12 @@ import * as os from "node:os";
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definition-registry.js";
-import { renderSkillContext } from "../../../../../src/workflows/skill-context.js";
+import { renderSkillContext } from "../../../../../src/workflows/skill-render.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, TEST_RATIONALE, childTask } from "./_fixtures.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../../helpers/directories.js";
+import { fixedAvailability } from "../../../../helpers/project-definitions.js";
 
 // Fixture packages live under a temp root this suite's own definition owner
 // reads, so the assertions never depend on what the developer has installed.
@@ -109,5 +110,19 @@ describe("subagent tool - persona skill composition", () => {
     expect(refused).toMatchObject({ outcome: "error", content: "Subagent 'explorer' cannot run here: its persona composes the skill \"design\", which a person answers or approves, and no person reads this run. Dispatch another agent type or do the work directly." });
     expect(calls).toEqual([]);
     expect(await dispatchExplorer(registry)).toContain("# Skill: design\n");
+  });
+});
+
+describe("subagent tool - agent types turned off", () => {
+  it("refuses a persona whose type is off with a reason that says how to turn it on, and runs it once the type is on", async () => {
+    const registry = buildRegistry();
+    const { factory, calls } = makeMockRunnerFactory({ finalText: "done" });
+    const off = createSubagentDispatch(makeDeps({ agentRegistry: registry, createRunner: factory, definitionAvailability: fixedAvailability({ personas: registry }, undefined, ["explorer"]) }));
+
+    const refused = await off.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext());
+
+    expect(refused).toMatchObject({ outcome: "error", content: "Subagent 'explorer' cannot run: agent type explorer is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on. Dispatch another agent type or do the work directly." });
+    expect(calls).toEqual([]);
+    expect(await dispatchExplorer(registry)).toContain("You are a focused codebase investigator.");
   });
 });

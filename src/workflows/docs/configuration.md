@@ -2339,6 +2339,23 @@ archive_after_days = 0
 stale_after_days = 30
 ```
 
+## `subagents`
+
+### `subagents.disabled_types`
+
+- Type: `array`
+- Constraints: list of strings
+- Default: `[]`
+- Application: `next-request`. Applies when the next provider request captures configuration.
+- Application: `use-time-revalidate`. Revalidates from disk when the protected operation starts.
+
+Turn off agent types. An entry is `general` or an agent role id: `explorer`, `implementer`, `ship`, `advisor`, `reviewer`, one reviewer role such as `reviewer-security`, or the role of an installed persona. `reviewer` turns off every reviewer role. Every type is on unless this list names it, and an entry that names no installed type changes nothing. For example, `disabled_types = ["advisor", "reviewer", "ship"]` keeps only the general agent, the explorer, and the implementer. While every type is off, agents are offered no subagent tool.
+
+```toml
+[subagents]
+disabled_types = []
+```
+
 ## `subscription_usage`
 
 ### `subscription_usage.alert_thresholds`

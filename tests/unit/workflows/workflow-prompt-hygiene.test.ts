@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
-import { renderSkillClosure } from "../../../src/workflows/skill-context.js";
+import { renderSkillClosure } from "../../../src/workflows/skill-render.js";
 import { readSrcFile } from "../../fixtures/read-src-file.js";
 
 function workflowFiles(dir: string): string[] {
@@ -90,7 +90,7 @@ describe("workflow prompt hygiene", () => {
       expect(body).toMatch(/investigate ambiguous, incomplete, or unverified evidence/i);
       expect(body).toMatch(/targeted commands or mechanism verification/i);
       expect(body).toMatch(/concrete failure mode/i);
-      expect(body).toMatch(/do not pass the evidence gap to an implementer/i);
+      expect(body).toMatch(/do not leave the evidence gap for the repair to close/i);
     });
 
     it("includes copy-only interface changes in design review for both targets", () => {
@@ -125,7 +125,7 @@ describe("workflow prompt hygiene", () => {
       expect(body).toMatch(/Investigate ambiguous runtime evidence within the review budget/i);
       expect(body).toMatch(/acceptance criterion still cannot be verified/i);
       expect(body).toMatch(/narrowest command or probe attempted/i);
-      expect(body).toMatch(/do not defer an unverified acceptance claim to implementers/i);
+      expect(body).toMatch(/do not defer an unverified acceptance claim to the repair/i);
     });
   });
 
@@ -159,7 +159,7 @@ describe("workflow prompt hygiene", () => {
       const method = await readSrcFile("agent-skills/implementation-planning/SKILL.md");
       const rules = await readSrcFile("agent-skills/implementation/SKILL.md");
 
-      expect(method).toMatch(/one implementer agent in one run/i);
+      expect(method).toMatch(/one agent in one run/i);
       expect(method).toMatch(/roughly ten files/i);
       expect(method).toMatch(/repository-relative production and test files/i);
       expect(method).toMatch(/transitive callers for API, schema, route, event, export, or configuration changes/i);
@@ -258,9 +258,9 @@ describe("workflow prompt hygiene", () => {
       const step = await readSrcFile("agent-skills/code-review/SKILL.md");
 
       expect(protocol.match(/starts with `Deferred:`/g)).toHaveLength(1);
-      expect(protocol).toContain("principled extension, not implementer error");
+      expect(protocol).toContain("principled extension, not an implementation error");
       expect(protocol).toContain("do not propose an alternative; propose only where the user was silent");
-      expect(step).not.toContain("principled extension, not implementer error");
+      expect(step).not.toContain("principled extension, not an implementation error");
       expect(step).toContain("Apply the constraint rules in the reviewer protocol block");
       expect(protocol).toContain("project context paths supplied by the dispatching agent");
       expect(protocol).toContain("The supplied user requirements and Design intent bind you");

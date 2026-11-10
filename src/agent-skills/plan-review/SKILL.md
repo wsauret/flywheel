@@ -41,4 +41,8 @@ Tag runtime claims about ordering, reachability, races, crashes, subprocess surv
 
 Return `Findings:` with one block per issue containing `Title`, `Severity`, `Location`, `Failure`, and `Fix`; `Clean:` with the reviewed plan and evidence; or `Blocked:` with the missing design input or repository evidence and the narrowest unblocking action. Corrections must preserve settled intent and use the smallest complete plan shape.
 
+{{if:type:reviewer}}
 Do not select reviewers, fan out work, synthesize other reviewers, integrate findings into an artifact, emit a typed handoff, or review implemented code.
+{{else}}
+Do not fan out work, synthesize other reviews, integrate findings into an artifact, emit a typed handoff, or review implemented code.
+{{end}}

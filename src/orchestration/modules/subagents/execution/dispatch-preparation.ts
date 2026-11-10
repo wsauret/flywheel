@@ -10,7 +10,7 @@ import type { AgentDefinition } from "../../../../infra/agent-definition.js"
 import type { ProviderRequestOptions } from "../../../../infra/llm/provider-options.js"
 import type { AgentOptions } from "../../../agent-runtime/types.js"
 import { cloneInheritedToolNames, toolRegistryFromComposition, toolModuleRequirements } from "../../../agent-runtime/tools/tool-registry.js"
-import { grantedSubagentTypes, personaToolNames } from "../../../../workflows/agents/subagent-reachability.js"
+import { dispatchableAgents, grantedSubagentTypes, personaToolNames } from "../../../../workflows/agents/subagent-reachability.js"
 import { personaInstructions } from "../../../../workflows/agents/persona-instructions.js"
 import { attendedClosureMembers } from "../../../../workflows/skill-closure.js"
 import type { PromptKind } from "../../../agent-runtime/system-prompt.js"
@@ -53,7 +53,9 @@ export async function prepareSubagentTools(input: {
   readonly grantedTypes: ReadonlySet<string>
 } | { readonly ok: false; readonly error: SubagentResult }> {
   const { agent, context, deps, childDepth, continuation } = input
-  const grantedTypes = grantedSubagentTypes(agent, deps.agentRegistry)
+  // A grant reaches only the agents a dispatch can start: a type that is off leaves it (PI-AGENT-044).
+  const dispatchable = dispatchableAgents(deps.agentRegistry, deps.definitionAvailability.availablePersonas)
+  const grantedTypes = grantedSubagentTypes(agent, dispatchable)
   const allowNestedDispatch = childDepth < 3
   const promptKind: PromptKind = agent.kind === "general" ? deps.parentPromptKind : "subagent"
   // The deepest child sees the dispatch and process tools and has their calls
@@ -86,7 +88,7 @@ export async function prepareSubagentTools(input: {
     toolNames = [...cloneInheritedToolNames(context.availableTools, toolRegistryFromComposition(deps.moduleSelection())), "handoff", ...CHECKPOINT_TOOL_NAMES]
     if (grantedTypes.size > 0) toolNames.push("subagent", "process")
   } else {
-    toolNames = availableToolNames(personaToolNames(agent, deps.agentRegistry), deps.moduleSelection())
+    toolNames = availableToolNames(personaToolNames(agent, dispatchable), deps.moduleSelection())
   }
   if (!allowNestedDispatch) toolNames = toolNames.filter((name) => name !== "subagent" && name !== "process")
   // The child's own first request plans its tools from this grant, so its
@@ -125,7 +127,7 @@ export async function prepareSubagentDispatch(
   deps: SubagentDispatchDeps,
   continuation?: ContinuationTarget,
 ): Promise<DispatchPreparation> {
-  const validation = validateDispatchInput(input, deps.agentRegistry)
+  const validation = validateDispatchInput(input, deps.agentRegistry, [...dispatchableAgents(deps.agentRegistry, deps.definitionAvailability.availablePersonas).keys()], context.capabilities)
   if (!validation.ok) return { ok: false, error: validation.error }
   let executionCwd = context.executionCwd
   // The child's cwd is a per-agent value that never joins the tree's shared
@@ -147,7 +149,9 @@ export async function prepareSubagentDispatch(
 
   const { agentType, prompt, agent, fork } = validation.dispatch
   const availability = deps.definitionAvailability.personas.get(agentType)
-  if (!continuation && availability?.available === false) {
+  // A continuation keeps the modules its first dispatch was admitted with, but an agent type turned off since then
+  // keeps it from resuming (PI-CAP-022).
+  if (availability?.available === false && (!continuation || availability.off.length > 0)) {
     return { ok: false, error: { outcome: "error", content: `Subagent '${agentType}' cannot run: ${availability.reason ?? "it is unavailable"}. Dispatch another agent type or do the work directly.` } }
   }
   const access = context.capabilityAccess ?? NO_CAPABILITY_ACCESS

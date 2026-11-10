@@ -20,7 +20,11 @@ A `dedupe` `by` and a `quorum` `group_by` compare their values as exact strings,
 - Declare one key field in the agent's output contract, and state its exact format in its description, such as ``Exactly `<path>:<line>`, such as `src/a.ts:42`. Build it only from path and line.`` Declare each fact that the format names as a field of its own.
 - A later agent that copies a key, such as an agent that names the finding of each verdict, copies it character for character.
 - Trade-off: two reports of one bug on different lines stay separate, so a later triage or report phase merges them by cause. Two different defects on one line share a key, and only the first survives. Each other one goes to `dropped`, which holds only its key, the key of its agent, and the reason, never the finding itself, so no later phase verifies or repairs it. Tell each finder to put every defect of one line in one finding. That does not stop two agents from reporting different defects on one line, so give the phase that acts on the findings the whole handoffs (next bullet), and tell it to look up each `dropped` entry there.
+{{if:type:reviewer}}
 - `dedupe`, `top`, and `quorum` keep only the fields of each item in their lists, not the rest of each handoff. `collect` and `coverage` carry every whole handoff. After a phase of named agents, a later phase receives the rest, such as each reviewer's verdict on the recorded deviations, only through a `reads` that names each agent beside the phase, such as `reads: [review, quality, elegance]`. `reads` cannot name the agents of a phase over a list, so when a later phase needs more than the kept items, keep that phase's default `collect` join and let one agent merge the findings.
+{{else}}
+- `dedupe`, `top`, and `quorum` keep only the fields of each item in their lists, not the rest of each handoff. `collect` and `coverage` carry every whole handoff. After a phase of named agents, a later phase receives the rest, such as each agent's verdict on the recorded deviations, only through a `reads` that names each agent beside the phase, such as `reads: [review, quality, elegance]`. `reads` cannot name the agents of a phase over a list, so when a later phase needs more than the kept items, keep that phase's default `collect` join and let one agent merge the findings.
+{{end}}
 
 ## Composition rules
 

@@ -166,7 +166,13 @@ A module id that the protocol vocabulary knows but the installed catalog does no
 
 ## ARCH-STRUCTURE-031: Module definitions load when installed and show when enabled
 
-A module's skill and persona definitions load whenever the module is installed, and each one requires its module, so turning the module off hides them without unloading them. A bundled method that only one module's capability can run ships in that module's definitions. A persona's declared tools are a ceiling, so a module that is off removes its tools from the persona and never hides the persona. The skill catalog, skill loads, skill commands, the persona roster, and dispatch read this one availability. Workflow files have no catalog membership.
+A module's skill and persona definitions load whenever the module is installed, and each one requires its module, so turning the module off hides them without unloading them. A bundled method that only one module's capability can run ships in that module's definitions. A persona's declared tools are a ceiling, so a module that is off removes its tools from the persona and never hides the persona. Workflow files have no catalog membership.
+
+## ARCH-STRUCTURE-044: One availability decides every use of a definition
+
+One owner decides whether a skill or persona definition is available. A persona is available when its module is enabled and its agent type is on. A skill is available when its module is enabled and every agent type that it declares is available. The skill catalog, skill loads, skill commands, the persona roster, dispatch, workflow launch, an agent that runs as a persona, and the model settings read this one availability. No reader treats the installed persona list as the list of types that can run.
+Because: a reader that takes the installed list offers or runs a type that another surface refuses.
+Not: a separate check of the turned-off types at each reader.
 
 ## ARCH-STRUCTURE-041: Definition loading is kernel; optional reconciliation is declared
 

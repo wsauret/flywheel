@@ -16,8 +16,8 @@
  *  Capability markers (`{{if:}}`, ARCH-CONTEXT-033) are checked once, against
  *  everything the source catalog installs: every bundled body after its
  *  `{{ref:}}` expansion, every shared reference, every bundled persona, and
- *  every bundled agent asset must balance and name only known terms, and no
- *  resource may hold one, because resources go out byte for byte. */
+ *  every bundled agent asset and every resource of a bundled package must
+ *  balance and name only known terms. */
 
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -38,6 +38,8 @@ import { installedDefinitionBundles, installModuleCatalog } from "../src/orchest
 import { composeFirstPartyModules, SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js";
 import { installedPersonaToolEntries } from "../src/orchestration/tool-catalog.js";
 import { UNATTENDED_CHAT_TERM } from "../src/orchestration/agent-runtime/system-prompt.js";
+import { agentTypeOf } from "../src/orchestration/app-service/definition-availability.js";
+import { parentRoleId } from "../src/orchestration/config/roles.js";
 
 interface CheckDirectories {
   readonly projectRoot: string;
@@ -59,30 +61,37 @@ function brokenFindings(registry: ProjectDefinitionRegistry, directories: CheckD
     .map((finding) => `bundled-skill: ${finding.skill}: ${finding.detail}`);
 }
 
-const MARKER_LINE = /^\{\{(?:if:[^}]*|else|end)\}\}$/u;
+const IF_MARKER = /^\{\{if:([^}]*)\}\}$/u;
 
 /** Why one text's capability markers would not render: an unbalanced marker, or a term no installed tool, skill,
  *  or persona answers. A tool term is a tool that a module contributes; kernel tools are always present, so they are
  *  never terms (ARCH-STRUCTURE-032). */
 function markerFindings(subject: string, text: string, known: (term: string) => boolean): readonly string[] {
-  const terms: string[] = [];
   try {
-    // A check that never holds tests every term of every block.
-    renderCapabilityText(text, (term) => { terms.push(term); return false; });
+    renderCapabilityText(text, () => false);
   } catch (error) {
     return [`${subject}: ${errorMessage(error)}`];
   }
+  // Rendering stops at the first term of an alternative that fails, so the terms are read from every marker line.
+  const terms = text.split("\n").flatMap((line) => IF_MARKER.exec(line.trim())?.[1]?.split(/[|&]/u).map((term) => term.trim().replace(/^!/u, "")) ?? []);
   return [...new Set(terms)].filter((term) => !known(term)).map((term) => `${subject}: capability marker names unknown term "${term}"`);
 }
 
-/** Whether `term` names a tool that an installed module contributes, or a skill or persona of `registry`. */
+/** Whether `term` names a tool that an installed module contributes, a skill or persona of `registry`, or the agent
+ *  type of one of its personas or the parent role that covers it. */
 export function knownCapabilityTerm(registry: ProjectDefinitionRegistry): (term: string) => boolean {
   const skills = registry.skills().skills;
   const personas = registry.personas();
+  const types = new Set([...personas.values()].flatMap((persona) => {
+    const type = agentTypeOf(persona);
+    const parent = parentRoleId(type);
+    return parent === undefined ? [type] : [type, parent];
+  }));
   const tools = new Set(composeFirstPartyModules().contributions.flatMap((contribution) => contribution.domain === "tools" ? [contribution.value.name] : []));
   return (term) => {
     if (term.startsWith("skill:")) return skills.has(term.slice("skill:".length));
     if (term.startsWith("persona:")) return personas.has(term.slice("persona:".length));
+    if (term.startsWith("type:")) return types.has(term.slice("type:".length));
     return tools.has(term);
   };
 }
@@ -105,10 +114,7 @@ function capabilityMarkerFindings(registry: ProjectDefinitionRegistry, roots: re
     const dir = bundledDir(skill, roots);
     if (dir === undefined) continue;
     findings.push(...markerFindings(`bundled-skill: ${skill.id}`, resolveSkillBody(skill), known));
-    for (const resource of skill.resources) {
-      const lines = readFileSync(join(dir, resource.path), "utf8").split("\n");
-      if (lines.some((line) => MARKER_LINE.test(line.trim()))) findings.push(`bundled-skill: ${skill.id}: resource ${resource.path} holds a capability marker; resources go out byte for byte, so condition the body instead`);
-    }
+    for (const resource of skill.resources) findings.push(...markerFindings(`bundled-skill: ${skill.id}: resource ${resource.path}`, readFileSync(join(dir, resource.path), "utf8"), known));
   }
   for (const [name, text] of loadSkillReferences(BUNDLED_REFERENCE_DIR)) findings.push(...markerFindings(`bundled-reference: ${name}`, text, known));
   for (const persona of registry.personas().values()) {

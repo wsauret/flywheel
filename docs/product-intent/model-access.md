@@ -184,7 +184,7 @@ People can choose the model and reasoning effort used for automatic session titl
 
 ## PI-MODEL-020: Current subagent model visibility
 
-Linked subagent cards and child viewers show the model and reasoning effort that serve the child now, and update when either changes. A model or effort change in a child viewer applies only to that child, at its next request. An unreachable or unsupported setting falls back to the defaults, and settings never refuse a subagent dispatch.
+Linked subagent cards and child viewers show the model and reasoning effort that serve the child now, and update when either changes. A model or effort change in a child viewer applies only to that child, at its next request. An unreachable or unsupported model or effort setting falls back to the defaults and never refuses a subagent dispatch.
 
 ## PI-MODEL-021: Model selection applies at each request
 

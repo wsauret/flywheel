@@ -9,7 +9,7 @@ import { composeRealmModuleSnapshot } from "../../../../../src/orchestration/mod
 import { createLearningReview } from "../../../../../src/orchestration/modules/learning/learning-review.js";
 import { verifySkillSemanticAudit } from "../../../../../src/orchestration/modules/learning/skill-semantic-audit.js";
 import { BUNDLED_SKILL_DIR } from "../../../../../src/workflows/skill-source-inventory.js";
-import { renderSkillClosure } from "../../../../../src/workflows/skill-context.js";
+import { renderSkillClosure } from "../../../../../src/workflows/skill-render.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../src/workflows/skills.js";
 import { publishSkillRevision, SKILL_FILE, type SkillRegistryRevision } from "../../../../../src/workflows/skill-schema.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";

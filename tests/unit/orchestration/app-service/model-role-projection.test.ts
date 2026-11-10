@@ -1,13 +1,17 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { publishedModelRoles } from "../../../../src/orchestration/app-service/model-role-projection.js"
+import { modelRoleAdmission, publishedModelRoles } from "../../../../src/orchestration/app-service/model-role-projection.js"
+import { definitionAvailabilityOf } from "../../../../src/orchestration/app-service/definition-availability.js"
 import { RuntimeModelRolesResultSchema } from "../../../../src/protocol/model-role-protocol-schemas.js"
-import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../src/orchestration/modules.js"
-import { repoModules } from "../../../helpers/project-definitions.js"
+import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js"
+import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
+
+const rolesOf = (composition: FirstPartyModuleComposition) =>
+  publishedModelRoles(modelRoleAdmission(composition, definitionAvailabilityOf(repoDefinitions().captureRevision(), composition.enabledModuleIds, [])))
 
 describe("published model roles", () => {
   test("publishes Workflow first in the agents group and rejects retired wire groups", () => {
-    const roles = publishedModelRoles(composeFirstPartyModules())
+    const roles = rolesOf(composeFirstPartyModules())
     expect(roles.filter(({ group }) => group === "agents")[0]).toMatchObject({ id: "workflow-agent", label: "Workflow", description: "Runs the agents of workflows." })
     expect(roles.some(({ id }) => id === "step-agent")).toBe(false)
     expect(Schema.decodeUnknownSync(RuntimeModelRolesResultSchema)({ roles })).toEqual({ roles })
@@ -18,10 +22,10 @@ describe("published model roles", () => {
     })).toThrow()
   })
   test("lists module-owned roles only while their module is installed and enabled", () => {
-    const enabled = publishedModelRoles(composeFirstPartyModules(repoModules))
+    const enabled = rolesOf(composeFirstPartyModules(repoModules))
     expect(enabled.find(({ id }) => id === "benchmark-judge")).toMatchObject({ label: "Benchmark Judge", group: "background" })
     for (const composition of [composeFirstPartyModules(repoModules, ["development"]), composeFirstPartyModules(SHIPPED_MODULES)]) {
-      const roles = publishedModelRoles(composition)
+      const roles = rolesOf(composition)
       expect(roles.some(({ id }) => id === "benchmark-judge")).toBe(false)
       expect(roles.some(({ id }) => id === "chat")).toBe(true)
       expect(roles.some(({ id }) => id === "subagent-summary")).toBe(true)

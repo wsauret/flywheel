@@ -90,7 +90,7 @@ Not: narrowing an agent's tool set by persona instead of refusing ungranted call
 
 ## ARCH-CONTEXT-033: Prompt text names only capabilities its reader holds
 
-Flywheel-owned text that a model reads names an optional capability only in that capability's own text, or where it renders from a capability check that holds it. Shared text names the goal, such as asking the person or waiting for managed work. A method that needs one capability ships in that capability's definitions. Text that every agent of a chat tree shares checks the tree's module capture. Text that one agent alone reads checks the tools that it may call.
+An agent type that a person can turn off is an optional capability. Flywheel-owned text that a model reads names an optional capability only in that capability's own text, or where it renders from a capability check that holds it. Shared text names the goal, such as asking the person or waiting for managed work. A method that needs one capability ships in that capability's definitions. Text that every agent of a chat tree shares checks the tree's capture of modules and agent types. Text that one agent alone reads checks the tools that it may call.
 Because: guidance about a missing capability makes an agent call refused tools or follow a method that it cannot run.
 Not: A separate capability flag kept at each render site.
 

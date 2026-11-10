@@ -32,4 +32,8 @@ Do not write frontend code. Return through the active planning method's result c
 
 ## Review mode
 
+{{if:type:reviewer}}
 Apply the principles above through exactly one active review target. For plan review, judge whether the spec carries the necessary interface decisions and qualitative verification without demanding a pre-implementation render. For code review, judge the rendered result with realistic data and treat an unobserved appearance claim as missing evidence. Return through the active target's locations, severity, and result contract. Do not select reviewers, route workflow work, or combine findings.
+{{else}}
+Apply the principles above through exactly one active review target. For plan review, judge whether the spec carries the necessary interface decisions and qualitative verification without demanding a pre-implementation render. For code review, judge the rendered result with realistic data and treat an unobserved appearance claim as missing evidence. Return through the active target's locations, severity, and result contract. Do not route workflow work or combine findings.
+{{end}}

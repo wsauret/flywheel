@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
+import { repoModules } from "../../../helpers/project-definitions.js"
 import { Redacted } from "effect"
 import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js"
-import type { ModelFamily } from "../../../../src/infra/llm/model-family.js"
 import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
@@ -16,20 +15,15 @@ import type { RoleAssignments } from "../../../../src/orchestration/session/sche
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { fakeModelInfos, fakeModelsClient, makeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js"
 import { chatEntry } from "./app-service-doubles.js"
-import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js"
-import type { DefinitionAvailabilityOwner } from "../../../../src/orchestration/app-service/definition-availability.js"
-import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
-import type { ModuleId } from "../../../../src/orchestration/modules.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js"
 import { captureRoleAssignments } from "../../../../src/orchestration/config/session-role-resolver.js"
-import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js"
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js"
 
-import { roleSlot } from "../../../../src/orchestration/config/role-selection.js"
+import { defaultRoleSlots, roleSlot } from "../../../../src/orchestration/config/role-selection.js"
 import { authProviders } from "../../../helpers/auth-context.js"
-import { managerDouble, type ManagerDouble } from "./model-assignment-service-fixtures.js"
+import { AVAILABLE_MODELS, availabilityOwner, EXPLORER, managerDouble, pickerEligibility, providerModelCatalogs, type ManagerDouble } from "./model-assignment-service-fixtures.js"
+import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import { testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 const temporaryDirectory = temporaryDirectories()
@@ -55,45 +49,14 @@ function transientChatStore() {
   }
 }
 
-const EXPLORER: AgentDefinition = {
-  kind: "persona",
-  name: "explorer",
-  description: "Investigates.",
-  systemPrompt: "Investigate.",
-  tools: ["read"],
-  role: "explorer",
-  maxTurns: 20,
-}
-
-function availabilityOwner(capabilities: readonly ModuleId[]): Promise<DefinitionAvailabilityOwner> {
-  const skills = testSkillRevision([testSkill("plan"), testSkill("fly.spec-create"), testSkill("fly.spec-review")])
-  const personas = { revision: "explorer", personas: new Map([["explorer", EXPLORER]]), resolutions: [] }
-  const definitionRevision = {
-    ...repoDefinitions().captureRevision(),
-    skills,
-    personaRevision: personas,
-    personas: personas.personas,
-  }
-  return createDefinitionAvailability({
-    definitions: { captureRevision: () => definitionRevision },
-    modules: repoModules,
-    capabilities: { state: () => {
-      const state = decodeModuleState("")
-      return { ...state, capabilities, moduleIds: capabilities }
-    } },
-  })
-}
-
-const FULL_AVAILABILITY = await availabilityOwner(["workflows", "skills", "subagents", "learning", "background-commands"])
+const MODULES = ["workflows", "skills", "subagents", "learning", "background-commands"] as const
+const FULL_AVAILABILITY = await availabilityOwner(MODULES)
 
 const AUTH: AuthContext = {
   providers: authProviders({ apiKeys: { openai_api: "[redacted secret]" } }),
   credentialLineages: {}, droppedCredentials: [],
 }
 
-const AVAILABLE_MODELS: ReadonlyMap<ModelFamily, ReadonlySet<string>> = new Map([
-  ["openai", new Set(["gpt-5.5", "gpt-5-mini"])],
-])
 const ASSIGNMENT_MODELS_CLIENT = makeModelsClient({
   "gpt-5.5": modelInfo("openai", "gpt-5.5", "gpt", 5, 30, "2026-04-01"),
   "gpt-5-mini": modelInfo("openai", "gpt-5-mini", "gpt-mini", 0.25, 2, "2026-04-01"),
@@ -378,30 +341,6 @@ effort = "high"
   })
 })
 
-function pickerEligibility() {
-  return new Map([...AVAILABLE_MODELS.values()].flatMap((models) => [...models].map((model) => [model, {
-    explicitlyEnabled: false,
-    transport: "openai-responses" as const,
-    offering: {
-      candidate: { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" },
-      wireModelId: model,
-      dataUse: "standard",
-      transport: "openai-responses",
-      resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-    },
-  }] as const)))
-}
-
-function providerModelCatalogs() {
-  return new Map([["openai_api", {
-    catalog: new Set(["gpt-5.5", "gpt-5-mini"]),
-    curatedDefault: new Set(["gpt-5.5", "gpt-5-mini"]),
-    enabled: new Set<string>(),
-    disabled: new Set<string>(),
-    effective: new Set(["gpt-5.5", "gpt-5-mini"]),
-  }]] as const)
-}
-
 describe("defaults-and-session write scope", () => {
   test("save writes the default and mirrors it into the session snapshot", async () => {
     const manager = managerDouble()
@@ -582,17 +521,76 @@ describe("defaults-and-session write scope", () => {
     const slot = roleSlot("benchmark-judge")
     await service.saveEffort({ scope: { kind: "defaults" }, slot, model: "gpt-5-mini", effort: "medium" })
     const saved = readFileSync(configPath, "utf8")
-    const query = { scope: { kind: "defaults" }, slots: [roleSlot("chat"), roleSlot("reviewer"), slot] } as const
-    expect((await service.loadAssignments(query)).map((row) => row.slot.roleId)).toEqual(["chat", "reviewer", slot.roleId])
+    const query = { scope: { kind: "defaults" }, slots: [roleSlot("chat"), roleSlot("explorer"), slot] } as const
+    expect((await service.loadAssignments(query)).map((row) => row.slot.roleId)).toEqual(["chat", "explorer", slot.roleId])
     for (const next of [composeFirstPartyModules(repoModules, ["development"]), composeFirstPartyModules()]) {
       composition = next
       expect((await service.modelRoles()).roles.some(({ id }) => id === slot.roleId)).toBe(false)
-      expect((await service.loadAssignments(query)).map((row) => row.slot.roleId)).toEqual(["chat", "reviewer"])
+      expect((await service.loadAssignments(query)).map((row) => row.slot.roleId)).toEqual(["chat", "explorer"])
       expect(readFileSync(configPath, "utf8")).toBe(saved)
       expect(loadConfig(configPath, {}).config.profiles.default?.roles[slot.roleId]).toEqual({ model: "gpt-5-mini", effort: "medium" })
     }
     composition = composeFirstPartyModules(repoModules)
     expect((await service.loadAssignments(query)).find((row) => row.slot.roleId === slot.roleId)).toMatchObject({ model: "gpt-5-mini", effort: "medium" })
+  })
+
+  test("leaves out and refuses every seat of an agent type that is off, and keeps its saved model for when it is on", async () => {
+    let off: readonly string[] = []
+    // The prune keeps every core role whatever is installed, so the custom role is the one whose section it would
+    // delete if it read the available personas instead of the installed ones.
+    const persona = (name: string, role: string): AgentDefinition => ({ ...EXPLORER, name, role })
+    const availability = await availabilityOwner(MODULES, () => off, [EXPLORER, persona("triager", "triage"), persona("advisor", "advisor"), persona("reviewer-code-security", "reviewer-security")])
+    const { service, configPath } = await compoundService(managerDouble(), undefined, availability)
+    for (const roleId of ["explorer", "triage", "advisor"]) await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "high" })
+    const saved = readFileSync(configPath, "utf8")
+    const typed = ["explorer", "triage", "advisor", "reviewer", "reviewer-security", "brief.plan-flow.plan.persona.explorer"]
+    // The terminal's rows, a custom role, and a brief seat of a persona role.
+    const query = { scope: { kind: "defaults" }, slots: [...defaultRoleSlots(), roleSlot("triage"), roleSlot("brief.plan-flow.plan.persona.explorer")] } as const
+    const shown = async () => ({ rows: (await service.loadAssignments(query)).map((row) => row.slot.roleId), published: (await service.modelRoles()).roles.map(({ id }) => id) })
+    const on = await shown()
+    expect(on.rows).toEqual(expect.arrayContaining(typed))
+    expect(on.published).toEqual(expect.arrayContaining(["explorer", "advisor", "reviewer-security"]))
+    off = ["explorer", "triage", "advisor", "reviewer"]
+    await availability.refresh()
+    const hidden = await shown()
+    for (const ids of [hidden.rows, hidden.published]) expect(ids.filter((id) => typed.includes(id) || id.startsWith("reviewer"))).toEqual([])
+    expect(hidden.rows).toContain("chat")
+    for (const roleId of ["explorer", "reviewer"]) {
+      const slot = roleSlot(roleId)
+      const refusal = `agent type ${roleId} is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on`
+      expect(service.listModelOptions({ scope: { kind: "defaults" }, slot })).rejects.toThrow(refusal)
+      expect(service.listEffortOptions({ scope: { kind: "defaults" }, slot, model: "gpt-5-mini" })).rejects.toThrow(refusal)
+      expect(service.saveEffort({ scope: { kind: "defaults" }, slot, model: "gpt-5.5", effort: "low" })).rejects.toThrow(refusal)
+    }
+    expect(readFileSync(configPath, "utf8")).toBe(saved)
+    off = []
+    await availability.refresh()
+    expect(await shown()).toEqual(on)
+    const rows = await service.loadAssignments(query)
+    for (const roleId of ["explorer", "advisor"]) expect(rows.find((row) => row.slot.roleId === roleId)).toMatchObject({ model: "gpt-5-mini", effort: "high" })
+  })
+
+  test("a reset while an agent type is off resets the other roles and keeps the off role's saved model in the profile and the session", async () => {
+    let off: readonly string[] = []
+    // The custom role triage is one whose section the prune would delete if it read the reset's roles instead of the
+    // installed ones.
+    const availability = await availabilityOwner(MODULES, () => off, [EXPLORER, { ...EXPLORER, name: "advisor", role: "advisor" }, { ...EXPLORER, name: "triager", role: "triage" }])
+    const manager = managerDouble()
+    const { service, configPath } = await compoundService(manager, undefined, availability)
+    for (const roleId of ["chat", "advisor", "triage"]) await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "high" })
+    manager.seed("chat-new", { chat: { model: "gpt-5-mini", effort: "low" }, advisor: { model: "gpt-5-mini", effort: "low" } })
+    off = ["advisor", "triage"]
+    await availability.refresh()
+    expect(await service.resetDefaults({ scope: { kind: "defaults-and-session", sessionId: "chat-new" }, slots: defaultRoleSlots() })).toMatchObject({ mirrored: true })
+    const roles = loadConfig(configPath, {}).config.profiles.default?.roles
+    expect([roles?.chat, roles?.advisor]).toEqual([undefined, { model: "gpt-5-mini", effort: "high" }])
+    expect(readFileSync(configPath, "utf8")).toContain('[profiles.default.roles.triage]\nmodel = "gpt-5-mini"\neffort = "high"')
+    expect((await manager.read("chat-new"))?.roleAssignments).toEqual({ defaults: {}, overrides: { advisor: { model: "gpt-5-mini", effort: "low" } } })
+    off = []
+    await availability.refresh()
+    for (const [scope, effort] of [[{ kind: "defaults" }, "high"], [{ kind: "session", sessionId: "chat-new" }, "low"]] as const) {
+      expect((await service.loadAssignments({ scope, slots: [roleSlot("advisor")] }))[0]).toMatchObject({ model: "gpt-5-mini", effort })
+    }
   })
 
   test("refuses profile brief saves when workflow modules are disabled", async () => {

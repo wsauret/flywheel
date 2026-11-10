@@ -13,7 +13,7 @@ import { repoDefinitions } from "../../helpers/project-definitions.js";
 
 const temporary = temporaryDirectories();
 const revision = repoDefinitions().captureRevision();
-const CHAT_AUTHORITY = { toolActions: new Set(ToolActionSchema.literals.filter((action) => action !== "task_subagent")), personas: new Set<string>() };
+const CHAT_AUTHORITY = { toolActions: new Set(ToolActionSchema.literals.filter((action) => action !== "task_subagent")), personas: new Set<string>(), unavailable: new Map<string, string>() };
 
 interface AgentCall {
   readonly prompt: string;

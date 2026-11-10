@@ -11,7 +11,7 @@ import type { RecallInput, RecallResult } from "../../protocol/conversation-reca
 import { resolveSessionDir } from "../../infra/paths.js"
 import type { AttemptRow } from "../../workflows/view/types.js"
 import type { SkillRegistryRevision } from "../../workflows/skill-schema.js"
-import type { AgentDefinition } from "../../infra/agent-definition.js"
+import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
 import type { ResolvedAgent } from "../../workflows/agent-resolution.js"
 import { agentPersonaRun, personaTask } from "./agent-persona.js"
 import type { AgentOutput } from "../../workflows/vm/agent-outcome.js"
@@ -111,8 +111,9 @@ export interface WorkerCallbackDeps {
    *  runner this worker builds so deterministic required-skill composition,
    *  for the agent and for any persona it dispatches, uses the pinned bytes. */
   skills: SkillRegistryRevision
-  /** Captured child grants keyed by agent record (`definitionId`). */
-  personas: ReadonlyMap<string, AgentDefinition>
+  /** The definition availability an agent starts under, over the bound definition revision: which persona it may run
+   *  as, which ones it may dispatch, and the installed personas that scope its dispatch. */
+  availability: () => DefinitionAvailabilitySnapshot
   eventStore: AsyncEventStateReadSurface
   projectionReader: AsyncEventStateReadSurface
   eventWriter: AsyncEventWriter
@@ -252,7 +253,7 @@ export function createWorkerCallback(
     // An agent whose record names a persona runs as that persona runs when a
     // subagent dispatch starts it, on the same system prompt and tool
     // surface as every other agent (refer to `agentPersonaRun`).
-    const persona = agentPersonaRun({ agent: resolvedAgent, personas: opts.personas, skills: opts.skills, sessionMessaging: opts.sessionMessaging !== undefined, modules: opts.moduleSelection })
+    const persona = agentPersonaRun({ agent: resolvedAgent, availability: opts.availability(), skills: opts.skills, sessionMessaging: opts.sessionMessaging !== undefined, modules: opts.moduleSelection })
 
     const member = await workflowMembershipReader(opts.projectionReader).attempt(workflowId, attempt.id)
     if (!member || member.conversationId !== conversationId) throw new Error(`Workflow attempt ${attempt.id} has no committed session for ${conversationId}`)
@@ -449,7 +450,7 @@ export function createWorkerCallback(
     }): AgentHostContextOptions => {
       const { selectedModel, providerSessionKey } = run
       const { restoredWait, continuedWait } = run.waits ?? {}
-      const allowedSubagentTypes = persona?.allowedSubagentTypes ?? new Set(workflowAgentSubagents(resolvedAgent))
+      const allowedSubagentTypes = persona?.allowedSubagentTypes ?? new Set(workflowAgentSubagents(resolvedAgent, opts.availability().availablePersonas))
       const busBridge = createRunnerBusBridge({ emit: emitAgent, sessionId })
       let runnerAssembled = false
       return {
@@ -463,7 +464,7 @@ export function createWorkerCallback(
         resolveRoles,
         allowedSubagentTypes,
         skills: opts.skills,
-        agentRegistry: opts.personas,
+        agentRegistry: opts.availability().definitionRevision.personas,
         effort: selectedModel?.effort,
         requestSelection: (currentRoles) => selectModel(currentRoles) ?? { roleId: "workflow-agent" },
         ...(persona === undefined ? {} : { toolGrant: persona.toolGrant, maxLLMCalls: persona.maxTurns, ...(persona.readOnly ? { readOnly: true } : {}) }),

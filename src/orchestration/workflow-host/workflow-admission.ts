@@ -83,6 +83,10 @@ export async function admitWorkflowOperation<R extends ResolvedWorkflowDefinitio
   const { workflow } = resolved
   const attended = input.unattended === true ? attendedComposition(workflow, revision) : undefined
   if (attended !== undefined) return { ok: false, reason: `${input.operation} is unavailable: ${attended}` }
+  // A launch and each later start of the run judge the types turned off now, so a Resume after a type was turned off
+  // is refused as one after a module was turned off is.
+  const typesOff = captured.workflowTypeRefusal(workflow)
+  if (typesOff !== undefined) return { ok: false, reason: `${input.operation} is unavailable: ${typesOff}` }
   // The whole closure in one request: a worker of this definition continues on
   // this grant, so anything the definition transitively needs must be
   // authorized by it rather than re-admitted mid-run.

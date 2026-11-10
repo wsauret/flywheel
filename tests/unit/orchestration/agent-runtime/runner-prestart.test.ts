@@ -249,10 +249,10 @@ describe("a pre-start's request preparation", () => {
 
     await prepare(options, client).outcome
     await prepare(options, client).outcome
-    const later = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true, allowPersistentProcesses: false }))
+    const later = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true, allowPersistentProcesses: false, disabledTypes: [] }))
     later.release()
     await session.close()
-    const afterClose = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true, allowPersistentProcesses: false }))
+    const afterClose = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true, allowPersistentProcesses: false, disabledTypes: [] }))
     afterClose.release()
 
     expect(trees).toHaveLength(1)

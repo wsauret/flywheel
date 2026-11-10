@@ -25,7 +25,7 @@ import { SHELL_CAPABILITIES } from "../../../../../helpers/prompt-capabilities.j
 
 const directory = temporaryDirectories();
 /** The chat tree of every agent of this suite, which the suite holds while it runs. */
-const TREE = holdSharedTree("tree", () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true, allowPersistentProcesses: false })).tree;
+const TREE = holdSharedTree("tree", () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true, allowPersistentProcesses: false, disabledTypes: [] })).tree;
 
 /** The fields of an agent file row that the drift test reads. */
 const AgentFileRow = Schema.Struct({

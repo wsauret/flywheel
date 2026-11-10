@@ -1,7 +1,9 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
+import { Log } from "../../../../src/infra/log.js"
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import type { ModuleId } from "../../../../src/orchestration/modules.js"
-import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js"
+import { configuredAgentTypes, createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../src/orchestration/app-service/definition-availability.js"
+import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import { moduleDescriptor } from "../../../../src/orchestration/config/module-descriptor.js"
 import type { CapabilityGrant } from "../../../../src/orchestration/config/module-policy.js"
 import type { PersonaRegistryRevision } from "../../../../src/workflows/agents/registry.js"
@@ -11,6 +13,11 @@ import type { WorkflowDefinition } from "../../../../src/workflows/workflow-sche
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
 import { nonEmpty } from "../../../helpers/non-empty.js"
+import { temporaryDirectories } from "../../../helpers/directories.js"
+import { mkdirSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
+
+const temporaryDirectory = temporaryDirectories()
 
 const persona = (name: string, role: string, overrides: Partial<Extract<AgentDefinition, { kind: "persona" }>> = {}): AgentDefinition => ({
   kind: "persona",
@@ -83,6 +90,7 @@ function owner(
     readonly personas?: PersonaRegistryRevision
     readonly skills?: SkillRegistryRevision
     readonly error?: string
+    readonly disabledTypes?: readonly string[]
   } = {},
 ) {
   const personas = options.personas ?? personaRevision(reviewer, writer)
@@ -93,6 +101,7 @@ function owner(
       captureRevision: () => definitionRevision,
     },
     capabilities: { state: () => moduleDescriptor(capabilities, capabilities, true, options.error) },
+    agentTypes: { disabled: () => options.disabledTypes ?? [] },
   })
 }
 
@@ -271,5 +280,145 @@ describe("definition availability", () => {
     const availability = await owner(["skills", "subagents", "learning"])
     const published = availability.snapshot()
     expect(await availability.refresh()).toBe(published)
+  })
+})
+
+describe("agent types turned off", () => {
+  const ALL: readonly ModuleId[] = ["workflows", "skills", "subagents", "learning"]
+  const general: AgentDefinition = { kind: "general", name: "general", description: "A clone.", maxTurns: 20, subagentRoles: ["explorer"] }
+  const explorer = persona("explorer", "explorer")
+  const advisor = persona("advisor", "advisor")
+  const security = persona("reviewer-code-security", "reviewer-security")
+  const quality = persona("reviewer-code-quality", "reviewer-quality")
+  const custom = persona("triager", "triage")
+  const personas = personaRevision(general, explorer, advisor, security, quality, custom)
+  const offReason = (type: string) => `agent type ${type} is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on`
+  const available = async (disabledTypes: readonly string[], skills?: SkillRegistryRevision) =>
+    [...(await snapshotOf(ALL, { personas, disabledTypes, ...(skills ? { skills } : {}) })).availablePersonas.keys()].sort()
+
+  test("a role turns off its personas, with a reason that names the type and the key", async () => {
+    const snapshot = await snapshotOf(ALL, { personas, disabledTypes: ["advisor"] })
+    expect(snapshot.personas.get("advisor")).toMatchObject({ available: false, missing: [], reason: offReason("advisor") })
+    expect(snapshot.disabledTypes).toEqual(["advisor"])
+    expect([...snapshot.availablePersonas.keys()].sort()).toEqual(["explorer", "general", "reviewer-code-quality", "reviewer-code-security", "triager"])
+  })
+
+  test("the parent role reviewer turns off every reviewer role, and one reviewer role turns off alone", async () => {
+    expect(await available(["reviewer"])).toEqual(["advisor", "explorer", "general", "triager"])
+    const parent = await snapshotOf(ALL, { personas, disabledTypes: ["reviewer"] })
+    expect(parent.personas.get("reviewer-code-security")?.reason).toBe(offReason("reviewer"))
+    expect(await available(["reviewer-security"])).toEqual(["advisor", "explorer", "general", "reviewer-code-quality", "triager"])
+  })
+
+  test("general turns off the general agent, and a user persona's own role turns it off", async () => {
+    expect(await available(["general"])).toEqual(["advisor", "explorer", "reviewer-code-quality", "reviewer-code-security", "triager"])
+    expect(await available(["triage"])).toEqual(["advisor", "explorer", "general", "reviewer-code-quality", "reviewer-code-security"])
+  })
+
+  test("a type that is off leaves a grant, and the persona that grants it stays available", async () => {
+    // general grants the explorer role.
+    expect(await available(["explorer"])).toEqual(["advisor", "general", "reviewer-code-quality", "reviewer-code-security", "triager"])
+  })
+
+  test("a skill that declares an agent whose type is off is unavailable with that reason, through its dependents too", async () => {
+    const delegating = testSkill("delegating", { agents: ["reviewer-code-security"] })
+    const composed = testSkill("composed", { dependencies: ["delegating"] })
+    const skills = testSkillRevision([plain, delegating, composed])
+    const snapshot = await snapshotOf(ALL, { personas, skills, disabledTypes: ["reviewer-security"] })
+    expect(snapshot.skills.get("delegating")).toMatchObject({ available: false, modelInvocable: false, reason: offReason("reviewer-security") })
+    expect(snapshot.skills.get("composed")?.available).toBe(false)
+    expect(snapshot.skills.get("plain")?.available).toBe(true)
+    expect((await snapshotOf(ALL, { personas, skills, disabledTypes: ["advisor"] })).skills.get("delegating")?.available).toBe(true)
+  })
+
+  test("a package delegated to an agent whose type is off is unavailable, and a workflow that composes it is refused by the type", async () => {
+    const ship = persona("ship", "ship", { requiredSkills: ["publish"] })
+    const publish = testSkill("publish", { delegate: "ship" })
+    const skills = testSkillRevision([plain, publish])
+    const shipOff = await owner(ALL, { personas: personaRevision(general, ship), skills, disabledTypes: ["ship"] })
+    expect(shipOff.snapshot().skills.get("publish")).toMatchObject({ available: false, reason: offReason("ship") })
+    expect(shipOff.capture().workflowTypeRefusal(workflow("release", ["publish"]))).toBe(offReason("ship"))
+    expect((await snapshotOf(ALL, { personas: personaRevision(general, ship), skills })).skills.get("publish")?.available).toBe(true)
+  })
+
+  test("every entry family resolves the same pair to the same snapshot, and a capture keeps the types it captured", async () => {
+    let disabled: readonly string[] = ["advisor"]
+    const definitions = projectRevision(personas)
+    const availability = await createDefinitionAvailability({
+      definitions: { captureRevision: () => definitions },
+      modules: repoModules,
+      capabilities: { state: () => moduleDescriptor(ALL, ALL, true) },
+      agentTypes: { disabled: () => disabled },
+    })
+    const captured = availability.capture()
+    expect(captured.underGrant(grantOf(ALL))).toBe(availability.snapshot())
+    disabled = []
+    expect(captured.underGrant(grantOf(ALL)).personas.get("advisor")?.available).toBe(false)
+    expect(availability.capture().underGrant(grantOf(ALL)).personas.get("advisor")?.available).toBe(true)
+  })
+
+  test("an entry that names no installed type warns once per unmatched set at publication and turns nothing off", async () => {
+    const warn = spyOn(Log.create({ service: "definition-availability" }), "warn").mockImplementation(() => {})
+    try {
+      let disabled: readonly string[] = ["Advisor", "reviewers"]
+      const definitions = projectRevision(personas)
+      const availability = await createDefinitionAvailability({
+        definitions: { captureRevision: () => definitions },
+        modules: repoModules,
+        capabilities: { state: () => moduleDescriptor(ALL, ALL, true) },
+        agentTypes: { disabled: () => disabled },
+      })
+      const unmatched = () => warn.mock.calls.map(([, attributes]) => attributes)
+      expect(unmatched()).toEqual([{ ids: ["Advisor", "reviewers"] }])
+      expect(availability.snapshot().availablePersonas.size).toBe(personas.personas.size)
+      // A parent role that covers an installed persona is a match.
+      disabled = ["Advisor", "reviewer", "reviewers"]
+      await availability.refresh()
+      expect(unmatched()).toEqual([{ ids: ["Advisor", "reviewers"] }])
+      disabled = ["adviser"]
+      await availability.refresh()
+      expect(unmatched()).toEqual([{ ids: ["Advisor", "reviewers"] }, { ids: ["adviser"] }])
+      expect(availability.snapshot().availablePersonas.size).toBe(personas.personas.size)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test("a published change of disabled_types republishes without a module change, and turning a type on restores it", async () => {
+    const root = temporaryDirectory("definition-availability-types-")
+    mkdirSync(join(root, ".flywheel"))
+    const configPath = join(root, ".flywheel", "flywheel.toml")
+    writeFileSync(configPath, "")
+    const config = await createRuntimeConfigOwner({ configPath, watch: false })
+    const definitions = projectRevision(personas)
+    const agentTypes = configuredAgentTypes(config)
+    const availability = await createDefinitionAvailability({
+      definitions: { captureRevision: () => definitions },
+      modules: repoModules,
+      capabilities: { state: () => moduleDescriptor(ALL, ALL, true) },
+      agentTypes,
+    })
+    const stop = agentTypes.follow(availability)
+    const publish = async (toml: string) => {
+      const changed = new Promise<DefinitionAvailabilitySnapshot>((resolve) => { const off = availability.onChange((snapshot) => { off(); resolve(snapshot) }) })
+      writeFileSync(configPath, toml)
+      await config.refresh()
+      return changed
+    }
+    try {
+      const before = availability.snapshot()
+      const off = await publish('[subagents]\ndisabled_types = ["advisor", "reviewer"]\n')
+      expect(off.identity).not.toBe(before.identity)
+      expect(off.personas.get("advisor")?.available).toBe(false)
+      expect(off.personas.get("reviewer-code-quality")?.available).toBe(false)
+      // One entry that joins the two names is another list: it turns neither off.
+      const joined = await publish('[subagents]\ndisabled_types = ["advisor\\u0000reviewer"]\n')
+      expect(joined).not.toBe(off)
+      expect(joined.personas.get("advisor")?.available).toBe(true)
+      expect(await publish("")).toBe(before)
+    } finally {
+      await stop()
+      await config.dispose()
+    }
   })
 })

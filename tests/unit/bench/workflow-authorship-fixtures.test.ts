@@ -124,7 +124,7 @@ describe("frozen workflow authorship benchmark arms", () => {
           const unused = async (): Promise<never> => { throw new Error("the description check launches no workflow") }
           const deps: Parameters<typeof createWorkflowTool>[0] = {
             startWorkflow: unused, resolveLaunchTarget: unused, onRenderEvent: () => {}, mode: "on", askUserAvailable: true,
-            authority: { toolActions: new Set(), personas: new Set() }, sessionDir: "/session", executionCwd: "/project", capabilities: () => true,
+            authority: { toolActions: new Set(), personas: new Set(), unavailable: new Map() }, sessionDir: "/session", executionCwd: "/project", capabilities: () => true,
           }
           expect(createWorkflowTool(deps).description).toContain("Before you write a workflow file, load the `workflow-authoring` skill.")
         }

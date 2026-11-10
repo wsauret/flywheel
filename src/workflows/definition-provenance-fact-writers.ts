@@ -6,7 +6,7 @@ import { USER_REQUEST_ARTIFACT_ID } from "./definition-validation.js"
 import type { DefinitionIdentityMismatch } from "./vm/definition-identity.js"
 import { AttemptRowSchema } from "./view/schemas.js"
 import type { AttemptRow } from "./view/types.js"
-import { renderSkillContext } from "./skill-context.js"
+import { renderSkillContext } from "./skill-render.js"
 import type { SkillDefinition } from "./skill-schema.js"
 import { DefinitionProvenanceSchema } from "./definition-provenance.js"
 import {

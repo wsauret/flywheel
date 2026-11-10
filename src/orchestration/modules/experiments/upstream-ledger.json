@@ -362,6 +362,11 @@
         { "from": "L159, L166, L220, L273: branch prefix autoresearch/", "to": "branch prefix experiment/" },
         { "from": "L299, L304, L405, L408-409 messages", "to": "experiment wording and .experiment paths" },
         {
+          "from": "merge-base comment: reviewers can land them in any order",
+          "to": "they can land in any order",
+          "reason": "Agents read the script as a skill resource, and Flywheel text names an agent type only while that type is on."
+        },
+        {
           "from": "L411-422 ideas block",
           "to": "removed",
           "reason": "Session notes replace the ideas file, so there is nothing to carry over."

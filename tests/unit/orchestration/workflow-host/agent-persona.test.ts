@@ -39,18 +39,19 @@ async function subagentRun(name: string) {
   return { persona, ...prepared }
 }
 
-function workflowRun(name: string, disabledModuleIds: readonly ModuleId[] = [], planRuns: (tool: string) => boolean = () => true) {
+function workflowRun(name: string, disabledModuleIds: readonly ModuleId[] = [], planRuns: (tool: string) => boolean = () => true, disabledTypes: readonly string[] = [], subagents: readonly string[] = []) {
   const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
     id: "review", name: "Review",
-    phases: [{ phase: "review", persona: name, brief: "Review the change.", name: "Review", writes: [] }],
+    phases: [{ phase: "review", persona: name, brief: "Review the change.", name: "Review", writes: [], ...subagents.length > 0 ? { subagents } : {} }],
   })
   const agent = resolveWorkflowAgents(workflow).get("review")
   if (agent === undefined) throw new Error("the review agent did not resolve")
   const modules = composeFirstPartyModules(undefined, disabledModuleIds)
-  const run = agentPersonaRun({ agent, personas: revision.personas, skills: revision.skills, sessionMessaging: false, modules })
+  const availability = definitionAvailabilityOf(revision, modules.enabledModuleIds, disabledTypes)
+  const run = agentPersonaRun({ agent, availability, skills: revision.skills, sessionMessaging: false, modules })
   if (run === undefined) throw new Error("the review agent runs no persona")
   // The check of an agent that can call each tool of its grant that its run's plan runs (`planRuns`).
-  return { ...run, instructions: run.instructions(agentCapabilityCheck(new Set(run.toolGrant.filter(planRuns)), definitionAvailabilityOf(revision, modules.enabledModuleIds))) }
+  return { ...run, instructions: run.instructions(agentCapabilityCheck(new Set(run.toolGrant.filter(planRuns)), availability, run.allowedSubagentTypes)) }
 }
 
 describe("a workflow agent that runs as a persona", () => {
@@ -77,6 +78,29 @@ describe("a workflow agent that runs as a persona", () => {
     const run = workflowRun("advisor")
     expect([...run.allowedSubagentTypes]).toEqual([])
     expect(run.toolGrant).toEqual((await subagentRun("advisor")).toolNames)
+  })
+
+  it("never runs as a persona whose agent type is off, and says how to turn the type on", () => {
+    expect(() => workflowRun("reviewer-code-quality", [], () => true, ["reviewer"])).toThrow(
+      'runs as persona "reviewer-code-quality", which cannot run: agent type reviewer is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on',
+    )
+    expect(workflowRun("reviewer-code-quality", [], () => true, ["explorer"]).role).toStartWith("reviewer")
+  })
+
+  it("gets no advisor default and no granted type while that type is off, and keeps the rest of its grant", () => {
+    const all = workflowRun("implementer")
+    expect([...all.allowedSubagentTypes].sort()).toEqual(["advisor", "explorer"])
+    expect([...workflowRun("implementer", [], () => true, ["advisor"]).allowedSubagentTypes]).toEqual(["explorer"])
+    const leaf = workflowRun("implementer", [], () => true, ["advisor", "explorer"])
+    expect([...leaf.allowedSubagentTypes]).toEqual([])
+    expect(leaf.toolGrant).not.toContain("subagent")
+  })
+
+  it("keeps an authored grant of a type that is off out of its dispatch set and tools", () => {
+    expect([...workflowRun("advisor", [], () => true, [], ["explorer"]).allowedSubagentTypes]).toEqual(["explorer"])
+    const off = workflowRun("advisor", [], () => true, ["explorer"], ["explorer"])
+    expect([...off.allowedSubagentTypes]).toEqual([])
+    expect(off.toolGrant).not.toContain("subagent")
   })
 
   it("runs with only the declared tools whose modules are on, and states no rule or line for a tool it lost", () => {

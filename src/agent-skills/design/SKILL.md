@@ -34,9 +34,9 @@ Existing scope approval takes precedence over per-design approval. A request suc
    - a workflow file that you write when later agents read earlier results, only when no open question remains and no milestone needs discovery, experiments, spikes, or proof-of-concept work.
 {{end}}
 
-   Use the lightest route that can complete the approved design, sized by the `implementation` skill. The approved design is the ceiling implementers may not change: fix intent and key decisions here, and leave files, milestones, and local shapes to the route.
+   Use the lightest route that can complete the approved design, sized by the `implementation` skill. The approved design is the ceiling that the implementation may not change: fix intent and key decisions here, and leave files, milestones, and local shapes to the route.
 8. Present the complete design and, when work remains, the recommended implementation route in your reply, never by pointing at a file. If existing scope approval covers the work, proceed without another approval prompt. Otherwise request approval: in the same turn, ask the person to choose `Approve and continue` or `Revise design`, where `Revise design` takes their text.
-{{if:subagent}}
+{{if:subagent&type:advisor}}
 Also offer `Advisor review first`; on it, ask the Advisor whether the design and route need a material change. If it recommends no material change, the selection conditionally approves the unchanged design and its route, and your reply states the Advisor's strongest objection and what would reverse its advice. If it raises a material concern, evaluate it, present the revised design or why it is unchanged, and ask again. If it fails or is unavailable, ask again without implied approval. Never treat an Advisor-proposed change as approved.
 {{end}}
 A text answer that rejects the approach, not a detail, returns the work to step 1: spike again with the user's guidance before you present a new design. When you cannot tell a correction from a rethink, ask. Do not silently promote optional hardening or verification into required scope.
@@ -51,7 +51,11 @@ When the user asks about the shape of published code, explain the code first. A 
 
 ## Result
 
+{{if:type:reviewer}}
 Return one design headed **Design intent**. Approval fixes everything under that label. Store the intent and the user's dated decisions in the conversation checkpoint; mark it approved on user approval. The runtime carries approved intent and decisions to children read-only; do not copy them into launch descriptions, briefs, or reviewer prompts. Outside Design intent, evidence and illustration remain revisable. State decisions as outcomes and ownership, and name files or shapes only as decisions. Mark each part of Design intent that the user did not state `(inferred)`.
+{{else}}
+Return one design headed **Design intent**. Approval fixes everything under that label. Store the intent and the user's dated decisions in the conversation checkpoint; mark it approved on user approval. The runtime carries approved intent and decisions to children read-only; do not copy them into launch descriptions or briefs. Outside Design intent, evidence and illustration remain revisable. State decisions as outcomes and ownership, and name files or shapes only as decisions. Mark each part of Design intent that the user did not state `(inferred)`.
+{{end}}
 
 **Design intent**
 
@@ -74,7 +78,11 @@ When evidence supports delivery, name exactly one route from Method with one sho
 
 ## Revision
 
+{{if:type:reviewer}}
 Every route, inline included, returns a first draft; its recorded deviations are expected drift, not defects. You hold the design intent, so revise the draft with review evidence. Read its deviations and summary yourself, and realign structural drift before review. Start the review with the design, its constraints, and the deviations, and ask reviewers to report defects and to classify each deviation as consistent with the design or drift, with evidence. Judge each finding against the design and the original request: realign what missed the intent, keep what serves it better than the plan did, fix the defects, and verify with the smallest complete check. Revise until the verified draft realizes the approved design and adds nothing beyond it. When the draft shows that the approved design itself must change, present that change to the user as a design revision. A passed budget or dependency-owned cost does not authorize a repeatable measured regression outside the approved intent: report the gate result, regression, and cause separately, and let the person decide unless the approved intent already allows it.
+{{else}}
+Every route, inline included, returns a first draft; its recorded deviations are expected drift, not defects. You hold the design intent, so revise the draft with review evidence. Read its deviations and summary yourself, and realign structural drift before review. Review the draft with the design, its constraints, and the deviations: report defects and classify each deviation as consistent with the design or drift, with evidence. Judge each finding against the design and the original request: realign what missed the intent, keep what serves it better than the plan did, fix the defects, and verify with the smallest complete check. Revise until the verified draft realizes the approved design and adds nothing beyond it. When the draft shows that the approved design itself must change, present that change to the user as a design revision. A passed budget or dependency-owned cost does not authorize a repeatable measured regression outside the approved intent: report the gate result, regression, and cause separately, and let the person decide unless the approved intent already allows it.
+{{end}}
 
 ## Stop and failure
 

@@ -593,9 +593,8 @@ describe("regression -- step-agent section inventory", () => {
 describe("skill guidance gating", () => {
   const skillTool = createSkillTool({
     treeCapabilities: () => true,
-    availability: { skills: new Map() },
+    availability: { skills: new Map(), availablePersonas: new Map() },
     revision: skillRevision,
-    personaIndex: {},
   });
 
   it("advertises the roster and the scan-then-load rule only when the skill tool is exposed", () => {

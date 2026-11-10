@@ -20,7 +20,7 @@ import { personaToolNames } from "../../../../src/workflows/agents/subagent-reac
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 import { createToolRegistry } from "../../../../src/orchestration/tool-catalog.js";
 import { composeFirstPartyModules, SHIPPED_MODULES, type ModuleId } from "../../../../src/orchestration/modules.js";
-import { renderSkillClosure } from "../../../../src/workflows/skill-context.js";
+import { renderSkillClosure } from "../../../../src/workflows/skill-render.js";
 import { isReadOnlyPersona, toolGrantRules } from "../../../../src/orchestration/agent-runtime/persona-tool-rules.js";
 import { toolNotice } from "../../../../src/orchestration/agent-runtime/tool-notice.js";
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";
@@ -198,7 +198,7 @@ describe("persona tool grants", () => {
     const prepare = async (runs: (tool: string) => boolean) => {
       const deps = makeDeps({
         agentRegistry: revision.personas, skills: revision.skills,
-        planChildCapabilities: async (child) => agentCapabilityCheck(new Set(child.toolGrant?.filter(runs)), deps.definitionAvailability),
+        planChildCapabilities: async (child) => agentCapabilityCheck(new Set(child.toolGrant?.filter(runs)), deps.definitionAvailability, child.allowedSubagentTypes),
       });
       const prepared = await prepareSubagentTools({ agent: explorer, context: makeDispatchContext({ availableTools: new Set(["read", "subagent"]) }), deps, childDepth: 1 });
       if (!prepared.ok) throw new Error(prepared.error.content);

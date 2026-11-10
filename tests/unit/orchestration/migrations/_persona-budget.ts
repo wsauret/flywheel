@@ -111,6 +111,7 @@ const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: 
   ]]],
   ["explorer", [
     ["and makes targeted external lookups such as documentation.", "and makes targeted non-repository external lookups such as documentation with the web tool."],
+    ["when the brief asks for full coverage.", "when the brief asks for full coverage. For investigation that needs your full intelligence, dispatch general instead."],
     [
       "- **Locate before reading.** Find every plausibly relevant location, then read only the functions or line ranges you need. Do not read entire files to find one function.",
       "- **Search before reading.** Use search to locate relevant code, then read only the functions or line ranges that matter. Do not read entire files to find one function; use `symbol:` or `offset`/`limit` to read just what you need.",
@@ -125,6 +126,9 @@ const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: 
     ],
   ]],
   ["implementer", [[
+    "with full tool access.",
+    "with full tool access. For open-ended work that needs your own judgment and conversation context, dispatch general instead.",
+  ], [
     "{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}",
     "- Use the read, search, file edit, and write tools for project files; bash grep, sed, cat, ls, and heredoc scripts are not substitutes.",
   ]]],
@@ -135,6 +139,9 @@ const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: 
   ["reviewer-uat", [[
     "{{if:bash}}\nBound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:\n{{else}}\nA single command must remain bounded:\n{{end}}",
     "Bound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:",
+  ], [
+    "{{if:type:reviewer-quality&type:reviewer-performance&type:reviewer-data-integrity&type:reviewer-security&type:reviewer-elegance}}\nThe code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{else}}\nThe code-reading reviewer personas judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{end}}",
+    "The code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.",
   ]]],
 ]);
 

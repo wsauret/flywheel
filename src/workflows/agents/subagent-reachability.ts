@@ -24,23 +24,41 @@ export function grantedSubagentTypes(
   return granted;
 }
 
+/** The agents of `registry` that `available` also holds: a dispatcher's scope of the installed agents, narrowed to
+ *  the ones that can run, which a grant may reach and an unknown-name refusal may list. The caller passes the
+ *  available personas of its definition availability. */
+export function dispatchableAgents(
+  registry: ReadonlyMap<string, AgentDefinition>,
+  available: ReadonlyMap<string, AgentDefinition>,
+): ReadonlyMap<string, AgentDefinition> {
+  return new Map([...registry].filter(([name]) => available.has(name)));
+}
+
 const ADVISOR_PERSONA = "advisor";
 
 /** The personas an agent of a workflow may dispatch by its record: its
  *  authored `subagents` and the advisor persona. On trial since 2026-11-01,
  *  every agent of a workflow can ask the advisor for a second opinion without
- *  a grant (PI-AGENT-044). An agent that itself runs as the advisor does not
- *  get it, so the advisor dispatches no advisor, as the self-grant rule above
- *  keeps it.
+ *  a grant while the advisor is on (PI-AGENT-044). An agent that itself runs
+ *  as the advisor does not get it, so the advisor dispatches no advisor, as
+ *  the self-grant rule above keeps it.
  *
- *  Dispatch and definition identity read this one set, so the personas the
- *  run can reach and the personas its identity pins stay equal. Launch
- *  authority and definition availability read only the authored `subagents`,
- *  so the default never refuses a launch from a chat without the subagent
- *  tool and never makes a workflow require the Subagents module. With that
- *  module off, no agent has the subagent tool to dispatch the default. */
-export function workflowAgentSubagents(agent: { readonly subagents: readonly string[]; readonly persona?: string }): readonly string[] {
-  return agent.persona === ADVISOR_PERSONA ? agent.subagents : [...agent.subagents, ADVISOR_PERSONA];
+ *  Dispatch passes `available`, the personas the agent's availability admits,
+ *  so the set keeps only the authored names among them, and the default joins
+ *  only while the advisor is among them. Definition
+ *  identity passes none, because identity never depends on a preference: it
+ *  pins what the run can reach with every type on. Launch authority and
+ *  definition availability read only the authored `subagents`, so the default
+ *  never refuses a launch from a chat without the subagent tool and never
+ *  makes a workflow require the Subagents module. */
+export function workflowAgentSubagents(
+  agent: { readonly subagents: readonly string[]; readonly persona?: string },
+  available?: ReadonlyMap<string, AgentDefinition>,
+): readonly string[] {
+  const authored = available === undefined ? agent.subagents : agent.subagents.filter((name) => available.has(name));
+  return agent.persona === ADVISOR_PERSONA || (available !== undefined && !available.has(ADVISOR_PERSONA))
+    ? authored
+    : [...authored, ADVISOR_PERSONA];
 }
 
 /** Canonical dispatch tool surface for a persona: its declared tools, the

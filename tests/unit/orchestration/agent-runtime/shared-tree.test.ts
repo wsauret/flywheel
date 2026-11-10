@@ -11,6 +11,7 @@ import { captureForkMessages } from "../../../../src/orchestration/agent-runtime
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
+import { createCapabilityNarrowing, narrowingStatements } from "../../../../src/orchestration/agent-runtime/capability-narrowing.js"
 import { loadBashParser } from "../../../../src/orchestration/agent-runtime/tools/bash-parser.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { RuntimeToolInput } from "../../../../src/orchestration/agent-runtime/tools/types.js"
@@ -46,7 +47,7 @@ const modelClient = (model: string) => asModelClient({
  *  which `end` closes as the runner does. With `runScope`, the provider lifetime outlives the run, as a session's
  *  pre-start's does, and `endRun` closes the run's scope alone. `shellWriteGuard` reads the configuration's current
  *  value, and `allowPersistentProcesses` is the configuration's value. */
-async function treeAgent(root: string, sessionId: string, purpose: AgentOptions["purpose"], moduleSelection: () => FirstPartyModuleComposition, held: { readonly runScope?: Scope.Closeable; readonly shellWriteGuard?: () => boolean; readonly allowPersistentProcesses?: boolean; readonly capabilityAccess?: RunnableAgentOptions["capabilityAccess"] } = {}) {
+async function treeAgent(root: string, sessionId: string, purpose: AgentOptions["purpose"], moduleSelection: () => FirstPartyModuleComposition, held: { readonly runScope?: Scope.Closeable; readonly shellWriteGuard?: () => boolean; readonly allowPersistentProcesses?: boolean; readonly capabilityAccess?: RunnableAgentOptions["capabilityAccess"]; readonly disabledTypes?: () => readonly string[] } = {}) {
   const appended: ConversationMessage[] = []
   const failing = { next: false }
   // The module selections that admitted this agent's providers.
@@ -61,7 +62,10 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
     purpose,
     agentsMd: "",
     onEvent: () => {},
-    awaitModelAccessSettled: async () => {}, captureRuntimeConfig: () => ({ ...testRuntimeConfigCapture(), shellWriteGuard: held.shellWriteGuard?.() ?? true, allowPersistentProcesses: held.allowPersistentProcesses ?? false }),
+    awaitModelAccessSettled: async () => {}, captureRuntimeConfig: () => {
+      const config = testRuntimeConfigCapture()
+      return { ...config, shellWriteGuard: held.shellWriteGuard?.() ?? true, allowPersistentProcesses: held.allowPersistentProcesses ?? false, moduleSections: { ...config.moduleSections, subagents: { disabled_types: held.disabledTypes?.() ?? [] } } }
+    },
     captureProviderConnection: async () => { throw new Error("unused in this test") },
     runtimeSurfaces: {
       launcher: refusingLauncher,
@@ -263,7 +267,7 @@ describe("the narrowing statement of a tree-hosted agent", () => {
       expect(text(notice)).toContain(`<system-reminder mode="capabilities" state="narrowed" modules="papercuts">\n${PAPERCUTS_STATEMENT}\n</system-reminder>`)
       expect(text(notice)).toContain("These listed tools do not work for you")
       expect(await second.narrowing(second.opening)).toEqual([])
-      expect(narrowedRecords(record)).toEqual([{ via: "tool-notice", moduleIds: ["papercuts"], count: 1 }])
+      expect(narrowedRecords(record)).toEqual([{ via: "tool-notice", moduleIds: ["papercuts"], types: [], count: 1 }])
       // An agent that its tree's capture does not narrow is told nothing of it.
       expect(first.appended.map(text).join("\n")).not.toContain('mode="capabilities"')
       expect(await first.narrowing(first.opening)).toEqual([])
@@ -295,7 +299,7 @@ describe("the narrowing statement of a tree-hosted agent", () => {
       await expect(agent.commit(statement)).rejects.toThrow("append failed")
       expect(narrowedRecords(record)).toEqual([])
       await agent.commit(statement)
-      expect(narrowedRecords(record)).toEqual([{ via: "statement", moduleIds: ["papercuts"], count: 1 }])
+      expect(narrowedRecords(record)).toEqual([{ via: "statement", moduleIds: ["papercuts"], types: [], count: 1 }])
       history.push(statement)
       // An unchanged request states nothing again.
       expect(await agent.narrowing(history)).toEqual([])
@@ -323,6 +327,47 @@ describe("the narrowing statement of a tree-hosted agent", () => {
       record.mockRestore()
       await agent.end()
     }
+  })
+
+  it("keeps the tree's shared text after an agent type turns off, refuses the type for the agent, and tells it once", async () => {
+    const record = spyOn(DebugLog, "record").mockImplementation(() => {})
+    let off: readonly string[] = []
+    const first = await treeAgent("root-narrowed-type", "agent-1", SUBAGENT, () => ALL, { disabledTypes: () => off })
+    off = ["advisor"]
+    const second = await treeAgent("root-narrowed-type", "agent-2", SUBAGENT, () => ALL, { disabledTypes: () => off })
+    try {
+      // The tree's capture keeps the type on for shared text: the same tool bytes and the same tree availability.
+      expect(second.definitions).toBe(first.definitions)
+      expect(second.availability.tree).toBe(first.availability.tree)
+      expect(second.availability.tree.personas.get("advisor")?.available).toBe(true)
+      // The agent's own configuration turns it off, which dispatch reads.
+      expect(second.availability.live.personas.get("advisor")?.reason).toBe("agent type advisor is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on")
+      expect(second.agentCheck("persona:advisor")).toBe(false)
+      expect(first.agentCheck("persona:advisor")).toBe(true)
+
+      // The opening notice states the type once, and no request repeats it.
+      const history = [...second.opening]
+      expect(text(second.appended[0])).toContain('<system-reminder mode="capabilities" state="narrowed" modules="" types="advisor">\nAgent types turned off for you while this chat tree runs: advisor. Text about them in your tools, instructions, and earlier turns no longer applies, and their dispatch is refused.\n</system-reminder>')
+      expect(narrowedRecords(record)).toEqual([{ via: "tool-notice", moduleIds: [], types: ["advisor"], count: 1 }])
+      expect(await second.narrowing(history)).toEqual([])
+      expect(first.appended.map(text).join("\n")).not.toContain('mode="capabilities"')
+
+      off = []
+      const [correction] = await second.narrowing(history)
+      expect(text(correction)).toBe('<system-reminder mode="capabilities" state="narrowed" modules="">\nAgent types on again for you: advisor. Text about them applies again, and their dispatch runs.\n</system-reminder>')
+    } finally {
+      record.mockRestore()
+      await first.end()
+      await second.end()
+    }
+  })
+
+  it("reads back an agent type whose name holds a comma or a quote as the type it stated, so it states it once", () => {
+    const narrowing = createCapabilityNarrowing(() => ALL)
+    const off = { moduleIds: [], types: ['say "hi"', "triage,ops"] }
+    const history = [...narrowingStatements(narrowing.due([], off))]
+    expect(text(history[0])).toContain('types="say%20%22hi%22,triage%2Cops"')
+    expect(narrowing.due(history, off)).toBeUndefined()
   })
 
   it("names only what execution refuses: a policy that denies Bash, whose tool needs no capability, turns nothing off", async () => {
@@ -382,7 +427,7 @@ describe("the narrowing statement of a tree-hosted agent", () => {
 
 describe("the login of a chat tree's shared host", () => {
   it("is the login of the newest live host that holds the tree, and no login once no host holds it", () => {
-    const { tree, release } = holdSharedTree("root-login", () => ({ modules: ALL, shellWriteGuard: true, allowPersistentProcesses: false }))
+    const { tree, release } = holdSharedTree("root-login", () => ({ modules: ALL, shellWriteGuard: true, allowPersistentProcesses: false, disabledTypes: [] }))
     const endFirst = tree.hold("login-1")
     const endSecond = tree.hold("login-2")
     expect(tree.login).toBe("login-2")

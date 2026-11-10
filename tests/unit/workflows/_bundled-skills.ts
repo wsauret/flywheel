@@ -19,5 +19,5 @@ export const bundled = bundledLoad.skills;
 /** A bundled body as an agent reads it: everything on, or every term in `off` refused. */
 export function bodyFor(skill: SkillDefinition | undefined, off: readonly string[] = []): string {
   if (!skill) throw new Error("the bundled package is installed");
-  return renderSkillBody(skill, (term) => !off.includes(term)).text;
+  return renderSkillBody(skill, (term) => !off.includes(term));
 }

@@ -17,7 +17,7 @@ Run the audit when a prompt has grown through iteration, after merging packages 
 
 1. **Audit the rendered prompt, not the source files.** The model reads the assembled prompt: dependency closure, body, resolved `{{ref:...}}` includes, and host postamble. Render every host that applies:
    - Direct invocation: `assembleSkillInvocation` (`src/workflows/skill-invocation.ts`). The model `skill` tool's load action, and a built-in command that starts a skill's method, such as `/bug-report-triage`, return exactly this text in a source run.
-   - Persona: `personaInstructions` (`src/workflows/agents/persona-instructions.ts`), the dependency-first `renderSkillClosure` (`src/workflows/skill-context.ts`) followed by the persona instructions. `bun run scripts/dump-prompt.ts subagent <persona>` prints it.
+   - Persona: `personaInstructions` (`src/workflows/agents/persona-instructions.ts`), the dependency-first `renderSkillClosure` (`src/workflows/skill-render.ts`) followed by the persona instructions. `bun run scripts/dump-prompt.ts subagent <persona>` prints it.
 {{if:workflow}}
    - Agent of a workflow: `assembleAgentPrompt` (`src/workflows/context-bundle/prompt-assembly.ts`). `bun run scripts/dump-prompt.ts worker <workflow-file> <agent>` prints it; add `--sizes` for a per-layer size table.
 {{end}}

@@ -49,7 +49,7 @@ describe("resetRoleAssignmentsToDetectedDefaults", () => {
         configPath: join(dir, "flywheel.toml"),
         availableModels: openaiModels,
         ...tierOptions(dir),
-      });
+      }, () => true);
 
       const text = await readFile(join(dir, "flywheel.toml"), "utf8");
       expect(text).not.toContain("provider =");

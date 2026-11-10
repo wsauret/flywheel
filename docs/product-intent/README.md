@@ -28,7 +28,7 @@ A product-intent statement can describe behavior that the implementation does no
 Each entry is a bullet `- [<Domain name>](<domain file>.md): <what the domain covers>.`, in alphabetical order.
 
 - [Agent methods](agent-methods.md): Flywheel's built-in agent methods and repository-specific extensions.
-- [Capabilities](capabilities.md): optional modules, what turning one off removes, and the development module.
+- [Capabilities](capabilities.md): optional modules and agent types, what turning one off removes, and the development module.
 - [Interaction](interaction.md): text entry, keyboard controls, surface-specific input behavior, launch and project selection, command-line conventions, and settings and configuration files.
 - [Local access](local-access.md): opening a project's sessions in a browser on the machine that runs the runtime.
 - [Model access](model-access.md): authentication, authorization, provider configuration, model eligibility, selection, routing, and failover.

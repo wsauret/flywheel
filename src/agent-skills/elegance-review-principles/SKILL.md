@@ -4,11 +4,19 @@ description: Govern a code or plan review with feature-complete simplicity and s
 
 # Elegance Review Principles
 
+{{if:skill:code-review}}
 Apply this lens only with exactly one active review target. If neither target is active, load `code-review` for implemented code or `plan-review` for a settled plan. If both are active, stop and require the caller to select one. Return through the active target's locations, severity, and result contract.
+{{else}}
+Apply this lens only with exactly one active review target. If neither target is active, load `plan-review` for a settled plan, or review implemented code directly. If both are active, stop and require the caller to select one. Return through the active target's locations, severity, and result contract.
+{{end}}
 
 ## Governing rule
 
+{{if:type:reviewer}}
 Explicit requirements and confirmed correctness, behavioral, security, data-integrity, and performance constraints are hard gates. Among remedies that satisfy those gates, choose the most elegant solution: the simplest feature-complete shape with the fewest owners, states, layers, abstractions, and failure branches. Do not count reviewer votes or union specialist remedies. An additive recommendation must use the smallest complete remedy.
+{{else}}
+Explicit requirements and confirmed correctness, behavioral, security, data-integrity, and performance constraints are hard gates. Among remedies that satisfy those gates, choose the most elegant solution: the simplest feature-complete shape with the fewest owners, states, layers, abstractions, and failure branches. Do not count votes or union specialist remedies. An additive recommendation must use the smallest complete remedy.
+{{end}}
 
 ## Scrutiny
 
@@ -50,4 +58,8 @@ Lead a structural finding's Failure with one of these names. A finding that lead
 | **Indirection Tax** | Layer exists only to satisfy a rule, no value added | Remove the layer. Question the rule. |
 | **Concrete Dependency** | Business logic imports infrastructure directly | Depend on abstraction, inject the impl |
 
+{{if:type:reviewer}}
 This package supplies principles only. Do not acquire target evidence, assign severity or locations, select reviewers, route workflow work, or combine findings.
+{{else}}
+This package supplies principles only. Do not acquire target evidence, assign severity or locations, route workflow work, or combine findings.
+{{end}}

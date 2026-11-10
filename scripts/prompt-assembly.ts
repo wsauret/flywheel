@@ -31,6 +31,7 @@ import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/ag
 import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
 import type { FirstPartyModuleComposition } from "../src/orchestration/modules.js";
+import { disabledAgentTypes } from "../src/orchestration/module-catalog.js";
 import { createCodeModeRuntime } from "../src/orchestration/modules/code-mode/runtime.js";
 import { createCodeModeService } from "../src/orchestration/modules/code-mode/service.js";
 import type { BenchmarkAdmissionDeps } from "../src/orchestration/modules/development/benchmark/admission.js";
@@ -118,6 +119,7 @@ export async function planPromptRequest(assembly: PromptAssembly, input: PlanInp
     live: assembly.live,
     runtimeConfig: assembly.runtimeConfig,
     shellWriteGuard: assembly.runtimeConfig.shellWriteGuard,
+    treeDisabledTypes: disabledAgentTypes(assembly.runtimeConfig.moduleSections),
     persistentProcessesAdvertised: assembly.runtimeConfig.allowPersistentProcesses,
     definitions: assembly.definitions,
     servingModel: assembly.servingModel,
@@ -216,7 +218,7 @@ function hostRuntimes(purpose: AgentPurpose): (readonly [string, unknown])[] {
 /** The agent check of a planned request, as its request surface derives it from the usable tools left in it. */
 export function plannedCapabilities(planned: PlannedRequest): CapabilityCheck {
   const usable = [...planned.usable].filter((name) => planned.tools.has(name));
-  return agentCapabilityCheck(new Set(usable.map((name) => planned.registrationIdentities.get(name) ?? name)), planned.kernel.definitionAvailability.live);
+  return agentCapabilityCheck(new Set(usable.map((name) => planned.registrationIdentities.get(name) ?? name)), planned.kernel.definitionAvailability.live, planned.kernel.allowedSubagentTypes);
 }
 
 /** The text sources of a system prompt that live outside the module capture. */

@@ -195,7 +195,7 @@ const GENERAL_AGENT: AgentDefinition = {
   kind: "general",
   name: "general",
   description:
-    "A clone of the dispatching agent that uses your model and system instructions with registry-approved tools derived from your current surface. It also receives its child handoff and declared nested-role tools. Use it when a subtask needs your full intelligence and judgment but you want only its conclusion in your context. Set fork: true to also copy your conversation. Prefer explorer for cheap read-only searches and a persona agent for a named specialty.",
+    "A clone of the dispatching agent that uses your model and system instructions with registry-approved tools derived from your current surface. It also receives its child handoff and declared nested-role tools. Use it when a subtask needs your full intelligence and judgment but you want only its conclusion in your context. Set fork: true to also copy your conversation.",
   maxTurns: 200,
   // The clone carries the parent's task contract and may dispatch the granted
   // explorer and reviewer roles. Those roles grant no further nesting.

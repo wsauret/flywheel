@@ -57,7 +57,7 @@ const BENCHMARK_INPUT_SCHEMA = {
     },
     persona: {
       type: "string",
-      description: "run only: the subagent persona under test, such as explorer, reviewer-*, or implementer.",
+      description: "run only: the name of the subagent persona under test.",
     },
     variants: {
       type: "array",
@@ -82,7 +82,7 @@ const BENCHMARK_INPUT_SCHEMA = {
     },
     resultId: {
       type: "string",
-      description: "resume only: the results directory name a previous launch reported, such as \"explorer-2026-08-08T04-50-28-280Z\".",
+      description: "resume only: the results directory name a previous launch reported, such as \"<persona>-2026-08-08T04-50-28-280Z\".",
     },
   },
   required: ["action", "dryRun"],

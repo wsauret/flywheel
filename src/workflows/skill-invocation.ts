@@ -1,24 +1,26 @@
 import type { CapabilityCheck } from "../infra/capability-text.js";
-import type { PersonaMetadataIndex } from "./agents/persona-schema.js";
+import type { AgentDefinition } from "../infra/agent-definition.js";
 import { resolveSkillClosure } from "./skill-closure.js";
-import { dispatchingSkill, renderSkillContext } from "./skill-context.js";
+import { dispatchingSkill, renderSkillContext } from "./skill-render.js";
 import type { SkillDefinition, SkillRegistryRevision } from "./skill-schema.js";
 
 export interface SkillInvocationOptions {
   /** Revision the dependency closure is composed from. The caller's registry
    *  owns it; this composition never reads a live registry. */
   readonly skills: SkillRegistryRevision;
-  readonly personaIndex: PersonaMetadataIndex;
+  /** The personas the reading agent's availability admits. An available skill declares only these, because a skill
+   *  is available only while every agent it declares is. */
+  readonly agents: ReadonlyMap<string, AgentDefinition>;
   /** The check of the agent that reads the invocation (ARCH-CONTEXT-033). The
    *  caller admits only a skill whose `skillInvocationRefusal` is undefined. */
   readonly capabilities: CapabilityCheck;
 }
 
-/** The personas a skill declares, by the name that dispatch accepts. Throws on a name no installed persona has:
- *  an installed third-party skill can declare any name. */
-function renderAgentSection(skill: SkillDefinition, personaIndex: PersonaMetadataIndex): string | undefined {
+/** The personas a skill declares, by the name that dispatch accepts. Throws on a name that `agents` lacks: an
+ *  installed third-party skill can declare any name. */
+function renderAgentSection(skill: SkillDefinition, agents: ReadonlyMap<string, AgentDefinition>): string | undefined {
   if (skill.agents.length === 0) return undefined;
-  const unknown = skill.agents.find((name) => !personaIndex[name]);
+  const unknown = skill.agents.find((name) => !agents.has(name));
   if (unknown) throw new Error(`Skill "${skill.id}" references unknown persona: ${unknown}`);
   return `## Available Agents\n\nDispatch these personas where the skill body calls for agent dispatch: ${skill.agents.join(", ")}.`;
 }
@@ -62,7 +64,7 @@ export function assembleSkillInvocation(
   if (refusal) throw new Error(`Skill "${skill.id}" cannot be invoked: ${refusal}`);
   const sections = invocationClosure(skill, options.skills).map((member) => renderSkillContext(member, options.capabilities));
 
-  const agents = renderAgentSection(skill, options.personaIndex);
+  const agents = renderAgentSection(skill, options.agents);
   if (agents) sections.push(agents);
   const directResult = renderDirectResult(skill);
   if (directResult) sections.push(directResult);

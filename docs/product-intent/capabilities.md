@@ -1,6 +1,6 @@
 # Capabilities Product Intent
 
-This document states the current intended experience for optional modules, what turning one off removes, and the development module.
+This document states the current intended experience for optional modules and agent types, what turning one off removes, and the development module.
 
 ## PI-CAP-001: Capabilities are modular and uniform
 
@@ -8,7 +8,15 @@ Every optional capability is one module that a user can turn off. A module adds 
 
 ## PI-CAP-021: Agents read only guidance that they can follow
 
-When a module is off, or Workflows is Off, no Flywheel instruction, tool text, skill, agent role, reminder, or tool result that an agent reads afterward mentions that capability. Text that needs it says what to do without it, or is absent. Refusals and stop statements still name the module. A running agent keeps the instructions it shares with its chat tree and is told once which modules it lost. Agent roles keep their remaining tools. A command rule that needs a skill applies only while that skill is available. Text that people or repositories wrote is unchanged.
+When a module or an agent type is off, or Workflows is Off, no Flywheel instruction, tool text, skill, agent role, reminder, or tool result that an agent reads afterward mentions that capability. Text that needs it says what to do without it, or is absent. Refusals and stop statements still name it. A running agent keeps the instructions it shares with its chat tree and is told once what it lost. Agent roles keep their remaining tools. A command rule that needs a skill applies only while that skill is available. Text that people or repositories wrote is unchanged.
+
+## PI-CAP-022: A person can turn off agent types
+
+A person can turn off single agent types in Flywheel's configuration file: the general agent, or an agent role such as the advisor or the reviewers. Every type is on unless the file names it, and a role that is off turns off the roles under it. A type that is off is unavailable everywhere: no agent can dispatch it, no workflow runs an agent as it, and the model settings omit its role. A refusal names the type and says how to turn it on. The change needs no restart, and a model saved for a role stays saved.
+
+## PI-CAP-023: Subagent dispatch is offered only while an agent type is on
+
+While a person has every agent type turned off, no agent is offered subagent dispatch. Workflows still run their own agents.
 
 ## PI-CAP-017: Flywheel's own tooling is the development module
 

@@ -5,10 +5,12 @@ import { createSubagentTool } from "../../../../../src/orchestration/modules/sub
 import { grantOf, makeCapabilityAccess, makeContext, makeDeps, refusedAdmission, TEST_RATIONALE } from "./_fixtures.js";
 import type { CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { validateToolInput } from "../../../../../src/orchestration/agent-runtime/tools/validate-input.js";
+import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js";
+import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js";
 
 describe("subagent tool — execute validation", () => {
     it("does not advertise a per-dispatch model tier", () => {
-      const tool = createSubagentTool(makeDeps());
+      const tool = createSubagentTool(makeDeps(), () => true);
       const schema = tool.inputSchema;
       // Providers require an object root; a bare union is rejected at request time.
       expect(schema.type).toBe("object");
@@ -33,7 +35,7 @@ describe("subagent tool — execute validation", () => {
     });
 
     it("lets the dispatcher's central validator refuse a dispatch without its rationale and prompt", () => {
-      const tool = createSubagentTool(makeDeps());
+      const tool = createSubagentTool(makeDeps(), () => true);
       expect(validateToolInput({ persona: "explorer" }, tool.inputSchema)).toEqual([
         "The required parameter `rationale` is missing",
         "The required parameter `prompt` is missing",
@@ -71,6 +73,20 @@ describe("subagent tool — execute validation", () => {
       expect(result.outcome).toBe("error");
       expect(result.content).toContain("rationale");
       expect(result.content).toContain("30");
+    });
+
+    it("refuses a dispatch without a prompt, and names forking only while the general type is offered", async () => {
+      const personas = repoDefinitions().personas();
+      const refusal = async (off: readonly string[]) => {
+        const definitionAvailability = fixedAvailability({ personas }, undefined, off);
+        const capabilities = agentCapabilityCheck(new Set(["subagent"]), definitionAvailability, undefined);
+        return (await createSubagentDispatch(makeDeps({ agentRegistry: personas, definitionAvailability }))
+          .execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "" }, makeContext({ capabilities }))).content;
+      };
+      expect(await refusal([])).toContain("subagent was called without a 'prompt' string. Unless you fork, the subagent has no access to your conversation; the 'prompt' must be");
+      const generalOff = await refusal(["general"]);
+      expect(generalOff).toContain("subagent was called without a 'prompt' string. The 'prompt' must be");
+      expect(generalOff).not.toContain("fork");
     });
 
     it("returns error for too-short rationale", async () => {

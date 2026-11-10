@@ -29,13 +29,16 @@ import { createRuntimeConfigOwner } from "./runtime-config-owner.js";
 import { pruneStaleConfig, updateModelAssignments } from "./writer.js";
 import { clampReasoningEffort, effortOptionsForMetadata } from "../agent-runtime/llm/model-compat.js";
 
-export async function resetRoleAssignmentsToDetectedDefaults(deps: ModelConfigDeps & { readonly authProfileId: () => string }): Promise<void> {
+/** Clears the profile's assignment of each default role that `resets` names, so it resolves to its detected default.
+ *  A role that `resets` does not name keeps its saved value. The prune reads only the complete installed registry,
+ *  `deps.configValidity`, so a saved custom persona role outlives a reset that leaves it out (ARCH-RUNTIME-069);
+ *  without that registry it prunes nothing. */
+export async function resetRoleAssignmentsToDetectedDefaults(deps: ModelConfigDeps & { readonly authProfileId: () => string }, resets: (roleId: string) => boolean): Promise<void> {
   const owner = await createRuntimeConfigOwner({ userDataRoot: deps.userDataRoot, configPath: deps.configPath, watch: false });
   try {
-    const slots = defaultRoleSlots();
     updateModelAssignments({
-      mutations: slots.map((slot) => ({ slot, patch: { model: null, effort: null } })),
-      validity: { roleIds: new Set(slots.map((slot) => slot.roleId)) },
+      mutations: defaultRoleSlots().filter((slot) => resets(slot.roleId)).map((slot) => ({ slot, patch: { model: null, effort: null } })),
+      validity: deps.configValidity ?? {},
     }, { userDataRoot: deps.userDataRoot, configPath: deps.configPath, authProfileId: deps.authProfileId });
     await owner.refresh();
   } finally {

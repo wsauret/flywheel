@@ -198,13 +198,16 @@ After each publication, end your reply with three things that you write from the
 /** Dispatch-sizing doctrine. It appears only when the request can dispatch
  *  work through the subagent or workflow tool. The actual request surface,
  *  not the runner kind, is the authority. */
-const PROPORTIONALITY_GUIDANCE = `PROPORTIONALITY:
-Scale optional orchestration to the work. Every expensive move - dispatching an agent, adding a reviewer, running a research pipeline, spinning up a verification wave - must pass a size test first. Local thresholds differ by task (what counts as trivial for a plan, a diff, a research topic); this rule is the shared shape:
+function renderProportionalityGuidance(has: CapabilityCheck): string {
+  const reviewer = has("type:reviewer");
+  return `PROPORTIONALITY:
+Scale optional orchestration to the work. Every expensive move - dispatching an agent, ${reviewer ? "adding a reviewer, " : ""}running a research pipeline, spinning up a verification wave - must pass a size test first. Local thresholds differ by task (what counts as trivial for a plan, a diff, a research topic); this rule is the shared shape:
 
-- **Orchestration must pay for itself.** A dispatch, reviewer, or pipeline must save more work than it adds.
+- **Orchestration must pay for itself.** A ${reviewer ? "dispatch, reviewer, or pipeline" : "dispatch or pipeline"} must save more work than it adds.
 - **Named triggers, not doubt.** Optional machinery is added when a named trigger matches, never because it "might catch something." No trigger matched, no machinery.
 - **Correctness gates never shrink.** Sizing changes who does the work and how much machinery spins up - never whether evidence is fresh, claims are traced, or evidence is real. Past observations guide hypotheses, not acceptance; each verification pass observes the current state afresh.
 - **Size honestly.** Do not understate work to avoid justified orchestration or overstate it to add ceremony.`;
+}
 
 /** Interactive chat moves the work from one part to the next; skills own the method of each part. */
 function renderConversationFirstDelivery(has: CapabilityCheck): string {
@@ -351,7 +354,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   } else {
     stable("core system prompt", renderAgentAsset(opts.corePrompt ?? bundledSystemPrompt, "system-prompt.md", opts.purpose?.kind === "unattended-chat" ? unattendedChatCheck(has) : has));
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
-    if (hasDispatchSurface) stable("proportionality", PROPORTIONALITY_GUIDANCE);
+    if (hasDispatchSurface) stable("proportionality", renderProportionalityGuidance(has));
     if (hasImplementationSurface && hasAskUser && chat) stable("conversation-first delivery", renderConversationFirstDelivery(has));
     if (toolContext) stable("tool context", toolContext);
     if (chat) {

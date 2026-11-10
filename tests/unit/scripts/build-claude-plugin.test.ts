@@ -56,7 +56,6 @@ describe("Claude plugin export", () => {
     expect(document("agents/explorer.md").frontmatter).toMatchObject({ tools: "Bash, Read, WebSearch, WebFetch, Skill", model: "haiku" });
     expect(document("agents/reviewer-plan-design.md").frontmatter).toMatchObject({ model: "opus", skills: ["plan-review", "interface-design"] });
     expect(document("agents/implementer.md").body).toContain("Use `grep` and `find` through `Bash` to find project files and text.");
-    expect(String(document("agents/explorer.md").frontmatter["description"])).toEndWith("dispatch general-purpose instead.");
     expect(document("agents/implementer.md").body).toContain("stop and return to your parent with the evidence and the decision that it needs");
   });
 

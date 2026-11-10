@@ -227,7 +227,7 @@ create_group_branch() {
   fi
 
   # Start from merge-base (not the previous group) so each branch is
-  # independently mergeable — reviewers can land them in any order.
+  # independently mergeable — they can land in any order.
   git checkout "$BASE" --quiet --detach 2>/dev/null || git checkout "$BASE" --quiet
   git checkout -b "$branch_name"
 

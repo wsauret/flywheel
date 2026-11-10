@@ -15,6 +15,10 @@ import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runti
 import { fileTemporaryDirectory, temporaryDirectories } from "../../../../helpers/directories.js";
 import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 import { moduleDisabledReason } from "../../../../../src/protocol/module-ids.js";
+import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
+import { fixedAvailability } from "../../../../helpers/project-definitions.js";
 
 const context = makeContext({ capabilities: () => true });
 const temporaryDirectory = temporaryDirectories();
@@ -40,9 +44,8 @@ function revisionOf(revision: number, skills: readonly SkillDefinition[]): Skill
 function toolFor(revision: SkillRegistryRevision): ReturnType<typeof createSkillTool> {
   return createSkillTool({
     treeCapabilities: () => true,
-    availability: { skills: new Map() },
+    availability: { skills: new Map(), availablePersonas: new Map() },
     revision,
-    personaIndex: {},
   });
 }
 
@@ -157,9 +160,8 @@ describe("skill tool loading", () => {
     const loaded = skill("worktree-lifecycle", { resources: [{ path: "reference.md", bytes: 21 }] });
     const tool = createSkillTool({
       treeCapabilities: () => true,
-      availability: { skills: new Map() },
+      availability: { skills: new Map(), availablePersonas: new Map() },
       revision: revisionOf(1, [loaded]),
-      personaIndex: {},
       onLoad: (loadedSkill) => { if (loadedSkill.source.authority === "bundled") effectiveBundledSkillIds.add(loadedSkill.id); },
     });
     const policy = (): ReturnType<typeof interceptBashCommand> => interceptBashCommand(
@@ -187,9 +189,8 @@ describe("skill tool loading", () => {
     }).skills);
     const tool = createSkillTool({
       treeCapabilities: () => true,
-      availability: { skills: new Map() },
+      availability: { skills: new Map(), availablePersonas: new Map() },
       revision,
-      personaIndex: {},
       onLoad: (loaded) => {
         if (loaded.source.authority === "bundled") effectiveBundledSkillIds.add(loaded.id);
       },
@@ -207,9 +208,8 @@ describe("skill tool capability availability", () => {
   const revision = revisionOf(1, [conditioned, offModule, dispatching, wrapper]);
   const tool = createSkillTool({
     revision,
-    personaIndex: {},
     treeCapabilities: (term) => term !== "skill:off-module",
-    availability: { skills: new Map([["off-module", { id: "off-module", requires: ["workflows"], missing: ["workflows"], available: false, modelInvocable: false, reason: moduleDisabledReason(["workflows"]) }]]) },
+    availability: { skills: new Map([["off-module", { id: "off-module", requires: ["workflows"], types: [], missing: ["workflows"], off: [], available: false, modelInvocable: false, reason: moduleDisabledReason(["workflows"]) }]]), availablePersonas: new Map() },
   });
   const agent = (...terms: string[]) => makeContext({ capabilities: (term) => terms.includes(term) });
 
@@ -234,6 +234,13 @@ describe("skill tool capability availability", () => {
     expect(text(result.content)).toBe('Skill "dispatching" is unavailable: it dispatches agents, and the agent that reads it cannot call the subagent tool.');
   });
 
+  it("refuses a skill that the agent check refuses for its declared agents to an agent that can call the subagent tool", async () => {
+    const result = await tool.execute({ action: "load", skill_id: "dispatching" }, agent("subagent"));
+
+    expect(result.outcome).toBe("error");
+    expect(text(result.content)).toBe('Skill "dispatching" is unavailable: it dispatches agents that the agent that reads it may not dispatch.');
+  });
+
   it("refuses a skill whose dependency dispatches agents to an agent that cannot call the subagent tool", async () => {
     const without = await tool.execute({ action: "load", skill_id: "wrapper" }, agent("skill:wrapper"));
     expect(without.outcome).toBe("error");
@@ -248,10 +255,45 @@ describe("skill tool capability availability", () => {
     const without = text((await tool.execute({ action: "load", skill_id: "conditioned" }, agent("skill:conditioned"))).content);
     const withBash = text((await tool.execute({ action: "load", skill_id: "conditioned" }, agent("skill:conditioned", "bash"))).content);
 
-    expect(without).toContain("conditions: bash=off");
+    expect(without).not.toContain("bash");
     expect(without.endsWith("Always.\nUse your tools.\n")).toBe(true);
-    expect(withBash).toContain("conditions: bash=on");
     expect(withBash.endsWith("Always.\nRun the probe.\n")).toBe(true);
+  });
+});
+
+describe("the agents a loaded skill names", () => {
+  const persona = (name: string, role: string): AgentDefinition => ({ kind: "persona", name, description: `${name}.`, systemPrompt: "Work.", tools: ["read"], role, maxTurns: 5 });
+  const personas = new Map([["advisor", persona("advisor", "advisor")], ["explorer", persona("explorer", "explorer")]]);
+  const dispatching = skill("dispatching", { agents: ["advisor", "explorer"] });
+  const wrapper = skill("wrapper", { dependencies: ["dispatching"] });
+  const revision = revisionOf(1, [dispatching, wrapper]);
+
+  /** A load of `skillId` by an agent that can call the subagent tool and may dispatch `allowed` (every persona when
+   *  absent), under the owner's availability with `disabledTypes` off. */
+  async function load(disabledTypes: readonly string[], skillId = "dispatching", allowed?: ReadonlySet<string>) {
+    const availability = fixedAvailability({ skills: revision, personas }, composeFirstPartyModules().enabledModuleIds, disabledTypes);
+    const tool = createSkillTool({ revision, treeCapabilities: () => true, availability });
+    return tool.execute({ action: "load", skill_id: skillId }, makeContext({ capabilities: agentCapabilityCheck(new Set(["subagent", "skill"]), availability, allowed) }));
+  }
+
+  it("refuses a skill whose dependency declares an agent outside the loading agent's dispatch set", async () => {
+    const refused = await load([], "wrapper", new Set(["advisor"]));
+    expect(refused.outcome).toBe("error");
+    expect(text(refused.content)).toBe('Skill "wrapper" is unavailable: it dispatches agents that the agent that reads it may not dispatch.');
+
+    const loaded = await load([], "wrapper", new Set(["advisor", "explorer"]));
+    expect(loaded.outcome).toBe("ok");
+    expect(text(loaded.content)).toContain("# Skill: dispatching");
+  });
+
+  it("lists the agents it declares while each is available, and refuses to load with the reason while one is off", async () => {
+    const loaded = await load([]);
+    expect(loaded.outcome).toBe("ok");
+    expect(text(loaded.content)).toContain("## Available Agents\n\nDispatch these personas where the skill body calls for agent dispatch: advisor, explorer.");
+
+    const refused = await load(["advisor"]);
+    expect(refused.outcome).toBe("error");
+    expect(text(refused.content)).toBe('Skill "dispatching" is unavailable: agent type advisor is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on.');
   });
 });
 
@@ -362,9 +404,8 @@ describe("skill tool resource containment", () => {
     const release = new Promise<void>((resolve) => { releaseLoad = resolve; });
     const tool = createSkillTool({
       treeCapabilities: () => true,
-      availability: { skills: new Map() },
+      availability: { skills: new Map(), availablePersonas: new Map() },
       revision,
-      personaIndex: {},
       onLoad: async () => {
         loadObserved?.();
         await release;
@@ -398,9 +439,8 @@ describe("skill tool resource containment", () => {
     const fallback = setTimeout(() => releaseAll?.(), 25);
     const tool = createSkillTool({
       treeCapabilities: () => true,
-      availability: { skills: new Map() },
+      availability: { skills: new Map(), availablePersonas: new Map() },
       revision,
-      personaIndex: {},
       onLoad: async () => {
         recording += 1;
         mostAtOnce = Math.max(mostAtOnce, recording);

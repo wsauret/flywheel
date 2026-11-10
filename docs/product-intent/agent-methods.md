@@ -452,7 +452,7 @@ The workflow verify command checks a workflow file or a past run with the same r
 
 ## PI-AGENT-044: Subagents nest at most three deep
 
-Subagents can dispatch their own subagents, at most three deep below the chat or workflow agent that started the chain, and a deeper dispatch is refused with the reason. A dispatch is never refused for its rate or count, but subagents beyond the running limit wait in a queue and start in dispatch order. Persona grants decide which child types an agent can dispatch. On trial since 2026-11-01, every agent of a workflow can also dispatch the advisor without a grant, except an agent that itself runs as the advisor.
+Subagents can dispatch their own subagents, at most three deep below the chat or workflow agent that started the chain, and a deeper dispatch is refused with the reason. A dispatch is never refused for its rate or count, but subagents beyond the running limit wait in a queue and start in dispatch order. Persona grants decide which child types an agent can dispatch. On trial since 2026-11-01, every agent of a workflow can also dispatch the advisor without a grant while the advisor is on, except an agent that itself runs as the advisor.
 
 ## PI-AGENT-045: Large unused session scratch is reclaimed
 

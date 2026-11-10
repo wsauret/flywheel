@@ -18,6 +18,7 @@
 
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, sep } from "node:path";
+import { renderCapabilityText } from "../infra/capability-text.js";
 import type { ProjectDirectories } from "../infra/directory-authorities.js";
 import { ownedSkillStoreDirs } from "./skills.js";
 import {
@@ -136,21 +137,37 @@ function movedTo(projectRoot: string, path: string): string | undefined {
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+const IF_MARKER = /^\{\{if:([^}]*)\}\}$/u;
+
+/** The most characters that one load of `body` carries. A bundled body's capability blocks render for each reader
+ *  (ARCH-CONTEXT-033), so no reader gets a block and its else branch together: the size is the longest render over
+ *  every answer to the terms its markers test. Any other body loads as written. */
+function loadedBodyChars(skill: SkillDefinition, body: string): number {
+  if (skill.source.authority !== "bundled") return body.length;
+  const terms = [...new Set(body.split("\n").flatMap((line) => IF_MARKER.exec(line.trim())?.[1]?.split(/[|&]/u).map((term) => term.trim().replace(/^!/u, "")) ?? []))];
+  let longest = 0;
+  for (let answers = 0; answers < 2 ** terms.length; answers += 1) {
+    longest = Math.max(longest, renderCapabilityText(body, (term) => (answers & (1 << terms.indexOf(term))) !== 0).length);
+  }
+  return longest;
+}
+
 function inspectPackage(skill: SkillDefinition, dir: string, installedSkills: ReadonlyMap<string, SkillDefinition>, projectRoot: string): readonly SkillFinding[] {
   const findings: SkillFinding[] = [];
   const body = skill.body.trimEnd();
   const add = (finding: Omit<SkillFinding, "skill">): void => { findings.push({ ...finding, skill: skill.id }); };
 
   const budget = skillBodyBudgetChars(skill);
-  if (body.length > budget) {
+  const chars = loadedBodyChars(skill, body);
+  if (chars > budget) {
     add({
-      kind: "body-over-budget", severity: "broken", chars: body.length,
-      detail: `Body is ${body.length.toLocaleString("en-US")} chars, over the ${budget.toLocaleString("en-US")} budget. Only a direct edit can produce this; every write path refuses it. It may now only shrink.`,
+      kind: "body-over-budget", severity: "broken", chars,
+      detail: `Body is ${chars.toLocaleString("en-US")} chars, over the ${budget.toLocaleString("en-US")} budget. Only a direct edit can produce this; every write path refuses it. It may now only shrink.`,
     });
-  } else if (body.length >= budget * SKILL_BODY_CROWDED_SHARE) {
+  } else if (chars >= budget * SKILL_BODY_CROWDED_SHARE) {
     add({
-      kind: "body-crowded", severity: "smell", chars: body.length,
-      detail: `Body is ${body.length.toLocaleString("en-US")}/${budget.toLocaleString("en-US")} chars. The next writer will have to free space before it can add anything.`,
+      kind: "body-crowded", severity: "smell", chars,
+      detail: `Body is ${chars.toLocaleString("en-US")}/${budget.toLocaleString("en-US")} chars. The next writer will have to free space before it can add anything.`,
     });
   }
 
@@ -238,7 +255,8 @@ function inspectPackage(skill: SkillDefinition, dir: string, installedSkills: Re
 function mentionsSkill(text: string, quoted: string): boolean {
   const at = text.indexOf(quoted);
   if (at < 0) return false;
-  return /skill/iu.test(text.slice(Math.max(0, at - 120), at + 120));
+  // A capability marker such as `{{if:skill:code-review}}` is syntax, not prose that calls the token a skill.
+  return /skill/iu.test(text.slice(Math.max(0, at - 120), at + 120).replaceAll(/\{\{[^}]*\}\}/gu, ""));
 }
 
 function safeRead(path: string): string {

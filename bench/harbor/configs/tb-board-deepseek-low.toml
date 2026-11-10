@@ -38,12 +38,17 @@ disabled_modules = [
   "provider-supergrok",
   "remote",
   "side-question",
-  "subagents",
   "web",
   "web-chatgpt",
   "web-exa",
   "workflows",
 ]
+
+# Subagents stay on with the agent types that do the task's work. The advisor and
+# the reviewers give a second opinion from another model, which a run of one
+# model cannot give, and nothing in a trial publishes.
+[subagents]
+disabled_types = ["advisor", "reviewer", "ship"]
 
 [updates]
 auto_install = false
@@ -53,6 +58,21 @@ allow_training_routes = false
 
 # The board runs one model in a trial, so automatic titles use the chat route too.
 [profiles.benchmark.roles.chat]
+model = "deepseek-v4.1-flash"
+effort = "low"
+provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.explorer]
+model = "deepseek-v4.1-flash"
+effort = "low"
+provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.implementer]
+model = "deepseek-v4.1-flash"
+effort = "low"
+provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.subagent-summary]
 model = "deepseek-v4.1-flash"
 effort = "low"
 provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }

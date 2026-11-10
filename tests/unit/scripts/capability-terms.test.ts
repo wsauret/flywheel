@@ -57,9 +57,97 @@ const MUTATIONS = [
     corrected: "# Design\n\n{{if:ask_user}}\nWhen the person must decide, ask with `ask_user` and wait for the answer.\n{{else}}\nWhen the person must decide, ask in your reply and wait for the answer.\n{{end}}\n",
     module: "ask-user",
   },
+  {
+    name: "sizing guidance that names a reviewer",
+    path: "src/orchestration/agent-runtime/system-prompt.ts",
+    bad: 'export const SIZE = "Every expensive move, such as adding a reviewer, must pass a size test.";\n',
+    corrected: 'export const size = (has: (term: string) => boolean) => has("type:reviewer") ? "Every expensive move, such as adding a reviewer, must pass a size test." : "Every expensive move must pass a size test.";\n',
+    module: "type:reviewer",
+  },
+  {
+    name: "the design skill's Advisor review option",
+    path: "src/agent-skills/design/SKILL.md",
+    bad: "# Design\n\n{{if:subagent}}\nAlso offer `Advisor review first`.\n{{end}}\n",
+    corrected: "# Design\n\n{{if:subagent&type:advisor}}\nAlso offer `Advisor review first`.\n{{end}}\n",
+    module: "type:advisor",
+  },
+  {
+    name: "a skill reference that names one reviewer persona",
+    path: "src/orchestration/modules/workflows/definitions/skills/workflow-authoring/references/review-briefs.md",
+    bad: "# Review Briefs\n\n{{if:type:reviewer}}\nUse `reviewer-code-security` for a trust boundary.\n{{end}}\n",
+    corrected: "# Review Briefs\n\n{{if:type:reviewer-security}}\nUse `reviewer-code-security` for a trust boundary.\n{{end}}\n",
+    module: "type:reviewer-security",
+  },
+  {
+    name: "a bundled skill script that names a reviewer",
+    path: "src/orchestration/modules/workflows/definitions/skills/workflow-authoring/scripts/check.sh",
+    bad: "#!/bin/sh\n# Ask a reviewer to read the result.\n",
+    corrected: "#!/bin/sh\n{{if:type:reviewer}}\n# Ask a reviewer to read the result.\n{{end}}\n",
+    module: "type:reviewer",
+  },
+  {
+    name: "research guidance that sends explorers",
+    path: "src/agent-skills/research/SKILL.md",
+    bad: "# Research\n\n{{if:subagent}}\nSend one explorer for each facet.\n{{end}}\n",
+    corrected: "# Research\n\n{{if:subagent&type:explorer}}\nSend one explorer for each facet.\n{{end}}\n",
+    module: "type:explorer",
+  },
+  {
+    name: "sizing guidance that dispatches implementers",
+    path: "src/agent-skills/implementation/SKILL.md",
+    bad: "# Implementation\n\n{{if:subagent}}\nSend separable units to implementers.\n{{end}}\n",
+    corrected: "# Implementation\n\n{{if:subagent&type:implementer}}\nSend separable units to implementers.\n{{end}}\n",
+    module: "type:implementer",
+  },
+  {
+    name: "roster text that routes work to the general agent",
+    path: "src/orchestration/modules/subagents/execution/prompts.ts",
+    bad: 'export const ROUTE = "For open-ended work, dispatch general instead.";\n',
+    corrected: 'export const route = (has: (term: string) => boolean) => has("type:general") ? "For open-ended work, dispatch general instead." : "";\n',
+    module: "type:general",
+  },
+  {
+    name: "review guidance that forbids a forked dispatch",
+    path: "src/agent-skills/references/reviewer-protocol.md",
+    bad: "# Reviewer Protocol\n\nUse self-contained prompts and never `fork: true`.\n",
+    corrected: "# Reviewer Protocol\n\n{{if:type:general}}\nUse self-contained prompts and never `fork: true`.\n{{else}}\nUse self-contained prompts.\n{{end}}\n",
+    module: "type:general",
+  },
+  {
+    name: "publication guidance that dispatches Ship",
+    path: "src/orchestration/modules/bash/definitions/skills/worktree-lifecycle/SKILL.md",
+    bad: "# Worktree Lifecycle\n\nWhen publication is required, dispatch `ship` once in the worktree.\n",
+    corrected: "# Worktree Lifecycle\n\n{{if:type:ship}}\nWhen publication is required, dispatch `ship` once in the worktree.\n{{else}}\nWhen publication is required, commit and push the files yourself.\n{{end}}\n",
+    module: "type:ship",
+  },
 ] as const;
 
 describe("capability-term rule", () => {
+  test("passes the ordinary English words general and ship", async () => {
+    const path = "src/agent-skills/design/SKILL.md";
+    expect(await findings({ [path]: "# Design\n\nIn general, ship the smallest change, and keep the general rule in view.\nThe relationship holds before you ship it.\nShip the tested change. Ship it.\nFork the repository before editing.\n" })).toEqual([]);
+  });
+
+  test("flags a quoted dispatch name, a name that a kind noun follows, and Ship as the agent's name", async () => {
+    const path = "src/agent-skills/design/SKILL.md";
+    const text = [
+      'Dispatch "general" with the brief.',
+      "Use the `general` type for open work.",
+      'Dispatch "ship" once.',
+      "Then the `ship` type publishes.",
+      "Ship returns publication evidence.",
+      "Send a self-contained prompt and never fork your conversation into a child.",
+    ];
+    expect(await findings({ [path]: `${text.join("\n")}\n` })).toEqual([
+      `${path}:1 type:general`, `${path}:2 type:general`, `${path}:3 type:ship`, `${path}:4 type:ship`, `${path}:5 type:ship`, `${path}:6 type:general`,
+    ]);
+  });
+
+  test("a negated condition guarantees nothing about its term", async () => {
+    const path = "src/agent-skills/design/SKILL.md";
+    expect(await findings({ [path]: "{{if:subagent&!type:reviewer}}\nAsk a reviewer.\n{{end}}\n" })).toEqual([`${path}:2 type:reviewer`]);
+  });
+
   for (const mutation of MUTATIONS) {
     test(`flags ${mutation.name} and passes its corrected form`, async () => {
       const [bad] = await findings({ [mutation.path]: mutation.bad });

@@ -22,7 +22,11 @@ Before changing anything, run the baseline checks once and record their result. 
 
 ## Judging Another Agent's Verification Claim
 
+{{if:type:reviewer}}
 A claim of "verified" from a subagent, a reviewer, or an earlier pass is itself a hypothesis. Read the cited evidence, not the verdict, and look for these smells:
+{{else}}
+A claim of "verified" from a subagent or an earlier pass is itself a hypothesis. Read the cited evidence, not the verdict, and look for these smells:
+{{end}}
 
 - The cited evidence does not demonstrate the claim: the artifact shows a different session, a different state, or nothing of the sort.
 - "Verified" rests on no observable change or on "consumed without crash" reasoning; the observation only restates that the input was sent.

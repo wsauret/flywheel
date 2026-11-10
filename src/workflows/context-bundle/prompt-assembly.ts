@@ -2,7 +2,7 @@ import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { Log } from "../../infra/log.js";
 import type { ResolvedAgent } from "../agent-resolution.js";
 import type { SkillRegistryRevision } from "../skill-schema.js";
-import { renderSkillClosure } from "../skill-context.js";
+import { renderSkillClosure } from "../skill-render.js";
 import type { AttemptRow } from "../view/types.js";
 
 const log = Log.create({ service: "prompt-assembly" });

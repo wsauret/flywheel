@@ -1,4 +1,4 @@
-import type { AgentDefinition } from "../../infra/agent-definition.js"
+import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
 import type { ResolvedAgent } from "../../workflows/agent-resolution.js"
 import { personaInstructions } from "../../workflows/agents/persona-instructions.js"
 import { grantedSubagentTypes, personaToolNames, workflowAgentSubagents } from "../../workflows/agents/subagent-reachability.js"
@@ -38,22 +38,29 @@ export interface AgentPersonaRun {
 }
 
 /** The persona run of one agent, or undefined when its record names no
- *  persona. Throws when the persona is not installed: a launch refuses that
- *  agent before it starts (refer to `resolveLaunchAgents`), so only a
- *  persona removed while the run was paused reaches this. */
+ *  persona. `availability` is the agent's own at its start, as a dispatch
+ *  judges the persona it starts: the agent runs as an available persona and
+ *  may dispatch only available ones. Throws when the persona is not
+ *  installed or cannot run: a launch refuses that agent before it starts
+ *  (refer to `resolveLaunchAgents` and `admitWorkflowOperation`), so only a
+ *  persona removed, or a type turned off, after the run's admission reaches
+ *  this. */
 export function agentPersonaRun(input: {
   readonly agent: ResolvedAgent
-  readonly personas: ReadonlyMap<string, AgentDefinition>
+  readonly availability: Pick<DefinitionAvailabilitySnapshot, "personas" | "availablePersonas">
   readonly skills: SkillRegistryRevision
   readonly sessionMessaging: boolean
   /** The workflow's modules, which the grant narrows to. */
   readonly modules: FirstPartyModuleComposition
 }): AgentPersonaRun | undefined {
-  const { agent, personas } = input
+  const { agent, availability } = input
   if (agent.persona === undefined) return undefined
+  const reason = availability.personas.get(agent.persona)?.reason
+  if (reason !== undefined) throw new Error(`Agent "${agent.definitionId}" runs as persona "${agent.persona}", which cannot run: ${reason}`)
+  const personas = availability.availablePersonas
   const persona = personas.get(agent.persona)
   if (persona?.kind !== "persona") throw new Error(`Agent "${agent.definitionId}" runs as persona "${agent.persona}", which no installed persona provides`)
-  const allowedSubagentTypes = new Set([...workflowAgentSubagents(agent), ...grantedSubagentTypes(persona, personas)])
+  const allowedSubagentTypes = new Set([...workflowAgentSubagents(agent, personas), ...grantedSubagentTypes(persona, personas)])
   const toolGrant = availableToolNames([...new Set([
     ...personaToolNames(persona, personas),
     ...(allowedSubagentTypes.size > 0 ? ["subagent", "process"] : []),

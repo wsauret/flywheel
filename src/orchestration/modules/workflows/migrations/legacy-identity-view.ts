@@ -18,7 +18,7 @@
 
 import { hashContent, hashDefinition } from "../../../../workflows/definition-hash.js"
 import { retiredBindingOf, retiredBindingSha256, type RetiredBinding } from "../../../../workflows/retired-bindings.js"
-import { renderSkillContext } from "../../../../workflows/skill-context.js"
+import { renderSkillContext } from "../../../../workflows/skill-render.js"
 import type { SkillRegistryRevision } from "../../../../workflows/skill-schema.js"
 import type { LegacyDefinitionIdentity, StepDefinitionIdentity } from "../../../../workflows/vm/definition-identity.js"
 import type { StepGrammarWorkflow } from "../../../../workflows/retired-step-grammar/schema.js"

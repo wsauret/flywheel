@@ -17,7 +17,7 @@ import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
 import { createWorkerCallback } from "../../../../src/orchestration/workflow-host/agent-callback"
 import type { AttemptRow } from "../../../../src/workflows/view/types"
 import { testAuth } from "../chat/_chat-session-agent-runtime-fixtures"
-import { noSkills } from "../../../helpers/project-definitions"
+import { fixedAvailability, noSkills } from "../../../helpers/project-definitions"
 import { noConversationRecall } from "../workflow-host/_workflow-controller-fixtures"
 import { definition } from "../../workflows/vm/host-test-support"
 
@@ -86,7 +86,7 @@ describe("child conversation factory", () => {
       projectionReader: asAsyncEventReadSurface(store),
       eventWriter: asAsyncEventWriter(store),
       skills: noSkills,
-      personas: new Map(),
+      availability: () => fixedAvailability(),
       planCapabilities: planEveryCapability,
       resolvedAgents: new Map([["work", definition]]),
       recall: noConversationRecall,

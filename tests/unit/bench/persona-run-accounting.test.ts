@@ -13,6 +13,9 @@ import {
   type PersonaTaskRequest,
 } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
+import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
+import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request-config.js";
+import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema.js";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import { runGroups } from "../../../src/orchestration/modules/development/benchmark/matrix-runner.js";
 
@@ -153,6 +156,7 @@ function runtimeOf(createAgent: (options: AgentOptions) => FakeRunner): Benchmar
     accountHome: tmpdir(),
     profileId: "persona-test",
     moduleSelection: composeFirstPartyModules,
+    captureRuntimeConfig: testRuntimeConfigCapture,
     authorityIncarnation: "persona-test-incarnation",
     runOwnedCommand: async () => { throw new Error("a research cell runs no commands"); },
     createLLMClient: () => { throw new Error("a persona cell creates no judge client"); },
@@ -201,6 +205,35 @@ async function failureOf(runtime: BenchmarkRuntime, signal?: AbortSignal): Promi
 }
 
 describe("persona cell accounting", () => {
+  it("renders direct persona guidance for the agent types that the runtime's configuration turns off", () => {
+    const advisor: PersonaDefinition = { ...PERSONA, name: "advisor", role: "advisor" };
+    const persona: PersonaDefinition = { ...PERSONA, bundled: true, systemPrompt: "Investigate.\n{{if:persona:advisor}}\nAsk the advisor.\n{{end}}" };
+    const registry = new Map<string, AgentDefinition>([["explorer", persona], ["advisor", advisor]]);
+    const runtime = { definitions: fixedDefinitions({ personas: registry }), moduleSelection: () => composeFirstPartyModules() };
+    const capture = (disabled_types: readonly string[]) => {
+      const config = { ...CONFIG_DEFAULTS, subagents: { disabled_types } };
+      return () => captureRuntimeConfigRequest({ revision: 0, config, warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" } }, "default");
+    };
+    expect(renderPersonaTaskGuidance(persona, registry, { ...runtime, captureRuntimeConfig: capture([]) }).task).toContain("Ask the advisor.");
+    expect(renderPersonaTaskGuidance(persona, registry, { ...runtime, captureRuntimeConfig: capture(["advisor"]) }).task).not.toContain("Ask the advisor.");
+  });
+
+  it("refuses a persona whose agent type the runtime's configuration turns off, and builds no runner", async () => {
+    let built = 0;
+    const implementer: PersonaDefinition = { ...PERSONA, name: "implementer", role: "implementer" };
+    const runtime = runtimeOf(() => { built += 1; return { send: () => {}, abort: () => {}, end: () => {}, done: Promise.resolve({ terminal: { kind: "completed" } }) }; });
+    const config = { ...CONFIG_DEFAULTS, subagents: { disabled_types: ["implementer"] } };
+    const off = {
+      ...runtime,
+      definitions: fixedDefinitions({ personas: new Map([["implementer", implementer]]) }),
+      captureRuntimeConfig: () => captureRuntimeConfigRequest({ revision: 0, config, warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" } }, "default"),
+    };
+    await expect(runPersonaTask(off, { ...request(), persona: implementer, label: "implementer/task/0" })).rejects.toThrow(
+      "implementer/task/0 cannot run persona implementer: agent type implementer is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on",
+    );
+    expect(built).toBe(0);
+  });
+
   it("keeps direct persona guidance and completed text when dispatch is disabled", async () => {
     let captured: AgentOptions | undefined;
     let sent: unknown;

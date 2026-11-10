@@ -37,6 +37,7 @@ import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-serv
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import { ORCHESTRATION_REMINDER, orchestrationSection } from "./workflows/orchestration.js"
 import type { LaunchingSessionAuthority } from "../workflow-host/path-workflow.js"
+import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import { moduleDisabledReason } from "../../protocol/module-ids.js"
 import type { WorkflowToolDeps } from "../agent-runtime/tools/workflow-tool.js"
@@ -59,8 +60,8 @@ import { createWorkflowHosts } from "./workflows/host-collection.js"
 /** The launch surface of one runner. Each request reads the live mode. */
 export interface WorkflowsRuntime {
   readonly deps: () => WorkflowToolDeps
-  /** The authority of this runner's session under one planned tool set. */
-  readonly authority: (planned: ReadonlyMap<string, RuntimeTool>) => LaunchingSessionAuthority
+  /** The authority of this runner's session under one planned tool set and its request's own availability. */
+  readonly authority: (planned: ReadonlyMap<string, RuntimeTool>, availability: DefinitionAvailabilitySnapshot) => LaunchingSessionAuthority
 }
 
 const workflowsRuntime = moduleRuntimeHandle<WorkflowsRuntime>("workflows")
@@ -84,22 +85,32 @@ function createWorkflowsRuntime(services: ModuleRuntimeServices): WorkflowsRunti
       ...(services.sessionDir === undefined ? {} : { sessionDir: services.sessionDir }),
       executionCwd: services.executionCwd,
     }),
-    authority: (planned) => launchingSessionAuthority(planned, services),
+    authority: (planned, availability) => launchingSessionAuthority(planned, services, availability),
   }
 }
 
 /** What the calling session may grant the agents of a workflow file: the
  *  actions of its planned tools, and the personas its subagent tool can
- *  dispatch. A session that plans no subagent tool dispatches no persona. */
-export function launchingSessionAuthority(planned: ReadonlyMap<string, RuntimeTool>, services: Pick<ModuleRuntimeServices, "allowedSubagentTypes" | "personas">): LaunchingSessionAuthority {
+ *  dispatch under `availability`, the definition availability of the session's
+ *  own selection. A session that plans no subagent tool dispatches no persona.
+ *  Each persona of the session's grant that `availability` refuses keeps its
+ *  reason, so a refusal of the file says what to turn on. */
+export function launchingSessionAuthority(planned: ReadonlyMap<string, RuntimeTool>, services: Pick<ModuleRuntimeServices, "allowedSubagentTypes" | "personas">, availability: Pick<DefinitionAvailabilitySnapshot, "personas">): LaunchingSessionAuthority {
   const toolActions = new Set([...planned.values()].map((tool) => tool.action))
-  if (!toolActions.has("task_subagent")) return { toolActions, personas: new Set() }
-  const personas = [...services.personas.values()].filter((agent) => agent.kind === "persona").map((agent) => agent.name)
-  return { toolActions, personas: new Set(services.allowedSubagentTypes ? personas.filter((name) => services.allowedSubagentTypes?.has(name)) : personas) }
+  const granted = [...services.personas.values()]
+    .filter((agent) => agent.kind === "persona" && (services.allowedSubagentTypes?.has(agent.name) ?? true))
+    .map((agent) => agent.name)
+  // An entry carries a reason exactly when it is unavailable.
+  const unavailable = new Map(granted.flatMap((name) => {
+    const reason = availability.personas.get(name)?.reason
+    return reason === undefined ? [] : [[name, reason] as const]
+  }))
+  const personas = toolActions.has("task_subagent") ? granted.filter((name) => !unavailable.has(name)) : []
+  return { toolActions, personas: new Set(personas), unavailable }
 }
 
 /** What a tool built before its request's tools are planned may grant: nothing. */
-const NO_AUTHORITY: LaunchingSessionAuthority = { toolActions: new Set(), personas: new Set() }
+const NO_AUTHORITY: LaunchingSessionAuthority = { toolActions: new Set(), personas: new Set(), unavailable: new Map() }
 
 const workflow = {
   category: "opt-in",
@@ -125,7 +136,7 @@ const workflow = {
           refine: (planned) => {
             const askUserAvailable = planned.has("ask_user")
             if (mode === "ask" && !askUserAvailable) return { reason: "workflow Ask mode requires the Ask User capability, which only a root chat has; a child session messages its parent to ask for a launch" }
-            return { tool: createWorkflowTool({ ...deps, mode, askUserAvailable, authority: runtime.authority(planned), capabilities: kernel.treeCapabilities }) }
+            return { tool: createWorkflowTool({ ...deps, mode, askUserAvailable, authority: runtime.authority(planned, kernel.definitionAvailability.live), capabilities: kernel.treeCapabilities }) }
           },
         }
       },

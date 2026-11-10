@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
+import { renderCapabilityText } from "../../../src/infra/capability-text.js"
 import { join } from "node:path"
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js"
 import { CANONICAL_WORKFLOW_FILE } from "../../../src/orchestration/agent-runtime/tools/workflow.js"
@@ -39,12 +40,13 @@ const temporary = temporaryDirectories()
 const revision = repoDefinitions().captureRevision()
 const SKILL_DIR = join(import.meta.dir, "..", "..", "..", "src", "orchestration", "modules", "workflows", "definitions", "skills", "workflow-authoring")
 const EXAMPLES_DIR = join(SKILL_DIR, "examples")
-const read = (path: string): string => readFileSync(join(SKILL_DIR, path), "utf8")
+/** A file of the skill as an agent with every capability reads it: its capability markers rendered. */
+const read = (path: string): string => renderCapabilityText(readFileSync(join(SKILL_DIR, path), "utf8"), () => true)
 
 /** A chat that holds every tool but `subagent` and can dispatch every
  *  installed persona, as most chats can. Every agent gets the same tools, so
  *  each example launches here. */
-const CHAT_AUTHORITY = { toolActions: new Set(ToolActionSchema.literals.filter((action) => action !== "task_subagent")), personas: new Set(revision.personas.keys()) }
+const CHAT_AUTHORITY = { toolActions: new Set(ToolActionSchema.literals.filter((action) => action !== "task_subagent")), personas: new Set(revision.personas.keys()), unavailable: new Map<string, string>() }
 
 /** Launch one file through the path pipeline, as an agent's file launches. */
 async function launch(name: string, content: string): Promise<PathWorkflowLaunch> {
@@ -64,7 +66,7 @@ const exampleLaunches = new Map<string, Promise<PathWorkflowLaunch>>()
 function launchExample(name: string): Promise<PathWorkflowLaunch> {
   const known = exampleLaunches.get(name)
   if (known !== undefined) return known
-  const launched = launch(name, readFileSync(join(EXAMPLES_DIR, name), "utf8"))
+  const launched = launch(name, read(`examples/${name}`))
   exampleLaunches.set(name, launched)
   return launched
 }

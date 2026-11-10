@@ -6,6 +6,12 @@ import { resolveHarborConfig } from "../../../bench/harbor/harbor-config.js";
 import { HARBOR_BENCHMARKS } from "../../../bench/harbor/benchmarks.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { harborLaunchArgs as launchArgs } from "../../fixtures/harbor-run.js";
+import { readFileSync, readdirSync } from "node:fs";
+import { decodeCanonicalConfigText } from "../../../src/orchestration/config/loader.js";
+import { composeFirstPartyModules, type ModuleId } from "../../../src/orchestration/modules.js";
+import { availableAgentTypes, definitionAvailabilityOf } from "../../../src/orchestration/app-service/definition-availability.js";
+import { repoDefinitions } from "../../helpers/project-definitions.js";
+import { disabledTypesOf } from "../../../src/orchestration/modules/subagents/config.js";
 
 const ACCESS = ["--auth-profile", "Fixture", "--agent-repo", "owner/agent"];
 const ONE_TASK = ["--task-names", "one"];
@@ -98,6 +104,17 @@ describe("Harbor config resolution", () => {
     expect(config.flywheelConfig.absolutePath).toBe(resolve(process.cwd(), `bench/harbor/configs/${file}`));
     expect(config.flywheelConfig.credentialProviders).toEqual(providers);
     expect(config.flywheelConfig.providerHosts).toEqual({ declared: hosts, undeclared: hosts.length === 0 ? providers : [] });
+  });
+
+  const ARMS = resolve(import.meta.dir, "../../../bench/harbor/configs");
+  test.each(readdirSync(ARMS).filter((file) => file.endsWith(".toml")))("the %s arm offers only the agent types that do the task's work, each on the arm's chat model", (file) => {
+    const { config } = decodeCanonicalConfigText(readFileSync(join(ARMS, file), "utf8"), {}, undefined, join(ARMS, file));
+    const enabled = new Set<string>(config.modules);
+    const modules = composeFirstPartyModules(undefined, composeFirstPartyModules().enabledModuleIds.filter((id): id is ModuleId => !enabled.has(id)));
+    const availability = definitionAvailabilityOf(repoDefinitions().captureRevision(), modules.enabledModuleIds, disabledTypesOf(config));
+    expect([...availableAgentTypes(availability)].toSorted()).toEqual(["explorer", "general", "implementer"]);
+    const roles = config.profiles.benchmark?.roles ?? {};
+    for (const role of ["explorer", "implementer", "subagent-summary"]) expect(roles[role]).toEqual(roles.chat);
   });
 
   test("the profile digest changes with the arm and with the task selection", async () => {

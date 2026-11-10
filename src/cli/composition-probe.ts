@@ -27,8 +27,7 @@ export function runCompositionProbe(directories: StartupDirectories): void {
   const definitionRevision = definitions.captureRevision();
   const revision = definitionRevision.skills;
   const personas = definitionRevision.personas;
-  const personaIndex = Object.fromEntries([...personas.values()].filter((agent) => agent.kind === "persona").map(({ name, role }) => [name, { name, role }]));
-  const invocationOptions = { skills: revision, personaIndex, capabilities: EVERY_CAPABILITY };
+  const invocationOptions = { skills: revision, agents: personas, capabilities: EVERY_CAPABILITY };
   const direct = Object.fromEntries(["code-review", "plan-review"].map((id) => {
     const skill = required(revision.skills.get(id), `skill ${id}`);
     return [id, {

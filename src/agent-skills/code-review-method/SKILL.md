@@ -1,5 +1,5 @@
 ---
-description: Read-only evidence and findings method for code reviewers.
+description: Read-only evidence and findings method for one code review.
 disable-model-invocation: true
 dependencies:
   - elegance-review-principles
@@ -7,11 +7,15 @@ dependencies:
 
 # Individual Code Review Method
 
+{{if:type:reviewer}}
 Review only the supplied implementation against the original request or settled design. This package defines an individual review, not parent orchestration. When assigned an individual review: Do not dispatch reviewers, combine other reviewers' findings, edit code, or fix findings. Return evidence to the caller and stop. A composing parent skill owns orchestration and continuation separately.
+{{else}}
+Review only the supplied implementation against the original request or settled design. This package defines an individual review, not parent orchestration. When assigned an individual review: Do not dispatch agents, combine findings of other reviews, edit code, or fix findings. Return evidence to the caller and stop. A composing parent skill owns orchestration and continuation separately.
+{{end}}
 
 ## Establish the target
 
-Read required behavior, non-goals, constraints, and acceptance criteria. The section labeled Design intent is the fixed tier the user approved; everything else the brief supplies, such as the plan's shape, file lists, and planned approach, is implementation design the implementer was free to revise. Get the actual diff. A file list or implementation report is not a diff; state the limitation when only changed-file evidence is available. Read changed files where hunks hide context, then trace affected callers, imports, registrations, and tests. Inspect deletions for live paths whose logic disappeared. Stay within the supplied change and applicable project context.
+Read required behavior, non-goals, constraints, and acceptance criteria. The section labeled Design intent is the fixed tier the user approved; everything else the brief supplies, such as the plan's shape, file lists, and planned approach, is implementation design the author was free to revise. Get the actual diff. A file list or implementation report is not a diff; state the limitation when only changed-file evidence is available. Read changed files where hunks hide context, then trace affected callers, imports, registrations, and tests. Inspect deletions for live paths whose logic disappeared. Stay within the supplied change and applicable project context.
 
 ## Apply the review
 

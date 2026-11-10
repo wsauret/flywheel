@@ -13,13 +13,17 @@ Start with create or adopt action, canonical path, branch or base, intended dest
 
 ## Method
 
-1. Create or adopt the worktree and keep its ownership record current. Create a new worktree from a freshly fetched destination tip. In a new worktree, install dependencies from the lockfile before the first gate. Post the full absolute path of the worktree to the user as soon as it exists, so that they can open it in a file explorer and inspect its files and diffs.
+1. Create or adopt the worktree and keep its ownership record current. Create a new worktree from a freshly fetched destination tip. In a new worktree, install dependencies from the lockfile before the first gate. Post the full absolute path of the worktree to the user as soon as it exists, so that they can open it in a file manager and inspect its files and diffs.
 2. Keep work durable through commits or an explicit handoff before the owner exits.
 3. After a rebase with conflicts, compare the old and new commits with `git range-diff` and confirm that each change from the destination side in the conflicted files survives.
 4. Before final verification, fetch the destination and rebase onto its tip. When the base changed, run the gates again, because verification on the old base does not cover the rebased tree.
-{{if:persona:ship}}
+{{if:persona:ship&type:general}}
 5. When publication is required, dispatch `ship` once without forked history in the existing worktree. Send the files to publish and a short summary of user intent and implemented design. Add a destination only when it differs from the normal push target. Keep integration and cleanup ownership in the parent, consume Ship's publication evidence, then resume destination integration and cleanup. When the parent's integration advances the remote destination, bring that branch's local checkout to the new tip with `git merge --ff-only`; when Git refuses, leave that checkout untouched.
-{{else}}
+{{end}}
+{{if:persona:ship&!type:general}}
+5. When publication is required, dispatch `ship` once in the existing worktree. Send the files to publish and a short summary of user intent and implemented design. Add a destination only when it differs from the normal push target. Keep integration and cleanup ownership in the parent, consume Ship's publication evidence, then resume destination integration and cleanup. When the parent's integration advances the remote destination, bring that branch's local checkout to the new tip with `git merge --ff-only`; when Git refuses, leave that checkout untouched.
+{{end}}
+{{if:!persona:ship}}
 5. When publication is required, publish the selected files yourself from the existing worktree: commit them whole and push the branch to the destination, adding a destination only when it differs from the normal push target. Keep the commit and the pushed remote ref as publication evidence, then resume destination integration and cleanup. When the parent's integration advances the remote destination, bring that branch's local checkout to the new tip with `git merge --ff-only`; when Git refuses, leave that checkout untouched.
 {{end}}
 6. Consume fresh verification evidence. Run only lifecycle-specific clean-state and destination-containment proofs here.

@@ -9,6 +9,7 @@ import type { AttemptRecord } from "../../../src/orchestration/modules/developme
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { fixedDefinitions } from "../../helpers/project-definitions.js";
+import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 
 export const EXPLORER_DEFINITION = `---
 name: explorer
@@ -43,6 +44,7 @@ export function fakeRuntime(settle: (options: AgentOptions) => Pick<AgentRunResu
     accountHome: tmpdir(),
     profileId: "persona-test",
     moduleSelection: composeFirstPartyModules,
+    captureRuntimeConfig: testRuntimeConfigCapture,
     authorityIncarnation: "persona-test-incarnation",
     runOwnedCommand: succeedingCommands,
     createLLMClient: () => { throw new Error("a research cell creates no judge client"); },

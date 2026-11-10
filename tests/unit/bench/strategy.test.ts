@@ -33,6 +33,7 @@ import { createBackgroundExecutionOwner } from "../../../src/orchestration/agent
 import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js";
 import { testCapabilityModules, testProviderRegistry } from "../../helpers/provider-authority.js";
+import { testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
 import { roleCapture } from "../../helpers/role-capture.js";
 import { fakeModelsClient } from "../../helpers/model-tier-fixtures.js";
 import { testDirectories } from "../../helpers/directories.js";
@@ -202,7 +203,7 @@ async function strategyConfig(identity: RunConfig["identity"]): Promise<RunConfi
     tasks: [],
   }, createBenchmarkCatalog(REPO_ROOT), { definitions, moduleSelection: testCapabilityModules });
   const taskIdentity = structuredIdentity({ snapshot: RESEARCH_SNAPSHOT, tasks: PLAN_TASKS, facetBrief: await loadFacetBrief() });
-  const personaGuidanceIdentity = structuredIdentity([renderPersonaTaskGuidance(persona, registry, { definitions, moduleSelection: testCapabilityModules })]);
+  const personaGuidanceIdentity = structuredIdentity([renderPersonaTaskGuidance(persona, registry, { definitions, moduleSelection: testCapabilityModules, captureRuntimeConfig: testRuntimeConfigCapture })]);
   const judgeIdentity = structuredIdentity({ model: "gpt-6.1-sol", template: buildPlanJudgePrompt("__TASK__", "__A__", "__B__") });
   return {
     kind: "benchmark-config",

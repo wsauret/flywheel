@@ -3,13 +3,17 @@
  *
  * A `CapabilityCheck` answers whether one capability term holds for the agent
  * that reads a text. A term is a logical tool identity (`bash`, `subagent`),
- * `skill:<id>`, or `persona:<name>`. Kernel tools are never terms. The core
+ * `skill:<id>`, `persona:<name>`, or `type:<id>`: an agent type that some
+ * available persona has, `general`, a role, or a parent role such as
+ * `reviewer`. Kernel tools are never terms. The core
  * system prompt also reads `purpose:unattended-chat`, which only its own
  * render answers.
  *
  * Bundled Flywheel text marks a capability-specific passage with whole-line
- * markers, `{{if:a|b}}`, an optional `{{else}}`, and `{{end}}`. `|` means any
- * listed term holds. Markers do not nest.
+ * markers, `{{if:a|b&!c}}`, an optional `{{else}}`, and `{{end}}`. `|` separates
+ * alternatives, `&` joins the conditions of one alternative, and `!` before a
+ * term makes a condition that holds when the term does not: the block holds
+ * when every condition of any one alternative holds. Markers do not nest.
  */
 
 /** Whether one capability term holds. Pure: the same term gives the same answer for the life of the check. */
@@ -21,7 +25,7 @@ const END_MARKER = "{{end}}";
 
 /**
  * Render `text` for `has`: each `{{if:...}}` block keeps the lines of its first
- * branch when any listed term holds, else the lines of its `{{else}}` branch or
+ * branch when every condition of any one alternative holds, else the lines of its `{{else}}` branch or
  * nothing. Marker lines never reach the output; every other line is kept byte
  * for byte, so a text with no markers renders unchanged.
  *
@@ -39,9 +43,11 @@ export function renderCapabilityText(text: string, has: CapabilityCheck): string
     const opened = IF_MARKER.exec(marker);
     if (opened) {
       if (block) throw new Error(`Capability marker at line ${lineNumber} opens a block inside the block opened at line ${block.line}; markers do not nest`);
-      const terms = (opened[1] ?? "").split("|").map((term) => term.trim());
-      if (terms.some((term) => term.length === 0)) throw new Error(`Capability marker at line ${lineNumber} names an empty term`);
-      block = { line: lineNumber, holds: terms.some((term) => has(term)), inElse: false };
+      const alternatives = (opened[1] ?? "").split("|").map((alternative) => alternative.split("&").map((term) => term.trim()));
+      if (alternatives.flat().some((term) => term.length === 0)) throw new Error(`Capability marker at line ${lineNumber} names an empty term`);
+      if (alternatives.flat().some((term) => term === "!")) throw new Error(`Capability marker at line ${lineNumber} names an empty term`);
+      const holds = (condition: string): boolean => condition.startsWith("!") ? !has(condition.slice(1)) : has(condition);
+      block = { line: lineNumber, holds: alternatives.some((conditions) => conditions.every(holds)), inElse: false };
     } else if (marker === ELSE_MARKER) {
       if (!block) throw new Error(`Capability marker {{else}} at line ${lineNumber} is outside a block`);
       if (block.inElse) throw new Error(`Capability marker {{else}} at line ${lineNumber} repeats the else of the block opened at line ${block.line}`);

@@ -53,6 +53,8 @@ import type { WorkflowDefinitionRefusal, WorkflowDefinitionResolution } from "./
 export interface LaunchingSessionAuthority {
   readonly toolActions: ReadonlySet<ToolAction>
   readonly personas: ReadonlySet<string>
+  /** The personas the session would dispatch if they were available, each with the reason it cannot now. */
+  readonly unavailable: ReadonlyMap<string, string>
 }
 
 /** The one directory a session's workflow files launch from. */
@@ -412,12 +414,16 @@ function authorityDiagnostics(file: string, workflow: WorkflowDefinition, agents
     const at = place?.keyPath ?? "phases"
     const entry = place === undefined ? {} : { entry: place.label }
     const keys = records.get(agent.definitionId)?.keys
+    const because = (personas: readonly string[]): string => {
+      const reasons = [...new Set(personas.flatMap((persona) => authority.unavailable.get(persona) ?? []))]
+      return reasons.length === 0 ? "" : `: ${reasons.join("; ")}`
+    }
     const unknown = agent.subagents.filter((persona) => !authority.personas.has(persona))
     if (unknown.length > 0) {
-      diagnostics.push({ file, ...entry, keyPath: keys?.subagents === undefined ? at : `${at}.subagents`, message: `names ${unknown.join(", ")}, which the launching session cannot dispatch` })
+      diagnostics.push({ file, ...entry, keyPath: keys?.subagents === undefined ? at : `${at}.subagents`, message: `names ${unknown.join(", ")}, which the launching session cannot dispatch${because(unknown)}` })
     }
     if (agent.persona !== undefined && !authority.personas.has(agent.persona)) {
-      diagnostics.push({ file, ...entry, keyPath: `${at}.persona`, message: `runs as persona ${agent.persona}, which the launching session cannot dispatch` })
+      diagnostics.push({ file, ...entry, keyPath: `${at}.persona`, message: `runs as persona ${agent.persona}, which the launching session cannot dispatch${because([agent.persona])}` })
     }
   }
   return diagnostics

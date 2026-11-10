@@ -26,6 +26,7 @@ import * as yaml from "js-yaml";
 import { Log } from "../src/infra/log.js";
 import { isRecord } from "../src/infra/record.js";
 import { renderCapabilityText, type CapabilityCheck } from "../src/infra/capability-text.js";
+import { parentRoleId } from "../src/orchestration/config/roles.js";
 import { claude5ChatVariant, renderClaude5ChatBody } from "../src/orchestration/agent-runtime/claude-5-chat-prompt.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
@@ -137,6 +138,11 @@ export function buildClaudePlugin(version: string, author: string): ClaudePlugin
   const has: CapabilityCheck = (term) => {
     if (term.startsWith("skill:")) return NATIVE_TOOLS.has("skill") && skillIds.has(term.slice("skill:".length)) && !isExcluded("skill", term.slice("skill:".length));
     if (term.startsWith("persona:")) return NATIVE_TOOLS.has("subagent") && personaNames.has(term.slice("persona:".length)) && !isExcluded("agent", term.slice("persona:".length));
+    // An agent type holds while the plugin exports one of its personas, as it holds in Flywheel while one is available.
+    if (term.startsWith("type:")) {
+      const type = term.slice("type:".length);
+      return NATIVE_TOOLS.has("subagent") && personas.some((persona) => (persona.role === type || parentRoleId(persona.role) === type) && !isExcluded("agent", persona.name));
+    }
     return NATIVE_TOOLS.has(term);
   };
   const rendered = (source: string): string => renderCapabilityText(source, has);

@@ -1,4 +1,5 @@
 import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
+import { fixedAvailability } from "../../../helpers/project-definitions.js"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { afterEach, describe, expect, it } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
@@ -170,7 +171,7 @@ describe("workflow interruption ownership", () => {
 
       const controls = createWorkerCallback({
         ...makeWorkflowDeps(),
-        skills: fixtureSkills, personas: new Map(), planCapabilities: planEveryCapability,
+        skills: fixtureSkills, availability: () => fixedAvailability(), planCapabilities: planEveryCapability,
         createAgent: () => {
           const runner = { done: Promise.withResolvers<AgentRunResult>(), interrupts: 0 }
           runners.push(runner)

@@ -1,4 +1,3 @@
-import { getPersonaMetadataIndex } from "../../workflows/agents/agent-roles.js"
 import { createSkillTool, SKILL_TOOL_DEFINITION } from "../agent-runtime/tools/skill.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import type { FirstPartyModule } from "../modules.js"
@@ -32,7 +31,6 @@ const skill = {
           revision,
           treeCapabilities: kernel.treeCapabilities,
           availability: kernel.definitionAvailability.live,
-          personaIndex: getPersonaMetadataIndex(),
           ...(kernel.onSkillLoad ? { onLoad: kernel.onSkillLoad } : {}),
           ...(childGrant ? { childGrant } : {}),
         }) }

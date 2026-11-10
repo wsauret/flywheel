@@ -1,4 +1,5 @@
 import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
+import { fixedAvailability } from "../../../helpers/project-definitions.js"
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { mkdtempSync, rmSync } from "node:fs"
@@ -112,7 +113,7 @@ function worker(createAgent: AgentFactory, eventWriter = writer) {
     deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
     sessionEventWriter: createSessionFactWriter({ sessionId, writer }),
     eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter,
-    skills: publishSkillRevision(1, new Map()), personas: new Map(), planCapabilities: planEveryCapability,
+    skills: publishSkillRevision(1, new Map()), availability: () => fixedAvailability(), planCapabilities: planEveryCapability,
     resolvedAgents: new Map([["work", definition]]),
     recall: noConversationRecall,
     }).worker(...args)

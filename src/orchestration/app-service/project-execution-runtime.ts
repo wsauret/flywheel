@@ -72,7 +72,7 @@ import { createRuntimeOwnership, type RuntimeOwnership } from "./runtime-ownersh
 import { completeProjectExecutionOwnership } from "./project-execution-ownership.js"
 import { createProcessBackgroundClient } from "./worker-background-client.js"
 import { createCommandCatalogProjection } from "./command-catalog-projection.js"
-import { createDefinitionAvailability } from "./definition-availability.js"
+import { configuredAgentTypes, createDefinitionAvailability } from "./definition-availability.js"
 import { loadBundledDefaultCatalog } from "../../workflows/definitions/bundled-defaults.js"
 import { deriveDefinitionStalenessReport } from "../../workflows/definitions/override-staleness.js"
 import { createDefinitionOverrideService } from "../definition-overrides/override-service.js"
@@ -294,8 +294,11 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // Availability is derived from the complete registry and the live capability
   // projection, before any consumer of it exists. A settings change republishes
   // it, so the command roster and every new admission read one projection.
-  const availability = await createDefinitionAvailability({ definitions, capabilities })
+  // The agent types turned off are its second input, and a configuration publication republishes them.
+  const agentTypes = configuredAgentTypes(runtimeConfig)
+  const availability = await createDefinitionAvailability({ definitions, capabilities, agentTypes })
   scope.own("definition-availability-subscription", capabilities.onChange(() => { void availability.refresh() }), (unsubscribe) => { unsubscribe() })
+  scope.own("definition-availability-agent-types", agentTypes.follow(availability), (unsubscribe) => unsubscribe())
 
   // One credential resolver per generation: a `!command` key runs its helper at
   // most once for everything composed below.

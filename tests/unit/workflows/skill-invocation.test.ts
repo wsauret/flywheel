@@ -1,13 +1,12 @@
 import { describe, it, expect } from "bun:test";
-import { getPersonaMetadataIndex } from "../../../src/workflows/agents/agent-roles.js";
 import { assembleSkillInvocation } from "../../../src/workflows/skill-invocation.js";
-import { renderSkillContext } from "../../../src/workflows/skill-context.js";
+import { renderSkillContext } from "../../../src/workflows/skill-render.js";
 import type { SkillDefinition } from "../../../src/workflows/skill-schema.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
 import { testSkill, testSkillRevision } from "../../helpers/skill-fixtures.js";
 
-const personaIndex = getPersonaMetadataIndex();
 const skills = repoDefinitions().skills();
+const agents = repoDefinitions().personas();
 
 function installed(id: string): SkillDefinition {
   const skill = skills.skills.get(id);
@@ -16,7 +15,7 @@ function installed(id: string): SkillDefinition {
 }
 
 function invoke(skill: SkillDefinition, args?: string): string {
-  return assembleSkillInvocation(skill, args, { skills, personaIndex, capabilities: () => true });
+  return assembleSkillInvocation(skill, args, { skills, agents, capabilities: () => true });
 }
 
 describe("assembleSkillInvocation", () => {
@@ -25,7 +24,7 @@ describe("assembleSkillInvocation", () => {
     const consumer = testSkill("consumer", { body: "Consumer procedure.", dependencies: ["dependency"] });
     const revision = testSkillRevision([dependency, consumer]);
 
-    const prompt = assembleSkillInvocation(consumer, undefined, { skills: revision, personaIndex, capabilities: () => true });
+    const prompt = assembleSkillInvocation(consumer, undefined, { skills: revision, agents, capabilities: () => true });
 
     expect(prompt).toBe(`${renderSkillContext(dependency)}\n\n${renderSkillContext(consumer)}`);
   });
@@ -54,7 +53,7 @@ describe("assembleSkillInvocation", () => {
     const section = invoke(skill).split("## Available Agents\n\n")[1] ?? "";
 
     expect(section).toStartWith(`Dispatch these personas where the skill body calls for agent dispatch: ${skill.agents.join(", ")}`);
-    const roles = new Set(skill.agents.map((name) => personaIndex[name]?.role ?? ""));
+    const roles = new Set(skill.agents.flatMap((name) => { const agent = agents.get(name); return agent?.kind === "persona" ? [agent.role] : []; }));
     for (const role of roles) {
       if (!skill.agents.includes(role)) expect(section).not.toMatch(new RegExp(`(^|[^\\w-])${role}([^\\w-]|$)`));
     }

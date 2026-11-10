@@ -54,6 +54,7 @@ function toolDeps(auth: AuthContext | (() => AuthContext) = AUTH) {
     userDataRoot,
     accountHome,
     moduleSelection: composeFirstPartyModules,
+    captureRuntimeConfig: testRuntimeConfigCapture,
     profileId: "default",
     authorityIncarnation: "test-authority",
     definitions: repoDefinitions(),

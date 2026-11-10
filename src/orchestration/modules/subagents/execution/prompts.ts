@@ -18,20 +18,20 @@ export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition
   if (agents.size === 0) return "# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.";
   const agentList = Array.from(agents.values())
     .map((a) => a.kind === "general"
-      ? `- ${a.name}: ${a.description}\n  Tools: registry-approved tools derived from your current surface, plus child handoff and granted nested-role tools`
-      : `- ${a.name}: ${a.description}\n  Tools: ${a.tools.join(", ")}`)
+      ? `- ${a.name}: ${a.description}${routing(a, has)}\n  Tools: registry-approved tools derived from your current surface, plus child handoff and granted nested-role tools`
+      : `- ${a.name}: ${a.description}${routing(a, has)}\n  Tools: ${a.tools.join(", ")}`)
     .join("\n");
   const personas = Array.from(agents.values()).filter((agent) => agent.kind === "persona");
   const roles = new Set(personas.map((agent) => agent.role));
   const useCases: string[] = [];
   if (roles.has("ship") && has("bash")) {
-    useCases.push("- Repository publication: use the Ship agent after the parent has completed implementation, review, and verification. Do not use fork. Send only the files you changed and a short summary of user intent and implemented design. Use your tracked file list. Do not run Git analysis or prepare a commit message for this handoff. Do not send verification evidence or ask Ship to evaluate it. Ship inspects the selected diffs, writes the commit message, commits complete selected files, including concurrent edits, and pushes. Do not ask Ship to separate authorship, select hunks, or create isolation worktrees. Add publication instructions only when the user requested a PR or a nondefault destination. For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover, as you wrote them for your reply; that account is the one exception to the evidence rule, and Ship puts it in the pull request description as written, without assessing it. Ship returns publication evidence, or a summary of the one precise condition that stopped publication. After a successful publication, your reply gives the three things that your instructions define.");
+    useCases.push(`- Repository publication: use the Ship agent after the parent has completed implementation, review, and verification.${has("type:general") ? " Do not use fork." : ""} Send only the files you changed and a short summary of user intent and implemented design. Use your tracked file list. Do not run Git analysis or prepare a commit message for this handoff. Do not send verification evidence or ask Ship to evaluate it. Ship inspects the selected diffs, writes the commit message, commits complete selected files, including concurrent edits, and pushes. Do not ask Ship to separate authorship, select hunks, or create isolation worktrees. Add publication instructions only when the user requested a PR or a nondefault destination. For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover, as you wrote them for your reply; that account is the one exception to the evidence rule, and Ship puts it in the pull request description as written, without assessing it. Ship returns publication evidence, or a summary of the one precise condition that stopped publication. After a successful publication, your reply gives the three things that your instructions define.`);
   }
   if (roles.has("reviewer")) {
     useCases.push("- Review/analysis: use a reviewer agent for code review or plan evaluation.");
   }
   if (roles.has("advisor")) {
-    useCases.push("- Advisor consultation: use the advisor when two materially different approaches remain plausible and project evidence does not decide between them; a consequential decision depends on an uncertain assumption; a focused attempt failed and the next diagnostic or implementation move is unclear; or an independent second opinion is needed before an expensive, risky, or difficult-to-reverse action. Do not use Advisor for factual lookup, keyword search, or repository discovery; an obvious or reversible local choice; implementation; or routine review of a finished diff or plan. A user-selected pre-approval design review is the narrow exception to the finished-plan restriction. Send a concise decision packet with the exact decision, relevant context and project authority, plausible alternatives, evidence that supports or weakens each alternative, prior attempts and what they ruled out, and the uncertainty that warrants consultation. Use fork: true only when accumulated conversation context is material evidence. Advisor returns private, read-only guidance; the parent owns the final decision, execution, verification, and user communication. Advisor failure or unavailability must not block the parent: continue with available evidence and do not retry or respawn solely for consultation.");
+    useCases.push(`- Advisor consultation: use the advisor when two materially different approaches remain plausible and project evidence does not decide between them; a consequential decision depends on an uncertain assumption; a focused attempt failed and the next diagnostic or implementation move is unclear; or an independent second opinion is needed before an expensive, risky, or difficult-to-reverse action. Do not use Advisor for factual lookup, keyword search, or repository discovery; an obvious or reversible local choice; implementation; or routine review of a finished diff or plan. A user-selected pre-approval design review is the narrow exception to the finished-plan restriction. Send a concise decision packet with the exact decision, relevant context and project authority, plausible alternatives, evidence that supports or weakens each alternative, prior attempts and what they ruled out, and the uncertainty that warrants consultation.${has("type:general") ? " Use fork: true only when accumulated conversation context is material evidence." : ""} Advisor returns private, read-only guidance; the parent owns the final decision, execution, verification, and user communication. Advisor failure or unavailability must not block the parent: continue with available evidence and do not retry or respawn solely for consultation.`);
   }
 
   return `# Subagents
@@ -41,14 +41,24 @@ Available agent types:
 ${agentList}${useCases.length > 0 ? `\n\nWhen to use:\n${useCases.join("\n")}` : ""}`;
 }
 
+/** The sentence after one agent type's description that routes work to another type: a description states only its
+ *  own type, and the roster names the other type only while the tree check `has` offers it (ARCH-CONTEXT-033). */
+function routing(agent: AgentDefinition, has: CapabilityCheck): string {
+  if (agent.kind === "general") return has("type:explorer") ? " Prefer explorer for cheap read-only searches and a persona agent for a named specialty." : " Prefer a persona agent for a named specialty.";
+  if (agent.role === "explorer" && has("type:general")) return " For investigation that needs your full intelligence, dispatch general instead.";
+  if (agent.role === "implementer" && has("type:general")) return " For open-ended work that needs your own judgment and conversation context, dispatch general instead.";
+  return "";
+}
+
 /** The fewest characters of trimmed `rationale` that a dispatch accepts. The
  *  tool schema declares it, and `validateDispatchInput` enforces it, because the
  *  dispatcher's central validator checks only structure. */
 export const MIN_DISPATCH_RATIONALE_LENGTH = 30;
 
-/** The dispatch tool's description, the same for every agent. The catalog it
- *  names renders in the session tier (`renderSubagentRoster`). */
-export const SUBAGENT_DESCRIPTION = `Launch a specialized subagent to handle a focused subtask autonomously in an isolated context. Persona agent types have their declared tools and system prompt. The general agent uses your model and system instructions with a child tool surface derived by the runtime registry.
+/** The dispatch tool's description for the tree check `has`, so every agent of a tree reads the same bytes. The
+ *  catalog it names renders in the session tier (`renderSubagentRoster`). The general agent and a fork, which copies
+ *  the dispatcher as the general agent does, are named only while `has` offers the general agent. */
+export const subagentDescription = (has: CapabilityCheck): string => `Launch a specialized subagent to handle a focused subtask autonomously in an isolated context. Persona agent types have their declared tools and system prompt.${has("type:general") ? " The general agent uses your model and system instructions with a child tool surface derived by the runtime registry." : ""}
 
 Selecting the agent (required): every dispatch MUST pass \`persona\` as the FIRST field; persona names which agent runs and has no default. Use a persona name from the Subagents catalog in your system prompt. If none fits the task, do the work directly instead of dispatching.
 
@@ -64,9 +74,9 @@ The runtime records your approved checkpoint Design intent and Decisions in the 
 
 Scope one dispatch to one phase, fix, or question; split multi-phase work into sequential dispatches sized to a subagent run. When the child must prove its own work, name the narrowest verification command; it runs once before handoff, and suite-level or project-wide gates are yours to run after you collect the result.
 
-The exception is a dispatch with fork: true (any agent type): the child starts from a copy of your conversation, so its prompt is a directive - what to do - not a re-explanation of the situation.
+${has("type:general") ? `The exception is a dispatch with fork: true (any agent type): the child starts from a copy of your conversation, so its prompt is a directive - what to do - not a re-explanation of the situation.
 
-Never delegate understanding. Do not write "based on your findings, fix the bug" or "based on the research, implement it." Prompts that prove you understood (specific file paths, line numbers, what to change) produce better work.
+` : ""}Never delegate understanding. Do not write "based on your findings, fix the bug" or "based on the research, implement it." Prompts that prove you understood (specific file paths, line numbers, what to change) produce better work.
 
 Rationale: explain why delegation is worthwhile (minimum ${MIN_DISPATCH_RATIONALE_LENGTH} characters); follow the parameter guidance.
 
@@ -185,23 +195,30 @@ function invalidDispatch(problem: string): DispatchValidation {
  *  and their types against the tool schema, so these checks hold only what a
  *  schema cannot state: a substantive rationale, a nonempty prompt, a
  *  registered persona, and its fork policy. Subagent grants alone decide which
- *  personas the registry holds (PI-AGENT-044). */
+ *  personas the registry holds (PI-AGENT-044). A name the registry does not
+ *  hold is refused with `dispatchable`, the names the caller can dispatch, so
+ *  the refusal offers no agent that cannot run. A refusal is a tool result, so
+ *  it renders from `has`, the dispatcher's agent check (ARCH-CONTEXT-033),
+ *  which holds every term where the call has no request surface. */
 export function validateDispatchInput(
   input: DispatchInput,
   agentRegistry: ReadonlyMap<string, AgentDefinition>,
+  dispatchable: readonly string[],
+  has: CapabilityCheck = () => true,
 ): DispatchValidation {
   const { persona: agentType, rationale, prompt } = input;
   if (typeof rationale !== "string" || rationale.trim().length < MIN_DISPATCH_RATIONALE_LENGTH) {
     return invalidDispatch(`subagent was called without a substantive 'rationale' string (minimum ${MIN_DISPATCH_RATIONALE_LENGTH} characters). Briefly explain why this dispatch is worth doing in a subagent rather than inline: what specific question it answers, why the result wouldn't fit cleanly in your context, and what alternatives you considered. Terse rationales ('investigate', 'do the work') are rejected; the rationale is part of the dispatch decision, not a label.`);
   }
   if (typeof prompt !== "string" || !prompt) {
-    return invalidDispatch("subagent was called without a 'prompt' string. Unless you fork, the subagent has no access to your conversation; the 'prompt' must be a self-contained task description with the file paths, constraints, and task-specific context the subagent needs (global and project instructions are provided automatically).");
+    return invalidDispatch(has("type:general")
+      ? "subagent was called without a 'prompt' string. Unless you fork, the subagent has no access to your conversation; the 'prompt' must be a self-contained task description with the file paths, constraints, and task-specific context the subagent needs (global and project instructions are provided automatically)."
+      : "subagent was called without a 'prompt' string. The 'prompt' must be a self-contained task description with the file paths, constraints, and task-specific context the subagent needs (global and project instructions are provided automatically).");
   }
 
   const agent = typeof agentType === "string" ? agentRegistry.get(agentType) : undefined;
   if (typeof agentType !== "string" || !agent) {
-    const available = Array.from(agentRegistry.keys()).join(", ");
-    return invalidDispatch(`No subagent registered as '${String(agentType)}'. Available persona values: ${available || "(none registered)"}. Pick one from the list, or omit subagent and do the work directly.`);
+    return invalidDispatch(`No subagent registered as '${String(agentType)}'. Available persona values: ${dispatchable.join(", ") || "(none registered)"}. Pick one from the list, or omit subagent and do the work directly.`);
   }
 
   const fork = input.fork === true;

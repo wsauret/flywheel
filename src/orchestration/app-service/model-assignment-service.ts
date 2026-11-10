@@ -3,7 +3,7 @@ import type { FirstPartyModuleSnapshot } from "../modules.js"
 import { workflowRunReader } from "../module-catalog.js"
 import { agentPersonas, installedPersonaRole } from "../workflow-host/frontend-attempts.js"
 import type { RuntimeModelRolesResult } from "../../protocol/model-role-protocol-types.js"
-import { publishedModelRoles } from "./model-role-projection.js"
+import { modelRoleAdmission, publishedModelRoles } from "./model-role-projection.js"
 import type { ModelPickerConfigDeps } from "../config/model-assignment-types.js"
 import type { FlywheelConfig } from "../config/schema.js"
 import { EffortSchema } from "../../infra/workflow-types.js"
@@ -16,9 +16,8 @@ import {
   type RoleCaptureStore,
 } from "../config/model-assignment-controller.js"
 import { ensureDurableChatSession } from "./session-chat-durability.js"
-import { availableAgentRoles, type DefinitionAvailabilityOwner } from "./definition-availability.js"
-import { AGENT_ROLE_IDS, DEFAULT_ROLES, type RoleMetadata } from "../config/roles.js"
-import { isProfileModelRole, parseBriefRoleId } from "../../protocol/brief-role-id.js"
+import type { DefinitionAvailabilityOwner } from "./definition-availability.js"
+import { isProfileModelRole } from "../../protocol/brief-role-id.js"
 import type { SessionManager } from "../session/manager.js"
 import type { SessionStore } from "../session-store/types.js"
 import { personaRoleIds, type ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js"
@@ -61,9 +60,9 @@ interface RuntimeModelAssignmentServiceDeps {
   readonly moduleSelection: FirstPartyModuleSnapshot
   readonly eventStore: AsyncEventStateReadSurface
   readonly eventWriter: AsyncEventWriter
-  /** Published availability projection (ARCH-STRUCTURE-026). The client sends the slots it
-   *  renders; this service answers only for the ones the current selection can
-   *  still assign, so no roster copies a capability flag. */
+  /** Published availability projection (ARCH-STRUCTURE-026, ARCH-STRUCTURE-044). The client sends the slots it
+   *  renders; this service answers, saves, and resets only the ones that the current selection admits, so no
+   *  roster copies a capability flag. */
   readonly availability: Pick<DefinitionAvailabilityOwner, "snapshot">
   /** Current immutable config snapshot owned by the runtime config owner. */
   readonly config: () => FlywheelConfig
@@ -85,7 +84,8 @@ export function modelConfigValidity(
 
 export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignmentServiceDeps): RuntimeModelAssignmentService {
   const prepareModelEligibility = () => deps.prepareModelEligibility?.() ?? Promise.resolve()
-  const modelRoles = () => publishedModelRoles(deps.moduleSelection())
+  const admission = () => modelRoleAdmission(deps.moduleSelection(), deps.availability.snapshot())
+  const modelRoles = () => publishedModelRoles(admission())
   const configDeps = (scope: RuntimeModelAssignmentScope = DEFAULTS_SCOPE): ModelPickerConfigDeps & { readonly authProfileId: () => string } => {
     const revision = deps.availability.snapshot().definitionRevision
     return {
@@ -141,13 +141,13 @@ export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignment
   }
 
   const assignable = (slots: readonly ModelSelectionSlot[]): readonly ModelSelectionSlot[] => {
-    const snapshot = deps.availability.snapshot()
-    const roles = availableAgentRoles(snapshot)
-    const publishedRoles = new Set(modelRoles().map(({ id }) => id))
-    return slots.filter((slot) => {
-      const meta: RoleMetadata | undefined = DEFAULT_ROLES[slot.roleId]
-      return (!meta?.moduleOwned || publishedRoles.has(slot.roleId)) && assignableSlot(slot, roles)
-    })
+    const { admits } = admission()
+    return slots.filter((slot) => admits(slot.roleId))
+  }
+  // A request for the seat of an agent type that is off changes and lists nothing (PI-CAP-022).
+  const refuseTurnedOff = (slot: ModelSelectionSlot): void => {
+    const refusal = admission().typeRefusal(slot.roleId)
+    if (refusal !== undefined) throw new Error(`The model of ${slot.roleId} cannot be listed or set: ${refusal}`)
   }
 
   return {
@@ -155,13 +155,16 @@ export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignment
       return (await controller(query.scope)).loadAssignments(assignable(query.slots))
     },
     async listModelOptions(query) {
+      refuseTurnedOff(query.slot)
       return (await controller(query.scope)).listModelOptions(query.slot)
     },
     async listEffortOptions(query) {
+      refuseTurnedOff(query.slot)
       return (await controller(query.scope)).listEffortOptions(query.slot, query.model)
     },
     async saveEffort(command) {
       const { slot, model, effort } = command
+      refuseTurnedOff(slot)
       if (command.scope.kind === "defaults-and-session" && (await deps.roleCaptureStore.read(command.scope.sessionId))?.kind === "workflow-agent") {
         return (await controller({ kind: "session", sessionId: command.scope.sessionId })).saveEffort(slot, model, effort)
       }
@@ -184,16 +187,18 @@ export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignment
       }
     },
     async resetDefaults(command) {
-      const slots = assignable(command.slots)
+      // A reset changes only the roles that the settings offer: an off role keeps its saved value.
+      const { admits } = admission()
+      const slots = command.slots.filter((slot) => admits(slot.roleId))
       if (command.scope.kind === "defaults-and-session" && (await deps.roleCaptureStore.read(command.scope.sessionId))?.kind === "workflow-agent") {
-        return { rows: await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots) }
+        return { rows: await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots, admits) }
       }
       if (command.scope.kind !== "defaults-and-session") {
-        return { rows: await (await controller(command.scope)).resetDefaults(slots) }
+        return { rows: await (await controller(command.scope)).resetDefaults(slots, admits) }
       }
-      const rows = await (await controller(DEFAULTS_SCOPE)).resetDefaults(slots)
+      const rows = await (await controller(DEFAULTS_SCOPE)).resetDefaults(slots, admits)
       try {
-        await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots)
+        await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots, admits)
         return { rows, mirrored: true }
       } catch (err) {
         return { rows, warning: `Defaults reset, but this tab was not updated: ${errorMessage(err)}`, mirrored: false }
@@ -206,21 +211,6 @@ export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignment
       return runtimeGlobalDefaultRoles(await materializeDefaults())
     },
   }
-}
-
-/** Persona seats need an available persona. A workflow's own snapshot, not
- *  a catalog, supplies its brief and record seats to the controller. */
-function assignableSlot(
-  slot: ModelSelectionSlot,
-  availableRoles: ReadonlySet<string>,
-): boolean {
-  const selector = parseBriefRoleId(slot.roleId)
-  if (selector?.definitionId !== undefined) return true
-  if (selector) {
-    return selector.personaRole === undefined || availableRoles.has(selector.personaRole)
-  }
-  if (!AGENT_ROLE_IDS.includes(slot.roleId)) return true
-  return availableRoles.has(slot.roleId)
 }
 
 async function ensureSessionScopeBacked(

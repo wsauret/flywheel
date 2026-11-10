@@ -451,7 +451,8 @@ Ownership follows the layer direction:
 src/workflows/skill-source-inventory.ts          the bundled agent-skill root and the bundled source kinds
 src/workflows/skill-schema.ts                    package shape, frontmatter normalization, immutable revisions and derived corpus views
 src/workflows/skills.ts                          discovery across roots, precedence, admission
-src/workflows/skill-context.ts                   resource declaration and reads, canonical rendering, dependency composition
+src/workflows/skill-context.ts                   resource declaration and reads
+src/workflows/skill-render.ts                    canonical rendering, dependency composition
 src/workflows/definition-registry.ts             the published registry revision and its reload
 src/orchestration/app-service/definition-root-watcher.ts      watches installed roots and publishes one debounced atomic reload; optional owner reconciliation runs through its admitted callback
 src/orchestration/agent-runtime/tools/skill.ts    the model's read-only load/resource tool
@@ -471,6 +472,8 @@ Three callers reach a package, and all three render the same canonical context: 
 The immutable revision also publishes the complete bundled corpus and derives the production core corpus from the agent-root packages; a module's definition bundle stays in the bundled corpus and out of the core. Its canonical core manifest and aggregate identity are revision views, not parallel runtime lists. Deterministic parity checks compare direct, persona, and workflow composition from source mode with one freshly built production executable.
 
 Personas stay lean because of the second row: a reviewer carries its own short lens and declares the packages that lens needs, instead of shipping every project convention in its prompt.
+
+Definition availability decides which skills and personas an agent is offered. One owner, `src/orchestration/app-service/definition-availability.ts`, derives it from two inputs: the module selection, and the agent types that `[subagents] disabled_types` turns off (ARCH-STRUCTURE-044). A persona whose type is off is unavailable, and so is a skill that declares one; a persona that only grants the type stays available without it. The subagent roster and dispatch, workflow launch and run-as, the skill catalog, and the model settings all read this owner. The `type:<id>` capability term holds exactly for the types that it offers, so text that needs a type renders only while that type is on (ARCH-CONTEXT-033).
 
 Flywheel's canonical packages are not vendored exact-source packs. Pinned, byte-faithful third-party packs are planned work behind their own family-scoped loaders; those packs are immutable and pinned to an upstream commit. The registry described here admits Flywheel's own bundled packages plus whatever the user installs. Neither surface loads the other's catalog.
 

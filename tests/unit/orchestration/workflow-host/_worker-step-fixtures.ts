@@ -18,7 +18,7 @@ import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-sch
 import { planEveryCapability } from "../../../helpers/attempt-brief"
 import { testAuthContext } from "../../../helpers/auth-context"
 import { testDirectories } from "../../../helpers/directories"
-import { repoDefinitions } from "../../../helpers/project-definitions"
+import { fixedAvailability, repoDefinitions } from "../../../helpers/project-definitions"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { publishWorkerAttempt } from "./_workflow-host-fixtures"
 import { makeWorkflowDeps } from "./_workflow-controller-fixtures"
@@ -63,7 +63,7 @@ export function handoverWorker(dir: string, createAgent: AgentFactory, commandHa
       lifecycle: {}, queueUserMessage() {}, updateMetrics() {}, updateBackgroundCommands: commands => onBackgroundCommandsChanged?.(commands), updateForegroundBash() {}, updateOperations() {}, dispose: async () => {},
     }),
     skills: repoDefinitions().skills(),
-    personas,
+    availability: () => fixedAvailability({ personas }),
     planCapabilities: planEveryCapability,
     eventStore: commandHandover.reader,
     projectionReader: commandHandover.projectionReader,

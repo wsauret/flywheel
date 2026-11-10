@@ -30,6 +30,7 @@ export function completeProjectExecutionOwnership(scope: RuntimeOwnership, input
   scope.shutdown("background-index", "close-client-streams")
   scope.sequence("frontend-projection", "close-client-streams", [
     "definition-availability-subscription",
+    "definition-availability-agent-types",
     "provider-observations-availability-fold", "provider-observations-capability-subscription",
     "subscription-usage-publication-subscription",
     "auth-free-plan-reconciliation",
