@@ -1,0 +1,40 @@
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 119
+src/protocol/client/retained-query.ts
+  h_4b47e9e4a8b456 3,6,10-15,19
+src/protocol/modules/subscription-usage.ts
+  h_4b47e9e4a8b456 449-482
+src/tui/modules/subscription-usage/modal.tsx
+  h_4b47e9e4a8b456 6,10,30,202-206,208-210,212-213,262,295,326,374,384,410,416-417,419
+src/tui/modules/subscription-usage/surface.tsx
+  h_4b47e9e4a8b456 21
+src/tui/modules/subscription-usage/use-usage-modal.ts
+  h_4b47e9e4a8b456 3,5,58,80-84,95,114,116-122,127,133-136,148-149,151-152,160,164,167-168,171,187-189,195,200,202,209,248,253,260-261,263,324
+tests/unit/protocol/modules/subscription-usage-status.test.ts
+  h_4b47e9e4a8b456 1-25
+tests/unit/tui/modules/subscription-usage/modal.test.tsx
+  h_4b47e9e4a8b456 4-5,113,132-158
+tests/unit/tui/modules/subscription-usage/use-usage-modal.test.ts
+  h_4b47e9e4a8b456 5,94-122,159
+webview/src/app/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 104,106,234-236,241
+webview/src/modules/subscription-usage/sheet.css
+  h_4b47e9e4a8b456 16-19
+webview/src/modules/subscription-usage/sheet.test.tsx
+  h_4b47e9e4a8b456 1-107
+webview/src/modules/subscription-usage/sheet.tsx
+  h_4b47e9e4a8b456 2,5-7,30-34,45-48,51-62,66-77,79-83,85-89,91,93-94,100,115,130,134-135,137,141,162-163,178,182-183,188
+webview/src/modules/subscription-usage/usage-render-fixture.tsx
+  h_4b47e9e4a8b456 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "862a2b227a641a6e1bcdce0af158a8ff0e474209",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
