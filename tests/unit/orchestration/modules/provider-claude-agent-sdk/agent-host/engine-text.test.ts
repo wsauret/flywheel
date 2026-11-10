@@ -60,7 +60,7 @@ describe("the hosted agent's request entries", () => {
     const hosted = hostedView(view);
     expect(hosted.definitionPrompt).toBe(plugin.stable);
     expect(hosted.messages[0]?.content).toEqual([text("Do the work."), text(conversationTierEntry(plugin.session)), text(TIER_ENTRY)]);
-    expect(hostedTransportContext(hosted, true, false, [], undefined, []).additions.filter(({ kind }) => kind === "system-tier:conversation"))
+    expect(hostedTransportContext(hosted, true, false, [], []).additions.filter(({ kind }) => kind === "system-tier:conversation"))
       .toEqual([{ part: "message", kind: "system-tier:conversation", at: 0, value: "1" }, { part: "message", kind: "system-tier:conversation", at: 0, value: "2" }]);
   });
 

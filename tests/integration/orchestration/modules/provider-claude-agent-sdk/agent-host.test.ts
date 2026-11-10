@@ -20,7 +20,7 @@ import type { ConversationMessage } from "../../../../../src/orchestration/agent
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, effortOf, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, registryProxy, SYSTEM, systemTexts, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes, streamedText, streamedToolCalls, until, type StagedSdkClient, type StreamResult } from "./_claude-sdk-client.js";
-import { declaredTools, type FakeReply, type RecordedRequest } from "./_fake-host.js";
+import { declaredTools, ENGINE_NATIVE_1M_MODELS, type FakeReply, type RecordedRequest } from "./_fake-host.js";
 
 const temporary = temporaryDirectories();
 removeEngineProbes();
@@ -399,13 +399,15 @@ describe("the shared agent host's history and records", () => {
         return reminder?.kind === "model" ? [reminder.modelId] : [];
       });
       const served = agentRequests.map((request) => ({ model: request.body["model"], extended: request.betas.some((beta) => beta.startsWith("context-1m")), lines: wireLines(request) }));
+      // The engine (CLI 2.1.321) sends no 1M beta for its native 1M models (`nativeBetasOnFakeHost`).
+      const opusExtended = !ENGINE_NATIVE_1M_MODELS.has(opus.wireModelId);
       // Each first request reads one model line, its own model's. After each model change the request reads every line
       // that its history holds, the newest naming its new model, as its own engine would show them; the engine adds none.
       expect(served.slice(0, 2).toSorted((left, right) => String(left.model).localeCompare(String(right.model))))
-        .toEqual([haiku, opus].map(({ wireModelId }) => ({ model: wireModelId, extended: wireModelId === opus.wireModelId, lines: [line(wireModelId)] })));
+        .toEqual([haiku, opus].map(({ wireModelId }) => ({ model: wireModelId, extended: wireModelId === opus.wireModelId && opusExtended, lines: [line(wireModelId)] })));
       expect(served.slice(2)).toEqual([
-        { model: opus.wireModelId, extended: true, lines: [line(haiku.wireModelId), line(opus.wireModelId)] },
-        { model: opus.wireModelId, extended: true, lines: [line(opus.wireModelId)] },
+        { model: opus.wireModelId, extended: opusExtended, lines: [line(haiku.wireModelId), line(opus.wireModelId)] },
+        { model: opus.wireModelId, extended: opusExtended, lines: [line(opus.wireModelId)] },
         { model: haiku.wireModelId, extended: false, lines: [line(haiku.wireModelId), line(opus.wireModelId), line(haiku.wireModelId)] },
       ]);
       // Every model line on the wire states a model reminder of canonical history and is a reminder addition of the transport record.
@@ -419,7 +421,9 @@ describe("the shared agent host's history and records", () => {
     }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
   }, 120_000);
 
-  test("a parked agent whose next request changes its effort continues its turn at that effort, with no dispatch", async () => {
+  // The engine (CLI 2.1.321) places no effort message after a user message that holds only tool results, so the effort
+  // that the gate states for a step cannot reach a running turn; the agent starts again from its history instead.
+  test("a parked agent whose next request changes its effort starts again from its history at that effort", async () => {
     registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
@@ -430,9 +434,12 @@ describe("the shared agent host's history and records", () => {
       const continued = await agent.request();
       expect(continued.error).toBeUndefined();
       expect(streamedText(continued)).toBe("The value is ready.");
-      expect(host.requests.filter(isDispatcher)).toHaveLength(dispatcher);
-      expect(host.requests.filter((request) => !isDispatcher(request)).map(effortOf)).toEqual(["medium", "high"]);
-      expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched")).toHaveLength(1);
+      expect(host.requests.filter(isDispatcher).length).toBeGreaterThan(dispatcher);
+      const agentRequests = host.requests.filter((request) => !isDispatcher(request));
+      expect(agentRequests.map(effortOf)).toEqual(["medium", "high"]);
+      // The new agent reads the parked turn: its call and the call's result.
+      expect(JSON.stringify(agentRequests[1]?.body["messages"])).toContain("VALUE");
+      expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched")).toMatchObject([{ resumed: false }, { resumed: false, trigger: "identity", field: "effort" }]);
     }, { seams: { agentHosts } });
   }, 120_000);
 

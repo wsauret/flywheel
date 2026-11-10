@@ -74,7 +74,7 @@ interface BetaFacts {
 /**
  * The betas of an Anthropic request, in the order that the Claude engine sends them. This table is the one source of
  * the request opt-ins that the first-party API route (`anthropic_api`) shares with the claude-agent-sdk route.
- * On the first-party route the rules give the betas that the Claude engine (CLI 2.1.306) sends from the Agent SDK, so
+ * On the first-party route the rules give the betas that the Claude engine (CLI 2.1.321) sends from the Agent SDK, so
  * both routes ask the API for the same behavior. The CLI's credential and identity betas stay out:
  * `claude-code-20250219`, `oauth-2025-04-20`, and `extended-cache-ttl-2025-04-11`, which the CLI sends only with
  * a subscription login. Eager tool input streaming is a field of each tool, not a beta, and both routes send it
@@ -83,14 +83,14 @@ interface BetaFacts {
 const ANTHROPIC_BETAS: ReadonlyArray<{ readonly beta: string; readonly when: (facts: BetaFacts) => boolean }> = [
   { beta: "context-1m-2025-08-07", when: ({ copilot, extendedContext }) => !copilot && extendedContext },
   { beta: "interleaved-thinking-2025-05-14", when: ({ firstParty, adaptiveThinking }) => firstParty || !adaptiveThinking },
-  // Streams `thinking_delta` frames that carry `estimated_tokens` while no thinking text arrives, so the live
-  // token count moves.
-  { beta: "thinking-token-count-2026-05-13", when: ({ copilot }) => !copilot },
   { beta: "context-management-2025-06-27", when: ({ firstParty }) => firstParty },
   { beta: "prompt-caching-scope-2026-01-05", when: ({ copilot }) => !copilot },
   // Opens the effort copy inside the conversation (`withPerTurnEffort`). The API takes a system message there with
   // no other beta: the engine stopped sending `mid-conversation-system-2026-04-07` in CLI 2.1.306.
   { beta: "per-turn-control-2026-07-01", when: ({ firstParty, request }) => firstParty && supportsPerTurnEffort(request.model) },
+  // Streams `thinking_delta` frames that carry `estimated_tokens` while no thinking text arrives, so the live
+  // token count moves.
+  { beta: "thinking-token-count-2026-05-13", when: ({ copilot }) => !copilot },
   { beta: "effort-2025-11-24", when: ({ copilot }) => !copilot },
   { beta: "fine-grained-tool-streaming-2025-05-14", when: ({ eagerInputStreaming, request }) => request.hasTools && !eagerInputStreaming },
   // Fast mode is first-party API only, as in the Claude engine, so the Copilot path never sends it.

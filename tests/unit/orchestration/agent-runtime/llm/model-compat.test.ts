@@ -80,14 +80,15 @@ describe("familySettings", () => {
 
 describe("per-model settings of an unknown Claude version", () => {
   it("inherit from the newest earlier version of the family", () => {
-    expect(supportsPerTurnEffort("claude-fable-5-2")).toBe(true);
-    expect(inheritsPerTurnEffort("claude-fable-5-2")).toBe(true);
-    expect(anthropicThinkingMode("claude-fable-5-2", null, "off", true)).toBe("omit");
-    expect(supportsThinkingDisable("claude-fable-5.2")).toBe(false);
+    expect(supportsPerTurnEffort("claude-fable-5-3")).toBe(true);
+    expect(inheritsPerTurnEffort("claude-fable-5-3")).toBe(true);
+    expect(anthropicThinkingMode("claude-fable-5-3", null, "off", true)).toBe("omit");
+    expect(supportsThinkingDisable("claude-fable-5.3")).toBe(false);
   });
 
   it("keep the settings of every exactly known version", () => {
     expect(inheritsPerTurnEffort("claude-fable-5-1")).toBe(false);
+    expect(inheritsPerTurnEffort("claude-fable-5-2")).toBe(false);
     expect(supportsPerTurnEffort("claude-fable-5-1")).toBe(true);
     expect(supportsPerTurnEffort("claude-fable-5")).toBe(false);
     expect(anthropicThinkingMode("claude-fable-5-1", null, "off", true)).toBe("omit");

@@ -233,14 +233,14 @@ describe("the bridge query launcher", () => {
     expect(engineModelCapabilities("claude-fable-5-1")).toBeUndefined();
     expect(engineModelCapabilities("claude-opus-5")).toBeUndefined();
     const recorded = recordingQuery();
-    for (const wireModelId of ["claude-fable-5-1", "claude-fable-5-2"]) {
+    for (const wireModelId of ["claude-fable-5-2", "claude-fable-5-3"]) {
       const modelCapabilities = engineModelCapabilities(wireModelId);
       trackedLauncher(launcherConfig(), recorded.sdkQuery)(launchInput({ wireModelId, ...(modelCapabilities === undefined ? {} : { modelCapabilities }) }));
     }
     expect(recorded.options[0]?.env).not.toHaveProperty("CLAUDE_CODE_MODEL_CAPABILITIES");
     expect(recorded.options[1]?.env).toEqual({
-      ...recorded.options[0]?.env, STEP_GATE_SOCKET: expect.any(String), ANTHROPIC_CUSTOM_MODEL_OPTION: "claude-fable-5-2[1m]",
-      CLAUDE_CODE_MODEL_CAPABILITIES: "claude-fable-5-2=per_turn_effort,per_turn_timing",
+      ...recorded.options[0]?.env, STEP_GATE_SOCKET: expect.any(String), ANTHROPIC_CUSTOM_MODEL_OPTION: "claude-fable-5-3[1m]",
+      CLAUDE_CODE_MODEL_CAPABILITIES: "claude-fable-5-3=per_turn_effort,per_turn_timing",
     });
   });
 

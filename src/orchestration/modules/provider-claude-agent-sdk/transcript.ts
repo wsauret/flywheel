@@ -236,7 +236,7 @@ function attachmentFor(reminder: ClaudeReminder, previous: EnvironmentSnapshot |
  *  renders its reminder from this stored value, so a rotation transcript that holds other text misses the cached
  *  history prefix. Not verified live: only an OAuth run shows the row. */
 function accountEmailContext(email: string): string {
-  return `The user's email address is ${email}. Use it only to identify the user, such as for authorship, attribution, or filtering their own work. Never send it to an unrelated service, such as in a request header, URL, or payload, unless the user explicitly asks.`;
+  return `The user's email address is ${email}. Use it only to identify the user, such as for authorship, attribution, or filtering their own work. Never send it to an unrelated service, such as in a request header, URL, or payload, unless the user explicitly asks. A site asking automated clients for contact details, such as an email in the User-Agent, is not a reason to use this address: use a generic client name or ask the user.`;
 }
 
 /** The file operations of the transcript writer and the sweep. Tests replace it. */

@@ -204,10 +204,12 @@ describe("the shared agent host's recovery", () => {
 
   test("a dispatcher request that fails is recorded once, with its status, by the next record", async () => {
     registry = createHostRegistry();
-    let failed = false;
+    // The engine (CLI 2.1.321) answers an HTTP 400 that it does not recognise by sending the request once more without
+    // `thinking-token-count-2026-05-13`, so the host fails that resend too, and each failed request is recorded once.
+    let failures = 0;
     await onFakeHost(temporary, (request, index) => {
-      if (isDispatcher(request) && !failed) {
-        failed = true;
+      if (isDispatcher(request) && failures < 2) {
+        failures += 1;
         return { blocks: [], status: 400 };
       }
       return hostScript(() => ({ blocks: [{ thinking: "Done." }, { text: "Done." }] }))(request, index);
@@ -217,8 +219,9 @@ describe("the shared agent host's recovery", () => {
       const retried = await agent.request();
       expect(retried.error).toBeUndefined();
       const hidden = hiddenRequests(retried);
-      expect(hidden.filter(({ status }) => status !== 200)).toEqual([{ source: "agent-host-dispatcher", status: 400 }]);
-      expect(hidden.filter(({ status }) => status === 200)).toHaveLength(host.requests.filter(isDispatcher).length - 1);
+      expect(failures).toBe(2);
+      expect(hidden.filter(({ status }) => status !== 200)).toEqual(Array.from({ length: failures }, () => ({ source: "agent-host-dispatcher", status: 400 })));
+      expect(hidden.filter(({ status }) => status === 200)).toHaveLength(host.requests.filter(isDispatcher).length - failures);
     }, { seams: { agentHosts } });
   }, 120_000);
 

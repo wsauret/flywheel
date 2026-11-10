@@ -34,7 +34,7 @@ import type { OutputObject } from "../../../../../src/workflows/output-contract/
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { makeContext } from "../../../../unit/orchestration/agent-runtime/tools/_fixtures.js";
 import { assistantMessage, captureDiagnostics, onFakeHost, removeEngineProbes, streamedText, streamedToolCalls, until, type FakeHostOptions, type FakeHostRun, type StreamResult } from "./_claude-sdk-client.js";
-import { CREDENTIAL_BETAS, type FakeBlock, type FakeHost, type FakeReply, type RecordedRequest } from "./_fake-host.js";
+import { CREDENTIAL_BETAS, nativeBetasOnFakeHost, type FakeBlock, type FakeHost, type FakeReply, type RecordedRequest } from "./_fake-host.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 const temporary = temporaryDirectories();
@@ -339,7 +339,7 @@ describe("the shipped engine sends what the native Anthropic route sends", () =>
         const native = nativeBody(options);
         const [sent] = host.requests;
         expect(sent?.body["thinking"]).toEqual(native.params.thinking);
-        expect(sent?.betas.filter((beta) => !CREDENTIAL_BETAS.has(beta))).toEqual(native.betaHeader.split(","));
+        expect(sent?.betas.filter((beta) => !CREDENTIAL_BETAS.has(beta))).toEqual(nativeBetasOnFakeHost(native.betaHeader, MODEL));
       });
     }, 60_000);
   }
@@ -466,13 +466,13 @@ describe("the shipped engine sends what the native Anthropic route sends", () =>
   // MODEL.per-request-selection (decision D6): on a per-turn-effort model both routes copy the request's effort to a
   // system message after the first user run; on any other model neither route copies it. Both routes also send the
   // same thinking and context management, so effort off reaches the service as native sends it: Haiku 5.5 with thinking
-  // disabled and Fable 5.1 with none, and neither with the thinking cleanup that the service refuses without thinking.
+  // disabled and Fable 5.2 with none, and neither with the thinking cleanup that the service refuses without thinking.
   // Each request states its thinking display, because the default differs by access provider for Fable
   // (`anthropicThinkingDisplay`), and `nativeBody` prepares the API key route's request; the display has its own case.
-  // Fable 5.2 is a version that neither Flywheel nor the engine knows: it inherits Fable 5.1's settings, and the engine
+  // Fable 5.3 is a version that neither Flywheel nor the engine knows: it inherits Fable 5.2's settings, and the engine
   // gets its per-turn capabilities from its launch (`engineModelCapabilities`).
   const efforts = [undefined, "off", "low", "medium", "high", "xhigh", "max"] as const;
-  for (const model of [MODEL, "claude-opus-4-6", "claude-haiku-5-5", "claude-fable-5-1", "claude-fable-5-2"]) {
+  for (const model of [MODEL, "claude-opus-4-6", "claude-haiku-5-5", "claude-fable-5-2", "claude-fable-5-3"]) {
     for (const effort of efforts) {
       test(`${model} at effort ${effort ?? "unset"} states the effort where native does`, async () => {
         await onHost(scripted(BATCH), async (run) => {
@@ -484,7 +484,7 @@ describe("the shipped engine sends what the native Anthropic route sends", () =>
             expect(effortStatements(recorded?.body)).toEqual(effortStatements(prepared.params));
             expect({ thinking: recorded?.body["thinking"], context_management: recorded?.body["context_management"] })
               .toEqual({ thinking: prepared.params.thinking, context_management: prepared.params["context_management"] });
-            expect(recorded?.betas.filter((beta) => !CREDENTIAL_BETAS.has(beta))).toEqual(prepared.betaHeader.split(","));
+            expect(recorded?.betas.filter((beta) => !CREDENTIAL_BETAS.has(beta))).toEqual(nativeBetasOnFakeHost(prepared.betaHeader, model));
           }
           expect(conversation(sent?.body)).toEqual(conversation(native.params));
         }, { model });

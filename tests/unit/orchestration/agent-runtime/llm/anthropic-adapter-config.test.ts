@@ -189,10 +189,10 @@ describe("Anthropic adapter request configuration", () => {
     expect(extended.betaHeader.split(",")).toEqual([
       "context-1m-2025-08-07",
       "interleaved-thinking-2025-05-14",
-      "thinking-token-count-2026-05-13",
       "context-management-2025-06-27",
       "prompt-caching-scope-2026-01-05",
       "per-turn-control-2026-07-01",
+      "thinking-token-count-2026-05-13",
       "effort-2025-11-24",
     ]);
     expect(extended.params.context_management).toEqual({ edits: [{ type: "clear_thinking_20251015", keep: "all" }] });
@@ -219,8 +219,8 @@ describe("Anthropic adapter request configuration", () => {
     };
     const roles = ({ params }: ReturnType<typeof prepare>) => params.messages.map((message) => "output_config" in message ? { role: message.role, content: message.content, output_config: message.output_config } : message.role);
 
-    // claude-fable-5-2 has no entry of its own and inherits Fable 5.1's per-turn effort.
-    for (const model of ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1", "claude-fable-5-2"]) {
+    // claude-fable-5-3 has no entry of its own and inherits Fable 5.2's per-turn effort.
+    for (const model of ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1", "claude-fable-5-3"]) {
       expect(roles(prepare(model, "low")), model).toEqual(["user", { role: "system", content: [], output_config: { effort: "low" } }, "assistant", "user"]);
     }
     const sonnet = prepare("claude-sonnet-5-5", "xhigh");
@@ -235,7 +235,7 @@ describe("Anthropic adapter request configuration", () => {
     // inside the conversation since CLI 2.1.306.
     const betas = (model: string) => prepare(model, "low").betaHeader.split(",").filter((beta) => beta === "mid-conversation-system-2026-04-07" || beta === "per-turn-control-2026-07-01");
     expect(betas("claude-sonnet-5-5")).toEqual(["per-turn-control-2026-07-01"]);
-    expect(betas("claude-fable-5-2")).toEqual(["per-turn-control-2026-07-01"]);
+    expect(betas("claude-fable-5-3")).toEqual(["per-turn-control-2026-07-01"]);
     expect(betas("claude-mythos-5-1")).toEqual([]);
     expect(betas("claude-opus-4-6")).toEqual([]);
     expect(betas("claude-sonnet-4-5-20250929")).toEqual([]);
@@ -247,8 +247,8 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("requests progress updates by default for supported first-party models", async () => {
-    // claude-fable-5-2 has no entry of its own and inherits the default of its family.
-    for (const model of ["claude-fable-5-1", "claude-fable-5-2"]) {
+    // claude-fable-5-3 has no entry of its own and inherits the default of its family.
+    for (const model of ["claude-fable-5-1", "claude-fable-5-3"]) {
       const client = await createTestAnthropicAdapter("test-key", model, stubModelsClient({
         ...MODEL_INFO, id: model, reasoning: true,
       }));

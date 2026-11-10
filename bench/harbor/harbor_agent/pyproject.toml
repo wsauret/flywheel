@@ -8,7 +8,7 @@ requires-python = ">=3.12"
 # shim links it into the runtime, so a Claude arm runs also where the agent phase
 # is offline. The package builder refuses a commit whose engine differs from it:
 # bump this pin with the Agent SDK of bun.lock (bench/harbor/README.md).
-dependencies = ["claude-agent-sdk==0.2.170"]
+dependencies = ["claude-agent-sdk==0.2.180"]
 
 [project.scripts]
 flywheel-acp = "flywheel_harbor_agent.shim:main"

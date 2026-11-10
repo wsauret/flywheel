@@ -29,8 +29,10 @@ const modelDisplay = new Map<string, readonly [string, string?]>(Object.entries(
   "claude-opus-5.5": ["Opus 5.5", "June 2026"],
   "claude-fable-5": ["Fable 5", "January 2026"],
   "claude-fable-5.1": ["Fable 5.1", "June 2026"],
+  "claude-fable-5.2": ["Fable 5.2", "June 2026"],
   "claude-mythos-5": ["Mythos 5", "January 2026"],
   "claude-mythos-5.1": ["Mythos 5.1", "June 2026"],
+  "claude-mythos-5.2": ["Mythos 5.2", "June 2026"],
 } as const));
 const extendedContextNames = new Set([
   "claude-opus-4.6", "claude-opus-4.7", "claude-opus-4.8", "claude-opus-5", "claude-opus-5.5",

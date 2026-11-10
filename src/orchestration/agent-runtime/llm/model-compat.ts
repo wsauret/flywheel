@@ -58,6 +58,7 @@ const MODEL_COMPAT: ModelCompatById = {
   "claude-sonnet-5-5": { perTurnEffort: true, thinkingOff: "adaptive" },
   "claude-opus-5-5": { perTurnEffort: true, thinkingOff: "adaptive" },
   "claude-fable-5-1": { perTurnEffort: true },
+  "claude-fable-5-2": { perTurnEffort: true },
   // Anthropic: adaptive thinking
   "claude-opus-4-6": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },
   "claude-opus-4-7": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },

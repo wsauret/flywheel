@@ -160,16 +160,16 @@ test("parsing reads back the facts of every reminder the producer writes", () =>
 test("a model the display table does not know is named by its own catalog facts, and a table entry wins over them", () => {
   const hi: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Hi." }];
   const modelOf = (reminders: ReturnType<typeof createClaudeReminders>) => parsed(reminders(hi, "/scratch", SHELL_CAPABILITIES)[1]);
-  expect(modelOf(createClaudeReminders("claude-fable-5-2", 1_000_000, { name: "Claude Fable 5.2", knowledgeCutoff: "2026-06" }))).toEqual({
-    kind: "model", modelId: "claude-fable-5-2[1m]", displayName: "Fable 5.2", knowledgeCutoff: "June 2026",
-    text: "The model that answers is Fable 5.2, with the model ID claude-fable-5-2[1m]. Its training data ends in June 2026.",
+  expect(modelOf(createClaudeReminders("claude-fable-5-3", 1_000_000, { name: "Claude Fable 5.3", knowledgeCutoff: "2026-06" }))).toEqual({
+    kind: "model", modelId: "claude-fable-5-3[1m]", displayName: "Fable 5.3", knowledgeCutoff: "June 2026",
+    text: "The model that answers is Fable 5.3, with the model ID claude-fable-5-3[1m]. Its training data ends in June 2026.",
   });
-  expect(modelOf(createClaudeReminders("claude-fable-5-2", 200_000, { name: "Claude Fable 5.2", knowledgeCutoff: "2026-06-30" })))
-    .toMatchObject({ text: "The model that answers is Fable 5.2, with the model ID claude-fable-5-2. Its training data ends in June 2026." });
+  expect(modelOf(createClaudeReminders("claude-fable-5-3", 200_000, { name: "Claude Fable 5.3", knowledgeCutoff: "2026-06-30" })))
+    .toMatchObject({ text: "The model that answers is Fable 5.3, with the model ID claude-fable-5-3. Its training data ends in June 2026." });
   expect(modelOf(createClaudeReminders("claude-opus-4-6", 1_000_000, { name: "Claude 4.6 Opus", knowledgeCutoff: "2025-08" })))
     .toMatchObject({ text: "The model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025." });
-  expect(modelOf(createClaudeReminders("claude-fable-5-2", 200_000)))
-    .toMatchObject({ text: "The model that answers has the model ID claude-fable-5-2." });
+  expect(modelOf(createClaudeReminders("claude-fable-5-3", 200_000)))
+    .toMatchObject({ text: "The model that answers has the model ID claude-fable-5-3." });
 });
 
 test("parsing reads every kind of change notice", () => {

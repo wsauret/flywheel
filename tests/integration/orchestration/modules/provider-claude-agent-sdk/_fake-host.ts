@@ -73,6 +73,22 @@ export interface FakeHost {
  *  of that kind, so the opt-in table leaves them out (`ANTHROPIC_BETAS`). */
 export const CREDENTIAL_BETAS: ReadonlySet<string> = new Set(["claude-code-20250219", "oauth-2025-04-20", "extended-cache-ttl-2025-04-11"]);
 
+/** The models that the catalog of the engine (CLI 2.1.321) marks native 1M (`context.native_1m`). */
+export const ENGINE_NATIVE_1M_MODELS: ReadonlySet<string> = new Set([
+  "claude-haiku-5-5", "claude-sonnet-5", "claude-sonnet-5-5", "claude-opus-4-7", "claude-opus-4-8", "claude-opus-5", "claude-opus-5-5",
+  "claude-fable-5", "claude-fable-5-1", "claude-fable-5-2", "claude-mythos-5", "claude-mythos-5-1", "claude-mythos-5-2",
+]);
+
+/**
+ * The betas of the native route's header that the engine also sends to this host. Two differences are known (CLI
+ * 2.1.321). The engine sends `prompt-caching-scope-2026-01-05` only to a first-party base URL. Production launches
+ * set no base URL, so the native route keeps it. The engine also leaves out `context-1m-2025-08-07` for its native 1M
+ * models. The native route keeps it, because no live run proved that the API serves those models at 1M without it.
+ */
+export function nativeBetasOnFakeHost(betaHeader: string, model: string): string[] {
+  return betaHeader.split(",").filter((beta) => beta !== "prompt-caching-scope-2026-01-05" && !(beta === "context-1m-2025-08-07" && ENGINE_NATIVE_1M_MODELS.has(model)));
+}
+
 /** The usage headers of a response that the plan's included usage served. */
 export const INCLUDED_USAGE: { readonly [name: string]: string } = (() => {
   const now = Math.floor(Date.now() / 1000);

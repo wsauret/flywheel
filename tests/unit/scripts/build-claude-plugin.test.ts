@@ -52,7 +52,7 @@ describe("Claude plugin export", () => {
   });
 
   test("a persona agent gets the host tools for its Flywheel tools, its role's model, and its required skills", () => {
-    expect(document("agents/advisor.md").frontmatter).toMatchObject({ tools: "Bash, Read", model: "claude-fable-5-1" });
+    expect(document("agents/advisor.md").frontmatter).toMatchObject({ tools: "Bash, Read", model: "claude-fable-5-2" });
     expect(document("agents/explorer.md").frontmatter).toMatchObject({ tools: "Bash, Read, WebSearch, WebFetch, Skill", model: "haiku" });
     expect(document("agents/reviewer-plan-design.md").frontmatter).toMatchObject({ model: "opus", skills: ["plan-review", "interface-design"] });
     expect(document("agents/implementer.md").body).toContain("Use `grep` and `find` through `Bash` to find project files and text.");

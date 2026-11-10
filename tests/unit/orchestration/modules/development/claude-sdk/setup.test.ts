@@ -38,7 +38,7 @@ describe("the claude-sdk setup", () => {
     const second = await setupClaudeSdkHome({ userDataRoot, accounts });
 
     expect(existsSync(join(userDataRoot, "flywheel.toml"))).toBe(false);
-    const roles = await resolveSessionRoles({ defaults: {}, overrides: {} }, roleCapture(["claude-opus-5.5", "claude-haiku-5.5", "claude-fable-5.1"]), userDataRoot);
+    const roles = await resolveSessionRoles({ defaults: {}, overrides: {} }, roleCapture(["claude-opus-5.5", "claude-haiku-5.5", "claude-fable-5.2"]), userDataRoot);
     expect(await new AuthProfileStore(userDataRoot).readStickyProfile()).toBe(CLAUDE_SDK_PROFILE);
     expect(first).toEqual({ authDirectory: authDir(userDataRoot, CLAUDE_SDK_PROFILE), accounts: [] });
     expect(second.accounts).toEqual([{ accountId: "uuid-person", identity: "person@example.com", configDir }]);
@@ -46,7 +46,7 @@ describe("the claude-sdk setup", () => {
     const captured = captureSubscriptionCredentials([provider], { kind: "persisted", authDir: authDir(userDataRoot, CLAUDE_SDK_PROFILE), classifySlot, report: false });
     expect(captured.get("claude_agent_sdk")).toEqual([{ instanceId: "uuid-person", identity: "person@example.com", lineageId: "uuid-person", credential: { type: "external", configDir } }]);
     expect(roles.get("chat")).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
-    expect(roles.get("advisor")).toMatchObject({ model: "claude-fable-5.1", effort: "high" });
+    expect(roles.get("advisor")).toMatchObject({ model: "claude-fable-5.2", effort: "high" });
     expect(roles.get("title-generation")).toMatchObject({ model: "claude-haiku-5.5", effort: "low" });
   });
 

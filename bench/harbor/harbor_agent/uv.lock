@@ -19,11 +19,11 @@ overrides = [
 
 [[package]]
 name = "claude-agent-sdk"
-version = "0.2.170"
+version = "0.2.180"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/00/a1/7c0d4bab286f8e0596f07a559cd72891201fc77a9e310f9c0902ca599da9/claude_agent_sdk-0.2.170.tar.gz", hash = "sha256:6ea39c6e24abe55da4249e615c57c7c4e0fa33f8d5d08633bd642e334adb17b5", size = 398731, upload-time = "2026-10-21T04:13:53.919Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/23/1483388a34190c4cb41790aa5201126e40d8ad90b363bf090abb273f4dc5/claude_agent_sdk-0.2.180.tar.gz", hash = "sha256:1c0935c881a1b5232e6b6b894078ee79b315d75d449408af2202bddfa990a16c", size = 400210, upload-time = "2026-11-09T20:07:56.832Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5e/8e/740bd78be8fc90b70764a136efe529eae76c3992df0b1b94b795cdbafded/claude_agent_sdk-0.2.170-py3-none-manylinux_2_17_x86_64.whl", hash = "sha256:ecd49d21e5858c5fda46dfcca82ce1ec753df88439d99bdc459b616bac26cf98", size = 125275525, upload-time = "2026-10-21T04:14:12.241Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/28/740605fe81c0afc5216074adc1486d43e8985abfa9e318e761eb78f6298c/claude_agent_sdk-0.2.180-py3-none-manylinux_2_17_x86_64.whl", hash = "sha256:0e5237ce189ae316ffbdfbb205277ea9387222b9c3cb6668ce533335ce7c759d", size = 152129633, upload-time = "2026-11-09T20:08:18.949Z" },
 ]
 
 [[package]]
@@ -35,4 +35,4 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "claude-agent-sdk", specifier = "==0.2.170" }]
+requires-dist = [{ name = "claude-agent-sdk", specifier = "==0.2.180" }]

@@ -109,8 +109,8 @@
   },
   "//tree-sitter": "web-tree-sitter held at 0.25.10 because @opentui/core pins that exact peer; portable grammars come from @vscode/tree-sitter-wasm",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "0.3.306",
-    "@anthropic-ai/sdk": "1.5.0",
+    "@anthropic-ai/claude-agent-sdk": "0.3.321",
+    "@anthropic-ai/sdk": "1.8.0",
     "@google/genai": "2.32.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@opentui/core": "0.8.2",

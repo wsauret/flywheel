@@ -8,7 +8,7 @@ import { tierOptions } from "./_config-models-fixtures.js";
 
 const bothProviders = new Map<ModelFamily, ReadonlySet<string>>([
   ["openai", new Set(["deepseek-v4.1-flash", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"])],
-  ["anthropic", new Set(["claude-fable-5.1", "claude-opus-5.5", "claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-5-5"])],
+  ["anthropic", new Set(["claude-fable-5.2", "claude-opus-5.5", "claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-5-5"])],
 ]);
 
 
@@ -16,7 +16,7 @@ const bothProviders = new Map<ModelFamily, ReadonlySet<string>>([
 
 
 const anthropicOnly = new Map<ModelFamily, ReadonlySet<string>>([
-  ["anthropic", new Set(["claude-fable-5.1", "claude-opus-5.5", "claude-haiku-5-5"])],
+  ["anthropic", new Set(["claude-fable-5.2", "claude-opus-5.5", "claude-haiku-5-5"])],
 ]);
 
 const sonnetOnly = new Map<ModelFamily, ReadonlySet<string>>([
@@ -64,7 +64,7 @@ describe("role model defaults", () => {
   it("uses the Anthropic preference's own effort when OpenAI is absent", () => {
     expect(selectRoleModelDefault("reviewer-quality", anthropicOnly)).toMatchObject({ model: "claude-opus-5.5", effort: "high" });
     expect(selectRoleModelDefault("chat", anthropicOnly)).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
-    expect(selectRoleModelDefault("advisor", anthropicOnly)).toMatchObject({ model: "claude-fable-5.1", effort: "high" });
+    expect(selectRoleModelDefault("advisor", anthropicOnly)).toMatchObject({ model: "claude-fable-5.2", effort: "high" });
     expect(selectRoleModelDefault("title-generation", anthropicOnly)).toMatchObject({ model: "claude-haiku-5.5", effort: "low" });
   });
 

@@ -146,8 +146,10 @@ export interface HeldRequestContext {
  *  where the engine places its own: the request-only text (`StreamOptions.requestContext`), the block of origin
  *  `request-context` that ends the newest message and that history never holds, stays in the agent's message, and the engine's wrapper
  *  follows it. A text that only quotes the wrapper, and every assistant message, stay unchanged. The
- *  entry of each tier that the conversation carries stays, and its system block leaves the definition's prompt. The gate states each step's
- *  effort (`HostGate.admit`), so the effort is no part of the identity that the agent's conversation keeps. When the
+ *  entry of each tier that the conversation carries stays, and its system block leaves the definition's prompt. The effort stays part of the
+ *  identity, so a changed effort starts the agent again: the engine (CLI 2.1.321, `Xat`) places no effort message
+ *  after a user message that holds only tool results, so the effort that the gate states for a step
+ *  (`HostGate.admit`) cannot reach a turn that already runs. When the
  *  request-only text equals the text that the engine holds from an earlier dispatch (`held`), the view leaves it out
  *  of the newest message, so a later step's tail holds only that step's own input. */
 export function hostedView(view: CliView, held?: HeldRequestContext): HostedView {
@@ -183,7 +185,7 @@ export function hostedView(view: CliView, held?: HeldRequestContext): HostedView
   });
   const definition = view.identity.systemPrompt.filter((_, block) => !movedTiers.some((moved) => moved.block === block));
   return {
-    ...view, identity: { ...view.identity, effort: undefined }, messages, origins: kept.map(({ origins }) => origins), dispatches, endsWithRequestContext,
+    ...view, messages, origins: kept.map(({ origins }) => origins), dispatches, endsWithRequestContext,
     heldRequestContextAt: holdsRequestContext ? held?.at : undefined, definitionPrompt: definition.join(SYSTEM_PROMPT_SEPARATOR), movedTiers,
   };
 }
@@ -198,9 +200,7 @@ export function hostedView(view: CliView, held?: HeldRequestContext): HostedView
  * of its message: its `after-request-context` value states that the wrapper follows the request's request-only
  * text there, while history holds the wrapper's entry before that text. A later step of the same agent whose request
  * ends with the same request-only text does not repeat it: its `request-context` addition, `held-from-dispatch`,
- * names the message at whose dispatch the engine received that text and still holds it. A step whose
- * effort differs from the previous step's in the agent's running turn carries the engine's copy of it, `effortCopy`, on
- * an empty system message after its newest input. Each tool result that the engine rewrote in the agent's running
+ * names the message at whose dispatch the engine received that text and still holds it. Each tool result that the engine rewrote in the agent's running
  * conversation (`rewrites`) is a `tool-result:<rewrite>` addition at its message, whose value is its tool use id: the
  * engine sends a blank success as `(<tool> completed with no output)` with the tool's MCP name (`no-output`), and an
  * error as its text blocks joined by newlines and trimmed (`error-joined`). The bridge folds the runtime notices that
@@ -210,7 +210,7 @@ export function hostedView(view: CliView, held?: HeldRequestContext): HostedView
  * holds. The host reads no debug output of its engine, so the body fields and the beta header that the engine sent go
  * unrecorded.
  */
-export function hostedTransportContext(view: HostedView, dispatched: boolean, loginEmail: boolean, dispatcher: readonly ProviderTransportHiddenRequest[], effortCopy: string | undefined, rewrites: readonly HeldRewrite[]): ProviderTransportContext {
+export function hostedTransportContext(view: HostedView, dispatched: boolean, loginEmail: boolean, dispatcher: readonly ProviderTransportHiddenRequest[], rewrites: readonly HeldRewrite[]): ProviderTransportContext {
   const additions: ProviderTransportAddition[] = [
     { part: "system", kind: "billing", at: 0 },
     { part: "system", kind: "identity", at: 1 },
@@ -222,7 +222,6 @@ export function hostedTransportContext(view: HostedView, dispatched: boolean, lo
       part: "message", kind: "coordinator", at: view.dispatches.at(-1) ?? 0, ...(view.endsWithRequestContext ? { value: "after-request-context" } : {}),
     } as const] : []),
     ...(view.heldRequestContextAt === undefined ? [] : [{ part: "message", kind: "request-context", at: view.heldRequestContextAt, value: "held-from-dispatch" } as const]),
-    ...(effortCopy === undefined ? [] : [{ part: "message", kind: "effort", at: view.messages.length - 1, value: effortCopy } as const]),
     ...rewrites.map(({ at, toolUseId, rewrite }) => ({ part: "message", kind: `tool-result:${rewrite}`, at, value: toolUseId } as const)),
     ...(view.identity.promptCaching ? [{ part: "body", kind: "cache_control", value: "engine-placed" } as const] : []),
   ];

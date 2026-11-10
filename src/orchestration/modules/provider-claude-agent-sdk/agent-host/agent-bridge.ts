@@ -10,7 +10,6 @@ import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/a
 import type { AnthropicOperations } from "../../../agent-runtime/llm/anthropic.js";
 import { LlmStreamError, ProviderRequestValidationError } from "../../../agent-runtime/llm/errors.js";
 import { engineModelId } from "../../../agent-runtime/llm/claude-reminders.js";
-import { supportsPerTurnEffort } from "../../../agent-runtime/llm/model-compat.js";
 import type { ProviderDemand, TransportContextFrame } from "../../../agent-runtime/llm/types.js";
 import { bridgeClosedError } from "../bridge-requests.js";
 import { cliView, type CliView } from "../cli-view.js";
@@ -118,8 +117,6 @@ interface Agent {
   readonly rows: AgentRows;
   phase: Phase;
   copy: CliCopy | undefined;
-  /** The effort of the step that the agent answered. */
-  effort: string | undefined;
   /** The request-only text that the agent's dispatch gave the engine, which its later steps do not repeat. */
   readonly requestContext: HeldRequestContext | undefined;
   /** The results that the engine rewrote since the agent's dispatch, which every later step's record states. */
@@ -143,8 +140,8 @@ function newAgentId(): string {
  * runtime notices, such as a child's completion: they ride on the last result, so a parent that waits on its children
  * reads each completion in its open tool call. Every other request is a dispatch: the bridge writes the
  * agent file with the whole conversation and the host's dispatcher starts the agent from it, under the same id when
- * the agent answered, its task ended, and the request keeps its effort, else under a new id after `stopTask` ended
- * the old one. A parked agent takes a changed effort with its results, which the gate states for the step. A request whose
+ * the agent answered and its task ended, else under a new id after `stopTask` ended the old one. The effort is part of
+ * the agent's identity, so a changed effort, also of a parked agent, starts it again under a new id. A request whose
  * launch values differ from the host's moves the agent to the host of its new values. The agent runs on the bridge's
  * model on any host, because its definition states that model; a model change replaces the bridge, and the new
  * bridge's first request dispatches the agent again, on the same host when the host's values did not change. The bridge holds its host's
@@ -320,7 +317,6 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     let current: Agent;
     let opened: Awaited<ReturnType<typeof openStep>>;
     let from = 0;
-    let effortCopy: string | undefined;
     if (!dispatched) {
       // The request entries planned this request as a delivery (`dispatches`), so it holds no dispatch wrapper.
       if (agent === undefined || agent.phase.kind === "gone") {
@@ -332,17 +328,12 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       // The plan reads the same request for the same live agent, so any other plan is a defect of the bridge.
       if (plan.kind !== "deliver") throw new ProviderRequestValidationError(CLAUDE_AGENT_SDK_LABEL, `a request without a dispatch wrapper plans ${plan.kind === "start" ? plan.trigger.kind : plan.kind}, not a delivery`);
       current = agent;
-      // A per-turn-effort model reads the engine's copy of each step's effort that differs from the previous one's.
-      if (stepEffort !== current.effort && stepEffort !== undefined && supportsPerTurnEffort(config.wireModelId)) effortCopy = stepEffort;
       opened = await openStep(current);
       from = current.rows.read().length;
       for (const { toolUseId, rewrite } of plan.results) if (rewrite !== undefined) current.rewrites.push({ at: delivery.messages.length - 1, toolUseId, rewrite });
       host.toolGate.deliver(plan.results);
     } else {
-      // The engine's copy of an earlier turn's effort stays in a resumed conversation, so a changed effort starts a new
-      // agent.
-      const effortChanged = plan.kind === "push" && agent !== undefined && agent.effort !== stepEffort;
-      const resumed = plan.kind === "push" && !effortChanged && agent?.phase.kind === "idle" ? agent : undefined;
+      const resumed = plan.kind === "push" && agent?.phase.kind === "idle" ? agent : undefined;
       if (resumed === undefined) endAgent(agent, "restarted");
       else await awaitWithAbortSignal(host.settled(resumed.id), signal);
       const id = resumed?.id ?? newAgentId();
@@ -353,7 +344,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
         agentId: id, agentType, model: config.wireModelId, cwd, view: hosted, ...(accountEmail === undefined ? {} : { accountEmail }), ...(shell === undefined ? {} : { shell }),
       });
       current = {
-        id, host, key, rows: agentRows(agentFilePath(host.folder, id), offset), phase: { kind: "running" }, copy: undefined, effort: undefined, rewrites: [], step: undefined,
+        id, host, key, rows: agentRows(agentFilePath(host.folder, id), offset), phase: { kind: "running" }, copy: undefined, rewrites: [], step: undefined,
         requestContext: hosted.endsWithRequestContext && requestContext !== undefined ? { text: requestContext, at: hosted.messages.length - 1 } : undefined,
       };
       agent = current;
@@ -365,7 +356,6 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
           ...(plan.trigger.kind === "undeliverable-result" ? { result: plan.trigger.result } : {}),
           ...(plan.trigger.kind === "notice-carrier" ? { reason: plan.trigger.reason } : {}),
         } : {}),
-        ...(effortChanged ? { trigger: "identity", field: "effort" } : {}),
       } });
       opened = await openStep(current);
       const started = current;
@@ -396,7 +386,6 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       if (current.step === step) current.step = undefined;
       opened.admission.close();
       current.copy = { identity: hosted.identity, messages: [...copied, answer.message] };
-      current.effort = stepEffort;
       const toolUseIds = answer.message.content.flatMap((block) => block.type === "tool_use" ? [block.id] : []);
       if (current.phase.kind === "running") current.phase = answer.stopReason === "tool_use" ? { kind: "parked", toolUseIds } : { kind: "idle" };
       config.recordOutcome("served");
@@ -404,7 +393,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     // The record takes the dispatcher's requests that the host holds now, and waits for none.
     const transportRecord = (): TransportContextFrame => ({
       type: "transport_context",
-      context: hostedTransportContext(hosted, dispatched, config.accountEmail() !== undefined, host.takeHiddenRequests(current.id), effortCopy, current.rewrites),
+      context: hostedTransportContext(hosted, dispatched, config.accountEmail() !== undefined, host.takeHiddenRequests(current.id), current.rewrites),
     });
     return withRecord(answered, transportRecord, (error) => {
       // An abort ends only this request: the step's end stopped the agent's task, and the host serves on.

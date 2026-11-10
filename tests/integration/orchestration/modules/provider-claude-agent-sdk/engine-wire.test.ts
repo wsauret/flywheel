@@ -18,7 +18,7 @@ import { cliLaunch, type ClaudeAgentSdkSeams } from "../../../../../src/orchestr
 import { describeCliLogin, readCliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { assistantMessage, captureDiagnostics, onFakeHost, ownInPlaceGate, removeEngineProbes, streamedText, streamedToolCalls, until } from "./_claude-sdk-client.js";
-import { CREDENTIAL_BETAS, declaredTools, type RecordedRequest } from "./_fake-host.js";
+import { CREDENTIAL_BETAS, declaredTools, nativeBetasOnFakeHost, type RecordedRequest } from "./_fake-host.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 const temporary = temporaryDirectories();
@@ -121,8 +121,9 @@ describe("the bundled Claude engine on a fake host", () => {
         const info = providerModelInfo({ provider: "anthropic", id: model, contextLimit, outputLimit: 64_000, reasoning: true });
         const native = prepareAnthropicRequest({ accessProvider: "anthropic_api", model, wireModel: model, info, contextLimit, options });
         const [sdk] = host.requests;
-        // The opt-in table of d1e82bf84: the same betas in the same order, apart from the credential betas.
-        expect(sdk?.betas.filter((beta) => !CREDENTIAL_BETAS.has(beta))).toEqual(native.betaHeader.split(","));
+        // The opt-in table of d1e82bf84: the same betas in the same order, apart from the credential betas and the known
+        // differences on a fake host (`nativeBetasOnFakeHost`).
+        expect(sdk?.betas.filter((beta) => !CREDENTIAL_BETAS.has(beta))).toEqual(nativeBetasOnFakeHost(native.betaHeader, model));
         for (const field of ["model", "max_tokens", "stream", "thinking", "output_config", "context_management"] as const) {
           expect({ field, value: sdk?.body[field] }).toEqual({ field, value: native.params[field] });
         }

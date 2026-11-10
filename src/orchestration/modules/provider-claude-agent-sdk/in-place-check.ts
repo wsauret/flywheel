@@ -20,7 +20,7 @@ import { cliAssistantMessage } from "./transcript.js";
  * declared types: a CLI without one of them acknowledges the request and does nothing. A version joins this list
  * only after the fake-host proof of every trigger, and each process still runs the self-test once per version and model.
  */
-const IN_PLACE_CLI_VERSIONS: ReadonlySet<string> = new Set(["2.1.293", "2.1.294", "2.1.295", "2.1.296", "2.1.306"]);
+const IN_PLACE_CLI_VERSIONS: ReadonlySet<string> = new Set(["2.1.293", "2.1.294", "2.1.295", "2.1.296", "2.1.306", "2.1.321"]);
 
 /** The longest self-test. A CLI start takes about 300 ms, and two requests to the local host take a few more. */
 const SELF_TEST_BOUND_MS = 30_000;
