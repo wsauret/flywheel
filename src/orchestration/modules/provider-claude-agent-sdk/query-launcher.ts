@@ -15,6 +15,7 @@ import { ownedClaudeProcess, type OwnedClaudeProcess } from "../../../infra/clau
 import { agentHostEnvironment, cliEnvironment, planUsageEnvironment, projectConfigRoot, type CliEnvironmentConfig } from "./cli-environment.js";
 import type { BridgeRequest, CliBlock } from "./cli-view.js";
 import { serveStepGate, type PluginGateServer, type StepGate, type StepGateEvidence } from "./step-gate.js";
+import { countTokensRefusesModel } from "./stderr-signals.js";
 import type { CliAssistantMessage } from "./transcript.js";
 import { usageReplyWindows, type UsageReply } from "./account-usage.js";
 
@@ -434,7 +435,7 @@ type UsageReplyKind = UsageReply["kind"] | "logged-out";
  * initialize reply comes from the CLI's local data: it sends no model request and uses no quota.
  */
 export function describeCliLogin(config: QueryLauncherConfig, signal: AbortSignal, sdkQuery: QueryFunction = query, files: StopFiles = configDirFiles(config)): Promise<CliLoginDescription> {
-  return askIdleCli(config, signal, "models", async (_, init) => ({ models: init.models, loggedIn: init.account.tokenSource !== "none", ...initPlan(init) }), sdkQuery, files);
+  return askIdleCli(config, signal, { purpose: "models" }, async (_, init) => ({ models: init.models, loggedIn: init.account.tokenSource !== "none", ...initPlan(init) }), sdkQuery, files);
 }
 
 /**
@@ -445,68 +446,68 @@ export function describeCliLogin(config: QueryLauncherConfig, signal: AbortSigna
  * asked.
  */
 export function readCliUsage(config: QueryLauncherConfig, signal: AbortSignal, sdkQuery: QueryFunction = query, files: StopFiles = configDirFiles(config)): Promise<CliUsage> {
-  return askIdleCli(config, signal, "usage", async (started, init) => init.account.tokenSource === "none"
+  return askIdleCli(config, signal, { purpose: "usage" }, async (started, init) => init.account.tokenSource === "none"
     ? { loggedIn: false }
     : { loggedIn: true, reply: await started.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }), ...initPlan(init) }, sdkQuery, files,
   (usage) => usage.loggedIn ? usageReplyWindows(usage.reply).kind : "logged-out");
 }
 
-/** The access probe's request: the shortest answer a model gives, and an output cap with room for it. */
-const PROBE_TEXT = "Reply with only OK.";
-const PROBE_OUTPUT_TOKENS = 16;
-
-/**
- * Sends one minimal request for `wireModelId` on the login in `config.configDir`, to learn whether the login serves
- * that model, and returns the CLI's messages of that one turn through its result. The request uses a few tokens of
- * the login's usage. The stop and the abort are those of every idle CLI (`askIdleCli`); `signal` bounds the wait.
- */
-export function probeCliModel(config: QueryLauncherConfig, wireModelId: string, signal: AbortSignal, sdkQuery: QueryFunction = query, files: StopFiles = configDirFiles(config)): Promise<readonly SDKMessage[]> {
-  return askIdleCli(config, signal, "access-probe", async (started) => {
-    const messages: SDKMessage[] = [];
-    // The iterator is never returned: its return would close the query outside the stop procedure.
-    const iterator = started[Symbol.asyncIterator]();
-    for (let next = await iterator.next(); next.done !== true; next = await iterator.next()) {
-      messages.push(next.value);
-      if (next.value.type === "result") break;
-    }
-    return messages;
-  }, sdkQuery, files, undefined, wireModelId);
+/** What one access probe of a model observed: the engine's token count for the model, which is 0 when the count
+ *  failed, and whether the engine's debug output reported that the service does not serve the model to the login. */
+export interface CliModelProbe {
+  readonly totalTokens: number;
+  readonly refused: boolean;
 }
 
 /**
+ * Asks the login in `config.configDir` whether it serves `wireModelId` with the engine's free token count, which sends
+ * no model request and uses none of the login's usage. The engine starts on the model as its custom model option, so
+ * it sends no billed request to validate the model, and its context usage request counts the tokens of an empty
+ * conversation for that model at the service's `count_tokens` endpoint (engine 2.1.306). The engine answers a failed
+ * count with 0 tokens, so the refusal is read from its debug output (`countTokensRefusesModel`). The answer returns
+ * after the engine stopped, so each line that the engine wrote before its reply was read. The stop and the abort are
+ * those of every idle CLI (`askIdleCli`); `signal` bounds the wait.
+ */
+export async function probeCliModel(config: QueryLauncherConfig, wireModelId: string, signal: AbortSignal, sdkQuery: QueryFunction = query, files: StopFiles = configDirFiles(config)): Promise<CliModelProbe> {
+  let refused = false;
+  const onStderrLine = (line: string): void => {
+    refused ||= countTokensRefusesModel(line, wireModelId);
+  };
+  const totalTokens = await askIdleCli(config, signal, { purpose: "access-probe", model: wireModelId, onStderrLine }, async (started) => (await started.getContextUsage()).totalTokens, sdkQuery, files);
+  return { totalTokens, refused };
+}
+
+/** Why the caller starts an idle CLI. The access probe's engine also takes the probed model and reads its own debug
+ *  output. */
+type IdleCliStart =
+  | { readonly purpose: Exclude<IdleCliPurpose, "access-probe"> }
+  | { readonly purpose: "access-probe"; readonly model: string; readonly onStderrLine: (line: string) => void };
+
+/**
  * Starts one CLI on the login in `config.configDir`, waits for its initialize reply, and asks it one question with
- * `ask`. The CLI gets no tools and no settings. Without `probeModel` it also gets no model and a prompt that never
- * yields, so no turn starts. With `probeModel`, its prompt yields one minimal user message for that model first, and
- * the CLI runs that one turn (`probeCliModel`).
+ * `ask`. The CLI gets no tools, no settings, and a prompt that never yields, so no turn starts.
  *
- * The CLI is stopped by bridge rule 3 once the answer arrives, fails, or `signal` aborts, and a probe turn that did
- * not reach its result is interrupted first. The
- * answer waits for that stop, so a short-lived owner such as `flywheel auth` does not close its launcher on a CLI
- * that is still stopping. `signal` bounds the wait: an abort rejects at once with its reason, and an answer that
- * arrived returns at once, while the stop goes on in the caller's launcher scope and still waits for a token refresh
- * to end. The prompt stays open throughout that wait and ends immediately before the query's close. Each stop is
- * recorded once.
+ * The CLI is stopped by bridge rule 3 once the answer arrives, fails, or `signal` aborts. The answer waits for that
+ * stop, so a short-lived owner such as `flywheel auth` does not close its launcher on a CLI that is still stopping.
+ * `signal` bounds the wait: an abort rejects at once with its reason, and an answer that arrived returns at once,
+ * while the stop goes on in the caller's launcher scope and still waits for a token refresh to end. The prompt stays
+ * open throughout that wait and ends immediately before the query's close. Each stop is recorded once.
  */
 async function askIdleCli<A>(
-  config: QueryLauncherConfig, signal: AbortSignal, purpose: IdleCliPurpose,
+  config: QueryLauncherConfig, signal: AbortSignal, start: IdleCliStart,
   ask: (started: Query, init: Awaited<ReturnType<Query["initializationResult"]>>) => Promise<A>, sdkQuery: QueryFunction, files: StopFiles,
   classifyReply?: (value: A) => UsageReplyKind,
-  probeModel?: string,
 ): Promise<A> {
   // A caller that already left wants no answer, so no CLI starts for it.
   signal.throwIfAborted();
-  const engine = idleEngine(config, purpose, probeModel);
-  const owned = ownedClaudeProcess(config.launcher, () => {}, refreshStopHold(config.configDir));
+  const { purpose } = start;
+  const probe = start.purpose === "access-probe" ? start : undefined;
+  const engine = idleEngine(config, purpose, probe?.model);
+  const owned = ownedClaudeProcess(config.launcher, probe?.onStderrLine ?? (() => {}), refreshStopHold(config.configDir));
   const sessionId = randomUUID();
   const released = Promise.withResolvers<undefined>();
-  let probeSent = false;
-  // A prompt that yields at most the probe's message and ends at the stop.
   const prompt: AsyncIterable<SDKUserMessage> = {
-    [Symbol.asyncIterator]: () => ({ next: async () => {
-      if (probeModel === undefined || probeSent) return { done: true, value: await released.promise };
-      probeSent = true;
-      return { done: false, value: { type: "user", message: { role: "user", content: PROBE_TEXT }, parent_tool_use_id: null } };
-    } }),
+    [Symbol.asyncIterator]: () => ({ next: async () => ({ done: true, value: await released.promise }) }),
   };
   const started = sdkQuery({ prompt, options: {
     // The engine reads no project here. Its private temporary directory exists, and nothing else uses it as a project.
@@ -519,22 +520,20 @@ async function askIdleCli<A>(
     strictMcpConfig: true,
     permissionMode: "default",
     persistSession: false,
-    extraArgs: { "project-config-root": engine.projectConfigRoot },
+    extraArgs: { "project-config-root": engine.projectConfigRoot, ...(probe === undefined ? {} : { "debug-to-stderr": null }) },
     sessionId,
-    ...(probeModel === undefined ? {} : { model: probeModel, maxTurns: 1 }),
+    ...(probe === undefined ? {} : { model: probe.model }),
   } });
   const asked = async () => ask(started, await started.initializationResult());
   const answer = awaitWithAbortSignal(asked(), signal)
     .then((value) => ({ ended: "reply" as const, value, usageReply: classifyReply?.(value) }), (error: unknown) => ({ ended: signal.aborted ? "aborted" as const : "failed" as const, error }));
-  // A probe's turn is still active when its message went out and its answer, which ends at the turn's result, did not
-  // arrive: a timeout, a supersede, or a failure.
   const stopped = answer.then((result) => stopIdleCli({
     interrupt: () => started.interrupt(),
     close: () => {
       released.resolve(undefined);
       started.close();
     },
-  }, owned, sessionId, files, purpose, result.ended, engine, probeSent && result.ended !== "reply", result.ended === "reply" ? result.usageReply : undefined));
+  }, owned, sessionId, files, purpose, result.ended, engine, result.ended === "reply" ? result.usageReply : undefined));
   const settled = await answer;
   if (!signal.aborted) await awaitWithAbortSignal(stopped, signal).catch(() => undefined);
   if (settled.ended !== "reply") throw settled.error;
@@ -555,14 +554,11 @@ interface IdleEngine {
  * private copy of the login's settings (`planUsageEnvironment`), which is removed once the engine stopped. The copy is
  * of the CLI's global config only, which holds the login's account details and never its token. A login without that
  * file gets an empty directory, and the engine then reports what it finds in the login's credential store. The probe
- * engine runs like the listing engine, with the environment of a query for `probeModel` that sends no cache mark, no
- * effort, and no thinking, and caps the output.
+ * engine runs like the listing engine, with `probeModel` as its custom model option.
  */
 function idleEngine(config: CliEnvironmentConfig, purpose: IdleCliPurpose, probeModel?: string): IdleEngine {
-  if (purpose === "models") return { env: cliEnvironment(config, { tools: [], extraBody: {} }), projectConfigRoot: projectConfigRoot(config), dispose: () => ({}) };
-  if (purpose === "access-probe") {
-    const env = cliEnvironment(config, { ...(probeModel === undefined ? {} : { model: probeModel }), tools: [], extraBody: { max_tokens: PROBE_OUTPUT_TOKENS }, controls: { promptCaching: false, statesEffort: false } });
-    return { env, projectConfigRoot: projectConfigRoot(config), dispose: () => ({}) };
+  if (purpose === "models" || purpose === "access-probe") {
+    return { env: cliEnvironment(config, { ...(probeModel === undefined ? {} : { model: probeModel }), tools: [], extraBody: {} }), projectConfigRoot: projectConfigRoot(config), dispose: () => ({}) };
   }
   const settingsDir = mkdtempSync(join(config.temporaryDirectory, "usage-"));
   try {
@@ -633,7 +629,7 @@ export async function startLoginEngine(config: QueryLauncherConfig, launch: Clau
   } });
   let stopping: Promise<void> | undefined;
   const stop = (end: IdleCliEnd): Promise<void> => {
-    stopping ??= stopIdleCli({ interrupt: () => started.interrupt(), close: () => { released.resolve(undefined); started.close(); } }, owned, sessionId, files, purpose, end, engine, false);
+    stopping ??= stopIdleCli({ interrupt: () => started.interrupt(), close: () => { released.resolve(undefined); started.close(); } }, owned, sessionId, files, purpose, end, engine);
     return stopping;
   };
   const ended = (async () => {
@@ -659,9 +655,9 @@ export async function startLoginEngine(config: QueryLauncherConfig, launch: Clau
  *  It never rejects: it runs past the answer, where no caller would see a failure. An access probe runs once per
  *  audited model, so its stop has its own record family, which reaches the default level only for a stop that failed,
  *  killed the CLI, or left the CLI's launch scope or lock behind. */
-async function stopIdleCli(started: Pick<Query, "interrupt" | "close">, owned: OwnedClaudeProcess, sessionId: string, files: StopFiles, purpose: IdleCliPurpose, ended: IdleCliEnd, engine: IdleEngine, turnActive: boolean, usageReply?: UsageReplyKind): Promise<void> {
+async function stopIdleCli(started: Pick<Query, "interrupt" | "close">, owned: OwnedClaudeProcess, sessionId: string, files: StopFiles, purpose: IdleCliPurpose, ended: IdleCliEnd, engine: IdleEngine, usageReply?: UsageReplyKind): Promise<void> {
   const outcome = await (async () => {
-    const stop = await Effect.runPromise(stopQuery(started, owned, sessionId, files, turnActive));
+    const stop = await Effect.runPromise(stopQuery(started, owned, sessionId, files, false));
     const closure = await owned.close();
     return { ...stop, settled: closure.settled, ...(files.legacyLockLeft() ? { legacyLockLeft: true } : {}) };
   })().catch((error: unknown) => ({ stopFailed: error instanceof Error ? error.name : typeof error }));

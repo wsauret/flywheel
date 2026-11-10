@@ -1,4 +1,3 @@
-import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
 import type { RuntimeCredential } from "../../../infra/auth/auth-context.js";
@@ -10,7 +9,7 @@ import { loginOwnerHome } from "./cli-environment.js";
 import type { InPlaceGate, SelfTestConfig } from "./in-place-check.js";
 import type { UsageReadings } from "./account-usage.js";
 import { processLoginObservations, type LoginObservations } from "./login-observations.js";
-import type { CliLoginDescription, CliUsage, HostLaunch, LaunchedHost, LaunchedQuery, QueryLaunch, QueryLauncherConfig } from "./query-launcher.js";
+import type { CliLoginDescription, CliModelProbe, CliUsage, HostLaunch, LaunchedHost, LaunchedQuery, QueryLaunch, QueryLauncherConfig } from "./query-launcher.js";
 import type { HostRegistry } from "./agent-host/host-registry.js";
 
 /** What a fake-host script or a test replaces. Production uses none of them. */
@@ -30,8 +29,8 @@ export interface ClaudeAgentSdkSeams {
   readonly dispatcherStepDeadlineMs?: number;
   /** Reads the engine's login and model lineup for the model listing; tests give one that starts no process. */
   readonly describeLogin?: (config: QueryLauncherConfig, signal: AbortSignal) => Promise<CliLoginDescription>;
-  /** Sends the model access probe and returns the engine's messages of its turn; tests give one that starts no process. */
-  readonly probeModel?: (config: QueryLauncherConfig, wireModelId: string, signal: AbortSignal) => Promise<readonly SDKMessage[]>;
+  /** Counts the tokens of one model for the access probe; tests give one that starts no process. */
+  readonly probeModel?: (config: QueryLauncherConfig, wireModelId: string, signal: AbortSignal) => Promise<CliModelProbe>;
   /** Reads the usage of the engine's login for the usage reader; tests give one that starts no process. */
   readonly readUsage?: (config: QueryLauncherConfig, signal: AbortSignal) => Promise<CliUsage>;
   /** The usage readings that the bridges record and the usage reader reads, in place of this process's. */

@@ -47,9 +47,10 @@ interface AccessAuditPass {
   readonly manual: boolean;
 }
 
-/** Probes the models that the saved audit leaves due, and returns the audit that the pass leaves. Each conclusive
- *  result commits before the next probe, so an interrupted pass resumes with the remainder. A pass ended by its
- *  signal returns what it committed; the caller decides whether the abort is an error. */
+/** Probes the models that the saved audit leaves due, then every refused candidate again (PI-MODEL-084), and returns
+ *  the audit that the pass leaves. A completed model is not probed again. Each conclusive result commits before the
+ *  next probe, so an interrupted pass resumes with the remainder. A pass ended by its signal returns what it
+ *  committed; the caller decides whether the abort is an error. */
 export async function runAccessAudit(pass: AccessAuditPass): Promise<SavedAudit | undefined> {
   const { account, lineage, limits, withProfile, candidates, probeInput: { signal } } = pass;
   let current = pass.audit;
@@ -61,7 +62,9 @@ export async function runAccessAudit(pass: AccessAuditPass): Promise<SavedAudit 
     current = await readSavedAudit(withProfile, account, lineage, limits);
   }
   if (current === undefined) return undefined;
-  for (const modelId of current.dueIds) {
+  const { dueIds, outcomes } = current;
+  const refused = candidates.flatMap(({ modelId }) => outcomes[modelId] === "refused" && !dueIds.includes(modelId) ? [modelId] : []);
+  for (const modelId of [...dueIds, ...refused]) {
     const wireModelId = candidates.find((row) => row.modelId === modelId)?.offerings[0]?.wireModelId;
     if (wireModelId === undefined || signal.aborted) break;
     let outcome: AccessProviderAccessOutcome;
@@ -75,8 +78,10 @@ export async function runAccessAudit(pass: AccessAuditPass): Promise<SavedAudit 
       if (pass.inconclusiveEndsPass) break;
       continue;
     }
+    // A refused model that is refused again changes nothing.
+    if (outcome === current.outcomes[modelId] && !current.dueIds.includes(modelId)) continue;
     const { generation } = current;
-    if (!await withProfile((profile) => recordProviderModelAccess(profile, account, lineage, generation, modelId, outcome, limits))) break;
+    if (!await withProfile((profile) => recordProviderModelAccess(profile, account, lineage, generation, modelId, wireModelId, outcome, limits))) break;
     current = { ...current, dueIds: current.dueIds.filter((id) => id !== modelId), outcomes: { ...current.outcomes, [modelId]: outcome } };
     await pass.onAccessAudit?.({ account, remaining: current.dueIds.length, modelId, outcome });
   }

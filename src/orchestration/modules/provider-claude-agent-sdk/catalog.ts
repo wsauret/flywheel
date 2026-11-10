@@ -3,7 +3,6 @@ import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, Acces
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogDiscovery, type CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
 import { classifyFetchFailure } from "../../../infra/llm/model-listing.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
-import { cliLogin } from "./cli-login.js";
 
 /** A CLI row names its model by the full wire id in `resolvedModel`; `value` is the CLI's own alias for it. */
 const WIRE_MODEL_ID = /^claude-[a-z0-9-]+$/u;
@@ -61,29 +60,24 @@ async function discoverCliModels({ credential, instance, launcher, signal }: Acc
   }
 }
 
-/** How long one access probe may take: the engine's start and one short response. A probe past it is inconclusive. */
+/** How long one access probe may take: the engine's start and one token count. A probe past it is inconclusive. */
 const ACCESS_PROBE_TIMEOUT_MS = 60_000;
 
 /**
- * Asks the login whether it serves one model with one minimal request through the CLI that owns the login, launched
- * in the listing caller's scope as the provider's queries are. A check never uses overage (PI-MODEL-065): a
- * usage-billed (metered) login bills every request as an API key does, so its check is one ordinary billed request,
- * and a subscription login is checked only while its extra usage is off, so a spent allowance refuses the request
- * instead of billing it. A subscription login whose extra usage is on or unknown sends nothing and is inconclusive. A
- * login or engine that cannot start, and a probe past its deadline, are inconclusive too; the probe's messages decide
- * the rest (`probeOutcome`).
+ * Asks the login whether it serves one model with the free token count of the engine that owns the login, launched in
+ * the listing caller's scope as the provider's queries are (`probeCliModel`). The count sends no model request, so it
+ * never bills or enables paid use (PI-MODEL-065), and every login is checked. The service's refusal of the model
+ * refuses; a positive count completes; anything else, such as another failure of the count, a login or engine that
+ * cannot start, or a probe past its deadline, is inconclusive.
  */
 async function probeCliModelAccess({ credential, launcher, wireModelId, signal }: AccessProviderAccessProbeInput, seams: ClaudeAgentSdkSeams): Promise<AccessProviderAccessOutcome> {
   const launch = cliLaunch(credential, launcher, seams);
   if (launch.kind !== "ready") return "inconclusive";
-  const login = cliLogin(launch.config.configDir);
-  const metered = login?.account.billing === "metered";
-  if (login === undefined || (!metered && login.extraUsage !== "disabled")) return "inconclusive";
   try {
     // The Agent SDK loads only when an audit probes, as for the listing.
-    const [{ probeCliModel }, { probeOutcome }] = await Promise.all([import("./query-launcher.js"), import("./sdk-events.js")]);
-    const probe = seams.probeModel ?? probeCliModel;
-    return probeOutcome(await probe(launch.config, wireModelId, AbortSignal.any([signal, AbortSignal.timeout(ACCESS_PROBE_TIMEOUT_MS)])), metered);
+    const probe = seams.probeModel ?? (await import("./query-launcher.js")).probeCliModel;
+    const { refused, totalTokens } = await probe(launch.config, wireModelId, AbortSignal.any([signal, AbortSignal.timeout(ACCESS_PROBE_TIMEOUT_MS)]));
+    return refused ? "refused" : totalTokens > 0 ? "completed" : "inconclusive";
   } catch {
     if (signal.aborted) throw signal.reason;
     return "inconclusive";
@@ -105,7 +99,7 @@ export function claudeSdkDynamicCatalog(seams: ClaudeAgentSdkSeams): NonNullable
     liveMembership: "extends-baseline",
     fetch: async (input) => ({ discovery: await discoverCliModels(input, seams), credential: input.credential }),
     probeAccess: (input) => probeCliModelAccess(input, seams),
-    // Each probe launches an engine, and its inconclusive answers, such as a spent allowance, speak for the login.
+    // Each probe launches an engine, and its inconclusive answers, such as a rate limit or a login that cannot start, speak for the login.
     inconclusiveEndsPass: true,
   };
 }

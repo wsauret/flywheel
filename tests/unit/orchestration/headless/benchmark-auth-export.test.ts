@@ -48,8 +48,8 @@ describe("headless auth snapshot export", () => {
       expect(await writeProviderModelCandidates(profileStore, account, lineage, rows, ["allowed", "denied"], DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
       const generation = readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit?.generation
       if (generation === undefined) throw new Error("Missing fixture audit")
-      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
-      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "denied", "refused", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "allowed", "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "denied", "denied", "refused", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
     }
     access.close()
     const stage = privateStage(root)
@@ -123,7 +123,7 @@ describe("headless auth snapshot export", () => {
       expect(await writeProviderModelCandidates(profileStore, account, lineage, rows, ["allowed"], DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
       const generation = readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit?.generation
       if (generation === undefined) throw new Error("Missing fixture audit")
-      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "allowed", "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
     }
     access.close()
     const resolved: string[] = []

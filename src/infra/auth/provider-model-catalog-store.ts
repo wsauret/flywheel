@@ -96,7 +96,9 @@ export function readSavedProviderModels(access: AuthProfileAccess, account: Acce
   return { rows: entry.rows.length === 0 ? undefined : entry.rows, audit: entry.audit, refusals: entry.refusals ?? {} };
 }
 
-/** Replaces the candidate basis without resetting settled refusals; manual recheck makes every candidate due. */
+/** Replaces the candidate basis without resetting settled outcomes: a candidate that the basis adds with no outcome
+ *  becomes due, and a completed one stays settled. A refused one is checked again by every audit
+ *  (`runAccessAudit`), and a manual recheck makes every candidate due. */
 export async function writeProviderModelCandidates({ access, currentLineage }: CatalogProfile, account: AccessProviderAccountIdentity, lineage: string, rows: readonly CatalogCanonicalRow[], candidateIds: readonly string[], limits: CatalogLimits, manual = false): Promise<boolean> {
   const validated = validateCanonicalRows(rows, limits);
   if (validated.kind !== "valid" || candidateIds.length > MAX_CANDIDATES || new Set(candidateIds).size !== candidateIds.length || candidateIds.some((id) => !boundedIdentity(id))) return false;
@@ -111,25 +113,33 @@ export async function writeProviderModelCandidates({ access, currentLineage }: C
     const changed = previous === undefined || basis.length !== previous.candidateIds.length || basis.some((id, index) => id !== previous.candidateIds[index]);
     if ((changed || manual) && previous?.generation === Number.MAX_SAFE_INTEGER) return false;
     const outcomes: ProviderModelAccessOutcomes = previous?.outcomes ?? {};
-    const added = basis.some((id) => !previous?.candidateIds.includes(id));
-    const dueIds = manual ? [...basis] : added
-      ? basis.filter((id) => outcomes[id] !== "refused")
-      : (previous?.dueIds ?? []).filter((id) => basis.includes(id));
+    const dueIds = manual ? [...basis] : basis.filter((id) => previous?.candidateIds.includes(id) === true
+      ? previous.dueIds.includes(id)
+      : outcomes[id] === undefined);
     const audit: ProviderModelAudit = { candidateIds: basis, dueIds, outcomes, generation: (previous?.generation ?? 0) + (changed || manual ? 1 : 0) };
     return writeDocument(access, { version: VERSION, accounts: [...document.accounts.filter((entry) => accessProviderAccountKey(entry.account) !== key), { account, lineage, rows: validated.rows, ...keptEvidence(saved), audit }] }, limits);
   });
 }
 
-/** Commits one conclusive result for the current audit generation; stale results cannot alter a later audit. */
-export async function recordProviderModelAccess({ access, currentLineage }: CatalogProfile, account: AccessProviderAccountIdentity, lineage: string, generation: number, modelId: string, outcome: ProviderModelAccessOutcome, limits: CatalogLimits): Promise<boolean> {
+/**
+ * Commits one conclusive result for the current audit generation, of a model that is due or of a refused model that
+ * an audit checks again; stale results cannot alter a later audit. A refused model that now passes also ends the
+ * saved refusal of its wire model that a request proved (PI-MODEL-066); a pass of a model that was not refused keeps
+ * that refusal.
+ */
+export async function recordProviderModelAccess({ access, currentLineage }: CatalogProfile, account: AccessProviderAccountIdentity, lineage: string, generation: number, modelId: string, wireModelId: string, outcome: ProviderModelAccessOutcome, limits: CatalogLimits): Promise<boolean> {
   return access.withLock(() => {
     if (currentLineage(account) !== lineage) return false;
     const document = readDocument(access, limits);
     if (!document) return false;
     const entry = savedEntry(document, account, lineage);
-    if (!entry?.audit || entry.audit.generation !== generation || !entry.audit.dueIds.includes(modelId) || (outcome !== "completed" && outcome !== "refused")) return false;
+    const previous = entry?.audit?.outcomes[modelId];
+    const due = entry?.audit?.dueIds.includes(modelId) === true;
+    if (!entry?.audit || entry.audit.generation !== generation || (!due && previous !== "refused") || (outcome !== "completed" && outcome !== "refused")) return false;
     const audit: ProviderModelAudit = { ...entry.audit, dueIds: entry.audit.dueIds.filter((id) => id !== modelId), outcomes: { ...entry.audit.outcomes, [modelId]: outcome } };
-    return writeDocument(access, { version: VERSION, accounts: document.accounts.map((candidate) => candidate === entry ? { ...entry, audit } : candidate) }, limits);
+    const { [wireModelId]: ended, ...kept } = entry.refusals ?? {};
+    const refusals = previous === "refused" && outcome === "completed" && ended !== undefined ? { refusals: kept } : {};
+    return writeDocument(access, { version: VERSION, accounts: document.accounts.map((candidate) => candidate === entry ? { ...entry, audit, ...refusals } : candidate) }, limits);
   });
 }
 

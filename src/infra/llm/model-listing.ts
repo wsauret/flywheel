@@ -205,7 +205,8 @@ interface ListingPass {
 }
 /** `cached-first` reads saved evidence only. `fresh` (interactive) and `refresh`
  *  (owned) fetch the provider listing and record audit candidates, and probe
- *  nothing. `audit` fetches no listing and probes what saved audits leave due;
+ *  nothing. `audit` fetches no listing and probes what saved audits leave due
+ *  and every refused candidate again;
  *  every other provider reads as it does under `cached-first`. */
 export type ModelDiscoveryMode = "cached-first" | "refresh" | "fresh" | "audit";
 
@@ -329,7 +330,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
   /** Lists an audited account. Its models.dev candidates show at once, pending until the account's probe succeeds. A
    *  listing that extends the baseline serves the models it names at once, so its candidates are only the models.dev
    *  rows it does not name; its entry saves those listed rows, from which every later mode reads them. An `audit`
-   *  pass probes what the saved audit leaves due. */
+   *  pass probes what the saved audit leaves due and every refused candidate again (`runAccessAudit`). */
   async function resolveAudited(
     definition: AccessProviderDefinition,
     contribution: NonNullable<AccessProviderDefinition["dynamicCatalog"]>,
@@ -396,7 +397,12 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
         limits: contribution.limits,
         inconclusiveEndsPass: contribution.inconclusiveEndsPass === true,
         withProfile,
-        onAccessAudit,
+        // A committed result can end a saved refusal, so every read after it, starting with the progress listing,
+        // reads the entry again.
+        onAccessAudit: async (progress) => {
+          evidence.forget(account, durableLineage);
+          await onAccessAudit?.(progress);
+        },
         audit,
         entryRows: entryRows(),
         candidates,
@@ -429,7 +435,9 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
     const listed = contribution.probeAccess !== undefined
       ? await resolveAudited(definition, contribution, contribution.probeAccess, auth, candidate, instance, credential, lineage, savedRows, signal, pass)
       : await resolveListed(definition, contribution, auth, candidate, instance, credential, lineage, savedRows, signal, pass);
-    return { listed, refusals: (await reading)?.refusals ?? {} };
+    // An audit that committed a result forgot the entry, so it is read again with the refusals that the audit left.
+    const refusals = pass.mode === "audit" && lineage !== undefined ? readSaved(accessProviderAccountIdentity(candidate), lineage, contribution.limits) : reading;
+    return { listed, refusals: (await refusals)?.refusals ?? {} };
   }
 
   async function resolveListed(

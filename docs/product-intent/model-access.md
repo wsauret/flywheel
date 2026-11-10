@@ -96,15 +96,15 @@ Outside provider controls, only models checked for a current exact account enter
 
 ## PI-MODEL-065: Unconfirmed models are checked before they serve
 
-SuperGrok and Google Vertex accounts show usable coding models from models.dev at once as editable preferences, and so do Claude subscription accounts for models their login does not list. Background checks confirm what each account can serve and never use overage or enable paid use. A Claude subscription check is one minimal request, billed only on a usage-billed login, as an API key is. Pending models stay unchecked unless the person selects them, and the profile's auto-enable default applies only after a successful check. Only a successful check makes a model eligible for requests.
+SuperGrok and Google Vertex accounts show usable coding models from models.dev at once as editable preferences, and so do Claude subscription accounts for models their login does not list. Background checks that never bill or enable paid use confirm what each account can serve. Pending models stay unchecked unless the person selects them, and the profile's auto-enable default applies only after a successful check. Only a successful check makes a model eligible for requests.
 
 ## PI-MODEL-084: Access check results persist until a recheck
 
-An inconclusive access check never erases an earlier success. An explicit refusal hides the model until the person asks for a manual recheck, and every check result survives restart and token refresh.
+An inconclusive access check never erases an earlier success. An explicit refusal hides the model, and every background discovery checks it again, so a model that an account gains appears after the next discovery. A manual recheck checks every model of the account at once. Every check result survives restart and token refresh.
 
 ## PI-MODEL-066: A model refusal affects only that model and account
 
-A provider's refusal of a model, or of only its extended context window, applies to that model on that account alone. Flywheel does not retry the refused model or window on that account, mark the provider unreachable, or mark the account's quota spent. When no candidate can serve the request, the notice names the refused model or window and offers the model command, never a rate limit. The refusal survives restart and token refresh and ends after 24 hours, or at once when the account gets a new credential.
+A provider's refusal of a model, or of only its extended context window, applies to that model on that account alone. Flywheel does not retry the refused model or window on that account, mark the provider unreachable, or mark the account's quota spent. When no candidate can serve the request, the notice names the refused model or window and offers the model command, never a rate limit. The refusal survives restart and token refresh. It ends after 24 hours, when the account gets a new credential, or when an access check of the model changes from refused to passed.
 
 ## PI-MODEL-067: A refused model or window leaves the account's offer
 
@@ -116,7 +116,7 @@ Flywheel never maintains or curates which models a provider offers. New models d
 
 ## PI-MODEL-010: Usage reads the same way on every client
 
-Usage is one view with Accounts, Spend, and History a tap apart. A line beside the switch gives the reading's time, or says it is refreshing or failed. Each account row shows its name and one reading of what is left or why there is none. Beneath it are the plan, signed-in identity, and whether paid use is allowed. Accounts start closed, and a tap opens one at a time or closes the open one. An open account shows a bar per provider window with its reading and reset time, its banked reset and Apply action, and Flywheel's activity there.
+Usage is one view with Accounts, Spend, and History a tap apart. A line beside the switch gives the reading's time and says when it is refreshing, when an update is delayed, or when a refresh failed. A delay or failure keeps the reading on screen and never covers the switch. Each account row shows its name and one reading of what is left or why there is none. Beneath it are the plan, signed-in identity, and whether paid use is allowed. Accounts start closed, and a tap opens one at a time or closes the open one. An open account shows a bar per provider window with its reading and reset time, its banked reset and Apply action, and Flywheel's activity there.
 
 ## PI-MODEL-052: Usage account rows fit each account's provider
 
@@ -148,7 +148,7 @@ When the person confirms a model that the profile cannot use at that moment, Fly
 
 ## PI-MODEL-046: Model choices refresh quietly in the background
 
-Opening model selection or provider model controls shows saved choices at once and starts background discovery at most once per auth profile every five minutes, failed attempts included. Ordinary background discovery shows no loading transition or success toast while usable choices remain.
+Opening model selection or provider model controls shows saved choices at once and starts background discovery at most once per auth profile every five minutes, failed attempts included. While Flywheel runs, background discovery also runs at least once an hour for each open auth profile. Ordinary background discovery shows no loading transition or success toast while usable choices remain.
 
 ## PI-MODEL-016: Every agent role has an eligible default
 

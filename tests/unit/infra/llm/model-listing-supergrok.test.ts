@@ -76,7 +76,9 @@ test("API-key access audits persist exact-lineage results, discover new candidat
   await modelsClient.refresh(new AbortController().signal);
   await listed("refresh");
   await listed("audit");
-  expect(probes.sort()).toEqual(["gemini-flaky", "gemini-new", "gemini-ok"]);
+  // The new candidate and the pending one are due, and every pass checks the refused model again (PI-MODEL-084); the
+  // completed model is not checked again.
+  expect(probes.sort()).toEqual(["gemini-flaky", "gemini-flash-latest", "gemini-new"]);
   probes.length = 0;
   statuses.set("gemini-ok", 500);
   statuses.set("gemini-flash-latest", 200);
@@ -181,10 +183,10 @@ test("SuperGrok lists models.dev candidates as pending, then admits only complet
   });
   modelsStatus = 200;
 
-  // A later audit probes only what is still due.
+  // A later audit probes what is still due and the refused model again, never the completed one.
   flaky = 200;
   expect(await listed("audit")).toEqual({ eligible: ["grok-flaky", "grok-ok"], visible: ["grok-flaky", "grok-ok"] });
-  expect(responses.map((request) => request.model)).toEqual(["grok-flaky"]);
+  expect(responses.map((request) => request.model)).toEqual(["grok-flaky", "grok-paid"]);
 
   // An invalidated connection still exposes models.dev preferences, without routing any model.
   modelsStatus = 401;

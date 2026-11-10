@@ -23,7 +23,8 @@ export interface SavedListingEvidence {
   read(account: AccessProviderAccountIdentity, lineage: string, limits: CatalogLimits): Promise<SavedProviderModels | undefined>;
   /** Keeps the rows that this process just saved, beside the audit and refusals already read. */
   keepRows(account: AccessProviderAccountIdentity, lineage: string, rows: readonly CatalogCanonicalRow[]): void;
-  /** Forgets an entry that this process deleted. */
+  /** Forgets an entry that this process deleted, or changed with a write that the evidence did not make, such as an
+   *  access audit result that ended a refusal. */
   forget(account: AccessProviderAccountIdentity, lineage: string): void;
   /** Saves a refusal that a request proved, timed now. Resolves false when the store refused it or the write
    *  failed; a failed write is a warning. */

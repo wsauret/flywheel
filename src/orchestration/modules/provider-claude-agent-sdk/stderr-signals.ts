@@ -116,6 +116,25 @@ export function apiErrorLine(line: string): ApiErrorLine | undefined {
   return { status: Number(status), body, requestId: bodyRequestId(body) };
 }
 
+/**
+ * Whether a line of the engine's `--debug-to-stderr` output reports that the service refused to count tokens for
+ * `wireModelId` because it does not serve that model to the login. The engine writes `[ERROR] countTokens API call
+ * failed: <status> <body>` when a count fails, and the refusal is a 404 whose `not_found_error` names the model
+ * (engine 2.1.306: `{"type":"error","error":{"type":"not_found_error","message":"model: claude-fable-5-2"}}`).
+ */
+export function countTokensRefusesModel(line: string, wireModelId: string): boolean {
+  const body = /\[ERROR\] countTokens API call failed: 404 (\{.*\})$/u.exec(line)?.[1];
+  if (body === undefined) return false;
+  try {
+    const parsed: unknown = JSON.parse(body);
+    const error = typeof parsed === "object" && parsed !== null && "error" in parsed ? parsed.error : undefined;
+    return typeof error === "object" && error !== null && "type" in error && error.type === "not_found_error"
+      && "message" in error && typeof error.message === "string" && error.message.includes(wireModelId);
+  } catch {
+    return false;
+  }
+}
+
 function bodyRequestId(body: string): string | undefined {
   try {
     const parsed: unknown = JSON.parse(body);

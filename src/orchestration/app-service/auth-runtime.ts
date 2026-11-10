@@ -266,8 +266,9 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
       },
     }),
     refreshMetadata: (signal) => getSharedModelsClient(options.userDataRoot).refresh(signal),
-    // Every session takes the eligibility that background discovery or a saved refusal published.
-    apply: async (profileId) => { await settleProviderModelMutation(async () => ({ profileId })) },
+    // Every session takes the eligibility that background discovery or a saved refusal published. A profile that a
+    // session, a workflow, or the defaults hold resident is open; a released or deleted one is not.
+    apply: async (profileId) => { await settleProviderModelMutation(async () => ({ profileId })) }, holdsProfile: (profile) => residentLease(profile.id, profile.directory) !== undefined,
   }), (preparation) => preparation.dispose())
   // A usage reading carries each account's plan, and a plan that turns free or paid changes which accounts may serve.
   options.own("auth-free-plan-reconciliation", subscriptionUsagePool.onPublished((profile, service) => { void prepareEligibility.reconcileFreePlans(profile, service.snapshot()).catch((error: unknown) => { if (!disposed) log.warn("free-plan accounts were not reconciled", { profileId: profile.id, error: errorMessage(error) }) }) }), (unsubscribe) => { unsubscribe() })

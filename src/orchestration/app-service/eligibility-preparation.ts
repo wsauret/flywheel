@@ -26,10 +26,10 @@ import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-reg
 import type { ModelRefusalRecord } from "../agent-runtime/llm/client-factory.js"
 import { getSharedModelListingClient } from "../config/llm-clients.js"
 import { providerModelsCanServeRequest } from "../config/provider-model-eligibility.js"
+import { createDiscoveryCadence } from "./discovery-cadence.js"
 
 const log = Log.create({ service: "eligibility-preparation" })
 const PROFILE_INPUT_PREPARATION_ATTEMPTS = 2
-const CATALOG_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 export interface EligibilityInputRevision {
   readonly auth: string
   readonly preferences: string
@@ -63,6 +63,11 @@ interface EligibilityPreparationDeps {
   /** How long a caller about to route requests waits for the access audit after the listing; the listing's own
    *  settlement deadline by default. */
   readonly settlementTimeoutMs?: number
+  /** How long a profile goes without discovery before background discovery runs; an hour by default. */
+  readonly backgroundDiscoveryIntervalMs?: number
+  /** Whether the owner still holds the profile open, which background discovery asks each time it is due. An owner
+   *  that gives none runs no background discovery. */
+  readonly holdsProfile?: (profile: EligibilityProfile) => boolean
 }
 
 interface EligibilityProfile {
@@ -197,11 +202,11 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     return unarmed
   }
   const controllers = new Map<Promise<unknown>, AbortController>()
-  const lastDiscovery = new Map<string, number>()
   const now = deps.now ?? Date.now
   const settlementTimeoutMs = deps.settlementTimeoutMs ?? LISTING_SETTLEMENT_MS
   let closed = false
   let disposal: Promise<void> | undefined
+  const cadence = createDiscoveryCadence<EligibilityProfile>(now, (profile) => run.scheduleRefresh(profile), (profile) => deps.holdsProfile?.(profile) === true, deps.backgroundDiscoveryIntervalMs)
   const observe = (profile: EligibilityProfile) => deps.observeAuth?.(profile) ?? loadAuthStoreWithDiagnostics(profile.directory, installedCredentialProviderIds(), credentialSlotClassifier(deps.moduleSelection()), false)
   const resolveAuth = (profile: EligibilityProfile, signal: AbortSignal, composition: FirstPartyModuleComposition, load = observe(profile)) =>
     deps.resolveAuth?.(profile, signal) ?? resolveAuthContext({ authDir: profile.directory, resolveKey: deps.resolveKey, load, definitions: accessProviderRegistry(composition).selection.definitions, credentialSlotClassifier: credentialSlotClassifier(composition) })
@@ -331,12 +336,12 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       settled: publications.settled,
     }
   }
-  /** Probes what saved audits leave due and returns the final state; `published`
+  /** Probes what saved audits leave due, and checks refused models again, and returns the final state; `published`
    * receives each state that a conclusive probe published. A forced run
    * supersedes it without an error: results already committed persist and the
    * next audit resumes with the remainder. */
   const audit = async (profile: EligibilityProfile, discovery: OwnedDiscovery, state: ProviderModelEligibilityState, signal: AbortSignal, published: (state: ProviderModelEligibilityState) => void, recheck?: AccessProviderAccountIdentity): Promise<ProviderModelEligibilityState> => {
-    if (recheck === undefined && ![...state.inventoryCandidates.values()].some((candidate) => (candidate.audit?.remaining ?? 0) > 0)) return state
+    if (recheck === undefined && ![...state.inventoryCandidates.values()].some((candidate) => (candidate.audit?.remaining ?? 0) > 0 || (candidate.audit?.refused ?? 0) > 0)) return state
     const step = advanceDiscovery(discovery, { kind: "audit-started" })
     if (step.kind !== "auditing") return state
     const { superseded } = step
@@ -357,7 +362,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
    * `recheck` account limits that audit to it and probes it again in full. A
    * discovery that ends with a new state applies it to the profile's sessions. */
   const discoverAfter = (profile: EligibilityProfile, operation: Promise<ProviderModelEligibilityState>, refresh: boolean | "pending", recheck?: QueuedRecheck): OwnedDiscovery => {
-    if (refresh !== "pending") lastDiscovery.set(profile.id, now())
+    if (refresh !== "pending") cadence.admit(profile)
     const refreshController = new AbortController()
     const ready = Promise.withResolvers<ProviderModelEligibilityState>()
     // Only a settled caller observes readiness, so an unobserved failure is not an unhandled rejection.
@@ -382,7 +387,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
         started = settled
         refreshController.signal.throwIfAborted()
         if (refresh === "pending" && !hasPendingDiscovery(settled)) return settled
-        if (refresh === "pending") lastDiscovery.set(profile.id, now())
+        if (refresh === "pending") cadence.admit(profile)
         if (refresh) await deps.refreshMetadata?.(refreshController.signal)
         refreshController.signal.throwIfAborted()
         const listed = refresh ? await prepare(profile, "refresh", refreshController.signal) : settled
@@ -473,7 +478,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     const preceding = discoveryMode === "cached-first" ? undefined : latestDiscovery(profile.id)?.done ?? existing
     const execute = () => {
       controller.signal.throwIfAborted()
-      if (discoveryMode !== "cached-first") lastDiscovery.set(profile.id, now())
+      if (discoveryMode !== "cached-first") cadence.admit(profile)
       return prepare(profile, discoveryMode, controller.signal, undefined, options?.composition)
     }
     const operation = preceding === undefined ? execute() : preceding.then(execute, execute)
@@ -505,8 +510,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   run.scheduleRefresh = (profile: EligibilityProfile): void => {
     if (closed) throw new Error("eligibility preparation is disposed")
     if (cachedPreparations.has(profile.id) || discoveries.has(profile.id)) return
-    const last = lastDiscovery.get(profile.id)
-    if (last !== undefined && now() - last < CATALOG_REFRESH_INTERVAL_MS) return
+    if (cadence.coolingDown(profile)) return
     const current = deps.current(profile.id)
     if (current === undefined) {
       // discoverAfter owns failure reporting and terminal pending-catalog publication.
@@ -626,13 +630,13 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   run.dispose = (): Promise<void> => {
     if (disposal) return disposal
     closed = true
+    cadence.dispose()
     const operations = [...controllers.keys()]
     for (const controller of controllers.values()) controller.abort(new DOMException("Eligibility preparation disposed", "AbortError"))
     disposal = Promise.allSettled(operations).then(() => {
       cachedPreparations.clear()
       discoveries.clear()
       controllers.clear()
-      lastDiscovery.clear()
     })
     return disposal
   }

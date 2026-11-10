@@ -178,23 +178,24 @@ describe("provider model catalog store", () => {
     access.close();
   });
 
-  test.each([account, { kind: "subscription", providerId: "supergrok", instanceId: "primary" } as const])("preserves historical refusals and rechecks successes only on additions or manual audits for %j", async (superGrok) => {
+  test.each([account, { kind: "subscription", providerId: "supergrok", instanceId: "primary" } as const])("preserves historical outcomes, makes only added candidates without an outcome due, and rechecks successes only on manual audits for %j", async (superGrok) => {
     const access = await profile();
     const ids = ["grok-one", "grok-two"];
     expect(await writeProviderModelCandidates(catalog(access), superGrok, lineage, [row], ids, TEST_CATALOG_LIMITS)).toBe(true);
-    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 1, ids[0]!, "completed", TEST_CATALOG_LIMITS)).toBe(true);
-    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 1, ids[1]!, "refused", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 1, ids[0]!, ids[0]!, "completed", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 1, ids[1]!, ids[1]!, "refused", TEST_CATALOG_LIMITS)).toBe(true);
     expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)).toMatchObject({ generation: 1, dueIds: [], outcomes: { "grok-one": "completed", "grok-two": "refused" } });
     expect(await writeProviderModelCandidates(catalog(access), superGrok, lineage, [], ids, TEST_CATALOG_LIMITS)).toBe(true);
     expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)?.generation).toBe(1);
     expect(await writeProviderModelCandidates(catalog(access), superGrok, lineage, [], [...ids, "grok-three"], TEST_CATALOG_LIMITS)).toBe(true);
-    expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)?.dueIds).toEqual(["grok-one", "grok-three"]);
-    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 1, "grok-three", "completed", TEST_CATALOG_LIMITS)).toBe(false);
-    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 2, "grok-one", "completed", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)?.dueIds).toEqual(["grok-three"]);
+    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 1, "grok-three", "grok-three", "completed", TEST_CATALOG_LIMITS)).toBe(false);
+    // A completed model is not checked again when the basis grows, so a result for it is stale.
+    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 2, "grok-one", "grok-one", "completed", TEST_CATALOG_LIMITS)).toBe(false);
     expect(await writeProviderModelCandidates(catalog(access), superGrok, lineage, [], ["grok-one", "grok-three"], TEST_CATALOG_LIMITS)).toBe(true);
     expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)).toMatchObject({ generation: 3, dueIds: ["grok-three"], outcomes: { "grok-two": "refused" } });
-    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 2, "grok-three", "completed", TEST_CATALOG_LIMITS)).toBe(false);
-    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 3, "grok-three", "completed", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 2, "grok-three", "grok-three", "completed", TEST_CATALOG_LIMITS)).toBe(false);
+    expect(await recordProviderModelAccess(catalog(access), superGrok, lineage, 3, "grok-three", "grok-three", "completed", TEST_CATALOG_LIMITS)).toBe(true);
     expect(await writeProviderModelCandidates(catalog(access), superGrok, lineage, [], ["grok-one"], TEST_CATALOG_LIMITS)).toBe(true);
     expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)?.dueIds).toEqual([]);
     const reopened = openExistingAuthProfileDirectory(access.authDirectory);
@@ -204,7 +205,7 @@ describe("provider model catalog store", () => {
       reopened.close();
     }
     expect(await writeProviderModelCandidates(catalog(access), superGrok, lineage, [], ids, TEST_CATALOG_LIMITS)).toBe(true);
-    expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)?.dueIds).toEqual(["grok-one"]);
+    expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)?.dueIds).toEqual([]);
     expect(await writeProviderModelCandidates(catalog(access), superGrok, lineage, [], [...ids, "grok-three"], TEST_CATALOG_LIMITS, true)).toBe(true);
     expect(readProviderModelAudit(access, superGrok, lineage, TEST_CATALOG_LIMITS)?.dueIds).toEqual(["grok-one", "grok-three", "grok-two"]);
     access.close();
@@ -241,6 +242,35 @@ describe("provider model catalog store", () => {
       reopened.close();
     }
     expect(await recordProviderModelRefusal(catalog(access), account, lineage, "gpt-5.5", { kind: "extended-context", contextLimit: 0, at }, TEST_CATALOG_LIMITS)).toBe(false);
+    access.close();
+  });
+
+  test("an audit result for a refused model ends the send refusal of its wire model only when the model now passes, and a pass of a model that was never refused keeps its refusal", async () => {
+    const access = await profile();
+    const at = 1_000_000;
+    expect(await writeProviderModelCandidates(catalog(access), account, lineage, [], ["refused-model", "served-model"], TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelAccess(catalog(access), account, lineage, 1, "refused-model", "refused-wire", "refused", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelRefusal(catalog(access), account, lineage, "refused-wire", { kind: "model", at }, TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelRefusal(catalog(access), account, lineage, "served-wire", { kind: "model", at }, TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelAccess(catalog(access), account, lineage, 1, "served-model", "served-wire", "completed", TEST_CATALOG_LIMITS)).toBe(true);
+    // A completed model that is not due is not checked again, so a result for it is stale.
+    expect(await recordProviderModelAccess(catalog(access), account, lineage, 1, "served-model", "served-wire", "completed", TEST_CATALOG_LIMITS)).toBe(false);
+    expect(Object.keys(readSavedProviderModels(access, account, lineage, TEST_CATALOG_LIMITS)?.refusals ?? {}).toSorted()).toEqual(["refused-wire", "served-wire"]);
+
+    expect(await recordProviderModelAccess(catalog(access), account, lineage, 1, "refused-model", "refused-wire", "completed", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(readSavedProviderModels(access, account, lineage, TEST_CATALOG_LIMITS)).toMatchObject({
+      audit: { dueIds: [], outcomes: { "refused-model": "completed", "served-model": "completed" } },
+      refusals: { "served-wire": { kind: "model", at } },
+    });
+    expect(readSavedProviderModels(access, account, lineage, TEST_CATALOG_LIMITS)?.refusals).not.toHaveProperty("refused-wire");
+
+    // A refused extended window of the wire model ends the same way.
+    const window = { kind: "extended-context", contextLimit: 200_000, at } as const;
+    expect(await writeProviderModelCandidates(catalog(access), account, lineage, [], ["refused-model", "served-model", "window-model"], TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelAccess(catalog(access), account, lineage, 2, "window-model", "window-wire", "refused", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelRefusal(catalog(access), account, lineage, "window-wire", window, TEST_CATALOG_LIMITS)).toBe(true);
+    expect(await recordProviderModelAccess(catalog(access), account, lineage, 2, "window-model", "window-wire", "completed", TEST_CATALOG_LIMITS)).toBe(true);
+    expect(readSavedProviderModels(access, account, lineage, TEST_CATALOG_LIMITS)?.refusals).toEqual({ "served-wire": { kind: "model", at } });
     access.close();
   });
 

@@ -6,7 +6,7 @@ import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta
 import { ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import type { QuotaExhaustionObservation } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
 import { ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { classifySdkMessage, cliFailure, cliResendFailure, probeOutcome, readSdkMessages, type CliErrorReport, type CliTurnResult } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js";
+import { classifySdkMessage, cliFailure, cliResendFailure, readSdkMessages, type CliErrorReport, type CliTurnResult } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js";
 import type { WireFailure } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/service-requests.js";
 import { assistantError, cliInit, cliOnlyMessage, ENVELOPE, event, rateLimitReport, turnError, turnResult, type CliRateLimitInfo } from "./_bridge-harness.js";
 
@@ -163,23 +163,6 @@ describe("the error map", () => {
     const model = fail(report("model_not_found", "There's an issue with the selected model (claude-sonnet-4-5). It may not exist or you may not have access to it."), turn({ status: 404 }));
     expect(model).toBeInstanceOf(ModelAccessRefusedError);
     expect(model).toMatchObject({ refusal: { kind: "model" } });
-  });
-
-  test("an access probe's turn completes on success, refuses only on a refusal of the model itself, and is otherwise inconclusive", () => {
-    const refusedText = "There's an issue with the selected model (claude-fable-5-2). It may not exist or you may not have access to it.";
-    expect(probeOutcome([cliInit(), turnResult({ result: "OK" })], false)).toBe("completed");
-    expect(probeOutcome([assistantError("model_not_found", refusedText), turnResult({ is_error: true, api_error_status: 404, result: refusedText })], false)).toBe("refused");
-    // A refused 1M window, a login failure, a spent allowance, a rate limit, and a turn that never ended say nothing about the model.
-    expect(probeOutcome([assistantError("rate_limit", "API Error: Usage credits required for 1M context"), turnResult({ is_error: true, api_error_status: 429 })], false)).toBe("inconclusive");
-    expect(probeOutcome([assistantError("authentication_failed", "Not logged in · Please run /login"), turnResult({ is_error: true })], false)).toBe("inconclusive");
-    expect(probeOutcome([assistantError("rate_limit", "You've hit your limit · resets 5pm"), turnResult({ is_error: true, api_error_status: 429 })], false)).toBe("inconclusive");
-    expect(probeOutcome([assistantError("rate_limit", "API Error: 429 rate limited"), turnResult({ is_error: true, api_error_status: 429 })], false)).toBe("inconclusive");
-    expect(probeOutcome([cliInit()], false)).toBe("inconclusive");
-    // A subscription login that served the probe from extra usage proves nothing a check may keep. A usage-billed
-    // login reports overage for every request (engine 2.1.296 on an `enterprise_usage_based` seat), its ordinary billing.
-    const overage = rateLimitReport({ status: "allowed", rateLimitType: "overage", overageStatus: "allowed", isUsingOverage: false, overageInUse: true });
-    expect(probeOutcome([cliInit(), overage, turnResult({ result: "OK" })], false)).toBe("inconclusive");
-    expect(probeOutcome([cliInit(), overage, turnResult({ result: "OK" })], true)).toBe("completed");
   });
 
   test("fails a request that the CLI resent with a message that holds only the tag", () => {

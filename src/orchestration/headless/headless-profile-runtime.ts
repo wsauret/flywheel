@@ -193,6 +193,8 @@ export async function createHeadlessProfileRuntime(options: HeadlessProfileRunti
     } : {}),
     ...(options.connection ? connectionEligibilitySources(options.connection, options.profile.directory, options.moduleSelection, options.modelsClient) : {}),
     refreshMetadata: (signal) => options.modelsClient.refresh(signal),
+    // The runtime holds its one profile open until it is disposed.
+    holdsProfile: (profile) => profile.id === options.profile.id && profile.directory === options.profile.directory,
   })
   let generation: UsageAuthorityGeneration | undefined
   const acquire = async (profile: { readonly profileDir: string; readonly profileId: string }) => {

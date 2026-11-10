@@ -274,7 +274,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     }
   })
 
-  test("a manual recheck queues an exact-account audit inside the cooldown, supersedes an active audit, and drops when its inputs changed", async () => {
+  test("a manual recheck queues an exact-account audit inside the cooldown, supersedes an active audit, and drops when its inputs changed, and a refused model audits after every discovery", async () => {
     const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const candidate = { kind: "subscription", providerId: "supergrok", instanceId: "primary", spendMode: "included" } as const
     const key = accessProviderAccountKey(candidate)
@@ -282,6 +282,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     const revision = () => ({ auth, preferences: "preferences-v1" })
     const modes: string[] = []
     const rechecks: (string | undefined)[] = []
+    let refused = 0
     let holdAudit = false
     /** Held by the next listing only. */
     let listingHold: Promise<void> | undefined
@@ -319,7 +320,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
           inventoryCandidates: new Map([[key, {
             candidate, configured: true, currentConnection: true, enabledOfferings: new Map(), inventoryOfferings: new Map(),
             outcome: { kind: "unavailable" as const, reason: "discovery-pending" as const },
-            audit: { remaining: 0, refused: 0 },
+            audit: { remaining: 0, refused },
           }]]),
           modelInfos: new Map(),
           enabledModels: new Map(),
@@ -327,7 +328,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
       },
     })
 
-    // Nothing is due, so only a manual recheck audits; the fresh listing's own hold does not delay it.
+    // Nothing is due or refused, so only a manual recheck audits; the fresh listing's own hold does not delay it.
     await prepare(PROFILE, { mode: "fresh" })
     published = Promise.withResolvers()
     prepare.recheckAccount(PROFILE, candidate, revision())
@@ -371,6 +372,14 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     auth = "auth-v2"
     await new Promise((resolve) => setTimeout(resolve, 5))
     expect(rechecks).toEqual([key, key, key, key, key])
+
+    // A refused model is checked again after every discovery, with no manual recheck (PI-MODEL-084).
+    holdAudit = false
+    refused = 1
+    await prepare(PROFILE, { mode: "fresh" })
+    await prepare.awaitDiscovery(PROFILE, new AbortController().signal)
+    expect(modes.slice(-2)).toEqual(["fresh", "audit"])
+    expect(rechecks.at(-1)).toBeUndefined()
     await prepare.dispose()
     await service.dispose()
   })
