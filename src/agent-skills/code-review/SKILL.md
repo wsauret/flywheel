@@ -24,9 +24,9 @@ agents:
 
 Review a completed code change, or an implementation plan before code exists, against the request or settled design with a reviewer set sized to the actual target. This is the canonical review method after every implementation route, and for a plan that descends from a settled design.
 
-Each reviewer's read-only evidence and findings contract comes from the individual method it composes: `code-review-method` for `reviewer-code-*`, `plan-review` for `reviewer-plan-*`. This parent skill owns dispatch and synthesis. During review, do not edit target implementation files or dispatch agents to change them. Complete and synthesize the review first. A review-only request ends with the report. Only when review is part of an already-authorized implementation task, leave review mode afterward, fix valid findings, and run the narrowest verification that proves each correction.
+Each reviewer's read-only evidence and findings contract comes from the individual method it composes: `code-review-method` for `reviewer-code-*`, `plan-review` for `reviewer-plan-*`. This parent skill owns dispatch and synthesis. During review, do not edit target implementation files or dispatch agents to change them. Complete and synthesize the review first.
 
-Reviewer dispatch is mandatory for every nontrivial target. A trivial target shrinks the set to one reviewer, never to zero.
+Reviewer dispatch is mandatory for every target above the no-reviewer tier, and a diff above 600 changed lines is never skipped.
 
 ## Determine the review target
 
@@ -34,13 +34,14 @@ Reviewer dispatch is mandatory for every nontrivial target. A trivial target shr
 2. Get the actual diff. A directory listing, file list, or implementation report is not a diff. When branch diff data is unavailable or includes unrelated concurrent work, use the current task's tracked changed files and tool write evidence, and state that limitation. For a plan target, read the complete plan instead.
 3. Read changed files where hunks hide context. Trace changed public surfaces through callers, imports, registrations, and tests. Inspect deletions for live paths whose logic disappeared rather than moved.
 4. Apply `elegance-review-principles` first and throughout. Additional specialist reviewers add constraints; they do not replace this method, severity model, or result contract.
-5. List the target's material factual claims verbatim with their locations: version pins, artifact-content assertions, registry or feed availability, live-route statements, tool and file existence, and runtime-behavior premises the target depends on. Assign each claim to at least one reviewer. Every claim ends with one verdict from the reviewer protocol's vocabulary, and the result states exactly what the evidence supports.
+5. List the target's material factual claims verbatim with their locations: version pins, artifact-content assertions, registry or feed availability, live-route statements, tool and file existence, and runtime-behavior premises the target depends on. Assign each claim to a selected reviewer; in the no-reviewer tier, verify each one yourself. Every claim ends with one verdict from the reviewer protocol's vocabulary, and the result states exactly what the evidence supports.
 
 ## Select the reviewer set
 
 Size the reviewer set from the target and named domain triggers before dispatching. A code change takes `reviewer-code-*` personas and a plan takes `reviewer-plan-*` personas; never mix the families.
 
-- **Trivial tier:** a code diff roughly under 50 changed lines with no new file or abstraction, or a plan with one milestone, a handful of files, no new abstraction, and no runtime-behavior claim, when no optional trigger below matches. Dispatch `reviewer-code-elegance` or `reviewer-plan-elegance` alone. It owns structural fit and design elegance, and at plan granularity subsumes the structural half of the quality lens. With one reviewer, synthesis is integrate-or-defer per finding.
+- **No-reviewer tier:** a code diff of 50 changed lines or fewer with no new file or abstraction, when no optional trigger below matches. Dispatch no reviewer: check the diff yourself against the intent and prove it with fresh verification.
+- **Single tier:** a code diff of 51 to 200 changed lines with no new file or abstraction, or a plan with one milestone, a handful of files, no new abstraction, and no runtime-behavior claim. Dispatch `reviewer-code-quality` or `reviewer-plan-quality` alone, plus each optional reviewer whose trigger below matches. With one reviewer, synthesis is integrate-or-defer per finding.
 - **Standard tier:** every other target. Dispatch `reviewer-code-quality` and `reviewer-code-elegance`, or `reviewer-plan-quality` and `reviewer-plan-elegance`. Add an optional reviewer only when its named trigger matches:
 - `reviewer-code-performance` or `reviewer-plan-performance`: hot paths, loops over unbounded data, queries, large data volumes, latency-sensitive code, or heavy I/O; also a plan of three or more milestones.
 - `reviewer-code-data-integrity` or `reviewer-plan-data-integrity`: migrations, schemas, data models, persistence, durable state, or transactional logic; also a plan of three or more milestones.
@@ -132,7 +133,7 @@ Conclude with one of:
 
 After the result, list under `Set aside:` each P1 or P2 finding that you rejected or deferred, with a one-line reason; omit dropped P3 findings.
 
-P1 findings block acceptance. For a review-only request, report and stop without editing. When the original request authorizes implementation, resume that task after the review result is complete: fix valid findings, verify each correction with the smallest complete check, and do not rerun the whole review unless the correction materially changes the design or creates a new triggered review surface.
+P1 findings block acceptance. For a review-only request, report and stop without editing. When the original request authorizes implementation, resume that task after the review result is complete: fix valid findings, verify each correction with the smallest complete check, and do not rerun the review unless the correction materially changes the design or creates a new triggered review surface. A re-review runs only the first review's personas plus each newly triggered one.
 
 Group actionable findings by shared structural cause, not by file. Fix the structure once, then re-evaluate the remaining findings, which often dissolve. Do not apply reviewer fixes as isolated patches.
 

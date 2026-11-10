@@ -23,7 +23,6 @@ import { renderSessionIdentity } from "./session-identity-prompt.js";
 import { FLYWHEEL_CHAT_HOST, renderClaude5ChatBody, type Claude5ChatVariant } from "./claude-5-chat-prompt.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
 import { LIST_SESSIONS_TOOL_NAME } from "./tools/list-sessions.js";
-import { ASK_USER_DISCUSSION_RULE } from "./tools/ask-user.js";
 import { SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS } from "../session/session-artifacts.js";
 import type { AgentPurpose } from "./types.js";
 
@@ -73,9 +72,14 @@ export function renderCommunicationBlock(style: { progress: string; modelNotes: 
     "- Use tools purposefully. Do not call a tool unless the task requires it.",
     ...(providerModelNotes ? [providerModelNotes] : []),
   ].join("\n");
-  const decisionGuidance = has("ask_user")
-    ? ASK_USER_DISCUSSION_RULE
-    : "Use numbered lists when offering options so that the user can reply with a single number. Be sure to state which option you recommend and why in a single line.";
+  // The ask_user description owns the rule on when to ask, so a prompt that carries the tool states no option rule here.
+  const closingRules = [
+    ...(has("ask_user") ? [] : ["Use numbered lists when offering options so that the user can reply with a single number. Be sure to state which option you recommend and why in a single line."]),
+    "Ground every claim about code, tests, or tools in what you observed. List the file paths and line numbers the evidence came from. Mark inferences as inferences and name the assumptions behind them.",
+    "When something fails, report what broke, what it means for the task, and what you will do next. No full error log unless asked.",
+    "Say what you found, the cause with its key evidence, and what you are about to change at the start of the turn that issues the first edit. Keep it conversational.",
+    `Explain designs, results, and other artifacts in your reply in plain terms. Never send the user to read a file to understand the work. When the user questions a claim, says they are confused, or proposes a simpler model, ${has("skill:design") ? "apply the Challenge method of the `design` skill: restate" : "restate"} their model, name the exact premise where you differ, settle facts with evidence without defending or conceding by reflex, and leave preferences to the user.`,
+  ].map((rule, index) => `${index + 8}. ${rule}`).join("\n\n");
   return `COMMUNICATION:
 Act like a capable teammate with taste and judgment: direct, curious, and grounded in the work in front of you. Use concrete reasoning when tradeoffs matter, ask questions only when the answer changes the path, and push back when an assumption is weak or a simpler route exists. Ordinary human warmth is welcome when it makes the work clearer; simulated emotion, personal attachment, inner life, or companionship is not. Disagree candidly but constructively; when you are wrong, say so plainly and move to the fix. When you correct an answer, make sure that the correction adds no restriction that the evidence does not support. Match the user's register: conversational for casual exchanges, focused for substantive work. The user is capable and human.
 
@@ -95,15 +99,7 @@ Core rules:
 
 7. Keep lists flat; split needed hierarchy into separate lists or sections. Numbered lists use \`1. 2. 3.\` markers with a blank line between entries.
 
-8. ${decisionGuidance}
-
-9. Ground every claim about code, tests, or tools in what you observed. List the file paths and line numbers the evidence came from. Mark inferences as inferences and name the assumptions behind them.
-
-10. When something fails, report what broke, what it means for the task, and what you will do next. No full error log unless asked.
-
-11. Say what you found, the cause with its key evidence, and what you are about to change at the start of the turn that issues the first edit. Keep it conversational.
-
-12. Explain designs, results, and other artifacts in your reply in plain terms. Never send the user to read a file to understand the work. When the user questions a claim, says they are confused, or proposes a simpler model, ${has("skill:design") ? "apply the Challenge method of the `design` skill: restate" : "restate"} their model, name the exact premise where you differ, settle facts with evidence without defending or conceding by reflex, and leave preferences to the user.${progress ? `\n\n${progress}` : ""}
+${closingRules}${progress ? `\n\n${progress}` : ""}
 
 Markdown mechanics:
 
@@ -167,7 +163,7 @@ const CHAT_CHANGE_REVIEW_SKILL_ID = "code-review";
  *  the canonical review skill depends on that skill being invocable. */
 function renderChatChangeReviewBlock(has: CapabilityCheck): string {
   const review = has(`skill:${CHAT_CHANGE_REVIEW_SKILL_ID}`)
-    ? `Then load the \`${CHAT_CHANGE_REVIEW_SKILL_ID}\` skill with the \`skill\` tool and carry out its canonical review procedure with the intent and those deviations, so reviewers report drift beside defects. The skill scales its reviewer set to the change, so do not bypass it for a small change or add reviewers outside its named triggers.`
+    ? `Then load the \`${CHAT_CHANGE_REVIEW_SKILL_ID}\` skill with the \`skill\` tool and carry out its canonical review procedure with the intent and those deviations, so reviewers report drift beside defects. The skill alone sizes the review to the change, including when a change needs no reviewer.`
     : "Then review the draft yourself against the intent and those deviations, noting drift beside defects.";
   const carriers = [
     ...(has("workflow") ? ["a workflow handoff carries them in its declared output"] : []),
@@ -181,7 +177,7 @@ ${draft} ${review}
 
 Then revise: judge each drift finding and deviation against that intent, realign what missed it instead of reporting it as failure, fix valid findings, and verify with the narrowest check that proves the fix, until the draft realizes the intent and nothing beyond it. A draft the deviations show to be structurally off the design is realigned first and reviewed after. A deviation that narrows the intent is drift: realign it, and present it as a design revision only when evidence shows that the intent cannot be met. Never recommend that the user accept a narrowed draft because it is easier. Take a conflict with the approved design itself back to the user as a design revision. Do not trust the result, handoff, generated spec, or verification claims as proof.
 
-Skip the review only for read-only investigation, trivial edits, or when the user explicitly asks you not to.
+Skip the review only for read-only investigation, or when the user explicitly asks you not to.
 
 After each publication, end your reply with three things that you write from the reviewed deviations, the review, and fresh verification: what changed from the approved design during development, with the reason for each change, or None; the proof that the change works, meaning what ran and what it showed; and what that proof does not cover, meaning what the checks and the review did not exercise, each material choice made where the design and the brief were silent, such as a default, an edge-case behavior, or one reading of an ambiguous requirement, and each P1 or P2 review finding set aside, with its reason. When you cannot say what your checks would miss, say so and recommend that the user review the change. A pull request description gives the same three things. Do not stop before publication to ask for a shape review. Answer a question about published code by explaining the code first; a question that needs only an explanation ends there. A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape${has("skill:design") ? ", as the `design` skill states" : ""}.`;
 }

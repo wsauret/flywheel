@@ -85,7 +85,7 @@ A design adding autonomous work or a new completion claim names its source of in
 
 ## ARCH-AGENCY-020: Every route returns a first draft, and a handoff is evidence
 
-Every implementation route, whether inline work, a subagent, or a workflow, returns a first draft. A returned draft, handoff, generated specification, or verification claim is evidence: a handoff that the runtime accepts proves only that a worker returned a valid payload. Only the intent holder claims completion of a change, after it revises the draft and the required review runs.
+Every implementation route, whether inline work, a subagent, or a workflow, returns a first draft. A returned draft, handoff, generated specification, or verification claim is evidence: a handoff that the runtime accepts proves only that a worker returned a valid payload. Only the intent holder claims completion of a change, after it revises the draft and the review that the change's size requires runs.
 Because: Activity is not proof, and only the agent that holds the intent can judge whether a payload realizes it.
 
 ## ARCH-AGENCY-021: Deviations travel in the owning result contract
@@ -123,3 +123,8 @@ Every definition of an implementation route, a brief, a persona, a dispatch prom
 
 Passing checks record durable evidence without adding verbose output to model context. Failing checks surface the smallest actionable slice, such as the failing assertion, type error, validator error, or review finding.
 Because: Successful-check noise in context degrades agent performance as much as missing failure detail.
+
+## ARCH-AGENCY-031: The review method is the one owner of reviewer sizing
+
+The review method is the one owner of reviewer sizing. Prompts and workflows name the method and state no reviewer count of their own. For a small reversible change, fresh passing verification is the deterministic validator, and the method requires no independent reviewer.
+Because: Two texts that size the review disagree, and the agent follows neither.

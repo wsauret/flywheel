@@ -99,7 +99,10 @@ describe("workflow prompt hygiene", () => {
     });
 
     it("sizes both reviewer families from one roster with named triggers", () => {
-      expect(body).toMatch(/Trivial tier[\s\S]{0,400}`reviewer-code-elegance` or `reviewer-plan-elegance` alone/);
+      expect(body).toMatch(/No-reviewer tier:\*\* a code diff of 50 changed lines or fewer[\s\S]{0,200}Dispatch no reviewer/);
+      expect(body).toMatch(/Single tier:\*\* a code diff of 51 to 200 changed lines[\s\S]{0,300}`reviewer-code-quality` or `reviewer-plan-quality` alone/);
+      expect(body).toContain("a diff above 600 changed lines is never skipped");
+      expect(body).toContain("A re-review runs only the first review's personas plus each newly triggered one");
       expect(body).toMatch(/`reviewer-plan-security`:[\s\S]{0,180}secrets or credentials[\s\S]{0,180}path and file handling/i);
       expect(body).toMatch(/`reviewer-plan-performance`:[\s\S]{0,200}three or more milestones/i);
       expect(body).toMatch(/`reviewer-uat`, code only/);
@@ -107,7 +110,7 @@ describe("workflow prompt hygiene", () => {
 
     it("assigns material claims before dispatch and carries them in the prompt", () => {
       expect(body).toMatch(/material factual claims verbatim with their locations/i);
-      expect(body).toMatch(/Assign each claim to at least one reviewer/);
+      expect(body).toMatch(/Assign each claim to a selected reviewer; in the no-reviewer tier, verify each one yourself/);
       expect(body).toContain("ASSIGNED CLAIMS");
     });
 

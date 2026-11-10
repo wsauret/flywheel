@@ -146,7 +146,7 @@ describe("buildSystemPrompt -- chat", () => {
     for (const missing of noteTools) expect(build({ checkpointAvailable, tools: noteTools.filter((tool) => tool !== missing) })).not.toContain("For tasks that may span context windows");
   });
 
-  it("requires the canonical review skill for every nontrivial completed code change", () => {
+  it("requires the canonical review skill for every completed code change and leaves its sizing to the skill", () => {
     const tools = [...TOOLS, spec("skill", { description: "Load a skill package." }), spec("subagent"), spec("workflow")];
     const result = build({ tools, skills: ["code-review"] });
 
@@ -155,7 +155,9 @@ describe("buildSystemPrompt -- chat", () => {
     expect(result).toContain("your own edits or a delegated result, whether");
     expect(result).toContain("an objection to the structure starts a reshape.");
     expect(build({ tools, skills: ["code-review", "design"] })).toContain("starts a reshape, as the `design` skill states.");
-    expect(result).toContain("The skill scales its reviewer set");
+    // The skill is the one owner of reviewer sizing (ARCH-AGENCY-031): the prompt states no size rule of its own.
+    expect(result).toContain("The skill alone sizes the review to the change");
+    expect(result).not.toContain("trivial edits");
     expect(result).toContain("fix valid findings, and verify with the narrowest check");
     // The first-draft revision rule has one home: this block.
     expect(result.match(/realign what missed it/g)).toHaveLength(1);
@@ -499,11 +501,16 @@ describe("renderCommunicationBlock", () => {
     expect(result.split("List the file paths and line numbers")).toHaveLength(2);
   });
 
-  it("discusses in prose and confirms through ask_user when the decision UI is available", () => {
-    const result = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([{ name: "ask_user" }]));
+  it("leaves the rule on asking to the ask_user description and keeps the rule numbers contiguous", () => {
+    const withTool = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([{ name: "ask_user" }]));
+    const without = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([]));
 
-    expect(result).toContain("Use `ask_user` only after the discussion has settled");
-    expect(result).not.toContain("so that the user can reply with a single number");
+    expect(withTool).not.toContain("ask_user");
+    expect(withTool).not.toContain("so that the user can reply with a single number");
+    expect(withTool).toContain("8. Ground every claim");
+    expect(withTool).toContain("11. Explain designs");
+    expect(without).toContain("8. Use numbered lists when offering options");
+    expect(without).toContain("12. Explain designs");
   });
 
   it("points a challenge to the design skill only while that skill can load", () => {
