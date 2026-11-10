@@ -5,6 +5,7 @@ import type { AgentHostContextOptions } from "../runner/types.js"
 import type { AgentOptions, RunnerToolSurfaces } from "../agent-runtime/types.js"
 import type { ProviderSession } from "../agent-runtime/provider-runtime-cache.js"
 import type { ResolvedRole } from "../config/roles.js"
+import { SESSION_TITLE_PURPOSE } from "../session/session-title.js"
 import type { ChatSessionDeps } from "./session.js"
 
 interface ChatRequestOptionsInput {
@@ -98,7 +99,7 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
         providerOptions: role.providerOptions,
         resolveRoles: deps.resolveRoles,
         requestSelection: (currentRoles) => ({ roleId: role.roleId, ...currentRoles.get(role.roleId) }),
-        purpose: { kind: "session-title" },
+        purpose: SESSION_TITLE_PURPOSE,
         auth: deps.auth,
         executionCwd,
         projectRoot,

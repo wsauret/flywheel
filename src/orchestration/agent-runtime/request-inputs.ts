@@ -178,10 +178,10 @@ function treeLifetime(lifetime: ProviderSessionLifetime, runScope: Scope.Scope |
   return { ...routed, sharedHost: tree };
 }
 
-/** The fixed prompt of a run whose purpose carries one: a headless task, a learning review's audit, or a failure
- *  summary. */
+/** The fixed prompt of a run whose purpose carries one: a headless task, a learning review's audit, a session title, or
+ *  a failure summary. */
 function headlessPromptOf(purpose: AgentOptions["purpose"]) {
-  return purpose.kind === "headless-task" || purpose.kind === "learning-review-audit" || purpose.kind === "subagent-failure-summary" ? purpose.prompt : undefined;
+  return "prompt" in purpose ? purpose.prompt : undefined;
 }
 
 /** What plans the tools of a run's requests: the run's source, its session identity, the shared state of its chat

@@ -192,7 +192,7 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
           createRunner: deps.createAgent, auth: deps.auth, projectRoot, userDataRoot: deps.userDataRoot, accountHome: deps.accountHome,
           // The workflow's agents name their tree root through the session manager, so the title does too.
           ...(opts.manager ? { treeRootSessionId: await treeRootSessionIdOf(opts.manager, sessionId) } : {}),
-        }))
+        }), deps.headless)
       },
       lifecycle: {
         disposeRemaining: async () => {

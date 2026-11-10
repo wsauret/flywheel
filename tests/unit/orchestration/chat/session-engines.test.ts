@@ -3,6 +3,7 @@ import { Effect, Scope } from "effect"
 import { createSessionEngines } from "../../../../src/orchestration/chat/session-engines.js"
 import type { ResolvedRole, ResolvedRoles } from "../../../../src/orchestration/config/roles.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
 import type { ProviderSession } from "../../../../src/orchestration/agent-runtime/provider-runtime-cache.js"
 import type { Claim } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RequestPreparer } from "../../../../src/orchestration/agent-runtime/request-preparation.js"
@@ -59,8 +60,8 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
     }) satisfies RequestPreparer,
   }
   const counter = countStateRequests(authorities)
-  const options = (model: string, kind: "interactive-chat" | "session-title", provider: ProviderSession): AgentOptions & { readonly providerSession: ProviderSession } => ({
-    ...testDirectories("/scratch"), model, purpose: { kind }, providerSession: provider, moduleSelection: composeFirstPartyModules,
+  const options = (model: string, purpose: AgentOptions["purpose"], provider: ProviderSession): AgentOptions & { readonly providerSession: ProviderSession } => ({
+    ...testDirectories("/scratch"), model, purpose, providerSession: provider, moduleSelection: composeFirstPartyModules,
     onEvent: () => {}, runtimeSurfaces: {}, conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" },
   })
   const engines = createSessionEngines({
@@ -69,9 +70,9 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
     resolveRoles: () => counter.reader.resolveRoles(),
     chatOptions: async (provider) => {
       if (chatFails) throw new Error("the environment probe could not launch git")
-      return { options: options(roles.get("chat") ?? "", "interactive-chat", provider), readHistory: async () => [] }
+      return { options: options(roles.get("chat") ?? "", { kind: "interactive-chat" }, provider), readHistory: async () => [] }
     },
-    hostOptions: (role, provider) => options(role.model, "session-title", provider),
+    hostOptions: (role, provider) => options(role.model, SESSION_TITLE_PURPOSE, provider),
   })
   /** Records `name` when `scope` closes. */
   const onClose = (scope: Scope.Scope | undefined, name: string) => {

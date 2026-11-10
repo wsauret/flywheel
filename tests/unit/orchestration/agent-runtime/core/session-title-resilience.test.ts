@@ -12,8 +12,10 @@ import type { AgentRunResult, Agent, AgentFactory, AgentOptions } from "../../..
 import { newTestRunner } from "../../../../helpers/agent-runner.js"
 import {
   generateSessionTitle,
+  SESSION_TITLE_PURPOSE,
   type SessionTitles,
 } from "../../../../../src/orchestration/session/session-title.js"
+import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { makeCaptureClient } from "../context/_loop-fixtures.js"
 import { testAuth as auth, titleRoots } from "../../../../fixtures/session-title-fixtures.js"
 
@@ -220,6 +222,7 @@ describe("generateSessionTitle — capability containment", () => {
   // no session facts, no notices, and no transcript.
   it("refuses a title model's tool call, reads no memory, and still titles the session from its text", async () => {
     let captured: AgentOptions | undefined
+    const systemPrompts: string[] = []
     const { client, capturedMessages } = makeCaptureClient([{
       events: [
         { kind: "tool_use" as const, toolCall: { id: "write-memory", name: "memory", input: { action: "add", title: "Indentation", content: "This workspace uses tabs." } } },
@@ -230,7 +233,7 @@ describe("generateSessionTitle — capability containment", () => {
         { kind: "text_delta" as const, text: "TITLE: Tabs Preference\nSHORT: Tabs", blockKey: "text" },
         { kind: "done" as const, stopReason: "end_turn" },
       ],
-    }])
+    }], { onRequest: (request) => { systemPrompts.push(renderSystemPrompt(request.systemPrompt)) } })
     const createRunner: AgentFactory = (options: AgentOptions): Agent => {
       captured = options
       return newTestRunner(options, async () => client)
@@ -251,6 +254,10 @@ describe("generateSessionTitle — capability containment", () => {
     expect(captured?.treeRootSessionId).toBe("chat")
     expect(captured?.memorySnapshot).toBeNull()
     expect(captured?.lifecycle.kind).toBe("complete-on-idle")
+    // The title prompt is the whole system prompt: no project instructions,
+    // doctrine, or module guidance, and the user turn is the message alone.
+    expect(systemPrompts).toEqual([SESSION_TITLE_PURPOSE.prompt.systemPrompt, SESSION_TITLE_PURPOSE.prompt.systemPrompt])
+    expect(capturedMessages[0]?.[0]).toMatchObject({ kind: "user", content: "Save to memory that this workspace uses tabs for indentation." })
     // The opening turn says that every call is refused, and the call came back refused.
     expect(JSON.stringify(capturedMessages[0])).toContain("Call no tools.")
     const refusal = capturedMessages[1]?.flatMap((message) => message.kind === "toolResult" ? [message] : [])

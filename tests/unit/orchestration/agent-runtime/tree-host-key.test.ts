@@ -22,6 +22,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { asModelClient } from "./_model-client.js"
 import { fakeAvailability } from "./llm/_provider-chain-harness.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
 
 /*
  * The guard of the one shared engine agent host of a chat tree. Every Claude call of one tree, other than the
@@ -133,8 +134,8 @@ const KINDS = new Map<string, Kind>(Object.entries({
     options: () => ({ moduleSelection: () => composeFirstPartyModules(undefined, ["papercuts"]), runtimeSurfaces: { handoff: { onContent: () => {}, schema: { input: { type: "object", properties: { verdict: { type: "string" } }, required: ["verdict"] } } } } }),
   },
   "workflow agent's subagent": { purpose: { kind: "subagent", renderAs: "workflow-agent", parentToolUseId: "call-4" }, model: "claude-sonnet-5-5", effort: "low", ownSession: true, conversation: "durable", options: childOf("workflow-agent", GENERAL_GRANT) },
-  "chat title": { purpose: { kind: "session-title" }, model: "claude-haiku-5-5", effort: "low", conversation: "stateless", options: () => ({ memorySnapshot: null }) },
-  "workflow title": { purpose: { kind: "session-title" }, model: "claude-sonnet-5-5", effort: "medium", conversation: "stateless", options: () => ({ memorySnapshot: null }) },
+  "chat title": { purpose: SESSION_TITLE_PURPOSE, model: "claude-haiku-5-5", effort: "low", conversation: "stateless", options: () => ({ memorySnapshot: null }) },
+  "workflow title": { purpose: SESSION_TITLE_PURPOSE, model: "claude-sonnet-5-5", effort: "medium", conversation: "stateless", options: () => ({ memorySnapshot: null }) },
   "chat learning review": { purpose: { kind: "chat-learning-review", review: { reviewRunId: "chat-review" } }, model: "claude-sonnet-5-5", effort: "high", conversation: "replay", options: ({ background }) => ({ runtimeSurfaces: { background }, maxLLMCalls: 8 }) },
   "workflow learning review": { purpose: { kind: "workflow-learning-review", review: { reviewRunId: "workflow-review" } }, model: "claude-opus-5-5", effort: "low", conversation: "replay" },
   "learning-review audit": { purpose: { kind: "learning-review-audit", prompt: { kind: "literal", systemPrompt: "Audit the candidate." } }, model: "claude-haiku-5-5", effort: "medium", conversation: "ephemeral", options: () => ({ maxLLMCalls: 1 }) },

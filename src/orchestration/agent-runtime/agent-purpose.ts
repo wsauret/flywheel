@@ -6,7 +6,6 @@ export function promptKindForPurpose(purpose: AgentPurpose): PromptKind {
   switch (purpose.kind) {
     case "interactive-chat":
     case "chat-learning-review":
-    case "session-title":
     case "chat-side-call":
     case "chat-routing-benchmark":
       return "chat";
@@ -17,6 +16,7 @@ export function promptKindForPurpose(purpose: AgentPurpose): PromptKind {
     case "headless-task":
     case "unattended-chat":
     case "learning-review-audit":
+    case "session-title":
     case "subagent-failure-summary":
       return "headless";
     case "persona-benchmark":

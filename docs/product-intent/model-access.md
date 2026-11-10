@@ -184,7 +184,7 @@ People can choose the model and reasoning effort used for model-written session 
 
 ## PI-MODEL-086: Automatic session naming
 
-A new chat, and a workflow run that its launch did not name, shows a quick title from the first words of its first message at once. A model then writes a better title and short title from the start of that message, unless a person named the session. An unattended run keeps the quick title, and Flywheel makes no model request to name it.
+A new chat, and a workflow run that its launch did not name, shows a quick title from the first words of its first message at once. A model then writes a better title and short title from the start of that message, unless a person named the session. A headless run keeps the quick title, and Flywheel makes no model request to name it.
 
 ## PI-MODEL-020: Current subagent model visibility
 

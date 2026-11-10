@@ -226,6 +226,46 @@ describe("chat title from a command's turn", () => {
     expect(titles.map((title) => title.label)).toEqual(["/experiment design reduce test suite wall time"])
     await session.dispose()
   })
+
+  // Every headless entry point (`--headless --jsonl`, `--headless --acp`, and `--headless --acp --unattended`) composes
+  // a non-interactive runtime, whose deps carry `headless`; only the unattended one also holds an unattended boundary.
+  it.each([
+    ["a headless chat", { headless: true as const }, false],
+    ["an unattended headless chat", { headless: true as const, capabilityAccess: { ...capabilityAccessHolding([]), unattended: true as const } }, false],
+    ["an interactive chat", {}, true],
+  ])("names %s with the quick title, and starts a title model only when it is interactive", async (name, mode, modelTitle) => {
+    const purposes: string[] = []
+    const createAgent: AgentFactory = (options: AgentOptions): Agent => {
+      purposes.push(options.purpose.kind)
+      return {
+        done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
+        send() {},
+        end() {},
+        abort() {},
+      }
+    }
+    const titles: Array<{ label: string; shortLabel: string }> = []
+    const session = await createChatSession(
+      { onError: () => {}, onEnded: () => {} },
+      createTestChatSessionDeps({
+        sessionId: `chat-title-${name.replaceAll(" ", "-")}`,
+        createAgent,
+        resolveRoles: async (): Promise<ResolvedRoles> => new Map([
+          ["chat", { roleId: "chat", model: "chat-model", effort: "medium" }],
+          ["title-generation", { roleId: "title-generation", model: "title-model", effort: "low" }],
+        ]),
+        ...mode,
+        onSessionName: (title) => { titles.push(title) },
+      }),
+    )
+
+    expect(session.deliverCommitted("fix the failing build in the parser")).toBe(true)
+    await new Promise<void>((resolve) => setTimeout(resolve, 10))
+
+    expect(titles).toEqual([{ label: "fix the failing build in the parser", shortLabel: "Fix The" }])
+    expect(purposes.includes("session-title")).toBe(modelTitle)
+    await session.dispose()
+  })
 })
 
 describe("chat title environment refresh", () => {

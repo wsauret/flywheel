@@ -126,6 +126,8 @@ export interface ChatSessionDeps {
    *  memory snapshot read, learning reconciliation, and each automatic review
    *  admit through it. Absent in a realm that owns no policy. */
   capabilityAccess?: CapabilityAccess
+  /** The chat runs headless (`WorkflowDeps.headless`). */
+  headless?: true
   treeWriter: ConversationTreeWriterController
   createChildConversation: CreateChildConversation
   subagentSessions?: ChildSessionAuthority
@@ -297,6 +299,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
           treeRootSessionId: sessionId,
         }
       },
+      deps.headless,
     )
   }
 

@@ -82,7 +82,7 @@ export type AgentPurpose =
     }
   | { readonly kind: "headless-task"; readonly prompt: HeadlessPrompt }
   | { readonly kind: "learning-review-audit"; readonly prompt: HeadlessPrompt }
-  | { readonly kind: "session-title" }
+  | { readonly kind: "session-title"; readonly prompt: HeadlessPrompt }
   /** A one-shot call that replays a chat's conversation and answers beside it with the chat's prompting. */
   | { readonly kind: "chat-side-call" }
   | { readonly kind: "subagent-failure-summary"; readonly prompt: HeadlessPrompt }

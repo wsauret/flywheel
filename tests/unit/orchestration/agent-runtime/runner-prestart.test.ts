@@ -25,6 +25,7 @@ import { createSessionFactWriter } from "../chat/_chat-session-agent-runtime-fix
 import { asModelClient } from "./_model-client.js"
 import { makeOptions } from "./_runner-options.js"
 import { fakeAvailability, SAFE_RECHECK_MS } from "./llm/_provider-chain-harness.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
 
 const HISTORY: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Read a." }, { kind: "assistant", content: [{ type: "text", text: "Done." }] }]
 const NEXT: ConversationMessage = { kind: "user", content: "Read b.", origin: "human" }
@@ -243,7 +244,7 @@ describe("a pre-start's request preparation", () => {
     }
     const session = openProviderSession(stableDemand())
     const options = makeOptions({
-      agentRegistry: new Map(), agentsMd: "", purpose: { kind: "session-title" }, treeRootSessionId: "prestart-tree",
+      agentRegistry: new Map(), agentsMd: "", purpose: SESSION_TITLE_PURPOSE, treeRootSessionId: "prestart-tree",
       conversation: { kind: "stateless" }, providerSession: session.session,
     })
 

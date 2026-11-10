@@ -17,6 +17,7 @@ import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helper
 import { asModelClient } from "../agent-runtime/_model-client.js"
 import { makeOptions } from "../agent-runtime/_runner-options.js"
 import { fakeAvailability } from "../agent-runtime/llm/_provider-chain-harness.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
 
 /*
  * A shown session's engine demand through the production wiring: the session's planning, request preparation, the
@@ -131,7 +132,7 @@ function session(initial: readonly ResolvedRole[]) {
     }),
     chatOptions: async (provider) => ({ options: prestartOptions({ model: "gpt-5.5" }, provider), readHistory: async () => [] }),
     hostOptions: (role, provider) => prestartOptions({
-      model: role.model, effort: role.effort, purpose: { kind: "session-title" }, treeRootSessionId: TREE, memorySnapshot: null,
+      model: role.model, effort: role.effort, purpose: SESSION_TITLE_PURPOSE, treeRootSessionId: TREE, memorySnapshot: null,
     }, provider),
   })
   return {

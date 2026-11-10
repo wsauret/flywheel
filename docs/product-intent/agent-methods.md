@@ -264,7 +264,7 @@ A child that its parent or the runtime interrupted is not active work, so no wai
 
 ## PI-AGENT-080: Managed-work waits receive timed assessments
 
-Every agent wait on managed work, including background commands, services, subagents, and workflows, has a finite duration that the agent sets from its estimate of the remaining work. Without an estimate, a wait lasts at most four minutes. Completion or expiry wakes the agent once without ending the work, and an assessment that finds nothing to act on waits again without writing to the transcript. A wait that a restart or planned replacement cuts continues on the new runtime with its original deadline, without waking the agent.
+Every agent wait on managed work, including background commands, services, subagents, and workflows, has a finite duration of at most one hour that the agent sets from its estimate of the remaining work. Without an estimate, a wait lasts at most four minutes. Completion or expiry wakes the agent once without ending the work, and an assessment that finds nothing to act on waits again without writing to the transcript. A wait that a restart or planned replacement cuts continues on the new runtime with its original deadline, without waking the agent.
 
 ## PI-AGENT-081: A parent reads its child's progress without waking it
 
@@ -360,7 +360,7 @@ A workflow agent, subagent, or headless task recovers from provider faults alone
 
 ## PI-AGENT-030: Headless chat uses standard input and output
 
-Headless chat behaves like interactive chat, with standard input and output replacing the graphical or terminal client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration. It adds no provider filter, billing ceiling, or usage pause. Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
+Headless chat behaves like interactive chat, with standard input and output replacing the graphical or terminal client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration, and its session keeps the quick title. It adds no provider filter, billing ceiling, or usage pause. Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
@@ -441,6 +441,10 @@ Every memory entry and learned skill applies either to the current project or to
 ## PI-AGENT-125: Background learning reviews run for chats only
 
 Flywheel reviews a chat in the background for learning worth saving. It does not review workflow agents or subagents. What they learn reaches later work only through their results and the chat that reads them.
+
+## PI-AGENT-126: Review effort follows recorded yield
+
+Review effort follows recorded yield. Flywheel sizes the reviewer set of a change from its extent and its named risk triggers. A change that is small enough for its fresh verification to prove it gets no separate reviewer. The review of a large change is never skipped.
 
 ## PI-AGENT-040: Learned skills never duplicate or change built-in skills
 

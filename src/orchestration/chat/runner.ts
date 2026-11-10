@@ -258,6 +258,7 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
       seedContext: deps.seedContext,
       reviewConfig,
       ...(capabilityAccess ? { capabilityAccess } : {}),
+      ...(workflowDeps.headless ? { headless: true } : {}),
       treeWriter,
       createChildConversation,
       subagentSessions,

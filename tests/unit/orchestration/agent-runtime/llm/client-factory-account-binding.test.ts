@@ -28,6 +28,7 @@ import { resolveSessionRoles } from "../../../../../src/orchestration/config/ses
 import { asModelClient } from "../_model-client.js";
 import { testCapabilityModules, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
+import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/session/session-title.js";
 
 const temporaryDirectory = temporaryDirectories();
 
@@ -126,7 +127,7 @@ describe("provider credential binding", () => {
       }),
     };
     const agent = capture.admit(new Map()).createAgent({
-      ...directories, purpose: { kind: "session-title" }, agentsMd: "", memorySnapshot: null,
+      ...directories, purpose: SESSION_TITLE_PURPOSE, agentsMd: "", memorySnapshot: null,
       runtimeSurfaces: {}, toolProfile: "none", conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" },
       onEvent: () => {}, captureProviderConnection: async () => requestCapture,
       resolveRoles: (current) => resolveSessionRoles({ defaults: {}, overrides: {} }, current ?? requestCapture, directories.userDataRoot),

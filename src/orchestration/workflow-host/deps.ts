@@ -88,6 +88,9 @@ export interface WorkflowDeps extends AccountDirectories {
    *  `process` and `message_session` tools use, or nothing for a run
    *  without session authority (`PrepareWorkflowDepsInput.childSessions`). */
   readonly childSessions?: ChildSessionControl
+  /** The run is headless (`PrepareWorkflowDepsInput.headless`): no client attaches, so its sessions keep their quick
+   *  titles. */
+  readonly headless?: true
   /** Resolves when the profile's model discovery, its access audit included, has settled; rejects when that
    *  discovery fails or `signal` aborts. An unattended run waits on it before it retries a model that is pending
    *  access. */
@@ -303,6 +306,7 @@ export async function prepareWorkflowDeps(input: PrepareWorkflowDepsInput): Prom
     ...(input.capabilities ? { capabilityAccess: capabilityAccessFor(input.capabilities) } : {}),
     ...(input.commandHandover ? { commandHandover: input.commandHandover } : {}),
     ...(input.childSessions ? { childSessions: input.childSessions } : {}),
+    ...(input.headless ? { headless: true } : {}),
     awaitModelAccessSettled: input.awaitModelAccessSettled,
   }
 }
