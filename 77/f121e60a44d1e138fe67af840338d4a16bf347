@@ -1,0 +1,30 @@
+src/orchestration/agent-runtime/tools/process.ts
+  h_4b47e9e4a8b456 17-21,23-28,32-33,304-305,310
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 185,391,1238
+tests/unit/orchestration/agent-runtime/agent-loop-input-consumer.test.ts
+  h_4b47e9e4a8b456 34-35,50,56
+tests/unit/orchestration/agent-runtime/agent-loop-wait.test.ts
+  h_4b47e9e4a8b456 45,48,51-52,63-64
+tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+  h_4b47e9e4a8b456 166-167,200,205,231,262,322-323,414,424,438,452,463,475
+tests/unit/orchestration/agent-runtime/tools/process.test.ts
+  h_4b47e9e4a8b456 58,60-65
+tests/unit/orchestration/modules/subagents/subagent-restored-wait.test.ts
+  h_4b47e9e4a8b456 85,112
+tests/unit/orchestration/session/turn-end-record.test.ts
+  h_4b47e9e4a8b456 344,351-356,374,382,389,399,408,416-417
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 252,280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "77f121e60a44d1e138fe67af840338d4a16bf347",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
