@@ -129,7 +129,11 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
         setState({ phase: "preview-error", error: errorMessage(error) })
       }
     }
-    const details = createMemo<SettingsSelectionConfirmation>(() => {
+    // A plain derivation, not a memo. The `d` hotkey runs with no Solid owner.
+    // A memo made here has no owner to dispose it, so it runs again on every
+    // later change of `profileMutationPending`. The controller view memo tracks
+    // these reads, and the key handlers read them once.
+    const details = (): SettingsSelectionConfirmation => {
       const current = state()
       const base = { kind: "confirmation", label: "Delete Profile", choice: "cancel" } as const
       if (current.phase === "loading") return { ...base, phase: "loading", message: "Loading deletion preview...", actionLabel: "Delete" }
@@ -137,7 +141,7 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
       const preview = current.preview
       const destination = preview?.kind === "automatic" ? `Sessions will move to ${preview.successor.displayName}. ` : preview?.kind === "fresh-default" ? "A fresh Default will be created. Sessions will move to it. " : ""
       return { ...base, phase: "ready", pending: profileMutationPending(), message: `Delete ${displayName}? ${destination}Credentials and profile settings will be removed.`, actionLabel: "Delete", ...(preview.kind === "choose" ? { candidates: preview.candidates } : {}), ...(current.successorId ? { selectedId: current.successorId } : {}), ...(current.error ? { error: current.error } : {}) }
-    })
+    }
     untrack(() => controller.confirmSelection(details, (successorId) => {
       const current = untrack(state)
       if (current.phase === "ready") setState({ ...current, successorId })

@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import { createRoot, createSignal } from "solid-js"
+import { createRoot, createSignal, runWithOwner } from "solid-js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import { activate, clearMocks, createModal, flush, rowIds, rowOf, valueOf } from "./_settings-modal-fixtures.js"
 import { createAuthProfileSelection } from "../../../../src/tui/hooks/auth-profile-selection.js"
@@ -120,6 +120,52 @@ describe("useSettingsModal auth profiles", () => {
 
       expect(dispatch).toHaveBeenCalledWith({ type: "auth.profile.delete", scope: { kind: "defaults" }, id: "work", successorId: "default" })
       expect(showToast).toHaveBeenCalledWith({ message: "Profile Work deleted", variant: "success" })
+      dispose()
+    })
+  })
+
+  it("leaves nothing of a closed delete confirmation to run again on a later deletion", async () => {
+    clearMocks()
+    await createRoot(async (dispose) => {
+      const { modal, modals, dispatch, query } = createModal()
+      // Each preview counts the reads of its kind, so a confirmation that was
+      // closed and still derives its view shows on its own preview.
+      const reads: number[] = []
+      query.mockImplementation(async () => {
+        const index = reads.push(0) - 1
+        return {
+          get kind() { reads[index]! += 1; return "automatic" as const },
+          source: { id: "work", displayName: "Work" },
+          successor: { id: "default", displayName: "Default" },
+        }
+      })
+      // The terminal keypress listener runs with no Solid owner.
+      const press = (name: string) => runWithOwner(null, () => modals.input({ name, raw: name }))
+      const openDeleteConfirmation = async () => {
+        modal.openSettingsModal()
+        activate(modal, "auth-profile")
+        press("down")
+        press("d")
+        await flush()
+        expect(modal.settingsView()).toMatchObject({ kind: "confirmation", phase: "ready" })
+      }
+      const closedConfirmations = 5
+      for (let opened = 0; opened < closedConfirmations; opened += 1) {
+        await openDeleteConfirmation()
+        press("escape")
+        press("escape")
+        expect(modals.stack).toHaveLength(0)
+      }
+
+      const readsOfClosed = () => reads.slice(0, closedConfirmations).reduce((sum, count) => sum + count, 0)
+      const before = readsOfClosed()
+      await openDeleteConfirmation()
+      press("left")
+      press("enter")
+      await flush()
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "auth.profile.delete", scope: { kind: "defaults" }, id: "work", successorId: "default" })
+      expect(readsOfClosed()).toBe(before)
       dispose()
     })
   })
