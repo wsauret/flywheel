@@ -1,0 +1,60 @@
+src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
+  s_14a8bc0bfa4dad::t_9aaaff82bfa65b 18
+  s_16113a468a9bc8::t_2794b4ae5bbb8b 438,449,455-460,463-469,471-477,480-485,488,490-494,497,503-506,510,523,525,536,557,560-561,632,658,660
+tests/unit/orchestration/app-service/eligibility-preparation-background.test.ts
+  s_14a8bc0bfa4dad::t_56ecddfa84ac71 1-67
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  s_14a8bc0bfa4dad::t_d5f6901de8a999 277,285,323,331,375-382
+src/infra/llm/model-access-audit.ts
+  s_16113a468a9bc8::t_5245855e381aaa 50-53,65-67,81-82,84
+src/infra/llm/model-listing-evidence.ts
+  s_16113a468a9bc8::t_5ed65ef2baac4f 26-27
+src/orchestration/app-service/auth-runtime.ts
+  s_14a8bc0bfa4dad::t_6b99571642945c 269-271
+src/orchestration/headless/headless-profile-runtime.ts
+  s_14a8bc0bfa4dad::t_19e6351911b4d4 196-197
+src/orchestration/modules/provider-claude-agent-sdk/catalog.ts
+  s_16113a468a9bc8::t_204ac611cdd77d 63,67-71,78-80,102
+src/orchestration/modules/provider-claude-agent-sdk/cli-launch.ts
+  s_16113a468a9bc8::t_aacce88c049d81 12,32-33
+src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.ts
+  s_16113a468a9bc8::t_9290b405231376 119-137
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  s_14a8bc0bfa4dad::t_026c7783b6fa3a 51-52,126
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher-probe.test.ts
+  s_b6787ca3df669a::t_c255eefb5bad0b 2-3,5-6,10-46,48-56,58-63,65-66,68,72-73
+tests/unit/orchestration/modules/provider-claude-agent-sdk/sdk-events.test.ts
+  s_b6787ca3df669a::t_31d5d49b01362a 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d4ee01376f0f725ec7261b8cb671433f15cc078",
+  "prompts": {},
+  "sessions": {
+    "s_14a8bc0bfa4dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9340d33-4bef-42fe-8c6c-0cdcc77276bb",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_16113a468a9bc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a277db3606fcbbd2b",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_b6787ca3df669a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a26d87f627578851a",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
