@@ -43,6 +43,7 @@ const MODELS = new Map<string, ReturnType<typeof providerModelInfo>>(([
   ["claude-opus-5-5", 1_000_000, 128_000],
   ["claude-haiku-5-5", 200_000, 64_000],
   ["claude-sonnet-4-5", 200_000, 64_000],
+  ["claude-fable-5-2", 1_000_000, 128_000],
 ] as const).map(([id, contextLimit, outputLimit]) => [id, providerModelInfo({
   provider: "anthropic", id, contextLimit, outputLimit, reasoning: true, reasoningEfforts: ["low", "medium", "high"],
 })]))
@@ -245,6 +246,7 @@ describe("the host key of a chat tree", () => {
         ["a role that sets thinking_display", { providerOptions: { anthropic: { thinking_display: "omitted" } } }],
         ["a role that sets extra_body", { providerOptions: { anthropic: { extra_body: { service_tier: "auto" } } } }],
         ["a model without adaptive thinking", { model: "claude-sonnet-4-5" }],
+        ["a model that the bundled engine does not know", { model: "claude-fable-5-2" }],
       ]
       for (const [why, variation] of splits) {
         const { key, differs } = sameHost(await hostPlace("persona subagent", cwd, variation))

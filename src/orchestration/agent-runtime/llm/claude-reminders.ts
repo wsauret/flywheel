@@ -2,6 +2,7 @@ import { release, type, version } from "node:os";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import { detectShell, isGitRepo, isGitWorktree, localDate } from "../../../infra/env-detection.js";
 import { canonicalModelId } from "../../../infra/llm/model-id.js";
+import type { ModelInfo } from "../../../infra/llm/models.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import { ANTHROPIC_STANDARD_CONTEXT_WINDOW } from "./errors.js";
 import type { ConversationMessage, ServingAttempt } from "./types.js";
@@ -75,16 +76,36 @@ function displayKey(modelId: string): string {
 
 const MODEL_OPENING = "The model that answers ";
 
+/** The catalog facts that name a model the display table does not know. */
+type ModelCatalogFacts = Pick<ModelInfo, "name" | "knowledgeCutoff">;
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
+
+/** A catalog cutoff ("2026-06" or "2026-06-30") in the table's spelling ("June 2026"). Other text passes unchanged. */
+function catalogCutoff(cutoff: string): string {
+  const [, year, month] = /^(\d{4})-(\d{2})(?:-\d{2})?$/.exec(cutoff) ?? [];
+  const name = MONTHS[Number(month) - 1];
+  return name ? `${name} ${year}` : cutoff;
+}
+
+/** The name and cutoff that the reminder states: the display table's entry, else the model's own catalog facts in the
+ *  table's spelling, never an earlier version's. The "(1M context)" label stays with the table, because the engine
+ *  labels only the models that it names that way. */
+function modelIdentity(key: string, catalog: ModelCatalogFacts | undefined) {
+  const display = modelDisplay.get(key);
+  if (display) return { name: display[0], cutoff: display[1], labelsExtended: extendedContextNames.has(key) };
+  const cutoff = catalog?.knowledgeCutoff;
+  return { name: catalog?.name.replace(/^Claude /, ""), cutoff: cutoff ? catalogCutoff(cutoff) : undefined, labelsExtended: false };
+}
+
 // The Agent SDK route writes only the facts of this reminder into the engine's rotation transcript, and the engine
 // words its own reminder from them (transcript.ts), so this text is free of the engine's wording.
-function modelText(modelId: string): string {
-  const key = displayKey(modelId);
-  const display = modelDisplay.get(key);
-  const name = display?.[0];
-  const extended = modelId.toLowerCase().includes("[1m]") && extendedContextNames.has(key); // provider-model-literal-allow: display -- the model reminder labels the extended-context spelling.
+function modelText(modelId: string, catalog: ModelCatalogFacts | undefined): string {
+  const { name, cutoff, labelsExtended } = modelIdentity(displayKey(modelId), catalog);
+  const extended = labelsExtended && modelId.toLowerCase().includes("[1m]"); // provider-model-literal-allow: display -- the model reminder labels the extended-context spelling.
   return [
     name ? `${MODEL_OPENING}is ${name}${extended ? " (1M context)" : ""}, with the model ID ${modelId}.` : `${MODEL_OPENING}has the model ID ${modelId}.`,
-    ...(display?.[1] ? [`Its training data ends in ${display[1]}.`] : []),
+    ...(cutoff ? [`Its training data ends in ${cutoff}.`] : []),
   ].join(" ");
 }
 
@@ -349,9 +370,9 @@ function tagged(body: string, update: boolean): string {
  * model or the local date differs from the latest one in history: a person can change the model of a running turn,
  * and the engine of the Agent SDK announces a new model and a new date at the next request. Input is never changed.
  */
-export function createClaudeReminders(wireModelId: string, contextLimit: number): NonNullable<ServingAttempt["messagesToAppend"]> {
+export function createClaudeReminders(wireModelId: string, contextLimit: number, catalog?: ModelCatalogFacts): NonNullable<ServingAttempt["messagesToAppend"]> {
   const modelId = engineModelId(wireModelId, contextLimit);
-  const model = modelText(modelId);
+  const model = modelText(modelId, catalog);
   return (messages, executionCwd, capabilities) => {
     const lastInput = messages.findLast((message) => reminderIn(message) === undefined);
     if (lastInput?.kind !== "user" && lastInput?.kind !== "toolResult") return [];

@@ -89,6 +89,8 @@ export interface EngineLaunch {
   readonly extraBody: { readonly [field: string]: unknown; readonly tool_choice?: unknown; readonly max_tokens?: number };
   /** The tools stream their input as the model writes it, as the native request asks. */
   readonly eagerInputStreaming: boolean;
+  /** The engine's `CLAUDE_CODE_MODEL_CAPABILITIES` for a model that the engine does not know (`engineModelCapabilities`). */
+  readonly modelCapabilities?: string;
   readonly onStderrLine: (line: string) => void;
 }
 
@@ -304,6 +306,7 @@ export interface HostLaunch {
   readonly statesEffort: boolean;
   readonly extraBody: EngineLaunch["extraBody"];
   readonly eagerInputStreaming: boolean;
+  readonly modelCapabilities?: string;
   readonly cwd: string;
   readonly sessionId: string;
   readonly dispatcherPrompt: string;

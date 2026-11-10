@@ -20,8 +20,8 @@ describe("model interaction profile resolution", () => {
     expect(resolveModelInteractionProfile("gpt-5", "openai")).toBe(resolveModelInteractionProfile("gpt-5", "openai"))
   })
 
-  test("gives the tuned chat body only to the exact canonical Claude 5 models, without changing tool contracts", () => {
-    const variants = { "claude-opus-5.5": "opus-5.5", "claude-sonnet-5.5": "sonnet-5.5", "claude-fable-5.1": "fable-5.1" } as const
+  test("gives the tuned chat body only to the canonical Claude 5 models and their later family versions, without changing tool contracts", () => {
+    const variants = { "claude-opus-5.5": "opus-5.5", "claude-sonnet-5.5": "sonnet-5.5", "claude-fable-5.1": "fable-5.1", "claude-fable-5.2": "fable-5.1" } as const
     for (const [model, variant] of Object.entries(variants)) {
       const profile = resolveModelInteractionProfile(model, "anthropic")
       expect(profile.chatPrompt).toBe(variant)

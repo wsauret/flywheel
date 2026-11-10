@@ -12,6 +12,7 @@ import { bridgeSessionId } from "../../../../../src/orchestration/modules/provid
 import { createHostLauncher, createQueryLauncher, describeCliLogin, readCliUsage, startLoginEngine, type CliFrame, type LaunchedQuery, type QueryFunction, type QueryLaunch, type QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { createStepGate, type StepAsk } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/step-gate.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
+import { engineModelCapabilities } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-environment.js";
 import { OPUS_ROW, SEPARATED, initReply, launcherConfig, noLaunch, noLock, stubQuery } from "./_launcher-harness.js";
 
 const temporaryDirectory = temporaryDirectories();
@@ -226,6 +227,21 @@ describe("the bridge query launcher", () => {
     // On Windows Flywheel's dates have no zone to give: they follow the system zone, as the engine's own do.
     trackedLauncher({ ...launcherConfig(), timeZone: undefined }, recorded.sdkQuery)(launchInput());
     expect(recorded.options[2]?.env).not.toHaveProperty("TZ");
+  });
+
+  test("a model that the bundled engine does not know gets the per-turn capabilities that it inherits from an earlier version of its family, and an exactly known model gets none", () => {
+    expect(engineModelCapabilities("claude-fable-5-1")).toBeUndefined();
+    expect(engineModelCapabilities("claude-opus-5")).toBeUndefined();
+    const recorded = recordingQuery();
+    for (const wireModelId of ["claude-fable-5-1", "claude-fable-5-2"]) {
+      const modelCapabilities = engineModelCapabilities(wireModelId);
+      trackedLauncher(launcherConfig(), recorded.sdkQuery)(launchInput({ wireModelId, ...(modelCapabilities === undefined ? {} : { modelCapabilities }) }));
+    }
+    expect(recorded.options[0]?.env).not.toHaveProperty("CLAUDE_CODE_MODEL_CAPABILITIES");
+    expect(recorded.options[1]?.env).toEqual({
+      ...recorded.options[0]?.env, STEP_GATE_SOCKET: expect.any(String), ANTHROPIC_CUSTOM_MODEL_OPTION: "claude-fable-5-2[1m]",
+      CLAUDE_CODE_MODEL_CAPABILITIES: "claude-fable-5-2=per_turn_effort,per_turn_timing",
+    });
   });
 
   test("a token login adds its token to the engine environment as the engine's documented token variable and changes nothing else, and the host's own token never reaches it", () => {

@@ -1,4 +1,5 @@
 import { Cause, Effect, Queue } from "effect";
+import { engineModelCapabilities } from "./cli-environment.js";
 import type { CliTool, QueryIdentity } from "./cli-view.js";
 import type { CliFrame, EngineLaunch, LaunchedQuery, QueryLaunch } from "./query-launcher.js";
 import { observeEngine, type EngineObserver, type ObservedEngine } from "./observed-engine.js";
@@ -14,11 +15,13 @@ export type EngineValues = Omit<EngineLaunch, "prompt" | "mcpServer" | "stepGate
  *  starts another engine process. If such a difference is absolutely necessary, add its field to
  *  `HOST_SPLIT_EXCEPTIONS` (agent-host/host-registry.ts) with its reason. */
 export function engineValues(identity: QueryIdentity, wireModelId: string, contextLimit: number): EngineValues {
+  const modelCapabilities = engineModelCapabilities(wireModelId);
   return {
     tools: identity.tools, wireModelId, contextLimit, thinking: identity.thinking,
     ...(identity.effort === undefined ? {} : { effort: identity.effort }),
     extraBody: { ...identity.extraBody, ...(identity.toolChoice === undefined ? {} : { tool_choice: identity.toolChoice }), max_tokens: identity.maxTokens },
     eagerInputStreaming: identity.eagerInputStreaming, promptCaching: identity.promptCaching,
+    ...(modelCapabilities === undefined ? {} : { modelCapabilities }),
   };
 }
 

@@ -96,7 +96,7 @@ const createClient: AccessProviderFactory = async (build) => {
   const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "anthropic", providerHint: "anthropic", resolvedModelMetadata: build.attribution.resolvedModelMetadata });
   return stagedProviderClient(build, {
     ...described,
-    messagesToAppend: createClaudeReminders(build.wireModelId, described.totalContextLimit ?? described.contextLimit),
+    messagesToAppend: createClaudeReminders(build.wireModelId, described.totalContextLimit ?? described.contextLimit, build.attribution.resolvedModelMetadata),
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Anthropic API key in the active auth profile. Run: flywheel auth login --anthropic", recovery: { kind: "none" } });

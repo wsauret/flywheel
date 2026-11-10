@@ -1,5 +1,5 @@
 import { REASONING_EFFORTS, type ModelInfo, type ProviderReasoningEffort, type ReasoningEffort } from "../../../infra/llm/models.js";
-import { dashedModelId } from "../../../infra/llm/model-id.js";
+import { canonicalModelId, dashedModelId } from "../../../infra/llm/model-id.js";
 
 /**
  * Per-model compat flags for wire-protocol quirks that models.dev's `ModelInfo`
@@ -19,6 +19,8 @@ import { dashedModelId } from "../../../infra/llm/model-id.js";
 
 const FIRST_ADAPTIVE_ANTHROPIC_RELEASE_DATE = "2026-02-01";
 
+/** `thinkingOff` and `perTurnEffort` resolve by model family (`familySettings`): a version without its own entry
+ *  takes the entry of the newest earlier version of its family. Every other field applies to its exact model only. */
 interface ModelCompat {
   /** Adaptive-thinking wire shape. Explicit false entries preserve legacy
    *  budget-token models; new Claude-family Anthropic models default adaptive. */
@@ -113,6 +115,58 @@ function lookup(model: string): ModelCompat | undefined {
   return MODEL_COMPAT[model] ?? MODEL_COMPAT[normalizeModelId(model)];
 }
 
+/** A canonical model id that ends in its version: `claude-fable-5.2` is version 5.2 of the family `claude-fable`. */
+const VERSIONED_MODEL = /^(.+?)-(\d+)(?:\.(\d+))?$/u;
+
+/** One per-model setting of `model`: the value of the model's own entry, or the value that it inherits from the entry
+ *  of `inheritedFrom`, an earlier version of its family. */
+export interface FamilySetting<T> {
+  readonly value: T;
+  readonly inheritedFrom?: string;
+}
+
+/**
+ * The one lookup of a per-model setting by model family. A model takes its own entry first (any spelling of its id,
+ * date snapshots included), else the entry of the newest earlier version of its family in the same major line
+ * (`claude-fable-5.2` takes `claude-fable-5.1`), else nothing. It never inherits from a later version, another major
+ * line, or another family, so a model that the provider turns on runs with its family's known settings from that day
+ * until it gets its own entry.
+ */
+export function familySettings<T>(entries: Iterable<readonly [string, T]>): (model: string) => FamilySetting<T> | undefined {
+  const own = new Map<string, T>();
+  const versions: { readonly model: string; readonly family: string; readonly major: number; readonly minor: number; readonly value: T }[] = [];
+  for (const [model, value] of entries) {
+    const canonical = canonicalModelId(model);
+    own.set(canonical, value);
+    const version = VERSIONED_MODEL.exec(canonical);
+    if (version?.[1] !== undefined) versions.push({ model: canonical, family: version[1], major: Number(version[2]), minor: Number(version[3] ?? 0), value });
+  }
+  return (model) => {
+    const canonical = canonicalModelId(model);
+    const value = own.get(canonical);
+    if (value !== undefined) return { value };
+    const version = VERSIONED_MODEL.exec(canonical);
+    if (version?.[1] === undefined) return undefined;
+    const major = Number(version[2]);
+    const minor = Number(version[3] ?? 0);
+    const earlier = versions
+      .filter((entry) => entry.family === version[1] && entry.major === major && entry.minor < minor)
+      .reduce<(typeof versions)[number] | undefined>((newest, entry) => (newest === undefined || entry.minor > newest.minor ? entry : newest), undefined);
+    return earlier === undefined ? undefined : { value: earlier.value, inheritedFrom: earlier.model };
+  };
+}
+
+/** The family lookup of one `ModelCompat` field over the entries that state it. */
+function compatSetting<K extends keyof ModelCompat>(field: K): (model: string) => FamilySetting<NonNullable<ModelCompat[K]>> | undefined {
+  return familySettings(Object.entries(MODEL_COMPAT).flatMap(([model, entry]) => {
+    const value = entry[field];
+    return value === undefined ? [] : [[model, value] as const];
+  }));
+}
+
+const perTurnEffort = compatSetting("perTurnEffort");
+const thinkingOff = compatSetting("thinkingOff");
+
 /** Anthropic models that take the `{type: "adaptive"}` thinking shape. */
 export function supportsAdaptiveThinking(model: string, info: ModelInfo | null = null): boolean {
   const entry = lookup(model);
@@ -148,7 +202,14 @@ export function keepsEarlierTurnReasoning(model: string): boolean {
 
 /** Anthropic models whose effort the Claude engine also sends inside the conversation (`withPerTurnEffort`). */
 export function supportsPerTurnEffort(model: string): boolean {
-  return lookup(model)?.perTurnEffort === true;
+  return perTurnEffort(model)?.value === true;
+}
+
+/** Whether `model` has per-turn effort only through an earlier version of its family. Flywheel then has no entry of
+ *  its own for the model, which stands for a model that the bundled Claude engine does not know yet either. */
+export function inheritsPerTurnEffort(model: string): boolean {
+  const setting = perTurnEffort(model);
+  return setting?.value === true && setting.inheritedFrom !== undefined;
 }
 
 /** The most images one request for `model` may carry (`ModelCompat.maxImagesPerRequest`), or undefined when the
@@ -160,10 +221,7 @@ export function maxImagesPerRequest(model: string): number | undefined {
 /** The accepted Anthropic thinking shape for an off request. Omit means the
  *  caller leaves thinking unspecified. Accepts canonical and wire model ids. */
 function thinkingOffMode(model: string): "disabled" | "adaptive" | "omit" {
-  const entry = lookup(dashedModelId(model));
-  if (entry?.thinkingOff !== undefined) return entry.thinkingOff;
-  // Fallback: fable-class ids by name (pi `generate-models.ts:821-823`).
-  return /fable-5/i.test(normalizeModelId(model)) ? "omit" : "disabled";
+  return thinkingOff(model)?.value ?? "disabled";
 }
 
 /** Select the thinking shape from the model's reasoning support and requested effort.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { clampReasoningEffort, supportsAdaptiveThinking, supportsReasoningOff } from "../../../../../src/orchestration/agent-runtime/llm/model-compat.js";
+import { anthropicThinkingMode, clampReasoningEffort, familySettings, inheritsPerTurnEffort, supportsAdaptiveThinking, supportsPerTurnEffort, supportsReasoningOff, supportsThinkingDisable } from "../../../../../src/orchestration/agent-runtime/llm/model-compat.js";
 
 const baseModelInfo = {
   provider: "anthropic",
@@ -51,6 +51,50 @@ describe("supportsAdaptiveThinking", () => {
     expect(supportsAdaptiveThinking("qwen3.7-max")).toBe(true);
     expect(supportsAdaptiveThinking("qwen3.8-max")).toBe(true);
     expect(supportsAdaptiveThinking("qwen3.5-plus")).toBe(true);
+  });
+});
+
+describe("familySettings", () => {
+  const setting = familySettings([["claude-x-5", "five"], ["claude-x-5-1", "five-one"], ["claude-x-5.3", "five-three"], ["gpt-5.1", "gpt"]]);
+
+  it("prefers the model's own entry, in any spelling of its id", () => {
+    expect(setting("claude-x-5.1")).toEqual({ value: "five-one" });
+    expect(setting("claude-x-5-3")).toEqual({ value: "five-three" });
+    expect(setting("claude-x-5-1-20260601")).toEqual({ value: "five-one" });
+  });
+
+  it("inherits from the newest earlier version of the same family and major line", () => {
+    expect(setting("claude-x-5-2")).toEqual({ value: "five-one", inheritedFrom: "claude-x-5.1" });
+    expect(setting("claude-x-5.4")).toEqual({ value: "five-three", inheritedFrom: "claude-x-5.3" });
+    expect(setting("gpt-5.2")).toEqual({ value: "gpt", inheritedFrom: "gpt-5.1" });
+  });
+
+  it("never inherits from a later version, another major line, or another family", () => {
+    expect(setting("claude-x-4.9")).toBeUndefined();
+    expect(setting("claude-x-6")).toBeUndefined();
+    expect(setting("claude-y-5.2")).toBeUndefined();
+    expect(setting("gpt-5")).toBeUndefined();
+    expect(setting("claude-x-5.2-fast")).toBeUndefined();
+  });
+});
+
+describe("per-model settings of an unknown Claude version", () => {
+  it("inherit from the newest earlier version of the family", () => {
+    expect(supportsPerTurnEffort("claude-fable-5-2")).toBe(true);
+    expect(inheritsPerTurnEffort("claude-fable-5-2")).toBe(true);
+    expect(anthropicThinkingMode("claude-fable-5-2", null, "off", true)).toBe("omit");
+    expect(supportsThinkingDisable("claude-fable-5.2")).toBe(false);
+  });
+
+  it("keep the settings of every exactly known version", () => {
+    expect(inheritsPerTurnEffort("claude-fable-5-1")).toBe(false);
+    expect(supportsPerTurnEffort("claude-fable-5-1")).toBe(true);
+    expect(supportsPerTurnEffort("claude-fable-5")).toBe(false);
+    expect(anthropicThinkingMode("claude-fable-5-1", null, "off", true)).toBe("omit");
+    expect(anthropicThinkingMode("claude-opus-5-5", null, "off", true)).toBe("adaptive");
+    expect(anthropicThinkingMode("claude-mythos-5-1", null, "off", true)).toBe("disabled");
+    expect(supportsPerTurnEffort("claude-opus-5")).toBe(false);
+    expect(inheritsPerTurnEffort("gpt-5.6")).toBe(false);
   });
 });
 

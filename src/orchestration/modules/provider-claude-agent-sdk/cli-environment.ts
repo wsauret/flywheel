@@ -2,6 +2,7 @@ import { Redacted } from "effect";
 import { basename, dirname, resolve } from "node:path";
 import { separatedEngineEnvironment, type EngineHost } from "../../../infra/claude-engine.js";
 import { MAX_TIMER_MS } from "../../../infra/timers.js";
+import { inheritsPerTurnEffort } from "../../agent-runtime/llm/model-compat.js";
 import type { BridgeRequest } from "./cli-view.js";
 import { LOGIN_ACCOUNTS_DIRECTORY, TOKEN_LOGIN_VARIABLE } from "./names.js";
 import { STEP_GATE_SOCKET_VARIABLE } from "./step-gate.js";
@@ -90,6 +91,19 @@ interface CliEnvironmentLaunch {
   readonly extraBody: { readonly [field: string]: unknown; readonly tool_choice?: unknown; readonly max_tokens?: number };
   readonly stepGateSocket?: string;
   readonly eagerInputStreaming?: boolean;
+  readonly modelCapabilities?: string;
+}
+
+/**
+ * The value of the engine's `CLAUDE_CODE_MODEL_CAPABILITIES` for a query on `wireModelId`, or undefined when Flywheel
+ * knows the model exactly. A model whose per-turn effort Flywheel only inherits from an earlier version of its family
+ * (`inheritsPerTurnEffort`) is one that the bundled engine does not know either: the engine then treats it as unknown
+ * and leaves per-turn effort off. The variable adds the capabilities, which the engine's catalog gives every model
+ * with per-turn effort as a pair (engine 2.1.306), for that model id only; the engine reads it at each start and
+ * matches the id without its `[1m]` suffix. Prompt capabilities are never passed.
+ */
+export function engineModelCapabilities(wireModelId: string): string | undefined {
+  return inheritsPerTurnEffort(wireModelId) ? `${wireModelId}=per_turn_effort,per_turn_timing` : undefined;
 }
 
 /** The engine child's environment: the separated environment, the query toggles, the values computed for this query
@@ -114,6 +128,7 @@ export function cliEnvironment(config: CliEnvironmentConfig, launch: CliEnvironm
     // against the tool's schema; the CLI refuses text that is not JSON and answers the call itself, so the bridge
     // stops that query (bridge rule 1) and Flywheel runs the call that it read.
     ...(launch.eagerInputStreaming === true ? { CLAUDE_CODE_ENABLE_FINE_GRAINED_TOOL_STREAMING: "1" } : {}),
+    ...(launch.modelCapabilities === undefined ? {} : { CLAUDE_CODE_MODEL_CAPABILITIES: launch.modelCapabilities }),
     // The one place where the token leaves its redaction: the engine's own environment. Flywheel's environment never
     // holds it, so no tool command that Flywheel runs inherits it.
     ...(config.engineToken === undefined ? {} : { [TOKEN_LOGIN_VARIABLE]: Redacted.value(config.engineToken) }),

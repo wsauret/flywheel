@@ -469,8 +469,10 @@ describe("the shipped engine sends what the native Anthropic route sends", () =>
   // disabled and Fable 5.1 with none, and neither with the thinking cleanup that the service refuses without thinking.
   // Each request states its thinking display, because the default differs by access provider for Fable
   // (`anthropicThinkingDisplay`), and `nativeBody` prepares the API key route's request; the display has its own case.
+  // Fable 5.2 is a version that neither Flywheel nor the engine knows: it inherits Fable 5.1's settings, and the engine
+  // gets its per-turn capabilities from its launch (`engineModelCapabilities`).
   const efforts = [undefined, "off", "low", "medium", "high", "xhigh", "max"] as const;
-  for (const model of [MODEL, "claude-opus-4-6", "claude-haiku-5-5", "claude-fable-5-1"]) {
+  for (const model of [MODEL, "claude-opus-4-6", "claude-haiku-5-5", "claude-fable-5-1", "claude-fable-5-2"]) {
     for (const effort of efforts) {
       test(`${model} at effort ${effort ?? "unset"} states the effort where native does`, async () => {
         await onHost(scripted(BATCH), async (run) => {

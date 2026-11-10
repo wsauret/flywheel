@@ -88,7 +88,7 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
     // the stable and session tiers, and its conversation tier is an entry of
     // its first message, so hosted siblings share both tiers.
     ...(sharedHost === undefined ? { sharedPromptPrefix: "stable" as const } : {}),
-    messagesToAppend: createClaudeReminders(build.wireModelId, contextLimit),
+    messagesToAppend: createClaudeReminders(build.wireModelId, contextLimit, build.attribution.resolvedModelMetadata),
     ...(sharedHost === undefined ? {} : {
       // The request as the adapter prepares it for the bridge (`createAnthropicAdapter`). A request that no host
       // serves is no dispatch. Before the client connected no agent runs, so a request that a host serves starts one.

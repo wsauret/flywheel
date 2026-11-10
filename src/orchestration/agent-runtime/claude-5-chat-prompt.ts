@@ -10,19 +10,21 @@
  */
 
 import type { CapabilityCheck } from "../../infra/capability-text.js";
+import { familySettings } from "./llm/model-compat.js";
 import { ASK_USER_DISCUSSION_RULE } from "./tools/ask-user.js";
 
 export type Claude5ChatVariant = "opus-5.5" | "sonnet-5.5" | "fable-5.1";
 
-/** The canonical model ids that receive this body, with the variant each one gets. */
-const CLAUDE_5_CHAT_VARIANTS: ReadonlyMap<string, Claude5ChatVariant> = new Map([
+/** The canonical model ids that receive this body, with the variant each one gets. A later version of one of their
+ *  families gets the variant of its newest earlier version (`familySettings`). */
+const chatVariant = familySettings<Claude5ChatVariant>([
   ["claude-opus-5.5", "opus-5.5"],
   ["claude-sonnet-5.5", "sonnet-5.5"],
   ["claude-fable-5.1", "fable-5.1"],
 ]);
 
 export function claude5ChatVariant(model: string): Claude5ChatVariant | undefined {
-  return CLAUDE_5_CHAT_VARIANTS.get(model);
+  return chatVariant(model)?.value;
 }
 
 /** What the body says about the agent host that runs it, for the capabilities `has` of the request. Every other line

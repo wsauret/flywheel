@@ -219,7 +219,8 @@ describe("Anthropic adapter request configuration", () => {
     };
     const roles = ({ params }: ReturnType<typeof prepare>) => params.messages.map((message) => "output_config" in message ? { role: message.role, content: message.content, output_config: message.output_config } : message.role);
 
-    for (const model of ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1"]) {
+    // claude-fable-5-2 has no entry of its own and inherits Fable 5.1's per-turn effort.
+    for (const model of ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1", "claude-fable-5-2"]) {
       expect(roles(prepare(model, "low")), model).toEqual(["user", { role: "system", content: [], output_config: { effort: "low" } }, "assistant", "user"]);
     }
     const sonnet = prepare("claude-sonnet-5-5", "xhigh");
@@ -234,6 +235,7 @@ describe("Anthropic adapter request configuration", () => {
     // inside the conversation since CLI 2.1.306.
     const betas = (model: string) => prepare(model, "low").betaHeader.split(",").filter((beta) => beta === "mid-conversation-system-2026-04-07" || beta === "per-turn-control-2026-07-01");
     expect(betas("claude-sonnet-5-5")).toEqual(["per-turn-control-2026-07-01"]);
+    expect(betas("claude-fable-5-2")).toEqual(["per-turn-control-2026-07-01"]);
     expect(betas("claude-mythos-5-1")).toEqual([]);
     expect(betas("claude-opus-4-6")).toEqual([]);
     expect(betas("claude-sonnet-4-5-20250929")).toEqual([]);
@@ -245,14 +247,20 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("requests progress updates by default for supported first-party models", async () => {
-    const client = await createTestAnthropicAdapter("test-key", "claude-fable-5-1", stubModelsClient({
-      ...MODEL_INFO, id: "claude-fable-5-1", reasoning: true,
-    }));
-    await collect(client, { reasoningEffort: "medium" });
-    expect(lastCreateParams?.thinking).toEqual({ type: "adaptive", display: "updates" });
-    const beta = lastCreateOptions?.headers.get("anthropic-beta");
-    expect(beta).toContain("thinking-display-updates-2026-08-18");
-    expect(beta).not.toContain("redact-thinking-2026-02-12");
+    // claude-fable-5-2 has no entry of its own and inherits the default of its family.
+    for (const model of ["claude-fable-5-1", "claude-fable-5-2"]) {
+      const client = await createTestAnthropicAdapter("test-key", model, stubModelsClient({
+        ...MODEL_INFO, id: model, reasoning: true,
+      }));
+      await collect(client, { reasoningEffort: "medium" });
+      expect(lastCreateParams?.thinking, model).toEqual({ type: "adaptive", display: "updates" });
+      const beta = lastCreateOptions?.headers.get("anthropic-beta");
+      expect(beta).toContain("thinking-display-updates-2026-08-18");
+      expect(beta).not.toContain("redact-thinking-2026-02-12");
+    }
+    const mythos = await createTestAnthropicAdapter("test-key", "claude-mythos-5", stubModelsClient({ ...MODEL_INFO, id: "claude-mythos-5", reasoning: true }));
+    await collect(mythos, { reasoningEffort: "medium" });
+    expect(lastCreateParams?.thinking).toEqual({ type: "adaptive", display: "summarized" });
   });
 
   it("honors explicit omitted and summarized display on supported models", async () => {

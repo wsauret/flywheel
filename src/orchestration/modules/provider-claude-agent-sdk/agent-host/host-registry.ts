@@ -16,7 +16,8 @@ import type { AgentHost } from "./host.js";
  *  states its own model (`AgentHost.definition`), and the host picks its coordinator's model when it opens
  *  (`coordinatorCandidates`). The host's gate states each agent's effort for each step that it admits
  *  (`HostGate.admit`). Each agent's values were prepared for its own model, so agents of different models share a
- *  host whenever their values are equal. */
+ *  host whenever their values are equal. Only a model that the engine does not know names itself in them, through
+ *  `modelCapabilities`. */
 export type HostValues = Omit<EngineValues, "effort" | "wireModelId" | "contextLimit"> & { readonly statesEffort: boolean };
 
 /** What decides which host serves an agent: the login, the spend mode, the chat tree, the git status of the agent's
@@ -112,6 +113,7 @@ export const HOST_SPLIT_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
   ["values.thinking.type", "A model chosen deliberately that has no adaptive thinking."],
   ["values.thinking.budget_tokens", "A model chosen deliberately that has no adaptive thinking."],
   ["values.statesEffort", "A model chosen deliberately that has no adaptive thinking: its requests state no effort."],
+  ["values.modelCapabilities", "A model that the bundled engine does not know yet, whose capabilities the engine reads only at its start."],
 ]);
 
 /** The body fields that the engine values state themselves (`engineValues`). Every other field of `extraBody` comes
