@@ -1,0 +1,14 @@
+scripts/capability-terms.ts
+  h_4b47e9e4a8b456 505-515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b0c7fccd12c12e8e084a9649907a310b64b0f8c2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
