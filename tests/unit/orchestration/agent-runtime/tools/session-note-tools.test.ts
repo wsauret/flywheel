@@ -61,11 +61,25 @@ describe("conversation checkpoint tools", () => {
     expect(await run("checkpoint_read", { section: "nextStep" })).toMatchObject({ outcome: "ok", content: JSON.stringify("Run the focused check.") });
     expect(await run("checkpoint_read", { section: "designIntent" })).toMatchObject({ outcome: "ok", content: JSON.stringify({ text: "Keep all decisions.", approved: true }) });
     expect((await run("checkpoint_read", { section: "nextStep", offset: 0 })).outcome).toBe("error");
-    expect((await run("checkpoint_replace", { section: "designIntent", value: "untyped" })).outcome).toBe("error");
+    expect((await run("checkpoint_replace", { section: "designIntent", value: { approved: true } })).outcome).toBe("error");
+    expect((await run("checkpoint_replace", { section: "designIntent", value: { text: "Changed.", approved: true, by: "agent" } })).outcome).toBe("error");
     expect((await run("checkpoint_replace", { section: "nextStep", value: "changed", conversationId: "other" })).outcome).toBe("error");
     expect(await owner.read()).toEqual(saved);
     expect(renderApprovedCheckpointIntent(saved!)).toContain("Use the exact words.");
     expect(renderApprovedCheckpointIntent({ ...saved!, designIntent: { text: "draft", approved: false } })).toBeUndefined();
+  });
+  it("saves a design intent without an approval as a draft that no child inherits", async () => {
+    const { root, owner, plan } = fixture();
+    const tools = (await plan()).tools;
+    const run = (value: unknown) => executePreparedTool(prepareToolCall({ id: "replace", name: "checkpoint_replace", input: { section: "designIntent", value } }, tools), makeContext({ executionCwd: root }));
+    // A design intent sent as JSON text is read as its object, not saved as that text.
+    for (const value of [{ text: "Draft the plan." }, "Draft the plan.", JSON.stringify({ text: "Draft the plan." })]) {
+      await owner.replace("designIntent", { text: "Approved earlier.", approved: true });
+      expect(await run(value)).toMatchObject({ outcome: "ok", content: expect.stringMatching(/Checkpoint saved\.$/) });
+      const saved = await owner.read();
+      expect(saved?.designIntent).toEqual({ text: "Draft the plan.", approved: false });
+      expect(renderApprovedCheckpointIntent(saved!)).toBeUndefined();
+    }
   });
   it("reads a structured section sent as JSON text and keeps JSON-looking text sections as written", async () => {
     const { root, owner, plan } = fixture();

@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { readJsonValue } from "../llm/json-parse.js";
 import { CheckpointDecisionSchema, ConversationCheckpointSchema } from "../../session/conversation-checkpoint-facts.js";
-import { CHECKPOINT_SECTIONS, renderConversationCheckpoint, type ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
+import { CHECKPOINT_SECTIONS, checkpointSectionInputSchema, renderConversationCheckpoint, type ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
 import { coerceToolInput, describeInputRepair } from "./coerce-input.js";
 import type { ToolInputRepair } from "../llm/types.js";
 import type { AdvertisedTool, RuntimeTool, RuntimeToolInput } from "./types.js";
@@ -32,10 +32,10 @@ export function checkpointToolDefinition(kind: CheckpointToolKind): AdvertisedTo
       } : {
         section: { type: "string", enum: [...CHECKPOINT_SECTIONS] },
         value: {
-          description: "Replacement section. designIntent: {text, approved}; decisions: [{date, words, replaces}]; relevantSkills: [{id, reason}]; references: durable history entry ids; other sections: a string.",
+          description: "Replacement section. designIntent: {text, approved} or its text alone, saved as a draft unless approved is true; decisions: [{date, words, replaces}]; relevantSkills: [{id, reason}]; references: durable history entry ids; other sections: a string.",
           anyOf: [
             { type: "string" },
-            { type: "object", properties: { text: { type: "string" }, approved: { type: "boolean" } }, required: ["text", "approved"], additionalProperties: false },
+            { type: "object", properties: { text: { type: "string" }, approved: { type: "boolean", description: "True only after the person approved this design intent. Omitted means a draft." } }, required: ["text"], additionalProperties: false },
             { type: "array", items: { anyOf: [
               { type: "string" },
               { type: "object", properties: { id: { type: "string" }, reason: { type: "string" } }, required: ["id", "reason"], additionalProperties: false },
@@ -91,8 +91,9 @@ export function createCheckpointTool(kind: CheckpointToolKind, owner: Conversati
   };
 }
 
-/** The section, not the tool's broad union, determines how a replacement is read. Section-valid strings
- *  stay as written, so JSON-looking working notes never change. */
+/** The section, not the tool's broad union, determines how a replacement is read. Strings valid in the stored
+ *  shape stay as written, so JSON-looking working notes never change. A design intent sent as JSON text is read
+ *  as its object, not saved as draft text. */
 async function prepareSectionValue(input: Readonly<RuntimeToolInput>): Promise<{ readonly repair?: { readonly input: RuntimeToolInput; readonly notice: string } }> {
   const section = CHECKPOINT_SECTIONS.find((candidate) => candidate === input.section);
   if (!section) return {};
@@ -109,6 +110,6 @@ async function prepareSectionValue(input: Readonly<RuntimeToolInput>): Promise<{
   }
   const schema = Schema.toJsonSchemaDocument(Schema.Struct({ value: sectionSchema })).schema;
   const repaired = coerceToolInput({ value }, schema, repair => repairs.push(repair));
-  if (repairs.length === 0 || !Schema.is(sectionSchema)(repaired.value)) return {};
+  if (repairs.length === 0 || !Schema.is(checkpointSectionInputSchema(section))(repaired.value)) return {};
   return { repair: { input: { ...input, value: repaired.value }, notice: repairs.map(describeInputRepair).join("\n") } };
 }

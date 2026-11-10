@@ -12,6 +12,21 @@ export const CHECKPOINT_LIMIT_BYTES = 24 * 1024;
 export const CHECKPOINT_SECTIONS = ["designIntent", "decisions", "currentState", "openQuestions", "nextStep", "relevantSkills", "references", "workingNotes"] as const;
 type CheckpointSection = typeof CHECKPOINT_SECTIONS[number];
 
+/** A design intent as a writer may send it: `{text, approved}`, `{text}`, or the text alone. Only an explicit
+ *  `approved: true` approves it; the other forms save an unapproved draft, which no child inherits (PI-AGENT-092). */
+const DesignIntentInputSchema = Schema.Union([Schema.String, Schema.Struct({ text: Schema.String, approved: Schema.optionalKey(Schema.Boolean) })]);
+
+/** The shape that `checkpoint_replace` accepts for `section`: its stored shape, or for the design intent every
+ *  form of `DesignIntentInputSchema`. */
+export function checkpointSectionInputSchema(section: CheckpointSection): Schema.Schema<unknown> {
+  return section === "designIntent" ? DesignIntentInputSchema : ConversationCheckpointSchema.fields[section];
+}
+
+function storedDesignIntent(value: unknown): ConversationCheckpoint["designIntent"] {
+  const intent = Schema.decodeUnknownSync(DesignIntentInputSchema, { onExcessProperty: "error" })(value);
+  return typeof intent === "string" ? { text: intent, approved: false } : { text: intent.text, approved: intent.approved ?? false };
+}
+
 export function emptyConversationCheckpoint(): ConversationCheckpoint {
   return { designIntent: { text: "", approved: false }, decisions: [], currentState: "", openQuestions: "", nextStep: "", relevantSkills: [], references: [], workingNotes: "" };
 }
@@ -129,7 +144,7 @@ export function createConversationCheckpointOwner(reader: AsyncEventReadSurface,
     read,
     async replace(section, value) {
       const checkpoint = await read() ?? emptyConversationCheckpoint();
-      return save(Schema.decodeUnknownSync(ConversationCheckpointSchema, { onExcessProperty: "error" })({ ...checkpoint, [section]: value }));
+      return save(Schema.decodeUnknownSync(ConversationCheckpointSchema, { onExcessProperty: "error" })({ ...checkpoint, [section]: section === "designIntent" ? storedDesignIntent(value) : value }));
     },
     async decide(decision) {
       const checkpoint = await read() ?? emptyConversationCheckpoint();
