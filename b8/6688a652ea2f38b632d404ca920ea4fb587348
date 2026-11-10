@@ -1,0 +1,80 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 46
+bench/linux-runtime-verification/smoke.ts
+  h_4b47e9e4a8b456 24,217
+scripts/readiness-package-smoke.ts
+  h_4b47e9e4a8b456 12-13,207,210-211,214,222-223
+src/infra/file-edit/edit-input.ts
+  h_4b47e9e4a8b456 1-43
+src/infra/file-edit/string-edit.ts
+  h_4b47e9e4a8b456 36,38-39,48,52-55,483-493,495,498-499,501-502,505-509,512-515,519-524,527-571
+src/infra/output/partial-json.ts
+  h_4b47e9e4a8b456 46-50,52-55,73-76,81-84,104,167-170,172-173,273,289-327,380
+src/infra/output/provisional-diff-input.ts
+  h_4b47e9e4a8b456 2,10,44-58,63-72,84,91-95,101,103-110,112-123,126-131,134-137,151-160,165-173,185-195,198-202,207-214,216,224-226,232,261,265,268,271-273,277,282-289,291,294-295
+src/infra/output/streaming-tool-inputs.ts
+  h_4b47e9e4a8b456 4,148-150
+src/infra/tools/displays/edit.ts
+  h_4b47e9e4a8b456 36
+src/infra/tools/types.ts
+  h_4b47e9e4a8b456 33-35
+src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+  h_4b47e9e4a8b456 31,74-78,337-345,347-354
+src/orchestration/agent-runtime/llm/anthropic-tool-input.ts
+  h_4b47e9e4a8b456 32
+src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 27
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/agent-runtime/tools/coerce-input.ts
+  h_4b47e9e4a8b456 12-13,19,129,266,278
+src/orchestration/agent-runtime/tools/edit.ts
+  h_4b47e9e4a8b456 1-2,14-27,29,32-41,48,52-56,58,60-63,65,74,81
+src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/agent-runtime/tools/session-checkpoint.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/tools/streaming-edit-validator.ts
+  h_4b47e9e4a8b456 5-6,8,33-35,44,84,123-126,130-132,134-148,150-153,155,159-169,183
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 75
+tests/integration/orchestration/agent-runtime/tools/streaming-edit-validation-worker.test.ts
+  h_4b47e9e4a8b456 150
+tests/unit/infra/file-edit/string-edit.test.ts
+  h_4b47e9e4a8b456 4,10-14,16,25-30,32-53,57-58,63-64,72,77,85-86,89,91,95,99-101,109,115,119-122,126-127,129,133-134,136,138,142-143,154,164,166-167,175
+tests/unit/infra/llm/json-parse.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/output/provisional-diff.test.ts
+  h_4b47e9e4a8b456 102-123
+tests/unit/infra/tools/partial-json.test.ts
+  h_4b47e9e4a8b456 41-57
+tests/unit/infra/tools/streaming-tool-input.test.ts
+  h_4b47e9e4a8b456 470-473,481,485-486,488
+tests/unit/orchestration/agent-runtime/context/stale-tool-result-masker.test.ts
+  h_4b47e9e4a8b456 349,353-354,361,371-385
+tests/unit/orchestration/agent-runtime/tools/coerce-input.test.ts
+  h_4b47e9e4a8b456 4,170-173
+tests/unit/orchestration/agent-runtime/tools/streaming-edit-validator.test.ts
+  h_4b47e9e4a8b456 58,62-104
+tests/unit/orchestration/agent-runtime/tools/tool-name-repair.test.ts
+  h_4b47e9e4a8b456 114,117-121
+tests/unit/orchestration/agent-runtime/tools/tools-edit.test.ts
+  h_4b47e9e4a8b456 7-8,26-35,37,46,54-100,102,106-108,111,124,149-152,180,205,219,234,250,255,260,265,269,277,290,293
+tests/unit/orchestration/modules/experiments/tool-execution-gate.test.ts
+  h_4b47e9e4a8b456 86,139,155
+tests/unit/scripts/readiness-package-smoke.test.ts
+  h_4b47e9e4a8b456 5,55-57,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b86688a652ea2f38b632d404ca920ea4fb587348",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
