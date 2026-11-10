@@ -1,0 +1,16 @@
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 8,16
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fcb43b15fee049b65546333dde1842c6c27fe22f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
