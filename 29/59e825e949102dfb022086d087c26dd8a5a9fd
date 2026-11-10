@@ -1,0 +1,26 @@
+docs/architecture-intent/agency.md
+  h_4b47e9e4a8b456 88,126-130
+src/agent-skills/code-review/SKILL.md
+  h_4b47e9e4a8b456 27,29,37,43-44,136
+src/orchestration/agent-runtime/claude-5-chat-prompt.ts
+  h_4b47e9e4a8b456 43-45,123,125,144,151,163
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 75-82,102,166,180
+tests/unit/orchestration/agent-runtime/claude-5-chat-prompt.test.ts
+  h_4b47e9e4a8b456 39,42
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 149,158-160,504-506,508-513
+tests/unit/workflows/workflow-prompt-hygiene.test.ts
+  h_4b47e9e4a8b456 102-105,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2959e825e949102dfb022086d087c26dd8a5a9fd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
