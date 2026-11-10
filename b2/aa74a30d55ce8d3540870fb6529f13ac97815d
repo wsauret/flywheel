@@ -1,0 +1,24 @@
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 93
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 169-175
+docs/product-intent/README.md
+  h_4b47e9e4a8b456 31
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 455
+docs/product-intent/capabilities.md
+  h_4b47e9e4a8b456 3,11-19
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2aa74a30d55ce8d3540870fb6529f13ac97815d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
