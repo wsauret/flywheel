@@ -1,0 +1,25 @@
+webview/src/app/row-time-copy.test.ts
+  s_14a8bc0bfa4dad::t_bce386c60417d4 22,25,50-51,53-55
+  s_14a8bc0bfa4dad::t_21e4d5c55e6953 33
+  s_14a8bc0bfa4dad::t_89ad10d03af231 1-21,24,26-32,36-49,52,56-82
+  s_14a8bc0bfa4dad::t_f5b15fc7a78f93 23,34-35
+webview/src/app/row-time.tsx
+  s_14a8bc0bfa4dad::t_95aaf10f538887 9,20
+  s_14a8bc0bfa4dad::t_672a0357e6bdc0 64-66,79-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d875b711311c56ea0e1eeb891ffb1a47f71cfd49",
+  "prompts": {},
+  "sessions": {
+    "s_14a8bc0bfa4dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9340d33-4bef-42fe-8c6c-0cdcc77276bb",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
