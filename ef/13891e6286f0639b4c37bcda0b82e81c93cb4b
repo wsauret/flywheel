@@ -1,0 +1,34 @@
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 195,256-261
+src/orchestration/agent-runtime/compaction/truncation.ts
+  h_4b47e9e4a8b456 29-31,84
+src/orchestration/agent-runtime/tools/read-selectors.ts
+  h_4b47e9e4a8b456 45-54,59-60
+src/orchestration/agent-runtime/tools/read.ts
+  h_4b47e9e4a8b456 21-22,154-264,368-372,375-390,397,400,407-413,429,448-449,453,455,458,462,464,466-468,478-479,481,484-485,487-502,510-511,514,517,519-560,563-581,583,585,627,675,677,692,694-702
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 31,398
+src/orchestration/agent-runtime/tools/tool-paths.ts
+  h_4b47e9e4a8b456 412-438,440-448,452-453,456-462
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 411-415
+tests/unit/orchestration/agent-runtime/agent-loop-tool-finalization.test.ts
+  h_4b47e9e4a8b456 1,12,320-340
+tests/unit/orchestration/agent-runtime/tools/tools-edit.test.ts
+  h_4b47e9e4a8b456 271-288
+tests/unit/orchestration/agent-runtime/tools/tools-read-stream.test.ts
+  h_4b47e9e4a8b456 236,239-310,314-315
+tests/unit/orchestration/agent-runtime/tools/tools-read.test.ts
+  h_4b47e9e4a8b456 14-15,314-422,566,568-569,571-574,577,579-581
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ef13891e6286f0639b4c37bcda0b82e81c93cb4b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
