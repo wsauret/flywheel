@@ -1,0 +1,60 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 103,293
+src/infra/output-blocks.ts
+  h_4b47e9e4a8b456 158-161
+src/infra/output/output-projection-events.ts
+  h_4b47e9e4a8b456 40-41
+src/infra/output/output-projector.ts
+  h_4b47e9e4a8b456 158-160
+src/infra/output/output-tool-projector.ts
+  h_4b47e9e4a8b456 341-347
+src/infra/output/runtime-event-projector.ts
+  h_4b47e9e4a8b456 64-68
+src/orchestration/runner/output-session.ts
+  h_4b47e9e4a8b456 195-198
+src/orchestration/session/conversation/conversation-block-projection.ts
+  h_4b47e9e4a8b456 670
+src/orchestration/session/conversation/tool-result-meta.ts
+  h_4b47e9e4a8b456 50-52,55-60,158,187,426,436-437,439,476-479
+src/orchestration/session/tool-child-presentation.ts
+  h_4b47e9e4a8b456 38
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 255-258
+src/protocol/client/transcript-model.ts
+  h_4b47e9e4a8b456 65-84
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 272-274,276
+src/protocol/transcript-protocol-schemas.ts
+  h_4b47e9e4a8b456 81
+src/tui/output-blocks/visible-output-blocks.ts
+  h_4b47e9e4a8b456 4,75,80-81,119,123
+tests/unit/infra/output/output-projection.test.ts
+  h_4b47e9e4a8b456 327-338
+tests/unit/orchestration/app-service/output-live-derived-equivalence.test.ts
+  h_4b47e9e4a8b456 294,312,321-322,339,347,387-400,417-420
+tests/unit/orchestration/runner/output-session-phase-flush.test.ts
+  h_4b47e9e4a8b456 187-216
+tests/unit/protocol/transcript-model.test.ts
+  h_4b47e9e4a8b456 5,142-167
+tests/unit/tui/output-blocks/tool-run-block.test.ts
+  h_4b47e9e4a8b456 230-241
+tests/unit/tui/output-blocks/visible-output-blocks.test.ts
+  h_4b47e9e4a8b456 132-139
+webview/src/app/tool-stretch-ownership.test.ts
+  h_4b47e9e4a8b456 39-58
+webview/src/client/tool-runs.test.ts
+  h_4b47e9e4a8b456 57-63
+webview/src/client/tool-runs.ts
+  h_4b47e9e4a8b456 8,70-71,73,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2a29da91c32f921ee6d7bc6e64ce7e8f4dd13f75",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
