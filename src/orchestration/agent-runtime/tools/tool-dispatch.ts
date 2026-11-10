@@ -28,6 +28,7 @@ import { toolModuleRequirements } from "./tool-registry.js";
 import { createToolRegistry, shellCommandOf } from "../../tool-catalog.js";
 import { canonicalMutationPath } from "../../../infra/file-mutation-queue.js";
 import { resolveToolPath } from "./tool-paths.js";
+import { TOOL_RESULT_MAX_BYTES } from "../compaction/truncation.js";
 
 const log = Log.create({ service: "tool-dispatch" });
 
@@ -394,6 +395,7 @@ export async function executePreparedTool(
     ...baseContext,
     signal: watchdog ? mergeAbortSignals(context.signal, watchdog.signal) : context.signal,
     toolUseId: call.id,
+    outputByteBudget: TOOL_RESULT_MAX_BYTES - (prepared.repairNotice === undefined ? 0 : Buffer.byteLength(`${prepared.repairNotice}\n`, "utf-8")),
     ...(admission.access ? { capabilityAccess: admission.access } : {}),
     ...(call.modelRequestId ? { modelRequestId: call.modelRequestId } : {}),
     ...(onExecutionOutput ? { onExecutionOutput: (text: string) => { resetWatchdog(); onExecutionOutput(text); } } : {}),

@@ -18,6 +18,8 @@ import { searchDefinition } from "./search.js";
 import { prepareSearchPathInput } from "./search-paths.js";
 import { type ImageResizeResult, resizeImage } from "./image-resize.js";
 import { checkNumericRange } from "./numeric-input.js";
+import { truncateUtf8Prefix } from "../../../infra/output/truncate-output.js";
+import { TOOL_RESULT_MAX_BYTES } from "../compaction/truncation.js";
 import { isRawSelector, type LineRange, parseSel, splitPathAndSel } from "./read-selectors.js";
 import { decodeTextSnapshot, readTextWindows } from "./read-text-windows.js";
 import { formatFileMap, generateFileMap, lookupSymbol } from "./structural-map.js";
@@ -149,8 +151,117 @@ function coverageRecorder(context: ToolContext, resolvedPath: string, sha256: st
   );
 }
 
-function sliceCoverage(startLine: number, endIdx: number, totalLines: number): "full" | readonly LedgerLineRange[] {
-  return startLine === 1 && endIdx >= totalLines ? "full" : [{ start: startLine, end: Math.max(startLine, endIdx) }];
+/** The lines a result returned: every line of the file, one range, or none. */
+function shownCoverage(startLine: number, shown: number, totalLines: number): "full" | readonly LedgerLineRange[] {
+  if (shown === 0) return [];
+  return startLine === 1 && shown >= totalLines ? "full" : [{ start: startLine, end: startLine + shown - 1 }];
+}
+
+const byteLength = (text: string) => Buffer.byteLength(text, "utf-8");
+
+/** Whole lines of one window that fit a byte budget. */
+interface FittedLines {
+  /** The shown lines, numbered unless raw, or the marked prefix of a first line longer than the budget. */
+  readonly text: string;
+  /** Whole lines shown, from the window's first line. A marked prefix is not a shown line. */
+  readonly shown: number;
+}
+
+/** Fit whole lines of `lines`, the first of which is line `startLine`, into `budget` bytes. With `longLine`, a first
+ *  line that alone exceeds the budget shows its valid UTF-8 prefix and a marker, so every read makes progress; a
+ *  budget too small for any prefix and its marker shows nothing. */
+function fitLines(lines: readonly string[], startLine: number, raw: boolean, budget: number, longLine?: { has: CapabilityCheck | undefined }): FittedLines {
+  const shown: string[] = [];
+  let used = 0;
+  for (const [index, line] of lines.entries()) {
+    const formatted = raw ? line : `${startLine + index}|${line}`;
+    used += byteLength(formatted) + (index > 0 ? 1 : 0);
+    if (used > budget) {
+      if (index === 0 && longLine) return { text: longLinePrefix(line, startLine, raw, budget, longLine.has), shown: 0 };
+      break;
+    }
+    shown.push(formatted);
+  }
+  return { text: shown.join("\n"), shown: shown.length };
+}
+
+function longLinePrefix(line: string, lineNumber: number, raw: boolean, budget: number, has: CapabilityCheck | undefined): string {
+  const lead = raw ? "" : `${lineNumber}|`;
+  const total = byteLength(line);
+  const marker = (shown: number) => `\n[Line ${lineNumber} is longer than the output limit: showed ${shown} of its ${total} bytes.${has?.("bash") === false ? "" : " Use the bash tool to see the rest of the line."}]`;
+  const prefix = truncateUtf8Prefix(line, Math.max(0, budget - byteLength(lead) - byteLength(marker(total))));
+  return prefix.length === 0 ? "" : `${lead}${prefix}${marker(byteLength(prefix))}`;
+}
+
+/** The notice of a window that the byte budget ended before its requested last line. */
+function outputLimitNotice(lastShown: number, first: number, last: number): string {
+  return `(Output limit reached at line ${lastShown} of the requested ${first}-${last}. Use offset=${lastShown} to continue reading.)`;
+}
+
+function moreLinesNotice(endLine: number, totalLines: number): string {
+  const remaining = totalLines - endLine;
+  return `(${remaining} more line${remaining !== 1 ? "s" : ""} not shown. Use offset=${endLine} to continue reading.)`;
+}
+
+/** The map of a read: `requested` by `map: true`, or appended to a truncated read. */
+interface MapRule {
+  readonly requested: boolean;
+  readonly text: () => Promise<string | undefined>;
+}
+
+/** A map that the read did not request rides along only within one fifth of the budget. */
+async function autoMapPart(map: MapRule, budget: number): Promise<string> {
+  const text = await map.text();
+  if (text === undefined) return "";
+  const part = `\n${text}`;
+  return byteLength(part) <= budget / 5 ? part : "\n(Structural map omitted: it is larger than one fifth of the output limit. Read with map: true to get it.)";
+}
+
+/** A requested map that leaves no room for a file line, cut at a whole row when it alone exceeds the budget. */
+function mapOnly(map: string, budget: number): string {
+  const rows = map.split("\n");
+  const count = (shown: number) => `\n(${shown} of ${rows.length} map rows shown; no file lines fit the output limit.)`;
+  const fitted = fitLines(rows, 1, true, budget - byteLength(count(rows.length)));
+  return `${fitted.text}${count(fitted.shown)}`;
+}
+
+/** One requested window of file lines. */
+interface TextWindow {
+  readonly lines: readonly string[];
+  readonly startLine: number;
+  readonly totalLines: number;
+  /** Text before the lines, such as the start-line header or a fallback warning. */
+  readonly lead: string;
+  readonly raw: boolean;
+  /** Whether a window that every line fits says how many lines of the file follow it. */
+  readonly countsRest: boolean;
+}
+
+/** Page one window into `budget` bytes, whole lines only (ARCH-TOOLS-057). Framing is sized first: the lead, the
+ *  notice, and the map. The lines fill the rest. Returns the result text and the whole lines it holds. */
+async function pageWindow(window: TextWindow, budget: number, has: CapabilityCheck | undefined, map?: MapRule): Promise<FittedLines> {
+  const { lines, startLine, totalLines, lead, raw } = window;
+  const lastRequested = startLine + lines.length - 1;
+  const fileContinues = lines.length > 0 && lastRequested < totalLines;
+  const requestedText = map?.requested ? await map.text() : undefined;
+  const requestedMap = requestedText === undefined ? "" : `\n${requestedText}`;
+  const autoMap = async () => map && !map.requested ? autoMapPart(map, budget) : "";
+
+  const restNotice = window.countsRest && fileContinues ? `\n${moreLinesNotice(lastRequested, totalLines)}` : "";
+  const trailer = requestedMap + (fileContinues ? await autoMap() : "");
+  const whole = fitLines(lines, startLine, raw, budget - byteLength(lead + restNotice + trailer));
+  const wholeText = `${lead}${whole.text}${restNotice}${trailer}`;
+  if (whole.shown === lines.length && byteLength(wholeText) <= budget) return { text: wholeText, shown: whole.shown };
+
+  const cutTrailer = requestedMap + await autoMap();
+  const reserved = byteLength(`${lead}\n${outputLimitNotice(lastRequested, startLine, lastRequested)}${cutTrailer}`);
+  const page = fitLines(lines, startLine, raw, budget - reserved, requestedText === undefined ? { has } : undefined);
+  // A requested map is kept whole only beside at least one whole file line; otherwise the map fills the result.
+  if (requestedText !== undefined && page.shown === 0) return { text: lead + mapOnly(requestedText, budget - byteLength(lead)), shown: 0 };
+  const notice = page.text.length === 0
+    ? `(No lines shown: the output limit was reached before line ${startLine}.)`
+    : outputLimitNotice(startLine + Math.max(page.shown, 1) - 1, startLine, lastRequested);
+  return { text: `${lead}${page.text}${page.text.length === 0 ? "" : "\n"}${notice}${cutTrailer}`, shown: page.shown };
 }
 
 interface ReadOperations {
@@ -197,12 +308,6 @@ const defaultReadOperations: ReadOperations = {
   },
   resizeImage,
 };
-
-/** Format text with ordinary one-based line numbers unless raw output is requested. */
-function formatText(text: string, startNum: number, raw: boolean | undefined): string {
-  if (raw) return text;
-  return text.split("\n").map((line, index) => `${startNum + index}|${line}`).join("\n");
-}
 
 async function readImage(
   filePath: string,
@@ -260,33 +365,28 @@ async function readImage(
   };
 }
 
-async function readSliceWithWarning(
-  filePath: string,
-  allLines: string[],
-  totalLines: number,
-  offset: number,
-  limit: number,
-  seen: RecordCoverage,
-  warning: string,
-  options?: { raw?: boolean },
-): Promise<ToolResult> {
-  const startIdx = Math.min(offset, totalLines);
-  const endIdx = Math.min(startIdx + limit, totalLines);
-  const slice = allLines.slice(startIdx, endIdx);
-  const startLine = startIdx + 1;
-  await seen(sliceCoverage(startLine, endIdx, totalLines));
-  const selectedContent = slice.join("\n");
-  const tagged = formatText(selectedContent, startLine, options?.raw);
-  const parts = [warning + tagged];
-  if (endIdx < totalLines) {
-    const remaining = totalLines - endIdx;
-    parts.push(`\n(${remaining} more line${remaining !== 1 ? "s" : ""} not shown. Use offset=${endIdx} to continue reading.)`);
-  }
-  return {
-    content: parts.join(""),
-    outcome: "ok",
-  };
+/** How a read pages its text: the byte budget of its result, the reader's tools, and raw output. */
+interface PageOptions {
+  readonly budget: number;
+  readonly raw: boolean;
+  readonly has: CapabilityCheck | undefined;
 }
+
+/** Page one window, record the whole lines the result returned, and return them. */
+async function readWindow(window: Omit<TextWindow, "raw">, page: PageOptions, seen: RecordCoverage, map?: MapRule): Promise<ToolResult> {
+  const { text, shown } = await pageWindow({ ...window, raw: page.raw }, page.budget, page.has, map);
+  await seen(shownCoverage(window.startLine, shown, window.totalLines));
+  const result: ToolResult = { content: text, outcome: "ok" };
+  if (!page.raw) result.details = { displayContent: { text: window.lines.slice(0, shown).join("\n"), startLine: window.startLine } };
+  return result;
+}
+
+/** A read from the first line after a warning, for a symbol read that cannot find its symbol. */
+function fallbackRead(lines: readonly string[], totalLines: number, warning: string, page: PageOptions, seen: RecordCoverage): Promise<ToolResult> {
+  return readWindow({ lines: lines.slice(0, DEFAULT_LINE_LIMIT), startLine: 1, totalLines, lead: warning, countsRest: true }, page, seen);
+}
+
+const NO_MAP_WARNING = "[Warning: structural map not available for this file type. Falling back to normal read.]\n";
 
 async function readSymbol(
   filePath: string,
@@ -294,39 +394,23 @@ async function readSymbol(
   totalLines: number,
   symbolQuery: string,
   seen: RecordCoverage,
-  options?: { raw?: boolean },
+  page: PageOptions,
 ): Promise<ToolResult> {
   const fileMap = await generateFileMap({ path: filePath, text: allLines.join("\n") });
-  if (!fileMap) {
-    return readSliceWithWarning(
-      filePath,
-      allLines,
-      totalLines,
-      0,
-      DEFAULT_LINE_LIMIT,
-      seen,
-      "[Warning: structural map not available for this file type. Falling back to normal read.]\n",
-      options,
-    );
-  }
+  if (!fileMap) return fallbackRead(allLines, totalLines, NO_MAP_WARNING, page, seen);
 
   const result = lookupSymbol(fileMap, symbolQuery);
 
   switch (result.type) {
     case "found": {
       const sym = result.symbol;
-      const startIdx = sym.startLine - 1;
-      const endIdx = sym.endLine;
-      const slice = allLines.slice(startIdx, endIdx);
-      const startLine = startIdx + 1;
-      await seen([{ start: sym.startLine, end: sym.endLine }]);
-      const selectedContent = slice.join("\n");
-      const tagged = formatText(selectedContent, startLine, options?.raw);
-      return {
-        content: `[Symbol: ${sym.name} (${sym.kind}), lines ${sym.startLine}-${sym.endLine} of ${totalLines} total]\n${tagged}`,
-        outcome: "ok",
-        details: options?.raw ? undefined : { displayContent: { text: selectedContent, startLine } },
-      };
+      return readWindow({
+        lines: allLines.slice(sym.startLine - 1, sym.endLine),
+        startLine: sym.startLine,
+        totalLines,
+        lead: `[Symbol: ${sym.name} (${sym.kind}), lines ${sym.startLine}-${sym.endLine} of ${totalLines} total]\n`,
+        countsRest: false,
+      }, page, seen);
     }
     case "ambiguous": {
       const listing = result.candidates
@@ -342,7 +426,7 @@ async function readSymbol(
         .map((s) => `  ${s.name} (${s.kind}): lines ${s.startLine}-${s.endLine}`)
         .join("\n");
       const warning = `[Warning: symbol "${symbolQuery}" not found. Available symbols:\n${listing}\nFalling back to normal read.]\n`;
-      return readSliceWithWarning(filePath, allLines, totalLines, 0, DEFAULT_LINE_LIMIT, seen, warning, options);
+      return fallbackRead(allLines, totalLines, warning, page, seen);
     }
   }
 }
@@ -361,26 +445,27 @@ async function readText(
   limit: number,
   ops: ReadOperations,
   record: (sha256: string) => RecordCoverage,
-  options?: { map?: boolean; symbol?: string; raw?: boolean; summarize?: boolean; signal?: AbortSignal; has?: CapabilityCheck },
+  page: PageOptions,
+  options: { map: boolean; symbol: string | undefined; summarize: boolean; signal: AbortSignal | undefined },
 ): Promise<ToolResult> {
   const file = await ops.readFile(filePath);
   const supportsStructure = detectTreeSitterLanguage(filePath) !== null;
-  const fullSummaryFallback = options?.summarize === true;
-  const range = options?.symbol
+  const range = options.symbol
     ? { startLine: 1, endLine: DEFAULT_LINE_LIMIT }
-    : { startLine: offset + 1, endLine: fullSummaryFallback ? undefined : offset + limit };
+    : { startLine: offset + 1, endLine: offset + limit };
   const acquired = supportsStructure
     ? decodeTextSnapshot(await file.arrayBuffer())
-    : await readTextWindows(file.stream(), [range], options?.signal);
+    : await readTextWindows(file.stream(), [range], options.signal);
   const { totalLines, sha256, binary } = acquired;
   const seen = record(sha256);
 
-  if (binary) return binaryFileRefusal(filePath, options?.has);
+  if (binary) return binaryFileRefusal(filePath, page.has);
 
-  if (options?.summarize && "text" in acquired) {
+  if (options.summarize && "text" in acquired) {
     const summary = await summarizeStructure({ path: filePath, text: acquired.text });
-    if (summary) {
-      const rendered = renderStructuralSummary(summary, filePath);
+    const rendered = summary && renderStructuralSummary(summary, filePath);
+    // A summary that does not fit one result takes the plain window instead (ARCH-TOOLS-057).
+    if (rendered && byteLength(rendered.text) <= page.budget) {
       await seen(rendered.retainedRows.map(([line]) => ({ start: line, end: line })));
       return {
         content: rendered.text,
@@ -390,48 +475,31 @@ async function readText(
     }
   }
 
-  if (options?.symbol) {
-    if ("text" in acquired) return readSymbol(filePath, acquired.lines, totalLines, options.symbol, seen, { raw: options?.raw });
+  if (options.symbol) {
+    if ("text" in acquired) return readSymbol(filePath, acquired.lines, totalLines, options.symbol, seen, page);
     // SAFETY: readTextWindows maps the single supplied range to exactly one window, including at EOF.
-    return await readSliceWithWarning(filePath, acquired.windows[0]!.lines, totalLines, 0, DEFAULT_LINE_LIMIT, seen,
-      "[Warning: structural map not available for this file type. Falling back to normal read.]\n", options);
+    return fallbackRead(acquired.windows[0]!.lines, totalLines, NO_MAP_WARNING, page, seen);
   }
 
-  const startIdx = fullSummaryFallback ? 0 : Math.min(offset, totalLines);
-  const endIdx = fullSummaryFallback ? totalLines : Math.min(startIdx + limit, totalLines);
+  const startIdx = Math.min(offset, totalLines);
+  const endIdx = Math.min(startIdx + limit, totalLines);
   // SAFETY: readTextWindows maps the single supplied range to exactly one window, including at EOF.
-  const slice = "text" in acquired ? acquired.lines.slice(startIdx, endIdx) : acquired.windows[0]!.lines;
-  const startLine = startIdx + 1; // 1-indexed
-  await seen(sliceCoverage(startLine, endIdx, totalLines));
-
-  const selectedContent = slice.join("\n");
-  const tagged = formatText(selectedContent, startLine, options?.raw);
-
-  const parts = [tagged];
-  const truncated = endIdx < totalLines;
-
-  if (truncated) {
-    const remaining = totalLines - endIdx;
-    parts.push(`\n(${remaining} more line${remaining !== 1 ? "s" : ""} not shown. Use offset=${endIdx} to continue reading.)`);
-  }
-
-  if ((truncated || options?.map) && "text" in acquired) {
-    const fileMap = await generateFileMap({ path: filePath, text: acquired.text });
-    if (fileMap) parts.push(`\n${formatFileMap(fileMap, filePath)}`);
-  }
-
-  if (startIdx > 0) {
-    parts.unshift(`(Starting from line ${startIdx + 1} of ${totalLines} total lines)\n`);
-  }
-
-  const result: ToolResult = {
-    content: parts.join(""),
-    outcome: "ok",
-  };
-  if (!options?.raw) {
-    result.details = { displayContent: { text: selectedContent, startLine } };
-  }
-  return result;
+  const lines = "text" in acquired ? acquired.lines.slice(startIdx, endIdx) : acquired.windows[0]!.lines;
+  let fileMap: Promise<string | undefined> | undefined;
+  const map = "text" in acquired ? {
+    requested: options.map,
+    text: () => {
+      fileMap ??= generateFileMap({ path: filePath, text: acquired.text }).then((generated) => generated ? formatFileMap(generated, filePath) : undefined);
+      return fileMap;
+    },
+  } : undefined;
+  return readWindow({
+    lines,
+    startLine: startIdx + 1,
+    totalLines,
+    lead: startIdx > 0 ? `(Starting from line ${startIdx + 1} of ${totalLines} total lines)\n` : "",
+    countsRest: true,
+  }, page, seen, map);
 }
 
 async function readTextMultiRange(
@@ -439,40 +507,82 @@ async function readTextMultiRange(
   ranges: readonly LineRange[],
   ops: ReadOperations,
   record: (sha256: string) => RecordCoverage,
-  options?: { raw?: boolean; signal?: AbortSignal; has?: CapabilityCheck },
+  page: PageOptions,
+  signal: AbortSignal | undefined,
 ): Promise<ToolResult> {
   const file = await ops.readFile(filePath);
-  const { windows, totalLines, sha256, binary } = await readTextWindows(file.stream(), ranges, options?.signal);
+  const { windows, totalLines, sha256, binary } = await readTextWindows(file.stream(), ranges, signal);
   const seen = record(sha256);
 
-  if (binary) return binaryFileRefusal(filePath, options?.has);
+  if (binary) return binaryFileRefusal(filePath, page.has);
 
+  const first = pageRanges(windows, totalLines, page, false);
+  // Cut notices are sized only when a range does not fit, so a result that fits keeps every byte for lines.
+  const paged = first.cut ? pageRanges(windows, totalLines, page, true) : first;
+  await seen(paged.covered);
+  return { content: paged.text, outcome: "ok" };
+}
+
+const RANGE_SEPARATOR = "\n\n...\n\n";
+
+function rangeLabel(range: LineRange): string {
+  return range.endLine !== undefined ? `${range.startLine}-${range.endLine}` : `${range.startLine}`;
+}
+
+/** One notice for every range past the end of the file, so its size does not grow with their count. */
+function beyondNotice(ranges: readonly LineRange[], totalLines: number): string {
+  const [first] = ranges;
+  if (first === undefined) return "";
+  return ranges.length === 1
+    ? `[Range ${rangeLabel(first)} is beyond end of file (${totalLines} lines total); skipped]`
+    : `[${ranges.length} ranges from ${rangeLabel(first)} are beyond end of file (${totalLines} lines total); skipped]`;
+}
+
+/** One notice for every range that the output limit left out, so its size does not grow with their count. */
+function notShownNotice(ranges: readonly LineRange[]): string {
+  const [first] = ranges;
+  const last = ranges.at(-1);
+  if (first === undefined || last === undefined) return "";
+  return ranges.length === 1
+    ? `[Range ${rangeLabel(first)} not shown: the output limit was reached]`
+    : `[${ranges.length} ranges not shown, ${rangeLabel(first)} through ${rangeLabel(last)}: the output limit was reached]`;
+}
+
+const noticeBytes = (notice: string) => notice.length === 0 ? 0 : byteLength(notice) + 1;
+
+type RangeWindow = LineRange & { readonly lines: readonly string[] };
+
+/** Page ranges in caller order from one budget. A range that does not fit ends at a whole line, and one notice lists
+ *  every later range. With `reserveNotices`, each range leaves room for the notices that a cut there adds; without
+ *  it, a cut returns only `cut: true`. */
+function pageRanges(windows: readonly RangeWindow[], totalLines: number, page: PageOptions, reserveNotices: boolean) {
+  const inFile = windows.filter((range) => range.startLine <= totalLines);
+  const beyond = beyondNotice(windows.filter((range) => range.startLine > totalLines), totalLines);
   const blocks: string[] = [];
-  const notices: string[] = [];
   const covered: LedgerLineRange[] = [];
-
-  for (const range of windows) {
-    if (range.startLine > totalLines) {
-      const bound = range.endLine !== undefined ? `${range.startLine}-${range.endLine}` : `${range.startLine}`;
-      notices.push(`[Range ${bound} is beyond end of file (${totalLines} lines total); skipped]`);
-      continue;
+  const result = (notices: readonly string[]) => [blocks.join(RANGE_SEPARATOR), ...notices, beyond].filter((part) => part.length > 0).join("\n");
+  let remaining = page.budget - noticeBytes(beyond);
+  for (const [index, range] of inFile.entries()) {
+    const separator = blocks.length > 0 ? byteLength(RANGE_SEPARATOR) : 0;
+    const last = range.startLine + range.lines.length - 1;
+    // A cut here adds the output-limit notice and lists the later ranges, or, with no line shown, lists this one too.
+    const cutNotices = Math.max(
+      noticeBytes(outputLimitNotice(last, range.startLine, last)) + noticeBytes(notShownNotice(inFile.slice(index + 1))),
+      noticeBytes(notShownNotice(inFile.slice(index))),
+    );
+    const room = remaining - separator - (reserveNotices ? cutNotices : 0);
+    const fitted = fitLines(range.lines, range.startLine, page.raw, room, blocks.length === 0 ? { has: page.has } : undefined);
+    if (fitted.shown < range.lines.length && !reserveNotices) return { text: "", covered: [], cut: true };
+    if (fitted.shown > 0) covered.push({ start: range.startLine, end: range.startLine + fitted.shown - 1 });
+    if (fitted.text.length > 0) blocks.push(fitted.text);
+    if (fitted.shown < range.lines.length) {
+      const shownAny = fitted.text.length > 0;
+      const limit = shownAny ? outputLimitNotice(range.startLine + Math.max(fitted.shown, 1) - 1, range.startLine, last) : "";
+      return { text: result([limit, notShownNotice(inFile.slice(shownAny ? index + 1 : index))]), covered, cut: true };
     }
-    const effectiveEnd = Math.min(range.endLine ?? totalLines, totalLines);
-    covered.push({ start: range.startLine, end: effectiveEnd });
-    const sliceText = range.lines.join("\n");
-    blocks.push(formatText(sliceText, range.startLine, options?.raw));
+    remaining -= separator + byteLength(fitted.text);
   }
-  await seen(covered);
-
-  let outputText = blocks.length > 0 ? blocks.join("\n\n...\n\n") : "";
-  if (notices.length > 0) {
-    outputText = outputText ? `${outputText}\n${notices.join("\n")}` : notices.join("\n");
-  }
-
-  return {
-    content: outputText,
-    outcome: "ok",
-  };
+  return { text: result([]), covered, cut: false };
 }
 
 const READ_INPUT_SCHEMA = {
@@ -514,7 +624,7 @@ const READ_DESCRIPTION_HEAD = "Read a file's contents; given a directory, read r
 const READ_DESCRIPTION_TAIL = "When a file is truncated, a structural map is auto-appended. Image files (PNG, JPG, GIF, WebP) are returned as base64-encoded data. You can read multiple files in parallel; always parallelize when exploring related files.";
 /** One text for both default-read behaviors, so the tool reads the same for
  *  every agent (ARCH-CONTEXT-018). */
-const DEFAULT_READ_DESCRIPTION = `A read without a selector or read option returns the file from its first line, up to ${DEFAULT_LINE_LIMIT} lines, or a large supported code file as its structural summary; summary rows keep their original line numbers and the footer gives exact ranges for each elided body, so re-read its cited ranges to recover them.`;
+const DEFAULT_READ_DESCRIPTION = `A read without a selector or read option returns the file from its first line, up to ${DEFAULT_LINE_LIMIT} lines or the size limit of one tool result, or a large supported code file as its structural summary; summary rows keep their original line numbers and the footer gives exact ranges for each elided body, so re-read its cited ranges to recover them.`;
 
 interface ReadDefinitionOptions {
   readonly operations?: ReadOperations;
@@ -562,8 +672,9 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
     },
     async execute(input: RuntimeToolInput, context: ToolContext) {
       if (searchRequested(input)) return searchDefinition.execute(input, context);
+      const budget = context.outputByteBudget ?? TOOL_RESULT_MAX_BYTES;
       if (Array.isArray(input.path) && input.path.every((path): path is string => typeof path === "string")) {
-        return executePathBatch(input.path, (path) => definition.execute({ ...input, path }, context));
+        return executePathBatch(input.path, (path, share) => definition.execute({ ...input, path }, { ...context, outputByteBudget: share }), budget);
       }
       if (typeof input.path === "string") {
         const directory = splitPathAndSel(input.path).path;
@@ -578,24 +689,17 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
       const { resolvedPath, ext, offset, limit, hasMap, symbol, raw, multiRanges, rawPath, summarize } = resolved;
       const record = (sha256: string) => coverageRecorder(context, resolvedPath, sha256);
 
-      try {
-        let result: ToolResult;
-        if (isImageExtension(ext)) {
-          result = await readImage(resolvedPath, ops);
-        } else if (multiRanges) {
-          result = await readTextMultiRange(resolvedPath, multiRanges, ops, record, { raw, signal: context.signal, ...(context.capabilities ? { has: context.capabilities } : {}) });
-        } else {
-          result = await readText(resolvedPath, offset, limit, ops, record, {
-            map: hasMap,
-            symbol,
-            raw,
-            summarize: structuralSummary && summarize,
-            signal: context.signal,
-            ...(context.capabilities ? { has: context.capabilities } : {}),
-          });
-        }
+      const page: PageOptions = { budget, raw, has: context.capabilities };
 
-        return result;
+      try {
+        if (isImageExtension(ext)) return await readImage(resolvedPath, ops);
+        if (multiRanges) return await readTextMultiRange(resolvedPath, multiRanges, ops, record, page, context.signal);
+        return await readText(resolvedPath, offset, limit, ops, record, page, {
+          map: hasMap,
+          symbol,
+          summarize: structuralSummary && summarize,
+          signal: context.signal,
+        });
       } catch (err) {
         if (context.signal?.aborted) {
           return { content: `Read of '${rawPath}' was interrupted before it could complete.`, outcome: "interrupted" };

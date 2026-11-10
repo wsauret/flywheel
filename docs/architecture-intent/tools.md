@@ -192,7 +192,7 @@ Not: A general pre-invocation approval system or a hardcoded command deny-list.
 
 ## ARCH-TOOLS-040: A preview budget never truncates the returned value
 
-A preview budget limits only what a preview shows. It never truncates the value a tool returns. The ordinary tool-output boundary retains an oversized result. A tool that drops part of its output marks each dropped run where it occurred, counted against the original. It hands that boundary the full payload, or a file it already retained with its measured size and digest. Only that boundary names the recovery file.
+A preview budget limits only what a preview shows. It never truncates the value a tool returns. The ordinary tool-output boundary retains an oversized result. A tool that drops part of its output marks each dropped run where it occurred, counted against the original. It hands that boundary the full payload, or a file it already retained with its measured size and digest. Only that boundary names the recovery file. A bounded window of a file that the caller pages is not a dropped output.
 
 ## ARCH-TOOLS-041: Workspace traversal follows directory links and stops at protected roots
 
@@ -253,3 +253,9 @@ Not: Launch-time command slots or a cost that the agent declares, because a comm
 One rule set bounds every agent file search by processor time, a wall-clock backstop for read waits, and pruned directories. Pruned directories are artifact names and ignored directories, except one that the call names. The search and list tools apply the rules in process, counting processor time on every search thread. On macOS and Linux, the agent shell applies them through shims around the person's own search programs. A shim adds only exclusions and the limit, never translating one program into another or shaping its output. A shim whose walk cannot skip a directory removes pruned directories from its results.
 Because: A wall-clock limit on a shell program also counts the pipe that it filters and the load that it shares, so it kills narrow searches and filters of long commands.
 Not: Redirecting grep to rg, because the two programs read the same flags and patterns differently and the result is silently wrong.
+
+## ARCH-TOOLS-057: A file read bounds its own window and records only what it returned
+
+The read tool bounds each result itself, by a line limit and by the byte limit of one tool result, which the tool-output boundary owns and hands to the call. A window ends at a whole line, and the result names where the next read continues. The read ledger records only the whole lines that the result returned. A line longer than the budget is shown as a marked prefix and is not recorded. The tool-output boundary never cuts a read window, and a read names no recovery file, because the file is its own source.
+Because: A cut after the read records coverage for lines the agent never saw, so the stale-read warning cannot fire for them.
+Not: Cutting the head and tail of an oversized read at the tool-output boundary.

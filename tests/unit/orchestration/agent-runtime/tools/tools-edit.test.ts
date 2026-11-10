@@ -268,6 +268,24 @@ describe("edit tool", () => {
     expect((await readDefinition.execute({ path: "ledger.txt" }, context)).outcome).toBe("ok");
     const covered = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "three", new_string: "tres" }] }, context);
     expect(covered.content).not.toContain("Warning:");
+
+    // A whole-file read that the size limit ends covers only its page, and the continuation reads cover the rest.
+    const pagedRead = async (continueToEnd: boolean) => {
+      const paged = makeContext({ executionCwd: tmpDir, readLedger: new FileReadLedger(), outputByteBudget: 200 });
+      const readFrom = async (offset: number): Promise<number | undefined> => {
+        const page = String((await readDefinition.execute({ path: "ledger.txt", offset }, paged)).content);
+        const next = /Use offset=(\d+) to continue reading\./u.exec(page)?.[1];
+        return next === undefined ? undefined : Number(next);
+      };
+      let next = await readFrom(0);
+      if (next === undefined) throw new Error("expected the size limit to end the first read");
+      if (continueToEnd) while (next !== undefined) next = await readFrom(next);
+      return paged;
+    };
+    const pastPage = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "line forty-five", new_string: "line 45" }] }, await pagedRead(false));
+    expect(pastPage.content).toEndWith("\nWarning: the last read of ledger.txt did not cover lines 45-45, which this change replaced.");
+    const continued = await edit.execute({ path: "ledger.txt", edits: [{ old_string: "line 45", new_string: "line forty-five" }] }, await pagedRead(true));
+    expect(continued.content).not.toContain("Warning:");
   });
 
   it("refuses replace_all when only a normalizing tier matched", async () => {

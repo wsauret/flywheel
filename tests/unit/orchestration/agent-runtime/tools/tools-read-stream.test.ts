@@ -233,15 +233,86 @@ describe("streamed read acquisition", () => {
     const context = await input.tool.execute({ path: `${filePath}:3-3` }, makeContext());
     expect(context.content).toBe("(Starting from line 2 of 8 total lines)\n2|two\n3|three\n4|four\n5|five\n6|six\n(2 more lines not shown. Use offset=6 to continue reading.)");
     const beyond = await input.tool.execute({ path: filePath, offset: 99, limit: 1 }, makeContext());
-    expect(beyond.content).toBe("(Starting from line 9 of 8 total lines)\n9|");
+    expect(beyond.content).toBe("(Starting from line 9 of 8 total lines)\n");
   });
 
-  it("reads unsupported summary fallback in full and unsupported symbol fallback in a window", async () => {
+  // Each numbered line of this file is 22 bytes, so a budget decides exactly which whole lines fit.
+  const twentyByteLines = (count: number) => encode(Array.from({ length: count }, (_, i) => `line ${String(i + 1).padStart(2, "0")} xxxxxxxxxxxx`).join("\n"));
+
+  it("ends a single-range window at a whole line within the byte budget and records only the lines it returned", async () => {
+    const bytes = twentyByteLines(12);
+    const input = source(bytes);
+    const ledger = new FileReadLedger();
+    const budget = 180;
+    const result = await input.tool.execute({ path: `${filePath}:3-8` }, makeContext({ readLedger: ledger, outputByteBudget: budget }));
+    expect(result.content).toBe("(Starting from line 2 of 12 total lines)\n2|line 02 xxxxxxxxxxxx\n3|line 03 xxxxxxxxxxxx\n(Output limit reached at line 3 of the requested 2-11. Use offset=3 to continue reading.)");
+    expect(Buffer.byteLength(String(result.content))).toBeLessThanOrEqual(budget);
+    const canonical = canonicalMutationPath(filePath);
+    expect(ledger.staleness(canonical, bytes, { start: 2, end: 3 })).toBeUndefined();
+    expect(ledger.staleness(canonical, bytes, { start: 4, end: 4 })).toEqual({ kind: "uncovered", lines: { start: 4, end: 4 } });
+    // A window that every line fits says only that the file continues.
+    const fits = await input.tool.execute({ path: filePath, offset: 0, limit: 2 }, makeContext({ outputByteBudget: budget }));
+    expect(fits.content).toBe("1|line 01 xxxxxxxxxxxx\n2|line 02 xxxxxxxxxxxx\n(10 more lines not shown. Use offset=2 to continue reading.)");
+  });
+
+  it("draws multi-range windows from one budget in order and lists ranges it could not show", async () => {
+    const bytes = twentyByteLines(16);
+    const input = source(bytes);
+    const ledger = new FileReadLedger();
+    const budget = 310;
+    const result = await input.tool.execute({ path: `${filePath}:1-2,5-12,14-14,40-40` }, makeContext({ readLedger: ledger, outputByteBudget: budget }));
+    expect(result.content).toBe([
+      "1|line 01 xxxxxxxxxxxx\n2|line 02 xxxxxxxxxxxx\n\n...\n\n5|line 05 xxxxxxxxxxxx\n6|line 06 xxxxxxxxxxxx",
+      "(Output limit reached at line 6 of the requested 5-12. Use offset=6 to continue reading.)",
+      "[Range 14-14 not shown: the output limit was reached]",
+      "[Range 40-40 is beyond end of file (16 lines total); skipped]",
+    ].join("\n"));
+    expect(Buffer.byteLength(String(result.content))).toBeLessThanOrEqual(budget);
+    const canonical = canonicalMutationPath(filePath);
+    expect(ledger.staleness(canonical, bytes, { start: 1, end: 2 })).toBeUndefined();
+    expect(ledger.staleness(canonical, bytes, { start: 5, end: 6 })).toBeUndefined();
+    expect(ledger.staleness(canonical, bytes, { start: 7, end: 7 })).toEqual({ kind: "uncovered", lines: { start: 7, end: 7 } });
+    expect(ledger.staleness(canonical, bytes, { start: 14, end: 14 })).toEqual({ kind: "uncovered", lines: { start: 14, end: 14 } });
+
+    // Ranges keep the caller's order, also when it is not line order.
+    const reversed = await input.tool.execute({ path: `${filePath}:15-16,1-2` }, makeContext({ outputByteBudget: budget }));
+    expect(reversed.content).toBe("15|line 15 xxxxxxxxxxxx\n16|line 16 xxxxxxxxxxxx\n\n...\n\n1|line 01 xxxxxxxxxxxx\n2|line 02 xxxxxxxxxxxx");
+    const drawnInOrder = String((await input.tool.execute({ path: `${filePath}:4-15,1-2` }, makeContext({ outputByteBudget: budget }))).content);
+    expect(drawnInOrder).toStartWith("4|line 04 xxxxxxxxxxxx\n");
+    expect(drawnInOrder).toEndWith("[Range 1-2 not shown: the output limit was reached]");
+
+    // However many ranges the call names, the ranges it leaves out share one notice of each kind.
+    const odd = Array.from({ length: 300 }, (_, i) => `${2 * i + 1}-${2 * i + 1}`).join(",");
+    const cut = String((await input.tool.execute({ path: `${filePath}:${odd}` }, makeContext({ outputByteBudget: 300 }))).content);
+    expect(Buffer.byteLength(cut)).toBeLessThanOrEqual(300);
+    expect(cut).toStartWith("1|line 01 xxxxxxxxxxxx\n\n...\n\n3|line 03 xxxxxxxxxxxx");
+    expect(cut).toMatch(/\n\[\d+ ranges not shown, \d+-\d+ through 15-15: the output limit was reached\]\n\[292 ranges from 17-17 are beyond end of file \(16 lines total\); skipped\]$/u);
+  });
+
+  it("shows a marked prefix of a line longer than the budget, records no coverage for it, and moves past it", async () => {
+    const bytes = encode(`short\n${"é".repeat(200)}\nafter`);
+    const input = source(bytes);
+    const ledger = new FileReadLedger();
+    const budget = 260;
+    const result = await input.tool.execute({ path: filePath, offset: 1 }, makeContext({ readLedger: ledger, outputByteBudget: budget }));
+    const text = String(result.content);
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(budget);
+    expect(text).toStartWith("(Starting from line 2 of 3 total lines)\n2|éé");
+    expect(text).toMatch(/\n\[Line 2 is longer than the output limit: showed \d+ of its 400 bytes\. Use the bash tool to see the rest of the line\.\]\n\(Output limit reached at line 2 of the requested 2-3\. Use offset=2 to continue reading\.\)$/u);
+    expect(text).not.toContain("�");
+    const canonical = canonicalMutationPath(filePath);
+    expect(ledger.staleness(canonical, bytes, { start: 2, end: 2 })).toEqual({ kind: "uncovered", lines: { start: 2, end: 2 } });
+    const unshelled = await input.tool.execute({ path: filePath, offset: 1 }, makeContext({ outputByteBudget: budget, capabilities: (term) => term !== "bash" }));
+    expect(unshelled.content).not.toContain("bash");
+    expect((await input.tool.execute({ path: filePath, offset: 2 }, makeContext({ outputByteBudget: budget }))).content).toBe("(Starting from line 3 of 3 total lines)\n3|after");
+  });
+
+  it("reads unsupported summary fallback and unsupported symbol fallback in a window", async () => {
     const bytes = encode(Array.from({ length: 2002 }, (_, i) => `line ${i + 1}`).join("\n"));
     const input = source(bytes);
     const full = await input.tool.execute({ path: filePath }, makeContext());
-    expect(full.content).toContain("2002|line 2002");
-    expect(full.content).not.toContain("more lines");
+    expect(full.content).toStartWith("1|line 1\n");
+    expect(full.content).toEndWith("2000|line 2000\n(2 more lines not shown. Use offset=2000 to continue reading.)");
     const symbol = await input.tool.execute({ path: filePath, symbol: "missing" }, makeContext());
     expect(symbol.content).toStartWith("[Warning: structural map not available for this file type. Falling back to normal read.]\n1|line 1");
     expect(symbol.content).toEndWith("(2 more lines not shown. Use offset=2000 to continue reading.)");

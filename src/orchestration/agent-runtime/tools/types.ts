@@ -408,6 +408,11 @@ export interface ToolContext {
   effectiveBundledSkillIds?: ReadonlySet<string>;
   /** Set per-call by executePreparedTool; the tool_use block's ID from the LLM response. */
   toolUseId?: string;
+  /** Set per-call by executePreparedTool: the UTF-8 bytes of text this call's result can hold before the
+   *  tool-output boundary cuts it, which is that boundary's per-result cap less the notices dispatch prepends. A
+   *  tool that pages its own output, such as read, fits each window within it. Absent outside dispatch, where the
+   *  boundary's whole cap applies. */
+  outputByteBudget?: number;
   /** Provider request that emitted the tool_use block. */
   modelRequestId?: string;
   /** Tool-use id this runner nests under (constant per runner; absent at top

@@ -26,7 +26,9 @@ import { saveFullOutput } from "../tools/output-breadcrumb.js";
 import type { RetainedFullContent } from "../tools/types.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 
-const DEFAULT_MAX_BYTES = 30_000;
+/** The per-result cap of tool output text in UTF-8 bytes. This boundary owns it; dispatch hands each call what
+ *  remains of it after its own notices, so a tool that pages its own output fits within it (ARCH-TOOLS-057). */
+export const TOOL_RESULT_MAX_BYTES = 30_000;
 
 const UNAVAILABLE_REST = "The rest of the output is not available with your tools.";
 
@@ -79,7 +81,7 @@ export async function limitOutput(
     content,
     fullContent,
     retainedFullContent,
-    maxBytes = DEFAULT_MAX_BYTES,
+    maxBytes = TOOL_RESULT_MAX_BYTES,
     executionCwd,
     projectRoot,
     artifactScopeId,

@@ -409,20 +409,57 @@ export async function prepareReadOnlyPathInput(
   };
 }
 
-/** Run batch members in order, retaining text headers and image parts. */
-export async function executePathBatch(paths: readonly string[], execute: (path: string) => Promise<ToolResult>): Promise<ToolResult> {
+/** Room for the framing of one read window (headers, notices, markers: a few hundred bytes) and a useful page. */
+const MIN_MEMBER_BUDGET_BYTES = 1_024;
+/** One notice for every path the call did not read, so its size does not grow with their count. */
+function notReadNotice(paths: readonly string[]): string {
+  const [first] = paths;
+  if (first === undefined) return "";
+  return paths.length === 1
+    ? `[Not read: ${first}. This call reached its output limit. Read this path in a separate call.]`
+    : `[${paths.length} paths not read, from ${first}: this call reached its output limit. Read them in a separate call.]`;
+}
+
+/** Upper bound of the UTF-8 text bytes a result adds once its text parts are joined. */
+function textBytes(content: ToolResult["content"]): number {
+  if (typeof content === "string") return Buffer.byteLength(content, "utf-8");
+  return content.reduce((sum, part) => sum + (part.type === "text" ? Buffer.byteLength(part.text, "utf-8") + 1 : 0), 0);
+}
+
+/** Run batch members in order, retaining text headers and image parts.
+ *
+ *  With `budget`, members share the text bytes of the call in order: each member gets what remains after its
+ *  header and the notice that would list the members after it. The first member whose share is too small to page
+ *  ends the batch, and one notice lists it and every later member. Without it, every member runs with an unbounded
+ *  share. */
+export async function executePathBatch(paths: readonly string[], execute: (path: string, budget: number) => Promise<ToolResult>, budget = Number.POSITIVE_INFINITY): Promise<ToolResult> {
+  const separatorBytes = (index: number) => index > 0 ? 2 : 0;
+  const headerBytes = (index: number) => Buffer.byteLength(`### ${paths[index]}\n`, "utf-8") + separatorBytes(index);
+  const noticeBytes = (index: number) => index < paths.length ? Buffer.byteLength(notReadNotice(paths.slice(index)), "utf-8") + separatorBytes(index) : 0;
   const results: ToolResult[] = [];
-  for (const path of paths) results.push(await execute(path));
+  let remaining = budget;
+  for (const [index, path] of paths.entries()) {
+    const share = remaining - headerBytes(index) - noticeBytes(index + 1);
+    if (share < MIN_MEMBER_BUDGET_BYTES) break;
+    const result = await execute(path, share);
+    remaining -= headerBytes(index) + textBytes(result.content);
+    results.push(result);
+  }
+  const notRead = notReadNotice(paths.slice(results.length));
   const outcome = results.some((result) => result.outcome === "error") ? "error"
     : results.some((result) => result.outcome === "interrupted") ? "interrupted" : "ok";
   if (results.every((result) => typeof result.content === "string")) {
-    return { content: results.map((result, index) => `### ${paths[index]}\n${result.content}`).join("\n\n"), outcome };
+    const members = results.map((result, index) => `### ${paths[index]}\n${result.content}`);
+    return { content: [...members, ...(notRead ? [notRead] : [])].join("\n\n"), outcome };
   }
   return {
-    content: results.flatMap((result, index) => [
-      { type: "text" as const, text: `### ${paths[index]}` },
-      ...(typeof result.content === "string" ? [{ type: "text" as const, text: result.content }] : result.content),
-    ]),
+    content: [
+      ...results.flatMap((result, index) => [
+        { type: "text" as const, text: `### ${paths[index]}` },
+        ...(typeof result.content === "string" ? [{ type: "text" as const, text: result.content }] : result.content),
+      ]),
+      ...(notRead ? [{ type: "text" as const, text: notRead }] : []),
+    ],
     outcome,
   };
 }

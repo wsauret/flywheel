@@ -42,27 +42,22 @@ function parseLineRanges(sel: string): [LineRange, ...LineRange[]] | null {
     if (!range) return null;
     parsed.push(range);
   }
-  const first = parsed[0];
-  if (parsed.length === 0 || !first) return null;
-  parsed.sort((a, b) => a.startLine - b.startLine);
-  // Typed as a non-empty tuple seeded with `first`, so the return needs no
-  // cast: we only ever push or rewrite the last element, never empty it.
-  const merged: [LineRange, ...LineRange[]] = [first];
-  for (let i = 1; i < parsed.length; i++) {
-    const current = parsed[i];
-    const last = merged[merged.length - 1];
-    if (!current || !last) continue;
-    // last.endLine === undefined means "to EOF": later ranges are subsumed, not lost.
-    if (last.endLine === undefined) continue;
-    if (current.startLine <= last.endLine + 1) {
-      if (current.endLine === undefined || current.endLine > last.endLine) {
-        merged[merged.length - 1] = { startLine: last.startLine, endLine: current.endLine };
-      }
+  // Overlapping and adjacent ranges merge in line order; each merged range keeps the place of its earliest member,
+  // so the result reads in the caller's order.
+  const merged: { range: LineRange; order: number }[] = [];
+  const byLine = parsed.map((range, order) => ({ range, order })).sort((a, b) => a.range.startLine - b.range.startLine);
+  for (const current of byLine) {
+    const last = merged.at(-1);
+    // last.range.endLine === undefined means "to EOF": later ranges are subsumed, not lost.
+    if (last && (last.range.endLine === undefined || current.range.startLine <= last.range.endLine + 1)) {
+      const endLine = last.range.endLine === undefined || current.range.endLine === undefined ? undefined : Math.max(last.range.endLine, current.range.endLine);
+      merged[merged.length - 1] = { range: { startLine: last.range.startLine, endLine }, order: Math.min(last.order, current.order) };
       continue;
     }
     merged.push(current);
   }
-  return merged;
+  const [first, ...rest] = merged.sort((a, b) => a.order - b.order).map(({ range }) => range);
+  return first ? [first, ...rest] : null;
 }
 
 export function splitPathAndSel(rawPath: string): PathSelectorSplit {

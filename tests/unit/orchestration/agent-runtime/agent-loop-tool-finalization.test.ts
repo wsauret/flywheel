@@ -1,3 +1,4 @@
+import { existsSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { describe, expect, it } from "bun:test"
@@ -8,6 +9,7 @@ import { buildMutationEvidence, buildMutationFileEvidence } from "../../../../sr
 import type { StageSessionContentNodes } from "../../../../src/infra/session-content.js"
 import { asRecord } from "../../../../src/infra/record.js"
 import { createTurnDispatcher } from "../../../../src/orchestration/agent-runtime/agent-loop-tools.js"
+import { readDefinition } from "../../../../src/orchestration/agent-runtime/tools/read.js"
 import { fixedTurnOutputBound } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js"
 import { settleTurn } from "../../../../src/orchestration/agent-runtime/agent-turn-settlement.js"
 import type { StreamEvent, ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js"
@@ -313,6 +315,27 @@ describe("tool result finalization", () => {
     const notice = blockedFailureRecord(describeAgentFailure({ kind: "local_persistence_error", error }))
     expect(notice).toContain("The file changes already settled")
     expect(notice).not.toContain("provider")
+  })
+
+  it("settles a repaired read of a file over the cap as one whole-line window, uncut and with no saved output", async () => {
+    const context = makeContext()
+    const lines = Array.from({ length: 700 }, (_, index) => `Statement ${index + 1}: ${"x".repeat(55)}`)
+    writeFileSync(join(context.projectRoot, "doc.md"), lines.join("\n"))
+    const call: ToolCall = { id: "tool_read", name: "read", input: { path: "doc.md", offset: null } }
+    const turn = harness(readDefinition, context)
+
+    turn.onToolUse(call)
+    await turn.settle(call)
+
+    const event = turn.events[0]
+    if (event?.kind !== "tool_result") throw new Error("expected tool result event")
+    expect(event.contentTruncated).toBeUndefined()
+    expect(event.fullContentPath).toBeUndefined()
+    const text = event.content[0]?.type === "text" ? event.content[0].text : ""
+    expect(text).toStartWith("Note: `offset` was null, so it was left out.\n1|Statement 1: ")
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(30_000)
+    expect(text).toMatch(/\n\(Output limit reached at line (\d+) of the requested 1-700\. Use offset=\1 to continue reading\.\)$/u)
+    expect(existsSync(join(context.projectRoot, ".flywheel", "agent-outputs"))).toBe(false)
   })
 
   it("exempts uncappedOutput tools from the byte cap", async () => {
