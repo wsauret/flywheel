@@ -1,0 +1,18 @@
+webview/phone/host-theme.css
+  h_4b47e9e4a8b456 47,49-61,63-65,68-72
+webview/phone/main.tsx
+  h_4b47e9e4a8b456 131-151,181
+webview/src/styles/selection-grips.css
+  h_4b47e9e4a8b456 5-8,11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d156fa5ee2793924d5cc1931cd586341f0799318",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
