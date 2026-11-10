@@ -1,0 +1,49 @@
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 1,3,14,207,226,251,256-264,266-272,274,285,287-293,296-297,306,309-312,314-315,346,381,398,464
+  h_4b47e9e4a8b456 273,316-317
+tests/unit/orchestration/agent-runtime/context/loop-person-turn-surface.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/orchestration/agent-runtime/context/notes-capability.test.ts
+  h_4b47e9e4a8b456 44,82-85,162,164-165,169,185-186
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 712-713
+  h_4b47e9e4a8b456 641-642,685
+tests/unit/orchestration/chat/chat-compact.test.ts
+  h_4b47e9e4a8b456 64-65,127
+tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+  h_4b47e9e4a8b456 448
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 332-333,339
+tests/unit/orchestration/workflow-host/workflow-interruption.test.ts
+  h_4b47e9e4a8b456 548-552
+tests/unit/orchestration/agent-runtime/context/notes-only-compaction.test.ts
+  h_4b47e9e4a8b456 166-168
+tests/unit/orchestration/agent-runtime/session-notes-prompts.test.ts
+  h_4b47e9e4a8b456 61
+tests/unit/orchestration/agent-runtime/context/loop-tool-behavior.test.ts
+  h_4b47e9e4a8b456 20-21
+  h_4b47e9e4a8b456 55,59
+src/orchestration/agent-runtime/agent-loop-compaction-state.ts
+  h_4b47e9e4a8b456 23-28,93,196,198-202,204-209,230-236,239-243,246,249-250
+tests/unit/orchestration/agent-runtime/context/loop-interruption-barrier.test.ts
+  h_4b47e9e4a8b456 245
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 334-340
+tests/unit/orchestration/agent-runtime/context/loop-outgoing-context.test.ts
+  h_4b47e9e4a8b456 237,246,336-340
+tests/unit/orchestration/chat/chat-session-agent-runtime-resume.test.ts
+  h_4b47e9e4a8b456 489-493
+src/infra/agent-assets/session-notes.ts
+  h_4b47e9e4a8b456 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d6b2e72b498a8edf0a751fc240569f0fb40779e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
