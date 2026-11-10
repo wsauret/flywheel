@@ -480,10 +480,10 @@ export function createProjectStateClient(
       if (result.kind !== "session-ids") throw stateReadError(result)
       return [...result.sessionIds]
     },
-    async hasInFlightProfile(kind, profileId) {
+    async inFlightProfileKeys(kind, profileId) {
       const result = await request("control", { kind: "in-flight.profile", inFlightKind: kind, profileId })
       if (result.kind !== "in-flight.profile") throw stateReadError(result)
-      return result.found
+      return [...result.keys]
     },
     async countByAggregate(aggregateId) {
       const result = await request("control", { kind: "aggregate.count", aggregateId })

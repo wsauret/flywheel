@@ -158,7 +158,7 @@ function stateHarness() {
     readLatestByAggregateAndTypes: async () => [],
     readInFlight: async () => [],
     sessionsWithInFlight: async () => [],
-    hasInFlightProfile: async () => false,
+    inFlightProfileKeys: async () => [],
     countByAggregate: async () => 0,
     aggregateSeq: async () => -1,
     readSlice: async () => ({ facts: [], toolContent: { resolve: () => null } }),

@@ -15,7 +15,7 @@ export function UsageTokenLines(props: { tokens: UsageTokens; coverage: UsageCov
   const number = (value: number) => value.toLocaleString("en-US")
   return <box flexDirection="column">
     <text fg={theme.text}>{`Reported cache hit rate  ${rate()}`}</text>
-    <text fg={props.coverage.unmeasuredAttempts > 0 ? theme.warning : theme.textMuted}>{usageCoverageText(props.coverage)}</text>
+    <text fg={theme.textMuted}>{usageCoverageText(props.coverage)}</text>
     <text fg={theme.textMuted}>{`Input ${number(counts().input)} · Cached ${cached(counts().cached)} · Uncached ${cached(counts().uncached)}`}</text>
     <text fg={theme.textMuted}>{`Cache writes ${cached(counts().cacheWrite)} · Output ${number(counts().output)}`}</text>
   </box>

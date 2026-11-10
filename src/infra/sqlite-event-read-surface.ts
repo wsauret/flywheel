@@ -162,13 +162,12 @@ export function createSqliteEventReadSurface(db: Database): EventStoreReadSurfac
   const selectInFlightSessions = db.query<{ session_id: string }, { $kind: string }>(
     "select distinct session_id from in_flight where kind = $kind order by session_id",
   )
-  const selectInFlightProfile = db.query<{ found: number }, { $kind: string; $profileId: string }>(`
-    select 1 as found from in_flight where kind = $kind
+  const selectInFlightProfileKeys = db.query<{ key: string }, { $kind: string; $profileId: string }>(`
+    select key from in_flight where kind = $kind
       and json_extract(case when json_valid(payload) then payload else '{}' end, '$.profileId') = $profileId
-    union all
-    select 1 as found from in_flight where kind = $kind
+    union
+    select key from in_flight where kind = $kind
       and json_extract(case when json_valid(payload) then payload else '{}' end, '$.entry.profileId') = $profileId
-    limit 1
   `)
   const selectAggregateSeq = db.query<{ seq: number } | null, { $aggregateId: string }>(
     "select seq from event_sequence where aggregate_id = $aggregateId",
@@ -291,7 +290,7 @@ export function createSqliteEventReadSurface(db: Database): EventStoreReadSurfac
     countByAggregate: (aggregateId) => selectAggregateCount.get({ $aggregateId: aggregateId })?.count ?? 0,
     aggregateSeq: (aggregateId) => selectAggregateSeq.get({ $aggregateId: aggregateId })?.seq ?? -1,
     sessionsWithInFlight: (kind) => selectInFlightSessions.all({ $kind: kind }).map((row) => row.session_id),
-    hasInFlightProfile: (kind, profileId) => selectInFlightProfile.get({ $kind: kind, $profileId: profileId }) !== null,
+    inFlightProfileKeys: (kind, profileId) => selectInFlightProfileKeys.all({ $kind: kind, $profileId: profileId }).map((row) => row.key),
     readInFlight,
     foldEvidence: (scope, at) => ({ head: selectMaxPosition.get()?.position ?? 0, generation: rewriteGeneration(scope), anchor: anchorAt(scope, at) }),
   }

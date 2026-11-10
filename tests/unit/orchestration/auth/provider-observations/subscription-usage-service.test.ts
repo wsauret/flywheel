@@ -142,7 +142,7 @@ describe("subscription usage service", () => {
 
     expect(snapshot?.accounts.map((state) => state.account.instanceId)).toEqual(["uuid-plan"])
     expect(read).toEqual(["uuid-plan"])
-    const usageDeps = createRuntimeUsageDeps({ moduleSelection: () => providers.composition, eventReader: { hasInFlightProfile: async () => false } })
+    const usageDeps = createRuntimeUsageDeps({ moduleSelection: () => providers.composition, eventReader: { inFlightProfileKeys: async () => [] } })
     expect(usageDeps.meteredUsageSources({ id: "default", directory })).toEqual([{
       kind: "metered", sourceId: subscriptionSpendAccountCorrelationId("default", "external", "uuid-enterprise"), providerId: "external",
       label: "external", spendMode: "direct_api", identity: "enterprise@example.com",

@@ -47,7 +47,7 @@ export function fixture(initial: StoredFact[]) {
   const reader: EventStoreReadSurface = {
     read, readTolerant: read, currentPosition: () => rows.at(-1)?.position ?? 0,
     readLatestPayloadByAggregateAndType: () => null, readLatestByAggregateAndTypes: () => [],
-    readInFlight: mock(() => []), sessionsWithInFlight: () => [], hasInFlightProfile: () => false, countByAggregate: () => rows.length, aggregateSeq: () => rows.length - 1,
+    readInFlight: mock(() => []), sessionsWithInFlight: () => [], inFlightProfileKeys: () => [], countByAggregate: () => rows.length, aggregateSeq: () => rows.length - 1,
     foldEvidence: () => ({ head: rows.at(-1)?.position ?? 0, generation: 0, anchor: null }),
     toolContent: { resolve: mock(() => null) },
   }

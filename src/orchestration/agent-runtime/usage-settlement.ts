@@ -246,6 +246,11 @@ const liveAttempts = new Set<string>()
  *  begun since. */
 const recoveryExclusions = new Set<Set<string>>()
 
+/** Whether the attempt's provider work still runs in this process, so its settlement cell is a request in progress. */
+export function isUsageAttemptLive(attemptId: string): boolean {
+  return liveAttempts.has(attemptId)
+}
+
 /** Owns the record-before-act saga from one provider attempt to its exact profile ledger and atomic session publication. */
 export function createUsageSettlement(options: UsageSettlementOptions): UsageSettlement {
   const drafts = new Map<string, UsageSettlementDraft>()

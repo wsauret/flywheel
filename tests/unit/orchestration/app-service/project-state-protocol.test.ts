@@ -61,7 +61,7 @@ describe("project state protocol", () => {
       { kind: "fact-list", facts: [] },
       { kind: "in-flight", records: [{ kind: "tool", key: "k", payload: {}, raw: "{}" }] },
       { kind: "session-ids", sessionIds: ["s"] },
-      { kind: "in-flight.profile", found: false },
+      { kind: "in-flight.profile", keys: ["attempt"] },
       { kind: "count", count: 0 },
       { kind: "sequence", sequence: -1 },
       { kind: "fact-slice", facts: [], contentRows: [], encodedBytes: 0 },

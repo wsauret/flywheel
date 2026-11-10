@@ -124,7 +124,7 @@ An Anthropic subscription account's headline shows its weekly all-models usage w
 
 ## PI-MODEL-053: Usage reports each account's tracked activity
 
-Each account's Flywheel activity reports the current local calendar month and each current account-wide provider usage window separately, with explicit date ranges. While Usage is open, tracked activity updates as model requests are recorded. Missing or partial accounting is explicit, and an unknown price is flagged on its account and model and adds no money. A period reads incomplete only while accounting is still settling, and an unavailable ledger reads unavailable, never zero.
+Each account's Flywheel activity reports the current local calendar month and each current account-wide provider usage window separately, with explicit date ranges. While Usage is open, tracked activity updates as model requests are recorded. Missing or partial accounting is explicit, and an unknown price is flagged on its account and model and adds no money. A period reads incomplete only while an ended request's usage is not yet in the ledger; a request in progress does not make it incomplete. An unavailable ledger reads unavailable, never zero.
 
 ## PI-MODEL-054: Spend keeps measured usage apart from billed spend
 
@@ -180,7 +180,11 @@ After an account's included usage is gone, Flywheel sends requests through an al
 
 ## PI-MODEL-019: Session title model selection
 
-People can choose the model and reasoning effort used for automatic session titles in the Background section of model configuration. Each title request uses the current setting of the session's auth profile and skips an unreachable saved model together with its effort. Without a reachable saved choice, titles prefer GPT-6 Luna at low effort, then Claude Haiku 5.5 at low effort. Otherwise titles use the newest reachable cheap model at low effort, then the nearest populated tier, then any reachable unranked model.
+People can choose the model and reasoning effort used for model-written session titles in the Background section of model configuration. Each title request uses the current setting of the session's auth profile and skips an unreachable saved model together with its effort. Without a reachable saved choice, titles prefer GPT-6 Luna at low effort, then Claude Haiku 5.5 at low effort. Otherwise titles use the newest reachable cheap model at low effort, then the nearest populated tier, then any reachable unranked model.
+
+## PI-MODEL-086: Automatic session naming
+
+A new chat, and a workflow run that its launch did not name, shows a quick title from the first words of its first message at once. A model then writes a better title and short title from the start of that message, unless a person named the session. An unattended run keeps the quick title, and Flywheel makes no model request to name it.
 
 ## PI-MODEL-020: Current subagent model visibility
 

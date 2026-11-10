@@ -67,7 +67,7 @@ export function inMemoryEventReader(
     // In-flight state is never folded from facts, so a fact-list double holds none.
     readInFlight: () => [],
     sessionsWithInFlight: () => [],
-    hasInFlightProfile: () => false,
+    inFlightProfileKeys: () => [],
     // A fact list is never rewritten, so its generation stays zero.
     foldEvidence: (scope, at) => {
       const anchor = read({ ...scope, beforePosition: at + 1, order: "desc", limit: 1 })[0]

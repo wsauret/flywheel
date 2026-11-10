@@ -59,7 +59,7 @@ describe("Usage account browser", () => {
     const accounts = { ...fixtures.usageAccounts, sources: [{ ...source, activity: { ...source.activity, partial: true, incomplete: false, trackingStartMs: new Date(2026, 8, 5).getTime() } }] }
     const rendered = await frame({ accounts })
     expect(rendered).toContain("Tracked from Sep 5 · partial month")
-    expect(rendered).not.toContain("Activity ledger is incomplete")
+    expect(rendered).not.toContain("Some ended requests are not counted yet")
   })
   it("names an account window whose exact dates are unavailable", async () => {
     const source = fixtures.usageAccounts.sources[0]

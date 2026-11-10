@@ -255,7 +255,7 @@ export function activityLines(source: UsageAccountSource): readonly UsageLine[] 
     { label: "Estimated billed", value: formatUsd(activity.estimatedBilledUsd) },
     coverageLine("Included value", formatUsd(activity.includedValueUsd), activity),
     { label: "Tokens", value: tokens.total.toLocaleString(), detail: `cache read ${activity.cacheComplete ? tokens.cacheRead.toLocaleString() : "unavailable"} · cache write ${tokens.cacheWrite.toLocaleString()} · reasoning ${tokens.reasoning.toLocaleString()}` },
-    ...(activity.incomplete ? [{ label: "Activity ledger is incomplete", tone: "warn" as const }] : []),
+    ...(activity.incomplete ? [{ label: "Some ended requests are not counted yet", tone: "warn" as const }] : []),
     ...(activity.priceUnavailable ? [{ label: "Some model prices are unavailable", tone: "warn" as const }] : []),
     ...currentWindowLines(source),
   ]
@@ -288,9 +288,10 @@ export interface SpendGroup {
   readonly lines: readonly UsageLine[]
 }
 
-/** A reading whose detail states the coverage of its requests, in warning tone when some reported no usage. */
+/** A reading whose detail states the coverage of its requests. A request that reported no usage is counted, not a
+ *  warning: it is a known gap the ledger already holds. */
 function coverageLine(label: string, value: string, coverage: UsageCoverageCounts): UsageLine {
-  return { label, value, detail: usageCoverageText(coverage), ...(coverage.unmeasuredAttempts > 0 ? { tone: "warn" as const } : {}) }
+  return { label, value, detail: usageCoverageText(coverage) }
 }
 
 /** The cache hit rate of reported input, or why it is unknown. */
@@ -323,7 +324,7 @@ export function spendGroups(spend: UsageSpendResult): readonly SpendGroup[] {
       { label: "Estimated billed spend", value: formatUsd(spend.estimatedBilledUsd) },
       { label: "Subscription-equivalent value", value: formatUsd(spend.includedValueUsd) },
       ...tokenLines(sumUsageTokens(spend.sources.map((source) => source.tokens)), sumUsageCoverage(spend.sources)),
-      { label: `Tracking since ${shortDate(spend.trackingStartMs)}${spend.partial ? " · partial range" : ""}`, ...(spend.incomplete ? { detail: "Usage incomplete", tone: "warn" as const } : {}) },
+      { label: `Tracking since ${shortDate(spend.trackingStartMs)}${spend.partial ? " · partial range" : ""}`, ...(spend.incomplete ? { detail: "Some ended requests are not counted yet", tone: "warn" as const } : {}) },
     ],
   }
   const sources = spend.sources.map((source): SpendGroup => ({
@@ -339,7 +340,7 @@ export function spendGroups(spend: UsageSpendResult): readonly SpendGroup[] {
         label: model.model,
         value: `${model.tokens.total.toLocaleString()} tokens`,
         detail: `${usageCoverageText(model)} · ${formatUsd(model.estimatedBilledUsd)} billed · ${formatUsd(model.includedValueUsd)} subscription-equivalent value · ${cache} · ${counts.output.toLocaleString()} output${model.priceUnavailable ? " · price unavailable" : ""}`,
-        ...(model.priceUnavailable || model.unmeasuredAttempts > 0 ? { tone: "warn" as const } : {}),
+        ...(model.priceUnavailable ? { tone: "warn" as const } : {}),
       }
     })],
   }))

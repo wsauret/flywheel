@@ -231,7 +231,7 @@ export function emptyEventReader(): EventStoreReadSurface {
     aggregateSeq: () => -1,
     readInFlight: () => [],
     sessionsWithInFlight: () => [],
-    hasInFlightProfile: () => false,
+    inFlightProfileKeys: () => [],
     foldEvidence: () => ({ head: 0, generation: 0, anchor: null }),
   }
 }

@@ -33,7 +33,7 @@ function fixture(options: { readonly accountingUnavailable?: boolean } = {}) {
     moduleSelection: () => composeFirstPartyModules([]),
     onSelectionChanged: (listener) => { selectionListeners.add(listener); return () => { selectionListeners.delete(listener) } },
     notify: async () => {}, interactive: true, directories: { projectRoot: "/scratch/usage-service-test" },
-    projectionReader: { hasInFlightProfile: async () => false },
+    projectionReader: { inFlightProfileKeys: async () => [] },
     // A composition that fails before its auth runtime exists disposes this
     // service while the accounting accessor still throws.
     profileAccounting: () => options.accountingUnavailable ? (() => { throw new ReferenceError("Cannot access 'authRuntime' before initialization.") })() : ({

@@ -6,11 +6,11 @@ import type { AsyncEventStateReadSurface } from "../../../infra/event-store-type
 import type { FirstPartyModuleComposition } from "../../modules.js"
 
 import { accessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
-import { USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../agent-runtime/usage-settlement.js"
+import { isUsageAttemptLive, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../agent-runtime/usage-settlement.js"
 import { credentialSlotClassifier } from "../../auth/credential-slot-classifier.js"
 interface RuntimeUsageDepsOptions {
   readonly moduleSelection: () => FirstPartyModuleComposition
-  readonly eventReader: Pick<AsyncEventStateReadSurface, "hasInFlightProfile">
+  readonly eventReader: Pick<AsyncEventStateReadSurface, "inFlightProfileKeys">
 }
 
 /** Derives the unified Usage service's provider and unsettled-session views from their owning runtime projections. */
@@ -37,6 +37,9 @@ export function createRuntimeUsageDeps(options: RuntimeUsageDepsOptions) {
     },
     usageProviderDisplayName: (providerId: string) => accessProviderRegistry(options.moduleSelection()).selection.definitions.find(({ id }) => id === providerId)?.shortName ?? providerId,
     providerDefinitions: () => accessProviderRegistry(options.moduleSelection()).selection.definitions,
-    usageIncomplete: (profileId: string) => options.eventReader.hasInFlightProfile(USAGE_SETTLEMENT_IN_FLIGHT_KIND, profileId),
+    /** A cell of a live attempt is a request still in progress; only a cell no live attempt owns is an ended request
+     *  whose usage the ledger lacks. */
+    usageIncomplete: async (profileId: string) =>
+      (await options.eventReader.inFlightProfileKeys(USAGE_SETTLEMENT_IN_FLIGHT_KIND, profileId)).some((attemptId) => !isUsageAttemptLive(attemptId)),
   }
 }

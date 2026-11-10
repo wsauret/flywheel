@@ -387,8 +387,8 @@ export interface AsyncEventStateReadSurface extends AsyncEventReadSurface {
   readLatestByAggregateAndTypes(aggregateId: string, types: readonly string[]): Promise<StoredFact[]>
   readInFlight(sessionId: string, kind: string | readonly string[], keyPrefix?: string): Promise<InFlightRecord[]>
   sessionsWithInFlight(kind: string): Promise<string[]>
-  /** Indexed existence of a profile's pending or measured in-flight cell. */
-  hasInFlightProfile(kind: string, profileId: string): Promise<boolean>
+  /** Keys of a profile's pending or measured in-flight cells of `kind`, across sessions, in one read. */
+  inFlightProfileKeys(kind: string, profileId: string): Promise<string[]>
   countByAggregate(aggregateId: string): Promise<number>
   aggregateSeq(aggregateId: string): Promise<number>
   /** Finishes the work that a sequence read or a write of the named sessions
@@ -427,8 +427,9 @@ export interface EventReader {
    *  that reconciles interrupted operations needs to find them without a fact
    *  to scan for. */
   sessionsWithInFlight(kind: string): string[]
-  /** Matches either payload.profileId or payload.entry.profileId without reading session cells. */
-  hasInFlightProfile(kind: string, profileId: string): boolean
+  /** Keys of the cells whose payload.profileId or payload.entry.profileId names the profile, without reading
+   *  session cells. */
+  inFlightProfileKeys(kind: string, profileId: string): string[]
   currentPosition(): number
   countByAggregate(aggregateId: string): number
   /** Last assigned per-aggregate seq from the `event_sequence` counter (-1
@@ -484,7 +485,7 @@ export function asAsyncEventReadSurface(store: EventReader | EventStoreReadSurfa
     readLatestByAggregateAndTypes: async (aggregateId, types) => store.readLatestByAggregateAndTypes(aggregateId, types),
     readInFlight: async (sessionId, kind, keyPrefix) => store.readInFlight(sessionId, kind, keyPrefix),
     sessionsWithInFlight: async (kind) => store.sessionsWithInFlight(kind),
-    hasInFlightProfile: async (kind, profileId) => store.hasInFlightProfile(kind, profileId),
+    inFlightProfileKeys: async (kind, profileId) => store.inFlightProfileKeys(kind, profileId),
     countByAggregate: async (aggregateId) => store.countByAggregate(aggregateId),
     aggregateSeq: async (aggregateId) => store.aggregateSeq(aggregateId),
     contentFor: async () => "toolContent" in store ? store.toolContent : NO_CONTENT,

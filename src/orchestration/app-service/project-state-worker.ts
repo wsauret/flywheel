@@ -289,7 +289,7 @@ export function createProjectStateService(ports: ProjectStateServicePorts) {
         case "in-flight.sessions":
           return { kind: "session-ids", sessionIds: reader.sessionsWithInFlight(operation.inFlightKind) }
         case "in-flight.profile":
-          return { kind: "in-flight.profile", found: reader.hasInFlightProfile(operation.inFlightKind, operation.profileId) }
+          return { kind: "in-flight.profile", keys: reader.inFlightProfileKeys(operation.inFlightKind, operation.profileId) }
         case "aggregate.count":
           return { kind: "count", count: reader.countByAggregate(operation.aggregateId) }
         case "aggregate.sequence":

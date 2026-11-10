@@ -165,9 +165,9 @@ describe("project state client", () => {
         expected: ["s"],
       },
       {
-        start: () => client.hasInFlightProfile("usage.settlement", "profile"),
+        start: () => client.inFlightProfileKeys("usage.settlement", "profile"),
         operation: { kind: "in-flight.profile", inFlightKind: "usage.settlement", profileId: "profile" },
-        result: { kind: "in-flight.profile", found: true }, expected: true,
+        result: { kind: "in-flight.profile", keys: ["attempt"] }, expected: ["attempt"],
       },
       {
         start: () => client.countByAggregate("a"),

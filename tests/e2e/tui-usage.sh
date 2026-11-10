@@ -99,7 +99,7 @@ capture_when "Estimated billed spend" "T-06-spend-month.log"
 assert_contains "T-06-spend-month.log" "[Month]" "T-06-spend-default-month"
 assert_contains "T-06-spend-month.log" "Included value" "T-06-included-total"
 assert_contains "T-06-spend-month.log" "Partial range" "T-06-partial-tracking"
-assert_contains "T-06-spend-month.log" "Usage incomplete" "T-06-incomplete-ledger"
+assert_contains "T-06-spend-month.log" "Some ended requests are not counted yet" "T-06-incomplete-ledger"
 assert_contains "T-06-spend-month.log" "billed" "T-06-phase6-billed-copy"
 send_keys Left Left
 capture_when "[24h]" "T-06-spend-24h.log"

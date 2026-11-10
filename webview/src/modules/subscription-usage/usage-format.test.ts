@@ -118,7 +118,7 @@ describe("providerNotice and activityLines", () => {
         { label: "Estimated billed", value: "$4.00" },
         { label: "Included value", value: "$12.00", detail: "8 measured requests" },
         { label: "Tokens", value: "21", detail: "cache read 2 · cache write 1 · reasoning 3" },
-        { label: "Activity ledger is incomplete", tone: "warn" },
+        { label: "Some ended requests are not counted yet", tone: "warn" },
         { label: "Some model prices are unavailable", tone: "warn" },
         { label: "Current usage windows" },
         { label: "Usage ledger unavailable", tone: "warn" },
@@ -130,7 +130,7 @@ describe("providerNotice and activityLines", () => {
     if (source.activity.state !== "available") throw new Error("Expected activity fixture")
     const lines = activityLines({ ...source, activity: { ...source.activity, partial: true, incomplete: false, trackingStartMs: new Date(2026, 8, 5).getTime() } })
     assert.ok(lines.some((line) => line.label === "Tracked from Sep 5 · partial month" && line.tone === "warn"))
-    assert.ok(lines.every((line) => line.label !== "Activity ledger is incomplete"))
+    assert.ok(lines.every((line) => line.label !== "Some ended requests are not counted yet"))
   })
   test("keeps this month named when the ledger is unavailable", () => {
     const lines = activityLines({ ...subscription({ state: "pending" }), activity: { state: "ledger-unavailable" } })
@@ -146,8 +146,8 @@ describe("providerNotice and activityLines", () => {
       { state: "window-unavailable", metricKey: "monthly" },
     ] } })
     assert.ok(lines.some((line) => line.label === "Included value" && line.value === "$12.00"))
-    // An unmeasured request is a coverage warning, not a tracking gap: the window stays fully tracked.
-    assert.ok(lines.some((line) => line.label === "weekly included" && line.value === "$3.00" && line.detail === "2 measured requests · 1 unmeasured" && line.tone === "warn"))
+    // An unmeasured request is a counted coverage gap, not a warning or a tracking gap: the window stays fully tracked.
+    assert.ok(lines.some((line) => line.label === "weekly included" && line.value === "$3.00" && line.detail === "2 measured requests · 1 unmeasured" && line.tone === undefined))
     assert.ok(lines.every((line) => !line.label.endsWith("partial window")))
     assert.ok(lines.some((line) => line.label === "monthly" && line.value === "Window unavailable"))
   })
@@ -236,7 +236,7 @@ describe("spendGroups", () => {
   test("counts unmeasured and partially measured requests beside the measured count", () => {
     const tokens = { input: 20, output: 6, cacheRead: 70, cacheWrite: 10, reasoning: 3, total: 106 }
     // The total sits in the narrow value column; the breakdown wraps in the detail.
-    assert.deepEqual(tokenLines(tokens, { attempts: 12, unmeasuredAttempts: 2, partialAttempts: 1, cacheComplete: true }).at(-1), { label: "Requests", value: "14", detail: "12 measured requests (1 partial) · 2 unmeasured", tone: "warn" })
+    assert.deepEqual(tokenLines(tokens, { attempts: 12, unmeasuredAttempts: 2, partialAttempts: 1, cacheComplete: true }).at(-1), { label: "Requests", value: "14", detail: "12 measured requests (1 partial) · 2 unmeasured" })
   })
   test("does not present unknown cache buckets as zero", () => {
     const lines = tokenLines({ input: 50, output: 10, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 60 }, { attempts: 0, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: false })

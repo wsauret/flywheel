@@ -9,7 +9,7 @@ import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types
 import { createRuntimeEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import type { UsageEntry } from "../../../../src/infra/llm/usage-entry.js"
 import { computeUsagePrice } from "../../../../src/infra/llm/llm-helpers.js"
-import { createSessionUsageSettlement, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
+import { createProcessUsageSettlement, createSessionUsageSettlement, USAGE_SETTLEMENT_IN_FLIGHT_KIND } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
 import { createRuntimeUsageDeps } from "../../../../src/orchestration/modules/subscription-usage/provider-deps.js"
 import { wireSessionSubscribers, type MetricsWriter } from "../../../../src/orchestration/session/create-session-infra.js"
 import { acquireSessionResources } from "../../../../src/orchestration/session/session-resources-service.js"
@@ -224,6 +224,38 @@ test.each([2, 20])("usage completeness uses one owner request with %s unsettled 
     expect(await usageIncomplete("profile-b")).toBe(false)
     await writer.dropInFlight?.("session-a", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-a")
     expect(await usageIncomplete("profile-a")).toBe(members > 2)
+  } finally {
+    await store.close()
+  }
+})
+
+test("a request in progress leaves usage complete until it ends without settling", async () => {
+  const store = createRuntimeEventStore(join(databaseDirectory, "flywheel.sqlite"))
+  const usageIncomplete = createRuntimeUsageDeps({
+    moduleSelection: () => { throw new Error("provider definitions are not read by usage completeness") },
+    eventReader: asAsyncEventReadSurface(store),
+  }).usageIncomplete
+  const attemptId = "00000000-0000-4000-8000-000000000099"
+  const settlement = createProcessUsageSettlement({
+    // The ledger append fails, so the attempt ends while its cell stays: an ended request the ledger lacks.
+    acquireAuthority: async () => { throw new Error("ledger unavailable") },
+    onCommitted: () => {},
+  })
+  try {
+    await settlement.begin({
+      entry: {
+        attemptId, occurredAt: "2026-09-07T12:00:00.000Z", profileId: "profile-live", currency: "USD", coverage: "complete",
+        attribution: { kind: "candidate", providerId: "anthropic_api" }, spendMode: "direct_api",
+        credentialLineage: "00000000-0000-4000-8000-000000000010", model: "claude-sonnet-4",
+        tokens: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, reasoning: 0 }, classification: "real_spend",
+        price: { kind: "priced", estimatedUsd: 0.25, rateCard: { inputPerMillionUsd: 3 }, provenance: "live" },
+      },
+      budgetStreamId: "session", requestId: "request", identity: { providerSessionKey: "provider", conversationId: "parent" }, turn: 1,
+    })
+    await store.putInFlight?.("session", USAGE_SETTLEMENT_IN_FLIGHT_KIND, attemptId, { entry: { profileId: "profile-live" } })
+    expect(await usageIncomplete("profile-live")).toBe(false)
+    await expect(settlement.settle(attemptId, { served: true })).rejects.toThrow("ledger unavailable")
+    expect(await usageIncomplete("profile-live")).toBe(true)
   } finally {
     await store.close()
   }

@@ -76,7 +76,7 @@ function openExecutionStore(state: ProjectStateClient): RuntimeEventState {
     readLatestByAggregateAndTypes: state.readLatestByAggregateAndTypes,
     readInFlight: state.readInFlight,
     sessionsWithInFlight: state.sessionsWithInFlight,
-    hasInFlightProfile: state.hasInFlightProfile,
+    inFlightProfileKeys: state.inFlightProfileKeys,
     countByAggregate: state.countByAggregate,
     aggregateSeq: state.aggregateSeq,
     append: lane.append,

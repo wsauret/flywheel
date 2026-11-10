@@ -251,21 +251,22 @@ describe.each(surfaces)("event read surface contract: %s", (_surface, open) => {
     expect((await reader.readInFlight("s", "tool", "agent_1%:")).map(row => row.key)).toEqual(["agent_1%:one"])
   })
 
-  test("profile presence follows pending, measured, and retired cells through the owner", async () => {
+  test("profile cell keys follow pending, measured, and retired cells through the owner", async () => {
     const { reader, store } = await open()
     const kind = "usage.settlement"
-    expect(await reader.hasInFlightProfile(kind, "profile")).toBe(false)
+    expect(await reader.inFlightProfileKeys(kind, "profile")).toEqual([])
     store.putInFlight("s", kind, "attempt", { state: "pending", profileId: "profile" })
-    expect(await reader.hasInFlightProfile(kind, "profile")).toBe(true)
+    expect(await reader.inFlightProfileKeys(kind, "profile")).toEqual(["attempt"])
     store.putInFlight("s", kind, "attempt", { state: "measured", entry: { profileId: "profile" } })
-    store.putInFlight("other", kind, "attempt", { profileId: "other-profile" })
-    expect(await reader.hasInFlightProfile(kind, "profile")).toBe(true)
-    expect(await reader.hasInFlightProfile("other-kind", "profile")).toBe(false)
+    store.putInFlight("t", kind, "second", { profileId: "profile" })
+    store.putInFlight("other", kind, "attempt-other", { profileId: "other-profile" })
+    expect((await reader.inFlightProfileKeys(kind, "profile")).toSorted()).toEqual(["attempt", "second"])
+    expect(await reader.inFlightProfileKeys("other-kind", "profile")).toEqual([])
     store.append({ ...fact("settled"), inFlight: [{ op: "drop", kind, key: "attempt" }] })
-    expect(await reader.hasInFlightProfile(kind, "profile")).toBe(false)
-    expect(await reader.hasInFlightProfile(kind, "other-profile")).toBe(true)
+    expect(await reader.inFlightProfileKeys(kind, "profile")).toEqual(["second"])
+    expect(await reader.inFlightProfileKeys(kind, "other-profile")).toEqual(["attempt-other"])
     store.append({ ...fact("deleted", {}, "other"), inFlight: [{ op: "clear_session" }] })
-    expect(await reader.hasInFlightProfile(kind, "other-profile")).toBe(false)
+    expect(await reader.inFlightProfileKeys(kind, "other-profile")).toEqual([])
   })
 
   test("the aggregate count follows surviving rows and the sequence keeps the last assigned value", async () => {

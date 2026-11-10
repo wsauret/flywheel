@@ -179,7 +179,7 @@ function QuotaAccounting(props: { source: Extract<UsageAccountSource, { kind: "s
   return <box flexDirection="column">
     <Show when={props.source.quotaAccounting.state === "window-unavailable"}><text fg={theme.textMuted}>Window usage unavailable</text></Show>
     <Show when={props.source.quotaAccounting.state === "ledger-unavailable"}><text fg={theme.warning} attributes={BOLD}>Usage ledger unavailable</text></Show>
-    <For each={available()}>{(usage) => <Show when={usage.state === "available" ? usage : undefined} fallback={<text fg={theme.textMuted}>{`${metricLabel(usage.metricKey)}  Window unavailable`}</text>}>{(value) => <box flexDirection="column"><text fg={theme.text}>{`${metricLabel(value().metricKey)}  ${shortDateRange(value().startMs, value().endMs)}`}</text><Show when={value().partial}><text fg={theme.warning}>{`Tracked from ${shortDate(value().trackingStartMs)} · partial window`}</text></Show><text fg={value().unmeasuredAttempts > 0 ? theme.warning : theme.text}>{`Included ${money(value().includedValueUsd)} · ${usageCoverageText(value())}`}</text><text fg={theme.textMuted}>{`${tokens(value().tokens.total)} tokens · cache read ${value().cacheComplete ? tokens(value().tokens.cacheRead) : "unavailable"} · cache write ${tokens(value().tokens.cacheWrite)} · reasoning ${tokens(value().tokens.reasoning)}`}</text><Show when={value().priceUnavailable}><text fg={theme.warning}>Some model prices are unavailable</text></Show></box>}</Show>}</For>
+    <For each={available()}>{(usage) => <Show when={usage.state === "available" ? usage : undefined} fallback={<text fg={theme.textMuted}>{`${metricLabel(usage.metricKey)}  Window unavailable`}</text>}>{(value) => <box flexDirection="column"><text fg={theme.text}>{`${metricLabel(value().metricKey)}  ${shortDateRange(value().startMs, value().endMs)}`}</text><Show when={value().partial}><text fg={theme.warning}>{`Tracked from ${shortDate(value().trackingStartMs)} · partial window`}</text></Show><text fg={theme.text}>{`Included ${money(value().includedValueUsd)} · ${usageCoverageText(value())}`}</text><text fg={theme.textMuted}>{`${tokens(value().tokens.total)} tokens · cache read ${value().cacheComplete ? tokens(value().tokens.cacheRead) : "unavailable"} · cache write ${tokens(value().tokens.cacheWrite)} · reasoning ${tokens(value().tokens.reasoning)}`}</text><Show when={value().priceUnavailable}><text fg={theme.warning}>Some model prices are unavailable</text></Show></box>}</Show>}</For>
   </box>
 }
 function AccountActivity(props: { activity: UsageAccountSource["activity"] }) {
@@ -189,9 +189,9 @@ function AccountActivity(props: { activity: UsageAccountSource["activity"] }) {
     <Show when={props.activity.state === "available" ? props.activity : undefined}>{(activity) => <>
       <text fg={theme.text}>{`Tracked range  ${shortDateRange(activity().startMs, activity().endMs)}`}</text>
       <Show when={activity().partial}><text fg={theme.warning}>{`Tracked from ${shortDate(activity().trackingStartMs)} · partial month`}</text></Show>
-      <text fg={activity().unmeasuredAttempts > 0 ? theme.warning : theme.text}>{`Estimated billed ${money(activity().estimatedBilledUsd)} · Included ${money(activity().includedValueUsd)} · ${usageCoverageText(activity())}`}</text>
+      <text fg={theme.text}>{`Estimated billed ${money(activity().estimatedBilledUsd)} · Included ${money(activity().includedValueUsd)} · ${usageCoverageText(activity())}`}</text>
       <text fg={theme.textMuted}>{`${tokens(activity().tokens.total)} tokens · cache read ${activity().cacheComplete ? tokens(activity().tokens.cacheRead) : "unavailable"} · cache write ${tokens(activity().tokens.cacheWrite)} · reasoning ${tokens(activity().tokens.reasoning)}`}</text>
-      <Show when={activity().incomplete}><text fg={theme.warning}>Activity ledger is incomplete</text></Show>
+      <Show when={activity().incomplete}><text fg={theme.warning}>Some ended requests are not counted yet</text></Show>
       <Show when={activity().priceUnavailable}><text fg={theme.warning}>Some model prices are unavailable</text></Show>
     </>}</Show>
   </box>
@@ -342,7 +342,7 @@ function SpendView(props: Pick<UsageModalProps, "spend" | "spendRange" | "select
         <UsageTokenLines tokens={sumUsageTokens(sources().map((source) => source.tokens))} coverage={sumUsageCoverage(sources())} />
         <text fg={theme.textMuted}>Cache hit rate is the share of reported input tokens served from cache.</text>
         <text fg={theme.textMuted} overflow="hidden" wrapMode="none">{`Tracking since ${shortDate(result().trackingStartMs)}${result().partial ? " · partial range" : ""}`}</text>
-        <Show when={result().incomplete}><text fg={theme.warning} overflow="hidden" wrapMode="none">Usage incomplete</text></Show>
+        <Show when={result().incomplete}><text fg={theme.warning}>Some ended requests are not counted yet</text></Show>
       </Section>
       <Section title="BY SOURCE">
         <Show when={sources().length > 0} fallback={<text fg={theme.textMuted}>No spend recorded</text>}>

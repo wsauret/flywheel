@@ -91,7 +91,7 @@ function readSurfaceOf(store: EventStoreReadSurface): EventStoreReadSurface {
     aggregateSeq: store.aggregateSeq.bind(store),
     readInFlight: store.readInFlight.bind(store),
     sessionsWithInFlight: store.sessionsWithInFlight.bind(store),
-    hasInFlightProfile: store.hasInFlightProfile.bind(store),
+    inFlightProfileKeys: store.inFlightProfileKeys.bind(store),
     foldEvidence: store.foldEvidence.bind(store),
     toolContent: store.toolContent,
     ...(store.readSessionContentNode ? { readSessionContentNode: store.readSessionContentNode.bind(store) } : {}),

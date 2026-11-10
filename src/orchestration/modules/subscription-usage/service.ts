@@ -18,7 +18,7 @@ export const subscriptionUsageService = moduleServiceHandle<SubscriptionUsageMod
 type Accounting = ReturnType<ModuleProcessServices["profileAccounting"]>
 type UsageServicePorts = Pick<ModuleProcessServices, "config" | "enabled" | "configView" | "moduleSelection" | "onSelectionChanged" | "notify" | "interactive"> & {
   readonly directories: Pick<ModuleProcessServices["directories"], "projectRoot">
-  readonly projectionReader: Pick<ModuleProcessServices["projectionReader"], "hasInFlightProfile">
+  readonly projectionReader: Pick<ModuleProcessServices["projectionReader"], "inFlightProfileKeys">
   readonly profileAccounting: () => {
     readonly subscriptionUsage: Pick<Accounting["subscriptionUsage"], "acquireScope" | "subscribePublications" | "start" | "pause" | "replaceThresholds">
     readonly refreshSubscriptionSpendConsent: Accounting["refreshSubscriptionSpendConsent"]

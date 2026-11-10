@@ -28,7 +28,7 @@ function createStore(): EventReader & AsyncGuardedEventAppender & { reads: Array
     aggregateSeq: (aggregateId: string) => facts.filter((fact) => fact.aggregateId === aggregateId).at(-1)?.seq ?? -1,
     readInFlight: () => [],
     sessionsWithInFlight: () => [],
-    hasInFlightProfile: () => false,
+    inFlightProfileKeys: () => [],
     append,
     async appendGuarded(event: GuardedEventStoreAppend) {
       const nextSeq = facts.filter((fact) => fact.aggregateId === event.aggregateId).length

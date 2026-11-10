@@ -137,7 +137,7 @@ export type ProjectStateResult =
   | { readonly kind: "latest-payload"; readonly payload: string | null }
   | { readonly kind: "fact-list"; readonly facts: readonly StoredFact[] }
   | { readonly kind: "in-flight"; readonly records: readonly InFlightRecord[] }
-  | { readonly kind: "in-flight.profile"; readonly found: boolean }
+  | { readonly kind: "in-flight.profile"; readonly keys: readonly string[] }
   | { readonly kind: "session-ids"; readonly sessionIds: readonly string[] }
   | { readonly kind: "count"; readonly count: number }
   | { readonly kind: "sequence"; readonly sequence: number }
@@ -558,7 +558,7 @@ const ResponseSchema = Schema.Struct({
     Schema.Struct({ kind: Schema.Literal("latest-payload"), payload: Schema.NullOr(Schema.String) }),
     Schema.Struct({ kind: Schema.Literal("fact-list"), facts: Schema.Array(StoredFactRow) }),
     Schema.Struct({ kind: Schema.Literal("in-flight"), records: Schema.Array(InFlightRecordSchema) }),
-    Schema.Struct({ kind: Schema.Literal("in-flight.profile"), found: Schema.Boolean }),
+    Schema.Struct({ kind: Schema.Literal("in-flight.profile"), keys: Schema.Array(Schema.String) }),
     Schema.Struct({ kind: Schema.Literal("session-ids"), sessionIds: Schema.Array(Schema.String) }),
     Schema.Struct({ kind: Schema.Literal("count"), count: Natural }),
     Schema.Struct({ kind: Schema.Literal("sequence"), sequence: Schema.Int.check(Schema.isGreaterThanOrEqualTo(-1)) }),
