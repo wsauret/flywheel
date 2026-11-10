@@ -1,0 +1,82 @@
+tests/unit/tui/output-blocks/tool-entry-shell-mutations.test.ts
+  s_14a8bc0bfa4dad::t_fbb12e38fc01ee 14
+  s_14a8bc0bfa4dad::t_5297f53d254350 296
+tests/unit/tui/hooks/create-session-process-controls.test.ts
+  s_14a8bc0bfa4dad::t_f186a2b267fd17 37
+  s_14a8bc0bfa4dad::t_b83f9a6d00648b 34,47-50
+  s_14a8bc0bfa4dad::t_ed75d27f7311f4 112-114,116
+  s_14a8bc0bfa4dad::t_39e125465fa452 2,27-28
+  s_14a8bc0bfa4dad::t_25c4fccfe2b3d9 1,5-7,10-13,15-16,21-25,29-33,36,38-46,51-58,60-61,77,124
+  s_14a8bc0bfa4dad::t_cd4df79955426e 3-4,8-9,14,17-20,26,59,62-76,78,80-111,115,117-123
+  s_14a8bc0bfa4dad::t_4e2cf94da0c19d 35,79
+src/tui/output-blocks/stop-affordance.ts
+  s_14a8bc0bfa4dad::t_f2880ed3c4abe1 4,16-19,37,39-40,66-67
+tests/unit/tui/output-blocks/bash-output-row.test.ts
+  s_14a8bc0bfa4dad::t_fbb12e38fc01ee 11
+  s_14a8bc0bfa4dad::t_f3f0156e54fe76 28-30,73,416,460,498,525-526,548
+webview/src/app/tool-group.tsx
+  s_14a8bc0bfa4dad::t_95aaf10f538887 7,42
+src/tui/output-blocks/tool-run-block.tsx
+  s_14a8bc0bfa4dad::t_f2880ed3c4abe1 49-53
+  s_14a8bc0bfa4dad::t_95aaf10f538887 6
+tests/unit/tui/output-blocks/tool-row-stop.test.ts
+  s_14a8bc0bfa4dad::t_fbb12e38fc01ee 4
+  s_14a8bc0bfa4dad::t_446ed59118109c 42,116
+tests/unit/tui/output-blocks/_tool-entry-render.tsx
+  s_14a8bc0bfa4dad::t_fbb12e38fc01ee 10
+  s_14a8bc0bfa4dad::t_bdcedd81744599 21-23,69
+src/tui/shell.tsx
+  s_14a8bc0bfa4dad::t_95aaf10f538887 555,558-559,568
+  s_14a8bc0bfa4dad::t_8d39ad64d4a42e 556-557,582
+src/protocol/client/transcript-model.ts
+  s_14a8bc0bfa4dad::t_baf5e1e09d7d63 44
+  s_14a8bc0bfa4dad::t_f2880ed3c4abe1 4,31-43,45-49
+  s_14a8bc0bfa4dad::t_d1a688ab8b9fde 50-51
+src/tui/hooks/create-session-process-controls.ts
+  s_14a8bc0bfa4dad::t_f2880ed3c4abe1 2,13-15,18,20,22,26-27
+src/tui/output-blocks/tool-entry.tsx
+  s_14a8bc0bfa4dad::t_95aaf10f538887 5
+  s_14a8bc0bfa4dad::t_f2880ed3c4abe1 142
+webview/src/app/blocks.tsx
+  s_14a8bc0bfa4dad::t_95aaf10f538887 4,94,392
+webview/src/client/tool-runs.ts
+  s_14a8bc0bfa4dad::t_95aaf10f538887 8,29
+webview/src/client/view-state.ts
+  s_14a8bc0bfa4dad::t_730f8d366ab175 6
+  s_14a8bc0bfa4dad::t_8d39ad64d4a42e 138
+tests/unit/tui/output-blocks/agent-group-stop.test.ts
+  s_14a8bc0bfa4dad::t_fbb12e38fc01ee 4
+  s_14a8bc0bfa4dad::t_cafb8363b5a8da 56,131,248
+tests/unit/tui/output-blocks/agent-group-read-runs.test.ts
+  s_14a8bc0bfa4dad::t_ae0ee511dbff16 397
+tests/helpers/runtime-views.ts
+  s_14a8bc0bfa4dad::t_b43d76c2aa0628 2,19-28
+tests/unit/tui/components/_child-session-viewer-fixtures.ts
+  s_14a8bc0bfa4dad::t_a7da74e896d344 39
+tests/unit/tui/components/child-session-viewer-background.test.tsx
+  s_14a8bc0bfa4dad::t_21a8aa69c657c8 33
+tests/unit/tui/components/child-session-viewer.test.tsx
+  s_14a8bc0bfa4dad::t_0a997e98d7fed2 46,66
+tests/unit/tui/output-blocks/agent-group-launch.test.tsx
+  s_14a8bc0bfa4dad::t_dbd5fcae2a123c 27
+tests/unit/tui/output-blocks/subagent-line.test.tsx
+  s_14a8bc0bfa4dad::t_54d337eefdc7ae 31
+tests/unit/tui/output-blocks/tool-entry-execution-output.test.ts
+  s_14a8bc0bfa4dad::t_f9d2eae49a577b 163,216,248-249,284-285,314,349,381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "434ddd3524351c83167e48cc53653e1019b5362e",
+  "prompts": {},
+  "sessions": {
+    "s_14a8bc0bfa4dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9340d33-4bef-42fe-8c6c-0cdcc77276bb",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
