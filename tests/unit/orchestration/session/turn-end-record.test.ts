@@ -341,14 +341,19 @@ describe("the turn end a branch tail reads", () => {
     const cut = (end: Parameters<typeof turnEndEntryId>[0]) => timed(message("user", { id: turnEndEntryId(end, `cut-${at}`), origin: "system" }))
     const planned = interruptedTurnEnd("replacement")
     const processWait = (id: string, seconds: number) => ({ id, name: "process", input: { action: "wait", soft_timeout: seconds } })
-    const waited = (id = "wait-1", seconds = 7200) => [calls(processWait(id, seconds)), result(id)]
+    const waited = (id = "wait-1", seconds = 3600) => [calls(processWait(id, seconds)), result(id)]
     const expiryOf = (tail: readonly Timed[], holdsWait?: (id: string) => boolean) => chatTurnEndEvidenceOf(tail, holdsWait)?.restoredWait?.expiry
     const from = (entry: Timed, seconds: number) => ({ seconds, deadlineMs: Date.parse(entry.timestamp) + seconds * 1000 })
 
     test("a refused wait call opens no wait, so the open wait of the earlier call holds", () => {
       const opened = waited()
       const tail = [person(), ...opened, calls(processWait("wait-2", 60)), result("wait-2", true), text(), cut(planned)]
-      expect(expiryOf(tail)).toEqual(from(opened[1]!, 7200))
+      expect(expiryOf(tail)).toEqual(from(opened[1]!, 3600))
+    })
+
+    test("a longer wait that an earlier build recorded restores at the one-hour ceiling", () => {
+      const opened = waited("wait-1", 7200)
+      expect(expiryOf([person(), ...opened, text(), cut(planned)])).toEqual(from(opened[1]!, 3600))
     })
 
     test("the reply that a superseding reply wait got ends the wait, and an unrelated session message keeps the reply wait, which has no expiry", () => {
@@ -366,7 +371,7 @@ describe("the turn end a branch tail reads", () => {
       { input: "an unrelated session's message", make: () => fromSession("other") },
     ])("$input committed before the answer owes a request and keeps the open wait", ({ make }) => {
       const opened = waited()
-      const kept = { expiry: from(opened[1]!, 7200), replyWaitIds: [], requestOwed: true as const }
+      const kept = { expiry: from(opened[1]!, 3600), replyWaitIds: [], requestOwed: true as const }
       expect(chatTurnEndEvidenceOf([person(), ...opened, make(), cut(planned)])?.restoredWait).toEqual(kept)
       expect(chatTurnEndEvidenceOf([person(), ...opened, text(), make(), cut(planned)])?.restoredWait).toEqual(kept)
     })
@@ -374,14 +379,14 @@ describe("the turn end a branch tail reads", () => {
     test("a background notification committed before the answer owes a request and ends the wait", () => {
       const opened = waited()
       const notification = timed({ kind: "message", id: "n-1", message: { kind: "user", origin: "system", content: "<background_command_notification>ended</background_command_notification>", replyRequired: true } })
-      expect(chatTurnEndEvidenceOf([person(), ...opened, notification, cut(planned)])?.restoredWait).toEqual({ expiry: from(opened[1]!, 7200), replyWaitIds: [], requestOwed: true, woken: true })
+      expect(chatTurnEndEvidenceOf([person(), ...opened, notification, cut(planned)])?.restoredWait).toEqual({ expiry: from(opened[1]!, 3600), replyWaitIds: [], requestOwed: true, woken: true })
     })
 
     test("a targeted interrupt of work and a text answer leave the original wait open, as the live loop keeps it while any work runs", () => {
       const interrupt = { id: "interrupt-1", name: "process", input: { action: "interrupt", process_id: "child-1" } }
       const launch = { id: "bash-2", name: "bash", input: { command: "serve", background: true } }
       const opened = waited()
-      expect(expiryOf([person(), ...opened, calls(interrupt), result("interrupt-1"), text(), moduleNotice(), calls(launch), result("bash-2"), text(), cut(planned)])).toEqual(from(opened[1]!, 7200))
+      expect(expiryOf([person(), ...opened, calls(interrupt), result("interrupt-1"), text(), moduleNotice(), calls(launch), result("bash-2"), text(), cut(planned)])).toEqual(from(opened[1]!, 3600))
     })
 
     test("a person's /compact while the turn waited re-drove nothing, so a cut after its reset restores the open wait", () => {
@@ -391,7 +396,7 @@ describe("the turn end a branch tail reads", () => {
       const opening = timed(message("user", { id: turnEndEntryId({ reason: "settled" }, "context-reset:1"), origin: "system" }))
       const tail = [person(), ...opened, text(), timed(message("user", { origin: "system", content: "Save one concise checkpoint" })), calls(save), result("save-1"), text(), reset, opening, cut(planned)]
       expect(chatTurnEndOf(tail)?.backgroundWait).toBe(true)
-      expect(expiryOf(tail)).toEqual(from(opened[1]!, 7200))
+      expect(expiryOf(tail)).toEqual(from(opened[1]!, 3600))
     })
 
     test("a planned cut in the middle of a turn hands its open wait to the successor's Resume; any other cut does not", () => {
@@ -400,7 +405,7 @@ describe("the turn end a branch tail reads", () => {
       const midTurn = [person(), ...opened, text(), moduleNotice(), calls(search), result("search-1")]
       const continued = chatTurnEndEvidenceOf([...midTurn, cut(planned)])
       expect(continued?.restoredWait).toBeUndefined()
-      expect(continued?.continuedWait).toEqual({ expiry: from(opened[1]!, 7200), replyWaitIds: [] })
+      expect(continued?.continuedWait).toEqual({ expiry: from(opened[1]!, 3600), replyWaitIds: [] })
       for (const end of [{ reason: "crash" } as const, interruptedTurnEnd("runtime"), interruptedTurnEnd("person")]) {
         expect(chatTurnEndEvidenceOf([...midTurn, cut(end)])?.continuedWait).toBeUndefined()
       }
@@ -408,8 +413,8 @@ describe("the turn end a branch tail reads", () => {
       // planned cut, at the turn's end or in its middle, keeps the original
       // deadline. A person's Resume ended the wait.
       const resumed = () => timed(message("user", { origin: "system", content: CONTINUATION_MESSAGES.resumed }))
-      expect(expiryOf([...midTurn, cut(planned), resumed(), text(), cut(planned)])).toEqual(from(opened[1]!, 7200))
-      expect(chatTurnEndEvidenceOf([...midTurn, cut(planned), resumed(), calls({ ...search, id: "search-2" }), result("search-2"), cut(planned)])?.continuedWait?.expiry).toEqual(from(opened[1]!, 7200))
+      expect(expiryOf([...midTurn, cut(planned), resumed(), text(), cut(planned)])).toEqual(from(opened[1]!, 3600))
+      expect(chatTurnEndEvidenceOf([...midTurn, cut(planned), resumed(), calls({ ...search, id: "search-2" }), result("search-2"), cut(planned)])?.continuedWait?.expiry).toEqual(from(opened[1]!, 3600))
       const personResumed = [...midTurn, cut(interruptedTurnEnd("runtime")), resumed(), text(), cut(planned)]
       expect(expiryOf(personResumed)).toEqual(from(personResumed.at(-2)!, DEFAULT_WAIT_SECONDS))
     })

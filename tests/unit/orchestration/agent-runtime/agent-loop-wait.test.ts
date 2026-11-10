@@ -42,13 +42,14 @@ describe("wait tool policy delivery", () => {
     expect(mailbox.hasPending).toBe(false);
   });
 
-  test("native waits carry a fresh estimate, default to four minutes, and reject invalid durations", () => {
+  test("native waits carry a fresh estimate up to one hour, default to four minutes, and reject invalid durations", () => {
     const durations: (number | undefined)[] = [];
     const policy = createWaitToolPolicy(() => true, (seconds) => { durations.push(seconds); });
+    policy.settleWaitCalls([{ ...waitCall, input: { action: "wait", soft_timeout: 600 } }]);
     policy.settleWaitCalls([{ ...waitCall, input: { action: "wait", soft_timeout: 7200 } }]);
     policy.settleWaitCalls([waitCall]);
-    expect(durations).toEqual([7200, 240]);
-    for (const soft_timeout of [0, -1, Infinity, Number.NaN, 2147483.648, "7200"]) {
+    expect(durations).toEqual([600, 3600, 240]);
+    for (const soft_timeout of [0, -1, Infinity, Number.NaN, "7200"]) {
       expect(policy.isWaitCall({ ...waitCall, input: { action: "wait", soft_timeout } })).toBe(false);
     }
   });
@@ -59,7 +60,7 @@ describe("wait tool policy delivery", () => {
     const policy = createWaitToolPolicy(() => true, (seconds) => { durations.push(seconds); }, undefined, (id) => id === reply.id);
     expect(policy.isWaitCall(reply)).toBe(true);
     policy.settleWaitCalls([reply]);
-    policy.settleWaitCalls([reply, { ...waitCall, input: { action: "wait", soft_timeout: 7200 } }]);
-    expect(durations).toEqual([undefined, 7200]);
+    policy.settleWaitCalls([reply, { ...waitCall, input: { action: "wait", soft_timeout: 600 } }]);
+    expect(durations).toEqual([undefined, 600]);
   });
 });

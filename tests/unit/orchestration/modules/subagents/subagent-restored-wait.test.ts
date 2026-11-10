@@ -82,7 +82,7 @@ test("a planned cut in the middle of a child's turn continues its open wait thro
   if (!tree) throw new Error("Missing conversation")
   setSystemTime(at)
   try {
-    await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "wait-command", name: "process", input: { action: "wait", soft_timeout: 7200 } }] })
+    await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "wait-command", name: "process", input: { action: "wait", soft_timeout: 3600 } }] })
     await tree.appendMessage({ kind: "toolResult", toolUseId: "wait-command", content: [{ type: "text", text: "Wait acknowledged." }] })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "read-1", name: "read", input: { path: "notes.md" } }] })
     await tree.appendMessage({ kind: "toolResult", toolUseId: "read-1", content: [{ type: "text", text: "notes" }] })
@@ -109,7 +109,7 @@ test("a planned cut in the middle of a child's turn continues its open wait thro
   try {
     expect((await host.service.resume(child)).outcome).toBe("ok")
     expect(await parked.promise).toBe("waiting_on_work")
-    expect(continued).toEqual({ expiry: { seconds: 7200, deadlineMs: at + 7_200_000 }, replyWaitIds: [] })
+    expect(continued).toEqual({ expiry: { seconds: 3600, deadlineMs: at + 3_600_000 }, replyWaitIds: [] })
     // Without the wait, the text answer would draw the pending-work nudge first.
     expect(requests).toBe(1)
   } finally { stop.abort(); task.resolve({ status: "completed", content: "" }); await host.close(); await harness.close() }

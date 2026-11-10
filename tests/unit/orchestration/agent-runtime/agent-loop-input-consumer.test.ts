@@ -31,8 +31,8 @@ describe("agent loop input wait reservations", () => {
     const mailbox = new ChatTurnMailbox()
     const timers: { seconds: number; expire: () => void; cleared: boolean }[] = []
     const consumed: AgentLoopInput[] = []
-    // The wait asked for 7200 seconds, and 200 of them passed before this park.
-    let openWait = { expiry: { seconds: 7200, deadlineMs: Date.now() + 7_000_000 }, replyWaitIds: [] }
+    // The wait asked for 3600 seconds, and 200 of them passed before this park.
+    let openWait = { expiry: { seconds: 3600, deadlineMs: Date.now() + 3_400_000 }, replyWaitIds: [] }
     const parked = Promise.withResolvers<void>()
     const wait = waiter({
       state: () => ({ turnCount: 1, handoffWritten: false, wait: openWait }),
@@ -47,13 +47,13 @@ describe("agent loop input wait reservations", () => {
     })
     const first = wait(true, undefined)
     await parked.promise
-    expect(timers[0]?.seconds).toBeCloseTo(7000, 0)
+    expect(timers[0]?.seconds).toBeCloseTo(3400, 0)
     timers[0]!.expire()
     await expect(first).resolves.toBe("continue")
     expect(mailbox.parked).toBe(false)
     expect(timers[0]?.cleared).toBe(true)
     expect(consumed).toEqual([expect.objectContaining({ kind: "message", origin: "silent-system", runtimeNotice: true, text: expect.stringContaining("wait_expired") })])
-    expect(consumed[0]).toMatchObject({ text: expect.stringContaining("<seconds>7200</seconds>") })
+    expect(consumed[0]).toMatchObject({ text: expect.stringContaining("<seconds>3600</seconds>") })
     expect(timers).toHaveLength(1)
 
     openWait = { expiry: { seconds: 180, deadlineMs: Date.now() + 180_000 }, replyWaitIds: [] }

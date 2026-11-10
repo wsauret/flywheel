@@ -163,7 +163,8 @@ describe("finite managed waits", () => {
     registry.track({ done: task.promise, meta: { id: "pending-1", type: "background_command", description: "pending" } });
     const stop = new AbortController();
     const responses: { events: ProviderStreamEvent[] }[] = [
-      // The native wait ignores a named process and parks on every process.
+      // The native wait ignores a named process and parks on every process,
+      // and an estimate above the one-hour ceiling waits the ceiling.
       waitCall("wait-1", 7200, "pending-1"),
       { events: [{ kind: "text_delta", text: "Still working.", blockKey: "progress" }, { kind: "done", stopReason: "end_turn" }] },
       waitCall("wait-2", 180),
@@ -196,12 +197,12 @@ describe("finite managed waits", () => {
     expect(result.kind).toBe(kind === "root" ? "aborted" : "completed");
     expect(handoffs).toBe(kind === "root" ? 0 : 1);
     expect(durations).toHaveLength(2);
-    expect(durations[0]).toBeCloseTo(7200, 0);
+    expect(durations[0]).toBeCloseTo(3600, 0);
     expect(durations[1]).toBeCloseTo(180, 0);
     expect(pendingAtExpiry).toEqual([1]);
     expect(cleared).toBe(2);
     expect(JSON.stringify(capturedMessages[1])).toContain("wait_expired");
-    expect(JSON.stringify(capturedMessages[1])).toContain("Wait acknowledged for at most 7200 seconds");
+    expect(JSON.stringify(capturedMessages[1])).toContain("Wait acknowledged for at most 3600 seconds");
     expect(JSON.stringify(capturedMessages[3])).toContain("Wait acknowledged for at most 180 seconds");
     expect(JSON.stringify(capturedMessages[2])).toContain("fresh remaining-work estimate");
     expect(registry.awaitedTaskCount()).toBe(0);
@@ -227,7 +228,7 @@ describe("finite managed waits", () => {
     const durations: number[] = [];
     const counts: number[] = [];
     const { client, capturedMessages } = makeCaptureClient([
-      waitCall("wait-1", 7200),
+      waitCall("wait-1", 3600),
       waitCall("wait-2", 180),
       kind === "root"
         ? { events: [{ kind: "done", stopReason: "end_turn" }] }
@@ -258,7 +259,7 @@ describe("finite managed waits", () => {
       onEvent: () => {},
     });
     expect(durations).toHaveLength(2);
-    expect(durations[0]).toBeCloseTo(7200, 0);
+    expect(durations[0]).toBeCloseTo(3600, 0);
     expect(durations[1]).toBeCloseTo(180, 0);
     expect(result.kind).toBe(kind === "root" ? "aborted" : "completed");
     expect(counts).toEqual([1, 1]);
@@ -318,8 +319,8 @@ type Events = ProviderStreamEvent[];
 const call = (id: string, name: string, input: ToolCall["input"] = {}): ProviderStreamEvent => ({ kind: "tool_use", toolCall: { id, name, input } });
 const said = (text: string): Events => [{ kind: "text_delta", text, blockKey: text }, { kind: "done", stopReason: "end_turn" }];
 const batch = (...calls: ProviderStreamEvent[]): Events => [...calls, { kind: "done", stopReason: "tool_use" }];
-const LAUNCH_WAIT = batch(call("launch-1", "launch"), call("wait-1", "process", { action: "wait", soft_timeout: 7200 }));
-const WAIT = batch(call("wait-1", "process", { action: "wait", soft_timeout: 7200 }));
+const LAUNCH_WAIT = batch(call("launch-1", "launch"), call("wait-1", "process", { action: "wait", soft_timeout: 3600 }));
+const WAIT = batch(call("wait-1", "process", { action: "wait", soft_timeout: 3600 }));
 const ASK = batch(call("ask-1", "ask"));
 const SAVE = batch(call("save-1", "checkpoint_replace", { section: "currentState", value: "watching CI" }));
 const peer = (sessionId: string) => ({ kind: "session" as const, sessionId, conversationId: `${sessionId}-conversation`, toolUseId: `${sessionId}-call`, hop: 0 });
@@ -410,7 +411,7 @@ const WAITING = { park: "waiting_on_work", waitRequested: true };
 const nudged = (request: string | undefined) => request?.includes(JSON.stringify(SILENT_REPLY_NUDGE)) === true;
 
 describe("an open wait outlives every request that only re-drives the turn", () => {
-  test("a background notification owes a reply, the agent launches a command and waits 7200 s with no text, the nudge draws a text reply: the turn parks waiting, and the completion continues the same turn", async () => {
+  test("a background notification owes a reply, the agent launches a command and waits 3600 s with no text, the nudge draws a text reply: the turn parks waiting, and the completion continues the same turn", async () => {
     const r = await openWaitRun({
       humanFacing: true,
       seed: { kind: "user", content: "<background_command_notification>earlier ended</background_command_notification>", origin: "system", replyRequired: true },
@@ -420,7 +421,7 @@ describe("an open wait outlives every request that only re-drives the turn", () 
     expect(nudged(r.requests[1])).toBe(true);
     expect(r.parks[0]).toMatchObject({ ...WAITING, active: 2, afterRequest: 2 });
     expect(r.expiries).toHaveLength(1);
-    expect(r.expiries[0]).toBeCloseTo(7200, 0);
+    expect(r.expiries[0]).toBeCloseTo(3600, 0);
     // The completion wakes the waiting park, so it continues the turn
     // instead of opening one from an idle park.
     expect(r.requests[2]).toContain("background_command_notification");
@@ -434,7 +435,7 @@ describe("an open wait outlives every request that only re-drives the turn", () 
     });
     expect(nudged(r.requests[1])).toBe(true);
     expect(r.parks[0]).toMatchObject({ ...WAITING, afterRequest: 3 });
-    expect(r.expiries[0]).toBeCloseTo(7200, 0);
+    expect(r.expiries[0]).toBeCloseTo(3600, 0);
   });
 
   test("a nudge that lands past the automatic compaction threshold saves, compacts, and still parks on the wait", async () => {
@@ -448,7 +449,7 @@ describe("an open wait outlives every request that only re-drives the turn", () 
     expect(r.requests[1]).toContain("Save the checkpoint now:");
     expect(r.parks[0]).toMatchObject({ ...WAITING, afterRequest: 3 });
     expect(r.expiries).toHaveLength(1);
-    expect(r.expiries[0]).toBeCloseTo(7200, 0);
+    expect(r.expiries[0]).toBeCloseTo(3600, 0);
   });
 
   test("a repetition notice after the third identical wait batch keeps the wait that batch opened", async () => {
@@ -459,7 +460,7 @@ describe("an open wait outlives every request that only re-drives the turn", () 
     expect(r.requests[3]).toContain("repetition_notice");
     expect(r.parks.slice(0, 3)).toMatchObject([WAITING, WAITING, { ...WAITING, afterRequest: 4 }]);
     expect(r.expiries).toHaveLength(3);
-    expect(r.expiries[2]).toBeCloseTo(7200, 0);
+    expect(r.expiries[2]).toBeCloseTo(3600, 0);
   });
 
   test.each([
@@ -471,7 +472,7 @@ describe("an open wait outlives every request that only re-drives the turn", () 
     expect(r.parks.slice(0, 2)).toMatchObject([{ ...WAITING, active: 1, afterRequest: 1 }, { ...WAITING, active: 1 }]);
     expect(r.expiries).toHaveLength(2);
     expect(r.expiries[1]).toBeLessThanOrEqual(r.expiries[0]!);
-    expect(r.expiries[1]).toBeCloseTo(7200, 0);
+    expect(r.expiries[1]).toBeCloseTo(3600, 0);
   });
 });
 

@@ -14,17 +14,23 @@ export const PROCESS_TOOL_NAME = "process";
 const CHILD_ADDRESS_GUIDANCE = "These addresses name item keys and named-agent ids for targeted direction, and agent session ids for direct messages and replies. Never substitute an agent session id for this child's process id. When a workflow runs a phase over a list or a phase of named agents, name item keys or agent ids from its status in targets for interrupt and resume. Omit targets only to act on the whole workflow. Interrupt refuses the entire request if any named agent has not started; interrupt it once it runs, or interrupt the whole workflow. Unknown or finished targets refuse the action and list valid alternatives.";
 const PROCESS_TARGETS_SCHEMA = { type: "array", items: { type: "string" }, description: "Only for interrupt or resume of a child whose status lists addresses: item keys or agent ids from that status. Omit for the whole child. Unknown or finished targets refuse with valid alternatives." } as const;
 export const DEFAULT_WAIT_SECONDS = 240;
-// Bun converts larger timer durations to one millisecond.
-const MAX_WAIT_SECONDS = 2147483.647;
-const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: MAX_WAIT_SECONDS, description: "Seconds to wait for managed work, from your estimate of its remaining duration. Estimate all managed work. Omitted: 240 seconds. Example: 7200 for two hours. Completion or expiry wakes you without stopping work. Every new wait needs a fresh estimate; this bounds only the wait." } as const;
-const PROCESS_WAIT_GUIDANCE = "When everything left depends on managed work, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Wait includes every managed command, including one that transferred from the foreground. Never stop or restart a command just to wait for it. Estimate all managed work; use 7200 for two hours. Without an estimate the wait lasts at most four minutes. The turn's other calls run first. Completion or expiry consumes this one wait without stopping work. After a notification, expiry, or status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never poll or sleep instead. Messages remain subject to their existing relation and purpose restrictions; do not send status chatter.";
+/** Every wait ends after at most one hour, so that the agent reassesses
+ *  the work it waits on (PI-AGENT-080). */
+const WAIT_CEILING_SECONDS = 3600;
+const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: WAIT_CEILING_SECONDS, description: `Seconds to wait for managed work, from your estimate of its remaining duration. Estimate all managed work. Omitted: 240 seconds. At most ${WAIT_CEILING_SECONDS} (one hour); a larger value waits ${WAIT_CEILING_SECONDS}. Completion or expiry wakes you without stopping work. Every new wait needs a fresh estimate; this bounds only the wait.` } as const;
+const PROCESS_WAIT_GUIDANCE = `When everything left depends on managed work, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Wait includes every managed command, including one that transferred from the foreground. Never stop or restart a command just to wait for it. Estimate all managed work; one wait lasts at most one hour (${WAIT_CEILING_SECONDS} seconds). Without an estimate the wait lasts at most four minutes. The turn's other calls run first. Completion or expiry consumes this one wait without stopping work. After a notification, expiry, or status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never poll or sleep instead. Messages remain subject to their existing relation and purpose restrictions; do not send status chatter.`;
 
-/** Validates a native wait estimate against the runtime's timer range. */
+/** The duration of a native wait: the four-minute default without an
+ *  estimate, the estimate up to the one-hour ceiling, or undefined for an
+ *  estimate that is not positive finite seconds. A model's estimate is
+ *  external input, so a value above the ceiling is read as the ceiling, not
+ *  refused. A restore replays recorded calls through this function, so a
+ *  longer wait that an earlier build recorded also restores at the ceiling. */
 export function processWaitSeconds(input: RuntimeToolInput): number | undefined {
   if (input.soft_timeout === undefined) return DEFAULT_WAIT_SECONDS;
   const seconds = input.soft_timeout;
-  return typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0 && seconds <= MAX_WAIT_SECONDS
-    ? seconds : undefined;
+  return typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0
+    ? Math.min(seconds, WAIT_CEILING_SECONDS) : undefined;
 }
 
 // Remove after 2027-10-30: transcripts that builds before 2026-10-30 wrote for
@@ -295,12 +301,13 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
         // process anyway, so the name is ignored rather than refused.
         const ignored = input.process_id === undefined ? "" : "process_id is ignored: a wait parks on every process that you started. ";
         const seconds = processWaitSeconds(input);
-        if (seconds === undefined) return { content: `soft_timeout must be positive finite seconds, at most ${MAX_WAIT_SECONDS}. It bounds only this wait, not the work.`, outcome: "error" };
+        if (seconds === undefined) return { content: "soft_timeout must be positive finite seconds. It bounds only this wait, not the work.", outcome: "error" };
+        const capped = typeof input.soft_timeout === "number" && input.soft_timeout > seconds ? ` You asked for ${input.soft_timeout} seconds; the one-hour ceiling applies.` : "";
         // Static acknowledgement: whether anything is actually live is settled
         // by the agent loop after the whole tool batch, when same-turn
         // dispatches are registered. A wait with nothing pending is answered
         // by the wait_notification below, not by this result.
-        return { content: `${ignored}Wait acknowledged for at most ${seconds} seconds. If managed work is running, the loop parks after this turn's other tool calls finish and resumes on completion or this wait's expiry. Expiry leaves work running and consumes this wait; another wait requires a fresh remaining-work estimate. Otherwise a wait notification will report that nothing was pending.`, outcome: "ok" };
+        return { content: `${ignored}Wait acknowledged for at most ${seconds} seconds.${capped} If managed work is running, the loop parks after this turn's other tool calls finish and resumes on completion or this wait's expiry. Expiry leaves work running and consumes this wait; another wait requires a fresh remaining-work estimate. Otherwise a wait notification will report that nothing was pending.`, outcome: "ok" };
       }
       if (action !== "status" && action !== "stop" && action !== "interrupt" && action !== "resume" && action !== "read_output") {
         return { content: "process requires action to be 'list', 'status', 'wait', 'stop', 'interrupt', 'resume', or 'read_output'.", outcome: "error" };

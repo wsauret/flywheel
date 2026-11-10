@@ -55,12 +55,14 @@ describe("process tool", () => {
     expect((await unattended.execute({ action: "list" }, context)).content).toBe("No managed processes and no children.");
   });
 
-  it("accepts hours-long wait estimates and rejects invalid runtime timer durations", async () => {
+  it("waits at most one hour, states the duration in force for a longer estimate, and rejects invalid durations", async () => {
     const tool = createProcessTool(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }));
-    const estimated = await tool.execute({ action: "wait", soft_timeout: 7200 }, context);
-    expect(estimated.outcome).toBe("ok");
-    expect(estimated.content).toContain("7200");
-    for (const soft_timeout of [0, -1, Infinity, Number.NaN, 2147483.648, "7200"]) {
+    const capped = await tool.execute({ action: "wait", soft_timeout: 7200 }, context);
+    expect(capped.outcome).toBe("ok");
+    expect(capped.content).toStartWith("Wait acknowledged for at most 3600 seconds. You asked for 7200 seconds; the one-hour ceiling applies.");
+    const estimated = await tool.execute({ action: "wait", soft_timeout: 600 }, context);
+    expect(estimated.content).toStartWith("Wait acknowledged for at most 600 seconds. If managed work is running");
+    for (const soft_timeout of [0, -1, Infinity, Number.NaN, "7200"]) {
       expect((await tool.execute({ action: "wait", soft_timeout }, context)).outcome).toBe("error");
     }
   });
