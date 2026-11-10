@@ -36,11 +36,11 @@ Each shape below is the `phases` list of one workflow, without the `brief` and `
 |---|---|
 | Understand: each `areas` agent classifies every outcome of its part and names what consumes it; `write-map` checks each cross-file claim in code | `- { phase: areas, over: input.areas }` `- phase: write-map` |
 | Design: drafts from distinct angles, then one judge for each lens; `synthesize` takes `reads: [drafts]` | `- { phase: drafts, over: input.angles }` `- { phase: judges, reads: [drafts], agents: [quality, elegance] }` `- phase: synthesize` |
-| Review: one agent for each lens; `report` takes `reads: [review]` | `- { phase: review, agents: [quality, elegance], join: { reducer: dedupe, with: { items: findings, by: site } } }` `- { phase: checks, over: review.kept }` `- phase: report` |
+| Review: one agent for each lens that the review method selects; `report` merges confirmed findings by cause, with `reads: [review]` | `- { phase: review, agents: [quality, elegance], join: { reducer: dedupe, with: { items: findings, by: site } } }` `- { phase: checks, over: review.kept }` `- phase: report` |
 | Research: one agent for each search method | `- { phase: sweep, over: input.methods, join: { reducer: dedupe, with: { items: sources, by: url } } }` `- phase: synthesize` |
 | Migrate | `- { phase: sites, over: input.sites }` `- { phase: checks, over: sites, join: { reducer: coverage, with: { priority: priority, outcome: outcome } } }` |
 
-Your chat gets each handoff and join output in workflow order; past the limit of section 9, it keeps the latest and names the rest. End with a phase only for model work (synthesis or judgment), never to restate a join.
+Your chat gets each handoff and join output in workflow order; past the limit of section 9, it keeps the latest and names the rest.
 
 For larger work, run several workflows. Run a workflow after another only when it reads that workflow's result or changes the same files, and read that result before you write it. Launch the other workflows at the same time.
 
@@ -174,7 +174,7 @@ An agent outside a list that fails after its `retry` fails its phase once its ot
 | `repeat.reassess` | With `each`: the last phase of the repeat, with one agent, whose brief declares no output. After each round it can drop, replace, or insert the remaining items. |
 
 - Inside a repeat, a name refers to the same round. Outside it, a phase of the repeat means its output in every round, round 1 first, without a round that skipped it. A phase after a repeat receives the output of the repeat's last phase.
-- A repeat whose `while` names a list field of a `dedupe` join runs that phase in rounds over the same items until a round keeps nothing new, or for `max` rounds. A later round's agents receive the items and keys that earlier rounds saw, so they search for new ones. A round with a failed agent is not dry. `references/reducers.md` states how `dedupe@2` drops a key that an earlier round saw, which works only when each agent writes the same key for the same item (section 10).
+- A repeat whose `while` names a list field of a `dedupe` join runs that phase in rounds over the same items until a round keeps nothing new, or for `max` rounds (`examples/loop-until-dry.workflow.yaml`). A later round's agents receive the items and keys that earlier rounds saw, so they search for new ones. A round with a failed agent is not dry. `references/reducers.md` states how `dedupe@2` drops a key that an earlier round saw, which works only when each agent writes the same key for the same item (section 10).
 
 ## 7. What an agent receives
 
@@ -228,25 +228,26 @@ Attempts that wait on no other run at the same time. Declare `guardrails.max_par
 
 - Follow the result: every agent follows each result into the code that consumes it, also outside its file. A test or a doc comment that asserts a behavior shows intent, not correctness. Give each finding `evidence` and a `scenario`. A synthesis checks each cross-file claim in code before it states it.
 - Dedupe before verify: finders, a `dedupe` barrier, then work on each kept finding. `examples/review-changes.workflow.yaml` verifies each finding of a file review, and `examples/dedupe-before-verify.workflow.yaml` reproduces and judges each bug in a stream.
-- Adversarial verify: several independent refuters for each finding, and `quorum` keeps a finding only when the vote passes. An unsure refuter votes `abstain`. Set `votes` on the phase (`examples/adversarial-quorum.workflow.yaml`).
+- Adversarial verify: one refuter for each finding. Add `votes: 3` and a `quorum` join only when acting on a wrong finding is costly or cannot be undone and no later phase checks it again (`examples/adversarial-quorum.workflow.yaml`). An unsure refuter votes `abstain`.
 {{if:type:reviewer}}
 - Lens-diverse verify: named agents that each review through a distinct lens, which catch what identical reviewers miss.
 {{else}}
 - Lens-diverse verify: named agents that each review through a distinct lens, which catch what identical agents miss.
 {{end}}
-- Build until verified: a build, lens reviews, checks, a triage by cause, then fix and verify rounds that end on a verify.
+- Build until verified: a build, the review that the review method sizes, a check of each finding, a triage by cause, and at most two rounds of fix and verify.
+{{if:subagent&type:reviewer-quality&type:reviewer-elegance&type:implementer}}
+  Copy `examples/build-review-loop.workflow.yaml`. A unit that the review method calls small needs no workflow: give it to one implementer subagent, which its gates validate.
+{{end}}
 - Judge panel: independent attempts from different angles, scored by judges, and a synthesis. It wins when the options are many (`examples/judge-panel.workflow.yaml`).
 - Curated variants: one workflow runs an agent for each variant (`examples/curated-variants.workflow.yaml`), you ask the person which one to keep, and a second workflow takes it as `input`.
 - Multi-modal sweep: each agent searches a different way. One search angle rarely finds everything.
 - Survey with coverage: a scout lists the targets, a phase audits each, and `coverage` counts what it reached (`examples/scout-and-survey.workflow.yaml`).
-- Completeness critic: a final phase that asks what is missing. What it finds is the next workflow.
-- Loop until dry: repeat finders until a round keeps nothing new (`examples/loop-until-dry.workflow.yaml`).
 
-Make each agent's decision bounded and independently verifiable. Resolve a shared design question in a phase before the agents that it binds. Keep builders separate from verifiers. Use one brief for many agents only when a judge or the person selects among the results. End with a synthesis or evaluation phase whose output you declare. An agent asks its parent with `message_session`, never the person.
+Make each agent's decision bounded and independently verifiable. Resolve a shared design question in a phase before the agents that it binds. Keep builders separate from verifiers. Use one brief for many agents only when a judge or the person selects among the results. End with a synthesis only when a model must judge or merge, and declare its output; never restate a join. An agent asks its parent with `message_session`, never the person.
 
 ## 12. Scale to the request
 
-"Find any bugs" needs a few finders and one verify vote. "Audit thoroughly" needs more finders, three to five adversarial votes, and a synthesis. When the scale is not clear, lean toward thoroughness for research, review, and audit, and toward brevity for quick checks.
+"Find any bugs" needs a few finders and one refuter for each finding. "Audit thoroughly" needs more finders and a synthesis, not more votes. When the scale is not clear, lean toward more finders for research, review, and audit, and toward brevity for quick checks.
 
 ## 13. Launch, edit, and diagnose
 

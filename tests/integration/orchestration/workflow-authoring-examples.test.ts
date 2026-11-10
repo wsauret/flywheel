@@ -195,12 +195,12 @@ describe("the workflow-authoring examples", () => {
   // that must also see what a dedupe join dropped, and `seen in round` one
   // that must see what a later round of a repeat dropped as seen.
   const SEES = {
-    "adversarial-quorum.workflow.yaml": { report: ["reviews", "passed-or-rejected"] },
+    "adversarial-quorum.workflow.yaml": {},
     "build-review-loop.workflow.yaml": { triage: ["quality", "elegance", "checks"], verify: ["build", "triage"], refix: ["verify"] },
     "curated-variants.workflow.yaml": { compare: ["variants"] },
     "dedupe-before-verify.workflow.yaml": { report: ["finders", "judge", "dropped"] },
     "judge-panel.workflow.yaml": { judges: ["drafts"], synthesize: ["drafts", "judges"] },
-    "lens-review.workflow.yaml": { summarize: ["security", "perf", "elegance"] },
+    "lens-review.workflow.yaml": { merge: ["security", "perf", "elegance"] },
     "loop-until-dry.workflow.yaml": { report: ["finds", "judge", "seen in round"] },
     "review-changes.workflow.yaml": { report: ["reviews", "checks"] },
     "scout-and-survey.workflow.yaml": { summarize: ["scout", "modules"] },
@@ -277,7 +277,7 @@ describe("the workflow-authoring examples", () => {
         expect(seen.length).toBeGreaterThan(0)
         for (const context of seen) {
           for (const source of sources) {
-            const marker = source === "dropped" ? "duplicate of" : source === "passed-or-rejected" ? "\"rejected\"" : source === "seen in round" ? source : `${source}|`
+            const marker = source === "dropped" ? "duplicate of" : source === "seen in round" ? source : `${source}|`
             expect({ reader, source, sees: context.includes(marker) }).toEqual({ reader, source, sees: true })
           }
           if (name === "review-changes.workflow.yaml" && reader === "report") {

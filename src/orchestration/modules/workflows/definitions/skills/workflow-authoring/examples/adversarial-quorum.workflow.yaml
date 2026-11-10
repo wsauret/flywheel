@@ -1,32 +1,36 @@
-# Adversarial verify with a quorum, in one workflow. Finders find defects
-# in each file, and a dedupe join merges them by `site`, the path and the
-# line, which no finder can phrase differently. Each finding carries its
-# evidence and a scenario that triggers it, so a refuter attacks a concrete
-# claim. The refute phase over the kept findings casts three votes on each
-# finding: it runs three refuter agents for each finding, and each agent gets
-# the finding as its item and its own vote number, which picks its angle of
-# attack. No refuter sees another vote. Finders and refuters follow a
-# result into the code that consumes it, also outside the file, because a
-# defect often shows only in its callers, and a test that asserts a behavior
-# shows intent, not correctness. The quorum join gives each finding one
-# verdict over its three votes, and the verdict names its finding by `key`,
-# the site. A refuter that is not sure abstains: a pass needs two valid
-# votes, so an abstention never passes a finding, and the verdict counts it
-# apart from a refutation. A failed refuter also abstains, so three votes let
-# one refuter fail without losing a real finding. The report names the
-# reviews phase in `reads`, so it receives each claim beside the verdicts of
-# the quorum join. The findings cap of 20 only bounds the worst case, high
-# enough that a finder never drops a real defect: 5 reviews, 100 kept
-# findings times 3 votes, and 1 report: 306 attempts.
-# Calibrate the votes to the evidence. When the finders attach a
-# reproducing probe, or a later phase checks each finding again before it
-# acts, one refuter is enough: drop `votes`, join with `quorum` on
-# `group_by: site`, `min_valid: 1`, `max_refuted: 0`, and have the report
-# match each verdict by its `group`, which then holds the site, in place of
-# `key`. Give each vote an angle that no earlier phase already filtered
-# on. Here each vote checks a different necessary condition, so one
-# refutation decides: `max_refuted: 0`. Use at least
-# min_valid + 1 votes when one failed refuter must not reject a finding.
+# Adversarial verify with a quorum, in one workflow. Use three votes only
+# when acting on a wrong finding is costly or cannot be undone, such as a
+# finding that blocks a release, and no later phase checks it again. One
+# refuter is the default: in recorded runs, the second and third votes
+# changed the verdict of about one finding in 30. For one refuter, drop
+# `votes` and join with `quorum` on `group_by: site`, `min_valid: 1`,
+# `max_refuted: 0`; each verdict then names its finding by `group`, which
+# holds the site, in place of `key`.
+#
+# Finders find defects in each file, and a dedupe join merges them by
+# `site`, the path and the line, which no finder can phrase differently.
+# Each finding carries its evidence and a scenario that triggers it, so a
+# refuter attacks a concrete claim. The refute phase over the kept findings
+# casts three votes on each finding: it runs three refuter agents for each
+# finding, and each agent gets the finding as its item and its own vote
+# number, which picks its angle of attack. Give each vote an angle that no
+# earlier phase already filtered on. Here each vote checks a different
+# necessary condition, so one refutation decides: `max_refuted: 0`. No
+# refuter sees another vote. Finders and refuters follow a result into the
+# code that consumes it, also outside the file, because a defect often shows
+# only in its callers, and a test that asserts a behavior shows intent, not
+# correctness. The quorum join gives each finding one verdict over its three
+# votes, and the verdict names its finding by `key`, the site. A refuter
+# that is not sure abstains: a pass needs two valid votes, so an abstention
+# never passes a finding, and the verdict counts it apart from a
+# refutation. A failed refuter also abstains, so three votes let one
+# refuter fail without losing a real finding. Use at least min_valid + 1
+# votes when one failed refuter must not reject a finding. The workflow ends
+# on the quorum join: the chat receives the reviews join beside the
+# verdicts, so a phase that only matched them would add an agent and no
+# judgment. The findings cap of 20 only bounds the worst case, high enough
+# that a finder never drops a real defect: 5 reviews and 100 kept findings
+# times 3 votes, 305 attempts.
 # Launch input: { "files": [{ "path": "src/a.ts" }, { "path": "src/b.ts" }] }
 id: adversarial-quorum
 name: Adversarial quorum
@@ -76,6 +80,3 @@ phases:
     join:
       reducer: quorum
       with: { vote: vote, min_valid: 2, max_refuted: 0 }
-  - phase: report
-    reads: [reviews]
-    brief: Match each verdict to its finding by its `key`, which is the site. List each finding that passed the vote with its claim and scenario from the reviews output and its vote counts. Then list each rejected finding with its claim and its vote counts. Mark a rejected finding with more abstentions than refutations as unsettled, not refuted.

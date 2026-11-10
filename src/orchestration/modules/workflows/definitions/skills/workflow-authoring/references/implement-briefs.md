@@ -52,7 +52,7 @@ The brief wires the phase. It does not teach the method. The `implementation` sk
 ## Skeleton
 
 {{if:type:reviewer-quality&type:reviewer-elegance&type:implementer}}
-For one unit, copy `examples/build-review-loop.workflow.yaml`: a build that sizes its own work, inline or through implementers, a review by lens with checks, a triage by cause, and a fix and verify loop that ends on a verify. For several units with disjoint files, stream them: each unit builds, is reviewed, and is repaired at its own pace in the same working tree, and one verify loop runs the whole-tree gates once after every unit is done. Give each unit focused checks of its own files, because a whole-tree gate that runs while other units edit judges their unfinished work. A stream phase reads only the handoff that it follows, so each phase copies forward the fields that a later phase needs, and a fix with no findings hands off at once, because a stream phase takes no `if`. A stream phase runs one persona, so its review has one lens: when the units need more lenses, launch the single-unit example once for each unit instead. Write each brief in full for the real task.
+For one unit, copy `examples/build-review-loop.workflow.yaml`: a build that sizes its own work, inline or through implementers, the review that the review method sizes with a check of each finding, a triage by cause, and a fix and verify loop that ends on a verify. For several units with disjoint files, stream them: each unit builds, is reviewed, and is repaired at its own pace in the same working tree, and one verify loop runs the whole-tree gates once after every unit is done. Give each unit focused checks of its own files, because a whole-tree gate that runs while other units edit judges their unfinished work. A stream phase reads only the handoff that it follows, so each phase copies forward the fields that a later phase needs, and a fix with no findings hands off at once, because a stream phase takes no `if`. A stream phase runs one persona, so its review has one reviewer: use it when the review method sizes each unit for its single tier, and when it sizes a unit for more reviewers, launch the single-unit example once for each unit instead. Write each brief in full for the real task.
 {{else}}
 For several units with disjoint files, stream them: each unit builds, is reviewed, and is repaired at its own pace in the same working tree, and one verify loop runs the whole-tree gates once after every unit is done. Give each unit focused checks of its own files, because a whole-tree gate that runs while other units edit judges their unfinished work. A stream phase reads only the handoff that it follows, so each phase copies forward the fields that a later phase needs, and a fix with no findings hands off at once, because a stream phase takes no `if`. Write each brief in full for the real task.
 {{end}}
@@ -93,8 +93,8 @@ phases:
         handed_over: { type: list, of: { type: string } }
   - phase: review
     over: build
-{{if:type:reviewer-elegance}}
-    persona: reviewer-code-elegance
+{{if:type:reviewer-quality}}
+    persona: reviewer-code-quality
 {{else}}
     dependencies: [code-review-method]
 {{end}}
@@ -120,15 +120,16 @@ phases:
         deviations: { type: list, of: { type: string } }
         files: { type: list, of: { type: string } }
         handed_over: { type: list, of: { type: string } }
-  - repeat: { while: verify.open, max: 3 }
+  - repeat: { while: verify.open, max: 2 }
     phases:
       - phase: verify
         reads: [fix]
         dependencies: [verification]
         brief: Change no project file. Run every command of gates once, list each handed_over change that no unit made, and review the diff of the files that each repair changed for defects that the repair added.
         output:
+          summary: "The result of each check, and each failure in a file that no unit changed, which the chat handles."
           fields:
-            open: { type: list, max: 20, of: { type: string }, description: "Each gate failure, open handover, or repair defect, with its site and evidence. Empty when every check passes." }
+            open: { type: list, max: 20, of: { type: string }, description: "Each gate failure in a file that a unit changed, open handover, or repair defect, with its site and evidence. Empty when every check passes." }
       - phase: integrate
 {{if:type:implementer}}
         persona: implementer

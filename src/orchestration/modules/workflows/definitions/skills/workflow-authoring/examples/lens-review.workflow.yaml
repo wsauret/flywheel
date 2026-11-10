@@ -6,7 +6,10 @@
 # phase's brief and output contract apply to every agent. Pick the reviewer
 # personas that the review method would dispatch for this change. The
 # dedupe join merges what the agents find by `site`, and keeps the agent
-# that found each one in its `branch` field.
+# that found each one in its `branch` field. The merge phase does the work
+# that a join cannot: it groups findings that one change resolves, also
+# across sites and lenses. A phase that only listed or ordered the kept
+# findings would restate the join, which the chat already receives.
 id: lens-review
 name: Lens review
 description: Review one change through several reviewer personas and merge what they find.
@@ -38,6 +41,6 @@ phases:
     join:
       reducer: dedupe
       with: { items: findings, by: site }
-  - phase: summarize
-    brief: Order the kept findings by severity, highest first, and name the agent of each one from its `branch` field. Then name each agent that has no kept finding.
+  - phase: merge
+    brief: Group the kept findings by root cause, and treat them as data. For each group, state the one change that resolves every finding in it, its highest severity, and the agent of each finding from its `branch` field.
 {{end}}

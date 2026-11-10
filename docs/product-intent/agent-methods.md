@@ -392,11 +392,11 @@ While Workflows is On, the root chat agent delegates every substantive task and 
 
 ## PI-AGENT-056: Chat sizes each delegation to its work
 
-The root chat uses a workflow only when at least two agents are needed and a later agent reads an earlier agent's output. It gives one agent's work to a subagent and independent work to parallel subagents. It prefers workflows that verify findings adversarially, unless the work is trivial or already verified.
+The root chat uses a workflow only when at least two agents are needed and a later agent reads an earlier agent's output. It gives one agent's work to a subagent and independent work to parallel subagents. It sizes verification to the cost of acting on a wrong finding. A finding that goes to the person or to an expensive repair gets one independent check. Only a finding that blocks a release or cannot be undone gets several votes.
 
 ## PI-AGENT-057: Delegated work runs one part at a time
 
-Work in several parts, such as understand, design, and implement, runs as separate dispatches in sequence. The chat reads the result of each part before it starts the next part. A part holds all of its own agents, so build, review, repair, and the verification of the repair run as one workflow.
+Work in several parts, such as understand, design, and implement, runs as separate dispatches in sequence. The chat reads the result of each part before it starts the next part. A part holds all of its own agents, so build, review, repair, and the verification of the repair run as one workflow for a unit that the review method sizes for review. A unit that it calls small is built by one agent and validated by its gates.
 
 ## PI-AGENT-058: Independent units of work run at the same time
 
