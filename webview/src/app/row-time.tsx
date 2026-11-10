@@ -6,7 +6,7 @@ import { formatClockParts } from "../client/format-time.js"
 import { copyFrom } from "./copy.js"
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
-import { toolActivity } from "../../../src/protocol/client/transcript-model.js"
+import { toolActivity, toolProcess } from "../../../src/protocol/client/transcript-model.js"
 import { blockIdentity } from "../../../src/protocol/block-identity.js"
 
 /** Keeps a block's time inputs scalar while its body streams. */
@@ -17,10 +17,7 @@ export function BlockTime(props: {
 }) {
   const running = createMemo(() => {
     const block = props.block
-    return block.kind === "tool" ? toolActivity(block, {
-      held: props.processStatus?.activeForegroundBashToolCallIds.includes(block.id) ?? false,
-      managed: props.processStatus?.activeBackgroundCommands.some(command => command.toolUseId === block.id) ?? false,
-    }).active : block.kind === "thinking" && block.status === "streaming"
+    return block.kind === "tool" ? toolActivity(block, toolProcess(props.processStatus, block.id)).active : block.kind === "thinking" && block.status === "streaming"
   })
   // Persisted assistant parts carry their entry's append time after streaming, not stream start.
   const timestamp = createMemo(() => props.block.timestamp)
@@ -64,6 +61,9 @@ export const TranscriptClock = createContext<{
 /** Absolute start and wire-derived duration, without a layout row of its own. */
 export function RowTime(props: { timestamp: number; end?: number | undefined; id?: string; running?: boolean; always?: boolean; inline?: boolean | undefined; text?: string | undefined; duration?: string | undefined }) {
   const clock = useContext(TranscriptClock)
+  // A caller's conditional prop compiles to a getter that creates a memo on each read.
+  // The Copy handler runs with no owner, so it reads this owned memo, never the prop.
+  const text = createMemo(() => props.text)
   const start = createMemo(() => formatClockParts(props.timestamp))
   const duration = createMemo(() => {
     if (props.duration !== undefined) return props.duration
@@ -76,8 +76,8 @@ export function RowTime(props: { timestamp: number; end?: number | undefined; id
       <Show when={start().date}>{date => <><span class="row-date">{date()}</span><span class="row-date-separator">{" · "}</span></>}</Show>
       <span class="row-clock">{start().time}<Show when={duration() !== undefined}><span class="row-duration"><span class="row-time-separator">{" · "}</span>{duration()}</span></Show></span>
     </time>
-    <Show when={props.text !== undefined}>
-      <button type="button" class="ghost-text message-copy" aria-label="Copy message" onClick={(event) => { void copyFrom(event.currentTarget, props.text!) }}>Copy</button>
+    <Show when={text() !== undefined}>
+      <button type="button" class="ghost-text message-copy" aria-label="Copy message" onClick={(event) => { void copyFrom(event.currentTarget, text()!) }}>Copy</button>
     </Show>
   </span>
 }
