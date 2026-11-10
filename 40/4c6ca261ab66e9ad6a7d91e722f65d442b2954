@@ -1,0 +1,24 @@
+src/orchestration/modules/subagents/execution/prompts.ts
+  h_4b47e9e4a8b456 15-16,22
+src/workflows/skill-invocation.ts
+  h_4b47e9e4a8b456 17-23,65-66
+tests/unit/orchestration/agent-runtime/persona-tool-grants.test.ts
+  h_4b47e9e4a8b456 258
+tests/unit/orchestration/agent-runtime/subagent/prompts.test.ts
+  h_4b47e9e4a8b456 75-77,84
+tests/unit/orchestration/agent-runtime/subagent/registry.test.ts
+  h_4b47e9e4a8b456 11,13,15
+tests/unit/workflows/skill-invocation.test.ts
+  h_4b47e9e4a8b456 52-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "404c6ca261ab66e9ad6a7d91e722f65d442b2954",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
