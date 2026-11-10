@@ -4,11 +4,16 @@ import { CHECKPOINT_LIMIT_BYTES } from "../../session/conversation-checkpoint.js
  *  of the model's context window, whichever comes first. */
 const PROACTIVE_TRIGGER_RATIO = 0.85;
 
-/** True when proactive compaction is due. A non-positive trigger disables it,
- *  so only manual and context-overflow compaction run. */
-export function shouldCompact(currentTokens: number, contextLimit: number, triggerTokens: number): boolean {
-  if (triggerTokens <= 0) return false;
-  return currentTokens >= Math.min(triggerTokens, Math.ceil(contextLimit * PROACTIVE_TRIGGER_RATIO));
+/** The context sizes at which an automatic reset can be due, in the order
+ *  they apply: the configured token count capped at the window share, then the
+ *  window share. The compaction plan owner takes the first one that the fresh
+ *  context is below (ARCH-CONTEXT-036). A non-positive configured count
+ *  disables automatic resets, so it yields none and only manual and
+ *  context-overflow compaction run. */
+export function proactiveCompactionTriggers(contextLimit: number, configuredTokens: number): readonly number[] {
+  if (configuredTokens <= 0) return [];
+  const windowShare = Math.ceil(contextLimit * PROACTIVE_TRIGGER_RATIO);
+  return configuredTokens < windowShare ? [configuredTokens, windowShare] : [windowShare];
 }
 
 /** The one characters-per-token ratio of every context budget. Code-heavy

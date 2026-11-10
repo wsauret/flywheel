@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 
 import { Log } from "../../../../../src/infra/log.js";
+import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { compactInput, messageInput, type AgentLoopInput, type TurnParkedContext } from "../../../../../src/infra/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import type { ConversationMessage, ProviderStreamEvent, StreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -320,6 +321,88 @@ describe("planned agent-loop compaction", () => {
     expect(opening.content).toContain(stored?.currentState ?? "");
     expect(opening.content).toContain("# Brief\n\nThe recorded brief.");
     expect(opening.content).toEndWith(recovery);
+  });
+
+  // The test model counts 4 characters per token: the brief is 300k tokens,
+  // above the default 270k trigger and below 85% of a 1M window (850k).
+  const BRIEF = "b".repeat(1_200_000);
+  const deferred = (freshTokens: number) => `Automatic compaction is deferred: a fresh context would start at about ${freshTokens.toLocaleString("en-US")} tokens, which is not below its trigger of 270,000 tokens. It now runs at 850,000 tokens, near the model's context window.`;
+  const deferral = (sessionId: string, freshContextTokens: number) => ({ sessionId, freshContextTokens, triggerTokens: 270_000, effectiveTriggerTokens: 850_000, contextLimit: 1_000_000 });
+  async function runAboveTrigger(name: string, prior: ConversationMessage[], responses: ProviderStreamEvent[][]) {
+    let stored: ConversationCheckpoint = { ...emptyConversationCheckpoint(), currentState: "state" };
+    let checkpointReads = 0;
+    let briefReads = 0;
+    const notes = withSessionNotes(new RequestToolMap([["probe", {
+      name: "probe", description: "Probes", action: "file_read", isConcurrencySafe: true, inputSchema: { type: "object", properties: {} },
+      execute: async () => ({ content: "probed", outcome: "ok", terminate: false }),
+    }]]), {
+      read: async () => { checkpointReads++; return stored; },
+      replace: async (section, value) => { stored = { ...stored, [section]: value }; return stored; },
+      decide: async () => stored,
+    });
+    const { client, capturedMessages } = makeCaptureClient(responses.map((events) => ({ events })), { contextLimit: 1_000_000 });
+    const history: ConversationMessage[] = [];
+    const notices: string[] = [];
+    const resets: StreamEvent[] = [];
+    const deferrals: unknown[] = [];
+    const freshTokens: number[] = [];
+    const record = spyOn(DebugLog, "record").mockImplementation((entry) => {
+      if (entry.type !== "agent.compaction.deferred") return;
+      deferrals.push(entry.payload);
+      if (typeof entry.payload === "object" && entry.payload !== null && "freshContextTokens" in entry.payload) freshTokens.push(Number(entry.payload.freshContextTokens));
+    });
+    const result = await runAgentLoop({
+      client, ...notes, systemPrompt: stableSystemPrompt("test"), instruction: null,
+      executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
+      providerSessionKey: name, promptCacheKey: name, artifactScopeId: name, retrievalSessionId: name,
+      standingBrief: async () => { briefReads++; return BRIEF; },
+      persistence: { history: { append: (message) => { history.push(message); } } },
+      seed: { kind: "resume", priorMessages: prior },
+      onEvent: (event) => { if (event.kind === "compaction_done" && event.success) resets.push(event); },
+      onSystemMessage: (notice) => { notices.push(notice); },
+    }).finally(() => record.mockRestore());
+    return { result, requests: capturedMessages.length, history, notices, resets, deferrals, freshTokens, checkpointReads, briefReads };
+  }
+  const probeCall = (id: string): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id, name: "probe", input: {} } }, done("tool_use")];
+
+  test("a brief above the trigger defers the automatic reset and measures its fresh context once across later requests", async () => {
+    const run = await runAboveTrigger("brief-above-trigger", [{ kind: "user", content: BRIEF }], [
+      probeCall("p1"), probeCall("p2"), probeCall("p3"), [text("Task work done.", "done"), done("end_turn")],
+    ]);
+    expect(run.result.kind).toBe("completed");
+    expect(run.resets).toHaveLength(0);
+    // Every request is task work; none asks for a checkpoint save.
+    expect(run.requests).toBe(4);
+    expect(JSON.stringify(run.history)).not.toContain("context_window_reminder");
+    // One measurement of the fresh context serves all four requests.
+    expect(run.briefReads).toBe(1);
+    expect(run.checkpointReads).toBe(1);
+    const [freshTokens = 0] = run.freshTokens;
+    expect(freshTokens).toBeGreaterThan(BRIEF.length / 4);
+    expect(run.deferrals).toEqual([deferral("brief-above-trigger", freshTokens)]);
+    expect(run.notices).toEqual([deferred(freshTokens)]);
+  });
+
+  test("a brief above the trigger still gets one saved reset at the window share", async () => {
+    const run = await runAboveTrigger("brief-at-window-share", [{ kind: "user", content: BRIEF }, { kind: "assistant", content: "w".repeat(2_300_000) }, { kind: "user", content: "work" }], [
+      [{ kind: "tool_use", toolCall: save }, done("tool_use")], [text("Task work done.", "done"), done("end_turn")],
+    ]);
+    expect(run.result.kind).toBe("completed");
+    expect(run.resets).toHaveLength(1);
+    const reset = run.resets[0];
+    if (reset?.kind !== "compaction_done" || reset.tokensAfter === undefined) throw new Error("expected one measured reset");
+    expect(reset.tokensBefore).toBeGreaterThanOrEqual(850_000);
+    expect(run.requests).toBe(2);
+    const opening = run.history.findLast((message) => message.kind === "user" && typeof message.content === "string" && message.content.includes("# Brief"));
+    expect(opening?.kind === "user" && typeof opening.content === "string" && opening.content.endsWith(SAVED)).toBe(true);
+    // One measurement before the reset, one by the reset itself; the request after it measures nothing.
+    expect(run.briefReads).toBe(2);
+    // The fresh context that the reset installed defers again, with the reset's own measurement. The first
+    // measurement precedes the save round, which rewrote the checkpoint.
+    const [firstTokens = 0] = run.freshTokens;
+    expect(firstTokens).toBeGreaterThan(BRIEF.length / 4);
+    expect(run.deferrals).toEqual([deferral("brief-at-window-share", firstTokens), deferral("brief-at-window-share", reset.tokensAfter)]);
+    expect(run.notices).toEqual([deferred(firstTokens), deferred(reset.tokensAfter)]);
   });
 
   test.each([

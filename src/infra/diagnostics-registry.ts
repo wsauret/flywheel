@@ -158,6 +158,10 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   // ids, and their count. It fires only when the turned-off set gains a
   // module that the history had not named.
   ["agent.capabilities.narrowed", { tier: "info" }],
+  // One record per fresh context whose size is not below the configured
+  // automatic compaction trigger, so that trigger is skipped: the session,
+  // the fresh-context tokens, both triggers, and the window. Token counts only.
+  ["agent.compaction.deferred", { tier: "info" }],
   // One record per message_session refusal of a text that repeats the last
   // text of the sender to the same recipient less than 30 seconds before;
   // repeats coalesce into a count.

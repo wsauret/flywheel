@@ -15,6 +15,8 @@ import { runManualVisibleCompaction, runProactiveCompaction } from "./compaction
 import type { AssistantTurnResult } from "./assistant-turn-result.js";
 import type { OutgoingContextSnapshot } from "./context-token-anchor.js";
 import { Log } from "../../infra/log.js";
+import { DebugLog } from "../../infra/debug-log.js";
+import { proactiveCompactionTriggers } from "./compaction/compaction-policy.js";
 import { renderConversationCheckpoint } from "../session/conversation-checkpoint.js";
 
 const log = Log.create({ service: "agent-loop" });
@@ -92,6 +94,11 @@ interface CompactionStateInput {
 export function createAgentLoopCompactionState(input: CompactionStateInput) {
   let planned: { operation: PlannedCompactionOperation; requests: number; announced: boolean; unsavedNotice: boolean } | null = null;
   let idleCache: { key: string; observedAt: number; ttlMs: number } | undefined;
+  // The tokens that a reset reopens at: prefix, checkpoint, brief, and recovery
+  // text. Each installed reset records it; a run that opens above the trigger
+  // measures it once. It is the same for every request until the next reset.
+  let freshContextTokens: number | undefined;
+  let deferralReported = false;
   const estimationCache = createTokenEstimationCache();
   const checkpointUsable = (allowed: ReadonlySet<string> | undefined): boolean => canUseCheckpoint(input.checkpoint !== undefined, input.surface.current().tools, allowed);
   /** A reset at the next request, which runs no save round. */
@@ -129,7 +136,9 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
         input.onUserMessage?.(message.content, "system", message);
       }
       if (!recorded) input.requestContext.anchor.reset();
-      return measured ?? measure(messages);
+      freshContextTokens = measured ?? measure(messages);
+      deferralReported = false;
+      return freshContextTokens;
     } };
   };
 
@@ -166,6 +175,33 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
     prepareCompactedHistory,
     canCompact,
     canPlan,
+    /** Whether an automatic reset is due at `contextTokens` (ARCH-CONTEXT-036):
+     *  the context reached the first trigger that the fresh context is below.
+     *  A reset that cannot reopen below a trigger is never due at it. The
+     *  first deferral after each reset is recorded and shown once. Call it
+     *  after the request context is selected, because the fresh context
+     *  counts its prefix. */
+    async automaticResetDue(contextTokens: number, contextLimit: number, configuredTokens: number): Promise<boolean> {
+      const triggers = proactiveCompactionTriggers(contextLimit, configuredTokens);
+      const [first] = triggers;
+      if (first === undefined || contextTokens < first) return false;
+      if (freshContextTokens === undefined) {
+        const installation = await prepareCompactedHistory({ saved: true });
+        freshContextTokens = installation.measure(installation.additions);
+      }
+      const freshTokens = freshContextTokens;
+      const trigger = triggers.find((tokens) => freshTokens < tokens);
+      if (trigger !== first && !deferralReported) {
+        deferralReported = true;
+        const sessionId = input.options.sessionId ?? input.options.artifactScopeId;
+        DebugLog.record({ type: "agent.compaction.deferred", payload: { sessionId, freshContextTokens: freshTokens, triggerTokens: first, effectiveTriggerTokens: trigger ?? null, contextLimit } });
+        const count = (tokens: number): string => tokens.toLocaleString("en-US");
+        input.options.onSystemMessage?.(`Automatic compaction is deferred: a fresh context would start at about ${count(freshTokens)} tokens, which is not below its trigger of ${count(first)} tokens. ${trigger === undefined
+          ? "Only context overflow recovery resets this context."
+          : `It now runs at ${count(trigger)} tokens, near the model's context window.`}`);
+      }
+      return trigger !== undefined && contextTokens >= trigger;
+    },
     async applyCheckpoint(settled: SettledCompaction, turnSignal: AbortSignal, interruptSignal: AbortSignal): Promise<void> {
       const { operation } = settled;
       if (operation.kind === "idle" && (!settled.saved || input.options.signal?.aborted || interruptSignal.aborted)) {

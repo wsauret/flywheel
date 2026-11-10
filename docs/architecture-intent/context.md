@@ -150,3 +150,15 @@ Not: Stripping or masking provider reasoning at write time, or demoting foreign 
 ## ARCH-CONTEXT-029: One admission budget bounds context between requests
 
 One context admission budget bounds what enters the next request between requests. Tool results of a batch and subagent results delivered with it draw from the headroom that the next planned save needs. Content that lands below the compaction trigger therefore never pushes the save request past the context window. Reads keep their exemption only inside the fixed share of the window. Each finalized result records the bound in force, so recovery replays the same bound.
+
+## ARCH-CONTEXT-035: A rule has one home in a request
+
+Flywheel-owned text of one request states each rule once. A rule about one tool input lives on that input, a rule about one tool lives in that tool's description, and a rule that spans tools lives in the system prompt. The system prompt holds no list or summary of the tools that the request carries.
+Because: A second copy costs tokens on every request and drifts from the first.
+Not: Repeating a rule in each place where a model might look for it.
+
+## ARCH-CONTEXT-036: The compaction plan owner admits an automatic reset by its fresh-context size
+
+The owner of the loop's compaction plan decides whether an automatic reset is due. It compares the context with the first trigger that the fresh context is below: the configured token count, then the window share. Below neither, it plans none, and overflow recovery remains. The fresh-context size is the one that each reset measures and records, measured once more only when a run opens above the trigger. No request repeats the measurement.
+Because: A reset that reopens above its trigger plans itself again on every request and never returns to the task.
+Not: A retry counter or a cooldown on resets.

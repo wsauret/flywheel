@@ -31,7 +31,7 @@ import { consumeAgentLoopInput, createAgentLoopInputWaiter } from "./agent-loop-
 import type { AgentLoopOptions, AgentLoopTerminal } from "./agent-loop-types.js";
 import { createReplyNudge, SILENT_REPLY_NUDGE } from "./reply-nudge.js";
 import { createRunEndProcessNotice } from "./run-end-process-notice.js";
-import { createContextAdmission, shouldCompact } from "./compaction/compaction-policy.js";
+import { createContextAdmission } from "./compaction/compaction-policy.js";
 import type { ConversationMessage, LlmStopReason, ToolCall } from "./llm/types.js";
 import { repairContentRefusal } from "./llm/content-repair.js";
 import { createStreamedEditTurn } from "./streamed-edit-turn.js";
@@ -379,7 +379,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       context: { preview: replyNudge.previewRequestContext(logicalTurnRequestContext), consume: takeRequestContext },
     });
     if (!handoffTracker.isHandingOff && canPlan() && !compactionState.hasPlanned() && !state.overflowRecoveryAttempted && preparation.messages.length > 0
-      && shouldCompact(contextTokens, preparation.planned.contextLimit, requestSurface.runtimeConfig.proactiveCompactionThreshold)) {
+      && await compactionState.automaticResetDue(contextTokens, preparation.planned.contextLimit, requestSurface.runtimeConfig.proactiveCompactionThreshold)) {
       compactionState.schedule({ kind: "automatic", after: "continue" });
     }
     await compactionState.announce();

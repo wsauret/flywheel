@@ -9,8 +9,8 @@ import {
 import {
   CHARS_PER_TOKEN,
   createContextAdmission,
+  proactiveCompactionTriggers,
   SAVE_ROUND_RESERVE_TOKENS,
-  shouldCompact,
   turnBudgetChars,
 } from "../../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
 
@@ -45,9 +45,7 @@ describe("turnBudgetChars", () => {
 describe("context admission budget", () => {
   /** The last estimate that does not yet trigger proactive compaction. */
   function lastTokenBelowTrigger(contextLimit: number): number {
-    let tokens = contextLimit;
-    while (shouldCompact(tokens, contextLimit, 270_000)) tokens -= 1;
-    return tokens;
+    return proactiveCompactionTriggers(contextLimit, 270_000)[0]! - 1;
   }
 
   test.each([128_000, 200_000])("a batch admitted below the trigger leaves the save reserve inside a %i-token window", (contextLimit) => {

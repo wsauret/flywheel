@@ -63,6 +63,11 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
+    file: "src/orchestration/agent-runtime/agent-loop-compaction-state.ts",
+    what: "automatic compaction deferrals of one fresh context",
+    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
+  },
+  {
     file: "src/infra/startup-timeline.ts",
     what: "bounded startup lifecycle summaries",
     pattern: /emit\(\{\s*type:\s*"([^"]+)"/g,

@@ -130,6 +130,10 @@ Before a planned automatic or manual compaction, including one started from idle
 
 With automatic compaction on, Flywheel compacts a large idle chat before its prompt cache expires, when the provider states a minimum cache lifetime, and the chat stays idle. It does not wake interrupted chats or chats waiting on background work. Users can turn off idle compaction in Settings, and an idle compaction that fails or is interrupted keeps the conversation context. A compaction that the person asks for while a chat waits for them runs at once, starts no turn, and keeps how the last turn ended and whether it offers Resume.
 
+## PI-AGENT-124: Automatic compaction runs only when it frees context
+
+Automatic compaction starts only when the fresh context that follows is smaller than the size that triggers it. When an agent's brief and checkpoint alone exceed the configured size, the agent keeps working and compacts when its context nears the model's window instead. The session's transcript states this once. A compaction that the person asks for always runs.
+
 ## PI-AGENT-092: Children receive the approved design intent
 
 A subagent, reviewer, or workflow agent that starts while its parent's design intent is approved receives that intent and the user's decisions, with their provenance, and cannot change the parent's checkpoint. The agents of one workflow receive the same snapshot, taken when the workflow starts. A child never receives a design intent that the user has not approved.
@@ -316,7 +320,7 @@ An agent receives the output of the phase before it and the durable outputs. It 
 
 ## PI-AGENT-109: A plain file read shows the file, not a summary
 
-A plain read of any text file shows the file from its first line, up to 2000 lines, not a summary, and tells the agent where the next read continues.
+A plain read of any text file shows the file from its first line, not a summary. It ends at a whole line when it reaches 2000 lines or the size limit of one tool result, whichever comes first, and tells the agent where the next read continues.
 
 ## PI-AGENT-110: A chat launches a workflow file it saves
 
@@ -360,7 +364,7 @@ Headless chat behaves like interactive chat, with standard input and output repl
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
-An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, and questions. It keeps the skill methods that need no person, and leaves out each skill that a person answers or approves. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies.
+An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, and questions. It keeps the skill methods that need no person, and leaves out each skill that a person answers or approves. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies. It also leaves out guidance for inspecting its own session records.
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 
@@ -433,6 +437,10 @@ Skills are methods that agents load. A person never runs a skill directly: no co
 ## PI-AGENT-039: Learning has project or global scope
 
 Every memory entry and learned skill applies either to the current project or to all of the user's projects. Learning that agents save on their own applies to the project unless it clearly concerns the user everywhere, and a background learning review may end without saving anything. A background review never changes a global skill; it recommends a promotion that the user decides. Promoting a skill moves it to global scope, so it no longer exists as a separate project skill.
+
+## PI-AGENT-125: Background learning reviews run for chats only
+
+Flywheel reviews a chat in the background for learning worth saving. It does not review workflow agents or subagents. What they learn reaches later work only through their results and the chat that reads them.
 
 ## PI-AGENT-040: Learned skills never duplicate or change built-in skills
 
