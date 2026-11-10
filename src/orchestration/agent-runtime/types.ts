@@ -72,7 +72,6 @@ export type AgentPurpose =
       readonly inheritedIntent?: string;
     }
   | { readonly kind: "workflow-follow-up" }
-  | { readonly kind: "workflow-learning-review"; readonly review: LearningReviewRun }
   | {
       readonly kind: "subagent";
       readonly renderAs: PromptKind;

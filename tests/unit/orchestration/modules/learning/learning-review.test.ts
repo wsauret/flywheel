@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { assertMutationEvidence, readMutationEvidenceFiles } from "../../../../../src/infra/mutation-evidence.js";
+import { readMutationEvidenceFiles } from "../../../../../src/infra/mutation-evidence.js";
 import { buildMutationDiff } from "../../../../../src/infra/mutation-diff.js";
 import { buildMutationDiffEvidence } from "../../../../../src/infra/mutation-diff-evidence.js";
 import type { SessionContentNode, StageSessionContentNodes } from "../../../../../src/infra/session-content.js";
@@ -26,8 +26,6 @@ let notices: ReviewNotice[] = [];
 const contentNodes = new Map<string, SessionContentNode>();
 const stageContent: StageSessionContentNodes = async (nodes) => { for (const row of nodes) contentNodes.set(row.sha256, row.node); };
 let notified: unknown[] = [];
-/** Where the spawned review stages its notice evidence, when the notice lands in another session. */
-let stageNoticeContent: StageSessionContentNodes | undefined;
 
 let resolveReview: (() => void) | undefined;
 let failReview = false;
@@ -93,7 +91,6 @@ function makeReview(config: Partial<LearningReviewConfig> = {}) {
         model: "test-model",
         recordSystemMessage: (notice: ReviewNotice) => { notices.push(notice); return Promise.resolve(); },
         notifyRecommendation: (recommendation) => { notified.push(recommendation); },
-        ...(stageNoticeContent ? { stageNoticeContent } : {}),
       });
     },
   });
@@ -130,7 +127,6 @@ beforeEach(() => {
   notices = [];
   contentNodes.clear();
   notified = [];
-  stageNoticeContent = undefined;
 
   resolveReview = undefined;
   failReview = false;
@@ -339,22 +335,6 @@ describe("learning review gating", () => {
       ["SKILL.md", "provider-quirks", "support_file", "project"],
     ]);
     expect(JSON.stringify(notices[0])).not.toContain("body\\n");
-  });
-
-  it("stages the whole notice evidence closure in the session the notice lands in", async () => {
-    // A workflow review runs on the workflow's content while its notice lands
-    // in the agent's own session, whose writer proves the closure there.
-    const destination = new Map<string, SessionContentNode>();
-    stageNoticeContent = async (nodes) => { for (const row of nodes) destination.set(row.sha256, row.node); };
-    const review = makeReview({ memoryIntervalTurns: 1, skillIntervalIterations: 0 });
-    await completeUserTurn(review);
-    const mutationEvidence = await buildMutationDiffEvidence(buildMutationDiff([{ path: "SKILL.md", before: { kind: "text", text: "old\n" }, after: { kind: "text", text: "new\n" } }]), "agent-write", stageContent);
-    specs[0]?.learningReview.onWritten({ surface: "skill", name: "provider-quirks", action: "patched", reach: "project", mutationEvidence });
-    await finishReview(review);
-
-    const evidence = notices[0]?.mutationEvidence;
-    if (!evidence) throw new Error("expected notice evidence");
-    expect(() => assertMutationEvidence(evidence, (hash) => destination.get(hash) ?? null)).not.toThrow();
   });
 
   it("reports a write that published no artifact without one", async () => {

@@ -26,7 +26,6 @@ export function sharesTreeHost(purpose: AgentOptions["purpose"]): boolean {
     case "subagent":
     case "session-title":
     case "chat-learning-review":
-    case "workflow-learning-review":
     case "learning-review-audit":
     case "chat-side-call":
     case "subagent-failure-summary":

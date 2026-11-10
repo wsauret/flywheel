@@ -36,7 +36,7 @@ Because: A recorded deletion whose directory survives leaves artifacts that no l
 
 ## ARCH-SESSIONS-008: Each conversation owns one versioned checkpoint
 
-Each conversation owns one typed checkpoint whose every version is a durable fact in its session's history, and the current checkpoint is the latest version regardless of branch or rewind. Each write validates the complete checkpoint and refuses an oversize value without changing anything. A learning review keys its checkpoint by its review run, and a workflow review keeps it in the workflow aggregate that owns the review.
+Each conversation owns one typed checkpoint whose every version is a durable fact in its session's history, and the current checkpoint is the latest version regardless of branch or rewind. Each write validates the complete checkpoint and refuses an oversize value without changing anything. A learning review keys its checkpoint by its review run.
 Not: Silently truncating a checkpoint to fit its limit.
 
 ## ARCH-SESSIONS-009: Every started child has a durable child session before it runs

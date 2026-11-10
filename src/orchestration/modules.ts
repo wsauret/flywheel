@@ -35,7 +35,6 @@ import type { AnyFactSchema } from "../infra/event-registry.js"
 import type { AuthProviderStatus } from "../protocol/auth-status-protocol-types.js"
 import { moduleRequirementsForContribution } from "./module-requirements.js"
 import type { DefinitionReconciliationInput, ModuleChildSessionHistory, ModuleDefinitionReconciliation, ModuleMaintenance, ModuleMaintenanceInput, ManagedPackageWrites, MemoryContribution, ModuleChatObserver, ModuleChatObserverContext, ModuleRetainedOperationContribution, ModuleRuntimeInvocationTool, ModuleSessionHistory, ModuleSessionAdmission, ModuleSessionDeletion, ModuleChildSession, QuestionDecisionContribution, SessionHistoryRecoveryInput, SessionToolSummaryReader, SkillChildGrantContribution, SupersededFactInvalidationResult, WorkspaceMigration } from "./module-seams.js"
-import type { ModuleReviewContribution } from "./review-host.js"
 import type { ModuleRetainedDiagnostics } from "./module-diagnostics.js"
 import type { ModuleAgentTasks } from "./module-agent-tasks.js"
 import type { DEVELOPMENT_MODULES } from "./development-modules.js"
@@ -155,7 +154,6 @@ interface FirstPartyContributionMap {
   readonly skillChildGrants: SkillChildGrantContribution
   readonly questionDecisions: QuestionDecisionContribution
   readonly managedPackageWrites: { readonly create: (modules: ModuleRuntimes) => ManagedPackageWrites | undefined }
-  readonly reviews: ModuleReviewContribution
   readonly chatHosts: ChatModuleHostContribution
   readonly shellOperations: { readonly background: true }
   readonly settings: ModuleSettingControl

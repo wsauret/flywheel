@@ -21,7 +21,6 @@ describe("side calls of a chat tree", () => {
     { kind: "learning-review-audit", prompt: { kind: "literal", systemPrompt: "audit" } },
     { kind: "subagent-failure-summary", prompt: { kind: "literal", systemPrompt: "summarize" } },
     { kind: "chat-learning-review", review: { reviewRunId: "review" } },
-    { kind: "workflow-learning-review", review: { reviewRunId: "review" } },
   ]
   async function hosted(purpose: AgentOptions["purpose"], override: Partial<AgentOptions> = {}) {
     const scope = Effect.runSync(Scope.make())
@@ -39,7 +38,7 @@ describe("side calls of a chat tree", () => {
     expect(side.root).toBe("root-chat")
     expect([...side.surface.tools.keys()]).toEqual([...agent.surface.tools.keys()])
     const usable = [...side.surface.tools.keys()].filter((name) => side.surface.usableToolNames.has(side.surface.registrationIdentities.get(name) ?? name))
-    if (purpose.kind === "chat-learning-review" || purpose.kind === "workflow-learning-review") {
+    if (purpose.kind === "chat-learning-review") {
       // Without a conversation to keep notes in, the checkpoint tools are advertised and refuse their calls.
       expect(usable.toSorted()).toEqual(["memory", "skill", "skill_manage"])
       expect(side.assembled.initialRequestContext).toContain(`## Tools\n\nYou may call these tools: ${usable.join(", ")}.`)

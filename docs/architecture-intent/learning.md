@@ -121,3 +121,9 @@ The cleanup campaign runs under one renewable claim recorded in the project's du
 
 A dependency states one method and its own report shape. It never states who dispatches it, how findings route, or what is synthesized. The same package thus reads correctly in a brief, a persona, or a chat turn. A persona declares the packages its lens always needs and otherwise carries only short role instructions.
 Not: A dependency package that dispatches, routes findings, or synthesizes for its host.
+
+## ARCH-LEARNING-026: Only a chat host runs the background learning review
+
+Only a chat host runs the background learning review. A workflow agent and a subagent have no review host, counter, or review fork.
+Because: Workflow-agent reviews rarely save anything, and later work rarely loads what they save.
+Not: A per-agent trigger, interval, or signal gate for workflow agents.

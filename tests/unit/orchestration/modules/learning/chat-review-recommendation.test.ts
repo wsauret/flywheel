@@ -45,7 +45,7 @@ function inputSourceOf(runner: SpawnedRunner): InputSource {
 
 function reviewOf(runner: SpawnedRunner) {
   const purpose = runner.options.purpose
-  if (purpose.kind !== "chat-learning-review" && purpose.kind !== "workflow-learning-review") throw new Error("expected a review runner")
+  if (purpose.kind !== "chat-learning-review") throw new Error("expected a review runner")
   return purpose.review
 }
 

@@ -21,7 +21,12 @@ import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js"
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js"
 import { readWorkflowControl } from "../../../../src/workflows/vm/recovery-fold.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
-import { cleanupProjectRoots, createDeps, makeWorkflowDeps, noConversationRecall, until } from "./_workflow-controller-fixtures.js"
+import { cleanupProjectRoots, createCapabilities, createDeps, makeWorkflowDeps, noConversationRecall, until } from "./_workflow-controller-fixtures.js"
+import { capabilityAccessFor } from "../../../../src/orchestration/agent-runtime/tools/types.js"
+import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import { newTestRunner } from "../../../helpers/agent-runner"
+import { refusingLauncher } from "../../../helpers/launcher-fake"
+import { asModelClient } from "../agent-runtime/_model-client"
 
 const contexts: ReturnType<typeof createSupervisorTestContext>[] = []
 const hosts: WorkflowHosts[] = []
@@ -197,18 +202,17 @@ describe("workflow durable completion ownership", () => {
     }
   })
 
-  it("ends a terminal run when the parent acknowledges a control revision that a learning review advanced after completion", async () => {
+  it("ends a terminal run when the parent acknowledges a control revision that a later fact advanced after completion", async () => {
     const run = await workflowRun("pending")
     try {
       await run.reported
       const terminal = await readWorkflowControl(run.reader, "child")
       expect(terminal.status).toBe("completed")
-      // A learning review that the run's last agent started records on the
-      // workflow's aggregate after the terminal commit, before the parent's
-      // sweep reads the control it acknowledges.
+      // Another writer records on the workflow's aggregate after the terminal
+      // commit, before the parent's sweep reads the control it acknowledges.
       await run.ctx.store.append({
         aggregateId: "workflow:child", sessionId: "child", type: "budget.stream.completed", version: 2, actor: "flywheel",
-        timestamp: Date.now(), payload: { budgetStreamId: "learning-review:after-completion" },
+        timestamp: Date.now(), payload: { budgetStreamId: "after-completion" },
       })
       const control = await readWorkflowControl(run.reader, "child")
       expect(control.aggregateSeq).toBe(terminal.aggregateSeq + 1)
@@ -281,6 +285,49 @@ describe("workflow agents and agent types", () => {
     } finally {
       await run.workflowHosts.disposeAll(() => "runtime")
     }
+  })
+})
+
+describe("a workflow agent's learning", () => {
+  // The run admits every module, learning included, under a capability boundary, and the live configuration
+  // keeps the default review interval of 10 model calls, which the agent passes before its handoff.
+  it("starts no learning review for an agent that completes after more model calls than the review interval", async () => {
+    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      id: "work", name: "Work", phases: [{ phase: "work", brief: "Do the work.", writes: [] }],
+    })
+    const base = makeWorkflowDeps()
+    const purposes: string[] = []
+    let requests = 0
+    const respond = (): ProviderStreamEvent[] => requests <= 10
+      ? [{ kind: "tool_use", toolCall: { id: `read-${requests}`, name: "read", input: { file_path: "missing.txt" } } }, { kind: "done", stopReason: "tool_use" }]
+      : [{ kind: "tool_use", toolCall: { id: "handoff-1", name: "handoff", input: { summary: "done" } } }, { kind: "done", stopReason: "tool_use" }]
+    const workflowDeps: WorkflowDeps = {
+      ...base,
+      capabilityAccess: capabilityAccessFor(createCapabilities()),
+      createAgent: (options) => {
+        purposes.push(options.purpose.kind)
+        if (options.purpose.kind !== "workflow-agent") return base.createAgent(options)
+        return newTestRunner({ ...options, runtimeSurfaces: { ...options.runtimeSurfaces, launcher: refusingLauncher }, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
+          accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+          promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+          async *streamWithTools() { requests += 1; yield* respond() },
+        }), undefined, base.captureProviderConnection)
+      },
+    }
+    const run = await workflowRun("pending", false, "Work", { workflow, workflowDeps })
+    try {
+      await run.reported
+      await run.reconcile()
+      await run.ended
+      expect(await run.tracking.done).toMatchObject({ status: "completed" })
+    } finally {
+      // Disposal joins every background job of the run, as a review that outlived its agent once was.
+      await run.workflowHosts.disposeAll(() => "runtime")
+    }
+    expect(requests).toBe(11)
+    expect(purposes).toEqual(["workflow-agent"])
+    expect(run.ctx.store.read({ types: ["skill.review.completed"] })).toEqual([])
+    expect(run.ctx.store.read({ types: ["budget.stream.completed"] }).map(({ payload }) => String(payload.budgetStreamId))).not.toContainEqual(expect.stringContaining("learning-review"))
   })
 })
 

@@ -7,9 +7,10 @@ import type { ConversationMessage } from "./agent-runtime/llm/types.js"
 import type { ChatSessionDeps } from "./chat/session.js"
 import type { ChatSessionState } from "./chat/types.js"
 import type { ChatTurnMailbox } from "./chat/turn-mailbox.js"
-import type { CapturedModuleConfig } from "./review-host.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
+
+export interface CapturedModuleConfig { readonly [section: string]: unknown }
 
 /** Resources of an attached chat, independent of its logical model turns. */
 export interface ChatModuleHostInput {

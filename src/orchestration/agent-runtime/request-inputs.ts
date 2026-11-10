@@ -133,16 +133,13 @@ function mapEffort(effort: string | undefined): ReasoningEffort | undefined {
 }
 
 function learningReview(options: AgentOptions) {
-  return options.purpose.kind === "chat-learning-review" || options.purpose.kind === "workflow-learning-review"
-    ? options.purpose.review
-    : undefined;
+  return options.purpose.kind === "chat-learning-review" ? options.purpose.review : undefined;
 }
 
 /** What the runner may call: a side call's fixed grant, or the caller's (`callerToolGrant`). */
 function toolGrantOf(options: AgentOptions): ToolGrant | undefined {
   switch (options.purpose.kind) {
     case "chat-learning-review":
-    case "workflow-learning-review":
       return LEARNING_REVIEW_GRANT;
     case "session-title":
     case "learning-review-audit":

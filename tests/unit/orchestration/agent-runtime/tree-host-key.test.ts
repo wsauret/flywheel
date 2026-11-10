@@ -137,7 +137,6 @@ const KINDS = new Map<string, Kind>(Object.entries({
   "chat title": { purpose: SESSION_TITLE_PURPOSE, model: "claude-haiku-5-5", effort: "low", conversation: "stateless", options: () => ({ memorySnapshot: null }) },
   "workflow title": { purpose: SESSION_TITLE_PURPOSE, model: "claude-sonnet-5-5", effort: "medium", conversation: "stateless", options: () => ({ memorySnapshot: null }) },
   "chat learning review": { purpose: { kind: "chat-learning-review", review: { reviewRunId: "chat-review" } }, model: "claude-sonnet-5-5", effort: "high", conversation: "replay", options: ({ background }) => ({ runtimeSurfaces: { background }, maxLLMCalls: 8 }) },
-  "workflow learning review": { purpose: { kind: "workflow-learning-review", review: { reviewRunId: "workflow-review" } }, model: "claude-opus-5-5", effort: "low", conversation: "replay" },
   "learning-review audit": { purpose: { kind: "learning-review-audit", prompt: { kind: "literal", systemPrompt: "Audit the candidate." } }, model: "claude-haiku-5-5", effort: "medium", conversation: "ephemeral", options: () => ({ maxLLMCalls: 1 }) },
   "failure summary": { purpose: { kind: "subagent-failure-summary", prompt: { kind: "literal", systemPrompt: "Summarize the work." } }, model: "claude-haiku-5-5", effort: "high", conversation: "replay", options: () => ({ maxLLMCalls: 1 }) },
   "side question": { purpose: { kind: "chat-side-call" }, model: "claude-opus-5-5", effort: "high", conversation: "context-only" },

@@ -23,7 +23,7 @@ import type { AgentFactory, AgentOptions, CreateChildConversation } from "../age
 import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
 import type { ConversationTreeWriterController } from "./tree-writer.js"
 import { TITLE_GENERATION_ROLE_ID, type RoleResolver } from "../config/roles.js"
-import type { CapturedModuleConfig } from "../review-host.js"
+import type { CapturedModuleConfig } from "../chat-module-host.js"
 import type { CapabilityAccess } from "../agent-runtime/tools/types.js"
 import type { StartModelWorkflow } from "../agent-runtime/tools/workflow-tool.js"
 import { type MetricsWriter, type SessionInfra, wireSessionSubscribers } from "../session/create-session-infra.js"

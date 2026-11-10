@@ -1,4 +1,3 @@
-import { createWorkflowModuleReviews, type CapturedModuleConfig } from "../review-host.js"
 import type { AuthContext } from "../../infra/auth/auth-context.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../agent-runtime/emit.js"
@@ -124,9 +123,6 @@ export interface WorkerCallbackDeps {
   sessionMessaging?: SessionMessaging
   recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
   commandEvidenceSource?: CommandEvidenceSource
-  /** Enables the learning review at worker completion; absent means
-   *  no review ever spawns from this workflow (temporary or test hosts). */
-  reviewConfig?: CapturedModuleConfig
   /** Capability boundary every runner this worker builds passes: the admitted
    *  workflow's own grant, so a capability disabled mid-run cannot refuse a
    *  agent's tools, plus the policy anything the grant does not cover admits
@@ -190,9 +186,6 @@ interface WorkerCallbackControls {
   workerModules(conversationId: string, signal: AbortSignal): Promise<ModuleRuntimes | undefined>
   workerBackgroundTasks(conversationId: string): BackgroundWorkTracking | undefined
   terminateBackgroundWork(toolUseId: string): void
-  /** Abort any in-flight learning review and await its bookkeeping;
-   *  the host calls this once during workflow disposal. */
-  settleLearningReview(): Promise<void>
 }
 
 async function settleMember(resources: ChildExecutionResources, foreground: ReturnType<typeof createForegroundBashHoldController>, deactivate: () => Promise<void>): Promise<void> {
@@ -244,7 +237,6 @@ export function createWorkerCallback(
   }
   // One captured prefix for all workers in this admitted workflow.
   const memorySnapshot = opts.moduleSelection.contributions.flatMap((entry) => entry.domain === "memory" ? [entry.value.snapshot({ projectRoot, accountHome: opts.accountHome })] : []).filter((value): value is string => value !== null).join("\n\n") || null
-  const reviews = createWorkflowModuleReviews(opts.moduleSelection, { deps: opts, memorySnapshot })
 
   const worker = async (attempt: AttemptRow, composeBrief: ComposeAttemptBrief, signal?: AbortSignal, conversationId?: string, onToolUses?: (count: number) => void, inheritedIntent?: string): Promise<AgentOutput> => {
     if (!conversationId) throw new Error("worker invoked without a conversationId; workflow host must mint and persist it before invoking the attempt runner")
@@ -360,7 +352,6 @@ export function createWorkerCallback(
     // Captured by the handoff tool's in-memory sink. Null until the worker
     // submits a handoff; the orchestrator records the fact from this content.
     let capturedHandoff: WorkerHandoffContent | null = null
-    let requestModuleConfig: CapturedModuleConfig | undefined
 
     // The worker's conversation is a durable `conversation:<conversationId>`
     // tree, the same mechanism and writer as chat. A paused agent resumes by
@@ -378,10 +369,6 @@ export function createWorkerCallback(
     // one fact/fsync. Returning the serialized flush keeps the loop from
     // draining input or issuing the next provider request before durability.
     let tail: Promise<void> = Promise.resolve()
-    const onTurnEnded = (ctx: Parameters<typeof observers.onTurnEnded>[0]): Promise<void> => {
-      requestModuleConfig = ctx.runtimeConfig?.moduleSections
-      return observers.onTurnEnded(ctx)
-    }
 
     const flushAttemptFailure = async (): Promise<void> => {
       tail = tail.then(() => treeWriter.flushSavePoint())
@@ -417,11 +404,6 @@ export function createWorkerCallback(
             await treeWriter.commitSystemTurn(`${RESTATED_BRIEF}\n\n${task}`, briefEntryId(attempt.id))
             priorContext = await treeWriter.buildContext()
           }
-          // A resumed agent re-enters with its persisted conversation: derive
-          // the skill counter's position from it so a resume never silently
-          // resets the review cadence. Accumulation across agents before the
-          // resume is not recoverable from one agent's tree and restarts.
-          await reviews.replay(priorContext.messages)
           // An agent a person interrupted and a restart then took down resumes
           // here, in its own conversation. Its record states only the
           // interrupt, so this resume records the continuation a live Resume
@@ -493,10 +475,7 @@ export function createWorkerCallback(
           // admits Resume from it and the resume continues this conversation.
           recordInterruption: () => slot.interruptions.record(),
           reserveMessageId: treeWriter.reserveMessageId, releaseMessageId: treeWriter.releaseMessageId,
-          append: (message, entryId) => {
-            if (message.kind === "assistant") reviews.noteAssistantMessage(message.content)
-            return treeWriter.recordCanonicalMessage(message, entryId)
-          },
+          append: (message, entryId) => treeWriter.recordCanonicalMessage(message, entryId),
           recordCompaction: (compactionInput) => treeWriter.recordCompaction(compactionInput).then((result) => result?.messages),
           flush: treeWriter.flushSavePoint,
           awaitDurableFacts: resources.awaitDurableFacts,
@@ -525,7 +504,7 @@ export function createWorkerCallback(
           ...busBridge.lifecycle,
           signal, inputSource: observers.inputSource,
           onConnectionState: setRecoveredConnectionState,
-          onTurnEnded,
+          onTurnEnded: observers.onTurnEnded,
           onToolBatchSettled: observers.onToolBatchSettled,
           onHandoffStarted: () => { injectionQueue.handoffStarted() },
           onTurnParked: async (ctx) => {
@@ -688,12 +667,6 @@ export function createWorkerCallback(
 
       const outcome = workerOutcome(agentResult)
       settlePrivateInput = agentResult.terminal.kind !== "aborted"
-      if (outcome.output === "completed") {
-        // The agent delivered its handoff and its tree is about to be fully
-        // flushed: the review's spawn gate. The fork replays this finished
-        // conversation, so record it before firing.
-        reviews.completed({ attempt, conversationId, sessionId, task })
-      }
       return {
         ...outcome,
         handoffContent: capturedHandoff,
@@ -718,10 +691,6 @@ export function createWorkerCallback(
       } finally {
         agentInput.release()
       }
-      // Fire only after the tree is durable, so the fork's replay reads the
-      // whole attempt, handoff turn included. An incomplete attempt updated no
-      // lastCompleted, and a fired review that cannot spawn is contained.
-      reviews.onTurnCompleted(conversationId, requestModuleConfig)
     }
     } finally {
       await settleMember(resources, foregroundBashHold, () => opts.deactivateSession(sessionId))
@@ -770,7 +739,6 @@ export function createWorkerCallback(
     },
     terminateBackgroundWork: (toolUseId) => { [...slots.values()].some((slot) => slot.background.tasks.terminate(toolUseId)) },
     workerBackgroundTasks: (conversationId) => [...slots.values()].find((slot) => slot.conversationId === conversationId && slot.modules)?.background.tasks,
-    settleLearningReview: reviews.dispose,
   }
 }
 

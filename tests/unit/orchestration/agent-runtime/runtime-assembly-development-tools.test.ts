@@ -284,20 +284,14 @@ describe("universal scoped notes assembly", () => {
     expect(prompt.includes('Keep a short "Relevant skills" section')).toBe(surface.tools.has("skill"))
   })
 
-  for (const kind of ["chat-learning-review", "workflow-learning-review"] as const) it(`isolates ${kind} notes by review ID`, async () => {
-    const owner = kind === "workflow-learning-review" ? { kind: "workflow" as const, workflowId: "workflow" } : { kind: "session" as const, sessionId: "session" }
-    const persistence = checkpointTestPersistence(owner)
+  it("isolates chat learning review notes by review ID", async () => {
+    const persistence = checkpointTestPersistence({ kind: "session", sessionId: "session" })
     const checkpoints = []
     for (const reviewRunId of ["review-one", "review-two"]) {
       const assembled = await assembledRuntime("chat", {
         ...persistence,
-        purpose: { kind, review: { reviewRunId } }, sessionDir, toolNames: [],
-        conversation: {
-          kind: "replay", priorMessages: [{ kind: "user", content: "review" }],
-          ...(owner.kind === "session" ? { sessionId: owner.sessionId } : {
-            requestAccounting: { owner, streamId: `learning-review:${reviewRunId}`, reader: persistence.sessionEventReader, writer: persistence.sessionEventWriter },
-          }),
-        },
+        purpose: { kind: "chat-learning-review", review: { reviewRunId } }, sessionDir, toolNames: [],
+        conversation: { kind: "replay", priorMessages: [{ kind: "user", content: "review" }], sessionId: "session" },
       })
       const surface = await assembled.tools.resolve()
       expect(assembled.conversationId).toBeUndefined()

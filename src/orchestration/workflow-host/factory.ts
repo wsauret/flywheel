@@ -118,7 +118,6 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     if (!queue) throw new Error("Workflow VM host has no durable queue projection")
     return queue
   }
-  const initialConfig = deps.captureRuntimeConfig()
   const runs = workflowRunReader(input.projectionReader)
   const resolveRoles: RoleResolver = async (capture) => {
     const run = await runs.read(sessionId)
@@ -198,7 +197,6 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
       recall: input.recall,
       ...(deps.capabilityAccess ? { capabilityAccess: deps.capabilityAccess } : {}),
       moduleSelection,
-      reviewConfig: initialConfig.moduleSections,
       ...(deps.commandHandover ? { commandHandover: deps.commandHandover } : {}),
       awaitModelAccessSettled: deps.awaitModelAccessSettled,
     })
@@ -267,10 +265,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     },
     lifecycle: composeWorkflowHostLifecycle(infra.lifecycle, {
       ...input.lifecycle,
-      // The review outlives its triggering attempt. Abort and settle it before
-      // the event-bus drain so final usage and stream cleanup become durable.
       settleBackground: async () => {
-        await workerCallback?.settleLearningReview()
         await input.lifecycle.settleBackground?.()
         await subagentSessions?.settleReconciliation()
       },

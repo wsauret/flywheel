@@ -204,9 +204,10 @@ describe("workflow control fact fold", () => {
   it("replays independently written companions, learning audit facts, and workflow-owned request facts before the next semantic proposal", () => {
     const { initialized, initial } = trace()
     const cut = parseWorkflowSessionFact({ type: "workflow.run.cut.updated", version: 1, actor: "flywheel", payload: { cut: { by: "person", timestamp: 1 } } })
-    // A workflow-owned request, such as a learning review, records facts of a
-    // family the workflow layer does not decode. The review's memory tool and
-    // the inspiration reconciler record workflow-family audit facts in their
+    // A workflow-owned request records facts of a family the workflow layer
+    // does not decode. The learning reviews that builds before 2026-11-10 ran
+    // on workflow agents left such facts in stored workflow aggregates. Such a
+    // review's memory tool and the inspiration reconciler record workflow-family audit facts in their
     // own transactions, and replay records a definition drift rejection before
     // it refuses, so they sit between batches too.
     const requests = [

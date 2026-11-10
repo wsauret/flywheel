@@ -234,20 +234,6 @@ async function loadNode(link: Link, tree: "text" | "records", read: ReadSessionC
   }
 }
 
-async function copyTree(link: Link, tree: "text" | "records", read: ReadSessionContentNode, stage: StageSessionContentNodes): Promise<void> {
-  const node = await loadNode(link, tree, read)
-  if (node.kind === "index") for (const child of node.children) await copyTree(child, tree, read, stage)
-  await stage([{ sha256: link.sha256, node }])
-}
-
-/** Stage the exact nodes of one text tree that `read` holds through `stage`,
- * children before parents, so a fact in another session can prove the same
- * reference. Missing or invalid nodes throw unavailable and stage no root. */
-export async function copySessionContent(reference: SessionContentReference, read: ReadSessionContentNode, stage: StageSessionContentNodes): Promise<void> {
-  const ref = decodeReference(reference)
-  await copyTree({ sha256: ref.root, bytes: ref.bytes, entries: 0 }, "text", read, stage)
-}
-
 async function* selectedLeaves(link: Link, tree: "text" | "records", start: number, end: number, read: ReadSessionContentNode): AsyncGenerator<{ node: SessionContentNode; start: number; end: number }> {
   const node = await loadNode(link, tree, read)
   if (node.kind !== "index") {

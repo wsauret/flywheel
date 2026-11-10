@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import type { LearningScope } from "../../../infra/learning-scope.js";
 import { runInTaskSlices } from "../../../infra/task-scheduling.js";
 import { buildMutationEvidence, readMutationEvidenceFiles, type MutationEvidence, type MutationEvidenceEntry } from "../../../infra/mutation-evidence.js";
-import { copySessionContent, type ReadSessionContentNode, type StageSessionContentNodes } from "../../../infra/session-content.js";
+import type { ReadSessionContentNode } from "../../../infra/session-content.js";
 import { Log } from "../../../infra/log.js";
 import type { RuntimeEvent } from "../../../infra/runtime-event-types.js";
 import { skillReviewCompletedFact, type SkillReviewCompletedFact } from "../../../workflows/skill-facts.js";
@@ -117,12 +117,6 @@ export interface SpawnedReview {
   usage?: () => ReviewUsage | undefined;
   /** Persist one system transcript message in the reviewed conversation. */
   recordSystemMessage: (notice: ReviewNotice) => Promise<void>;
-  /** The content store of the session `recordSystemMessage` writes to, when
-   *  that is not the review's own session: a workflow review reads the
-   *  workflow's content, and its notice lands in the agent's session. The
-   *  notice's evidence closure is copied there, because a writer proves a
-   *  fact's evidence only from its own session's content. */
-  stageNoticeContent?: StageSessionContentNodes;
   /** Deliver one recorded recommendation to the live agent as a silent
    *  runtime notification (drained between tool calls). Optional, and a host
    *  with no active turn drops it: the turn-head reconciliation sweep is the
@@ -260,29 +254,19 @@ function reviewNoticeText(
  *  notice text collapses repeated writes into one clause per skill; the
  *  evidence keeps each write and its artifact. Memory writes are never
  *  notified, so they are never evidence for a notice. */
-async function noticeEvidence(actions: readonly ReviewActionReport[], deps: LearningReviewDeps, destination: StageSessionContentNodes | undefined): Promise<MutationEvidence | undefined> {
+async function noticeEvidence(actions: readonly ReviewActionReport[], deps: LearningReviewDeps): Promise<MutationEvidence | undefined> {
   const skills = actions.flatMap(action => action.surface === "skill" && action.mutationEvidence ? [{ action, evidence: action.mutationEvidence }] : []);
   if (skills.length === 0) return undefined;
   const writer = deps.sessionEventWriter;
-  const stage = destination ?? writer?.stageSessionContentNodes?.bind(writer);
+  const stage = writer?.stageSessionContentNodes?.bind(writer);
   const read = deps.readContentNode;
   if (!stage || !read) throw new Error("Session content storage is unavailable");
-  const copied = new Set<string>();
   const entries: MutationEvidenceEntry[] = [];
   for (const { action, evidence } of skills) {
     let offset: number | null = 0;
     do {
       const page = await readMutationEvidenceFiles(evidence, offset, 64, read);
       if (page.kind === "unavailable") throw new Error("Change evidence is unavailable");
-      if (destination) {
-        for (const entry of page.files) {
-          if ((entry.kind !== "applied" && entry.kind !== "display") || entry.file.patch.kind !== "retained") continue;
-          const reference = entry.file.patch.reference;
-          if (copied.has(reference.root)) continue;
-          copied.add(reference.root);
-          await copySessionContent(reference, read, destination);
-        }
-      }
       entries.push(...page.files.map((entry): MutationEvidenceEntry => {
         if (entry.kind === "applied") return { ...entry, file: { ...entry.file, name: action.name, action: action.action, reach: action.reach } };
         if (entry.kind === "display") return { ...entry, file: { ...entry.file, name: action.name, action: action.action, reach: action.reach } };
@@ -402,7 +386,7 @@ export function createLearningReview(deps: LearningReviewDeps): LearningReview {
       for (const recommendation of recommendations) spawned.notifyRecommendation?.(recommendation);
       const message = reviewNoticeText(trigger, outcome, { actions, recommendations }, config.notifications);
       if (message) {
-        const mutationEvidence = await noticeEvidence(actions, deps, spawned.stageNoticeContent);
+        const mutationEvidence = await noticeEvidence(actions, deps);
         await spawned.recordSystemMessage({ content: message, ...(mutationEvidence ? { mutationEvidence } : {}) });
       }
     })().catch((err) => {

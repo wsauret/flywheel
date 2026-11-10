@@ -1,5 +1,4 @@
 import { createChatLearningReview, learningChatHost } from "./learning/chat-review.js";
-import { createWorkflowLearningReview } from "./learning/workflow-review.js";
 import { ImprovementFactSchemas } from "../../workflows/improvements/improvement-facts.js";
 import { MemoryFactSchemas } from "../../workflows/memory/memory-facts.js";
 import { SkillFactSchemas } from "../../workflows/skill-facts.js";
@@ -169,7 +168,6 @@ export const learningModule = {
   ],
   contributions: [
     { domain: "chatHosts", id: "learning", value: { handle: learningChatHost, create: createChatLearningReview } },
-    { domain: "reviews", id: "learning", value: { workflow: createWorkflowLearningReview } },
     { domain: "config", id: "memory", value: memoryConfigSection },
     { domain: "config", id: "skills", value: skillsConfigSection },
     { domain: "managedPackageWrites", id: "learning", value: { create: (modules) => {

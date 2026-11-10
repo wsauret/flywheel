@@ -128,9 +128,10 @@ describe("workflow VM host SQLite conflicts", () => {
   })
 
   it("completes a run whose aggregate holds a workflow-owned request between handoffs", async () => {
-    // A workflow-owned auxiliary request, such as the learning review that
-    // follows a handoff, records its request facts in the workflow aggregate.
-    // The next handoff then commits against an advanced aggregate tail.
+    // A workflow-owned auxiliary request records its request facts in the
+    // workflow aggregate, as the learning review that builds before
+    // 2026-11-10 ran after a handoff did. The next handoff then commits
+    // against an advanced aggregate tail.
     const vm = new SqliteVmDriver({ workflow: phaseWorkflow, skills: testSkillRevision([]) })
     drivers.push(vm)
     await vm.initialize()
