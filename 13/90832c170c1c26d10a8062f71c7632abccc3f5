@@ -1,0 +1,58 @@
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 54,71-74,110,154,186,201
+scripts/build-review-fixtures.ts
+  h_4b47e9e4a8b456 1-611
+scripts/check-bench-pins.ts
+  h_4b47e9e4a8b456 21,33,48-52
+src/orchestration/modules/development/benchmark-tool.ts
+  h_4b47e9e4a8b456 21,47,79-93,109,161-172,202-203,337,344,401
+src/orchestration/modules/development/benchmark/admission.ts
+  h_4b47e9e4a8b456 4,24-25,29,33-62,99-101,118-120
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 32-38,41-42,49-62,66-68,70-71,117-121,123,131-132,134-135,140-158,176-199,216-217,221-223,227-269,323
+src/orchestration/modules/development/benchmark/persona-benchmark.ts
+  h_4b47e9e4a8b456 6,9,38,40-46,64-65,79-80,116-118,219-222,238,243-248,334-346,349-352,363,585,603,669
+src/orchestration/modules/development/benchmark/reports.ts
+  h_4b47e9e4a8b456 17-18,206-218,220-290,295-296,306-307,310,314-315,318-323,326-327,333-335
+src/orchestration/modules/development/benchmark/review-sandbox.ts
+  h_4b47e9e4a8b456 1-31
+src/orchestration/modules/development/benchmark/run-store.ts
+  h_4b47e9e4a8b456 34-37,159-161
+src/orchestration/modules/development/benchmark/scoring.ts
+  h_4b47e9e4a8b456 18-21,26-34,41,44,49-50,62-65,70,77-79,83-84,92,130
+tests/integration/bench/review-sandbox.test.ts
+  h_4b47e9e4a8b456 1-80
+tests/unit/bench/_persona-benchmark-fixtures.ts
+  h_4b47e9e4a8b456 80
+tests/unit/bench/catalog.test.ts
+  h_4b47e9e4a8b456 154-198
+tests/unit/bench/judge-accounting.test.ts
+  h_4b47e9e4a8b456 236
+tests/unit/bench/persona-benchmark-stored-records.test.ts
+  h_4b47e9e4a8b456 23,231,255-360,362-377
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 275
+tests/unit/bench/review-fixtures.test.ts
+  h_4b47e9e4a8b456 18-23,34-35
+tests/unit/bench/standalone-admission.test.ts
+  h_4b47e9e4a8b456 176-194
+tests/unit/orchestration/modules/development/benchmark-tool-execution.test.ts
+  h_4b47e9e4a8b456 299
+tests/unit/orchestration/modules/development/benchmark-tool.test.ts
+  h_4b47e9e4a8b456 11,155,268-293
+tests/unit/scripts/build-review-fixtures.test.ts
+  h_4b47e9e4a8b456 1-50
+tests/unit/scripts/check-bench-pins.test.ts
+  h_4b47e9e4a8b456 26,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1390832c170c1c26d10a8062f71c7632abccc3f5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
