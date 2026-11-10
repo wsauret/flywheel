@@ -1,0 +1,26 @@
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 394-399
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 135-139,278,737
+src/orchestration/headless/acp-chat.ts
+  h_4b47e9e4a8b456 80-82,183-187,193-196,204-214,217,221,223-224
+src/orchestration/headless/run-headless-chat.ts
+  h_4b47e9e4a8b456 37,54-58,216-226
+tests/unit/orchestration/app-service/runtime-summary-projection.test.ts
+  h_4b47e9e4a8b456 438-528
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 66
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 57,89-102,118,159,241-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "93be961780ce8c10c0cda23e6162c6e77125aa80",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
