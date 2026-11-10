@@ -1,0 +1,30 @@
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 153-164
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 133-136,323,367,441-444
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 65-69
+src/infra/diagnostics-registry.ts
+  h_4b47e9e4a8b456 161-164
+src/orchestration/agent-runtime/agent-loop-compaction-state.ts
+  h_4b47e9e4a8b456 18-19,97-101,139-141,178-204
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 34,382
+src/orchestration/agent-runtime/compaction/compaction-policy.ts
+  h_4b47e9e4a8b456 7-16
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 4,326-407
+tests/unit/orchestration/agent-runtime/context/turn-budget.test.ts
+  h_4b47e9e4a8b456 12,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6dc1c6c1a28125cc0605b48e67db045f6ef5cf65",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
