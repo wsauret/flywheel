@@ -1,0 +1,14 @@
+bench/harbor/configs/tb-luna-high-agent-types.toml
+  h_4b47e9e4a8b456 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1a6143d3658f1fda92eca7082e393e1a1813b0bf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
