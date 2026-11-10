@@ -291,6 +291,7 @@ describe("live/derived output equivalence", () => {
     const realNow = Date.now
     try {
       Date.now = () => 1_000
+      const backgroundSettled = { toolUseId: "background-1", processId: "proc-1", description: "sleep 45", startedAtMs: 1_000, state: "settled" as const, status: "completed" as const, exitCode: 0, settledAtMs: 46_600 }
       const mutationEvidence = await buildMutationDiffEvidence(fileMutation, "example", async nodes => { store.stageSessionContentNodes(sessionId, nodes) })
       const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
       const userEntryId = await tree.getStorage().allocateId()
@@ -308,6 +309,7 @@ describe("live/derived output equivalence", () => {
           { type: "tool_use", id: "code-1", name: "code", input: { source: "return 'exact  \\n'\n" } },
           { type: "tool_use", id: "memory-1", name: "memory", input: { action: "add", content: "Prefers Bun." } },
           { type: "tool_use", id: "process-1", name: "process", input: { action: "list" } },
+          { type: "tool_use", id: "background-1", name: "bash", input: { command: "sleep 45", run_in_background: true } },
         ] } },
       })
       live.dispatchRuntimeEvent({ type: "tool.result.recorded", data: { tool_use_id: "write-1", content: [{ type: "text", text: "written" }], details: { mutationEvidence } } })
@@ -316,6 +318,8 @@ describe("live/derived output equivalence", () => {
       live.dispatchRuntimeEvent({ type: "tool.result.recorded", data: { tool_use_id: "bash-1", is_error: true, content: [{ type: "text", text: "sanitized failure" }] } })
       live.dispatchRuntimeEvent({ type: "tool.result.recorded", data: { tool_use_id: "code-1", content: [{ type: "text", text: "exact  \n" }] } })
       live.dispatchRuntimeEvent({ type: "tool.result.recorded", data: { tool_use_id: "memory-1", is_error: true, content: [{ type: "text", text: "Memory write failed" }] } })
+      live.dispatchRuntimeEvent({ type: "tool.result.recorded", data: { tool_use_id: "background-1", content: [{ type: "text", text: "started" }] } })
+      live.dispatchRuntimeEvent({ type: "tool.background_command.recorded", data: backgroundSettled })
       live.pushSystemMessage("Sanitized stream interrupted", 1_000)
       live.endTurn("completed")
       live.flush()
@@ -332,6 +336,7 @@ describe("live/derived output equivalence", () => {
           { type: "tool_use", id: "code-1", name: "code", input: { source: "return 'exact  \\n'\n" } },
           { type: "tool_use", id: "memory-1", name: "memory", input: { action: "add", content: "Prefers Bun." } },
           { type: "tool_use", id: "process-1", name: "process", input: { action: "list" } },
+          { type: "tool_use", id: "background-1", name: "bash", input: { command: "sleep 45", run_in_background: true } },
         ] },
         { kind: "toolResult", toolUseId: "write-1", content: [{ type: "text", text: "written" }] },
         { kind: "toolResult", toolUseId: "edit-1", content: [{ type: "text", text: "edited" }] },
@@ -339,6 +344,7 @@ describe("live/derived output equivalence", () => {
         { kind: "toolResult", toolUseId: "bash-1", content: [{ type: "text", text: "sanitized failure" }], isError: true },
         { kind: "toolResult", toolUseId: "code-1", content: [{ type: "text", text: "exact  \n" }] },
         { kind: "toolResult", toolUseId: "memory-1", content: [{ type: "text", text: "Memory write failed" }], isError: true },
+        { kind: "toolResult", toolUseId: "background-1", content: [{ type: "text", text: "started" }] },
         { kind: "system", content: "Sanitized stream interrupted" },
       ], [userEntryId, assistantEntryId])
       if (appended.kind !== "committed") throw new Error("expected durable pipeline messages")
@@ -378,6 +384,20 @@ describe("live/derived output equivalence", () => {
         reader: asAsyncEventReadSurface(store),
         projectionReader: asAsyncEventReadSurface(store),
       })
+      // The command settles after the transcript was projected once, so its
+      // end must reach the projected row, not only a fresh projection.
+      const running = await projection.outputRange(sessionId, tailRequest)
+      if (running.kind !== "ok") throw new Error("expected durable pipeline range")
+      expect(running.blocks.at(-2)).not.toHaveProperty("endedAt")
+      store.append({
+        aggregateId: `session:${sessionId}`,
+        type: "tool.background_command.recorded",
+        version: 1,
+        timestamp: 46_600,
+        actor: "flywheel",
+        sessionId,
+        payload: backgroundSettled,
+      })
       const durable = await projection.outputRange(sessionId, tailRequest)
       if (durable.kind !== "ok") throw new Error("expected durable pipeline range")
 
@@ -394,7 +414,10 @@ describe("live/derived output equivalence", () => {
       const durableText = durableWire.map((block) => block.kind === "text" ? block.content : null)
       if (JSON.stringify(liveText) !== JSON.stringify(durableText)) throw new Error(`text coalescing divergence live=${JSON.stringify(liveText)} derived=${JSON.stringify(durableText)}`)
       assertOutputBlocksEquivalent("runtime-events-vs-chat-tree", liveWire, durableWire)
-      expect(liveWire.map((block) => block.identity)).toEqual(["userMessage", "text", "tool:write", "tool:edit", "tool:replace", "tool:bash", "tool:code", "tool:memory", "system"])
+      expect(liveWire.map((block) => block.identity)).toEqual(["userMessage", "text", "tool:write", "tool:edit", "tool:replace", "tool:bash", "tool:code", "tool:memory", "tool:bash", "system"])
+      // The settled background command's end reaches the row on both routes.
+      expect(liveWire.at(-2)).toMatchObject({ identity: "tool:bash", status: "completed", endedAt: 46_600 })
+      expect(durableWire.at(-2)).toMatchObject({ identity: "tool:bash", status: "completed", endedAt: 46_600 })
       expect(liveWire.find((block) => block.identity === "tool:write")).toMatchObject({ status: "completed", mutationEvidence })
       expect(liveWire.find((block) => block.identity === "tool:write")).not.toHaveProperty("proposedDiff")
       expect(durableWire.find((block) => block.identity === "tool:write")).not.toHaveProperty("proposedDiff")

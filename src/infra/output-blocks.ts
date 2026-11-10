@@ -155,6 +155,10 @@ const ToolEntryBaseSchema = Schema.Struct({
   /** Bounded settlement summary. File descriptors and patch bytes stay in the manifest. */
   mutationEvidence: Schema.optionalKey(MutationEvidenceSchema),
   background: Schema.optionalKey(Schema.Boolean),
+  /** When work that outlived the call ended, such as a background command
+   *  that ran on after its launch returned. Absent while that work runs and
+   *  when no end was recorded. */
+  endedAt: Schema.optionalKey(Schema.Number),
   diffOmission: Schema.optionalKey(DiffOmissionSchema),
   invocationBodyOmittedBytes: Schema.optionalKey(Schema.Number),
   contentOmittedLines: Schema.optionalKey(Schema.Number),

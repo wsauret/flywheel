@@ -61,8 +61,11 @@ export class RuntimeEventProjector {
         this.assistantDraft.completeToolInput({ type: "tool-input-complete", toolUseId: event.data.tool_use.id, name: event.data.tool_use.name, input: event.data.tool_use.input, timestamp: now, ...(key ? { leadingTextId: `${key}:lead` } : {}), ...this.parentToolUseIdFields(event) }, key);
       },
       "model.user_message.recorded": (event, now) => this.handleToolResults(event, this.parentToolUseId(event), "conversation", now),
-      // The background index reads the record; the transcript card shows the command itself.
-      "tool.background_command.recorded": null,
+      // The background index reads the whole record; the transcript row takes
+      // only when the command ended, to state how long it ran.
+      "tool.background_command.recorded": (event) => {
+        if (event.data.state === "settled") this.projector.apply({ type: "tool-work-ended", toolUseId: event.data.toolUseId, endedAt: event.data.settledAtMs });
+      },
       "agent.error.observed": null,
       "agent.compaction.started": null,
       "agent.compaction.progressed": null,

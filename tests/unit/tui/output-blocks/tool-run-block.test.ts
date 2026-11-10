@@ -227,6 +227,18 @@ describe("ToolRunBlock", () => {
     expect(frame).not.toContain("Bash seq")
   })
 
+  it("states how long a background command ran under Ran, not how long its launch took", async () => {
+    const transcript = presentTerminalTranscript(foldTranscript([
+      exec("bun run test:perf", { timestamp: 1000, background: true, endedAt: 46_600 }),
+      { kind: "text", id: "reply", content: "Started the perf run.", timestamp: 1865 },
+    ], false))
+    const block = transcript.timelineBlocks[0]
+    if (block?.kind !== "toolRun") throw new Error("expected a Ran group")
+    const frame = await renderToolRun(block)
+    expect(frame).toContain("Ran · 45.6s")
+    expect(frame).not.toContain("865ms")
+  })
+
   it("renders execute children with labels, primitive summaries, rails, and expandable results", async () => {
     const frame = await renderToolRun(toolRun([
       execute("linear.get_issue", "[id=ENG-1, include=true]", "issue result"),

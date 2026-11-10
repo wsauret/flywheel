@@ -62,6 +62,26 @@ export function waitsForProcessor(activity: { readonly active: boolean }, proces
   return activity.active && processorHeld
 }
 
+/** When a block's work ended, given when the next block starts. A call whose
+ *  work outlived it, such as a background command, ends when that work
+ *  ended; any other block ends where the next one starts. Nothing when no
+ *  later block has started. */
+export function blockEnd(block: FrontendOutputBlock, nextTimestamp: number | undefined): number | undefined {
+  if (block.kind === "tool" && block.endedAt !== undefined) return block.endedAt
+  return nextTimestamp !== undefined && nextTimestamp > block.timestamp ? nextTimestamp : undefined
+}
+
+/** When a run of members ends, given when the block that closed it starts:
+ *  then, or later when a member's work outlived its call, such as a
+ *  background command that ran on after the agent replied. A run that
+ *  nothing closed has no end yet, because more work can still join it. */
+export function runEnd(members: readonly StretchMember[], closedAt: number | undefined): number | undefined {
+  if (closedAt === undefined) return undefined
+  let end = closedAt
+  for (const member of members) if (member.kind === "tool" && member.endedAt !== undefined && member.endedAt > end) end = member.endedAt
+  return end
+}
+
 type CommandMessage = FrontendUserMessageBlock & { readonly from: FrontendMessageSender }
 
 /** A call, a session message, or a visible thought inside command activity. */

@@ -338,6 +338,13 @@ export class OutputToolProjector {
     }
   }
 
+  /** The work a call left running ended, which can be long after the call
+   *  settled, so the row is found through the builder's id-to-index map. */
+  handleToolWorkEnded(toolUseId: string, endedAt: number): void {
+    const index = this.builder.toolBlockIndex(toolUseId);
+    if (index !== undefined) this.builder.patchTool(index, { endedAt });
+  }
+
   handleToolInputComplete(toolUseId: string, name: string, input: ToolInput, timestamp: number, parentToolUseId?: string, nestedInCode?: true, leadingTextId?: string): void {
     const existingIndex = this.builder.toolBlockIndex(toolUseId);
     const existing = existingIndex !== undefined ? this.builder.getBlocks()[existingIndex] : undefined;

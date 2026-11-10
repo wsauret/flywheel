@@ -37,6 +37,8 @@ export type OutputProjectionEvent =
   | { type: "abandon-tool-inputs"; reason: "failed" | "interrupted" | "retry"; parentToolUseId?: string }
   | { type: "tool-execution-output"; toolUseId: string; output: string; parentToolUseId?: string }
   | { type: "tool-execution-output-recorded"; toolUseId: string; output: string; mutationEvidence?: MutationEvidence; parentToolUseId?: string }
+  // The work a call left running in the background ended.
+  | { type: "tool-work-ended"; toolUseId: string; endedAt: number }
   | { type: "tool-input-complete"; toolUseId: string; name: string; input: ToolInput; timestamp: number; parentToolUseId?: string; nestedInCode?: true; leadingTextId?: string }
   | { type: "tool-result"; toolUseId: string; outcome: ToolOutcome; content?: LlmToolOutputPart[]; timestamp: number; source?: "render" | "conversation" | "availability"; details?: unknown; executionOutputTail?: string; parentToolUseId?: string }
   | { type: "tool-result-ack"; toolUseId: string; parentToolUseId?: string }

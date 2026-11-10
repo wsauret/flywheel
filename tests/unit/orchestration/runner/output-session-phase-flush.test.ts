@@ -184,6 +184,36 @@ describe("createOutputSession — model phase + flush", () => {
     }
   })
 
+  it("publishes a settled background command's end before dispatch returns, ahead of the status that drops the command", () => {
+    // The frozen clock keeps the record inside the frame after the result's
+    // sync, so only the immediate flush can publish it before the status.
+    const clock = spyOn(performance, "now").mockReturnValue(1_000)
+    try {
+      const { updateEntry } = createMocks()
+      session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
+      session.dispatchRuntimeEvent({
+        type: "model.assistant_message.recorded",
+        data: { message: { content: [{ type: "tool_use", id: "toolu_bg", name: "bash", input: { command: "sleep 45", run_in_background: true } }] } },
+      })
+      session.dispatchRuntimeEvent({
+        type: "tool.result.available",
+        data: { tool_use_id: "toolu_bg", content: [{ type: "text", text: "started" }], outcome: "ok", details: { background: true } },
+      })
+      updateEntry.mockClear()
+
+      session.dispatchRuntimeEvent({
+        type: "tool.background_command.recorded",
+        data: { toolUseId: "toolu_bg", processId: "proc-1", description: "sleep 45", startedAtMs: 1_010, state: "settled", status: "completed", exitCode: 0, settledAtMs: 46_600 },
+      })
+
+      expect(updateEntry.mock.calls.at(-1)?.[0].outputBlocks).toContainEqual(
+        expect.objectContaining({ kind: "tool", id: "toolu_bg", endedAt: 46_600 }),
+      )
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
   it("onChange -> updateEntry({ outputBlocks }) called only when projected output changes", async () => {
     const { updateEntry } = createMocks()
     session = createOutputSession({ updateEntry, executionCwd: "/workspace" })

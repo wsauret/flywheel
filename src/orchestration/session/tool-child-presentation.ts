@@ -35,6 +35,7 @@ export function projectHistoricalExecuteChild(tool: ToolExecutionEntry, executio
     presentation: nestedExecutePresentation(name, input), runCategoryOverride: "execute" as const,
     timestamp: tool.calledAt ?? tool.validationFailedAt ?? tool.completedAt ?? 0,
     ...(content !== undefined ? { content } : {}),
+    ...(meta?.endedAt !== undefined ? { endedAt: meta.endedAt } : {}),
   }
   if (tool.status === "validation_failed") return { ...base, status: "error", errorMessage: launderToolError(tool.validationReason ?? "Tool validation failed") }
   switch (tool.resultOutcome) {

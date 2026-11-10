@@ -252,6 +252,10 @@ interface FrontendToolEntryBase {
   readonly filetype?: string
   readonly exitCode?: number
   readonly background?: boolean
+  /** When work that outlived the call ended, such as a background command
+   *  that ran on after its launch returned. Absent while that work runs and
+   *  when no end was recorded. */
+  readonly endedAt?: number
   readonly resultAction?: ToolResultAction
   readonly fileChangeKind?: "create" | "replace" | "patch"
   /** The call's input declared that it edits project files: it presents as a

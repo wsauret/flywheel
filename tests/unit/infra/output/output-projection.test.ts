@@ -324,6 +324,18 @@ describe("OutputProjector", () => {
     expect(tools.map((tool) => tool.content)).toEqual(["tail one", "tail two"]);
   });
 
+  it("stamps a background command's row with when the command ended, and nothing while it runs", () => {
+    const projector = new OutputProjector({ executionCwd: "/workspace" });
+    const runtime = new RuntimeEventProjector(projector);
+    projector.apply({ type: "tool-use", toolUseId: "bash-1", name: "bash", input: { command: "sleep 45", run_in_background: true }, timestamp: 1000 });
+    projector.apply({ type: "tool-result", toolUseId: "bash-1", outcome: "ok", content: [{ type: "text", text: "started" }], details: { background: true }, timestamp: 1865 });
+    const record = { toolUseId: "bash-1", processId: "proc-1", description: "sleep 45", startedAtMs: 1010 };
+    runtime.dispatch({ type: "tool.background_command.recorded", data: { ...record, state: "running" } } satisfies RuntimeEvent);
+    expect(firstToolRow(projector.getBlocks()).endedAt).toBeUndefined();
+    runtime.dispatch({ type: "tool.background_command.recorded", data: { ...record, state: "settled", status: "completed", exitCode: 0, settledAtMs: 46_600 } } satisfies RuntimeEvent);
+    expect(firstToolRow(projector.getBlocks())).toMatchObject({ status: "completed", endedAt: 46_600 });
+  });
+
   it("joins a settled mutation command's mutation, conflict markers, and refused changes onto its row, whether it settles before or after the result", async () => {
     const projector = new OutputProjector({ executionCwd: "/workspace" });
     const runtime = new RuntimeEventProjector(projector);

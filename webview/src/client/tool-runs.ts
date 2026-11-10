@@ -5,7 +5,7 @@ import type { ReadRun } from "../../../src/protocol/client/tool-run-category.js"
 import type { StretchMember, ToolStretch, TranscriptModel } from "../../../src/protocol/client/transcript-model.js"
 import type { TurnFold } from "./turn-folds.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
-import { foldTranscript, toolActivity, toolProcess } from "../../../src/protocol/client/transcript-model.js"
+import { blockEnd, foldTranscript, runEnd, toolActivity, toolProcess } from "../../../src/protocol/client/transcript-model.js"
 import { agentGroupClockRuns } from "../../../src/protocol/client/agent-group-summary.js"
 import { messageDisclosureEntry } from "../../../src/protocol/client/message-sender.js"
 import type { MutationFilesView } from "../../../src/protocol/client/mutation-evidence.js"
@@ -67,12 +67,10 @@ export interface ToolGroup {
 
 export type TranscriptViewRow = FrontendOutputBlock | ToolGroup | TurnFold
 
-/** A row ends at its next wire block, including blocks presentation hides. */
+/** A row ends at its next wire block, including blocks presentation hides,
+ *  unless its own work ended at another time (`blockEnd`). */
 export function blockEndTimes(blocks: readonly FrontendOutputBlock[]): ReadonlyMap<string, number | undefined> {
-  return new Map(blocks.map((block, index) => {
-    const end = blocks[index + 1]?.timestamp
-    return [blockIdentity(block), end !== undefined && end > block.timestamp ? end : undefined]
-  }))
+  return new Map(blocks.map((block, index) => [blockIdentity(block), blockEnd(block, blocks[index + 1]?.timestamp)]))
 }
 
 export interface TranscriptView<Row extends TranscriptViewRow = TranscriptViewRow> {
@@ -173,7 +171,7 @@ function toolGroupOf(stretch: ToolStretch, keptKeys: ReadonlySet<string>): ToolG
       break
     }
   }
-  return { kind: "toolGroup", id, opening: stretch.id, scriptIds: stretch.scriptIds, status: stretch.status, children, members, timestamp: stretch.timestamp, endTimestamp: stretch.endTimestamp }
+  return { kind: "toolGroup", id, opening: stretch.id, scriptIds: stretch.scriptIds, status: stretch.status, children, members, timestamp: stretch.timestamp, endTimestamp: runEnd(stretch.members, stretch.endTimestamp) }
 }
 
 /** The rows the web transcript mounts: the model's rows with each stretch

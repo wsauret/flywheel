@@ -36,6 +36,26 @@ for (const mode of ["foreground", "background"] as const) {
   })
 }
 
+test("a settled background command keeps its time node and states how long it ran, never its launch", () => {
+  const launched: FrontendToolEntry = { ...call("perf", "completed"), timestamp: 1000, background: true }
+  const reply: FrontendOutputBlock = { ...boundary, timestamp: 1865 }
+  const running = { activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], activeBackgroundCommands: [{ id: "process", toolUseId: launched.id, description: "Shell", startedAtMs: 1010 }] }
+  const mounted = mountToolGroup([launched, reply])
+  const time = () => mounted.elements().find(node => node.properties.class === "row-duration")
+  try {
+    mounted.publish({ processStatus: running })
+    const node = time()
+    assert.ok(node, "the running command shows its live time")
+    // The runtime publishes the command's end before the status that drops it.
+    mounted.publish({ blocks: [{ ...launched, endedAt: 46_600 }, reply] })
+    assert.doesNotMatch(mounted.text(), / · 0s/, "never the launch latency")
+    mounted.publish({ processStatus: { ...running, activeBackgroundCommands: [] } })
+    assert.equal(time(), node, "settling updates the time in place")
+    assert.match(mounted.text(), /12:00 AM · 45s/)
+    assert.doesNotMatch(mounted.text(), / · 0s/, "never the launch latency")
+  } finally { mounted.dispose() }
+})
+
 test("an explicitly opened first call keeps its body when the stretch grows", () => {
   const mounted = mountToolGroup([call("first", "streaming")])
   try {

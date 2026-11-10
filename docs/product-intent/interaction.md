@@ -100,7 +100,7 @@ Every client shows the same messages, calls, results, subagents, and the thought
 
 ## PI-INTERACTION-157: Tool calls gather under headings
 
-In the terminal, consecutive reads, listings, and searches gather under one Explored heading, and consecutive shell commands and session bookkeeping calls under one Ran heading, each with its elapsed time once settled. On the web client, the calls between one message and the next gather under one heading that counts them, such as "Ran 2 commands, used 2 tools (1 failed)". Only an assistant message, a subagent, or an Ask User question ends that stretch. The group arrives collapsed, and a settled stretch of one call shows as that call's own row.
+In the terminal, consecutive reads, listings, and searches gather under one Explored heading, and consecutive shell commands and session bookkeeping calls under one Ran heading, each with its elapsed time once settled, including background work. On the web client, the calls between one message and the next gather under one heading that counts them, such as "Ran 2 commands, used 2 tools (1 failed)". Only an assistant message, a subagent, or an Ask User question ends that stretch. The group arrives collapsed, and a settled stretch of one call shows as that call's own row.
 
 ## PI-INTERACTION-158: Dividers mark narration after tool work
 
@@ -290,7 +290,7 @@ Where there is a pointer, every message on the web client has a Copy control at 
 
 ## PI-INTERACTION-122: Transcript rows show when they started and how long they ran on the web client
 
-On the web client, every message, tool call, and group of calls shows the clock time it started, with the date when it started on an earlier day. A running row shows how long it has run, and a settled row shows how long it took. Where there is a pointer, a row's time appears at the row's right end while the pointer is over it and takes no line of its own. On a touch device, the leftward drag that reveals Copy controls also reveals the times of the rows on screen.
+On the web client, every message, tool call, and group of calls shows the clock time it started, with the date when it started on an earlier day. A running row shows how long it has run, and a settled row shows how long it took, including background work. Where there is a pointer, a row's time appears at the row's right end while the pointer is over it and takes no line of its own. On a touch device, the leftward drag that reveals Copy controls also reveals the times of the rows on screen.
 
 ## PI-INTERACTION-029: Words in any transcript can be found and opened
 

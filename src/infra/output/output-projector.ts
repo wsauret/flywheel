@@ -155,6 +155,9 @@ export class OutputProjector {
       case "tool-execution-output-recorded":
         if (!event.parentToolUseId) this.tools.handleToolExecutionOutputRecorded(event.toolUseId, event);
         return;
+      case "tool-work-ended":
+        this.tools.handleToolWorkEnded(event.toolUseId, event.endedAt);
+        return;
       case "tool-input-complete":
         if (!event.parentToolUseId) this.builder.setStreamPhase("tool_executing", event.timestamp);
         this.tools.handleToolInputComplete(event.toolUseId, event.name, event.input, event.timestamp, event.parentToolUseId, event.nestedInCode, event.leadingTextId);

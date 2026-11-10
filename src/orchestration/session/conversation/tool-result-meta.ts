@@ -47,9 +47,17 @@ export interface ToolResultDisplayMeta {
   /** The line of an ok result whose work now waits, such as a held message:
    *  its row settles as waiting with this line. */
   readonly statusMessage?: string
+  /** When the background command the call started ended, from its settled
+   *  background index record. */
+  readonly endedAt?: number
 }
 
-const TOOL_RESULT_DISPLAY_META_FACT_TYPES = ["tool.result.recorded", "tool.execution_output.recorded"] as const
+const TOOL_RESULT_DISPLAY_META_FACT_TYPES = ["tool.result.recorded", "tool.execution_output.recorded", "tool.background_command.recorded"] as const
+
+/** The facts a tool's display source holds: its execution facts, and the
+ *  background index record of a command it left running, which states when
+ *  that command ended. */
+const TOOL_DISPLAY_SOURCE_FACT_TYPES = [...TOOL_EXECUTION_FACT_TYPES, "tool.background_command.recorded"] as const
 
 export interface ToolResultDisplayMetaCatchUp {
   /** Latest tool-execution fact position read from this session, or zero. */
@@ -147,7 +155,7 @@ export function createToolResultDisplayMetaSetReader(reader: AsyncEventStateRead
     if (unseeded.length > 0) {
       // One read for every session new to the owner, through the cursor's position.
       const { facts } = await reader.readSlice({
-        aggregateIds: unseeded.map((id) => `session:${id}`), types: TOOL_EXECUTION_FACT_TYPES, beforePosition: owner.getPosition() + 1,
+        aggregateIds: unseeded.map((id) => `session:${id}`), types: TOOL_DISPLAY_SOURCE_FACT_TYPES, beforePosition: owner.getPosition() + 1,
       }, true)
       const seeds = new Map<string, StoredFact[]>()
       for (const fact of facts) {
@@ -176,7 +184,7 @@ function toolSourceOwner(reader: AsyncEventStateReadSurface) {
     const indexes = new Map<string, ToolSourceIndex>()
     return Object.assign(createEventProjection<{ changed: Map<string, StoredFact[]>; errors: Map<string, CorruptEventRowError> }>(reader, {
       aggregatePrefix: "session:",
-      factTypes: TOOL_EXECUTION_FACT_TYPES,
+      factTypes: TOOL_DISPLAY_SOURCE_FACT_TYPES,
       initialState: () => ({ changed: new Map(), errors: new Map() }),
       seed: async () => ({ state: { changed: new Map(), errors: new Map() }, position: await reader.capturePosition() }),
       reduce: (state, event) => {
@@ -415,7 +423,7 @@ function createSourceFactReader(reader: AsyncEventStateReadSurface, sessionId: s
   })
 }
 
-type ToolDisplayFact = Extract<SessionRuntimeFact | ToolContentReferenceFact, { type: (typeof TOOL_EXECUTION_FACT_TYPES)[number] }>
+type ToolDisplayFact = Extract<SessionRuntimeFact | ToolContentReferenceFact, { type: (typeof TOOL_DISPLAY_SOURCE_FACT_TYPES)[number] }>
 
 function salvageStoredDisplayFact(event: StoredFact): ToolDisplayFact | undefined {
   try {
@@ -425,8 +433,10 @@ function salvageStoredDisplayFact(event: StoredFact): ToolDisplayFact | undefine
   }
 }
 
+const DISPLAY_META_FACT_TYPE_SET: ReadonlySet<string> = new Set(TOOL_RESULT_DISPLAY_META_FACT_TYPES)
+
 function isDisplayMetaEvent(event: StoredFact): boolean {
-  return event.type === "tool.result.recorded" || event.type === "tool.execution_output.recorded"
+  return DISPLAY_META_FACT_TYPE_SET.has(event.type)
 }
 
 function readToolResultDisplayMetaFromEvents(events: readonly StoredFact[], toolContent: ContentResolver): Map<string, ToolResultDisplayMeta> {
@@ -461,6 +471,10 @@ function applyToolResultMetaEvents(
         executionOutput: fact.payload.output,
         ...(fact.version === 3 && fact.payload.mutationEvidence !== undefined ? { mutationEvidence: fact.payload.mutationEvidence } : {}),
       })
+      continue
+    }
+    if (fact.type === "tool.background_command.recorded") {
+      if (fact.payload.state === "settled") toolResultMeta.set(fact.payload.toolUseId, { ...toolResultMeta.get(fact.payload.toolUseId), endedAt: fact.payload.settledAtMs })
       continue
     }
     if (fact.type !== "tool.result.recorded") continue

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
 import type { ToolAction } from "../../../src/infra/workflow-types.js"
 import { foldReadRuns } from "../../../src/protocol/client/tool-run-category.js"
-import { closesToolStretch, foldTranscript, toolActivity, waitsForProcessor, type TranscriptModel } from "../../../src/protocol/client/transcript-model.js"
+import { blockEnd, closesToolStretch, foldTranscript, runEnd, toolActivity, waitsForProcessor, type TranscriptModel } from "../../../src/protocol/client/transcript-model.js"
 
 type Status = FrontendToolEntry["status"]
 
@@ -136,6 +136,32 @@ describe("foldTranscript: stretches of tool work", () => {
       expect([...prefix.boundaryBefore, ...suffix.boundaryBefore]).toEqual([...whole.boundaryBefore])
       expect([...prefix.sourceBlockIndices, ...suffix.sourceBlockIndices]).toEqual([...whole.sourceBlockIndices])
     }
+  })
+})
+
+describe("work ends", () => {
+  const background = (id: string, ts: number, endedAt?: number): FrontendToolEntry => ({ ...bash(id, ts), background: true, ...(endedAt === undefined ? {} : { endedAt }) })
+  const stretchEnd = (blocks: FrontendOutputBlock[]): number | undefined => {
+    const stretch = foldTranscript(blocks, false).rows[0]
+    if (stretch?.kind !== "toolStretch") throw new Error("expected a stretch")
+    return runEnd(stretch.members, stretch.endTimestamp)
+  }
+
+  it("ends a stretch of background commands when the last of them ended, after the reply that closed it", () => {
+    expect(stretchEnd([background("b1", 1000, 46_600), background("b2", 1200, 62_000), text("started", 1860)])).toBe(62_000)
+  })
+  it("ends a mixed stretch at its closing block or at a background end, whichever is later", () => {
+    expect(stretchEnd([bash("f1", 1000), background("b1", 2000, 30_000), bash("f2", 3000), text("done", 40_000)])).toBe(40_000)
+    expect(stretchEnd([bash("f1", 1000), background("b1", 2000, 30_000), bash("f2", 3000), text("done", 4000)])).toBe(30_000)
+  })
+  it("gives a stretch that nothing closed no end, even when a background command ended", () => {
+    expect(stretchEnd([background("b1", 1000, 46_600), bash("f1", 2000, "pending")])).toBeUndefined()
+  })
+  it("keeps today's ends for a command that is still running or whose end was never recorded", () => {
+    expect(stretchEnd([background("b1", 1000), text("started", 1860)])).toBe(1860)
+    expect(blockEnd(background("b1", 1000), 1860)).toBe(1860)
+    expect(blockEnd(background("b1", 1000, 46_600), 1860)).toBe(46_600)
+    expect(blockEnd(text("t1", 2000), 2000)).toBeUndefined()
   })
 })
 

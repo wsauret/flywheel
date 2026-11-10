@@ -54,6 +54,13 @@ test("durations end at the next wire block even when it is hidden, and the final
   assert.equal(blockEndTimes([text("part", 1000), bash("call", 1000)]).get("text:part"), undefined)
 })
 
+test("a settled background command's row and group end when the command ended, not at the reply after its launch", () => {
+  const blocks = [{ ...bash("perf", 1000), background: true, endedAt: 46_600 }, text("started", 1865)]
+  assert.equal(blockEndTimes(blocks).get("tool:perf"), 46_600)
+  const group = present(blocks).rows[0]
+  assert.equal(group?.kind === "toolGroup" ? group.endTimestamp : undefined, 46_600)
+})
+
 describe("web presentation: one group per stretch", () => {
   test("gathers every consecutive tool call under one group and keys it on the stretch", () => {
     const { rows } = present([

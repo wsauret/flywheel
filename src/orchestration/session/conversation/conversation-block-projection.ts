@@ -667,6 +667,7 @@ function settleToolEntry(tool: ToolEntry, result: ToolResultMessage, meta: ToolR
     ...(meta?.filetype !== undefined ? { filetype: meta.filetype } : {}),
     ...(meta?.mutationEvidence !== undefined ? { mutationEvidence: mutationEvidenceSummaryDisplayPaths(meta.mutationEvidence, executionCwd) } : {}),
     ...(meta?.resultAction !== undefined ? { resultAction: meta.resultAction } : {}),
+    ...(meta?.endedAt !== undefined ? { endedAt: meta.endedAt } : {}),
   };
   return result.isError === true && result.blocked !== true
     ? resetFailedFileChange(projected)

@@ -78,6 +78,7 @@ const ToolEntryBaseSchema = Schema.Struct({
   proposedDiff: Schema.optionalKey(ProvisionalDiffSchema),
   mutationEvidence: Schema.optionalKey(MutationEvidenceSchema),
   background: Schema.optionalKey(Schema.Boolean),
+  endedAt: Schema.optionalKey(Schema.Number),
   diffOmission: Schema.optionalKey(DiffOmissionSchema),
   invocationBodyOmittedBytes: Schema.optionalKey(Schema.Number),
   contentOmittedLines: Schema.optionalKey(Schema.Number),

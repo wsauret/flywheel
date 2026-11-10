@@ -129,6 +129,14 @@ describe("terminal presentation: thoughts", () => {
     expect(rows(blocks, true)[0]).toMatchObject({ kind: "toolRun", duration: 10 })
   })
 
+  it("times a run with a background command to when the command ended, and no other run of the stretch", () => {
+    const background: FrontendToolEntry = { ...tool("bash", 10), background: true, endedAt: 100 }
+    expect(rows([background, tool("read", 20), text("started", 40)]).map((row) => row.kind === "toolRun" ? `${row.category}:${row.duration}` : row.kind))
+      .toEqual(["exec:90", "explore:20", "text"])
+    // A command whose end was never recorded keeps today's time.
+    expect(rows([{ ...tool("bash", 10), background: true }, text("started", 40)])[0]).toMatchObject({ kind: "toolRun", duration: 30 })
+  })
+
 })
 
 describe("tool run identity across re-presentations", () => {

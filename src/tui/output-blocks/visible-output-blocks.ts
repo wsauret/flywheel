@@ -1,7 +1,7 @@
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../protocol/app-service-types.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { toolRunCategoryFor, type ToolRunCategory } from "../../protocol/client/tool-run-category.js"
-import { foldTranscript, type ToolStretch, type TranscriptModel, type TranscriptWindow } from "../../protocol/client/transcript-model.js"
+import { foldTranscript, runEnd, type ToolStretch, type TranscriptModel, type TranscriptWindow } from "../../protocol/client/transcript-model.js"
 import { messageDisclosureEntry } from "../../protocol/client/message-sender.js"
 import type { ToolRenderEntry } from "./tool-entry-helpers.js"
 
@@ -72,12 +72,13 @@ function sameChildren(a: readonly FrontendToolEntry[], b: readonly FrontendToolE
   return true
 }
 
-function createToolRun(children: readonly ToolRenderEntry[], category: ToolRunCategory, endTimestamp: number | undefined): ToolRun {
+function createToolRun(children: readonly ToolRenderEntry[], category: ToolRunCategory, closedAt: number | undefined): ToolRun {
   const first = children[0]
   if (!first) throw new Error("Cannot create an empty tool run")
   const status = toolRunStatus(children)
   const id = `tools:${category}:${first.disclosureId ?? blockIdentity(first)}`
-  const duration = endTimestamp !== undefined && status !== "active" ? Math.max(0, endTimestamp - first.timestamp) : undefined
+  const end = status === "active" ? undefined : runEnd(children, closedAt)
+  const duration = end === undefined ? undefined : Math.max(0, end - first.timestamp)
   const cached = toolRunCache.get(first)
   if (cached && cached.id === id && cached.status === status && cached.duration === duration && sameChildren(cached.children, children)) return cached
   const run: ToolRun = {
@@ -115,11 +116,11 @@ export function presentTerminalTranscript(model: TranscriptModel): TerminalTrans
 
   const presentStretch = (stretch: ToolStretch): void => {
     let run: { category: ToolRunCategory; children: ToolRenderEntry[]; indices: number[] } | null = null
-    const flushRun = (endTimestamp: number | undefined): void => {
+    const flushRun = (closedAt: number | undefined): void => {
       if (run === null) return
       const firstIndex = run.indices[0]
       if (firstIndex === undefined) return
-      push(createToolRun(run.children, run.category, endTimestamp), firstIndex, false)
+      push(createToolRun(run.children, run.category, closedAt), firstIndex, false)
       zeroHeightBlockIndices.push(...run.indices.slice(1))
       run = null
     }

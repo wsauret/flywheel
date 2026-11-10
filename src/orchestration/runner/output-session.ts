@@ -192,7 +192,10 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
       if (typeof sid === "string") projector.sessionId = sid
     }
     eventProjector.dispatch(event, timestamp)
-    if (event.type === "tool.result.available" && syncPending) flushNow()
+    // A settled command's end publishes before the status that drops it from
+    // the running commands (background-work records it first), so no client
+    // shows its row settled without that end, even for one frame.
+    if ((event.type === "tool.result.available" || event.type === "tool.background_command.recorded") && syncPending) flushNow()
     else flushOverdueSync()
   }
 
