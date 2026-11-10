@@ -93,4 +93,5 @@ export const CLAUDE_PLUGIN_HOST: ChatHost = {
   commitmentsHeading: "# Working method",
   sharedKnowledge: () => "- **Shared knowledge.** You may edit applicable CLAUDE.md files without asking; keep them and the existing repository authorities current with shared guidance.",
   routingPreference: () => "",
+  statesAskRule: true,
 };

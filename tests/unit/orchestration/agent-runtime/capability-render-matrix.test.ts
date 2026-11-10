@@ -18,7 +18,6 @@ import { availableToolNames } from "../../../../src/orchestration/agent-runtime/
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
 import { interceptBashCommand } from "../../../../src/orchestration/agent-runtime/tools/bash-command-policy.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
-import { ASK_USER_DISCUSSION_RULE } from "../../../../src/orchestration/agent-runtime/tools/ask-user.js";
 import type { RuntimeTool, RuntimeToolInput } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
@@ -275,13 +274,10 @@ const sentencesOf = (text: string): string[] => text
   .map((sentence) => sentence.replace(/^[-*\d.\s]+/, "").replace(/\s+/g, " ").trim())
   .filter((sentence) => sentence.split(" ").length >= 6);
 
-// The ask_user discussion rule governs how often a chat interrupts the person, so both chat prompts state it beside
-// the tool's description until a benchmark shows that one copy keeps that behavior.
-const SECOND_HOME_EXEMPT = new Set(sentencesOf(ASK_USER_DISCUSSION_RULE));
 // One option subschema of ask_user renders under both of its question shapes; removing the copy needs a schema-shape
 // change.
 const SHARED_OPTION_SUBSCHEMA_HOMES = "tool ask_user field options,tool ask_user field questions";
-const exempt = (sentence: string, homes: ReadonlySet<string>): boolean => SECOND_HOME_EXEMPT.has(sentence) || [...homes].toSorted().join(",") === SHARED_OPTION_SUBSCHEMA_HOMES;
+const exempt = (homes: ReadonlySet<string>): boolean => [...homes].toSorted().join(",") === SHARED_OPTION_SUBSCHEMA_HOMES;
 
 /** The modules that a selection leaves off once dependents follow their dependencies. */
 const turnedOff = (composition: FirstPartyModuleComposition): string[] => ALL_IDS.filter((id) => !composition.enabledModuleIds.includes(id));
@@ -318,7 +314,7 @@ describe("capability render matrix", () => {
       for (const { home, text } of homes) {
         for (const sentence of sentencesOf(text)) seen.set(sentence, (seen.get(sentence) ?? new Set()).add(home));
       }
-      return [...seen].filter(([sentence, at]) => at.size > 1 && !exempt(sentence, at)).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
+      return [...seen].filter(([, at]) => at.size > 1 && !exempt(at)).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
     }));
     expect(duplicates.flat()).toEqual([]);
   });

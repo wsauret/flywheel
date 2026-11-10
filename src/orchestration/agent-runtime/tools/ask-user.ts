@@ -102,7 +102,8 @@ function askUserInputSchema(deps: AskUserToolDeps): AskUserInput {
   };
 }
 
-/** When a chat agent may ask through the decision UI. Both chat prompts and this tool's description state it. */
+/** When a chat agent may ask through the decision UI. This tool's description states it; the chat body states it
+ *  only for a host that serves its own ask tool. */
 export const ASK_USER_DISCUSSION_RULE = "While the user is asking questions or discussing, reply in prose and keep the discussion going. Do not call `ask_user` then. Use `ask_user` only after the discussion has settled on something, to get a final confirmation or a decision you cannot make yourself.";
 
 const ASK_USER_BASE: Pick<RuntimeTool, "name" | "action" | "description" | "unboundedDuration" | "isConcurrencySafe" | "deferUntilAssistantCommitted"> = {
