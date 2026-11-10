@@ -502,8 +502,17 @@ function typescriptGuards(root: Node, vocabulary: CapabilityVocabulary) {
       }
       if ((parent.type === "variable_declarator" || parent.type === "function_declaration") && parent.parent?.parent?.type !== "export_statement" && parent.parent?.type !== "export_statement") {
         const name = parent.childForFieldName("name")?.text;
-        const uses = name === undefined || seen.has(name) ? [] : references.get(name) ?? [];
-        if (name !== undefined && uses.length > 0) result = both(result, uses.map((use) => covered(use, new Set([...seen, name]))).reduce(either));
+        if (name !== undefined && !seen.has(name)) {
+          // The uses prove only what all of them prove. Once that is nothing, the other uses cannot add to it, and
+          // walking them multiplies the work by the use count at every enclosing name.
+          let shared: Guarantee | undefined;
+          for (const use of references.get(name) ?? []) {
+            const proved = covered(use, new Set([...seen, name]));
+            shared = shared ? either(shared, proved) : proved;
+            if (shared.held.size === 0 && shared.refuted.size === 0) break;
+          }
+          if (shared) result = both(result, shared);
+        }
       }
     }
     return result;
