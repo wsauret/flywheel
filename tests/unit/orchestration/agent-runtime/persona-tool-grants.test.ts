@@ -150,6 +150,9 @@ describe("persona tool grants", () => {
     ["advisor", "discovery", ["search", "list"]],
     ["ship", "bash", ["bash"]],
     ["ship", "file-tools", ["write"]],
+    // The UAT reviewer exercises the live system, so its dispatch must grant
+    // the shell; without it the reviewer can only report that it is blocked.
+    ["reviewer-uat", "bash", ["bash"]],
   ] as const)("dispatches %s with %s off, granted its declared tools without that module's", async (name, off, lost) => {
     const revision = repoDefinitions().captureRevision();
     const persona = revision.personas.get(name);
@@ -168,7 +171,12 @@ describe("persona tool grants", () => {
     const narrowed = await prepare([off]);
     for (const tool of lost) expect(all.toolNames).toContain(tool);
     expect(narrowed.toolNames).toEqual(all.toolNames.filter((tool) => !lost.some((lostTool) => lostTool === tool)));
-    if (off === "bash") {
+    if (name === "reviewer-uat") {
+      const boundedShell = "Bound each bash invocation with the tool's timeout parameter.";
+      expect(all.task).toContain(boundedShell);
+      expect(narrowed.task).not.toContain(boundedShell);
+    }
+    if (name === "ship" && off === "bash") {
       // Ship keeps running without a shell, so neither its body nor its
       // composed method tells it to run Git; it reports the work unpublished.
       for (const shellStep of ["## Git Discipline", "Keep commit-message drafts and other publication scratch files in your scratchpad directory.", "Preflight Bash, Git", "git merge"]) {
@@ -178,7 +186,7 @@ describe("persona tool grants", () => {
       expect(narrowed.task).toContain("return Not published, with the missing shell as the condition that stopped publication");
       expect(all.task).not.toContain("You have no shell");
     }
-    if (off === "file-tools") {
+    if (name === "ship" && off === "file-tools") {
       // Without Write, Ship still publishes through Bash, and no line of its
       // task offers it the Write tool.
       expect(narrowed.task).toContain("Preflight Bash, Git");
