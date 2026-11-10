@@ -7,8 +7,8 @@ import { BOARD_CACHE, fetchBoard, loadBoard } from "./analysis/board-data.js";
 import { publicCells, verifyPublished } from "./analysis/board-scoring.js";
 import { leaveOneOut, fitProjection } from "./analysis/projection.js";
 import { rerunCommands, rerunNeeds } from "./analysis/reruns.js";
-import { boardModel, calibrationUnits, compareWithBoard, PROJECTED_SPLIT, scoreRound } from "./analysis/round-score.js";
-import { measuredSplits, roundTrials } from "./analysis/round-trials.js";
+import { boardModel, calibrationUnits, compareWithBoard, PROJECTED_SPLIT, roundCost, scoreRound } from "./analysis/round-score.js";
+import { measuredSplits, roundTrialDirectories, roundTrials } from "./analysis/round-trials.js";
 import { proposeSubset } from "./analysis/subset.js";
 
 const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
@@ -111,7 +111,9 @@ async function scoreCommand(values: ReadonlyMap<string, string>, switches: Reado
   for (const split of score.splits) {
     console.log(`${split.split}: ${fixed(split.score)} over ${split.tasks} (${fixed(split.scoredScore)} over ${split.scoredTasks} scored${split.hubBrokenTasks === 0 ? "" : `; ${fixed(split.withoutHubBroken)} without ${split.hubBrokenTasks} hub-broken`})`);
   }
-  console.log(`grader-lost ${score.graderLost}, infra ${score.infra}, answer-key fails ${score.answerKeyFails}, cost $${score.costUsd.toFixed(2)}`);
+  const cost = await roundCost(await roundTrialDirectories(round));
+  console.log(`grader-lost ${score.graderLost}, infra ${score.infra}, answer-key fails ${score.answerKeyFails}`);
+  console.log(`estimated cost ${cost.lowerBound ? "at least " : ""}$${cost.estimatedUsd.toFixed(2)} (${cost.settled} settled, ${cost.snapshots} timeout snapshots, ${cost.incompleteUsage} trials with unmeasured or unpriced usage, ${cost.unavailable} without a store)`);
   if (!switches.has("--board")) return 0;
   const board = await loadBoard(benchmark, values.get("--cache") ?? BOARD_CACHE);
   const given = values.get("--model");

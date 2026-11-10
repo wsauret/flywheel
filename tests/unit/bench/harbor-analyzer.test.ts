@@ -27,16 +27,16 @@ describe("Harbor tool outcome analyzer", () => {
         expect(store.query("select payload ->> '$.requestId' as requestId from event where type = 'tool_surface.selected'").all()).toEqual([{ requestId: requestIds[0] }]);
         expect(store.query("select version, count(*) as count from event where type = 'tool.result.recorded' group by version order by version").all()).toEqual([{ version: 1, count: 1 }, { version: 2, count: 1 }]);
       } finally { store.close(); }
-      expect(await analyzeTrialStore(valid.storePath)).toMatchObject({ requestAuditComplete: true, executableToolInputs: { bash: 2 }, toolSettlement: { identityConflicts: 0 }, finalRequestOutcome: "ok", estimatedCostUsd: null });
+      expect(await analyzeTrialStore(valid.storePath)).toMatchObject({ requestAuditComplete: true, executableToolInputs: { bash: 2 }, toolSettlement: { identityConflicts: 0 }, finalRequestOutcome: "ok", usage: { estimatedUsd: 0, entries: 0, partial: 0, unmeasured: 0, unpriced: 0, undecoded: 0 } });
       const analysis = await analyze(valid.root);
       expect(analysis.infrastructureValid).toBeTrue();
       expect(analysis.rows[0]).toMatchObject({ requestAuditValid: true, commandObserved: true, toolSettlement: { inputs: 2, results: 2, missing: 0, orphan: 0, identityConflicts: 0 }, failure: null });
     }
   });
 
-  test("records how the trial's model work ended and what its priced usage is estimated to cost", async () => {
-    const stopped = await evidence({ finalOutcome: "context_overflow", pricedUsageUsd: [0.25, 0.125] });
-    expect(await analyzeTrialStore(stopped.storePath)).toMatchObject({ finalRequestOutcome: "context_overflow", estimatedCostUsd: 0.375 });
+  test("records how the trial's model work ended and the usage summary, with the attempt it could not price", async () => {
+    const stopped = await evidence({ finalOutcome: "context_overflow", usageUsd: [0.25, null, 0.125] });
+    expect(await analyzeTrialStore(stopped.storePath)).toMatchObject({ finalRequestOutcome: "context_overflow", usage: { estimatedUsd: 0.375, entries: 3, partial: 0, unmeasured: 1, unpriced: 0, undecoded: 0 } });
     // A dispatched request that never got its response leaves the earlier response as the final one.
     expect(await analyzeTrialStore((await evidence({ responded: false })).storePath)).toMatchObject({ finalRequestOutcome: "ok" });
     // A stream error that the provider's content refusal ended is a refusal; any other stream error stays a fault.

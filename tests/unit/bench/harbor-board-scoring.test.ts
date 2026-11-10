@@ -88,7 +88,7 @@ describe("board comparison", () => {
       fact({ id: "a2", task: "a", harness: "h2" }), fact({ id: "b2", task: "b", harness: "h2" }),
     ];
     const full = { split: "full", tasks: 2, score: 0.5, scoredScore: 0.5, scoredTasks: 2, withoutHubBroken: 0.5, hubBrokenTasks: 0 };
-    const score: RoundScore = { tasks: new Map([["a", [1, 1]], ["b", [0, 1]]]), splits: [full], costUsd: 0, infra: 0, graderLost: 0, answerKeyFails: 0 };
+    const score: RoundScore = { tasks: new Map([["a", [1, 1]], ["b", [0, 1]]]), splits: [full], infra: 0, graderLost: 0, answerKeyFails: 0 };
     const comparison = compareWithBoard(harborBenchmark("terminal-bench-2.1"), score, inputs(facts), { model: "org/Model-1", effort: "high" });
     expect(comparison.projection).toBeUndefined();
     expect(comparison.field.map(({ harness, rate, diff }) => [harness, rate, diff?.diff, diff?.nTasks])).toEqual([["h2", 1, -0.5, 2], ["h1", 0.5, 0, 2]]);

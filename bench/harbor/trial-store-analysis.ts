@@ -99,14 +99,42 @@ async function completeRequest(request: AuditedRequest, readSurface: EventStoreR
  *  analysis in its agent logs in place of its store, so a change to what the
  *  analysis states or means needs a new version, which the host refuses until
  *  its reader decodes it. */
-const TRIAL_STORE_ANALYSIS_VERSION = 4 as const
+const TRIAL_STORE_ANALYSIS_VERSION = 5 as const
 /** The agent-log file of a trial that holds its store analysis. The shim
  *  writes it under this name. */
 export const TRIAL_STORE_ANALYSIS_NAME = "flywheel-store-analysis.json"
 
+/** What the usage facts of one store state. The estimated cost sums only the
+ *  priced entries of measured usage, so it is a lower bound when any entry is
+ *  unmeasured or unpriced, or when a usage fact has a version that this reader
+ *  does not decode. A partial entry is priced for what it measured. */
+export interface UsageSummary {
+  /** The estimated cost of every priced, measured usage entry in USD. */
+  estimatedUsd: number
+  entries: number
+  partial: number
+  unmeasured: number
+  unpriced: number
+  /** Usage facts that the reader did not decode into an entry. */
+  undecoded: number
+}
+
+/** Folds the usage facts of one store into its usage summary. */
+export function usageSummary(readSurface: EventStoreReadSurface): UsageSummary {
+  const facts = readSurface.read({ types: ["model.usage.measured"] }), entries = usageEntriesFromFacts(facts)
+  const summary: UsageSummary = { estimatedUsd: 0, entries: entries.length, partial: 0, unmeasured: 0, unpriced: 0, undecoded: facts.length - entries.length }
+  for (const entry of entries) {
+    if (entry.coverage === "unmeasured") { summary.unmeasured += 1; continue }
+    if (entry.coverage === "partial") summary.partial += 1
+    if (entry.price.kind === "priced") summary.estimatedUsd += entry.price.estimatedUsd
+    else summary.unpriced += 1
+  }
+  return { ...summary, estimatedUsd: Number(summary.estimatedUsd.toFixed(6)) }
+}
+
 /** What one trial store proves, apart from the run's expectation and without
  *  content: counts, booleans, registry tool names, interaction profile ids,
- *  the final request outcome, the estimated cost, and the identity of the
+ *  the final request outcome, the usage summary, and the identity of the
  *  analysed bytes. */
 export interface TrialStoreAnalysis {
   version: typeof TRIAL_STORE_ANALYSIS_VERSION
@@ -123,8 +151,7 @@ export interface TrialStoreAnalysis {
    *  outcome other than `ok` names why the trial's model work ended: a provider failure, the provider's
    *  refusal of the conversation content (`refused`), an abort, or a context or output limit. */
   finalRequestOutcome: TrialRequestOutcome | null
-  /** The estimated cost of every priced usage entry in USD, null when no entry was priced. */
-  estimatedCostUsd: number | null
+  usage: UsageSummary
 }
 
 /** A provider response outcome, with the provider's refusal of the content told apart as `refused`: a
@@ -227,9 +254,7 @@ export async function analyzeTrialStore(path: string): Promise<TrialStoreAnalysi
     const after = fstatSync(descriptor)
     if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs) throw new Error("evidence identity changed")
     const interactionProfiles = [...audit.interactionProfiles].sort((a, b) => String(a).localeCompare(String(b)))
-    const prices = usageEntriesFromFacts(readSurface.read({ types: ["model.usage.measured"] })).flatMap((entry) => entry.coverage !== "unmeasured" && entry.price.kind === "priced" ? [entry.price.estimatedUsd] : [])
-    const estimatedCostUsd = prices.length === 0 ? null : Number(prices.reduce((total, price) => total + price, 0).toFixed(6))
-    return { version: TRIAL_STORE_ANALYSIS_VERSION, store, toolSettlement, requestAuditComplete, interactionProfiles, executableToolInputs, finalRequestOutcome, estimatedCostUsd }
+    return { version: TRIAL_STORE_ANALYSIS_VERSION, store, toolSettlement, requestAuditComplete, interactionProfiles, executableToolInputs, finalRequestOutcome, usage: usageSummary(readSurface) }
   } finally { db.close(); closeSync(descriptor) }
 }
 
@@ -239,12 +264,12 @@ function invalidAnalysis(): never { throw new Error("invalid trial store analysi
 /** Decodes the store analysis that a trial recorded, and refuses any
  *  other version or shape. */
 export function decodeTrialStoreAnalysis(value: unknown): TrialStoreAnalysis {
-  const row = object(value), store = object(row?.store), settlement = object(row?.toolSettlement), inputs = object(row?.executableToolInputs), profiles = row?.interactionProfiles
-  if (row?.version !== TRIAL_STORE_ANALYSIS_VERSION || !store || !nonempty(store.sha256) || !count(store.size) || !settlement || !inputs || !Array.isArray(profiles) || typeof row.requestAuditComplete !== "boolean") return invalidAnalysis()
-  const cost = row.estimatedCostUsd, outcome = row.finalRequestOutcome
-  const estimatedCostUsd = cost === null ? null : typeof cost === "number" && Number.isFinite(cost) && cost >= 0 ? cost : invalidAnalysis()
+  const row = object(value), store = object(row?.store), settlement = object(row?.toolSettlement), inputs = object(row?.executableToolInputs), profiles = row?.interactionProfiles, usage = object(row?.usage)
+  if (row?.version !== TRIAL_STORE_ANALYSIS_VERSION || !store || !nonempty(store.sha256) || !count(store.size) || !settlement || !inputs || !Array.isArray(profiles) || typeof row.requestAuditComplete !== "boolean" || !usage) return invalidAnalysis()
+  const outcome = row.finalRequestOutcome, cost = usage.estimatedUsd
   const finalRequestOutcome = outcome === null ? null : isRequestOutcome(outcome) ? outcome : invalidAnalysis()
   const field = (name: keyof ToolSettlement): number => { const item = settlement[name]; return count(item) ? item : invalidAnalysis() }
+  const usageCount = (name: Exclude<keyof UsageSummary, "estimatedUsd">): number => { const item = usage[name]; return count(item) ? item : invalidAnalysis() }
   return {
     version: TRIAL_STORE_ANALYSIS_VERSION,
     store: { sha256: store.sha256, size: store.size },
@@ -253,7 +278,10 @@ export function decodeTrialStoreAnalysis(value: unknown): TrialStoreAnalysis {
     interactionProfiles: profiles.map((profile: unknown) => profile === null ? null : nonempty(profile) ? profile : invalidAnalysis()),
     executableToolInputs: Object.fromEntries(Object.entries(inputs).map(([name, item]) => [name, count(item) ? item : invalidAnalysis()])),
     finalRequestOutcome,
-    estimatedCostUsd,
+    usage: {
+      estimatedUsd: typeof cost === "number" && Number.isFinite(cost) && cost >= 0 ? cost : invalidAnalysis(),
+      entries: usageCount("entries"), partial: usageCount("partial"), unmeasured: usageCount("unmeasured"), unpriced: usageCount("unpriced"), undecoded: usageCount("undecoded"),
+    },
   }
 }
 

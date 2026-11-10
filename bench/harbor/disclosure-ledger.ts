@@ -1,19 +1,24 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
+import { costTotal, trialCost, type CostBasis, type TrialCost } from "./trial-cost.js";
 import { decodeTrialStoreAnalysis, TRIAL_STORE_ANALYSIS_NAME, type TrialStoreAnalysis } from "./trial-store-analysis.js";
 
 type LedgerCategory = "provider_refusal" | "provider_infra" | "verifier_infra" | "cancelled" | "cost_truncated" | "genuine" | "other";
 type RunOutcome = "completed" | "no_scored_trials" | "trials_unverified" | "harness_nonzero_exit";
 type JsonMap = Record<string, unknown>;
 
-interface LedgerRow { id: string; task: string; reward: number | null; category?: LedgerCategory; cost: number }
+/** One trial. `cost` is its estimated cost, null when its basis is `unavailable`. */
+interface LedgerRow { id: string; task: string; reward: number | null; category?: LedgerCategory; cost: number | null; costBasis: CostBasis }
 export interface DisclosureLedger {
   denominator: number;
   scoredTrials: number;
   rewardDistribution: Record<string, number>;
   exceptionHistogram: Record<string, number>;
   taskPassRates: Record<string, { passed: number; total: number; rate: number }>;
+  /** The estimated cost of every trial directory with a result, which `trialCost` priced: each row and each trial that admission refused. */
   totalCost: number;
+  /** Whether `totalCost` is a lower bound, as `CostTotal` states it. */
+  costLowerBound: boolean;
   counts: Record<LedgerCategory, number>;
   outcome: RunOutcome;
   exitCode: number;
@@ -152,6 +157,7 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
   const expectedTasks = new Set(tasks);
   const root = resolve(options.trialsDirectory);
   const rows: LedgerRow[] = [];
+  const costs: TrialCost[] = [];
   const seenTrials = new Set<string>();
   const taskCounts = new Map<string, number>();
   const exceptionHistogram: Record<string, number> = {};
@@ -160,6 +166,9 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
     const canonical = resolve(resultPath);
     if (!canonical.startsWith(`${root}${sep}`)) throw new Error("trial evidence escaped the run-owned output root");
     const directory = resolve(canonical, "..");
+    // Cost counts every trial that ran, also one whose evidence admission refuses.
+    const cost = await trialCost(directory);
+    costs.push(cost);
     const resultEvidence = await json(canonical);
     const summaryEvidence = await json(join(directory, "agent", "flywheel-run-summary.json"));
     const result = resultEvidence.value;
@@ -177,20 +186,17 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
     if (exception !== undefined) exceptionHistogram[exception] = (exceptionHistogram[exception] ?? 0) + 1;
     const analysis = await storeAnalysis(directory);
     const category = failureCategory(result, summaryEvidence.value, analysis, score, options.verifierDownloadsFromGithub && await verifierDownloadFailed(directory));
-    const cost = numeric(object(result?.agent_result)?.cost_usd) ?? analysis?.estimatedCostUsd ?? 0;
-    rows.push({ id: trialName, task, reward: score, ...(category === undefined ? {} : { category }), cost });
+    rows.push({ id: trialName, task, reward: score, ...(category === undefined ? {} : { category }), cost: cost.usage === null ? null : cost.usage.estimatedUsd, costBasis: cost.basis });
   }
   if (expectedTasks.size > 0 && [...expectedTasks].some((task) => taskCounts.get(task) !== attempts)) evidenceValid = false;
   if (expectedTasks.size === 0 && rows.length !== denominator) evidenceValid = false;
   const counts: Record<LedgerCategory, number> = { provider_refusal: 0, provider_infra: 0, verifier_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 };
   const rewardDistribution: Record<string, number> = {};
   const taskPassRates: DisclosureLedger["taskPassRates"] = {};
-  let totalCost = 0;
   for (const row of rows) {
     const rewardKey = row.reward === null ? "null" : String(row.reward);
     rewardDistribution[rewardKey] = (rewardDistribution[rewardKey] ?? 0) + 1;
     if (row.category !== undefined) counts[row.category] += 1;
-    totalCost += row.cost;
     const rate = taskPassRates[row.task] ?? { passed: 0, total: 0, rate: 0 };
     rate.total += 1;
     if ((row.reward ?? 0) > 0) rate.passed += 1;
@@ -201,5 +207,6 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
   const scoredTrials = rows.filter((row) => typeof row.reward === "number").length;
   const outcome: RunOutcome = options.harborExitCode !== 0 ? "harness_nonzero_exit" : !reconciled ? "trials_unverified" : scoredTrials === 0 ? "no_scored_trials" : "completed";
   const exitCode = options.harborExitCode !== 0 ? options.harborExitCode : outcome === "completed" ? 0 : 1;
-  return { denominator, scoredTrials, rewardDistribution, exceptionHistogram, taskPassRates, totalCost, counts, outcome, exitCode, reconciled, rows };
+  const cost = costTotal(costs);
+  return { denominator, scoredTrials, rewardDistribution, exceptionHistogram, taskPassRates, totalCost: cost.estimatedUsd, costLowerBound: cost.lowerBound, counts, outcome, exitCode, reconciled, rows };
 }

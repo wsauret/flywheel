@@ -430,7 +430,7 @@ export async function finalizeHarborRun(manifestPath: string, trialsDirectory: s
     await atomicWrite(join(dirname(manifestPath), "disclosure-ledger.json"), ledger);
   } catch {
     const outcome = harborExitCode === 0 ? "trials_unverified" : "harness_nonzero_exit";
-    ledger = { denominator: manifest.expected_trials, scoredTrials: 0, rewardDistribution: {}, exceptionHistogram: {}, taskPassRates: {}, totalCost: 0, counts: { provider_refusal: 0, provider_infra: 0, verifier_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 }, outcome, exitCode: harborExitCode === 0 ? 1 : harborExitCode, reconciled: false, rows: [] };
+    ledger = { denominator: manifest.expected_trials, scoredTrials: 0, rewardDistribution: {}, exceptionHistogram: {}, taskPassRates: {}, totalCost: 0, costLowerBound: true, counts: { provider_refusal: 0, provider_infra: 0, verifier_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 }, outcome, exitCode: harborExitCode === 0 ? 1 : harborExitCode, reconciled: false, rows: [] };
   }
   if (analysis?.infrastructureValid === true && analysis.version === TOOL_OUTCOME_ANALYZER_RESULT_VERSION) {
     const failureCounts: Record<string, number> = {};
@@ -453,7 +453,7 @@ export async function finalizeHarborRun(manifestPath: string, trialsDirectory: s
   }
   manifest.state = ledger.reconciled && analysis?.infrastructureValid === true ? "finalized" : "refused";
   manifest.outcome = ledger.outcome;
-  manifest.ledger_summary = { denominator: ledger.denominator, scored_trials: ledger.scoredTrials, reconciled: ledger.reconciled, counts: ledger.counts, total_cost: ledger.totalCost };
+  manifest.ledger_summary = { denominator: ledger.denominator, scored_trials: ledger.scoredTrials, reconciled: ledger.reconciled, counts: ledger.counts, total_cost: ledger.totalCost, cost_lower_bound: ledger.costLowerBound };
   await atomicWrite(manifestPath, manifest);
   return ledger;
 }

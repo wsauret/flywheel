@@ -3,8 +3,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { confirmedTrials, readAnswerKey, recordVerdicts, writeAnswerKey } from "../../../bench/harbor/analysis/answer-key.js";
 import { rerunCommands, rerunNeeds } from "../../../bench/harbor/analysis/reruns.js";
-import { scoreRound } from "../../../bench/harbor/analysis/round-score.js";
-import { measuredSplits, roundTrials } from "../../../bench/harbor/analysis/round-trials.js";
+import { roundCost, scoreRound } from "../../../bench/harbor/analysis/round-score.js";
+import { measuredSplits, roundTrialDirectories, roundTrials } from "../../../bench/harbor/analysis/round-trials.js";
 import type { HarborBenchmark } from "../../../bench/harbor/benchmarks.js";
 import { resolveHarborConfig } from "../../../bench/harbor/harbor-config.js";
 import { ARM_CONFIG } from "../../fixtures/harbor-run.js";
@@ -29,24 +29,31 @@ const BENCHMARK: HarborBenchmark = {
 
 const IDENTITY = { sourceCommit: "c".repeat(40), arm: { path: "bench/harbor/configs/arm.toml", sha256: "a".repeat(64) }, model: "model-1", effort: "high" };
 
-interface TrialFixture { id: string; task: string; reward: number | null; category?: string; cost?: number; stdout?: string; ledger?: boolean }
+/** `cost` is the estimated cost of the trial's store analysis, 0.1 when absent; null records no evidence. */
+interface TrialFixture { id: string; task: string; reward: number | null; category?: string; cost?: number | null; stdout?: string; ledger?: boolean }
+
+function storeAnalysis(estimatedUsd: number) {
+  return { version: 5, store: { sha256: "a".repeat(64), size: 1 }, toolSettlement: { inputs: 0, results: 0, missing: 0, orphan: 0, duplicateInputs: 0, duplicateResults: 0, identityConflicts: 0 }, requestAuditComplete: true, interactionProfiles: [], executableToolInputs: {}, finalRequestOutcome: "ok", usage: { estimatedUsd, entries: 1, partial: 0, unmeasured: 0, unpriced: 0, undecoded: 0 } };
+}
 
 interface RunFixture { state?: string; outcome?: string; layout?: "hosted" | "local" }
 
 /** A run: its manifest, its preparation plan, its ledger once finished, and
- *  each trial's result in the Harbor job directory of its execution mode. */
+ *  each trial's result and store analysis in the Harbor job directory of its execution mode. */
 function writeRun(directory: string, tasks: string[], attempts: number, trials: TrialFixture[], { state = "finalized", outcome, layout = "hosted" }: RunFixture = {}): void {
   mkdirSync(directory, { recursive: true });
   const trialsDirectory = join(directory, layout === "hosted" ? "hub" : "harbor-jobs", "job");
   writeFileSync(join(directory, "run_manifest.json"), JSON.stringify({ task_names: tasks.map((task) => `fixture/${task}`), attempts, state, outcome: outcome ?? null }));
   writeFileSync(join(directory, "preparation-plan.json"), JSON.stringify({ trials_directory: trialsDirectory }));
   if (state !== "finalized") return;
-  const rows = trials.filter((trial) => trial.ledger !== false).map((trial) => ({ id: trial.id, task: `fixture/${trial.task}`, reward: trial.reward, cost: trial.cost ?? 0.1, ...(trial.category === undefined ? {} : { category: trial.category }) }));
+  const rows = trials.filter((trial) => trial.ledger !== false).map((trial) => ({ id: trial.id, task: `fixture/${trial.task}`, reward: trial.reward, ...(trial.category === undefined ? {} : { category: trial.category }) }));
   writeFileSync(join(directory, "disclosure-ledger.json"), JSON.stringify({ rows }));
   for (const trial of trials) {
     const trialDirectory = join(trialsDirectory, trial.id);
     mkdirSync(join(trialDirectory, "verifier"), { recursive: true });
+    mkdirSync(join(trialDirectory, "agent"));
     writeFileSync(join(trialDirectory, "result.json"), JSON.stringify({ task_name: `fixture/${trial.task}`, trial_name: trial.id, verifier_result: { rewards: { reward: trial.reward } } }));
+    if (trial.cost !== null) writeFileSync(join(trialDirectory, "agent", "flywheel-store-analysis.json"), JSON.stringify(storeAnalysis(trial.cost ?? 0.1)));
     if (trial.stdout !== undefined) writeFileSync(join(trialDirectory, "verifier", "test-stdout.txt"), trial.stdout);
   }
 }
@@ -62,10 +69,12 @@ async function fixtureRound() {
     { id: "flaky-1", task: "flaky", reward: 0.5 },
     { id: "flaky-2", task: "flaky", reward: null, category: "provider_infra" },
     { id: "lost-1", task: "lost", reward: 0, stdout: "error: failed to download https://github.com/astral-sh/uv\n" },
-    { id: "lost-2", task: "lost", reward: 0, category: "verifier_infra" },
+    { id: "lost-2", task: "lost", reward: 0, category: "verifier_infra", cost: null },
     { id: "broken-1", task: "broken", reward: -1 },
     // The ledger refused this trial for missing evidence, but its verifier graded it.
     { id: "broken-2", task: "broken", reward: 1, ledger: false },
+    // The ledger refused this trial and its verifier gave no reward, so it is not scored, but it ran and has a cost.
+    { id: "refused-1", task: "solid", reward: null, ledger: false, cost: 0.05 },
   ]);
   writeRun(rerun, ["flaky"], 1, [
     { id: "flaky-3", task: "flaky", reward: 1, stdout: "failed to download https://github.com/x\n===== 3 passed in 1.0s =====\n" },
@@ -114,14 +123,17 @@ describe("round scoring", () => {
   it("pools every run's scored attempts with the board's rules", async () => {
     const { round } = await fixtureRound();
     expect(round.runs.map((run) => run.purpose)).toEqual(["measure", "rerun"]);
-    const score = scoreRound(BENCHMARK, await roundTrials(BENCHMARK, round), new Set(), await measuredSplits(BENCHMARK, round));
+    const trials = await roundTrials(BENCHMARK, round);
+    const score = scoreRound(BENCHMARK, trials, new Set(), await measuredSplits(BENCHMARK, round));
     // flaky: a 0.5 reward fails, infra is not scored, and the rerun's graded pass counts.
     expect([...score.tasks].sort()).toEqual([["broken", [1, 1]], ["flaky", [1, 2]], ["solid", [2, 2]]]);
     expect(score.infra).toBe(1);
     // A GitHub download failure without a test summary, the ledger's category, and a negative reward.
     expect(score.graderLost).toBe(3);
-    // Six measured ledger rows at 0.1, one at 0.25, and the rerun's row at 0.1; the refused trial has no ledger cost.
-    expect(score.costUsd).toBeCloseTo(0.1 * 7 + 0.25, 12);
+    expect(trials.some((trial) => trial.id === "refused-1")).toBeFalse();
+    // Every trial is priced from its directory, also the refused ones that scoring leaves out; the trial without evidence makes the total a lower bound.
+    const cost = await roundCost(await roundTrialDirectories(round));
+    expect({ ...cost, estimatedUsd: Number(cost.estimatedUsd.toFixed(12)) }).toEqual({ estimatedUsd: 1, lowerBound: true, settled: 9, snapshots: 0, unavailable: 1, incompleteUsage: 0 });
     const subset = score.splits.find((split) => split.split === "subset")!;
     expect(subset).toEqual({ split: "subset", tasks: 4, score: (1 + 0.5 + 0 + 1) / 4, scoredScore: (1 + 0.5 + 1) / 3, scoredTasks: 3, withoutHubBroken: (1 + 0.5 + 0) / 3, hubBrokenTasks: 1 });
     // The round measured only the subset, so it reports no score for the holdout.

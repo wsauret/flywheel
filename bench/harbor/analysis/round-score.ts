@@ -1,4 +1,5 @@
 import type { HarborBenchmark } from "../benchmarks.js";
+import { costTotal, trialCost, type CostTotal, type TrialCost } from "../trial-cost.js";
 import type { BoardInputs } from "./board-data.js";
 import { pairedDiff, publicCells, publishedLeader, type BoardCell } from "./board-scoring.js";
 import { fitProjection, leaveOneOut, project, type CalibrationUnit, type Projection, type ProjectionFit } from "./projection.js";
@@ -24,7 +25,6 @@ export interface RoundScore {
   /** Per task: passed and scored attempts, over every run of the round. */
   readonly tasks: ReadonlyMap<string, readonly [number, number]>;
   readonly splits: readonly SplitScore[];
-  readonly costUsd: number;
   readonly infra: number;
   readonly graderLost: number;
   /** Passing trials that a confirmed answer-key verdict turned into fails. */
@@ -38,12 +38,10 @@ export interface RoundScore {
  *  `measuredSplits` reads, gets a score over its tasks. */
 export function scoreRound(benchmark: HarborBenchmark, trials: readonly RoundTrial[], confirmed: ReadonlySet<string>, measured: ReadonlyMap<string, readonly string[]>): RoundScore {
   const tasks = new Map<string, [number, number]>();
-  let costUsd = 0;
   let infra = 0;
   let graderLost = 0;
   let answerKeyFails = 0;
   for (const trial of trials) {
-    costUsd += trial.cost;
     if (trial.standing === "infra") infra += 1;
     if (trial.standing === "grader_lost") graderLost += 1;
     if (trial.standing !== "scored") continue;
@@ -71,7 +69,16 @@ export function scoreRound(benchmark: HarborBenchmark, trials: readonly RoundTri
       hubBrokenTasks: list.length - working.length,
     };
   });
-  return { tasks, splits, costUsd, infra, graderLost, answerKeyFails };
+  return { tasks, splits, infra, graderLost, answerKeyFails };
+}
+
+/** The estimated cost of every trial of a round, as `roundTrialDirectories`
+ *  lists them, each priced from its directory by `trialCost`. Trials are
+ *  priced one at a time, so at most one store image is in memory. */
+export async function roundCost(directories: readonly (string | undefined)[]): Promise<CostTotal> {
+  const costs: TrialCost[] = [];
+  for (const directory of directories) costs.push(await trialCost(directory));
+  return costTotal(costs);
 }
 
 /** The board's view of a round's setup: the model and effort whose cells it compares with. */

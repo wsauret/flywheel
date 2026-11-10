@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { mkdir, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { reconcileDisclosureLedger as reconcile } from "../../../bench/harbor/disclosure-ledger.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
+import { trialEvidence } from "../../helpers/harbor-trial-evidence.js";
 
 const temporaryDirectory = temporaryDirectories();
 
@@ -11,8 +13,8 @@ interface TrialSummary { readonly [key: string]: unknown }
 const reconcileDisclosureLedger = (options: Omit<Parameters<typeof reconcile>[0], "infrastructureValid" | "verifierDownloadsFromGithub">) => reconcile({ ...options, infrastructureValid: true, verifierDownloadsFromGithub: true });
 
 /** The store analysis a trial records, with the evidence the ledger reads from it. */
-function analysis(finalRequestOutcome: string | null, estimatedCostUsd: number | null = null) {
-  return { version: 4, store: { sha256: "a".repeat(64), size: 1 }, toolSettlement: { inputs: 0, results: 0, missing: 0, orphan: 0, duplicateInputs: 0, duplicateResults: 0, identityConflicts: 0 }, requestAuditComplete: true, interactionProfiles: [], executableToolInputs: {}, finalRequestOutcome, estimatedCostUsd };
+function analysis(finalRequestOutcome: string | null, estimatedUsd = 0, unpricedUsage: { unmeasured?: number; unpriced?: number; undecoded?: number } = {}) {
+  return { version: 5, store: { sha256: "a".repeat(64), size: 1 }, toolSettlement: { inputs: 0, results: 0, missing: 0, orphan: 0, duplicateInputs: 0, duplicateResults: 0, identityConflicts: 0 }, requestAuditComplete: true, interactionProfiles: [], executableToolInputs: {}, finalRequestOutcome, usage: { estimatedUsd, entries: 1, partial: 0, unmeasured: 0, unpriced: 0, undecoded: 0, ...unpricedUsage } };
 }
 
 async function trial(root: string, directory: string, task: string, trialName: string, summary: TrialSummary, reward: number | null, exception?: string, cost?: number, storeAnalysis?: ReturnType<typeof analysis>): Promise<void> {
@@ -32,15 +34,17 @@ async function trial(root: string, directory: string, task: string, trialName: s
 describe("Harbor disclosure ledger", () => {
   test("reconciles Harbor result identities and exposes complete aggregates", async () => {
     const root = temporaryDirectory("tb-ledger-");
-    // Harbor's cost comes first; the store's estimate stands in only where Harbor reports none.
+    // The store's usage summary is the cost; Harbor's reported cost is not read.
     await trial(root, "a__hash1", "terminal-bench/a", "a__hash1", {}, 1, undefined, undefined, analysis("ok", 1.25));
-    await trial(root, "a__hash2", "terminal-bench/a", "a__hash2", {}, 0, undefined, 0.75, analysis("ok", 9));
+    await trial(root, "a__hash2", "terminal-bench/a", "a__hash2", {}, 0, undefined, 9, analysis("ok", 0.75));
     const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["terminal-bench/a"], attempts: 2, harborExitCode: 0 });
     expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, verifier_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 1, other: 0 });
     expect(ledger.rewardDistribution).toEqual({ "0": 1, "1": 1 });
     expect(ledger.exceptionHistogram).toEqual({});
     expect(ledger.taskPassRates["terminal-bench/a"]).toEqual({ passed: 1, total: 2, rate: 0.5 });
     expect(ledger.totalCost).toBe(2);
+    expect(ledger.costLowerBound).toBeFalse();
+    expect(ledger.rows.map((row) => [row.cost, row.costBasis])).toEqual([[1.25, "settled"], [0.75, "settled"]]);
     expect(ledger.rows[0]?.category).toBeUndefined();
     expect(ledger.outcome).toBe("completed");
   });
@@ -73,8 +77,65 @@ describe("Harbor disclosure ledger", () => {
     await writeFile(join(root, "a__hash", "agent", "flywheel-run-summary.json"), "{}");
     await writeFile(join(root, "a__hash", "result.json"), JSON.stringify({ task_name: "a", trial_name: "a__hash", verifier_result: null, exception_info: { exception_type: "VerifierTimeoutError" } }));
     const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 1, harborExitCode: 0 });
-    expect(ledger.rows).toEqual([{ id: "a__hash", task: "a", reward: 0, category: "cancelled", cost: 0 }]);
+    expect(ledger.rows).toEqual([{ id: "a__hash", task: "a", reward: 0, category: "cancelled", cost: null, costBasis: "unavailable" }]);
     expect(ledger.outcome).toBe("completed");
+  });
+
+  test("prices a timed-out trial from its last snapshot and a trial without a current analysis from its published store, and marks the total a lower bound", async () => {
+    const root = temporaryDirectory("tb-ledger-snapshot-");
+    const bytes = await readFile((await trialEvidence(temporaryDirectory("tb-ledger-store-"), { usageUsd: [0.5, null] })).storePath);
+    const publish = async (directory: string, store: Buffer) => {
+      await mkdir(join(root, directory, "agent", "flywheel-evidence", ".flywheel"), { recursive: true });
+      await writeFile(join(root, directory, "agent", "flywheel-evidence", ".flywheel", "flywheel.sqlite"), store);
+    };
+    const timedOut = async (directory: string) => {
+      await mkdir(join(root, directory, "agent"), { recursive: true });
+      await writeFile(join(root, directory, "result.json"), JSON.stringify({ task_name: "a", trial_name: directory, verifier_result: { rewards: { reward: 0 } }, exception_info: { exception_type: "AgentTimeoutError" }, agent_result: { cost_usd: 0.25 } }));
+    };
+    // A snapshot of a round recorded before the snapshot copy claimed rollback journaling keeps the WAL file format in its header.
+    const snapshot = Buffer.from(bytes);
+    snapshot[18] = 2; snapshot[19] = 2;
+    await timedOut("a__snapshot");
+    await publish("a__snapshot", snapshot);
+    await timedOut("a__unavailable");
+    // A settled trial whose analysis an earlier version recorded: its published store carries the run summary's identity.
+    await trial(root, "a__recorded", "a", "a__recorded", { evidence_sha256: createHash("sha256").update(bytes).digest("hex") }, 1, undefined, undefined, { ...analysis("ok", 9), version: 4 });
+    await publish("a__recorded", bytes);
+    const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 3, harborExitCode: 0 });
+    expect(Object.fromEntries(ledger.rows.map((row) => [row.id, [row.cost, row.costBasis]]))).toEqual({ a__snapshot: [0.5, "snapshot"], a__unavailable: [null, "unavailable"], a__recorded: [0.5, "settled"] });
+    expect(ledger.totalCost).toBe(1);
+    expect(ledger.costLowerBound).toBeTrue();
+    // The store is read in memory: its file keeps its bytes and gains no journal beside it.
+    expect(await readFile(join(root, "a__snapshot", "agent", "flywheel-evidence", ".flywheel", "flywheel.sqlite"))).toEqual(snapshot);
+    expect(await readdir(join(root, "a__snapshot", "agent", "flywheel-evidence", ".flywheel"))).toEqual(["flywheel.sqlite"]);
+  });
+
+  test("prices a trial that admission refuses, whose cost the run still spent", async () => {
+    const root = temporaryDirectory("tb-ledger-refused-cost-");
+    await trial(root, "a__admitted", "a", "a__admitted", {}, 1, undefined, undefined, analysis("ok", 0.5));
+    // The analysis was exported, but the run summary was never written and Harbor reported no reward.
+    await mkdir(join(root, "a__refused", "agent"), { recursive: true });
+    await writeFile(join(root, "a__refused", "agent", "flywheel-store-analysis.json"), JSON.stringify(analysis("stream_error", 0.25)));
+    await writeFile(join(root, "a__refused", "result.json"), JSON.stringify({ task_name: "a", trial_name: "a__refused", verifier_result: { rewards: { reward: null } }, exception_info: { exception_type: "RuntimeError" } }));
+    const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 2, harborExitCode: 0 });
+    expect(ledger.rows.map((row) => row.id)).toEqual(["a__admitted"]);
+    expect(ledger.reconciled).toBeFalse();
+    expect(ledger.totalCost).toBe(0.75);
+    expect(ledger.costLowerBound).toBeFalse();
+  });
+
+  test("a total of settled trials is a lower bound when a trial has unmeasured, unpriced, or undecoded usage", async () => {
+    const root = temporaryDirectory("tb-ledger-incomplete-usage-");
+    await trial(root, "a__clean", "a", "a__clean", {}, 1, undefined, undefined, analysis("ok", 0.5));
+    const clean = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 1, harborExitCode: 0 });
+    expect(clean.costLowerBound).toBeFalse();
+    for (const [index, usage] of [{ unmeasured: 1 }, { unpriced: 1 }, { undecoded: 1 }].entries()) {
+      const directory = temporaryDirectory("tb-ledger-incomplete-usage-");
+      await trial(directory, "a__clean", "a", "a__clean", {}, 1, undefined, undefined, analysis("ok", 0.5));
+      await trial(directory, "a__incomplete", "a", "a__incomplete", {}, 1, undefined, undefined, analysis("ok", 0.25, usage));
+      const ledger = await reconcileDisclosureLedger({ trialsDirectory: directory, taskNames: ["a"], attempts: 2, harborExitCode: 0 });
+      expect([index, ledger.rows.map((row) => row.costBasis), ledger.totalCost, ledger.costLowerBound]).toEqual([index, ["settled", "settled"], 0.75, true]);
+    }
   });
 
   test("reconciled null-only trials have no scored trials", async () => {

@@ -19,7 +19,6 @@ export interface RoundTrial {
   /** The bare task name, without the benchmark's task namespace. */
   readonly task: string;
   readonly reward: number | null;
-  readonly cost: number;
   readonly standing: TrialStanding;
   /** The trial's artifact directory, when the run downloaded it. */
   readonly directory?: string;
@@ -81,28 +80,50 @@ function reward(result: JsonMap | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+interface LedgerRowEvidence extends JsonMap { readonly id: string; readonly task: string }
+
+/** The ledger rows and trial directories of a finished run, or undefined for
+ *  a run without a ledger, which has not finished. */
+async function finishedRun(run: RoundRun): Promise<{ rows: LedgerRowEvidence[]; directories: Map<string, string> } | undefined> {
+  const stored = await readOptionalJson(join(run.directory, "disclosure-ledger.json"));
+  if (stored === undefined) return undefined;
+  const raw = object(stored)?.rows;
+  if (!Array.isArray(raw)) throw new Error(`${run.directory}/disclosure-ledger.json has no rows`);
+  const rows = raw.map((item): LedgerRowEvidence => {
+    const row = object(item);
+    if (typeof row?.id !== "string" || typeof row.task !== "string") throw new Error(`${run.directory}/disclosure-ledger.json holds a row without id or task`);
+    return { ...row, id: row.id, task: row.task };
+  });
+  return { rows, directories: await trialDirectories(run.directory) };
+}
+
+/** Every trial of every finished run of the round, whether or not it is
+ *  scored: each downloaded trial directory, and each ledger row without one
+ *  as undefined. Cost reads this list, so a trial that scoring leaves out,
+ *  such as one without a reward that the ledger refused, is still priced. */
+export async function roundTrialDirectories(round: Round): Promise<(string | undefined)[]> {
+  const runs = await Promise.all(round.runs.map(finishedRun));
+  return runs.flatMap((run) => run === undefined ? [] : [...run.directories.values(), ...run.rows.filter((row) => !run.directories.has(row.id)).map(() => undefined)]);
+}
+
 /** Every trial of one run: the rows of its disclosure ledger, then each
  *  downloaded trial that the ledger refused for missing evidence but whose
  *  verifier gave a reward, which the board scores by that reward. A run
  *  without a ledger has not finished and adds nothing. */
 async function runTrials(benchmark: HarborBenchmark, run: RoundRun): Promise<RoundTrial[]> {
-  const stored = await readOptionalJson(join(run.directory, "disclosure-ledger.json"));
-  if (stored === undefined) return [];
-  const rows = object(stored)?.rows;
-  if (!Array.isArray(rows)) throw new Error(`${run.directory}/disclosure-ledger.json has no rows`);
-  const directories = await trialDirectories(run.directory);
+  const evidence = await finishedRun(run);
+  if (evidence === undefined) return [];
+  const { rows, directories } = evidence;
   const trials: RoundTrial[] = [];
   const seen = new Set<string>();
-  for (const raw of rows) {
-    const row = object(raw);
-    if (typeof row?.id !== "string" || typeof row.task !== "string") throw new Error(`${run.directory}/disclosure-ledger.json holds a row without id or task`);
+  for (const row of rows) {
     const score = typeof row.reward === "number" ? row.reward : null;
     const directory = directories.get(row.id);
     const category = typeof row.category === "string" ? row.category : undefined;
     // A negative reward is the grader's own report that it crashed, on every benchmark.
     const lost = category === GRADER_LOST_CATEGORY || (score !== null && score < 0) || (benchmark.verifierDownloadsFromGithub && await githubDownloadLost(directory));
     const standing: TrialStanding = category !== undefined && INFRA_CATEGORIES.has(category) ? "infra" : lost ? "grader_lost" : "scored";
-    trials.push({ id: row.id, task: bareTask(benchmark, row.task), reward: score, cost: typeof row.cost === "number" ? row.cost : 0, standing, ...(directory === undefined ? {} : { directory }), run });
+    trials.push({ id: row.id, task: bareTask(benchmark, row.task), reward: score, standing, ...(directory === undefined ? {} : { directory }), run });
     seen.add(row.id);
   }
   for (const [id, directory] of directories) {
@@ -111,7 +132,7 @@ async function runTrials(benchmark: HarborBenchmark, run: RoundRun): Promise<Rou
     const score = reward(result);
     if (score === null || typeof result?.task_name !== "string") continue;
     const lost = score < 0 || (benchmark.verifierDownloadsFromGithub && await githubDownloadLost(directory));
-    trials.push({ id, task: bareTask(benchmark, result.task_name), reward: score, cost: 0, standing: lost ? "grader_lost" : "scored", directory, run });
+    trials.push({ id, task: bareTask(benchmark, result.task_name), reward: score, standing: lost ? "grader_lost" : "scored", directory, run });
   }
   return trials;
 }

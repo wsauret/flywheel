@@ -78,19 +78,22 @@ export interface EvidenceOptions {
   toolCalls?: boolean
   /** The verifier reward of the trial. */
   reward?: number
-  /** The estimated cost of each priced usage entry the run measured. */
-  pricedUsageUsd?: readonly number[]
+  /** The estimated cost of each usage entry the run recorded, null for an attempt whose provider reported no usage. */
+  usageUsd?: readonly (number | null)[]
   conflictingAuditSession?: boolean
 }
 
-/** One measured attempt as the current writer records it, priced at `estimatedUsd`. */
-function usageMeasured(index: number, estimatedUsd: number): TestEventPayload {
-  return {
+/** One served attempt as the current writer records it: measured and priced at `estimatedUsd`, or unmeasured for null. */
+function usageMeasured(index: number, estimatedUsd: number | null): TestEventPayload {
+  const attempt = {
     attemptId: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`, occurredAt: "2026-11-07T00:00:00.000Z", profileId: "benchmark",
     attribution: { kind: "candidate", providerId: "openai_api", instanceId: "00000000-0000-4000-8000-000000000000" }, spendMode: "direct_api",
-    credentialLineage: "00000000-0000-4000-8000-000000000000", model: "gpt-6-luna", classification: "real_spend", coverage: "complete", currency: "USD",
-    tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
-    price: { kind: "priced", estimatedUsd, rateCard: { "standard.input": 1 }, provenance: "fixture" }, budgetStreamId: "budget-stream-1",
+    credentialLineage: "00000000-0000-4000-8000-000000000000", model: "gpt-6-luna", classification: "real_spend", budgetStreamId: "budget-stream-1",
+  };
+  if (estimatedUsd === null) return { ...attempt, coverage: "unmeasured" };
+  return {
+    ...attempt, coverage: "complete", currency: "USD", tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
+    price: { kind: "priced", estimatedUsd, rateCard: { "standard.input": 1 }, provenance: "fixture" },
   };
 }
 
@@ -157,7 +160,7 @@ export async function trialEvidence(root: string, options: EvidenceOptions = {})
     const result = extractToolContentFact({ type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId, outcome: "ok", content: last ? "x".repeat(4096) : "done", ...(options.resultModelRequestId === null ? {} : { modelRequestId: options.resultModelRequestId ?? requestId }) } }).fact;
     append(aggregateId, result.type, options.resultVersion ?? result.version, result.actor, result.payload);
   }
-  for (const [index, estimatedUsd] of (options.pricedUsageUsd ?? []).entries()) append(aggregateId, "model.usage.measured", 6, "provider", usageMeasured(index, estimatedUsd));
+  for (const [index, estimatedUsd] of (options.usageUsd ?? []).entries()) append(aggregateId, "model.usage.measured", 6, "provider", usageMeasured(index, estimatedUsd));
   if (options.conflictingAuditSession) await recordProviderResponse({ observe: (fact) => { append("session:session-2", fact.type, fact.version, fact.actor, fact.payload, "session-2"); } }, { requestId: requestIds[0], identity, turn: 1, outcome: "ok", durationMs: 1 });
   db.close();
   await chmod(store, 0o600);
