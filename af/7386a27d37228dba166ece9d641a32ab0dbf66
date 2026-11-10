@@ -1,0 +1,70 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 10801-10802,10809-10810,10817-10818,10825-10826,10833-10834,10841-10842,10849-10850,10857-10858,10865-10866,10873-10874
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 93
+bench/harbor/harbor_agent/pyproject.toml
+  h_4b47e9e4a8b456 11
+bench/harbor/harbor_agent/uv.lock
+  h_4b47e9e4a8b456 22,24,26,38
+bun.lock
+  h_4b47e9e4a8b456 8-9,100,102,104,106,108,110,112,114,116,118
+package.json
+  h_4b47e9e4a8b456 112-113
+src/infra/llm/models-bundled.txt
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.ts
+  h_4b47e9e4a8b456 77,91-93
+src/orchestration/agent-runtime/llm/claude-reminders.ts
+  h_4b47e9e4a8b456 32,35
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 61
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 118
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 143-144,336,347,396
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.ts
+  h_4b47e9e4a8b456 149-152,188,203,213
+src/orchestration/modules/provider-claude-agent-sdk/in-place-check.ts
+  h_4b47e9e4a8b456 23
+src/orchestration/modules/provider-claude-agent-sdk/transcript.ts
+  h_4b47e9e4a8b456 239
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_fake-host.ts
+  h_4b47e9e4a8b456 76-91
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-recovery.test.ts
+  h_4b47e9e4a8b456 207-209,211-212,222-224
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+  h_4b47e9e4a8b456 23,402-403,407,409-410,424-426,437-442
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-conformance.test.ts
+  h_4b47e9e4a8b456 37,342,469,472,475,487
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-wire.test.ts
+  h_4b47e9e4a8b456 21,124-126
+tests/unit/orchestration/agent-runtime/llm/anthropic-adapter-config.test.ts
+  h_4b47e9e4a8b456 195,222-223,238,250-251
+tests/unit/orchestration/agent-runtime/llm/claude-reminders.test.ts
+  h_4b47e9e4a8b456 163-165,167-168,171-172
+tests/unit/orchestration/agent-runtime/llm/model-compat.test.ts
+  h_4b47e9e4a8b456 83-86,91
+tests/unit/orchestration/agent-runtime/tree-host-key.test.ts
+  h_4b47e9e4a8b456 46,249
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 11,19,67
+tests/unit/orchestration/modules/development/claude-sdk/setup.test.ts
+  h_4b47e9e4a8b456 41,49
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.test.ts
+  h_4b47e9e4a8b456 63
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
+  h_4b47e9e4a8b456 236,242-243
+tests/unit/scripts/build-claude-plugin.test.ts
+  h_4b47e9e4a8b456 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "af7386a27d37228dba166ece9d641a32ab0dbf66",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
