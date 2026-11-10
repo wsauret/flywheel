@@ -1,0 +1,40 @@
+bench/harbor/METHODOLOGY.md
+  h_4b47e9e4a8b456 55,64,66,74-78,126
+bench/harbor/README.md
+  h_4b47e9e4a8b456 177,267,296
+bench/harbor/analysis/round-score.ts
+  h_4b47e9e4a8b456 2,72-81
+bench/harbor/analysis/round-trials.ts
+  h_4b47e9e4a8b456 83-108,114-116,119,126,135
+bench/harbor/disclosure-ledger.ts
+  h_4b47e9e4a8b456 3,10-11,18,20-21,160,169-171,189,210-211
+bench/harbor/hill.ts
+  h_4b47e9e4a8b456 10-11,114-116
+bench/harbor/run-harbor.ts
+  h_4b47e9e4a8b456 433,456
+bench/harbor/trial-cost.ts
+  h_4b47e9e4a8b456 1-112
+bench/harbor/trial-store-analysis.ts
+  h_4b47e9e4a8b456 102,107-134,137,154,257,267-269,272,281-284
+tests/helpers/harbor-trial-evidence.ts
+  h_4b47e9e4a8b456 81-82,86-88,91-96,163
+tests/unit/bench/harbor-analyzer.test.ts
+  h_4b47e9e4a8b456 30,37-39
+tests/unit/bench/harbor-board-scoring.test.ts
+  h_4b47e9e4a8b456 91
+tests/unit/bench/harbor-ledger.test.ts
+  h_4b47e9e4a8b456 2,4,7,16-17,37,39,46-47,80,84-140
+tests/unit/bench/harbor-round-score.test.ts
+  h_4b47e9e4a8b456 6-7,32-37,42,49,54,56,72,76-77,126-127,133-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5f2d2795eae0902af63fb6c3ef8802011eeb9ff8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
