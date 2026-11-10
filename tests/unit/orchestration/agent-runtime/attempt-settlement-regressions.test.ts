@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js";
 import { computeUsagePrice } from "../../../../src/infra/llm/llm-helpers.js";
 import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
 import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector.js";
@@ -46,10 +47,12 @@ const usage: ProviderStreamEvent = {
   cacheCreateTokens: 0, reasoningTokens: 0,
 };
 
-test("usage settlement preserves standard and high-context rate cards", async () => {
+/** Settles one attempt whose stream reports `report`, and returns the price of each entry the settlement checkpointed,
+ *  decoded strictly as a stored entry. */
+async function settledPrices(report: Extract<ProviderStreamEvent, { kind: "usage" }>, candidate: AccessProviderCandidate) {
   const entries: UsageEntry[] = [];
-  const client = fakeClient("chatgpt", async function* () {
-    yield { ...usage, inputTokens: 300_000 };
+  const client = fakeClient(candidateProviderId(candidate), async function* () {
+    yield report;
     yield { kind: "done", stopReason: "end_turn" };
   });
   client.priceFor = (tokens) => computeUsagePrice(tokens, {
@@ -60,18 +63,32 @@ test("usage settlement preserves standard and high-context rate cards", async ()
   const { usageSettlement } = accounting([]);
   usageSettlement.settlement.checkpoint = async (draft) => { entries.push(decodeUsageEntry(draft.entry)); };
   const input = attemptInput({ usageSettlement });
-  const serving = {
-    ...client, accessProviderCandidate: subscriptionCandidate("chatgpt"),
-    credentialLineage: "00000000-0000-4000-8000-000000000001",
-  };
+  const serving = { ...client, accessProviderCandidate: candidate, credentialLineage: "00000000-0000-4000-8000-000000000001" };
   const attempt = createAssistantAttempt({
     client, attempt: serving,
     prepared: preparedRequest(serving, { ...input, tools: [], systemPrompt: stableSystemPrompt("") }),
   }, input, undefined);
   await attempt.stream();
   await attempt.close();
-  expect(entries).toHaveLength(1);
-  expect(entries[0] && "price" in entries[0] ? entries[0].price : undefined).toEqual({
+  return { model: client.model, prices: entries.map((entry) => "price" in entry ? entry.price : undefined) };
+}
+
+// A reported charge of zero is a charge, not a missing one: the rate card must not price it.
+test.each([0.00042, 0])("usage settlement records the charge the provider reports (%p) in place of the rate-card estimate", async (reportedChargeUsd) => {
+  const { model, prices } = await settledPrices({ ...usage, reportedChargeUsd }, { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" });
+
+  expect(prices).toEqual([{
+    kind: "priced",
+    estimatedUsd: reportedChargeUsd,
+    rateCard: {},
+    provenance: JSON.stringify({ source: "provider-response", provider: "openrouter", model }),
+  }]);
+});
+
+test("usage settlement preserves standard and high-context rate cards", async () => {
+  const { model, prices } = await settledPrices({ ...usage, inputTokens: 300_000 }, subscriptionCandidate("chatgpt"));
+  expect(prices).toHaveLength(1);
+  expect(prices[0]).toEqual({
     kind: "priced",
     estimatedUsd: 1.200105,
     rateCard: {
@@ -80,7 +97,7 @@ test("usage settlement preserves standard and high-context rate cards", async ()
       "highContext.input": 4, "highContext.output": 15, "highContext.cacheRead": 0,
       "highContext.cacheWrite": 0, "highContext.cacheWrite1h": 8, "highContext.reasoning": 15,
     },
-    provenance: JSON.stringify({ source: "provider-docs", provider: "openai", model: client.model }),
+    provenance: JSON.stringify({ source: "provider-docs", provider: "openai", model }),
   });
 });
 

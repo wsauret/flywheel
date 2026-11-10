@@ -330,7 +330,12 @@ export type ProviderStreamEvent =
   // `final` marks the provider's terminal usage report; a non-final event holds
   // lower bounds from an attempt that ended before that report. A null
   // `cacheReadTokens` means the provider did not report cache reads.
-  | { kind: "usage"; final: boolean; inputTokens: number; outputTokens: number; cacheReadTokens: number | null; cacheCreateTokens: number; cacheCreate1hTokens?: number; cacheRetentionMs?: number | null; reasoningTokens: number; accessProvider?: AccessProviderId; accessProviderCandidate?: AccessProviderCandidate }
+  // `outputTokens` includes `reasoningTokens` whatever the provider's own
+  // convention (ARCH-PROVIDERS-076). `reportedChargeUsd` is the amount the
+  // provider's response states as charged for the request, absent when it
+  // states none; settlement records it in place of a rate-card estimate
+  // (ARCH-PROVIDERS-077).
+  | { kind: "usage"; final: boolean; inputTokens: number; outputTokens: number; cacheReadTokens: number | null; cacheCreateTokens: number; cacheCreate1hTokens?: number; cacheRetentionMs?: number | null; reasoningTokens: number; reportedChargeUsd?: number; accessProvider?: AccessProviderId; accessProviderCandidate?: AccessProviderCandidate }
   // Provider-reported context size, emitted by adapters when they see the
   // request's prompt token total (Anthropic/Google emit on message_start).
   // The agent loop also synthesizes this between turns from its own token

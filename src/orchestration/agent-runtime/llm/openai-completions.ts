@@ -355,6 +355,9 @@ export async function createOpenAIChatCompletionsAdapter(
      *  account selection reads. An adapter built outside the composition root
      *  records none. */
     availability?: ProviderAvailability;
+    /** Reads the amount in USD that the provider's own usage report states as charged for the request, for a
+     *  provider that states one; undefined when the report states none. */
+    reportedChargeUsd?: (usage: unknown) => number | undefined;
   },
 ): Promise<LLMClient> {
   const modelCache = createModelInfoCache(
@@ -415,7 +418,7 @@ export async function createOpenAIChatCompletionsAdapter(
           telemetry: options.telemetry,
           timeoutMessage: (event) => `OpenAI chat-completions stream ${event.phase === "pre-stream" ? "pre-stream timeout" : "idle timeout"}`,
         });
-        let usage: { input: number; output: number; cacheRead: number | null; cacheWrite: number; reasoning: number } | undefined;
+        let usage: { input: number; output: number; cacheRead: number | null; cacheWrite: number; reasoning: number; reportedChargeUsd: number | undefined } | undefined;
         // The usage chunk is the stream's terminal report, so any usage seen is final.
         const usageEvent = () => usage ? ({
           kind: "usage",
@@ -425,6 +428,7 @@ export async function createOpenAIChatCompletionsAdapter(
           cacheReadTokens: usage.cacheRead,
           cacheCreateTokens: usage.cacheWrite,
           reasoningTokens: usage.reasoning,
+          ...(usage.reportedChargeUsd === undefined ? {} : { reportedChargeUsd: usage.reportedChargeUsd }),
         } as const) : undefined;
         streamLiveness.preStream();
         await options.onDispatch?.();
@@ -515,12 +519,18 @@ export async function createOpenAIChatCompletionsAdapter(
               const reasoning = chunk.usage.completion_tokens_details?.reasoning_tokens ?? 0;
               // OpenRouter reports Anthropic cache writes on this extension field.
               const cacheWrite = cacheWriteTokens(chunk.usage.prompt_tokens_details);
+              const input = chunk.usage.prompt_tokens ?? 0;
+              const completion = chunk.usage.completion_tokens ?? 0;
+              // Most servers count reasoning inside completion_tokens. Some (xAI's convention) count it beside them,
+              // and their own total_tokens then adds both; output must include reasoning either way (ARCH-PROVIDERS-076).
+              const reasoningBesideCompletion = reasoning > 0 && chunk.usage.total_tokens === input + completion + reasoning;
               usage = {
-                input: chunk.usage.prompt_tokens ?? 0,
-                output: chunk.usage.completion_tokens ?? 0,
+                input,
+                output: reasoningBesideCompletion ? completion + reasoning : completion,
                 cacheRead,
                 cacheWrite: typeof cacheWrite === "number" ? cacheWrite : 0,
                 reasoning,
+                reportedChargeUsd: overrides?.reportedChargeUsd?.(chunk.usage),
               };
             }
           }

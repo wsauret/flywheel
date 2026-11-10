@@ -12,6 +12,7 @@ import type { FirstPartyModule } from "../../modules.js";
 import { createOpenRouterAffordability } from "./affordability.js";
 import { OPENROUTER_API_BASE, OPENROUTER_API_HOST } from "./api.js";
 import { canonicalizeOpenRouterCatalogRow, canonicalizeOpenRouterWireId, openRouterModelOutputCap } from "./model-support.js";
+import { openRouterReportedChargeUsd } from "./usage-charge.js";
 
 const catalog = { limits: DEFAULT_DYNAMIC_CATALOG_LIMITS, extractRows: extractDataCatalogRows } as const;
 
@@ -57,6 +58,7 @@ const createClient: AccessProviderFactory = async (build) => {
     return createOpenAIChatCompletionsAdapter(client, build.model, build.modelsClient, {
       accessProvider: definition.id, providerHint: "openrouter", candidate: build.candidate, wireModelId: build.wireModelId,
       resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
+      reportedChargeUsd: openRouterReportedChargeUsd,
       ...(outputCap === undefined ? {} : { providerOutputCap: outputCap }),
     });
   });

@@ -111,7 +111,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
     }
   });
 
-  it("priceFor ignores reasoning_tokens because output_tokens already include them", async () => {
+  it("priceFor charges reasoning_tokens once because output_tokens already include them", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
     const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));

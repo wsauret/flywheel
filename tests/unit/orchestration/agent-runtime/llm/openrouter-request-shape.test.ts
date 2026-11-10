@@ -13,10 +13,11 @@ import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
 import type { ModelInfo, ModelsClient } from "../../../../../src/infra/llm/models.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
+import { openRouterReportedChargeUsd } from "../../../../../src/orchestration/modules/provider-openrouter/usage-charge.js";
 
 /** The provider module passes the wire id it resolved from its catalog; the
  *  adapter never folds one itself. */
-const OPENROUTER_BASE = { accessProvider: "openrouter", providerHint: "openrouter", wireModelId: "anthropic/claude-opus-4.8" } as const;
+const OPENROUTER_BASE = { accessProvider: "openrouter", providerHint: "openrouter", wireModelId: "anthropic/claude-opus-4.8", reportedChargeUsd: openRouterReportedChargeUsd } as const;
 import type { ConversationMessage, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
@@ -426,6 +427,29 @@ describe("chat-completions usage and finish reasons", () => {
       cacheCreateTokens: 300,
       reasoningTokens: 40,
     });
+  });
+
+  test.each([
+    { label: "the charge the response reports", usage: { cost: 0.0012, is_byok: false, cost_details: { upstream_inference_cost: 0.0011 } }, reportedChargeUsd: 0.0012 },
+    { label: "the fee plus the upstream cost when the request used the account's own provider key", usage: { cost: 0.0001, is_byok: true, cost_details: { upstream_inference_cost: 0.002 } }, reportedChargeUsd: 0.0021 },
+    { label: "a charge of zero for a request that cost nothing", usage: { cost: 0, is_byok: false }, reportedChargeUsd: 0 },
+    { label: "no charge when the response reports none", usage: {}, reportedChargeUsd: undefined },
+  ])("the usage event carries $label", async ({ usage, reportedChargeUsd }) => {
+    const capture: Capture = {};
+    const adapter = await createOpenAIChatCompletionsAdapter(
+      capturingClient(capture, [{ ...FINISH_CHUNK, usage: { ...FINISH_CHUNK.usage, ...usage } }]),
+      "claude-opus-4-8",
+      stubModelsClient(),
+      OPENROUTER,
+    );
+
+    const { events } = await drain(adapter);
+
+    const usageEvent = events.find((event) => event.kind === "usage");
+    expect(usageEvent).toBeDefined();
+    if (usageEvent?.kind !== "usage") throw new Error("expected a usage event");
+    if (reportedChargeUsd === undefined) expect(usageEvent).not.toHaveProperty("reportedChargeUsd");
+    else expect(usageEvent.reportedChargeUsd).toBeCloseTo(reportedChargeUsd, 12);
   });
 
   test("finish_reason length is an output overflow, not a completed max_tokens turn", async () => {

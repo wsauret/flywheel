@@ -28,6 +28,8 @@ function normalizeTier(tier: ModelCost, fallbacks: CacheRateFallbacks): Normaliz
   });
 }
 
+/** Prices one request's normalized usage against a rate card. `output` includes `reasoning` (ARCH-PROVIDERS-076),
+ *  so reasoning tokens are charged once, as a part of output, at the reasoning rate. */
 export function computeUsagePrice(
   tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number },
   pricing: ModelPricing,
@@ -46,40 +48,13 @@ export function computeUsagePrice(
   const write1h = Math.min(tokens.cacheWrite1h ?? 0, tokens.cacheWrite);
   const amountUsd = (
     tokens.input * rates.input
-    + tokens.output * rates.output
+    + (tokens.output - tokens.reasoning) * rates.output
+    + tokens.reasoning * rates.reasoning
     + tokens.cacheRead * rates.cacheRead
     + (tokens.cacheWrite - write1h) * rates.cacheWrite
     + write1h * rates.cacheWrite1h
-    + tokens.reasoning * rates.reasoning
   ) / 1_000_000;
   return Object.freeze({ status: "priced", amountUsd, rateCard, provenance: Object.freeze({ ...pricing.provenance }) });
-}
-export function computeCost(
-  tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number },
-  cost: ModelCost,
-  fallbacks: CacheRateFallbacks,
-): number {
-  const totalPrompt = tokens.promptTokens ?? (tokens.input + tokens.cacheRead + tokens.cacheWrite);
-  const rates = cost.highContext !== undefined && totalPrompt > cost.highContext.threshold
-    ? cost.highContext
-    : cost;
-  const inputRate = rates.input;
-  const outputRate = rates.output;
-  const cacheReadRate = rates.cacheRead ?? inputRate * fallbacks.cacheReadRatio;
-  const cacheWriteRate = rates.cacheWrite ?? inputRate * fallbacks.cacheWriteRatio;
-  // Anthropic charges 2x base input for 1h cache writes; models.dev's
-  // cacheWrite rate covers only the default 5m retention (pi
-  // `models.ts:650-656`). `cacheWrite1h` is a subset of `cacheWrite`.
-  const write1h = Math.min(tokens.cacheWrite1h ?? 0, tokens.cacheWrite);
-  const write5m = tokens.cacheWrite - write1h;
-  return (
-    (tokens.input * inputRate +
-      tokens.output * outputRate +
-      tokens.cacheRead * cacheReadRate +
-      write5m * cacheWriteRate +
-      write1h * inputRate * 2) /
-    1_000_000
-  );
 }
 
 interface ModelInfoCache {

@@ -103,7 +103,7 @@ export async function createOpenAIAdapter(
     },
 
     priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; promptTokens?: number }) {
-      const result = computeUsagePrice({ ...tokens, reasoning: 0 }, modelCache.getCached()?.info?.pricing ?? { status: "unavailable", reason: "missing-rate-card" }, OPENAI_CACHE_RATES);
+      const result = computeUsagePrice(tokens, modelCache.getCached()?.info?.pricing ?? { status: "unavailable", reason: "missing-rate-card" }, OPENAI_CACHE_RATES);
       const multiplier = serviceTier.multiplier(modelCache.getCached()?.model ?? defaultModel);
       if (result.status === "unavailable" || multiplier === 1) return result;
       const scale = (tier: typeof result.rateCard.standard) => Object.freeze({

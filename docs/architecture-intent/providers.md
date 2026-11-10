@@ -337,6 +337,17 @@ Not: Deriving request accounting from provider observations.
 
 Each ledger entry records one provider attempt that may have been served. It carries its exact serving-candidate attribution or an explicit unattributed state, its spend mode, credential lineage, model, tokens, and price evidence. It classifies its value as subscription-equivalent or real spend. Each entry states its coverage as complete, partial with lower bounds, or unmeasured. A detail that the provider did not report is recorded as unreported, never as zero. A refusal before a response started has no entry. Aggregation groups by canonical source identity, so a credential replacement never splits one account window. Lineage stays for provenance only.
 
+## ARCH-PROVIDERS-076: Normalized output tokens include reasoning tokens
+
+Each provider adapter normalizes usage so that the output token count includes the reasoning token count, whatever the provider's own convention. Pricing charges reasoning tokens once, as a part of output, at the model's reasoning rate when it has one.
+Because: Providers disagree on whether output counts include reasoning, and pricing that adds both charges reasoning twice.
+
+## ARCH-PROVIDERS-077: A charge that the provider reports is the entry's price
+
+When a provider response states the amount charged for the request, the ledger entry records that amount and names the response as its price evidence. A rate card prices an entry only when the response states no amount.
+Because: A model-level rate card cannot know which upstream endpoint, discount, or fee applied to a request.
+Not: Looking up the serving endpoint's rate card, which adds a network read and still misses fees and discounts.
+
 ## ARCH-PROVIDERS-056: The profile ledger precedes its session mirror
 
 Settlement first checkpoints the complete ledger draft in the session, then appends it to the exact profile ledger. It then publishes session usage and budget records with the checkpoint's retirement. Appends are idempotent by attempt, so an identical replay is a no-op and a differing entry conflicts. Startup replays interrupted checkpoints before new provider work. The pre-wire checkpoint is the attempt's complete unmeasured record. Recovery skips checkpoints whose attempt still runs in this process. One path settles every served model request. Session budgets and profile usage derive from that one entry, so the session is never a second ledger.

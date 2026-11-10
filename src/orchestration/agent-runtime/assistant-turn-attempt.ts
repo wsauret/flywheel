@@ -553,20 +553,25 @@ function usageAttempt(attemptId: string, occurredAt: string, profileId: string, 
 }
 
 /** The attempt's record after a usage report. A report that is not the provider's final one holds lower bounds.
- *  Unreported cache reads stay inside the input count, so they price at the uncached input rate, an upper bound
- *  that the price provenance names. */
+ *  A charge that the provider's response states is the price, with the response as its provenance and no rate card
+ *  (ARCH-PROVIDERS-077). Otherwise the rate card prices the tokens: unreported cache reads stay inside the input
+ *  count, so they price at the uncached input rate, an upper bound that the price provenance names. */
 function measuredEntry(attempt: Extract<UsageEntry, { coverage: "unmeasured" }>, serving: ServingAttempt, event: Extract<ProviderStreamEvent, { kind: "usage" }>): MeasuredUsageEntry {
   const tokens = { input: event.inputTokens, output: event.outputTokens, cacheRead: event.cacheReadTokens, cacheWrite: event.cacheCreateTokens, reasoning: event.reasoningTokens };
+  const measured = { ...attempt, coverage: event.final ? "complete" : "partial", currency: "USD", tokens } as const;
+  if (event.reportedChargeUsd !== undefined) {
+    return {
+      ...measured,
+      price: { kind: "priced", estimatedUsd: event.reportedChargeUsd, rateCard: {}, provenance: JSON.stringify({ source: "provider-response", provider: serving.accessProvider, model: serving.model }) },
+    };
+  }
   const priced = serving.priceFor({
     ...tokens,
     cacheRead: tokens.cacheRead ?? 0,
     ...(event.cacheCreate1hTokens === undefined ? {} : { cacheWrite1h: event.cacheCreate1hTokens }),
   });
   return {
-    ...attempt,
-    coverage: event.final ? "complete" : "partial",
-    currency: "USD",
-    tokens,
+    ...measured,
     price: priced.status === "unavailable"
       ? { kind: "unavailable", reason: priced.reason }
       : {

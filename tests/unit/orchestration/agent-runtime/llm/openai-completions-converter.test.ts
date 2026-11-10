@@ -352,6 +352,19 @@ describe("chat-completions stream normalization", () => {
     })]);
   });
 
+  test.each([
+    { label: "completion_tokens include reasoning", usage: { prompt_tokens: 100, completion_tokens: 30, total_tokens: 130 }, outputTokens: 30 },
+    { label: "no total is reported", usage: { prompt_tokens: 100, completion_tokens: 30 }, outputTokens: 30 },
+    { label: "the total shows completion_tokens exclude reasoning", usage: { prompt_tokens: 100, completion_tokens: 30, total_tokens: 155 }, outputTokens: 55 },
+  ])("normalizes output tokens to include reasoning when $label", async ({ usage, outputTokens }) => {
+    const result = await collect(clientWithStream([{
+      choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+      usage: { ...usage, completion_tokens_details: { reasoning_tokens: 25 } },
+    }]));
+
+    expect(result.events.filter((event) => event.kind === "usage")).toEqual([expect.objectContaining({ outputTokens, reasoningTokens: 25 })]);
+  });
+
   test("emits no fabricated usage on failure and emits final usage once on success, with unreported cache reads as null", async () => {
     const failed = await collect(clientWithStream([], new Error("socket closed")));
     expect(failed.events.filter((event) => event.kind === "usage")).toHaveLength(0);

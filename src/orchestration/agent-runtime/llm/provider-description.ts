@@ -88,7 +88,7 @@ export async function describeProvider(model: string, options: ProviderDescripti
     outputLimit: Math.min(outputLimitFor(protocol, info), options.providerOutputCap ?? Number.POSITIVE_INFINITY),
     supportsReasoning: reasoningFor(protocol, model, info),
     priceFor: (tokens: Parameters<ServingAttempt["priceFor"]>[0]) => computeUsagePrice(
-      protocol === "openai-responses" ? { ...tokens, reasoning: 0 } : tokens,
+      tokens,
       info.pricing,
       protocol === "anthropic" ? ANTHROPIC_CACHE_RATES : protocol === "google" ? GOOGLE_CACHE_RATES : OPENAI_CACHE_RATES,
     ),
