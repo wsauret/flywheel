@@ -1,6 +1,7 @@
 import { isAgentInFlight } from "../../infra/output-blocks.js"
 import type { FrontendMessageSender, FrontendOutputBlock, FrontendToolEntry } from "../app-service-types.js"
 import { blockIdentity } from "../block-identity.js"
+import type { StatusView } from "../status-protocol-types.js"
 import { toolRunCategoryFor } from "./tool-run-category.js"
 
 /** The transcript model every viewer shows. One fold over a window of blocks
@@ -25,6 +26,27 @@ export function toolActivity(
 ) {
   const control = process.held ? "detach" : process.managed ? "stop" : undefined
   return { active: entry.status === "pending" || entry.status === "streaming" || control !== undefined, control } as const
+}
+
+/** The part of a session's live status that a transcript row reads: which
+ *  shell calls the foreground holds, which commands the background manages,
+ *  and which of them wait for processor time. */
+export type ProcessStatus = Pick<StatusView, "activeBackgroundCommands" | "activeForegroundBashToolCallIds" | "processorHeldToolCallIds">
+
+/** Whether the foreground holds the command of one call or the background
+ *  manages it, read from its session's live status. Every client asks here,
+ *  so a row shows the same activity and control wherever it is open. It is a
+ *  plain read: a caller in a reactive scope tracks the status, and a caller
+ *  outside one, such as a pointer handler, leaves nothing behind. */
+export function toolProcess(
+  status: Pick<ProcessStatus, "activeBackgroundCommands" | "activeForegroundBashToolCallIds"> | undefined,
+  toolUseId: string | undefined,
+) {
+  if (status === undefined || toolUseId === undefined) return { held: false, managed: false }
+  return {
+    held: status.activeForegroundBashToolCallIds.includes(toolUseId),
+    managed: status.activeBackgroundCommands.some((command) => command.toolUseId === toolUseId),
+  }
 }
 
 /** The note on the row of a command that waits for processor time. */

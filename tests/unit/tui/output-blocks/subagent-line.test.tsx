@@ -28,7 +28,7 @@ const base: AgentGroupBlock = {
 async function renderBlock(block: () => AgentGroupBlock, width = 100, controls?: SubagentControls) {
   const render = await testRender(() => <TickPoolProvider><ThemeProvider mode="dark"><RowWidthProvider value={{ width: () => width, report() {} }}>
     <SubagentControlsProvider value={controls}><NavigationProvider value={() => {}}>
-      <AgentBlock block={block()} processControls={{ activeHeldToolCallIds: () => new Set(), processorHeldToolCallIds: () => new Set(), activeManagedProcessToolCallIds: () => new Set(), onStop() {}, onDetach() {}, onStopChild() {} }} />
+      <AgentBlock block={block()} processControls={{ status: () => undefined, onStop() {}, onDetach() {}, onStopChild() {} }} />
     </NavigationProvider></SubagentControlsProvider>
   </RowWidthProvider></ThemeProvider></TickPoolProvider>, { width, height: 8 })
   renders.push(render)

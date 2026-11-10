@@ -1,7 +1,7 @@
 import { expect, it, mock } from "bun:test"
 import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../src/infra/output-blocks.js"
 import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
-import { workflowDetail } from "../../../helpers/runtime-views.js"
+import { workflowDetail, processStatus } from "../../../helpers/runtime-views.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 
 it("stops a linked durable child through its parent's tool call", async () => {
@@ -53,9 +53,7 @@ it("stops a linked durable child through its parent's tool call", async () => {
                   return createComponent(BlockRenderer, {
                     block: terminalTranscript([block], false).timelineBlocks[0]!,
                     processControls: {
-                      activeHeldToolCallIds: () => new Set([childToolUseId]),
-                      activeManagedProcessToolCallIds: () => new Set([block.toolUseId]),
-                      processorHeldToolCallIds: () => new Set(),
+                      status: () => processStatus({ held: [childToolUseId], managed: [block.toolUseId] }),
                       onDetach: detach,
                       onStop: stop,
                       onStopChild: stopChild,
@@ -130,9 +128,7 @@ it("keeps an unlinked inline subagent stoppable through its parent tool", async 
                   return createComponent(BlockRenderer, {
                     block: terminalTranscript([block], false).timelineBlocks[0]!,
                     processControls: {
-                      activeHeldToolCallIds: () => new Set(),
-                      activeManagedProcessToolCallIds: () => new Set([block.toolUseId]),
-                      processorHeldToolCallIds: () => new Set(),
+                      status: () => processStatus({ managed: [block.toolUseId] }),
                       onDetach: () => {},
                       onStop: stop,
                       onStopChild: stopChild,
@@ -249,7 +245,7 @@ it("keeps the Stop of a workflow card that the chat reads from its history", asy
                     get children() {
                       return createComponent(WorkflowActivityBlock, {
                         block,
-                        processControls: { activeHeldToolCallIds: () => new Set(), processorHeldToolCallIds: () => new Set(), activeManagedProcessToolCallIds: () => new Set(), onDetach: () => {}, onStop: () => {}, onStopChild: stopChild },
+                        processControls: { status: () => undefined, onDetach: () => {}, onStop: () => {}, onStopChild: stopChild },
                       })
                     },
                   })

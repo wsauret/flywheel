@@ -3,6 +3,7 @@ import type { PendingQuestionView } from "../../../src/protocol/question-protoco
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../../src/protocol/command-catalog-protocol-types.js"
 import { effectiveSessionShortTitle, type FrontendActivity, type FrontendOutputBlock, type FrontendToolEntry, type FrontendToolStreamingText, type RuntimeHealth, type SessionCatalogError, type SessionRow } from "../../../src/protocol/app-service-types.js"
 import type { TranscriptStatus, TranscriptStore } from "../../../src/protocol/client/transcript-store.js"
+import type { ProcessStatus } from "../../../src/protocol/client/transcript-model.js"
 import { undeliveredNotice, type LocalChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
 import type { HydratedOutputBlockBody } from "../../../src/protocol/transcript-protocol-types.js"
 import type { RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth-status-protocol-types.js"
@@ -134,7 +135,7 @@ export interface ClientViewState {
    *  such as "Waiting on parent"; the status row shows it. */
   readonly waitingOn?: string
   /** Live process membership for transcript markers and process controls. */
-  readonly processStatus?: Pick<StatusView, "activeBackgroundCommands" | "activeForegroundBashToolCallIds" | "processorHeldToolCallIds">
+  readonly processStatus?: ProcessStatus
   /** The selected session's active time, which a workflow's card header
    *  reads through `sessionActiveMs`, as the terminal does. */
   readonly activeTime?: Pick<StatusView, "accumulatedActiveMs" | "streamingStartedAt">

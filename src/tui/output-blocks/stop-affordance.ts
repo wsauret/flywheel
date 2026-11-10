@@ -1,8 +1,7 @@
 import { bg as stBg, fg as stFg, type TextChunk } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/resolve.js"
-import type { Accessor } from "solid-js"
 import type { FrontendToolEntry } from "../../protocol/app-service-types.js"
-import { PROCESSOR_WAIT_NOTE, toolActivity, waitsForProcessor } from "../../protocol/client/transcript-model.js"
+import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type ProcessStatus } from "../../protocol/client/transcript-model.js"
 
 /** Inline process control appended to a transcript row. The owning component
  * hit-tests mouse-up coordinates against the visible label before disclosure.
@@ -14,10 +13,10 @@ const DETACH_TEXT = "\u00a0detach\u00a0"
 
 /** Process actions available to every transcript row for one selected session. */
 export interface RowProcessControls {
-  activeHeldToolCallIds: Accessor<ReadonlySet<string>>
-  activeManagedProcessToolCallIds: Accessor<ReadonlySet<string>>
-  /** The calls whose commands processor admission holds. */
-  processorHeldToolCallIds: Accessor<ReadonlySet<string>>
+  /** The session's live process status. It is a plain read of the status the
+   *  client holds and creates no computation, so a row may ask from a pointer
+   *  handler, which has no reactive owner, as often as the pointer moves. */
+  status: () => ProcessStatus | undefined
   onDetach: (toolUseId: string) => void
   onStop: (toolUseId: string) => void
   /** Stops a linked child (a durable subagent or a workflow) by ending the
@@ -35,13 +34,10 @@ export function rowProcessControl(
   toolUseId: string | undefined,
 ): RowProcessControl | undefined {
   if (controls === undefined || toolUseId === undefined) return undefined
+  const process = toolProcess(controls.status(), toolUseId)
   // Only a shell command is ever held, so a held call offers Detach whatever its name.
-  if (controls.activeHeldToolCallIds().has(toolUseId)) {
-    return { label: DETACH_TEXT, dispatch: () => controls.onDetach(toolUseId) }
-  }
-  if (controls.activeManagedProcessToolCallIds().has(toolUseId)) {
-    return { label: STOP_TEXT, dispatch: () => controls.onStop(toolUseId) }
-  }
+  if (process.held) return { label: DETACH_TEXT, dispatch: () => controls.onDetach(toolUseId) }
+  if (process.managed) return { label: STOP_TEXT, dispatch: () => controls.onStop(toolUseId) }
   return undefined
 }
 
@@ -67,11 +63,8 @@ export function rowWaitsForProcessor(
   entry: Pick<FrontendToolEntry, "id" | "status">,
 ): boolean {
   if (controls === undefined) return false
-  const activity = toolActivity(entry, {
-    held: controls.activeHeldToolCallIds().has(entry.id),
-    managed: controls.activeManagedProcessToolCallIds().has(entry.id),
-  })
-  return waitsForProcessor(activity, controls.processorHeldToolCallIds().has(entry.id))
+  const status = controls.status()
+  return waitsForProcessor(toolActivity(entry, toolProcess(status, entry.id)), status?.processorHeldToolCallIds.includes(entry.id) ?? false)
 }
 
 /** The processor wait note is information, not a fault, so it takes the info

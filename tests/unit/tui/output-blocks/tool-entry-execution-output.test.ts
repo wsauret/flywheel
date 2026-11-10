@@ -160,7 +160,7 @@ describe("tool entry execution output", () => {
     const [streaming, setStreaming] = createStore({ [block.id]: { content: "tick 1\ntick 2" } })
     const result = await renderToolEntry(current, {
       streamingToolText: streaming,
-      activeManagedProcessToolCallIds: active,
+      managed: active,
     })
     try {
       await result.renderOnce()
@@ -213,7 +213,7 @@ describe("tool entry execution output", () => {
     const stop = mock((_toolUseId: string) => {})
     const result = await renderToolEntry(block, {
       streamingToolText: { [block.id]: { content: "server ready" } },
-      activeManagedProcessToolCallIds: () => new Set([block.id]),
+      managed: () => new Set([block.id]),
       onStop: stop,
     })
     try {
@@ -245,8 +245,8 @@ describe("tool entry execution output", () => {
     const result = await renderToolEntry(block, {
       width: 18,
       streamingToolText: { [block.id]: { content: "server ready" } },
-      activeHeldToolCallIds: held,
-      activeManagedProcessToolCallIds: managed,
+      held,
+      managed,
       onDetach: detach,
       onStop: stop,
     })
@@ -281,8 +281,8 @@ describe("tool entry execution output", () => {
     const block: ToolEntryType = { ...pendingBashEntry("bash-cpu"), status: "completed", background: true }
     const [processorHeld, setProcessorHeld] = (await import("solid-js")).createSignal<ReadonlySet<string>>(new Set([block.id]))
     const result = await renderToolEntry(block, {
-      activeManagedProcessToolCallIds: () => new Set([block.id]),
-      processorHeldToolCallIds: processorHeld,
+      managed: () => new Set([block.id]),
+      processorHeld,
     })
     try {
       await result.renderOnce()
@@ -311,7 +311,7 @@ describe("tool entry execution output", () => {
     }
     const stop = mock((_toolUseId: string) => {})
     const [active, setActive] = (await import("solid-js")).createSignal<ReadonlySet<string>>(new Set([block.id]))
-    const result = await renderToolEntry(block, { activeManagedProcessToolCallIds: active, onStop: stop })
+    const result = await renderToolEntry(block, { managed: active, onStop: stop })
     try {
       await result.renderOnce()
       const activeFrame = result.captureCharFrame()
@@ -346,7 +346,7 @@ describe("tool entry execution output", () => {
     const stop = mock((_toolUseId: string) => {})
     const result = await renderToolEntry(block, {
       width: 40,
-      activeManagedProcessToolCallIds: () => new Set([block.id]),
+      managed: () => new Set([block.id]),
       onStop: stop,
     })
     try {
@@ -378,7 +378,7 @@ describe("tool entry execution output", () => {
     }
     const result = await renderToolEntry(block, {
       width: 10,
-      activeManagedProcessToolCallIds: () => new Set([block.id]),
+      managed: () => new Set([block.id]),
       onStop: () => {},
     })
     try {

@@ -24,7 +24,7 @@ it("a subagent keeps its persona while initializing and reveals its full card wh
   const [roles, setRoles] = createSignal<RoleAssignmentView>()
   const theme = resolveTheme(flywheelTheme, "dark")
   const render = await testRender(() => <TickPoolProvider><ThemeProvider mode="dark"><BlockRenderer block={terminalTranscript([block()], false).timelineBlocks[0]!} roleView={roles} childStatus={() => ({ waitingOn: "Waiting on parent" })} processControls={{
-    activeHeldToolCallIds: () => new Set(), processorHeldToolCallIds: () => new Set(), activeManagedProcessToolCallIds: () => new Set(),
+    status: () => undefined,
     onDetach() {}, onStop() {}, onStopChild() {},
   }} /></ThemeProvider></TickPoolProvider>, { width: 160, height: 8 })
   renders.push(render)

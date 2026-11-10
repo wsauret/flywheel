@@ -30,7 +30,7 @@ test("opens background work from a subagent's chip and lands in its viewer's tra
     <ChildSessionViewer sessionId="child" createSurface={() => surface} input={input} active={() => true} focused={() => true}
       layoutSlot={{}} appService={{ query: async () => { throw new Error("unexpected query") }, dispatch: async () => { throw new Error("unexpected dispatch") } }}
       submissions={createChatSubmissions({ lanes: { onLane: () => () => {} }, dispatch: async () => { throw new Error("unexpected send") } })}
-      createProcessControls={() => ({ activeHeldToolCallIds: () => new Set(), processorHeldToolCallIds: () => new Set(), activeManagedProcessToolCallIds: () => new Set(), onDetach: () => {}, onStop: () => {} })}
+      createProcessControls={() => ({ status: () => undefined, onDetach: () => {}, onStop: () => {} })}
       sessionIntro={{ runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
         branchName: () => undefined, modelLabel: () => "Child model", profileName: () => undefined,
         fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] }}

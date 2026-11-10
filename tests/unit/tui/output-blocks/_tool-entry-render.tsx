@@ -7,6 +7,7 @@ import type { RowProcessControls } from "../../../../src/tui/output-blocks/stop-
 import type { ToolRun } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
 import type { MutationEvidenceReader } from "../../../../src/protocol/client/mutation-evidence.js"
 import type { ScrollBoxRenderable } from "@opentui/core"
+import { processStatus } from "../../../helpers/runtime-views.js"
 
 interface StreamingToolTextById {
   readonly [toolUseId: string]: ToolStreamingText
@@ -17,9 +18,9 @@ export interface RenderToolEntryOptions {
   streamingToolText?: Readonly<StreamingToolTextById>
   height?: number
   width?: number
-  activeManagedProcessToolCallIds?: () => ReadonlySet<string>
-  activeHeldToolCallIds?: () => ReadonlySet<string>
-  processorHeldToolCallIds?: () => ReadonlySet<string>
+  managed?: () => ReadonlySet<string>
+  held?: () => ReadonlySet<string>
+  processorHeld?: () => ReadonlySet<string>
   onStop?: (toolUseId: string) => void
   onDetach?: (toolUseId: string) => void
   onHydrateBody?: (blockId: string) => void
@@ -65,9 +66,7 @@ export async function renderToolRun(run: ToolRun | (() => ToolRun), opts?: Rende
 
 function rowControls(opts: RenderToolEntryOptions | undefined): RowProcessControls {
   return {
-    activeHeldToolCallIds: opts?.activeHeldToolCallIds ?? (() => new Set()),
-    activeManagedProcessToolCallIds: opts?.activeManagedProcessToolCallIds ?? (() => new Set()),
-    processorHeldToolCallIds: opts?.processorHeldToolCallIds ?? (() => new Set()),
+    status: () => processStatus({ held: opts?.held?.(), managed: opts?.managed?.(), processorHeld: opts?.processorHeld?.() }),
     onDetach: opts?.onDetach ?? (() => {}),
     onStop: opts?.onStop ?? (() => {}),
   }

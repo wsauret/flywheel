@@ -2,7 +2,7 @@
 
 import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType, type ToolStreamingText } from "@infra/output-blocks"
 import { blockIdentity } from "../../protocol/block-identity.js"
-import { toolActivity } from "../../protocol/client/transcript-model.js"
+import { toolActivity, toolProcess } from "../../protocol/client/transcript-model.js"
 import { conflictMarkersNotice, isShellMutationEntry, isShellMutationRunning, notAppliedNotice, presentsAsFileChange, rowPresentation, rowWritePolicy, selectFileChangeBody, shellMutationFiles, showsShellMutationOutput } from "../../protocol/client/file-change-body.js"
 import { totalDiffOmittedLines } from "../../protocol/diff-omission.js"
 import { getToolDisplay } from "@infra/tools/tool-display-registry.js"
@@ -139,7 +139,7 @@ export function ToolEntry(props: ToolEntryProps) {
   const activeProcessControl = () => rowProcessControl(props.rowControls, props.block.id)
   const isActive = () => !isInterrupted() && toolActivity(props.block, {
     held: false,
-    managed: props.block.id !== undefined && (props.rowControls?.activeManagedProcessToolCallIds().has(props.block.id) ?? false),
+    managed: toolProcess(props.rowControls?.status(), props.block.id).managed,
   }).active
   const executionOutput = () => {
     if (props.block.id === undefined) return undefined

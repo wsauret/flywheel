@@ -8,6 +8,7 @@ import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" 
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { STRIKETHROUGH } from "../../../../src/tui/utils/text-attributes.js"
 import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
+import { processStatus } from "../../../helpers/runtime-views.js"
 
 const theme = resolveTheme(flywheelThemeJson, "dark")
 const CWD = "/workspace"
@@ -24,9 +25,9 @@ interface RenderBashRowOptions {
   streamingToolText?: Readonly<StreamingToolTextById>
   height?: number
   width?: number
-  activeManagedProcessToolCallIds?: () => ReadonlySet<string>
-  activeHeldToolCallIds?: () => ReadonlySet<string>
-  processorHeldToolCallIds?: () => ReadonlySet<string>
+  managed?: () => ReadonlySet<string>
+  held?: () => ReadonlySet<string>
+  processorHeld?: () => ReadonlySet<string>
   onStop?: (toolUseId: string) => void
   onDetach?: (toolUseId: string) => void
   onHydrateBody?: (blockId: string) => void
@@ -69,9 +70,7 @@ async function renderBashRow(
                   get tool() { return typeof tool === "function" ? tool() : tool },
                   streamingToolText: opts?.streamingToolText,
                   rowControls: {
-                    activeHeldToolCallIds: opts?.activeHeldToolCallIds ?? (() => new Set()),
-                    activeManagedProcessToolCallIds: opts?.activeManagedProcessToolCallIds ?? (() => new Set()),
-                    processorHeldToolCallIds: opts?.processorHeldToolCallIds ?? (() => new Set()),
+                    status: () => processStatus({ held: opts?.held?.(), managed: opts?.managed?.(), processorHeld: opts?.processorHeld?.() }),
                     onDetach: opts?.onDetach ?? (() => {}),
                     onStop: opts?.onStop ?? (() => {}),
                   },
@@ -414,7 +413,7 @@ describe("bash output rows", () => {
     const [streaming, setStreaming] = createStore({ [tool.id]: { content: "tick 1\ntick 2" } })
     const result = await renderBashRow(current, {
       streamingToolText: streaming,
-      activeManagedProcessToolCallIds: active,
+      managed: active,
     })
     try {
       await result.renderOnce()
@@ -458,7 +457,7 @@ describe("bash output rows", () => {
     const stop = mock((_toolUseId: string) => {})
     const result = await renderBashRow(tool, {
       streamingToolText: { [tool.id]: { content: "server ready" } },
-      activeManagedProcessToolCallIds: () => new Set([tool.id]),
+      managed: () => new Set([tool.id]),
       onStop: stop,
     })
     try {
@@ -496,7 +495,7 @@ describe("bash output rows", () => {
     const result = await renderBashRow(tool, {
       width: 24,
       streamingToolText: { [tool.id]: { content: "server ready" } },
-      activeHeldToolCallIds: () => new Set([tool.id]),
+      held: () => new Set([tool.id]),
       onDetach: detach,
     })
     try {
@@ -523,8 +522,8 @@ describe("bash output rows", () => {
     const tool = pendingBashRow("bash-grouped-cpu")
     const [processorHeld, setProcessorHeld] = (await import("solid-js")).createSignal<ReadonlySet<string>>(new Set([tool.id]))
     const result = await renderBashRow(tool, {
-      activeHeldToolCallIds: () => new Set([tool.id]),
-      processorHeldToolCallIds: processorHeld,
+      held: () => new Set([tool.id]),
+      processorHeld,
     })
     try {
       await result.renderOnce()
@@ -546,7 +545,7 @@ describe("bash output rows", () => {
   it("removes the grouped stop affordance reactively on settlement", async () => {
     const tool: ToolEntry = { kind: "tool", id: "bash-background", name: "bash", presentation: bashPresentation("bun run dev"), status: "completed", background: true, timestamp: Date.now() }
     const [active, setActive] = (await import("solid-js")).createSignal<ReadonlySet<string>>(new Set([tool.id]))
-    const result = await renderBashRow(tool, { activeManagedProcessToolCallIds: active, onStop: () => {} })
+    const result = await renderBashRow(tool, { managed: active, onStop: () => {} })
     try {
       await result.renderOnce()
       expect(result.captureCharFrame()).toContain("stop")

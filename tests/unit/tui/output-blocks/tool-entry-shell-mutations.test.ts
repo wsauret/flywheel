@@ -11,6 +11,7 @@ import { RGBA } from "@opentui/core"
 import { getWriteSyntaxColors } from "../../../../src/protocol/write-syntax-theme.js"
 import { SHELL_MUTATION_RUNNING } from "../../../../src/protocol/client/file-change-body.js"
 import { mutationEvidenceFixture } from "./_mutation-evidence-fixture.js"
+import { processStatus } from "../../../helpers/runtime-views.js"
 
 const theme = resolveTheme(flywheelThemeJson, "dark")
 
@@ -292,7 +293,7 @@ describe("shell mutation card", () => {
             get children() {
               return createComponent(BlockRenderer, {
                 block,
-                processControls: { activeHeldToolCallIds: () => new Set(), processorHeldToolCallIds: () => new Set(), activeManagedProcessToolCallIds: active, onDetach: () => {}, onStop: () => {} },
+                processControls: { status: () => processStatus({ managed: active() }), onDetach: () => {}, onStop: () => {} },
               })
             },
           })

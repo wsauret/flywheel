@@ -3,7 +3,7 @@
 import type { ToolStreamingText } from "@infra/output-blocks"
 import { formatDuration } from "../../protocol/client/format.js"
 import { presentsAsFileChange } from "../../protocol/client/file-change-body.js"
-import { toolActivity } from "../../protocol/client/transcript-model.js"
+import { toolActivity, toolProcess } from "../../protocol/client/transcript-model.js"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { createMeasuredWidth } from "@tui/hooks/create-measured-width.js"
@@ -46,10 +46,11 @@ export function ToolRunBlock(props: ToolRunBlockProps) {
   const isPaused = () => props.block.status === "paused"
   const isExecRun = () => props.block.category === "exec"
   const isExecuteRun = () => props.block.category === "execute"
-  const isActive = () => props.block.status === "active" || props.block.children.some((entry) => toolActivity(entry, {
-    held: props.processControls?.activeHeldToolCallIds().has(entry.id) ?? false,
-    managed: props.processControls?.activeManagedProcessToolCallIds().has(entry.id) ?? false,
-  }).active)
+  const isActive = () => {
+    if (props.block.status === "active") return true
+    const status = props.processControls?.status()
+    return props.block.children.some((entry) => toolActivity(entry, toolProcess(status, entry.id)).active)
+  }
 
   // Bold Explored/Ran heading, no chevron. The gutter dot is the only run
   // marker; elapsed time trails when finished as the completeness marker.

@@ -5,7 +5,7 @@ import type { ReadRun } from "../../../src/protocol/client/tool-run-category.js"
 import type { StretchMember, ToolStretch, TranscriptModel } from "../../../src/protocol/client/transcript-model.js"
 import type { TurnFold } from "./turn-folds.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
-import { foldTranscript, toolActivity } from "../../../src/protocol/client/transcript-model.js"
+import { foldTranscript, toolActivity, toolProcess } from "../../../src/protocol/client/transcript-model.js"
 import { agentGroupClockRuns } from "../../../src/protocol/client/agent-group-summary.js"
 import { messageDisclosureEntry } from "../../../src/protocol/client/message-sender.js"
 import type { MutationFilesView } from "../../../src/protocol/client/mutation-evidence.js"
@@ -26,10 +26,7 @@ export function runningTimeIds(
   liveTail: boolean,
 ): ReadonlySet<string> {
   const ids = new Set<string>()
-  const toolRuns = (tool: FrontendToolEntry) => toolActivity(tool, {
-    held: process?.activeForegroundBashToolCallIds.includes(tool.id) ?? false,
-    managed: process?.activeBackgroundCommands.some(command => command.toolUseId === tool.id) ?? false,
-  }).active
+  const toolRuns = (tool: FrontendToolEntry) => toolActivity(tool, toolProcess(process, tool.id)).active
   for (const block of blocks) {
     if (block.kind === "tool" && toolRuns(block)) ids.add(blockIdentity(block))
     if (block.kind === "thinking" && block.status === "streaming") ids.add(blockIdentity(block))

@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
 
 import { ExtensionBlock, useClientExtensions } from "./client-extensions.js"
-import { PROCESSOR_WAIT_NOTE, toolActivity, waitsForProcessor } from "../../../src/protocol/client/transcript-model.js"
+import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type ProcessStatus } from "../../../src/protocol/client/transcript-model.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import type { RoleAssignmentView } from "../../../src/protocol/role-protocol-types.js"
 import { parseSessionLink } from "../../../src/protocol/client/session-links.js"
@@ -91,7 +91,7 @@ export interface BlockProps {
   group?: { readonly children: readonly FrontendToolEntry[]; readonly total: number } | undefined
   /** Live text for this block, when it is a tool that is still running. */
   streaming?: FrontendToolStreamingText | undefined
-  processStatus?: Pick<StatusView, "activeBackgroundCommands" | "activeForegroundBashToolCallIds" | "processorHeldToolCallIds"> | undefined
+  processStatus?: ProcessStatus | undefined
   writeSyntaxTheme: WriteSyntaxThemeId
 }
 
@@ -389,10 +389,7 @@ export function createToolPresentation(props: ToolProps) {
   // A Write body is file rows or plain code, so its palette scopes the whole body.
   const writeSyntax = createMemo(() => writeSyntaxPresentation(props.entry.fileChangeKind, props.writeSyntaxTheme))
 
-  const activity = createMemo(() => toolActivity(props.entry, {
-    held: props.processStatus?.activeForegroundBashToolCallIds.includes(props.entry.id) ?? false,
-    managed: props.processStatus?.activeBackgroundCommands.some((command) => command.toolUseId === props.entry.id) ?? false,
-  }))
+  const activity = createMemo(() => toolActivity(props.entry, toolProcess(props.processStatus, props.entry.id)))
   const waitingForProcessor = createMemo(() => waitsForProcessor(activity(), props.processStatus?.processorHeldToolCallIds.includes(props.entry.id) ?? false))
 
   // A row arrives collapsed and stays that way until the person opens it, an

@@ -4,7 +4,7 @@ import { type Accessor, createMemo, type JSX, Match, on, Show, Switch } from "so
 import type { FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
 import { blockIdentity } from "../../../src/protocol/block-identity.js"
 import { foldReadRuns, type ReadRun, type RunRow } from "../../../src/protocol/client/tool-run-category.js"
-import { toolActivity } from "../../../src/protocol/client/transcript-model.js"
+import { toolActivity, toolProcess } from "../../../src/protocol/client/transcript-model.js"
 import { rowIdentity, toolGroupKeys, toolGroupSummaryParts, type ToolGroup, type PresentedWebBlock } from "../client/tool-runs.js"
 import type { BlockProps, createToolPresentation } from "./blocks.js"
 import { CompactToolRow } from "./compact-tool-row.js"
@@ -39,10 +39,7 @@ export function ToolGroupBlock(props: {
   const tally = createMemo(() => toolGroupSummaryParts(props.group.children))
   const oneCall = () => props.group.children.length === 1 && props.group.members.length === 1
   const single = () => !previewing() && oneCall()
-  const active = createMemo(() => props.group.status === "active" || props.group.children.some((entry) => toolActivity(entry, {
-    held: props.processStatus?.activeForegroundBashToolCallIds.includes(entry.id) ?? false,
-    managed: props.processStatus?.activeBackgroundCommands.some((command) => command.toolUseId === entry.id) ?? false,
-  }).active))
+  const active = createMemo(() => props.group.status === "active" || props.group.children.some((entry) => toolActivity(entry, toolProcess(props.processStatus, entry.id)).active))
   const previewing = createMemo(() => active() || (props.tailCanGrow && props.group.endTimestamp === undefined))
   const hasCall = createMemo(() => props.group.children.length > 0)
   const tool = createMemo(on(hasCall, present => {

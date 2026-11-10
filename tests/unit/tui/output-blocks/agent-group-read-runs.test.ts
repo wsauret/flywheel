@@ -394,8 +394,7 @@ describe("AgentGroupBlock read runs", () => {
   // header controls from the held row on its first frame.
   it("draws Resume and Stop on the header of an interrupted card whose row the shell already holds", async () => {
     const row = workflowDetail({ workflowId: "workflow-session", admittedActions: ["workflow.resume", "workflow.stop", "workflow.delete"] })
-    const empty = () => new Set<string>()
-    const processControls: RowProcessControls = { activeHeldToolCallIds: empty, activeManagedProcessToolCallIds: empty, processorHeldToolCallIds: empty, onDetach: () => {}, onStop: () => {}, onStopChild: () => {} }
+    const processControls: RowProcessControls = { status: () => undefined, onDetach: () => {}, onStop: () => {}, onStopChild: () => {} }
     const frame = await renderToolGroup(workflowCard("paused", cardOf(FANOUT.reviews, false, "interrupted")), { width: 100, cards: { row: () => row }, processControls })
     expect(frame).toMatch(/Interrupted · 9m 31s\s+resume\s+stop/)
     expect(frame).not.toContain("tokens")

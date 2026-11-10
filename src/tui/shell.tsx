@@ -552,8 +552,11 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
           fault={runtimeFault()}
         />
         <Show when={signals.sessionState() !== null && signals.foregroundId()} keyed>
-          {(id) => (
-            <OutputWindow
+          {(id) => {
+            // One controls object for the session this mount shows: a call in
+            // the attribute would run again on every read of the prop.
+            const controls = processControls(id)
+            return <OutputWindow
               localSubmissions={submissions.pending(id)}
               layoutSlot={transcriptLayout(id)}
               transcript={signals.outputTranscript()} running={signals.agentState() === "active"}
@@ -562,7 +565,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
               diffColors={() => runtimeConfig.view()?.values.diffColors ?? "theme"} command={outputCommand()}
               onNearEdge={services.pageForegroundOutput}
               registerSelectionAutoScroll={transcriptSelectionDrag.register}
-              processControls={processControls(id)}
+              processControls={controls}
               roleView={signals.roleView}
               childStatus={(childSessionId) => signals.childStatus(childSessionId, id)}
               ensureChildViews={signals.ensureChildViews}
@@ -576,7 +579,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
                 releaseNotice: { notice: releaseNotice, dismiss: () => { void releaseNoticeActions.dismiss() }}
               }}
             />
-          )}
+          }}
         </Show>
 
       </box>

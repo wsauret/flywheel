@@ -36,7 +36,7 @@ export function viewerSurface(kind: "subagent" | "workflow-agent", overrides: Pa
 export function childBodyProps(): Pick<ChildSessionBodyProps, "layoutSlot" | "createProcessControls" | "sessionIntro" | "showThinking" | "diffColors" | "roleView" | "childStatus" | "ensureChildViews" | "modelLabel" | "onOpenModel" | "transcriptInView" | "onOpenBackground"> {
   return {
     layoutSlot: {},
-    createProcessControls: () => ({ activeHeldToolCallIds: () => new Set(), processorHeldToolCallIds: () => new Set(), activeManagedProcessToolCallIds: () => new Set(), onDetach: () => {}, onStop: () => {} }),
+    createProcessControls: () => ({ status: () => undefined, onDetach: () => {}, onStop: () => {} }),
     sessionIntro: { runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
       branchName: () => undefined, modelLabel: () => undefined, profileName: () => undefined,
       fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] },

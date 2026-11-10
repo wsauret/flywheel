@@ -1,6 +1,7 @@
 import { expect, it, mock } from "bun:test"
 import type { ToolEntry } from "../../../../src/infra/output-blocks.js"
 import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
+import { processStatus } from "../../../helpers/runtime-views.js"
 
 it.each(["standalone", "grouped"] as const)("keeps %s background Stop live through a transcript history reload", async (kind) => {
   const [{ testRender }, { createComponent }, { createSignal }, { BlockRenderer }, { ThemeProvider }, { TickPoolProvider }] = await Promise.all([
@@ -38,9 +39,7 @@ it.each(["standalone", "grouped"] as const)("keeps %s background Stop live throu
               block,
               get historical() { return historical() },
               processControls: {
-                activeHeldToolCallIds: () => new Set(),
-                activeManagedProcessToolCallIds: active,
-                processorHeldToolCallIds: () => new Set(),
+                status: () => processStatus({ managed: active() }),
                 onDetach: () => {},
                 onStop: stop,
               },
@@ -114,9 +113,7 @@ it("targets stop after an active grouped row wraps", async () => {
               availWidth: 24,
               hideVerb: true,
               rowControls: {
-                activeHeldToolCallIds: () => new Set(),
-                activeManagedProcessToolCallIds: () => new Set([tool.id]),
-                processorHeldToolCallIds: () => new Set(),
+                status: () => processStatus({ managed: [tool.id] }),
                 onDetach: () => {},
                 onStop: stop,
               },

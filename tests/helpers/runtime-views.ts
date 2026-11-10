@@ -1,4 +1,5 @@
 import type { FrontendOutputBlock, SessionRow } from "../../src/protocol/app-service-types.js"
+import type { ProcessStatus } from "../../src/protocol/client/transcript-model.js"
 import type { RuntimeModulesView } from "../../src/protocol/module-protocol-types.js"
 import type { WorkflowDetail } from "../../src/protocol/modules/workflows.js"
 import type { RuntimeConfigValues, RuntimeConfigView } from "../../src/protocol/runtime-config-protocol-types.js"
@@ -12,6 +13,16 @@ export function statusView(activity: StatusView["activity"] = "idle"): StatusVie
     activity, activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0,
     waitingOnBackgroundWork: false, replyWaits: [], activeBackgroundCommands: [], activeForegroundBashToolCallIds: [],
     processorHeldToolCallIds: [], startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null,
+  }
+}
+
+/** The live process status a transcript row reads, with the calls that the
+ *  foreground holds, the background manages, and the processor makes wait. */
+export function processStatus(calls: { readonly held?: Iterable<string> | undefined; readonly managed?: Iterable<string> | undefined; readonly processorHeld?: Iterable<string> | undefined } = {}): ProcessStatus {
+  return {
+    activeForegroundBashToolCallIds: [...(calls.held ?? [])],
+    activeBackgroundCommands: [...(calls.managed ?? [])].map((toolUseId) => ({ id: `process-${toolUseId}`, description: "Shell", toolUseId, startedAtMs: 0 })),
+    processorHeldToolCallIds: [...(calls.processorHeld ?? [])],
   }
 }
 

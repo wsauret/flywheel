@@ -1,5 +1,5 @@
-import { createMemo } from "solid-js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
+import { toolProcess } from "../../protocol/client/transcript-model.js"
 import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
 import { terminateBackgroundCommand } from "./use-background-modal.js"
@@ -10,23 +10,21 @@ interface SessionProcessControlDeps {
   readonly showToast: ShellServices["showToast"]
 }
 
+/** The process controls of one session's transcript rows. The controls hold
+ *  no reactive computation: each answer is a plain read of the session's
+ *  live status, so a caller may ask for them, and ask them, in any scope. */
 export function createSessionProcessControls(deps: SessionProcessControlDeps): (sessionId: string) => RowProcessControls {
   return (sessionId) => {
-    const activeHeldToolCallIds = createMemo<ReadonlySet<string>>(() => new Set(deps.signals.statusView(sessionId)?.activeForegroundBashToolCallIds))
-    const activeManagedProcessToolCallIds = createMemo<ReadonlySet<string>>(() => new Set(deps.signals.statusView(sessionId)?.activeBackgroundCommands.map((command) => command.toolUseId)))
-    const processorHeldToolCallIds = createMemo<ReadonlySet<string>>(() => new Set(deps.signals.statusView(sessionId)?.processorHeldToolCallIds))
+    const status = () => deps.signals.statusView(sessionId)
     return {
-      activeHeldToolCallIds,
-      activeManagedProcessToolCallIds,
-      processorHeldToolCallIds,
+      status,
       onDetach: (toolUseId) => {
-        if (!deps.signals.statusView(sessionId)?.activeForegroundBashToolCallIds.includes(toolUseId)) return
+        if (!toolProcess(status(), toolUseId).held) return
         void deps.appService.dispatch({ type: "bash.detach", sessionId, toolUseId })
       },
       onStop: (toolUseId) => {
-        const command = deps.signals.statusView(sessionId)?.activeBackgroundCommands.find((candidate) => candidate.toolUseId === toolUseId)
-        if (!command) return
-        void terminateBackgroundCommand(deps, sessionId, command)
+        if (!toolProcess(status(), toolUseId).managed) return
+        void terminateBackgroundCommand(deps, sessionId, { toolUseId })
       },
       // A child's Stop ends the parent's tool call it answers: the parent is
       // this transcript's session, and the call is the card's.
