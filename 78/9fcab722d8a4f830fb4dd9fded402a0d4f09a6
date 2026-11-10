@@ -1,0 +1,92 @@
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 143
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 85-87
+src/orchestration/agent-runtime/session-identity-prompt.ts
+  h_4b47e9e4a8b456 36
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 30,37-38,154-155,158-161,328-333
+src/orchestration/agent-runtime/tools/ask-user.ts
+  h_4b47e9e4a8b456 108
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 27,51-54,57,109,114
+src/orchestration/agent-runtime/tools/handoff.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 99-102
+src/orchestration/agent-runtime/tools/message-session.ts
+  h_4b47e9e4a8b456 171-173,178,180,188
+src/orchestration/agent-runtime/tools/process.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/agent-runtime/tools/recall.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 236
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 124,143-147
+src/orchestration/agent-runtime/tools/workflow-tool.ts
+  h_4b47e9e4a8b456 200
+src/orchestration/agent-runtime/tools/workflow.ts
+  h_4b47e9e4a8b456 149
+src/orchestration/modules/bash/module.ts
+  h_4b47e9e4a8b456 54
+src/orchestration/modules/subagents.ts
+  h_4b47e9e4a8b456 199-200,202-203
+src/orchestration/modules/subagents/agent-tasks.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/modules/subagents/execution/prompts.ts
+  h_4b47e9e4a8b456 60-62,81,83,117
+src/orchestration/modules/subagents/tool.ts
+  h_4b47e9e4a8b456 64,68,72,82,85,89-90
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 36,333,391,695,700,799,1233
+tests/unit/infra/module-baseline-generator.ts
+  h_4b47e9e4a8b456 115
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 112,129-130,132-134,136-137,181,285,291-293,296,302-304,317,327
+tests/unit/orchestration/agent-runtime/budget-exhaust.test.ts
+  h_4b47e9e4a8b456 260,328
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 21-22,235-285,303-325
+tests/unit/orchestration/agent-runtime/claude-5-chat-prompt.test.ts
+  h_4b47e9e4a8b456 42
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 229
+tests/unit/orchestration/agent-runtime/subagent/execute-construction.test.ts
+  h_4b47e9e4a8b456 192-193,195-196
+tests/unit/orchestration/agent-runtime/subagent/execute-validation.test.ts
+  h_4b47e9e4a8b456 13,38
+tests/unit/orchestration/agent-runtime/subagent/failure-summary.test.ts
+  h_4b47e9e4a8b456 193
+tests/unit/orchestration/agent-runtime/subagent/prompts.test.ts
+  h_4b47e9e4a8b456 28,58-59
+tests/unit/orchestration/agent-runtime/subagent/registry.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 36,88,346,357,361,365-366,391-392,538,549
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-tree-hosted.test.ts
+  h_4b47e9e4a8b456 31,53
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 642-643
+tests/unit/orchestration/agent-runtime/tools/workflow-tool.test.ts
+  h_4b47e9e4a8b456 488,528-532
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 186-226
+tests/unit/orchestration/agent-runtime/workflow-agent-system-prompt.test.ts
+  h_4b47e9e4a8b456 28,39,43
+tests/unit/orchestration/modules/code-mode/code.test.ts
+  h_4b47e9e4a8b456 106
+tests/unit/orchestration/modules/experiments/finalize-grant-exposure.test.ts
+  h_4b47e9e4a8b456 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "789fcab722d8a4f830fb4dd9fded402a0d4f09a6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
