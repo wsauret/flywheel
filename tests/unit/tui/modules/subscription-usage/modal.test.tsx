@@ -1,6 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 import { describe, expect, it, mock } from "bun:test"
 import { Renderable, ScrollBoxRenderable } from "@opentui/core"
+import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
+import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
 const [{ testRender }, { createComponent }, { createStore }, { ThemeProvider }, { UsageModal, computeUsageModalLayout }, { createModalScrollController }, fixtures] = await Promise.all([import("@opentui/solid"), import("solid-js/web"), import("solid-js/store"), import("../../../../../src/tui/context/theme.js"), import("../../../../../src/tui/modules/subscription-usage/modal.js"), import("../../../../../src/tui/components/modal-scroll-controller.js"), import("../../usage-fixtures.js")])
 type Props = Parameters<typeof UsageModal>[0]
 const noop = () => {}
@@ -108,7 +110,7 @@ describe("Usage account browser", () => {
     expect(rendered).toContain("Balance from an earlier reading")
     expect(rendered).toContain("$20.00 left")
   })
-  it("renders expiration variants, disabled, busy, success, and error states", async () => {
+  it("renders expiration variants, disabled, busy, and success states", async () => {
     const source = fixtures.usageAccounts.sources[0]
     if (source?.kind !== "subscription") throw new Error("Expected subscription fixture")
     for (const count of [1, 2, 5]) {
@@ -127,7 +129,33 @@ describe("Usage account browser", () => {
     expect(await frame({ resetAttempt: busy })).toContain("Applying reset...")
     expect(await frame({ resetAttempt: { kind: "idle", outcome: { sourceId: "chatgpt:work", message: "Banked reset applied · usage refreshed", applied: true } } })).toContain("Banked reset applied")
     expect(await frame({ resetAttempt: { kind: "idle", outcome: { sourceId: "copilot:personal", message: "Banked reset applied · usage refreshed", applied: true } } })).not.toContain("Banked reset applied")
-    expect(await frame({ error: "offline" })).toContain("Fetch failed: offline")
+  })
+  it("keeps the reading and the whole tab switch beside every status, and warns only for a failed refresh", async () => {
+    const time = new Date(fixtures.usageAccounts.asOf).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    const tabs = "[Accounts]  Spend  History"
+    const statusSpan = (result: Awaited<ReturnType<typeof renderUsage>>["result"]) => result.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.includes("As of"))
+    const { result, setProps } = await renderUsage()
+    try {
+      expect(result.captureCharFrame().split("\n").find((line) => line.includes(tabs))).toContain(`As of ${time}`)
+      setProps("failure", { kind: "delayed" }); await result.renderOnce()
+      expect(result.captureCharFrame()).toContain(`As of ${time} · update delayed`)
+      expect(statusSpan(result)?.fg.equals(resolveTheme(flywheelTheme, "dark").textMuted)).toBe(true)
+      setProps("failure", { kind: "failed", cause: "provider check failed" }); await result.renderOnce()
+      expect(result.captureCharFrame()).toContain(`As of ${time} · refresh failed`)
+      expect(result.captureCharFrame()).toContain("PROVIDER ALLOWANCE")
+      expect(result.captureCharFrame()).not.toContain("provider check failed")
+      expect(statusSpan(result)?.fg.equals(resolveTheme(flywheelTheme, "dark").warning)).toBe(true)
+    } finally { result.renderer.destroy() }
+    const narrow = await frame({ failure: { kind: "failed", cause: "provider check failed" } }, 40)
+    expect(narrow.split("\n").find((line) => line.includes(tabs))).toMatch(/\[Accounts\] {2}Spend {2}History +As o[^·]*\.\.\. +│$/)
+  })
+  it("shows a failed first read as a short status and the cause's first line in the body", async () => {
+    const rendered = await frame({ accounts: undefined, failure: { kind: "failed", cause: "Usage ledger is locked\n    at read (ledger.ts:1)" } })
+    expect(rendered.split("\n").find((line) => line.includes("[Accounts]  Spend  History"))).toContain("Could not read usage")
+    expect(rendered).toContain("Usage ledger is locked")
+    expect(rendered).not.toContain("ledger.ts")
+    expect(rendered).not.toContain("No active usage sources")
+    expect(await frame({ accounts: undefined, failure: { kind: "delayed" } })).toContain("Fetching usage...")
   })
   it("dispatches both reset confirmation mouse choices", async () => {
     const onConfirmReset = mock(noop); const onCancelReset = mock(noop)

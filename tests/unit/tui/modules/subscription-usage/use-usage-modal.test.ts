@@ -2,6 +2,7 @@ import { describe, expect, it, mock, spyOn } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import type { UsageAccountsResult, UsageHistoryResult, UsageSpendResult, UsageMetadataResult } from "../../../../../src/protocol/modules/subscription-usage.js"
 import type { RuntimeAuthStatusScope } from "../../../../../src/protocol/auth-status-protocol-types.js"
+import { RuntimeLaneLost } from "../../../../../src/protocol/client/connection-failures.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
 import { useUsageModal, type UsageModalView } from "../../../../../src/tui/modules/subscription-usage/use-usage-modal.js"
 import { usageAccounts, usageHistory, usageOpenResult, usageRefreshResult, usageSpend } from "../../usage-fixtures.js"
@@ -90,6 +91,35 @@ describe("useUsageModal unified usage protocol", () => {
     } finally { fixture.dispose(); start.mockRestore(); stop.mockRestore() }
   })
 
+  it("notes a failed background check as a delay that the next check clears, under a failed refresh the person started", async () => {
+    const start = spyOn(globalThis, "setInterval")
+    const fixture = harness()
+    try {
+      fixture.hook.openUsageModal(); await tick()
+      const check = start.mock.calls[0]?.[0]
+      if (typeof check !== "function") throw new Error("Missing refresh callback")
+      fixture.query.mockRejectedValueOnce(new Error("The runtime didn't respond in time."))
+      check(); await tick()
+      expect(fixture.hook.usageFailure()).toEqual({ kind: "delayed" })
+      expect(fixture.hook.usageAccounts()).toEqual(usageAccounts)
+      check(); await tick()
+      expect(fixture.hook.usageFailure()).toBeUndefined()
+
+      fixture.dispatch.mockRejectedValueOnce(new RuntimeLaneLost(new Error("lane closed")))
+      fixture.hook.refreshUsage(); await tick()
+      expect(fixture.hook.usageFailure()).toEqual({ kind: "delayed" })
+      fixture.dispatch.mockRejectedValueOnce(new Error("provider check failed"))
+      fixture.hook.refreshUsage(); await tick()
+      expect(fixture.hook.usageFailure()).toEqual({ kind: "failed", cause: "provider check failed" })
+      expect(fixture.hook.usageLoading()).toBe(false)
+      fixture.query.mockRejectedValueOnce(new Error("The runtime didn't respond in time."))
+      check(); await tick(); check(); await tick()
+      expect(fixture.hook.usageFailure()).toEqual({ kind: "failed", cause: "provider check failed" })
+      fixture.hook.refreshUsage(); await tick()
+      expect(fixture.hook.usageFailure()).toBeUndefined()
+    } finally { fixture.dispose(); start.mockRestore() }
+  })
+
   it("opens Accounts by default through usage.open and usage.accounts", async () => {
     const fixture = harness()
     fixture.hook.openUsageModal()
@@ -126,7 +156,7 @@ describe("useUsageModal unified usage protocol", () => {
     fixture.hook.closeUsageModal()
     fixture.dispatch.mockRejectedValueOnce(new Error("provider check failed"))
     fixture.hook.openUsageModal(); await tick()
-    expect(fixture.hook.usageError()).toBe("provider check failed")
+    expect(fixture.hook.usageFailure()).toEqual({ kind: "failed", cause: "provider check failed" })
     expect(fixture.hook.usageAccounts()).toEqual(usageAccounts)
     fixture.dispose()
   })

@@ -3,10 +3,11 @@
 import type { Renderable, ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
+import { displayWidth, truncateToWidth } from "@tui/utils/text"
 import { BOLD } from "@tui/utils/text-attributes"
 import { createEffect, createMemo, For, type JSX, on, onCleanup, Show } from "solid-js"
 import type { SubscriptionUsageMetric } from "../../../infra/llm/subscription-usage.js"
-import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageAccountsResult, type UsageHistoryRange, type UsageHistoryResult, type UsageModelSummary, type UsageSpendResult, type UsageSpendSource, type UsageSubscriptionObservation, historySeries, prepaidBalances, spendSeries, type HistorySeries, isDetailWindow, sumUsageCoverage, sumUsageTokens, usageCoverageText, USAGE_COMMAND_NAME } from "../../../protocol/modules/subscription-usage.js"
+import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageAccountsResult, type UsageHistoryRange, type UsageHistoryResult, type UsageModelSummary, type UsageSpendResult, type UsageSpendSource, type UsageSubscriptionObservation, historySeries, prepaidBalances, spendSeries, type HistorySeries, isDetailWindow, sumUsageCoverage, sumUsageTokens, usageCoverageText, USAGE_COMMAND_NAME, type UsageReadFailure, type UsageStatusLine, usageStatusLine } from "../../../protocol/modules/subscription-usage.js"
 
 import { progressBar } from "../../components/progress-bar.js"
 import { sparkline } from "../../components/sparkline.js"
@@ -26,7 +27,7 @@ interface UsageModalProps {
   spend?: UsageSpendResult
   history?: UsageHistoryResult
   loading: boolean
-  error?: string
+  failure?: UsageReadFailure
   selectedSourceId?: string
   historyRange: UsageHistoryRange
   spendRange: UsageHistoryRange
@@ -198,15 +199,18 @@ function AccountActivity(props: { activity: UsageAccountSource["activity"] }) {
 function accountObservation(source: UsageAccountSource) { return source.kind === "subscription" && "metrics" in source.observation ? source.observation : undefined }
 function accountStateMessage(observation: UsageSubscriptionObservation): string { return observation.state === "pending" ? "Loading usage..." : "message" in observation ? observation.message ?? "Usage unavailable" : "Usage unavailable" }
 function expiryPhrase(value: number | null | undefined): string { return value === null ? "does not expire" : value === undefined ? "expiration unavailable" : `expires ${new Date(value).toLocaleDateString("en-US", { dateStyle: "long" })}` }
-/** The status a view reports while it loads or after a fetch fails. Empty while idle, so the row it occupies stays put. */
-function statusText(loading: boolean, error: string | undefined, present: boolean, fetching: string): string {
-  return loading ? (present ? "Refreshing..." : fetching) : error === undefined ? "" : `Fetch failed: ${error}`
-}
+const USAGE_TABS = ["accounts", "spend", "history"] as const
+const USAGE_WAITING = { accounts: "Fetching usage...", spend: "Loading spend...", history: "Fetching provider observations..." } as const satisfies { readonly [View in UsageModalView]: string }
+function tabLabel(view: UsageModalView): string { return `${view[0]?.toUpperCase()}${view.slice(1)}` }
+/** Columns the tab choices take: every label, the active one's brackets, and the gaps between them. */
+const USAGE_TABS_WIDTH = USAGE_TABS.reduce((width, view) => width + displayWidth(tabLabel(view)), 2) + 2 * (USAGE_TABS.length - 1)
 /** The tabs row: the view choices on the left and the active view's status on the right. Always one row tall, so a
- *  refresh or a failure changes text in place and never inserts a row. */
-function TabsRow(props: { status: string; error: boolean; children: JSX.Element }) {
+ *  refresh or a failure changes text in place and never inserts a row. The choices keep their width; the status takes
+ *  the columns left and loses its end first. */
+function TabsRow(props: { status: UsageStatusLine; width: number; children: JSX.Element }) {
   const { theme } = useTheme()
-  return <box flexDirection="row" justifyContent="space-between" height={1}>{props.children}<text fg={props.error ? theme.error : theme.textMuted} overflow="hidden" wrapMode="none" truncate>{props.status}</text></box>
+  const text = () => truncateToWidth(props.status.text, props.width - USAGE_TABS_WIDTH - 1)
+  return <box flexDirection="row" justifyContent="space-between" height={1}><box flexShrink={0}>{props.children}</box><text fg={props.status.tone === "warning" ? theme.warning : theme.textMuted} overflow="hidden" wrapMode="none">{text()}</text></box>
 }
 /** One row of exclusive choices. Tabs, ranges, and pickers all read the same way: the active item is bracketed and bold. */
 function Choices<T extends string>(props: { items: readonly T[]; active: T | undefined; label?: (item: T) => string; disabled?: boolean; onSelect: (item: T) => void }) {
@@ -255,7 +259,7 @@ function AccountDetail(props: { source: () => UsageAccountSource; width: number;
   const meteredObservation = () => { const source = props.source(); return source.kind === "metered" ? source.observation : undefined }
   return <scrollbox ref={(element: ScrollBoxRenderable) => { scrollbox = element; sync() }} maxHeight={props.maxHeight} contentOptions={{ minHeight: 0 }} viewportCulling={true}><box flexDirection="column"><box flexDirection="row" gap={2}><text fg={theme.primary} attributes={BOLD}>{props.source().label}</text><Show when={props.source().identity}>{(identity) => <text fg={theme.textMuted} overflow="hidden" wrapMode="none" truncate>{identity()}</text>}</Show></box><Show when={meteredObservation()} fallback={<Section title="PROVIDER ALLOWANCE"><Show when={subscription()} fallback={<text fg={theme.textMuted}>Metered account · no provider quota</text>}>{(source) => <><Show when={source().observation.state !== "supported"}><text fg={observationColor(theme, source().observation)}>{accountStateMessage(source().observation)}</text></Show><Show when={observed()}>{(current) => { const visible = () => visibleAccountMetrics(current().metrics, props.showDetailMetrics); return <box flexDirection="column" gap={1}><For each={visible()} fallback={<text fg={theme.textMuted}>Provider allowance unavailable</text>}>{(metric) => <Metric metric={metric} width={props.width} now={props.now} columns={metricColumns(props.source(), visible())} cap={capFor(props.source(), metric)} />}</For></box> }}</Show></>}</Show></Section>}>{(observation) => <Section title="PREPAID BALANCE"><PrepaidBalance observation={observation()} /></Section>}</Show><Show when={subscription()}>{(source) => <BankedReset source={source()} now={props.now} onApply={props.onApply} busy={props.busy} outcome={props.outcome} />}</Show><Section title="THIS MONTH"><AccountActivity activity={props.source().activity} /></Section><Show when={subscription()}>{(source) => <Section title="CURRENT USAGE WINDOWS"><QuotaAccounting source={source()} /></Section>}</Show></box></scrollbox>
 }
-function AccountsView(props: Pick<UsageModalProps, "accounts" | "loading" | "error" | "selectedSourceId" | "showDetailMetrics" | "currentScroll" | "onSourceChange" | "onBeginReset" | "resetAttempt"> & { width: number; maxHeight: number; split: boolean }) {
+function AccountsView(props: Pick<UsageModalProps, "accounts" | "selectedSourceId" | "showDetailMetrics" | "currentScroll" | "onSourceChange" | "onBeginReset" | "resetAttempt"> & { width: number; maxHeight: number; split: boolean }) {
   const { theme } = useTheme()
   const sources = () => props.accounts?.sources ?? []
   const selectedIndex = () => Math.max(0, sources().findIndex((source) => source.sourceId === props.selectedSourceId))
@@ -288,7 +292,7 @@ function AccountsView(props: Pick<UsageModalProps, "accounts" | "loading" | "err
     </box>
   }
   return <box flexDirection="column">
-    <Show when={selected()} fallback={<Show when={!props.loading}><text fg={theme.textMuted}>No active usage sources</text></Show>}>
+    <Show when={selected()} fallback={<Show when={props.accounts !== undefined}><text fg={theme.textMuted}>No active usage sources</text></Show>}>
       <Show when={!props.split} fallback={<box flexDirection="row" gap={ACCOUNT_PANE_GAP}>
         <scrollbox ref={(element: ScrollBoxRenderable) => { rail = element; element.scrollTo(selectedIndex() * RAIL_ITEM_ROWS) }} width={MIN_ACCOUNT_RAIL_WIDTH} maxHeight={props.maxHeight} viewportCulling={true}><box width={MIN_ACCOUNT_RAIL_WIDTH} flexDirection="column" gap={1}><For each={sources()}>{(source) => <RailItem source={source} />}</For></box></scrollbox>
         <Detail />
@@ -319,7 +323,7 @@ function SpendGroup(props: { source: UsageSpendSource; selected: boolean; onSele
   </box>
 }
 
-function SpendView(props: Pick<UsageModalProps, "spend" | "spendRange" | "loading" | "error" | "selectedSourceId" | "spendScroll" | "onSpendRangeChange" | "onSourceChange"> & { maxHeight: number }) {
+function SpendView(props: Pick<UsageModalProps, "spend" | "spendRange" | "selectedSourceId" | "spendScroll" | "onSpendRangeChange" | "onSourceChange"> & { maxHeight: number }) {
   const { theme } = useTheme()
   const sources = () => props.spend?.sources ?? []
   const sourceElements = new Map<string, Renderable>()
@@ -367,7 +371,7 @@ function HistoryLine(props: { series: HistorySeries; startMs: number; endMs: num
     <text fg={theme.textMuted} overflow="hidden" wrapMode="none" truncate>{axis()}</text>
   </box>
 }
-function HistoryView(props: Pick<UsageModalProps, "history" | "historyRange" | "selectedSourceId" | "loading" | "error" | "showDetailMetrics" | "onHistoryRangeChange" | "onSourceChange"> & { width: number; maxHeight: number }) {
+function HistoryView(props: Pick<UsageModalProps, "history" | "historyRange" | "selectedSourceId" | "showDetailMetrics" | "onHistoryRangeChange" | "onSourceChange"> & { width: number; maxHeight: number }) {
   const { theme } = useTheme()
   const sources = () => props.history?.sources ?? []
   const selected = () => sources().find((source) => source.sourceId === props.selectedSourceId) ?? sources()[0]
@@ -377,7 +381,7 @@ function HistoryView(props: Pick<UsageModalProps, "history" | "historyRange" | "
   const series = (source: UsageHistoryResult["sources"][number]) => [...historySeries(source, props.showDetailMetrics), ...spendSeries(source, startMs())]
   return <box flexDirection="column">
     <Choices items={USAGE_HISTORY_RANGES} active={props.historyRange} onSelect={props.onHistoryRangeChange} />
-    <Show when={sources().length > 0} fallback={<Show when={!props.loading}><text fg={theme.textMuted}>No provider observations</text></Show>}>
+    <Show when={sources().length > 0} fallback={<Show when={props.history !== undefined}><text fg={theme.textMuted}>No provider observations</text></Show>}>
       <Section title="SOURCE"><Choices items={sources().map((source) => source.sourceId)} active={selected()?.sourceId} label={labelOf} onSelect={props.onSourceChange} /></Section>
       <Show when={selected()}>{(source) => <Section title={source().kind === "metered" ? "SPEND OVER TIME" : `USE OVER TIME · ${source().count} in range`}>
         <scrollbox maxHeight={Math.max(1, props.maxHeight - 6)} contentOptions={{ minHeight: 0 }} viewportCulling={true}><box flexDirection="column" gap={1}>
@@ -403,16 +407,15 @@ function ResetConfirmation(props: Pick<UsageModalProps, "resetAttempt" | "onConf
 }
 
 export function UsageModal(props: UsageModalProps) {
+  const { theme } = useTheme()
   const { termWidth, termHeight } = useModalDimensions(MAX_USAGE_MODAL_WIDTH, MODAL_CHROME_ROWS, Number.MAX_SAFE_INTEGER)
   const layout = createMemo(() => computeUsageModalLayout(termWidth()))
   const bodyHeight = createMemo(() => usageBodyHeight(termHeight()))
   const contentMaxHeight = createMemo(() => Math.max(1, bodyHeight() - usageReservedRows(props.view, props.accounts?.sources.length ?? 0)))
-  const tabs = ["accounts", "spend", "history"] as const
   const confirming = () => props.resetAttempt?.kind === "reviewing" || props.resetAttempt?.kind === "busy"
-  const status = () => props.view === "accounts" ? statusText(props.loading, props.error, props.accounts !== undefined, "Fetching usage...")
-    : props.view === "spend" ? statusText(props.loading, props.error, props.spend !== undefined, "Loading spend...")
-    : statusText(props.loading, props.error, props.history !== undefined, "Fetching provider observations...")
+  const reading = () => props.view === "accounts" ? props.accounts : props.view === "spend" ? props.spend : props.history
+  const status = () => usageStatusLine({ loading: props.loading, asOf: reading()?.asOf, failure: props.failure, waiting: USAGE_WAITING[props.view], ellipsis: "..." })
   return <ModalFrame title={USAGE_COMMAND_NAME} width={layout().modalWidth} onClose={props.onClose} closeDisabled={props.resetAttempt?.kind === "busy"} gap={1}>
-    <Show when={confirming()} fallback={<><TabsRow status={status()} error={props.error !== undefined}><Choices items={tabs} active={props.view} label={(view) => `${view[0]?.toUpperCase()}${view.slice(1)}`} disabled={props.resetAttempt?.kind === "busy"} onSelect={props.onViewChange} /></TabsRow><box flexDirection="column" height={bodyHeight()}><Show when={props.view === "accounts"}><AccountsView {...props} width={layout().contentWidth} maxHeight={contentMaxHeight()} split={layout().splitAccounts} /></Show><Show when={props.view === "spend"}><SpendView {...props} maxHeight={contentMaxHeight()} /></Show><Show when={props.view === "history"}><HistoryView {...props} width={layout().contentWidth} maxHeight={contentMaxHeight()} /></Show></box><UsageFooter {...props} /></>}><ResetConfirmation {...props} /></Show>
+    <Show when={confirming()} fallback={<><TabsRow status={status()} width={layout().contentWidth}><Choices items={USAGE_TABS} active={props.view} label={tabLabel} disabled={props.resetAttempt?.kind === "busy"} onSelect={props.onViewChange} /></TabsRow><box flexDirection="column" height={bodyHeight()}><Show when={status().detail}>{(detail) => <text fg={theme.warning}>{detail()}</text>}</Show><Show when={props.view === "accounts"}><AccountsView {...props} width={layout().contentWidth} maxHeight={contentMaxHeight()} split={layout().splitAccounts} /></Show><Show when={props.view === "spend"}><SpendView {...props} maxHeight={contentMaxHeight()} /></Show><Show when={props.view === "history"}><HistoryView {...props} width={layout().contentWidth} maxHeight={contentMaxHeight()} /></Show></box><UsageFooter {...props} /></>}><ResetConfirmation {...props} /></Show>
   </ModalFrame>
 }

@@ -446,6 +446,40 @@ export function subscriptionUsageStatusRows(result: UsageSpendResult | undefined
   return [{ id: "subscription-usage", label: "Usage", value: `$${result.estimatedBilledUsd.toFixed(2)} this month`, action: { kind: "surface", id: USAGE_SURFACE } }]
 }
 
+/** Why the last read of a usage view did not land. `delayed`: a background
+ *  check failed, or the connection explains the failure
+ *  (`explainedByConnection`), so the reading on screen can be behind but
+ *  nothing asks the person to act. `failed`: a read or refresh the person
+ *  started failed for a reason of its own, which `cause` states. */
+export type UsageReadFailure = { readonly kind: "delayed" } | { readonly kind: "failed"; readonly cause: string }
+
+/** The line beside the usage view switch. `detail` is the first line of the
+ *  cause, for the view's body, only when a read failed with no reading to show. */
+export interface UsageStatusLine {
+  readonly text: string
+  readonly tone: "muted" | "warning"
+  readonly detail?: string
+}
+
+/** What the usage status line says, in every client (PI-MODEL-010): the time
+ *  of the reading on screen, that it refreshes, or that an update is delayed
+ *  or a refresh failed. A delay or failure never replaces the reading's time,
+ *  and only a failure the person caused reads as a warning. `waiting` is the
+ *  client's text for a view without its first reading, and `ellipsis` its
+ *  ellipsis glyph. */
+export function usageStatusLine(input: { readonly loading: boolean; readonly asOf: number | undefined; readonly failure: UsageReadFailure | undefined; readonly waiting: string; readonly ellipsis: string }): UsageStatusLine {
+  const { asOf, failure } = input
+  if (input.loading) return { text: asOf === undefined ? input.waiting : `Refreshing${input.ellipsis}`, tone: "muted" }
+  if (asOf === undefined) {
+    if (failure?.kind === "failed") return { text: "Could not read usage", tone: "warning", detail: failure.cause.split("\n", 1)[0] ?? failure.cause }
+    // A delayed first read is still a wait: the next check, or the connection's recovery, reads again.
+    return { text: failure === undefined ? "" : input.waiting, tone: "muted" }
+  }
+  const time = `As of ${new Date(asOf).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
+  if (failure === undefined) return { text: time, tone: "muted" }
+  return failure.kind === "delayed" ? { text: `${time} · update delayed`, tone: "muted" } : { text: `${time} · refresh failed`, tone: "warning" }
+}
+
 
 /** Usage history as every client draws it: one series per window the
  *  provider still reports that saw use in the range, and spend over the

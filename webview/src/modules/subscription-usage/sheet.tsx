@@ -1,8 +1,10 @@
 import "./sheet.css"
-import { createResource, createSignal, For, onMount, Show } from "solid-js"
+import { createResource, createSignal, For, onCleanup, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageHistoryRange, historySeries, spendSeries, type HistorySeries, USAGE_COMMAND_NAME } from "../../../../src/protocol/modules/subscription-usage.js"
+import { explainedByConnection } from "../../../../src/protocol/client/connection-failures.js"
+import { readRetainedQuery, type QueryReading } from "../../../../src/protocol/client/retained-query.js"
+import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageAccountsResult, type UsageHistoryRange, type UsageHistoryResult, type UsageMutationResult, type UsageReadFailure, type UsageSpendResult, historySeries, spendSeries, type HistorySeries, USAGE_COMMAND_NAME, usageStatusLine } from "../../../../src/protocol/modules/subscription-usage.js"
 import { actionKey } from "../../client/action-key.js"
 import { describeFailure } from "../../client/failure-message.js"
 
@@ -25,9 +27,11 @@ type View = "accounts" | "spend" | "history"
 const VIEWS: readonly { readonly value: View; readonly label: string }[] = [{ value: "accounts", label: "Accounts" }, { value: "spend", label: "Spend" }, { value: "history", label: "History" }]
 const RANGES = USAGE_HISTORY_RANGES.map((range) => ({ value: range, label: range }))
 
-interface UsageStatus {
-  readonly text: string
-  readonly warn: boolean
+type UsageReading<T> = QueryReading<T, UsageReadFailure>
+/** Why a usage read or check did not land. A failure the connection explains
+ *  is only a delay: the connection's own notice speaks for it. */
+function readFailure(cause: unknown): UsageReadFailure {
+  return explainedByConnection(cause) ? { kind: "delayed" } : { kind: "failed", cause: describeFailure(cause) }
 }
 
 export function UsageSheet(props: { readonly initialView?: "accounts" | "spend" | "history" }) {
@@ -38,48 +42,62 @@ export function UsageSheet(props: { readonly initialView?: "accounts" | "spend" 
   const reread = () => setGeneration((count) => count + 1)
   const [openId, setOpenId] = createSignal<string | undefined>()
   const [showDetail, setShowDetail] = createSignal(false)
-  const [spendRange, setSpendRange] = createSignal<UsageHistoryRange>("Month")
-  const [historyRange, setHistoryRange] = createSignal<UsageHistoryRange>("24h")
+  // Choosing the range already chosen reads it again: after a failed read the
+  // segment names the range on screen, and the chosen one is a choice again.
+  const [spendRange, setSpendRange] = createSignal<UsageHistoryRange>("Month", { equals: false })
+  const [historyRange, setHistoryRange] = createSignal<UsageHistoryRange>("24h", { equals: false })
   const [historySourceId, setHistorySourceId] = createSignal<string | undefined>()
 
-  onMount(() => {
-    void client.connection.dispatch({ type: "usage.open", scope: SCOPE }).catch(() => undefined)
-  })
-
-  const [usage] = createResource(generation, () => client.connection.query({ type: "usage.accounts", scope: SCOPE }))
-  const [spend] = createResource(() => (view() === "spend" ? { range: spendRange(), generation: generation() } : undefined), (key) => client.connection.query({ type: "usage.spend", scope: SCOPE, range: key.range }))
-  const [history] = createResource(() => (view() === "history" ? { range: historyRange(), generation: generation() } : undefined), (key) => client.connection.query({ type: "usage.history", scope: SCOPE, range: key.range }))
+  // A failed read keeps the last reading on screen, of any range, beside why it failed.
+  const [usage] = createResource(generation, (_, { value }): Promise<UsageReading<UsageAccountsResult>> => readRetainedQuery(SCOPE.kind, () => client.connection.query({ type: "usage.accounts", scope: SCOPE }), value, readFailure))
+  const [spend] = createResource(() => (view() === "spend" ? { range: spendRange(), generation: generation() } : undefined), (key, { value }): Promise<UsageReading<UsageSpendResult>> => readRetainedQuery(SCOPE.kind, () => client.connection.query({ type: "usage.spend", scope: SCOPE, range: key.range }), value, readFailure))
+  const [history] = createResource(() => (view() === "history" ? { range: historyRange(), generation: generation() } : undefined), (key, { value }): Promise<UsageReading<UsageHistoryResult>> => readRetainedQuery(SCOPE.kind, () => client.connection.query({ type: "usage.history", scope: SCOPE, range: key.range }), value, readFailure))
+  const accounts = () => usage.latest?.value
+  const spendResult = () => spend.latest?.value
+  const historyResult = () => history.latest?.value
+  // A range segment names the range of the reading on screen once its read settles, so a reading kept through a failed
+  // read of another range never reads as that range. While the shown range is not the chosen one, the segment is not
+  // settled, so a tap on the shown range reads it again.
+  const spendShown = () => (spend.loading ? spendRange() : spendResult()?.range ?? spendRange())
+  const historyShown = () => (history.loading ? historyRange() : historyResult()?.range ?? historyRange())
 
   const failed = (verb: string) => (cause: unknown) => client.report("warning", `Flywheel could not ${verb}: ${describeFailure(cause)}`)
 
-  // Refresh and Apply reset work from the tap, or the confirmation, until the runtime answers.
-  const refreshKey = actionKey("subscription-usage.refresh")
+  // A provider check the person started, by opening the sheet or with Refresh, reads as a refresh of the reading on
+  // screen: the status says it refreshes while the check runs, and a check that fails or that the runtime refuses keeps
+  // the reading beside why. Refresh shows that it works from the tap until the runtime answers.
+  const checkKey = actionKey("subscription-usage.refresh")
+  const [checkFailure, setCheckFailure] = createSignal<UsageReadFailure>()
+  const check = (dispatch: () => Promise<UsageMutationResult>) => {
+    setCheckFailure(undefined)
+    void client.actions.run(checkKey, async () => {
+      const answer = await dispatch()
+      if (!answer.ok) throw new Error(answer.error)
+      reread()
+    }, (cause) => setCheckFailure(readFailure(cause)))
+  }
+  const refresh = () => check(() => client.connection.dispatch({ type: "usage.refresh", scope: SCOPE }))
+  // Each lane opens the sheet's check and reads again, the first lane among them, so a reading that a lost connection
+  // delayed lands once the connection is back, with no tap.
+  onCleanup(client.connection.onLane(() => check(() => client.connection.dispatch({ type: "usage.open", scope: SCOPE }))))
   const resetKey = (source: UsageAccountSource) => actionKey("subscription-usage.reset", source.sourceId)
-  const refresh = () => {
-    void client.actions.run(refreshKey, () => client.connection.dispatch({ type: "usage.refresh", scope: SCOPE })
-      .then(() => { client.report("info", "Asking every provider for a fresh reading."); reread() }), failed("refresh usage"))
-  }
 
-  // The status beside the view switch: what is loading, what failed, or when
-  // the reading is from. One line that changes in place, as the terminal's
-  // tab row does, so the sheet never grows a row for it.
-  const active = () => (view() === "accounts" ? usage : view() === "spend" ? spend : history)
-  const status = (): UsageStatus => {
-    const resource = active()
-    if (resource.loading) return { text: resource.latest === undefined ? "Reading…" : "Refreshing…", warn: false }
-    if (resource.error !== undefined) return { text: `Could not read: ${describeFailure(resource.error)}`, warn: true }
-    const asOf = resource.latest?.asOf
-    return { text: asOf === undefined ? "" : `As of ${new Date(asOf).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`, warn: false }
+  // The status beside the view switch, as the terminal's tab row says it.
+  // One line that changes in place, so the sheet never grows a row for it.
+  const status = () => {
+    const read = view() === "accounts" ? usage : view() === "spend" ? spend : history
+    return usageStatusLine({ loading: client.actions.working(checkKey) || read.loading, asOf: read.latest?.value?.asOf, failure: read.latest?.error ?? checkFailure(), waiting: "Reading…", ellipsis: "…" })
   }
+  const unreadable = () => status().detail
 
-  const sources = () => usage.latest?.sources ?? []
-  const now = () => usage.latest?.asOf ?? Date.now()
+  const sources = () => accounts()?.sources ?? []
+  const now = () => accounts()?.asOf ?? Date.now()
   // Every account starts closed, so the list reads as a list of readings; a
   // tap opens one and a second tap on it closes it, one open at a time.
   const openSource = () => sources().find((source) => source.sourceId === openId())
   const toggle = (sourceId: string) => setOpenId((current) => (current === sourceId ? undefined : sourceId))
 
-  const redeem = async (current: NonNullable<typeof usage.latest>, source: UsageAccountSource) => {
+  const redeem = async (current: NonNullable<ReturnType<typeof accounts>>, source: UsageAccountSource) => {
     const result = await client.connection.dispatch({ type: "usage.apply_reset", scope: SCOPE, sourceId: source.sourceId, authorityIncarnation: current.authorityIncarnation, revision: current.revision, redeemRequestId: crypto.randomUUID() })
     const messages = {
       reset: "The provider reset the limit.",
@@ -94,7 +112,7 @@ export function UsageSheet(props: { readonly initialView?: "accounts" | "spend" 
   }
 
   const applyReset = (source: UsageAccountSource) => {
-    const current = usage.latest
+    const current = accounts()
     if (!current || source.kind !== "subscription" || !source.bankedResets) return
     const credit = source.bankedResets.credits[0]
     const run = async () => {
@@ -109,18 +127,18 @@ export function UsageSheet(props: { readonly initialView?: "accounts" | "spend" 
     void run().catch(failed("apply the reset"))
   }
 
-  const historySources = () => history.latest?.sources ?? []
+  const historySources = () => historyResult()?.sources ?? []
   const historySource = () => historySources().find((source) => source.sourceId === historySourceId()) ?? historySources()[0]
 
   return (
-    <Sheet title={USAGE_COMMAND_NAME} onClose={client.closeSheet} tools={<button class="ghost-text" aria-busy={client.actions.working(refreshKey) || undefined} onClick={refresh}>Refresh</button>}>
-      <div class="usage-bar">
+    <Sheet title={USAGE_COMMAND_NAME} onClose={client.closeSheet} tools={<button class="ghost-text" aria-busy={client.actions.working(checkKey) || undefined} onClick={refresh}>Refresh</button>}>
+      <div class="usage-bar usage-head">
         <SheetSegment value={view()} options={VIEWS} label="Usage view" onChange={setView} />
-        <span class="usage-status" classList={{ warn: status().warn }} aria-live="polite">{status().text}</span>
+        <span class="usage-status" classList={{ warn: status().tone === "warning" }} aria-live="polite">{status().text}</span>
       </div>
 
       <Show when={view() === "accounts"}>
-        <Show when={usage.latest} fallback={<Show when={!usage.loading} fallback={<SheetLoading />}><SheetEmpty>Could not read usage.</SheetEmpty></Show>}>
+        <Show when={accounts()} fallback={<Show when={unreadable()} fallback={<SheetLoading />}>{(detail) => <SheetEmpty>{detail()}</SheetEmpty>}</Show>}>
           <Show when={sources().length > 0} fallback={<SheetEmpty>No connected account reports usage.</SheetEmpty>}>
             <Key each={sources()} by="sourceId">
               {(source) => {
@@ -141,8 +159,8 @@ export function UsageSheet(props: { readonly initialView?: "accounts" | "spend" 
       </Show>
 
       <Show when={view() === "spend"}>
-        <div class="usage-bar"><SheetSegment value={spendRange()} options={RANGES} label="Spend range" onChange={setSpendRange} /></div>
-        <Show when={spend.latest} fallback={<Show when={!spend.loading}><SheetEmpty>Could not read spend.</SheetEmpty></Show>}>
+        <div class="usage-bar"><SheetSegment value={spendShown()} working={spendShown() !== spendRange()} options={RANGES} label="Spend range" onChange={setSpendRange} /></div>
+        <Show when={spendResult()} fallback={<Show when={unreadable()}>{(detail) => <SheetEmpty>{detail()}</SheetEmpty>}</Show>}>
           {(result) => (
             <For each={spendGroups(result())}>
               {(group) => (
@@ -157,17 +175,17 @@ export function UsageSheet(props: { readonly initialView?: "accounts" | "spend" 
             </For>
           )}
         </Show>
-        <Show when={spend.latest !== undefined && spend.latest.sources.length === 0}><div class="sheet-section">By source</div><div class="usage-summary">No spend recorded</div></Show>
+        <Show when={spendResult()?.sources.length === 0}><div class="sheet-section">By source</div><div class="usage-summary">No spend recorded</div></Show>
       </Show>
 
       <Show when={view() === "history"}>
-        <div class="usage-bar"><SheetSegment value={historyRange()} options={RANGES} label="History range" onChange={setHistoryRange} /></div>
-        <Show when={history.latest} fallback={<Show when={!history.loading}><SheetEmpty>Could not read history.</SheetEmpty></Show>}>
+        <div class="usage-bar"><SheetSegment value={historyShown()} working={historyShown() !== historyRange()} options={RANGES} label="History range" onChange={setHistoryRange} /></div>
+        <Show when={historyResult()} fallback={<Show when={unreadable()}>{(detail) => <SheetEmpty>{detail()}</SheetEmpty>}</Show>}>
           <Show when={historySources().length > 0} fallback={<SheetEmpty>No provider readings in this range.</SheetEmpty>}>
             <div class="usage-bar usage-sources"><SheetSegment value={historySource()?.sourceId ?? ""} options={historySources().map((source) => ({ value: source.sourceId, label: source.label }))} label="History source" onChange={setHistorySourceId} /></div>
             <Show when={historySource()}>
               {(source) => {
-                const range = () => ({ startMs: history.latest?.startMs ?? 0, endMs: history.latest?.endMs ?? now() })
+                const range = () => ({ startMs: historyResult()?.startMs ?? 0, endMs: historyResult()?.endMs ?? now() })
                 const series = () => [...historySeries(source(), showDetail()), ...spendSeries(source(), range().startMs)]
                 return (
                   <>

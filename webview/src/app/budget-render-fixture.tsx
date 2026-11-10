@@ -101,9 +101,9 @@ function summary(overrides: Partial<SessionSummary> = {}): SessionSummary {
   }
 }
 
-function client(current: () => ClientViewState, script: FakeConnectionScript = {}, reconnect: () => void = () => {}): ClientContextValue {
+function client(current: () => ClientViewState, script: FakeConnectionScript = {}, reconnect: () => void = () => {}, lanes: Parameters<typeof fakeRuntimeConnection>[1] = {}): ClientContextValue {
   return fakeClient({
-    connection: fakeRuntimeConnection(script),
+    connection: fakeRuntimeConnection(script, lanes),
     actions: fakeClientActions({ reconnect }),
     state: current,
     confirm: async () => false,
@@ -231,13 +231,14 @@ export function mountToolbarActing(layout: "wide" | "phone") {
   })
 }
 
-/** Mounts a sheet in the shared client context with controllable queries and session selection. */
-export function mountClientSheet(sheet: () => JSX.Element, script: FakeConnectionScript) {
+/** Mounts a sheet in the shared client context with controllable queries and session selection. `lanes` replaces the
+ *  connection's open first lane, for a sheet that reads again when a lane opens. */
+export function mountClientSheet(sheet: () => JSX.Element, script: FakeConnectionScript, lanes: Parameters<typeof fakeRuntimeConnection>[1] = {}) {
   return createRoot((dispose) => {
     const [current, setCurrent] = createSignal(state())
     const root = createElement("root")
     insert(root, createComponent(ClientContext.Provider, {
-      value: client(current, script),
+      value: client(current, script, undefined, lanes),
       get children() { return sheet() },
     }))
     return {

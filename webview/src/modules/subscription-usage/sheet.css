@@ -13,7 +13,10 @@
 .usage-bar .sheet-segment { max-width: 100%; overflow-x: auto; }
 /* Every account is a choice here, so the picker wraps rather than hiding the chosen one off the edge. */
 .usage-sources .sheet-segment { flex-wrap: wrap; overflow: visible; }
-.usage-status { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; }
+/* The view switch never gives up width: the status beside it takes what is left and loses its end first. */
+.usage-head { flex-wrap: nowrap; }
+.usage-head .sheet-segment { flex: 0 0 auto; }
+.usage-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; }
 .usage-status.warn { color: var(--fw-warning); }
 .usage-account { border-radius: var(--fw-radius-sm); }
 .usage-account.open { background: var(--fw-list-hover); box-shadow: inset 2px 0 0 var(--fw-accent); }

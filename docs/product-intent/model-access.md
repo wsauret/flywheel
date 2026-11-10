@@ -116,7 +116,7 @@ Flywheel never maintains or curates which models a provider offers. New models d
 
 ## PI-MODEL-010: Usage reads the same way on every client
 
-Usage is one view with Accounts, Spend, and History a tap apart. A line beside the switch gives the reading's time and says when it is refreshing, when an update is delayed, or when a refresh failed. A delay or failure keeps the reading on screen and never covers the switch. Each account row shows its name and one reading of what is left or why there is none. Beneath it are the plan, signed-in identity, and whether paid use is allowed. Accounts start closed, and a tap opens one at a time or closes the open one. An open account shows a bar per provider window with its reading and reset time, its banked reset and Apply action, and Flywheel's activity there.
+Usage is one view with Accounts, Spend, and History a tap apart. A line beside the switch gives the reading's time and whether it is refreshing, delayed, or failed, and never hides the reading or switch. Each account row shows its name and one reading of what is left or why there is none, above its plan, signed-in identity, and paid-use permission. Accounts start closed; a tap opens one at a time or closes the open one. An open account shows a bar per provider window with its reading and reset time, its banked reset with Apply, and Flywheel's activity.
 
 ## PI-MODEL-052: Usage account rows fit each account's provider
 

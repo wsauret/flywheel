@@ -18,7 +18,7 @@ export function createUsageSurface(host: TuiControllerHost, initialView: UsageMo
         spend={usageModal.usageSpend()}
         history={usageModal.usageHistory()}
         loading={usageModal.usageLoading()}
-        error={usageModal.usageError()}
+        failure={usageModal.usageFailure()}
         selectedSourceId={usageModal.selectedSourceId()}
         spendRange={usageModal.usageSpendRange()}
         historyRange={usageModal.usageHistoryRange()}
