@@ -1,8 +1,9 @@
 /**
- * The notice for managed commands that a run which completes on idle leaves
- * running. The host closes its background owner once such a run completes,
- * and that close ends every managed command, so a server the agent started
- * without persist_after_exit stops before anything that relies on it runs.
+ * The notice for managed commands that a run which cannot wait for input
+ * leaves running: a run that can wait parks on them as owed work instead.
+ * The host closes its background owner once such a run completes, and that
+ * close ends every managed command, so a server the agent started without
+ * persist_after_exit stops before anything that relies on it runs.
  * Where the agent can launch a persistent command, the model hears once per
  * command, before the run completes, that the command ends with the run, and
  * can launch it again to persist. A command named once is not named again.

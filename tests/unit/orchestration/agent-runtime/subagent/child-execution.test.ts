@@ -9,7 +9,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFact } from "../../../../../src/orchestration/session/session-fact-writer.js";
-import { buildRegistry, createNotificationCapture, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
+import { buildRegistry, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";
 
@@ -275,11 +275,10 @@ describe("child execution liveness and interruption", () => {
       }
     });
 
-    // A command that the child launched in the background is a service: no
-    // automatic park holds it, only an explicit wait. That wait is bounded by
-    // its own soft timeout, so the child that waits in it is not stalled, even
-    // while the command writes nothing for longer than the watchdog's window.
-    it("feeds the stall watchdog while the child is parked in a wait on its background command, and stops when the wait resumes", async () => {
+    // A command that the child launched in the background is owed work, so
+    // the child that waits on it is not stalled, even while the command writes
+    // nothing for longer than the watchdog's window.
+    it("feeds the stall watchdog while the child's background command runs, and stops when the command ends", async () => {
       const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
       let bumps = 0;
       const fakeRegistry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
@@ -290,7 +289,7 @@ describe("child execution liveness and interruption", () => {
       };
       const { promise, resolve } = Promise.withResolvers<AgentRunResult>();
       let options: AgentOptions | undefined;
-      const sessionDir = temporary("child-service-wait-");
+      const sessionDir = temporary("child-command-wait-");
       const deps = makeDeps({
         sessionDir,
         createRunner: (agentOptions) => { options = agentOptions; return { send() {}, end() {}, abort() {}, done: promise }; },
@@ -299,26 +298,17 @@ describe("child execution liveness and interruption", () => {
       });
       await createSubagentDispatch(deps).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "run it" }, makeContext());
       const background = options?.runtimeSurfaces?.background?.tasks;
-      const lifecycle = options?.lifecycle;
-      if (!background || !lifecycle) throw new Error("every child runs with a background owner and a lifecycle");
+      if (!background) throw new Error("every child runs with a background owner");
       const command = Promise.withResolvers<BackgroundWorkResult>();
       try {
-        background.track({ done: command.promise, service: true, meta: { id: "bash-bg-1", type: "bash", description: "ssh winhost run.ps1" } });
+        background.track({ done: command.promise, meta: { id: "bash-bg-1", type: "bash", description: "ssh winhost run.ps1" } });
 
-        // A running service alone holds no park: a child that leaves one and
-        // goes quiet is stalled.
-        bumps = 0;
-        await delay(25);
-        expect(bumps).toBe(0);
-
-        await lifecycle.onTurnParked?.({ handoffWritten: false, turnCount: 1, activeBackgroundCount: 1, parkedOnBackgroundWork: true, waitRequested: true, userResumeRequired: false, park: "waiting_on_work" });
         bumps = 0;
         const bumpedThrice = () => bumps >= 3;
         for (let attempt = 0; attempt < 500 && !bumpedThrice(); attempt++) await delay(5);
         expect(bumps).toBeGreaterThanOrEqual(3);
 
-        // The wait ends, by the command's result or by its expiry.
-        lifecycle.onTurnResumed?.();
+        command.resolve({ status: "completed", content: "done" });
         await delay(10);
         bumps = 0;
         await delay(30);
@@ -537,7 +527,7 @@ describe("child execution recovery", () => {
     const clock = spyOn(Date, "now").mockImplementation(() => realNow() + passed);
     const waits = recoveryWaits(async () => { entered.resolve(); await release.promise; passed = 120_000; });
     try {
-      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 60_000 } }, "complete"]);
+      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 60_000, hold: { kind: "usage_limit", stated: true } } }, "complete"]);
       await createSubagentDispatch(run.deps).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext());
       await entered.promise;
       const before = run.bumps();
@@ -550,5 +540,21 @@ describe("child execution recovery", () => {
       expect(run.runs()).toBe(2);
       expect(run.notices.at(-1)).toEqual(expect.objectContaining({ data: { operation: expect.objectContaining({ type: "resolve" }) } }));
     } finally { release.resolve(); waits.restore(); clock.mockRestore(); }
+  });
+
+  // No person can end the wait of an unattended run, whose chat waits on the child's work (PI-AGENT-074).
+  it("lets a stated usage limit stand at once as the failure of a child of an unattended run, which shows no wait", async () => {
+    const waiting = Promise.withResolvers<"waiting">();
+    const release = Promise.withResolvers<void>();
+    const waits = recoveryWaits(async () => { waiting.resolve("waiting"); await release.promise; });
+    try {
+      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } } }, "complete"]);
+      const unattended = makeCapabilityAccess({ grant: grantOf(["subagents"]), unattended: true });
+      await createSubagentDispatch(run.deps).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext({ capabilityAccess: unattended }));
+      expect(await Promise.race([run.settled.then((result) => result.status), waiting.promise])).toBe("failed");
+      expect(run.runs()).toBe(1);
+      expect(waits.waits).toEqual([]);
+      expect(run.notices).toEqual([]);
+    } finally { release.resolve(); waits.restore(); }
   });
 });

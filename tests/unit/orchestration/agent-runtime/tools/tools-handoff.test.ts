@@ -501,7 +501,7 @@ describe("handoff tool", () => {
     expect<unknown>(captured).toEqual({ summary });
   });
 
-  it("blocks stream-start admission until task and service completion receipts commit", async () => {
+  it("blocks stream-start admission until task and server completion receipts commit", async () => {
     let captured: { [key: string]: unknown } | null = null;
     let receipt = Promise.withResolvers<void>();
     const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => receipt.promise });
@@ -525,7 +525,7 @@ describe("handoff tool", () => {
     const commandBlocked = await attempt("Premature");
     expect(commandBlocked.outcome).toBe("blocked");
     expect(commandBlocked.content).toContain("bun run test:perf");
-    expect(commandBlocked.content).toContain("Wait for it or stop it");
+    expect(commandBlocked.content).toContain("Wait for each to end, or stop it with the process tool");
     expect(captured).toBeNull();
 
     commandDone.resolve({ status: "completed", content: "ok" });
@@ -562,19 +562,18 @@ describe("handoff tool", () => {
     await Promise.resolve();
     await Promise.resolve();
     receipt = Promise.withResolvers<void>();
-    const serviceDone = Promise.withResolvers<BackgroundWorkResult>();
+    const serverDone = Promise.withResolvers<BackgroundWorkResult>();
     registry.track({
-      done: serviceDone.promise,
+      done: serverDone.promise,
       meta: { id: "command-2", type: "background_command", description: "python3 server.py" },
-      service: true,
     });
-    const serviceRunning = await attempt("Server still up");
-    expect(serviceRunning.outcome).toBe("blocked");
-    expect(serviceRunning.content).toContain("python3 server.py");
-    expect(serviceRunning.content).toContain("Stop each service with the process tool");
+    const serverRunning = await attempt("Server still up");
+    expect(serverRunning.outcome).toBe("blocked");
+    expect(serverRunning.content).toContain("Still running: python3 server.py");
+    expect(serverRunning.content).toContain("stop it with the process tool");
     expect(captured).toBeNull();
 
-    serviceDone.resolve({ status: "completed", content: "" });
+    serverDone.resolve({ status: "completed", content: "" });
     await new Promise((resolve) => setTimeout(resolve, 5));
     receipt.resolve();
     await Promise.resolve();
@@ -638,12 +637,12 @@ describe("handoff tool", () => {
     await Promise.resolve();
     mailbox.drainPending();
 
-    const service = Promise.withResolvers<BackgroundWorkResult>();
-    registry.track({ done: service.promise, service: true, meta: { id: "service", type: "background_command", description: "server" } });
-    const blocked = await attempt("service active");
+    const server = Promise.withResolvers<BackgroundWorkResult>();
+    registry.track({ done: server.promise, meta: { id: "server", type: "background_command", description: "server" } });
+    const blocked = await attempt("server active");
     expect(blocked.outcome).toBe("blocked");
-    expect(blocked.content).toContain("Stop each");
-    service.resolve({ status: "completed", content: "" });
+    expect(blocked.content).toContain("Still running: server");
+    server.resolve({ status: "completed", content: "" });
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();

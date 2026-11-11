@@ -56,10 +56,10 @@ export function endsOpenWait(input: OpenWaitInput, replyWaitIds: readonly string
 export function restoreAgentLoopWait(
   state: AgentLoopState,
   wait: RestoredAgentWait,
-  tasks: Pick<BackgroundWorkRegistry, "waitableTaskCount"> | undefined,
+  tasks: Pick<BackgroundWorkRegistry, "awaitedTaskCount"> | undefined,
   enqueueRuntimeNotice: ((text: string) => void) | undefined,
 ): AgentLoopState {
-  if ((tasks?.waitableTaskCount() ?? 0) > 0) return agentLoopTransition.waitOpened(state, { ...(wait.parkOnly || !wait.expiry ? {} : { expiry: wait.expiry }), replyWaitIds: wait.replyWaitIds });
+  if ((tasks?.awaitedTaskCount() ?? 0) > 0) return agentLoopTransition.waitOpened(state, { ...(wait.parkOnly || !wait.expiry ? {} : { expiry: wait.expiry }), replyWaitIds: wait.replyWaitIds });
   if (!wait.parkOnly) enqueueRuntimeNotice?.(formatWaitNoopNotification());
   return state;
 }

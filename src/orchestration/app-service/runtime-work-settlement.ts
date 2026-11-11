@@ -139,9 +139,9 @@ export function createRuntimeWorkSettlement(deps: SettlementDeps): RuntimeWorkSe
         deps.client.query({ type: "questionSnapshot", sessionIds }),
       ])
       const questionIds = new Set(questions.views.filter((entry) => entry.view !== null).map((entry) => entry.sessionId))
-      // Background work is pending exactly when the agent loop awaits it: a
-      // service does not hold completion, and the run's close ends it unless
-      // it was launched to persist. A question parks the model, not sibling
+      // Background work is pending exactly when the agent loop awaits it: every
+      // tracked command holds completion, and a command launched to persist is
+      // not tracked. A question parks the model, not sibling
       // commands in the same session, but a notification of ended work cannot
       // commit until the answer releases the turn, so it does not hold the question.
       const awaitedWork = (sessionId: string): number => {

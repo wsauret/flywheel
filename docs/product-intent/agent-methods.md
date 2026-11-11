@@ -264,7 +264,7 @@ A child that its parent or the runtime interrupted is not active work, so no wai
 
 ## PI-AGENT-080: Managed-work waits receive timed assessments
 
-Every agent wait on managed work, including background commands, services, subagents, and workflows, has a finite duration of at most one hour that the agent sets from its estimate of the remaining work. Without an estimate, a wait lasts at most four minutes. Completion or expiry wakes the agent once without ending the work, and an assessment that finds nothing to act on waits again without writing to the transcript. A wait that a restart or planned replacement cuts continues on the new runtime with its original deadline, without waking the agent.
+Every agent wait on managed work, including background commands, subagents, and workflows, has a finite duration of at most one hour that the agent sets from its estimate of the remaining work. Without an estimate, a wait lasts at most four minutes. Completion or expiry wakes the agent once without ending the work, and an assessment that finds nothing to act on waits again without writing to the transcript. A wait that a restart or planned replacement cuts continues on the new runtime with its original deadline, without waking the agent.
 
 ## PI-AGENT-081: A parent reads its child's progress without waking it
 
@@ -272,7 +272,7 @@ An agent can read the progress of its own child without waking it or sending it 
 
 ## PI-AGENT-026: A child hands off only after its background work ends
 
-A subagent or an agent of a workflow hands off only when none of its background work remains. No command that it started still runs, including a server or other service. No subagent or workflow that it started still runs or has a result that has not reached it. It waits for work that finishes on its own and stops a service before it hands off. A handoff that it tries earlier is refused, and the refusal names each item of work. While it waits on its background work, it is still working and never ends because of inactivity.
+A subagent or an agent of a workflow hands off only when none of its background work remains. No command, subagent, or workflow that it started still runs or has a result that has not reached it. It waits for work that finishes on its own and stops a command that does not, such as a server, before it hands off. A handoff that it tries earlier is refused, and the refusal names each item of work. While it waits on its background work, it is still working and never ends because of inactivity.
 
 ## PI-AGENT-027: A message to a workflow reaches the agents that it is for
 
@@ -360,15 +360,19 @@ A workflow agent, subagent, or headless task recovers from provider faults alone
 
 ## PI-AGENT-030: Headless chat uses standard input and output
 
-Headless chat behaves like interactive chat, with standard input and output replacing the graphical or terminal client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration, and its session keeps the quick title. It adds no provider filter, billing ceiling, or usage pause. Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
+Headless chat behaves like interactive chat, with standard input and output replacing the client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration, and its session keeps the quick title. It adds no provider filter, billing ceiling, or usage pause. Unattended runs skip usage-limit waits (PI-AGENT-128). Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
 An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, and questions. It keeps the skill methods that need no person, and leaves out each skill that a person answers or approves. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies. It also leaves out guidance for inspecting its own session records.
 
+## PI-AGENT-128: An unattended Agent Client Protocol run does not wait for model capacity
+
+No person can end a wait of an unattended one-shot Agent Client Protocol run, and the run has no deadline of its own. When no candidate can serve any agent of the run because each usage limit, quota, or credit is spent, that agent fails at once. The failure names the reset time that a provider stated, or says that no reset time is known. The agent waits out a rate limit or an outage, which clear by themselves (PI-AGENT-118). The prompt is answered with that failure, and the run publishes its evidence and ends.
+
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 
-Open input permits more turns, and closing input lets submitted work finish. In one-shot mode, the agent's final reply is its result, and the agent writes it once. A turn that ends while work the agent owns still runs waits for that work. A service that the agent keeps running, such as a server, is not such work: the run's exit ends it unless the agent launched it to persist (PI-AGENT-047). Otherwise the run completes and returns the final reply without an exit command or closed input, and the session stays available for resume.
+Open input permits more turns, and closing input lets submitted work finish. In one-shot mode, the agent's final reply is its result, and the agent writes it once. A turn that ends while work the agent owns still runs waits for that work. Only a command that the agent launched to persist after Flywheel exits (PI-AGENT-047) is not such work. Otherwise the run completes and returns the final reply without an exit command or closed input, and the session stays available for resume.
 
 ## PI-AGENT-075: Headless questions wait for the caller
 

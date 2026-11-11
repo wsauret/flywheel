@@ -28,7 +28,7 @@ import {
 import { commandIndexRecord, createBackgroundProcessTable, type BackgroundOutputRequest, type BackgroundProcessRecord, type BackgroundWorkOutput, type CommandExit } from "./background-work-processes.js";
 import type { ManagedCommand } from "./tools/managed-command.js";
 import type { BackgroundWorkProgress, WorkReference } from "./background-work-progress.js";
-import { backgroundHandoffBlock, awaitedWork as awaits, waitableWork as waitable, type HandoffBlock } from "./background-work-readiness.js";
+import { backgroundHandoffBlock, awaitedWork as awaits, type HandoffBlock } from "./background-work-readiness.js";
 import { backgroundWorkOutcome } from "./background-work-outcome.js";
 
 const log = Log.create({ service: "background-work" });
@@ -186,12 +186,6 @@ interface TrackArgs {
    *  command: no live command list shows it, and its result is its own
    *  notice, with no notice for an empty result. */
   wait?: true;
-  /** The task is a service that the agent started to keep running, such as
-   *  a server: a command launched with `background=true`. It does not hold
-   *  automatic completion, but an explicit process wait includes it. The
-   *  host's close ends it. A command that left its tool call still running is
-   *  finite work, not a service. */
-  service?: true;
   /** The managed command a background command task is: its log, its hard
    *  deadline, and, while it runs and this host owns it, what a planned
    *  replacement's close hands to the next build. Its process record keeps
@@ -292,8 +286,8 @@ interface ChatRegistry extends TaskLifecycle, SettledNotificationFlush {
 interface WorkflowRegistry extends TaskLifecycle, SettledNotificationFlush {
   kind: "workflow";
   track(args: TrackArgs): TrackHandle;
-  /** Returns owned work that is still active, including a running service,
-   *  or whose result has not reached the model; null only when handoff can
+  /** Returns owned work that is still active, including a running background
+   *  command, or whose result has not reached the model; null only when handoff can
    *  safely terminate this runner. A child that the parent agent or the
    *  runtime interrupted is not active work, so it never blocks a handoff. */
   assertHandoffReady(): HandoffBlock | null;
@@ -303,12 +297,6 @@ export type BackgroundWorkRegistry = ChatRegistry | WorkflowRegistry;
 
 /** The host surface that admits child work without exposing registry lifecycle controls. */
 export type BackgroundWorkTracking = Pick<BackgroundWorkRegistry, "track" | "detach" | "processRecord" | "liveWorkReferences" | "awaitedTaskCount" | "pendingDeliveryCount" | "observeWorkChanges" | "deliverDurableSubagentNotification" | "ownsNotification">;
-
-/** Whether a handoff block waits for result delivery. Services alone require
- *  cleanup, not an automatic park; explicit process waits include them. */
-export function awaitsWork(block: HandoffBlock | null | undefined): boolean {
-  return block ? block.active + block.pending > 0 : false;
-}
 
 interface ActiveEntry {
   meta: BackgroundWorkMeta;
@@ -322,7 +310,6 @@ interface ActiveEntry {
   startedAtMs: number;
   hostClose: "detach" | undefined;
   wait: boolean;
-  service: boolean;
   /** Who asked for the stop that is under way, or undefined while none is.
    *  `requestStop` is its one writer. It names a stopped command's outcome,
    *  and the task's process record reads it as `stopping`. */
@@ -455,7 +442,6 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       startedAtMs: args.startedAtMs ?? Date.now(),
       hostClose: args.hostClose,
       wait: args.wait === true,
-      service: args.service === true,
       stopRequestedBy: undefined,
       suppressNotification: false,
       stallTimer: null,
@@ -825,7 +811,6 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
   const lifecycle: TaskLifecycle = {
     activeSubagentCount,
     activeTaskCount: () => { const work = outstanding(); return work.live.length + work.pending.length; },
-    waitableTaskCount: () => { const work = outstanding(); return work.live.filter(waitable).length + work.pending.length; },
     awaitedTaskCount: () => { const work = outstanding(); return work.live.filter(awaits).length + work.pending.length; },
     pendingDeliveryCount: () => outstanding().pending.length,
     liveWorkReferences,

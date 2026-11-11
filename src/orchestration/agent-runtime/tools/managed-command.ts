@@ -43,9 +43,6 @@ interface ManagedCommandInput {
   readonly heldTime?: HeldTime;
   readonly identity: ToolCallIdentity & { readonly toolUseId?: string };
   readonly registry?: BackgroundWorkRegistry;
-  /** The command is a service the agent launched to keep running, which the
-   *  registry tracks as one. */
-  readonly service?: true;
   readonly emitLiveTail?: (text: string) => void;
   readonly tailStopSignal?: AbortSignal;
   readonly executionOutputThrottleMs: number;
@@ -327,7 +324,6 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
           meta,
           startedAtMs,
           command,
-          ...(input.service ? { service: true as const } : {}),
           // A command this owner only observes belongs to its supervisor, so
           // host teardown drops the observer without waiting for its end. An
           // owned one is this host's to stop and to hand over.

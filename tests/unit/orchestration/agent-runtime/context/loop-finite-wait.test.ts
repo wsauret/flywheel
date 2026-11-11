@@ -75,14 +75,13 @@ describe("finite managed waits", () => {
   });
 
   /** Runs a loop that restarts with `input` queued, the restored or
-   *  continued wait `wait`, and one pending command, a service when
-   *  `service`; returns its first park after a text answer and the expiries
-   *  it armed. */
-  async function restartedRun(kind: "root" | "workflow", wait: { readonly restoredWait?: RestoredAgentWait; readonly continuedWait?: RestoredAgentWait }, queue: (source: ChatTurnMailbox | WorkflowInjectionQueue) => void, service = false) {
+   *  continued wait `wait`, and one pending background command; returns its
+   *  first park after a text answer and the expiries it armed. */
+  async function restartedRun(kind: "root" | "workflow", wait: { readonly restoredWait?: RestoredAgentWait; readonly continuedWait?: RestoredAgentWait }, queue: (source: ChatTurnMailbox | WorkflowInjectionQueue) => void) {
     const inputSource = kind === "root" ? new ChatTurnMailbox() : new WorkflowInjectionQueue();
     const stop = new AbortController();
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => inputSource.enqueueRuntimeNotice(text) });
-    registry.track({ done: new Promise<BackgroundWorkResult>(() => {}), ...(service ? { service: true } : {}), meta: { id: "pending", type: "background_command", description: "pending" } });
+    registry.track({ done: new Promise<BackgroundWorkResult>(() => {}), meta: { id: "pending", type: "background_command", description: "pending" } });
     queue(inputSource);
     const { client, capturedMessages } = makeCaptureClient([{ events: said("Noted.") }, { events: said("Still pending.") }]);
     const parks: { park: string; waitRequested: boolean }[] = [];
@@ -121,19 +120,20 @@ describe("finite managed waits", () => {
 
   // The input that owes the request is already in the restored history, so
   // nothing is queued; only the restore reader's evidence says the request is owed.
-  test.each((["root", "workflow"] as const).map((kind) => ({ kind })))("a restored wait on a service in a $kind loop answers the input it owes, then parks waiting on the original deadline", async ({ kind }) => {
-    const r = await restartedRun(kind, { restoredWait: { expiry: { seconds: 60, deadlineMs: Date.now() + 60_000 }, replyWaitIds: [], requestOwed: true } }, () => {}, true);
+  test.each((["root", "workflow"] as const).map((kind) => ({ kind })))("a restored wait on a background command in a $kind loop answers the input it owes, then parks waiting on the original deadline", async ({ kind }) => {
+    const r = await restartedRun(kind, { restoredWait: { expiry: { seconds: 60, deadlineMs: Date.now() + 60_000 }, replyWaitIds: [], requestOwed: true } }, () => {});
     expect(r.requests).toBe(1);
     expect(r.parks[0]).toEqual({ park: "waiting_on_work", waitRequested: true });
     expect(r.expiries).toHaveLength(1);
     expect(r.expiries[0]).toBeCloseTo(60, 0);
   });
 
-  test("a restored wait that the owed input woke answers that input and opens no wait on a service", async () => {
-    const r = await restartedRun("root", { restoredWait: { expiry: { seconds: 60, deadlineMs: Date.now() + 60_000 }, replyWaitIds: [], requestOwed: true, woken: true } }, () => {}, true);
-    expect(r.requests).toBe(1);
-    expect(r.parks[0]).toEqual({ park: "idle", waitRequested: false });
-    expect(r.expiries).toEqual([]);
+  test("a restored wait that the owed input woke answers that input without the old deadline, and the command that still runs gets the pending-work nudge and the default wait", async () => {
+    const r = await restartedRun("root", { restoredWait: { expiry: { seconds: 60, deadlineMs: Date.now() + 60_000 }, replyWaitIds: [], requestOwed: true, woken: true } }, () => {});
+    expect(r.requests).toBe(2);
+    expect(r.parks[0]).toEqual({ park: "waiting_on_work", waitRequested: true });
+    expect(r.expiries).toHaveLength(1);
+    expect(r.expiries[0]).toBeCloseTo(DEFAULT_WAIT_SECONDS, 0);
   });
 
   test.each([
@@ -208,14 +208,14 @@ describe("finite managed waits", () => {
     expect(registry.awaitedTaskCount()).toBe(0);
   });
 
-  test.each(["root", "subagent", "workflow"] as const)("an explicit wait includes a background service but not a child that its parent interrupted, expires, and rewaits for completion in a %s loop", async (kind) => {
+  test.each(["root", "subagent", "workflow"] as const)("an explicit wait includes a background command but not a child that its parent interrupted, expires, and rewaits for completion in a %s loop", async (kind) => {
     const inputSource = kind === "root" ? new ChatTurnMailbox() : new WorkflowInjectionQueue();
     const task = Promise.withResolvers<BackgroundWorkResult>();
     const enqueueNotification = (text: string) => inputSource.enqueueRuntimeNotice(text);
     const registry = kind === "root"
       ? createBackgroundWorkRegistry({ kind: "chat", enqueueNotification })
       : createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification });
-    registry.track({ done: task.promise, service: true, meta: { id: "background-build", type: "background_command", description: "build" } });
+    registry.track({ done: task.promise, meta: { id: "background-build", type: "background_command", description: "build" } });
     registry.track({
       done: new Promise<never>(() => {}),
       meta: { id: "interrupted-child", type: "workflow", description: "paused" },
@@ -333,8 +333,8 @@ interface OpenWaitWorld {
   interrupt(): void;
 }
 
-/** Runs a chat loop over real background work with one service already
- *  running. Each park runs the next arrival of `atParks`; the first park
+/** Runs a chat loop over real background work with one background command
+ *  already running. Each park runs the next arrival of `atParks`; the first park
  *  without one ends the run. `expire` names the armed expiries, by order,
  *  that fire at once. */
 async function openWaitRun(input: {
@@ -350,7 +350,7 @@ async function openWaitRun(input: {
   const commands: PromiseWithResolvers<BackgroundWorkResult>[] = [];
   const track = () => {
     const command = Promise.withResolvers<BackgroundWorkResult>();
-    registry.track({ done: command.promise, service: true, kill: { run: () => { command.resolve({ status: "completed", content: "stopped" }); } }, meta: { id: `bash-bg-${commands.length}`, type: "background_command", description: "watch", notificationKey: `command:bash-bg-${commands.length}` } });
+    registry.track({ done: command.promise, kill: { run: () => { command.resolve({ status: "completed", content: "stopped" }); } }, meta: { id: `bash-bg-${commands.length}`, type: "background_command", description: "watch", notificationKey: `command:bash-bg-${commands.length}` } });
     commands.push(command);
   };
   track();
@@ -410,6 +410,16 @@ async function openWaitRun(input: {
 const WAITING = { park: "waiting_on_work", waitRequested: true };
 const nudged = (request: string | undefined) => request?.includes(JSON.stringify(SILENT_REPLY_NUDGE)) === true;
 
+describe("a running background command keeps the session working", () => {
+  test("a text-only turn end over a running background command gets the pending-work reminder, then parks waiting on the command", async () => {
+    const r = await openWaitRun({ responses: [said("Started the benchmark.")], atParks: [] });
+    expect(r.requests[1]).toContain("Managed work is still pending");
+    expect(r.parks[0]).toMatchObject({ ...WAITING, active: 1, afterRequest: 2 });
+    expect(r.expiries).toHaveLength(1);
+    expect(r.expiries[0]).toBeCloseTo(DEFAULT_WAIT_SECONDS, 0);
+  });
+});
+
 describe("an open wait outlives every request that only re-drives the turn", () => {
   test("a background notification owes a reply, the agent launches a command and waits 3600 s with no text, the nudge draws a text reply: the turn parks waiting, and the completion continues the same turn", async () => {
     const r = await openWaitRun({
@@ -420,11 +430,13 @@ describe("an open wait outlives every request that only re-drives the turn", () 
     });
     expect(nudged(r.requests[1])).toBe(true);
     expect(r.parks[0]).toMatchObject({ ...WAITING, active: 2, afterRequest: 2 });
-    expect(r.expiries).toHaveLength(1);
     expect(r.expiries[0]).toBeCloseTo(3600, 0);
     // The completion wakes the waiting park, so it continues the turn
     // instead of opening one from an idle park.
     expect(r.requests[2]).toContain("background_command_notification");
+    // The first command still runs, so the turn waits on it again.
+    expect(r.parks[1]).toMatchObject({ ...WAITING, active: 1 });
+    expect(r.expiries).toHaveLength(2);
   });
 
   test("a nudged reply that calls a tool without a wait keeps the wait to the turn's end", async () => {
@@ -484,19 +496,23 @@ describe("what ends an open wait", () => {
     { ending: "a person's message", responses: [WAIT, said("Going well.")], arrive: (world: OpenWaitWorld) => { world.mailbox.enqueueNextTurn("How is it going?"); }, armed: 1 },
     { ending: "a person's Resume", responses: [WAIT, said("Continuing.")], arrive: (world: OpenWaitWorld) => { world.mailbox.enqueueResume(); }, armed: 1 },
     { ending: "a background notification while other work still runs", responses: [LAUNCH_WAIT, said("One ended.")], arrive: (world: OpenWaitWorld) => { world.finish(1); }, armed: 1 },
-  ])("$ending wakes the wait, and the text reply after it parks idle", async ({ responses, arrive, armed }) => {
+  ])("$ending wakes the wait; the text reply after it gets the pending-work nudge, then a fresh default wait on the command that still runs", async ({ responses, arrive, armed }) => {
     const r = await openWaitRun({ responses, atParks: [arrive] });
     expect(r.parks[0]).toMatchObject(WAITING);
-    expect(r.parks[1]).toMatchObject({ ...IDLE, afterRequest: 2 });
-    expect(r.expiries).toHaveLength(armed);
+    expect(r.requests[2]).toContain("Managed work is still pending");
+    expect(r.parks[1]).toMatchObject({ ...WAITING, active: 1, afterRequest: 3 });
+    expect(r.expiries).toHaveLength(armed + 1);
+    expect(r.expiries[armed]).toBeCloseTo(DEFAULT_WAIT_SECONDS, 0);
   });
 
-  test("expiry ends it: the reply to the expiry notice parks idle and arms nothing", async () => {
+  test("expiry ends it: the reply to the expiry notice gets the pending-work nudge, then a fresh default wait on the command that still runs", async () => {
     const r = await openWaitRun({ responses: [WAIT, said("Still running.")], atParks: [() => {}], expire: [1] });
     expect(r.requests[1]).toContain("wait_expired");
     expect(r.parks[0]).toMatchObject(WAITING);
-    expect(r.parks[1]).toMatchObject({ ...IDLE, afterRequest: 2 });
-    expect(r.expiries).toHaveLength(1);
+    expect(r.requests[2]).toContain("Managed work is still pending");
+    expect(r.parks[1]).toMatchObject({ ...WAITING, active: 1, afterRequest: 3 });
+    expect(r.expiries).toHaveLength(2);
+    expect(r.expiries[1]).toBeCloseTo(DEFAULT_WAIT_SECONDS, 0);
   });
 
   test("an interrupt ends it: the interrupted park reports no open wait", async () => {
@@ -514,7 +530,7 @@ describe("what ends an open wait", () => {
     expect(r.expiries[1]).toBeCloseTo(180, 0);
   });
 
-  test("no waitable work left ends it: after the agent stops the work it waited on, the turn parks idle and arms nothing", async () => {
+  test("no awaited work left ends it: after the agent stops the work it waited on, the turn parks idle and arms nothing", async () => {
     const r = await openWaitRun({
       responses: [WAIT, batch(call("stop-0", "process", { action: "stop", process_id: "bash-bg-0" })), said("Stopped the watch.")],
       atParks: [(world) => { world.mailbox.enqueueSilentSystem("<skill_recommendation>runtime data</skill_recommendation>"); }],

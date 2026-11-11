@@ -472,22 +472,18 @@ describe("agent loop wait settlement", () => {
     expect(parkCount).toBe(1);
   });
 
-  test.each([
-    { service: false, parks: 1, running: 0 },
-    { service: true, parks: 0, running: 1 },
-  ])("a turn that completes on idle requests an estimated wait before a command settles, but completes over a running service (service: $service)", async ({ service, parks, running }) => {
+  test("a turn that completes on idle requests an estimated wait before a background command settles, a server included", async () => {
     // A post-workflow follow-up completes on idle, and its host closes its
-    // background owner once the turn completes. A command must have ended by
-    // then, so a close in a planned replacement's stop never meets a command
-    // whose turn ended normally. A service the agent started to keep running
-    // owes the run no result, so the run completes and the close ends it.
+    // background owner once the turn completes. A command, a server
+    // included, must have ended by then, so a close in a planned
+    // replacement's stop never meets a command whose turn ended normally.
     const client = makeFakeLLMClient([
       { events: [{ kind: "tool_use", toolCall: { id: "tc_1", name: "start", input: {} } }, { kind: "done", stopReason: "tool_use" }] },
       { events: [{ kind: "text_delta", text: "The server runs.", blockKey: "text" }, { kind: "done", stopReason: "end_turn" }] },
-      ...(!service ? [{ events: [
+      { events: [
         { kind: "tool_use" as const, toolCall: { id: "tc_wait", name: "process", input: { action: "wait", soft_timeout: 30 } } },
         { kind: "done" as const, stopReason: "tool_use" as const },
-      ] }] : []),
+      ] },
       { events: [{ kind: "text_delta" as const, text: "The server finished.", blockKey: "text" }, { kind: "done" as const, stopReason: "end_turn" as const }] },
     ]);
     const queued: ReturnType<typeof messageInput>[] = [];
@@ -507,7 +503,7 @@ describe("agent loop wait settlement", () => {
       inputSchema: { type: "object" },
       isConcurrencySafe: true,
       execute: async () => {
-        registry.track({ done: command.promise, meta: { id: "bg_1", type: "background_command", description: "server" }, ...(service ? { service: true as const } : {}) });
+        registry.track({ done: command.promise, meta: { id: "bg_1", type: "background_command", description: "server" } });
         return { content: "Running in background as managed process bg_1.", outcome: "ok" };
       },
     };
@@ -544,13 +540,13 @@ describe("agent loop wait settlement", () => {
     });
 
     expect(result.kind).toBe("completed");
-    expect(parkCount).toBe(parks);
-    expect(registry.activeTaskCount()).toBe(running);
+    expect(parkCount).toBe(1);
+    expect(registry.activeTaskCount()).toBe(0);
   });
 
-  test("a step that ends its turn over a running service gets the handoff nudge instead of parking, and hands off only after it stops the service", async () => {
+  test("a step that ends its turn over a running background server gets the pending-work nudge instead of parking idle, and hands off only after it stops the server", async () => {
     const call = (id: string, name: string, input: { [key: string]: unknown }) => ({ events: [{ kind: "tool_use" as const, toolCall: { id, name, input } }, { kind: "done" as const, stopReason: "tool_use" as const }] });
-    const client = makeFakeLLMClient([
+    const { client, capturedMessages } = makeCaptureClient([
       call("tc_1", "start", {}),
       { events: [{ kind: "text_delta", text: "The server runs.", blockKey: "text" }, { kind: "done", stopReason: "end_turn" }] },
       call("tc_2", "handoff", { summary: "early" }),
@@ -560,11 +556,11 @@ describe("agent loop wait settlement", () => {
     ]);
     const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
     const server = Promise.withResolvers<BackgroundWorkResult>();
-    const start: RuntimeTool = { name: "start", action: "shell_exec", description: "starts a service", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
-      registry.track({ done: server.promise, meta: { id: "bg_1", type: "background_command", description: "server" }, service: true });
+    const start: RuntimeTool = { name: "start", action: "shell_exec", description: "starts a server", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
+      registry.track({ done: server.promise, meta: { id: "bg_1", type: "background_command", description: "server" } });
       return { content: "Running in background as managed process bg_1.", outcome: "ok" };
     } };
-    const stop: RuntimeTool = { name: "stop", action: "shell_exec", description: "stops the service", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
+    const stop: RuntimeTool = { name: "stop", action: "shell_exec", description: "stops the server", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
       server.resolve({ status: "cancelled", content: "" });
       await new Promise((resolve) => setTimeout(resolve, 0));
       return { content: "Stopped process bg_1.", outcome: "ok" };
@@ -582,6 +578,8 @@ describe("agent loop wait settlement", () => {
 
     expect(result.kind).toBe("completed");
     expect(parkCount).toBe(0);
+    expect(JSON.stringify(capturedMessages[2])).toContain("Managed work is still pending");
+    expect(JSON.stringify(capturedMessages[3])).toContain("Still running: server");
     expect(handedOff).toEqual([{ summary: "served" }]);
     expect(registry.activeTaskCount()).toBe(0);
   });

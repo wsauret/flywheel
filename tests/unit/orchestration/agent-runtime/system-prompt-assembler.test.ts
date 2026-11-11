@@ -508,9 +508,9 @@ describe("renderCommunicationBlock", () => {
     expect(withTool).not.toContain("ask_user");
     expect(withTool).not.toContain("so that the user can reply with a single number");
     expect(withTool).toContain("8. Ground every claim");
-    expect(withTool).toContain("11. Explain designs");
+    expect(withTool).toContain("14. Explain designs");
     expect(without).toContain("8. Use numbered lists when offering options");
-    expect(without).toContain("12. Explain designs");
+    expect(without).toContain("15. Explain designs");
   });
 
   it("points a challenge to the design skill only while that skill can load", () => {
@@ -646,7 +646,7 @@ describe("bash background-execution guidance", () => {
     expect(unattended("linux")).toContain("A foreground command moves to managed execution when it reaches the runtime cap; wait for it with the process tool.");
     expect(unattended("linux")).not.toContain("Detach");
     // The surviving sentences are unchanged.
-    for (const text of ["Chain dependent commands with && or ; in one call. Set background: true only", "Stop a process by its process-tool id or exact PID", "stop after 30s of processing time"]) expect(unattended("linux")).toContain(text);
+    for (const text of ["Chain dependent commands with && or ; in one call. Set background: true for a long command", "Stop a process by its process-tool id or exact PID", "stop after 30s of processing time"]) expect(unattended("linux")).toContain(text);
   });
 });
 

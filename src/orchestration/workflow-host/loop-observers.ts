@@ -18,7 +18,7 @@ import type {
 } from "../../infra/agent-loop-events.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import { Log } from "../../infra/log.js";
-import { awaitsWork, type BackgroundWorkRegistry } from "../agent-runtime/background-work.js";
+import type { BackgroundWorkRegistry } from "../agent-runtime/background-work.js";
 import { HandoffCorrectionExhausted } from "../agent-runtime/errors.js";
 import type { WorkflowInjectionQueue } from "./injection-queue.js";
 
@@ -109,9 +109,8 @@ export function createWorkflowLoopObservers(
       if (ctx.handoffWritten) return;
 
       // Suppress the handoff watchdog while work that will wake this run is
-      // pending. A running service wakes nothing, so the watchdog still asks
-      // for the handoff, whose refusal tells the agent to stop the service.
-      if (awaitsWork(backgroundTasks?.assertHandoffReady())) return;
+      // pending.
+      if (backgroundTasks?.assertHandoffReady()) return;
 
       if (handoffObserver.onTurnEnded(ctx) === "exhausted") {
         log.info("workflow agent stopped without a handoff after its reminders", { sessionId, reminders: handoffObserver.reminders, turnCount: ctx.turnCount });

@@ -339,16 +339,16 @@ describe("bash tool: background artifact paths", () => {
 });
 
 describe("bash tool: background launch reply", () => {
-  it("states that the launch ends with the runtime, names its stop handle, and names persistence only where the agent can use it", async () => {
+  it("states that the launch keeps the session working and ends with the runtime, names its stop handle, and names persistence only where the agent can use it", async () => {
     const reply = async (persistentProcesses: boolean): Promise<string> => {
       const result = await createBashDefinition({ operations: makeMockOps(), persistentProcesses }).execute({ command: "bun server.ts", background: true }, backgroundContext({ executionCwd: "/mock", spawnOwned: ownedSpawnProbe().spawnOwned }));
       if (typeof result.content !== "string") throw new Error("bash answers with text");
       return result.content;
     };
-    const stop = /It ends when the runtime exits\. Stop it with process action stop and process_id (bash-bg-\w+) \(PID \d+\), not with a pattern kill\./;
+    const stop = /It keeps this session working until it ends or you stop it, and it ends when the runtime exits\. Stop it with process action stop and process_id (bash-bg-\w+) \(PID \d+\), not with a pattern kill\./;
     const persistent = await reply(true);
     expect(persistent).toMatch(stop);
-    expect(persistent).toEndWith("not with a pattern kill. If it must outlive the runtime, stop it and wait for its confirmed exit, then launch it again with persist_after_exit=true.");
+    expect(persistent).toEndWith("not with a pattern kill. If it is a server that must keep running after you stop waiting, stop it and wait for its confirmed exit, then launch it again with persist_after_exit=true.");
     expect(persistent).toContain(`Running in background as managed process ${stop.exec(persistent)![1]}.`);
     const plain = await reply(false);
     expect(plain).toMatch(stop);

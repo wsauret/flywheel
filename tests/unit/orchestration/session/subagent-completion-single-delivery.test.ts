@@ -282,7 +282,7 @@ describe("subagent completion delivery", () => {
     })
     await treeWriter.flushSavePoint()
     expect(registry.assertHandoffReady()).toBeNull()
-    expect([registry.activeTaskCount(), registry.waitableTaskCount(), registry.awaitedTaskCount()]).toEqual([0, 0, 0])
+    expect([registry.activeTaskCount(), registry.awaitedTaskCount()]).toEqual([0, 0])
     expect(queue.drainPending()).toBeNull()
     unregister()
     await treeWriter.dispose()

@@ -10,7 +10,7 @@ import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
 import { createAgentHost } from "../../../runner/host.js";
 import { AgentTurnAborted } from "../../../runner/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
-import { awaitsWork, type BackgroundWorkResult, type EndedWorkResult } from "../../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work.js";
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import { createChildBackgroundExecution } from "./child-background.js";
 import { isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js";
@@ -200,6 +200,7 @@ export function createChildExecution(options: {
     sessionId: childSessionId,
     runId: childRunId,
     caller: "subagent",
+    unattendedRun: capabilityAccess.unattended === true,
     agentName: agentType,
     holdAlive: startStallKeepAlive,
     onNotice: (operation) => { published.emit("agent.notice.changed", { sessionId: childSessionId, data: { operation } }); },
@@ -228,7 +229,6 @@ export function createChildExecution(options: {
   // its addressee replies, yields, or can no longer read, and a park of the
   // addressee on this child's run alone is a yield.
   let stopReplyWaitKeepAlive: (() => void) | undefined;
-  let stopWorkWaitKeepAlive: (() => void) | undefined;
   const stopObservingReplyWaits = observeOpenReplyWaits(published.projectionReader, childSessionId, (open) => {
     if (open) stopReplyWaitKeepAlive ??= startStallKeepAlive();
     else {
@@ -340,16 +340,10 @@ export function createChildExecution(options: {
       },
       onTurnParked: async (ctx) => {
         runInputs.parked(ctx.park);
-        // A park on work waits for its result or its wait's expiry. A command
-        // launched in the background is a service, which the awaited count
-        // leaves out, so the park itself holds the keep-alive.
-        if (ctx.park === "waiting_on_work") stopWorkWaitKeepAlive ??= startStallKeepAlive();
         await published.projection?.lifecycle.onTurnParked?.(ctx);
       },
       onHandoffStarted: () => { if (runInputs.handoffStarted()) log.info("subagent handoff admission closed", { childSessionId, childRunId }); },
       onTurnResumed: () => {
-        stopWorkWaitKeepAlive?.();
-        stopWorkWaitKeepAlive = undefined;
         runInputs.resumed();
         published.projection?.lifecycle.onTurnResumed?.();
       },
@@ -365,7 +359,7 @@ export function createChildExecution(options: {
       signal: context.signal,
       inputSource: injectionQueue,
       onTurnEnded: (ctx) => {
-        if (awaitsWork(childBackground.owner.tasks.assertHandoffReady())) return;
+        if (childBackground.owner.tasks.assertHandoffReady()) return;
         handoffObserver.onTurnEnded(ctx);
       },
     },
@@ -707,7 +701,6 @@ export function createChildExecution(options: {
       inFlightToolIds.clear();
       stopObservingReplyWaits();
       stopReplyWaitKeepAlive?.();
-      stopWorkWaitKeepAlive?.();
       stopLoginWaitKeepAlive?.();
       stopLoginWaitKeepAlive = undefined;
       await published.settle();

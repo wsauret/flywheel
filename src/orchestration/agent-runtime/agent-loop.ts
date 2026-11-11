@@ -196,13 +196,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     if (interrupted) return await interrupted;
     if (pending === "continue") return "continue";
     closeSpentWait();
-    if (!state.wait && hasLiveBackgroundWork(options.background?.tasks, false) && options.inputSource?.prepareWaitForInput) {
+    if (!state.wait && hasLiveBackgroundWork(options.background?.tasks) && options.inputSource?.prepareWaitForInput) {
       const runtimeWaitSeconds = await pendingWorkNudge.turnEndedWithoutWait(state.turn);
       if (runtimeWaitSeconds === undefined) return "continue";
       state = loopTransition.waitOpened(state, openWaitFor(runtimeWaitSeconds));
     }
     // Completion incorporates every settled result.
-    if (closureMode === "oneshot" && hasLiveBackgroundWork(options.background?.tasks, state.wait !== undefined) && options.inputSource?.prepareWaitForInput) {
+    if (closureMode === "oneshot" && hasLiveBackgroundWork(options.background?.tasks) && options.inputSource?.prepareWaitForInput) {
       if ((await awaitNextLoopInput(true, waitSignal)) === "continue") return "continue";
       return inputClosedTerminal(signal?.aborted);
     }
@@ -222,7 +222,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       if (options.completeOnIdle?.seal?.(finalReplyText(preparation.messages)) === false) return (await awaitNextLoopInput(false, waitSignal)) === "continue" ? "continue" : inputClosedTerminal(signal?.aborted);
       return { kind: "completed" };
     }
-    const reminder = missingHandoffReminder(closureMode, options.inputSource?.prepareWaitForInput !== undefined, hasLiveBackgroundWork(options.background?.tasks, state.wait !== undefined), surface.current().tools);
+    const reminder = missingHandoffReminder(closureMode, options.inputSource?.prepareWaitForInput !== undefined, hasLiveBackgroundWork(options.background?.tasks), surface.current().tools);
     if (reminder) {
       log.warn("turn ended without a handoff; injecting a reminder instead of parking", { turnCount: state.turn, providerSessionKey: options.providerSessionKey });
       await pushUser(reminder);
@@ -231,11 +231,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     if ((await awaitNextLoopInput(state.wait !== undefined, waitSignal)) === "continue") return "continue";
     return inputClosedTerminal(signal?.aborted);
   };
-  // An open wait with no waitable work left has nothing to wake it: an
+  // An open wait with no awaited work left has nothing to wake it: an
   // interrupt of the agent's own child, for one, ends that work without a
-  // notification (`waitableWork`). It ends here instead of parking.
+  // notification (`awaitedWork`). It ends here instead of parking.
   const closeSpentWait = (): void => {
-    if (state.wait && (options.background?.tasks.waitableTaskCount() ?? 0) === 0) state = loopTransition.waitClosed(state);
+    if (state.wait && !hasLiveBackgroundWork(options.background?.tasks)) state = loopTransition.waitClosed(state);
   };
   const meetOpenWait = (input: OpenWaitInput): void => {
     if (state.wait && endsOpenWait(input, state.wait.replyWaitIds, (id) => options.background?.tasks.holdsWait(id) === true)) state = loopTransition.waitClosed(state);
@@ -274,7 +274,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // implementations are classes whose enqueue methods read `this`.
   const enqueueRuntimeNotice = (text: string) => options.inputSource?.enqueueRuntimeNotice?.(text);
   const batchObservation = createSettledBatchObservation(createWaitToolPolicy(
-    () => (options.background?.tasks.waitableTaskCount() ?? 0) > 0,
+    () => hasLiveBackgroundWork(options.background?.tasks),
     (seconds, replyWaitIds) => { pendingWorkNudge.reset(); state = loopTransition.waitOpened(state, openWaitFor(seconds, replyWaitIds)); },
     enqueueRuntimeNotice,
     (toolUseId) => options.background?.tasks.holdsWait(toolUseId) === true,

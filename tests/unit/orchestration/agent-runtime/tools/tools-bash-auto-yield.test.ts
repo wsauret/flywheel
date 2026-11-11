@@ -95,7 +95,7 @@ describe("bash automatic yield", () => {
     exit.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" });
   });
 
-  it("tracks an explicit background launch as a service that a bounded run does not await", async () => {
+  it("tracks an explicit background launch, a server included, as owed work that a bounded run awaits", async () => {
     const exit = deferred<OwnedExit>();
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ pid: 8081, exited: exit.promise }));
@@ -112,13 +112,13 @@ describe("bash automatic yield", () => {
 
     const result = await def.execute({ command: "python3 server.py", background: true }, backgroundContext({
       backgroundTasks: registry,
-      toolUseId: "toolu_service",
+      toolUseId: "toolu_server",
       spawnOwned: spawn.spawnOwned,
     }));
 
     expect(result.details).toMatchObject({ background: true });
     expect(registry.activeTaskCount()).toBe(1);
-    expect(registry.awaitedTaskCount()).toBe(0);
+    expect(registry.awaitedTaskCount()).toBe(1);
     exit.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" });
     await waitUntil(() => registry.activeTaskCount() === 0);
   });

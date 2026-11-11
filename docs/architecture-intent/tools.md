@@ -152,9 +152,9 @@ A launcher scope closes with the owner that opened it, ends every container it s
 A foreground shell command stays in its tool call until it settles, the person detaches that exact call, a planned replacement moves it, it reaches the foreground hold cap, or the turn aborts. Registration with the session registry is the ownership linearization point: before it, a turn abort ends the container, and after it, the session owns the process, its readers, and its result. A process that settles first completes as a foreground call and never becomes background work, and the transcript's controls follow the current owner.
 Not: Implicit detachment as a consequence of a tool returning.
 
-## ARCH-TOOLS-031: A background command is a service, not owed completion
+## ARCH-TOOLS-031: A background command is owed work
 
-A command launched in the background transfers to the session registry at once and does not hold the completion of a bounded run, while the close of its scope ends it like any owned work. An agent that must hand off cannot do so while a service it started still runs. A wait on managed work parks on every live process of the session.
+A command launched in the background transfers to the session registry at once and is owed work until it ends. The turn's park, the pending-work reminder, a bounded run's completion, and handoff readiness all wait for it. Every tracked command is owed. A command that must run on after the agent stops waiting persists after Flywheel exits, untracked. The close of its scope ends a background command like any owned work.
 
 ## ARCH-TOOLS-033: An explicit timeout is a hard deadline across every transfer
 

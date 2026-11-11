@@ -111,8 +111,7 @@ export function createHandoffTracker(options?: {
 function blockedHandoffMessage(block: HandoffBlock): string {
   const lines = ["handoff blocked: owned background work is still running or its result has not reached this conversation."];
   if (block.pending > 0) lines.push(`Results still owed: ${block.pendingDescriptions.join("; ")}. Wait for their delivery before handoff.`);
-  if (block.active > 0) lines.push(`Still running: ${block.activeDescriptions.join("; ")}. Wait for it or stop it before handoff.`);
-  if (block.services > 0) lines.push(`Running services you started: ${block.serviceDescriptions.join("; ")}. Stop each service with the process tool before handoff.`);
+  if (block.active > 0) lines.push(`Still running: ${block.activeDescriptions.join("; ")}. Wait for each to end, or stop it with the process tool, before handoff.`);
   lines.push("Then call handoff again.");
   return lines.join("\n");
 }

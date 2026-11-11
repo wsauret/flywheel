@@ -304,8 +304,6 @@ export async function runManagedShell(options: ManagedShellExecutionOptions & Cl
     heldTime,
     identity: { ...(toolUseId ? { toolUseId } : {}), ...toolCallIdentity(context) },
     ...(registry ? { registry } : {}),
-    // Only a server or service runs in the background from its launch.
-    ...(foreground ? {} : { service: true as const }),
     ...(registry && toolUseId
       ? { emitLiveTail: (text: string) => registry.streamExecutionOutput(toolUseId, text, toolCallIdentity(context)) }
       : context.onExecutionOutput ? { emitLiveTail: context.onExecutionOutput } : {}),
@@ -385,9 +383,10 @@ export async function runManagedShell(options: ManagedShellExecutionOptions & Cl
       // slow, so the agent learns how long the wait can be (PI-AGENT-052).
       ...(hold ? [`It waits for processor time, with ${hold.ahead} ${hold.ahead === 1 ? "command" : "commands"} ahead of it.`] : []),
       "A background_command_notification with the exit code and log tail will arrive when it exits.",
-      // A server that dies with the runtime, or a pattern kill that also
-      // matches the runtime's own command line, ends work the agent needs.
-      `It ends when the runtime exits. Stop it with process action stop and process_id ${processId} (PID ${owned.pid}), not with a pattern kill.${options.persistable && !releaseReason ? " If it must outlive the runtime, stop it and wait for its confirmed exit, then launch it again with persist_after_exit=true." : ""}`,
+      // The session waits on every tracked command (ARCH-TOOLS-031). A server
+      // that dies with the runtime, or a pattern kill that also matches the
+      // runtime's own command line, ends work the agent needs.
+      `It keeps this session working until it ends or you stop it, and it ends when the runtime exits. Stop it with process action stop and process_id ${processId} (PID ${owned.pid}), not with a pattern kill.${options.persistable && !releaseReason ? " If it is a server that must keep running after you stop waiting, stop it and wait for its confirmed exit, then launch it again with persist_after_exit=true." : ""}`,
     ].join("\n"),
     outcome: "ok",
     details: releaseReason ? { background: true, durationMs: Date.now() - startedAtMs, releaseReason } : { background: true },

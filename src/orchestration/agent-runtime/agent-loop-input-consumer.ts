@@ -121,7 +121,7 @@ interface LoopInputWaiter {
   /** Ends the loop's open wait at its expiry. */
   closeWait?(): void;
   /** The run's background tasks: what a park delivers and what it waits on. */
-  readonly backgroundTasks?: Pick<BackgroundWorkRegistry, "flushSettledNotifications" | "waitableTaskCount" | "awaitedTaskCount"> & Partial<Pick<BackgroundWorkRegistry, "processRecords">>;
+  readonly backgroundTasks?: Pick<BackgroundWorkRegistry, "flushSettledNotifications" | "awaitedTaskCount"> & Partial<Pick<BackgroundWorkRegistry, "processRecords">>;
   onTurnParked?(context: TurnParkedContext): void | Promise<void>;
   onTurnResumed?(): void;
   /** Gives the person the turn, which ends the open wait, and, when
@@ -143,7 +143,7 @@ function waitExpiredInput(seconds: number | undefined, backgroundTasks: LoopInpu
     tag: WAIT_EXPIRED_TAG,
     fields: [
       ["seconds", String(seconds)],
-      ["pending", String(backgroundTasks?.waitableTaskCount() ?? 0)],
+      ["pending", String(backgroundTasks?.awaitedTaskCount() ?? 0)],
       ["processes", JSON.stringify(backgroundTasks?.processRecords?.().filter((record) => record.status === "running" || record.status === "stopping").map((record) => ({
         id: record.id, kind: record.kind, elapsed_seconds: Math.floor((Date.now() - record.startedAtMs) / 1000),
       })) ?? [])],
@@ -191,9 +191,7 @@ export function createAgentLoopInputWaiter(input: LoopInputWaiter) {
       // another interrupt has nothing left to cut and records nothing.
       const parkedForPerson = state.personWait !== undefined;
       const activeWaitSignal = parkedForPerson ? input.runSignal : waitSignal;
-      const activeBackgroundCount = (state.wait
-        ? input.backgroundTasks?.waitableTaskCount()
-        : input.backgroundTasks?.awaitedTaskCount()) ?? 0;
+      const activeBackgroundCount = input.backgroundTasks?.awaitedTaskCount() ?? 0;
       const park: TurnParkState = parkedForPerson ? "interrupted" : parkedOnBackgroundWork || activeBackgroundCount > 0 ? "waiting_on_work" : "idle";
       const waitsOnBackgroundWork = park === "waiting_on_work";
       log.debug("agent-loop parking", {

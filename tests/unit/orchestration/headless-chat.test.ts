@@ -96,15 +96,14 @@ function detail(id: string): Extract<RuntimeSessionDetailView, { kind: "chat" }>
   }
 }
 
-/** Tracks a running background command in the session's real registry. A
- *  `service` is a command launched with `background=true`. Its completion
- *  notification commits when `delivery` resolves, as a mailbox commits it
- *  only once the turn is free. `finish` ends the command. */
-function trackCommand(fixture: ReturnType<typeof channelFixture>, sessionId: string, id: string, service: boolean, delivery?: Promise<void>) {
+/** Tracks a running background command in the session's real registry. Its
+ *  completion notification commits when `delivery` resolves, as a mailbox
+ *  commits it only once the turn is free. `finish` ends the command. */
+function trackCommand(fixture: ReturnType<typeof channelFixture>, sessionId: string, id: string, delivery?: Promise<void>) {
   const registry = fixture.registries.get(sessionId) ?? createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: async () => { await delivery } })
   fixture.registries.set(sessionId, registry)
   const done = deferred<BackgroundWorkResult>()
-  registry.track({ done: done.promise, meta: { id, type: "background_command", description: id, toolUseId: id }, ...(service ? { service: true as const } : {}) })
+  registry.track({ done: done.promise, meta: { id, type: "background_command", description: id, toolUseId: id } })
   return {
     finish: async (result: BackgroundWorkResult) => {
       done.resolve(result)
@@ -379,7 +378,7 @@ describe("headless Chat JSONL transport", () => {
     // completion notification cannot commit until the question is answered,
     // so once it ends the question is what remains.
     const answered = deferred<void>()
-    const command = kind === "shell" ? trackCommand(fixture, "root", "shell", false, answered.promise) : undefined
+    const command = kind === "shell" ? trackCommand(fixture, "root", "shell", answered.promise) : undefined
     if (kind === "shell") fixture.questions.set("root", { kind: "question", toolUseId: "ask", questions: [], timestamp: 0 })
     const reached = deferred<void>()
     let reads = 0
@@ -404,14 +403,24 @@ describe("headless Chat JSONL transport", () => {
     answered.resolve()
   })
 
-  it("completes a turn that leaves a service running, as the agent loop does", async () => {
+  it("holds a turn that leaves a server running until the server ends, as the agent loop does", async () => {
     const fixture = channelFixture()
     const root = detail("root")
     fixture.statuses.set("root", { ...root.status, activeBackgroundCommands: [{ id: "server", toolUseId: "server", description: "server", startedAtMs: 0 }] })
-    const service = trackCommand(fixture, "root", "server", true)
-    try {
-      expect(await runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write })).toEqual({ sessionId: "root", outcome: "complete" })
-    } finally { await service.finish({ status: "cancelled", content: "" }) }
+    const server = trackCommand(fixture, "root", "server")
+    const reached = deferred<void>()
+    fixture.onRead((query) => { if (query.type === "statusSnapshot") reached.resolve() })
+    let ended = false
+    const pending = runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write }).then((result) => { ended = true; return result })
+    await reached.promise
+    // A settlement read while the server runs must say busy; the run's own
+    // read can still be in flight, so `ended` alone proves nothing.
+    expect(await fixture.runtime.workSettlement.read("root")).toBe("busy")
+    expect(ended).toBe(false)
+    await server.finish({ status: "cancelled", content: "" })
+    fixture.statuses.set("root", root.status)
+    fixture.changed()
+    expect(await pending).toEqual({ sessionId: "root", outcome: "complete" })
   })
 
   it.each([

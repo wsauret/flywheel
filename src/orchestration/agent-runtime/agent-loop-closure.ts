@@ -27,10 +27,9 @@ export function finalReplyText(messages: readonly ConversationMessage[]): string
   return reply.content.flatMap((block) => block.type === "text" ? [block.text] : []).join("\n\n");
 }
 
-/** Services hold an explicit wait, but do not hold automatic completion.
- * Awaited work owes a result notification; reply waits retain reply ownership. */
-export function hasLiveBackgroundWork(tasks: BackgroundWorkRegistry | undefined, waitRequested: boolean): boolean {
-  return ((waitRequested ? tasks?.waitableTaskCount() : tasks?.awaitedTaskCount()) ?? 0) > 0;
+/** Awaited work owes a result notification; reply waits retain reply ownership. */
+export function hasLiveBackgroundWork(tasks: BackgroundWorkRegistry | undefined): boolean {
+  return (tasks?.awaitedTaskCount() ?? 0) > 0;
 }
 
 /** A closed input source is an abort only when teardown requested it. */

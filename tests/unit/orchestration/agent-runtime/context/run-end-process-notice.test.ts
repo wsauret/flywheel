@@ -11,9 +11,10 @@ import { makeCaptureClient } from "./_loop-fixtures.js";
 
 const loopIdentity = { userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", providerSessionKey: "run-end", promptCacheKey: "run-end", artifactScopeId: "run-end", retrievalSessionId: "run-end" };
 
-test("a run that completes on idle over a running service tells the model once that the service ends with the run, where it can launch one to persist", async () => {
-  // The host's close ends every managed command once such a run completes,
-  // so a server launched without persist_after_exit dies before later work.
+test("a run that cannot wait completes over a running background command and tells the model once that the command ends with the run, where it can launch one to persist", async () => {
+  // A run that can wait parks on the command as owed work. One that cannot
+  // completes, and the host's close then ends every managed command, so a
+  // server launched without persist_after_exit dies before later work.
   const end = { events: [{ kind: "text_delta" as const, text: "The server runs.", blockKey: "text" }, { kind: "done" as const, stopReason: "end_turn" as const }] };
   const run = async (persistable: boolean) => {
     const { client, capturedMessages } = makeCaptureClient([
@@ -22,8 +23,8 @@ test("a run that completes on idle over a running service tells the model once t
       ...(persistable ? [end] : []),
     ]);
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
-    const start: RuntimeTool = { name: "start", action: "shell_exec", description: "starts a service", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
-      registry.track({ done: new Promise<BackgroundWorkResult>(() => {}), meta: { id: "bash-bg-1", type: "background_command", description: "bun server.ts" }, service: true });
+    const start: RuntimeTool = { name: "start", action: "shell_exec", description: "starts a server", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
+      registry.track({ done: new Promise<BackgroundWorkResult>(() => {}), meta: { id: "bash-bg-1", type: "background_command", description: "bun server.ts" } });
       return { content: "Running in background as managed process bash-bg-1.", outcome: "ok" };
     } };
     const result = await runAgentLoop({
@@ -32,7 +33,7 @@ test("a run that completes on idle over a running service tells the model once t
       background: createBackgroundExecutionOwner(registry),
       persistentProcesses: { launch: async () => { throw new Error("unused"); }, list: async () => [], read: async () => { throw new Error("unused"); }, stop: async () => "already_exited", release: async () => {}, close: () => {} },
       allowPersistentProcesses: () => persistable,
-      inputSource: { drainPending: () => null, prepareWaitForInput: () => ({ commit: async () => null, cancel: async () => {} }) },
+      inputSource: { drainPending: () => null },
       onEvent: () => {},
     });
     const notices = capturedMessages.flat().filter((message) => message.kind === "user" && typeof message.content === "string" && message.content.startsWith("[run-end notice]"));

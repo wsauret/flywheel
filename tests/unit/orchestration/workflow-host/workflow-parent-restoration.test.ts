@@ -82,7 +82,7 @@ describe("workflow parent restoration", () => {
           let parked = false
           const notifications: string[] = []
           createWaitToolPolicy(
-            () => replacement.waitableTaskCount() > 0,
+            () => replacement.awaitedTaskCount() > 0,
             () => { parked = true },
             (notice) => { notifications.push(notice) },
           ).settleWaitCalls([{ id: "wait", name: "process", input: { action: "wait", soft_timeout: 60 } }])
@@ -94,37 +94,37 @@ describe("workflow parent restoration", () => {
           const waiting = replacement.waitProcess("child")
           await started?.onCoreCompleted?.("child", { completed: true, attemptsCompleted: 1, attemptsTotal: 1, tokens: 0, cost: 0 })
           expect(await waiting).toBe(true)
-          expect(replacement.waitableTaskCount()).toBe(0)
+          expect(replacement.awaitedTaskCount()).toBe(0)
           expect(replacement.activeBackgroundCommands()).toEqual([])
         } finally {
           await replacement.terminateAll()
         }
       } else if (assertion === "tracking") {
-        expect(parentTasks.waitableTaskCount()).toBe(1)
+        expect(parentTasks.awaitedTaskCount()).toBe(1)
         expect(parentTasks.activeBackgroundCommands()).toMatchObject([{ id: "child", description: "Saved request", toolUseId: "original-launch" }])
         const waiting = parentTasks.waitProcess("child")
         await started?.onCoreCompleted?.("child", { completed: true, attemptsCompleted: 1, attemptsTotal: 1, tokens: 0, cost: 0 })
         expect(await waiting).toBe(true)
-        expect(parentTasks.waitableTaskCount()).toBe(0)
+        expect(parentTasks.awaitedTaskCount()).toBe(0)
       } else if (assertion === "idle attachment") {
         expect(openChatRunner).toHaveBeenCalledWith("parent")
         expect(hold).not.toHaveBeenCalled()
         expect(send).not.toHaveBeenCalled()
         expect(resume).not.toHaveBeenCalled()
       } else if (assertion === "reply wait") {
-        expect(stepTasks.waitableTaskCount()).toBe(1)
+        expect(stepTasks.awaitedTaskCount()).toBe(1)
         expect(notices).toEqual([])
       } else {
         if (assertion === "failed resume") {
           await recordChildWorkflowStartFailure({ reader: deps.eventReader, projectionReader: deps.projectionReader, writer: deps.eventWriter, parentSessionId: "parent", toolUseId: "original-launch", childSessionId: "child", workflowDefinitionId: FIXTURE_WORKFLOW_ID })
           await started?.onCoreCompleted?.("child", { completed: false, attemptsCompleted: 0, attemptsTotal: 1, tokens: 0, cost: 0, reason: "Step failed" })
-          expect(parentTasks.waitableTaskCount()).toBe(0)
+          expect(parentTasks.awaitedTaskCount()).toBe(0)
         }
         const notice = assertion === "earlier run notice" ? parentTasks.deliverDurableSubagentNotification({ key: "workflow-completion:child:1", text: "Workflow failed" }) : undefined
         if (assertion !== "stop") expect(await controller.resumeWorkflow("child")).toEqual({ kind: "resumed", sessionId: "child" })
         earlierRunNotice.resolve()
         await notice
-        expect(parentTasks.waitableTaskCount()).toBe(1)
+        expect(parentTasks.awaitedTaskCount()).toBe(1)
         const waiting = parentTasks.waitProcess("child")
         expect(parentTasks.terminate("original-launch")).toBe(true)
         expect(await waiting).toBe(true)

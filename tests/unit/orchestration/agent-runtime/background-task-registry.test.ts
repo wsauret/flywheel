@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
 import {
-  awaitsWork,
   createBackgroundWorkRegistry,
   type BackgroundWorkResult,
 } from "../../../../src/orchestration/agent-runtime/background-work.js";
@@ -478,7 +477,7 @@ describe("createBackgroundWorkRegistry (chat)", () => {
     registry.track({ done: interrupted("person"), meta: child("a") });
     await delay(5);
     expect(notes).toEqual([]);
-    expect([registry.awaitedTaskCount(), registry.waitableTaskCount(), registry.activeSubagentCount()]).toEqual([1, 1, 1]);
+    expect([registry.awaitedTaskCount(), registry.activeSubagentCount()]).toEqual([1, 1]);
     expect(registry.liveWorkReferences()).toEqual([{ kind: "session", sessionId: "session-a" }]);
     expect(registry.assertHandoffReady()).toMatchObject({ active: 1, activeDescriptions: ["Review a"] });
     expect(registry.processRecord("a")?.status).toBe("interrupted");
@@ -515,12 +514,12 @@ describe("createBackgroundWorkRegistry (chat)", () => {
 
     registry.track({ done: interrupted("agent"), meta: child("b") });
     await delay(5);
-    expect([registry.awaitedTaskCount(), registry.waitableTaskCount()]).toEqual([0, 0]);
+    expect(registry.awaitedTaskCount()).toBe(0);
     expect(notes).toEqual([]);
 
     registry.track({ done: interrupted("runtime"), meta: child("c") });
     await delay(5);
-    expect([registry.awaitedTaskCount(), registry.waitableTaskCount()]).toEqual([0, 0]);
+    expect(registry.awaitedTaskCount()).toBe(0);
     expect([notes.length, ...labels]).toEqual([1, true]);
     expect(notes[0]).toContain("The runtime interrupted this child.");
     expect(notes[0]).toContain("<session_id>session-c</session_id>");
@@ -537,14 +536,14 @@ describe("createBackgroundWorkRegistry (workflow)", () => {
     done.resolve({ status: type === "workflow" ? "stopped" : "completed", content: "reviewed" });
     await done.promise;
     expect(registry.assertHandoffReady()).toMatchObject({ active: 0, pending: 1, pendingDescriptions: ["Nested review"] });
-    expect([registry.activeTaskCount(), registry.waitableTaskCount(), registry.awaitedTaskCount()]).toEqual([1, 1, 1]);
+    expect([registry.activeTaskCount(), registry.awaitedTaskCount()]).toEqual([1, 1]);
     registry.deliverDurableSubagentNotification({ key: type === "workflow" ? "workflow-completion:owed" : "subagent-completions:owed", text: "reviewed" });
     expect(await offered.promise).toBe(true);
-    expect([registry.activeTaskCount(), registry.waitableTaskCount(), registry.awaitedTaskCount()]).toEqual([1, 1, 1]);
+    expect([registry.activeTaskCount(), registry.awaitedTaskCount()]).toEqual([1, 1]);
     expect(registry.assertHandoffReady()).toMatchObject({ pending: 1, pendingDescriptions: ["Nested review"] });
     committed.resolve();
     await delay(1);
-    expect([registry.activeTaskCount(), registry.waitableTaskCount(), registry.awaitedTaskCount()]).toEqual([0, 0, 0]);
+    expect([registry.activeTaskCount(), registry.awaitedTaskCount()]).toEqual([0, 0]);
     expect(registry.assertHandoffReady()).toBeNull();
   });
 
@@ -585,7 +584,7 @@ describe("createBackgroundWorkRegistry (workflow)", () => {
     expect(registry.assertHandoffReady()).toBeNull();
   });
 
-  it("blocks handoff while a background command or a service runs, and parks only on the command", async () => {
+  it("counts every running background command, a server included, as owed work that blocks handoff", async () => {
     const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
     const done = deferred<BackgroundWorkResult>();
 
@@ -596,23 +595,16 @@ describe("createBackgroundWorkRegistry (workflow)", () => {
     registry.track({
       done: new Promise<never>(() => {}),
       meta: { id: "command-2", type: "background_command", description: "python3 server.py" },
-      service: true,
     });
 
-    const blockers = registry.assertHandoffReady();
-    expect(blockers).not.toBeNull();
-    expect(blockers!.active).toBe(1);
-    expect(blockers!.activeDescriptions).toEqual(["bun run test:perf"]);
-    expect(blockers!.serviceDescriptions).toEqual(["python3 server.py"]);
-    expect(awaitsWork(blockers)).toBe(true);
+    expect(registry.assertHandoffReady()).toEqual({ active: 2, pending: 0, activeDescriptions: ["bun run test:perf", "python3 server.py"], pendingDescriptions: [] });
+    expect(registry.awaitedTaskCount()).toBe(2);
 
     done.resolve({ status: "completed", content: "ok" });
     await delay(5);
 
-    expect(registry.activeTaskCount()).toBe(1);
-    const serviceOnly = registry.assertHandoffReady();
-    expect(serviceOnly).toMatchObject({ active: 0, pending: 0, services: 1, serviceDescriptions: ["python3 server.py"] });
-    expect(awaitsWork(serviceOnly)).toBe(false);
+    expect(registry.assertHandoffReady()).toEqual({ active: 1, pending: 0, activeDescriptions: ["python3 server.py"], pendingDescriptions: [] });
+    expect(registry.awaitedTaskCount()).toBe(1);
   });
 
   it("preserves XML subagent batch format", async () => {

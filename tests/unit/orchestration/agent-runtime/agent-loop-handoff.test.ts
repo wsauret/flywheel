@@ -27,7 +27,7 @@ describe("createHandoffTracker", () => {
     let admissions = 0;
     const tracker = createHandoffTracker({
       background: {
-        assertHandoffReady() { reads++; return block ? { active: 1, pending: 0, services: 0, activeDescriptions: ["review"], pendingDescriptions: [], serviceDescriptions: [] } : null; },
+        assertHandoffReady() { reads++; return block ? { active: 1, pending: 0, activeDescriptions: ["review"], pendingDescriptions: [] } : null; },
         stopAdmission() {},
       },
       onStarted() { admissions++; },

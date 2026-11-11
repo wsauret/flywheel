@@ -134,7 +134,7 @@ describe("agent loop input wait reservations", () => {
       const consumed: AgentLoopInput[] = []
       const wait = waiter({
         state: () => ({ turnCount: 1, handoffWritten: false, wait: { replyWaitIds: ["ask"] } }),
-        backgroundTasks: { waitableTaskCount: () => 1, awaitedTaskCount: () => 1, flushSettledNotifications: () => {} },
+        backgroundTasks: { awaitedTaskCount: () => 1, flushSettledNotifications: () => {} },
         prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
         onTurnParked: (context) => { (context.userResumeRequired ? takenBack : parked).resolve() },
         recordInterruption: async () => { recorded++ },
@@ -161,7 +161,7 @@ describe("agent loop input wait reservations", () => {
       let activeBackgroundCount: number | undefined
       let park: string | undefined
       const wait = waiter({
-        backgroundTasks: { waitableTaskCount: () => awaited, awaitedTaskCount: () => awaited, flushSettledNotifications: () => {} },
+        backgroundTasks: { awaitedTaskCount: () => awaited, flushSettledNotifications: () => {} },
         prepareWaitForInput: () => ({
           commit: async () => null,
           cancel: async () => {},
@@ -378,7 +378,7 @@ describe("agent loop input wait reservations", () => {
       const wait = waiter({
         runSignal: new AbortController().signal,
         prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
-        backgroundTasks: { waitableTaskCount: () => activeTasks, awaitedTaskCount: () => activeTasks, flushSettledNotifications: () => {} },
+        backgroundTasks: { awaitedTaskCount: () => activeTasks, flushSettledNotifications: () => {} },
         recordInterruption: async () => { recorded += 1 },
         onTurnParked: ({ park }) => { parks.push(park) },
       })

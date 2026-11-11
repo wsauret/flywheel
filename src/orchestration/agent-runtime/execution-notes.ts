@@ -62,7 +62,7 @@ export function createExecutionNotesHook(): AfterToolCallHook {
       note = "the same error has now occurred twice in a row. Stop retrying this command pattern; re-read the error, check your assumptions, and switch to a different approach.";
     } else if (durationMs !== undefined && durationMs >= LONG_STEP_THRESHOLD_MS && !emitted.has("long_step")) {
       emitted.add("long_step");
-      note = `this command consumed ${formatDuration(durationMs)} of wall clock. Keep finite work in the foreground. ${foregroundCommandLifetime(context.capabilityAccess?.unattended === true)} Use background mode only for a server or service that must remain running. For risky probes, set a tighter timeout.`;
+      note = `this command consumed ${formatDuration(durationMs)} of wall clock. ${foregroundCommandLifetime(context.capabilityAccess?.unattended === true)} Use background mode for a long command when you can do other work while it runs; it keeps the session working until it ends or is stopped. For risky probes, set a tighter timeout.`;
     }
     if (!note) return result;
 

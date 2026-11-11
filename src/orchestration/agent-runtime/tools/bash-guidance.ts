@@ -3,7 +3,7 @@ import type { RuntimePlatform } from "./bash-script.js";
 import { SEARCH_CPU_LIMIT_SECONDS, SHELL_SEARCH_PROGRAMS, SHELL_SEARCH_RULES, type ShellSearchProgram } from "./search-rules.js";
 import type { RuntimeTool } from "./types.js";
 
-export const SHELL_OUTPUT_GUIDANCE = "Preserve live command output. The runtime captures and streams stdout and stderr for foreground and managed commands. Never redirect, suppress, filter, or capture diagnostic output with `>`, `>>`, `2>`, `2>&1`, `&>`, `/dev/null`, or log-filtering pipes. Keep finite commands in the foreground. If the runtime transfers a command to managed execution, inspect output with process read_output or the completion notification. Redirect stdout only when stdout is the requested file artifact.";
+export const SHELL_OUTPUT_GUIDANCE = "Preserve live command output. The runtime captures and streams stdout and stderr for foreground and managed commands. Never redirect, suppress, filter, or capture diagnostic output with `>`, `>>`, `2>`, `2>&1`, `&>`, `/dev/null`, or log-filtering pipes. If the runtime transfers a command to managed execution, inspect output with process read_output or the completion notification. Redirect stdout only when stdout is the requested file artifact.";
 
 const mutationGuidance = (has: CapabilityCheck): string => {
   const reviewedLike = has("edit") && has("write") ? "an edit or write tool change" : "a file edit";
@@ -19,8 +19,8 @@ const commandProperties = (background: boolean, persistence: boolean) => ({
   command: { type: "string", description: "The shell command to execute" },
   cwd: { type: "string", description: "Working directory for the command (default: project root)" },
   timeout: { type: "number", description: timeoutGuidance(background, persistence) },
-  ...(background ? { background: { type: "boolean", description: "Run the command as a managed background process." } } : {}),
-  ...(persistence ? { persist_after_exit: { type: "boolean", description: "Allow this explicit background command to outlive the runtime. Without it, runtime exit ends the command. The runtime can inspect and stop it during this invocation. After the runtime exits, it cannot manage, stop, report, or enforce a timeout for it. Requires background=true and cannot be combined with timeout." } } : {}),
+  ...(background ? { background: { type: "boolean", description: "Run the command as a managed background process. It keeps the session working until it ends or is stopped." } } : {}),
+  ...(persistence ? { persist_after_exit: { type: "boolean", description: "Allow this explicit background command to outlive the runtime. Use it for a server that must keep running after you stop waiting, because a running background command keeps the session working. Without it, runtime exit ends the command. The runtime can inspect and stop it during this invocation. After the runtime exits, it cannot manage, stop, report, or enforce a timeout for it. Requires background=true and cannot be combined with timeout." } } : {}),
   raw_output: { type: "boolean", description: "Skip output compression for this call (default: false). Output from a command that starts with bun test or bun run test drops passing-test lines when it exceeds 200 lines. Other output over about 28,000 bytes keeps about the first 6,000 and the last 12,000 bytes, and error or warning lines. Each dropped run shows an omission marker, and a notice names the file that holds the full output. Prefer streaming and chunked processing over loading everything into memory." },
 });
 
@@ -35,7 +35,7 @@ const STOP_BY_ID = "Stop a process by its process-tool id or exact PID, never by
 export const foregroundCommandLifetime = (unattendedChat: boolean): string => unattendedChat
   ? "A foreground command moves to managed execution when it reaches the runtime cap; wait for it with the process tool."
   : "A foreground command moves to managed execution when you select Detach or it reaches the runtime cap; wait for it with the process tool.";
-const backgroundGuidance = (unattendedChat: boolean): string => `Set background: true only for a server or another command that must stay running; never use shell-level &, nohup, or disown. A managed background command ends when its runtime exits. ${foregroundCommandLifetime(unattendedChat)} Wait for a background command the same way; never poll with sleep or restart a command to wait. ${STOP_BY_ID}`;
+const backgroundGuidance = (unattendedChat: boolean): string => `Set background: true for a long command when you can do other work while it runs, or for a server; never use shell-level &, nohup, or disown. A background command keeps the session working until it ends or is stopped, so stop a server that you no longer need. A managed background command ends when its runtime exits. ${foregroundCommandLifetime(unattendedChat)} Wait for a background command the same way; never poll with sleep or restart a command to wait. ${STOP_BY_ID}`;
 const foregroundOnly = (unattendedChat: boolean): string => `Never use shell-level &, nohup, or disown. ${foregroundCommandLifetime(unattendedChat)} Never poll with sleep or restart a command to wait. ${STOP_BY_ID}`;
 const VENV = "A Python virtualenv activation does not persist: call venv/bin/python directly.";
 const SCRATCH = "Scratch scripts are a normal way to work: put them and their outputs in the scratchpad directory. `bun` is always on PATH.";

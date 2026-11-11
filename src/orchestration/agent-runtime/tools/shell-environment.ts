@@ -117,5 +117,5 @@ export async function refuseBackgroundCommand(context: ToolContext): Promise<str
   if (grantCovers(access.grant, backgroundShellModuleRequirements())) return undefined;
   const admission = await access.admit({ operation: "a background shell command", required: backgroundShellModuleRequirements() });
   if (admission.ok) return undefined;
-  return `${admission.reason}. Run the finite command in the foreground without background=true. ${foregroundCommandLifetime(access.unattended === true)}`;
+  return `${admission.reason}. Run the command in the foreground without background=true. ${foregroundCommandLifetime(access.unattended === true)}`;
 }

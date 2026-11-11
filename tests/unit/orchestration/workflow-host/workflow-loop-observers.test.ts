@@ -74,15 +74,14 @@ describe("createWorkflowLoopObservers", () => {
     expect(drainAll(injectionQueue)).toEqual([]);
   });
 
-  test("handoff watchdog nudges on every text-only turn while only a service runs", async () => {
+  test("handoff watchdog stays silent on text-only turns while a background server runs", async () => {
     const injectionQueue = new WorkflowInjectionQueue();
-    // A service wakes nothing, so the step must still be asked for its
-    // handoff; the handoff refusal then tells it to stop the service.
+    // A background command is owed work, a server included: the step waits
+    // on it or stops it, so the watchdog does not ask for the handoff.
     const backgroundTasks = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
     backgroundTasks.track({
       done: new Promise<never>(() => {}),
       meta: { id: "command-1", type: "background_command", description: "python3 server.py" },
-      service: true,
     });
     const observers = createWorkflowLoopObservers({
       parentChannel: true,
@@ -93,14 +92,10 @@ describe("createWorkflowLoopObservers", () => {
     });
 
     await observers.onTurnEnded({ handoffWritten: false, turnCount: 1 });
-    const afterFirst = drainAll(injectionQueue);
-    expect(afterFirst).toHaveLength(1);
-    expect(afterFirst[0]).toContain("call handoff");
-
     await observers.onTurnEnded({ handoffWritten: false, turnCount: 2 });
-    const afterSecond = drainAll(injectionQueue);
-    expect(afterSecond).toHaveLength(1);
-    expect(afterSecond[0]).toContain("call handoff");
+    await observers.onTurnEnded({ handoffWritten: false, turnCount: 3 });
+
+    expect(drainAll(injectionQueue)).toEqual([]);
   });
 
   test("a worker that stops without a handoff after two reminders breaks its handoff contract", async () => {
