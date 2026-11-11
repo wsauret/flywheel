@@ -1,0 +1,20 @@
+bench/harbor/configs/tb-haiku-high-agent-types.toml
+  h_4b47e9e4a8b456 1-73
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 109
+src/orchestration/agent-runtime/tools/message-session.ts
+  h_4b47e9e4a8b456 178
+src/orchestration/modules/subagents/execution/prompts.ts
+  h_4b47e9e4a8b456 62-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b5f3a3ae03f00d8c42b6ad54fdebd92ee775ecd7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
