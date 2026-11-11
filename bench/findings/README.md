@@ -89,7 +89,43 @@ Current evidence: the 2026-11-11 two-stage sweep of persona reviewer-code-qualit
 
 Stage 1 alone: fable-5.2/low 82.7%, sonnet-5.5/high 69.2%, astra/low 69.2%, sonnet-5.5/low 63.5%, sonnet-5.5/medium 59.6%, opus-5.5/low 57.7%. Recall among the top five settings is within noise. Terra alarmed on most clean controls; sol/high never did. 27 of 52 labels came from gpt-6-astra reviews, and Claude settings catch far fewer astra labels than other labels, so part of the GPT lead may be label-source bias.
 
-Decision (2026-11-11): `reviewer-quality` moves from astra/medium to sol/high, the shared `reviewer` default, which the role now inherits: recall within noise of the best, zero false alarms on clean code, about a third of astra's cost per review. terra/xhigh is the cost-first alternative if false alarms can be filtered. `reviewer-elegance` and `reviewer-mechanism` stay on astra/medium until an elegance-shaped corpus exists.
+Decision (2026-11-11): `reviewer-quality` moves from astra/medium to sol/high, the shared `reviewer` default, which the role now inherits: recall within noise of the best, zero false alarms on clean code, about a third of astra's cost per review. terra/xhigh is the cost-first alternative if false alarms can be filtered. `reviewer-elegance` and `reviewer-mechanism` have their own corpora and decision below.
+
+Elegance and mechanism evidence: the 2026-11-11 runs `reviewer-code-elegance-2026-11-11T21-48-22-147Z` and `reviewer-mechanism-2026-11-11T21-48-24-057Z` on new public dedicated corpora (commit ab8de6641). The elegance corpus has 12 fixtures with 14 seeded structural defects plus 4 clean controls. The mechanism corpus has 10 fixtures of 4 to 5 behavioral claims each, with 11 false claims, plus 3 all-true controls. Settings: the 8 finalists of the quality sweep plus the incumbent astra/medium, 2 repeats each, judge gpt-6.1-sol xhigh, all on subscriptions, $0 billed, no failed cells.
+
+reviewer-code-elegance (recall of 28 labels; unsupported P1/P2 findings per defect cell; control cells with a P1/P2, of 8; list-equivalent cost per review; median latency):
+
+| Variant | Recall | Unsupported P1/P2 | Control alarms | Cost/review | Median latency |
+|---|---:|---:|---:|---:|---:|
+| astra/medium | 26/28 (92.9%) | 1.94 | 8/8 | $0.29 | 42s |
+| sol/xhigh | 26/28 (92.9%) | 2.38 | 8/8 | $0.10 | 91s |
+| sol/high | 26/28 (92.9%) | 2.44 | 7/8 | $0.08 | 70s |
+| sol/medium | 26/28 (92.9%) | 1.81 | 8/8 | $0.06 | 48s |
+| terra/xhigh | 17/28 (60.7%) | 3.25 | 8/8 | $0.03 | 43s |
+| terra/high | 15/28 (53.6%) | 2.94 | 8/8 | $0.02 | 25s |
+| terra/medium | 19/28 (67.9%) | 2.69 | 8/8 | $0.02 | 21s |
+| opus-5.5/medium | 28/28 (100%) | 1.69 | 8/8 | $0.18 | 36s |
+| fable-5.2/low | 28/28 (100%) | 2.50 | 7/8 | $0.39 | 49s |
+
+Every GPT setting missed the same label (`format-date-reexport-shim` in fixture `elegance-clearing-export`) in both repeats; the Claude settings caught it. Control alarms do not discriminate: nearly every setting raised a P1/P2 on nearly every control, mostly "missing tests" findings because the fixtures have no tests, so the controls measure the persona's test-coverage habit, not false elegance alarms. Opus 5.5 agents wrote both corpora, so the Claude lead may be partly authorship bias.
+
+reviewer-mechanism (recall of 22 labels; unsupported P1/P2 findings per defect cell; control alarms of 6; cost per review; median latency):
+
+| Variant | Recall | Unsupported P1/P2 | Control alarms | Cost/review | Median latency |
+|---|---:|---:|---:|---:|---:|
+| astra/medium | 22/22 | 0.07 | 0/6 | $0.30 | 52s |
+| sol/xhigh | 22/22 | 0.43 | 1/6 | $0.10 | 123s |
+| sol/high | 22/22 | 0.50 | 1/6 | $0.07 | 72s |
+| sol/medium | 22/22 | 0.36 | 0/6 | $0.07 | 49s |
+| terra/xhigh | 22/22 | 1.29 | 3/6 | $0.03 | 49s |
+| terra/high | 22/22 | 1.07 | 4/6 | $0.02 | 31s |
+| terra/medium | 22/22 | 0.86 | 3/6 | $0.02 | 29s |
+| opus-5.5/medium | 22/22 | 0.14 | 0/6 | $0.14 | 31s |
+| fable-5.2/low | 22/22 | 0.07 | 0/6 | $0.33 | 48s |
+
+Recall saturated, so the settings separate on false refutations of true claims, cost, and latency. The corpus is easy (68 to 159 lines per project).
+
+Decision (2026-11-11): `reviewer-elegance` and `reviewer-mechanism` move from astra/medium to sol/medium on OpenAI and opus-5.5/medium on Anthropic, with the mid tier at medium effort. Sol/medium matches astra's recall on both corpora at about a fifth of the cost and similar latency, and it raised no mechanism control alarms; higher sol efforts added cost and latency with no recall gain. Terra is rejected: low elegance recall and frequent false refutations. Opus/medium had full recall and the fewest unsupported findings among Claude settings at about half of astra's cost. Both roles keep explicit entries, because an absent entry would inherit the high-effort `reviewer` default.
 
 Earlier seeded-defect detection recall. Evidence: the 2026-07-30 full-matrix run over 7 fixtures (3 synthetic projects plus 4 commit-pinned fixtures derived from real production workflows: 2 plan reviews of real plan-handoff JSON with seeded mutations, 2 production-scale code reviews). 78 opportunities per variant.
 

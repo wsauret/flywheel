@@ -35,7 +35,7 @@ describe("roles config parsing and resolution", () => {
       expect(roles.get("reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
       expect(roles.get("brief.custom-step")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step.persona.reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
-      expect(roles.get("reviewer-elegance")).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
+      expect(roles.get("reviewer-elegance")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
 
       const tierFallback = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), tierAvailableModels, tierOptions, undefined, additional);
       expect(tierFallback.get("custom-auditor")).toMatchObject({ model: "gpt-5.4", effort: "medium" });

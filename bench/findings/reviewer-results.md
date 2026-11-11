@@ -1,6 +1,6 @@
 # Reviewer persona detection benchmark results
 
-Persona: reviewer-code-quality. Current decision evidence: the 2026-11-11 two-stage subscription sweep on the 31-task public corpus. Earlier evidence: the identity-complete 2026-09-10 Astra run (`reviewer-code-quality-2026-09-10T21-08-33-675Z`) and four-variant comparison run (`reviewer-code-quality-2026-09-10T22-20-33-465Z`). Both use the same nine fixtures, one repeat, reviewer guidance, gpt-5.6-sol judge, scoring version, profile, and Usage authority.
+Persona: reviewer-code-quality. Current decision evidence: the 2026-11-11 two-stage subscription sweep on the 31-task public corpus. Personas reviewer-code-elegance and reviewer-mechanism: the 2026-11-11 runs on their dedicated public corpora, in their own sections below. Earlier evidence: the identity-complete 2026-09-10 Astra run (`reviewer-code-quality-2026-09-10T21-08-33-675Z`) and four-variant comparison run (`reviewer-code-quality-2026-09-10T22-20-33-465Z`). Both use the same nine fixtures, one repeat, reviewer guidance, gpt-5.6-sol judge, scoring version, profile, and Usage authority.
 
 ## Rerun: 2026-11-11 (public corpus, subscription sweep)
 
@@ -13,12 +13,12 @@ Pooled stages 1 and 2. Recall is of 104 labels, or 103 where one cell failed on 
 | Variant | Recall | Control alarms | Cost/review | Avg latency |
 |---|---:|---:|---:|---:|
 | gpt-6.1-sol/xhigh | 91/104 (87.5%) | 3/12 | $0.47 | ~340s |
-| gpt-5.6-terra/xhigh | 89/104 (85.6%) | 7/12 | $0.13 (lower bound: some entries unpriced) | ~120s |
+| gpt-6.1-terra/xhigh | 89/104 (85.6%) | 7/12 | $0.13 (lower bound: some entries unpriced) | ~120s |
 | gpt-6.1-sol/high | 88/104 (84.6%) | 0/12 | $0.33 | ~180s |
-| gpt-5.6-terra/high | 86/103 (83.5%) | 8/12 | $0.08 | ~60s |
+| gpt-6.1-terra/high | 86/103 (83.5%) | 8/12 | $0.08 | ~60s |
 | claude-opus-5.5/medium | 82/104 (78.8%) | 2/12 | $0.89 | ~150s |
 | gpt-6.1-sol/medium | 79/104 (76.0%) | 0/12 | $0.23 | ~110s |
-| gpt-5.6-terra/medium | 76/103 (73.8%) | 7/12 | $0.07 | ~50s |
+| gpt-6.1-terra/medium | 76/103 (73.8%) | 7/12 | $0.07 | ~50s |
 
 Stage 1 only (one repeat, 52 labels):
 
@@ -39,7 +39,56 @@ Findings:
 - Terra raised P1 or P2 findings on most clean controls. Sol high never did.
 - 27 of the 52 labels were found originally by gpt-6-astra. Claude settings catch 88 to 100% of non-astra labels but 30 to 74% of astra labels, so part of the GPT lead may be label-source bias.
 
-Decision (2026-11-11): the `reviewer-quality` role moves from gpt-6-astra medium to gpt-6.1-sol high, which is the shared `reviewer` default, so the role now inherits it. Its recall is within noise of the best, it raised no false alarms on clean code, and it costs about a third of astra's cost per review. gpt-5.6-terra xhigh is the cost-first alternative if false alarms can be filtered. `reviewer-elegance` and `reviewer-mechanism` stay on gpt-6-astra medium until an elegance-shaped corpus exists, because this corpus labels correctness defects only.
+Decision (2026-11-11): the `reviewer-quality` role moves from gpt-6-astra medium to gpt-6.1-sol high, which is the shared `reviewer` default, so the role now inherits it. Its recall is within noise of the best, it raised no false alarms on clean code, and it costs about a third of astra's cost per review. gpt-6.1-terra xhigh is the cost-first alternative if false alarms can be filtered. This corpus labels correctness defects only, so `reviewer-elegance` and `reviewer-mechanism` were decided on their own corpora; see the two sections that follow.
+
+## Rerun: 2026-11-11 (reviewer-code-elegance, dedicated public corpus)
+
+Method: run `reviewer-code-elegance-2026-11-11T21-48-22-147Z` on a new public dedicated corpus (commit ab8de6641): 12 fixtures with 14 seeded structural defects, plus 4 clean controls. Settings: the 8 finalists of the quality sweep plus the incumbent gpt-6-astra medium, 2 repeats each. The judge is gpt-6.1-sol xhigh. Every setting ran on a subscription with $0 billed, and no cell failed.
+
+Recall is of 28 labels (14 defects, 2 repeats). Unsupported is the count of unsupported P1/P2 findings per defect cell. Control alarms are control cells with a P1/P2 finding, of 8. Cost is the list-equivalent cost per review. Latency is the median.
+
+| Variant | Recall | Unsupported P1/P2 | Control alarms | Cost/review | Median latency |
+|---|---:|---:|---:|---:|---:|
+| gpt-6-astra/medium | 26/28 (92.9%) | 1.94 | 8/8 | $0.29 | 42s |
+| gpt-6.1-sol/xhigh | 26/28 (92.9%) | 2.38 | 8/8 | $0.10 | 91s |
+| gpt-6.1-sol/high | 26/28 (92.9%) | 2.44 | 7/8 | $0.08 | 70s |
+| gpt-6.1-sol/medium | 26/28 (92.9%) | 1.81 | 8/8 | $0.06 | 48s |
+| gpt-6.1-terra/xhigh | 17/28 (60.7%) | 3.25 | 8/8 | $0.03 | 43s |
+| gpt-6.1-terra/high | 15/28 (53.6%) | 2.94 | 8/8 | $0.02 | 25s |
+| gpt-6.1-terra/medium | 19/28 (67.9%) | 2.69 | 8/8 | $0.02 | 21s |
+| claude-opus-5.5/medium | 28/28 (100%) | 1.69 | 8/8 | $0.18 | 36s |
+| claude-fable-5.2/low | 28/28 (100%) | 2.50 | 7/8 | $0.39 | 49s |
+
+Findings:
+
+- Every GPT setting missed the same label, `format-date-reexport-shim` in fixture `elegance-clearing-export`, in both repeats. The Claude settings caught it.
+- Control alarms do not discriminate. Nearly every setting raised a P1/P2 on nearly every control, mostly "missing tests" findings, because the fixtures have no tests. The controls measure the persona's test-coverage habit, not false elegance alarms.
+- Opus 5.5 agents wrote both dedicated corpora, so the Claude lead may be partly authorship bias.
+
+## Rerun: 2026-11-11 (reviewer-mechanism, dedicated public corpus)
+
+Method: run `reviewer-mechanism-2026-11-11T21-48-24-057Z` on a new public dedicated corpus (commit ab8de6641): 10 fixtures of 4 to 5 behavioral claims each, with 11 false claims, plus 3 all-true controls. Settings, repeats, judge, and billing are the same as the elegance run, and no cell failed.
+
+Recall is of 22 labels (11 false claims, 2 repeats). Unsupported is the count of unsupported P1/P2 findings per defect cell. Control alarms are of 6 control cells.
+
+| Variant | Recall | Unsupported P1/P2 | Control alarms | Cost/review | Median latency |
+|---|---:|---:|---:|---:|---:|
+| gpt-6-astra/medium | 22/22 | 0.07 | 0/6 | $0.30 | 52s |
+| gpt-6.1-sol/xhigh | 22/22 | 0.43 | 1/6 | $0.10 | 123s |
+| gpt-6.1-sol/high | 22/22 | 0.50 | 1/6 | $0.07 | 72s |
+| gpt-6.1-sol/medium | 22/22 | 0.36 | 0/6 | $0.07 | 49s |
+| gpt-6.1-terra/xhigh | 22/22 | 1.29 | 3/6 | $0.03 | 49s |
+| gpt-6.1-terra/high | 22/22 | 1.07 | 4/6 | $0.02 | 31s |
+| gpt-6.1-terra/medium | 22/22 | 0.86 | 3/6 | $0.02 | 29s |
+| claude-opus-5.5/medium | 22/22 | 0.14 | 0/6 | $0.14 | 31s |
+| claude-fable-5.2/low | 22/22 | 0.07 | 0/6 | $0.33 | 48s |
+
+Findings:
+
+- Recall saturated, so the settings separate on false refutations of true claims, cost, and latency.
+- The corpus is easy: 68 to 159 lines per project.
+
+Decision (2026-11-11): the `reviewer-elegance` and `reviewer-mechanism` roles move from gpt-6-astra medium to gpt-6.1-sol medium on OpenAI and claude-opus-5.5 medium on Anthropic, with the mid tier at medium effort. Sol medium matches astra's recall on both corpora at about a fifth of the cost and similar latency, and on mechanism it raised no control alarms. Higher sol efforts added cost and latency with no recall gain. Terra is rejected: low elegance recall and frequent false refutations. Opus medium had full recall and the fewest unsupported findings among Claude settings at about half of astra's cost. Both roles keep explicit entries, because an absent entry would inherit the shared `reviewer` default at high effort.
 
 ## Rerun: 2026-09-10
 

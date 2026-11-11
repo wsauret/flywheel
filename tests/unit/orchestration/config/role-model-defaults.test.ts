@@ -28,8 +28,8 @@ describe("role model defaults", () => {
     expect(selectRoleModelDefault("explorer", bothProviders)).toMatchObject({ model: "gpt-6-luna", effort: "high" });
     expect(selectRoleModelDefault("reviewer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
     expect(selectRoleModelDefault("reviewer-quality", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
-    expect(selectRoleModelDefault("reviewer-elegance", bothProviders)).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
-    expect(selectRoleModelDefault("reviewer-mechanism", bothProviders)).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
+    expect(selectRoleModelDefault("reviewer-elegance", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
+    expect(selectRoleModelDefault("reviewer-mechanism", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
     expect(selectRoleModelDefault("implementer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
     expect(selectRoleModelDefault("ship", bothProviders)).toMatchObject({ model: "gpt-6-luna", effort: "high" });
     expect(selectRoleModelDefault("reviewer-design", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
@@ -64,6 +64,8 @@ describe("role model defaults", () => {
   it("uses the Anthropic preference's own effort when OpenAI is absent", () => {
     expect(selectRoleModelDefault("reviewer-quality", anthropicOnly)).toMatchObject({ model: "claude-opus-5.5", effort: "high" });
     expect(selectRoleModelDefault("chat", anthropicOnly)).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
+    expect(selectRoleModelDefault("reviewer-elegance", anthropicOnly)).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
+    expect(selectRoleModelDefault("reviewer-mechanism", anthropicOnly)).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
     expect(selectRoleModelDefault("advisor", anthropicOnly)).toMatchObject({ model: "claude-fable-5.2", effort: "high" });
     expect(selectRoleModelDefault("title-generation", anthropicOnly)).toMatchObject({ model: "claude-haiku-5.5", effort: "low" });
   });

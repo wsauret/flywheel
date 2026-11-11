@@ -44,13 +44,13 @@ export const ROLE_MODEL_DEFAULTS = {
     tier: { tier: "mid", effort: "high" },
   },
   "reviewer-elegance": {
-    openai: { model: "gpt-6-astra", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "high" },
+    openai: { model: "gpt-6.1-sol", effort: "medium" },
+    anthropic: { model: "claude-opus-5.5", effort: "medium" },
     tier: { tier: "mid", effort: "medium" },
   },
   "reviewer-mechanism": {
-    openai: { model: "gpt-6-astra", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "high" },
+    openai: { model: "gpt-6.1-sol", effort: "medium" },
+    anthropic: { model: "claude-opus-5.5", effort: "medium" },
     tier: { tier: "mid", effort: "medium" },
   },
   implementer: {
