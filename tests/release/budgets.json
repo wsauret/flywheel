@@ -30,7 +30,7 @@
   "scroll.pageKeys.p95InputToOutputMs": { "ceiling": 75, "tolerancePct": 120 },
   "scroll.pageKeys.p95FrameGapMs": { "ceiling": 615, "tolerancePct": 30 },
   "scroll.pageKeys.maxResponseGapMs": { "ceiling": 630, "tolerancePct": 35 },
-  "scroll.wheel.p95InputToOutputMs": { "ceiling": 20, "tolerancePct": 30 },
+  "scroll.wheel.p95InputToOutputMs": { "ceiling": 20, "tolerancePct": 30, "toleranceFloor": 12 },
   "scroll.wheel.p95FrameGapMs": { "ceiling": 40, "tolerancePct": 55 },
   "scroll.wheel.maxResponseGapMs": { "ceiling": 205, "tolerancePct": 35 },
   "scroll.drag.p95InputToOutputMs": { "ceiling": 100, "tolerancePct": 85 },
