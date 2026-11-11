@@ -1,0 +1,28 @@
+src/agent-skills/code-review/SKILL.md
+  h_4b47e9e4a8b456 95
+src/workflows/agents/personas/reviewer-uat.md
+  h_4b47e9e4a8b456 70-73
+src/workflows/vm/definition-identity.ts
+  h_4b47e9e4a8b456 388-393,423
+src/workflows/vm/persona-identity-proofs.ts
+  h_4b47e9e4a8b456 234-256
+src/workflows/vm/replay.ts
+  h_4b47e9e4a8b456 18,37,176
+tests/unit/orchestration/migrations/_persona-budget.ts
+  h_4b47e9e4a8b456 102-110,158-160,164
+tests/unit/workflows/vm/definition-identity.test.ts
+  h_4b47e9e4a8b456 26,492
+tests/unit/workflows/vm/replay.test.ts
+  h_4b47e9e4a8b456 15-16,22,383-408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e3297eb73e02ecda2a2ad83a49f53ed047a96dbf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
