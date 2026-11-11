@@ -238,7 +238,7 @@ describe("runHeadlessTask ownership", () => {
     let runs = 0
     const createAgent: AgentFactory = () => {
       runs += 1
-      const terminal = { kind: "api_error" as const, message: "no capacity", recovery: { kind: "at" as const, atMs: Date.now() + 3_600_000 } }
+      const terminal = { kind: "api_error" as const, message: "no capacity", recovery: { kind: "at" as const, atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } as const } }
       return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }) }
     }
     const write = spyOn(process.stderr, "write").mockImplementation(() => true)

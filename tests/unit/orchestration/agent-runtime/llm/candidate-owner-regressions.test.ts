@@ -65,7 +65,7 @@ test("suppressed unpaid candidates never build in planning or execution", async 
 });
 
 test("planning chooses ready paid fallback after pending or suppressed included capacity", async () => {
-  for (const standing of [pending, { kind: "suppressed", exhaustion: { exhaustedAtMs: 0, resetsAtMs: 30_000 } } satisfies QuotaStanding]) {
+  for (const standing of [pending, { kind: "suppressed", exhaustion: { exhaustedAtMs: 0, resetsAtMs: 30_000, hold: { kind: "usage_limit", stated: true } } } satisfies QuotaStanding]) {
     let claims = 0;
     let waits = 0;
     const availability: ProviderAvailability = {

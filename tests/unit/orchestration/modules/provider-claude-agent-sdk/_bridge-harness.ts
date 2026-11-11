@@ -406,7 +406,7 @@ export function withBridge(body: (harness: Harness) => Promise<void>, options: {
       markQuotaExhausted: (resetsAtMs) => {
         quotaMarks.push(resetsAtMs);
         if (options.quotaRowRefused === true) throw new QuotaCoordinationError({ message: "The account's quota row did not take the mark", provider: "claude_agent_sdk", reason: "row-refused" });
-        return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000 }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
+        return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
       },
       // Every test serves the included route, whose guard refuses extra usage, unless it asks for the paid route.
       extraUsage: options.extraUsage ?? "refuse", reportsExtraUsage: () => options.reportsExtraUsage ?? true, accountEmail: () => options.email, onExtraUsageStop: (stop) => { usageStops.push(stop); },
