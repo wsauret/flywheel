@@ -123,23 +123,22 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(bash.description).not.toContain("Prefer read, search, and list");
     expect(prompt).not.toContain("instead of shell commands");
     // Scripting is licensed, not banned.
-    expect(bash.description).toContain("scratch scripts is a normal, expected way to work");
+    expect(bash.description).toContain("Scratch scripts are a normal way to work");
     const mutationGuidance = "Run Git commands as separate calls without mutates. Never chain a Git command onto a mutating command. Git commands that change the repository are refused inside mutates: true; rerun them as a separate call without mutates. Read-only Git commands, including scripts and build tools that only read Git, remain allowed inside mutating commands. Set mutates: true only when the command's purpose is to change the project files you are working on, so that the change is recorded and reviewed like an edit or write tool change. Examples: heredoc and cat > writes, sed -i, Python or Bun scripts that rewrite files, formatters, code generators, and plain mv and rm. Leave it unset when the writes are side effects of running something: installing dependencies or binaries, builds, tests, caches, and servers. Write this field first, before command. Name the target tree with cwd, not an absolute cd in the command. Use relative project paths: the command runs in a private copy, and only its changes to file contents land when it exits. Processes it starts can end when it exits, so start servers and watchers in a separate call without mutates. Git objects, the index, refs, and stash changes never land from the copy. Create files to run, such as scratch scripts, with the write tool; bash only runs them.";
     for (const fileEditTool of ["edit", "apply_patch"] as const) {
       const { description, inputSchema } = bashToolSurface({ fileEditTool });
       expect(description).not.toContain(mutationGuidance);
-      expect(description).toContain("Chain dependent commands with && or ; within one call, but keep Git commands separate from mutating commands.");
+      expect(description).toContain("Chain dependent commands with && or ; in one call, but keep Git commands separate from mutating commands.");
       expect(inputSchema.properties).toEqual(expect.objectContaining({
         mutates: { type: "boolean", description: `${mutationGuidance} These mutations are recorded like changes from the ${fileEditTool} and write tools. Cannot be combined with persist_after_exit.` },
       }));
     }
-    // The hint of what a shell runs leads the description.
-    expect(bash.description.startsWith("Execute a shell command, such as tests, builds, git, servers, package managers, and scratch scripts, in an isolated session.")).toBe(true);
+    expect(bash.description.startsWith("Execute a shell command in a fresh process")).toBe(true);
     expect(bash.description).toContain("Keep writes inside the project, the .flywheel folders, and registered worktrees");
     expect(prompt).not.toContain("glob_pattern (not find)");
     // The prompt keeps only the behavior contract the description does not state.
     expect(prompt).toContain("Preserve live command output.");
-    expect(prompt).not.toContain("scratch scripts is a normal, expected way to work");
+    expect(prompt).not.toContain("Scratch scripts are a normal way to work");
   });
 
   test("a headless shell offers no mutating declaration, and a guard that is off names no write roots", () => {
@@ -147,7 +146,7 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     const headless = bashToolSurface({ mutatingDeclaration: false });
     expect(Object.keys(headless.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "mutates"));
     expect(headless.description).not.toMatch(/mutat/);
-    expect(headless.description).toContain("Chain dependent commands with && or ; within one call. A command that reads text typed into the terminal");
+    expect(headless.description).toContain("Chain dependent commands with && or ; in one call. A command that reads typed input");
     expect(headless.description).toBe(interactive.description.slice(interactive.description.indexOf("Execute a shell command")).replace(", but keep Git commands separate from mutating commands", ""));
 
     const writeRoots = "Keep writes inside the project, the .flywheel folders, and registered worktrees; the shell refuses the writes elsewhere that it recognizes.";
@@ -167,7 +166,7 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(foreground.description).toContain("Never use shell-level &, nohup, or disown.");
 
     // Every shell says how to stop a process; only the persist_after_exit field names the way past the runtime's exit.
-    const stopById = "Stop a process by its process-tool id or its exact PID. Do not match on a process name or a command-line pattern";
+    const stopById = "Stop a process by its process-tool id or exact PID, never by a name pattern.";
     for (const surface of [interactive, foreground]) expect(surface.description).toContain(stopById);
     expect(interactive.description).toContain("A managed background command ends when its runtime exits.");
     expect(JSON.stringify(interactive.inputSchema)).toContain("Without it, runtime exit ends the command.");

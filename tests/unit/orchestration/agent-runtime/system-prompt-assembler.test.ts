@@ -623,8 +623,8 @@ describe("bash background-execution guidance", () => {
 
     const description = bashDefinition.description;
     expect(description).toContain("Set background: true");
-    expect(description).toContain("A finite foreground command remains in its call until it completes, you select Detach, or it reaches the runtime cap. Detach or the cap moves it to managed execution; wait for it with the process tool.");
-    expect(description).toContain("wait on any managed background command, whether launched with background=true or transferred from the foreground");
+    expect(description).toContain("A foreground command moves to managed execution when you select Detach or it reaches the runtime cap; wait for it with the process tool.");
+    expect(description).toContain("Wait for a background command the same way");
     // Timeout rules have one home: the timeout field.
     expect(JSON.stringify(bashDefinition.inputSchema)).toContain("Timeouts are entirely optional and should be used sparingly. They apply equally to foreground and managed background commands.");
     expect(description).not.toContain("Timeouts are entirely optional");
@@ -643,10 +643,10 @@ describe("bash background-execution guidance", () => {
     for (const text of [...PERSON_TEXT, WINDOWS]) expect(unattended("linux")).not.toContain(text);
     expect(unattended("win32")).toContain(WINDOWS);
     // An unattended agent still learns that the runtime cap moves a long foreground command to managed execution.
-    expect(unattended("linux")).toContain("A finite foreground command remains in its call until it completes or reaches the runtime cap. At the cap it moves to managed execution; wait for it with the process tool.");
+    expect(unattended("linux")).toContain("A foreground command moves to managed execution when it reaches the runtime cap; wait for it with the process tool.");
     expect(unattended("linux")).not.toContain("Detach");
     // The surviving sentences are unchanged.
-    for (const text of ["Chain dependent commands with && or ; within one call. Set background: true only", "Stop a process by its process-tool id or its exact PID", "stop after 30s of processing time"]) expect(unattended("linux")).toContain(text);
+    for (const text of ["Chain dependent commands with && or ; in one call. Set background: true only", "Stop a process by its process-tool id or exact PID", "stop after 30s of processing time"]) expect(unattended("linux")).toContain(text);
   });
 });
 
