@@ -25,8 +25,8 @@ function serveHub(requested: string[]): void {
     [`${HUB}/api/spaces/joelniklaus/harness-leaderboard/revision/main`, { sha: "rev-1" }],
     [`${SPACE_FILES}/benchmarks.json`, { benchmarks: { "terminal-bench-2.1": { commit: "c1", strata: "difficulty", subsets: {} } } }],
     [`${SPACE_FILES}/harnesses.json`, { harnesses: {
-      codex: { version: "1.0", adapter: "bridge", public_adapter: "bridge@7011f496679d" },
-      opencode: { version: "2.0", adapter: "bridge" },
+      pinned: { version: "1.0", adapter: "bridge", public_adapter: "bridge@7011f496679d" },
+      current: { version: "2.0", adapter: "bridge" },
     } }],
     [`${SPACE_FILES}/models.json`, { models: {} }],
     [`${SPACE_FILES}/bridge.cjs`, `${BRIDGE_FIRST_LINE}module.exports = {};\n`],
@@ -52,6 +52,6 @@ describe("board fetch", () => {
     const { config } = await loadBoard(BENCHMARK, cache);
     expect(requested.filter((url) => url.endsWith(".cjs"))).toEqual([`${SPACE_FILES}/bridge.cjs`]);
     expect(config.adapterIds).toEqual({ bridge: `bridge@${createHash("sha256").update(BRIDGE_FIRST_LINE).digest("hex").slice(0, 12)}` });
-    expect(config.harnesses.codex?.publicAdapter).toBe("bridge@7011f496679d");
+    expect(config.harnesses.pinned?.publicAdapter).toBe("bridge@7011f496679d");
   });
 });
