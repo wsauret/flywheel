@@ -1,0 +1,24 @@
+src/orchestration/agent-runtime/assistant-message-settlement.ts
+  h_4b47e9e4a8b456 55-59,63-78
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 90-92,416
+src/orchestration/agent-runtime/assistant-turn-stream.ts
+  h_4b47e9e4a8b456 173-175,184-188,215-218
+src/orchestration/agent-runtime/llm/provider-request-audit.ts
+  h_4b47e9e4a8b456 72-74,76-80,125-126,178,259-261
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 67-69,72-78,81-98,100-103,105-107,128,183-188,219,417-425,439-472
+tests/unit/orchestration/agent-runtime/runtime-assembly-request-audit.test.ts
+  h_4b47e9e4a8b456 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7badb399b0a7da82d5d2a479e894959aabd615f0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
