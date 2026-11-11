@@ -3,7 +3,7 @@ import { Key } from "@solid-primitives/keyed"
 import QRCode from "qrcode"
 
 import { lingerNotice } from "../../../../src/protocol/client/process-initiation-copy.js"
-import { remoteDomain, REMOTE_COMMAND_NAME } from "../../../../src/protocol/modules/remote.js"
+import { PAIR_FROM_INSTALLED_APP, remoteDomain, REMOTE_COMMAND_NAME } from "../../../../src/protocol/modules/remote.js"
 import { useClient } from "../../app/client-context.js"
 import { pageDomainReader } from "../../client/module-domain-views.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../../app/sheets/sheet.js"
@@ -89,5 +89,6 @@ function PairingCode(props: { readonly code: string; readonly expiresAt: number 
     <svg class="remote-qr" viewBox={`0 0 ${code().size} ${code().size}`} role="img" aria-label="Scan to pair a device"><path d={code().path} /></svg>
     <a class="remote-pairing-link" href={props.code} target="_blank" rel="noreferrer">{props.code}</a>
     <p>Expires in {Math.max(0, Math.ceil((props.expiresAt - now()) / 1_000))} seconds.</p>
+    <p>{PAIR_FROM_INSTALLED_APP}</p>
   </div>
 }

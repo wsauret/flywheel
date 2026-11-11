@@ -67,18 +67,22 @@ function stepsFor(browser: Browser): BrowserSteps {
     case "ios":
       switch (browser.name) {
         case "Safari":
-          return {
-            steps: [step("share", "Tap Share at the bottom of the screen, inside the ⋯ menu on iOS 26"), step("add-home", "Tap Add to Home Screen"), step("confirm", "Tap Add")],
-            note: "The installed app keeps its own pairing: open it and pair once more.",
-          }
+          // The default Compact tab layout keeps Share behind the page menu,
+          // which iOS 26 draws as ⋯ and iOS 27 as ≡, on different sides of the
+          // address bar; the Bottom and Top layouts show Share itself. The share
+          // sheet can keep Add to Home Screen behind View More. Labels stay
+          // short because the chat view shows this guide in a small notice.
+          return { steps: [step("more", "If you do not see Share, tap ⋯ or ≡"), step("share", "Tap Share"), step("add-home", "Tap Add to Home Screen (in View More)"), step("confirm", "Keep Open as Web App on, then tap Add")] }
+        // The share sheet of these browsers can keep Add to Home Screen out of
+        // its first rows, so the step tells the person to look for it.
         case "Chrome":
-          return { steps: [step("share", "Tap Share at the top of the screen"), step("add-home", "Tap Add to Home Screen"), step("confirm", "Tap Add")] }
+          return { steps: [step("share", "Tap Share at the top of the screen"), step("add-home", "Find and tap Add to Home Screen"), step("confirm", "Tap Add")] }
         case "Firefox":
-          return { steps: [step("menu", "Tap the menu at the bottom right"), step("share", "Tap Share"), step("add-home", "Tap Add to Home Screen")] }
+          return { steps: [step("menu", "Tap the menu at the bottom right"), step("share", "Tap Share"), step("add-home", "Find and tap Add to Home Screen")] }
         case "Edge":
-          return { steps: [step("menu", "Tap the menu at the bottom"), step("share", "Tap Share"), step("add-home", "Tap Add to Home Screen")] }
+          return { steps: [step("menu", "Tap the menu at the bottom"), step("share", "Tap Share"), step("add-home", "Find and tap Add to Home Screen")] }
         case "a browser":
-          return { steps: [step("share", "Tap Share"), step("add-home", "Tap Add to Home Screen"), step("confirm", "Tap Add")] }
+          return { steps: [step("share", "Tap Share"), step("add-home", "Find and tap Add to Home Screen"), step("confirm", "Tap Add")] }
       }
       break
     case "android":

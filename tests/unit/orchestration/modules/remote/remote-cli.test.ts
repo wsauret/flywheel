@@ -134,6 +134,7 @@ describe("flywheel remote pair", () => {
 
     expect(service.received).toEqual([{ type: "remote.pair.open" }])
     expect(lines).toContain(pairing.code)
+    expect(lines).toContain("If Flywheel is on your phone's Home Screen, open it, open Machines, and tap Scan a code.")
     expect(lines.slice(-3)).toEqual(["Relay: connecting", "Attached to the relay; waiting for the phone...", "Paired Laptop."])
     expect(errors).toEqual([])
   })

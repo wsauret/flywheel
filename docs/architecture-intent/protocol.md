@@ -360,3 +360,10 @@ Not: A frame cap as the only size limit a person can meet.
 Every client derives the question it docks at the prompt from the durable question projection, which committed question facts alone advance, never from transcript rows or runner state. The transcript's question row settles from the same committed answer, skip, or withdrawal on every settlement path, and a settlement that the runtime refuses returns its reason to the client.
 
 Not: A dock derived from live transcript rows, which stays after a settlement that the live display never received.
+
+## ARCH-PROTOCOL-070: The hosted phone page's install-time surface is fixed
+
+The web app manifest fields and the home-screen head tags that a phone records when a person adds the hosted page to the Home Screen stay unchanged across releases, and a test pins them. The only per-install value is the start URL, which the page builds at each load to carry the browser's device identity and paired machines into the installed app. A fix for installed apps lands in page code, which every launch loads fresh.
+
+Because: iOS records these fields once, at Add to Home Screen, and never reads them again, so a change reaches only new installs and strands every existing one.
+Not: A change to a manifest field or a home-screen head tag that asks people to add the app to the Home Screen again.

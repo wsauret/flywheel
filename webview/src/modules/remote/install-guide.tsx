@@ -42,6 +42,7 @@ function Glyph(props: { readonly glyph: InstallStep["glyph"] }) {
       {props.glyph === "add-home" && <><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M12 8.5v7M8.5 12h7" /></>}
       {props.glyph === "confirm" && <path d="M5 12.5l4.5 4.5L19 7.5" />}
       {props.glyph === "menu" && <><circle cx="12" cy="5.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="18.5" r="1.4" fill="currentColor" stroke="none" /></>}
+      {props.glyph === "more" && <><circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none" /></>}
       {props.glyph === "install" && <><path d="M12 4v11" /><path d="M8 11l4 4 4-4" /><path d="M5 19h14" /></>}
       {props.glyph === "dock" && <><rect x="3.5" y="15" width="17" height="4.5" rx="1.5" /><rect x="9" y="5" width="6" height="6" rx="1.5" /><path d="M12 11v4" /></>}
     </svg>
@@ -77,7 +78,7 @@ export function InstallGuide(props: { readonly guide: InstallGuideSnapshot; read
         <Show when={props.guide.steps.length > 0}>
           <div class="install-browser">In {props.guide.browser}</div>
         </Show>
-        <ol class="install-steps" style={{ "--install-cycle": cycle() }}>
+        <ol class="install-steps" style={{ "--install-cycle": cycle(), "--install-steps": String(props.guide.steps.length) }}>
           <For each={props.guide.steps}>
             {(step, index) => (
               <li class="install-step" style={{ "--install-delay": `${index() * STEP_MS}ms` }}>

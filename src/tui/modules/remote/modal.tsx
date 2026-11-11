@@ -9,14 +9,14 @@ import { MODAL_FRAME_HORIZONTAL_INSET, ModalFrame } from "@tui/components/modal-
 import { ModalFooter } from "@tui/components/modal-footer"
 import { ControlledTextField } from "@tui/components/controlled-text-field"
 import { QrCode } from "@tui/components/qr-code"
-import { useWrappedLineCount } from "@tui/utils/text"
+import { displayWidth, useWrappedLineCount } from "@tui/utils/text"
 import { qrCodeHeight, qrCodeWidth } from "../../../infra/qr-code.js"
 import { createEffect, createMemo, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import { lingerNotice } from "../../../protocol/client/process-initiation-copy.js"
 import type { RuntimeRemoteView } from "../../../protocol/modules/remote.js"
 import type { RemoteRenameState } from "./use-remote-modal.js"
-import { REMOTE_COMMAND_NAME } from "../../../protocol/modules/remote.js"
+import { PAIR_FROM_INSTALLED_APP, REMOTE_COMMAND_NAME } from "../../../protocol/modules/remote.js"
 
 export interface RemoteModalProps {
   readonly view: RuntimeRemoteView | undefined
@@ -40,10 +40,13 @@ export interface RemoteModalProps {
  *  Relay reachability is the composer border's reading, not repeated here. */
 
 /** Rows the modal spends around the code while pairing: the frame and its
- *  offset from the screen edge, the title, the lead, the wrapped link, and
- *  the footer, with their spacing. */
+ *  offset from the screen edge, the title, and the footer, with their
+ *  spacing. The lead, the installed-app line, and the link wrap with the
+ *  width, so the modal counts their rows apart. */
 const REMOTE_CONTROLS = ["p pair · r rename · d unpair · ↑↓ navigate · esc close", "c cancel · esc close", "p pair · esc close", "enter/esc done · tab back", "d stop offering · p pair · ↑↓ navigate · esc close"] as const
-const PAIRING_CHROME_ROWS = 16
+const PAIRING_CHROME_ROWS = 11
+/** The pairing view's own padding on each side, inside the frame's. */
+const PAIRING_INSET = 2
 const INITIATION_LABEL = "Remote process initiation"
 /** The cursor marker and its trailing space, before every name. */
 const GUTTER = 2
@@ -59,17 +62,21 @@ export function RemoteModal(props: RemoteModalProps) {
   const projects = () => view()?.projects ?? []
   // The width inside the frame's borders and side padding.
   const contentWidth = () => modalWidth() - MODAL_FRAME_HORIZONTAL_INSET
+  const pairingWidth = () => contentWidth() - 2 * PAIRING_INSET
+  const lead = createMemo(() => {
+    const window = pairing()
+    if (!window) return ""
+    const seconds = Math.max(0, Math.round((window.expiresAt - props.now) / 1000))
+    return `Scan with your phone's camera, or open the link on the phone. The code expires in ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}.`
+  })
   // A code the terminal cannot show whole is not scannable, and a modal taller
   // than the screen hides its own footer; the link alone is then the way in.
   const codeFits = createMemo(() => {
     const window = pairing()
-    return window !== null && qrCodeWidth(window.code) <= contentWidth() && qrCodeHeight(window.code) <= termHeight() - PAIRING_CHROME_ROWS
-  })
-  const remaining = createMemo(() => {
-    const window = pairing()
-    if (!window) return ""
-    const seconds = Math.max(0, Math.round((window.expiresAt - props.now) / 1000))
-    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+    if (window === null) return false
+    // The link is one unbroken string that wraps at any character.
+    const textRows = wrappedLineCount(lead(), pairingWidth()) + wrappedLineCount(PAIR_FROM_INSTALLED_APP, pairingWidth()) + Math.ceil(displayWidth(window.code) / pairingWidth())
+    return qrCodeWidth(window.code) <= pairingWidth() && qrCodeHeight(window.code) <= termHeight() - PAIRING_CHROME_ROWS - textRows
   })
   // The problem starts after the gutter and wraps across the rest of the
   // content width, so a long cause shows whole. Its rows come out of the
@@ -155,9 +162,10 @@ export function RemoteModal(props: RemoteModalProps) {
       }>{(window) => {
         const linkHover = useHoverHighlight()
         return (
-          <box flexDirection="column" paddingLeft={2} paddingRight={2}>
+          <box flexDirection="column" paddingLeft={PAIRING_INSET} paddingRight={PAIRING_INSET}>
             <text fg={theme.text}>Pair a phone</text>
-            <text fg={theme.textMuted}>Scan with your phone's camera, or open the link on the phone. The code expires in {remaining()}.</text>
+            <text fg={theme.textMuted}>{lead()}</text>
+            <text fg={theme.textMuted}>{PAIR_FROM_INSTALLED_APP}</text>
             <Show when={view()?.lastError}>{(error) => <text fg={theme.warning}>{error()}</text>}</Show>
             <box height={1} />
             <Show when={codeFits()} fallback={<text fg={theme.warning}>Enlarge the terminal to show the code, or open this link on the phone:</text>}>

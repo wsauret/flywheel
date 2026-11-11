@@ -114,6 +114,18 @@ While notifications are on, a chat that starts waiting on a question shows a not
 
 Flywheel has no notification setting of its own, so allowing notifications on the phone is the only step. While a phone cannot receive notifications, the phone app says why and offers the one next step that fixes it. The person can dismiss that offer, and it stays dismissed until a chat waits on them while notifications are still off.
 
+## PI-REMOTE-032: Adding the phone app to the Home Screen keeps its pairing
+
+A phone that paired in the browser and then adds Flywheel to its Home Screen opens the installed app already paired, straight into its machines and projects. The person never pairs a second time because they installed the app. The browser's install guide shows how the phone's current browser adds a page to the Home Screen.
+
+## PI-REMOTE-033: The installed phone app updates in place
+
+Every change to the phone app reaches an installed app the next time it opens. No update asks the person to remove the app from the Home Screen or to add it again. Only pairing with a new machine needs its own action from the person.
+
+## PI-REMOTE-034: An installed phone app pairs from inside the app
+
+An installed phone app pairs with another machine from its own machines list by scanning the machine's code. Wherever the machine shows a pairing code, it tells a person whose phone already has Flywheel installed to scan the code from inside the app.
+
 ## PI-REMOTE-016: A terminal on another machine reaches the runtime through the relay
 
 A paired terminal on another machine lists the projects of the runtime's machine as open or asleep, and opens or wakes them. It opens one through the remote option or an added answer to its directory question, and creates nothing in a local project directory. A terminal on an older release than the machine updates itself to the machine's release and continues. A newer terminal says the machine has not updated yet and attaches once it has. A terminal on the runtime's own machine attaches locally without the relay. A remote terminal never stops, replaces, or retires that machine's runtime.

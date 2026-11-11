@@ -33,7 +33,8 @@ interface HostCommands {
  *  glyph vocabulary so the host says which taps its platform needs without
  *  the client learning which platform it is on. */
 export interface InstallStep {
-  readonly glyph: "share" | "add-home" | "confirm" | "menu" | "install" | "dock"
+  /** `menu` is a browser's vertical three-dot menu, `more` Safari's horizontal ⋯. */
+  readonly glyph: "share" | "add-home" | "confirm" | "menu" | "more" | "install" | "dock"
   readonly label: string
 }
 

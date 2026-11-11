@@ -156,6 +156,11 @@ test("installed status states show explicit actions", () => {
   assert.match(renderRemoteSheet(base), />Turn on</)
 })
 
+test("a pairing code tells a phone that has Flywheel installed to scan it from inside the app", () => {
+  const html = renderRemoteSheet({ ...base, pairing: { windowId: "w", code: "https://remote.flywl.sh/#p=1.abc", expiresAt: Date.now() + 60_000 } })
+  assert.match(html, /If Flywheel is on your phone(&#39;|')s Home Screen, open it, open Machines, and tap Scan a code\./)
+})
+
 const LINGER_NOTICE = "Flywheel stops when you log out, because lingering is off for wes. To keep Flywheel running after you log out, run `sudo loginctl enable-linger wes` on this machine."
 
 test("an account whose lingering is off reads the logout notice as a warning under Process initiation, whether or not this host can change it", () => {

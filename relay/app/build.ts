@@ -1,6 +1,7 @@
 /**
  * Builds the hosted phone page into app/dist: the bootstrap, the Web Push
- * service worker, the page, the manifest, and the icons. Wrangler publishes
+ * service worker, the page, and the icons. The manifest is not a file: the
+ * bootstrap builds it at each load (`install-carry.ts`). Wrangler publishes
  * the directory as static assets, so nothing here runs at the edge.
  *
  * No client is built here. The page loads the phone shell and the client from
@@ -40,7 +41,6 @@ export async function buildApp(options: { readonly version: string; readonly min
   }
   const page = (await Bun.file(join(APP, "index.html")).text()).replace("__VERSION__", options.version)
   await Bun.write(join(DIST, "index.html"), page)
-  await Bun.write(join(DIST, "manifest.webmanifest"), Bun.file(join(APP, "manifest.webmanifest")))
   // `/local` is a page of its own, not a redirect rule: the asset host admits
   // only https targets in a rule, and the hop is to the machine's loopback.
   await Bun.write(join(DIST, "local", "index.html"), Bun.file(join(APP, "local.html")))

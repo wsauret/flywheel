@@ -193,10 +193,29 @@ it("marks a selected dormant project and offers its removal action", async () =>
 it("shows only the code while a pairing window is open", async () => {
   const text = await renderedText({ ...baseView, pairing: { windowId: "w", code: "https://remote.flywl.sh/#p=1.abc", expiresAt: 61_000 } })
   expect(text).toContain("The code expires in 1:01")
+  expect(text).toContain("If Flywheel is on your phone's Home Screen, open it, open Machines, and tap Scan a code.")
   expect(text).toContain("https://remote.flywl.sh/#p=1.abc")
   expect(text).not.toContain("Alice's iPhone")
   expect(text).not.toContain("Remote process initiation")
   expect(text).not.toContain("Available projects")
+})
+
+// The lead, the installed-app line, and the link wrap inside the pairing
+// view's own padding. A screen one row too short for the code shows the link
+// alone, so at every height the footer and the bottom border stay on the
+// screen. At 60 columns the link takes a fourth row.
+it.each([57, 60, 80])("keeps the pairing view's footer on a %d-column screen of every height", async (width) => {
+  const code = `https://remote.flywl.sh/#p=1.${"abcDEF0123456789".repeat(8)}`
+  for (let height = 30; height <= 50; height++) {
+    const result = await renderModal({ ...baseView, pairing: { windowId: "w", code, expiresAt: 60_000 } }, width, height)
+    try {
+      await result.renderOnce()
+      const frame = result.captureCharFrame()
+      expect({ height, footer: frame.includes("c cancel · esc close"), border: frame.includes("╰") }).toEqual({ height, footer: true, border: true })
+    } finally {
+      result.renderer.destroy()
+    }
+  }
 })
 
 const notice = "Flywheel stops when you log out, because lingering is off for wes. To keep Flywheel running after you log out, run `sudo loginctl enable-linger wes` on this machine."

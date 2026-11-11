@@ -46,7 +46,7 @@ describe("browser recognition", () => {
   })
 
   test("an iPad presenting a Mac user agent is an iPad, by its touch points", () => {
-    expect(glyphs(UA.iPadDesktopMode, 5)).toEqual(["share", "add-home", "confirm"])
+    expect(glyphs(UA.iPadDesktopMode, 5)).toEqual(["more", "share", "add-home", "confirm"])
     expect(glyphs(UA.iPadDesktopMode, 0)).toEqual(["menu", "dock", "confirm"])
   })
 })
@@ -63,12 +63,23 @@ describe("installGuideFor", () => {
   })
 
   test("every iPhone browser installs through the share sheet, and the guide says where that browser keeps it", () => {
-    expect(glyphs(UA.iosSafari)).toEqual(["share", "add-home", "confirm"])
-    expect(installGuideFor(env(UA.iosSafari))?.steps[0]?.label).toMatch(/bottom/)
+    expect(glyphs(UA.iosSafari)).toEqual(["more", "share", "add-home", "confirm"])
     expect(glyphs(UA.iosChrome)).toEqual(["share", "add-home", "confirm"])
     expect(installGuideFor(env(UA.iosChrome))?.steps[0]?.label).toMatch(/top/)
     expect(glyphs(UA.iosFirefox)).toEqual(["menu", "share", "add-home"])
     expect(glyphs(UA.iosEdge)).toEqual(["menu", "share", "add-home"])
+  })
+
+  test("iPhone Safari is guided through its compact toolbar and the share sheet's View More, and promises no second pairing", () => {
+    const safari = installGuideFor(env(UA.iosSafari))
+    const labels = safari?.steps.map((step) => step.label) ?? []
+    expect(labels).toEqual([
+      "If you do not see Share, tap ⋯ or ≡",
+      "Tap Share",
+      "Tap Add to Home Screen (in View More)",
+      "Keep Open as Web App on, then tap Add",
+    ])
+    expect(safari?.note).toBeUndefined()
   })
 
   test("Android browsers without a prompt are guided through their own menus", () => {

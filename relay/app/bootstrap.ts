@@ -6,6 +6,7 @@ import { deviceIdentity, type DeviceStore, type PairedRuntime } from "../../src/
 import { scanPairingCode } from "../../webview/phone/qr-scan.js"
 import { assetOrigin, currentClient, type ClientSource, type KnownRuntime } from "./client-choice.js"
 import { openDeviceStore } from "./device-store.js"
+import { installManifestHref, isInstallCarry, readInstallCarry, type CarriedDevice } from "./install-carry.js"
 import { createPageStart, type PairingRequest } from "./page-start.js"
 import "./bootstrap.css"
 
@@ -25,12 +26,37 @@ const CURRENT_POLL_MS = 1_000
 const PRIVACY_URL = "https://github.com/wsauret/flywheel/blob/main/docs/privacy.md"
 
 /** `localStorage`, or a store that keeps nothing where the browser refuses it. */
-function localStore(): Pick<Storage, "getItem" | "setItem"> {
+function localStore(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
   try {
     return localStorage
   } catch {
-    return { getItem: () => null, setItem: () => {} }
+    return { getItem: () => null, setItem: () => {}, removeItem: () => {} }
   }
+}
+
+/** The app the person added to the Home Screen, as opposed to a browser tab. */
+function installed(): boolean {
+  return window.matchMedia("(display-mode: standalone)").matches || ("standalone" in navigator && navigator.standalone === true)
+}
+
+/** The installed app launches at the start URL the browser's manifest gave
+ *  it, whose fragment carries the browser's device (`install-carry.ts`). The
+ *  page removes the fragment from the URL in every case, and reads it only in
+ *  the installed app. */
+async function takeInstallCarry(): Promise<CarriedDevice | undefined> {
+  if (!isInstallCarry(location.hash)) return undefined
+  const fragment = location.hash
+  history.replaceState(history.state, "", location.pathname)
+  return installed() ? readInstallCarry(fragment) : undefined
+}
+
+/** Safari uses the first manifest link the page inserts in a load, also one
+ *  inserted after the store's first read, and ignores a later change to it. */
+async function insertManifest(store: DeviceStore): Promise<void> {
+  const link = document.createElement("link")
+  link.rel = "manifest"
+  link.href = await installManifestHref(location.origin, store)
+  document.head.append(link)
 }
 
 function pageRoot(): HTMLElement {
@@ -156,7 +182,8 @@ function showPairing(root: HTMLElement, store: DeviceStore, request: PairingRequ
 /** A pairing link opened from the camera app lands here with the code in the
  *  fragment. The page consumes it before anything else, whatever machines
  *  this phone already pairs with. A link tapped while the shell is open
- *  arrives as a hash change, which the shell pairs from itself. */
+ *  arrives as a hash change, which the shell pairs from itself; the page
+ *  learns of that pairing from the store (`page-start.ts`). */
 function takePairingCode(): string | undefined {
   if (!location.hash.includes("p=")) return undefined
   const code = location.hash
@@ -166,11 +193,14 @@ function takePairingCode(): string | undefined {
 
 async function boot(): Promise<void> {
   const root = pageRoot()
-  const store = await openDeviceStore()
+  const store = await openDeviceStore(await takeInstallCarry())
+  if (!installed()) await insertManifest(store)
   window.flywheelPhoneBootstrap = { store } satisfies PhoneBootstrap
   const page = createPageStart({
     store,
+    installed: installed(),
     storage: localStore(),
+    reload: () => location.reload(),
     takePairingCode,
     notificationAddress: () => readNotificationAddress(location.hash),
     currentClients,

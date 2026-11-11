@@ -21,8 +21,9 @@ export interface PairedRuntime {
   readonly pairedAt: number
 }
 
-/** The device's own key. The private half is a non-extractable `CryptoKey`,
- *  so it never exists as bytes the host's code can read. */
+/** The device's own key. The private half is a `CryptoKey`; the host decides
+ *  whether it is extractable. The phone's browser keeps it extractable to
+ *  carry it into the installed app, which imports it non-extractable. */
 export interface DeviceRecord {
   readonly keyPair: CryptoKeyPair
   readonly deviceId: string

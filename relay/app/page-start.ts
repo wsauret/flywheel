@@ -1,8 +1,9 @@
-import type { DeviceStore, PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
+import type { PairedRuntime } from "../../src/protocol/modules/remote/relay-device.js"
 import type { NotificationAddress } from "../../src/protocol/modules/remote/notification-address.js"
 import { chooseClient, readLastClient, writeLastClient, type ClientSource, type KnownRuntime } from "./client-choice.js"
+import type { PageDeviceStore } from "./device-store.js"
 
-/** What the hosted page does when it loads, and again after it pairs: pair
+/** What the hosted page does when it loads, also the load after it pairs: pair
  *  from a link when the URL carries one, otherwise load the client a paired
  *  machine serves, otherwise show the pairing screen. The page's DOM and
  *  network calls are effects passed in, so the order is testable without a
@@ -15,6 +16,8 @@ import { chooseClient, readLastClient, writeLastClient, type ClientSource, type 
  *  a new machine attaches its projects to the relay in that time. */
 const CURRENT_WAIT_MS = 3_000
 const FIRST_CURRENT_WAIT_MS = 30_000
+/** The machine a pairing just added, kept across the reload that follows it. */
+const JUST_PAIRED_KEY = "flywheel-just-paired"
 
 /** What the pairing screen shows and does. */
 export interface PairingRequest {
@@ -23,15 +26,19 @@ export interface PairingRequest {
   /** Set when this phone pairs with machines but none could load: they are
    *  asleep or offline. `machine` names the one the page tried, when known. */
   readonly unreachable: { readonly machine: string | undefined } | undefined
-  /** Pairs from a code, keeps the machine, calls `paired` with its label,
-   *  and starts the page again with it. Rejects with a message for the person
-   *  when pairing fails. */
+  /** Pairs from a code, keeps the machine, and calls `paired` with its label;
+   *  the page then loads again and opens that machine. Rejects with a message
+   *  for the person when pairing fails. */
   pair(code: string, paired: (label: string) => void): Promise<void>
 }
 
 export interface PageStartEffects {
-  readonly store: DeviceStore
-  readonly storage: Pick<Storage, "getItem" | "setItem">
+  readonly store: PageDeviceStore
+  /** The app the person added to the Home Screen, not a browser tab. */
+  readonly installed: boolean
+  readonly storage: Pick<Storage, "getItem" | "setItem" | "removeItem">
+  /** Loads the page again from the start. */
+  reload(): void
   /** The pairing code the page URL carries, removed from the URL so that a
    *  reload does not pair again. */
   takePairingCode(): string | undefined
@@ -48,9 +55,38 @@ export interface PageStartEffects {
 
 export function createPageStart(effects: PageStartEffects) {
   const { store, storage } = effects
+  let shellLoaded = false
 
-  /** `justPaired` is the machine a pairing on this page just added. */
-  async function start(justPaired?: string): Promise<void> {
+  // Every pairing reaches this one place, from the page's pairing screen or
+  // from the shell it loaded. The page loads again, because Safari reads the
+  // manifest link only once per load and the manifest must carry the new
+  // machine into an app the person adds to the Home Screen next
+  // (ARCH-PROTOCOL-070); the fresh load then opens that machine. A runtime
+  // that keeps its pairing time is the same pairing under a new name. The
+  // installed app has no manifest to rebuild, so its shell opens the machine
+  // in place.
+  store.onRuntimePut((runtime, previous) => {
+    if (previous?.pairedAt === runtime.pairedAt) return
+    if (effects.installed && shellLoaded) return
+    void openPaired(runtime)
+  })
+
+  async function openPaired(runtime: PairedRuntime): Promise<void> {
+    try {
+      // The project the phone last opened is on another machine. The person
+      // asked for this one, so the client opens on its machines list, where
+      // this machine's projects are, and not on the other machine's project.
+      const selection = await store.selection()
+      if (selection !== undefined && selection.runtimeId !== runtime.runtimeId) await store.setSelection(undefined)
+    } finally {
+      storage.setItem(JUST_PAIRED_KEY, runtime.runtimeId)
+      effects.reload()
+    }
+  }
+
+  async function start(): Promise<void> {
+    const justPaired = storage.getItem(JUST_PAIRED_KEY) ?? undefined
+    storage.removeItem(JUST_PAIRED_KEY)
     // A link is a request to pair, whatever this phone already pairs with
     // (PI-REMOTE-001), so it goes first and waits on no relay.
     const code = effects.takePairingCode()
@@ -69,6 +105,7 @@ export function createPageStart(effects: PageStartEffects) {
       for (const source of candidates) {
         try {
           await effects.loadShell(source)
+          shellLoaded = true
           writeLastClient(storage, source)
           return
         } catch {
@@ -90,13 +127,7 @@ export function createPageStart(effects: PageStartEffects) {
     const runtime = await effects.pairDevice(code)
     await store.putRuntime(runtime)
     paired(runtime.label)
-    // The project the phone last opened is on another machine. The person
-    // asked for this one, so the client opens on its machines list, where
-    // this machine's projects are, and not on the other machine's project.
-    const selection = await store.selection()
-    if (selection !== undefined && selection.runtimeId !== runtime.runtimeId) await store.setSelection(undefined)
-    await start(runtime.runtimeId)
   }
 
-  return { start: () => start() }
+  return { start }
 }

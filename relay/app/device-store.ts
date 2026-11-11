@@ -1,14 +1,16 @@
 import type { DeviceRecord, DeviceStore, PairedRuntime, RemoteSelection } from "../../src/protocol/modules/remote/relay-device.js"
 import { keyDigest } from "../../src/protocol/modules/remote/relay-protocol.js"
+import type { CarriedDevice } from "./install-carry.js"
 
 /** What this phone remembers, kept by the hosted page because it must outlive
  *  every client build: its own key, the name it pairs under, the machines it
  *  has paired with, and which project it last opened. The page hands the
  *  opened store to the phone shell it loads (`phone-bootstrap.ts`).
  *
- *  IndexedDB rather than localStorage because it holds `CryptoKey` objects,
- *  and a non-extractable private key stored as a `CryptoKey` never exists as
- *  bytes anywhere the page can read. Clearing site data unpairs the phone, and
+ *  IndexedDB rather than localStorage because it holds `CryptoKey` objects.
+ *  The browser's key is extractable so that the page can carry it into the
+ *  app the person adds to the Home Screen (`install-carry.ts`); the installed
+ *  app imports it non-extractable. Clearing site data unpairs the phone, and
  *  the client says so. */
 
 const DB_NAME = "flywheel-remote"
@@ -52,7 +54,22 @@ function defaultLabel(): string {
   return "Browser"
 }
 
-export async function openDeviceStore(): Promise<DeviceStore> {
+/** Called once a `putRuntime` has committed, with the runtime written and the
+ *  one with its id that it replaced. */
+type RuntimePutListener = (runtime: PairedRuntime, previous: PairedRuntime | undefined) => void
+
+/** The store as the page holds it. The page tells of every write a shell
+ *  makes, also a shell from an older build, because the shell receives this
+ *  same object; the notification is the page's own and not part of the
+ *  `DeviceStore` contract. */
+export interface PageDeviceStore extends DeviceStore {
+  onRuntimePut(listener: RuntimePutListener): void
+}
+
+/** Opens the store. `carried` is the identity an installed app's start URL
+ *  carries; it fills a store that has no key yet and is ignored otherwise,
+ *  so it never replaces a device or what the app changed since. */
+export async function openDeviceStore(carried?: CarriedDevice): Promise<PageDeviceStore> {
   const db = await openDatabase()
   const read = async <T>(key: string): Promise<T | undefined> => request<T | undefined>(db.transaction(STORE, "readonly").objectStore(STORE).get(key))
   // Async so that a synchronous IndexedDB throw, such as on a closed
@@ -64,9 +81,19 @@ export async function openDeviceStore(): Promise<DeviceStore> {
   }
 
   let keyPair = await read<CryptoKeyPair>("device-key")
-  if (keyPair === undefined) {
-    // Non-extractable: the private half is a handle, never bytes.
-    const generated = await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])
+  if (keyPair === undefined && carried !== undefined) {
+    // The key goes last: a launch that stops between the writes finds no key
+    // and imports the carry again.
+    await write("runtimes", carried.runtimes)
+    await write("device-label", carried.label)
+    await write("device-key", carried.keyPair)
+    keyPair = carried.keyPair
+  } else if (keyPair === undefined) {
+    // Extractable, so that the page can carry it into the installed app
+    // (PI-REMOTE-032). A key stored before keys were extractable stays as it
+    // is, because a new key would unpair the phone; that browser carries
+    // nothing, and its installed app pairs once, in the app.
+    const generated = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"])
     if (!("privateKey" in generated)) throw new Error("expected an asymmetric key pair")
     keyPair = generated
     await write("device-key", keyPair)
@@ -76,6 +103,7 @@ export async function openDeviceStore(): Promise<DeviceStore> {
   let label = storedLabel ?? defaultLabel()
   if (storedLabel === undefined) await write("device-label", label)
   const device: DeviceRecord = { keyPair, deviceId: await keyDigest(publicKey), publicKey }
+  const runtimeListeners = new Set<RuntimePutListener>()
 
   return {
     device,
@@ -90,6 +118,8 @@ export async function openDeviceStore(): Promise<DeviceStore> {
     async putRuntime(runtime) {
       const current = (await read<readonly PairedRuntime[]>("runtimes")) ?? []
       await write("runtimes", [...current.filter((existing) => existing.runtimeId !== runtime.runtimeId), runtime])
+      const previous = current.find((existing) => existing.runtimeId === runtime.runtimeId)
+      for (const listener of runtimeListeners) listener(runtime, previous)
     },
     async removeRuntime(runtimeId) {
       const current = (await read<readonly PairedRuntime[]>("runtimes")) ?? []
@@ -97,5 +127,6 @@ export async function openDeviceStore(): Promise<DeviceStore> {
     },
     selection: () => read<RemoteSelection>("selection"),
     setSelection: (selection) => write("selection", selection),
+    onRuntimePut: (listener) => { runtimeListeners.add(listener) },
   }
 }

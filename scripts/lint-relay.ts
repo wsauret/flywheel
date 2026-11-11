@@ -12,7 +12,7 @@ import { findOversizedFiles, SRC_MAX_LINES } from "./check-file-sizes.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const relayRoot = path.join(repoRoot, "relay");
-const sourceRoots = ["relay/worker/src", "relay/worker/test", "relay/app/bootstrap.ts", "relay/app/bootstrap-css.test.ts", "relay/app/client-choice.ts", "relay/app/client-choice.test.ts", "relay/app/device-store.ts", "relay/app/device-store.test.ts", "relay/app/page-start.ts", "relay/app/page-start.test.ts", "relay/app/sw", "relay/app/build.ts", "relay/app/serve.ts"];
+const sourceRoots = ["relay/worker/src", "relay/worker/test", "relay/app/bootstrap.ts", "relay/app/bootstrap-css.test.ts", "relay/app/client-choice.ts", "relay/app/client-choice.test.ts", "relay/app/device-store.ts", "relay/app/device-store.test.ts", "relay/app/install-carry.ts", "relay/app/install-carry.test.ts", "relay/app/page-start.ts", "relay/app/page-start.test.ts", "relay/app/sw", "relay/app/build.ts", "relay/app/serve.ts"];
 
 const nonSourceDirs = new Set(["node_modules", "dist", ".wrangler"]);
 

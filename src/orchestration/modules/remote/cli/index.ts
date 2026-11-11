@@ -4,6 +4,7 @@ import { importLegacyRemotePlacements, readRemotePairingStore } from "../remote-
 import type { LauncherContext } from "../../../../infra/process-supervisor.js"
 import { REMOTE_USAGE } from "./registration.js"
 import { DEFAULT_RELAY_URL } from "../../../../protocol/modules/remote/relay-protocol.js"
+import { PAIR_FROM_INSTALLED_APP } from "../../../../protocol/modules/remote.js"
 import { decodeRemoteAccountAnswer, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../../protocol/modules/remote/account-requests.js"
 import type { CliCommandContext } from "../../../cli-contribution.js"
 import { errorMessage } from "../../../../infra/error-message.js"
@@ -182,4 +183,5 @@ function showCode(window: { readonly code: string; readonly expiresAt: number },
   io.log(window.code)
   io.log("")
   io.log(`The code expires at ${new Date(window.expiresAt).toLocaleTimeString()}.`)
+  io.log(PAIR_FROM_INSTALLED_APP)
 }

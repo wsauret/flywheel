@@ -137,6 +137,10 @@ export const REMOTE_SURFACE = "remote"
 export const REMOTE_COMMAND = "remote"
 /** The command's one name, which its surface also heads with. */
 export const REMOTE_COMMAND_NAME = "Remote access"
+/** The line that every view of a pairing code shows with it, because a phone
+ *  that already has Flywheel on its Home Screen pairs by scanning the code
+ *  from the app's Machines list, not with the camera (PI-REMOTE-034). */
+export const PAIR_FROM_INSTALLED_APP = "If Flywheel is on your phone's Home Screen, open it, open Machines, and tap Scan a code."
 
 /** A disabled module publishes no retained device or reachability state. */
 export const EMPTY_REMOTE_VIEW: RuntimeRemoteView = {

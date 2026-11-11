@@ -20,9 +20,14 @@
   width: calc(100% - 2 * var(--fw-s3));
   max-width: 30rem;
   margin: var(--fw-s3);
-  max-height: 30%;
+  /* Half the screen holds every step label of the install guide in the
+     375 by 548 page that Safari leaves on the smallest current iPhone; the
+     chat keeps the other half, and anything past the labels scrolls. */
+  max-height: 50%;
   overflow: auto;
 }
+/* The title says what to do; in the notice the reason gives way to the steps. */
+.push-guide .install-text .install-lead { display: none; }
 .push-guide .install-tile,
 .push-guide .install-ring,
 .push-guide .install-label { animation-iteration-count: 2; }
@@ -43,7 +48,9 @@
 .install-steps:empty { display: none; }
 .install-steps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  /* One row of taps, one column per step: a wrapped row breaks the order the
+     loop shows. */
+  grid-template-columns: repeat(var(--install-steps), minmax(0, 1fr));
   gap: var(--fw-s2);
   margin: 0;
   padding: var(--fw-s2) 0;
