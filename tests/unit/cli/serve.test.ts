@@ -6,6 +6,7 @@ import * as path from "node:path"
 
 import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
 import { accountHomeWatch, createRegistrationRetirement, createSupersededRetirementDecision, releaseHarnessRuntimeOptions, runServe, serveExitCode } from "../../../src/cli/serve.js"
+import { SERVICE_NAMES } from "../../../src/orchestration/app-service/account-service-registration.js"
 import type { ReplacementTrigger } from "../../../src/orchestration/app-service/replacement-owner.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
 import { Log } from "../../../src/infra/log.js"
@@ -284,7 +285,7 @@ describe("flywheel serve", () => {
     expect(fs.existsSync(accountServeSocketPath(userDataRoot, lane))).toBe(false)
   }, 15_000)
 
-  test("a dev serve that nothing holds retires on its own after its graces", async () => {
+  test("a dev serve that nothing holds retires on its own after its graces and hands the lane to its registered job", async () => {
     temporaryRoot = fs.mkdtempSync(path.join(socketTemporaryRoot(), "fw-serve-idle-"))
     const accountHome = path.join(temporaryRoot, "home")
     const userDataRoot = path.join(accountHome, ".flywheel")
@@ -296,8 +297,10 @@ describe("flywheel serve", () => {
     // The registration refresh runs once the service listens, never on the
     // way to the start lock.
     const refreshed: string[] = []
-    // A service whose residency does not follow a registration never reads
-    // one, and hands its address to nothing.
+    // A dev service that a client started never reads its registration on
+    // a build tick, because no registration makes it resident
+    // (ARCH-RUNTIME-081). Once nothing holds it, it asks the service manager
+    // to start the registered job, which answers false when none exists.
     const registrationCalls: string[] = []
     try {
       // No client ever connects: the startup grace passes, then the idle grace,
@@ -325,7 +328,7 @@ describe("flywheel serve", () => {
     }
     expect(exitCode).toBe(SERVE_EXIT.parked)
     expect(refreshed).toEqual(["start", "listening"])
-    expect(registrationCalls).toEqual([])
+    expect(registrationCalls).toEqual(["start"])
     expect(fs.existsSync(accountServeRecordPath(userDataRoot, lane))).toBe(false)
     expect(fs.existsSync(accountServeSocketPath(userDataRoot, lane))).toBe(false)
   }, 15_000)
@@ -347,7 +350,7 @@ describe("flywheel serve", () => {
         startHub: () => ({ origin: "http://127.0.0.1:41000", held: () => true, stop() { events.push("hub stopped") } }),
         // No registration existed when it started, so it was resident; a
         // person turns Process initiation on while it serves.
-        residency: async () => ({ resident: true, followsRegistration: true }),
+        residency: async () => ({ resident: true, followsRegistration: true, startsRegisteredJob: true }),
         serveLifetime: () => new ServeLifetime({ resident: true, idleGraceMs: 10 }),
         buildCheckMs: 20,
         installedBuild: () => undefined,
@@ -640,12 +643,12 @@ describe("flywheel serve", () => {
   })
 
   test("serve install --update, which an update runs, reaches the registration refresh, and serve install refuses any other option", async () => {
-    // A test process runs no installed build, so the refresh stops at the
-    // installation and nothing is registered.
+    // A test process runs the dev lane from source, and this home is not the
+    // login home, so the refresh registers nothing and runs no command.
     const directories = { executionCwd: "/scratch", projectRoot: "/scratch", accountHome: "/scratch/home", userDataRoot: "/scratch/home/.flywheel" }
     const serve = (args: readonly string[]) => runServe(args, directories, unusedLauncher(), createPersistentProcessManager(), false)
 
-    expect(await refusal(() => serve(["install", "--update"]))).toEqual({ code: 1, stderr: "flywheel serve install --update: Process initiation requires an installed Flywheel build.\n" })
+    expect(await refusal(() => serve(["install", "--update"]))).toEqual({ code: 0, stderr: "" })
     expect(await refusal(() => serve(["install", "--bogus"]))).toEqual({ code: 1, stderr: expect.stringContaining("unknown argument: --bogus") })
     expect(await refusal(() => serve(["uninstall", "--update"]))).toEqual({ code: 1, stderr: expect.stringContaining("unknown argument: --update") })
   })
@@ -680,9 +683,10 @@ describe("flywheel serve", () => {
     // No registration is on disk in this home, so the reload is Process
     // initiation Off's unload, which starts nothing after a failure and
     // records nothing. A host without a user id names no launchd domain, so
-    // it asks nothing.
-    expect(launched).toEqual(uid === undefined ? [] : [["launchctl", "print", `gui/${uid}/sh.flywl.flywheel.serve.reload`]])
-    expect(fs.existsSync(path.join(accountServeDir(userDataRoot, "installed"), "registration-reload.json"))).toBe(false)
+    // it asks nothing. A test runs from source, so it asks about the dev
+    // lane's helper.
+    expect(launched).toEqual(uid === undefined ? [] : [["launchctl", "print", `gui/${uid}/${SERVICE_NAMES.dev.reloadHelper}`]])
+    expect(fs.existsSync(path.join(accountServeDir(userDataRoot, "dev"), "registration-reload.json"))).toBe(false)
     expect(await refusal(() => runServe(["reload-registration", "extra"], { executionCwd: root, projectRoot: root, accountHome, userDataRoot }, launcher, createPersistentProcessManager(), false)))
       .toEqual({ code: 1, stderr: expect.stringContaining("unknown argument: extra") })
   })

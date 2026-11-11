@@ -115,9 +115,8 @@ export interface RuntimeAttachSeams {
   readonly installedBuildId?: (directories: StartupDirectories) => string | undefined
   readonly requestReplacement?: (socketPath: string, credential: string, intent: "cutover" | "restart") => Promise<"busy" | "retiring">
   /** Asks the lane's service manager to start its registered service. The
-   *  production answer consults launchd, systemd, or Task Scheduler on the
-   *  installed lane and is false on the dev lane. */
-  readonly startInstalledService?: (options: ProjectRuntimeOptions, lane: ServeLane) => Promise<boolean>
+   *  production answer consults launchd, systemd, or Task Scheduler. */
+  readonly startRegisteredService?: (options: ProjectRuntimeOptions) => Promise<boolean>
   /** Launches a service from this client when no registered service answers,
    *  and stops it if `shutdown` aborts before it reports listening. */
   readonly launchRuntime?: (
@@ -264,7 +263,7 @@ async function ensureAccountRuntime(
   const readIdentity = seams.readRuntimeIdentity ?? readRuntimeIdentity
   const readBuild = seams.installedBuildId ?? installedBuildId
   const spawn = seams.launchRuntime ?? launchAccountRuntime
-  const startService = seams.startInstalledService ?? startInstalledService
+  const startService = seams.startRegisteredService ?? startRegisteredService
   const pause = seams.sleep ?? Bun.sleep
   // Every wait below ends in a start, a launch, or a follow. A client that
   // began shutting down during the wait stops there instead.
@@ -305,17 +304,16 @@ async function ensureAccountRuntime(
     shutdown.throwIfAborted()
     return await follow(target)
   }
-  // The registered service is the resident owner of the installed lane and,
-  // while its registration is loaded and enabled, its one starter. A client
-  // that finds nothing listening asks the service manager for it and waits,
-  // so the job launchd, systemd, or Task Scheduler supervises comes back
-  // under its own registration, its consent grant, and its restart policy,
-  // never beside a client-owned twin that holds the address while the
-  // registered job parks or respawns against it. The client launches a
-  // service itself only where no registration is loaded and enabled: the dev
-  // lane, an account home the manager does not serve, a login home with
-  // nothing registered, or a registration the person disabled. A `current`
-  // link that does not read changes none of that.
+  // The registered service is the resident owner of its lane and, while its
+  // registration is loaded and enabled, its one starter. A client that finds
+  // nothing listening asks the service manager for it and waits, so the job
+  // launchd, systemd, or Task Scheduler supervises comes back under its own
+  // registration, its consent grant, and its restart policy, never beside a
+  // client-owned twin that holds the address while the registered job parks
+  // or respawns against it. The client launches a service itself only where
+  // no registration is loaded and enabled: an account home the manager does
+  // not serve, a login home with nothing registered, or a registration the
+  // person disabled. A `current` link that does not read changes none of that.
   const launch = async (): Promise<void> => {
     shutdown.throwIfAborted()
     // A start that answers this request fails after this moment, and its
@@ -324,7 +322,7 @@ async function ensureAccountRuntime(
     const errorLogBytes = fileSize(accountServeErrorLogPath(options.userDataRoot))
     // A start the manager did not answer settles nothing about who starts
     // the service, so the wait below observes the socket and asks again.
-    if (await startService(options, lane).catch(unansweredStartRequested)) {
+    if (await startService(options).catch(unansweredStartRequested)) {
       report({ kind: "phase", ...startupPhase({ step: "account-service" }) })
       startupTrace("account service start requested from the service manager")
       // Each start of the installed lane that ends before it listens, or
@@ -357,7 +355,7 @@ async function ensureAccountRuntime(
         if (now() - asked < SERVICE_START_REPEAT_MS) return true
         asked = now()
         try {
-          unloaded = !(await startService(options, lane))
+          unloaded = !(await startService(options))
         } catch (error) {
           log.warn("the service manager refused a repeated start of the account service; the client keeps waiting", { error: errorMessage(error) })
         }
@@ -524,11 +522,10 @@ async function waitForServiceState(
   }
 }
 
-/** Asks the installed lane's registered service to start. The installation
+/** Asks the lane's registered service to start. The installation
  *  module loads only here, on the rare attach that finds nothing listening,
  *  so the common warm attach carries none of its weight. */
-async function startInstalledService(options: ProjectRuntimeOptions, lane: ServeLane): Promise<boolean> {
-  if (lane !== "installed") return false
+async function startRegisteredService(options: ProjectRuntimeOptions): Promise<boolean> {
   const { accountServicePlatform, createAccountServiceInstallation, serviceCommandLaunch } = await import("../orchestration/app-service/account-service-installation.js")
   // A client attach runs before any launcher scope exists, so it drives the
   // service manager through trusted system programs.

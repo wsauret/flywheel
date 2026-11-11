@@ -64,7 +64,7 @@ The machine stays awake while a phone uses a project that the phone opened, and 
 
 ## PI-REMOTE-024: Process initiation controls login startup
 
-On installed surfaces, the account service's login startup is an explicit action named Process initiation, which reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service. A failed repair says to run the serve install command on the machine and to report a bug if that command also fails. A source build omits Process initiation.
+The account service's login startup is an explicit action named Process initiation, which reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service. A failed repair says to run the serve install command on the machine and to report a bug if that command also fails. A source build has its own Process initiation, which registers a separate service that runs from the checkout beside the installed build's service.
 
 ## PI-REMOTE-010: A paired phone opens straight into its session
 
@@ -80,7 +80,7 @@ While a pairing code is showing, the machine's Remote view shows only the code, 
 
 ## PI-REMOTE-029: Process initiation decides whether Flywheel starts at login
 
-On installed surfaces, the Remote view shows Process initiation. On starts Flywheel at login, so the fixed local page and a paired phone can wake a project until the person logs out. Off does not start Flywheel at login, though a terminal or editor can start it for the current login session.
+The Remote view shows Process initiation for the build that serves it, installed or source. On starts that build's Flywheel at login, so the fixed local page and a paired phone can wake a project until the person logs out. Off does not start it at login, though a terminal or editor can start it for the current login session.
 
 ## PI-REMOTE-030: On Linux, Process initiation keeps Flywheel running after logout
 

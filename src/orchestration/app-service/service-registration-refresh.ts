@@ -7,7 +7,7 @@ import type { DarwinExecutable } from "../../infra/darwin-process-api.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import type { AccountServiceRegistrationControl } from "./account-service-installation.js"
-import { ACCOUNT_SYSTEMD_UNIT, REGISTRATION_FINGERPRINT_ENV, RegistrationReloadRecordSchema, type RegistrationReloadRecord } from "./account-service-registration.js"
+import { REGISTRATION_FINGERPRINT_ENV, RegistrationReloadRecordSchema, type RegistrationReloadRecord, type ServiceNames } from "./account-service-registration.js"
 
 const log = Log.create({ service: "service-registration-refresh" })
 
@@ -150,8 +150,8 @@ export function createServiceRegistrationRefresh(deps: {
   /** The parent of this process, read once at start. */
   readonly ppid: number
   readonly serveDirectory: string
-  /** The label of the account service's launchd job. */
-  readonly launchdLabel: string
+  /** The names the service's lane registers its job under. */
+  readonly names: ServiceNames
   /** Read only once the manager's start is proven. */
   readonly control: () => AccountServiceRegistrationControl | undefined
 }): ServiceRegistrationRefresh {
@@ -160,7 +160,7 @@ export function createServiceRegistrationRefresh(deps: {
   // fingerprint, so launchd's label is what says the job started this
   // process. Remove this conversion after 2027-03-23: by then every launchd
   // registration carries a fingerprint, and the fingerprint alone says so.
-  const byLabel = own === undefined && deps.env.XPC_SERVICE_NAME === deps.launchdLabel
+  const byLabel = own === undefined && deps.env.XPC_SERVICE_NAME === deps.names.launchd
   const guard = registrationReloadGuard(deps.serveDirectory)
 
   /** The fingerprint on disk, when this process is the launchd job's own and
@@ -196,12 +196,12 @@ export function createServiceRegistrationRefresh(deps: {
   const proveStart = (): boolean | undefined => {
     switch (deps.platform) {
       case "darwin":
-        if (deps.env.XPC_SERVICE_NAME !== deps.launchdLabel) return false
+        if (deps.env.XPC_SERVICE_NAME !== deps.names.launchd) return false
         return deps.ppid === 1 || parentIsLauncher()
       case "linux": {
         if (deps.env.INVOCATION_ID === undefined) return false
         const cgroup = deps.procEntry(deps.pid, "cgroup")
-        return cgroup !== undefined && inSystemdGroup(cgroup, ACCOUNT_SYSTEMD_UNIT) && parentIsUserManager()
+        return cgroup !== undefined && inSystemdGroup(cgroup, deps.names.systemdUnit) && parentIsUserManager()
       }
       case "win32":
         return deps.scheduledTask

@@ -8,14 +8,14 @@ import { ServeLifetime } from "../../../src/orchestration/app-service/serve-life
  *  client-started service in the login home follows its registration. */
 describe("flywheel serve: residency", () => {
   /** Neither resident nor following a registration: it retires once nothing holds it. */
-  const RETIRES = { resident: false, followsRegistration: false } as const
+  const RETIRES = { resident: false, followsRegistration: false, startsRegisteredJob: false } as const
   /** Asks no registration question. */
   const unasked = async (): Promise<boolean> => { throw new Error("residency must not ask whether a registration exists") }
 
   test("the installed service is resident when its service manager started it, and asks nothing about the login home or a registration", async () => {
     let probes = 0
     const isLoginHome = async () => { probes += 1; return false }
-    expect(await serveResidency({ lane: "installed", env: {}, startedByManager: () => true, isLoginHome, registered: unasked })).toEqual({ resident: true, followsRegistration: false })
+    expect(await serveResidency({ lane: "installed", env: {}, startedByManager: () => true, isLoginHome, registered: unasked })).toEqual({ resident: true, followsRegistration: false, startsRegisteredJob: false })
     expect(probes).toBe(0)
   })
 
@@ -31,15 +31,15 @@ describe("flywheel serve: residency", () => {
     const unmanaged = () => false
     const installed = (isLoginHome: () => Promise<boolean>, registered: () => Promise<boolean>) => serveResidency({ lane: "installed", env: {}, startedByManager: unmanaged, isLoginHome, registered })
 
-    expect(await installed(probe(true), registration(false))).toEqual({ resident: true, followsRegistration: true })
+    expect(await installed(probe(true), registration(false))).toEqual({ resident: true, followsRegistration: true, startsRegisteredJob: true })
     // A registration that exists, enabled or disabled, belongs to the
     // registered job, which is the resident owner of the login home.
-    expect(await installed(probe(true), registration(true))).toEqual({ resident: false, followsRegistration: true })
+    expect(await installed(probe(true), registration(true))).toEqual({ resident: false, followsRegistration: true, startsRegisteredJob: true })
     // A registration question that did not answer proves nothing; the build
     // tick asks again, and owns the one warning of the streak.
     const warn = spyOn(Log.create({ service: "serve" }), "warn")
     try {
-      expect(await installed(probe(true), registration(new Error("schtasks did not answer")))).toEqual({ resident: false, followsRegistration: true })
+      expect(await installed(probe(true), registration(new Error("schtasks did not answer")))).toEqual({ resident: false, followsRegistration: true, startsRegisteredJob: true })
       expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
@@ -48,15 +48,23 @@ describe("flywheel serve: residency", () => {
     // Another home follows nothing and asks nothing about a registration.
     expect(await installed(probe(false), registration(false))).toEqual(RETIRES)
     expect([probes, registrationReads]).toEqual([4, 3])
-    // The dev lane never is resident, and asks nothing.
-    expect(await serveResidency({ lane: "dev", env: {}, startedByManager: () => true, isLoginHome: probe(true), registered: unasked })).toEqual(RETIRES)
-    expect(probes).toBe(4)
+  })
+
+  test("a dev service is resident only when its own registered job started it, and asks nothing about the login home or a registration", async () => {
+    let probes = 0
+    const isLoginHome = async () => { probes += 1; return true }
+    expect(await serveResidency({ lane: "dev", env: {}, startedByManager: () => true, isLoginHome, registered: unasked })).toEqual({ resident: true, followsRegistration: false, startsRegisteredJob: false })
+    // A dev service that a client started runs one fixed snapshot: it is never
+    // resident, and once nothing holds it, it hands the lane to a registered job.
+    expect(await serveResidency({ lane: "dev", env: {}, startedByManager: () => false, isLoginHome, registered: unasked })).toEqual({ resident: false, followsRegistration: false, startsRegisteredJob: true })
+    expect(probes).toBe(0)
   })
 
   test("a harness keeps the installed service resident in an isolated home", async () => {
     const env = { FLYWHEEL_INTERNAL_RESIDENT_SERVICE: "1" }
-    expect(await serveResidency({ lane: "installed", env, startedByManager: () => false, isLoginHome: async () => false, registered: unasked })).toEqual({ resident: true, followsRegistration: false })
-    expect(await serveResidency({ lane: "dev", env, startedByManager: () => true, isLoginHome: async () => true, registered: unasked })).toEqual(RETIRES)
+    expect(await serveResidency({ lane: "installed", env, startedByManager: () => false, isLoginHome: async () => false, registered: unasked })).toEqual({ resident: true, followsRegistration: false, startsRegisteredJob: false })
+    // The harness override never makes a dev service resident.
+    expect(await serveResidency({ lane: "dev", env, startedByManager: () => false, isLoginHome: async () => true, registered: unasked })).toEqual({ resident: false, followsRegistration: false, startsRegisteredJob: true })
   })
 
   test("a client-started service follows its registration on each build tick, with one record for each change and one warning for each unanswered streak", async () => {
@@ -140,6 +148,6 @@ describe("flywheel serve: residency", () => {
     expect(await serveResidency({ lane: "installed", env: {}, startedByManager: unmanaged, isLoginHome: async () => { throw new Error("dscacheutil failed") }, registered: unasked })).toEqual(RETIRES)
     expect(await serveResidency({ lane: "installed", env: {}, startedByManager: unmanaged, isLoginHome: async () => undefined, registered: unasked })).toEqual(RETIRES)
     // A service its manager started stays resident whatever the probe says.
-    expect(await serveResidency({ lane: "installed", env: {}, startedByManager: () => true, isLoginHome: async () => { throw new Error("dscacheutil failed") }, registered: unasked })).toEqual({ resident: true, followsRegistration: false })
+    expect(await serveResidency({ lane: "installed", env: {}, startedByManager: () => true, isLoginHome: async () => { throw new Error("dscacheutil failed") }, registered: unasked })).toEqual({ resident: true, followsRegistration: false, startsRegisteredJob: false })
   })
 })

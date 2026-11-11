@@ -25,7 +25,7 @@ test("shares startup phases with callers joining an early launch without replayi
     isRuntimeListening: async () => serving,
     readRuntimeIdentity: () => ({ pid: 1, holder: { kind: "without-identity", pid: 1 }, version: "1.0.0", protocolVersion: RUNTIME_PROTOCOL_VERSION, buildId: "current" }),
     installedBuildId: () => "current",
-    startInstalledService: async () => false,
+    startRegisteredService: async () => false,
     launchRuntime: async (_options, report) => {
       launches += 1
       report({ kind: "phase", label: "Starting account service" })

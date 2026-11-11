@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import { reloadLaunchdRegistration } from "../../../../src/orchestration/app-service/account-service-installation.js"
 import { systemdUnitPath } from "../../../../src/orchestration/app-service/account-service-systemd.js"
-import { ACCOUNT_SYSTEMD_UNIT, REGISTRATION_RELOAD_HELPER_LABEL, registrationFingerprint, type RegistrationReloadRecord } from "../../../../src/orchestration/app-service/account-service-registration.js"
+import { registrationFingerprint, type RegistrationReloadRecord, SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
 import { ok, unanswered, eio, launchdAbsent, plistPath, service, print, helperPrint, printDisabled, printedDisabled, bootstrap, removeHelper, submitHelper, OLD_PLIST, OLD_UNIT, UNIT_BEFORE_OOM_POLICY, printedJob, fixture, currentPlist, currentUnit, daemonReload, type Response } from "./_account-service-fixtures.js"
 
 describe("launchd re-registration", () => {
@@ -236,7 +236,7 @@ describe("launchd re-registration", () => {
     const setup = fixture("darwin", new Map<string, Response | readonly Response[]>([helperRunning, [print.join("\0"), ok(printedJob(undefined))]]))
 
     const { run, records } = reload(setup, { parentPid: 999 })
-    await expect(run).rejects.toThrow(`serve reload-registration runs only as the launchd job ${REGISTRATION_RELOAD_HELPER_LABEL}`)
+    await expect(run).rejects.toThrow(`serve reload-registration runs only as the launchd job ${SERVICE_NAMES.installed.reloadHelper}`)
 
     expect(records).toEqual([])
     expect(setup.commands).toEqual([helperPrint])
@@ -265,9 +265,9 @@ describe("launchd re-registration", () => {
     const setup = fixture("darwin", new Map([[helperPrint.join("\0"), helperAnswer], [print.join("\0"), ok("state = not running")]]), new Map([[plistPath, plist]]))
 
     const { run, records } = reload(setup, caller)
-    await expect(run).rejects.toThrow(`serve reload-registration runs only as the launchd job ${REGISTRATION_RELOAD_HELPER_LABEL}`)
+    await expect(run).rejects.toThrow(`serve reload-registration runs only as the launchd job ${SERVICE_NAMES.installed.reloadHelper}`)
 
-    expect(records).toEqual([{ fingerprint: registrationFingerprint(plist) ?? "", outcome: "failed", error: `serve reload-registration runs only as the launchd job ${REGISTRATION_RELOAD_HELPER_LABEL}, outside the account service's own process tree` }])
+    expect(records).toEqual([{ fingerprint: registrationFingerprint(plist) ?? "", outcome: "failed", error: `serve reload-registration runs only as the launchd job ${SERVICE_NAMES.installed.reloadHelper}, outside the account service's own process tree` }])
     expect(afterRecord(setup)).toEqual([print, kickstart])
     expect(setup.commands).not.toContainEqual(["launchctl", "bootout", service])
   })
@@ -293,8 +293,8 @@ describe("launchd re-registration", () => {
 })
 
 describe("systemd unit refresh", () => {
-  const show = ["systemctl", "--user", "show", "-p", "NeedDaemonReload", ACCOUNT_SYSTEMD_UNIT]
-  const unitPath = systemdUnitPath("/scratch/test", {})
+  const show = ["systemctl", "--user", "show", "-p", "NeedDaemonReload", SERVICE_NAMES.installed.systemdUnit]
+  const unitPath = systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })
   const systemd = (setup: ReturnType<typeof fixture>) => {
     const control = setup.control.systemd
     if (control === undefined) throw new Error("expected the systemd registration control")

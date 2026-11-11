@@ -13,7 +13,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileS
 import { dirname, join } from "node:path"
 
 import { accountServiceRegistrationControl, createAccountServiceInstallation, reloadLaunchdRegistration, type AccountServicePlatform } from "../../../src/orchestration/app-service/account-service-installation.js"
-import { REGISTRATION_FINGERPRINT_ENV } from "../../../src/orchestration/app-service/account-service-registration.js"
+import { REGISTRATION_FINGERPRINT_ENV, SERVICE_NAMES } from "../../../src/orchestration/app-service/account-service-registration.js"
 import { createServiceRegistrationRefresh, registrationReloadGuard } from "../../../src/orchestration/app-service/service-registration-refresh.js"
 
 export interface LaunchdReloadJobConfig {
@@ -21,7 +21,7 @@ export interface LaunchdReloadJobConfig {
   readonly serveDirectory: string
   readonly markers: string
   readonly executable: string
-  readonly labels: AccountServicePlatform["launchdLabels"]
+  readonly labels: { readonly service: string; readonly helper: string }
 }
 
 /** Exit 75 is the account service's retirement code, which KeepAlive restarts. */
@@ -38,9 +38,9 @@ const platform: AccountServicePlatform = {
   loginHome: () => config.accountHome,
   env: process.env,
   uid: process.getuid?.(),
-  executable: config.executable,
+  command: [config.executable],
   launcher: undefined,
-  launchdLabels: config.labels,
+  names: { ...SERVICE_NAMES.installed, launchd: config.labels.service, reloadHelper: config.labels.helper },
   retired: [],
   runCommand: async (command) => {
     const child = Bun.spawn([...command], { stdin: "ignore", stdout: "pipe", stderr: "pipe", windowsHide: true })
@@ -95,7 +95,7 @@ try {
       pid: process.pid,
       ppid: process.ppid,
       serveDirectory: config.serveDirectory,
-      launchdLabel: config.labels.service,
+      names: { ...SERVICE_NAMES.installed, launchd: config.labels.service, reloadHelper: config.labels.helper },
       control: () => control,
     })
     const decision = await refresh.atStart()

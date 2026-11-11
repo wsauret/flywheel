@@ -69,7 +69,7 @@ import { tarExecutable } from "./readiness-package-smoke.js";
 import { downloadReleaseAsset, latestReleaseTag } from "./release-repo.js";
 import { RELEASE_HARNESS_ENVIRONMENT, stopHarnessProcesses, type TaggedProcess } from "../tests/helpers/real-process-fixture.js";
 import { readRevisionDriver } from "../tests/release/lib/revision-driver.js";
-import { ACCOUNT_WINDOWS_TASK } from "../src/orchestration/app-service/account-service-registration.js";
+import { SERVICE_NAMES } from "../src/orchestration/app-service/account-service-registration.js";
 
 /** Selects comparison families and validates an explicitly supplied pinned driver. */
 export function comparisonPlan(manifestPath?: string) {
@@ -117,7 +117,7 @@ const queryState: StateQuery = (command) => {
 };
 
 const repository = join(import.meta.dir, "..");
-const ACCOUNT_TASK_QUERY = ["schtasks", "/Query", "/TN", ACCOUNT_WINDOWS_TASK, "/XML"];
+const ACCOUNT_TASK_QUERY = ["schtasks", "/Query", "/TN", SERVICE_NAMES.installed.windowsTask, "/XML"];
 /** Every task the user can read, one CSV row each with the task's full path first. */
 const TASK_LIST_QUERY = ["schtasks", "/Query", "/FO", "CSV", "/NH"];
 
@@ -129,9 +129,9 @@ function accountTaskDefinition(query: StateQuery): string | undefined {
   const definition = query(ACCOUNT_TASK_QUERY);
   if (definition.exitCode === 0) return definition.stdout.trim();
   const list = query(TASK_LIST_QUERY);
-  const row = `"\\${ACCOUNT_WINDOWS_TASK}",`.toLowerCase();
+  const row = `"\\${SERVICE_NAMES.installed.windowsTask}",`.toLowerCase();
   if (list.exitCode === 0 && !list.stdout.split(/\r?\n/).some((line) => line.trim().toLowerCase().startsWith(row))) return undefined;
-  throw new Error(`cannot read the "${ACCOUNT_WINDOWS_TASK}" scheduled task: \`${ACCOUNT_TASK_QUERY.join(" ")}\` exited ${definition.exitCode} and the task list does not prove the task absent`);
+  throw new Error(`cannot read the "${SERVICE_NAMES.installed.windowsTask}" scheduled task: \`${ACCOUNT_TASK_QUERY.join(" ")}\` exited ${definition.exitCode} and the task list does not prove the task absent`);
 }
 
 const taskCommand = (definition: string | undefined): string =>
@@ -155,8 +155,8 @@ export function watchAccountTask(platform: NodeJS.Platform, query: StateQuery): 
       return `${error instanceof Error ? error.message : String(error)}, so the gate cannot prove that it left the task unchanged`;
     }
     if (after === before) return undefined;
-    const repair = before === undefined ? `schtasks /Delete /F /TN "${ACCOUNT_WINDOWS_TASK}"` : "flywheel serve install";
-    return `this run changed the "${ACCOUNT_WINDOWS_TASK}" scheduled task, which starts this account's own Flywheel service.\n  <Command> before: ${taskCommand(before)}\n  <Command> after:  ${taskCommand(after)}\nThe gate does not change the task back. Repair it from this account's own installation: ${repair}`;
+    const repair = before === undefined ? `schtasks /Delete /F /TN "${SERVICE_NAMES.installed.windowsTask}"` : "flywheel serve install";
+    return `this run changed the "${SERVICE_NAMES.installed.windowsTask}" scheduled task, which starts this account's own Flywheel service.\n  <Command> before: ${taskCommand(before)}\n  <Command> after:  ${taskCommand(after)}\nThe gate does not change the task back. Repair it from this account's own installation: ${repair}`;
   };
 }
 

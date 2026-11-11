@@ -179,7 +179,7 @@ describe("account runtime attach", () => {
         },
         readRuntimeIdentity: () => ({ pid: 1, holder: { kind: "without-identity", pid: 1 }, version: "1.0.0", protocolVersion: RUNTIME_PROTOCOL_VERSION, buildId: "current" }),
         installedBuildId: () => "current",
-        startInstalledService: async () => {
+        startRegisteredService: async () => {
           events.push("service-start")
           return true
         },
@@ -214,7 +214,7 @@ describe("account runtime attach", () => {
           return identityReads === 1 ? undefined : { pid: 1, holder: { kind: "without-identity", pid: 1 }, version: "1.0.0", protocolVersion: RUNTIME_PROTOCOL_VERSION, buildId: "registered" }
         },
         installedBuildId: () => undefined,
-        startInstalledService: async () => {
+        startRegisteredService: async () => {
           events.push("service-start")
           return true
         },
@@ -242,7 +242,7 @@ describe("account runtime attach", () => {
         isRuntimeListening: async () => false,
         readRuntimeIdentity: () => undefined,
         installedBuildId: () => "current",
-        startInstalledService: async () => {
+        startRegisteredService: async () => {
           events.push("service-start")
           return false
         },
@@ -273,7 +273,7 @@ describe("account runtime attach", () => {
         isRuntimeListening: async () => false,
         readRuntimeIdentity: () => undefined,
         installedBuildId: () => "current",
-        startInstalledService: async () => {
+        startRegisteredService: async () => {
           events.push(`service-start@${now}`)
           return true
         },
@@ -309,7 +309,7 @@ describe("account runtime attach", () => {
         isRuntimeListening: async () => false,
         readRuntimeIdentity: () => undefined,
         installedBuildId: () => "current",
-        startInstalledService: async () => { throw new Error("launchctl kickstart failed (exit 113)") },
+        startRegisteredService: async () => { throw new Error("launchctl kickstart failed (exit 113)") },
         sleep: async () => {},
         launchRuntime: async () => { events.push("launch") },
       })
@@ -337,7 +337,7 @@ describe("account runtime attach", () => {
         isRuntimeListening: async () => now >= 12_000,
         readRuntimeIdentity: () => ({ pid: 1, holder: { kind: "without-identity", pid: 1 }, version: "1.0.0", protocolVersion: RUNTIME_PROTOCOL_VERSION, buildId: "current" }),
         installedBuildId: () => "current",
-        startInstalledService: async () => {
+        startRegisteredService: async () => {
           requests += 1
           if (requests > 1) throw new Error("launchctl kickstart failed (exit 5)")
           return true
@@ -370,7 +370,7 @@ describe("account runtime attach", () => {
         isRuntimeListening: async () => false,
         readRuntimeIdentity: () => undefined,
         installedBuildId: () => "current",
-        startInstalledService: async () => {
+        startRegisteredService: async () => {
           requests += 1
           return requests === 1
         },
@@ -442,7 +442,7 @@ describe("account runtime attach", () => {
         readRuntimeIdentity: () => ({ pid: 1, holder: { kind: "without-identity", pid: 1 }, version: "1.0.0", protocolVersion: RUNTIME_PROTOCOL_VERSION, buildId: "old" }),
         installedBuildId: () => "current",
         requestReplacement: async () => "retiring",
-        startInstalledService: async () => {
+        startRegisteredService: async () => {
           events.push("service-start")
           return true
         },

@@ -2,6 +2,8 @@ import { createHash } from "node:crypto"
 
 import { Schema } from "effect"
 
+import type { ServeLane } from "../../infra/cli-subprocess.js"
+
 /** The texts the service managers register for the account service, one per
  *  platform, and the fingerprint each one carries of itself.
  *
@@ -23,11 +25,25 @@ import { Schema } from "effect"
  *  unit needs none: systemd itself says when its loaded unit differs from
  *  the file (NeedDaemonReload). */
 
-export const ACCOUNT_LAUNCHD_LABEL = "sh.flywl.flywheel.serve"
-export const ACCOUNT_SYSTEMD_UNIT = "flywheel-serve.service"
-export const ACCOUNT_WINDOWS_TASK = "Flywheel Serve"
-/** The label of the transient launchd job that re-registers the service. */
-export const REGISTRATION_RELOAD_HELPER_LABEL = `${ACCOUNT_LAUNCHD_LABEL}.reload`
+/** The names one lane's registration holds in each service manager. Each
+ *  lane registers its own job, so the installed and the dev service stand
+ *  side by side (ARCH-RUNTIME-008). `reloadHelper` is the label of the
+ *  transient launchd job that re-registers the service. */
+export interface ServiceNames {
+  readonly launchd: string
+  readonly reloadHelper: string
+  readonly systemdUnit: string
+  readonly windowsTask: string
+}
+
+export const SERVICE_NAMES = {
+  installed: { launchd: "sh.flywl.flywheel.serve", reloadHelper: "sh.flywl.flywheel.serve.reload", systemdUnit: "flywheel-serve.service", windowsTask: "Flywheel Serve" },
+  dev: { launchd: "sh.flywl.flywheel.serve-dev", reloadHelper: "sh.flywl.flywheel.serve-dev.reload", systemdUnit: "flywheel-serve-dev.service", windowsTask: "Flywheel Serve Dev" },
+} as const satisfies { readonly [Lane in ServeLane]: ServiceNames }
+/** What a service manager runs, with `serve` and its arguments after it: the
+ *  lane's program and the arguments that lead every Flywheel command. */
+export type ServiceCommand = readonly [program: string, ...leading: string[]]
+
 export const REGISTRATION_FINGERPRINT_ENV = "FLYWHEEL_SERVICE_REGISTRATION"
 /** The argument the scheduled task passes to `serve`, which says that Task
  *  Scheduler started the service. Task Scheduler passes the action no
@@ -161,7 +177,7 @@ export function launchdPlist(label: string, program: readonly string[], accountH
  *  marks it failed, so one tool command that ran out of memory would cut the
  *  running work of every session. Each process's own owner handles its death
  *  instead. */
-export function systemdUnit(executable: string, accountHome: string): string {
+export function systemdUnit(command: ServiceCommand, accountHome: string): string {
   const quote = (arg: string) => `"${arg.replace(/(["\\])/g, "\\$1")}"`
   return [
     `[Unit]`,
@@ -169,7 +185,7 @@ export function systemdUnit(executable: string, accountHome: string): string {
     `After=network-online.target`,
     ``,
     `[Service]`,
-    `ExecStart=${quote(executable)} serve`,
+    `ExecStart=${command.map(quote).join(" ")} serve`,
     `WorkingDirectory=${accountHome}`,
     `Restart=on-failure`,
     `RestartSec=5`,
@@ -204,7 +220,10 @@ export function systemdUnit(executable: string, accountHome: string): string {
  *  restarts a task whose program exits with a code other than 0 is not
  *  proven on a Windows host, so nothing relies on it: the successor of a
  *  retired service starts at the next client start request or at logon. */
-export function windowsTaskXml(executable: string, sid: string): string {
+export function windowsTaskXml(command: ServiceCommand, sid: string): string {
+  const [executable, ...leading] = command
+  // Windows splits an action's arguments at spaces outside double quotes.
+  const args = [...leading.map((arg) => /[\s"]/.test(arg) ? `"${arg.replaceAll("\"", "\\\"")}"` : arg), "serve", SCHEDULED_TASK_ARGUMENT].join(" ")
   return fingerprinted((fingerprint) => `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -250,7 +269,7 @@ export function windowsTaskXml(executable: string, sid: string): string {
   <Actions Context="Author">
     <Exec>
       <Command>${escapeXml(executable)}</Command>
-      <Arguments>serve ${SCHEDULED_TASK_ARGUMENT}</Arguments>
+      <Arguments>${escapeXml(args)}</Arguments>
     </Exec>
   </Actions>
 </Task>`)

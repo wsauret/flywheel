@@ -5,7 +5,7 @@ import { expect } from "bun:test"
 
 import { accountServiceRegistrationControl, createAccountServiceInstallation, type AccountServiceInstallation, type AccountServicePlatform } from "../../../../src/orchestration/app-service/account-service-installation.js"
 import { systemdUnitPath } from "../../../../src/orchestration/app-service/account-service-systemd.js"
-import { ACCOUNT_SYSTEMD_UNIT, REGISTRATION_RELOAD_HELPER_LABEL } from "../../../../src/orchestration/app-service/account-service-registration.js"
+import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
 
 export const retired = { launchdLabel: "sh.flywl.flywheel.remote-host", systemdUnit: "flywheel-remote-host.service", windowsTask: "Flywheel Remote Host" }
 export const ok = (stdout = ""): Response => ({ exitCode: 0, stdout, stderr: "" })
@@ -18,13 +18,13 @@ export const launcher = { source: "/opt/flywheel/native/darwin-arm64/Flywheel.ap
 export const plistPath = "/scratch/test/Library/LaunchAgents/sh.flywl.flywheel.serve.plist"
 export const service = "gui/1000/sh.flywl.flywheel.serve"
 export const print = ["launchctl", "print", service]
-export const helperPrint = ["launchctl", "print", `gui/1000/${REGISTRATION_RELOAD_HELPER_LABEL}`]
+export const helperPrint = ["launchctl", "print", `gui/1000/${SERVICE_NAMES.installed.reloadHelper}`]
 export const printDisabled = ["launchctl", "print-disabled", "gui/1000"]
 export const bootstrap = ["launchctl", "bootstrap", "gui/1000", plistPath]
 /** The reload helper launchd receives: a leftover helper goes first, then the
  *  transient job that runs `serve reload-registration` and removes itself. */
-export const removeHelper = ["launchctl", "remove", REGISTRATION_RELOAD_HELPER_LABEL]
-export const submitHelper = ["launchctl", "submit", "-l", REGISTRATION_RELOAD_HELPER_LABEL, "--", "/bin/sh", "-c", `"$0" serve reload-registration; /bin/launchctl remove "$1"`, "/scratch/test/bin/flywheel", REGISTRATION_RELOAD_HELPER_LABEL]
+export const removeHelper = ["launchctl", "remove", SERVICE_NAMES.installed.reloadHelper]
+export const submitHelper = ["launchctl", "submit", "-l", SERVICE_NAMES.installed.reloadHelper, "--", "/bin/sh", "-c", `"$@" serve reload-registration; /bin/launchctl remove "$0"`, SERVICE_NAMES.installed.reloadHelper, "/scratch/test/bin/flywheel"]
 /** Where the fixture stages a private file, as a fresh temporary directory would. */
 export const taskXmlPath = "C:\\Temp\\flywheel-service-1\\task.xml"
 
@@ -160,9 +160,9 @@ export function fixture(platformName: NodeJS.Platform, responses: ReadonlyMap<st
     loginHome: () => loginHome ?? accountHome,
     env: platformName === "win32" ? { USERNAME: "test", USERDOMAIN: "DESKTOP" } : {},
     uid: 1000,
-    executable: platformName === "win32" ? "C:\\Flywheel\\flywheel.exe" : "/scratch/test/bin/flywheel",
+    command: platformName === "win32" ? ["C:\\Flywheel\\flywheel-service.exe"] : ["/scratch/test/bin/flywheel"],
     launcher: platformName === "darwin" ? launcher : undefined,
-    launchdLabels: { service: "sh.flywl.flywheel.serve", helper: REGISTRATION_RELOAD_HELPER_LABEL },
+    names: SERVICE_NAMES.installed,
     retired: [retired],
     runCommand: async (command) => {
       commands.push([...command])
@@ -206,10 +206,10 @@ export async function currentPlist(): Promise<string> {
 }
 
 export async function currentUnit(): Promise<string> {
-  const active = ["systemctl", "--user", "is-active", "--quiet", ACCOUNT_SYSTEMD_UNIT]
+  const active = ["systemctl", "--user", "is-active", "--quiet", SERVICE_NAMES.installed.systemdUnit]
   const setup = fixture("linux", new Map([[active.join("\0"), missing]]))
   await setup.installation.install()
-  return textOf(setup.files.get(systemdUnitPath("/scratch/test", {})))
+  return textOf(setup.files.get(systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })))
 }
 
 /** The task XML a fresh Windows install hands Task Scheduler, decoded. */
@@ -222,8 +222,8 @@ export async function currentTaskXml(): Promise<string> {
   return Buffer.from(created.slice(2)).toString("utf16le")
 }
 
-export const isActive = ["systemctl", "--user", "is-active", "--quiet", ACCOUNT_SYSTEMD_UNIT]
-export const isEnabled = ["systemctl", "--user", "is-enabled", "--quiet", ACCOUNT_SYSTEMD_UNIT]
+export const isActive = ["systemctl", "--user", "is-active", "--quiet", SERVICE_NAMES.installed.systemdUnit]
+export const isEnabled = ["systemctl", "--user", "is-enabled", "--quiet", SERVICE_NAMES.installed.systemdUnit]
 export const daemonReload = ["systemctl", "--user", "daemon-reload"]
 /** The systemd steps of a run. A Linux install also asks logind about
  *  lingering, which account-service-linger.test.ts covers. */

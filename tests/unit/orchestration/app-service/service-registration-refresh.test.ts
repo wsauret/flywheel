@@ -6,6 +6,7 @@ import { join } from "node:path"
 import type { DarwinExecutable } from "../../../../src/infra/darwin-process-api.js"
 import { Log } from "../../../../src/infra/log.js"
 import type { AccountServiceRegistrationControl } from "../../../../src/orchestration/app-service/account-service-installation.js"
+import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
 import { createServiceRegistrationRefresh, registrationReloadGuard, takeManagerStartEnvironment } from "../../../../src/orchestration/app-service/service-registration-refresh.js"
 
 const LABEL = "sh.flywl.flywheel.serve"
@@ -95,7 +96,7 @@ function launchdFixture(options: {
     pid: PID,
     ppid: LAUNCHER_PID,
     serveDirectory: directory,
-    launchdLabel: LABEL,
+    names: { ...SERVICE_NAMES.installed, launchd: LABEL },
     control: () => control,
   })
   const guard = (record: unknown): void => { writeFileSync(join(directory, "registration-reload.json"), `${JSON.stringify(record)}\n`) }
@@ -183,7 +184,7 @@ describe("launchd registration refresh at start", () => {
       pid: PID,
       ppid: LAUNCHER_PID,
       serveDirectory: setup.serveDirectory,
-      launchdLabel: LABEL,
+      names: { ...SERVICE_NAMES.installed, launchd: LABEL },
       control: () => ({ launchd: { registeredFingerprint: async () => "cccccccccccccccc", jobPid: async () => PID, reloadInFlight: async () => false, handOffReload: async () => { setup.handOffs.push("handed-off"); return undefined } } }),
     })
     expect(await later.atStart()).toBe("park")
@@ -397,7 +398,7 @@ describe("systemd registration refresh", () => {
       pid: PID,
       ppid: LAUNCHER_PID,
       serveDirectory: directory,
-      launchdLabel: LABEL,
+      names: { ...SERVICE_NAMES.installed, launchd: LABEL },
       control: () => {
         controls += 1
         return { systemd: { refreshUnit: async () => { refreshes += 1; return true } } }
@@ -523,7 +524,7 @@ describe("whether the service manager started this service", () => {
       pid: PID,
       ppid: options.ppid ?? LAUNCHER_PID,
       serveDirectory: serveDirectory(),
-      launchdLabel: LABEL,
+      names: { ...SERVICE_NAMES.installed, launchd: LABEL },
       control: () => {
         controls += 1
         return { systemd: { refreshUnit: async () => false } }

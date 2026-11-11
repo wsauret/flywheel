@@ -19,9 +19,9 @@ export type NextService = "own successor" | "registered job" | "none"
  *  with Process initiation Off, so that service starts its own successor. A
  *  client-started service in the login home whose registration appeared
  *  hands the lane to the registered job once nothing holds it. */
-export function nextService(stop: ServeStop, service: { readonly resident: boolean; readonly startedByManager: boolean; readonly followsRegistration: boolean }): NextService {
+export function nextService(stop: ServeStop, service: { readonly resident: boolean; readonly startedByManager: boolean; readonly startsRegisteredJob: boolean }): NextService {
   if (stop === "retired" && service.resident && !service.startedByManager) return "own successor"
-  if (stop === "unheld" && service.followsRegistration) return "registered job"
+  if (stop === "unheld" && service.startsRegisteredJob) return "registered job"
   return "none"
 }
 

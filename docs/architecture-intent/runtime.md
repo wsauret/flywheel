@@ -48,7 +48,12 @@ Not: Running the executor on a different machine from its state Worker and prima
 
 ## ARCH-RUNTIME-008: Installed and dev lanes never share account state
 
-A compiled build serves the installed lane and a checkout run the dev lane. The running executable alone decides the lane, once at startup. Lane-scoped account resources derive from the account data root and the lane. These include discovery, the attach credential, the identity record, the start lock, the hub port, relay identity, and remote pairings. A client dials and starts only its own lane's service. Resources serving one device across both lanes, such as paired-device records and push subscriptions, are machine-wide and independent of lane pairings. The dev-lane service is never resident and retires soon after nothing holds it.
+A compiled build serves the installed lane and a checkout run the dev lane. The running executable alone decides the lane, once at startup. Lane-scoped account resources derive from the account data root and the lane. These include discovery, the attach credential, the identity record, the start lock, the hub port, relay identity, remote pairings, and the service-manager registration. A client dials and starts only its own lane's service. Resources serving one device across both lanes, such as paired-device records and push subscriptions, are machine-wide and independent of lane pairings.
+
+## ARCH-RUNTIME-081: A dev-lane service is resident only under its registered job
+
+A dev-lane service stays up while nothing holds it only when its own lane's registered job started it. Any other dev-lane service retires soon after nothing holds it, also in the login home with no registration. The dev lane's registered job runs the service from the checkout's current source each time it starts.
+Because: A dev service that a client started runs one fixed snapshot, so it must not outlive the work that asked for it.
 
 ## ARCH-RUNTIME-009: A project is open in one process of one lane
 
@@ -183,7 +188,7 @@ An attached terminal follows the serving account service's announced build ident
 
 ## ARCH-RUNTIME-037: The registered job is the only starter where it is registered
 
-A client finds the account service or starts it. Where a service-manager registration in the login home is loaded and enabled, that job is the only starter. The client asks the manager to start it and never launches a twin beside it. A client launches the service itself only where nothing is registered and enabled. That launch is the explicitly authorized persistent kind and uses the installed build. A client that has begun to exit starts no service.
+A client finds the account service or starts it. Where a service-manager registration in the login home is loaded and enabled, that job is the only starter. The client asks the manager to start it and never launches a twin beside it. A client launches the service itself only where nothing is registered and enabled. That launch is the explicitly authorized persistent kind and uses its lane's entry: the installed build, or the checkout's source. A client that has begun to exit starts no service.
 Not: A client-launched service beside a registered job, which holds the address while the job parks or respawns against it.
 
 ## ARCH-RUNTIME-038: Only a proven login home registers or changes a registration

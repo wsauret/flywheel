@@ -27,7 +27,7 @@ function registeredServiceThatNeverListens(onRequest: (userDataRoot: string) => 
     isRuntimeListening: async () => false,
     readRuntimeIdentity: () => undefined,
     installedBuildId: () => "current",
-    startInstalledService: async () => {
+    startRegisteredService: async () => {
       requests += 1
       onRequest(userDataRoot)
       return true
@@ -149,7 +149,7 @@ describe("a start the service manager did not answer", () => {
       isRuntimeListening: async () => requests.length > 0 && now >= 10_000,
       readRuntimeIdentity: () => ({ pid: 1, holder: { kind: "without-identity", pid: 1 }, version: "1.0.0", protocolVersion: RUNTIME_PROTOCOL_VERSION, buildId: "current" }),
       installedBuildId: () => "current",
-      startInstalledService: async () => {
+      startRegisteredService: async () => {
         requests.push(now)
         throw new AccountServiceInstallationError("launchctl kickstart did not answer", { unanswered: true })
       },

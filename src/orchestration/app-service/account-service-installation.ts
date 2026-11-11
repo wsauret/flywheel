@@ -2,6 +2,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rea
 import { tmpdir } from "node:os"
 import { dirname, join, posix, relative, win32 } from "node:path"
 
+import { serveLaneFor, type ServeLane } from "../../infra/cli-subprocess.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { osAccount } from "../../infra/os-account.js"
@@ -9,9 +10,9 @@ import { nativeAssetDir, MACOS_LAUNCHER_BUNDLE } from "../../infra/native-assets
 import { accountServeErrorLogPath, accountServeLauncherExecutablePath, accountServeLauncherPath } from "../../infra/paths.js"
 import { trustedProbeLaunch, type TrustedProbeLaunch } from "../../infra/process-container.js"
 import { WINDOWS_SERVICE_LAUNCHER_NAME } from "../../infra/update/wrapper-directory.js"
-import { ACCOUNT_LAUNCHD_LABEL, ACCOUNT_WINDOWS_TASK, launchdPlist, REGISTRATION_FINGERPRINT_ENV, REGISTRATION_RELOAD_HELPER_LABEL, registrationFingerprint, type RegistrationReloadRecord, SERVICE_STOP_TIMEOUT_SECONDS, windowsTaskXml, windowsTaskXmlBytes } from "./account-service-registration.js"
+import { launchdPlist, REGISTRATION_FINGERPRINT_ENV, registrationFingerprint, type RegistrationReloadRecord, SERVICE_NAMES, type ServiceCommand, type ServiceNames, SERVICE_STOP_TIMEOUT_SECONDS, windowsTaskXml, windowsTaskXmlBytes } from "./account-service-registration.js"
 import { logindLingerOffFor, systemdControl, systemdManager } from "./account-service-systemd.js"
-import { installedExecutable } from "./runtime-executable.js"
+import { installedExecutable, sourceRuntimeCommand } from "./runtime-executable.js"
 import { AccountServiceInstallationError, answered, assertOk, failure, type ServiceCommandOutput, type ServiceCommandRunner } from "./service-manager-command.js"
 
 export interface AccountServiceInstallation {
@@ -101,14 +102,6 @@ export interface RetiredServiceInstallation {
   readonly windowsTask: string
 }
 
-/** The launchd labels of the service job and its reload helper. The installed
- *  platform names the real ones; a test platform names throwaway ones, so the
- *  real launchd sequence runs without touching the real service. */
-interface LaunchdLabels {
-  readonly service: string
-  readonly helper: string
-}
-
 const log = Log.create({ service: "account-service-installation" })
 
 /** How often the reload helper asks whether launchd still holds the job. */
@@ -123,9 +116,9 @@ const BOOTSTRAP_ATTEMPTS = 15
 const BOOTSTRAP_RETRY_MS = 1_000
 /** The reload helper's program. The reload runs as a child of the shell, and
  *  the shell removes the helper job after the reload exits, whatever its
- *  status, so a helper that fails is never started again. $0 is the
- *  installed command and $1 the helper's own label. */
-const RELOAD_HELPER_SCRIPT = `"$0" serve reload-registration; /bin/launchctl remove "$1"`
+ *  status, so a helper that fails is never started again. $0 is the helper's
+ *  own label and the remaining arguments are the lane's service command. */
+const RELOAD_HELPER_SCRIPT = `"$@" serve reload-registration; /bin/launchctl remove "$0"`
 
 export interface AccountServicePlatform {
   readonly platform: NodeJS.Platform
@@ -137,15 +130,20 @@ export interface AccountServicePlatform {
   readonly loginHome: () => string | undefined
   readonly env: ServiceEnvironment
   readonly uid: number | undefined
-  readonly executable: string
+  /** What the manager runs with `serve` after it: the installed command, on
+   *  Windows its windowless service launcher, or the checkout's dev entry. */
+  readonly command: ServiceCommand
   /** macOS only: the release-invariant application bundle launchd runs,
    *  shipped in the build's native directory and installed at one stable
    *  path. Privacy consent attaches to that bundle, so an update never asks
    *  again. `executable` is the program inside the installed bundle, and
-   *  `errorLog` is the file beside it that keeps the service's standard error. */
+   *  `errorLog` is the file beside it that keeps the service's standard error.
+   *  The dev lane ships no bundle, so launchd runs its command directly. */
   readonly launcher: { readonly source: string; readonly target: string; readonly executable: string; readonly errorLog: string } | undefined
-  /** macOS only: the labels the service job and its reload helper load under. */
-  readonly launchdLabels: LaunchdLabels
+  /** The names the lane's registration holds. A test platform names
+   *  throwaway ones, so the real launchd sequence runs without touching the
+   *  real service. */
+  readonly names: ServiceNames
   readonly retired: readonly RetiredServiceInstallation[]
   readonly runCommand: ServiceCommandRunner
   readonly sleep: (milliseconds: number) => Promise<void>
@@ -168,7 +166,7 @@ export interface AccountServicePlatform {
 /** What a launchd caller drives launchd through. It names no installed
  *  build: a launchd job loads the registration file on disk, so a reload
  *  helper can always leave the service job running. */
-type LaunchdHost = Pick<AccountServicePlatform, "accountHome" | "uid" | "launchdLabels" | "runCommand" | "sleep" | "now" | "files">
+type LaunchdHost = Pick<AccountServicePlatform, "accountHome" | "uid" | "names" | "runCommand" | "sleep" | "now" | "files">
 
 const realFiles: AccountServicePlatform["files"] = {
   exists: existsSync,
@@ -219,12 +217,13 @@ function sameTree(source: string, target: string): boolean {
   return sourceFiles.every((file) => readFileSync(join(source, file)).equals(readFileSync(join(target, file))))
 }
 
-/** This process's launchd host for the account service of `accountHome`. */
+/** This process's launchd host for its lane's account service of
+ *  `accountHome`. */
 export function accountLaunchdHost(input: { readonly accountHome: string; readonly runCommand: ServiceCommandRunner }): LaunchdHost {
   return {
     accountHome: input.accountHome,
     uid: process.getuid?.(),
-    launchdLabels: { service: ACCOUNT_LAUNCHD_LABEL, helper: REGISTRATION_RELOAD_HELPER_LABEL },
+    names: SERVICE_NAMES[serveLaneFor(process.execPath)],
     runCommand: input.runCommand,
     sleep: Bun.sleep,
     now: Date.now,
@@ -232,15 +231,20 @@ export function accountLaunchdHost(input: { readonly accountHome: string; readon
   }
 }
 
+/** This process's lane's service platform. Nothing for a compiled build
+ *  outside the account's versions home, which has no installed command.
+ *  `retired` names the installed lane's earlier registrations; the dev lane
+ *  has none. */
 export function accountServicePlatform(input: {
   readonly userDataRoot: string
   readonly accountHome: string
   readonly retired: readonly RetiredServiceInstallation[]
   readonly runCommand: ServiceCommandRunner
 }): AccountServicePlatform | undefined {
-  const executable = installedExecutable({ platform: process.platform, userDataRoot: input.userDataRoot, accountHome: input.accountHome, installDirectory: process.env.FLYWHEEL_INSTALL_DIR, execPath: process.execPath })
-  if (executable === undefined) return undefined
-  const launcher = process.platform === "darwin"
+  const lane = serveLaneFor(process.execPath)
+  const command = serviceCommand(lane, input)
+  if (command === undefined) return undefined
+  const launcher = process.platform === "darwin" && lane === "installed"
     ? { source: join(nativeAssetDir(), MACOS_LAUNCHER_BUNDLE), target: accountServeLauncherPath(input.userDataRoot), executable: accountServeLauncherExecutablePath(input.userDataRoot), errorLog: accountServeErrorLogPath(input.userDataRoot) }
     : undefined
   return {
@@ -248,10 +252,17 @@ export function accountServicePlatform(input: {
     platform: process.platform,
     loginHome: currentLoginHome,
     env: process.env,
-    executable,
+    command,
     launcher,
-    retired: input.retired,
+    retired: lane === "installed" ? input.retired : [],
   }
+}
+
+function serviceCommand(lane: ServeLane, input: { readonly userDataRoot: string; readonly accountHome: string }): ServiceCommand | undefined {
+  if (lane === "dev") return sourceRuntimeCommand()
+  const executable = installedExecutable({ platform: process.platform, userDataRoot: input.userDataRoot, accountHome: input.accountHome, installDirectory: process.env.FLYWHEEL_INSTALL_DIR, execPath: process.execPath })
+  if (executable === undefined) return undefined
+  return process.platform === "win32" ? [win32.join(win32.dirname(executable), WINDOWS_SERVICE_LAUNCHER_NAME)] : [executable]
 }
 
 /** The machine a service manager command runs on. */
@@ -427,14 +438,14 @@ function loadedLaunchdFingerprint(printed: string): string | undefined {
 /** The launchd job of the account service, as each launchd caller drives it. */
 function launchdJob(host: LaunchdHost) {
   const run = host.runCommand
-  const labels = host.launchdLabels
-  const plist = launchdPlistPath(host.accountHome, labels.service)
+  const names = host.names
+  const plist = launchdPlistPath(host.accountHome, names.launchd)
   const domain = (): string => {
     if (host.uid === undefined) throw new AccountServiceInstallationError("launchd needs the account's user id")
     return `gui/${host.uid}`
   }
-  const target = (label = labels.service): string => `${domain()}/${label}`
-  const probe = async (label = labels.service): Promise<LaunchdProbe> => {
+  const target = (label = names.launchd): string => `${domain()}/${label}`
+  const probe = async (label = names.launchd): Promise<LaunchdProbe> => {
     const status = await run(["launchctl", "print", target(label)])
     return { status, state: launchdState(status) }
   }
@@ -465,28 +476,28 @@ function launchdJob(host: LaunchdHost) {
   const disabled = async (): Promise<boolean> => {
     const listed = await run(["launchctl", "print-disabled", domain()])
     assertOk("launchctl print-disabled", listed)
-    return new RegExp(`^\\s*"${RegExp.escape(labels.service)}" => (?:disabled|true)\\s*$`, "m").test(listed.stdout)
+    return new RegExp(`^\\s*"${RegExp.escape(names.launchd)}" => (?:disabled|true)\\s*$`, "m").test(listed.stdout)
   }
   return {
     run,
-    labels,
+    names,
     plist,
     domain,
     target,
     probe,
     bootstrap,
     kickstart,
-    /** Submits the reload helper that `handOffReload` states, with
-     *  `executable` as its installed command. Off submits the same helper. */
-    async submitReloadHelper(executable: string): Promise<string | undefined> {
+    /** Submits the reload helper that `handOffReload` states, which runs
+     *  `command`, the lane's service command. Off submits the same helper. */
+    async submitReloadHelper(command: ServiceCommand): Promise<string | undefined> {
       // A helper an earlier attempt left behind would refuse the new one.
-      await run(["launchctl", "remove", labels.helper])
-      const submitted = await run(["launchctl", "submit", "-l", labels.helper, "--", "/bin/sh", "-c", RELOAD_HELPER_SCRIPT, executable, labels.helper])
+      await run(["launchctl", "remove", names.reloadHelper])
+      const submitted = await run(["launchctl", "submit", "-l", names.reloadHelper, "--", "/bin/sh", "-c", RELOAD_HELPER_SCRIPT, names.reloadHelper, ...command])
       if (!answered(submitted)) throw failure("launchctl submit", submitted)
       return submitted.exitCode === 0 ? undefined : failure("launchctl submit", submitted).message
     },
     /** A probe that must answer: no answer is a failure, never an absence. */
-    async state(label = labels.service) {
+    async state(label = names.launchd) {
       const probed = await probe(label)
       if (probed.state === "unknown") throw failure(`launchctl print ${label}`, probed.status)
       return probed
@@ -515,7 +526,7 @@ function launchdManager(platform: AccountServicePlatform, isForeign: () => Promi
     async install() {
       const launcher = platform.launcher
       if (launcher) platform.files.installBundle(launcher.source, launcher.target)
-      const registration = launchdPlist(job.labels.service, [...(launcher ? [launcher.executable] : []), platform.executable, "serve"], platform.accountHome, launcher?.errorLog)
+      const registration = launchdPlist(job.names.launchd, [...(launcher ? [launcher.executable] : []), ...platform.command, "serve"], platform.accountHome, launcher?.errorLog)
       const { state } = await job.state()
       const changed = platform.files.read(job.plist) !== registration
       if (changed) platform.files.write(job.plist, registration)
@@ -544,7 +555,7 @@ function launchdManager(platform: AccountServicePlatform, isForeign: () => Promi
       platform.files.remove(job.plist)
       const loaded = (await job.state()).state !== "absent"
       if (loaded) {
-        const refusal = await job.submitReloadHelper(platform.executable)
+        const refusal = await job.submitReloadHelper(platform.command)
         if (refusal !== undefined) throw new AccountServiceInstallationError(refusal)
       }
       log.info("the account service registration was removed", { helperUnloadsJob: loaded })
@@ -577,8 +588,8 @@ function launchdControl(platform: AccountServicePlatform): NonNullable<AccountSe
   return {
     async registeredFingerprint() { return registrationFingerprint(platform.files.read(job.plist)) },
     async jobPid() { return pidOf((await job.state()).status.stdout) },
-    async reloadInFlight() { return (await job.state(job.labels.helper)).state !== "absent" },
-    handOffReload: () => job.submitReloadHelper(platform.executable),
+    async reloadInFlight() { return (await job.state(job.names.reloadHelper)).state !== "absent" },
+    handOffReload: () => job.submitReloadHelper(platform.command),
   }
 }
 
@@ -610,8 +621,8 @@ export async function reloadLaunchdRegistration(host: LaunchdHost, caller: { rea
     // launchd names the helper job's own process, the shell that runs this
     // command. A job started with `launchctl submit` carries no label in
     // XPC_SERVICE_NAME, so the proof is the pid launchd reports for it.
-    if (pidOf((await job.probe(job.labels.helper)).status.stdout) !== caller.parentPid) {
-      throw new AccountServiceInstallationError(`serve reload-registration runs only as the launchd job ${job.labels.helper}, outside the account service's own process tree`)
+    if (pidOf((await job.probe(job.names.reloadHelper)).status.stdout) !== caller.parentPid) {
+      throw new AccountServiceInstallationError(`serve reload-registration runs only as the launchd job ${job.names.reloadHelper}, outside the account service's own process tree`)
     }
   }
   /** Boots the loaded job out and waits, for at most the job's exit timeout
@@ -682,9 +693,6 @@ export async function reloadLaunchdRegistration(host: LaunchdHost, caller: { rea
   }
 }
 
-/** The task's state as Task Scheduler lists it, with `Status` and
- *  `Scheduled Task State` among its fields. */
-const TASK_STATUS_QUERY = ["schtasks", "/Query", "/TN", ACCOUNT_WINDOWS_TASK, "/FO", "LIST", "/V"]
 /** Every task the user can read, one CSV row each with the task's full path
  *  first. Task Scheduler states its messages in the display language, but
  *  never translates a task's name, and it answers the list with exit 0. */
@@ -692,13 +700,17 @@ const TASK_LIST_QUERY = ["schtasks", "/Query", "/FO", "CSV", "/NH"]
 
 /** Whether a task list names the account's task, which sits in the root
  *  folder. Task Scheduler compares task names without case. */
-function listsAccountTask(list: string): boolean {
-  const row = `"\\${ACCOUNT_WINDOWS_TASK}",`.toLowerCase()
+function listsAccountTask(list: string, task: string): boolean {
+  const row = `"\\${task}",`.toLowerCase()
   return list.split(/\r?\n/).some((line) => line.trim().toLowerCase().startsWith(row))
 }
 
 function taskSchedulerManager(platform: AccountServicePlatform, isForeign: () => Promise<boolean>): ServiceManager {
   const run = platform.runCommand
+  const task = platform.names.windowsTask
+  /** The task's state as Task Scheduler lists it, with `Status` and
+   *  `Scheduled Task State` among its fields. */
+  const statusQuery = ["schtasks", "/Query", "/TN", task, "/FO", "LIST", "/V"]
   /** The task's listed state, or nothing when Task Scheduler holds no task.
    *  Task Scheduler names the login user's one task from any home, so the
    *  home is checked before the task is. A failed query states its cause in
@@ -709,36 +721,36 @@ function taskSchedulerManager(platform: AccountServicePlatform, isForeign: () =>
    *  again. */
   const listedTask = async (): Promise<string | undefined> => {
     if (await isForeign()) return undefined
-    const query = await run(TASK_STATUS_QUERY)
+    const query = await run(statusQuery)
     if (!answered(query)) throw failure("schtasks query", query)
     if (query.exitCode === 0) return query.stdout
     const list = await run(TASK_LIST_QUERY)
     const listed = answered(list) && list.exitCode === 0
-    if (listed && !listsAccountTask(list.stdout)) return undefined
+    if (listed && !listsAccountTask(list.stdout, task)) return undefined
     const cause = failure("schtasks query", query).message
     throw new AccountServiceInstallationError(listed ? cause : `${cause} (${failure("schtasks list", list).message})`)
   }
   return {
     registered: async () => (await listedTask()) !== undefined,
-    async installed() { return (await run(["schtasks", "/Query", "/TN", ACCOUNT_WINDOWS_TASK])).exitCode === 0 },
+    async installed() { return (await run(["schtasks", "/Query", "/TN", task])).exitCode === 0 },
     async install() {
       const identity = await run(["whoami", "/user", "/fo", "csv", "/nh"])
       if (!answered(identity) || identity.exitCode !== 0) throw failure("whoami /user", identity)
       const sid = /^"[^"\r\n]+","(S-1-\d+(?:-\d+)+)"$/u.exec(identity.stdout.trim())?.[1]
       if (sid === undefined) throw new AccountServiceInstallationError("whoami /user returned no valid account SID")
-      const definition = windowsTaskXml(win32.join(win32.dirname(platform.executable), WINDOWS_SERVICE_LAUNCHER_NAME), sid)
-      const query = await run(["schtasks", "/Query", "/TN", ACCOUNT_WINDOWS_TASK, "/XML"])
+      const definition = windowsTaskXml(platform.command, sid)
+      const query = await run(["schtasks", "/Query", "/TN", task, "/XML"])
       const registered = query.exitCode === 0 ? registrationFingerprint(query.stdout) : undefined
       if (registered !== registrationFingerprint(definition)) {
         // Replacing a task definition leaves a running instance alone; the
         // next start runs the new one.
         await platform.files.withPrivateFile("task.xml", windowsTaskXmlBytes(definition), async (file) => {
-          assertOk("schtasks create", await run(["schtasks", "/Create", "/F", "/TN", ACCOUNT_WINDOWS_TASK, "/XML", file]))
+          assertOk("schtasks create", await run(["schtasks", "/Create", "/F", "/TN", task, "/XML", file]))
         })
       }
-      const status = await run(TASK_STATUS_QUERY)
+      const status = await run(statusQuery)
       if (!/(?:^|\r?\n)\s*Status:\s*Running\s*(?:\r?\n|$)/i.test(status.stdout)) {
-        assertOk("schtasks run", await run(["schtasks", "/Run", "/TN", ACCOUNT_WINDOWS_TASK]))
+        assertOk("schtasks run", await run(["schtasks", "/Run", "/TN", task]))
       }
       for (const retired of platform.retired) {
         await run(["schtasks", "/End", "/TN", retired.windowsTask])
@@ -751,7 +763,7 @@ function taskSchedulerManager(platform: AccountServicePlatform, isForeign: () =>
       // serves until it exits and nothing starts it again. `/End` from the
       // service's own tree would end the process that asked for it, and an
       // `/End` from outside is a hard termination with no drain.
-      assertOk("schtasks delete", await run(["schtasks", "/Delete", "/F", "/TN", ACCOUNT_WINDOWS_TASK]))
+      assertOk("schtasks delete", await run(["schtasks", "/Delete", "/F", "/TN", task]))
       log.info("the account service task was deleted; a running instance serves until it exits")
     },
     async start() {
@@ -761,7 +773,7 @@ function taskSchedulerManager(platform: AccountServicePlatform, isForeign: () =>
       // on request, so, as for a systemd unit that is `disabled`, the client
       // launches the service itself.
       if (/(?:^|\r?\n)\s*(?:Status|Scheduled Task State):\s*Disabled\s*(?:\r?\n|$)/i.test(listed)) return false
-      assertOk("schtasks run", await run(["schtasks", "/Run", "/TN", ACCOUNT_WINDOWS_TASK]))
+      assertOk("schtasks run", await run(["schtasks", "/Run", "/TN", task]))
       return true
     },
   }

@@ -36,6 +36,11 @@ export function runtimeCommand(directories: AccountDirectories): readonly string
   const installed = installedExecutable({ platform: process.platform, userDataRoot: directories.userDataRoot, accountHome: directories.accountHome, installDirectory: process.env.FLYWHEEL_INSTALL_DIR, execPath: process.execPath })
   if (installed !== undefined) return [installed]
   if (!runsThroughBun(process.execPath)) return [process.execPath]
+  return sourceRuntimeCommand()
+}
+
+/** A source run's entry: this Bun through the checkout's development launcher. */
+export function sourceRuntimeCommand(): readonly [string, ...string[]] {
   return [process.execPath, "--conditions=browser", join(sourceCheckout(), "scripts", "dev.ts")]
 }
 

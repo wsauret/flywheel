@@ -47,7 +47,7 @@ export function createRemoteService(services: AccountProjectModuleServices, fact
       ...(services.webClient === undefined ? {} : { client: servedClientOf(services.webClient) }),
       ...(services.accountModuleFaults === undefined ? {} : { accountModuleFaults: services.accountModuleFaults }),
       projectRegistry: services.projectRegistry,
-      ...(lane === "installed" ? { installation: createAccountServiceInstallation(() => accountServicePlatform({ userDataRoot, accountHome, retired: [retiredServiceInstallation], runCommand: ownedCommandRunner(services.launcher) })) } : {}),
+      installation: createAccountServiceInstallation(() => accountServicePlatform({ userDataRoot, accountHome, retired: [retiredServiceInstallation], runCommand: ownedCommandRunner(services.launcher) })),
       publish: (patch) => { if (admitted && services.enabled() && !closed) services.publish(patch) },
       notify: (episode) => { if (admitted && services.enabled() && !closed) void services.notify(episode) },
     })

@@ -27,7 +27,7 @@ import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../orchestration/app-service/runtime
 import type { ReplacementOwner, ReplacementTrigger } from "../orchestration/app-service/replacement-owner.js"
 import { DEV_SERVE_PROJECT_IDLE_GRACE_MS, ServeLifetime } from "../orchestration/app-service/serve-lifetime.js"
 import { accountLaunchdHost, accountServicePlatform, accountServiceRegistrationControl, createAccountServiceInstallation, currentLoginHome, isLoginHome, reloadLaunchdRegistration, type AccountServiceInstallation, type AccountServicePlatform, type RetiredServiceInstallation } from "../orchestration/app-service/account-service-installation.js"
-import { ACCOUNT_LAUNCHD_LABEL, SCHEDULED_TASK_ARGUMENT } from "../orchestration/app-service/account-service-registration.js"
+import { SCHEDULED_TASK_ARGUMENT, SERVICE_NAMES } from "../orchestration/app-service/account-service-registration.js"
 import { createServiceRegistrationRefresh, registrationReloadGuard, takeManagerStartEnvironment, type ServiceRegistrationRefresh } from "../orchestration/app-service/service-registration-refresh.js"
 import { createAccountHubHandler, type AccountHubOptions, type Hub } from "../orchestration/app-service/web-serving/hub.js"
 import { releaseHarnessHub } from "./release-harness.js"
@@ -139,18 +139,23 @@ export interface ServeSeams extends Pick<AccountServiceRuntimeOptions, "startHub
  *  follows the account's registration. */
 export interface ServeResidency {
   readonly resident: boolean
-  /** A service that a client started in the login home. The registered job
-   *  is that home's resident owner, so such a service is resident only while
-   *  no registration exists: the build tick reads the registration again, and
-   *  a service that then retires because nothing holds it asks the manager
-   *  to start the registered job. */
+  /** An installed service that a client started in the login home. The
+   *  registered job is that home's resident owner, so such a service is
+   *  resident only while no registration exists: the build tick reads the
+   *  registration again. */
   readonly followsRegistration: boolean
+  /** Once nothing holds it, the service asks the manager to start its lane's
+   *  registered job, which answers false when none exists. Every service that
+   *  follows its registration does, and so does a dev service that a client
+   *  started, which no registration makes resident (ARCH-RUNTIME-081). */
+  readonly startsRegisteredJob: boolean
 }
 
-/** Decides whether this serve stays up while nothing holds it. The installed
- *  lane's service is resident when its service manager started it: the
- *  manager starts it at login and restarts it, and a phone wakes its projects
- *  through it. A service that something else started, such as a client, is
+/** Decides whether this serve stays up while nothing holds it. A service is
+ *  resident when its lane's service manager started it: the manager starts
+ *  it at login and restarts it, and a phone wakes its projects through it. A
+ *  dev service that something else started is never resident. An installed
+ *  service that something else started, such as a client, is
  *  resident only when the account database proves its account home is the
  *  login home and no registration exists there, enabled or disabled: a
  *  registration names the job that serves that home. In any other account
@@ -169,18 +174,20 @@ export async function serveResidency(input: {
 }): Promise<ServeResidency> {
   // Residency decides whether the service ever retires, so every outcome
   // records once, with the evidence it rests on.
-  const retires = { resident: false, followsRegistration: false }
+  const retires = { resident: false, followsRegistration: false, startsRegisteredJob: false }
+  if (input.startedByManager()) {
+    log.info("account service is resident: its service manager started it")
+    return { resident: true, followsRegistration: false, startsRegisteredJob: false }
+  }
+  // A dev service that a client started runs one fixed snapshot, so only
+  // the lane's registered job keeps a dev service up (ARCH-RUNTIME-081).
   if (input.lane === "dev") {
-    log.info("account service is not resident: the dev lane retires once nothing holds it")
-    return retires
+    log.info("account service is not resident: a dev-lane service stays up only under its registered job, so this one retires once nothing holds it and then asks the service manager to start that job")
+    return { resident: false, followsRegistration: false, startsRegisteredJob: true }
   }
   if (input.env.FLYWHEEL_INTERNAL_RESIDENT_SERVICE === "1") {
     log.info("account service is resident: FLYWHEEL_INTERNAL_RESIDENT_SERVICE is set")
-    return { resident: true, followsRegistration: false }
-  }
-  if (input.startedByManager()) {
-    log.info("account service is resident: its service manager started it")
-    return { resident: true, followsRegistration: false }
+    return { resident: true, followsRegistration: false, startsRegisteredJob: false }
   }
   let login: boolean | undefined
   try {
@@ -201,12 +208,12 @@ export async function serveResidency(input: {
   } catch (error) {
     // The build tick asks again and owns the one warning of such a streak.
     log.info("account service is not resident: whether a registration exists in the login home could not be read, so it retires once nothing holds it, and the build tick asks again", { error: errorMessage(error) })
-    return { resident: false, followsRegistration: true }
+    return { resident: false, followsRegistration: true, startsRegisteredJob: true }
   }
   log.info(registered
     ? "account service is not resident: a registration exists in the login home, so it retires once nothing holds it and then asks the service manager to start the registered job"
     : "account service is resident: this account home is the login home and no registration exists there")
-  return { resident: !registered, followsRegistration: true }
+  return { resident: !registered, followsRegistration: true, startsRegisteredJob: true }
 }
 
 /** The build tick's residency check of a service whose residency follows the
@@ -423,19 +430,18 @@ export function createRegistrationRetirement(options: {
   }
 }
 
-/** The installed build's service platform, as install, the registration
- *  refresh, and the registration a client-started service follows each drive
- *  it. Only install removes the registrations of earlier releases, so only
+/** This lane's service platform, as install, the registration refresh,
+ *  and the registration a client-started service follows each drive it. Only install removes the registrations of earlier releases, so only
  *  install names them. */
-function installedServicePlatform(directories: StartupDirectories, launcher: LauncherContext, retired: readonly RetiredServiceInstallation[] = []): AccountServicePlatform | undefined {
+function laneServicePlatform(directories: StartupDirectories, launcher: LauncherContext, retired: readonly RetiredServiceInstallation[] = []): AccountServicePlatform | undefined {
   return accountServicePlatform({ userDataRoot: directories.userDataRoot, accountHome: directories.accountHome, retired, runCommand: ownedCommandRunner(launcher.scope) })
 }
 
-/** The registration refresh of an installed-lane service. The manager's
+/** The registration refresh of this lane's service. The manager's
  *  start markers, the registration fingerprint among them, name the start of
  *  this process only, so they are read once here and removed from the
  *  environment every child inherits. */
-function installedRegistrationRefresh(directories: StartupDirectories, launcher: LauncherContext, scheduledTask: boolean, loginHome: () => Promise<boolean | undefined>): ServiceRegistrationRefresh {
+function laneRegistrationRefresh(lane: ServeLane, directories: StartupDirectories, launcher: LauncherContext, scheduledTask: boolean, loginHome: () => Promise<boolean | undefined>): ServiceRegistrationRefresh {
   return createServiceRegistrationRefresh({
     platform: process.platform,
     scheduledTask,
@@ -453,10 +459,10 @@ function installedRegistrationRefresh(directories: StartupDirectories, launcher:
     env: takeManagerStartEnvironment(process.env),
     pid: process.pid,
     ppid: process.ppid,
-    serveDirectory: accountServeDir(directories.userDataRoot, "installed"),
-    launchdLabel: ACCOUNT_LAUNCHD_LABEL,
+    serveDirectory: accountServeDir(directories.userDataRoot, lane),
+    names: SERVICE_NAMES[lane],
     control: () => {
-      const platform = installedServicePlatform(directories, launcher)
+      const platform = laneServicePlatform(directories, launcher)
       return platform === undefined ? undefined : accountServiceRegistrationControl(platform)
     },
   })
@@ -498,12 +504,12 @@ export async function runServe(
     accountHome: directories.accountHome,
     loginHome: currentLoginHome,
   }))
-  const registration = seamRefresh ? seamRefresh() : lane === "installed" ? installedRegistrationRefresh(directories, launcher, scheduledTask, accountHomeIsLoginHome) : undefined
+  const registration = seamRefresh ? seamRefresh() : laneRegistrationRefresh(lane, directories, launcher, scheduledTask, accountHomeIsLoginHome)
   // The registration that a client-started service in the login home
   // follows, built only once residency reads it. It reads the same login-home
   // answer, so a build tick's registration read asks the login home nothing.
   let installation: Pick<AccountServiceInstallation, "registered" | "start"> | undefined
-  const serviceInstallation = () => (installation ??= seamInstallation ? seamInstallation() : createAccountServiceInstallation(() => installedServicePlatform(directories, launcher), accountHomeIsLoginHome))
+  const serviceInstallation = () => (installation ??= seamInstallation ? seamInstallation() : createAccountServiceInstallation(() => laneServicePlatform(directories, launcher), accountHomeIsLoginHome))
   // A job started under a stale registration is re-registered from outside
   // its own tree before it takes the start lock, listens, or consumes a
   // replacement handoff; the successor the reload starts does all of that. A
@@ -737,7 +743,7 @@ export async function runServe(
     }, buildCheckMs)
     buildTimer.unref?.()
     stop = await stopped.promise
-    next = nextService(stop, { resident: lifetime.resident, startedByManager, followsRegistration: decided?.followsRegistration === true })
+    next = nextService(stop, { resident: lifetime.resident, startedByManager, startsRegisteredJob: decided?.startsRegisteredJob === true })
     // The service's exit decision: why it stops, and the code its manager
     // reads. The drain that follows records its own settlement.
     log.info("account service stopping", { reason: stop, exitCode: serveExitCode(stop), pid: process.pid, next })
@@ -792,7 +798,7 @@ export async function runServeOperation(
   directories: StartupDirectories,
   launcher: LauncherContext,
   allowPersistentProcesses: boolean,
-  installation: Pick<AccountServiceInstallation, "installed" | "install" | "uninstall" | "refresh" | "lingerOffFor"> = createAccountServiceInstallation(() => installedServicePlatform(directories, launcher, retiredServiceInstallations())),
+  installation: Pick<AccountServiceInstallation, "installed" | "install" | "uninstall" | "refresh" | "lingerOffFor"> = createAccountServiceInstallation(() => laneServicePlatform(directories, launcher, retiredServiceInstallations())),
 ): Promise<number> {
   // `ensure` is what the editor extension runs to reach the service,
   // `reload-registration` is what the transient launchd job that
@@ -809,7 +815,7 @@ export async function runServeOperation(
       // no installed build. A reload of a file on disk that fails leaves the
       // service job running before it fails; Process initiation Off's
       // unload, which finds no file, leaves launchd as it is.
-      const guard = registrationReloadGuard(accountServeDir(directories.userDataRoot, "installed"))
+      const guard = registrationReloadGuard(accountServeDir(directories.userDataRoot, serveLaneFor(process.execPath)))
       await reloadLaunchdRegistration(accountLaunchdHost({ accountHome: directories.accountHome, runCommand: ownedCommandRunner(launcher.scope) }), { parentPid: process.ppid }, (outcome) => guard.record(outcome))
     } else if (update) await installation.refresh()
     else if (operation === "install") {

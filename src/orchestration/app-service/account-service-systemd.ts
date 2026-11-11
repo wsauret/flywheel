@@ -2,7 +2,7 @@ import { dirname, posix } from "node:path"
 
 import { Log } from "../../infra/log.js"
 import type { AccountServicePlatform, AccountServiceRegistrationControl, ServiceManager } from "./account-service-installation.js"
-import { ACCOUNT_SYSTEMD_UNIT, systemdUnit } from "./account-service-registration.js"
+import { systemdUnit } from "./account-service-registration.js"
 import { answered, assertOk, failure, type ServiceCommandOutput, type ServiceCommandRunner } from "./service-manager-command.js"
 
 /** The account service on Linux (PI-REMOTE-013): the systemd user unit that
@@ -12,21 +12,21 @@ import { answered, assertOk, failure, type ServiceCommandOutput, type ServiceCom
 
 const log = Log.create({ service: "account-service-installation" })
 
-export function systemdUnitPath(accountHome: string, env: AccountServicePlatform["env"]): string {
-  const configHome = env.XDG_CONFIG_HOME || posix.join(accountHome, ".config")
-  return posix.join(configHome, "systemd", "user", ACCOUNT_SYSTEMD_UNIT)
+export function systemdUnitPath(platform: Pick<AccountServicePlatform, "accountHome" | "env" | "names">): string {
+  const configHome = platform.env.XDG_CONFIG_HOME || posix.join(platform.accountHome, ".config")
+  return posix.join(configHome, "systemd", "user", platform.names.systemdUnit)
 }
 
 export function systemdManager(platform: AccountServicePlatform, isForeign: () => Promise<boolean>): ServiceManager {
   const run = platform.runCommand
-  const unit = systemdUnitPath(platform.accountHome, platform.env)
+  const unit = systemdUnitPath(platform)
   const registered = async (): Promise<boolean> => platform.files.exists(unit) && !(await isForeign())
   return {
     registered,
-    async installed() { return (await run(["systemctl", "--user", "is-enabled", "--quiet", ACCOUNT_SYSTEMD_UNIT])).exitCode === 0 },
+    async installed() { return (await run(["systemctl", "--user", "is-enabled", "--quiet", platform.names.systemdUnit])).exitCode === 0 },
     async install() {
-      const active = (await run(["systemctl", "--user", "is-active", "--quiet", ACCOUNT_SYSTEMD_UNIT])).exitCode === 0
-      const enabled = (await run(["systemctl", "--user", "is-enabled", "--quiet", ACCOUNT_SYSTEMD_UNIT])).exitCode === 0
+      const active = (await run(["systemctl", "--user", "is-active", "--quiet", platform.names.systemdUnit])).exitCode === 0
+      const enabled = (await run(["systemctl", "--user", "is-enabled", "--quiet", platform.names.systemdUnit])).exitCode === 0
       // An active unit is neither written nor reloaded. A reload under a
       // running earlier build would give it this unit's restart policy, which
       // that build's exit codes do not follow, and any later reload by
@@ -34,14 +34,14 @@ export function systemdManager(platform: AccountServicePlatform, isForeign: () =
       // of this build writes and reloads its unit itself (`refreshUnit`).
       // `--no-reload` keeps enable and disable from reloading implicitly.
       if (!active) {
-        const registration = systemdUnit(platform.executable, platform.accountHome)
+        const registration = systemdUnit(platform.command, platform.accountHome)
         if (platform.files.read(unit) !== registration) platform.files.write(unit, registration)
         assertOk("systemctl daemon-reload", await run(["systemctl", "--user", "daemon-reload"]))
       }
       if (!enabled) {
-        assertOk("systemctl enable", await run(["systemctl", "--user", "enable", "--no-reload", ...(active ? [] : ["--now"]), ACCOUNT_SYSTEMD_UNIT]))
+        assertOk("systemctl enable", await run(["systemctl", "--user", "enable", "--no-reload", ...(active ? [] : ["--now"]), platform.names.systemdUnit]))
       } else if (!active) {
-        assertOk("systemctl start", await run(["systemctl", "--user", "start", ACCOUNT_SYSTEMD_UNIT]))
+        assertOk("systemctl start", await run(["systemctl", "--user", "start", platform.names.systemdUnit]))
       }
       for (const retired of platform.retired) {
         await run(["systemctl", "--user", "disable", "--no-reload", "--now", retired.systemdUnit])
@@ -55,16 +55,16 @@ export function systemdManager(platform: AccountServicePlatform, isForeign: () =
       // control group would end the process that asked for it, so a
       // transient unit outside that group stops the service. Its stop comes
       // before its reload, so KillMode and TimeoutStopSec still apply to it.
-      await run(["systemctl", "--user", "disable", "--no-reload", ACCOUNT_SYSTEMD_UNIT])
+      await run(["systemctl", "--user", "disable", "--no-reload", platform.names.systemdUnit])
       platform.files.remove(unit)
-      assertOk("systemd-run", await run(["systemd-run", "--user", "--collect", "--quiet", "--", "/bin/sh", "-c", `systemctl --user stop "$0"; systemctl --user daemon-reload`, ACCOUNT_SYSTEMD_UNIT]))
+      assertOk("systemd-run", await run(["systemd-run", "--user", "--collect", "--quiet", "--", "/bin/sh", "-c", `systemctl --user stop "$0"; systemctl --user daemon-reload`, platform.names.systemdUnit]))
       log.info("the account service unit was removed; a transient unit stops the service from outside its control group")
     },
     async start() {
       if (!await registered()) return false
-      const enabled = await run(["systemctl", "--user", "is-enabled", ACCOUNT_SYSTEMD_UNIT])
+      const enabled = await run(["systemctl", "--user", "is-enabled", platform.names.systemdUnit])
       if (enabled.exitCode === 0) {
-        assertOk("systemctl start", await run(["systemctl", "--user", "start", ACCOUNT_SYSTEMD_UNIT]))
+        assertOk("systemctl start", await run(["systemctl", "--user", "start", platform.names.systemdUnit]))
         return true
       }
       // Only a state systemd names proves the unit is not registered to run.
@@ -78,7 +78,7 @@ export function systemdManager(platform: AccountServicePlatform, isForeign: () =
 
 export function systemdControl(platform: AccountServicePlatform): NonNullable<AccountServiceRegistrationControl["systemd"]> {
   const run = platform.runCommand
-  const unit = systemdUnitPath(platform.accountHome, platform.env)
+  const unit = systemdUnitPath(platform)
   return {
     async refreshUnit() {
       // A unit file that is gone is Process initiation Off's, which removes
@@ -89,10 +89,10 @@ export function systemdControl(platform: AccountServicePlatform): NonNullable<Ac
         log.info("the account service unit file is gone, so Process initiation is off; the service writes no unit")
         return false
       }
-      const registration = systemdUnit(platform.executable, platform.accountHome)
+      const registration = systemdUnit(platform.command, platform.accountHome)
       if (platform.files.read(unit) !== registration) platform.files.write(unit, registration)
       else {
-        const shown = await run(["systemctl", "--user", "show", "-p", "NeedDaemonReload", ACCOUNT_SYSTEMD_UNIT])
+        const shown = await run(["systemctl", "--user", "show", "-p", "NeedDaemonReload", platform.names.systemdUnit])
         assertOk("systemctl show", shown)
         if (!/^NeedDaemonReload=yes$/m.test(shown.stdout)) return false
       }

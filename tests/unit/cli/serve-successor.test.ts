@@ -38,7 +38,7 @@ describe("a resident account service that a newer build retires", () => {
       // than the one this service runs.
       exitCode = await runServe([], { executionCwd: temporaryRoot, projectRoot: temporaryRoot, accountHome, userDataRoot }, unusedLauncher(), manager, false, {
         ...IDLE_SERVE,
-        residency: async () => ({ resident: true, followsRegistration: false }),
+        residency: async () => ({ resident: true, followsRegistration: false, startsRegisteredJob: false }),
         serveLifetime: () => new ServeLifetime({ resident: true }),
         ownBuildId: () => "old",
         installedBuild: () => ({ buildId: "new", version: "1.0.0" }),
