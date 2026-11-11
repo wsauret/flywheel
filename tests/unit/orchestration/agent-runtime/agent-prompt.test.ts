@@ -273,7 +273,7 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     const chat = buildSystemPrompt(promptOptions({ promptKind: "chat", chatHost: { communication: true }, corePrompt, tools: [] }));
     const headless = buildSystemPrompt(promptOptions({ promptKind: "headless", corePrompt, tools: [] }));
     const concise = "Be concise in narration";
-    const evidence = "List the file paths and line numbers";
+    const evidence = "Ground every claim about code, tests, or tools in what you observed";
 
     expect(chat.split(concise)).toHaveLength(2);
     expect(chat.split(evidence)).toHaveLength(2);

@@ -43,7 +43,7 @@ A text answer that rejects the approach, not a detail, returns the work to step 
 
 ## Challenge
 
-When the user questions your explanation, says they are confused, or proposes a simpler model, first restate their model. Then name the exact premise where it differs from yours: a requirement, an assumption, or a tradeoff. Do not defend or concede by reflex. Weigh a simpler alternative against the same requirements. Settle a disputed fact with a code citation or the smallest spike that can change the decision, and leave a product priority or acceptable tradeoff to the user. The challenge ends when you show why your approach is better or give a justification that the user accepts. When the decision changes, update the checkpoint Design intent and every affected artifact before further delegation, and verify the affected behavior again; a revised explanation alone does not complete the revision.
+When a challenge from the user changes a design decision, update the checkpoint Design intent and every affected artifact before further delegation, and verify the affected behavior again; a revised explanation alone does not complete the revision.
 
 ## Reshape
 

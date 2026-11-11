@@ -184,7 +184,7 @@ describe("buildSystemPrompt -- chat", () => {
 
   it("takes communication guidance only from a typed chat-host contribution", () => {
     const concise = "Be concise in narration";
-    const evidence = "List the file paths and line numbers";
+    const evidence = "Ground every claim about code, tests, or tools in what you observed";
     const chat = build();
     expect(chat.split(concise)).toHaveLength(2);
     expect(chat.split(evidence)).toHaveLength(2);
@@ -233,8 +233,18 @@ describe("buildSystemPrompt -- memory snapshot", () => {
     }));
 
     expect(prompt).toContain("memory tool writes are durable at once and appear here in a later snapshot");
-    expect(prompt).toContain("Saving nothing is often correct");
     expect(prompt).not.toContain("This snapshot is read-only.");
+    // With the tool present, its description owns the saving policy; the snapshot fragment does not repeat it.
+    const fragment = buildSystemPromptParts(promptOptions({ promptKind: "chat", corePrompt, tools: [...TOOLS, spec("memory")], envBlock: undefined, moduleFragments: [await learningPrompt(true)] }))
+      .find((candidate) => candidate.label === "module fragment");
+    expect(fragment?.text).not.toContain("Shared repository guidance belongs in AGENTS.md");
+  });
+
+  it("keeps the memory policy in a read-only snapshot, which has no memory tool to state it", async () => {
+    const prompt = buildSystemPrompt(promptOptions({ promptKind: "chat", corePrompt, tools: TOOLS, envBlock: undefined, moduleFragments: [await learningPrompt(false)] }));
+
+    expect(prompt).toContain("This snapshot is read-only.");
+    expect(prompt).toContain("Shared repository guidance belongs in AGENTS.md");
   });
 
   it("names the two reaches and carries each block's identity into the audited part", async () => {
@@ -464,7 +474,7 @@ describe("global guideline selection", () => {
     expect(result).toContain("Independent tool calls in one turn run concurrently");
     expect(result).not.toContain("saved-output file");
     expect(result).not.toContain("Be concise in narration");
-    expect(result).not.toContain("List the file paths and line numbers");
+    expect(result).not.toContain("Ground every claim about code, tests, or tools in what you observed");
     expect(result).toContain("Always quote paths");
     expect(result).toContain("# Examples");
   });
@@ -498,7 +508,7 @@ describe("renderCommunicationBlock", () => {
     expect(result).toContain("what broke, what it means for the task");
     expect(result).toContain("Ordinary human warmth is welcome when it makes the work clearer; simulated emotion, personal attachment, inner life, or companionship is not");
     expect(result.split("Be concise in narration")).toHaveLength(2);
-    expect(result.split("List the file paths and line numbers")).toHaveLength(2);
+    expect(result.split("Ground every claim about code, tests, or tools in what you observed")).toHaveLength(2);
   });
 
   it("leaves the rule on asking to the ask_user description and keeps the rule numbers contiguous", () => {
@@ -507,18 +517,20 @@ describe("renderCommunicationBlock", () => {
 
     expect(withTool).not.toContain("ask_user");
     expect(withTool).not.toContain("so that the user can reply with one number");
-    expect(withTool).toContain("9. Ground every claim");
-    expect(withTool).toContain("15. Explain designs");
-    expect(without).toContain("9. Number the options that you offer");
-    expect(without).toContain("16. Explain designs");
+    expect(withTool).toContain("10. Ground every claim");
+    expect(withTool).toContain("17. Explain designs");
+    expect(without).toContain("10. Number the options that you offer");
+    expect(without).toContain("18. Explain designs");
   });
 
-  it("points a challenge to the design skill only while that skill can load", () => {
+  it("states the whole challenge method itself, with or without the design skill", () => {
     const withDesign = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([{ name: "skill" }], ["design"]));
     const without = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([]));
-    expect(withDesign).toContain("apply the Challenge method of the `design` skill: restate their model");
-    expect(without).toContain("proposes a simpler model, restate their model");
-    expect(without).not.toContain("`design` skill");
+    for (const block of [withDesign, without]) {
+      expect(block).toContain("proposes a simpler model, first restate their model");
+      expect(block).toContain("The challenge ends when you show why your approach is better");
+      expect(block).not.toContain("`design` skill");
+    }
   });
 
   it("renders shared and provider model notes in one section", () => {

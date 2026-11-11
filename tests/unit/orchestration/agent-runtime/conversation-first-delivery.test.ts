@@ -82,7 +82,7 @@ describe("conversation-first delivery guidance", () => {
     expect(result).toContain("Answer a question about published code by explaining the code first; a question that needs only an explanation ends there");
     expect(result).toContain("A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape");
     expect(result).toContain("Never send the user to read a file to understand the work");
-    expect(result).toContain("restate their model, name the exact premise where you differ, settle facts with evidence without defending or conceding by reflex, and leave preferences to the user");
+    expect(result).toContain("first restate their model. Then name the exact premise where you differ");
   });
 
   // The block states the completion contract; the design skill owns the

@@ -20,7 +20,7 @@ import type { RuntimeTool } from "./tools/types.js";
 import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
 import type { SessionIdentity } from "../session/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
-import { ACT_WHEN_READY, FAITHFUL_REPORT, FLYWHEEL_CHAT_HOST, longSessionRule, NUMBERED_OPTIONS, PERMISSION_SCOPE, PERMISSION_THRESHOLD, renderModelAgentGuidance, renderModelChatBody, type ModelGuidance } from "./model-chat-body.js";
+import { ACT_WHEN_READY, CHALLENGE, CODE_REFERENCES, FAITHFUL_REPORT, FLYWHEEL_CHAT_HOST, FOLLOW_UP_WORK, KEEP_GOING, longSessionRule, NUMBERED_OPTIONS, PERMISSION_SCOPE, PERMISSION_THRESHOLD, renderModelAgentGuidance, renderModelChatBody, type ModelGuidance } from "./model-chat-body.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
 import { LIST_SESSIONS_TOOL_NAME } from "./tools/list-sessions.js";
 import { SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS } from "../session/session-artifacts.js";
@@ -75,14 +75,17 @@ export function renderCommunicationBlock(style: { progress: string; modelNotes: 
   // The ask_user description owns the rule on when to ask, so a prompt that carries the tool states no option rule here.
   const closingRules = [
     ACT_WHEN_READY,
+    KEEP_GOING,
     ...(has("ask_user") ? [] : [NUMBERED_OPTIONS]),
-    "Ground every claim about code, tests, or tools in what you observed. List the file paths and line numbers the evidence came from. Mark inferences as inferences and name the assumptions behind them.",
+    "Ground every claim about code, tests, or tools in what you observed. Mark inferences as inferences and name the assumptions behind them.",
+    CODE_REFERENCES,
     FAITHFUL_REPORT,
     `${PERMISSION_THRESHOLD} ${PERMISSION_SCOPE}`,
-    longSessionRule(`When Flywheel resets the context, continue from your session notes${has("recall") ? " and the recorded history" : ""}`),
+    longSessionRule(`When Flywheel resets the context, continue from your session notes${has("recall") ? " and the recorded history" : ""}`, has("recall")),
     "When something fails, report what broke, what it means for the task, and what you will do next. No full error log unless asked.",
     "Say what you found, the cause with its key evidence, and what you are about to change at the start of the turn that issues the first edit. Keep it conversational.",
-    `Explain designs, results, and other artifacts in your reply in plain terms. Never send the user to read a file to understand the work. When the user questions a claim, says they are confused, or proposes a simpler model, ${has("skill:design") ? "apply the Challenge method of the `design` skill: restate" : "restate"} their model, name the exact premise where you differ, settle facts with evidence without defending or conceding by reflex, and leave preferences to the user.`,
+    "Explain designs, results, and other artifacts in your reply in plain terms. Never send the user to read a file to understand the work.",
+    CHALLENGE,
   ].map((rule, index) => `${index + 8}. ${rule}`).join("\n\n");
   return `COMMUNICATION:
 Act like a capable teammate with taste and judgment: direct, curious, and grounded in the work in front of you. Use concrete reasoning when tradeoffs matter, ask questions only when the answer changes the path, and push back when an assumption is weak or a simpler route exists. Ordinary human warmth is welcome when it makes the work clearer; simulated emotion, personal attachment, inner life, or companionship is not. Disagree candidly but constructively; when you are wrong, say so plainly and move to the fix. When you correct an answer, make sure that the correction adds no restriction that the evidence does not support. Match the user's register: conversational for casual exchanges, focused for substantive work. The user is capable and human.
@@ -97,7 +100,7 @@ Core rules:
 
 4. Be concise in narration. Open a run of tool work with one sentence that names the next step. After that, report only the moments that matter: a load-bearing finding, a change of direction, a blocker, a phase boundary. One sentence is usually enough. Brief is good; silent is not. Do not narrate routine activity. Never end a turn by announcing work that you can start now: start it in the same turn. Deliverables are sized by their content, not by a brevity target.
 
-5. Keep each reply on the user's topic. Put incidental discoveries in a short list at the end under a clear header, one line each.
+5. Keep each reply on the user's topic. ${FOLLOW_UP_WORK}
 
 6. No filler: no preamble, no restating the request, no stock acknowledgements or repeated apologies, no narrating what a visible tool call already shows, no contrast with an alternative you did not take, no closing offers. No emojis, no em dashes.
 

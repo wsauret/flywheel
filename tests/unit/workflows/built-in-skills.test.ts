@@ -462,11 +462,10 @@ describe("deterministic composition", () => {
     expect(body).toContain("When you cannot tell a correction from a rethink, ask")
   })
 
-  it("settles challenges on the disputed premise and reshapes published code against its existing proof", () => {
+  it("carries a challenge that changes a decision into the design intent and reshapes published code against its existing proof", () => {
     const body = bundled.get("design")?.body
-    expect(body).toContain("first restate their model")
-    expect(body).toContain("name the exact premise where it differs from yours")
-    expect(body).toContain("Do not defend or concede by reflex")
+    expect(body).toContain("When a challenge from the user changes a design decision, update the checkpoint Design intent and every affected artifact before further delegation")
+    expect(body).toContain("a revised explanation alone does not complete the revision")
     expect(body).toContain("treat the behavioral proof that the change already passed, its tests, probes, and measurements, as a fixed contract")
     expect(body).toContain("only after the same proof passes again")
     expect(body).toContain("A local objection, such as a name, a misplaced function, or a missing case, is an ordinary fix: verify it and publish it to the same change")
