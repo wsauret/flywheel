@@ -1,0 +1,20 @@
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 100
+src/orchestration/agent-runtime/tools/bash-private-copy-tree.ts
+  h_4b47e9e4a8b456 377,400-417
+src/orchestration/agent-runtime/tools/bash-private-copy.ts
+  h_4b47e9e4a8b456 24,324
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations.test.ts
+  h_4b47e9e4a8b456 423,425-428,430,432-433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b510aa931809b5af7a391392089f4a962422b5d8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
