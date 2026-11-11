@@ -1,0 +1,120 @@
+src/infra/llm/llm-helpers.ts
+  h_4b47e9e4a8b456 2-3,6
+src/infra/workflow-types.ts
+  h_4b47e9e4a8b456 42
+src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.ts
+  h_4b47e9e4a8b456 57
+src/orchestration/agent-runtime/llm/anthropic-options.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 4-5,21,23,32,129,143,174,224-225,238-241,277,318,328-330,333,336-337,344-345,407,491,603
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 27,29,32,77-78,93-95,98,122,132,317,411-412,430-446,527-528
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 2,10-14,60-64,66-68,70-71,73,111,114-115,118-120,176,181,220,222,236,255,277-278,319-320
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 20,22,31,104,210,214,245,250,253,264,342,373-375,378
+src/orchestration/agent-runtime/llm/openai-helpers.ts
+  h_4b47e9e4a8b456 42-44,159,196,211,215
+src/orchestration/agent-runtime/llm/openai-responses.ts
+  h_4b47e9e4a8b456 4,16,31
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 6-7,16,41,87-89,92-93,122
+src/orchestration/agent-runtime/llm/provider-description.ts
+  h_4b47e9e4a8b456 42-49,69-70
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 323
+src/orchestration/custom-provider-modules.ts
+  h_4b47e9e4a8b456 43,48,55
+src/orchestration/modules/provider-anthropic-api/module.ts
+  h_4b47e9e4a8b456 11,96-97,100,105
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 13,89-90,100
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.ts
+  h_4b47e9e4a8b456 83
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 8,73,75,90,96,156
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 9,47-48,54
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 8,62,68-69,87,91,95
+src/orchestration/modules/provider-google-api/module.ts
+  h_4b47e9e4a8b456 10,83-84,89
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 8,68-69,74
+src/orchestration/modules/provider-openai-api/module.ts
+  h_4b47e9e4a8b456 11,73-74,79-80
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 8,54-55,62,74,81
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 9,52-53,59
+src/orchestration/modules/provider-supergrok/module.ts
+  h_4b47e9e4a8b456 14,176-177,183,185
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 1518
+tests/helpers/eager-tool-visibility-provider.ts
+  h_4b47e9e4a8b456 6,108
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-conformance.test.ts
+  h_4b47e9e4a8b456 95
+tests/unit/orchestration/agent-runtime/agent-loop-history.test.ts
+  h_4b47e9e4a8b456 222,225
+tests/unit/orchestration/agent-runtime/llm/_openai-chatgpt-adapter-fixtures.ts
+  h_4b47e9e4a8b456 15,34-50
+tests/unit/orchestration/agent-runtime/llm/adapter-boundary-regressions.test.ts
+  h_4b47e9e4a8b456 18,23-26,40,45,49,73,173,192,197,304,347
+tests/unit/orchestration/agent-runtime/llm/anthropic-adapter-config.test.ts
+  h_4b47e9e4a8b456 6,31,56,59,80,236,238,245,251,253,262,273,288-302,312,316,328,332,343,351,369,376,385,392,405,410,422,433,437,447,450,460,464,474,489
+tests/unit/orchestration/agent-runtime/llm/anthropic-progress-updates.test.ts
+  h_4b47e9e4a8b456 5,55
+tests/unit/orchestration/agent-runtime/llm/anthropic-tool-input.test.ts
+  h_4b47e9e4a8b456 4,44
+tests/unit/orchestration/agent-runtime/llm/anthropic-usage-accounting.test.ts
+  h_4b47e9e4a8b456 16,76-77,158,182,195,208,225,239,266,277,291,304,323,338,360,368,394
+tests/unit/orchestration/agent-runtime/llm/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 18,75,341-348,351-371,374-390
+tests/unit/orchestration/agent-runtime/llm/model-compat.test.ts
+  h_4b47e9e4a8b456 38-41,44-47,51-53,85,94-96
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts
+  h_4b47e9e4a8b456 17,37,49,72,95,113,152,181,211,242,256,294,335,354,372,395,429,445,470,485,495,524,536,548,571,585,601,607
+tests/unit/orchestration/agent-runtime/llm/openai-completions-converter.test.ts
+  h_4b47e9e4a8b456 14,286
+tests/unit/orchestration/agent-runtime/llm/openai-copilot-responses.test.ts
+  h_4b47e9e4a8b456 18-34,83-85,147,171
+tests/unit/orchestration/agent-runtime/llm/openai-custom-tools.test.ts
+  h_4b47e9e4a8b456 6,86,116,141,151,171
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 13,78,321,329
+tests/unit/orchestration/agent-runtime/llm/openai-responses-item-dedup.test.ts
+  h_4b47e9e4a8b456 15,84,116,148,174
+tests/unit/orchestration/agent-runtime/llm/openai-responses-terminal.test.ts
+  h_4b47e9e4a8b456 16,91,101,108,120,137,161,174,186,205,221
+tests/unit/orchestration/agent-runtime/llm/openai-session-affinity.test.ts
+  h_4b47e9e4a8b456 6,50,59,69,88
+tests/unit/orchestration/agent-runtime/llm/openrouter-reasoning-details.test.ts
+  h_4b47e9e4a8b456 15,63-64,90-91
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 14,20,82,101,125,144,158,174,189,203,217-218,231,247,301,314,326,342,361,377,403,428,449,475,499,518
+tests/unit/orchestration/agent-runtime/llm/openrouter-wire-model.test.ts
+  h_4b47e9e4a8b456 5,9-10,32,52-53,63
+tests/unit/orchestration/agent-runtime/llm/provider-description.test.ts
+  h_4b47e9e4a8b456 2,20-21
+tests/unit/orchestration/agent-runtime/llm/reasoning-effort-boundaries.test.ts
+  h_4b47e9e4a8b456 29,57-58,60-62
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 38,158
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 23,101
+tests/unit/orchestration/agent-runtime/workflow-agent-prompt-prefix.test.ts
+  h_4b47e9e4a8b456 16,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1edf7715e63b8155b66ab7431a10822589664a00",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
