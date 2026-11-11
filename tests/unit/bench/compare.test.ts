@@ -456,7 +456,12 @@ describe("cross-run comparison store", () => {
     if (!retainedScore) throw new Error("Expected initial successful comparison evidence");
     const retainedAttempt = initial.attempts.find((attempt) => attempt.attemptId === retainedScore.attemptId);
     if (!retainedAttempt) throw new Error("Expected the score's successful judge attempt");
-    const failedAttempt = { ...retainedAttempt, attemptId: "failed-before-resume", terminal: "failed" as const };
+    const failedAttempt = {
+      ...retainedAttempt,
+      attemptId: "failed-before-resume",
+      terminal: "failed" as const,
+      accounting: { ...ACCOUNTING, estimatedUsd: { kind: "unavailable" as const, reason: "stream ended before usage", atLeast: 0.02 } },
+    };
     await Bun.write(join(comparison, "scores.jsonl"), `${JSON.stringify(retainedScore)}\n`);
     await Bun.write(join(comparison, "judge-attempts.jsonl"), `${JSON.stringify(retainedAttempt)}\n${JSON.stringify(failedAttempt)}\n`);
 
@@ -477,7 +482,7 @@ describe("cross-run comparison store", () => {
     expect(completed.attempts).toHaveLength(expectedPairCount + 1);
     expect(completed.attempts.filter((attempt) => attempt.terminal !== "completed")).toEqual([failedAttempt]);
     const report = await Bun.file(join(comparison, "report.md")).text();
-    expect(report).toContain(`Judge attempts: ${expectedPairCount + 1}; failed: 1;`);
+    expect(report).toContain(`Judge attempts: ${expectedPairCount + 1}; failed: 1; estimated equivalent: at least $${(expectedPairCount * 0.01 + 0.02).toFixed(4)};`);
     expect(report.match(/^\| \d+ \| model@low\[source-[abc]\] \|/gm)).toHaveLength(3);
   });
 
