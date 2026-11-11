@@ -277,7 +277,7 @@ describe("tool entry mutation rendering", () => {
       expect(collapsed.some(line => line.includes("+2 lines (click to expand)"))).toBe(true)
 
       await result.mockMouse.click(4, 0)
-      const expanded = await restingFrameLines(result)
+      const expanded = await settledFrameLines(result, fixture)
       expect(expanded.filter((line) => line.includes("const line20 = 20"))).toHaveLength(1)
       expect(expanded).toContain("     22 const line22 = 22")
       expect(expanded).not.toContain("      example.ts")
