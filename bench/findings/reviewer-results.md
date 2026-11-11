@@ -1,6 +1,45 @@
 # Reviewer persona detection benchmark results
 
-Persona: reviewer-code-quality. Current decision evidence: the identity-complete 2026-09-10 Astra run (`reviewer-code-quality-2026-09-10T21-08-33-675Z`) and four-variant comparison run (`reviewer-code-quality-2026-09-10T22-20-33-465Z`). Both use the same nine fixtures, one repeat, reviewer guidance, gpt-5.6-sol judge, scoring version, profile, and Usage authority.
+Persona: reviewer-code-quality. Current decision evidence: the 2026-11-11 two-stage subscription sweep on the 31-task public corpus. Earlier evidence: the identity-complete 2026-09-10 Astra run (`reviewer-code-quality-2026-09-10T21-08-33-675Z`) and four-variant comparison run (`reviewer-code-quality-2026-09-10T22-20-33-465Z`). Both use the same nine fixtures, one repeat, reviewer guidance, gpt-5.6-sol judge, scoring version, profile, and Usage authority.
+
+## Rerun: 2026-11-11 (public corpus, subscription sweep)
+
+Method: a new public corpus of 31 tasks: defect fixtures derived from real reviews in size strata, plus 6 clean controls, with 52 labeled defects. Persona reviewer-code-quality. The judge is gpt-6.1-sol xhigh, which is also a candidate; a Claude opus high judge rescored 10 sol cells and agreed on 16 of 16 labels. Every reported candidate ran on a subscription with $0 billed; the stopped DeepSeek runs billed $0.19 through a fallback route. Stage 1 ran 15 settings with one repeat. Stage 2 ran the finalists with one more repeat.
+
+Runs: stage 1 `reviewer-code-quality-2026-11-11T01-03-13-088Z` (non-Claude, scored by rescore), `reviewer-code-quality-2026-11-11T01-04-30-041Z` (Claude), `reviewer-code-quality-2026-11-11T05-15-25-509Z` (Fable); stage 2 `reviewer-code-quality-2026-11-11T15-32-09-950Z` (GPT, run from a clean worktree at `5097165ab`), `reviewer-code-quality-2026-11-11T06-50-30-346Z` (opus medium).
+
+Pooled stages 1 and 2. Recall is of 104 labels, or 103 where one cell failed on provider overload. Control alarms are of 12 clean-control reviews. Cost is the list-equivalent cost per review.
+
+| Variant | Recall | Control alarms | Cost/review | Avg latency |
+|---|---:|---:|---:|---:|
+| gpt-6.1-sol/xhigh | 91/104 (87.5%) | 3/12 | $0.47 | ~340s |
+| gpt-5.6-terra/xhigh | 89/104 (85.6%) | 7/12 | $0.13 (lower bound: some entries unpriced) | ~120s |
+| gpt-6.1-sol/high | 88/104 (84.6%) | 0/12 | $0.33 | ~180s |
+| gpt-5.6-terra/high | 86/103 (83.5%) | 8/12 | $0.08 | ~60s |
+| claude-opus-5.5/medium | 82/104 (78.8%) | 2/12 | $0.89 | ~150s |
+| gpt-6.1-sol/medium | 79/104 (76.0%) | 0/12 | $0.23 | ~110s |
+| gpt-5.6-terra/medium | 76/103 (73.8%) | 7/12 | $0.07 | ~50s |
+
+Stage 1 only (one repeat, 52 labels):
+
+| Variant | Recall | Cost/review |
+|---|---:|---:|
+| claude-fable-5.2/low | 82.7% | $1.43 |
+| claude-sonnet-5.5/high | 69.2% | $0.48 |
+| gpt-6-astra/low | 69.2% | $1.01 |
+| claude-sonnet-5.5/low | 63.5% | $0.18 |
+| claude-sonnet-5.5/medium | 59.6% | $0.21 |
+| claude-opus-5.5/low | 57.7% | $0.34 |
+
+DeepSeek v4.1 flash high and max stopped: its provider chain fell back to billed routes ($0.19) against the subscription-only rule, and it was 4 to 7 times slower. Grok was skipped by user decision.
+
+Findings:
+
+- Recall differences among the top five settings are within noise: 31 tasks give bootstrap intervals about 25 to 35 points wide per stage.
+- Terra raised P1 or P2 findings on most clean controls. Sol high never did.
+- 27 of the 52 labels were found originally by gpt-6-astra. Claude settings catch 88 to 100% of non-astra labels but 30 to 74% of astra labels, so part of the GPT lead may be label-source bias.
+
+Decision (2026-11-11): the `reviewer-quality` role moves from gpt-6-astra medium to gpt-6.1-sol high, which is the shared `reviewer` default, so the role now inherits it. Its recall is within noise of the best, it raised no false alarms on clean code, and it costs about a third of astra's cost per review. gpt-5.6-terra xhigh is the cost-first alternative if false alarms can be filtered. `reviewer-elegance` and `reviewer-mechanism` stay on gpt-6-astra medium until an elegance-shaped corpus exists, because this corpus labels correctness defects only.
 
 ## Rerun: 2026-09-10
 

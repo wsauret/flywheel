@@ -43,11 +43,6 @@ export const ROLE_MODEL_DEFAULTS = {
     anthropic: { model: "claude-opus-5.5", effort: "high" },
     tier: { tier: "mid", effort: "high" },
   },
-  "reviewer-quality": {
-    openai: { model: "gpt-6-astra", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "high" },
-    tier: { tier: "mid", effort: "medium" },
-  },
   "reviewer-elegance": {
     openai: { model: "gpt-6-astra", effort: "medium" },
     anthropic: { model: "claude-opus-5.5", effort: "high" },

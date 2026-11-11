@@ -27,7 +27,7 @@ describe("role model defaults", () => {
   it("selects the OpenAI preference with its effort when both preferences are listed", () => {
     expect(selectRoleModelDefault("explorer", bothProviders)).toMatchObject({ model: "gpt-6-luna", effort: "high" });
     expect(selectRoleModelDefault("reviewer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
-    expect(selectRoleModelDefault("reviewer-quality", bothProviders)).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
+    expect(selectRoleModelDefault("reviewer-quality", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
     expect(selectRoleModelDefault("reviewer-elegance", bothProviders)).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
     expect(selectRoleModelDefault("reviewer-mechanism", bothProviders)).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
     expect(selectRoleModelDefault("implementer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
@@ -76,7 +76,7 @@ describe("role model defaults", () => {
     const roles = await resolveRoles(config, noCandidates, tierOptions);
     expect(roles.get("explorer")).toMatchObject({ model: "gpt-5-mini", effort: "high" });
     expect(roles.get("reviewer")).toMatchObject({ model: "gpt-5.4", effort: "high" });
-    expect(roles.get("reviewer-quality")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
+    expect(roles.get("reviewer-quality")).toMatchObject({ model: "gpt-5.4", effort: "high" });
     expect(roles.get("implementer")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
     expect(roles.get("ship")).toMatchObject({ model: "gpt-5-mini", effort: "high" });
     expect(roles.get("reviewer-design")).toMatchObject({ model: "gpt-5.4", effort: "medium" });

@@ -35,7 +35,7 @@ describe("roles config parsing and resolution", () => {
       expect(roles.get("reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
       expect(roles.get("brief.custom-step")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step.persona.reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
-      expect(roles.get("reviewer-quality")).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
+      expect(roles.get("reviewer-elegance")).toMatchObject({ model: "gpt-6-astra", effort: "medium" });
 
       const tierFallback = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), tierAvailableModels, tierOptions, undefined, additional);
       expect(tierFallback.get("custom-auditor")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
@@ -285,23 +285,23 @@ describe("roles config parsing and resolution", () => {
 
     const [assignment] = await listModelAssignments(deps);
     expect(assignment).toMatchObject({
-      model: "gpt-6-astra",
-      effort: "medium",
+      model: "gpt-6.1-sol",
+      effort: "high",
       modelSource: "inherited",
     });
 
     const options = await listModelOptionsForSlot(slot, deps);
     expect(options.find((option) => option.inherit)).toMatchObject({
       label: "Inherit Reviewer",
-      inheritModel: "gpt-6-astra",
-      effort: "medium",
+      inheritModel: "gpt-6.1-sol",
+      effort: "high",
       efforts: ["low", "medium", "high"],
       current: true,
     });
 
     const efforts = await listEffortOptionsForSlot(slot, null, deps);
     expect(efforts.find((option) => option.inherit)).toMatchObject({
-      label: "Inherit Reviewer: medium",
+      label: "Inherit Reviewer: high",
       current: true,
     });
   });

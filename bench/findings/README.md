@@ -75,7 +75,23 @@ Decision update (2026-09-21): explorer keeps luna/high as the cost-first primary
 
 ### reviewer (`reviewer-results.md`)
 
-Seeded-defect detection recall. Primary evidence: the 2026-07-30 full-matrix run over 7 fixtures (3 synthetic projects plus 4 commit-pinned fixtures derived from real production workflows: 2 plan reviews of real plan-handoff JSON with seeded mutations, 2 production-scale code reviews). 78 opportunities per variant.
+Current evidence: the 2026-11-11 two-stage sweep of persona reviewer-code-quality on a new public corpus of 31 tasks (defect fixtures derived from real reviews in size strata plus 6 clean controls, 52 labeled defects). The judge is gpt-6.1-sol xhigh; a Claude opus high judge agreed on 16 of 16 rescored labels. Every reported candidate ran on a subscription with $0 billed; the stopped DeepSeek runs billed $0.19 through a fallback route. Stage 1 screened 15 settings once; stage 2 repeated the finalists once. Pooled results (recall of 104 labels, or 103 where one cell failed on provider overload; alarms of 12 clean-control reviews; list-equivalent cost per review):
+
+| Variant | Recall | Control alarms | Cost/review | Avg latency |
+|---|---:|---:|---:|---:|
+| sol/xhigh | 91/104 (87.5%) | 3/12 | $0.47 | ~340s |
+| terra/xhigh | 89/104 (85.6%) | 7/12 | $0.13 (lower bound) | ~120s |
+| sol/high | 88/104 (84.6%) | 0/12 | $0.33 | ~180s |
+| terra/high | 86/103 (83.5%) | 8/12 | $0.08 | ~60s |
+| opus-5.5/medium | 82/104 (78.8%) | 2/12 | $0.89 | ~150s |
+| sol/medium | 79/104 (76.0%) | 0/12 | $0.23 | ~110s |
+| terra/medium | 76/103 (73.8%) | 7/12 | $0.07 | ~50s |
+
+Stage 1 alone: fable-5.2/low 82.7%, sonnet-5.5/high 69.2%, astra/low 69.2%, sonnet-5.5/low 63.5%, sonnet-5.5/medium 59.6%, opus-5.5/low 57.7%. Recall among the top five settings is within noise. Terra alarmed on most clean controls; sol/high never did. 27 of 52 labels came from gpt-6-astra reviews, and Claude settings catch far fewer astra labels than other labels, so part of the GPT lead may be label-source bias.
+
+Decision (2026-11-11): `reviewer-quality` moves from astra/medium to sol/high, the shared `reviewer` default, which the role now inherits: recall within noise of the best, zero false alarms on clean code, about a third of astra's cost per review. terra/xhigh is the cost-first alternative if false alarms can be filtered. `reviewer-elegance` and `reviewer-mechanism` stay on astra/medium until an elegance-shaped corpus exists.
+
+Earlier seeded-defect detection recall. Evidence: the 2026-07-30 full-matrix run over 7 fixtures (3 synthetic projects plus 4 commit-pinned fixtures derived from real production workflows: 2 plan reviews of real plan-handoff JSON with seeded mutations, 2 production-scale code reviews). 78 opportunities per variant.
 
 | Variant | Recall | Plan review | Production code review | Unsupported | Avg cost/run | Avg latency |
 |---|---:|---:|---:|---:|---:|---:|
