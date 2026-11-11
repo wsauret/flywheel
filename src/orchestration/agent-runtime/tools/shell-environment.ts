@@ -3,7 +3,7 @@ import process from "node:process";
 
 import { backgroundShellModuleRequirements } from "../../module-requirements.js";
 import { AGENT_SESSION_ENV, runsThroughBun } from "../../../infra/cli-subprocess.js";
-import { buildBunShim, isWindows, shellCommandInvocation, type RuntimePlatform } from "./bash-script.js";
+import { buildBunShims, isWindows, shellCommandInvocation, type RuntimePlatform } from "./bash-script.js";
 import { foregroundCommandLifetime } from "./bash-guidance.js";
 import { installSearchShims } from "./search-shims.js";
 import { grantCovers, NO_CAPABILITY_ACCESS, type BashOperations, type ToolContext, type ToolResult } from "./types.js";
@@ -38,7 +38,7 @@ export function createToolEnvironmentFactory(options: {
   const { operations, platform, execPath, loginShellPath } = options;
 
   // Per-scratchpad one-time setup: create the directory and, in binary mode,
-  // install the `bun` shim. Maps scratchDir -> in-flight/settled preparation
+  // install the `bun` and `bunx` shims. Maps scratchDir -> in-flight/settled preparation
   // (PATH prefix dir, or null when running through bun already, where no shim
   // is needed). The promise is cached before awaiting so concurrent first
   // calls (parent and subagent loops share one scratchDir) install once; a
@@ -53,10 +53,7 @@ export function createToolEnvironmentFactory(options: {
         if (runsThroughBun(execPath)) return null;
         const binDir = join(scratchDir, "bin");
         operations.ensureDir(binDir);
-        await operations.writeExecutable(
-          join(binDir, isWindows(platform) ? "bun.cmd" : "bun"),
-          buildBunShim(execPath, platform),
-        );
+        for (const shim of buildBunShims(execPath, platform)) await operations.writeExecutable(join(binDir, shim.file), shim.text);
         return binDir;
       })();
       preparedScratch.set(scratchDir, prepared);

@@ -210,7 +210,7 @@ describe("bash tool: launch environment", () => {
     });
 
     expect(Object.entries(env).find(([name]) => name.toUpperCase() === "PATH")?.[1]).toBe(`${path.join(scratchDir, "bin")}${path.delimiter}${loginShellPath}`);
-    expect(written).toEqual([path.join(scratchDir, "bin", "bun.cmd")]);
+    expect(written).toEqual([path.join(scratchDir, "bin", "bun.cmd"), path.join(scratchDir, "bin", "bunx.cmd")]);
   });
 
   it("uses the login shell PATH in place of the process PATH when no shim is installed", async () => {

@@ -1,7 +1,8 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import * as childProcess from "node:child_process"
+import { realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { resolveTuiUatAuthProfile, sandboxEnvironment } from "../../../../scripts/uat/harness.js"
+import { resolveTuiUatAuthProfile, sandboxEnvironment, searchTuiUatEvents } from "../../../../scripts/uat/harness.js"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
 import { attachApp, encodeSgrMouse, killTmuxSession, launchApp, launchCommand, PanePollError, startSessionReaper, tmuxCommand } from "../../../../scripts/uat/tmux-driver.js"
 import { releaseHarnessRuntimeOptions } from "../../../../src/cli/serve.js"
@@ -34,6 +35,36 @@ describe("TUI UAT sandbox", () => {
       expect(inspect).toHaveBeenCalledTimes(1)
     } finally {
       inspect.mockRestore()
+    }
+  })
+
+  it("runs installed commands without the harness's launcher variables", async () => {
+    const root = realpathSync(temporary("uat-run-"))
+    writeFileSync(join(root, "session.json"), JSON.stringify({ binaryPath: "/installed/flywheel", idleTimeoutMs: 60_000 }))
+    writeFileSync(join(root, "activity"), "")
+    const seeded = new Map([["BUN_BE_BUN", "1"], ["FLYWHEEL_NATIVE_DIR", "/launcher/native"], ["FLYWHEEL_INSTALL_DIR", "/launcher/install"], ["UAT_UNRELATED", "kept"]])
+    const previous = new Map([...seeded.keys()].map((key) => [key, process.env[key]]))
+    for (const [key, value] of seeded) process.env[key] = value
+    const stopped = new Error("stop before launching the installed binary")
+    const spawn = spyOn(Bun, "spawn")
+    spawn.mockImplementation(() => {
+      throw stopped
+    })
+    try {
+      await expect(searchTuiUatEvents(root, ["--limit", "1"])).rejects.toBe(stopped)
+      const [argv, options] = spawn.mock.calls[0] ?? []
+      expect(argv).toEqual(["/installed/flywheel", "events", "search", "--limit", "1"])
+      const env = options?.env ?? {}
+      const expected = new Map(Object.entries({ ...sandboxEnvironment({ root }), UAT_UNRELATED: "kept", HOME: join(root, "home"), FLYWHEEL_PROJECT_ROOT: join(root, "project") }))
+      // Compare only the keys under test, so a failure never prints the operator's environment.
+      const observed = new Map([...seeded.keys(), ...expected.keys()].map((key) => [key, env[key]]))
+      expect(observed).toEqual(new Map([...expected, ["BUN_BE_BUN", undefined], ["FLYWHEEL_NATIVE_DIR", undefined], ["FLYWHEEL_INSTALL_DIR", undefined]]))
+    } finally {
+      spawn.mockRestore()
+      for (const [key, value] of previous) {
+        if (value === undefined) Reflect.deleteProperty(process.env, key)
+        else process.env[key] = value
+      }
     }
   })
 
@@ -151,6 +182,7 @@ describe("TUI UAT driver", () => {
     }
     const command = launchCommand(options)
 
+    expect(launchCommand(options, "darwin")).toStartWith("env -u BUN_BE_BUN -u FLYWHEEL_NATIVE_DIR -u FLYWHEEL_INSTALL_DIR ")
     expect(command).toContain("HOME='/sandbox/home'")
     expect(command).toContain("FLYWHEEL_PROJECT_ROOT='/sandbox/project'")
     expect(command).toContain("FLYWHEEL_DISABLE_AUTOUPDATE='1'")
@@ -190,7 +222,7 @@ describe("TUI UAT driver", () => {
       env: { EXTRA: "kept" },
     }, "win32")
 
-    expect(command).toBe("$env:FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS='1'; $env:EXTRA='kept'; $env:HOME='C:\\gate\\work'; $env:FLYWHEEL_PROJECT_ROOT='C:\\gate\\work'; $env:FLYWHEEL_DISABLE_AUTOUPDATE='1'; $env:FLYWHEEL_BOOT_TRACE='1'; & 'C:\\gate\\candidate-bin\\flywheel.exe' 2> 'C:\\gate\\it''s evidence\\stderr.log'")
+    expect(command).toBe("$env:BUN_BE_BUN=$null; $env:FLYWHEEL_NATIVE_DIR=$null; $env:FLYWHEEL_INSTALL_DIR=$null; $env:FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS='1'; $env:EXTRA='kept'; $env:HOME='C:\\gate\\work'; $env:FLYWHEEL_PROJECT_ROOT='C:\\gate\\work'; $env:FLYWHEEL_DISABLE_AUTOUPDATE='1'; $env:FLYWHEEL_BOOT_TRACE='1'; & 'C:\\gate\\candidate-bin\\flywheel.exe' 2> 'C:\\gate\\it''s evidence\\stderr.log'")
   })
 
   it("passes arguments after the binary, quoted for each platform's shell", () => {

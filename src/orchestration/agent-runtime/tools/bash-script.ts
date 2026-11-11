@@ -135,8 +135,10 @@ export function buildBackgroundScript(command: string, logPath: string, platform
   return [`(umask 077 && : >${log})`, `exec >${log} 2>&1`, command.trimEnd()].join("\n");
 }
 
-export function buildBunShim(execPath: string, platform: RuntimePlatform): string {
-  return isWindows(platform)
-    ? `@echo off\r\nset BUN_BE_BUN=1\r\n"${execPath}" %*\r\n`
-    : `#!/bin/sh\nexec env BUN_BE_BUN=1 "${execPath}" "$@"\n`;
+/** The `bun` and `bunx` launchers that make a packaged Flywheel binary act as
+ *  the Bun it embeds. `bunx` is `bun x`, as in a Bun install. */
+export function buildBunShims(execPath: string, platform: RuntimePlatform): readonly { readonly file: string; readonly text: string }[] {
+  return ([["bun", ""], ["bunx", " x"]] as const).map(([name, subcommand]) => isWindows(platform)
+    ? { file: `${name}.cmd`, text: `@echo off\r\nset BUN_BE_BUN=1\r\n"${execPath}"${subcommand} %*\r\n` }
+    : { file: name, text: `#!/bin/sh\nexec env BUN_BE_BUN=1 "${execPath}"${subcommand} "$@"\n` });
 }

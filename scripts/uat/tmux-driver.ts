@@ -120,10 +120,19 @@ export function encodeSgrMouse(action: SgrMouseAction, column: number, row: numb
   return `\u001b[<0;${column};${row}${action === "press" ? "M" : "m"}`
 }
 
+/** Variables of the harness's own environment that never reach an installed
+ *  launch. An agent shell's `bun` shim sets BUN_BE_BUN=1, which makes a
+ *  packaged binary act as plain Bun and print Bun's help; the installed
+ *  launcher sets the FLYWHEEL_ ones for the build that it runs. The tmux
+ *  server keeps them, because the reaper window runs the harness's own
+ *  executable, which can be that shim's binary. */
+export const INSTALLED_LAUNCH_EXCLUDED_ENV = ["BUN_BE_BUN", "FLYWHEEL_NATIVE_DIR", "FLYWHEEL_INSTALL_DIR"] as const
+
 /** Serialize a launch with owned isolation variables taking precedence over
- *  scenario settings. tmux hands the line to a POSIX shell; psmux, which
- *  provides tmux on Windows, hands it to PowerShell, which redirects a native
- *  program's stderr to a file byte for byte. */
+ *  scenario settings, and without `INSTALLED_LAUNCH_EXCLUDED_ENV`. tmux hands
+ *  the line to a POSIX shell; psmux, which provides tmux on Windows, hands it
+ *  to PowerShell, which redirects a native program's stderr to a file byte for
+ *  byte. */
 export function launchCommand(options: LaunchOptions, platform: NodeJS.Platform = process.platform): string {
   const env = {
     FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS: process.env.FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS ?? "1",
@@ -134,10 +143,16 @@ export function launchCommand(options: LaunchOptions, platform: NodeJS.Platform 
     FLYWHEEL_BOOT_TRACE: "1",
   }
   if (platform === "win32") {
-    const assignments = Object.entries(env).map(([key, value]) => `$env:${key}=${powershellQuote(value)};`).join(" ")
+    const assignments = [
+      ...INSTALLED_LAUNCH_EXCLUDED_ENV.map((key) => `$env:${key}=$null;`),
+      ...Object.entries(env).map(([key, value]) => `$env:${key}=${powershellQuote(value)};`),
+    ].join(" ")
     return `${assignments} & ${[options.binaryPath, ...options.args ?? []].map(powershellQuote).join(" ")} 2> ${powershellQuote(options.stderrFile)}`
   }
-  const envPrefix = Object.entries(env).map(([key, value]) => `${key}=${shellQuote(value)}`).join(" ")
+  const envPrefix = [
+    ...INSTALLED_LAUNCH_EXCLUDED_ENV.map((key) => `-u ${key}`),
+    ...Object.entries(env).map(([key, value]) => `${key}=${shellQuote(value)}`),
+  ].join(" ")
   return `env ${envPrefix} ${[options.binaryPath, ...options.args ?? []].map(shellQuote).join(" ")} 2>${shellQuote(options.stderrFile)}`
 }
 

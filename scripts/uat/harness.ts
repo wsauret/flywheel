@@ -11,7 +11,7 @@ import { AuthProfileManager, type AuthProfileManagerOptions } from "../../src/or
 import { ContainedDirectory } from "../../src/infra/descriptor-directory.js"
 import { authDir, requireAuthProfileName } from "../../src/infra/paths.js"
 import { resolveInstalledBinary } from "./installed-binary.js"
-import { attachApp, killTmuxSession, launchApp, PanePollError, startSessionReaper, type PollOutcome, type TmuxApp } from "./tmux-driver.js"
+import { attachApp, INSTALLED_LAUNCH_EXCLUDED_ENV, killTmuxSession, launchApp, PanePollError, startSessionReaper, type PollOutcome, type TmuxApp } from "./tmux-driver.js"
 import { writeClaudeLoginReferences } from "../../src/orchestration/modules/provider-claude-agent-sdk/cli-login.js"
 
 const READY_MARKER = "for fresh chat"
@@ -372,9 +372,11 @@ export async function reapTuiUat(root: string): Promise<void> {
 async function runInSandbox(root: string, args: string[]): Promise<{ readonly stdout: string; readonly stderr: string }> {
   const { sandbox, binaryPath, idleTimeoutMs } = await readSession(root)
   return keepActive(sandbox.root, idleTimeoutMs, async () => {
+    const excluded = new Set<string>(INSTALLED_LAUNCH_EXCLUDED_ENV)
+    const inherited = Object.fromEntries(Object.entries(process.env).filter(([key]) => !excluded.has(key)))
     const child = Bun.spawn([binaryPath, ...args], {
       cwd: sandbox.project,
-      env: { ...process.env, ...sandboxEnvironment(sandbox), HOME: sandbox.home, FLYWHEEL_PROJECT_ROOT: sandbox.project },
+      env: { ...inherited, ...sandboxEnvironment(sandbox), HOME: sandbox.home, FLYWHEEL_PROJECT_ROOT: sandbox.project },
       stdout: "pipe", stderr: "pipe", windowsHide: true,
     })
     const [stdout, stderr, exitCode] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])

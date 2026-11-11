@@ -5,10 +5,17 @@ import { pathToFileURL } from "node:url"
 import { embeddedEntrySpecifier, flywheelCacheDirectory, runningSourceSnapshot, runsThroughBun, serveLaneFor, sourceCheckout } from "../../../src/infra/cli-subprocess.js"
 
 describe("CLI runtime detection", () => {
-  test("detects Bun by executable name only", () => {
+  test("detects Bun by executable name", () => {
     expect(runsThroughBun("/Users/me/.bun/bin/bun")).toBe(true)
     expect(runsThroughBun("C:\\Users\\me\\.bun\\bin\\bun.exe")).toBe(true)
     expect(runsThroughBun("/Users/me/.local/bin/flywheel")).toBe(false)
+  })
+
+  test("detects the running packaged binary started as Bun through BUN_BE_BUN, and only that binary", () => {
+    const packaged = "/Users/me/.flywheel/versions/1/flywheel-bin"
+    expect(runsThroughBun(packaged, { execPath: packaged, env: { BUN_BE_BUN: "1" } })).toBe(true)
+    expect(runsThroughBun(packaged, { execPath: packaged, env: {} })).toBe(false)
+    expect(runsThroughBun("/opt/flywheel/flywheel", { execPath: packaged, env: { BUN_BE_BUN: "1" } })).toBe(false)
   })
 
   test("a source checkout serves in its own lane and an installed build in the installed one", () => {

@@ -2,9 +2,15 @@ import { existsSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-export function runsThroughBun(execPath: string): boolean {
+/** Whether `execPath` runs as Bun rather than as a packaged Flywheel build:
+ *  a Bun executable, or this process's own executable started with
+ *  `BUN_BE_BUN=1`, which makes a packaged binary act as the Bun it embeds and
+ *  ignore its embedded entry. The agent shell's `bun` shim starts it that way.
+ *  The variable describes only how `current` started, so it says nothing about
+ *  another executable. */
+export function runsThroughBun(execPath: string, current: Pick<NodeJS.Process, "execPath" | "env"> = process): boolean {
   const executable = basename(execPath.replaceAll("\\", "/")).toLowerCase()
-  return executable === "bun" || executable === "bun.exe"
+  return executable === "bun" || executable === "bun.exe" || (execPath === current.execPath && current.env.BUN_BE_BUN === "1")
 }
 
 /** The serving lane a process belongs to. A source checkout serves beside the

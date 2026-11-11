@@ -522,7 +522,7 @@ describe("bash tool: scratchpad and bun shim", () => {
     return { def, dirs, shims, launches: spawn.launches, spawnOwned: spawn.spawnOwned };
   };
 
-  it("installs the BUN_BE_BUN shim once in binary mode and prepends its bin dir to PATH", async () => {
+  it("installs the BUN_BE_BUN bun and bunx shims once in binary mode and prepends their bin dir to PATH", async () => {
     const { def, dirs, shims, launches, spawnOwned } = makeRecordingDef("/opt/flywheel/flywheel", "linux");
     const ctx = makeContext({ executionCwd: "/mock", scratchDir, spawnOwned });
 
@@ -530,29 +530,30 @@ describe("bash tool: scratchpad and bun shim", () => {
 
     expect(result.outcome).toBe("ok");
     expect(dirs).toEqual([scratchDir, path.join(scratchDir, "bin")]);
-    expect(shims).toHaveLength(1);
-    expect(shims[0]!.path).toBe(path.join(scratchDir, "bin", "bun"));
-    expect(shims[0]!.content).toContain('BUN_BE_BUN=1 "/opt/flywheel/flywheel"');
+    expect(shims).toEqual([
+      { path: path.join(scratchDir, "bin", "bun"), content: '#!/bin/sh\nexec env BUN_BE_BUN=1 "/opt/flywheel/flywheel" "$@"\n' },
+      { path: path.join(scratchDir, "bin", "bunx"), content: '#!/bin/sh\nexec env BUN_BE_BUN=1 "/opt/flywheel/flywheel" x "$@"\n' },
+    ]);
     expect(launches[0]!.env!.PATH!.startsWith(path.join(scratchDir, "bin"))).toBe(true);
 
     // Second call reuses the prepared scratchpad: no re-write, same PATH prefix.
     await def.execute({ command: "bun scratch.ts" }, ctx);
-    expect(shims).toHaveLength(1);
+    expect(shims).toHaveLength(2);
     expect(launches[1]!.env!.PATH!.startsWith(path.join(scratchDir, "bin"))).toBe(true);
   });
 
-  it("writes a bun.cmd shim on Windows", async () => {
+  it("writes bun.cmd and bunx.cmd shims on Windows", async () => {
     const { def, shims, spawnOwned } = makeRecordingDef("C:\\flywheel\\flywheel.exe", "win32");
 
     await def.execute({ command: "echo hi" }, makeContext({ executionCwd: "/mock", scratchDir, spawnOwned }));
 
-    expect(shims).toHaveLength(1);
-    expect(shims[0]!.path.endsWith("bun.cmd")).toBe(true);
-    expect(shims[0]!.content).toContain("set BUN_BE_BUN=1");
-    expect(shims[0]!.content).toContain('"C:\\flywheel\\flywheel.exe" %*');
+    expect(shims).toEqual([
+      { path: path.join(scratchDir, "bin", "bun.cmd"), content: '@echo off\r\nset BUN_BE_BUN=1\r\n"C:\\flywheel\\flywheel.exe" %*\r\n' },
+      { path: path.join(scratchDir, "bin", "bunx.cmd"), content: '@echo off\r\nset BUN_BE_BUN=1\r\n"C:\\flywheel\\flywheel.exe" x %*\r\n' },
+    ]);
   });
 
-  it("installs the shim exactly once under concurrent first calls", async () => {
+  it("installs the shims exactly once under concurrent first calls", async () => {
     let writes = 0;
     const def = createBashDefinition({
       execPath: "/opt/flywheel/flywheel",
@@ -571,7 +572,7 @@ describe("bash tool: scratchpad and bun shim", () => {
       def.execute({ command: "echo b" }, ctx),
     ]);
 
-    expect(writes).toBe(1);
+    expect(writes).toBe(2);
   });
 
   it("skips the shim when running through bun but still creates the scratch dir", async () => {
