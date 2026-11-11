@@ -1,0 +1,21 @@
+{
+  "title": "Mechanism claims: job leases with heartbeat renewal and a reaper",
+  "reviewers": ["reviewer-mechanism"],
+  "defects": [
+    {
+      "id": "renew-ignores-owner",
+      "title": "Claim 1 is false: renewal checks only the status, so a displaced worker keeps running",
+      "category": "mechanism",
+      "files": ["store.ts", "worker.ts"],
+      "catch_criteria": "The review must reject claim 1 and show that JobStore.renew returns true whenever the job's status is running (store.ts:31-35) without checking that job.owner is the caller, and that renew takes no worker id at all; after the reaper requeues the lapsed job (store.ts:66-72) and a second worker claims it (store.ts:23-25), the first worker's heartbeat renew (worker.ts:30-31) succeeds against the second worker's run and even extends its lease, so the first handler is not aborted while the second worker holds the job, and both run until the second finishes. The catch must name the missing owner check in renew; it may also note that complete and fail do check the owner (store.ts:40, store.ts:49) while renew does not. A refutation that only says leases cannot prevent overlap in general, or only that the worker treats a failed renewal RPC as renewed (worker.ts:28-30), without the owner check in renew, does not count, because the claim measures from the first heartbeat that reaches the store."
+    },
+    {
+      "id": "reaper-requeue-skips-attempts",
+      "title": "Claim 2 is false: a crashed run never counts as an attempt, so a crash loop retries forever",
+      "category": "mechanism",
+      "files": ["store.ts", "reaper.ts"],
+      "catch_criteria": "The review must reject claim 2 and show that attempts are incremented only in JobStore.fail (store.ts:47-51), which the worker calls from its catch block (worker.ts:38-39), a block that never runs when the worker process crashes; the reaper path reapExpired -> requeueIfExpired (reaper.ts:7-8, store.ts:66-72) sets the job back to queued without incrementing attempts or checking maxAttempts, and claim does not consider attempts (store.ts:20), so a job that crashes its worker every time is claimed again indefinitely and never reaches dead. The catch must name that the reaper's requeue does not count the attempt."
+    }
+  ],
+  "review_prompt_hint": "Verify the numbered behavioral claims in prompt.md one by one against the code. Scoring rules for this claim review: the review gives one verdict per claim, and a confirmed verdict is not a finding. Count as one unsupported finding each refuted or uncertain verdict on a claim that no listed defect covers, and each issue the review raises outside the numbered claims. The review assigns no severity, so rate every refuted verdict on a claim that no listed defect covers as P2."
+}

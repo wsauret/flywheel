@@ -1,0 +1,145 @@
+diff --git a/alerts.ts b/alerts.ts
+index 64bf7d1..2783e01 100644
+--- a/alerts.ts
++++ b/alerts.ts
+@@ -1,4 +1,5 @@
+-import { addressFor, type Sender } from "./channels.ts";
++import type { Sender } from "./channels.ts";
++import { createDeliveryStrategy, type DeliveryResult, type DeliveryStrategy } from "./delivery.ts";
+ import type { PreferenceStore } from "./preferences.ts";
+ 
+ export interface Alert {
+@@ -8,13 +9,19 @@ export interface Alert {
+ }
+ 
+ export class AlertDispatcher {
++  private readonly delivery: DeliveryStrategy;
++
+   constructor(
+     private readonly preferences: PreferenceStore,
+-    private readonly sender: Sender,
+-  ) {}
++    sender: Sender,
++  ) {
++    this.delivery = createDeliveryStrategy(sender);
++  }
+ 
+-  async dispatch(alert: Alert): Promise<void> {
+-    const { contact, channel } = this.preferences.get(alert.userId);
+-    await this.sender.send(channel, addressFor(contact, channel), `[${alert.monitor}] ${alert.message}`);
++  /** Deliver the alert on the first channel that works. The result lists the
++   *  channels that failed so the on-call page can show why an alert was late. */
++  async dispatch(alert: Alert): Promise<DeliveryResult> {
++    const { contact, channels } = this.preferences.get(alert.userId);
++    return this.delivery.deliver(contact, channels, `[${alert.monitor}] ${alert.message}`);
+   }
+ }
+diff --git a/delivery.ts b/delivery.ts
+new file mode 100644
+index 0000000..3aafd6a
+--- /dev/null
++++ b/delivery.ts
+@@ -0,0 +1,38 @@
++import { addressFor, type Channel, type Contact, type Sender } from "./channels.ts";
++
++export interface DeliveryAttempt {
++  channel: Channel;
++  error: string;
++}
++
++export interface DeliveryResult {
++  /** The channel that delivered, or undefined when every channel failed. */
++  deliveredBy: Channel | undefined;
++  failures: DeliveryAttempt[];
++}
++
++export interface DeliveryStrategy {
++  deliver(contact: Contact, channels: readonly Channel[], text: string): Promise<DeliveryResult>;
++}
++
++/** Try each channel in the user's order and stop at the first that delivers. */
++export class FallbackDeliveryStrategy implements DeliveryStrategy {
++  constructor(private readonly sender: Sender) {}
++
++  async deliver(contact: Contact, channels: readonly Channel[], text: string): Promise<DeliveryResult> {
++    const failures: DeliveryAttempt[] = [];
++    for (const channel of channels) {
++      try {
++        await this.sender.send(channel, addressFor(contact, channel), text);
++        return { deliveredBy: channel, failures };
++      } catch (error) {
++        failures.push({ channel, error: error instanceof Error ? error.message : String(error) });
++      }
++    }
++    return { deliveredBy: undefined, failures };
++  }
++}
++
++export function createDeliveryStrategy(sender: Sender): DeliveryStrategy {
++  return new FallbackDeliveryStrategy(sender);
++}
+diff --git a/oncall-feed.ts b/oncall-feed.ts
+new file mode 100644
+index 0000000..5e018f5
+--- /dev/null
++++ b/oncall-feed.ts
+@@ -0,0 +1,10 @@
++import type { Alert, AlertDispatcher } from "./alerts.ts";
++
++/** Dispatch an alert and return the line the on-call feed shows for it. */
++export async function dispatchForFeed(dispatcher: AlertDispatcher, alert: Alert): Promise<string> {
++  const result = await dispatcher.dispatch(alert);
++  const failed = result.failures.map((failure) => `${failure.channel} (${failure.error})`).join(", ");
++  if (result.deliveredBy === undefined) return `${alert.monitor}: NOT DELIVERED to ${alert.userId}; tried ${failed}`;
++  const fallback = failed === "" ? "" : ` after ${failed} failed`;
++  return `${alert.monitor}: delivered to ${alert.userId} by ${result.deliveredBy}${fallback}`;
++}
+diff --git a/preferences.ts b/preferences.ts
+index 61d8c5f..5616bc0 100644
+--- a/preferences.ts
++++ b/preferences.ts
+@@ -1,9 +1,28 @@
+ import type { Channel, Contact } from "./channels.ts";
+ 
++const ALLOWED_CHANNELS: readonly Channel[] = ["email", "sms", "push"];
++
+ export interface AlertPreferences {
+   userId: string;
+   contact: Contact;
+-  channel: Channel;
++  /** Channels to try, in order, until one delivers. Never empty. */
++  channels: readonly Channel[];
++}
++
++/** Parse the comma-separated channel order from the settings form, for
++ *  example "push, email". Unknown names and repeats are rejected so the
++ *  user sees the mistake instead of a silently shorter list. */
++export function parseChannelOrder(input: string): Channel[] {
++  const names = input.split(",").map((name) => name.trim().toLowerCase()).filter((name) => name !== "");
++  if (names.length === 0) throw new Error("Choose at least one alert channel");
++  const channels: Channel[] = [];
++  for (const name of names) {
++    const channel = ALLOWED_CHANNELS.find((candidate) => candidate === name);
++    if (channel === undefined) throw new Error(`Unknown alert channel "${name}"`);
++    if (channels.includes(channel)) throw new Error(`Alert channel "${name}" is listed twice`);
++    channels.push(channel);
++  }
++  return channels;
+ }
+ 
+ export class PreferenceStore {
+diff --git a/settings-page.ts b/settings-page.ts
+new file mode 100644
+index 0000000..97eec3c
+--- /dev/null
++++ b/settings-page.ts
+@@ -0,0 +1,9 @@
++import type { Contact } from "./channels.ts";
++import { parseChannelOrder, type PreferenceStore } from "./preferences.ts";
++
++/** Save the alert section of the settings form. `channelOrder` is the text the
++ *  user typed, for example "push, email"; a bad entry throws before anything
++ *  is stored, and the form shows the message. */
++export function saveAlertSettings(store: PreferenceStore, userId: string, contact: Contact, channelOrder: string): void {
++  store.set({ userId, contact, channels: parseChannelOrder(channelOrder) });
++}

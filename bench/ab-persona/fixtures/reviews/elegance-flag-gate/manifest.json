@@ -1,0 +1,14 @@
+{
+  "title": "Feature gate for page flag checks and an express-shipping flag",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "feature-gate-shallow-wrapper",
+      "title": "FeatureGate only forwards isOn to FlagStore.isEnabled and adds no capability",
+      "category": "elegance",
+      "files": ["feature-gate.ts", "checkout-page.ts", "search-page.ts"],
+      "catch_criteria": "The review must identify that the new FeatureGate class in feature-gate.ts is a shallow wrapper: isOn passes its arguments unchanged to FlagStore.isEnabled and adds no behavior, caching, policy, or seam that FlagStore (or a narrow type such as Pick<FlagStore, \"isEnabled\">) does not already give, so the pages should keep calling FlagStore.isEnabled directly and the class should be removed. Any wording and any severity count, as long as the wrapper and the reason it adds nothing are both named."
+    }
+  ],
+  "review_prompt_hint": "The change routes the checkout and search pages through a new FeatureGate for their feature-flag checks and adds an express-shipping flag to checkout"
+}

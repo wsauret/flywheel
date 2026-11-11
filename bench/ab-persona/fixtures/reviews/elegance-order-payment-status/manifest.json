@@ -1,0 +1,14 @@
+{
+  "title": "Payment status on orders for the account page and fulfillment",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "stored-payment-status",
+      "title": "Order.paymentStatus stores a value that paymentStatusOf already derives from lines and payments",
+      "category": "elegance",
+      "files": ["types.ts", "orders.ts", "fulfillment.ts", "account-page.ts"],
+      "catch_criteria": "The review must identify that the new stored Order.paymentStatus field shadows a value that is fully derivable from the order's lines and payments (paymentStatusOf / balanceDueCents in orders.ts), so OrderBook.open and recordPayment must refresh a cached copy by hand and readers such as readyToShip and orderLines read the copy instead of deriving it; the remedy is to drop the field and derive the status where it is read. Any wording and any severity count, as long as the stored field and the derivation it duplicates are both named. A note that the field can go stale when payments change outside recordPayment is the same finding."
+    }
+  ],
+  "review_prompt_hint": "The change adds a payment status (unpaid, partially paid, paid) to orders, shows it on the customer's account page, and uses it to decide whether an order is ready to ship"
+}

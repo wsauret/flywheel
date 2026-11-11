@@ -1,0 +1,51 @@
+diff --git a/checkout-page.ts b/checkout-page.ts
+index f459500..66a1515 100644
+--- a/checkout-page.ts
++++ b/checkout-page.ts
+@@ -1,9 +1,13 @@
+-import type { FlagStore } from "./flags.ts";
++import type { FeatureGate } from "./feature-gate.ts";
+ 
+ export interface CheckoutOptions {
+   oneClick: boolean;
++  expressShipping: boolean;
+ }
+ 
+-export function checkoutOptions(flags: FlagStore, userId: string): CheckoutOptions {
+-  return { oneClick: flags.isEnabled("one-click-checkout", userId) };
++export function checkoutOptions(gate: FeatureGate, userId: string): CheckoutOptions {
++  return {
++    oneClick: gate.isOn("one-click-checkout", userId),
++    expressShipping: gate.isOn("express-shipping", userId),
++  };
+ }
+diff --git a/feature-gate.ts b/feature-gate.ts
+new file mode 100644
+index 0000000..daa837d
+--- /dev/null
++++ b/feature-gate.ts
+@@ -0,0 +1,11 @@
++import type { FlagStore } from "./flags.ts";
++
++/** The question pages ask about features. Pages depend on this instead of
++ *  the flag store so they stay independent of how flags are delivered. */
++export class FeatureGate {
++  constructor(private readonly flags: FlagStore) {}
++
++  isOn(feature: string, userId: string): boolean {
++    return this.flags.isEnabled(feature, userId);
++  }
++}
+diff --git a/search-page.ts b/search-page.ts
+index dc03437..7454a02 100644
+--- a/search-page.ts
++++ b/search-page.ts
+@@ -1,5 +1,5 @@
+-import type { FlagStore } from "./flags.ts";
++import type { FeatureGate } from "./feature-gate.ts";
+ 
+-export function searchRanker(flags: FlagStore, userId: string): "classic" | "semantic" {
+-  return flags.isEnabled("semantic-search", userId) ? "semantic" : "classic";
++export function searchRanker(gate: FeatureGate, userId: string): "classic" | "semantic" {
++  return gate.isOn("semantic-search", userId) ? "semantic" : "classic";
+ }

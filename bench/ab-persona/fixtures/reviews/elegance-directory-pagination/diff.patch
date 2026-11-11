@@ -1,0 +1,70 @@
+diff --git a/directory.ts b/directory.ts
+index d6708fb..f191e6b 100644
+--- a/directory.ts
++++ b/directory.ts
+@@ -1,4 +1,5 @@
+ import type { JsonClient } from "./json-client.ts";
++import { fetchAllPages } from "./pagination.ts";
+ 
+ export interface Project {
+   id: string;
+@@ -10,16 +11,12 @@ export interface Member {
+   role: "owner" | "member";
+ }
+ 
+-export async function listProjects(client: JsonClient, org: string): Promise<Project[]> {
+-  const body = await client.get(`/orgs/${encodeURIComponent(org)}/projects`);
+-  if (!Array.isArray(body)) throw new Error(`Project list for ${org} is not an array`);
+-  return body.map(parseProject);
++export function listProjects(client: JsonClient, org: string): Promise<Project[]> {
++  return fetchAllPages(client, `/orgs/${encodeURIComponent(org)}/projects`, parseProject);
+ }
+ 
+-export async function listMembers(client: JsonClient, org: string): Promise<Member[]> {
+-  const body = await client.get(`/orgs/${encodeURIComponent(org)}/members`);
+-  if (!Array.isArray(body)) throw new Error(`Member list for ${org} is not an array`);
+-  return body.map(parseMember);
++export function listMembers(client: JsonClient, org: string): Promise<Member[]> {
++  return fetchAllPages(client, `/orgs/${encodeURIComponent(org)}/members`, parseMember);
+ }
+ 
+ function parseProject(value: unknown): Project {
+diff --git a/pagination.ts b/pagination.ts
+new file mode 100644
+index 0000000..80a7fbc
+--- /dev/null
++++ b/pagination.ts
+@@ -0,0 +1,33 @@
++import type { JsonClient } from "./json-client.ts";
++
++interface Page {
++  items: unknown[];
++  nextCursor: string | null;
++}
++
++/** Fetch every page of a cursor-paginated list and parse each item. The
++ *  directory service answers `{ "items": [...], "next_cursor": "..." }` and
++ *  ends the list with a null cursor. */
++export async function fetchAllPages<T>(client: JsonClient, path: string, parseItem: (value: unknown) => T): Promise<T[]> {
++  const items: T[] = [];
++  const seenCursors = new Set<string>();
++  let url = path;
++  while (true) {
++    const page = parsePage(await client.get(url), path);
++    items.push(...page.items.map(parseItem));
++    if (page.nextCursor === null) return items;
++    // The cursor comes from another service; a repeated one would loop forever.
++    if (seenCursors.has(page.nextCursor)) throw new Error(`${path}: the server repeated cursor ${page.nextCursor}`);
++    seenCursors.add(page.nextCursor);
++    url = `${path}?cursor=${encodeURIComponent(page.nextCursor)}`;
++  }
++}
++
++function parsePage(body: unknown, path: string): Page {
++  if (typeof body !== "object" || body === null) throw new Error(`${path}: page is not an object`);
++  const fields: Record<string, unknown> = { ...body };
++  const { items, next_cursor: nextCursor } = fields;
++  if (!Array.isArray(items)) throw new Error(`${path}: page has no items array`);
++  if (nextCursor !== null && typeof nextCursor !== "string") throw new Error(`${path}: next_cursor must be a string or null`);
++  return { items, nextCursor };
++}

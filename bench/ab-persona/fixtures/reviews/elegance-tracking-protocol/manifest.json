@@ -1,0 +1,6 @@
+{
+  "title": "Estimated delivery window in shipment tracking and the public v1 API",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [],
+  "review_prompt_hint": "The change records the carrier's estimated delivery window from hub scans and exposes it in version 1 of the public tracking API"
+}

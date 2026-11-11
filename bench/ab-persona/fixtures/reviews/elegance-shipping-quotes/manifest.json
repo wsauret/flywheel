@@ -1,0 +1,21 @@
+{
+  "title": "Carrier rate shopping for the checkout shipping step",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "to-dollars-duplicates-format-cents",
+      "title": "toDollars reimplements the project's formatCents helper",
+      "category": "elegance",
+      "files": ["shipping-options.ts", "money.ts"],
+      "catch_criteria": "The review must identify that the private toDollars function in shipping-options.ts reimplements cents-to-dollars display formatting that money.ts already provides as formatCents (used by receipt.ts), so the project now has two money formatters that can drift (they already differ, for example on negative amounts and in using floating-point toFixed) and renderShippingOptions should call formatCents. Any wording and any severity count, as long as toDollars and formatCents are both named."
+    },
+    {
+      "id": "unread-last-quotes",
+      "title": "QuoteService.lastQuotes is written on every call and never read",
+      "category": "elegance",
+      "files": ["quotes.ts"],
+      "catch_criteria": "The review must identify that QuoteService.lastQuotes is assigned in quoteAll but nothing in the project reads it, so the field and its assignment are dead code whose deletion changes no behavior and should be removed. Any wording and any severity count, as long as the lastQuotes field is named as unread or dead."
+    }
+  ],
+  "review_prompt_hint": "The change adds carrier rate shopping: every carrier is quoted in parallel, failed carriers are reported as unavailable, and the shipping step of checkout lists the options cheapest first"
+}

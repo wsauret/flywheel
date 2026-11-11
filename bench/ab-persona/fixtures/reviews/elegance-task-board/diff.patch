@@ -1,0 +1,273 @@
+diff --git a/src/domain/board.ts b/src/domain/board.ts
+index f802e75..256a945 100644
+--- a/src/domain/board.ts
++++ b/src/domain/board.ts
+@@ -1,8 +1,19 @@
++import { exceedsWipLimit } from "../ui/board-view.ts";
+ import type { Board, Card, Column } from "./types.ts";
+ 
+-export function createBoard(id: string, name: string, columnNames: readonly string[]): Board {
+-  if (columnNames.length === 0) throw new Error("A board needs at least one column");
+-  const columns = columnNames.map((columnName, index) => ({ id: `col_${index + 1}`, name: columnName }));
++export interface ColumnSpec {
++  name: string;
++  wipLimit: number | null;
++}
++
++export function createBoard(id: string, name: string, columnSpecs: readonly ColumnSpec[]): Board {
++  if (columnSpecs.length === 0) throw new Error("A board needs at least one column");
++  const columns = columnSpecs.map((spec, index) => ({
++    id: `col_${index + 1}`,
++    name: spec.name,
++    wipLimit: checkedWipLimit(spec.wipLimit),
++    cardIds: [],
++  }));
+   return { id, name, columns, cards: [] };
+ }
+ 
+@@ -18,20 +29,72 @@ export function cardById(board: Board, cardId: string): Card {
+   return card;
+ }
+ 
+-/** New cards start in the first column. */
++/** New cards start at the bottom of the first column. */
+ export function addCard(board: Board, title: string, now: number): Card {
+   const [firstColumn] = board.columns;
+   if (firstColumn === undefined) throw new Error(`Board ${board.id} has no columns`);
+-  const card: Card = { id: crypto.randomUUID(), title, columnId: firstColumn.id, createdAt: now };
++  assertRoomFor(firstColumn);
++  const card: Card = { id: crypto.randomUUID(), title, columnId: firstColumn.id, createdAt: now, blocker: null };
+   board.cards.push(card);
++  firstColumn.cardIds.push(card.id);
+   return card;
+ }
+ 
+-export function moveCard(board: Board, cardId: string, toColumnId: string): void {
++/** Put a card at `position` in a column, counted among the column's other
++ *  cards. A move inside one column only reorders it, so it never trips the
++ *  WIP limit. */
++export function moveCard(board: Board, cardId: string, toColumnId: string, position: number): void {
++  const card = cardById(board, cardId);
++  const from = columnById(board, card.columnId);
++  const to = columnById(board, toColumnId);
++  if (from !== to) assertRoomFor(to);
++  const others = to.cardIds.filter((id) => id !== card.id);
++  if (!Number.isInteger(position) || position < 0 || position > others.length) {
++    throw new RangeError(`Position ${position} is outside ${to.name}, which has room for 0 to ${others.length}`);
++  }
++  from.cardIds = from.cardIds.filter((id) => id !== card.id);
++  others.splice(position, 0, card.id);
++  to.cardIds = others;
++  card.columnId = to.id;
++}
++
++/** Lowering a limit below the current card count is allowed: the board
++ *  shows the column as over its limit until cards move out. */
++export function setWipLimit(board: Board, columnId: string, limit: number | null): void {
++  columnById(board, columnId).wipLimit = checkedWipLimit(limit);
++}
++
++/** Mark a card blocked. Blocking an already blocked card replaces the reason
++ *  but keeps the original start, so the blocked age stays honest. */
++export function blockCard(board: Board, cardId: string, reason: string, now: number): void {
++  const trimmed = reason.trim();
++  if (trimmed === "") throw new Error("Say why the card is blocked");
+   const card = cardById(board, cardId);
+-  card.columnId = columnById(board, toColumnId).id;
++  card.blocker = { reason: trimmed, since: card.blocker?.since ?? now };
++}
++
++export function unblockCard(board: Board, cardId: string): void {
++  cardById(board, cardId).blocker = null;
+ }
+ 
+ export function cardsIn(board: Board, columnId: string): Card[] {
+-  return board.cards.filter((card) => card.columnId === columnId);
++  const byId = new Map(board.cards.map((card) => [card.id, card]));
++  return columnById(board, columnId).cardIds.map((id) => {
++    const card = byId.get(id);
++    if (card === undefined) throw new Error(`Column ${columnId} lists missing card ${id}`);
++    return card;
++  });
++}
++
++function assertRoomFor(column: Column): void {
++  if (exceedsWipLimit(column, column.cardIds.length + 1)) {
++    throw new Error(`${column.name} is at its WIP limit of ${column.wipLimit}`);
++  }
++}
++
++function checkedWipLimit(limit: number | null): number | null {
++  if (limit !== null && (!Number.isInteger(limit) || limit < 1)) {
++    throw new RangeError(`A WIP limit must be a whole number of at least 1, got ${limit}`);
++  }
++  return limit;
+ }
+diff --git a/src/domain/types.ts b/src/domain/types.ts
+index 78d47b5..1388a87 100644
+--- a/src/domain/types.ts
++++ b/src/domain/types.ts
+@@ -1,6 +1,15 @@
+ export interface Column {
+   id: string;
+   name: string;
++  /** Most cards the column may hold, or null when it has no limit. */
++  wipLimit: number | null;
++  /** Ids of the column's cards in display order, top first. */
++  cardIds: string[];
++}
++
++export interface Blocker {
++  reason: string;
++  since: number;
+ }
+ 
+ export interface Card {
+@@ -8,6 +17,7 @@ export interface Card {
+   title: string;
+   columnId: string;
+   createdAt: number;
++  blocker: Blocker | null;
+ }
+ 
+ export interface Board {
+diff --git a/src/ui/board-view.ts b/src/ui/board-view.ts
+index 716c07e..92589fa 100644
+--- a/src/ui/board-view.ts
++++ b/src/ui/board-view.ts
+@@ -1,11 +1,27 @@
+ import { cardsIn } from "../domain/board.ts";
+-import type { Board } from "../domain/types.ts";
++import type { Board, Card, Column } from "../domain/types.ts";
+ import { renderCard } from "./card-view.ts";
+ 
+-export function renderBoard(board: Board): string {
++/** Whether `count` cards would be more than the column allows. */
++export function exceedsWipLimit(column: Column, count: number): boolean {
++  return column.wipLimit !== null && count > column.wipLimit;
++}
++
++export function renderBoard(board: Board, now: number): string {
+   const sections = board.columns.map((column) => {
+     const cards = cardsIn(board, column.id);
+-    return [`${column.name} (${cards.length})`, ...cards.map(renderCard)].join("\n");
++    return [columnHeader(column, cards), ...cards.map((card) => renderCard(card, now))].join("\n");
+   });
+   return [`# ${board.name}`, ...sections].join("\n\n");
+ }
++
++/** For example "In progress (5/4) ! over limit, 2 blocked". */
++function columnHeader(column: Column, cards: readonly Card[]): string {
++  const capacity = column.wipLimit === null ? `${cards.length}` : `${cards.length}/${column.wipLimit}`;
++  const blocked = cards.filter((card) => card.blocker !== null).length;
++  const warnings: string[] = [];
++  if (exceedsWipLimit(column, cards.length)) warnings.push("over limit");
++  if (blocked > 0) warnings.push(`${blocked} blocked`);
++  const heading = `${column.name} (${capacity})`;
++  return warnings.length === 0 ? heading : `${heading} ! ${warnings.join(", ")}`;
++}
+diff --git a/src/ui/card-view.ts b/src/ui/card-view.ts
+index 22f3f3f..aaaf273 100644
+--- a/src/ui/card-view.ts
++++ b/src/ui/card-view.ts
+@@ -1,5 +1,9 @@
+ import type { Card } from "../domain/types.ts";
+ 
+-export function renderCard(card: Card): string {
+-  return `  - ${card.title}`;
++const DAY_MS = 86_400_000;
++
++export function renderCard(card: Card, now: number): string {
++  if (card.blocker === null) return `  - ${card.title}`;
++  const days = Math.floor((now - card.blocker.since) / DAY_MS);
++  return `  - ${card.title}  [blocked ${days}d: ${card.blocker.reason}]`;
+ }
+diff --git a/src/ui/commands.ts b/src/ui/commands.ts
+new file mode 100644
+index 0000000..5222971
+--- /dev/null
++++ b/src/ui/commands.ts
+@@ -0,0 +1,83 @@
++import { addCard, blockCard, moveCard, setWipLimit, unblockCard } from "../domain/board.ts";
++import type { Board } from "../domain/types.ts";
++
++export type Command =
++  | { kind: "add"; title: string }
++  | { kind: "move"; cardId: string; columnId: string; position: number }
++  | { kind: "block"; cardId: string; reason: string }
++  | { kind: "unblock"; cardId: string }
++  | { kind: "limit"; columnId: string; limit: number | null };
++
++const USAGE: Record<Command["kind"], string> = {
++  add: "add <title>",
++  move: "move <card> <column> <position>",
++  block: "block <card> <reason>",
++  unblock: "unblock <card>",
++  limit: "limit <column> <number|none>",
++};
++
++/** Parse one line typed into the terminal client, for example
++ *  "move 3f2a col_2 0". This checks syntax only; the board rules decide
++ *  whether the command is allowed. */
++export function parseCommand(line: string): Command {
++  const [verb = "", ...args] = line.trim().split(/\s+/);
++  switch (verb) {
++    case "add": {
++      const title = args.join(" ");
++      if (title === "") throw usageError("add");
++      return { kind: "add", title };
++    }
++    case "move": {
++      const [cardId, columnId, position] = args;
++      if (cardId === undefined || columnId === undefined || position === undefined) throw usageError("move");
++      return { kind: "move", cardId, columnId, position: parseInteger(position) };
++    }
++    case "block": {
++      const [cardId, ...reasonWords] = args;
++      if (cardId === undefined || reasonWords.length === 0) throw usageError("block");
++      return { kind: "block", cardId, reason: reasonWords.join(" ") };
++    }
++    case "unblock": {
++      const [cardId] = args;
++      if (cardId === undefined) throw usageError("unblock");
++      return { kind: "unblock", cardId };
++    }
++    case "limit": {
++      const [columnId, limit] = args;
++      if (columnId === undefined || limit === undefined) throw usageError("limit");
++      return { kind: "limit", columnId, limit: limit === "none" ? null : parseInteger(limit) };
++    }
++    default:
++      throw new Error(`Unknown command "${verb}". Commands: ${Object.values(USAGE).join("; ")}`);
++  }
++}
++
++export function applyCommand(board: Board, command: Command, now: number): void {
++  switch (command.kind) {
++    case "add":
++      addCard(board, command.title, now);
++      return;
++    case "move":
++      moveCard(board, command.cardId, command.columnId, command.position);
++      return;
++    case "block":
++      blockCard(board, command.cardId, command.reason, now);
++      return;
++    case "unblock":
++      unblockCard(board, command.cardId);
++      return;
++    case "limit":
++      setWipLimit(board, command.columnId, command.limit);
++      return;
++  }
++}
++
++function parseInteger(text: string): number {
++  const value = Number(text);
++  if (!Number.isInteger(value)) throw new Error(`"${text}" is not a whole number`);
++  return value;
++}
++
++function usageError(kind: Command["kind"]): Error {
++  return new Error(`Usage: ${USAGE[kind]}`);
++}

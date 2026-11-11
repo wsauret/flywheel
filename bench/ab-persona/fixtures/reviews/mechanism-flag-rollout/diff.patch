@@ -1,0 +1,80 @@
+diff --git a/flags.ts b/flags.ts
+index 4bffce9..d933a30 100644
+--- a/flags.ts
++++ b/flags.ts
+@@ -1,19 +1,40 @@
++import { fnv1a32 } from "./hash.ts";
+ import type { FetchFlags, FlagSet } from "./types.ts";
+ 
++/** A user's stable position, 0 to 99, in one flag's rollout. */
++export function bucketOf(flagKey: string, userId: string): number {
++  return fnv1a32(`${flagKey}:${userId}`) % 100;
++}
++
+ export class FlagClient {
+   private snapshot: FlagSet = { revision: 0, flags: {} };
+ 
+-  constructor(private readonly fetchFlags: FetchFlags) {}
++  constructor(
++    private readonly fetchFlags: FetchFlags,
++    private readonly onError: (error: unknown) => void,
++  ) {}
+ 
+-  /** Whether `flagKey` is on. Unknown flags return `fallback`. */
+-  evaluate(flagKey: string, fallback: boolean): boolean {
+-    const flag = this.snapshot.flags[flagKey];
++  /** Whether `flagKey` is on for `userId`. Unknown flags return `fallback`. */
++  evaluate(flagKey: string, userId: string, fallback: boolean): boolean {
++    const flag = Object.hasOwn(this.snapshot.flags, flagKey) ? this.snapshot.flags[flagKey] : undefined;
+     if (flag === undefined) return fallback;
+-    return flag.enabled;
++    if (!flag.enabled) return false;
++    return bucketOf(flagKey, userId) < flag.rolloutPercent;
+   }
+ 
+-  /** Fetch the latest flag set and replace the snapshot. */
+-  async refresh(): Promise<void> {
+-    this.snapshot = await this.fetchFlags();
++  /** Fetch the latest flag set. Returns true when it replaced the snapshot.
++   *  Called on a timer and when the service pushes a change notice, so two
++   *  calls can overlap. */
++  async refresh(): Promise<boolean> {
++    let next: FlagSet;
++    try {
++      next = await this.fetchFlags();
++    } catch (error) {
++      this.onError(error);
++      return false;
++    }
++    if (next.revision <= this.snapshot.revision) return false;
++    this.snapshot = next;
++    return true;
+   }
+ }
+diff --git a/hash.ts b/hash.ts
+new file mode 100644
+index 0000000..611d029
+--- /dev/null
++++ b/hash.ts
+@@ -0,0 +1,9 @@
++/** 32-bit FNV-1a over UTF-16 code units, returned as an unsigned integer. */
++export function fnv1a32(text: string): number {
++  let hash = 0x811c9dc5;
++  for (let index = 0; index < text.length; index++) {
++    hash ^= text.charCodeAt(index);
++    hash = Math.imul(hash, 0x01000193);
++  }
++  return hash >>> 0;
++}
+diff --git a/types.ts b/types.ts
+index 8f6fd0a..4d89465 100644
+--- a/types.ts
++++ b/types.ts
+@@ -1,5 +1,7 @@
+ export interface FlagDefinition {
+   enabled: boolean;
++  /** Share of users, 0 to 100, who see the flag on while it is enabled. */
++  rolloutPercent: number;
+ }
+ 
+ export interface FlagSet {

@@ -1,0 +1,21 @@
+{
+  "title": "Ordered fallback channels for alert delivery",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "duplicate-channel-list",
+      "title": "preferences.ts hard-codes a second list of channels next to CHANNELS",
+      "category": "elegance",
+      "files": ["preferences.ts", "channels.ts"],
+      "catch_criteria": "The review must identify that ALLOWED_CHANNELS in preferences.ts restates the channel list that channels.ts already owns as CHANNELS (from which the Channel type is derived), so the set of valid channels now has two homes and a channel added to CHANNELS would be rejected by parseChannelOrder until someone also edits ALLOWED_CHANNELS; parseChannelOrder should validate against CHANNELS. Any wording and any severity count, as long as both lists are named."
+    },
+    {
+      "id": "single-use-delivery-strategy",
+      "title": "DeliveryStrategy interface and factory exist for one implementation and one caller",
+      "category": "elegance",
+      "files": ["delivery.ts", "alerts.ts"],
+      "catch_criteria": "The review must identify that the DeliveryStrategy interface and the createDeliveryStrategy factory in delivery.ts are a premature abstraction: FallbackDeliveryStrategy is their only implementation, AlertDispatcher is their only caller, and the factory always returns the same class, so the interface and factory add a layer with no second use and the fallback loop should be a plain function or class that AlertDispatcher calls directly. Any wording and any severity count, as long as the interface or factory and the fact that it has a single implementation or caller are both named."
+    }
+  ],
+  "review_prompt_hint": "The change lets a user choose an ordered list of alert channels in settings and delivers each alert on the first channel that works, reporting the channels that failed to the on-call feed"
+}

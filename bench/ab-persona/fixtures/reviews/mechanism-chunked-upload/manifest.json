@@ -1,0 +1,21 @@
+{
+  "title": "Mechanism claims: parallel multipart upload with retries",
+  "reviewers": ["reviewer-mechanism"],
+  "defects": [
+    {
+      "id": "nested-retry-multiplies-attempts",
+      "title": "Claim 1 is false: transport and part retries nest, so a 503 part is sent up to nine times",
+      "category": "mechanism",
+      "files": ["retry.ts", "http.ts", "api.ts"],
+      "catch_criteria": "The review must reject claim 1 and show that two retry loops nest: withRetry makes up to MAX_ATTEMPTS (3) attempts of api.putPart (retry.ts:25-30, uploader.ts:39), and each putPart goes through send (api.ts:26), which itself retries 502, 503, and 504 up to GATEWAY_ATTEMPTS (3) times before it throws (http.ts:24-35); the HttpError(503) it finally throws is retryable to withRetry (retry.ts:10), so a part that keeps failing with 503 is sent up to 3 x 3 = 9 times. The catch must name the transport-level loop in send as the second layer; stating a wrong maximum or only saying that retries exist elsewhere does not count."
+    },
+    {
+      "id": "limiter-returns-before-tail-settles",
+      "title": "Claim 3 is false: runLimited returns while the last parts are still in flight",
+      "category": "mechanism",
+      "files": ["limiter.ts", "uploader.ts"],
+      "catch_criteria": "The review must reject claim 3 and show that runLimited (limiter.ts:3-10) awaits Promise.race only when the running set is full and never awaits the tasks that are still running after the loop ends, so it resolves once the last task has started; uploadFile then sorts and passes the `parts` array to completeUpload (uploader.ts:42-44) while up to concurrency - 1 parts have not pushed their etag yet (uploader.ts:40), so the assemble request can omit parts. The catch must name the missing final wait in runLimited; a refutation that cites only failure handling does not count."
+    }
+  ],
+  "review_prompt_hint": "Verify the numbered behavioral claims in prompt.md one by one against the code. Scoring rules for this claim review: the review gives one verdict per claim, and a confirmed verdict is not a finding. Count as one unsupported finding each refuted or uncertain verdict on a claim that no listed defect covers, and each issue the review raises outside the numbered claims. The review assigns no severity, so rate every refuted verdict on a claim that no listed defect covers as P2."
+}

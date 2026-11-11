@@ -1,0 +1,77 @@
+diff --git a/main.ts b/main.ts
+index 4896c87..dc6960f 100644
+--- a/main.ts
++++ b/main.ts
+@@ -1,8 +1,23 @@
++import { readFileSync } from "node:fs";
++import { homedir } from "node:os";
++import { join } from "node:path";
+ import { formatEventTime, weekdayHeadings } from "./calendar.ts";
+-import { DEFAULT_SETTINGS } from "./settings.ts";
++import { parseSettingsFile } from "./settings-file.ts";
++
++const SETTINGS_PATH = join(homedir(), ".config", "deskcal", "settings.json");
+ 
+ /** Print the week header and the current time, as the status bar shows them. */
+ export function main(): void {
+-  console.log(weekdayHeadings(DEFAULT_SETTINGS).join(" "));
+-  console.log(formatEventTime(Date.now(), DEFAULT_SETTINGS));
++  const settings = parseSettingsFile(SETTINGS_PATH, readIfPresent(SETTINGS_PATH));
++  console.log(weekdayHeadings(settings).join(" "));
++  console.log(formatEventTime(Date.now(), settings));
++}
++
++function readIfPresent(path: string): string | undefined {
++  try {
++    return readFileSync(path, "utf8");
++  } catch (error) {
++    if (error instanceof Error && "code" in error && error.code === "ENOENT") return undefined;
++    throw error;
++  }
+ }
+diff --git a/settings-file.ts b/settings-file.ts
+new file mode 100644
+index 0000000..8e9e846
+--- /dev/null
++++ b/settings-file.ts
+@@ -0,0 +1,40 @@
++import { DEFAULT_SETTINGS, type Settings, WEEK_STARTS } from "./settings.ts";
++
++/** Parse the user's hand-edited settings file. `text` is undefined when the
++ *  file does not exist, which means "all defaults". A field the file leaves
++ *  out keeps its default; a misspelled key or a wrong value is an error that
++ *  names the file and the key, so a typo never silently does nothing. */
++export function parseSettingsFile(path: string, text: string | undefined): Settings {
++  if (text === undefined) return { ...DEFAULT_SETTINGS };
++  let raw: unknown;
++  try {
++    raw = JSON.parse(text);
++  } catch (error) {
++    throw new Error(`${path} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
++  }
++  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error(`${path} must contain a JSON object`);
++  const settings = { ...DEFAULT_SETTINGS };
++  for (const [key, value] of Object.entries(raw)) {
++    if (key === "weekStartsOn") {
++      const weekStart = WEEK_STARTS.find((candidate) => candidate === value);
++      if (weekStart === undefined) throw new Error(`${path}: weekStartsOn must be one of ${WEEK_STARTS.join(", ")}`);
++      settings.weekStartsOn = weekStart;
++    } else if (key === "timeZone") {
++      if (typeof value !== "string" || !isTimeZone(value)) throw new Error(`${path}: timeZone must be an IANA name such as "Europe/Lisbon"`);
++      settings.timeZone = value;
++    } else {
++      throw new Error(`${path}: unknown setting "${key}"`);
++    }
++  }
++  return settings;
++}
++
++/** The runtime's own time zone database is the authority on valid names. */
++function isTimeZone(name: string): boolean {
++  try {
++    new Intl.DateTimeFormat("en", { timeZone: name });
++    return true;
++  } catch {
++    return false;
++  }
++}

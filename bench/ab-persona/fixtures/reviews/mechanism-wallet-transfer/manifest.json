@@ -1,0 +1,21 @@
+{
+  "title": "Mechanism claims: plan for wallet transfers with a fee",
+  "reviewers": ["reviewer-mechanism"],
+  "defects": [
+    {
+      "id": "apply-not-atomic-on-insufficient-funds",
+      "title": "Claim 1 is false: a debit rejected for insufficient funds leaves earlier postings applied",
+      "category": "mechanism",
+      "files": ["ledger.ts", "accounts.ts"],
+      "catch_criteria": "The review must reject claim 1 and show that Ledger.apply validates only the sum, the amounts, the account existence, and the currencies before it changes anything (ledger.ts:25-31), while the funds check happens inside AccountBook.debit during the mutation loop (ledger.ts:32-36, accounts.ts:43-47); when a debit throws InsufficientFunds, the postings applied earlier in the loop stay applied and nothing reverts them, so with the plan's credit-first order the recipient and the fee account are credited although the sender is not debited. The catch must name that the funds check runs inside the mutation loop with no rollback. A refutation that cites only the plan's posting order, without the mid-loop throw, does not count."
+    },
+    {
+      "id": "snapshot-every-fifty-entries",
+      "title": "Claim 2 is false: entries are persisted only by a snapshot every 50 entries, and post does not wait for it",
+      "category": "mechanism",
+      "files": ["persistence.ts", "ledger.ts", "service.ts"],
+      "catch_criteria": "The review must reject claim 2 and show that apply only calls persistence.recordApplied (ledger.ts:37), which returns without writing until 50 entries have been applied (persistence.ts:4, persistence.ts:32-35) and then only schedules the snapshot write on a promise chain (persistence.ts:38-39); post resolves right after the synchronous apply (service.ts:14-16) without awaiting flushed(), so a crash loses every entry applied since the last snapshot, up to 49 entries plus any snapshot still being written. The catch must name the SNAPSHOT_EVERY threshold or the absence of any per-entry write. A verdict of uncertain does not count."
+    }
+  ],
+  "review_prompt_hint": "Verify the numbered behavioral claims in prompt.md one by one against the code. Scoring rules for this claim review: the review gives one verdict per claim, and a confirmed verdict is not a finding. Count as one unsupported finding each refuted or uncertain verdict on a claim that no listed defect covers, and each issue the review raises outside the numbered claims. The review assigns no severity, so rate every refuted verdict on a claim that no listed defect covers as P2."
+}

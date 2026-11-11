@@ -1,0 +1,224 @@
+diff --git a/main.ts b/main.ts
+index bec98f2..c240110 100644
+--- a/main.ts
++++ b/main.ts
+@@ -1,6 +1,8 @@
+ import { IngestClient } from "./ingest-client.ts";
++import { RetryingTransport } from "./retrying-transport.ts";
+ import { FetchTransport } from "./transport.ts";
+ 
++/** Stations upload over flaky cellular links, so idempotent calls retry. */
+ export function createIngestClient(baseUrl: string): IngestClient {
+-  return new IngestClient(new FetchTransport(baseUrl));
++  return new IngestClient(new RetryingTransport(new FetchTransport(baseUrl)));
+ }
+diff --git a/retrying-transport.test.ts b/retrying-transport.test.ts
+new file mode 100644
+index 0000000..6eff67f
+--- /dev/null
++++ b/retrying-transport.test.ts
+@@ -0,0 +1,117 @@
++import { describe, expect, test } from "bun:test";
++import { RetryingTransport, type RetryClock, type RetryPolicy } from "./retrying-transport.ts";
++import type { HttpRequest, HttpResponse, Transport } from "./transport.ts";
++
++const POLICY: RetryPolicy = { maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 1_000 };
++const NOW = Date.parse("2026-03-01T12:00:00Z");
++
++type Step = HttpResponse | Error;
++
++function respond(status: number, headers: Record<string, string> = {}): HttpResponse {
++  return { status, headers, body: "" };
++}
++
++/** A transport that plays back `steps` in order and counts the requests it saw. */
++function scripted(steps: Step[]): Transport & { calls: number } {
++  const transport = {
++    calls: 0,
++    async send(_request: HttpRequest): Promise<HttpResponse> {
++      const step = steps[transport.calls++];
++      if (step === undefined) throw new Error("no scripted step left");
++      if (step instanceof Error) throw step;
++      return step;
++    },
++  };
++  return transport;
++}
++
++/** A clock whose sleeps return at once and are recorded; random() is fixed. */
++function recordingClock(random = 0.5): RetryClock & { sleeps: number[] } {
++  const sleeps: number[] = [];
++  return { sleeps, sleep: async (ms) => void sleeps.push(ms), random: () => random, now: () => NOW };
++}
++
++const get: HttpRequest = { method: "GET", path: "/stations/s1", headers: {} };
++
++describe("RetryingTransport", () => {
++  test("retries a 503 on GET and returns the first success", async () => {
++    const inner = scripted([respond(503), respond(200)]);
++    const clock = recordingClock();
++    const response = await new RetryingTransport(inner, POLICY, clock).send(get);
++    expect(response.status).toBe(200);
++    expect(inner.calls).toBe(2);
++    expect(clock.sleeps).toEqual([50]);
++  });
++
++  test("never retries a POST", async () => {
++    const inner = scripted([respond(503)]);
++    const response = await new RetryingTransport(inner, POLICY, recordingClock()).send({ ...get, method: "POST" });
++    expect(response.status).toBe(503);
++    expect(inner.calls).toBe(1);
++  });
++
++  test("does not retry a status that names a bad request", async () => {
++    const inner = scripted([respond(400)]);
++    const response = await new RetryingTransport(inner, POLICY, recordingClock()).send(get);
++    expect(response.status).toBe(400);
++    expect(inner.calls).toBe(1);
++  });
++
++  test("backoff bounds double per attempt and stop at maxDelayMs", async () => {
++    const inner = scripted([respond(502), respond(502), respond(502), respond(502), respond(200)]);
++    const clock = recordingClock(0.999);
++    await new RetryingTransport(inner, { ...POLICY, maxAttempts: 5, maxDelayMs: 300 }, clock).send(get);
++    expect(clock.sleeps).toEqual([99, 199, 299, 299]);
++  });
++
++  test("waits the Retry-After seconds, capped at maxDelayMs", async () => {
++    const clock = recordingClock();
++    const inner = scripted([respond(429, { "retry-after": "0" }), respond(429, { "retry-after": "120" }), respond(200)]);
++    await new RetryingTransport(inner, POLICY, clock).send(get);
++    expect(clock.sleeps).toEqual([0, 1_000]);
++  });
++
++  test("reads a Retry-After HTTP date relative to now", async () => {
++    const clock = recordingClock();
++    const inner = scripted([respond(503, { "retry-after": new Date(NOW + 5_000).toUTCString() }), respond(200)]);
++    await new RetryingTransport(inner, { ...POLICY, maxDelayMs: 10_000 }, clock).send(get);
++    expect(clock.sleeps).toEqual([5_000]);
++  });
++
++  test("a Retry-After date in the past retries at once", async () => {
++    const clock = recordingClock();
++    const inner = scripted([respond(503, { "retry-after": new Date(NOW - 60_000).toUTCString() }), respond(200)]);
++    await new RetryingTransport(inner, POLICY, clock).send(get);
++    expect(clock.sleeps).toEqual([0]);
++  });
++
++  test("falls back to backoff when Retry-After is not a delay or a date", async () => {
++    const clock = recordingClock();
++    const inner = scripted([respond(503, { "retry-after": "soon" }), respond(200)]);
++    await new RetryingTransport(inner, POLICY, clock).send(get);
++    expect(clock.sleeps).toEqual([50]);
++  });
++
++  test("returns the last response once attempts run out", async () => {
++    const inner = scripted([respond(504), respond(504), respond(504)]);
++    const response = await new RetryingTransport(inner, POLICY, recordingClock()).send(get);
++    expect(response.status).toBe(504);
++    expect(inner.calls).toBe(3);
++  });
++
++  test("retries a network failure and rethrows it after the last attempt", async () => {
++    const failure = new TypeError("network down");
++    const inner = scripted([failure, failure, failure]);
++    const clock = recordingClock();
++    await expect(new RetryingTransport(inner, POLICY, clock).send(get)).rejects.toBe(failure);
++    expect(inner.calls).toBe(3);
++    expect(clock.sleeps).toEqual([50, 100]);
++  });
++
++  test("retries a PUT, which replaces its batch by id", async () => {
++    const inner = scripted([new TypeError("reset"), respond(204)]);
++    const response = await new RetryingTransport(inner, POLICY, recordingClock()).send({ ...get, method: "PUT", body: "[]" });
++    expect(response.status).toBe(204);
++    expect(inner.calls).toBe(2);
++  });
++});
+diff --git a/retrying-transport.ts b/retrying-transport.ts
+new file mode 100644
+index 0000000..09df89c
+--- /dev/null
++++ b/retrying-transport.ts
+@@ -0,0 +1,81 @@
++import type { HttpRequest, HttpResponse, Transport } from "./transport.ts";
++
++export interface RetryPolicy {
++  /** Total tries, the first one included. */
++  maxAttempts: number;
++  /** Bound of the first backoff wait; each later bound doubles. */
++  baseDelayMs: number;
++  /** Upper bound on any single wait, including one a server asks for with Retry-After. */
++  maxDelayMs: number;
++}
++
++export const DEFAULT_RETRY_POLICY: RetryPolicy = { maxAttempts: 4, baseDelayMs: 250, maxDelayMs: 10_000 };
++
++/** Time and randomness. Tests pass their own so they run without real waits. */
++export interface RetryClock {
++  sleep(ms: number): Promise<void>;
++  random(): number;
++  now(): number;
++}
++
++const systemClock: RetryClock = {
++  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
++  random: Math.random,
++  now: Date.now,
++};
++
++/** Methods that are safe to send twice: GET only reads, and every PUT in the
++ *  ingest API replaces a resource by its id. POST creates, so it never retries. */
++const IDEMPOTENT_METHODS: ReadonlySet<HttpRequest["method"]> = new Set(["GET", "PUT"]);
++
++/** Statuses that say "try again later" rather than "this request is wrong". */
++const RETRYABLE_STATUSES: ReadonlySet<number> = new Set([429, 502, 503, 504]);
++
++/**
++ * A Transport that retries transient failures of idempotent requests: network
++ * failures and the statuses in RETRYABLE_STATUSES. Waits use capped
++ * exponential backoff with full jitter, so many stations that fail together
++ * do not retry together. When the response carries Retry-After, the wait is
++ * what the server asks for, capped at maxDelayMs. After the last attempt the
++ * caller gets the last response or network error unchanged.
++ */
++export class RetryingTransport implements Transport {
++  constructor(
++    private readonly inner: Transport,
++    private readonly policy: RetryPolicy = DEFAULT_RETRY_POLICY,
++    private readonly clock: RetryClock = systemClock,
++  ) {}
++
++  async send(request: HttpRequest): Promise<HttpResponse> {
++    if (!IDEMPOTENT_METHODS.has(request.method)) return this.inner.send(request);
++    for (let attempt = 1; ; attempt++) {
++      const isLast = attempt >= this.policy.maxAttempts;
++      let response: HttpResponse;
++      try {
++        response = await this.inner.send(request);
++      } catch (error) {
++        if (isLast) throw error;
++        await this.clock.sleep(this.backoffMs(attempt));
++        continue;
++      }
++      if (isLast || !RETRYABLE_STATUSES.has(response.status)) return response;
++      await this.clock.sleep(this.retryAfterMs(response) ?? this.backoffMs(attempt));
++    }
++  }
++
++  /** Full jitter: a random wait between zero and the capped exponential bound. */
++  private backoffMs(attempt: number): number {
++    const bound = Math.min(this.policy.maxDelayMs, this.policy.baseDelayMs * 2 ** (attempt - 1));
++    return Math.floor(this.clock.random() * bound);
++  }
++
++  /** Retry-After holds either a number of seconds or an HTTP date (RFC 9110).
++   *  A value that is neither is ignored, and backoff applies. */
++  private retryAfterMs(response: HttpResponse): number | undefined {
++    const value = response.headers["retry-after"]?.trim();
++    if (value === undefined || value === "") return undefined;
++    const waitMs = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value) - this.clock.now();
++    if (Number.isNaN(waitMs)) return undefined;
++    return Math.min(this.policy.maxDelayMs, Math.max(0, waitMs));
++  }
++}

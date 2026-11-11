@@ -1,0 +1,100 @@
+diff --git a/cache.ts b/cache.ts
+new file mode 100644
+index 0000000..d7688f6
+--- /dev/null
++++ b/cache.ts
+@@ -0,0 +1,50 @@
++import type { Clock } from "./types.ts";
++
++interface Entry<V> {
++  value: V;
++  expiresAt: number;
++  generation: number;
++}
++
++/** Read-through cache with a fixed TTL. Concurrent misses for one key share a
++ *  single load. invalidate() bumps the key's generation so that a load that
++ *  started before the invalidation cannot repopulate the entry. */
++export class ReadThroughCache<V> {
++  private readonly entries = new Map<string, Entry<V>>();
++  private readonly inflight = new Map<string, Promise<V>>();
++  private readonly generations = new Map<string, number>();
++
++  constructor(
++    private readonly ttlMs: number,
++    private readonly clock: Clock,
++  ) {}
++
++  get(key: string, load: () => Promise<V>): Promise<V> {
++    const hit = this.entries.get(key);
++    if (hit && hit.expiresAt > this.clock.now()) return Promise.resolve(hit.value);
++    const running = this.inflight.get(key);
++    if (running) return running;
++    const loading = this.loadAndStore(key, load);
++    this.inflight.set(key, loading);
++    return loading;
++  }
++
++  invalidate(key: string): void {
++    this.entries.delete(key);
++    this.generations.set(key, this.generationOf(key) + 1);
++  }
++
++  private async loadAndStore(key: string, load: () => Promise<V>): Promise<V> {
++    try {
++      const value = await load();
++      this.entries.set(key, { value, expiresAt: this.clock.now() + this.ttlMs, generation: this.generationOf(key) });
++      return value;
++    } finally {
++      this.inflight.delete(key);
++    }
++  }
++
++  private generationOf(key: string): number {
++    return this.generations.get(key) ?? 0;
++  }
++}
+diff --git a/sessions.ts b/sessions.ts
+index a93734a..1fbfc83 100644
+--- a/sessions.ts
++++ b/sessions.ts
+@@ -1,5 +1,8 @@
++import { ReadThroughCache } from "./cache.ts";
+ import type { Clock, Session, SessionStore } from "./types.ts";
+ 
++const SESSION_CACHE_TTL_MS = 60_000;
++
+ /** Session ids are the part of the bearer token before the first dot. */
+ export function sessionIdOf(token: string): string | undefined {
+   const dot = token.indexOf(".");
+@@ -7,17 +10,21 @@ export function sessionIdOf(token: string): string | undefined {
+ }
+ 
+ export class SessionAuth {
++  private readonly cache: ReadThroughCache<Session | null>;
++
+   constructor(
+     private readonly store: SessionStore,
+     private readonly clock: Clock,
+-  ) {}
++  ) {
++    this.cache = new ReadThroughCache(SESSION_CACHE_TTL_MS, clock);
++  }
+ 
+   /** The live session for a bearer token, or null when it is unknown,
+    *  revoked, or expired. */
+   async authorize(token: string): Promise<Session | null> {
+     const id = sessionIdOf(token);
+     if (id === undefined) return null;
+-    const session = await this.store.find(id);
++    const session = await this.cache.get(id, () => this.store.find(id));
+     if (session === null || session.revoked) return null;
+     if (session.expiresAt <= this.clock.now()) return null;
+     return session;
+@@ -26,5 +33,6 @@ export class SessionAuth {
+   /** Revoke a session. Once this resolves, the session no longer authorizes. */
+   async revoke(id: string): Promise<void> {
+     await this.store.markRevoked(id);
++    this.cache.invalidate(id);
+   }
+ }

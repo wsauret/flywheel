@@ -1,0 +1,21 @@
+{
+  "title": "Supplier invoice CSV import into the payables ledger",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "single-use-pipeline",
+      "title": "A generic Pipeline class is built for one chain of four function calls",
+      "category": "elegance",
+      "files": ["src/import/pipeline.ts", "src/import/importer.ts"],
+      "catch_criteria": "The review must identify that the new generic Pipeline class in src/import/pipeline.ts (from/then/run) has exactly one use, the readInvoices chain in importer.ts, and adds nothing over composing the four functions directly (for example groupIntoInvoices(parseInvoiceRows(dataRows(parseCsv(text))))), so it is a premature abstraction that should be inlined and deleted until a second pipeline exists. Any wording and any severity count, as long as the Pipeline class and its single use are both named."
+    },
+    {
+      "id": "unreachable-line-guard",
+      "title": "invoiceTotalCents skips non-positive quantities and negative prices that createInvoice already refuses",
+      "category": "elegance",
+      "files": ["src/totals.ts", "src/invoice.ts"],
+      "catch_criteria": "The review must identify that the rewritten invoiceTotalCents in totals.ts skips lines with quantity <= 0 or unitCents < 0, although createInvoice in invoice.ts (the one producer of invoices, used by the manual form and now by groupIntoInvoices) already throws for those lines, so the branch has no reachable producer and, if the invariant ever broke, would silently produce a wrong total instead of failing; it should be removed and the total kept as the plain sum. Any wording and any severity count, as long as the guard and the createInvoice check that makes it unreachable are both named."
+    }
+  ],
+  "review_prompt_hint": "The change adds an import of supplier invoice CSV files into the payables ledger: the file is validated as a whole, rows are grouped into invoices, already posted invoices are skipped, and the clerk sees per-currency totals"
+}

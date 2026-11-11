@@ -1,0 +1,21 @@
+{
+  "title": "Access-token refresh for the API client",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "access-token-two-way-sync",
+      "title": "The access token now flows both ways between SessionStore and ApiClient",
+      "category": "elegance",
+      "files": ["session-store.ts", "api-client.ts"],
+      "catch_criteria": "The review must identify that the change gives the access token two owners that update each other: SessionStore keeps it in the session and pushes copies into ApiClient through attach/setAccessToken on signIn, replaceTokens, and signOut, while ApiClient keeps its own accessToken field and writes refreshed tokens back into the store through replaceTokens (and ApiClient's constructor registers itself with the store, so the two modules now import each other). Before the change the client simply read the token from the store. The remedy is one direction: the store owns the session and the client reads the token from it when it sends (and asks the store to install refreshed tokens), with no pushed copy. Any wording and any severity count, as long as both directions of the flow (or the duplicated token and its manual push) and the two classes are named. A review that names only the store-to-client push or the new import cycle between session-store.ts and api-client.ts is the same finding when it gives the same remedy: the store does not hold the client, and the client reads the token from the store."
+    },
+    {
+      "id": "unreachable-expires-in-fallback",
+      "title": "Refresh falls back to a default lifetime that parseTokenPair makes impossible",
+      "category": "elegance",
+      "files": ["api-client.ts", "tokens.ts"],
+      "catch_criteria": "The review must identify that exchangeRefreshToken replaces a non-positive pair.expiresIn with DEFAULT_EXPIRES_IN_SECONDS, although parseTokenPair (the only producer of the pair, at the external boundary in tokens.ts) already throws unless expires_in is a finite positive number, so the fallback branch and the constant can never take effect and should be deleted. Any wording and any severity count, as long as the fallback and the boundary check that makes it unreachable are both named."
+    }
+  ],
+  "review_prompt_hint": "The change adds access-token refresh to the API client: tokens close to expiry are refreshed before a request, a 401 is retried once after a refresh, and concurrent callers share one refresh request"
+}

@@ -1,0 +1,171 @@
+diff --git a/file-journal.ts b/file-journal.ts
+new file mode 100644
+index 0000000..c37c39b
+--- /dev/null
++++ b/file-journal.ts
+@@ -0,0 +1,18 @@
++import { open, readFile, type FileHandle } from "node:fs/promises";
++import type { JournalFile } from "./types.ts";
++
++/** A JournalFile backed by one append-mode file handle. */
++export async function openJournalFile(path: string): Promise<JournalFile> {
++  const handle: FileHandle = await open(path, "a+");
++  return {
++    async write(text) {
++      await handle.appendFile(text, "utf8");
++    },
++    async sync() {
++      await handle.datasync();
++    },
++    async readAll() {
++      return readFile(path, "utf8");
++    },
++  };
++}
+diff --git a/journal.ts b/journal.ts
+new file mode 100644
+index 0000000..734e88d
+--- /dev/null
++++ b/journal.ts
+@@ -0,0 +1,45 @@
++import type { JournalFile, OrderRecord } from "./types.ts";
++
++/** Append-only order journal. Appends that arrive while a flush is running
++ *  join the same drain loop instead of starting a second writer. */
++export class Journal {
++  private pending: string[] = [];
++  private flushing: Promise<void> | undefined;
++
++  constructor(
++    private readonly file: JournalFile,
++    private readonly onError: (error: unknown) => void,
++  ) {}
++
++  /** Resolves once the record has been written and synced. */
++  append(record: OrderRecord): Promise<void> {
++    this.pending.push(`${JSON.stringify(record)}\n`);
++    this.flushing ??= this.drain();
++    return this.flushing;
++  }
++
++  /** Throws on a line that is not a whole record, such as a last line cut
++   *  short by a crash, so startup stops for an operator instead of guessing. */
++  async replay(): Promise<OrderRecord[]> {
++    const text = await this.file.readAll();
++    return text
++      .split("\n")
++      .filter((line) => line.length > 0)
++      .map((line) => JSON.parse(line) as OrderRecord);
++  }
++
++  private async drain(): Promise<void> {
++    try {
++      while (this.pending.length > 0) {
++        const batch = this.pending.splice(0);
++        await this.file.write(batch.join(""));
++        await this.file.sync();
++      }
++    } catch (error) {
++      this.pending = [];
++      this.onError(error);
++    } finally {
++      this.flushing = undefined;
++    }
++  }
++}
+diff --git a/orders.ts b/orders.ts
+index 7e1b7bd..be1d381 100644
+--- a/orders.ts
++++ b/orders.ts
+@@ -1,20 +1,45 @@
+-import type { Order, OrderRequest } from "./types.ts";
++import type { Journal } from "./journal.ts";
++import type { Order, OrderRecord, OrderRequest } from "./types.ts";
+ 
+ export class OrderService {
+   private nextSeq = 1;
+-  private readonly orders: Order[] = [];
++  private readonly byRequest = new Map<string, Order>();
+ 
+-  constructor(private readonly clock: () => number) {}
++  constructor(
++    private readonly journal: Journal,
++    private readonly clock: () => number,
++  ) {}
+ 
+-  /** Create an order. Orders live in memory only. */
++  /** Rebuild state from the journal. Call once before serving requests. */
++  async recover(): Promise<void> {
++    for (const record of await this.journal.replay()) this.remember(record);
++  }
++
++  /** Create an order and resolve once it is durable. A retry with the same
++   *  requestId returns the first order instead of creating a second one. */
+   async createOrder(request: OrderRequest): Promise<Order> {
+-    const order: Order = {
++    const existing = this.findExisting(request.requestId);
++    if (existing) return existing;
++    const record: OrderRecord = {
+       id: `ord-${this.nextSeq++}`,
++      requestId: request.requestId,
+       sku: request.sku,
+       quantity: request.quantity,
+       createdAt: this.clock(),
+     };
+-    this.orders.push(order);
++    await this.journal.append(record);
++    return this.remember(record);
++  }
++
++  private findExisting(requestId: string): Order | undefined {
++    return this.byRequest.get(requestId);
++  }
++
++  private remember(record: OrderRecord): Order {
++    const order: Order = { id: record.id, sku: record.sku, quantity: record.quantity, createdAt: record.createdAt };
++    this.byRequest.set(record.requestId, order);
++    const seq = Number(record.id.slice("ord-".length));
++    if (seq >= this.nextSeq) this.nextSeq = seq + 1;
+     return order;
+   }
+ }
+diff --git a/server.ts b/server.ts
+index 4389342..8295c4e 100644
+--- a/server.ts
++++ b/server.ts
+@@ -1,7 +1,13 @@
++import { openJournalFile } from "./file-journal.ts";
++import { Journal } from "./journal.ts";
+ import { OrderService } from "./orders.ts";
+ import type { Order, OrderRequest } from "./types.ts";
+ 
+-export async function startOrders(): Promise<(request: OrderRequest) => Promise<{ status: 201; body: Order }>> {
+-  const service = new OrderService(Date.now);
++export async function startOrders(journalPath: string): Promise<(request: OrderRequest) => Promise<{ status: 201; body: Order }>> {
++  const journal = new Journal(await openJournalFile(journalPath), (error) => {
++    console.error("order journal flush failed", error);
++  });
++  const service = new OrderService(journal, Date.now);
++  await service.recover();
+   return async (request) => ({ status: 201, body: await service.createOrder(request) });
+ }
+diff --git a/types.ts b/types.ts
+index 0e37bbb..a8b4526 100644
+--- a/types.ts
++++ b/types.ts
+@@ -11,3 +11,15 @@ export interface Order {
+   quantity: number;
+   createdAt: number;
+ }
++
++export interface OrderRecord extends Order {
++  requestId: string;
++}
++
++/** The storage primitive the journal writes through. */
++export interface JournalFile {
++  write(text: string): Promise<void>;
++  /** Flush written bytes to stable storage. */
++  sync(): Promise<void>;
++  readAll(): Promise<string>;
++}

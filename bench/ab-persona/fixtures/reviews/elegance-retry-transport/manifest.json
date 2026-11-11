@@ -1,0 +1,6 @@
+{
+  "title": "Retries with backoff for idempotent ingest requests",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [],
+  "review_prompt_hint": "The change wraps the ingest client's transport so that GET and PUT requests retry network failures and temporary server errors with jittered exponential backoff, honoring Retry-After, while POST requests are sent once"
+}

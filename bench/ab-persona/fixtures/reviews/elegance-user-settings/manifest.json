@@ -1,0 +1,6 @@
+{
+  "title": "Read week start and time zone from the user's settings file",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [],
+  "review_prompt_hint": "The change reads the user's week start and time zone from a JSON settings file in their config directory instead of always using the built-in defaults"
+}

@@ -1,0 +1,6 @@
+{
+  "title": "Mechanism claims (control): persisted sliding-window rate limiter",
+  "reviewers": ["reviewer-mechanism"],
+  "defects": [],
+  "review_prompt_hint": "Verify the numbered behavioral claims in prompt.md one by one against the code. Scoring rules for this claim review: the review gives one verdict per claim, and a confirmed verdict is not a finding. Count as one unsupported finding each refuted or uncertain verdict on a claim that no listed defect covers, and each issue the review raises outside the numbered claims. The review assigns no severity, so rate every refuted verdict on a claim that no listed defect covers as P2."
+}

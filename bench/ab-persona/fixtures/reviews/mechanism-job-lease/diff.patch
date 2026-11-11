@@ -1,0 +1,162 @@
+diff --git a/reaper.ts b/reaper.ts
+new file mode 100644
+index 0000000..a69d04b
+--- /dev/null
++++ b/reaper.ts
+@@ -0,0 +1,11 @@
++import type { JobStore } from "./store.ts";
++
++/** Return jobs whose worker stopped renewing to the queue, so a crashed
++ *  worker does not strand its job. Runs every few seconds in the service. */
++export async function reapExpired(store: JobStore, now: number): Promise<number> {
++  let requeued = 0;
++  for (const jobId of await store.expiredLeases(now)) {
++    if (await store.requeueIfExpired(jobId, now)) requeued++;
++  }
++  return requeued;
++}
+diff --git a/store.ts b/store.ts
+index 3cb4c3f..8b3db52 100644
+--- a/store.ts
++++ b/store.ts
+@@ -13,8 +13,8 @@ export class JobStore {
+     return id;
+   }
+ 
+-  /** Give the oldest runnable job to `workerId`, or return undefined. */
+-  async claim(workerId: string, now: number): Promise<Job | undefined> {
++  /** Lease the oldest runnable job to `workerId`, or return undefined. */
++  async claim(workerId: string, now: number, leaseMs: number): Promise<Job | undefined> {
+     let oldest: Job | undefined;
+     for (const job of this.jobs.values()) {
+       if (job.status === "queued" && job.runAfter <= now && (oldest === undefined || job.runAfter < oldest.runAfter)) oldest = job;
+@@ -22,25 +22,54 @@ export class JobStore {
+     if (oldest === undefined) return undefined;
+     oldest.status = "running";
+     oldest.owner = workerId;
++    oldest.leaseUntil = now + leaseMs;
+     return { ...oldest };
+   }
+ 
+-  async complete(jobId: string): Promise<void> {
++  /** Extend a running job's lease. Returns false when the job is no longer
++   *  running, so the caller knows it has lost the job. */
++  async renew(jobId: string, now: number, leaseMs: number): Promise<boolean> {
+     const job = this.jobs.get(jobId);
+-    if (job === undefined) return;
++    if (job === undefined || job.status !== "running") return false;
++    job.leaseUntil = now + leaseMs;
++    return true;
++  }
++
++  async complete(jobId: string, workerId: string): Promise<void> {
++    const job = this.jobs.get(jobId);
++    if (job === undefined || job.owner !== workerId) return;
+     job.status = "done";
+     job.owner = undefined;
+   }
+ 
+-  /** Record a failed run. The job runs again after `delayMs`, or is marked
+-   *  dead once it has failed `maxAttempts` times. */
+-  async fail(jobId: string, now: number, delayMs: number, maxAttempts: number): Promise<void> {
++  /** Record a failed run by the job's owner. The job runs again after
++   *  `delayMs`, or is marked dead once it has failed `maxAttempts` times. */
++  async fail(jobId: string, workerId: string, now: number, delayMs: number, maxAttempts: number): Promise<void> {
+     const job = this.jobs.get(jobId);
+-    if (job === undefined) return;
++    if (job === undefined || job.owner !== workerId) return;
+     job.attempts++;
+     job.status = job.attempts >= maxAttempts ? "dead" : "queued";
+     job.runAfter = now + delayMs;
+     job.owner = undefined;
++    job.leaseUntil = undefined;
++  }
++
++  async expiredLeases(now: number): Promise<string[]> {
++    const ids: string[] = [];
++    for (const job of this.jobs.values()) {
++      if (job.status === "running" && job.leaseUntil !== undefined && job.leaseUntil < now) ids.push(job.id);
++    }
++    return ids;
++  }
++
++  /** Return a job to the queue if its lease is still expired. */
++  async requeueIfExpired(jobId: string, now: number): Promise<boolean> {
++    const job = this.jobs.get(jobId);
++    if (job === undefined || job.status !== "running" || job.leaseUntil === undefined || job.leaseUntil >= now) return false;
++    job.status = "queued";
++    job.owner = undefined;
++    job.leaseUntil = undefined;
++    return true;
+   }
+ 
+   async get(jobId: string): Promise<Job | undefined> {
+diff --git a/types.ts b/types.ts
+index 6b6f46b..2c21958 100644
+--- a/types.ts
++++ b/types.ts
+@@ -9,9 +9,10 @@ export interface Job {
+   /** Earliest time the job may be claimed. */
+   runAfter: number;
+   owner?: string;
++  leaseUntil?: number;
+ }
+ 
+-export type Handler = (payload: string) => Promise<void>;
++export type Handler = (payload: string, signal: AbortSignal) => Promise<void>;
+ 
+ export interface Clock {
+   now(): number;
+diff --git a/worker.ts b/worker.ts
+index 2318515..feabd88 100644
+--- a/worker.ts
++++ b/worker.ts
+@@ -2,6 +2,7 @@ import type { JobStore } from "./store.ts";
+ import type { Clock, Handler } from "./types.ts";
+ 
+ export interface WorkerOptions {
++  leaseMs: number;
+   maxAttempts: number;
+ }
+ 
+@@ -9,7 +10,10 @@ export function backoffMs(attempts: number): number {
+   return Math.min(60_000, 1_000 * 2 ** attempts);
+ }
+ 
+-/** Claim and run one job. Returns false when no job was runnable. */
++/** Claim and run one job. Returns false when no job was runnable.
++ *
++ *  The heartbeat renews the lease three times per lease period. When a renewal
++ *  reports that the job is no longer ours, the handler is aborted. */
+ export async function runOne(
+   store: JobStore,
+   workerId: string,
+@@ -17,15 +21,24 @@ export async function runOne(
+   clock: Clock,
+   options: WorkerOptions,
+ ): Promise<boolean> {
+-  const job = await store.claim(workerId, clock.now());
++  const job = await store.claim(workerId, clock.now(), options.leaseMs);
+   if (job === undefined) return false;
++  const controller = new AbortController();
++  const heartbeat = setInterval(async () => {
++    // A failed RPC is not proof that the lease is gone; keep working and
++    // let the next beat try again.
++    const renewed = await store.renew(job.id, clock.now(), options.leaseMs).catch(() => true);
++    if (!renewed) controller.abort();
++  }, options.leaseMs / 3);
+   try {
+     const handler = handlers[job.kind];
+     if (handler === undefined) throw new Error(`no handler for ${job.kind}`);
+-    await handler(job.payload);
+-    await store.complete(job.id);
++    await handler(job.payload, controller.signal);
++    await store.complete(job.id, workerId);
+   } catch {
+-    await store.fail(job.id, clock.now(), backoffMs(job.attempts), options.maxAttempts);
++    await store.fail(job.id, workerId, clock.now(), backoffMs(job.attempts), options.maxAttempts);
++  } finally {
++    clearInterval(heartbeat);
+   }
+   return true;
+ }

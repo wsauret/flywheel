@@ -1,0 +1,254 @@
+diff --git a/src/import/group.ts b/src/import/group.ts
+new file mode 100644
+index 0000000..fc5a81d
+--- /dev/null
++++ b/src/import/group.ts
+@@ -0,0 +1,38 @@
++import { createInvoice } from "../invoice.ts";
++import type { Invoice, InvoiceLine } from "../types.ts";
++import { InvoiceImportError, type InvoiceRow } from "./invoice-rows.ts";
++
++/** Gather rows into invoices by supplier and invoice number. Every row of one
++ *  invoice must agree on its date and currency. */
++export function groupIntoInvoices(rows: readonly InvoiceRow[]): Invoice[] {
++  const groups = new Map<string, { first: InvoiceRow; lines: InvoiceLine[] }>();
++  for (const row of rows) {
++    const key = JSON.stringify([row.supplierId, row.invoiceNumber]);
++    const group = groups.get(key);
++    const line = { description: row.description, quantity: row.quantity, unitCents: row.unitCents };
++    if (group === undefined) {
++      groups.set(key, { first: row, lines: [line] });
++      continue;
++    }
++    if (row.issuedOn !== group.first.issuedOn || row.currency !== group.first.currency) {
++      throw new InvoiceImportError(
++        row.rowNumber,
++        `invoice ${row.invoiceNumber} has a different date or currency than on row ${group.first.rowNumber}`,
++      );
++    }
++    group.lines.push(line);
++  }
++  return [...groups.values()].map(({ first, lines }) => {
++    try {
++      return createInvoice({
++        supplierId: first.supplierId,
++        number: first.invoiceNumber,
++        issuedOn: first.issuedOn,
++        currency: first.currency,
++        lines,
++      });
++    } catch (error) {
++      throw new InvoiceImportError(first.rowNumber, error instanceof Error ? error.message : String(error));
++    }
++  });
++}
+diff --git a/src/import/importer.ts b/src/import/importer.ts
+new file mode 100644
+index 0000000..ded9016
+--- /dev/null
++++ b/src/import/importer.ts
+@@ -0,0 +1,34 @@
++import { parseCsv } from "../csv.ts";
++import type { PayablesLedger } from "../ledger.ts";
++import { totalsByCurrency } from "../totals.ts";
++import type { Currency } from "../types.ts";
++import { groupIntoInvoices } from "./group.ts";
++import { dataRows, parseInvoiceRows } from "./invoice-rows.ts";
++import { Pipeline } from "./pipeline.ts";
++
++export interface ImportReport {
++  imported: number;
++  /** "supplier/number" of invoices that were already posted and were skipped. */
++  alreadyPosted: string[];
++  /** Totals of the imported invoices, per currency, in cents. */
++  totals: Map<Currency, number>;
++}
++
++const readInvoices = Pipeline.from(parseCsv).then(dataRows).then(parseInvoiceRows).then(groupIntoInvoices);
++
++/** Import a supplier invoice CSV. The whole file is checked before anything
++ *  is posted, so a bad row rejects the file and leaves the ledger as it was.
++ *  Invoices that are already posted are skipped, so a supplier can resend a
++ *  file that overlaps an earlier one. */
++export function importInvoices(csvText: string, ledger: PayablesLedger): ImportReport {
++  const invoices = readInvoices.run(csvText);
++  const fresh = invoices.filter((invoice) => !ledger.has(invoice.supplierId, invoice.number));
++  for (const invoice of fresh) ledger.post(invoice);
++  return {
++    imported: fresh.length,
++    alreadyPosted: invoices
++      .filter((invoice) => !fresh.includes(invoice))
++      .map((invoice) => `${invoice.supplierId}/${invoice.number}`),
++    totals: totalsByCurrency(fresh),
++  };
++}
+diff --git a/src/import/invoice-rows.ts b/src/import/invoice-rows.ts
+new file mode 100644
+index 0000000..f36e2ba
+--- /dev/null
++++ b/src/import/invoice-rows.ts
+@@ -0,0 +1,96 @@
++import { CURRENCIES, type Currency } from "../types.ts";
++
++export const INVOICE_CSV_HEADER = [
++  "supplier_id",
++  "invoice_number",
++  "issued_on",
++  "currency",
++  "description",
++  "quantity",
++  "unit_price",
++] as const;
++
++/** A data row of the file with its row number. */
++export interface NumberedRow {
++  rowNumber: number;
++  fields: string[];
++}
++
++/** One CSV row: one line of one invoice. */
++export interface InvoiceRow {
++  /** Row number in the CSV, counting the header as row 1, for error messages.
++   *  A quoted field that spans lines is still one row, and a blank line is no row. */
++  rowNumber: number;
++  supplierId: string;
++  invoiceNumber: string;
++  issuedOn: string;
++  currency: Currency;
++  description: string;
++  quantity: number;
++  unitCents: number;
++}
++
++export class InvoiceImportError extends Error {
++  constructor(readonly rowNumber: number, message: string) {
++    super(`Row ${rowNumber}: ${message}`);
++  }
++}
++
++/** Check the header and return the data rows. */
++export function dataRows(rows: readonly string[][]): NumberedRow[] {
++  const [header, ...data] = rows;
++  if (header === undefined) throw new InvoiceImportError(1, "the file is empty");
++  if (header.length !== INVOICE_CSV_HEADER.length || header.some((name, index) => name.trim() !== INVOICE_CSV_HEADER[index])) {
++    throw new InvoiceImportError(1, `the header must be ${INVOICE_CSV_HEADER.join(",")}`);
++  }
++  return data.map((fields, index) => ({ rowNumber: index + 2, fields }));
++}
++
++/** Turn the supplier's text fields into typed rows. This checks the form of
++ *  each field; createInvoice still applies the payable rules to the result. */
++export function parseInvoiceRows(rows: readonly NumberedRow[]): InvoiceRow[] {
++  return rows.map(({ rowNumber, fields }) => {
++    if (fields.length !== INVOICE_CSV_HEADER.length) {
++      throw new InvoiceImportError(rowNumber, `expected ${INVOICE_CSV_HEADER.length} fields, found ${fields.length}`);
++    }
++    const [supplierId = "", invoiceNumber = "", issuedOn = "", currency = "", description = "", quantity = "", unitPrice = ""] = fields.map((field) => field.trim());
++    return {
++      rowNumber,
++      supplierId,
++      invoiceNumber,
++      issuedOn: parseIsoDate(rowNumber, issuedOn),
++      currency: parseCurrency(rowNumber, currency),
++      description,
++      quantity: parseWholeNumber(rowNumber, quantity),
++      unitCents: parsePriceCents(rowNumber, unitPrice),
++    };
++  });
++}
++
++function parseIsoDate(rowNumber: number, text: string): string {
++  const date = new Date(`${text}T00:00:00Z`);
++  if (!/^\d{4}-\d{2}-\d{2}$/.test(text) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== text) {
++    throw new InvoiceImportError(rowNumber, `issued_on "${text}" is not a calendar date in YYYY-MM-DD form`);
++  }
++  return text;
++}
++
++function parseCurrency(rowNumber: number, text: string): Currency {
++  const currency = CURRENCIES.find((candidate) => candidate === text.toUpperCase());
++  if (currency === undefined) throw new InvoiceImportError(rowNumber, `currency "${text}" is not one of ${CURRENCIES.join(", ")}`);
++  return currency;
++}
++
++function parseWholeNumber(rowNumber: number, text: string): number {
++  if (!/^-?\d+$/.test(text)) throw new InvoiceImportError(rowNumber, `quantity "${text}" is not a whole number`);
++  return Number(text);
++}
++
++/** "12", "12.5", and "12.50" are 1200, 1250, and 1250 cents. Integer
++ *  arithmetic only, so no price picks up a floating-point error. */
++function parsePriceCents(rowNumber: number, text: string): number {
++  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(text);
++  if (match === null) throw new InvoiceImportError(rowNumber, `unit_price "${text}" is not an amount like 12.50`);
++  const [, whole = "0", fraction = ""] = match;
++  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
++}
+diff --git a/src/import/pipeline.ts b/src/import/pipeline.ts
+new file mode 100644
+index 0000000..c5106c5
+--- /dev/null
++++ b/src/import/pipeline.ts
+@@ -0,0 +1,17 @@
++/** A typed chain of transformation stages. Each stage receives the previous
++ *  stage's output, and the compiler checks that adjacent stages fit. */
++export class Pipeline<TIn, TOut> {
++  private constructor(private readonly execute: (input: TIn) => TOut) {}
++
++  static from<TIn, TOut>(first: (input: TIn) => TOut): Pipeline<TIn, TOut> {
++    return new Pipeline(first);
++  }
++
++  then<TNext>(stage: (value: TOut) => TNext): Pipeline<TIn, TNext> {
++    return new Pipeline((input: TIn) => stage(this.execute(input)));
++  }
++
++  run(input: TIn): TOut {
++    return this.execute(input);
++  }
++}
+diff --git a/src/import/report.ts b/src/import/report.ts
+new file mode 100644
+index 0000000..35de58e
+--- /dev/null
++++ b/src/import/report.ts
+@@ -0,0 +1,13 @@
++import type { ImportReport } from "./importer.ts";
++
++/** The summary the payables clerk sees after an upload. */
++export function formatImportReport(report: ImportReport): string {
++  const lines = [`Imported ${report.imported} invoice${report.imported === 1 ? "" : "s"}.`];
++  for (const [currency, cents] of [...report.totals].sort(([a], [b]) => a.localeCompare(b))) {
++    lines.push(`  ${currency} ${(cents / 100).toFixed(2)}`);
++  }
++  if (report.alreadyPosted.length > 0) {
++    lines.push(`Skipped ${report.alreadyPosted.length} already posted: ${report.alreadyPosted.join(", ")}`);
++  }
++  return lines.join("\n");
++}
+diff --git a/src/totals.ts b/src/totals.ts
+index 45f3625..254f893 100644
+--- a/src/totals.ts
++++ b/src/totals.ts
+@@ -1,5 +1,19 @@
+-import type { Invoice } from "./types.ts";
++import type { Currency, Invoice } from "./types.ts";
+ 
+ export function invoiceTotalCents(invoice: Invoice): number {
+-  return invoice.lines.reduce((sum, line) => sum + line.quantity * line.unitCents, 0);
++  let total = 0;
++  for (const line of invoice.lines) {
++    if (line.quantity <= 0 || line.unitCents < 0) continue;
++    total += line.quantity * line.unitCents;
++  }
++  return total;
++}
++
++/** Totals per currency; amounts in different currencies are never added together. */
++export function totalsByCurrency(invoices: readonly Invoice[]): Map<Currency, number> {
++  const totals = new Map<Currency, number>();
++  for (const invoice of invoices) {
++    totals.set(invoice.currency, (totals.get(invoice.currency) ?? 0) + invoiceTotalCents(invoice));
++  }
++  return totals;
+ }

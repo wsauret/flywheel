@@ -1,0 +1,21 @@
+{
+  "title": "WIP limits, card ordering, blocked cards, and terminal commands for the task board",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "domain-imports-ui-wip-rule",
+      "title": "The WIP-limit rule lives in the UI layer and the domain imports it from there",
+      "category": "elegance",
+      "files": ["src/domain/board.ts", "src/ui/board-view.ts", "ARCHITECTURE.md"],
+      "catch_criteria": "The review must identify that exceedsWipLimit, a board rule that decides whether a move or an add is legal, is defined in src/ui/board-view.ts and that src/domain/board.ts imports it from the UI module, so the domain layer depends upward on ui (against ARCHITECTURE.md, which says domain depends on nothing else in src/ and owns every board rule) and domain and ui now import each other; the rule should live in the domain and board-view.ts should import it from there. Any wording and any severity count, as long as the misplaced rule and the upward import are both named."
+    },
+    {
+      "id": "card-column-two-sources",
+      "title": "Column membership is stored twice: Card.columnId and Column.cardIds",
+      "category": "elegance",
+      "files": ["src/domain/types.ts", "src/domain/board.ts"],
+      "catch_criteria": "The review must identify that the change adds Column.cardIds while every Card still stores columnId, so which column a card belongs to now has two sources of truth that addCard and moveCard must update together by hand (moveCard reads card.columnId to find the source column and cardsIn reads column.cardIds), and that one representation should own membership and order (for example cardIds alone, deriving the card's column, or columnId plus an order field). Any wording and any severity count, as long as both fields are named as duplicate owners of the same fact. Calling out the 'lists missing card' invariant check in cardsIn as a symptom of the duplication counts as the same finding."
+    }
+  ],
+  "review_prompt_hint": "The change adds per-column work-in-progress limits, manual ordering of cards within a column, blocked cards with a reason and age, and a command parser for the terminal client"
+}

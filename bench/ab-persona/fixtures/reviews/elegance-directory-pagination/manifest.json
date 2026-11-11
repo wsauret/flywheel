@@ -1,0 +1,6 @@
+{
+  "title": "Cursor pagination for the team directory project and member lists",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [],
+  "review_prompt_hint": "The team directory service now returns project and member lists in cursor-paginated pages; the change makes both list functions read every page"
+}

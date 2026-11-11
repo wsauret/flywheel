@@ -1,0 +1,21 @@
+{
+  "title": "Fixed-width clearing-house export and a shared formatting module",
+  "reviewers": ["reviewer-code-elegance"],
+  "defects": [
+    {
+      "id": "hand-rolled-pad-start",
+      "title": "padLeft reimplements String.prototype.padStart",
+      "category": "elegance",
+      "files": ["export.ts"],
+      "catch_criteria": "The review must identify that the new padLeft helper in export.ts, which prepends the fill character in a loop until the string reaches the width, reimplements the standard String.prototype.padStart (which format.ts already uses for the date parts), so renderFixedWidth should call formatAmount(...).padStart(AMOUNT_WIDTH) and padLeft should be deleted. Any wording and any severity count, as long as padLeft and the built-in it duplicates are both named."
+    },
+    {
+      "id": "format-date-reexport-shim",
+      "title": "export.ts keeps re-exporting formatDate after the move to format.ts although no module imports it from there",
+      "category": "elegance",
+      "files": ["export.ts", "summary.ts"],
+      "catch_criteria": "The review must identify that export.ts keeps `export { formatDate } from \"./format.ts\"` after formatDate moved to format.ts, while every importer (summary.ts, and export.ts itself) now imports from format.ts, so the re-export is a forwarding shim with no consumer that leaves two import paths for one function and should be removed. Any wording and any severity count, as long as the re-export and the move it was left behind by are both named."
+    }
+  ],
+  "review_prompt_hint": "The change moves date and amount formatting into a new format module and adds a fixed-width record export for the clearing-house upload next to the existing CSV export"
+}

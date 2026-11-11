@@ -1,0 +1,103 @@
+diff --git a/audit.ts b/audit.ts
+index d7011fa..e1af8e9 100644
+--- a/audit.ts
++++ b/audit.ts
+@@ -2,11 +2,17 @@ export interface AuditSink {
+   append(teamId: string, text: string): Promise<void>;
+ }
+ 
+-/** Audit trail writer. */
++/** Audit trail writer. Appends for one team are chained, so they reach the
++ *  sink one at a time in the order record() was called. */
+ export class AuditLog {
++  private readonly tails = new Map<string, Promise<void>>();
++
+   constructor(private readonly sink: AuditSink) {}
+ 
+   record(teamId: string, text: string): Promise<void> {
+-    return this.sink.append(teamId, text);
++    const previous = this.tails.get(teamId) ?? Promise.resolve();
++    const next = previous.then(() => this.sink.append(teamId, text));
++    this.tails.set(teamId, next.catch(() => undefined));
++    return next;
+   }
+ }
+diff --git a/bus.ts b/bus.ts
+new file mode 100644
+index 0000000..0bcc339
+--- /dev/null
++++ b/bus.ts
+@@ -0,0 +1,21 @@
++export type MemberEvent =
++  | { type: "member.added"; teamId: string; userId: string; role: string }
++  | { type: "member.removed"; teamId: string; userId: string };
++
++type Listener = (event: MemberEvent) => void;
++
++/** In-process event bus. Delivery is deferred, so a listener never runs on
++ *  the emitter's stack and a slow listener cannot delay the emitter. */
++export class EventBus {
++  private readonly listeners: Listener[] = [];
++
++  subscribe(listener: Listener): void {
++    this.listeners.push(listener);
++  }
++
++  emit(event: MemberEvent): void {
++    for (const listener of this.listeners) {
++      queueMicrotask(() => listener(event));
++    }
++  }
++}
+diff --git a/membership.ts b/membership.ts
+index 8383787..05a2cff 100644
+--- a/membership.ts
++++ b/membership.ts
+@@ -1,9 +1,11 @@
+ import type { AuditLog } from "./audit.ts";
++import type { EventBus } from "./bus.ts";
+ import type { Database } from "./db.ts";
+ 
+ export class Membership {
+   constructor(
+     private readonly db: Database,
++    private readonly bus: EventBus,
+     private readonly audit: AuditLog,
+   ) {}
+ 
+@@ -11,6 +13,7 @@ export class Membership {
+     await this.db.transaction(async (tx) => {
+       await tx.query("INSERT INTO members (team_id, user_id, role) VALUES (?, ?, ?)", [teamId, userId, role]);
+       await tx.query("UPDATE teams SET member_count = member_count + 1 WHERE id = ?", [teamId]);
++      this.bus.emit({ type: "member.added", teamId, userId, role });
+     });
+     await this.audit.record(teamId, `added ${userId} as ${role}`);
+   }
+@@ -24,6 +27,7 @@ export class Membership {
+       return true;
+     });
+     if (!removed) return false;
++    this.bus.emit({ type: "member.removed", teamId, userId });
+     await this.audit.record(teamId, `removed ${userId}`);
+     return true;
+   }
+diff --git a/notifier.ts b/notifier.ts
+new file mode 100644
+index 0000000..4af9ffb
+--- /dev/null
++++ b/notifier.ts
+@@ -0,0 +1,14 @@
++import type { EventBus, MemberEvent } from "./bus.ts";
++
++export interface ClientSocket {
++  send(text: string): void;
++}
++
++/** Push membership events to every connected client of the event's team.
++ *  Clients refetch the team roster when they receive one. */
++export function attachNotifier(bus: EventBus, socketsForTeam: (teamId: string) => readonly ClientSocket[]): void {
++  bus.subscribe((event: MemberEvent) => {
++    const text = JSON.stringify(event);
++    for (const socket of socketsForTeam(event.teamId)) socket.send(text);
++  });
++}

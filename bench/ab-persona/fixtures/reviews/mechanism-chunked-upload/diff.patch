@@ -1,0 +1,143 @@
+diff --git a/api.ts b/api.ts
+index fb9e6af..3e2d4a8 100644
+--- a/api.ts
++++ b/api.ts
+@@ -1,5 +1,10 @@
+ import { send, type Transport } from "./http.ts";
+ 
++export interface Part {
++  number: number;
++  etag: string;
++}
++
+ /** Client for the object store's upload endpoints. */
+ export class StorageApi {
+   constructor(
+@@ -11,4 +16,19 @@ export class StorageApi {
+     const response = await send(this.transport, { method: "PUT", url: `${this.baseUrl}/objects/${name}`, body });
+     return response.headers.etag ?? "";
+   }
++
++  async startUpload(name: string, size: number): Promise<string> {
++    const response = await send(this.transport, { method: "POST", url: `${this.baseUrl}/uploads`, body: JSON.stringify({ name, size }) });
++    return (JSON.parse(response.body) as { uploadId: string }).uploadId;
++  }
++
++  async putPart(uploadId: string, partNumber: number, body: Uint8Array): Promise<string> {
++    const response = await send(this.transport, { method: "PUT", url: `${this.baseUrl}/uploads/${uploadId}/parts/${partNumber}`, body });
++    return response.headers.etag ?? "";
++  }
++
++  async completeUpload(uploadId: string, parts: readonly Part[]): Promise<string> {
++    const response = await send(this.transport, { method: "POST", url: `${this.baseUrl}/uploads/${uploadId}/complete`, body: JSON.stringify({ parts }) });
++    return response.headers.etag ?? "";
++  }
+ }
+diff --git a/limiter.ts b/limiter.ts
+new file mode 100644
+index 0000000..ed8455e
+--- /dev/null
++++ b/limiter.ts
+@@ -0,0 +1,10 @@
++/** Run tasks with at most `limit` of them in flight at once. Rejects with the
++ *  first failure. */
++export async function runLimited(tasks: readonly (() => Promise<void>)[], limit: number): Promise<void> {
++  const running = new Set<Promise<void>>();
++  for (const task of tasks) {
++    const run: Promise<void> = task().finally(() => running.delete(run));
++    running.add(run);
++    if (running.size >= limit) await Promise.race(running);
++  }
++}
+diff --git a/retry.ts b/retry.ts
+new file mode 100644
+index 0000000..e290409
+--- /dev/null
++++ b/retry.ts
+@@ -0,0 +1,33 @@
++import { HttpError } from "./http.ts";
++
++export const MAX_ATTEMPTS = 3;
++const BASE_DELAY_MS = 250;
++const MAX_DELAY_MS = 8_000;
++
++/** Timeouts, throttling, server errors, and network failures are worth
++ *  another attempt; any other client error will fail the same way again. */
++export function isRetryable(error: unknown): boolean {
++  if (error instanceof HttpError) return error.status === 408 || error.status === 429 || error.status >= 500;
++  return error instanceof TypeError;
++}
++
++export function backoffMs(attempt: number, random: () => number): number {
++  const ceiling = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** attempt);
++  return ceiling - Math.floor((random() * ceiling) / 2);
++}
++
++/** Run `operation` up to MAX_ATTEMPTS times, sleeping between attempts. */
++export async function withRetry<T>(
++  operation: () => Promise<T>,
++  sleep: (ms: number) => Promise<void>,
++  random: () => number = Math.random,
++): Promise<T> {
++  for (let attempt = 1; ; attempt++) {
++    try {
++      return await operation();
++    } catch (error) {
++      if (attempt >= MAX_ATTEMPTS || !isRetryable(error)) throw error;
++      await sleep(backoffMs(attempt, random));
++    }
++  }
++}
+diff --git a/uploader.ts b/uploader.ts
+index e331498..8d8a32d 100644
+--- a/uploader.ts
++++ b/uploader.ts
+@@ -1,4 +1,6 @@
+-import type { StorageApi } from "./api.ts";
++import type { Part, StorageApi } from "./api.ts";
++import { runLimited } from "./limiter.ts";
++import { withRetry } from "./retry.ts";
+ 
+ export interface FileSource {
+   name: string;
+@@ -7,7 +9,37 @@ export interface FileSource {
+   slice(start: number, end: number): Uint8Array;
+ }
+ 
+-/** Upload a file in one request. */
+-export async function uploadFile(api: StorageApi, file: FileSource): Promise<string> {
+-  return api.putObject(file.name, file.slice(0, file.size));
++export interface UploadOptions {
++  chunkSize: number;
++  concurrency: number;
++  sleep: (ms: number) => Promise<void>;
++}
++
++interface ByteRange {
++  start: number;
++  end: number;
++}
++
++export function chunkRanges(size: number, chunkSize: number): ByteRange[] {
++  const ranges: ByteRange[] = [];
++  for (let start = 0; start < size; start += chunkSize) {
++    ranges.push({ start, end: Math.min(start + chunkSize, size) });
++  }
++  return ranges;
++}
++
++/** Upload a file as parallel parts, then ask the store to assemble them.
++ *  Small files keep the single-request path. */
++export async function uploadFile(api: StorageApi, file: FileSource, options: UploadOptions): Promise<string> {
++  if (file.size <= options.chunkSize) return api.putObject(file.name, file.slice(0, file.size));
++  const uploadId = await api.startUpload(file.name, file.size);
++  const parts: Part[] = [];
++  const tasks = chunkRanges(file.size, options.chunkSize).map((range, index) => async () => {
++    const partNumber = index + 1;
++    const etag = await withRetry(() => api.putPart(uploadId, partNumber, file.slice(range.start, range.end)), options.sleep);
++    parts.push({ number: partNumber, etag });
++  });
++  await runLimited(tasks, options.concurrency);
++  parts.sort((a, b) => a.number - b.number);
++  return api.completeUpload(uploadId, parts);
+ }

@@ -1,0 +1,14 @@
+{
+  "title": "Mechanism claims: plan for configuration hot reload",
+  "reviewers": ["reviewer-mechanism"],
+  "defects": [
+    {
+      "id": "limiter-captures-limits-at-startup",
+      "title": "Claim 1 is false: the rate limiter copies its limits once at construction",
+      "category": "mechanism",
+      "files": ["limiter.ts", "server.ts"],
+      "catch_criteria": "The review must reject claim 1 and show that createRateLimiter destructures requestsPerMinute and burst from config.current().limits once, when it is constructed (limiter.ts:18), and allow() uses those captured constants for its budget (limiter.ts:32-33) without calling current() again; startServer constructs the limiter once at startup (server.ts:8), so after reload swaps the snapshot the limiter keeps enforcing the startup limits until a restart, and the plan needs a limiter change. The catch must cite the one-time destructuring at construction. A verdict of uncertain, or a refutation that only questions reload atomicity, does not count."
+    }
+  ],
+  "review_prompt_hint": "Verify the numbered behavioral claims in prompt.md one by one against the code. Scoring rules for this claim review: the review gives one verdict per claim, and a confirmed verdict is not a finding. Count as one unsupported finding each refuted or uncertain verdict on a claim that no listed defect covers, and each issue the review raises outside the numbered claims. The review assigns no severity, so rate every refuted verdict on a claim that no listed defect covers as P2."
+}

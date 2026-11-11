@@ -1,0 +1,21 @@
+{
+  "title": "Mechanism claims: durable order journal with retry deduplication",
+  "reviewers": ["reviewer-mechanism"],
+  "defects": [
+    {
+      "id": "journal-failure-still-acknowledged",
+      "title": "Claim 1 is false: a failed journal write still resolves createOrder",
+      "category": "mechanism",
+      "files": ["journal.ts", "orders.ts"],
+      "catch_criteria": "The review must reject claim 1 (refuted, false, contradicted, or an equivalent verdict) and show why: Journal.drain catches the write or sync error (journal.ts:38-40), passes it to onError, and returns normally, so the promise that append returns (journal.ts:17-18) fulfills instead of rejecting; createOrder therefore continues past `await this.journal.append(record)` (orders.ts:30) and returns the order, and the handler answers 201 (server.ts:12) for a record that never reached disk. The catch must name the swallowing catch in drain (or onError being the only error path) as the reason. A verdict of uncertain, or a refutation that does not name the catch in drain, does not count."
+    },
+    {
+      "id": "concurrent-retry-duplicates-order",
+      "title": "Claim 3 is false: a retry during the journal await creates a second order",
+      "category": "mechanism",
+      "files": ["orders.ts"],
+      "catch_criteria": "The review must reject claim 3 and show the interleaving: createOrder checks byRequest through findExisting (orders.ts:21, orders.ts:34-35) before the await on journal.append (orders.ts:30), but the requestId is recorded in byRequest only by remember (orders.ts:38-40), which runs after that await (orders.ts:31); a retry that arrives while the first call is still waiting on the journal misses the map, takes a new sequence number, and appends a second record. The catch must name the check-before-await and set-after-await split. A refutation on other grounds, for example that byRequest is lost on restart, without this interleaving does not count."
+    }
+  ],
+  "review_prompt_hint": "Verify the numbered behavioral claims in prompt.md one by one against the code. Scoring rules for this claim review: the review gives one verdict per claim, and a confirmed verdict is not a finding. Count as one unsupported finding each refuted or uncertain verdict on a claim that no listed defect covers, and each issue the review raises outside the numbered claims. The review assigns no severity, so rate every refuted verdict on a claim that no listed defect covers as P2."
+}

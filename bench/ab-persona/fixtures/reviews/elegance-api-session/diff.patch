@@ -1,0 +1,141 @@
+diff --git a/api-client.ts b/api-client.ts
+index 9da1bd1..569b932 100644
+--- a/api-client.ts
++++ b/api-client.ts
+@@ -1,30 +1,74 @@
+ import type { SessionStore } from "./session-store.ts";
++import { parseTokenPair } from "./tokens.ts";
+ import type { HttpResponse, HttpTransport } from "./transport.ts";
+ 
++const DEFAULT_EXPIRES_IN_SECONDS = 3600;
++
+ export class ApiError extends Error {
+   constructor(readonly path: string, readonly status: number) {
+-    super(`GET ${path} failed with status ${status}`);
++    super(`${path} failed with status ${status}`);
+   }
+ }
+ 
+ export class ApiClient {
++  private accessToken: string | undefined;
++  private refreshing: Promise<void> | undefined;
++
+   constructor(
+     private readonly baseUrl: string,
+     private readonly store: SessionStore,
+     private readonly http: HttpTransport,
+-  ) {}
++  ) {
++    store.attach(this);
++  }
++
++  setAccessToken(token: string | undefined): void {
++    this.accessToken = token;
++  }
+ 
++  /** GET a resource. An expiring token is refreshed first, and a 401 is
++   *  retried once after a refresh, in case the server revoked the token early. */
+   async get(path: string): Promise<unknown> {
++    if (this.store.isExpiring()) await this.refresh();
++    const response = await this.send(path);
++    if (response.status !== 401 || this.store.get() === undefined) return this.unwrap(path, response);
++    await this.refresh();
+     return this.unwrap(path, await this.send(path));
+   }
+ 
+   private send(path: string): Promise<HttpResponse> {
+     const headers: Record<string, string> = {};
+-    const accessToken = this.store.get()?.tokens.accessToken;
+-    if (accessToken !== undefined) headers.authorization = `Bearer ${accessToken}`;
++    if (this.accessToken !== undefined) headers.authorization = `Bearer ${this.accessToken}`;
+     return this.http.send({ method: "GET", url: `${this.baseUrl}${path}`, headers });
+   }
+ 
++  /** Concurrent callers share one refresh request. */
++  private refresh(): Promise<void> {
++    this.refreshing ??= this.exchangeRefreshToken().finally(() => {
++      this.refreshing = undefined;
++    });
++    return this.refreshing;
++  }
++
++  private async exchangeRefreshToken(): Promise<void> {
++    const session = this.store.get();
++    if (session === undefined) return;
++    const response = await this.http.send({
++      method: "POST",
++      url: `${this.baseUrl}/oauth/token`,
++      headers: {},
++      body: { grant_type: "refresh_token", refresh_token: session.tokens.refreshToken },
++    });
++    // invalid_grant: the refresh token was revoked, so the session cannot
++    // recover. A session that replaced it meanwhile is left alone.
++    if ((response.status === 400 || response.status === 401) && this.store.get() === session) this.store.signOut();
++    const pair = parseTokenPair(this.unwrap("/oauth/token", response));
++    this.store.replaceTokens(session, {
++      ...pair,
++      expiresIn: pair.expiresIn > 0 ? pair.expiresIn : DEFAULT_EXPIRES_IN_SECONDS,
++    });
++  }
++
+   private unwrap(path: string, response: HttpResponse): unknown {
+     if (response.status < 200 || response.status >= 300) throw new ApiError(path, response.status);
+     return response.body;
+diff --git a/session-store.ts b/session-store.ts
+index aeec810..8f79473 100644
+--- a/session-store.ts
++++ b/session-store.ts
+@@ -1,3 +1,4 @@
++import type { ApiClient } from "./api-client.ts";
+ import type { TokenPair } from "./tokens.ts";
+ 
+ export interface Session {
+@@ -6,21 +7,48 @@ export interface Session {
+   obtainedAt: number;
+ }
+ 
++/** Access tokens are refreshed this long before they expire, so a request
++ *  never leaves with a token that dies in flight. */
++const EXPIRY_MARGIN_MS = 30_000;
++
+ /** The signed-in session. The sign-in screen writes it; everything else reads it. */
+ export class SessionStore {
+   private current: Session | undefined;
++  private client: ApiClient | undefined;
+ 
+   constructor(private readonly clock: () => number = Date.now) {}
+ 
++  attach(client: ApiClient): void {
++    this.client = client;
++    client.setAccessToken(this.current?.tokens.accessToken);
++  }
++
+   get(): Session | undefined {
+     return this.current;
+   }
+ 
++  isExpiring(): boolean {
++    if (this.current === undefined) return false;
++    const expiresAt = this.current.obtainedAt + this.current.tokens.expiresIn * 1000;
++    return this.clock() >= expiresAt - EXPIRY_MARGIN_MS;
++  }
++
+   signIn(userId: string, tokens: TokenPair): void {
+     this.current = { userId, tokens, obtainedAt: this.clock() };
++    this.client?.setAccessToken(tokens.accessToken);
++  }
++
++  /** Install refreshed tokens into the session the refresh started from. A
++   *  sign-out or a new sign-in that lands while the refresh is in flight wins:
++   *  the refreshed tokens are dropped. */
++  replaceTokens(from: Session, tokens: TokenPair): void {
++    if (this.current !== from) return;
++    this.current = { ...from, tokens, obtainedAt: this.clock() };
++    this.client?.setAccessToken(tokens.accessToken);
+   }
+ 
+   signOut(): void {
+     this.current = undefined;
++    this.client?.setAccessToken(undefined);
+   }
+ }

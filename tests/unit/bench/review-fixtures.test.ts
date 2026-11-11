@@ -25,10 +25,9 @@ describe("reviewPrompt", () => {
 
 describe("checked-in review fixtures", () => {
   test("every fixture loads with a consistent artifact and manifest", async () => {
-    const tasks = await catalog.reviewTasks();
-    expect(tasks.length).toBeGreaterThanOrEqual(5);
-    const ids = tasks.map((task) => task.id);
-    expect(new Set(ids).size).toBe(ids.length);
+    const shared = await catalog.reviewTasks("reviewer-code-quality");
+    expect(shared.length).toBeGreaterThanOrEqual(5);
+    const tasks = [...shared, ...await catalog.reviewTasks("reviewer-code-elegance"), ...await catalog.reviewTasks("reviewer-mechanism")];
     for (const task of tasks) {
       expect(["diff.patch", "plan.md"]).toContain(task.artifact);
       // A commit source applies the diff to the working tree instead of copying the artifact.

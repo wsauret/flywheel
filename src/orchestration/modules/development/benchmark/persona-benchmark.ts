@@ -179,8 +179,8 @@ function parseStoredVariant(variant: BenchmarkVariant): BenchmarkPlan["variants"
 
 async function planTasks(persona: string, mode: BenchmarkMode, catalog: BenchmarkCatalog): Promise<readonly PlannedTask[]> {
   if (mode === "reviewer") {
-    const tasks = await catalog.reviewTasks();
-    if (tasks.length === 0) throw new Error(`No review fixtures found in ${catalog.reviewFixturesDir}`);
+    const tasks = await catalog.reviewTasks(persona);
+    if (tasks.length === 0) throw new Error(`No review fixtures for ${persona} found in ${catalog.reviewFixturesDir}`);
     return tasks;
   }
   if (mode === "implement") return await catalog.implementTasks();

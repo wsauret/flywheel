@@ -1,0 +1,103 @@
+diff --git a/account-page.ts b/account-page.ts
+new file mode 100644
+index 0000000..ef93819
+--- /dev/null
++++ b/account-page.ts
+@@ -0,0 +1,17 @@
++import { balanceDueCents, type OrderBook } from "./orders.ts";
++import type { PaymentStatus } from "./types.ts";
++
++const STATUS_LABELS: Record<PaymentStatus, string> = {
++  unpaid: "Awaiting payment",
++  "partially-paid": "Partially paid",
++  paid: "Paid in full",
++};
++
++/** One line per order for the customer's account page, e.g. "ord_3  Partially paid  ($12.50 due)". */
++export function orderLines(book: OrderBook, customerId: string): string[] {
++  return book.forCustomer(customerId).map((order) => {
++    const due = balanceDueCents(order);
++    const suffix = due === 0 ? "" : `  ($${(due / 100).toFixed(2)} due)`;
++    return `${order.id}  ${STATUS_LABELS[order.paymentStatus]}${suffix}`;
++  });
++}
+diff --git a/fulfillment.ts b/fulfillment.ts
+index 079b8e4..3aaac9d 100644
+--- a/fulfillment.ts
++++ b/fulfillment.ts
+@@ -1,7 +1,6 @@
+-import { balanceDueCents } from "./orders.ts";
+ import type { Order } from "./types.ts";
+ 
+ /** Only fully paid orders leave the warehouse. */
+ export function readyToShip(order: Order): boolean {
+-  return balanceDueCents(order) === 0;
++  return order.paymentStatus === "paid";
+ }
+diff --git a/orders.ts b/orders.ts
+index 4b91d5c..35c2020 100644
+--- a/orders.ts
++++ b/orders.ts
+@@ -1,20 +1,33 @@
+-import type { Order, OrderLine, Payment } from "./types.ts";
++import type { Order, OrderLine, Payment, PaymentStatus } from "./types.ts";
+ 
+-export function orderTotalCents(order: Order): number {
++type Billable = Pick<Order, "lines" | "payments">;
++
++export function orderTotalCents(order: Billable): number {
+   return order.lines.reduce((sum, line) => sum + line.unitCents * line.quantity, 0);
+ }
+ 
+-export function balanceDueCents(order: Order): number {
++export function balanceDueCents(order: Billable): number {
+   const paid = order.payments.reduce((sum, payment) => sum + payment.amountCents, 0);
+   return orderTotalCents(order) - paid;
+ }
+ 
++export function paymentStatusOf(order: Billable): PaymentStatus {
++  if (balanceDueCents(order) === 0) return "paid";
++  return order.payments.length === 0 ? "unpaid" : "partially-paid";
++}
++
+ export class OrderBook {
+   private readonly orders = new Map<string, Order>();
+   private sequence = 0;
+ 
+   open(customerId: string, lines: readonly OrderLine[]): Order {
+-    const order: Order = { id: `ord_${++this.sequence}`, customerId, lines, payments: [] };
++    const billable: Billable = { lines, payments: [] };
++    const order: Order = {
++      id: `ord_${++this.sequence}`,
++      customerId,
++      ...billable,
++      paymentStatus: paymentStatusOf(billable),
++    };
+     this.orders.set(order.id, order);
+     return order;
+   }
+@@ -26,6 +39,7 @@ export class OrderBook {
+       throw new Error(`Payment ${payment.id} exceeds the balance due on ${orderId}`);
+     }
+     order.payments.push(payment);
++    order.paymentStatus = paymentStatusOf(order);
+     return order;
+   }
+ 
+diff --git a/types.ts b/types.ts
+index b2764bc..6ca389e 100644
+--- a/types.ts
++++ b/types.ts
+@@ -10,9 +10,12 @@ export interface Payment {
+   receivedAt: number;
+ }
+ 
++export type PaymentStatus = "unpaid" | "partially-paid" | "paid";
++
+ export interface Order {
+   id: string;
+   customerId: string;
+   lines: readonly OrderLine[];
+   payments: Payment[];
++  paymentStatus: PaymentStatus;
+ }

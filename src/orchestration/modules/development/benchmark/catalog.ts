@@ -78,6 +78,9 @@ export interface ReviewTask extends BenchmarkTask {
   artifact: "diff.patch" | "plan.md";
   source: ReviewSource;
   stratum: ReviewStratum;
+  /** The reviewer personas this fixture was written for, from the manifest's
+   *  `reviewers` field. Absent on a shared fixture. */
+  reviewers?: readonly string[];
 }
 
 /** An implementation task plus the direct subagent assignment and a bounded runtime. */
@@ -238,6 +241,25 @@ function parseManifest(value: ReturnType<typeof objectValue>, fixtureId: string)
   return { title, defects: parsedDefects, review_prompt_hint: reviewPromptHint };
 }
 
+/** A manifest's optional `reviewers` field: a non-empty list of distinct
+ *  reviewer persona names. It stays off `ReviewManifest`, so the judge never
+ *  sees it and a manifest without it keeps its content identity. */
+function parseReviewers(value: unknown, fixtureId: string): readonly string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length === 0 || !value.every((name) => typeof name === "string" && benchmarkMode(name) === "reviewer")) {
+    throw new Error(`${fixtureId}/manifest.json reviewers must be a non-empty list of reviewer-* persona names`);
+  }
+  if (new Set(value).size !== value.length) throw new Error(`${fixtureId}/manifest.json reviewers must be unique`);
+  return value;
+}
+
+/** The fixtures one reviewer persona runs: those written for it, or, when no
+ *  fixture names it, every shared fixture. */
+function fixturesFor(tasks: readonly ReviewTask[], persona: string): readonly ReviewTask[] {
+  const dedicated = tasks.filter((task) => task.reviewers?.includes(persona));
+  return dedicated.length > 0 ? dedicated : tasks.filter((task) => task.reviewers === undefined);
+}
+
 /** The prompt of a fixture that records none in `prompt.md`. */
 export function reviewPrompt(artifact: ReviewTask["artifact"], hint: string, source: ReviewSource["kind"] = "project"): string {
   if (artifact === "plan.md") {
@@ -262,7 +284,9 @@ async function loadReviewFixtures(fixturesRoot: string): Promise<ReviewTask[]> {
   for (const entry of entries.filter((candidate) => candidate.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
     const fixtureDir = await realDirectoryUnder(fixturesRoot, containedPath(fixturesRoot, entry.name), `${entry.name} review fixture`);
     const manifestPath = await realFileUnder(fixturesRoot, join(fixtureDir, "manifest.json"), `${entry.name}/manifest.json`);
-    const manifest = parseManifest(objectValue(JSON.parse(await Bun.file(manifestPath).text()), `${entry.name}/manifest.json`), entry.name);
+    const manifestValue = objectValue(JSON.parse(await Bun.file(manifestPath).text()), `${entry.name}/manifest.json`);
+    const manifest = parseManifest(manifestValue, entry.name);
+    const reviewers = parseReviewers(manifestValue.reviewers, entry.name);
     // A symlinked plan.md is present and rejected, not skipped in favor of
     // diff.patch: a fixture member that points outside the tree is a fault.
     const artifact: ReviewTask["artifact"] = await isPresent(join(fixtureDir, "plan.md")) ? "plan.md" : "diff.patch";
@@ -277,6 +301,7 @@ async function loadReviewFixtures(fixturesRoot: string): Promise<ReviewTask[]> {
     tasks.push({
       ...descriptor,
       manifest,
+      ...(reviewers === undefined ? {} : { reviewers }),
       prompt: recordedPrompt ?? reviewPrompt(artifact, manifest.review_prompt_hint, source.kind),
       stratum: artifact === "plan.md" ? "plan" : diffStratum(new TextDecoder().decode(artifactBytes)),
       contentIdentity: structuredIdentity({
@@ -311,7 +336,9 @@ export interface BenchmarkCatalog {
   readonly personaOverlayDir?: string;
   readonly researchPersonas: readonly string[];
   researchTasks(persona: string): readonly ResearchTask[];
-  reviewTasks(): Promise<readonly ReviewTask[]>;
+  /** The review fixtures `persona` runs: the fixtures whose manifest names it
+   *  in `reviewers`, or every fixture without `reviewers` when none names it. */
+  reviewTasks(persona: string): Promise<readonly ReviewTask[]>;
   implementTasks(): Promise<readonly ImplementTask[]>;
   /** The one directory every results directory of this project lives in. The
    *  run store requires each of its results directories to stay beneath it. */
@@ -346,7 +373,7 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
         return { ...source, contentIdentity: structuredIdentity(source) };
       });
     },
-    reviewTasks: () => loadReviewFixtures(reviewFixturesDir),
+    reviewTasks: async (persona) => fixturesFor(await loadReviewFixtures(reviewFixturesDir), persona),
     async implementTasks() {
       const specs = await loadImplementTasks(implementTasksDir);
       return specs.map((spec) => ({

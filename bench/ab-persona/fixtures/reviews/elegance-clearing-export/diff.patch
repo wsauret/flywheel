@@ -1,0 +1,63 @@
+diff --git a/export.ts b/export.ts
+index cccf7ab..e697c80 100644
+--- a/export.ts
++++ b/export.ts
+@@ -1,13 +1,25 @@
++import { formatAmount, formatDate } from "./format.ts";
+ import type { Transaction } from "./types.ts";
+ 
+-export function formatDate(epochMs: number): string {
+-  const date = new Date(epochMs);
+-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+-  const day = String(date.getUTCDate()).padStart(2, "0");
+-  return `${date.getUTCFullYear()}-${month}-${day}`;
+-}
++export { formatDate } from "./format.ts";
++
++/** The clearing house reads amounts right-aligned in a 14-character field. */
++const AMOUNT_WIDTH = 14;
+ 
+ export function renderCsv(transactions: readonly Transaction[]): string {
+-  const rows = transactions.map((tx) => `${formatDate(tx.postedAt)},${tx.account},${(tx.amountCents / 100).toFixed(2)}`);
++  const rows = transactions.map((tx) => `${formatDate(tx.postedAt)},${tx.account},${formatAmount(tx.amountCents)}`);
+   return ["date,account,amount", ...rows].join("\n");
+ }
++
++/** Fixed-width records for the clearing-house upload: date (10), account (12), amount (14). */
++export function renderFixedWidth(transactions: readonly Transaction[]): string {
++  return transactions
++    .map((tx) => `${formatDate(tx.postedAt)}${tx.account}${padLeft(formatAmount(tx.amountCents), AMOUNT_WIDTH, " ")}`)
++    .join("\n");
++}
++
++function padLeft(value: string, width: number, fill: string): string {
++  let padded = value;
++  while (padded.length < width) padded = fill + padded;
++  return padded;
++}
+diff --git a/format.ts b/format.ts
+new file mode 100644
+index 0000000..e94281d
+--- /dev/null
++++ b/format.ts
+@@ -0,0 +1,10 @@
++export function formatDate(epochMs: number): string {
++  const date = new Date(epochMs);
++  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
++  const day = String(date.getUTCDate()).padStart(2, "0");
++  return `${date.getUTCFullYear()}-${month}-${day}`;
++}
++
++export function formatAmount(amountCents: number): string {
++  return (amountCents / 100).toFixed(2);
++}
+diff --git a/summary.ts b/summary.ts
+index a94844a..171fc25 100644
+--- a/summary.ts
++++ b/summary.ts
+@@ -1,4 +1,4 @@
+-import { formatDate } from "./export.ts";
++import { formatDate } from "./format.ts";
+ 
+ export function summaryHeading(fromMs: number, toMs: number, count: number): string {
+   return `${count} transactions from ${formatDate(fromMs)} to ${formatDate(toMs)}`;

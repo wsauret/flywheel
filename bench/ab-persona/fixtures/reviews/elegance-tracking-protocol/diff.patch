@@ -1,0 +1,80 @@
+diff --git a/api/to-wire.ts b/api/to-wire.ts
+index f7dc89e..2ddbc91 100644
+--- a/api/to-wire.ts
++++ b/api/to-wire.ts
+@@ -2,9 +2,11 @@ import type { Shipment } from "../domain/shipment.ts";
+ import type { ShipmentV1 } from "../protocol/v1.ts";
+ 
+ export function toShipmentV1(shipment: Shipment): ShipmentV1 {
++  const window = shipment.estimatedDelivery;
+   return {
+     tracking_number: shipment.trackingNumber,
+     state: shipment.state,
+     last_scan_at: shipment.lastScanAt.toISOString(),
++    estimated_delivery: window === null ? null : { from: window.from.toISOString(), to: window.to.toISOString() },
+   };
+ }
+diff --git a/domain/shipment.ts b/domain/shipment.ts
+index c3fd470..69271bf 100644
+--- a/domain/shipment.ts
++++ b/domain/shipment.ts
+@@ -1,17 +1,33 @@
+ export type ShipmentState = "label_created" | "in_transit" | "delivered";
+ 
++/** The carrier's promise: the parcel arrives between `from` and `to`. */
++export interface DeliveryWindow {
++  from: Date;
++  to: Date;
++}
++
+ export interface Shipment {
+   trackingNumber: string;
+   state: ShipmentState;
+   lastScanAt: Date;
++  /** Null until a hub scan carries an estimate, and again once delivered. */
++  estimatedDelivery: DeliveryWindow | null;
+ }
+ 
+ export type Scan =
+   | { kind: "picked_up"; at: Date }
+-  | { kind: "departed_hub"; at: Date; hub: string }
++  | { kind: "departed_hub"; at: Date; hub: string; estimate: DeliveryWindow | null }
+   | { kind: "delivered"; at: Date };
+ 
++/** A hub scan without an estimate keeps the previous one: carriers send a
++ *  window only when it changes. */
+ export function applyScan(shipment: Shipment, scan: Scan): Shipment {
+-  const state: ShipmentState = scan.kind === "delivered" ? "delivered" : "in_transit";
+-  return { ...shipment, state, lastScanAt: scan.at };
++  switch (scan.kind) {
++    case "picked_up":
++      return { ...shipment, state: "in_transit", lastScanAt: scan.at };
++    case "departed_hub":
++      return { ...shipment, state: "in_transit", lastScanAt: scan.at, estimatedDelivery: scan.estimate ?? shipment.estimatedDelivery };
++    case "delivered":
++      return { ...shipment, state: "delivered", lastScanAt: scan.at, estimatedDelivery: null };
++  }
+ }
+diff --git a/protocol/v1.ts b/protocol/v1.ts
+index fb2a5a1..5bd3ae4 100644
+--- a/protocol/v1.ts
++++ b/protocol/v1.ts
+@@ -9,9 +9,18 @@
+ 
+ export type ShipmentStateV1 = "label_created" | "in_transit" | "delivered";
+ 
++/** Mirrors the server's DeliveryWindow on purpose (see the note at the top
++ *  of this file). ISO 8601 timestamps in UTC. */
++export interface DeliveryWindowV1 {
++  from: string;
++  to: string;
++}
++
+ export interface ShipmentV1 {
+   tracking_number: string;
+   state: ShipmentStateV1;
+   /** ISO 8601 timestamp in UTC. */
+   last_scan_at: string;
++  /** Null when the carrier has not given an estimate, or after delivery. */
++  estimated_delivery: DeliveryWindowV1 | null;
+ }

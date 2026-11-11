@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { createBenchmarkCatalog, DEFAULT_IMPLEMENTER_TIMEOUT_MS, resolveReviewFixture } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { bytesIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { PLAN_FILE } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
 
 const catalog = createBenchmarkCatalog(process.cwd());
@@ -43,7 +43,7 @@ describe("benchmark catalog", () => {
   });
 
   it("keeps every review fixture directory inside the fixtures directory", async () => {
-    const tasks = await catalog.reviewTasks();
+    const tasks = await catalog.reviewTasks("reviewer-code-quality");
     for (const task of tasks) {
       expect(task.fixtureDir).toBe(join(catalog.reviewFixturesDir, task.id));
     }
@@ -107,7 +107,7 @@ async function syntheticReviewFixture(): Promise<{ fixturesDir: string; fixtureD
 describe("review fixture containment", () => {
   it("loads a fixture whose members are all real files and directories", async () => {
     const { fixturesDir } = await syntheticReviewFixture();
-    const tasks = await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks();
+    const tasks = await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks("reviewer-code-quality");
     expect(tasks.map((task) => task.id)).toEqual(["ledger"]);
     const fixture = await resolveReviewFixture(fixturesDir, tasks[0]!);
     expect(fixture.artifactPath.endsWith(join("reviews", "ledger", "diff.patch"))).toBe(true);
@@ -117,7 +117,7 @@ describe("review fixture containment", () => {
     const { fixtureDir } = await syntheticReviewFixture();
     const reviewCatalog = createBenchmarkCatalog(syntheticRoot ?? "");
     const identity = async (): Promise<string> => {
-      const [task] = await reviewCatalog.reviewTasks();
+      const [task] = await reviewCatalog.reviewTasks("reviewer-code-quality");
       if (!task) throw new Error("expected one review task");
       return task.contentIdentity;
     };
@@ -135,18 +135,18 @@ describe("review fixture containment", () => {
     const { fixtureDir, outside } = await syntheticReviewFixture();
     await rm(join(fixtureDir, "project"), { recursive: true, force: true });
     await symlink(outside, join(fixtureDir, "project"));
-    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks()).rejects.toThrow(/resolves through the symlink/);
+    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks("reviewer-code-quality")).rejects.toThrow(/resolves through the symlink/);
   });
 
   it("refuses a fixture whose reviewed artifact is a symlink out of the fixtures root", async () => {
     const { fixtureDir, outside } = await syntheticReviewFixture();
     await symlink(join(outside, "secret.txt"), join(fixtureDir, "plan.md"));
-    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks()).rejects.toThrow(/resolves through the symlink/);
+    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks("reviewer-code-quality")).rejects.toThrow(/resolves through the symlink/);
   });
 
   it("refuses an artifact that was swapped for a symlink after the catalog loaded it", async () => {
     const { fixturesDir, fixtureDir, outside } = await syntheticReviewFixture();
-    const [task] = await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks();
+    const [task] = await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks("reviewer-code-quality");
     if (!task) throw new Error("expected one review task");
     await rm(join(fixtureDir, "diff.patch"));
     await symlink(join(outside, "secret.txt"), join(fixtureDir, "diff.patch"));
@@ -169,7 +169,7 @@ describe("real-review fixtures", () => {
     await Bun.write(join(fixtureDir, "prompt.md"), "Review the uncommitted change; run git diff -- new.ts.");
     await Bun.write(join(fixtureDir, "diff.patch"), additionDiff(51));
     await Bun.write(join(fixtureDir, "manifest.json"), JSON.stringify({ title: "Clean change", review_prompt_hint: "", defects: [] }));
-    const [task] = await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks();
+    const [task] = await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks("reviewer-code-quality");
     expect(task).toMatchObject({
       source: { kind: "commit", commit },
       prompt: "Review the uncommitted change; run git diff -- new.ts.",
@@ -185,7 +185,7 @@ describe("real-review fixtures", () => {
     const commit = "a".repeat(40);
     const reviewCatalog = createBenchmarkCatalog(syntheticRoot ?? "");
     const load = async () => {
-      const [task] = await reviewCatalog.reviewTasks();
+      const [task] = await reviewCatalog.reviewTasks("reviewer-code-quality");
       if (!task) throw new Error("expected one review task");
       return task;
     };
@@ -210,7 +210,7 @@ describe("real-review fixtures", () => {
     expect((await load()).contentIdentity).not.toBe(restored.contentIdentity);
 
     await Bun.write(join(fixtureDir, "source.json"), JSON.stringify({ commit, variant: "rebuilt" }));
-    await expect(reviewCatalog.reviewTasks()).rejects.toThrow(/variant must be one of recorded, restore/);
+    await expect(reviewCatalog.reviewTasks("reviewer-code-quality")).rejects.toThrow(/variant must be one of recorded, restore/);
   });
 
   it("places a diff in the stratum of its changed lines", async () => {
@@ -218,7 +218,36 @@ describe("real-review fixtures", () => {
     const reviewCatalog = createBenchmarkCatalog(syntheticRoot ?? "");
     for (const [added, stratum] of [[50, "S1"], [200, "S2"], [201, "S3"], [601, "S4"]] as const) {
       await Bun.write(join(fixtureDir, "diff.patch"), additionDiff(added));
-      expect((await reviewCatalog.reviewTasks())[0]?.stratum).toBe(stratum);
+      expect((await reviewCatalog.reviewTasks("reviewer-code-quality"))[0]?.stratum).toBe(stratum);
+    }
+  });
+
+  it("runs a persona's dedicated fixtures alone, every other persona the shared ones, and keeps a shared manifest's identity", async () => {
+    const { fixturesDir, fixtureDir } = await syntheticReviewFixture();
+    const reviewCatalog = createBenchmarkCatalog(syntheticRoot ?? "");
+    const [shared] = await reviewCatalog.reviewTasks("reviewer-code-quality");
+    // The serialized form a project fixture had before the reviewers field existed.
+    expect(shared?.contentIdentity).toBe(structuredIdentity({
+      manifest: shared!.manifest,
+      artifact: { name: "diff.patch", identity: bytesIdentity(await Bun.file(join(fixtureDir, "diff.patch")).bytes()) },
+      source: { kind: "project", contentIdentity: await directoryIdentity(join(fixtureDir, "project")) },
+    }));
+    expect(shared).not.toHaveProperty("reviewers");
+
+    const dedicatedDir = join(fixturesDir, "structure");
+    await cp(fixtureDir, dedicatedDir, { recursive: true });
+    const manifest = { title: "Structure", review_prompt_hint: "", defects: [] };
+    const writeReviewers = (reviewers: unknown) => Bun.write(join(dedicatedDir, "manifest.json"), JSON.stringify({ ...manifest, reviewers }));
+    await writeReviewers(["reviewer-code-elegance", "reviewer-mechanism"]);
+    const ids = async (persona: string) => (await reviewCatalog.reviewTasks(persona)).map((task) => task.id);
+    expect(await ids("reviewer-code-elegance")).toEqual(["structure"]);
+    expect(await ids("reviewer-mechanism")).toEqual(["structure"]);
+    expect(await ids("reviewer-code-quality")).toEqual(["ledger"]);
+    expect(await ids("reviewer-plan-quality")).toEqual(["ledger"]);
+
+    for (const invalid of [[], "reviewer-code-elegance", ["explorer"], ["reviewer-mechanism", "reviewer-mechanism"]]) {
+      await writeReviewers(invalid);
+      await expect(reviewCatalog.reviewTasks("reviewer-code-quality")).rejects.toThrow(/structure\/manifest.json reviewers must be/);
     }
   });
 
@@ -227,8 +256,8 @@ describe("real-review fixtures", () => {
     const defect = { id: "drift", title: "Drift", category: "correctness", files: ["ledger.ts"], catch_criteria: "Names the drift", finder: "gpt-6-astra" };
     const write = (accepted: boolean) => Bun.write(join(fixtureDir, "manifest.json"), JSON.stringify({ title: "Ledger", review_prompt_hint: "", defects: [{ ...defect, accepted }] }));
     await write(false);
-    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks()).rejects.toThrow(/drafted label/);
+    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks("reviewer-code-quality")).rejects.toThrow(/drafted label/);
     await write(true);
-    expect((await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks())[0]?.manifest.defects[0]).toMatchObject({ finder: "gpt-6-astra", accepted: true });
+    expect((await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks("reviewer-code-quality"))[0]?.manifest.defects[0]).toMatchObject({ finder: "gpt-6-astra", accepted: true });
   });
 });

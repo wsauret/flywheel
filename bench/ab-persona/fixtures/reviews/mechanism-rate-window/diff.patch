@@ -1,0 +1,92 @@
+diff --git a/kv-window-store.ts b/kv-window-store.ts
+new file mode 100644
+index 0000000..5849801
+--- /dev/null
++++ b/kv-window-store.ts
+@@ -0,0 +1,15 @@
++import type { KeyValue, WindowStore } from "./types.ts";
++
++/** A WindowStore over the key-value service. Entries expire on their own
++ *  one window after the last save, so idle keys cost nothing. */
++export function kvWindowStore(kv: KeyValue, windowMs: number): WindowStore {
++  return {
++    async load(key) {
++      const text = await kv.get(`rate:${key}`);
++      return text === undefined ? [] : (JSON.parse(text) as number[]);
++    },
++    async save(key, stamps) {
++      await kv.set(`rate:${key}`, JSON.stringify(stamps), windowMs);
++    },
++  };
++}
+diff --git a/limiter.ts b/limiter.ts
+index cce1a6f..b332fa4 100644
+--- a/limiter.ts
++++ b/limiter.ts
+@@ -1,25 +1,42 @@
++import type { WindowStore } from "./types.ts";
++
+ /** Sliding-window rate limiter: at most `limit` requests per key in any
+- *  `windowMs` span. Windows live in memory and reset on restart. */
++ *  `windowMs` span. The load balancer routes requests by key, so one process
++ *  owns each key. A key's window is loaded from the store on its first use
++ *  after a restart and saved after every allowed request. */
+ export class SlidingWindowLimiter {
+   private readonly windows = new Map<string, number[]>();
++  private readonly hydrating = new Map<string, Promise<number[]>>();
+ 
+   constructor(
++    private readonly store: WindowStore,
+     private readonly limit: number,
+     private readonly windowMs: number,
+     private readonly clock: () => number,
+   ) {}
+ 
+   /** Take one slot for `key` if the window has room. */
+-  acquire(key: string): boolean {
+-    let stamps = this.windows.get(key);
+-    if (stamps === undefined) {
+-      stamps = [];
+-      this.windows.set(key, stamps);
+-    }
++  async acquire(key: string): Promise<boolean> {
++    const stamps = this.windows.get(key) ?? (await this.hydrate(key));
+     const now = this.clock();
+     while (stamps.length > 0 && stamps[0]! <= now - this.windowMs) stamps.shift();
+     if (stamps.length >= this.limit) return false;
+     stamps.push(now);
++    await this.store.save(key, stamps);
+     return true;
+   }
++
++  private hydrate(key: string): Promise<number[]> {
++    const pending = this.hydrating.get(key);
++    if (pending !== undefined) return pending;
++    const loading = this.store
++      .load(key)
++      .then((stamps) => {
++        this.windows.set(key, stamps);
++        return stamps;
++      })
++      .finally(() => this.hydrating.delete(key));
++    this.hydrating.set(key, loading);
++    return loading;
++  }
+ }
+diff --git a/types.ts b/types.ts
+new file mode 100644
+index 0000000..8b7980d
+--- /dev/null
++++ b/types.ts
+@@ -0,0 +1,11 @@
++/** Where request timestamps survive a restart. */
++export interface WindowStore {
++  /** The saved timestamps for `key`, oldest first, or [] when none are saved. */
++  load(key: string): Promise<number[]>;
++  save(key: string, stamps: readonly number[]): Promise<void>;
++}
++
++export interface KeyValue {
++  get(key: string): Promise<string | undefined>;
++  set(key: string, value: string, ttlMs: number): Promise<void>;
++}

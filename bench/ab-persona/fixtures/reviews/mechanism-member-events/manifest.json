@@ -1,0 +1,14 @@
+{
+  "title": "Mechanism claims: membership change notifications and ordered audit",
+  "reviewers": ["reviewer-mechanism"],
+  "defects": [
+    {
+      "id": "notification-before-commit",
+      "title": "Claim 1 is false: member.added is delivered before COMMIT, also when the commit fails",
+      "category": "mechanism",
+      "files": ["membership.ts", "bus.ts", "db.ts"],
+      "catch_criteria": "The review must reject claim 1 and show that addMember emits member.added inside the transaction callback (membership.ts:13-16), that Database.transaction issues COMMIT only after the callback resolves (db.ts:23-24), and that the bus defers delivery only to a microtask (bus.ts:16-18), which runs at the next await, before the COMMIT round trip completes; the notifier then sends to the sockets (notifier.ts:10-12). So clients are notified before the row is committed and are still notified when COMMIT throws and the transaction rolls back (db.ts:26-28). The catch must name that microtask deferral does not wait for the commit, or that the emit is inside the transaction callback while COMMIT runs afterwards. A verdict of uncertain does not count."
+    }
+  ],
+  "review_prompt_hint": "Verify the numbered behavioral claims in prompt.md one by one against the code. Scoring rules for this claim review: the review gives one verdict per claim, and a confirmed verdict is not a finding. Count as one unsupported finding each refuted or uncertain verdict on a claim that no listed defect covers, and each issue the review raises outside the numbered claims. The review assigns no severity, so rate every refuted verdict on a claim that no listed defect covers as P2."
+}
