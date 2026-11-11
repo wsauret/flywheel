@@ -83,8 +83,7 @@ function onPublicBoard(config: BoardConfig, run: BoardRun, harness: string, benc
   const model = config.models[run.model];
   const spec = config.harnesses[harness];
   if (model === undefined || !model.released || spec === undefined || !spec.released) return false;
-  const adapterName = spec.publicAdapter ?? spec.adapter;
-  const adapter = adapterName === undefined ? null : config.adapterIds[adapterName] ?? null;
+  const adapter = spec.publicAdapter ?? (spec.adapter === undefined ? null : config.adapterIds[spec.adapter] ?? null);
   const setup = run.benchmarkSetups[benchmark] ?? {};
   const pinned = config.benchmarks[benchmark]!;
   return setupProvider(config, run.model, run.provider) === model.defaultProvider

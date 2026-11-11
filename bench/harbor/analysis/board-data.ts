@@ -70,7 +70,15 @@ interface BoardBenchmark {
   readonly referenceIsolation?: string;
 }
 
-interface BoardHarness { readonly version: string; readonly publicVersion?: string; readonly adapter?: string; readonly publicAdapter?: string; readonly released: boolean }
+interface BoardHarness {
+  readonly version: string;
+  readonly publicVersion?: string;
+  /** Adapter name, identified through `BoardConfig.adapterIds`. */
+  readonly adapter?: string;
+  /** Adapter id of the trials the public board shows, as runs recorded it. */
+  readonly publicAdapter?: string;
+  readonly released: boolean;
+}
 interface BoardModel { readonly defaultProvider: string; readonly released: boolean; readonly admittedProviders: readonly string[] }
 
 export interface BoardConfig {
@@ -205,7 +213,8 @@ export async function fetchBoard(benchmark: HarborBenchmark, cache: string = BOA
     space[name] = await storeObject(cache, body);
     if (name === "harnesses") harnesses = jsonMap(jsonMap(JSON.parse(new TextDecoder().decode(body)), "harnesses.json").harnesses, "harnesses");
   }
-  const adapterNames = new Set(Object.values(harnesses).flatMap((spec) => [jsonMap(spec, "harness").adapter, jsonMap(spec, "harness").public_adapter].filter((name): name is string => typeof name === "string")));
+  // `public_adapter` is already an id as runs recorded it, often of an older build than the bundle (config.public_adapter), so only `adapter` names need a bundle.
+  const adapterNames = new Set(Object.values(harnesses).map((spec) => jsonMap(spec, "harness").adapter).filter((name): name is string => typeof name === "string"));
   const adapterIds: { [name: string]: string } = {};
   for (const name of [...adapterNames].sort()) {
     // The board identifies an adapter by its bundle's first line, newline included.

@@ -57,6 +57,13 @@ describe("public board cells", () => {
     expect(cell.rate).toBeCloseTo((2 / 3 + 1) / 2, 12);
   });
 
+  it("shows a harness's trials only through the adapter build that its public adapter id pins", () => {
+    const config: BoardConfig = { ...CONFIG, harnesses: { h1: { version: "1.0", adapter: "bridge", publicAdapter: "bridge@000000000001", released: true } }, adapterIds: { bridge: "bridge@000000000002" } };
+    const cells = (adapter: string) => publicCells({ ...inputs([fact({ id: "a1", task: "a" })]), config, runs: { "run-1": { ...RUN, harnessAdapters: { h1: adapter } } } });
+    expect(cells("bridge@000000000001").has("org/Model-1|full|high|h1")).toBe(true);
+    expect(cells("bridge@000000000002").has("org/Model-1|full|high|h1")).toBe(false);
+  });
+
   it("reports a published cell that the recomputation contradicts", () => {
     const cellOf = (rate: number) => ({ leaderboard: { "org/Model-1": { stages: { full: { efforts: { high: { harnesses: { h1: { benchmarks: { "bench-x": {
       n_trials: 2, n_scored: 2, n_pass: 1, n_infra: 0, n_tasks: 2, n_tasks_expected: 2, rate, ci: [0.09453, 0.9055], cost_usd: 0.004,
