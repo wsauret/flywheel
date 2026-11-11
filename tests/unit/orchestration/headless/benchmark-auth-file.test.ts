@@ -4,7 +4,13 @@ import { existsSync, linkSync, mkdtempSync, rmSync, symlinkSync, writeFileSync }
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
-import { captureHeadlessSnapshotConnection, type HeadlessAuthSnapshot, readHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
+import { captureHeadlessSnapshotConnection, type CapturedHeadlessSnapshot, type HeadlessAuthSnapshot, readHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
+import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js"
+import { credentialForCandidate } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
+import { QuotaExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
+import { createProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/provider-availability.js"
+import { accountLimitResetAtMs, cliFailure } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js"
+import { chain, fakeClient, served, subscriptionCandidate, textStream, throwingStream } from "../agent-runtime/llm/_provider-chain-harness.js"
 
 import { apiKey } from "../../../../src/infra/auth/auth-context.js"
 import { resolveHeadlessAuth } from "../../../../src/orchestration/headless/headless-profile-runtime.js"
@@ -61,6 +67,55 @@ describe("headless auth snapshot", () => {
     }
   })
 
+  test("each token of a token login is its own account, and a weekly usage limit of one token moves the run to the next token, also for its next request; release removes every token's engine directory", async () => {
+    const tokens = ["sk-ant-oat-first-token", "sk-ant-oat-second-token"]
+    const { directory, path } = fixture(JSON.stringify({ profile: "benchmark", credentials: {}, externalLogins: { claude_agent_sdk: tokens.map((access) => ({ access })) } }))
+    const owner = createProviderAvailability()
+    let captured: CapturedHeadlessSnapshot | undefined
+    try {
+      captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(path, PROVIDERS), directory, PROVIDERS)
+      const connection = captured.connection
+      const accounts = connection.subscriptionCredentials.get("claude_agent_sdk") ?? []
+      const configDirs = accounts.map(({ credential }) => credential.type === "external" ? credential.configDir : "")
+      expect(accounts.map(({ credential }) => credential.type === "external" && credential.token !== undefined ? Redacted.value(credential.token) : undefined).toSorted()).toEqual(tokens)
+      expect(new Set(accounts.flatMap(({ instanceId, lineageId }) => [instanceId, lineageId])).size).toBe(2)
+      expect(new Set(configDirs).size).toBe(2)
+
+      // The real availability owner and the engine's own classification of its weekly refusal decide the walk.
+      const candidates = accounts.map(({ instanceId }) => subscriptionCandidate("claude_agent_sdk", instanceId))
+      const availability = owner.forCandidates(captured.profileId, candidates)
+      const spent = candidates[0]!
+      const other = candidates[1]!
+      const weekly = "You've hit your weekly limit · resets Nov 14, 9am (America/Chicago)"
+      const resetsAtMs = accountLimitResetAtMs({ status: "rejected", rateLimitType: "seven_day", resetsAt: Math.floor(Date.now() / 1000) + 3 * 86_400 })
+      const builds: string[] = []
+      const instanceOf = (candidate: AccessProviderCandidate) => candidate.kind === "subscription" ? candidate.instanceId : ""
+      const client = chain({
+        availability,
+        candidates,
+        build: async (provider, { candidate }) => {
+          if (credentialForCandidate(connection, candidate)?.type !== "external") throw new Error("the candidate has no token login")
+          builds.push(instanceOf(candidate))
+          if (instanceOf(candidate) !== instanceOf(spent)) return fakeClient(provider, textStream(instanceOf(candidate)))
+          const refusal = cliFailure({ error: "rate_limit", text: weekly }, { isError: true, status: 429, terminalReason: undefined, text: weekly, userMessageUuid: undefined }, (reset) => availability.markQuotaExhausted(candidate, reset), resetsAtMs)
+          if (!(refusal instanceof QuotaExhaustedError)) throw new Error(`the weekly refusal is a ${refusal.name}`)
+          return fakeClient(provider, throwingStream(refusal))
+        },
+      })
+      expect(await served(client)).toBe(instanceOf(other))
+      expect(builds.splice(0)).toEqual([instanceOf(spent), instanceOf(other)])
+      expect(await served(client)).toBe(instanceOf(other))
+      expect(builds).toEqual([instanceOf(other)])
+
+      captured.release()
+      for (const configDir of configDirs) expect(existsSync(configDir)).toBe(false)
+    } finally {
+      captured?.release()
+      await owner.dispose()
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
   test("says that a missing snapshot was consumed by an earlier run", () => {
     const directory = privateStage(tmpdir())
     try {
@@ -85,9 +140,13 @@ describe("headless auth snapshot", () => {
     // An access-only run never rotates, so a snapshot (also one an older binary wrote) carries no rotating refresh token.
     ["ChatGPT refresh token", JSON.stringify({ profile: "Work", credentials: { chatgpt: [{ id: "one", identity: "person", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "a", refresh: "r", expires: 123 } }] } })],
     ["SuperGrok refresh token", JSON.stringify({ profile: "Work", credentials: { supergrok: [{ id: "one", identity: "person", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "a", refresh: "r", expires: 123 } }] } })],
-    ["token login of a provider that takes none", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { chatgpt: { access: "token" } } })],
-    ["token login of an uninstalled provider", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { no_such_provider: { access: "token" } } })],
-    ["empty token login", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { claude_agent_sdk: { access: "" } } })],
+    ["token login of a provider that takes none", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { chatgpt: [{ access: "token" }] } })],
+    ["token login of an uninstalled provider", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { no_such_provider: [{ access: "token" }] } })],
+    ["empty token login", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { claude_agent_sdk: [{ access: "" }] } })],
+    ["token login without a token", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { claude_agent_sdk: [] } })],
+    // A snapshot that an older binary wrote holds one token login object. It is a one-use transient file, so the
+    // reader refuses it with no conversion, and the remedy is a new export.
+    ["token login of one object", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { claude_agent_sdk: { access: "token" } } })],
   ])("rejects and consumes %s content", (_name, content) => {
     const { directory, path } = fixture(content)
     try {

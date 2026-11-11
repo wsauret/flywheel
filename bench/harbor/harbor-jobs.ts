@@ -190,14 +190,20 @@ const CLAUDE_TOKEN_PROVIDER = "claude_agent_sdk";
 const TOKEN_VARIABLE = "CLAUDE_CODE_OAUTH_TOKEN";
 
 /** The environment of the one export process of `snapshotCommand`. When the
- *  arm enables the Claude engine route it adds the Claude token: from the
- *  macOS keychain item `keychainItem` when that holds one, else from the
- *  launcher's own CLAUDE_CODE_OAUTH_TOKEN. Throws, naming both sources and no
- *  token, when neither holds one. No other process receives the token. */
-export async function snapshotEnvironment(providers: readonly string[], keychainItem: string, env: Record<string, string | undefined> = process.env, readKeychain: (item: string) => Promise<string | undefined> = macosKeychainSecret): Promise<Record<string, string | undefined>> {
+ *  arm enables the Claude engine route it adds the Claude tokens, one per
+ *  line, which the export makes into one account each: the token of each
+ *  macOS keychain item of `keychainItems` when every item holds one, else,
+ *  when no item holds one, the launcher's own CLAUDE_CODE_OAUTH_TOKEN. Throws,
+ *  naming the items and no token, when only some items hold a token or when
+ *  no source holds one. No other process receives the tokens. */
+export async function snapshotEnvironment(providers: readonly string[], keychainItems: readonly string[], env: Record<string, string | undefined> = process.env, readKeychain: (item: string) => Promise<string | undefined> = macosKeychainSecret): Promise<Record<string, string | undefined>> {
   if (!providers.includes(CLAUDE_TOKEN_PROVIDER)) return env;
-  const token = (await readKeychain(keychainItem)) ?? env[TOKEN_VARIABLE];
-  if (token === undefined || token.length === 0) throw new Error(`the Claude arm needs the token that \`claude setup-token\` makes: store it in the macOS keychain item ${keychainItem} or set ${TOKEN_VARIABLE}`);
+  const tokens = await Promise.all(keychainItems.map((item) => readKeychain(item)));
+  const missing = keychainItems.filter((_item, index) => tokens[index] === undefined);
+  if (missing.length === 0) return { ...env, [TOKEN_VARIABLE]: tokens.join("\n") };
+  if (missing.length < keychainItems.length) throw new Error(`the Claude arm names keychain items that hold no token: ${missing.join(", ")}; store the token that \`claude setup-token\` makes in each`);
+  const token = env[TOKEN_VARIABLE];
+  if (token === undefined || token.length === 0) throw new Error(`the Claude arm needs the token that \`claude setup-token\` makes: store it in the macOS keychain item ${keychainItems.join(", ")} or set ${TOKEN_VARIABLE}`);
   return { ...env, [TOKEN_VARIABLE]: token };
 }
 

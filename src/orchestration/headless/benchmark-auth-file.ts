@@ -1,4 +1,4 @@
-import { Redacted, Schema } from "effect"
+import { Array as Arr, Redacted, Schema } from "effect"
 import { createHash } from "node:crypto"
 import { closeSync, constants, fchmodSync, fstatSync, lstatSync, openSync, readFileSync, rmSync, type Stats, unlinkSync, writeFileSync } from "node:fs"
 import { basename, dirname, isAbsolute } from "node:path"
@@ -71,8 +71,8 @@ const SnapshotSchema = Schema.Struct({
   credentials: AccessCredentialStoreSchema,
   // Remove the absent-field compatibility path after 2027-04-15.
   modelAccess: Schema.optional(ModelAccessSchema),
-  /** The token of each token login (`ExternalTokenLogin`), by provider id. */
-  externalLogins: Schema.optional(Schema.Record(Schema.NonEmptyString, Schema.Struct({ access: Schema.NonEmptyString }))),
+  /** The tokens of each token login (`ExternalTokenLogin`), by provider id. Each token is its own account. */
+  externalLogins: Schema.optional(Schema.Record(Schema.NonEmptyString, Schema.NonEmptyArray(Schema.Struct({ access: Schema.NonEmptyString })))),
 })
 
 /** Raw credential transport for another process in the same trust domain. File privacy prevents accidental disclosure; it does not isolate credentials from the target OS user or root. */
@@ -80,8 +80,8 @@ export interface HeadlessAuthSnapshot {
   readonly profile: string
   readonly credentials: AccessCredentialStore
   readonly modelAccess?: readonly ProviderModelAccessSnapshot[]
-  /** The token of each token login, by provider id. */
-  readonly externalLogins?: ReadonlyMap<string, Redacted.Redacted<string>>
+  /** The tokens of each token login, by provider id: one or more, each its own account. */
+  readonly externalLogins?: ReadonlyMap<string, readonly Redacted.Redacted<string>[]>
 }
 
 /** How the provider `providerId` of `providers` takes a token login, or undefined when it takes none. */
@@ -235,10 +235,11 @@ function fileAdmitsOwnerOnly(metadata: Stats): boolean {
   return (metadata.mode & 0o077) === 0 && owner !== undefined && metadata.uid === owner
 }
 
-/** Access-only credentials never refresh and never persist an account choice,
- *  so the headless runtime cannot pick between two accounts of one
- *  subscription provider. The snapshot contract therefore carries one account
- *  for each such provider, and the export refuses a profile that holds more. */
+/** The snapshot contract carries one stored account for each subscription
+ *  provider, and the export refuses a profile that holds more. This is a scope
+ *  limit of stored credentials only: the headless runtime fails over between
+ *  accounts of one provider, as it does between the tokens of a token login,
+ *  which this check does not see. */
 function requireOneAccountPerSubscription(store: AuthStore | AccessCredentialStore): void {
   for (const [providerId, value] of Object.entries(store)) {
     if (Array.isArray(value) && value.length > 1) {
@@ -305,9 +306,9 @@ function decodeSnapshotContent(descriptor: number, providers: readonly AccessPro
         if (!credential || !isAccessCredentialCollection(credential) || !credential.some((instance) => instance.id === instanceId && instance.lineageId === entry.lineage)) throw new Error("access credential lineage mismatch")
       } else if (!credential || isAccessCredentialCollection(credential) || credential.lineageId !== entry.lineage) throw new Error("access credential lineage mismatch")
     }
-    const externalLogins = snapshot.externalLogins === undefined ? undefined : new Map(Object.entries(snapshot.externalLogins).map(([providerId, { access }]) => {
+    const externalLogins = snapshot.externalLogins === undefined ? undefined : new Map(Object.entries(snapshot.externalLogins).map(([providerId, logins]) => {
       if (tokenLoginOf(providers, providerId) === undefined) throw new Error("no enabled provider takes this token login")
-      return [providerId, Redacted.make(access)]
+      return [providerId, logins.map(({ access }) => Redacted.make(access))]
     }))
     return {
       profile: requireAuthProfileName(snapshot.profile), credentials: snapshot.credentials,
@@ -369,20 +370,25 @@ function lifetimeRefusal(token: OAuthToken, minimumMs: number, reason: string): 
  *  credential provider id, keeps only those providers' credentials and model access, and limits the lifetime
  *  check and its refresh to them; it refuses an id that no installed provider declares or that the profile lacks.
  *  A named provider that takes a token login (`ExternalTokenLogin`) needs no credential in the profile: the export
- *  reads its token from `environment` under the provider's host variable, and refuses when that is unset or empty. */
+ *  reads its tokens from `environment` under the provider's host variable, one token per line, because a token holds
+ *  no line break. Each token is its own account of the run. The export refuses a variable that is unset or empty,
+ *  that has an empty line, or that names one token twice, because one token is one account. */
 export async function writeHeadlessAuthSnapshot(options: { readonly userDataRoot: string; readonly projectRoot: string; readonly selector: string; readonly output: string; readonly resolveKey: KeyResolver; readonly providers: readonly AccessProviderDefinition[]; readonly minValidSeconds?: number; readonly asProfile?: string; readonly providerIds?: readonly string[]; readonly environment?: { readonly [name: string]: string | undefined } }): Promise<string> {
   requireSnapshotStage(options.output)
   if (options.asProfile !== undefined) requireAuthProfileName(options.asProfile)
   const installed = installedCredentialProviderIds()
   const unknown = options.providerIds?.find((providerId) => !installed.includes(providerId))
   if (unknown !== undefined) throw new SnapshotRefusal(`Headless auth snapshot refused: no installed provider declares the credential provider id ${unknown}.`)
-  const tokenLogins = new Map<string, Redacted.Redacted<string>>()
+  const tokenLogins = new Map<string, Arr.NonEmptyReadonlyArray<Redacted.Redacted<string>>>()
   for (const providerId of options.providerIds ?? []) {
     const variable = tokenLoginOf(options.providers, providerId)?.hostVariable
     if (variable === undefined) continue
-    const token = options.environment?.[variable]
-    if (token === undefined || token.length === 0) throw new SnapshotRefusal(`Headless auth snapshot refused: ${providerId} takes its login token from ${variable}, which is unset or empty.`)
-    tokenLogins.set(providerId, Redacted.make(token))
+    const value = options.environment?.[variable]
+    if (value === undefined || value.length === 0) throw new SnapshotRefusal(`Headless auth snapshot refused: ${providerId} takes its login token from ${variable}, which is unset or empty.`)
+    const tokens = value.split("\n")
+    if (!Arr.isReadonlyArrayNonEmpty(tokens) || tokens.includes("")) throw new SnapshotRefusal(`Headless auth snapshot refused: ${variable} has an empty line. Give one ${providerId} token on each line.`)
+    if (new Set(tokens).size !== tokens.length) throw new SnapshotRefusal(`Headless auth snapshot refused: ${variable} names one ${providerId} token twice. Give each token once, because each token is its own account.`)
+    tokenLogins.set(providerId, Arr.map(tokens, (token) => Redacted.make(token)))
   }
   // A `!command` key helper can run for seconds, and the capture judges token lifetimes. So the helpers run between
   // captures, and the export serializes the latest capture whose keys are all resolved, with no wait after its
@@ -426,7 +432,7 @@ export async function writeHeadlessAuthSnapshot(options: { readonly userDataRoot
     }
     const content = JSON.stringify({
       profile, credentials: accessCredentialStore(credentials, captured.credentialLineages), modelAccess: captured.modelAccess,
-      ...(tokenLogins.size === 0 ? {} : { externalLogins: Object.fromEntries([...tokenLogins].map(([providerId, token]) => [providerId, { access: Redacted.value(token) }])) }),
+      ...(tokenLogins.size === 0 ? {} : { externalLogins: Object.fromEntries([...tokenLogins].map(([providerId, tokens]) => [providerId, Arr.map(tokens, (token) => ({ access: Redacted.value(token) }))])) }),
     } satisfies typeof SnapshotSchema.Encoded)
     if (Buffer.byteLength(content) === 0 || Buffer.byteLength(content) > MAX_BYTES) throw new Error("snapshot exceeds size limit")
     const descriptor = openSync(options.output, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
@@ -535,21 +541,24 @@ export async function captureHeadlessSnapshotConnection(snapshot: HeadlessAuthSn
   const credentialLineages = Object.fromEntries(Object.entries(snapshot.credentials).flatMap(([providerId, value]) => isAccessCredentialCollection(value) ? [] : [[providerId, value.lineageId]]))
   const auth = await resolveAuthContextFromStore({ store, resolveKey: async (value) => Redacted.make(value), credentialLineages })
   const subscriptionCredentials = new Map(captureSubscriptionCredentials(providers, { kind: "decoded", store, authDir: authDirectory }))
-  // A token login is the provider's one account in this run, in place of any login that the program keeps for the
-  // profile. The token's fingerprint names it, so the token itself names nothing outside the program's environment.
+  // The tokens of a token login are the provider's accounts in this run, in place of any login that the program keeps
+  // for the profile, and the failover walk moves between them as it does between any accounts of one provider. Each
+  // token's fingerprint names its account, so the token itself names nothing outside the program's environment.
   const tokenDirectories: string[] = []
   for (const definition of providers) {
-    const token = snapshot.externalLogins?.get(definition.id)
-    if (token === undefined || definition.auth.kind !== "external" || definition.auth.tokenLogin === undefined) continue
-    const fingerprint = tokenFingerprint(token)
+    const tokens = snapshot.externalLogins?.get(definition.id)
+    if (tokens === undefined || definition.auth.kind !== "external" || definition.auth.tokenLogin === undefined) continue
     const login = definition.auth.tokenLogin
-    const configDir = login.configDir(fingerprint)
-    tokenDirectories.push(configDir)
-    subscriptionCredentials.set(definition.id, [Object.freeze({
-      instanceId: fingerprint, lineageId: fingerprint, identity: login.identity,
-      credential: Object.freeze({ type: "external", configDir, token }),
-    })])
-    log.info("Headless auth snapshot serves a token login", { providerId: definition.id, fingerprint })
+    subscriptionCredentials.set(definition.id, tokens.map((token) => {
+      const fingerprint = tokenFingerprint(token)
+      const configDir = login.configDir(fingerprint)
+      tokenDirectories.push(configDir)
+      log.info("Headless auth snapshot serves a token login", { providerId: definition.id, fingerprint })
+      return Object.freeze({
+        instanceId: fingerprint, lineageId: fingerprint, identity: login.identity,
+        credential: Object.freeze({ type: "external" as const, configDir, token }),
+      })
+    }))
   }
   const connection = captureProviderConnection({
     profileId,

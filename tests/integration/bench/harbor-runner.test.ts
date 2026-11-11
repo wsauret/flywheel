@@ -167,7 +167,7 @@ describe("Harbor launch boundary", () => {
     const exporter = await executable("fake-export", `#!/bin/sh\nwhile [ "$1" != --output ]; do shift; done\nprintf 'snapshot-sentinel' > "$2"\n`);
     await writeFile(join(root, "manifest.json"), JSON.stringify({ expected_trials: 1 }));
     await writeFile(plan, JSON.stringify({
-      harbor_command: [harbor], snapshot_command: [exporter], snapshot_providers: ["chatgpt"], claude_token_keychain_item: "unused",
+      harbor_command: [harbor], snapshot_command: [exporter], snapshot_providers: ["chatgpt"], claude_token_keychain_items: ["unused"],
       manifest: join(root, "manifest.json"), trials_directory: join(root, "trials"),
     }));
     const child = Bun.spawn([process.execPath, resolve(process.cwd(), "bench/harbor/run-harbor.ts"), "run-local", plan], {
@@ -216,7 +216,7 @@ esac
     await writeFile(manifest, JSON.stringify({ expected_trials: 1, state: "prepared", outcome: null, hosted_job_id: null }));
     await writeFile(join(directory, "preparation-plan.json"), JSON.stringify({
       launch_command: [join(bin, "harbor"), "run", "--launch", "-c", "generated.json", "--yes"], harbor_command: [join(bin, "harbor"), "run", "-c", "generated.json"],
-      snapshot_command: [join(bin, "fake-export")], snapshot_providers: ["chatgpt"], claude_token_keychain_item: "unused",
+      snapshot_command: [join(bin, "fake-export")], snapshot_providers: ["chatgpt"], claude_token_keychain_items: ["unused"],
       manifest, trials_directory: join(directory, "hub", "job"), download_directory: join(directory, "hub"), worst_case_seconds: 60, dry_run: false,
     }));
     const launcher = async (...args: string[]) => {

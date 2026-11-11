@@ -192,6 +192,19 @@ describe("headless auth snapshot export", () => {
     }
   })
 
+  test("a provider that takes a token login exports each token of its host variable, one per line, with no login in the profile", async () => {
+    const root = mkdtempSync(join(tmpdir(), "flywheel-headless-auth-tokens-"))
+    const directories = testDirectories(root)
+    await new AuthProfileStore(directories.userDataRoot).create("tokens", "Tokens").then((access) => { access.close() })
+    const output = join(privateStage(root), "auth.json")
+    try {
+      await writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: "tokens", output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS, providerIds: ["claude_agent_sdk"], environment: { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-first\nsk-ant-oat-second" } })
+      expect(JSON.parse(readFileSync(output, "utf8")).externalLogins).toEqual({ claude_agent_sdk: [{ access: "sk-ant-oat-first" }, { access: "sk-ant-oat-second" }] })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test("a provider that takes a token login exports the token from its host variable, with no login in the profile, and a run serves it as the provider's one account whose token only its credential holds, never a tool command's environment, and removes its engine directory on release", async () => {
     const root = mkdtempSync(join(tmpdir(), "flywheel-headless-auth-token-"))
     const directories = testDirectories(root)
@@ -203,7 +216,7 @@ describe("headless auth snapshot export", () => {
     let captured: CapturedHeadlessSnapshot | undefined
     try {
       await writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: "token", output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS, providerIds: ["claude_agent_sdk"], environment: { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-token" } })
-      expect(JSON.parse(readFileSync(output, "utf8"))).toEqual({ profile: "token", credentials: {}, modelAccess: [], externalLogins: { claude_agent_sdk: { access: "sk-ant-oat-token" } } })
+      expect(JSON.parse(readFileSync(output, "utf8"))).toEqual({ profile: "token", credentials: {}, modelAccess: [], externalLogins: { claude_agent_sdk: [{ access: "sk-ant-oat-token" }] } })
       captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
       const accounts = captured.connection.subscriptionCredentials.get("claude_agent_sdk") ?? []
       expect(accounts.map(({ instanceId, lineageId, identity }) => ({ instanceId, lineageId, identity }))).toEqual([{ instanceId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/), lineageId: accounts[0]?.instanceId, identity: `${LOGIN_PROGRAM_LABEL} token` }])
@@ -224,15 +237,22 @@ describe("headless auth snapshot export", () => {
   })
 
   test.each([
-    ["unset", {}],
-    ["empty", { CLAUDE_CODE_OAUTH_TOKEN: "" }],
-  ])("refuses to export a token login whose host variable is %s, naming the variable", async (name, environment) => {
+    ["unset", {}, "claude_agent_sdk takes its login token from CLAUDE_CODE_OAUTH_TOKEN, which is unset or empty"],
+    ["empty", { CLAUDE_CODE_OAUTH_TOKEN: "" }, "claude_agent_sdk takes its login token from CLAUDE_CODE_OAUTH_TOKEN, which is unset or empty"],
+    ["with an empty line", { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-first\n" }, "CLAUDE_CODE_OAUTH_TOKEN has an empty line"],
+    // One token is one account, and its fingerprint names the account, so a repeated token would name one account twice.
+    ["with one token twice", { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-first\nsk-ant-oat-first" }, "CLAUDE_CODE_OAUTH_TOKEN names one claude_agent_sdk token twice"],
+  ])("refuses to export a token login whose host variable is %s, naming the variable and no token", async (name, environment, refusal) => {
     const root = mkdtempSync(join(tmpdir(), "flywheel-headless-auth-token-refusal-"))
     const directories = testDirectories(root)
-    await new AuthProfileStore(directories.userDataRoot).create(`token-${name}`, `Token ${name}`).then((access) => { access.close() })
+    const selector = `token-${name.replaceAll(" ", "-")}`
+    await new AuthProfileStore(directories.userDataRoot).create(selector, selector).then((access) => { access.close() })
     const output = join(privateStage(root), "auth.json")
     try {
-      await expect(writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: `token-${name}`, output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS, providerIds: ["claude_agent_sdk"], environment })).rejects.toThrow("claude_agent_sdk takes its login token from CLAUDE_CODE_OAUTH_TOKEN, which is unset or empty")
+      const error = await writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector, output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS, providerIds: ["claude_agent_sdk"], environment }).then(() => undefined, (failure: unknown) => failure)
+      const message = error instanceof Error ? error.message : ""
+      expect(message).toContain(refusal)
+      expect(message).not.toContain("sk-ant-oat-first")
       expect(existsSync(output)).toBe(false)
     } finally {
       rmSync(root, { recursive: true, force: true })

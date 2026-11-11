@@ -242,15 +242,16 @@ interface AccessProviderExternalLogin {
    *  so removing the directory alone would leave a token that no surface can show or end. Rejects after it tried
    *  every login when one of them did not end. */
   readonly logoutProfile: (authDir: string, ports: { readonly launcher: LauncherScope }) => Promise<void>;
-  /** A login that the person made with the program itself as one long-lived token, for a headless run on a machine
-   *  that has no login of the program. A headless auth snapshot carries the token, and the run gives it only to the
-   *  program. Absent, a snapshot carries nothing for the provider. */
+  /** A login that the person made with the program itself as a long-lived token, for a headless run on a machine
+   *  that has no login of the program. A headless auth snapshot carries one or more such tokens, each its own
+   *  account of the run, and the run gives each only to the program. Absent, a snapshot carries nothing for the
+   *  provider. */
   readonly tokenLogin?: ExternalTokenLogin;
 }
 
 /** How a provider takes a token login (`AccessProviderExternalLogin.tokenLogin`). */
 export interface ExternalTokenLogin {
-  /** The host environment variable from which `flywheel headless snapshot-auth` reads the token. */
+  /** The host environment variable from which `flywheel headless snapshot-auth` reads the tokens, one per line. */
   readonly hostVariable: string;
   /** The account as a person reads it. The program states no account for a token. */
   readonly identity: string;

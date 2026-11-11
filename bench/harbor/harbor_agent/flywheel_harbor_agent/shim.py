@@ -148,7 +148,7 @@ def snapshot_credential_values(snapshot: dict) -> dict[str, str]:
     The snapshot reader of the runtime refuses every field it does not know,
     so these are all of its secrets: each credential's API `key` or OAuth
     `access` and `refresh` token, singleton or in a subscription collection,
-    and each token login's `access`. Lineage ids, account identities, and
+    and the `access` of every token of each token login. Lineage ids, account identities, and
     labels name the account, not its access, and the store records them.
     """
     credentials = [
@@ -162,7 +162,11 @@ def snapshot_credential_values(snapshot: dict) -> dict[str, str]:
         for name in ("key", "access", "refresh")
         if name in credential
     }
-    found.update({login["access"]: "external_login.access" for login in snapshot.get("externalLogins", {}).values()})
+    found.update({
+        login["access"]: "external_login.access"
+        for logins in snapshot.get("externalLogins", {}).values()
+        for login in logins
+    })
     return {value: kind for value, kind in found.items() if len(value) >= _MIN_CREDENTIAL_LENGTH}
 
 

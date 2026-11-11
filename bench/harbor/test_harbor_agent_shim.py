@@ -108,12 +108,13 @@ class TakeSnapshotTest(unittest.TestCase):
         snapshot = {
             "profile": "benchmark",
             "credentials": {"openai": [{"id": "instance-0001", "identity": "person@example.com", "lineageId": "22222222-2222-4222-8222-222222222222", "credential": {"type": "oauth", "access": "access-" + "a" * 30, "refresh": "refresh-" + "r" * 30, "expires": 1, "accountId": "account-identity-0001"}}]},
-            "externalLogins": {"claude": {"access": "token-" + "t" * 30}},
+            "externalLogins": {"claude": [{"access": "token-" + "t" * 30}, {"access": "token-" + "u" * 30}]},
         }
         self.assertEqual(shim.snapshot_credential_values(snapshot), {
             "access-" + "a" * 30: "oauth.access",
             "refresh-" + "r" * 30: "oauth.refresh",
             "token-" + "t" * 30: "external_login.access",
+            "token-" + "u" * 30: "external_login.access",
         })
 
     def test_refuses_a_missing_snapshot(self) -> None:

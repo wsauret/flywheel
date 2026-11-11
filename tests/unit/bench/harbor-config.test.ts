@@ -34,7 +34,7 @@ describe("Harbor config resolution", () => {
     expect(config.timeoutMultipliers).toEqual({ timeout_multiplier: 1, agent_setup_timeout_multiplier: 3, environment_build_timeout_multiplier: 3 });
     expect(config.warning).toBeUndefined();
     expect(config.resourceOverrides).toEqual({});
-    expect(config.agentPackage).toEqual({ agentRepository: "owner/agent", claudeTokenKeychainItem: "flywheel-claude-oauth-token" });
+    expect(config.agentPackage).toEqual({ agentRepository: "owner/agent", claudeTokenKeychainItems: ["flywheel-claude-oauth-token"] });
     expect(config.hosted).toBeUndefined();
     expect(config.round).toBeUndefined();
     expect(config.profileSha256).toMatch(/^[a-f0-9]{64}$/);
@@ -129,9 +129,10 @@ describe("Harbor config resolution", () => {
     const base = ["--benchmark", "terminal-bench-2.1", "--arm", "bench/harbor/configs/tb-mini-openai.toml", "--auth-profile", "Fixture", ...ONE_TASK];
     expect((await resolveArgs(base, { FLYWHEEL_HARBOR_AGENT_REPO: "owner/agent" })).agentPackage.agentRepository).toBe("owner/agent");
     await expect(resolveArgs(base)).rejects.toThrow("every run requires --agent-repo");
-    const hosted = await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted", "--organization", "org", "--claude-token-keychain-item", "other-item"]);
+    const hosted = await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted", "--organization", "org", "--claude-token-keychain-item", "other-item", "--claude-token-keychain-item", "second-item"]);
     expect(hosted.hosted).toEqual({ organization: "org" });
-    expect(hosted.agentPackage.claudeTokenKeychainItem).toBe("other-item");
+    // Each named item is one token and one Claude account, in the order named; a named item replaces the default.
+    expect(hosted.agentPackage.claudeTokenKeychainItems).toEqual(["other-item", "second-item"]);
     expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted"], { FLYWHEEL_HARBOR_HUB_ORG: "env-org" })).hosted).toEqual({ organization: "env-org" });
     expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted"])).hosted).toEqual({});
     await expect(resolveArgs([...launchArgs, ...ONE_TASK, "--hosted", "--prebuild"])).rejects.toThrow("--prebuild");

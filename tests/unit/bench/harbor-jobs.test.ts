@@ -66,7 +66,7 @@ describe("Harbor jobs", () => {
     expect(plan.snapshot_command).toEqual(expect.arrayContaining(["--auth-profile", "Fixture", "--as-profile", "benchmark", "--provider", "chatgpt"]));
     expect(plan.snapshot_command.filter((argument: string) => argument === "--provider")).toHaveLength(1);
     expect(plan.trials_directory).toBe(join(result.artifactDirectory, "hub", "flywheel-terminal-bench-2.1-gpt-6.1-terra"));
-    expect(plan).toMatchObject({ snapshot_providers: ["chatgpt"], claude_token_keychain_item: "flywheel-claude-oauth-token" });
+    expect(plan).toMatchObject({ snapshot_providers: ["chatgpt"], claude_token_keychain_items: ["flywheel-claude-oauth-token"] });
   });
 
   test("a local run publishes the same package and names it with the same agent identity, over Docker with the snapshot overlay", async () => {
@@ -88,7 +88,7 @@ describe("Harbor jobs", () => {
     expect(generated.job_secrets).toBeUndefined();
     for (const field of ["datasets", "n_attempts", "n_concurrent_trials", "timeout_multiplier", "agent_setup_timeout_multiplier", "environment_build_timeout_multiplier"]) expect(generated[field]).toEqual(hostedGenerated[field]);
     expect(manifest).toMatchObject({ execution_mode: "local", exact_command: ["harbor", "run", "-c", local.generatedConfig] });
-    const shared = ["source_commit", "agent_package", "snapshot_command", "snapshot_providers", "claude_token_keychain_item", "worst_case_seconds"];
+    const shared = ["source_commit", "agent_package", "snapshot_command", "snapshot_providers", "claude_token_keychain_items", "worst_case_seconds"];
     for (const field of shared) expect(plan[field]).toEqual(hostedPlan[field]);
     const taskCache = resolve(process.env.HOME ?? "", ".cache/harbor/tasks/packages/terminal-bench");
     // Each run's Harbor job lies inside its own artifact directory, so a second run of one setup never meets the first's job.
@@ -143,13 +143,17 @@ describe("Harbor jobs", () => {
     expect(builds).toEqual([]);
   });
 
-  test("the export of a Claude arm alone gets the Claude token, from the keychain item before the launcher's own variable, and refuses without either", async () => {
-    const keychain = (held: string | undefined) => async (item: string) => item === "item" ? held : undefined;
+  test("the export of a Claude arm alone gets the Claude tokens, one per line from the keychain items before the launcher's own variable, and refuses without either or with a named item that holds none", async () => {
+    const keychain = (held: { readonly [item: string]: string }) => async (item: string) => held[item];
     const launcher = { PATH: "/usr/bin", CLAUDE_CODE_OAUTH_TOKEN: "launcher-token" };
-    expect(await snapshotEnvironment(["chatgpt"], "item", { PATH: "/usr/bin" }, keychain("keychain-token"))).toEqual({ PATH: "/usr/bin" });
-    expect(await snapshotEnvironment(["claude_agent_sdk"], "item", launcher, keychain("keychain-token"))).toEqual({ PATH: "/usr/bin", CLAUDE_CODE_OAUTH_TOKEN: "keychain-token" });
-    expect(await snapshotEnvironment(["claude_agent_sdk"], "item", launcher, keychain(undefined))).toEqual(launcher);
-    await expect(snapshotEnvironment(["claude_agent_sdk"], "item", { PATH: "/usr/bin" }, keychain(undefined))).rejects.toThrow("store it in the macOS keychain item item or set CLAUDE_CODE_OAUTH_TOKEN");
+    expect(await snapshotEnvironment(["chatgpt"], ["item"], { PATH: "/usr/bin" }, keychain({ item: "keychain-token" }))).toEqual({ PATH: "/usr/bin" });
+    expect(await snapshotEnvironment(["claude_agent_sdk"], ["item"], launcher, keychain({ item: "keychain-token" }))).toEqual({ PATH: "/usr/bin", CLAUDE_CODE_OAUTH_TOKEN: "keychain-token" });
+    expect(await snapshotEnvironment(["claude_agent_sdk"], ["item", "second"], launcher, keychain({ item: "first-token", second: "second-token" }))).toEqual({ PATH: "/usr/bin", CLAUDE_CODE_OAUTH_TOKEN: "first-token\nsecond-token" });
+    expect(await snapshotEnvironment(["claude_agent_sdk"], ["item"], launcher, keychain({}))).toEqual(launcher);
+    await expect(snapshotEnvironment(["claude_agent_sdk"], ["item"], { PATH: "/usr/bin" }, keychain({}))).rejects.toThrow("store it in the macOS keychain item item or set CLAUDE_CODE_OAUTH_TOKEN");
+    const partial = await snapshotEnvironment(["claude_agent_sdk"], ["item", "second"], launcher, keychain({ item: "first-token" })).then(() => "", (error: unknown) => error instanceof Error ? error.message : "");
+    expect(partial).toContain("keychain items that hold no token: second");
+    expect(partial).not.toContain("first-token");
   });
 
   test("every dry run refuses a task name that Harbor's dataset resolution does not match", async () => {

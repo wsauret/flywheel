@@ -97,9 +97,9 @@ interface PreparationPlan {
   source_commit: string;
   agent_package: AgentPackagePublication;
   snapshot_command: string[];
-  /** The credential providers that the snapshot carries, and the keychain item of a Claude arm's token. */
+  /** The credential providers that the snapshot carries, and the keychain items of a Claude arm's tokens. */
   snapshot_providers: readonly string[];
-  claude_token_keychain_item: string;
+  claude_token_keychain_items: readonly string[];
   worst_case_seconds: number;
   trials_directory: string;
   // Local Docker execution.
@@ -319,7 +319,7 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
       agent_package: publication,
       snapshot_command: snapshotCommand(config, worstCaseSeconds),
       snapshot_providers: config.flywheelConfig.credentialProviders,
-      claude_token_keychain_item: config.agentPackage.claudeTokenKeychainItem,
+      claude_token_keychain_items: config.agentPackage.claudeTokenKeychainItems,
       worst_case_seconds: worstCaseSeconds,
       ...execution.plan,
     };
@@ -480,8 +480,7 @@ async function exportSnapshot(plan: JsonMap): Promise<string> {
   const stage = await mkdtemp(join(tmpdir(), "flywheel-auth-bundle-"));
   try {
     await chmod(stage, 0o700);
-    if (typeof plan.claude_token_keychain_item !== "string") throw new Error("preparation plan lacks the Claude token keychain item");
-    const exportEnvironment = await snapshotEnvironment(stringArray(plan.snapshot_providers, "plan snapshot_providers"), plan.claude_token_keychain_item);
+    const exportEnvironment = await snapshotEnvironment(stringArray(plan.snapshot_providers, "plan snapshot_providers"), stringArray(plan.claude_token_keychain_items, "plan claude_token_keychain_items"));
     await command([...stringArray(plan.snapshot_command, "plan snapshot_command"), "--output", join(stage, "auth.json")], REPOSITORY_ROOT, exportEnvironment);
     return await readFile(join(stage, "auth.json"), "utf8");
   } finally {

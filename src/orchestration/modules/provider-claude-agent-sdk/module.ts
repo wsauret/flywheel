@@ -92,7 +92,8 @@ function providerDefinition(seams: ClaudeAgentSdkSeams) {
       logout: (authDir, accountId, ports) => logoutClaudeAccount(claudeProfile(authDir, seams), accountId, ports),
       logoutProfile: (authDir, ports) => logoutProfileClaudeAccounts(claudeProfile(authDir, seams), ports),
       // A headless run on a machine with no Claude login, such as a benchmark sandbox, runs on a token that the person
-      // made with `claude setup-token` (PI-MODEL-082). The engine's state for the token goes into a new directory in
+      // made with `claude setup-token`, or on several such tokens, each its own account (PI-MODEL-082). The engine's
+      // state for each token goes into a new directory in
       // the engine's private temporary directory, never into an auth profile.
       tokenLogin: {
         hostVariable: TOKEN_LOGIN_VARIABLE,

@@ -18,7 +18,7 @@ const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
  *  credentials are exported under this id, so the config's `[profiles.<id>]`
  *  tables name no host profile. */
 export const TRIAL_AUTH_PROFILE = "benchmark";
-/** The macOS keychain item (service name) that holds a Claude arm's token by default. */
+/** The macOS keychain item (service name) that holds a Claude arm's token when no `--claude-token-keychain-item` names one. */
 const DEFAULT_CLAUDE_TOKEN_KEYCHAIN_ITEM = "flywheel-claude-oauth-token";
 const DEFAULT_CONCURRENCY = 4;
 
@@ -112,8 +112,9 @@ interface HarborFlywheelConfig {
  *  The repository has no default: each run names it. */
 interface HarborAgentPackage {
   agentRepository: string;
-  /** The macOS keychain item from which the snapshot export of a Claude arm reads the Claude token. */
-  claudeTokenKeychainItem: string;
+  /** The macOS keychain items from which the snapshot export of a Claude arm reads its Claude tokens, one token
+   *  each. Each token is its own Claude account, and a trial moves to the next account at a usage limit. */
+  claudeTokenKeychainItems: readonly string[];
 }
 
 /** What only a Harbor Hub run adds. */
@@ -210,9 +211,10 @@ function refuseFlywheelConfig(path: string, reason: string): never {
   throw new Error(`--arm ${path} is not a valid Flywheel config: ${reason}`);
 }
 
-function harborAgentPackage(agentRepository: string | undefined, claudeTokenKeychainItem: string): HarborAgentPackage {
+function harborAgentPackage(agentRepository: string | undefined, claudeTokenKeychainItems: readonly string[]): HarborAgentPackage {
   if (agentRepository === undefined || !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(agentRepository)) throw new Error("every run requires --agent-repo <owner/repo> or FLYWHEEL_HARBOR_AGENT_REPO: Harbor fetches the agent package from it");
-  return { agentRepository, claudeTokenKeychainItem: requiredName(claudeTokenKeychainItem, "--claude-token-keychain-item") };
+  const items = claudeTokenKeychainItems.length === 0 ? [DEFAULT_CLAUDE_TOKEN_KEYCHAIN_ITEM] : claudeTokenKeychainItems.map((item) => requiredName(item, "--claude-token-keychain-item"));
+  return { agentRepository, claudeTokenKeychainItems: items };
 }
 
 /** Validates the Hub selection. Hub builds its own sandboxes, so a local
@@ -302,7 +304,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   const env = options.env ?? process.env;
   let cliAgentRepository = env.FLYWHEEL_HARBOR_AGENT_REPO;
   let cliOrganization = env.FLYWHEEL_HARBOR_HUB_ORG;
-  let claudeTokenKeychainItem = DEFAULT_CLAUDE_TOKEN_KEYCHAIN_ITEM;
+  const claudeTokenKeychainItems: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
@@ -335,7 +337,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
       case "--hosted": hosted = true; break;
       case "--agent-repo": cliAgentRepository = next(args, index); index += 1; break;
       case "--organization": cliOrganization = next(args, index); index += 1; break;
-      case "--claude-token-keychain-item": claudeTokenKeychainItem = next(args, index); index += 1; break;
+      case "--claude-token-keychain-item": claudeTokenKeychainItems.push(next(args, index)); index += 1; break;
       default: throw new Error(`unsupported Harbor launcher option: ${flag}`);
     }
   }
@@ -344,7 +346,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   const benchmark = harborBenchmark(benchmarkId);
   if (armPath === undefined) throw new Error("every run requires --arm <Flywheel config>: the agent package ships the arm config");
   const { config: flywheelConfig, model } = await readFlywheelConfig(armPath);
-  const agentPackage = harborAgentPackage(cliAgentRepository, claudeTokenKeychainItem);
+  const agentPackage = harborAgentPackage(cliAgentRepository, claudeTokenKeychainItems);
   const hosting = hosted ? harborHosting(cliOrganization, prebuild) : undefined;
   const authProfile = requiredName(cliAuthProfile, "--auth-profile");
   const { taskNames, datasetFilter } = await selectedTasks(benchmark, split, taskList, options.listTasks ?? harborDatasetTasks);
