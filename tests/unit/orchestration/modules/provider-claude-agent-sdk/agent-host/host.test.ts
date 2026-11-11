@@ -64,7 +64,7 @@ function fakeEngineHost(options: { readonly dispatcherStepDeadlineMs?: number; r
     values: hostValues({ tools: [], wireModelId: "claude-opus-5-5", contextLimit: 200_000, thinking: { type: "adaptive" }, extraBody: {}, eagerInputStreaming: true, promptCaching: true, effort: "high" }),
     markQuotaExhausted: (resetsAtMs) => {
       quotaMarks.push(resetsAtMs);
-      return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000 }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
+      return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
     },
     recordModelRefusal: () => {},
     extraUsage: "allow", reportsExtraUsage: true, onExtraUsageStop: (stop) => { usageStops.push(stop); }, recordUsage: () => {},

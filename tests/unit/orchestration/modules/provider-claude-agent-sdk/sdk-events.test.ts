@@ -11,7 +11,7 @@ import type { WireFailure } from "../../../../../src/orchestration/modules/provi
 import { assistantError, cliInit, cliOnlyMessage, ENVELOPE, event, rateLimitReport, turnError, turnResult, type CliRateLimitInfo } from "./_bridge-harness.js";
 
 const turn = (overrides: Partial<CliTurnResult> = {}): CliTurnResult => ({ isError: true, status: null, terminalReason: undefined, text: "", userMessageUuid: undefined, ...overrides });
-const OBSERVATION: QuotaExhaustionObservation = { exhaustion: { exhaustedAtMs: 1, resetsAtMs: 2_000 }, newlyExhausted: true, reportedResetAtMs: 2_000 };
+const OBSERVATION: QuotaExhaustionObservation = { exhaustion: { exhaustedAtMs: 1, resetsAtMs: 2_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: 2_000 };
 /** The reset that each quota mark of `fail` named. */
 const marks: (number | undefined)[] = [];
 const fail = (report: CliErrorReport | undefined, result: CliTurnResult | undefined, wire?: WireFailure) => cliFailure(report, result, (resetsAtMs) => {
