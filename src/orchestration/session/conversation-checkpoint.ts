@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
+import { CHECKPOINT_SECTIONS, CHECKPOINT_SECTION_TITLES as TITLES, type CheckpointSection } from "../../infra/checkpoint-sections.js";
 import { contentEvidence } from "../../infra/content-evidence.js";
 import { durableOwnerAggregate, type DurableOwner } from "../../infra/durable-owner.js";
 import { createEventProjection, parseProjectionFact } from "../../infra/event-projection.js";
@@ -9,8 +10,6 @@ import { ConversationCheckpointSchema, parseConversationCheckpointFact, parseSes
 import type { SessionFactWriter } from "./session-fact-writer.js";
 
 export const CHECKPOINT_LIMIT_BYTES = 24 * 1024;
-export const CHECKPOINT_SECTIONS = ["designIntent", "decisions", "currentState", "openQuestions", "nextStep", "relevantSkills", "references", "workingNotes"] as const;
-type CheckpointSection = typeof CHECKPOINT_SECTIONS[number];
 
 /** A design intent as a writer may send it: `{text, approved}`, `{text}`, or the text alone. Only an explicit
  *  `approved: true` approves it; the other forms save an unapproved draft, which no child inherits (PI-AGENT-092). */
@@ -87,7 +86,7 @@ export async function readInheritedCheckpointIntent(reader: AsyncEventReadSurfac
 }
 
 function renderDecisions(decisions: readonly CheckpointDecision[]): string {
-  return `# Decisions\n\n${decisions.map((decision) => `## ${decision.date}\n\n${decision.words}\n\nReplaces: ${decision.replaces ?? "None"}`).join("\n\n")}`;
+  return `# ${TITLES.decisions}\n\n${decisions.map((decision) => `## ${decision.date}\n\n${decision.words}\n\nReplaces: ${decision.replaces ?? "None"}`).join("\n\n")}`;
 }
 
 /** Renders all fixed sections for a reader with the capabilities `has`. An empty Relevant skills section renders only
@@ -95,18 +94,18 @@ function renderDecisions(decisions: readonly CheckpointDecision[]): string {
  *  note. */
 export function renderConversationCheckpoint(checkpoint: ConversationCheckpoint, has: CapabilityCheck): string {
   const prefix = [
-    `# Design intent (${checkpoint.designIntent.approved ? "approved" : "draft"})\n\n${checkpoint.designIntent.text}`,
+    `# ${TITLES.designIntent} (${checkpoint.designIntent.approved ? "approved" : "draft"})\n\n${checkpoint.designIntent.text}`,
     renderDecisions(checkpoint.decisions),
-    `# Current state\n\n${checkpoint.currentState}`,
-    `# Open questions\n\n${checkpoint.openQuestions}`,
-    `# Next step\n\n${checkpoint.nextStep}`,
-    ...(has("skill") || checkpoint.relevantSkills.length > 0 ? [`# Relevant skills\n\n${checkpoint.relevantSkills.map((skill) => `- ${skill.id}: ${skill.reason}`).join("\n")}`] : []),
-    `# References\n\n${checkpoint.references.map((reference) => `- ${reference}`).join("\n")}`,
-    "# Working notes",
+    `# ${TITLES.currentState}\n\n${checkpoint.currentState}`,
+    `# ${TITLES.openQuestions}\n\n${checkpoint.openQuestions}`,
+    `# ${TITLES.nextStep}\n\n${checkpoint.nextStep}`,
+    ...(has("skill") || checkpoint.relevantSkills.length > 0 ? [`# ${TITLES.relevantSkills}\n\n${checkpoint.relevantSkills.map((skill) => `- ${skill.id}: ${skill.reason}`).join("\n")}`] : []),
+    `# ${TITLES.references}\n\n${checkpoint.references.map((reference) => `- ${reference}`).join("\n")}`,
+    `# ${TITLES.workingNotes}`,
   ].join("\n\n");
   const content = `${prefix}\n\n${checkpoint.workingNotes}`;
   if (Buffer.byteLength(content, "utf8") <= CHECKPOINT_LIMIT_BYTES) return content;
-  return `${prefix}\n\nWorking notes is too large to include (${Buffer.byteLength(checkpoint.workingNotes, "utf8")} bytes). Read it with \`checkpoint_read({ "section": "workingNotes", "offset": 0 })\`, then repeat with each returned nextOffset until it is null. The stored checkpoint is unchanged.`;
+  return `${prefix}\n\n${TITLES.workingNotes} is too large to include (${Buffer.byteLength(checkpoint.workingNotes, "utf8")} bytes). Read it with \`checkpoint_read({ "section": "workingNotes", "offset": 0 })\`, then repeat with each returned nextOffset until it is null. The stored checkpoint is unchanged.`;
 }
 
 /** A refused write names where the bytes are: an imported legacy checkpoint starts above the limit,

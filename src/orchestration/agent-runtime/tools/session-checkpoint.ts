@@ -1,7 +1,8 @@
 import { Schema } from "effect";
 import { readJsonValue } from "../../../infra/llm/json-parse.js";
 import { CheckpointDecisionSchema, ConversationCheckpointSchema } from "../../session/conversation-checkpoint-facts.js";
-import { CHECKPOINT_SECTIONS, checkpointSectionInputSchema, renderConversationCheckpoint, type ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
+import { CHECKPOINT_SECTIONS } from "../../../infra/checkpoint-sections.js";
+import { checkpointSectionInputSchema, renderConversationCheckpoint, type ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
 import { coerceToolInput, describeInputRepair } from "./coerce-input.js";
 import type { ToolInputRepair } from "../llm/types.js";
 import type { AdvertisedTool, RuntimeTool, RuntimeToolInput } from "./types.js";

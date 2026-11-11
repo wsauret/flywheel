@@ -168,6 +168,13 @@ describe("base tool getDetail", () => {
     expect(getToolDisplay("ask_user").verbs.past).toBe("Asked");
   });
 
+  it("checkpoint tools: name the section by its checkpoint title", () => {
+    expect(resolveToolPresentation("checkpoint_replace", { section: "nextStep", value: "ship" }, executionCwd)).toEqual({ name: "Update Checkpoint", detail: "Next step" });
+    expect(resolveToolPresentation("checkpoint_read", { section: "openQuestions" }, executionCwd)).toEqual({ name: "Read Checkpoint", detail: "Open questions" });
+    expect(getToolDisplay("checkpoint_read").getDetail?.({}, executionCwd)).toBeNull();
+    expect(getToolDisplay("checkpoint_replace").getDetail?.({ section: "scratchpad", value: "x" }, executionCwd)).toBe("scratchpad");
+  });
+
   it("handoff: reads the first line of the summary it hands off", () => {
     expect(getToolDisplay("handoff").getDetail?.({ summary: "The wait command exited 0.\nThe gate file exists.", artifacts: {} }, executionCwd)).toBe("The wait command exited 0.");
     expect(getToolDisplay("handoff").getDetail?.({ artifacts: {} }, executionCwd)).toBeNull();
