@@ -1,0 +1,22 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 301
+bench/harbor/analysis/board-data.ts
+  h_4b47e9e4a8b456 6,33-34,38-39,53-56,67-68,89-92,103-108,137-138,143-145,250-257,284,290-306,333,338,345-346,361-362,371,395-396,411-418,425,427,429-431,457-461,463
+bench/harbor/analysis/board-scoring.ts
+  h_4b47e9e4a8b456 10-11,34-35,43-44,48-81,87,94,97,105,113-119,121-124,130,136,182-184,212-213,218-222,227,232,234-237,249
+tests/unit/bench/harbor-board-data.test.ts
+  h_4b47e9e4a8b456 19-25,28-30,38,41-43,47,69-85
+tests/unit/bench/harbor-board-scoring.test.ts
+  h_4b47e9e4a8b456 11-12,19,23,27-29,40-42,56,72-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a5a85f625b34fa6823aed59d2043a62ff4c63fbe",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
