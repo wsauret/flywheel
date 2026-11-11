@@ -309,7 +309,7 @@ describe("a workflow agent's learning", () => {
         if (options.purpose.kind !== "workflow-agent") return base.createAgent(options)
         return newTestRunner({ ...options, runtimeSurfaces: { ...options.runtimeSurfaces, launcher: refusingLauncher }, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
           accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-          promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+          priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
           async *streamWithTools() { requests += 1; yield* respond() },
         }), undefined, base.captureProviderConnection)
       },

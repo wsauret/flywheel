@@ -47,7 +47,7 @@ describe("buildSystemPrompt -- agent of a workflow", () => {
   it("does not include chat-only review guidance", () => {
     const result = build({ tools: [...TOOLS, spec("subagent", { description: "Launch a specialized subagent." })] });
 
-    expect(result).not.toContain("CHAT CHANGE REVIEW:");
+    expect(result).not.toContain("**Every change is a first draft.**");
   });
 
   // Only a root chat asks the person (PI-AGENT-024, PI-AGENT-082): an agent reaches its

@@ -6,7 +6,7 @@ import { answers, init, launchFakeQuery, settle, turnDone, until, type FakeQuery
 import { localDateZone } from "../../../../../src/infra/env-detection.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
-import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";

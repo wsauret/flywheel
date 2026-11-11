@@ -548,7 +548,7 @@ describe("skill tool prompt guidance", () => {
     expect(rendered).not.toContain("chat delivery sequence");
     expect(rendered).not.toContain("Err on the side of loading");
     expect(rendered).toContain("You run one brief, as an agent of a workflow or as a subagent.");
-    expect(rendered).not.toContain("CONVERSATION-FIRST DELIVERY:");
+    expect(rendered).not.toContain("**Chat leads a change through delivery.**");
     expect(rendered).not.toContain("When a completed design is ready");
   });
 

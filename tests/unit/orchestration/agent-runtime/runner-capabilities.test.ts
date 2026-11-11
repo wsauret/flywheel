@@ -34,7 +34,6 @@ function capturingClientFactory(prompts: string[], onRequest?: (index: number) =
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor() { return { status: "unavailable", reason: "missing-rate-card" } },
     async *streamWithTools(options) {
       const index = prompts.length
@@ -75,7 +74,6 @@ function coherentClientFactory(
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable", reason: "missing-rate-card" } },
       async *streamWithTools(options) {
         const index = observations.length

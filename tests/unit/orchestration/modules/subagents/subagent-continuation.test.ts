@@ -30,7 +30,7 @@ function localClient(model: string) {
     model, modelFamily: "openai", accessProvider: "openai_api", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
     accessProviderCandidate: { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" },
     credentialLineage: "20000000-0000-4000-8000-000000000002",
-    promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+    priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     async *streamWithTools() {
       yield { kind: "text_delta", text: '{"summary":"Inspected three files before the failure."}', blockKey: "summary" }
       yield { kind: "usage", final: true, inputTokens: 10, outputTokens: 7, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 }

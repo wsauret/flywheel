@@ -35,7 +35,6 @@ async function verifyRoleRequests(): Promise<void> {
   const client = async (model: string) => asModelClient({
     model, modelFamily: model.startsWith("claude") ? "anthropic" : "openai", accessProvider: "openai_api",
     contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: true,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     async *streamWithTools(input) {
       outgoing.push({ model, effort: input.reasoningEffort });

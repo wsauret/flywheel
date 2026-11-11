@@ -45,9 +45,6 @@ const BLOCK_MARKERS = {
   progress: "Give short updates while you work",
   scope: "# Scope",
   "final-message": "# The final message",
-  finishing: "# Finishing the work",
-  initiative: "# Initiative",
-  ambiguity: "# Ambiguity",
   authorization: "# Authorization",
   "plain-writing": "# Plain writing",
   corrections: "# Corrections",
@@ -55,7 +52,10 @@ const BLOCK_MARKERS = {
   "model-limits": "speed up AI development",
 } as const;
 
-/** One phrase that marks each base rule, which the model chat body and the general chat prompt both state once. */
+/** The sections of the base that every chat body holds in this order, whatever the model. */
+const BASE_SECTIONS = ["# This session", "# Acting", "# Finishing the work", "# Initiative", "# Ambiguity", "# Working in Flywheel"] as const;
+
+/** One phrase that marks each base rule, which every chat body states once. */
 const BASE_MARKERS = [
   "Do not work them out again, and do not reopen them",
   "When you compare options, finish with the one that you recommend",
@@ -69,6 +69,23 @@ const BASE_MARKERS = [
   CODE_REFERENCES,
   OPEN_CHOICES,
   CHALLENGE,
+] as const;
+
+/** One phrase that marks each rule that the chat body took over from the agents' core prompt and the former general
+ *  chat blocks, which every chat body states once. */
+const FOLDED_MARKERS = [
+  "Put correctness first, brevity second, and politeness third",
+  "Use a tool only when the task needs it",
+  "the only copy of a log, copy it first",
+  "build only what the evidence supports",
+  "Ground each claim about code, tests, or tools in what you observed",
+  "A coherent change can include a large refactor across several files",
+  "realign what missed it instead of reporting it as a failure",
+  "verify each fix with the narrowest check that proves it",
+  "After each publication, end your reply with three things",
+  "expand into reasoning only when the user needs it to decide",
+  "restated request",
+  "treats the user as a capable person",
 ] as const;
 
 const occurrences = (text: string, phrase: string): number => text.split(phrase).length - 1;
@@ -100,36 +117,32 @@ function blocksOf(body: string): string[] {
     .map(([block]) => block);
 }
 
-/** The model chat body is the tuned interactive prompt that replaces the general chat blocks. */
-describe("model chat body", () => {
-  it("replaces the general chat blocks with the model chat body and keeps every other part", () => {
+/** The chat body is the base of every chat on every model; a model entry adds guidance blocks to it. */
+describe("chat body", () => {
+  it("renders the same chat body in place of the core prompt for a model with or without an entry, and keeps every other part", () => {
     const tools = [...TOOLS, spec("skill"), spec("ask_user"), spec("subagent"), spec("edit", { action: "file_edit" })];
-    const general = build("claude-sonnet-4", { tools, engineeringDoctrine, agentsMd, skills: ["code-review"] });
-    const tuned = build("claude-opus-5.5", { tools, engineeringDoctrine, agentsMd, skills: ["code-review"] });
+    const unlisted = build("claude-sonnet-4", { tools, engineeringDoctrine, agentsMd, skills: ["code-review"] });
+    const listed = build("claude-opus-5.5", { tools, engineeringDoctrine, agentsMd, skills: ["code-review"] });
 
-    expect(tuned).toStartWith("You are Flywheel's chat agent.");
-    for (const rule of BASE_MARKERS) {
-      expect(occurrences(tuned, rule)).toBe(1);
-      expect(occurrences(general, rule)).toBe(1);
+    expect(listed).toBe(unlisted);
+    expect(unlisted).toStartWith("You are Flywheel's chat agent.");
+    for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS]) expect(occurrences(unlisted, rule)).toBe(1);
+    for (const kept of DOCTRINE_SECTIONS) expect(unlisted).toContain(kept);
+    for (const gone of [...CORE_SECTIONS, "PROPORTIONALITY:", "CONVERSATION-FIRST DELIVERY:", "CHAT CHANGE REVIEW:", "COMMUNICATION:", "MODEL NOTES:", "Provider Interaction Notes"]) expect(unlisted).not.toContain(gone);
+    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "the skill alone sizes the review to the change", "**Orchestration pays for itself.**", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "do not stop at a feasibility verdict, a diagnosis, or design approval", "a request to plan first does not set such a limit", "and what that proof does not cover", "A pull request description gives the same three things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", "a subagent result carries them in its summary"]) {
+      expect(unlisted).toContain(commitment);
     }
-    for (const kept of DOCTRINE_SECTIONS) expect(tuned).toContain(kept);
-    for (const replaced of [...CORE_SECTIONS, "PROPORTIONALITY:", "CONVERSATION-FIRST DELIVERY:", "CHAT CHANGE REVIEW:", "COMMUNICATION:"]) {
-      expect(general).toContain(replaced);
-      expect(tuned).not.toContain(replaced);
-    }
-    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "the skill alone sizes the review to the change", "**Orchestration pays for itself.**", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "end your reply with three things", "and what that proof does not cover", "A pull request description gives the same three things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", ]) {
-      expect(tuned).toContain(commitment);
-    }
-    expect(tuned).not.toContain("trivial edits");
-    expect(tuned).toContain("Guidelines:");
-    expect(tuned).toContain(`# AGENTS.md Instructions\n\n${agentsMd}`);
+    expect(unlisted).not.toContain("trivial edits");
+    expect(unlisted).toContain("Guidelines:");
+    expect(unlisted).toContain(`# AGENTS.md Instructions\n\n${agentsMd}`);
   });
 
   it("states only the commitments that the request surface can honor", () => {
     const tuned = build("claude-sonnet-5.5");
     expect(tuned).not.toContain("**Chat leads a change through delivery.**");
-    expect(tuned).not.toContain("end your reply with three things");
     expect(tuned).not.toContain("**Orchestration pays for itself.**");
+    // The first-draft commitment, with its report after a publication, holds in every chat.
+    expect(tuned).toContain("end your reply with three things");
     expect(tuned).toContain("review it yourself against the intent");
     expect(tuned).toContain("Number the options that you offer");
     // No skill, memory, workflow, or subagent tool: the body names none of them and keeps each method.
@@ -142,58 +155,70 @@ describe("model chat body", () => {
     const workflows = build("claude-sonnet-5.5", { tools: [...TOOLS, spec("workflow"), spec("ask_user")] });
     expect(workflows).toContain("**Orchestration pays for itself.** Add a reviewer or start a workflow only on a named trigger");
     expect(workflows).toContain("**Chat leads a change through delivery.**");
+    // The design skill and memory add their pointers to the delivery commitment only when the request has them.
+    const designed = build("claude-sonnet-5.5", { tools: [...TOOLS, spec("edit"), spec("ask_user"), spec("skill"), spec("memory")], skills: ["design"] });
+    expect(designed).toContain("start design: load the `design` skill.");
+    expect(designed).toContain("A request to design, plan, brainstorm, or assess feasibility");
+    expect(designed).toContain("If the user objects to this proactive routing, save that preference to memory.");
   });
 
-  it("adds each model's guidance blocks in its order, a later family version inheriting the newest earlier entry", () => {
+  it("adds each model's guidance blocks to the base in its order, a later family version inheriting the newest earlier entry", () => {
     const withFileTools = [...TOOLS, spec("edit"), spec("write")];
+    const gpt = ["progress", "final-message", "authorization", "plain-writing", "corrections", "quiet-caveats"];
+    const gptWithoutCorrections = gpt.filter((block) => block !== "corrections");
     const expected: readonly (readonly [model: string, blocks: readonly string[]])[] = [
       ["claude-opus-5.5", []],
       ["claude-sonnet-5.5", []],
-      ["claude-fable-5.1", ["progress", "scope", "ambiguity", "final-message", "finishing", "initiative"]],
-      ["claude-fable-5.2", ["finishing", "model-limits"]],
-      ["claude-fable-5.3", ["finishing", "model-limits"]],
-      ["claude-haiku-5.5", ["scope", "ambiguity", "finishing", "initiative"]],
-      ["gpt-6.1-sol", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "corrections", "quiet-caveats"]],
-      ["gpt-6.2-sol", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "corrections", "quiet-caveats"]],
-      ["gpt-6-sol", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "corrections", "quiet-caveats"]],
-      ["gpt-6-astra", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "quiet-caveats"]],
-      ["gpt-6-luna", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "quiet-caveats"]],
+      ["claude-sonnet-4", []],
+      ["claude-fable-5.1", ["progress", "scope", "final-message"]],
+      ["claude-fable-5.2", ["model-limits"]],
+      ["claude-fable-5.3", ["model-limits"]],
+      ["claude-haiku-5.5", ["scope"]],
+      ["gpt-6.1-sol", gpt],
+      ["gpt-6.2-sol", gpt],
+      ["gpt-6-sol", gpt],
+      ["gpt-6-astra", gptWithoutCorrections],
+      ["gpt-6-luna", gptWithoutCorrections],
+      // A new major version is a new line: it gets the base alone until it has its own entry.
+      ["gpt-7-luna", []],
     ];
     for (const [model, blocks] of expected) {
       const body = build(model, { tools: withFileTools });
       expect(body).toStartWith("You are Flywheel's chat agent.");
       expect(blocksOf(body)).toEqual([...blocks]);
-      for (const shared of ["# This session", "# Acting", "they/them", "Use no name that you made up during the work"]) expect(body).toContain(shared);
+      const sections = BASE_SECTIONS.map((section) => body.indexOf(section));
+      expect(sections.every((index, at) => index >= 0 && (at === 0 || index > sections[at - 1]!))).toBe(true);
+      for (const shared of ["they/them", "Use no name that you made up during the work"]) expect(body).toContain(shared);
       // Each base rule renders once: an add-in block keeps only the conditions that it adds to the base.
-      for (const rule of [...BASE_MARKERS, "closing offers", "one idea per sentence", "one-line update before your first tool call", "Persist until the task is fully handled", "A long session is"]) expect(occurrences(body, rule)).toBe(1);
+      for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "closing offers", "one idea per sentence", "one-line update before your first tool call", "Persist until the task is fully handled", "A long session is", "If one part is truly blocked"]) expect(occurrences(body, rule)).toBe(1);
       expect(body).not.toContain("\u2014");
     }
     // Every GPT entry but luna's takes an authorized next step without ending the turn.
     const continues = "When the session already shows that the next step is authorized, take it. Do not end the turn to check.";
     for (const model of ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-astra"]) expect(build(model)).toContain(continues);
     expect(build("gpt-6-luna")).not.toContain(continues);
-    // A new major version is a new line: it gets the general prompt until it has its own entry.
-    expect(build("gpt-7-luna")).not.toStartWith("You are Flywheel's chat agent.");
-    // Moving the blocked-part rule from scope to finishing keeps it once in a body that has both.
-    expect(build("claude-fable-5.1").split("If one part is truly blocked").length).toBe(2);
     expect(build("claude-opus-5.5", { tools: [...TOOLS, spec("recall")] })).toContain("session notes and the recorded history");
   });
 
   it("states each consolidated rule once in every assembled request, tool descriptions included", async () => {
-    const consolidated = [...BASE_MARKERS, "An assumption is the last resort", "Before you ask, start all work that does not depend on the answer", "in one area"];
-    const chatModels = [...MODEL_GUIDANCE.map(([model]) => model), "claude-sonnet-4"];
+    const consolidated = [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "An assumption is the last resort", "Before you ask, start all work that does not depend on the answer", "in one area"];
+    // Every table model, a model of a tuned family with no entry, and a model of a line that no entry covers.
+    const chatModels = [...MODEL_GUIDANCE.map(([model]) => model), "claude-opus-5.5", "claude-sonnet-4", "gpt-7-luna"];
     for (const model of chatModels) {
       const text = await assembledRequest(model, { kind: "interactive-chat" });
       for (const rule of consolidated) expect({ model, rule, count: occurrences(text, rule) }).toEqual({ model, rule, count: 1 });
     }
-    // A subagent keeps the core prompt's open-choice rule and learns from its unattended section that a turn never
-    // pauses its work, so it gets no chat rule on when to end the turn, and no chat rule on how to answer a challenge.
-    const subagent = await assembledRequest("gpt-6.1-sol", { kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" });
-    for (const rule of [OPEN_CHOICES, "never pauses your work", "in one area"]) expect(occurrences(subagent, rule)).toBe(1);
-    for (const chatRule of [KEEP_GOING, CHALLENGE]) expect(subagent).not.toContain(chatRule);
+    // A subagent keeps the core prompt's open-choice rule, gets the agent rendering of finishing on every model, and
+    // learns from its unattended section that a turn never pauses its work, so it gets no chat rule on when to end the
+    // turn, and no chat rule on how to answer a challenge.
+    for (const model of ["gpt-6.1-sol", "claude-opus-5.5"]) {
+      const subagent = await assembledRequest(model, { kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" });
+      for (const rule of [OPEN_CHOICES, "never pauses your work", "in one area", "# Finishing the work", "A long session is not a reason to stop"]) expect({ model, rule, count: occurrences(subagent, rule) }).toEqual({ model, rule, count: 1 });
+      for (const chatRule of [KEEP_GOING, CHALLENGE, "until the user writes again"]) expect(subagent).not.toContain(chatRule);
+    }
   });
 
-  it("keeps the general prompt outside interactive chat, adding only a subagent's or workflow agent's agent blocks after the core prompt", () => {
+  it("keeps the core prompt outside chat, adding finishing and the agent blocks after it for a subagent or a workflow agent", () => {
     const purposes: readonly (readonly [AgentPurpose, Pick<BuildSystemPromptOptions, "promptKind" | "unattended">])[] = [
       [{ kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" }, { promptKind: "subagent", unattended: true }],
       [{ kind: "workflow-agent", briefScope: { briefId: "implement" }, workflowAttemptId: "implement:attempt:1" }, { promptKind: "workflow-agent", unattended: true }],
@@ -201,10 +226,10 @@ describe("model chat body", () => {
       [{ kind: "headless-task", prompt: { kind: "assembled", corePrompt: "You are a helpful AI Agent." } }, { promptKind: "headless" }],
     ];
     const expected: readonly (readonly [model: string, blocks: readonly string[]])[] = [
-      ["gpt-6.1-sol", ["finishing", "corrections", "quiet-caveats"]],
-      ["gpt-6-sol", ["finishing", "corrections", "quiet-caveats"]],
-      ["gpt-6-astra", ["finishing", "quiet-caveats"]],
-      ["gpt-6-luna", ["finishing", "quiet-caveats"]],
+      ["gpt-6.1-sol", ["corrections", "quiet-caveats"]],
+      ["gpt-6-sol", ["corrections", "quiet-caveats"]],
+      ["gpt-6-astra", ["quiet-caveats"]],
+      ["gpt-6-luna", ["quiet-caveats"]],
       ["claude-opus-5.5", []],
       ["claude-haiku-5.5", []],
     ];
@@ -212,11 +237,16 @@ describe("model chat body", () => {
       for (const [purpose, kind] of purposes) {
         const options = (guided: boolean) => promptOptions({ corePrompt, tools: TOOLS, ...kind, purpose, ...(guided ? guidanceOf(model) : {}) });
         const parts = buildSystemPromptParts(options(true));
-        const agentBlocks = purpose.kind === "subagent" || purpose.kind === "workflow-agent" ? blocks : [];
-        expect(blocksOf(parts.map((part) => part.text).join("\n\n"))).toEqual([...agentBlocks]);
-        expect(parts.filter((part) => part.label !== "model agent guidance")).toEqual(buildSystemPromptParts(options(false)));
-        if (agentBlocks.length > 0) {
-          expect(parts.map((part) => part.label).slice(0, 2)).toEqual(["core system prompt", "model agent guidance"]);
+        const withoutGuidance = buildSystemPromptParts(options(false));
+        const agent = purpose.kind === "subagent" || purpose.kind === "workflow-agent";
+        const text = parts.map((part) => part.text).join("\n\n");
+        expect(blocksOf(text)).toEqual(agent ? [...blocks] : []);
+        expect(occurrences(text, "# Finishing the work")).toBe(agent ? 1 : 0);
+        expect(parts.filter((part) => part.label !== "agent guidance")).toEqual(withoutGuidance.filter((part) => part.label !== "agent guidance"));
+        if (agent) {
+          expect(parts.map((part) => part.label).slice(0, 2)).toEqual(["core system prompt", "agent guidance"]);
+          expect(withoutGuidance[1]?.text).toStartWith("# Finishing the work");
+          expect(blocksOf(withoutGuidance[1]?.text ?? "")).toEqual([]);
           // The agent learns how its turn ends from its unattended section, never from the chat's turn rules.
           expect(parts[1]?.text).not.toContain("until the user writes again");
         }

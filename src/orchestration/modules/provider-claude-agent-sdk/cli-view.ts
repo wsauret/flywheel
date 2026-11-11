@@ -1,7 +1,7 @@
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
 import type { ContentBlockParam, ImageBlockParam } from "@anthropic-ai/sdk/resources/messages.js";
 import type { AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
-import { parseClaudeReminder, type ClaudeReminder } from "../../agent-runtime/llm/claude-reminders.js";
+import { parseRuntimeReminder, type RuntimeReminder } from "../../agent-runtime/llm/runtime-reminders.js";
 import type { BlockOrigin, BlockOrigins } from "../../agent-runtime/llm/conversions/anthropic-messages.js";
 import { ANTHROPIC_RESERVED_BODY_KEYS } from "../../../infra/llm/provider-options.js";
 import { ProviderRequestValidationError } from "../../agent-runtime/llm/errors.js";
@@ -31,7 +31,7 @@ export interface CliMessage {
 /** A Flywheel reminder that the view removed, with the index of the view message that held it. */
 export interface PlacedReminder {
   readonly message: number;
-  readonly reminder: ClaudeReminder;
+  readonly reminder: RuntimeReminder;
 }
 
 /** A tool as the `runtime` MCP server declares it to the CLI. */
@@ -116,7 +116,10 @@ export function cliView(request: BridgeRequest, origins: BlockOrigins, projectRo
       markedBlock ||= markable(block).some(marked);
       const origin = origins[index]?.[at];
       if (origin === undefined) throw invalid(`block ${at} of message ${index} has no origin`);
-      const reminder = isReminder(origin) && block.type === "text" ? parseClaudeReminder(block.text, cwd) : undefined;
+      // Another route that served the same model ID wrote this model reminder. The engine states its model once, from
+      // the Claude model reminder, so the view holds neither copy of this one.
+      if (origin === "model-framing") continue;
+      const reminder = isReminder(origin) && block.type === "text" ? parseRuntimeReminder(block.text, cwd) : undefined;
       if (reminder === undefined) {
         content.push(cliBlock(block));
         contentOrigins.push(origin);

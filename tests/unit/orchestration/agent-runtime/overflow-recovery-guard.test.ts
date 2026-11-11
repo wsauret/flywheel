@@ -61,7 +61,6 @@ describe("recoverFromContextOverflow guard", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       async *streamWithTools(_options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
         streamCalls++;
         throw normalizeProviderAttemptFailure(new ContextLengthExceededError());
@@ -154,7 +153,6 @@ function scriptedOutputClient(script: readonly ScriptedResponse[]) {
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
       const response = script[requests++];
       if (!response) throw new ApiError({ message: "request past the scripted responses", recovery: { kind: "none" } });

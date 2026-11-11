@@ -267,11 +267,16 @@ async function fixture(scenario: Scenario) {
   }
 }
 
+/** The history without the hidden reminders that every route states its model, date, and environment in. */
+function turnHistory(f: Awaited<ReturnType<typeof fixture>>): ConversationMessage[] {
+  return f.history.filter((message) => message.kind !== "user" || message.framing === undefined)
+}
+
 function assertQuietSuccess(f: Awaited<ReturnType<typeof fixture>>) {
   assertNoVisibleNotice(f.notices)
   expect(f.events.filter((event) => event.type === "model.turn.completed")).toHaveLength(1)
   expect(f.snapshots.join("\n")).not.toMatch(/reconnecting|Sign in|"status":"failed"/)
-  expect(f.history.filter((message) => message.kind === "user")).toEqual([])
+  expect(turnHistory(f).filter((message) => message.kind === "user")).toEqual([])
   expect(f.history.at(-1)).toMatchObject({ kind: "assistant", content: [{ type: "text", text: "finished on authorized API" }] })
 }
 
@@ -285,7 +290,7 @@ function assertReconnectingSuccess(f: Awaited<ReturnType<typeof fixture>>, retri
   expect(f.events.filter((event) => event.type === "model.stream.retried")).toHaveLength(retries)
   expect(f.events.filter((event) => event.type === "model.turn.completed")).toHaveLength(1)
   expect(f.snapshots.join("\n")).not.toMatch(/Sign in|"status":"failed"/)
-  expect(f.history.filter((message) => message.kind === "user")).toEqual([])
+  expect(turnHistory(f).filter((message) => message.kind === "user")).toEqual([])
   expect(f.history.at(-1)).toMatchObject({ kind: "assistant", content: [{ type: "text", text: "finished on authorized API" }] })
 }
 
@@ -413,10 +418,10 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
     expect(f.wires[0]!.params.thinking).not.toEqual({ type: "disabled" })
     expect(f.snapshots.join("\n")).not.toMatch(/Reconnecting|"status":"failed"/)
     expect(f.events.filter((event) => event.type === "model.stream.retried")).toHaveLength(0)
-    expect(f.history.filter((message) => message.kind === "user")).toEqual([])
+    expect(turnHistory(f).filter((message) => message.kind === "user")).toEqual([])
     // A stopped attempt's looping deliberation never enters the history, so no later request replays it.
-    expect(f.history).toHaveLength(1)
-    expect(f.history[0]).not.toHaveProperty("incomplete")
+    expect(turnHistory(f)).toHaveLength(1)
+    expect(turnHistory(f)[0]).not.toHaveProperty("incomplete")
     // Every attempt sent the prompt assembled from the same leaf, so each one's audit reconstructs from that leaf.
     const assembled = f.audit.flatMap((fact) => fact.type === "prompt.assembled" ? [fact.payload] : [])
     expect(assembled).toHaveLength(wires)
@@ -443,7 +448,7 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
 
     expect(f.wires).toHaveLength(2)
     // The text a person saw stays, without the looping deliberation after it.
-    expect(f.history[0]).toEqual(expect.objectContaining({ kind: "assistant", incomplete: true, content: [{ type: "text", text: "visible before the loop" }] }))
+    expect(turnHistory(f)[0]).toEqual(expect.objectContaining({ kind: "assistant", incomplete: true, content: [{ type: "text", text: "visible before the loop" }] }))
     expect(f.history.at(-1)).toMatchObject({ kind: "assistant", content: [{ type: "text", text: "finished on authorized API" }] })
     // The partial moved the tree leaf, but the resample sent the prompt assembled before it, so its audit names that leaf.
     const assembled = f.audit.flatMap((fact) => fact.type === "prompt.assembled" ? [fact.payload] : [])

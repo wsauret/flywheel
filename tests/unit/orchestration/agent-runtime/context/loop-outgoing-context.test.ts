@@ -228,7 +228,6 @@ for (const priorMasked of [false, true]) for (const measurement of ["before", "a
     const client = asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model",
       contextLimit: 40_000, outputLimit: 8000, supportsReasoning: false,
-      promptNotes: { progress: "candidate instructions ".repeat(100), modelNotes: "model notes" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(request) {
         requests.push({ ...request, messages: [...request.messages] });
@@ -317,7 +316,7 @@ test("unchanged history and frozen cutoff reuse the same masked view", () => {
   expect(first?.messages).toHaveLength(4);
 });
 
-test("proactive reset reports the next request including prompt and notes", async () => {
+test("proactive reset reports the next request including its prompt", async () => {
   const requests: StreamOptions[] = [];
   const events: StreamEvent[] = [];
   const history: ConversationMessage[] = [
@@ -328,7 +327,6 @@ test("proactive reset reports the next request including prompt and notes", asyn
   const client = asModelClient({
     accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model",
     contextLimit: 10_000, outputLimit: 8000, supportsReasoning: false,
-    promptNotes: { progress: "candidate notes ".repeat(50), modelNotes: "" },
     toolPresentation: NAMESPACED,
     async *streamWithTools(request) {
       requests.push({ ...request, messages: [...request.messages] });
@@ -380,7 +378,7 @@ test("the next request's estimate, which the output clamp reads, counts the thin
   const client = asModelClient({
     accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model",
     contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: true,
-    promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+    toolPresentation: FUNCTION_TOOL_PRESENTATION,
     async *streamWithTools(request) {
       requests.push({ ...request, messages: [...request.messages] });
       yield* responses[requests.length - 1] ?? [];

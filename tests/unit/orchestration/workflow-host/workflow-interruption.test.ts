@@ -116,7 +116,7 @@ async function fixtureWorkflowRun(root: string, streamWithTools: (options: Strea
         if (stepAgent) return stepAgent(options)
         return newTestRunner({ ...options, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
           accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-          promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+          priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
           streamWithTools,
         }), undefined, base.captureProviderConnection)
       },

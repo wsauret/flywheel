@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { environmentReminder } from "../../../../src/orchestration/agent-runtime/llm/claude-reminders";
+import { environmentReminder } from "../../../../src/orchestration/agent-runtime/llm/runtime-reminders";
 import { ENGINE_INSTRUCTIONS } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text";
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";

@@ -57,7 +57,6 @@ describe("idle chat compaction", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable", reason: "missing-rate-card" } as const },
       async *streamWithTools(options: StreamOptions) {
         requests.push({ model, messages: [...options.messages] })
@@ -141,7 +140,6 @@ describe("idle chat compaction", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" } as const },
         async *streamWithTools() {
           requests += 1

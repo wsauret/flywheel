@@ -35,7 +35,6 @@ function scriptedClient(responses: ProviderStreamEvent[][]): LLMClient {
     modelFamily: "anthropic",
     model: "test-model",
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
-    promptNotes: { progress: "", modelNotes: "" },
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,

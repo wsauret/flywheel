@@ -70,7 +70,7 @@ describe("createClient universal chain", () => {
   test("a request whose first candidate is quota-exhausted is served by the second", async () => {
     const resetsAtSeconds = Math.floor(Date.now() / 1000) + 3_600;
     const availability = fakeAvailability({
-      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: resetsAtSeconds * 1000 },
+      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: resetsAtSeconds * 1000, hold: { kind: "usage_limit", stated: true } },
     }).availability;
     // The client binds its accounts once, at its build.
     const availabilityOwner = { forCandidates: () => availability, dispose: () => Promise.resolve() };
@@ -282,7 +282,6 @@ describe("subscription usage binding", () => {
           contextLimit: 1_000,
           outputLimit: 100,
           supportsReasoning: false,
-          promptNotes: { progress: "", modelNotes: "" },
           priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
           async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } as const; },
         };

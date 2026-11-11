@@ -22,7 +22,6 @@ describe("agent loop stream_error recovery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
         streamCalls++;
@@ -62,7 +61,7 @@ describe("agent loop stream_error recovery", () => {
     const client: LLMClient = { historyTarget: ownHistoryTarget,
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model",
       contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(request: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
         requests.push([...request.messages]);
         if (requests.length === 1) {
@@ -117,7 +116,7 @@ describe("agent loop stream_error recovery", () => {
       const client: LLMClient = { historyTarget: ownHistoryTarget,
         accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model",
         contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+        toolPresentation: FUNCTION_TOOL_PRESENTATION,
         async *streamWithTools(request: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
           requests.push([...request.messages]);
           const refusal = refuse(request.messages);

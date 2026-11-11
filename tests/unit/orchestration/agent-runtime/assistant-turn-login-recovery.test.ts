@@ -46,7 +46,7 @@ test.each(["renewed", "declined", "stopped"] as const)("keeps the failed revisio
       return { historyTarget: ownHistoryTarget,
         accessProvider: provider, modelFamily: "openai", model: "test-model",
         toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000,
-        supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+        supportsReasoning: false, 
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
         async *streamWithTools(options) {
           captured.push(options)

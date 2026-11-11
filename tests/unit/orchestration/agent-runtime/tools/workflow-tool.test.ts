@@ -484,7 +484,7 @@ describe("createWorkflowTool", () => {
     expect(onPrompt).not.toContain("confirmation_id");
   });
 
-  it("leaves the first-draft audit to the chat change review block in every chat configuration", () => {
+  it("leaves the first-draft audit to the first-draft commitment of the chat body in every chat configuration", () => {
     const skill = { name: "skill", action: "ui_meta" as const, description: "Load a skill package." };
     const workflow = createWorkflowTool(makeDeps({ mode: "ask" }));
     const chat = { promptKind: "chat" as const, chatHost: { communication: true as const } };
@@ -494,13 +494,12 @@ describe("createWorkflowTool", () => {
       renderSystemPrompt(buildSystemPrompt(promptOptions({ ...chat, tools: [workflow], skills: [] }))),
     ];
 
-    for (const prompt of prompts) expect(prompt.match(/CHAT CHANGE REVIEW:/g)).toHaveLength(1);
+    for (const prompt of prompts) expect(prompt.match(/\*\*Every change is a first draft\.\*\*/g)).toHaveLength(1);
     for (const prompt of [prompts[0]!, prompts[2]!]) {
-      expect(prompt.match(/whether a runtime notification tells you or the user tells you later/g)).toHaveLength(1);
-      expect(prompt).toContain("Read its recorded deviations yourself: a workflow handoff carries them in its declared output");
+      expect(prompt.match(/a workflow handoff carries them in its declared output/g)).toHaveLength(1);
     }
     // Without a delegation tool the chat has no delegated result to read deviations from.
-    expect(prompts[1]).toContain("Record its deviations from that intent yourself as you work.");
+    expect(prompts[1]).toContain("Record your own deviations from that intent as you work.");
     expect(prompts[1]).not.toContain("a workflow handoff carries them");
     expect(workflow.promptGuidelines?.join("\n")).not.toContain("first draft");
     expect(workflow.description).not.toContain("first draft");

@@ -6,7 +6,7 @@ import { fetchPaginatedCatalog } from "../../../infra/llm/model-listing.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { createClaudeReminders } from "../../agent-runtime/llm/claude-reminders.js";
+import { createClaudeReminders } from "../../agent-runtime/llm/runtime-reminders.js";
 import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";

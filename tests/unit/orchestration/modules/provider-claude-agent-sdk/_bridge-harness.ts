@@ -11,7 +11,7 @@ import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
 import { Log } from "../../../../../src/infra/log.js";
-import { environmentReminder, parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { environmentReminder, parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { BlockOrigin, BlockOrigins } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import type { AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
@@ -182,7 +182,7 @@ export function originsOf(params: BridgeRequest): BlockOrigins {
     if (message.role === "assistant") return "assistant";
     if (block.type === "tool_result") return "tool-result";
     if (block.type !== "text") return "person";
-    const reminder = parseClaudeReminder(block.text);
+    const reminder = parseRuntimeReminder(block.text);
     if (reminder !== undefined) return reminder.kind === "model" ? "claude-framing" : "runtime-reminder";
     return block.text === ENGINE_INSTRUCTIONS || block.text === DISPATCH_TEXT || block.text.startsWith("<system-reminder>\n") ? "host-framing" : "person";
   }));

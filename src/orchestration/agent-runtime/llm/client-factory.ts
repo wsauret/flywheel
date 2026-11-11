@@ -27,6 +27,7 @@ import type { ProviderIdentity } from "../../../infra/llm/auth-error.js";
 import type { ModelsClient } from "../../../infra/llm/models.js";
 import { Log } from "../../../infra/log.js";
 import { getSharedProviderAvailability } from "./shared-provider-availability.js";
+import { createModelReminders } from "./runtime-reminders.js";
 import type {
   ProviderAvailability,
   ProviderAvailabilityOwner,
@@ -118,13 +119,16 @@ export function stagedProviderClient(
     model: build.model,
     ...(build.tokenizerIdentity === undefined ? {} : { tokenizerIdentity: build.tokenizerIdentity }),
     toolPresentation: described.toolPresentation,
-    ...(described.messagesToAppend === undefined ? {} : { messagesToAppend: described.messagesToAppend.bind(described) }),
+    // Every route states its model, the local date, and the environment; a Claude route words its model as the engine.
+    // The model reminder names the wire model, as the adapter of a route names it in its history target, so a request
+    // to the route reads it (`provider-history.ts`). A route whose adapter names another model states its own.
+    messagesToAppend: described.messagesToAppend?.bind(described)
+      ?? createModelReminders(build.wireModelId, described.totalContextLimit ?? described.contextLimit, build.attribution.resolvedModelMetadata),
     ...(described.requestEntries === undefined ? {} : { requestEntries: described.requestEntries.bind(described) }),
     contextLimit: described.contextLimit,
     ...(described.totalContextLimit === undefined ? {} : { totalContextLimit: described.totalContextLimit }),
     outputLimit: described.outputLimit,
     supportsReasoning: described.supportsReasoning,
-    promptNotes: described.promptNotes,
     ...(described.sharedPromptPrefix === undefined ? {} : { sharedPromptPrefix: described.sharedPromptPrefix }),
     ...(described.anticipatesRequests === undefined ? {} : { anticipatesRequests: described.anticipatesRequests }),
     ...(described.availableModels === undefined ? {} : { availableModels: described.availableModels }),

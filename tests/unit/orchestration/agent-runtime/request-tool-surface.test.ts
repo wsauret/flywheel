@@ -14,7 +14,7 @@ import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../../../src/orchestratio
 import { prepareLocalTokenizer } from "../../../../src/infra/local-tokenizer.js";
 import * as localTokenizer from "../../../../src/infra/local-tokenizer.js";
 import { tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
-import { renderSystemPrompt, stableSystemPrompt, SYSTEM_PROMPT_SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { renderSystemPrompt, stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
 const fullModules = () => composeRealmModuleSnapshot({ moduleIds: SHIPPED_MODULES.map((module) => module.id) });
 interface UnknownRecord { [key: string]: unknown }
@@ -116,7 +116,6 @@ describe("request tool surface", () => {
     const attempt = {
       model: "gpt-5.4",
       modelFamily: "openai" as const,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
     };
     const prepared = surface.prepareAttempt(attempt);
@@ -153,7 +152,6 @@ describe("request tool surface", () => {
     const prepared = surface.prepareAttempt({
       model: "unmapped-model",
       modelFamily: "openai",
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
     });
 
@@ -181,7 +179,6 @@ describe("request tool surface", () => {
       return surface.prepareAttempt({
         model,
         modelFamily: model.startsWith("claude") ? "anthropic" : "openai",
-        promptNotes: { progress: "", modelNotes: "" },
         toolPresentation: FUNCTION_TOOL_PRESENTATION,
       });
     };
@@ -206,10 +203,10 @@ describe("request tool surface", () => {
     const owner = await fixedRequestToolSurface(new Map([["read", fakeTool("read")]]));
     const surface = await owner.resolve();
     await surface.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
-    expect(surface.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools).toEqual([
+    expect(surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools).toEqual([
       { name: "read", description: "read description", input_schema: { type: "object", properties: {} } },
     ]);
-    expect(surface.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([]);
+    expect(surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([]);
   });
 
   test("keeps logical edit authority behind the physical provider adapter", async () => {
@@ -221,7 +218,7 @@ describe("request tool surface", () => {
     );
     const surface = await owner.resolve();
     await surface.prepareStablePrompt(() => stableSystemPrompt("prompt"), { ...DEFAULT_MODEL_INTERACTION_PROFILE, fileEditContract: "apply_patch" });
-    const attempt = surface.prepareAttempt({ model: "gpt-5", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    const attempt = surface.prepareAttempt({ model: "gpt-5", toolPresentation: FUNCTION_TOOL_PRESENTATION });
     expect(attempt.tools.map(definition => definition.name)).toEqual(["apply_patch"]);
     expect(attempt.auditTools).toEqual([expect.objectContaining({ executableId: "apply_patch", registrationId: "apply_patch" })]);
     expect(surface.usableToolNames).toEqual(new Set(["edit"]));
@@ -248,8 +245,8 @@ describe("request tool surface", () => {
     const surface = await owner.resolve();
     await surface.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
 
-    const responses = surface.prepareAttempt({ model: "gpt-5", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: OPENAI_RESPONSES_TOOL_PRESENTATION });
-    const completions = surface.prepareAttempt({ model: "openai/gpt-4o", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    const responses = surface.prepareAttempt({ model: "gpt-5", toolPresentation: OPENAI_RESPONSES_TOOL_PRESENTATION });
+    const completions = surface.prepareAttempt({ model: "openai/gpt-4o", toolPresentation: FUNCTION_TOOL_PRESENTATION });
 
     expect(responses.auditTools).toEqual([expect.objectContaining({ kind: "custom", description: tool.description })]);
     expect(completions.auditTools).toEqual([expect.objectContaining({
@@ -270,7 +267,7 @@ describe("request tool surface", () => {
       present: () => Object.freeze({ kind: "custom" as const, description: "adapter-owned", inputFormat }),
     });
 
-    expect(surface.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation }).auditTools).toEqual([
+    expect(surface.prepareAttempt({ model: "model", toolPresentation }).auditTools).toEqual([
       expect.objectContaining({ kind: "custom", description: "adapter-owned", inputFormatSha256: hashToolInputFormat(inputFormat) }),
     ]);
   });
@@ -302,7 +299,7 @@ describe("request tool surface", () => {
       properties: { confirmation_id: { type: "string" } },
     });
     await next.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
-    expect(next.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools[0]?.input_schema).toEqual(next.tools.get("workflow")?.inputSchema);
+    expect(next.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools[0]?.input_schema).toEqual(next.tools.get("workflow")?.inputSchema);
   });
 
   test("pins runtime config through attempts and refreshes it only on the next admitted request", async () => {
@@ -318,8 +315,8 @@ describe("request tool surface", () => {
     revision = 2;
 
     expect(owner.current().runtimeConfig).toBe(admitted.runtimeConfig);
-    expect(admitted.prepareAttempt({ model: "primary", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION })).toBeDefined();
-    expect(admitted.prepareAttempt({ model: "fallback", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION })).toBeDefined();
+    expect(admitted.prepareAttempt({ model: "primary", toolPresentation: FUNCTION_TOOL_PRESENTATION })).toBeDefined();
+    expect(admitted.prepareAttempt({ model: "fallback", toolPresentation: FUNCTION_TOOL_PRESENTATION })).toBeDefined();
     expect(admitted.runtimeConfig.revision).toBe(1);
     expect((await owner.resolve()).runtimeConfig.revision).toBe(2);
   });
@@ -358,7 +355,7 @@ describe("request tool surface", () => {
     const next = await owner.resolve();
     expect(next.tools.has("memory")).toBe(false);
     await next.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
-    expect(next.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools.some((tool) => tool.name === "memory")).toBe(false);
+    expect(next.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools.some((tool) => tool.name === "memory")).toBe(false);
     expect(next.moduleSnapshot.enabledModuleIds).not.toContain("learning");
   });
 
@@ -376,7 +373,7 @@ describe("request tool surface", () => {
     expect(admitted.moduleSnapshot.enabledModuleIds).toContain("learning");
     expect(admitted.tools.has("memory")).toBe(true);
     await admitted.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
-    expect(admitted.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([]);
+    expect(admitted.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([]);
     expect(admitted.providerRegistry).toBe(admitted.providerRegistry);
     expect(admitted.providerRegistry.selection.definitions.map((definition) => definition.id)).toEqual(
       admitted.moduleSnapshot.contributions.filter((contribution) => contribution.domain === "providers").map((contribution) => contribution.value.definition.id),
@@ -386,7 +383,7 @@ describe("request tool surface", () => {
     expect(disabled.moduleSnapshot.enabledModuleIds).not.toContain("learning");
     expect(disabled.tools.has("memory")).toBe(false);
     await disabled.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
-    expect(disabled.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([{ name: "memory", reason: "Learning is disabled" }]);
+    expect(disabled.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([{ name: "memory", reason: "Learning is disabled" }]);
   });
 
   test("caches each presentation's definitions and keeps the plan's omission evidence", async () => {
@@ -398,8 +395,8 @@ describe("request tool surface", () => {
     const surface = await owner.resolve();
     await surface.prepareStablePrompt(() => stableSystemPrompt("literal bytes"), DEFAULT_MODEL_INTERACTION_PROFILE, true);
 
-    const first = surface.prepareAttempt({ model: "model", promptNotes: { progress: "ignored", modelNotes: "ignored" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
-    const repeated = surface.prepareAttempt({ model: "model", promptNotes: { progress: "ignored", modelNotes: "ignored" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    const first = surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    const repeated = surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION });
 
     expect(first.systemPrompt).toEqual(stableSystemPrompt("literal bytes"));
     expect(first.tools.map(({ name }) => name)).toEqual(["bash", "handoff"]);
@@ -419,15 +416,15 @@ describe("request tool surface", () => {
     persistenceEnabled = true;
     expect(JSON.stringify(disabled.tools.get("bash")?.inputSchema)).not.toContain("persist_after_exit");
     await disabled.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
-    expect(JSON.stringify(disabled.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools)).not.toContain("persist_after_exit");
-    expect(disabled.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toContainEqual({ name: "bash.persist_after_exit", reason: "persistent processes are disabled" });
+    expect(JSON.stringify(disabled.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools)).not.toContain("persist_after_exit");
+    expect(disabled.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toContainEqual({ name: "bash.persist_after_exit", reason: "persistent processes are disabled" });
     expect(owner.current()).toBe(disabled);
 
     const enabled = await owner.resolve();
     await enabled.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
     expect(JSON.stringify(enabled.tools.get("bash")?.inputSchema)).toContain("persist_after_exit");
-    expect(JSON.stringify(enabled.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools)).toContain("persist_after_exit");
-    expect(enabled.prepareAttempt({ model: "model", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([]);
+    expect(JSON.stringify(enabled.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).tools)).toContain("persist_after_exit");
+    expect(enabled.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION }).omittedTools).toEqual([]);
   });
 
   test("pins one transformed stable prompt and projects each serving attempt from admitted tools", async () => {
@@ -447,11 +444,10 @@ describe("request tool surface", () => {
 
     expect(await first.prepareStablePrompt(() => stableSystemPrompt("unused"), DEFAULT_MODEL_INTERACTION_PROFILE)).toBe(stable);
     expect(builds).toBe(1);
-    const prepared = first.prepareAttempt({ model: "model-a", promptNotes: { progress: "progress", modelNotes: "notes" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    const prepared = first.prepareAttempt({ model: "model-a", toolPresentation: FUNCTION_TOOL_PRESENTATION });
     expect(schemaSerializations).toBe(1);
     expect(stable.staticContextTokens).toBe(Math.ceil(("system prompt".length + JSON.stringify(prepared.tools).length) / 4));
     expect(renderSystemPrompt(prepared.systemPrompt)).toContain("system prompt");
-    expect(renderSystemPrompt(prepared.systemPrompt)).toContain("# Provider Interaction Notes\n\nprogress\n\nnotes");
     expect(prepared.tools[0]?.name).toBe("read");
     expect(prepared.attemptStaticTokens).toBe(Math.ceil((renderSystemPrompt(prepared.systemPrompt).length + JSON.stringify(prepared.tools).length) / 4));
     expect((await (await owner.resolve()).prepareStablePrompt(() => stableSystemPrompt("next"), DEFAULT_MODEL_INTERACTION_PROFILE)).systemPrompt).toEqual(stableSystemPrompt("next"));
@@ -480,7 +476,6 @@ describe("request tool surface", () => {
     const stable = await surface.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
     const attempt = surface.prepareAttempt({
       model: "model",
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
     });
 
@@ -585,11 +580,11 @@ describe("request tool surface", () => {
     ]);
     expect(JSON.stringify(first.contextApplication.applications)).not.toContain("prompt");
 
-    pinned.prepareAttempt({ model: "model-b", promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION });
     expect(calls).toEqual(["first", "second"]);
   });
 
-  test("transforms each cache tier on its own, keeps provider notes in the session tier, and accounts for the joined prompt", async () => {
+  test("transforms each cache tier on its own and accounts for the joined prompt", async () => {
     const transformerModule = {
       id: "tier-transformer",
       dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], gates: [],
@@ -606,9 +601,9 @@ describe("request tool surface", () => {
     expect(new Set(applicationIds).size).toBe(3);
     expect(prepared.staticContextTokens).toBe(Math.ceil((renderSystemPrompt(prepared.systemPrompt).length + JSON.stringify(prepared.definitions).length) / 4));
 
-    const attempt = pinned.prepareAttempt({ model: "model-b", promptNotes: { progress: "Report progress.", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    const attempt = pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION });
     expect(attempt.systemPrompt.stable).toBe("STABLE:tagged");
-    expect(attempt.systemPrompt.session).toBe(`SESSION:tagged${SYSTEM_PROMPT_SEPARATOR}# Provider Interaction Notes\n\nReport progress.`);
+    expect(attempt.systemPrompt.session).toBe("SESSION:tagged");
     expect(attempt.systemPrompt.conversation).toBe("CONVERSATION:tagged");
   });
 
@@ -623,7 +618,7 @@ describe("request tool surface", () => {
     const surface = await owner.resolve();
     const literal = "literal\nbytes";
     const stable = await surface.prepareStablePrompt(() => stableSystemPrompt(literal), DEFAULT_MODEL_INTERACTION_PROFILE, true);
-    const prepared = surface.prepareAttempt({ model: "model", promptNotes: { progress: "ignored", modelNotes: "ignored" }, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    const prepared = surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION });
 
     expect(calls).toBe(0);
     expect(stable.systemPrompt).toEqual(stableSystemPrompt(literal));

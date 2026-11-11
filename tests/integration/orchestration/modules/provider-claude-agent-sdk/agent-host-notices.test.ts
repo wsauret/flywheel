@@ -11,7 +11,7 @@ import { captureForkMessages } from "../../../../../src/orchestration/agent-runt
 import { toOpenAIResponsesInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { openAIResponsesTarget, resolveOpenAISystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 import { conversationTierEntry, DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
-import { parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { createHostRegistry, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -120,7 +120,7 @@ describe("a runtime notice after a parked batch", () => {
       // host's conversation-tier entry, while durable history keeps all of them. The failover reads the conversation
       // tier once, in its instructions.
       const history = [...agent.history];
-      const model = history.flatMap((message) => parseClaudeReminder(textOf(message) ?? "")?.kind === "model" ? [textOf(message) ?? ""] : []);
+      const model = history.flatMap((message) => parseRuntimeReminder(textOf(message) ?? "")?.kind === "model" ? [textOf(message) ?? ""] : []);
       expect(model).toHaveLength(1);
       const hostText = [ENGINE_INSTRUCTIONS, DISPATCH_TEXT, ...model, conversationTierEntry(tier)];
       for (const text of hostText) expect(history.some((message) => textOf(message) === text)).toBe(true);

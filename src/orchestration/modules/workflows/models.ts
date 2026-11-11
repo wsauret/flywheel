@@ -2,7 +2,7 @@ import { candidateProviderId } from "../../../infra/llm/access-provider.js";
 import { captureRoleCatalog, type CapturedRoleSelection } from "../../config/role-resolution.js";
 import { effortOptionsForMetadata } from "../../agent-runtime/llm/model-compat.js";
 import type { CaptureProviderConnection } from "../../agent-runtime/factory.js";
-import { claudeKnowledgeCutoff } from "../../agent-runtime/llm/claude-reminders.js";
+import { claudeKnowledgeCutoff } from "../../agent-runtime/llm/runtime-reminders.js";
 import type { AdvertisedTool, RuntimeTool } from "../../agent-runtime/tools/types.js";
 import { readModelScores, scoresForModel } from "../../../infra/llm/model-scores.js";
 import type { ModelScoreSnapshot } from "../../../infra/llm/model-scores-document.js";

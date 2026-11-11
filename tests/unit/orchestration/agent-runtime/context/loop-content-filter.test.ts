@@ -15,7 +15,6 @@ function makeClient(turns: Array<() => AsyncGenerator<ProviderStreamEvent>>): Mo
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
     streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
       const turn = turns[Math.min(call, turns.length - 1)];

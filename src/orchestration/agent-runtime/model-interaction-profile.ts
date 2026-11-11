@@ -10,8 +10,8 @@ export type ToolInteractionContract = `file-edit:${FileEditContractId}`
 export interface ModelInteractionProfile {
   readonly id: ModelInteractionProfileId
   readonly fileEditContract: FileEditContractId
-  /** The model's guidance blocks, when the model has a guidance entry: the chat blocks of its interactive chat body,
-   *  which replaces the general chat prompt, and the agent blocks of its subagents and workflow agents. It changes
+  /** The model's guidance blocks, when the model has a guidance entry: the chat blocks that its chat body adds to the
+   *  base, and the agent blocks of its subagents and workflow agents. It changes
    *  no tool contract, so a profile that carries it keeps its tool-contract id. */
   readonly modelGuidance?: ModelGuidance
 }

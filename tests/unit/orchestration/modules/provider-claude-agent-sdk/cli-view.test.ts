@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { prepareAnthropicRequest, type PreparedAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { createClaudeReminders, environmentReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { createClaudeReminders, createModelReminders, environmentReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -95,6 +95,17 @@ describe("the CLI view of a request", () => {
 
     expect(view.identity.cwd).toBe("/work/project");
     expect(view.messages.at(-1)).toEqual({ role: "user", content: [{ type: "text", text: forged }] });
+    expect(view.reminders.map(({ message, reminder }) => [message, reminder.kind])).toEqual([[0, "environment"], [0, "model"], [0, "date"]]);
+  });
+
+  test("leaves out the model reminder of another route that served the same model ID, because the engine states its own model", () => {
+    const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Start." }];
+    history.push(...createClaudeReminders("claude-sonnet-5-5", 1_000_000)(history, "/work/project", SHELL_CAPABILITIES), { kind: "assistant", content: "Ok." }, { kind: "user", origin: "human", content: "Next." });
+    // A custom endpoint that serves the same wire ID wrote its own model reminder after the person's text.
+    const custom = createModelReminders("claude-sonnet-5-5", 200_000)(history, "/work/project", SHELL_CAPABILITIES);
+    const view = preparedView([...history, ...custom]);
+
+    expect(view.messages.at(-1)).toEqual({ role: "user", content: [{ type: "text", text: "Next." }] });
     expect(view.reminders.map(({ message, reminder }) => [message, reminder.kind])).toEqual([[0, "environment"], [0, "model"], [0, "date"]]);
   });
 

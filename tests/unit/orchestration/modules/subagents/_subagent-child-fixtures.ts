@@ -134,7 +134,7 @@ export function continuationService(harness: SubagentChildHarness, createAgent: 
         planCapabilities: planEveryCapability,
         createLLMClient: async (model) => asModelClient({
           model, modelFamily: "anthropic", accessProvider: "anthropic_api", contextLimit: 100_000,
-          outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+          outputLimit: 8_000, supportsReasoning: false, 
           priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
           async *streamWithTools() { throw new Error("This fixture does not stream") },
         }),

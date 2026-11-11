@@ -36,7 +36,6 @@ function fakeClient(
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor,
     streamWithTools(opts: StreamOptions) {
       observe?.(opts);
@@ -62,7 +61,6 @@ function fakeAttempt(
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor,
   };
 }

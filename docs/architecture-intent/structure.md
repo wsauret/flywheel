@@ -202,7 +202,7 @@ The notify seam settles only after every enabled observer applied the input, and
 
 ## ARCH-STRUCTURE-035: Descriptors import no third-party SDK
 
-A module descriptor, its auth and catalog contributions, and a provider's description of model limits, prices, and prompt notes import no third-party SDK. A module loads such an SDK at the first use that needs it.
+A module descriptor, its auth and catalog contributions, and a provider's description of model limits and prices import no third-party SDK. A module loads such an SDK at the first use that needs it.
 
 Because: The account service and the project executor import the whole catalog before chat input is ready.
 

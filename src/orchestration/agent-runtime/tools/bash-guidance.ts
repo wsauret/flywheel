@@ -112,7 +112,7 @@ function fileWorkGuidance(fileEditTool: FileEditToolName, has: CapabilityCheck):
 export function bashToolSurface({ fileEditTool = "edit", mutatingDeclaration = true, writeGuard = true, background = true, persistence = true, has = EVERY_CAPABILITY, unattendedChat = false, platform = process.platform }: BashSurfaceOptions = {}): Pick<RuntimeTool, "description" | "promptGuidelines" | "inputSchema"> {
   const persists = background && persistence;
   const fields = commandProperties(background, persists);
-  const windowsSearch = has("search") && (!unattendedChat || platform === "win32");
+  const windowsSearch = has("search") && platform === "win32";
   return {
     description: [head(mutatingDeclaration, background, unattendedChat), background ? backgroundGuidance(unattendedChat) : foregroundOnly(unattendedChat), VENV, SCRATCH, ...(writeGuard ? [WRITE_ROOTS] : []), SEARCH, ...(windowsSearch ? [WINDOWS_SEARCH] : [])].join(" "),
     promptGuidelines: [SHELL_OUTPUT_GUIDANCE, ...[fileWorkGuidance(fileEditTool, has)].filter((line) => line !== undefined)],

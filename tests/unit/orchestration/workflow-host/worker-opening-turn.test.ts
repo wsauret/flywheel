@@ -29,7 +29,7 @@ describe("a step's opening turn", () => {
   const definitions = repoDefinitions()
   const client: LLMClientFactory = async () => asModelClient({
     accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000,
-    supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+    supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> { yield { kind: "done", stopReason: "end_turn" } },
   })
   /** The run's options as the agent factory completes them (`hostedOptions`), with the authorities that plan its requests. */

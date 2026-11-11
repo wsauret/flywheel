@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSyn
 import { basename, join } from "node:path";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import type { CliMessage, PlacedReminder } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
-import { canonicalShell } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { canonicalShell } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { processHolders } from "../../../../../src/infra/process-holder.js";
 import { bridgeSessionId } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/session-id.js";
 import { cliProjectSlug, lockSession, removeTranscript, sweepLeftBehindSessions, transcriptFiles, transcriptRows, writeTranscript, type TranscriptClock } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/transcript.js";

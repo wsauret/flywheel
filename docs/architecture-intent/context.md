@@ -135,7 +135,7 @@ A project-scoped instruction source cannot reach, through an alias, account-home
 
 ## ARCH-CONTEXT-026: Request context is assembled once and evidenced before provider I/O
 
-Request admission computes the request-stable prompt, the module transformer chain's result, and the provider tool definitions once, and each attempt reuses them and adds only attempt-local provider notes. Before provider I/O, one immutable prepared-attempt record binds the interaction profile, executable tool registrations, prompt hash, schemas, omissions, transformer identity, models, catalog and pricing provenance, tokenizer, and provider. Neither an adapter nor profile projection can change it after admission.
+Request admission computes the request-stable prompt, the module transformer chain's result, and the provider tool definitions once, and each attempt reuses them. Before provider I/O, one immutable prepared-attempt record binds the interaction profile, executable tool registrations, prompt hash, schemas, omissions, transformer identity, models, catalog and pricing provenance, tokenizer, and provider. Neither an adapter nor profile projection can change it after admission.
 
 ## ARCH-CONTEXT-027: A compaction reset records its boundary and reopens context in one commit
 

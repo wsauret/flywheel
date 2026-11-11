@@ -51,7 +51,7 @@ function startLoop(
     availability: fakeAvailability({}).availability,
     build: async () => ({ historyTarget: ownHistoryTarget,
     accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000,
-    supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+    supportsReasoning: false, toolPresentation: FUNCTION_TOOL_PRESENTATION,
     async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       const request = { messages: [...options.messages], completed: false };
       requests.push(request);

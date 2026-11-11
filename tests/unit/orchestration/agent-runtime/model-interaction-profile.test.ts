@@ -26,7 +26,7 @@ describe("model interaction profile resolution", () => {
   })
 
   test("gives guidance only to the models of the guidance table and their later family versions, without changing tool contracts", () => {
-    for (const model of ["claude-opus-5.5", "claude-sonnet-5.5", "claude-fable-5.1", "claude-fable-5.2", "claude-haiku-5.5"]) {
+    for (const model of ["claude-fable-5.1", "claude-fable-5.2", "claude-haiku-5.5"]) {
       const profile = resolveModelInteractionProfile(model, "anthropic")
       expect(profile.modelGuidance).toBeDefined()
       expect(profile.id).toBe("default")
@@ -40,7 +40,8 @@ describe("model interaction profile resolution", () => {
     expect(resolveModelInteractionProfile("claude-fable-5.2", "anthropic")).not.toBe(resolveModelInteractionProfile("claude-fable-5.1", "anthropic"))
     expect(resolveModelInteractionProfile("gpt-6.2-sol", "openai")).toBe(resolveModelInteractionProfile("gpt-6.1-sol", "openai"))
     expect(resolveModelInteractionProfile("gpt-7-luna", "openai").modelGuidance).toBeUndefined()
-    for (const model of ["claude-opus-5", "claude-fable-5", "claude-sonnet-4", "claude-haiku-5"]) {
+    // A model whose guidance is the base alone has no entry.
+    for (const model of ["claude-opus-5.5", "claude-sonnet-5.5", "claude-opus-5", "claude-fable-5", "claude-sonnet-4", "claude-haiku-5"]) {
       expect(resolveModelInteractionProfile(model, "anthropic").modelGuidance).toBeUndefined()
     }
   })

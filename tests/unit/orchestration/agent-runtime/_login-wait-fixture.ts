@@ -25,7 +25,6 @@ export function loginWaitingRequest(response?: string) {
       accessProvider: "chatgpt", model: "test-model", modelFamily: "openai",
       contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() {
         calls += 1;

@@ -80,7 +80,6 @@ describe("chat session with agent runtime — interrupt + resume", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
@@ -199,7 +198,7 @@ describe("chat session with agent runtime — interrupt + resume", () => {
     let turnIndex = 0
     const createClient = () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000,
-      supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      supportsReasoning: false, 
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
         if (turnIndex++ === 0) {
@@ -257,7 +256,7 @@ describe("chat session with agent runtime — interrupt + resume", () => {
     const treeWriter = makeMemoryTreeWriter()
     const createClient = () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000,
-      supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      supportsReasoning: false, 
       async *streamWithTools(options: StreamOptions) {
         const index = calls.length
         calls.push([...options.messages])
@@ -474,7 +473,7 @@ describe("chat session with agent runtime — interrupt + resume", () => {
     const requests: ConversationMessage[][] = []
     const client = async () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000,
-      supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      supportsReasoning: false, 
       async *streamWithTools(options: StreamOptions) {
         const index = requests.length
         requests.push([...options.messages])
@@ -594,7 +593,6 @@ describe("chat session with agent runtime — interrupt + resume", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         seenPriorMessages.push([...options.messages])

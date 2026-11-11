@@ -311,7 +311,6 @@ describe("agent loop safety limits", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(opts: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
         if (callIndex === 0) firstCallTools = opts.tools;

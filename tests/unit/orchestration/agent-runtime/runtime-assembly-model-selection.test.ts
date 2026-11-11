@@ -111,7 +111,6 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
               return asModelClient({
                 model, modelFamily: plan.family, accessProvider: plan.candidates[0]?.providerId ?? "",
                 contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: true,
-                promptNotes: { progress: "", modelNotes: "" },
                 priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
                 async *streamWithTools(options) {
                   outgoing.push({ model, wire, effort: options.reasoningEffort })

@@ -85,7 +85,7 @@ describe("agent loop interruption barrier", () => {
     void lifecycle.done.catch((error) => { loopError = error instanceof Error ? error : new Error(String(error)); });
     const client = asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000,
-      supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      supportsReasoning: false, toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
         captured.push([...options.messages]);
         if (captured.length === 1) {

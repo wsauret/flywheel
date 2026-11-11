@@ -44,7 +44,6 @@ describe("typed Effect runtime boundary", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" } },
         async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
           if (kind === "persistence") throw refusal

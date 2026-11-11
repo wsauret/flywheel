@@ -21,7 +21,7 @@ for (const missing of ["checkpoint", "checkpoint_read", "checkpoint_replace", "c
       tools.delete(missing);
       const client = asModelClient({
         accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: trigger === "automatic" ? 10_000 : 100_000,
-        outputLimit: 8000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+        outputLimit: 8000, supportsReasoning: false, toolPresentation: FUNCTION_TOOL_PRESENTATION,
         async *streamWithTools(request) {
           requests.push({ ...request, messages: [...request.messages] });
           if (trigger === "overflow") throw normalizeProviderAttemptFailure(new ContextLengthExceededError());
@@ -125,7 +125,7 @@ for (const awaitsPerson of [false, true]) {
     let queued = false;
     const client = asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000,
-      outputLimit: 8000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      outputLimit: 8000, supportsReasoning: false, toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(request) {
         requests.push({ ...request, messages: [...request.messages] });
         if (requests.length === 1) throw normalizeProviderAttemptFailure(new ContextLengthExceededError());

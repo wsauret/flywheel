@@ -39,7 +39,6 @@ describe("provider request admission diagnostics", () => {
         contextLimit: 1_000,
         outputLimit: 100,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
         async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } as const; },
         };

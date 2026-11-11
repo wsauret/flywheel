@@ -19,7 +19,6 @@ describe("agent loop live model reassignment", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: true,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(options): AsyncGenerator<ProviderStreamEvent> {
         requests.push({ model: this.model, effort: options.reasoningEffort });

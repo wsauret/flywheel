@@ -23,7 +23,6 @@ function captureClient(requests: ConversationMessage[][], failure?: Error, abort
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
     async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       requests.push(JSON.parse(JSON.stringify(options.messages)))

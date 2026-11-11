@@ -58,7 +58,6 @@ test("child live cost counts each settled request once before and after terminal
         createLLMClient: async () => asModelClient({
           accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test",
           contextLimit: 1000, outputLimit: 100, supportsReasoning: false,
-          promptNotes: { progress: "", modelNotes: "" },
           priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
           async *streamWithTools() {},
         }),

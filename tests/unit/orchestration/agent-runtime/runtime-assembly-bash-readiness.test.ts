@@ -30,7 +30,6 @@ const attempt = {
   contextLimit: 100_000,
   outputLimit: 8_000,
   supportsReasoning: false,
-  promptNotes: { progress: "", modelNotes: "" },
   priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
   async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
     yield { kind: "done", stopReason: "end_turn" };

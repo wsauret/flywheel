@@ -17,7 +17,7 @@ import { privateTemporaryRoot } from "../../../../../src/infra/private-temporary
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
 import type { Claim, ContentBlock, ConversationMessage, ProviderStreamEvent, StagedProviderClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { engineModelId } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { engineModelId } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
 import { holdSharedTree, type SharedTree } from "../../../../../src/orchestration/agent-runtime/shared-tree.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";

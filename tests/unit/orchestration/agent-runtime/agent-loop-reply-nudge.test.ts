@@ -24,7 +24,6 @@ function scriptedClient(
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       requests.push(options.messages)
       const response = responses[callIndex++]

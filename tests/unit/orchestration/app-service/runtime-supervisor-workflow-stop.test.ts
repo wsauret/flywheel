@@ -88,7 +88,7 @@ describe("a person's Stop of a workflow child", () => {
       }
       return newTestRunner({ ...options, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
         accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+        priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools(request) {
           stepRuns.resolve()
           yield { kind: "text_delta", text: "working", blockKey: "text" }

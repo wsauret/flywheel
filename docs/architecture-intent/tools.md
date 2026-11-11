@@ -215,7 +215,7 @@ Not: Rewriting one registration in place for each model.
 
 ## ARCH-TOOLS-056: Every caller resolves the interaction profile through serving-model policy
 
-Interaction profile resolution is serving-model policy, shared by chat, workflow workers, subagents, retries, capped requests, failover, and direct headless tasks. A literal headless system prompt reaches the provider byte for byte, without profile guidance or provider notes.
+Interaction profile resolution is serving-model policy, shared by chat, workflow workers, subagents, retries, capped requests, failover, and direct headless tasks. A literal headless system prompt reaches the provider byte for byte, without profile guidance.
 
 ## ARCH-TOOLS-045: Tool contributions settle against the planned set
 

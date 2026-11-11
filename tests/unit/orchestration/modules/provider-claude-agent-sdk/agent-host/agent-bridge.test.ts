@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
 import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { environmentReminder } from "../../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { environmentReminder } from "../../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { TOOL_MCP_PREFIX } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { originsOf } from "../_bridge-harness.js";

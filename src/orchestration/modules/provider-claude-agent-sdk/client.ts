@@ -3,7 +3,7 @@ import { ApiError } from "../../agent-runtime/errors.js";
 import { createAnthropicAdapter, prepareAnthropicRequest } from "../../agent-runtime/llm/anthropic.js";
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
-import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/claude-reminders.js";
+import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/runtime-reminders.js";
 import { credentialForCandidate, stagedProviderClient, type AccessProviderBuild } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type StagedProviderClient, type ToolPresentation } from "../../agent-runtime/llm/types.js";

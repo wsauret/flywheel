@@ -32,7 +32,6 @@ test("passes a planned shell tool to the provider unchanged", async () => {
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
   };
   const client = withRequestAdmission({

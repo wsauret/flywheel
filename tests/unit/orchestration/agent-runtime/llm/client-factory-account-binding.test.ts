@@ -116,7 +116,6 @@ describe("provider credential binding", () => {
         createLLMClient: async (model: string) => asModelClient({
           model, modelFamily: "openai", accessProvider: "openai_api",
           contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: true,
-          promptNotes: { progress: "", modelNotes: "" },
           priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
           async *streamWithTools() {
             outgoing.push(model);

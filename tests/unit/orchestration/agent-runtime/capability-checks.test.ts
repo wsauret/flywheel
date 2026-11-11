@@ -28,7 +28,7 @@ const definitions = repoDefinitions().captureRevision()
 
 const client: LLMClientFactory = async () => asModelClient({
   accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION,
-  contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+  contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
   priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
   async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } },
 })

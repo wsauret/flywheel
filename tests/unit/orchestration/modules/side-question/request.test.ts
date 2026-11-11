@@ -107,7 +107,6 @@ test.each(["answer", "unsolicited", "refusal", "no-provider"] as const)("the rea
     return asModelClient({
     accessProvider: "openai_api", modelFamily: "openai", model,
     contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     async *streamWithTools(options) {
       calls.push(options)

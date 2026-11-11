@@ -25,7 +25,6 @@ const attempt: ServingAttempt = {
   contextLimit: 20_000,
   outputLimit: 8_000,
   supportsReasoning: true,
-  promptNotes: { progress: "", modelNotes: "" },
   priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
 };
 

@@ -35,6 +35,7 @@ import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-ru
 import { DebugLog } from "../../../../src/infra/debug-log"
 import { countStateRequests } from "../../../helpers/state-requests"
 import { refusingLauncher } from "../../../helpers/launcher-fake"
+import { capabilityAccessHolding } from "../agent-runtime/tools/_fixtures"
 import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { registerCapacityWaits } from "../../../../src/orchestration/session/capacity-wait"
 import { liveSessionControl, messageDisposition } from "../../../../src/orchestration/session/live-session-control"
@@ -217,7 +218,7 @@ describe("a step's loop notices", () => {
         ...options, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined,
         lifecycle: { ...options.lifecycle, onTurnParked: async (context) => { await options.lifecycle.onTurnParked?.(context); parked.resolve() } },
       }, async () => asModelClient({
-        accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+        accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools() { requests += 1; requested.resolve(); stop.abort(); yield { kind: "done", stopReason: "end_turn" } },
       }))
@@ -269,7 +270,7 @@ describe("a step's loop notices", () => {
         ...options, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined,
         lifecycle: { ...options.lifecycle, onTurnParked: async (context) => { parked.resolve(context.park); stop.abort() } },
       }, async () => asModelClient({
-        accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+        accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools() { requests += 1; yield { kind: "text_delta", text: "Read the notes.", blockKey: "text-0" }; yield { kind: "done", stopReason: "end_turn" } },
       }))
@@ -459,10 +460,10 @@ describe("a step's persona grant", () => {
 
 describe("a step's recovery between failed runs", () => {
   /** A worker whose real runner serves the scripted responses in order, one per model request. */
-  function scriptedWorker(dir: string, authority: CommandHandoverAuthority, responses: readonly (() => ProviderStreamEvent[])[], onRequest: () => void = () => {}) {
+  function scriptedWorker(dir: string, authority: CommandHandoverAuthority, responses: readonly (() => ProviderStreamEvent[])[], onRequest: () => void = () => {}, overrides: Parameters<typeof handoverWorker>[9] = {}) {
     let request = 0
     return handoverWorker(dir, (options) => newTestRunner({ ...options, runtimeSurfaces: { ...options.runtimeSurfaces, launcher: refusingLauncher }, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined }, async () => asModelClient({
-      accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() {
         onRequest()
@@ -470,10 +471,10 @@ describe("a step's recovery between failed runs", () => {
         request += 1
         yield* respond()
       },
-    })), authority)
+    })), authority, undefined, undefined, undefined, undefined, undefined, undefined, overrides)
   }
   // A walk that found no candidate whose capacity returns at once: the policy waits 0 ms, uncounted.
-  const noCapacity = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: 0 } }) }
+  const noCapacity = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: 0, hold: { kind: "usage_limit", stated: true } } }) }
   const readCall = (id: string) => (): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id, name: "read", input: { file_path: "missing.txt" } } }, { kind: "done", stopReason: "tool_use" }]
   const handoff = (): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id: "handoff-1", name: "handoff", input: { summary: "done" } } }, { kind: "done", stopReason: "tool_use" }]
 
@@ -486,7 +487,24 @@ describe("a step's recovery between failed runs", () => {
       const worker = scriptedWorker(dir, handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }), [readCall("read-1"), readCall("read-2"), noCapacity, handoff])
       const result = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
       expect(result.output).toBe("completed")
-      expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "wait", failure: "api_error", streak: 0, delayMs: 0, served: 2 }])
+      expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "wait", failure: "api_error", streak: 0, delayMs: 0, hold: "usage_limit", resetsAtMs: 0, served: 2 }])
+    } finally {
+      diagnostic.mockRestore()
+      store.close()
+    }
+  })
+
+  it("lets a spent usage limit stand at once for an agent of an unattended run (PI-AGENT-128)", async () => {
+    const dir = temporary("step-unattended-usage-limit-")
+    const store = await agentStore(dir)
+    const recoveries: unknown[] = []
+    const diagnostic = spyOn(DebugLog, "record").mockImplementation((entry) => { if (entry.type === "agent.unattended.recovery") recoveries.push(entry.payload) })
+    try {
+      // A wait would end at once and the next run would hand off, so only the fail decision ends the step without it.
+      const worker = scriptedWorker(dir, handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }), [noCapacity, handoff], undefined, { capabilityAccess: { ...capabilityAccessHolding([]), unattended: true } })
+      const result = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
+      expect(result.output).not.toBe("completed")
+      expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "fail", failure: "api_error", streak: 0, hold: "usage_limit", resetsAtMs: 0, served: 0 }])
     } finally {
       diagnostic.mockRestore()
       store.close()
@@ -508,7 +526,7 @@ describe("a step's recovery between failed runs", () => {
     })
     try {
       // The walk states a time an hour away, so only the message can end the wait inside the test.
-      const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000 } }) }
+      const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } } }) }
       const run = scriptedWorker(dir, authority, [noCapacityForAnHour, handoff])(STEP, attemptBrief("work"), undefined, CONVERSATION)
       await armed.promise
       const control = liveSessionControl(authority.reader, sessionId)
@@ -576,6 +594,23 @@ describe("a step whose handoff corrections run out", () => {
 
     await expect(run).rejects.toBeInstanceOf(HandoffInvalidError)
     await expect(run).rejects.toThrow(`Handoff invalid for attempt ${STEP.id}: ${exhausted.message}`)
+    store.close()
+  })
+
+  it("delivers the last refused handoff with its problems when the agent handed off at least once", async () => {
+    const dir = temporary("step-handoff-delivered-")
+    const store = await agentStore(dir)
+    const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
+    const refused = { payload: { summary: "Studied it.", sources: ["a", "b"] }, issues: [{ path: "sources", message: "Expected a value with a length of at most 1" }] }
+    const worker = handoverWorker(dir, (options) => {
+      options.runtimeSurfaces?.handoff?.onRejected?.({ payload: { summary: "First try." }, issues: [{ path: "summary", message: "too short" }] })
+      options.runtimeSurfaces?.handoff?.onRejected?.(refused)
+      return { send() {}, end() {}, abort() {}, done: Promise.reject(new HandoffCorrectionExhausted({ message: "handoff failed 3 consecutive attempts" })) }
+    }, authority)
+
+    const output = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
+
+    expect(output).toMatchObject({ output: "completed", handoffContent: refused.payload, handoffIssues: refused.issues })
     store.close()
   })
 })

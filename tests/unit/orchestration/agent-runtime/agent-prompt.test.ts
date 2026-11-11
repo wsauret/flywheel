@@ -2,8 +2,6 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { buildSystemPrompt as buildSystemPromptTiers, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
-import { ANTHROPIC_PROMPT_NOTES } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js";
-import { SHARED_PROMPT_NOTES } from "../../../../src/orchestration/agent-runtime/llm/prompt-notes.js";
 import { testBaseTools } from "../../../helpers/request-tool-surface.js";
 import { bashToolSurface, SHELL_OUTPUT_GUIDANCE } from "../../../../src/orchestration/agent-runtime/tools/bash-guidance.js";
 import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines } from "../../../../src/orchestration/agent-runtime/global-guidelines.js";
@@ -71,28 +69,10 @@ describe("detectModelFamily", () => {
 });
 
 describe("buildSystemPrompt — identity and constraints", () => {
-  test("contains identity text regardless of model family", () => {
-    for (const style of [ANTHROPIC_PROMPT_NOTES, SHARED_PROMPT_NOTES]) {
-      const prompt = buildSystemPrompt(promptOptions({
-      promptKind: "chat",
-        corePrompt,
-        promptNotes: style,
-        tools: [],
-      }));
-      expect(prompt).toContain("pragmatic software engineering agent");
-    }
-  });
-
-  test("contains constraints regardless of model family", () => {
-    for (const style of [ANTHROPIC_PROMPT_NOTES, SHARED_PROMPT_NOTES]) {
-      const prompt = buildSystemPrompt(promptOptions({
-      promptKind: "chat",
-        corePrompt,
-        promptNotes: style,
-        tools: [],
-      }));
-      expect(prompt).toContain("Do NOT make assumptions. Prove each claim with the evidence that can settle it");
-    }
+  test("an agent that is not a chat opens with the core prompt's identity and constraints", () => {
+    const prompt = buildSystemPrompt(promptOptions({ promptKind: "subagent", corePrompt, tools: [] }));
+    expect(prompt).toContain("pragmatic software engineering agent");
+    expect(prompt).toContain("Do NOT make assumptions. Prove each claim with the evidence that can settle it");
   });
 });
 
@@ -101,7 +81,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     const expectedGuidance = "Never redirect, suppress, filter, or capture diagnostic output";
     const bashPrompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash"),
     }));
     expect(bashPrompt).toContain(expectedGuidance);
@@ -122,7 +101,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     const bash = BASE.get("bash")!;
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash"),
     }));
     // Output compression semantics belong to the field that controls them.
@@ -205,7 +183,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   test("search guidance is content-only and lives in the description", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("search"),
     }));
     expect(prompt).not.toContain("Use search to list paths");
@@ -218,7 +195,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   test("list guidance lives in the description and does not steer away from the shell", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("list"),
     }));
     const description = BASE.get("list")!.description;
@@ -252,37 +228,17 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   test("bash guidance is absent when bash is not loaded", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("read"),
     }));
     expect(prompt).not.toContain("raw_output");
     expect(prompt).not.toContain("2>&1");
   });
 
-  test("includes model-family-specific communication section", () => {
-    const anthropicPrompt = buildSystemPrompt(promptOptions({
-      promptKind: "chat",
-      chatHost: { communication: true },
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
-      tools: [],
-    }));
-    const openaiPrompt = buildSystemPrompt(promptOptions({
-      promptKind: "chat",
-      chatHost: { communication: true },
-      promptNotes: SHARED_PROMPT_NOTES,
-      tools: [],
-    }));
-    expect(anthropicPrompt).toContain("No emojis");
-    expect(openaiPrompt).toContain("No emojis");
-    expect(anthropicPrompt).toContain("Keep it conversational");
-    expect(openaiPrompt).toContain("Keep it conversational");
-  });
-
   test("keeps chat communication guidance out of headless prompts", () => {
     const chat = buildSystemPrompt(promptOptions({ promptKind: "chat", chatHost: { communication: true }, corePrompt, tools: [] }));
     const headless = buildSystemPrompt(promptOptions({ promptKind: "headless", corePrompt, tools: [] }));
-    const concise = "Be concise in narration";
-    const evidence = "Ground every claim about code, tests, or tools in what you observed";
+    const concise = "Give a one-line update before your first tool call";
+    const evidence = "Ground each claim about code, tests, or tools in what you observed";
 
     expect(chat.split(concise)).toHaveLength(2);
     expect(chat.split(evidence)).toHaveLength(2);
@@ -293,7 +249,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   test("the system prompt lists no tools: the tool definitions are the one catalog", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read", "handoff"),
     }));
     expect(prompt).not.toContain("Available tools");
@@ -304,7 +259,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   test("handoff guidance is included when tool is loaded, and the input shape lives only in its description", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("handoff"),
     }));
     expect(prompt).toContain("Finish reviews and verification before handoff");
@@ -318,7 +272,6 @@ describe("buildSystemPrompt — subagent subagent", () => {
   test("includes subagent guidelines when subagent tool is loaded", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read", "subagent"),
     }));
     expect(prompt).toContain("Terse prompts produce shallow results");
@@ -328,7 +281,6 @@ describe("buildSystemPrompt — subagent subagent", () => {
   test("excludes subagent guidelines when subagent tool is not loaded", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
-      promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read"),
     }));
     expect(prompt).not.toContain("Terse prompts produce shallow results");

@@ -30,7 +30,6 @@ function makeFakeClient(): ModelClient {
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor(tokens) { return pricedUsage(1 / 1000, tokens); },
     async *streamWithTools() {
       // Emit one of every event type that flows through the onEvent handler.
@@ -144,7 +143,6 @@ describe("LiveAgent maxLLMCalls and agentRegistry options", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
         async *streamWithTools() {
           streamInvocations++;
@@ -196,7 +194,6 @@ describe("LiveAgent runtime assembly + stream characterization", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
         async *streamWithTools(opts: StreamOptions) {
           observedMessages.push(opts.messages.map((m) => ({ kind: m.kind, content: m.content })));
@@ -231,7 +228,6 @@ describe("LiveAgent runtime assembly + stream characterization", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
         async *streamWithTools(opts: StreamOptions) {
           observedCacheKey = opts.providerSessionKey;
@@ -261,7 +257,6 @@ describe("LiveAgent runtime assembly + stream characterization", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
         async *streamWithTools(opts: StreamOptions) {
           observedCacheKey = opts.providerSessionKey;
@@ -293,7 +288,6 @@ describe("LiveAgent runtime assembly + stream characterization", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
         async *streamWithTools() {
           // One transient retry, then the next adapter stream starts silently before real text arrives.
@@ -341,7 +335,6 @@ describe("LiveAgent runtime assembly + stream characterization", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
         async *streamWithTools(options: StreamOptions) {
           yield { kind: "stream_retry", attempt: 1, maxAttempts: 3, reason: "boom", delayMs: 30_000, error: { message: "boom" } } as const;

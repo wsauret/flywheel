@@ -94,7 +94,7 @@ for (const trigger of ["manual", "automatic", "overflow", "idle"] as const) {
       const beforeCompaction = await checkpoint.read();
       const client = asModelClient({
         accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: trigger === "automatic" ? 10_000 : 100_000,
-        outputLimit: 8000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+        outputLimit: 8000, supportsReasoning: false, toolPresentation: FUNCTION_TOOL_PRESENTATION,
         async *streamWithTools(request) {
           requests.push({ ...request, messages: [...request.messages] });
           if (trigger === "overflow" && requests.length === 1) throw normalizeProviderAttemptFailure(new ContextLengthExceededError());

@@ -87,7 +87,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
       const adapter: LLMClient = { historyTarget: ownHistoryTarget,
         accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test",
         contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+        toolPresentation: FUNCTION_TOOL_PRESENTATION,
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools(options) {
           const durableReader = createTree()
@@ -196,7 +196,6 @@ describe("chat session with agent runtime request-owned recovery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(_: StreamOptions) {
@@ -291,7 +290,6 @@ describe("chat session with agent runtime request-owned recovery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) {
@@ -386,7 +384,6 @@ describe("chat session with agent runtime request-owned recovery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) {

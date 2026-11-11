@@ -51,7 +51,6 @@ describe("chat session with agent runtime — queued message delivery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
@@ -186,7 +185,6 @@ describe("chat session with agent runtime — queued message delivery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
@@ -250,7 +248,6 @@ describe("chat session with agent runtime — queued message delivery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools() {
         yield { kind: "text_delta", text: "checkpoint", blockKey: "b0" } as const
@@ -289,7 +286,6 @@ describe("chat session with agent runtime — queued message delivery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         if (options.signal?.aborted) return
@@ -355,7 +351,6 @@ describe("chat session with agent runtime — queued message delivery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: true,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         calls.push({ model, messages: [...options.messages], effort: options.reasoningEffort })
@@ -422,7 +417,6 @@ describe("chat session with agent runtime — queued message delivery", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
@@ -479,7 +473,7 @@ describe("chat session queued message recall", () => {
     const gates = [Promise.withResolvers<void>(), Promise.withResolvers<void>()]
     const createClient = async () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000,
-      supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      supportsReasoning: false, 
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
@@ -549,7 +543,6 @@ describe("chat session workflow confirmation prompt", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
       async *streamWithTools(options: StreamOptions) {
         systemPrompts.push(renderSystemPrompt(options.systemPrompt))

@@ -43,7 +43,6 @@ describe("turnHasVisibleText across turns", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
         const response = responses[callIndex++]
@@ -103,7 +102,6 @@ describe("turnHasVisibleText across turns", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
         const response = responses[callIndex++]

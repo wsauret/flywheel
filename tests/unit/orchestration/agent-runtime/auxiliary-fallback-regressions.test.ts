@@ -15,7 +15,7 @@ function clientFor(streams: Stream[]): ModelClient {
     accessProvider: "github_copilot", accessProviderCandidate: { kind: "subscription", providerId: "github_copilot", instanceId: `account-${index}`, spendMode: "included" },
     modelFamily: "openai", model: "gpt-4.1", toolPresentation: FUNCTION_TOOL_PRESENTATION,
     contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+    priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
   }));
   const plannedAttempt = async () => attempts[0]!;
   return {

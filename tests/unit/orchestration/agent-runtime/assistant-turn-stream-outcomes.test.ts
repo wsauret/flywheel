@@ -45,7 +45,6 @@ function fakeClient(stream: (opts: StreamOptions) => AsyncGenerator<ProviderStre
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
     streamWithTools: stream,
   };

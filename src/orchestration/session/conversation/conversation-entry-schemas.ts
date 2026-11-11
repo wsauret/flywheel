@@ -283,7 +283,7 @@ function entrySchemas<P extends Schema.Codec<typeof CurrentProducerSchema.Type, 
     runtimeNotice: Schema.optionalKey(Schema.Literal(true)),
     // `conversation-tier` is the label that builds before 2026-10-27 wrote on a hosted agent's tier entries and tool
     // notice. The reader converts it (`persistedToConversationMessage`); remove it after 2027-04-27.
-    framing: Schema.optionalKey(Schema.Literals(["claude", "agent-host", "tool-notice", "reminder", "conversation-tier"])),
+    framing: Schema.optionalKey(Schema.Literals(["claude", "model", "agent-host", "tool-notice", "reminder", "conversation-tier"])),
   });
 
   const PersistedAgentMessageSchema = Schema.Union([

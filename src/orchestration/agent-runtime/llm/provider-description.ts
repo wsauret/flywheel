@@ -1,26 +1,15 @@
 import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import type { ModelInfo } from "../../../infra/llm/models.js";
-import { SHARED_PROMPT_NOTES } from "./prompt-notes.js";
-import { FUNCTION_TOOL_PRESENTATION, type ProviderPromptNotes, type ServingAttempt, type ToolDef, type ToolPresentation } from "./types.js";
+import { FUNCTION_TOOL_PRESENTATION, type ServingAttempt, type ToolDef, type ToolPresentation } from "./types.js";
 
 // The facts of each wire protocol live here, apart from its adapter: a provider describes a model when it builds
 // its client, and loads the adapter, with its SDK, only when it opens its first connection.
-
-export const ANTHROPIC_PROMPT_NOTES = {
-  progress: "",
-  modelNotes: "- Use extended thinking for complex multi-step reasoning.",
-} satisfies ProviderPromptNotes;
 
 // Anthropic prices a one-hour cache write at two times the base input rate. models.dev states no one-hour rate.
 export const ANTHROPIC_CACHE_RATES = { cacheReadRatio: 0.1, cacheWriteRatio: 1.25, cacheWrite1hRatio: 2 } as const;
 
 export const GOOGLE_CACHE_RATES = { cacheReadRatio: 0.25, cacheWriteRatio: 1.0 } as const;
-
-export const GOOGLE_PROMPT_NOTES = {
-  progress: "",
-  modelNotes: "- Gemini supports extended thinking via `thinkingBudget`/`thinkingLevel`.",
-} satisfies ProviderPromptNotes;
 
 export const OPENAI_CACHE_RATES = { cacheReadRatio: 0.5, cacheWriteRatio: 1.0 } as const;
 
@@ -58,7 +47,6 @@ export async function describeProvider(model: string, options: ProviderDescripti
     modelFamily: protocol === "anthropic" ? "anthropic" : protocol === "google" ? "google" : "openai",
     model,
     toolPresentation: protocol === "openai-responses" ? OPENAI_RESPONSES_TOOL_PRESENTATION : FUNCTION_TOOL_PRESENTATION,
-    promptNotes: protocol === "anthropic" ? ANTHROPIC_PROMPT_NOTES : protocol === "google" ? GOOGLE_PROMPT_NOTES : SHARED_PROMPT_NOTES,
     // The Responses routes group their prompt cache by the request's prompt-cache
     // key: the OpenAI API reads the body `prompt_cache_key`, and the ChatGPT
     // backend reads the session-id header, which carries the same key (openai-helpers.ts).

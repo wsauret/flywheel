@@ -108,7 +108,7 @@ const SUBAGENT: AgentPurpose = { kind: "subagent", renderAs: "subagent", parentT
 
 describe("system prompt of an unattended chat", () => {
   test("leaves out the person-facing blocks, tools, the bundled doctrine, and publication rules, where the interactive chat keeps them", async () => {
-    const PERSON_BLOCKS = ["chat change review", "communication", "conversation-first delivery", "engineering doctrine"];
+    const PERSON_BLOCKS = ["chat body", "engineering doctrine"];
     const PERSON_TOOLS = ["ask_user"];
     const PUBLICATION = ["commit + push", "Run the repository's standard gates first", "One commit per unit"];
     const KEPT = ["core system prompt", "session checkpoint"];
@@ -135,7 +135,7 @@ describe("system prompt of an unattended chat", () => {
 
   // Nobody reviews an unattended chat's result, so its verification rule asks for every named requirement instead of
   // limiting the checks to the smallest set.
-  test("checks every named requirement before it finishes, where the interactive chat keeps the scope limits", async () => {
+  test("checks every named requirement before it finishes, where a subagent keeps the scope limits", async () => {
     const COMPLETION = "Before you finish, check each requirement that the request names against your work and exercise it, including how the new inputs combine and how a caller reaches the change through its public entry point; the work is done when every named requirement is verified, not a plausible subset.";
     const SCOPE_LIMITS = [
       "Use the smallest complete verification of the work, then stop.",
@@ -144,11 +144,11 @@ describe("system prompt of an unattended chat", () => {
       "minimal means the smallest decisive fresh check, not reuse of an earlier result",
     ];
     const core = async (purpose: AgentPurpose) => (await request(purpose)).parts.find((part) => part.label === "core system prompt")?.text ?? "";
-    const chat = await core({ kind: "interactive-chat" });
+    const subagent = await core(SUBAGENT);
     const unattended = await core({ kind: "unattended-chat" });
 
-    for (const limit of SCOPE_LIMITS) expect(chat).toContain(limit);
-    expect(chat).not.toContain(COMPLETION);
+    for (const limit of SCOPE_LIMITS) expect(subagent).toContain(limit);
+    expect(subagent).not.toContain(COMPLETION);
     expect(unattended).toContain(COMPLETION);
     for (const limit of SCOPE_LIMITS) expect(unattended).not.toContain(limit);
     expect(unattended).toContain("Honor explicit repository gates. Assume past observations are stale");

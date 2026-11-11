@@ -32,7 +32,7 @@ import { hashToolInputFormat } from "../session/provider-request-audit-hash.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
 import type { ModelRuntimeCapture, ProviderConnectionCapture } from "./factory.js";
 import { tokenCountingPolicy, type TokenCountingPolicyIdentity } from "./compaction/token-counter.js";
-import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR, type SystemPromptTiers } from "./llm/system-prompt-tiers.js";
+import { renderSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-tiers.js";
 
 import { accessProviderRegistry, type AccessProviderRegistry } from "./llm/access-provider-registry.js";
 import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
@@ -94,7 +94,6 @@ interface RequestStablePrompt {
   readonly contextApplication: ProviderRequestAuditContextApplication;
   readonly definitions: readonly ProviderToolDef[];
   readonly definitionChars: number;
-  readonly literalOverride: boolean;
   readonly interactionProfileId: ModelInteractionProfile["id"];
   readonly omittedTools: ReadonlyArray<{ readonly name: string; readonly reason: string }>;
 }
@@ -169,7 +168,7 @@ interface RequestToolSurface {
   /** Complete skill revision captured with this request's prompt and executable tools. */
   readonly skillRegistry?: ToolExposurePlan["skillRegistry"];
   prepareStablePrompt(build: () => SystemPromptTiers | Promise<SystemPromptTiers>, profile: ModelInteractionProfile, literalOverride?: boolean): Promise<RequestStablePrompt>;
-  prepareAttempt(attempt: Pick<ServingAttempt, "model" | "promptNotes" | "toolPresentation"> & Partial<Pick<ServingAttempt, "modelFamily" | "tokenizerIdentity">>): PreparedRequestAttempt;
+  prepareAttempt(attempt: Pick<ServingAttempt, "model" | "toolPresentation"> & Partial<Pick<ServingAttempt, "modelFamily" | "tokenizerIdentity">>): PreparedRequestAttempt;
   /** Captures the one immutable provider candidate chain this surface plans and dispatches. */
   admitProviderRequest(client: ModelClient, signal?: AbortSignal): Promise<AdmittedModelRequest>;
 }
@@ -276,7 +275,6 @@ function pin(
         staticContextTokens: Math.ceil((renderSystemPrompt(systemPrompt).length + definitionChars) / 4),
         contextApplication: { identity: applicationIdentity, applications: [...stable.applications, ...session.applications, ...conversation.applications] },
         definitionChars,
-        literalOverride,
         definitions,
 
         interactionProfileId: profile.id,
@@ -318,12 +316,7 @@ function pin(
         };
         projections.set(attempt.toolPresentation, projection);
       }
-      const promptNotes = attempt.promptNotes ?? { progress: "", modelNotes: "" };
-      const noteText = [promptNotes.progress, promptNotes.modelNotes].filter(Boolean).join("\n\n");
-      // Provider notes vary by the serving attempt's wire protocol, so they join the session tier.
-      const systemPrompt: SystemPromptTiers = stablePrompt.literalOverride || noteText.length === 0
-        ? stablePrompt.systemPrompt
-        : { ...stablePrompt.systemPrompt, session: [stablePrompt.systemPrompt.session, `# Provider Interaction Notes\n\n${noteText}`].filter(Boolean).join(SYSTEM_PROMPT_SEPARATOR) };
+      const systemPrompt = stablePrompt.systemPrompt;
       const renderedPrompt = renderSystemPrompt(systemPrompt);
       const policy = attempt.modelFamily === undefined
         ? undefined

@@ -54,7 +54,6 @@ describe("chat session with agent runtime — background-work notification (f06c
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools(options: StreamOptions) {
           calls.push([...options.messages])
@@ -208,7 +207,6 @@ describe("chat session with agent runtime — background-work notification (f06c
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) {
         streams += 1

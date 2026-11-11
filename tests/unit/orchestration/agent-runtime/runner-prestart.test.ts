@@ -143,7 +143,7 @@ describe("a pre-start's request preparation", () => {
     const streamed: StreamOptions[] = []
     const client: LLMClientFactory = async () => asModelClient({
       accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.5", toolPresentation: FUNCTION_TOOL_PRESENTATION, anticipatesRequests: true,
-      contextLimit: 400_000, outputLimit: 64_000, supportsReasoning: true, promptNotes: { progress: "", modelNotes: "" },
+      contextLimit: 400_000, outputLimit: 64_000, supportsReasoning: true, 
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) { streamed.push(options); yield { kind: "done", stopReason: "end_turn" } },
     })
@@ -217,7 +217,7 @@ describe("a pre-start's request preparation", () => {
     const anticipated: StreamOptions[] = []
     const client: LLMClientFactory = async () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION, anticipatesRequests: true,
-      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) { anticipated.push(options); yield { kind: "done", stopReason: "end_turn" } },
     })
@@ -237,7 +237,7 @@ describe("a pre-start's request preparation", () => {
       trees.push(lifetime?.sharedHost)
       return asModelClient({
         accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION,
-        contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+        contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } },
       })
@@ -272,7 +272,7 @@ describe("a pre-start's request preparation", () => {
       clients += 1
       return asModelClient({
         accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION,
-        contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+        contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } },
       })
@@ -301,7 +301,7 @@ describe("a pre-start's request preparation", () => {
     const appended: ConversationMessage[] = []
     const client: LLMClientFactory = async () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION,
-      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() { streams += 1; yield { kind: "done", stopReason: "end_turn" } },
     })
@@ -329,7 +329,7 @@ describe("a pre-start's request preparation", () => {
     let environments = 0
     const client: LLMClientFactory = async () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION, anticipatesRequests: true,
-      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } },
     })

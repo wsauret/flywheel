@@ -18,7 +18,6 @@ it("resolves title requests again when the catalog changes during a validation r
     createRunner: (options) => newTestRunner(options, async (model) => asModelClient({
       model, modelFamily: model.startsWith("claude") ? "anthropic" : "openai", accessProvider: "openai_api",
       contextLimit: 200_000, outputLimit: 8_000, supportsReasoning: true,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(input) {
         requested.push({ model, effort: input.reasoningEffort })

@@ -36,7 +36,6 @@ function dyingClient(events: ProviderStreamEvent[], error: Error): ModelClient {
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
     async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
       for (const event of events) yield event;

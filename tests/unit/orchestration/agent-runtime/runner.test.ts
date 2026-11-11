@@ -39,7 +39,6 @@ function streamingClientFactory(streamWithTools: (options: StreamOptions) => Asy
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor() { return { status: "unavailable", reason: "missing-rate-card" } },
     streamWithTools,
   })
@@ -422,7 +421,7 @@ describe("ordinary runtime request", () => {
       expect(systemPrompt).toContain("PROJECT INSTRUCTIONS");
       expect(systemPrompt).toContain("# Durable Memory");
       expect(systemPrompt).toContain("CANDIDATE MEMORY");
-      // gpt-6-luna has a guidance entry, so its chat renders the model chat body with its progress block.
+      // gpt-6-luna has a guidance entry, so its chat body renders its progress block.
       expect(systemPrompt).toContain("Give short updates while you work");
       expect((JSON.stringify(request?.messages).match(new RegExp(task, "g")) ?? []).length).toBe(1);
     } finally {

@@ -22,7 +22,6 @@ import { resolveOpenAIServiceTier } from "../../../infra/llm/provider-options.js
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { observeChatGptQuotaFrame } from "./provider-availability.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
-import { SHARED_PROMPT_NOTES } from "./prompt-notes.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { resolveAdapterTransport } from "./request-timing.js";
 import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
@@ -80,7 +79,6 @@ export async function createOpenAIAdapter(
     modelFamily: "openai",
     model: defaultModel,
     toolPresentation: OPENAI_RESPONSES_TOOL_PRESENTATION,
-    promptNotes: SHARED_PROMPT_NOTES,
     get availableModels() {
       return availableModels;
     },

@@ -127,7 +127,6 @@ export async function generateCapabilityModuleBaseline(): Promise<string> {
       promptKind: "chat",
       corePrompt: "stable core",
       engineeringDoctrine: "stable doctrine",
-      promptNotes: { progress: "stable progress", modelNotes: "stable model notes" },
       tools: promptTools,
       chatHost: { communication: true },
       agentsMd: "stable agents",

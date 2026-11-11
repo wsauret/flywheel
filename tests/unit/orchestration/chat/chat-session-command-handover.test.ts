@@ -59,7 +59,6 @@ describe("a chat host built with a command handover", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
@@ -124,7 +123,6 @@ describe("a chat host built with a command handover", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() {
         requests += 1
@@ -181,7 +179,6 @@ describe("a chat host built with a command handover", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])
@@ -244,7 +241,6 @@ describe("a chat host built with a command handover", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) {
         calls.push([...options.messages])

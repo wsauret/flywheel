@@ -328,7 +328,7 @@ export async function createStoredChatSession(input: {
   const parks: boolean[] = []
   const createClient = async () => asModelClient({
     accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000,
-    supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+    supportsReasoning: false, 
     async *streamWithTools(options) {
       calls.push([...options.messages])
       // A compaction's checkpoint instruction is answered with the save it asks for; every other request with text.

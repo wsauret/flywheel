@@ -29,7 +29,7 @@ import { providerRequestHeaders } from "../../../infra/llm/provider-request-iden
 import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { classifyQuotaError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, OutputLengthExceededError, QuotaExhaustedError } from "./errors.js";
-import { GOOGLE_CACHE_RATES, GOOGLE_PROMPT_NOTES } from "./provider-description.js";
+import { GOOGLE_CACHE_RATES } from "./provider-description.js";
 import { geminiThinkingConfigMode } from "./model-compat.js";
 import { isTransientNetworkError, normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { withStreamAttempt } from "./stream-attempt.js";
@@ -89,7 +89,6 @@ export async function createGoogleAdapter(
     modelFamily: "google",
     model: defaultModel,
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
-    promptNotes: GOOGLE_PROMPT_NOTES,
     contextLimit: info.contextLimit,
     outputLimit: info.outputLimit,
     supportsReasoning: info.reasoning,

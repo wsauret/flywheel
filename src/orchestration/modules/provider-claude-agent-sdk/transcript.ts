@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { errnoCode } from "../../../infra/error-message.js";
 import { acquireLockSync, releaseLock, tryAcquireLockSync } from "../../../infra/ownership-file-lock.js";
-import { canonicalShell, type ClaudeReminder } from "../../agent-runtime/llm/claude-reminders.js";
+import { canonicalShell, type RuntimeReminder } from "../../agent-runtime/llm/runtime-reminders.js";
 import type { CliBlock, CliMessage, PlacedReminder } from "./cli-view.js";
 import { isBridgeSessionId } from "./session-id.js";
 
@@ -206,7 +206,7 @@ export function cliKeyOrder(block: CliBlock): CliBlock {
   return { tool_use_id: block.tool_use_id, type: "tool_result", content: block.content, ...(block.is_error === true ? { is_error: true } : {}) };
 }
 
-function attachmentFor(reminder: ClaudeReminder, previous: EnvironmentSnapshot | undefined, shell: string | undefined): Attachment {
+function attachmentFor(reminder: RuntimeReminder, previous: EnvironmentSnapshot | undefined, shell: string | undefined): Attachment {
   switch (reminder.kind) {
     case "environment":
       return { type: "environment", snapshot: {

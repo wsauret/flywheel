@@ -45,7 +45,7 @@ test.each(["runtime", "person"] as const)("a %s cut supplies the saved wait poli
       ...options, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined,
       lifecycle: { ...options.lifecycle, signal: AbortSignal.any([stop.signal, ...(options.lifecycle.signal ? [options.lifecycle.signal] : [])]), onTurnParked: async (park) => { await options.lifecycle.onTurnParked?.(park); parked.resolve() } },
     }, async (model) => asModelClient({
-      accessProvider: "anthropic_api", modelFamily: "anthropic", model, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      accessProvider: "anthropic_api", modelFamily: "anthropic", model, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() { requests += 1; requested.resolve(); stop.abort(); yield { kind: "done", stopReason: "end_turn" } },
     }))
@@ -101,7 +101,7 @@ test("a planned cut in the middle of a child's turn continues its open wait thro
       ...options, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined,
       lifecycle: { ...options.lifecycle, signal: AbortSignal.any([stop.signal, ...(options.lifecycle.signal ? [options.lifecycle.signal] : [])]), onTurnParked: async (park) => { parked.resolve(park.park); stop.abort() } },
     }, async (model) => asModelClient({
-      accessProvider: "anthropic_api", modelFamily: "anthropic", model, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      accessProvider: "anthropic_api", modelFamily: "anthropic", model, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() { requests += 1; yield { kind: "text_delta", text: "Read the notes.", blockKey: "text-0" }; yield { kind: "done", stopReason: "end_turn" } },
     }))

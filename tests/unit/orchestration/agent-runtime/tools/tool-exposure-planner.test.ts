@@ -527,7 +527,7 @@ describe("a request that owns no capability policy", () => {
   });
 });
 
-describe("chat change review guidance gating", () => {
+describe("chat first-draft review guidance gating", () => {
   const skillTool = { name: "skill", action: "ui_meta" as const, description: "Load a skill package." };
   const base = { task: "", tools: [skillTool], promptKind: "chat" as const, chatHost: { communication: true as const } };
 
@@ -536,11 +536,11 @@ describe("chat change review guidance gating", () => {
     expect(renderSystemPrompt(buildSystemPrompt(promptOptions({ ...base, skills: ["code-review"] })))).toContain(loadSkill);
     for (const opts of [{ ...base, tools: [], skills: ["code-review"] }, { ...base, skills: [] }, { ...base }]) {
       const prompt = renderSystemPrompt(buildSystemPrompt(promptOptions(opts)));
-      expect(prompt).toContain("CHAT CHANGE REVIEW:");
+      expect(prompt).toContain("**Every change is a first draft.**");
       expect(prompt).not.toContain(loadSkill);
-      expect(prompt).toContain("review the draft yourself");
+      expect(prompt).toContain("review it yourself against the intent");
     }
-    expect(renderSystemPrompt(buildSystemPrompt(promptOptions({ ...base, chatHost: undefined, promptKind: "subagent", skills: ["code-review"] })))).not.toContain("CHAT CHANGE REVIEW:");
+    expect(renderSystemPrompt(buildSystemPrompt(promptOptions({ ...base, chatHost: undefined, promptKind: "subagent", skills: ["code-review"] })))).not.toContain("**Every change is a first draft.**");
   });
 });
 describe("Learning surfaces under capability policy", () => {

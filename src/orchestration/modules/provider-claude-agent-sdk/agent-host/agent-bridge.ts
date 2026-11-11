@@ -9,7 +9,7 @@ import { isGitRepo } from "../../../../infra/env-detection.js";
 import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/access-provider.js";
 import type { AnthropicOperations } from "../../../agent-runtime/llm/anthropic.js";
 import { LlmStreamError, ProviderRequestValidationError } from "../../../agent-runtime/llm/errors.js";
-import { engineModelId } from "../../../agent-runtime/llm/claude-reminders.js";
+import { engineModelId } from "../../../agent-runtime/llm/runtime-reminders.js";
 import type { ProviderDemand, TransportContextFrame } from "../../../agent-runtime/llm/types.js";
 import { bridgeClosedError } from "../bridge-requests.js";
 import { cliView, type CliView } from "../cli-view.js";

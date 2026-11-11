@@ -96,7 +96,7 @@ export type ContentBlock =
   | { type: "thinking"; thinking: string; signature?: string; redacted?: boolean; presentation?: "progress" }
   | { type: "reasoning"; id: string; encrypted_content: string; summary?: Array<{ type: "summary_text"; text: string }> };
 
-export type MessageFraming = "claude" | "agent-host" | "tool-notice" | "reminder";
+type MessageFraming = "claude" | "model" | "agent-host" | "tool-notice" | "reminder";
 
 export type ConversationMessage =
   | {
@@ -131,10 +131,11 @@ export type ConversationMessage =
        *  parked tool results that it follows. Only those producers set it; every other input is unlabeled. */
       runtimeNotice?: true;
       /** Request framing that a route wrote into history (`lowerProviderHistory` decides who reads it). `claude` is the
-       *  Claude model reminder (`claude-reminders.ts`), which every Anthropic Messages request reads. `agent-host` is the shared engine host's
+       *  Claude model reminder (`runtime-reminders.ts`), which an Anthropic Messages request to the model that it names reads. `model` is the model
+       *  reminder of any other route, which only a request to the model that it names reads. `agent-host` is the shared engine host's
        *  framing: its engine text and each system tier that a hosted agent's conversation carries, which only a request
        *  that the shared host serves reads. `tool-notice` is a tree-hosted agent's tool notice, which every request
-       *  reads. `reminder` is a Claude environment or date reminder (`claude-reminders.ts`), which every request reads.
+       *  reads. `reminder` is an environment or date reminder (`runtime-reminders.ts`), which every request reads.
        *  A fork copies neither `agent-host` nor `tool-notice` framing, because each names the source session or its
        *  grants. */
       framing?: MessageFraming;
@@ -551,15 +552,6 @@ export function immutablePreparedRequest<Request extends PreparedProviderRequest
   return immutable;
 }
 
-export interface ProviderPromptNotes {
-  /** Family-specific progress-update guidance appended after the shared
-   *  Flywheel progress rules in the communication block. */
-  progress: string;
-  /** Family-specific behavioral note bullets appended to the shared
-   *  MODEL NOTES section. */
-  modelNotes: string;
-}
-
 /** One tool as a route sends it. The presentation owns the description, because a tool that can take more
  *  than one wire form declares a description for each (ARCH-TOOLS-044). */
 type ToolInputPresentation = Readonly<
@@ -604,7 +596,7 @@ export const FUNCTION_TOOL_PRESENTATION: ToolPresentation = Object.freeze({
 });
 
 /** Provider facts for one request. Every candidate of an access-provider
- *  chain has its own limits, prompt notes, and prices, so a request that a
+ *  chain has its own limits and prices, so a request that a
  *  chain routes must read all of them from the attempt that actually serves
  *  it. Immutable for the life of the request. */
 export interface ServingAttempt {
@@ -629,9 +621,6 @@ export interface ServingAttempt {
   readonly totalContextLimit?: number;
   readonly outputLimit: number;
   readonly supportsReasoning: boolean;
-  /** System-prompt fragments unique to this provider. The shared prompt
-   *  builder asks the attempt; the provider owns the strings. */
-  readonly promptNotes: ProviderPromptNotes;
   /** How much of a request this route's prompt cache can share between two
    *  conversations of one session. Absent means the tools and the stable and
    *  session tiers: the route ends a cache breakpoint after the session tier

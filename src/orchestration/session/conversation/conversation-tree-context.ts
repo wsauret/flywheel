@@ -3,7 +3,7 @@ import { conversationRole, trailingAlternatingMessage, type ContentBlock, type C
 import type { CompactionEntry, MessageEntry, ConversationEntry } from "./conversation-entry-types.js";
 import type { DegradedTranscriptRecord } from "./conversation-projection.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
-import { parseClaudeReminder } from "../../agent-runtime/llm/claude-reminders.js";
+import { parseRuntimeReminder } from "../../agent-runtime/llm/runtime-reminders.js";
 import { installedModules } from "../../module-catalog.js";
 import type { ModuleHistoricalFraming } from "../../module-seams.js";
 
@@ -104,7 +104,7 @@ function* labelHistoricalFraming(messages: ConversationMessage[]): Generator<voi
  *  notice, or another session's message is input whatever its bytes. Remove the `reminder` conversion after
  *  2027-05-01. */
 function historicalReminderFraming(message: Extract<ConversationMessage, { kind: "user" }>, content: string): "claude" | "reminder" | undefined {
-  const kind = parseClaudeReminder(content)?.kind;
+  const kind = parseRuntimeReminder(content)?.kind;
   if (kind === "model") return "claude";
   if (kind === undefined || message.framing !== undefined || message.producer !== undefined || message.runtimeNotice === true || message.replyRequired === true) return undefined;
   return "reminder";

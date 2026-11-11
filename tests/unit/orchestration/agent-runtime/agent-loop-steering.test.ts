@@ -65,7 +65,6 @@ test("delivers every queued steering message in receive order before the next re
     modelFamily: "anthropic",
     model: "test-model",
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
-    promptNotes: { progress: "", modelNotes: "" },
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,

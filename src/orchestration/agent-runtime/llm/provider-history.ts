@@ -6,7 +6,8 @@ import type { PromptHistoryLowering } from "../../session/provider-request-audit
 import { IMAGE_REMOVED, imagesReplaced } from "./image-limit.js";
 import { isSameProviderReplay, type LlmApi } from "./messages.js";
 import { maxImagesPerRequest } from "./model-compat.js";
-import type { ContentBlock, ConversationMessage, MessageFraming } from "./types.js";
+import { isModelReminderOf } from "./runtime-reminders.js";
+import type { ContentBlock, ConversationMessage } from "./types.js";
 
 const CONTINUATION_INSTRUCTION = "Continue the original request from the retained assistant output without repeating completed work.";
 
@@ -91,9 +92,15 @@ export type HistoryLoweringEdit = PromptHistoryLowering["edits"][number];
 
 type AssistantMessage = Extract<ConversationMessage, { kind: "assistant" }>;
 
-function readsFraming(framing: MessageFraming, target: ProviderHistoryTarget): boolean {
-  switch (framing) {
-    case "claude": return target.api === "anthropic-messages";
+/** Whether a request for `target` reads the user entry `message` by its framing. A model reminder names the model as
+ *  the history target of its route names it, so only a request to that model reads it, and a request never states
+ *  another model than the one that serves it. */
+function readsFraming(message: Extract<ConversationMessage, { kind: "user" }>, target: ProviderHistoryTarget): boolean {
+  const namesTargetModel = () => typeof message.content === "string" && isModelReminderOf(message.content, target.model);
+  switch (message.framing) {
+    case undefined: return true;
+    case "claude": return target.api === "anthropic-messages" && namesTargetModel();
+    case "model": return namesTargetModel();
     case "agent-host": return target.sharedHost;
     case "tool-notice":
     case "reminder": return true;
@@ -116,7 +123,7 @@ export type DeliberationReplay = "all" | "chat-completions" | "none";
 
 /** Whether a request for `target` reads `message`: it reads neither system entries nor framing that it does not read. */
 function reads(message: ConversationMessage, target: ProviderHistoryTarget): boolean {
-  return message.kind !== "system" && (message.kind !== "user" || message.framing === undefined || readsFraming(message.framing, target));
+  return message.kind !== "system" && (message.kind !== "user" || readsFraming(message, target));
 }
 
 /** Which native deliberation a request for `target` replays of each assistant turn of `history`, by index; undefined
@@ -174,7 +181,7 @@ export function planHistoryLowering(history: readonly ConversationMessage[], tar
   const replays = deliberationReplays(history, target);
   const imageEdits = imageLimitEdits(history, target);
   return history.flatMap((message, at): HistoryLoweringEdit[] => {
-    if (message.kind === "user" && !reads(message, target)) return [{ at, reason: message.framing === "claude" ? "claude-framing" : "agent-host-framing" }];
+    if (message.kind === "user" && !reads(message, target)) return [{ at, reason: message.framing === "claude" ? "claude-framing" : message.framing === "model" ? "model-framing" : "agent-host-framing" }];
     if (message.kind === "user" || message.kind === "toolResult") return imageEdits.get(at) ?? [];
     const replay = replays[at];
     if (message.kind !== "assistant" || typeof message.content === "string" || replay === "all") return [];
@@ -257,7 +264,9 @@ export function lowerProviderHistory(history: readonly ConversationMessage[], ta
     lowered.push(message.kind === "user" ? lowerUserMessage(message) : message);
   }
 
-  const tail = lowered.at(-1);
+  // A route that takes over after a partial answer states its model after it (`createReminders`), and the request
+  // still continues that answer.
+  const tail = lowered.findLast((message) => message.kind !== "user" || message.framing === undefined);
   if (tail?.kind === "assistant" && tail.incomplete) {
     lowered.push({ kind: "user", content: CONTINUATION_INSTRUCTION, origin: "system" });
   }

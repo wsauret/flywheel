@@ -212,7 +212,7 @@ describe("the registered Resume route", () => {
             planCapabilities: planEveryCapability,
             createLLMClient: async () => asModelClient({
               model: base.parentModel, modelFamily: "anthropic", accessProvider: "anthropic_api", contextLimit: 100_000,
-              outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+              outputLimit: 8_000, supportsReasoning: false, 
               priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
               async *streamWithTools() { throw new Error("The fixture streams only through its held runner") },
             }),

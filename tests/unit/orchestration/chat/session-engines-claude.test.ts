@@ -111,7 +111,7 @@ function session(initial: readonly ResolvedRole[]) {
     if (model === "gpt-5.5") {
       return asModelClient({
         accessProvider: "openai_api", modelFamily: "openai", model, toolPresentation: FUNCTION_TOOL_PRESENTATION,
-        contextLimit: 400_000, outputLimit: 64_000, supportsReasoning: true, promptNotes: { progress: "", modelNotes: "" },
+        contextLimit: 400_000, outputLimit: 64_000, supportsReasoning: true, 
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
         async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } },
       })

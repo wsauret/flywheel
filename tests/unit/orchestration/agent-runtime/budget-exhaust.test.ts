@@ -40,7 +40,7 @@ function openTurn() {
 }
 
 function summaryClient(prepared: StreamOptions[]): ModelClient {
-  const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
+  const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
   return withRequestAdmission({
     model: "test-model",
     modelFamily: "anthropic",
@@ -54,7 +54,7 @@ function summaryClient(prepared: StreamOptions[]): ModelClient {
 }
 
 function strictSettlementClient(onPrepare: () => void): ModelClient {
-  const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
+  const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
   return withRequestAdmission({
     model: attempt.model, modelFamily: attempt.modelFamily, plannedAttempt: async () => attempt,
     async *streamWithTools() {
@@ -263,7 +263,7 @@ describe("budget exhaust turn under failover", () => {
     ]);
     const interactionProfile = resolveModelInteractionProfile("gpt-6-luna", "openai");
 
-    const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
+    const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
     const client = withRequestAdmission({
       model: attempt.model,
       modelFamily: attempt.modelFamily,
@@ -330,7 +330,7 @@ describe("budget exhaust turn under failover", () => {
       } satisfies RuntimeTool],
     ]);
     const interactionProfile = resolveModelInteractionProfile("gpt-6-luna", "openai");
-    const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
+    const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
     const client = withRequestAdmission({
       model: attempt.model, modelFamily: attempt.modelFamily, plannedAttempt: async () => attempt,
       async *streamWithTools(options) {
@@ -384,7 +384,7 @@ describe("budget exhaust turn under failover", () => {
       accessProvider: "anthropic_api", modelFamily: "anthropic", model, toolPresentation: FUNCTION_TOOL_PRESENTATION,
       tokenizerIdentity: model === "claude-opus-3" ? "ClaudeV3" : "ClaudeV5",
       contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+      priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     }));
     const streams: Array<(options: StreamOptions) => AsyncGenerator<ProviderStreamEvent>> = [
       async function* (options) { preparedRequests.push(options); throw normalizeProviderAttemptFailure(new QuotaExhaustedError("provider quota")); },

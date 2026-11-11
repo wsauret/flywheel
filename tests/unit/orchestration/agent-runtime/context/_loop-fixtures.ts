@@ -40,7 +40,6 @@ export function makeFakeLLMClient(
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
 
     async *streamWithTools(_options: StreamOptions): AsyncGenerator<StreamEvent> {
@@ -72,7 +71,6 @@ export function makeCaptureClient(
     contextLimit: overrides.contextLimit ?? 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
     async *streamWithTools(options: StreamOptions): AsyncGenerator<StreamEvent> {
       capturedMessages.push([...options.messages]);
@@ -107,7 +105,6 @@ export async function budgetCaptureSurface(
       modelFamily: index === 0 ? "anthropic" : "openai",
       model: index === 0 ? "claude-opus-3" : "gpt-6-luna",
       contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options) {
         requests.push({ generation: index, options });

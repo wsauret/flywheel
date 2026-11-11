@@ -306,7 +306,6 @@ describe("live child messages", () => {
     const client = asModelClient({
       model: "test-summary", modelFamily: "anthropic", accessProvider: "anthropic_api",
       contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options) {
         summarySignal = options.signal;

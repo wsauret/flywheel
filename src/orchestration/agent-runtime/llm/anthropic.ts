@@ -29,7 +29,7 @@ import { anthropicThinkingMode } from "./model-compat.js";
 import { withStreamAttempt, type StreamAttempt } from "./stream-attempt.js";
 import { invokeProviderAttempt } from "./provider-attempt-boundary.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
-import { ANTHROPIC_CACHE_RATES, ANTHROPIC_PROMPT_NOTES } from "./provider-description.js";
+import { ANTHROPIC_CACHE_RATES } from "./provider-description.js";
 import {
   ANTHROPIC_STALL_THRESHOLDS,
   buildBetaHeaders,
@@ -323,7 +323,6 @@ export async function createAnthropicAdapter(
     modelFamily: "anthropic",
     model: defaultModel,
     toolPresentation: overrides?.toolPresentation ?? FUNCTION_TOOL_PRESENTATION,
-    promptNotes: ANTHROPIC_PROMPT_NOTES,
     // No availableModels constraint: any model the API key can call works.
     contextLimit: info.contextLimit,
     outputLimit: info.outputLimit,

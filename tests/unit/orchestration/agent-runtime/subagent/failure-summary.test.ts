@@ -166,7 +166,6 @@ describe("subagent failure summary integration", () => {
         contextLimit: 200_000,
         outputLimit: 8_192,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         availableModels: undefined,
         async *streamWithTools(options) {
           requestedEffort = options.reasoningEffort;

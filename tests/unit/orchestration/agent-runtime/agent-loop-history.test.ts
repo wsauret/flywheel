@@ -106,7 +106,7 @@ describe("provider cap save point", () => {
     accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model",
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
     contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: true,
-    promptNotes: { progress: "", modelNotes: "" }, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
+    priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
   }
 
   it("retains text-only failure through real canonical writes, replacement, and the next user turn", async () => {

@@ -2,7 +2,7 @@ import { afterEach, expect, setSystemTime, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { localDate } from "../../../../../src/infra/env-detection.js";
-import { createClaudeReminders, parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { createClaudeReminders, createModelReminders, parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
 import { promptCapabilities, SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -24,7 +24,7 @@ afterEach(() => {
 
 function parsed(message: ConversationMessage | undefined, previousWorkingDirectory?: string) {
   if (message?.kind !== "user" || typeof message.content !== "string") throw new Error("A reminder is a user entry with text content");
-  return parseClaudeReminder(message.content, previousWorkingDirectory);
+  return parseRuntimeReminder(message.content, previousWorkingDirectory);
 }
 
 test("reminders are ordinary history and a model change reaches the next request, after a tool round or user input", () => {
@@ -34,7 +34,7 @@ test("reminders are ordinary history and a model change reaches the next request
   expect(initial).toHaveLength(3);
   expect(initial.every((message) => message.kind === "user" && message.origin === "system")).toBe(true);
   expect(parsed(initial[0])).toMatchObject({ kind: "environment", workingDirectory: "/scratch", isGitRepo: false, isWorktree: false });
-  expect(initial[1]?.content).toBe("<system-reminder>\nThe model that answers is Haiku 4.5, with the model ID claude-haiku-4-5. Its training data ends in February 2025.\n</system-reminder>");
+  expect(initial[1]?.content).toBe("<system-reminder>\nThe model that answers is Haiku 4.5, with the model ID claude-haiku-4-5. Its training data ends in February 2025. Its context window holds 200,000 tokens.\n</system-reminder>");
   expect(parsed(initial[2])).toEqual({ kind: "date", date: localDate(), changed: false });
   expect(initial[2]?.content).toEndWith("</system-reminder>\n");
   // The shell and download handling are for an agent that can call the shell: one without it reads the other facts only.
@@ -56,7 +56,7 @@ test("reminders are ordinary history and a model change reaches the next request
   expect(haiku(history, "/scratch")).toEqual([]);
   history.push({ kind: "assistant", content: [{ type: "tool_use", id: "call", name: "read", input: {} }] }, { kind: "toolResult", toolUseId: "call", content: [{ type: "text", text: "Read." }] });
   const sonnet = shellReminders("claude-sonnet-4-6", 200_000);
-  const update = [{ kind: "user", origin: "system", content: "<system-reminder>\nThe model that answers is Sonnet 4.6, with the model ID claude-sonnet-4-6. Its training data ends in August 2025.\n</system-reminder>\n", framing: "claude" }] satisfies ConversationMessage[];
+  const update = [{ kind: "user", origin: "system", content: "<system-reminder>\nThe model that answers is Sonnet 4.6, with the model ID claude-sonnet-4-6. Its training data ends in August 2025. Its context window holds 200,000 tokens.\n</system-reminder>\n", framing: "claude" }] satisfies ConversationMessage[];
   expect(sonnet(history, "/scratch")).toEqual(update);
   history.push({ kind: "assistant", content: "Done." }, { kind: "user", origin: "human", content: "Next." });
   expect(sonnet(history, "/scratch")).toEqual(update);
@@ -89,7 +89,7 @@ test("reminders are ordinary history and a model change reaches the next request
     expect(changed).toHaveLength(1);
     expect(sonnet([...seed, ...announced, ...changed], nextCwd)).toEqual([]);
   }
-  const dated = resumed.map((message): ConversationMessage => message.kind === "user" && typeof message.content === "string" && parseClaudeReminder(message.content)?.kind === "date"
+  const dated = resumed.map((message): ConversationMessage => message.kind === "user" && typeof message.content === "string" && parseRuntimeReminder(message.content)?.kind === "date"
     ? { ...message, content: message.content.replace(localDate(), "2000-01-01") }
     : message);
   const dateUpdate = sonnet(dated, "/scratch");
@@ -97,9 +97,9 @@ test("reminders are ordinary history and a model change reaches the next request
   expect(parsed(dateUpdate[0])).toEqual({ kind: "date", date: localDate(), changed: true });
   expect(sonnet([...dated, ...dateUpdate], "/scratch")).toEqual([]);
   const extendedInitial = shellReminders("claude-opus-4-6", 1_000_000)([{ kind: "user", origin: "human", content: "Hi." }], "/scratch");
-  expect(extendedInitial[1]?.content).toBe("<system-reminder>\nThe model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025.\n</system-reminder>");
+  expect(extendedInitial[1]?.content).toBe("<system-reminder>\nThe model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025. Its context window holds 1,000,000 tokens.\n</system-reminder>");
   const unknown = shellReminders("claude-unknown-8", 200_000);
-  expect(unknown([{ kind: "user", origin: "human", content: "Hi." }], "/scratch")[1]?.content).toBe("<system-reminder>\nThe model that answers has the model ID claude-unknown-8.\n</system-reminder>");
+  expect(unknown([{ kind: "user", origin: "human", content: "Hi." }], "/scratch")[1]?.content).toBe("<system-reminder>\nThe model that answers has the model ID claude-unknown-8. Its context window holds 200,000 tokens.\n</system-reminder>");
   const linked = temporaryDirectory("claude-reminder-worktree-");
   const gitDirectory = join(linked, "metadata");
   const nested = join(linked, "nested");
@@ -133,7 +133,7 @@ test("a new local date and a new model reach the next request, a tool round incl
   setSystemTime(tomorrow);
   const sonnet = shellReminders("claude-sonnet-4-6", 200_000);
   const toolRound = sonnet(history, "/other");
-  expect(toolRound[0]).toEqual({ kind: "user", origin: "system", content: "<system-reminder>\nThe model that answers is Sonnet 4.6, with the model ID claude-sonnet-4-6. Its training data ends in August 2025.\n</system-reminder>\n", framing: "claude" });
+  expect(toolRound[0]).toEqual({ kind: "user", origin: "system", content: "<system-reminder>\nThe model that answers is Sonnet 4.6, with the model ID claude-sonnet-4-6. Its training data ends in August 2025. Its context window holds 200,000 tokens.\n</system-reminder>\n", framing: "claude" });
   expect(toolRound.map((message) => parsed(message))).toEqual([expect.objectContaining({ kind: "model" }), { kind: "date", date: localDate(tomorrow), changed: true }]);
   history.push(...toolRound);
   expect(sonnet(history, "/other")).toEqual([]);
@@ -149,27 +149,76 @@ test("parsing reads back the facts of every reminder the producer writes", () =>
     .map((message) => parsed(message));
   expect(environment).toMatchObject({ kind: "environment", workingDirectory: cwd, isWorktree: false, isGitRepo: false, platform: process.platform });
   expect(model).toEqual({
-    kind: "model", modelId: "claude-opus-4-6[1m]", displayName: "Opus 4.6 (1M context)", knowledgeCutoff: "May 2025",
-    text: "The model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025.",
+    kind: "model", modelId: "claude-opus-4-6[1m]", displayName: "Opus 4.6 (1M context)", knowledgeCutoff: "May 2025", contextWindow: 1_000_000,
+    text: "The model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025. Its context window holds 1,000,000 tokens.",
   });
   expect(date).toEqual({ kind: "date", date: "2026-10-07", changed: false });
   const unknown = shellReminders("claude-unknown-8", 200_000)([{ kind: "user", origin: "human", content: "Hi." }], cwd)[1];
-  expect(parsed(unknown)).toEqual({ kind: "model", modelId: "claude-unknown-8", text: "The model that answers has the model ID claude-unknown-8." });
+  expect(parsed(unknown)).toEqual({ kind: "model", modelId: "claude-unknown-8", contextWindow: 200_000, text: "The model that answers has the model ID claude-unknown-8. Its context window holds 200,000 tokens." });
 });
 
 test("a model the display table does not know is named by its own catalog facts, and a table entry wins over them", () => {
   const hi: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Hi." }];
   const modelOf = (reminders: ReturnType<typeof createClaudeReminders>) => parsed(reminders(hi, "/scratch", SHELL_CAPABILITIES)[1]);
   expect(modelOf(createClaudeReminders("claude-fable-5-3", 1_000_000, { name: "Claude Fable 5.3", knowledgeCutoff: "2026-06" }))).toEqual({
-    kind: "model", modelId: "claude-fable-5-3[1m]", displayName: "Fable 5.3", knowledgeCutoff: "June 2026",
-    text: "The model that answers is Fable 5.3, with the model ID claude-fable-5-3[1m]. Its training data ends in June 2026.",
+    kind: "model", modelId: "claude-fable-5-3[1m]", displayName: "Fable 5.3", knowledgeCutoff: "June 2026", contextWindow: 1_000_000,
+    text: "The model that answers is Fable 5.3, with the model ID claude-fable-5-3[1m]. Its training data ends in June 2026. Its context window holds 1,000,000 tokens.",
   });
   expect(modelOf(createClaudeReminders("claude-fable-5-3", 200_000, { name: "Claude Fable 5.3", knowledgeCutoff: "2026-06-30" })))
-    .toMatchObject({ text: "The model that answers is Fable 5.3, with the model ID claude-fable-5-3. Its training data ends in June 2026." });
+    .toMatchObject({ text: "The model that answers is Fable 5.3, with the model ID claude-fable-5-3. Its training data ends in June 2026. Its context window holds 200,000 tokens." });
   expect(modelOf(createClaudeReminders("claude-opus-4-6", 1_000_000, { name: "Claude 4.6 Opus", knowledgeCutoff: "2025-08" })))
-    .toMatchObject({ text: "The model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025." });
+    .toMatchObject({ text: "The model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025. Its context window holds 1,000,000 tokens." });
   expect(modelOf(createClaudeReminders("claude-fable-5-3", 200_000)))
-    .toMatchObject({ text: "The model that answers has the model ID claude-fable-5-3." });
+    .toMatchObject({ text: "The model that answers has the model ID claude-fable-5-3. Its context window holds 200,000 tokens." });
+});
+
+test("every other route states its own model with its catalog facts and window, a switch states the new model, and a Claude route keeps its own", () => {
+  const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Hi." }];
+  const gpt = createModelReminders("gpt-6.1-sol", 400_000, { name: "GPT-6.1 Sol", knowledgeCutoff: "2025-09-30" });
+  const opening = gpt(history, "/scratch", SHELL_CAPABILITIES);
+  expect(opening.map((message) => message.kind === "user" ? [parsed(message)?.kind, message.framing] : undefined))
+    .toEqual([["environment", "reminder"], ["model", "model"], ["date", "reminder"]]);
+  expect(parsed(opening[1])).toEqual({
+    kind: "model", modelId: "gpt-6.1-sol", displayName: "GPT-6.1 Sol", knowledgeCutoff: "September 2025", contextWindow: 400_000,
+    text: "The model that answers is GPT-6.1 Sol, with the model ID gpt-6.1-sol. Its training data ends in September 2025. Its context window holds 400,000 tokens.",
+  });
+  history.push(...opening, { kind: "assistant", content: "Hello." }, { kind: "user", origin: "human", content: "Go on." });
+  expect(gpt(history, "/scratch", SHELL_CAPABILITIES)).toEqual([]);
+
+  // A catalog without a cutoff states none, and a model without a catalog name states its ID.
+  const gemini = createModelReminders("gemini-3-pro", 1_048_576, { name: "Gemini 3 Pro" });
+  const switched = gemini(history, "/scratch", SHELL_CAPABILITIES);
+  expect(switched).toEqual([{ kind: "user", origin: "system", framing: "model", content: "<system-reminder>\nThe model that answers is Gemini 3 Pro, with the model ID gemini-3-pro. Its context window holds 1,048,576 tokens.\n</system-reminder>\n" }]);
+  expect(parsed(createModelReminders("local-model", 32_000)([history[0]!], "/scratch", SHELL_CAPABILITIES)[1]))
+    .toEqual({ kind: "model", modelId: "local-model", contextWindow: 32_000, text: "The model that answers has the model ID local-model. Its context window holds 32,000 tokens." });
+  history.push(...switched);
+
+  // A Claude route compares only with Claude model reminders, so the routes between two Claude requests change none of its bytes.
+  const haiku = shellReminders("claude-haiku-4-5", 200_000);
+  const claude = haiku(history, "/scratch");
+  expect(claude.map((message) => message.kind === "user" ? message.framing : undefined)).toEqual(["claude"]);
+  history.push(...claude, { kind: "assistant", content: "Hi." }, { kind: "user", origin: "human", content: "Back." });
+  const gptAgain = gpt(history, "/scratch", SHELL_CAPABILITIES);
+  expect(gptAgain.map((message) => parsed(message)?.kind)).toEqual(["model"]);
+  history.push(...gptAgain, { kind: "assistant", content: "Hi." }, { kind: "user", origin: "human", content: "Back again." });
+  expect(haiku(history, "/scratch")).toEqual([]);
+
+  // Another route that serves the same model ID with another window states the window that serves the request.
+  const narrow = createModelReminders("gpt-6.1-sol", 128_000, { name: "GPT-6.1 Sol", knowledgeCutoff: "2025-09-30" })(history, "/scratch", SHELL_CAPABILITIES);
+  expect(narrow.map((message) => parsed(message))).toEqual([expect.objectContaining({ kind: "model", modelId: "gpt-6.1-sol", contextWindow: 128_000 })]);
+  history.push(...narrow);
+  expect(gpt(history, "/scratch", SHELL_CAPABILITIES).map((message) => parsed(message))).toEqual([expect.objectContaining({ kind: "model", contextWindow: 400_000 })]);
+});
+
+test("a route that takes over a turn after another route's partial output states its own model, and only once", () => {
+  const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Work." }];
+  history.push(...createModelReminders("gpt-6.1-sol", 400_000)(history, "/scratch", SHELL_CAPABILITIES), { kind: "assistant", content: "Half of the", incomplete: true });
+  const haiku = shellReminders("claude-haiku-4-5", 200_000);
+  const takeover = haiku(history, "/scratch");
+  expect(takeover.map((message) => message.kind === "user" ? [parsed(message)?.kind, message.framing] : undefined)).toEqual([["model", "claude"]]);
+  expect(haiku([...history, ...takeover], "/scratch")).toEqual([]);
+  // A complete answer ends the request's input, so nothing follows it.
+  expect(haiku([...history.slice(0, -1), { kind: "assistant", content: "Done." }], "/scratch")).toEqual([]);
 });
 
 test("parsing reads every kind of change notice", () => {
@@ -192,7 +241,7 @@ test("parsing reads every kind of change notice", () => {
   const [exited] = reminders([...inside, { kind: "user", origin: "human", content: "Leave." }], "/scratch/outside");
   expect(parsed(exited, before)).toEqual({ kind: "environment-update", workingDirectory: "/scratch/outside", isWorktree: false, isGitRepo: false });
   for (const other of ["Today's date is 2026-10-07.", "<system-reminder>\nRemember the plan.\n</system-reminder>", "<system-reminder>\n# Runtime environment\nWorking directory: /scratch\n</system-reminder>"]) {
-    expect(parseClaudeReminder(other)).toBeUndefined();
+    expect(parseRuntimeReminder(other)).toBeUndefined();
   }
 });
 
@@ -201,18 +250,18 @@ test("reminders that builds before 2026-10-27 wrote still read as their facts, s
   const tagged = (lines: readonly string[], update: boolean) => `<system-reminder>\n${lines.join("\n")}\n</system-reminder>${update ? "\n" : ""}`;
   const legacyEnvironment = (cwd: string) => tagged(["# Environment", "Earlier introduction.", ` - Primary working directory: ${cwd}`, " - Is a git repository: true",
     " - Platform: darwin", " - Shell: zsh", " - OS Version: Darwin 25.3.0", " - Earlier guidance."], false);
-  expect(parseClaudeReminder(legacyEnvironment("/scratch&lt;old"))).toEqual({
+  expect(parseRuntimeReminder(legacyEnvironment("/scratch&lt;old"))).toEqual({
     kind: "environment", workingDirectory: "/scratch<old", isWorktree: false, isGitRepo: true, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0",
   });
   const enteredWorktree = tagged(["# Environment update", " - Primary working directory: /scratch/wt (was /scratch)", " - This is a git worktree, earlier guidance.", " - Earlier stash guidance.", " - Is a git repository: true (was false)"], true);
-  expect(parseClaudeReminder(enteredWorktree, "/scratch")).toEqual({ kind: "environment-update", workingDirectory: "/scratch/wt", isWorktree: true, isGitRepo: true });
-  expect(parseClaudeReminder(enteredWorktree)).toEqual({ kind: "environment-update", workingDirectory: "/scratch/wt (was /scratch)", isWorktree: true, isGitRepo: true });
-  expect(parseClaudeReminder(tagged(["# Environment update", " - Earlier text: no longer a git worktree."], true))).toEqual({ kind: "environment-update", isWorktree: false });
-  expect(parseClaudeReminder(tagged(["Today's date is 2026-10-07."], true))).toEqual({ kind: "date", date: "2026-10-07", changed: false });
+  expect(parseRuntimeReminder(enteredWorktree, "/scratch")).toEqual({ kind: "environment-update", workingDirectory: "/scratch/wt", isWorktree: true, isGitRepo: true });
+  expect(parseRuntimeReminder(enteredWorktree)).toEqual({ kind: "environment-update", workingDirectory: "/scratch/wt (was /scratch)", isWorktree: true, isGitRepo: true });
+  expect(parseRuntimeReminder(tagged(["# Environment update", " - Earlier text: no longer a git worktree."], true))).toEqual({ kind: "environment-update", isWorktree: false });
+  expect(parseRuntimeReminder(tagged(["Today's date is 2026-10-07."], true))).toEqual({ kind: "date", date: "2026-10-07", changed: false });
   const legacyModel = tagged(["You are powered by the model named Sonnet 4.6. The exact model ID is claude-sonnet-4-6. Assistant knowledge cutoff is August 2025."], false);
-  expect(parseClaudeReminder(legacyModel)).toMatchObject({ kind: "model", modelId: "claude-sonnet-4-6", displayName: "Sonnet 4.6", knowledgeCutoff: "August 2025" });
-  expect(parseClaudeReminder(tagged(["You are powered by the model claude-unknown-8."], false))).toMatchObject({ kind: "model", modelId: "claude-unknown-8" });
-  expect(parseClaudeReminder(tagged(["Earlier sentence. Today's date is now 2026-10-08. Earlier closing sentence."], true))).toEqual({ kind: "date", date: "2026-10-08", changed: true });
+  expect(parseRuntimeReminder(legacyModel)).toMatchObject({ kind: "model", modelId: "claude-sonnet-4-6", displayName: "Sonnet 4.6", knowledgeCutoff: "August 2025" });
+  expect(parseRuntimeReminder(tagged(["You are powered by the model claude-unknown-8."], false))).toMatchObject({ kind: "model", modelId: "claude-unknown-8" });
+  expect(parseRuntimeReminder(tagged(["Earlier sentence. Today's date is now 2026-10-08. Earlier closing sentence."], true))).toEqual({ kind: "date", date: "2026-10-08", changed: true });
 
   setSystemTime(new Date(2026, 9, 8, 12));
   const cwd = temporaryDirectory("claude-reminder-legacy-");
@@ -221,7 +270,8 @@ test("reminders that builds before 2026-10-27 wrote still read as their facts, s
   const legacyHistory: ConversationMessage[] = [
     start,
     { kind: "user", origin: "system", content: legacyEnvironment(cwd).replace("Is a git repository: true", "Is a git repository: false") },
-    { kind: "user", origin: "system", content: legacyModel },
+    // The history reader labels a model reminder of those builds as a Claude route's (`labelHistoricalFraming`).
+    { kind: "user", origin: "system", content: legacyModel, framing: "claude" },
     { kind: "user", origin: "system", content: tagged([`Today's date is ${localDate()}.`], true) },
     { kind: "assistant", content: "Ok." }, { kind: "user", origin: "human", content: "Next." },
   ];

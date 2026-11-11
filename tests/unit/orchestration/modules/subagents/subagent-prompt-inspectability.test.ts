@@ -59,7 +59,6 @@ function fakeClient(observed: string[]): ModelClient {
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     async *streamWithTools(options: StreamOptions) {
@@ -211,7 +210,7 @@ describe("dispatched subagent reset", () => {
     let calls = 0;
     const client: LLMClient = { historyTarget: ownHistoryTarget,
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "claude-test", contextLimit: 100_000, outputLimit: 8_000,
-      supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" }, toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      supportsReasoning: false, toolPresentation: FUNCTION_TOOL_PRESENTATION,
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools(options: StreamOptions) {
         requests.push(options);

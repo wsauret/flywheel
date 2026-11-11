@@ -70,7 +70,6 @@ async function scriptedChat(log: string[], first: FirstReply, updateEntry?: Chat
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     async *streamWithTools(options: StreamOptions) {
       const request = requests++

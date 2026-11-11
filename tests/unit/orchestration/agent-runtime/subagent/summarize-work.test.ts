@@ -30,7 +30,6 @@ function makeMockClient(emitText: string, capture?: (options: StreamOptions) => 
     contextLimit: 200_000,
     outputLimit: 8_192,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     availableModels: undefined,
     async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       capture?.(options);

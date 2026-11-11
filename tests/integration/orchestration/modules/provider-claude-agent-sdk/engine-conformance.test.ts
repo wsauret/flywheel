@@ -17,7 +17,7 @@ import { toolResultMessages } from "../../../../../src/orchestration/agent-runti
 import { formatSubagentNotificationBatch } from "../../../../../src/orchestration/agent-runtime/background-work-notifications.js";
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
 import { createAnthropicAdapter, prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { interruptedToolText } from "../../../../../src/orchestration/agent-runtime/llm/heal-messages.js";
 import type { ConversationMessage, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runtime/reply-nudge.js";

@@ -64,7 +64,6 @@ function makeFakeClient(captureToolNames: (names: string[]) => void) {
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
     async *streamWithTools(opts: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       captureToolNames(opts.tools.map(t => t.name));
@@ -151,7 +150,6 @@ describe("LiveAgent workflow tool wiring", () => {
         contextLimit: 100_000,
         outputLimit: 8_000,
         supportsReasoning: false,
-        promptNotes: { progress: "", modelNotes: "" },
         priceFor() { return { status: "unavailable", reason: "missing-rate-card" }; },
         async *streamWithTools(opts: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
           capturedSystemPrompt = renderSystemPrompt(opts.systemPrompt);

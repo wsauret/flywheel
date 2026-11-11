@@ -94,7 +94,6 @@ function fakeClient(
     contextLimit: 400_000,
     outputLimit: 64_000,
     supportsReasoning: true,
-    promptNotes: { progress: "", modelNotes: "" },
     async *streamWithTools() {
       wire.push(provider);
       await onWire(provider);

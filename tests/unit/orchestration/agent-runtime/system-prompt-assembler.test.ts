@@ -7,7 +7,6 @@ import {
   buildSystemPrompt as buildSystemPromptTiers,
   buildSystemPromptParts,
   renderToolContext,
-  renderCommunicationBlock,
   type ToolPromptFields,
 } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR as SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
@@ -85,19 +84,20 @@ describe("buildSystemPrompt -- chat", () => {
   const build = (overrides: UnknownRecord = {}) =>
     buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true }, ...overrides }));
 
-  it("contains core system prompt sections, communication, and guidelines", () => {
+  it("opens with the chat body in place of the core prompt and keeps the guidelines", () => {
     const result = build();
-    for (const section of CORE_SECTIONS) expect(result).toContain(section);
+    expect(result).toStartWith("You are Flywheel's chat agent.");
+    for (const section of CORE_SECTIONS) expect(result).not.toContain(section);
     expect(result).not.toContain("PROPORTIONALITY:");
-    expect(result).toContain("COMMUNICATION:");
+    expect(result).toContain("# Working in Flywheel");
     expect(result).toContain("Guidelines:");
   });
 
-  // The failure guidance is one judgment sentence in CONSTRAINTS; a numbered
-  // retry recipe would be an itinerary the model does not need.
+  // The failure guidance is one judgment sentence; a numbered retry recipe
+  // would be an itinerary the model does not need.
   it("states failure handling as judgment, not a numbered retry recipe", () => {
     const result = build();
-    expect(result).toContain("one failure is not a reason to drop an approach that can still work");
+    expect(result).toContain("do not drop a viable approach after one failure");
     expect(result).not.toContain("ERROR PROTOCOL:");
     expect(result).not.toContain("3 strikes");
   });
@@ -150,24 +150,23 @@ describe("buildSystemPrompt -- chat", () => {
     const tools = [...TOOLS, spec("skill", { description: "Load a skill package." }), spec("subagent"), spec("workflow")];
     const result = build({ tools, skills: ["code-review"] });
 
-    expect(result).toContain("CHAT CHANGE REVIEW:");
-    expect(result).toContain('load the `code-review` skill with the `skill` tool');
-    expect(result).toContain("your own edits or a delegated result, whether");
+    expect(result).toContain("load the `code-review` skill and run its review");
+    expect(result).toContain("After your own edits or a delegated result");
     expect(result).toContain("an objection to the structure starts a reshape.");
     expect(build({ tools, skills: ["code-review", "design"] })).toContain("starts a reshape, as the `design` skill states.");
     // The skill is the one owner of reviewer sizing (ARCH-AGENCY-031): the prompt states no size rule of its own.
-    expect(result).toContain("The skill alone sizes the review to the change");
+    expect(result).toContain("the skill alone sizes the review to the change");
     expect(result).not.toContain("trivial edits");
-    expect(result).toContain("fix valid findings, and verify with the narrowest check");
-    // The first-draft revision rule has one home: this block.
+    expect(result).toContain("fix valid findings, and verify each fix with the narrowest check that proves it");
+    // The first-draft revision rule has one home: the first-draft commitment.
     expect(result.match(/realign what missed it/g)).toHaveLength(1);
-    expect(result).toContain("Read its recorded deviations yourself: a workflow handoff carries them in its declared output, a subagent completion in its summary.");
-    expect(build({ tools: [...TOOLS, spec("subagent")] })).toContain("Read its recorded deviations yourself: a subagent completion carries them in its summary.");
-    expect(build({ tools: [...TOOLS, spec("workflow")] })).toContain("Read its recorded deviations yourself: a workflow handoff carries them in its declared output.");
-    // A chat that can delegate nothing reads no delegation wording, and keeps the first-draft rule for its own edits.
+    expect(result).toContain("Record your own deviations from that intent as you work; a subagent result carries them in its summary, and a workflow handoff carries them in its declared output.");
+    expect(build({ tools: [...TOOLS, spec("subagent")] })).toContain("Record your own deviations from that intent as you work; a subagent result carries them in its summary.");
+    expect(build({ tools: [...TOOLS, spec("workflow")] })).toContain("Record your own deviations from that intent as you work; a workflow handoff carries them in its declared output.");
+    // A chat that can delegate nothing reads no delegation carrier, and keeps the first-draft rule for its own edits.
     const alone = build();
-    expect(alone).toContain("Every completed code change is a first draft, never a completion. Its intent is the approved design");
-    for (const delegation of ["workflow", "subagent", "delegated result"]) expect(alone).not.toContain(delegation);
+    expect(alone).toContain("Record your own deviations from that intent as you work. After your own edits");
+    for (const delegation of ["workflow", "subagent"]) expect(alone).not.toContain(delegation);
     expect(result).not.toContain("single source of truth");
     expect(result).not.toContain("Always include reviewer-elegance");
     expect(result).not.toContain("reviewer-architecture");
@@ -176,15 +175,15 @@ describe("buildSystemPrompt -- chat", () => {
   it("keeps the first-draft rule but names no review skill unless both review inputs are available", () => {
     const tools = [...TOOLS, spec("skill", { description: "Load a skill package." })];
     for (const result of [build({ skills: ["code-review"] }), build({ tools })]) {
-      expect(result).toContain("CHAT CHANGE REVIEW:");
-      expect(result).toContain("review the draft yourself");
+      expect(result).toContain("**Every change is a first draft.**");
+      expect(result).toContain("review it yourself against the intent");
       expect(result).not.toContain("load the `code-review` skill");
     }
   });
 
   it("takes communication guidance only from a typed chat-host contribution", () => {
-    const concise = "Be concise in narration";
-    const evidence = "Ground every claim about code, tests, or tools in what you observed";
+    const concise = "Give a one-line update before your first tool call";
+    const evidence = "Ground each claim about code, tests, or tools in what you observed";
     const chat = build();
     expect(chat.split(concise)).toHaveLength(2);
     expect(chat.split(evidence)).toHaveLength(2);
@@ -272,10 +271,10 @@ describe("buildSystemPrompt -- subagent", () => {
   const build = (overrides: UnknownRecord = {}) =>
     buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "subagent", ...overrides }));
 
-  it("does NOT contain the communication block or chat review guidance", () => {
+  it("does NOT contain the chat body or its first-draft review guidance", () => {
     const result = build({ agentsMd });
-    expect(result).not.toContain("COMMUNICATION:");
-    expect(result).not.toContain("CHAT CHANGE REVIEW:");
+    expect(result).not.toContain("# Working in Flywheel");
+    expect(result).not.toContain("**Every change is a first draft.**");
   });
 
   it("includes agentsMd under the AGENTS.md Instructions header", () => {
@@ -443,7 +442,7 @@ describe("cross-tool batching guideline", () => {
     expect(result).toContain("remove duplicate calls with the same tool name and arguments");
     expect(result).toContain("Repeat a call only when a failure, changed state, or verification requirement makes a fresh result necessary");
     expect(result).toContain("A turn carries both text and tool calls");
-    expect(result).toContain("Use tools purposefully. Do not call a tool unless the task requires it.");
+    expect(result).toContain("Use a tool only when the task needs it.");
   });
 
 });
@@ -473,8 +472,8 @@ describe("global guideline selection", () => {
 
     expect(result).toContain("Independent tool calls in one turn run concurrently");
     expect(result).not.toContain("saved-output file");
-    expect(result).not.toContain("Be concise in narration");
-    expect(result).not.toContain("Ground every claim about code, tests, or tools in what you observed");
+    expect(result).not.toContain("Give a one-line update before your first tool call");
+    expect(result).not.toContain("Ground each claim about code, tests, or tools in what you observed");
     expect(result).toContain("Always quote paths");
     expect(result).toContain("# Examples");
   });
@@ -489,55 +488,6 @@ describe("global guideline selection", () => {
     }));
 
     expect(result).toContain("PROPORTIONALITY:");
-  });
-});
-
-describe("renderCommunicationBlock", () => {
-  it("produces the voice paragraph, core rules, and client-neutral Markdown mechanics", () => {
-    const result = renderCommunicationBlock({ progress: "Send short updates.", modelNotes: "" }, promptCapabilities([]));
-    expect(result).toContain("COMMUNICATION:");
-    expect(result).toContain("Core rules:");
-    expect(result).toContain("Markdown mechanics:");
-    expect(result).not.toContain("TUI");
-    expect(result).toContain("Send short updates.");
-    expect(result).toContain("ASD-STE100 Simplified Technical English");
-    expect(result).toContain("architecture, debugging, reviews");
-    expect(result).toContain("Keep it conversational");
-    expect(result).toContain("Open a run of tool work with one sentence that names the next step");
-    expect(result).toMatch(/1\. Never ignore a user message\..*Never continue the work without acknowledging a user message\..*revises it with `message_session`, or ends it with Stop[\s\S]*Never end a turn by announcing work that you can start now: start it in the same turn\./);
-    expect(result).toContain("what broke, what it means for the task");
-    expect(result).toContain("Ordinary human warmth is welcome when it makes the work clearer; simulated emotion, personal attachment, inner life, or companionship is not");
-    expect(result.split("Be concise in narration")).toHaveLength(2);
-    expect(result.split("Ground every claim about code, tests, or tools in what you observed")).toHaveLength(2);
-  });
-
-  it("leaves the rule on asking to the ask_user description and keeps the rule numbers contiguous", () => {
-    const withTool = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([{ name: "ask_user" }]));
-    const without = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([]));
-
-    expect(withTool).not.toContain("ask_user");
-    expect(withTool).not.toContain("so that the user can reply with one number");
-    expect(withTool).toContain("10. Ground every claim");
-    expect(withTool).toContain("17. Explain designs");
-    expect(without).toContain("10. Number the options that you offer");
-    expect(without).toContain("18. Explain designs");
-  });
-
-  it("states the whole challenge method itself, with or without the design skill", () => {
-    const withDesign = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([{ name: "skill" }], ["design"]));
-    const without = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([]));
-    for (const block of [withDesign, without]) {
-      expect(block).toContain("proposes a simpler model, first restate their model");
-      expect(block).toContain("The challenge ends when you show why your approach is better");
-      expect(block).not.toContain("`design` skill");
-    }
-  });
-
-  it("renders shared and provider model notes in one section", () => {
-    const result = renderCommunicationBlock({ progress: "Send updates.", modelNotes: "- Extra note for this model." }, promptCapabilities([]));
-    expect(result.match(/MODEL NOTES:/g)).toHaveLength(1);
-    expect(result).toContain("- Use tools purposefully. Do not call a tool unless the task requires it.");
-    expect(result).toContain("- Extra note for this model.");
   });
 });
 
@@ -557,7 +507,7 @@ describe("regression -- subagent section inventory", () => {
   assertSectionInventory(compiled, [...CORE_SECTIONS, ...DOCTRINE_SECTIONS, "Guidelines:"]);
 
   it("does NOT contain sections reserved for step-agent/chat", () => {
-    expect(compiled).not.toContain("COMMUNICATION:");
+    expect(compiled).not.toContain("# Working in Flywheel");
     expect(compiled).not.toContain("PROPORTIONALITY:");
   });
 });
@@ -569,7 +519,7 @@ describe("regression -- step-agent section inventory", () => {
   ]);
 
   it("does NOT contain communication sections reserved for chat", () => {
-    expect(compiled).not.toContain("COMMUNICATION:");
+    expect(compiled).not.toContain("# Working in Flywheel");
   });
 });
 
@@ -647,11 +597,13 @@ describe("bash background-execution guidance", () => {
   });
 
   // No person reads an unattended chat (PI-AGENT-121): it has nobody to run a prompt, a browser login, or Detach.
-  it("leaves out the person's commands, Detach, and the Windows rule off Windows in an unattended chat", () => {
+  it("leaves out the person's commands and Detach in an unattended chat, and the Windows rule off Windows for every agent", () => {
     const PERSON_TEXT = ["belongs to the person", "tell the person to complete it in the browser", "you select Detach"];
     const WINDOWS = "On Windows, search file contents with the search tool";
     const unattended = (platform: NodeJS.Platform) => createBashDefinition({ platform, mutatingDeclaration: false, advertised: { unattendedChat: true } }).description;
-    for (const text of [...PERSON_TEXT, WINDOWS]) expect(createBashDefinition({ platform: "linux" }).description).toContain(text);
+    for (const text of PERSON_TEXT) expect(createBashDefinition({ platform: "linux" }).description).toContain(text);
+    expect(createBashDefinition({ platform: "linux" }).description).not.toContain(WINDOWS);
+    expect(createBashDefinition({ platform: "win32" }).description).toContain(WINDOWS);
     for (const text of [...PERSON_TEXT, WINDOWS]) expect(unattended("linux")).not.toContain(text);
     expect(unattended("win32")).toContain(WINDOWS);
     // An unattended agent still learns that the runtime cap moves a long foreground command to managed execution.

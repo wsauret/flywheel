@@ -35,7 +35,6 @@ import { cacheWriteTokens } from "./openai-usage-normalization.js";
 import { cacheControlFor } from "./anthropic-adapter-helpers.js";
 import { openAIReasoningEffort, supportsThinkingDisable } from "./model-compat.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
-import { SHARED_PROMPT_NOTES } from "./prompt-notes.js";
 import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions } from "./types.js";
@@ -369,7 +368,6 @@ export async function createOpenAIChatCompletionsAdapter(
     modelFamily: "openai",
     model: defaultModel,
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
-    promptNotes: SHARED_PROMPT_NOTES,
     contextLimit: info.contextLimit,
     outputLimit: info.outputLimit,
     supportsReasoning: info.reasoning,

@@ -17,7 +17,6 @@ describe("agent loop live reasoning effort", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: true,
-      promptNotes: { progress: "", modelNotes: "" },
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
         effortsSeen.push(options.reasoningEffort);

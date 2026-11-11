@@ -69,10 +69,15 @@ function decodeEnvironment(value: string): string {
   });
 }
 
+/** A model id without the extended-context suffix that the engine spells the extended window with (`engineModelId`). */
+function withoutExtendedWindow(modelId: string): string {
+  return modelId.replace(/\[1m\]$/i, "");
+}
+
 /** The display table's key for a model id: the canonical id without the extended-context suffix, with the explicit
  *  minor version that the table uses for the first Claude 4 models. */
 function displayKey(modelId: string): string {
-  const canonical = canonicalModelId(modelId.replace(/\[1m\]$/i, ""));
+  const canonical = canonicalModelId(withoutExtendedWindow(modelId));
   return canonical === "claude-opus-4" || canonical === "claude-sonnet-4" ? `${canonical}.0` : canonical; // provider-model-literal-allow: display -- the display table uses the explicit minor version.
 }
 
@@ -101,13 +106,15 @@ function modelIdentity(key: string, catalog: ModelCatalogFacts | undefined) {
 }
 
 // The Agent SDK route writes only the facts of this reminder into the engine's rotation transcript, and the engine
-// words its own reminder from them (transcript.ts), so this text is free of the engine's wording.
-function modelText(modelId: string, catalog: ModelCatalogFacts | undefined): string {
+// words its own reminder from them (transcript.ts), so this text is free of the engine's wording. The engine's facts
+// hold no window, so on that route only the engine's "(1M context)" label and model ID state it.
+function modelText(modelId: string, catalog: ModelCatalogFacts | undefined, contextWindow: number): string {
   const { name, cutoff, labelsExtended } = modelIdentity(displayKey(modelId), catalog);
   const extended = labelsExtended && modelId.toLowerCase().includes("[1m]"); // provider-model-literal-allow: display -- the model reminder labels the extended-context spelling.
   return [
     name ? `${MODEL_OPENING}is ${name}${extended ? " (1M context)" : ""}, with the model ID ${modelId}.` : `${MODEL_OPENING}has the model ID ${modelId}.`,
     ...(cutoff ? [`Its training data ends in ${cutoff}.`] : []),
+    `Its context window holds ${contextWindow.toLocaleString("en-US")} tokens.`,
   ].join(" ");
 }
 
@@ -138,14 +145,14 @@ export function canonicalShell(): string {
 }
 
 /** The environment facts that Flywheel reads from the host. Each of them is known, the shell included. */
-export type HostEnvironment = Extract<ClaudeReminder, { kind: "environment" }> & { readonly shell: string };
+export type HostEnvironment = Extract<RuntimeReminder, { kind: "environment" }> & { readonly shell: string };
 
 /**
- * The facts that one Claude reminder states. Environment text is decoded from the reminder's escaping, so
+ * The facts that one runtime reminder states. Environment text is decoded from the reminder's escaping, so
  * escaping it again gives the reminder's bytes. A working directory can hold the redaction marker, because history
  * stores redacted reminders.
  */
-export type ClaudeReminder =
+export type RuntimeReminder =
   | {
     readonly kind: "environment"; readonly workingDirectory: string; readonly isWorktree: boolean; readonly isGitRepo: boolean;
     readonly platform: string; readonly osVersion: string;
@@ -154,7 +161,8 @@ export type ClaudeReminder =
   }
   /** Holds only the facts that changed. */
   | { readonly kind: "environment-update"; readonly workingDirectory?: string; readonly isWorktree?: boolean; readonly isGitRepo?: boolean }
-  | { readonly kind: "model"; readonly text: string; readonly modelId: string; readonly displayName?: string; readonly knowledgeCutoff?: string }
+  /** `contextWindow` is absent in the wording of builds before 2026-11-11, which stated no window. */
+  | { readonly kind: "model"; readonly text: string; readonly modelId: string; readonly displayName?: string; readonly knowledgeCutoff?: string; readonly contextWindow?: number }
   | { readonly kind: "date"; readonly date: string; readonly changed: boolean };
 
 const fact = (name: string, value: string) => ` - ${name}: ${value}`;
@@ -242,7 +250,7 @@ const LEGACY_FORMAT: EnvironmentFormat = {
 
 const environmentValue = (name: string, line: string) => line.startsWith(` - ${name}: `) ? line.slice(name.length + 5) : undefined;
 
-function parseEnvironment(lines: readonly string[], format: EnvironmentFormat): ClaudeReminder | undefined {
+function parseEnvironment(lines: readonly string[], format: EnvironmentFormat): RuntimeReminder | undefined {
   let workingDirectory: string | undefined;
   let git: boolean | undefined;
   let worktree: boolean | undefined;
@@ -264,7 +272,7 @@ function parseEnvironment(lines: readonly string[], format: EnvironmentFormat): 
   };
 }
 
-function parseEnvironmentChange(lines: readonly string[], format: EnvironmentFormat, previousWorkingDirectory: string | undefined): ClaudeReminder {
+function parseEnvironmentChange(lines: readonly string[], format: EnvironmentFormat, previousWorkingDirectory: string | undefined): RuntimeReminder {
   let workingDirectory: string | undefined;
   let gitRepo: boolean | undefined;
   let worktree: boolean | undefined;
@@ -282,18 +290,24 @@ function parseEnvironmentChange(lines: readonly string[], format: EnvironmentFor
   };
 }
 
-function parseModel(body: string): ClaudeReminder | undefined {
-  const named = /^The model that answers is (.+), with the model ID (\S+)\.(?: Its training data ends in (.+)\.)?$/.exec(body);
+const CONTEXT_WINDOW_SENTENCE = String.raw`(?: Its context window holds ([\d,]+) tokens\.)?`;
+const NAMED_MODEL = new RegExp(String.raw`^The model that answers is (.+), with the model ID (\S+)\.(?: Its training data ends in (.+?)\.)?${CONTEXT_WINDOW_SENTENCE}$`);
+const PLAIN_MODEL = new RegExp(String.raw`^The model that answers has the model ID (\S+)\.${CONTEXT_WINDOW_SENTENCE}$`);
+
+const contextWindowOf = (tokens: string | undefined) => tokens === undefined ? {} : { contextWindow: Number(tokens.replaceAll(",", "")) };
+
+function parseModel(body: string): RuntimeReminder | undefined {
+  const named = NAMED_MODEL.exec(body);
   // SAFETY: groups 1 and 2 of the pattern are not optional, so a match captured both.
-  if (named) return { kind: "model", text: body, modelId: named[2]!, displayName: named[1]!, ...(named[3] === undefined ? {} : { knowledgeCutoff: named[3] }) };
-  const plain = /^The model that answers has the model ID (\S+)\.$/.exec(body);
+  if (named) return { kind: "model", text: body, modelId: named[2]!, displayName: named[1]!, ...(named[3] === undefined ? {} : { knowledgeCutoff: named[3] }), ...contextWindowOf(named[4]) };
+  const plain = PLAIN_MODEL.exec(body);
   // SAFETY: group 1 of the pattern is not optional, so a match captured it.
-  return plain ? { kind: "model", text: body, modelId: plain[1]! } : parseLegacyModel(body);
+  return plain ? { kind: "model", text: body, modelId: plain[1]!, ...contextWindowOf(plain[2]) } : parseLegacyModel(body);
 }
 
 /** A model reminder in the format of builds before 2026-10-27, which stated the display name, the model ID, and the
  *  knowledge cutoff in other sentences. Remove this reader after 2027-04-27. */
-function parseLegacyModel(body: string): ClaudeReminder | undefined {
+function parseLegacyModel(body: string): RuntimeReminder | undefined {
   const named = /^You are powered by the model named (.+?)\. The exact model ID is (.+?)\.(?: Assistant knowledge cutoff is (.+)\.)?$/.exec(body);
   // SAFETY: groups 1 and 2 of the pattern are not optional, so a match captured both.
   if (named) return { kind: "model", text: body, modelId: named[2]!, displayName: named[1]!, ...(named[3] === undefined ? {} : { knowledgeCutoff: named[3] }) };
@@ -302,7 +316,7 @@ function parseLegacyModel(body: string): ClaudeReminder | undefined {
   return plain ? { kind: "model", text: body, modelId: plain[1]! } : undefined;
 }
 
-function parseDate(body: string): ClaudeReminder | undefined {
+function parseDate(body: string): RuntimeReminder | undefined {
   const date = /\d{4}-\d{2}-\d{2}/.exec(body)?.[0];
   if (date === undefined) return undefined;
   for (const changed of [false, true]) if (body === dateText(date, changed)) return { kind: "date", date, changed };
@@ -311,20 +325,20 @@ function parseDate(body: string): ClaudeReminder | undefined {
 
 /** A date reminder in the format of builds before 2026-10-27 (`LEGACY_FORMAT`): a changed date adds "now" and a
  *  sentence before and after the date. */
-function parseLegacyDate(body: string): ClaudeReminder | undefined {
+function parseLegacyDate(body: string): RuntimeReminder | undefined {
   const legacy = /^(?:[^.\n]+\. )?Today's date is (now )?(\d{4}-\d{2}-\d{2})\.(?: [^\n]*)?$/.exec(body);
   // SAFETY: group 2 of the pattern is not optional, so a match captured it.
   return legacy ? { kind: "date", date: legacy[2]!, changed: legacy[1] !== undefined } : undefined;
 }
 
 /**
- * Reads the facts of one reminder entry that createClaudeReminders wrote, from its tagged content, in the current
+ * Reads the facts of one reminder entry that a route's reminders (`createReminders`) wrote, from its tagged content, in the current
  * format or the format of earlier builds that history still holds. Returns undefined for any other text. An
  * environment change of an earlier build wrote the new working directory followed by the old one, so the caller
  * passes the working directory that history held before the change. Without it, that change's working directory
  * holds both.
  */
-export function parseClaudeReminder(content: string, previousWorkingDirectory?: string): ClaudeReminder | undefined {
+export function parseRuntimeReminder(content: string, previousWorkingDirectory?: string): RuntimeReminder | undefined {
   const body = /^<system-reminder>\n([\s\S]*)\n<\/system-reminder>\n?$/.exec(content)?.[1];
   if (body === undefined) return undefined;
   const lines = body.split("\n");
@@ -336,9 +350,16 @@ export function parseClaudeReminder(content: string, previousWorkingDirectory?: 
   return parseDate(body);
 }
 
-function reminderIn(message: ConversationMessage, previousWorkingDirectory?: string): ClaudeReminder | undefined {
+function reminderIn(message: ConversationMessage, previousWorkingDirectory?: string): RuntimeReminder | undefined {
   if (message.kind !== "user" || message.origin !== "system" || typeof message.content !== "string") return undefined;
-  return parseClaudeReminder(message.content, previousWorkingDirectory);
+  return parseRuntimeReminder(message.content, previousWorkingDirectory);
+}
+
+/** Whether `content` is a model reminder that names `model`, as a request's history target names the model that
+ *  serves it (`ProviderHistoryTarget.model`). The engine's spelling of the extended window names the same model. */
+export function isModelReminderOf(content: string, model: string): boolean {
+  const reminder = parseRuntimeReminder(content);
+  return reminder?.kind === "model" && withoutExtendedWindow(reminder.modelId) === withoutExtendedWindow(model);
 }
 
 /**
@@ -352,10 +373,15 @@ export function engineModelId(wireModelId: string, contextLimit: number): string
 
 type SystemReminder = Extract<ConversationMessage, { kind: "user" }> & { origin: "system" };
 
+/** The framing of a model reminder: `claude` for a Claude route's, which an Anthropic Messages request to the model
+ *  that it names reads, and `model` for every other route's, which any request to the model that it names reads
+ *  (`provider-history.ts`). */
+type ModelFraming = "claude" | "model";
+
 /** A hidden reminder, as the engine writes it: a notice of a change ends with a newline, the first statement does not.
- *  `framing` marks it as a reminder (`ConversationMessage` `framing`): `claude` for the model reminder, which only a
- *  Claude route may send, and `reminder` for the environment and date reminders, which every route sends. */
-function systemReminder(body: string, update: boolean, framing: "claude" | "reminder"): SystemReminder {
+ *  `framing` marks it as a reminder (`ConversationMessage` `framing`): a `ModelFraming` for the model reminder, and
+ *  `reminder` for the environment and date reminders, which every request reads. */
+function systemReminder(body: string, update: boolean, framing: ModelFraming | "reminder"): SystemReminder {
   return { kind: "user", origin: "system", content: tagged(body, update), framing };
 }
 
@@ -363,25 +389,42 @@ function tagged(body: string, update: boolean): string {
   return `<system-reminder>\n${body}\n</system-reminder>${update ? "\n" : ""}`;
 }
 
-/**
- * Returns the Claude environment, model, and date reminders as ordinary hidden system-origin appends. History
- * alone owns prior announcements: the first request of a context gets the full set, and a later request after user
- * input gets a notice only when the working directory, git state, worktree state, model, or local date differs from
- * the latest one in history. The worktree and download guidance renders for the capabilities of the agent that the
- * request serves (ARCH-CONTEXT-033). A request after a tool round gets only a model notice and a date notice, each when the
- * model or the local date differs from the latest one in history: a person can change the model of a running turn,
- * and the engine of the Agent SDK announces a new model and a new date at the next request. Input is never changed.
- */
+/** The reminders of a Claude route (`createReminders`): its model reminder names the model as the engine spells it,
+ *  with the engine's wording of the extended window, in `claude` framing. */
 export function createClaudeReminders(wireModelId: string, contextLimit: number, catalog?: ModelCatalogFacts): NonNullable<ServingAttempt["messagesToAppend"]> {
   const modelId = engineModelId(wireModelId, contextLimit);
-  const model = modelText(modelId, catalog);
+  return createReminders({ modelId, contextWindow: contextLimit }, modelText(modelId, catalog, contextLimit), "claude");
+}
+
+/** The reminders of every route that is not a Claude route (`createReminders`): its model reminder names `modelId`,
+ *  the model as the route's history target names it, its catalog name and knowledge cutoff when the catalog states
+ *  them, and its context window, in `model` framing, so no request to another model reads it. */
+export function createModelReminders(modelId: string, contextWindow: number, catalog?: ModelCatalogFacts): NonNullable<ServingAttempt["messagesToAppend"]> {
+  return createReminders({ modelId, contextWindow }, modelText(modelId, catalog, contextWindow), "model");
+}
+
+/**
+ * Returns the environment, model, and date reminders as ordinary hidden system-origin appends. History alone owns
+ * prior announcements: the first request of a context gets the full set, and a later request after user input gets a
+ * notice only when the working directory, git state, worktree state, model, or local date differs from the latest one
+ * in history. Every route reads the environment and date reminders, whichever route wrote them; a route compares its
+ * model, by model ID and context window, only with the latest model reminder of its own `framing`, so the reminders
+ * of the other framing never change what it states. The worktree and download guidance renders for the capabilities
+ * of the agent that the request serves (ARCH-CONTEXT-033). A request after a tool round, or one that continues
+ * another route's partial answer, gets only a model notice and a date notice, each when the model or the local date
+ * differs from the latest one in history: a person can change the model of a running turn, a turn can move to another
+ * route, and the engine of the Agent SDK announces a new model and a new date at the next request. Input is never
+ * changed.
+ */
+function createReminders(serving: { readonly modelId: string; readonly contextWindow: number }, model: string, framing: ModelFraming): NonNullable<ServingAttempt["messagesToAppend"]> {
   return (messages, executionCwd, capabilities) => {
     const lastInput = messages.findLast((message) => reminderIn(message) === undefined);
-    if (lastInput?.kind !== "user" && lastInput?.kind !== "toolResult") return [];
+    const continuesPartial = lastInput?.kind === "assistant" && lastInput.incomplete === true;
+    if (lastInput?.kind !== "user" && lastInput?.kind !== "toolResult" && !continuesPartial) return [];
     let previousCwd: string | undefined;
     let previousGit: boolean | undefined;
     let previousWorktree = false;
-    let previousModel: string | undefined;
+    let previousModel: Extract<RuntimeReminder, { kind: "model" }> | undefined;
     let previousDate: string | undefined;
     for (const message of messages) {
       const reminder = reminderIn(message, previousCwd);
@@ -393,14 +436,14 @@ export function createClaudeReminders(wireModelId: string, contextLimit: number,
         previousCwd = reminder.workingDirectory ?? previousCwd;
         previousGit = reminder.isGitRepo ?? previousGit;
         previousWorktree = reminder.isWorktree ?? previousWorktree;
-      } else if (reminder?.kind === "model") previousModel = reminder.modelId;
+      } else if (reminder?.kind === "model" && message.kind === "user" && message.framing === framing) previousModel = reminder;
       else if (reminder?.kind === "date") previousDate = reminder.date;
     }
     const date = localDate();
     const dateNotice = previousDate === date ? [] : [systemReminder(dateText(date, previousDate !== undefined), true, "reminder")];
-    if (lastInput.kind === "toolResult" && previousDate === undefined) return [];
+    if (lastInput.kind !== "user" && previousDate === undefined) return [];
     const appends: SystemReminder[] = [];
-    const append = (body: string, update: boolean, framing: "claude" | "reminder" = "reminder") => appends.push(systemReminder(body, update, framing));
+    const append = (body: string, update: boolean, as: ModelFraming | "reminder" = "reminder") => appends.push(systemReminder(body, update, as));
     if (lastInput.kind === "user") {
       const environment = environmentFacts(executionCwd);
       if (previousCwd === undefined) append(environmentBody(environment, capabilities), false);
@@ -416,9 +459,10 @@ export function createClaudeReminders(wireModelId: string, contextLimit: number,
         if (changes.length > 0) append([ENVIRONMENT_CHANGE_HEADER, ...changes].join("\n"), true);
       }
     }
-    // The model reminder names a Claude model, which a request to another provider's model must not state.
-    // History compares by model ID, so a reminder in an earlier wording does not state an unchanged model again.
-    if (previousModel !== modelId) append(model, previousModel !== undefined, "claude");
+    // A reminder in an earlier wording states no window, so it compares by model ID alone and an unchanged model is
+    // not stated again.
+    const stated = previousModel?.modelId === serving.modelId && (previousModel.contextWindow ?? serving.contextWindow) === serving.contextWindow;
+    if (!stated) append(model, previousModel !== undefined, framing);
     return [...appends, ...dateNotice];
   };
 }

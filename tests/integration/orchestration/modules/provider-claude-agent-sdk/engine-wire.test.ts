@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { Effect } from "effect";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
 import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
 import { cliLaunch, type ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";

@@ -148,7 +148,6 @@ describe("per-request persistent-process policy", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
         expect(JSON.stringify(options.tools)).toContain("persist_after_exit")
         if (calls++ > 0) {
@@ -225,7 +224,6 @@ describe("per-request persistent-process policy", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
         if (request++ === 0) {
           yield { kind: "tool_use", toolCall: { id: "tc_bash", name: "Bash", input: { command: "pwd" } } }
@@ -312,7 +310,6 @@ describe("per-request provider admission", () => {
       contextLimit: 100_000,
       outputLimit: 8_000,
       supportsReasoning: false,
-      promptNotes: { progress: "", modelNotes: "" },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
       async *streamWithTools() { throw new Error("provider adapter is reached through the admitted request") },
     }
@@ -399,7 +396,7 @@ describe("per-request provider admission", () => {
     const streamed: ConversationMessage[][] = []
     const client = asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model",
-      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
       async *streamWithTools(options: StreamOptions) {
         streamed.push([...options.messages])
         yield { kind: "text_delta", text: `answer ${streamed.length}`, blockKey: "text" }

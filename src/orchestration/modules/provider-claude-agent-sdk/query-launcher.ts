@@ -7,7 +7,7 @@ import { awaitWithAbortSignal } from "../../../infra/abort.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { isProcessAlive } from "../../../infra/process-liveness.js";
 import type { ClaudeLoginEngine, ClaudeLoginEngineLaunch } from "../../../infra/claude-engine.js";
-import { engineModelId } from "../../agent-runtime/llm/claude-reminders.js";
+import { engineModelId } from "../../agent-runtime/llm/runtime-reminders.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../agent-runtime/llm/system-prompt-tiers.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import { TOOL_MCP_SERVER, TOOL_MCP_PREFIX, globalConfigPath, legacyRefreshLockPath, mcpToolAliases, REFRESH_LOCK_BOUND_MS, REFRESH_LOCK_POLL_MS, refreshLockPath, refreshStopHold } from "./names.js";

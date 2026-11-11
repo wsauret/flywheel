@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from "@anthropic-ai/claude-agent-sdk";
 import { Effect, Exit } from "effect";
 import type { CliBlock, CliMessage, CliView, PlacedReminder, QueryIdentity } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
-import type { ClaudeReminder, HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import type { RuntimeReminder, HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { createReplayAcks, planReload, replayFrames, type HeldConversation, type OpeningStatement, type ReloadDecision } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/in-place.js";
 import { planRequest, type CliCopy, type QueryState } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/request-plan.js";
 
@@ -25,7 +25,7 @@ const WINDOWS: Environment = { ...MACOS, workingDirectory: "C:\\work", platform:
 /** What the engine states now at an opening turn: today's date and the canonical environment `stated`. */
 const statement = (stated: Environment = MACOS): OpeningStatement => ({ today: TODAY, environment: () => stated });
 /** The reminders that the first request of a conversation holds on its first message, as the CLI states them itself. */
-const opening = (date = TODAY, message = 0, stated: Extract<ClaudeReminder, { kind: "environment" }> = MACOS): PlacedReminder[] => [
+const opening = (date = TODAY, message = 0, stated: Extract<RuntimeReminder, { kind: "environment" }> = MACOS): PlacedReminder[] => [
   { message, reminder: stated },
   { message, reminder: { kind: "model", text: "The model reminder.", modelId: "claude-sonnet-5-5" } },
   { message, reminder: { kind: "date", date, changed: false } },
@@ -142,7 +142,7 @@ describe("the in-place rotation plan", () => {
     const failed = user(result("t1", true));
     const reload: ReloadDecision = { kind: "reload", systemPrompt: undefined, cut: { row: "row-0", lastSeen: "row-0" }, from: 0, replay: [U0, A0], opening: true };
     const cold: ReloadDecision = { kind: "cold", reason: "replayed-reminder" };
-    const rotate = (canonical: Extract<ClaudeReminder, { kind: "environment" }>, now: Environment, cwd = canonical.workingDirectory) =>
+    const rotate = (canonical: Extract<RuntimeReminder, { kind: "environment" }>, now: Environment, cwd = canonical.workingDirectory) =>
       decide(view([U0, A0, failed], { reminders: opening(TODAY, 0, canonical), identity: { ...IDENTITY, cwd } }), held({ ...parkedCopy, identity: { ...IDENTITY, cwd } }), "parked", statement(now));
     // A transcript and the engine state the canonical facts with the engine's shell, so the replayed opening turn
     // gives the request of a cold rotation, also on Windows, where the engine can name bash for PowerShell.

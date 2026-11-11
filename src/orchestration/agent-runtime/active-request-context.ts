@@ -213,9 +213,7 @@ export function createActiveRequestContext(input: {
     const prior = selected.attempt;
     if (prior.accessProvider !== attempt.accessProvider || prior.model !== attempt.model
       || prior.modelFamily !== attempt.modelFamily || prior.toolPresentation !== attempt.toolPresentation
-      || prior.tokenizerIdentity !== attempt.tokenizerIdentity
-      || prior.promptNotes?.progress !== attempt.promptNotes?.progress
-      || prior.promptNotes?.modelNotes !== attempt.promptNotes?.modelNotes) {
+      || prior.tokenizerIdentity !== attempt.tokenizerIdentity) {
       materialize(selected.surface, attempt);
     }
     return selected.prepared;

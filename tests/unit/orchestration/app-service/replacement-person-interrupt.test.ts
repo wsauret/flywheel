@@ -180,7 +180,6 @@ function slowToEndModel() {
     contextLimit: 100_000,
     outputLimit: 8_000,
     supportsReasoning: false,
-    promptNotes: { progress: "", modelNotes: "" },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     async *streamWithTools(options: StreamOptions) {
       // The session's title request carries no tools.

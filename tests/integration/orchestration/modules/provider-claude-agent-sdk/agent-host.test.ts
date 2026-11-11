@@ -15,7 +15,7 @@ import { engineShell } from "../../../../../src/orchestration/modules/provider-c
 import { cliLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { canonicalShell, parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { canonicalShell, parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, effortOf, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, registryProxy, SYSTEM, systemTexts, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
@@ -395,7 +395,7 @@ describe("the shared agent host's history and records", () => {
       const wireLines = (request: RecordedRequest) => modelLines([...systemTexts(request), ...wireMessages(request).flatMap((message) => typeof message.content === "string" ? [message.content] : message.content.flatMap((block) => block.text === undefined ? [] : [block.text]))]);
       const line = (model: string) => model === "claude-haiku-5-5" ? "claude-haiku-5-5" : "claude-opus-5-5[1m]";
       const historyLines = (history: readonly ConversationMessage[]) => history.flatMap((message) => {
-        const reminder = parseClaudeReminder(textOf(message) ?? "");
+        const reminder = parseRuntimeReminder(textOf(message) ?? "");
         return reminder?.kind === "model" ? [reminder.modelId] : [];
       });
       const served = agentRequests.map((request) => ({ model: request.body["model"], extended: request.betas.some((beta) => beta.startsWith("context-1m")), lines: wireLines(request) }));
@@ -658,7 +658,7 @@ describe("the engine text that Flywheel records for a hosted agent", () => {
         const texts = wireMessages(sent).flatMap((message) => typeof message.content === "string" ? [message.content] : message.content.flatMap((block) => block.text === undefined ? [] : [block.text]));
         const reminders = agent.history.flatMap((message) => {
           const text = message.kind === "user" && message.origin === "system" ? textOf(message) : undefined;
-          const reminder = text === undefined ? undefined : parseClaudeReminder(text);
+          const reminder = text === undefined ? undefined : parseRuntimeReminder(text);
           return reminder === undefined ? [] : [reminder];
         });
         expect(reminders.map((reminder) => reminder.kind).toSorted()).toEqual(["date", "environment", "model"]);
