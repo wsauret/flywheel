@@ -1,0 +1,18 @@
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 263,392,449
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts
+  h_4b47e9e4a8b456 12-14,37-39,43-44,48,53-57,59-70,72-73,80-94,127-128
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.test.ts
+  h_4b47e9e4a8b456 1-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "07ef8a320a38c3a26ebfcd0f36756dd536a5ee21",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
