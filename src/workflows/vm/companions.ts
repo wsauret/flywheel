@@ -99,6 +99,8 @@ function completionFacts(
     ];
   }
   const handoff = event.outcome.handoff;
+  // Only the current outcome shape holds issues; a stored historical one never does.
+  const issues = "issues" in event.outcome ? event.outcome.issues : undefined;
   const contextEntry = {
     entryId: identity.attemptId,
     agentName: identity.agentName,
@@ -113,7 +115,9 @@ function completionFacts(
     ...addenda,
     ...[
       buildHandoffWrittenFact({ ...identity, content: handoff }),
-      buildHandoffValidatedFact({ ...identity, status: "passed", issues: [] }),
+      // A handoff delivered after its correction ran out did not pass its
+      // contract, and every reader of its validation learns why.
+      buildHandoffValidatedFact({ ...identity, ...(issues === undefined ? { status: "passed", issues: [] } : { status: "failed", issues }) }),
       buildContextAccumulatedFact(contextEntry, scope),
     ].map(parseWorkflowSessionFact),
   ];

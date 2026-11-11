@@ -46,6 +46,9 @@ export interface CompiledOutput<Payload = StepPayload> {
   /** The runtime handoff input schema, not the provider-facing tool schema. Its root is one `type: "object"`. */
   readonly toolInput: JsonSchema;
   readonly fields: readonly CompiledField[];
+  /** Every key a payload carries, envelope keys first, as the strict decode
+   *  reads them. */
+  readonly payloadFields: FieldMap;
   /** The full postamble of a brief for an agent that can, or cannot, run
    *  shell commands it cites. Without a shell, the postamble leaves out
    *  `commands_run` and the citation rule; the schema still accepts an
@@ -233,7 +236,8 @@ function jsonSchemaFor(field: Field): JsonSchema {
   return field.description ? { ...schema, description: field.description } : schema;
 }
 
-function objectJsonSchema(fields: FieldMap, required = Object.keys(fields).filter((key) => !fields[key]?.optional)): JsonSchema {
+/** The JSON Schema of one object of `fields`, as a tool input states it. */
+export function objectJsonSchema(fields: FieldMap, required = Object.keys(fields).filter((key) => !fields[key]?.optional)): JsonSchema {
   return {
     type: "object",
     properties: Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, jsonSchemaFor(field)])),
@@ -344,7 +348,8 @@ export function compileOutput<const Output extends OutputObject>(output: Output)
   const min = output.commands?.min ?? 0;
   const declared = output.fields ?? {};
   const modelFields = modelFacingFields(fields);
-  const schema = topLevelSchema(strictFields(fields), OUTPUT_WORDS);
+  const strict = strictFields(fields);
+  const schema = topLevelSchema(strict, OUTPUT_WORDS);
   const withCommands = renderOutputInstructions(output, modelFields, true);
   const withoutCommands = renderOutputInstructions(output, modelFields, false);
   const canonical = canonicalOutput(output, true);
@@ -355,6 +360,7 @@ export function compileOutput<const Output extends OutputObject>(output: Output)
     schema: payloadSchema,
     toolInput: mode === "file" ? fileToolInput : inlineToolInput(modelFields),
     fields: compiledFields(declared),
+    payloadFields: strict,
     instructions: (commandEvidence) => commandEvidence ? withCommands : withoutCommands,
     requiresCommandEvidence: output.commands !== undefined,
     async check(payload, context) {

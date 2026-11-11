@@ -42,6 +42,19 @@ describe("splitCollapsedValue", () => {
     });
   });
 
+  // The shapes of two real last handoffs that were refused three times: each
+  // wire fragment that names its field is closed with the field's own tag.
+  test("ends a wire fragment at the field's own closer when it comes first", () => {
+    expect(splitCollapsedValue("direct_access", 'Open the app.</direct_access>\n<parameter name="overview">No overview screen.</overview>\n<parameter name="screens">[{"name": "home"}]')).toEqual({
+      value: "Open the app.",
+      fragments: [{ name: "overview", body: "No overview screen." }, { name: "screens", body: '[{"name": "home"}]' }],
+    });
+    expect(splitCollapsedValue("problems", 'Outage in October.</problems>\n<parameter name="evidence">["shot_01.png"]</parameter>\n<parameter name="evidence_note">Two screenshots.')).toEqual({
+      value: "Outage in October.",
+      fragments: [{ name: "evidence", body: '["shot_01.png"]' }, { name: "evidence_note", body: "Two screenshots." }],
+    });
+  });
+
   test("reads a trailing unclosed fragment to the end, without its leaked scaffolding", () => {
     expect(splitCollapsedValue("summary", 'Implemented all phases.</summary>\n<artifacts>{"files_created": ["a.ts"]}')).toEqual({
       value: "Implemented all phases.",

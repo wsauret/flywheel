@@ -1,3 +1,5 @@
+import type { OutputIssue } from "../output-contract/paths.js";
+
 /** Terminal kinds a failed workflow worker can carry. */
 export type AgentFailureKind =
   | "budget_exhausted"
@@ -32,6 +34,11 @@ export type AgentOutput = AgentOutcome & {
    *  check. A worker returns no other content, so the attempt runner commits
    *  it without a second validation. */
   readonly handoffContent: WorkerHandoffContent | null;
+  /** Present when the handoff tool never accepted a handoff and the agent's
+   *  handoff correction ran out: `handoffContent` is then the last handoff
+   *  it refused, after every repair, and these are its remaining problems.
+   *  The attempt runner delivers it instead of failing the attempt. */
+  readonly handoffIssues?: readonly OutputIssue[];
   readonly durationMs: number;
   readonly toolUses?: number;
 };

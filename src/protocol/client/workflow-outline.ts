@@ -341,6 +341,19 @@ function settledState(state: WorkflowAgentState): boolean {
   return state === "done" || state === "failed" || state === "skipped"
 }
 
+/** The detail of a finished agent: its summary line, led by a mark that
+ *  names the problems when its handoff did not pass its contract and the
+ *  runtime delivered it. */
+function doneDetail(evidence: WorkflowTreeAgent["evidence"]): string | undefined {
+  const summary = evidence?.summary === undefined ? undefined : summaryLine(evidence.summary)
+  const issues = evidence?.contractIssues
+  if (issues === undefined) return summary
+  const more = issues.count - issues.lines.length
+  const problems = [...issues.lines, ...(more > 0 ? [`${more} more`] : [])].join("; ")
+  const mark = `handoff did not pass its contract (${issues.count} ${issues.count === 1 ? "problem" : "problems"}: ${problems})`
+  return summary === undefined ? mark : `${mark}: ${summary}`
+}
+
 function phaseAgent(fold: Fold, agent: WorkflowTreeAgent): WorkflowPhaseAgent {
   const attempt = agent.currentAttemptId === undefined ? undefined : fold.attempts.get(agent.currentAttemptId)
   const live = agent.currentAttemptId === undefined ? undefined : fold.live.get(agent.currentAttemptId)
@@ -353,7 +366,7 @@ function phaseAgent(fold: Fold, agent: WorkflowTreeAgent): WorkflowPhaseAgent {
   const state = !returned ? agentState : fold.cut === undefined ? "running" : "parked"
   const started = attempt?.startedAt !== undefined || (state !== "waiting" && state !== "queued" && state !== "conditional")
   // Convert summaries written before 2026-10-17; remove after 2027-04-17.
-  const detail = state === "done" ? agent.evidence?.summary === undefined ? undefined : summaryLine(agent.evidence.summary)
+  const detail = state === "done" ? doneDetail(agent.evidence)
     : state === "failed" || state === "skipped" ? agent.reason
       : state === "waiting" ? workflowWaitingText(fold.tree, agent) : undefined
   // Only an agent that runs or that an interrupt holds has a live value; a

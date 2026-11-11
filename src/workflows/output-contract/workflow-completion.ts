@@ -15,7 +15,8 @@ import { roundCount, workflowCoverage, workflowProgress } from "../../protocol/c
 import { createReplayingWorkflowView } from "../view/view-projection.js"
 import type { WorkflowView } from "../view/types.js"
 import type { CommittedWorkflowControl } from "../vm/committed-control.js"
-import { parseHandoffFact } from "./facts.js"
+import { describeOutputIssues } from "./accept.js"
+import { parseHandoffFact, type HandoffIssue } from "./facts.js"
 import { reduceHandoffRecord, loadHandoffsFromEvents, type HandoffRecord } from "./projection.js"
 import { renderAgentOutput } from "./render.js"
 
@@ -281,6 +282,9 @@ export interface AgentResult {
   readonly reason?: string
   /** The handoff as the agent wrote it, or the join's output. */
   readonly content?: { readonly [key: string]: unknown }
+  /** The problems that remain in a completed agent's handoff that the
+   *  runtime delivered after the agent's handoff correction ran out. */
+  readonly issues?: readonly HandoffIssue[]
 }
 
 /** The reason of the latest failure of each attempt. */
@@ -316,8 +320,10 @@ interface ResultSources {
 function attemptResult(label: string, status: string, attemptId: string | undefined, sources: ResultSources, nodeReason?: string): AgentResult {
   switch (status) {
     case "completed": {
-      const content = attemptId === undefined ? undefined : sources.handoffs.get(attemptId)?.content
-      return { label, status: "completed", ...(content ? { content } : {}) }
+      const record = attemptId === undefined ? undefined : sources.handoffs.get(attemptId)
+      const content = record?.content
+      const issues = record?.validationStatus === "failed" ? record.validationIssues : undefined
+      return { label, status: "completed", ...(content ? { content } : {}), ...(issues ? { issues } : {}) }
     }
     case "failed": {
       const reason = nodeReason ?? (attemptId === undefined ? undefined : sources.failures.get(attemptId))
@@ -436,9 +442,16 @@ export const COMPLETION_AGENT_RESULTS_CAP_BYTES = 65_536
 function agentResultBlock(result: AgentResult): string {
   const reason = result.reason ? ` (${result.reason})` : ""
   switch (result.status) {
-    case "completed": return result.content
-      ? `## ${result.label}: completed\n\n${renderAgentOutput(result.content, [])}`
-      : `## ${result.label}: completed, with no recorded handoff`
+    case "completed": {
+      // A handoff delivered after its correction ran out is the agent's
+      // work, so it reads as completed, with the problems that remain.
+      const contract = result.issues === undefined
+        ? ""
+        : `, handoff did not pass its contract\n\nProblems that remain:\n${describeOutputIssues(result.issues).map((issue) => `- ${issue}`).join("\n")}`
+      return result.content
+        ? `## ${result.label}: completed${contract}\n\n${renderAgentOutput(result.content, [])}`
+        : `## ${result.label}: completed, with no recorded handoff`
+    }
     case "failed": return `## ${result.label}: failed${reason}`
     case "skipped": return `## ${result.label}: skipped${reason}`
     case "not run": return `## ${result.label}: did not run`

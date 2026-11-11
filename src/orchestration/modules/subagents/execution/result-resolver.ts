@@ -20,6 +20,8 @@ import type { SubagentStats, SubagentTextState } from "./stream-filter.js";
 import type { SubagentToolCallRecord } from "./work-log.js";
 import { boundHandoff, boundText, type ResultBudget } from "./result-budget.js";
 import type { RunEnd } from "./run-end.js";
+import { describeOutputIssues } from "../../../../workflows/output-contract/accept.js";
+import type { DeliveredHandoff } from "../../../workflow-host/handoff-tool-schema.js";
 
 interface CapturedHandoff {
   [key: string]: unknown;
@@ -224,6 +226,17 @@ async function emptySubagentResult(
   const baseMessage = `${label} completed without producing text output or a handoff. Retry with a tighter scope, or do the work directly.`;
   const content = await appendWorkSummary(baseMessage, turnLog, "no output produced", deps, signal, false);
   return { status: "failed", content: await boundText(content, ctx.budget), usage };
+}
+
+/** The parent-facing result of a run whose handoff correction ran out after
+ *  it handed off at least once: its last refused handoff, led by a note that
+ *  lists the problems that remain. The work is finished, so the run
+ *  completes; a formatting error never throws it away (PI-AGENT-129). */
+export async function deliveredHandoffResult(delivered: DeliveredHandoff, ctx: SubagentResultContext): Promise<EndedWorkResult> {
+  const { agentType, toolUseId, childSessionId, stats } = ctx;
+  log.info("subagent handoff delivered after its correction ran out", { agentType, toolUseId, childSessionId, issues: delivered.issues.length });
+  const note = `This handoff did not pass its contract after the subagent's last correction, so it is delivered as the subagent last sent it. Problems that remain:\n${describeOutputIssues(delivered.issues).map((issue) => `- ${issue}`).join("\n")}`;
+  return { status: "completed", content: `${note}\n\n${await boundHandoff(delivered.payload, ctx.budget)}`, usage: usageFromStats(stats, 0) };
 }
 
 /** The parent-facing result of a runner that rejected, or of a settlement

@@ -7,7 +7,7 @@ import type { ReasoningEffort } from "../../infra/llm/models.js";
 import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
 import type { SessionFactWriter } from "../session/session-fact-writer.js";
 import type { CommittedTree } from "../session/conversation/conversation-projection.js";
-import type { HandoffToolSchema } from "../workflow-host/handoff-tool-schema.js";
+import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/handoff-tool-schema.js";
 import type { InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/agent-loop-events.js";
 import type { ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
 import type { UsageSettlement } from "./usage-settlement.js";
@@ -247,6 +247,8 @@ export interface AgentLoopOptions {
   /** Validated handoff capture and its co-varying runtime behavior. */
   handoff?: {
     onContent: (content: HandoffContent) => void;
+    /** Receives each handoff that the tool refused. */
+    onRejected?: (rejection: HandoffRejection) => void;
     readCommandEvidence?: ReadCommandEvidence;
     schema?: HandoffToolSchema;
   };

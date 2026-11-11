@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+  deliveredHandoffResult,
   failedRunResult,
   resolveSubagentResult,
   type SubagentResultContext,
@@ -123,6 +124,17 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     expect(out.status).toBe("failed");
     expect(out.content).toStartWith("Subagent 'general-purpose' (do a thing) failed mid-run: owner closed.");
     expect(out.content.length).toBeLessThanOrEqual(CAP);
+  });
+
+  it("completes a run whose handoff correction ran out with its last handoff, led by the problems that remain", async () => {
+    const dir = temporaryDirectory("flywheel-result-resolver-");
+    const out = await deliveredHandoffResult(
+      { payload: { summary: "Found the cause." }, issues: [{ path: "summary", message: "holds collapsed tool-call markup (`</summary>`)" }] },
+      baseCtx({ budget: { cap: CAP, executionCwd: dir, projectRoot: dir, artifactScopeId: "session-1", agentType: "general-purpose" } }),
+    );
+    expect(out.status).toBe("completed");
+    expect(out.content).toStartWith("This handoff did not pass its contract after the subagent's last correction, so it is delivered as the subagent last sent it. Problems that remain:\n- summary: holds collapsed tool-call markup (`</summary>`)\n\n");
+    expect(out.content).toContain("Found the cause.");
   });
 
   it("marks a run failed when the typed result carries a failure", async () => {

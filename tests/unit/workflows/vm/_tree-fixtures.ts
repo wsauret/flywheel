@@ -10,6 +10,7 @@ import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.j
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts.js"
 import type { LoadedWorkflowView, WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { parseProjectionFact } from "../../../../src/infra/event-projection.js"
+import type { OutputIssue } from "../../../../src/workflows/output-contract/paths.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { createMemoryStore, initialFacts, testHost } from "./host-test-support.js"
 import { attemptOf, DRY_FILES, dryAnswer, dryWorkflow, FINDINGS_FILES, findingsAnswer, findingsWorkflow, inputMapWorkflow, itemList, items, mapSkills, mapWorkflow, stage, surveyAnswer, surveyWorkflow, type SurveyTarget } from "./_map-fixtures.js"
@@ -74,7 +75,9 @@ export function mapControl(): CommittedWorkflowControl {
   return compileWorkflowControl(mapWorkflow, mapBindings, { skills: mapSkills })
 }
 
-type Outcome = { readonly handoff: { readonly [key: string]: unknown } } | { readonly fail: string }
+/** A handoff, with `issues` when the runtime delivered it after its
+ *  correction ran out, or a failure. */
+type Outcome = { readonly handoff: { readonly [key: string]: unknown }; readonly issues?: readonly OutputIssue[] } | { readonly fail: string }
 
 /** Run ready attempts in order until `until` holds or nothing is ready.
  *  `outcome` answers each attempt by its id. */
@@ -88,7 +91,7 @@ export function drive(control: CommittedWorkflowControl, outcome: (attemptId: st
     const answer = outcome(next.attemptId)
     current = "fail" in answer
       ? failAttempt(current, { type: "ATTEMPT_FAILED", failure: { attemptId: next.attemptId, kind: "invalid_handoff", reason: answer.fail, conversationId: `conversation-${next.attemptId}`, content: {}, issues: [{ path: "summary", message: answer.fail }] } }).committed
-      : completeAttempt(current, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId: next.attemptId, conversationId: `conversation-${next.attemptId}`, handoff: answer.handoff, reassessment: null } }).committed
+      : completeAttempt(current, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId: next.attemptId, conversationId: `conversation-${next.attemptId}`, handoff: answer.handoff, reassessment: null, ...(answer.issues === undefined ? {} : { issues: answer.issues }) } }).committed
   }
   return current
 }

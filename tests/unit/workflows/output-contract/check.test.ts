@@ -174,6 +174,7 @@ describe("one citation path", () => {
       payload: { summary: "Done.", commands_run: [{ toolUseId: "toolu_lint", command: "bun run lint", cwd: "/repo/web", exitCode: 1, changedAfter: [], observation: "2 errors" }] },
       issues: [],
       repairs: [{ kind: "ignored_field", index: 0, field: "exitCode" }],
+      notes: [],
     });
     const refused = await validateAgentOutput(cited, { summary: "Done.", commands_run: [
       { toolUseId: "toolu_none", observation: "ok" },

@@ -2,7 +2,8 @@ import { errorMessage } from "../../../infra/error-message.js";
 import { collapsedMarkup, splitCollapsedValue, type CollapsedValue } from "../../../infra/handoff-normalize.js";
 import { Log } from "../../../infra/log.js";
 import { describeCommandRunRepair, type CommandRunRepair, type ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
-import type { HandoffToolSchema } from "../../workflow-host/handoff-tool-schema.js";
+import type { HandoffRejection, HandoffToolSchema } from "../../workflow-host/handoff-tool-schema.js";
+import type { OutputIssue } from "../../../workflows/output-contract/paths.js";
 import type { ToolOutcome } from "../../../infra/tool-outcome.js";
 import { coerceToolInput } from "./coerce-input.js";
 
@@ -19,6 +20,8 @@ interface EngineHandoffContext {
   signal?: AbortSignal;
   handoff?: {
     onContent: (content: HandoffContent) => void;
+    /** Receives each refused handoff (refer to {@link HandoffRejection}). */
+    onRejected?: (rejection: HandoffRejection) => void;
     readCommandEvidence?: ReadCommandEvidence;
   };
 }
@@ -134,13 +137,20 @@ function jsonValue(body: string): { value: unknown } | undefined {
  * prose that was never the problem, so the structural signal gets an
  * actionable message instead. A tag quoted in prose is not that signal.
  */
-function detectCollapsedHandoff(input: HandoffContent): { field: string; marker: string } | null {
+function detectCollapsedHandoff(input: HandoffContent): CollapsedField[] {
+  const collapsed: CollapsedField[] = [];
   for (const [key, value] of Object.entries(input)) {
     if (typeof value !== "string") continue;
     const marker = collapsedMarkup(key, value);
-    if (marker) return { field: key, marker };
+    if (marker) collapsed.push({ field: key, marker });
   }
-  return null;
+  return collapsed;
+}
+
+/** One value that holds collapsed tool-call markup, with the closer that begins it. */
+interface CollapsedField {
+  readonly field: string;
+  readonly marker: string;
 }
 
 function isRecord<Value>(value: Value): value is Value & HandoffContent {
@@ -177,6 +187,18 @@ function missingRequiredFields(input: HandoffContent, schema: HandoffToolSchema 
   return (Array.isArray(required) ? required : []).filter((key): key is string => typeof key === "string" && !(key in input));
 }
 
+/** What the agent reads about a value that holds collapsed tool-call markup:
+ *  the handoff collapsed into one argument, and how to send it instead. */
+function collapsedCoaching(schema: HandoffToolSchema | undefined, collapsed: CollapsedField): string {
+  const siblings = siblingKeys(schema, collapsed.field);
+  const correctExample = [`"${collapsed.field}": "...prose with no tags..."`, ...siblings.slice(0, 2).map((key) => `"${key}": ...`)].join(", ");
+  return `Your \`${collapsed.field}\` value contains an embedded tag (\`${collapsed.marker}\`), which means the entire handoff collapsed into a single argument. ` +
+    "STOP emitting XML or tool-call markup inside argument values. The handoff tool takes one flat JSON object; each field is its own top-level key. " +
+    `WRONG (what you just sent): {"${collapsed.field}": "...prose...${collapsed.marker}<parameter name=\\"...\\">..."}. ` +
+    `RIGHT: {${correctExample}}. ` +
+    `On your next call: emit one JSON object, pass \`${collapsed.field}\` as plain prose with no tags, and pass every other field${siblings.length === 0 ? "" : ` (${siblings.join(", ")})`} as sibling top-level keys; never write \`<...>\`, \`</...>\`, \`<parameter>\`, or \`</invoke>\` in any value.`;
+}
+
 export function createHandoffToolCore<Context extends EngineHandoffContext>(
   options: CreateHandoffToolCoreOptions,
 ): EngineHandoffToolDefinition<Context> {
@@ -199,34 +221,23 @@ export function createHandoffToolCore<Context extends EngineHandoffContext>(
       }
       const handoff = context.handoff;
 
-      // prepareAdmission already split every collapsed value it could, so a
-      // collapsed value here is one the split found ambiguous.
+      // One refusal names every problem, so the agent fixes them all in one
+      // turn: collapsed markup that the split found ambiguous (prepareAdmission
+      // already split every value it could), then each missing or invalid
+      // field. No check hides a later one.
       const collapsed = detectCollapsedHandoff(input);
-      if (collapsed) {
-        const siblings = siblingKeys(schema, collapsed.field);
-        const correctExample = [`"${collapsed.field}": "...prose with no tags..."`, ...siblings.slice(0, 2).map((key) => `"${key}": ...`)].join(", ");
-        return {
-          content:
-            `Your \`${collapsed.field}\` value contains an embedded tag (\`${collapsed.marker}\`), which means the entire handoff collapsed into a single argument. ` +
-            "STOP emitting XML or tool-call markup inside argument values. The handoff tool takes one flat JSON object; each field is its own top-level key. " +
-            `WRONG (what you just sent): {"${collapsed.field}": "...prose...${collapsed.marker}<parameter name=\\"...\\">..."}. ` +
-            `RIGHT: {${correctExample}}. ` +
-            `On your next call: emit one JSON object, pass \`${collapsed.field}\` as plain prose with no tags, and pass every other field${siblings.length === 0 ? "" : ` (${siblings.join(", ")})`} as sibling top-level keys; never write \`<...>\`, \`</...>\`, \`<parameter>\`, or \`</invoke>\` in any value.`,
-          outcome: "error",
-        };
+      const problems: OutputIssue[] = collapsed.map(({ field, marker }) => ({ path: field, message: `holds collapsed tool-call markup (\`${marker}\`)` }));
+      const lines: string[] = [];
+      let recovery: string | undefined;
+      const missing = missingRequiredFields(input, schema);
+      if (missing.length > 0) {
+        problems.push(...missing.map((key) => ({ path: key, message: "is a required top-level field and is missing" })));
+        lines.push(`- Handoff is missing required top-level fields: ${missing.join(", ")}. Pass them as direct arguments; do not nest them inside task_content, content, json, or payload.`);
       }
-
-      const missingRequired = missingRequiredFields(input, schema);
-      if (missingRequired.length > 0) {
-        return {
-          content:
-            `Handoff is missing required top-level fields: ${missingRequired.join(", ")}. ` +
-            "Call handoff again with those fields as direct arguments; do not nest them inside task_content, content, json, or payload.",
-          outcome: "error",
-        };
-      }
-
       let payload: HandoffContent = input;
+      // The submission after every repair, which a refusal hands to its
+      // owner; absent when a `submit: file` output could not be read.
+      let repaired: HandoffContent | undefined = input;
       let notes: readonly string[] = [];
       if (schema?.accept) {
         // Recorded commands fill the submission and then check its
@@ -239,20 +250,34 @@ export function createHandoffToolCore<Context extends EngineHandoffContext>(
         });
         logCitationRepairs(log, accepted.repairs, accepted.ok);
         // The notes lead the result as the dispatcher's input-repair notes do,
-        // so the model learns how its citations were read either way.
-        notes = accepted.repairs.map(describeCommandRunRepair);
-        if (!accepted.ok) {
-          return {
-            content: [
-              ...notes,
-              "Handoff rejected; nothing was written. Fix every problem below, then call handoff again.",
-              ...accepted.issues.map((problem) => `- ${problem}`),
-              accepted.recovery,
-            ].join("\n"),
-            outcome: "error",
-          };
+        // so the model learns how its submission was read either way.
+        notes = [...accepted.repairs.map(describeCommandRunRepair), ...accepted.notes];
+        repaired = accepted.payload;
+        if (accepted.ok) {
+          payload = accepted.payload;
+        } else {
+          // The contract reports a missing top-level key again; the line above names it once.
+          const restated = (problem: OutputIssue): boolean => missing.includes(problem.path) && problem.message === "Missing key";
+          for (const [index, problem] of accepted.problems.entries()) {
+            if (restated(problem)) continue;
+            problems.push(problem);
+            lines.push(`- ${accepted.issues[index] ?? problem.message}`);
+          }
+          recovery = accepted.recovery;
         }
-        payload = accepted.payload;
+      }
+      if (problems.length > 0) {
+        handoff.onRejected?.({ ...(repaired === undefined ? {} : { payload: repaired }), issues: problems });
+        return {
+          content: [
+            ...notes,
+            "Handoff rejected; nothing was written. Fix every problem below, then call handoff again.",
+            ...collapsed.map((entry) => `- ${collapsedCoaching(schema, entry)}`),
+            ...lines,
+            ...(recovery === undefined ? [] : [recovery]),
+          ].join("\n"),
+          outcome: "error",
+        };
       }
       // A payload is captured only with an ok result: a captured handoff
       // under an error result would leave the run neither ended nor corrected.

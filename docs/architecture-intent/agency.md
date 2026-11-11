@@ -85,7 +85,7 @@ A design adding autonomous work or a new completion claim names its source of in
 
 ## ARCH-AGENCY-020: Every route returns a first draft, and a handoff is evidence
 
-Every implementation route, whether inline work, a subagent, or a workflow, returns a first draft. A returned draft, handoff, generated specification, or verification claim is evidence: a handoff that the runtime accepts proves only that a worker returned a valid payload. Only the intent holder claims completion of a change, after it revises the draft and the review that the change's size requires runs.
+Every implementation route, whether inline work, a subagent, or a workflow, returns a first draft. A returned draft, handoff, generated specification, or verification claim is evidence: a handoff that the runtime accepts proves only that a worker returned a valid payload. A handoff that the runtime delivered after it failed its contract carries its issues, so it proves even less. Only the intent holder claims completion of a change, after it revises the draft and the review that the change's size requires runs.
 Because: Activity is not proof, and only the agent that holds the intent can judge whether a payload realizes it.
 
 ## ARCH-AGENCY-021: Deviations travel in the owning result contract

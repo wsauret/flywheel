@@ -316,6 +316,7 @@ export function completeAttempt(control: CommittedWorkflowControl, event: Extrac
     state: { _tag: "completed" },
     conversationId: event.outcome.conversationId,
     handoff: event.outcome.handoff,
+    ...(event.outcome.issues === undefined ? {} : { handoffIssues: event.outcome.issues }),
   }));
   const node = proposed.graph.nodes.find(({ id }) => id === current.logicalNodeId);
   if (!node) throw new Error(`Workflow invariant rejected missing logical node "${current.logicalNodeId}"`);

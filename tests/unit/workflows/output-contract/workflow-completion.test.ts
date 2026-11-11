@@ -11,6 +11,9 @@ import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js
 import { reassessmentProposal } from "../../../../src/workflows/vm/reassessment.js"
 import { buildWorkflowControlCommittedFact, buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/session-facts.js"
 import { createMemoryStore, fixtureSkills, initialFacts, sequentialWorkflow, testHost } from "../vm/host-test-support.js"
+import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runner.js"
+import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
 import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import type { WorkflowTreeV1Schema } from "../../../../src/workflows/view/schemas.js"
 
@@ -327,6 +330,124 @@ describe("the workflow completion result", () => {
       expect(content).toContain("## work: failed (provider refused the credentials)\n\n## review: completed\n\n### Summary\nreviewed")
     } finally {
       await host.dispose()
+    }
+  })
+
+  it("records a delivered handoff as a failed validation, runs on from it, and reports it as completed with its problems", async () => {
+    const store = createMemoryStore(initialFacts(sequentialWorkflow))
+    const issues = [{ path: "notes", message: "Expected a value with a length of at most 1" }]
+    const host = testHost(store, {
+      workflow: sequentialWorkflow,
+      attemptRunner: {
+        run: async (input, active) => input.definitionId === "work"
+          ? { kind: "success", attemptId: input.attemptId, conversationId: active.conversationId, handoff: { summary: "worked", notes: ["a", "b"] }, reassessment: null, issues }
+          : { kind: "success", attemptId: input.attemptId, conversationId: active.conversationId, handoff: { summary: "reviewed" }, reassessment: null },
+      },
+    })
+    try {
+      expect(await host.run()).toMatchObject({ kind: "completed" })
+      const validated = store.events.filter(({ type }) => type === "handoff.validated").map(({ payload }) => payload)
+      expect(validated).toEqual([
+        expect.objectContaining({ status: "failed", issues }),
+        expect.objectContaining({ status: "passed", issues: [] }),
+      ])
+
+      const evidence = await readWorkflowCompletionEvidence(asAsyncEventReadSurface(store), "session")
+      expect(evidence.failedAgents).toEqual([])
+      const content = workflowCompletionContent({ status: "completed", label: "Sequential", sessionId: "session", ...evidence })
+      expect(content).toContain("2/2 agents finished.")
+      expect(content).toContain("## work: completed, handoff did not pass its contract\n\nProblems that remain:\n- notes: Expected a value with a length of at most 1\n\n### Summary\nworked")
+      expect(content).toContain("## review: completed\n\n### Summary\nreviewed")
+    } finally {
+      await host.dispose()
+    }
+  })
+
+  it("fans out over the salvaged list of a delivered handoff, and folds the findings of a delivered item agent into its join", async () => {
+    const text = (description: string) => ({ type: "string", description })
+    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      id: "salvaged-fan-out", name: "Salvaged fan-out",
+      phases: [
+        { phase: "find", ...record("find"), output: { summary: "The findings.", fields: { findings: { type: "list", description: "The findings.", max: 2, unique: "id", of: { type: "object", fields: { id: text("The id."), title: text("The title.") } } } } } },
+        {
+          phase: "check", over: "find.findings", label: "title", ...record("check"),
+          output: { summary: "The check.", fields: { notes: { type: "list", description: "The notes.", max: 2, unique: "id", of: { type: "object", fields: { id: text("The id.") } } } } },
+          join: { reducer: "dedupe", with: { items: "notes", by: "id" } },
+        },
+        { phase: "report", ...record("report") },
+      ],
+    })
+    const store = createMemoryStore(initialFacts(workflow))
+    const contextStore = createWorkflowContextStore({ sessionId: "session", reader: asAsyncEventReadSurface(store) })
+    const refused = [{ path: "findings", message: "Expected a value with a length of at most 2" }]
+    const checkIssues = [{ path: "summary", message: "too short" }]
+    const executor = createAttemptExecutor({
+      unavailableToolReason: (term) => `${term} is off`,
+      earlierCheckpoint: async () => null,
+      resolvedAgents: resolveWorkflowAgents(workflow),
+      skills: fixtureSkills,
+      context: contextStore,
+      recordInvocation: async () => {},
+      worker: async (attempt, brief) => {
+        await brief(EVERY_CAPABILITY)
+        if (attempt.definitionId === "find") {
+          return {
+            output: "completed", durationMs: 1, handoffIssues: refused,
+            handoffContent: { summary: "Found them.", findings: [{ id: "F1", title: "One" }, { id: "F2", title: "Two" }, { title: "No id" }, { id: "F3", title: "Three" }] },
+          }
+        }
+        if (attempt.definitionId === "check") {
+          const delivered = deliveredChecks.has(attempt.id)
+          return { output: "completed", durationMs: 1, handoffContent: { summary: "Checked.", notes: [{ id: delivered ? "N2" : "N1" }] }, ...(delivered ? { handoffIssues: checkIssues } : {}) }
+        }
+        return { output: "completed", durationMs: 1, handoffContent: { summary: "Reported." } }
+      },
+    })
+    const checked: unknown[] = []
+    // The check of F2 runs out its correction and is delivered with issues.
+    const deliveredChecks = new Set<string>()
+    const host = testHost(store, {
+      workflow,
+      contextStore,
+      attemptRunner: {
+        run: async (input, active) => {
+          if (input.definitionId === "check") checked.push(input.item)
+          if (input.definitionId === "check" && typeof input.item === "object" && input.item !== null && "id" in input.item && input.item.id === "F2") deliveredChecks.add(input.attemptId)
+          return executor.run(input, active)
+        },
+      },
+    })
+    try {
+      expect(await host.run()).toMatchObject({ kind: "completed" })
+      // One check per kept finding: the item without an id and the item past
+      // the list's max run no agent.
+      expect(checked).toEqual([expect.objectContaining({ id: "F1" }), expect.objectContaining({ id: "F2" })])
+
+      // A copy: toMatchObject in Bun writes its asymmetric matchers into the
+      // object it matches, which would corrupt the stored fact.
+      const validated = store.events.filter(({ type }) => type === "handoff.validated").map(({ payload }) => structuredClone(payload))
+      expect(validated[0]).toMatchObject({
+        status: "failed",
+        issues: [
+          ...refused,
+          { path: "findings.2", message: expect.stringContaining("the item was left out because id: Missing key"), hint: 'item: {"title":"No id"}' },
+          { path: "findings.3", message: "the item was left out because the list holds at most 2 items", hint: 'item: {"id":"F3","title":"Three"}' },
+        ],
+      })
+      expect(validated.filter((payload) => payload.status === "failed")).toHaveLength(2)
+
+      // The join folds the delivered check like any other completed agent.
+      const settled = store.events.filter(({ type }) => type === "group.settled").map(({ payload }) => structuredClone(payload))
+      expect(settled).toHaveLength(1)
+      expect(settled[0]?.output).toMatchObject({
+        kept: [expect.objectContaining({ id: "N1" }), expect.objectContaining({ id: "N2" })],
+        failed: [],
+      })
+      const evidence = await readWorkflowCompletionEvidence(asAsyncEventReadSurface(store), "session")
+      expect(evidence.failedAgents).toEqual([])
+    } finally {
+      await host.dispose()
+      contextStore.dispose()
     }
   })
 

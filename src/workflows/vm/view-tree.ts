@@ -80,9 +80,19 @@ function bounded(line: string): string {
   return line.length <= TREE_TEXT_LIMIT ? line : `${line.slice(0, TREE_TEXT_LIMIT - 1)}…`;
 }
 
+// The problems of a delivered handoff that the card shows; the completion
+// names every one.
+const TREE_ISSUE_LINES = 3;
+
 function treeEvidence(current: Attempt | undefined): WorkflowTreeAgent["evidence"] {
-  const summary = current?.state._tag === "completed" ? current.handoff?.["summary"] : undefined;
-  return typeof summary === "string" && summary.trim().length > 0 ? { summary: bounded(summaryLine(summary)) } : undefined;
+  if (current?.state._tag !== "completed") return undefined;
+  const summary = current.handoff?.["summary"];
+  const issues = current.handoffIssues ?? [];
+  const evidence = {
+    ...(typeof summary === "string" && summary.trim().length > 0 ? { summary: bounded(summaryLine(summary)) } : {}),
+    ...(issues.length === 0 ? {} : { contractIssues: { count: issues.length, lines: issues.slice(0, TREE_ISSUE_LINES).map(({ path, message }) => oneLine(`${path}: ${message}`)) } }),
+  };
+  return Object.keys(evidence).length === 0 ? undefined : evidence;
 }
 
 function concurrentSpans(children: readonly LogicalNode[], prerequisites: ReadonlyMap<string, readonly string[]>): readonly (readonly LogicalNode[])[] {

@@ -104,6 +104,22 @@ describe("the outline of a workflow", () => {
     })
   })
 
+  it("shows an agent whose handoff was delivered with problems as done, with the problems before its summary", () => {
+    const issues = [
+      { path: "sources.4", message: "the item was left out because the list holds at most 2 items" },
+      { path: "notes", message: "Expected a value with a length of at most 1" },
+      { path: "title", message: "Missing key" },
+      { path: "extra", message: "Missing key" },
+    ]
+    const view = frontendView(drive(phaseControl(false), () => ({ handoff: { summary: "Built it." }, issues })), phaseBindings(false))
+    const outline = workflowOutline(view)
+    expect(outline.progress.failed).toBe(0)
+    expect(outline.phases[0]?.agents[0]).toMatchObject({
+      state: "done",
+      detail: "handoff did not pass its contract (4 problems: sources.4: the item was left out because the list holds at most 2 items; notes: Expected a value with a length of at most 1; title: Missing key; 1 more): Built it",
+    })
+  })
+
   it("reuses the fold until its attempt carriers change, and keeps running while a sibling is parked", () => {
     const view = running()
     const live = [{ attemptId: attemptOf(inputStage(1, 1)), sessionId: "member-1", operations: 4, interruptedAt: 39_000, duration: 0, revision: 0 }]

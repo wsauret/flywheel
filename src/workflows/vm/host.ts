@@ -264,6 +264,7 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
           conversationId: outcome.conversationId,
           handoff: outcome.handoff,
           reassessment: outcome.reassessment,
+          ...(outcome.issues === undefined ? {} : { issues: outcome.issues }),
           ...(outcome.toolUses === undefined ? {} : { toolUses: outcome.toolUses }),
         },
       })

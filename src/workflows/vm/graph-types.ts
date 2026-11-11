@@ -352,6 +352,13 @@ const LogicalNodeSchema = Schema.Union([
   ForNodeV10Schema,
 ]);
 
+/** One problem of a handoff, located by its dotted JSON path. */
+export const HandoffIssueSchema = Schema.Struct({
+  path: Schema.String,
+  message: Schema.String,
+  hint: Schema.optionalKey(Schema.String),
+});
+
 export const AttemptSchema = Schema.Struct({
   id: IdSchema,
   logicalNodeId: IdSchema,
@@ -367,6 +374,11 @@ export const AttemptSchema = Schema.Struct({
   parentAttemptId: Schema.NullOr(IdSchema),
   conversationId: Schema.NullOr(IdSchema),
   handoff: Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown)),
+  /** The problems that remain in a completed attempt's handoff that the
+   *  runtime delivered after the agent's handoff correction ran out. Absent
+   *  for a handoff that its contract accepted, and in every attempt that
+   *  control recorded before 2026-11-11. */
+  handoffIssues: Schema.optionalKey(Schema.Array(HandoffIssueSchema)),
   priorRetryFeedback: Schema.NullOr(Schema.String),
   /** The item of an attempt of a repeat over items, or of a `for` loop of
    *  control from before phases. */

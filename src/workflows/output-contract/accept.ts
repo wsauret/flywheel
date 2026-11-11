@@ -6,6 +6,7 @@ import { JsonSyntaxError, parseJsonSource, type JsonSource } from "../../infra/j
 import { isRecord, type UnknownRecord } from "../../infra/record.js";
 import type { CompiledOutput, OutputCheckContext } from "./compile.js";
 import { canonicalizeCommandRuns, isRecordedCommandRunPath, resolveCommandRuns, type CommandRunRepair } from "./evidence.js";
+import { declaredPayload, withoutEmptyOptionals } from "./leniency.js";
 import type { OutputIssue } from "./paths.js";
 
 /** The boundary every agent output crosses before it becomes a fact (plan
@@ -28,11 +29,25 @@ export interface OutputAcceptContext extends OutputCheckContext {
 }
 
 /** `repairs` are the changes that citation resolution made to the
- *  submission, which the worker learns of whether or not it was accepted. */
+ *  submission, and `notes` say how the boundary read it otherwise: each
+ *  empty optional field it left out and each undeclared key it kept. The
+ *  worker learns of both whether or not it was accepted. `payload` is the
+ *  submission after every repair, which a refused handoff still carries so
+ *  that its owner can deliver it when correction runs out. A refused
+ *  `submit: file` handoff whose file could not be read has no payload. */
 export type OutputAcceptance =
-  | { readonly ok: true; readonly payload: UnknownRecord; readonly repairs: readonly CommandRunRepair[] }
-  /** `recovery` tells the worker how to submit again. */
-  | { readonly ok: false; readonly issues: readonly string[]; readonly recovery: string; readonly repairs: readonly CommandRunRepair[] };
+  | { readonly ok: true; readonly payload: UnknownRecord; readonly repairs: readonly CommandRunRepair[]; readonly notes: readonly string[] }
+  /** `issues` describe `problems` for the worker, and `recovery` tells it
+   *  how to submit again. */
+  | {
+    readonly ok: false;
+    readonly payload?: UnknownRecord;
+    readonly problems: readonly OutputIssue[];
+    readonly issues: readonly string[];
+    readonly recovery: string;
+    readonly repairs: readonly CommandRunRepair[];
+    readonly notes: readonly string[];
+  };
 
 const inlineRecovery = "Call handoff again with one JSON object that matches the field reference in your instructions.";
 
@@ -132,24 +147,33 @@ async function readOutputFile(submission: UnknownRecord, context: OutputAcceptCo
 }
 
 /** Decode and check one payload: command-run aliases become canonical keys,
- *  an inline output's citations resolve against the ledger, then the strict
- *  decode and the contract's own check both run. The check runs even when the
- *  decode fails, so one report names every issue. */
+ *  an inline output's citations resolve against the ledger, each optional
+ *  field that holds only whitespace is left out, then the strict decode of
+ *  the declared keys and the contract's own check both run. The check runs
+ *  even when the decode fails, so one report names every issue. A key that
+ *  the contract does not declare stays in the payload with a note: it is
+ *  work the agent did, and a strict reader reads only the declared keys. */
 export async function validateAgentOutput(
   output: CompiledOutput,
   submitted: UnknownRecord,
   context: OutputCheckContext,
-): Promise<{ readonly payload: UnknownRecord; readonly issues: readonly OutputIssue[]; readonly repairs: readonly CommandRunRepair[] }> {
+): Promise<{ readonly payload: UnknownRecord; readonly issues: readonly OutputIssue[]; readonly repairs: readonly CommandRunRepair[]; readonly notes: readonly string[] }> {
   const canonical = canonicalizeCommandRuns(submitted);
-  const { payload, repairs } = output.mode === "inline" && context.readCommandEvidence
+  const resolved = output.mode === "inline" && context.readCommandEvidence
     ? await resolveCommandRuns(canonical, context.readCommandEvidence)
     : { payload: canonical, repairs: [] };
-  const decoded = Schema.decodeUnknownResult(output.schema, { errors: "all" })(payload);
+  const { payload, dropped } = withoutEmptyOptionals(output.payloadFields, resolved.payload);
+  const declared = declaredPayload(output.payloadFields, payload);
+  const decoded = Schema.decodeUnknownResult(output.schema, { errors: "all" })(declared.payload);
   const issues = [
     ...(Result.isFailure(decoded) ? decodeIssues(decoded.failure.issue) : []),
     ...await output.check(payload, context),
   ];
-  return { payload: Result.isSuccess(decoded) && isRecord(decoded.success) ? decoded.success : payload, issues, repairs };
+  const notes = [
+    ...dropped.map((at) => `Note: \`${at}\` held no text, so it was read as absent.`),
+    ...declared.undeclared.map((at) => `Note: \`${at}\` is not declared by the output contract; it was kept as written, and readers that follow the contract ignore it.`),
+  ];
+  return { payload, issues, repairs: resolved.repairs, notes };
 }
 
 /** Accept one handoff submission: in file mode, read the output file first;
@@ -167,9 +191,11 @@ export async function acceptAgentOutput(
       ({ payload: submitted, source } = await readOutputFile(submission, context));
     } catch (error) {
       if (!(error instanceof SubmissionError)) throw error;
-      return { ok: false, issues: [error.message], recovery, repairs: [] };
+      return { ok: false, problems: [{ path: "path", message: error.message }], issues: [error.message], recovery, repairs: [], notes: [] };
     }
   }
-  const { payload, issues, repairs } = await validateAgentOutput(output, submitted, context);
-  return issues.length === 0 ? { ok: true, payload, repairs } : { ok: false, issues: describeOutputIssues(issues, source), recovery, repairs };
+  const { payload, issues, repairs, notes } = await validateAgentOutput(output, submitted, context);
+  return issues.length === 0
+    ? { ok: true, payload, repairs, notes }
+    : { ok: false, payload, problems: issues, issues: describeOutputIssues(issues, source), recovery, repairs, notes };
 }

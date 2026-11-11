@@ -19,7 +19,10 @@ import { recordSubagentCompletion } from "./run-recorder.js";
 import { buildSubagentPaused } from "../history/subagent-run-fact-writers.js";
 import { interruptedTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js";
 import { publishLiveParentResult, reconcileParentCompletion } from "./parent-delivery.js";
+import { HandoffCorrectionExhausted } from "../../../agent-runtime/errors.js";
+import { createRefusedHandoff } from "../../../workflow-host/handoff-tool-schema.js";
 import {
+  deliveredHandoffResult,
   failedRunResult,
   resolveSubagentResult,
   usageFromStats,
@@ -157,6 +160,8 @@ export function createChildExecution(options: {
     runner?.abort();
   };
   const runEnd = createRunEnd({ childSessionId, childRunId, abort: abortRun });
+  // The last handoff that the tool refused (refer to `deliveredHandoffResult`).
+  const refusedHandoff = createRefusedHandoff();
 
   // The tracked promise adopts the complete execution before its first asynchronous acquisition.
   const settled = Promise.withResolvers<BackgroundWorkResult>();
@@ -387,7 +392,7 @@ export function createChildExecution(options: {
     allowedSubagentTypes: grantedTypes,
     runtimeSurfaces: {
       ...deriveChildRuntimeSurfaces(deps.inheritableRuntimeSurfaces, {
-        handoff: { onContent: runEnd.handOff, schema: SUBAGENT_HANDOFF_SCHEMA },
+        handoff: { onContent: runEnd.handOff, onRejected: refusedHandoff.record, schema: SUBAGENT_HANDOFF_SCHEMA },
         background: childBackground.owner,
       }),
       // Recall is controller-bound state, never an inheritable authority.
@@ -556,6 +561,15 @@ export function createChildExecution(options: {
     // a settle; for a run that settled, the end is already decided.
     runEnd.loopReturned(result.terminal);
     return result;
+  }, (err: unknown) => {
+    // A run that handed off at least once finished its work, so its last
+    // refused handoff is its result when the correction runs out. The
+    // delivery decides the run's end where the loop throws, before the
+    // teardown awaits, as a handoff does, so an interrupt while the run
+    // settles is refused and the parent still receives the work.
+    const delivered = err instanceof HandoffCorrectionExhausted ? refusedHandoff.delivered() : undefined;
+    if (delivered !== undefined) runEnd.handOff(delivered.payload);
+    throw err;
   }).finally(async () => {
     const end = trackLoopSpan("subagent-teardown", childSessionId);
     try {
@@ -610,6 +624,8 @@ export function createChildExecution(options: {
     }
   };
   const resolveFailedRun = async (err: unknown, phase: "run" | "settlement"): Promise<EndedWorkResult> => {
+    const delivered = phase === "run" && err instanceof HandoffCorrectionExhausted ? refusedHandoff.delivered() : undefined;
+    if (delivered !== undefined) return deliveredHandoffResult(delivered, resultContext());
     runEnd.fail();
     return failedRunResult(err, phase, resultContext());
   };

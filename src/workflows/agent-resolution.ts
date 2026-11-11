@@ -31,6 +31,16 @@ interface ResolvedAgentBrief {
   readonly writes: ArtifactContracts;
   /** The outputs that the record reads, in authored order. */
   readonly reads: readonly AgentRead[];
+  /** The list fields of the record's output that a later phase runs over,
+   *  that a repeat runs each item of, that a join counts, or that hold a
+   *  reassessment's changes. A handoff delivered after its correction ran
+   *  out salvages them and holds them to their `max`, so the workflow can
+   *  run on. */
+  readonly countedLists: readonly string[];
+  /** The list fields of the record's output that the admission of a join
+   *  over it reads, such as coverage exclusions. A delivered handoff
+   *  salvages them too, with no `max` cut. */
+  readonly admittedLists: readonly string[];
 }
 
 /** Resolve each agent record against the inline briefs of its file.
@@ -81,6 +91,8 @@ function resolveAgent(
     ...(keys.persona === undefined ? {} : { persona: keys.persona }),
     writes: keys.writes ?? defaultWrites(record.definitionId),
     reads: agentReads(workflow, keys.reads, retiredReads(workflow, record.definitionId)),
+    countedLists: brief.countedLists,
+    admittedLists: brief.admittedLists,
   };
 }
 

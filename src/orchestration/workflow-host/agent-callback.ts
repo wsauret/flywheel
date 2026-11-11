@@ -39,7 +39,7 @@ import type { FirstPartyModuleComposition } from "../modules.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
 import type { Agent, AgentFactory, AgentOptions, CreateChildConversation } from "../agent-runtime/types.js"
 import type { CaptureProviderConnection, LLMClientFactory } from "../agent-runtime/factory.js"
-import { handoffToolSchemaFromOutput } from "./handoff-tool-schema.js"
+import { createRefusedHandoff, handoffToolSchemaFromOutput } from "./handoff-tool-schema.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
 import { createWorkflowLoopObservers } from "./loop-observers.js"
 import { AssistantPrefillSessionContextError } from "../session/conversation/conversation-tree-context.js"
@@ -328,6 +328,7 @@ export function createWorkerCallback(
       sessionId,
       runId: attempt.id,
       caller: "workflow-agent",
+      unattendedRun: opts.capabilityAccess?.unattended === true,
       agentName: attempt.name,
       onNotice: (operation) => { emitAgent("agent.notice.changed", { sessionId, data: { operation } }) },
       awaitAccessSettled: opts.awaitModelAccessSettled,
@@ -352,6 +353,9 @@ export function createWorkerCallback(
     // Captured by the handoff tool's in-memory sink. Null until the worker
     // submits a handoff; the orchestrator records the fact from this content.
     let capturedHandoff: WorkerHandoffContent | null = null
+    // The last handoff that the tool refused, which the attempt delivers when
+    // the agent's handoff correction runs out.
+    const refused = createRefusedHandoff()
 
     // The worker's conversation is a durable `conversation:<conversationId>`
     // tree, the same mechanism and writer as chat. A paused agent resumes by
@@ -485,6 +489,7 @@ export function createWorkerCallback(
           recall: (recallInput) => treeWriter.recall(recallInput),
           handoff: {
             onContent: (content) => { capturedHandoff = content },
+            onRejected: refused.record,
             ...(opts.commandEvidenceSource ? { readCommandEvidence: opts.commandEvidenceSource.forConversation(conversationId) } : {}),
             ...(handoffSchema ? { schema: handoffSchema } : {}),
           },
@@ -628,6 +633,7 @@ export function createWorkerCallback(
       // A re-entered agent adopts the commands a previous build handed to its
       // conversation before its first request, and parks on them as on its own.
       await background.adoptHandedOver()
+      const runStartedAt = Date.now()
       const agentResult = await createAgentHost({ createRunner: createAgent }).runTurn({
         createContextOptions,
         onContextCreated: (context) => { slot.runner = context },
@@ -659,11 +665,19 @@ export function createWorkerCallback(
         },
         onAttemptFailure: flushAttemptFailure,
       }).catch((error: unknown) => {
-        // The runner's handoff correction bound ran out. In workflow terms the
-        // agent broke its handoff contract, which is how the attempt reports it.
-        if (error instanceof HandoffCorrectionExhausted) throw new HandoffInvalidError(attempt.id, error.message)
-        throw error
+        if (!(error instanceof HandoffCorrectionExhausted)) throw error
+        // The runner's handoff correction bound ran out. An agent that handed
+        // off at least once finished its work, so its last refused handoff is
+        // delivered with the problems that remain (PI-AGENT-115). An agent
+        // that never called handoff broke its handoff contract, which is how
+        // the attempt reports it.
+        const delivered = refused.delivered()
+        if (delivered !== undefined) return delivered
+        throw new HandoffInvalidError(attempt.id, error.message)
       })
+      if (!("terminal" in agentResult)) {
+        return { output: "completed", handoffContent: agentResult.payload, handoffIssues: agentResult.issues, durationMs: Date.now() - runStartedAt, toolUses }
+      }
 
       const outcome = workerOutcome(agentResult)
       settlePrivateInput = agentResult.terminal.kind !== "aborted"

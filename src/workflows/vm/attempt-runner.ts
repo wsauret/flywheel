@@ -3,11 +3,17 @@ import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { isAbortError } from "../../infra/abort.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { InvariantViolation } from "../../infra/invariant.js";
-import { Schema } from "effect";
+import { Result, Schema } from "effect";
+import { Log } from "../../infra/log.js";
+import type { UnknownRecord } from "../../infra/record.js";
 import { classifyError, type ErrorType, WorkerFailedError } from "../context-bundle/error-classifier.js";
 import { HandoffError, HandoffNotProducedError } from "../context-bundle/handoff-errors.js";
 import { assembleAgentPrompt } from "../context-bundle/prompt-assembly.js";
-import { describeOutputIssues } from "../output-contract/accept.js";
+import { describeOutputIssues, schemaIssues } from "../output-contract/accept.js";
+import type { CompiledOutput } from "../output-contract/compile.js";
+import { declaredPayload } from "../output-contract/leniency.js";
+import type { OutputIssue } from "../output-contract/paths.js";
+import { salvageDelivered } from "../output-contract/salvage.js";
 import { commandEvidenceRefusal } from "../output-contract/envelope.js";
 import { buildAttemptContextBundle, type ArtifactContextBuilder } from "../context-bundle/attempt-artifacts.js";
 import type { WorkflowContextStore } from "../context-bundle/context-store.js";
@@ -23,6 +29,8 @@ import type {
 } from "./events.js";
 import { reassessesRetiredFor, reassessmentIssues, reassessmentProposal, type ReassessmentControl, type ReassessmentHandoff } from "./reassessment.js";
 import type { AgentOutput } from "./agent-outcome.js";
+
+const log = Log.create({ service: "workflow-attempt" });
 
 
 interface AttemptRunHost {
@@ -162,6 +170,76 @@ export function attemptContextRecipient(
   return { attemptId: input.attemptId, nodeId: input.logicalNodeId, scope: input.scope, reads: agent.reads };
 }
 
+/** What a reassess attempt's handoff proposes (refer to {@link readReassessment}). */
+interface ReassessmentRead {
+  readonly refused: boolean;
+  readonly proposal: ReassessmentProposal | null;
+  readonly issues: readonly OutputIssue[];
+}
+
+/** The proposal of a reassess attempt's handoff. An accepted handoff that
+ *  cannot become a proposal is `refused`, as before. A delivered handoff
+ *  (`delivered`) never fails its attempt: it reads only the reassessment's
+ *  own fields, its reason (`summary`) and its changes, so a problem in
+ *  another field never hides a valid change. Each change that cannot apply
+ *  is left out with its issues, and a handoff from which no valid change
+ *  can be read changes nothing, so the workflow runs on with its plan. */
+function readReassessment(
+  output: CompiledOutput<unknown>,
+  retired: boolean,
+  handoff: UnknownRecord,
+  input: AttemptExecutionInput,
+  control: ReassessmentControl,
+  delivered: boolean,
+): ReassessmentRead {
+  // The boundary decoded the declared keys of this payload with the same
+  // schema; decoding again here gives the VM its typed view of the proposal.
+  const decode = (payload: UnknownRecord): Result.Result<ReassessmentHandoff, readonly OutputIssue[]> => {
+    const decoded = Schema.decodeUnknownResult(output.schema, { errors: "all" })(declaredPayload(output.payloadFields, payload).payload);
+    if (Result.isFailure(decoded)) return Result.fail(schemaIssues(decoded.failure.issue));
+    // SAFETY: `output` is the reassessment contract that `retired` selects, so its payload is that arm's payload.
+    return Result.succeed({ retired, payload: decoded.success } as ReassessmentHandoff); // oxlint-disable-line typescript/consistent-type-assertions -- boundary: the caller selects the contract by the same `retired` flag.
+  };
+  if (!delivered) {
+    const decoded = decode(handoff);
+    if (Result.isFailure(decoded)) throw new Error(`Workflow invariant rejected the accepted reassessment handoff of attempt "${input.attemptId}"`);
+    const issues = reassessmentIssues(decoded.success, input, control);
+    return issues.length === 0
+      ? { refused: false, proposal: reassessmentProposal(decoded.success, input, control), issues: [] }
+      : { refused: true, proposal: null, issues };
+  }
+  const unchanged = (because: string): OutputIssue => ({ path: "changes", message: `no change was applied, so the remaining items stay as they are, because ${because}` });
+  const left: OutputIssue[] = [];
+  // Each remaining change keeps the place the agent gave it, so an issue of a
+  // later pass names the change as the agent sent it.
+  let remaining: { readonly change: unknown; readonly sent: number }[] | undefined = Array.isArray(handoff.changes)
+    ? handoff.changes.map((change: unknown, sent) => ({ change, sent }))
+    : undefined;
+  // Each pass leaves out every change that cannot apply. Leaving one out can
+  // break a later change anchored on it, so the read repeats until every
+  // remaining change applies; each pass removes at least one change.
+  for (;;) {
+    const decoded = decode({ summary: handoff.summary, changes: remaining?.map(({ change }) => change) ?? handoff.changes });
+    if (Result.isFailure(decoded)) {
+      return { refused: false, proposal: null, issues: [...left, unchanged(decoded.failure.map(({ path, message }) => `${path}: ${message}`).join("; "))] };
+    }
+    const issues = reassessmentIssues(decoded.success, input, control);
+    if (issues.length === 0) return { refused: false, proposal: reassessmentProposal(decoded.success, input, control), issues: left };
+    const failing = new Set<number>();
+    for (const issue of issues) {
+      const match = /^changes\.(\d+)(\..*)?$/.exec(issue.path);
+      const failed = match === null ? undefined : remaining?.[Number(match[1])];
+      if (match === null || failed === undefined) continue;
+      failing.add(Number(match[1]));
+      left.push({ ...issue, path: `changes.${failed.sent}${match[2] ?? ""}`, message: `${issue.message}; this change was left out`, hint: `change: ${JSON.stringify(failed.change)}` });
+    }
+    if (failing.size === 0 || remaining === undefined) {
+      return { refused: false, proposal: null, issues: [...left, unchanged(issues.map(({ path, message }) => `${path}: ${message}`).join("; "))] };
+    }
+    remaining = remaining.filter((_change, index) => !failing.has(index));
+  }
+}
+
 /** Execute one already-committed worker attempt without persistence or routing authority. */
 export function createAttemptExecutor(deps: AttemptExecutorDeps): AttemptExecutor {
   /** What the conversations before this one recorded: the latest one's
@@ -258,35 +336,50 @@ export function createAttemptExecutor(deps: AttemptExecutorDeps): AttemptExecuto
             ...(toolUses === undefined ? {} : { toolUses }),
           };
         }
+        // A handoff that the tool refused until its correction ran out is
+        // delivered, with the lists that later phases and joins need salvaged
+        // and every remaining problem recorded, so its work is kept.
+        // A `for` node of control from before phases reads its frozen
+        // reassessment contract.
+        const control = resolvedAgent.reassesses ? host.committedControl() : undefined;
+        const retired = resolvedAgent.reassesses && control !== undefined && reassessesRetiredFor(input, control);
+        const contract: CompiledOutput<unknown> = resolvedAgent.reassesses && retired ? resolvedAgent.retiredOutput : resolvedAgent.output;
+        const refusedIssues = workerOutput.handoffIssues;
+        const salvaged = refusedIssues === undefined ? undefined : salvageDelivered(contract, content, { counted: resolvedAgent.countedLists, admitted: resolvedAgent.admittedLists });
+        const handoff = salvaged?.payload ?? content;
+        const issues: OutputIssue[] = refusedIssues === undefined || salvaged === undefined ? [] : [...refusedIssues, ...salvaged.issues];
         let reassessment: ReassessmentProposal | null = null;
-        if (resolvedAgent.reassesses) {
-          // The boundary decoded this payload with the same schema; decoding
-          // again here gives the VM its typed view of the proposal. A `for`
-          // node of control from before phases reads its frozen contract.
-          const control = host.committedControl();
-          const handoff: ReassessmentHandoff = reassessesRetiredFor(input, control)
-            ? { retired: true, payload: Schema.decodeUnknownSync(resolvedAgent.retiredOutput.schema)(content) }
-            : { retired: false, payload: Schema.decodeUnknownSync(resolvedAgent.output.schema)(content) };
-          const issues = reassessmentIssues(handoff, input, control);
-          if (issues.length > 0) {
+        if (control !== undefined) {
+          const read = readReassessment(contract, retired, handoff, input, control, refusedIssues !== undefined);
+          if (read.refused) {
             return {
               attemptId: input.attemptId,
               conversationId: host.conversationId,
               kind: "invalid_handoff",
-              reason: describeOutputIssues(issues).join("; "),
-              content,
-              issues,
+              reason: describeOutputIssues(read.issues).join("; "),
+              content: handoff,
+              issues: read.issues,
               ...(toolUses === undefined ? {} : { toolUses }),
             };
           }
-          reassessment = reassessmentProposal(handoff, input, control);
+          reassessment = read.proposal;
+          issues.push(...read.issues);
+        }
+        if (refusedIssues !== undefined) {
+          log.info("workflow agent handoff delivered after its correction ran out", {
+            attemptId: input.attemptId,
+            issues: issues.length,
+            leftOutItems: salvaged?.issues.length ?? 0,
+            reassessment: resolvedAgent.reassesses ? (reassessment === null ? "no_change" : "applied") : "none",
+          });
         }
         return {
           kind: "success",
           attemptId: input.attemptId,
           conversationId: host.conversationId,
-          handoff: content,
+          handoff,
           reassessment,
+          ...(refusedIssues === undefined ? {} : { issues }),
           ...(toolUses === undefined ? {} : { toolUses }),
         };
       } catch (error) {

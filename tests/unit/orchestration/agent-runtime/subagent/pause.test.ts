@@ -5,6 +5,7 @@ import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestr
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import type { AgentOptions, AgentRunResult, AgentRunTerminal } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
+import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
 import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
@@ -84,6 +85,8 @@ function heldDispatch({ commandHandover, holdOnAbort = false, sessionEventStore 
     control: () => { if (!control) throw new Error("no live session control"); return control; },
     runner: () => { if (!runnerOptions) throw new Error("no runner"); return runnerOptions; },
     finish: (terminal: AgentRunTerminal) => { done.resolve({ servedRequests: 1, durationMs: 1, terminal }); },
+    /** The runner rejects, as a loop that throws does. */
+    fail: (error: Error) => { done.reject(error); },
   };
 }
 
@@ -332,6 +335,34 @@ describe("subagent pause", () => {
     run.finish(terminal);
     await settled;
     expectCompletedAs(run, "failed");
+    run.output.dispose();
+  });
+
+  // A child whose handoff the tool refused until its correction ran out
+  // finished its work, so it completes with its last refused handoff, and an
+  // interrupt while its result settles cannot turn that into a pause.
+  it.each(["no interrupt", "an interrupt while its result settles"] as const)("a child whose handoff correction ran out completes with its last refused handoff (%s)", async (when) => {
+    const run = heldDispatch();
+    await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
+    const settlement = when === "no interrupt" ? undefined : await holdSettlement(run);
+    const settled = run.control().settled;
+    const handoff = run.runner().runtimeSurfaces?.handoff;
+    handoff?.onRejected?.({ payload: { summary: "First try." }, issues: [{ path: "summary", message: "too short" }] });
+    handoff?.onRejected?.({ payload: { summary: "The finished work.", files: "a.ts" }, issues: [{ path: "files", message: "Expected array, got \"a.ts\"" }] });
+    run.fail(new HandoffCorrectionExhausted({ message: "handoff failed 3 consecutive attempts" }));
+    if (settlement !== undefined) {
+      await settlement.closing;
+      const interrupted = run.control().child.interrupt("person");
+      settlement.release();
+      expect(await interrupted).toBe(false);
+    }
+    await settled;
+    expectCompletedAs(run, "completed");
+    const content = await run.notification.next;
+    expect(content).toContain("This handoff did not pass its contract after the subagent's last correction");
+    expect(content).toContain("- files: Expected array");
+    expect(content).toContain("The finished work.");
+    expect(content).not.toContain("First try.");
     run.output.dispose();
   });
 

@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import { fieldSchema } from "../output-contract/compile.js";
+import { declaredPayload } from "../output-contract/leniency.js";
 import { collectV1 } from "./collect.js";
 import { coverageV1 } from "./coverage.js";
 import { dedupeV1, dedupeV2 } from "./dedupe.js";
@@ -35,9 +36,12 @@ export function requireReducer(id: string, version: number): RegisteredReducer {
 
 /** Run one reducer and validate its output against the contract that
  *  compilation pinned on the group, so a reducer defect fails the fold
- *  instead of writing an artifact that a later phase reads wrongly. */
+ *  instead of writing an artifact that a later phase reads wrongly. The
+ *  check reads the declared keys only: an item that a reducer passes on can
+ *  hold keys that its agent sent beside its contract, which the output
+ *  boundary kept. */
 export function runReducer(reducer: RegisteredReducer, params: ReducerParams, input: ReducerInput): ReducerOutput {
   const output = reducer.reduce(params, input);
-  Schema.decodeUnknownSync(fieldSchema({ type: "object", fields: input.contract }))(output);
+  Schema.decodeUnknownSync(fieldSchema({ type: "object", fields: input.contract }))(declaredPayload(input.contract, output).payload);
   return output;
 }

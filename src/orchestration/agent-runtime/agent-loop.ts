@@ -71,7 +71,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     executionCwd,
     signal,
     attempt: () => preparation.planned,
-    handoff: handoff ? { onContent: handoff.onContent, readCommandEvidence: handoff.readCommandEvidence } : undefined,
+    handoff: handoff ? { onContent: handoff.onContent, ...(handoff.onRejected ? { onRejected: handoff.onRejected } : {}), readCommandEvidence: handoff.readCommandEvidence } : undefined,
     snapshotConversation,
     contextAdmission,
     turnHasVisibleText: replyNudge.turnHasVisibleText,

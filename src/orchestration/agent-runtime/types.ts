@@ -16,7 +16,7 @@ import type { ToolAction } from "../../infra/workflow-types.js";
 import type { BriefScope } from "../config/role-selection.js";
 import type { RoleResolver } from "../config/roles.js";
 import type { AskUserController } from "../runner/ask-user-controller.js";
-import type { HandoffToolSchema } from "../workflow-host/handoff-tool-schema.js";
+import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/handoff-tool-schema.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { ProviderRequestAuditFact } from "../session/provider-request-audit-facts.js";
 import type { SessionFactWriter } from "../session/session-fact-writer.js";
@@ -201,6 +201,8 @@ type AgentLifecycle = AgentLifecycleCallbacks & (
 export interface RunnerToolSurfaces {
   handoff?: {
     onContent: (content: AgentToolInput) => void;
+    /** Receives each handoff that the tool refused. */
+    onRejected?: (rejection: HandoffRejection) => void;
     readCommandEvidence?: ReadCommandEvidence;
     schema?: HandoffToolSchema;
   };

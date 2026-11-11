@@ -457,7 +457,7 @@ describe("handoff tool", () => {
       const result = await submit(tool, input, makeContext({ handoff: { onContent: (content) => { captured.push(content); } } }));
 
       expect(result.outcome).toBe("error");
-      expect(result.content).toStartWith("Your `");
+      expect(result.content).toContain("- Your `");
       expect(result.content).toContain("collapsed into a single argument");
       expect(captured).toEqual([]);
     }

@@ -69,7 +69,7 @@ export interface CollapsedValue {
  *   red_result: "FAIL ...</parameter>\n<parameter name=\"cause\">prose</parameter>"
  * The value ends at `</key>` when present, else at the first wire-format closer
  * (BOUNDARY_FALLBACK). After it, the split reads `<name>body</name>` and
- * `<parameter name="name">body</parameter>` fragments in order, including a last
+ * `<parameter name="name">body</parameter>` (or `...body</name>`) fragments in order, including a last
  * fragment left unclosed because the value stream was cut, and skips bare
  * tool-call scaffolding and empty fragments. It reads syntax only: the caller
  * decides from the tool's schema whether each name is a field and how each body
@@ -89,8 +89,7 @@ export function splitCollapsedValue(key: string, text: string): CollapsedValue |
     const open = parameter ?? ELEMENT_OPEN.exec(rest);
     const name = open?.[1];
     if (!open || !name) return undefined;
-    const closer = parameter ? "</parameter>" : `</${name}>`;
-    const end = rest.indexOf(closer, open[0].length);
+    const { end, closer } = fragmentEnd(rest, open[0].length, name, parameter !== null);
     const body = end === -1
       ? rest.slice(open[0].length).replace(TRAILING_SCAFFOLDING, "")
       : rest.slice(open[0].length, end);
@@ -99,6 +98,23 @@ export function splitCollapsedValue(key: string, text: string): CollapsedValue |
   }
   if (fragments.length === 0 && value.length === 0) return undefined;
   return { value, fragments };
+}
+
+/** Where one fragment's body ends. An element fragment ends at `</name>`. A
+ *  wire fragment ends at `</parameter>` or at `</name>`, whichever comes
+ *  first: a model that names the field in the open tag often closes it with
+ *  the field's own tag. `end` is -1 for a fragment left unclosed. */
+interface FragmentEnd {
+  readonly end: number;
+  readonly closer: string;
+}
+
+function fragmentEnd(rest: string, from: number, name: string, wire: boolean): FragmentEnd {
+  const own = `</${name}>`;
+  const ownEnd = rest.indexOf(own, from);
+  if (!wire) return { end: ownEnd, closer: own };
+  const wireEnd = rest.indexOf("</parameter>", from);
+  return wireEnd !== -1 && (ownEnd === -1 || wireEnd < ownEnd) ? { end: wireEnd, closer: "</parameter>" } : { end: ownEnd, closer: own };
 }
 
 function collapsedBoundary(key: string, fieldValue: string): { index: number; length: number } | undefined {

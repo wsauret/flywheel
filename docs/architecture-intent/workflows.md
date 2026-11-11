@@ -51,7 +51,7 @@ Not: A named workflow catalog or a name-keyed brief registry.
 
 ## ARCH-WORKFLOWS-010: Output contracts have one closed grammar and bind by content hash
 
-Brief output contracts share one closed field grammar, compiler, envelope and citation check, acceptance, and later-agent rendering. Each contract compiles once, and each handoff is checked against its brief's compiled contract before recording. No name or named check joins a brief to its contract. A module consuming agent output is built from the admitted composition before workers start. It selects outputs by compiled contract hash and adds only checks a contract cannot state. It reconciles consumed outputs from committed facts, so a crash between commit and consumption recovers. A declared path field gets existence and syntax checks only, not containment.
+Brief output contracts share one closed field grammar, compiler, envelope and citation check, acceptance, and later-agent rendering. Each contract compiles once, and each handoff is checked against its brief's compiled contract before recording. A handoff that fails after correction is recorded with its issues. A module consuming agent output is built from the admitted composition before workers start. It selects outputs by compiled contract hash and adds only checks a contract cannot state. It reconciles consumed outputs from committed facts, so a crash after commit recovers. A declared path field gets existence and syntax checks only, not containment.
 Because: The tools that access a file own containment.
 Not: A name-keyed contract registry that modules extend with custom checks, or selecting outputs by brief name.
 

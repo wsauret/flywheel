@@ -45,7 +45,7 @@ describe("workflow output pinning", () => {
     expect(tool.input.properties).toHaveProperty("only_a");
     expect(tool.input.properties).not.toHaveProperty("only_b");
     const context = { executionCwd: "/scratch/work" };
-    expect(await tool.accept?.({ summary: "done", only_a: "proof" }, context)).toEqual({ ok: true, payload: { summary: "done", only_a: "proof" }, repairs: [] });
+    expect(await tool.accept?.({ summary: "done", only_a: "proof" }, context)).toEqual({ ok: true, payload: { summary: "done", only_a: "proof" }, repairs: [], notes: [] });
     expect((await tool.accept?.({ summary: "done", only_b: "changed" }, context))?.ok).toBe(false);
   });
 });

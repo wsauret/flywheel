@@ -93,6 +93,11 @@ export function testSkillRevision(skills: readonly SkillDefinition[]): SkillRegi
 export type TestAgentOverrides = {
   readonly name?: string;
   readonly writes?: AgentRecordKeys["writes"];
+  /** The output lists that a later phase or a join needs, which a workflow
+   *  load derives from the phases that read them. */
+  readonly countedLists?: readonly string[];
+  /** The output lists that a join's admission reads, such as coverage exclusions. */
+  readonly admittedLists?: readonly string[];
 } & (
   | { readonly output?: OutputObject; readonly reassess?: never }
   /** The item type of the `each` source this agent reassesses; the reassess
@@ -103,7 +108,7 @@ export type TestAgentOverrides = {
  *  file with that body and dependencies resolves. The brief id is the
  *  package id, so the model seat matches a brief file named after it. */
 export function testResolvedAgent(definitionId: string, skill: SkillDefinition, overrides: TestAgentOverrides = {}): ResolvedAgent {
-  const { output, reassess, name = skill.name, ...policy } = overrides;
+  const { output, reassess, name = skill.name, countedLists, admittedLists, ...policy } = overrides;
   const brief: LoadedBrief = {
     briefId: skill.id,
     procedure: {
@@ -116,6 +121,8 @@ export function testResolvedAgent(definitionId: string, skill: SkillDefinition, 
     ...(reassess === undefined
       ? { reassesses: false, output: compileOutput(output ?? {}) }
       : { reassesses: true, output: compileReassessmentOutput(reassess), retiredOutput: compileRetiredReassessmentOutput(reassess) }),
+    countedLists: countedLists ?? (reassess === undefined ? [] : ["changes"]),
+    admittedLists: admittedLists ?? [],
     defaultedLists: [],
   };
   const workflow: WorkflowDefinition = {

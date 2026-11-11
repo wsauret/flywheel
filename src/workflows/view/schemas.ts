@@ -261,7 +261,10 @@ export const WorkflowTreeNodeSchema: Schema.Codec<WorkflowTreeNode> = Schema.Uni
       definitionId: Schema.NonEmptyString,
       attempts: TreeCountSchema,
       currentAttemptId: Schema.optionalKey(Schema.NonEmptyString),
-      evidence: Schema.optionalKey(Schema.Struct({ summary: Schema.optionalKey(Schema.String) })),
+      evidence: Schema.optionalKey(Schema.Struct({
+        summary: Schema.optionalKey(Schema.String),
+        contractIssues: Schema.optionalKey(Schema.Struct({ count: TreeCountSchema, lines: Schema.Array(Schema.String) })),
+      })),
       item: Schema.optionalKey(Schema.Struct({ nodeId: Schema.NonEmptyString, key: Schema.NonEmptyString, label: Schema.String, ordinal: TreeCountSchema, text: Schema.String })),
       nodeId: Schema.optionalKey(Schema.NonEmptyString),
       waitsOn: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),

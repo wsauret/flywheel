@@ -23,8 +23,9 @@ export function retriableFailedNodes(control: CommittedWorkflowControl, encoding
  *  changed. */
 export function continuationAttempt(control: CommittedWorkflowControl, attempt: Attempt, rerun = false): Attempt {
   const sequence = control.attempts.reduce((max, candidate) => candidate.logicalNodeId === attempt.logicalNodeId ? Math.max(max, candidate.sequence) : max, 0) + 1;
+  const { handoffIssues: _handoffIssues, ...source } = attempt;
   return {
-    ...attempt, id: attemptIdOf(attempt.logicalNodeId, sequence), sequence,
+    ...source, id: attemptIdOf(attempt.logicalNodeId, sequence), sequence,
     state: { _tag: "pending" }, conversationId: null, handoff: null,
     parentAttemptId: attempt.id,
     provenance: {

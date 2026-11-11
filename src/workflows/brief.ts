@@ -61,10 +61,26 @@ export type BriefOutputRole =
     readonly retiredOutput: CompiledOutput<RetiredReassessmentPayload>;
   };
 
-/** A brief's output role, with the counted lists of its output that took
+/** A brief's output role, with the counted and admitted lists of its output
+ *  (refer to {@link structuralLists}), which a handoff delivered after its
+ *  correction ran out salvages, and the counted lists that took
  *  {@link DEFAULT_COUNTED_LIST_MAX} at load because they declare no `max`.
- *  Only a workflow file that a chat launched by path has any. */
-type LoadedOutput = BriefOutputRole & { readonly defaultedLists: readonly string[] };
+ *  Only a workflow file that a chat launched by path has defaulted lists. */
+type LoadedOutput = BriefOutputRole & {
+  readonly countedLists: readonly string[];
+  readonly admittedLists: readonly string[];
+  readonly defaultedLists: readonly string[];
+};
+
+/** The list fields of one record's output that the workflow's structure
+ *  reads: `counted` lists bound a worst-case count, and `admitted` lists are
+ *  read by the admission of a join over this output. */
+interface StructuralLists {
+  readonly counted: ReadonlySet<string>;
+  readonly admitted: ReadonlySet<string>;
+}
+
+const NO_STRUCTURAL_LISTS: StructuralLists = { counted: new Set(), admitted: new Set() };
 
 /** One agent record's inline brief and compiled output. */
 export type LoadedBrief = LoadedOutput & { readonly briefId: string; readonly procedure: BriefProcedure };
@@ -172,16 +188,17 @@ function briefId(id: string, where: string): string {
 
 /** The output role of one brief. The brief of a `reassess` phase gets the
  *  VM's reassessment contract for `reassessItem`, the item type of its
- *  repeat's `each` source, and must not declare an output of its own. Any
- *  other brief holds each list of `counted` that declares no `max` to the
- *  default. */
-function outputRole(declared: typeof OutputRefSchema.Type | undefined, origin: Origin, context: LoadContext, reassessItem: Field | undefined, counted: ReadonlySet<string>): LoadedOutput {
+ *  repeat's `each` source, and must not declare an output of its own. With
+ *  `defaults`, any other brief holds each list of `counted` that declares no
+ *  `max` to the default. */
+function outputRole(declared: typeof OutputRefSchema.Type | undefined, origin: Origin, context: LoadContext, reassessItem: Field | undefined, lists: StructuralLists, defaults: boolean): LoadedOutput {
   if (reassessItem === undefined) {
-    const { output, defaulted } = withCountedListDefaults(loadContract(declared, origin, context), counted);
-    return { reassesses: false, output: compileOutput(output), defaultedLists: defaulted };
+    const contract = loadContract(declared, origin, context);
+    const { output, defaulted } = defaults ? withCountedListDefaults(contract, lists.counted) : { output: contract, defaulted: [] };
+    return { reassesses: false, output: compileOutput(output), countedLists: [...lists.counted], admittedLists: [...lists.admitted], defaultedLists: defaulted };
   }
   if (declared !== undefined) throw new Error("the VM owns the output of a reassess phase; remove its output");
-  return { reassesses: true, output: compileReassessmentOutput(reassessItem), retiredOutput: compileRetiredReassessmentOutput(reassessItem), defaultedLists: [] };
+  return { reassesses: true, output: compileReassessmentOutput(reassessItem), retiredOutput: compileRetiredReassessmentOutput(reassessItem), countedLists: ["changes"], admittedLists: [], defaultedLists: [] };
 }
 
 /** The inline briefs of a workflow, keyed by the name that runs them: each
@@ -206,7 +223,8 @@ function loadBrief(
   context: LoadContext,
   inline: ReturnType<typeof inlineBriefs>,
   reassessItem: Field | undefined,
-  counted: ReadonlySet<string>,
+  lists: StructuralLists,
+  defaults: boolean,
 ): LoadedBrief {
   const { workflow } = context;
   const name = record.briefName;
@@ -235,7 +253,7 @@ function loadBrief(
         subagents: content.subagents,
         body: retiredId === undefined ? expandReferences(content.body, at(origin, workflow)) : retiredBody(content.body),
       },
-      ...outputRole(definer.output, origin, context, reassessItem, counted),
+      ...outputRole(definer.output, origin, context, reassessItem, lists, defaults),
     };
   }
   const shipped = name.includes(".") ? name : `${workflow.id}.${name}`;
@@ -266,28 +284,32 @@ function sourceItem(source: string, briefs: ReadonlyMap<string, LoadedBrief>, in
   return field.of;
 }
 
-/** The list fields of each record's output whose `max` a worst-case count
- *  reads, keyed by definition id: each list that a phase runs over or a
- *  repeat runs each item of, and each list of a joined agent that its join
- *  counts (refer to
- *  `RegisteredReducer.countedLists`). A reference or a join that does not
+/** The structural lists of each record's output, keyed by definition id.
+ *  Counted: each list that a phase runs over or a repeat runs each item of,
+ *  and each list of a joined agent that its join counts (refer to
+ *  `RegisteredReducer.countedLists`). Admitted: each list of a phase's
+ *  source output that the join of its stream admits (refer to
+ *  `RegisteredReducer.admittedLists`). A reference or a join that does not
  *  resolve counts nothing here, because compilation refuses it where it is
  *  located. */
-function countedLists(workflow: WorkflowDefinition): ReadonlyMap<string, ReadonlySet<string>> {
+function structuralLists(workflow: WorkflowDefinition): ReadonlyMap<string, StructuralLists> {
   const counted = new Map<string, Set<string>>();
-  const count = (definitionId: string, field: string): void => {
-    counted.set(definitionId, (counted.get(definitionId) ?? new Set()).add(field));
+  const admitted = new Map<string, Set<string>>();
+  const add = (lists: Map<string, Set<string>>, definitionId: string, field: string): void => {
+    lists.set(definitionId, (lists.get(definitionId) ?? new Set()).add(field));
   };
+  const count = (definitionId: string, field: string): void => add(counted, definitionId, field);
   const sources = outputSources(workflow);
-  const countJoin = (reducerName: string, params: unknown, agents: readonly string[]): void => {
+  const reducerLists = (reducerName: string, params: unknown, read: "countedLists" | "admittedLists"): readonly string[] => {
     const reducer = latestReducer(reducerName);
-    let lists: readonly string[] = [];
     try {
-      lists = reducer === undefined ? [] : reducer.countedLists(reducer.decodeParams(params));
+      return reducer === undefined ? [] : reducer[read](reducer.decodeParams(params));
     } catch {
-      return;
+      return [];
     }
-    for (const agent of agents) for (const field of lists) count(agent, field);
+  };
+  const countJoin = (reducerName: string, params: unknown, agents: readonly string[]): void => {
+    for (const field of reducerLists(reducerName, params, "countedLists")) for (const agent of agents) count(agent, field);
   };
   for (const stream of streams(workflow)) {
     const head = stream[0];
@@ -295,7 +317,11 @@ function countedLists(workflow: WorkflowDefinition): ReadonlyMap<string, Readonl
     if (head?.over !== undefined && !isStreamOver(head.over)) {
       const dot = head.over.indexOf(".");
       const source = sources.get(head.over.slice(0, dot));
-      if (dot > 0 && source?.kind === "agent" && source.definitionId !== undefined) count(source.definitionId, head.over.slice(dot + 1));
+      if (dot > 0 && source?.kind === "agent" && source.definitionId !== undefined) {
+        count(source.definitionId, head.over.slice(dot + 1));
+        const sourceId = source.definitionId;
+        if (last?.join !== undefined) for (const field of reducerLists(last.join.reducer, last.join.with, "admittedLists")) add(admitted, sourceId, field);
+      }
     }
     if (last !== undefined) countJoin(last.join?.reducer ?? "collect", last.join?.with, [last.phase]);
   }
@@ -309,7 +335,9 @@ function countedLists(workflow: WorkflowDefinition): ReadonlyMap<string, Readonl
       if (phase.agents !== undefined && phase.join !== undefined) countJoin(phase.join.reducer, phase.join.with, namedAgents(phase).map(({ agent }) => agent));
     }
   }
-  return counted;
+  const lists = new Map<string, StructuralLists>();
+  for (const id of new Set([...counted.keys(), ...admitted.keys()])) lists.set(id, { counted: counted.get(id) ?? new Set(), admitted: admitted.get(id) ?? new Set() });
+  return lists;
 }
 
 /** The loaded brief of each agent record. */
@@ -334,7 +362,8 @@ export function loadBriefs(
 ): BriefLoad {
   const context: LoadContext = { workflow, reader };
   const reassessing = reassessSources(workflow);
-  const counted = workflow.provenance?.layer === "session" ? countedLists(workflow) : new Map<string, ReadonlySet<string>>();
+  const structural = structuralLists(workflow);
+  const defaults = workflow.provenance?.layer === "session";
   const inline = inlineBriefs(workflow);
   const briefs = new Map<string, LoadedBrief>();
   const failed = new Map<string, Error>();
@@ -342,7 +371,7 @@ export function loadBriefs(
     if (reassessSource !== undefined && failed.has(parseFieldRef(reassessSource).source)) return;
     try {
       const item = reassessSource === undefined ? undefined : sourceItem(reassessSource, briefs, input);
-      const brief = loadBrief(record, origin, context, inline, item, counted.get(record.definitionId) ?? new Set());
+      const brief = loadBrief(record, origin, context, inline, item, structural.get(record.definitionId) ?? NO_STRUCTURAL_LISTS, defaults);
       briefs.set(record.definitionId, brief);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

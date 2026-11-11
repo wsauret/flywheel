@@ -11,6 +11,7 @@ import type { ContextAdmission } from "../compaction/compaction-policy.js";
 import type { GitAiAttributionService, GitAiRequestRegistration } from "../git-ai-attribution-service.js";
 import type { NestedToolDispatchBatch } from "./nested-tool-dispatch.js";
 import type { ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
+import type { HandoffRejection } from "../../workflow-host/handoff-tool-schema.js";
 
 import type { PersistentProcessClient } from "../../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../../infra/persistent-process-bridge.js";
@@ -367,6 +368,8 @@ export interface ToolContext {
    *  tool is available, so invalid partial configurations are unrepresentable. */
   handoff?: {
     onContent: (content: RuntimeToolInput) => void;
+    /** Receives each handoff that the tool refused. */
+    onRejected?: (rejection: HandoffRejection) => void;
     readCommandEvidence?: ReadCommandEvidence;
   };
   /** The stream-start handoff decision, shared by top-level and nested calls. */

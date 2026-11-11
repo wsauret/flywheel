@@ -264,6 +264,7 @@ export const coverageV1 = defineReducer({
   params: CoverageParamsSchema,
   check: checkCoverage,
   admit: admitCoverage,
+  admittedLists: (params) => params.exclusions === undefined ? [] : [params.exclusions],
   output: (_params, _contracts, width) => coverageOutput(width),
   reduce: foldCoverage,
   coverage: coverageOf,

@@ -231,6 +231,140 @@ describe("attempt runner outcomes", () => {
     },
   );
 
+  it("delivers a reassessment whose correction ran out without a plan change when no change can apply", async () => {
+    const { control } = reassessingAfter(blockedState, "phase-1", [pendingPhaseOne]);
+    const refused = [{ path: "summary", message: "too short" }];
+    const outcome = await run({
+      resolvedAgents: reassessBindings,
+      worker: workerReturning({ ...completed({
+        summary: "Re-spec phase 1 around the file that exists.",
+        changes: [{ action: "replace", phase_id: "phase-1", phase: phaseUnit("phase-1") }],
+      }), handoffIssues: refused }),
+    }, reassessAttempt, control);
+
+    expect(outcome).toMatchObject({
+      kind: "success",
+      reassessment: null,
+      issues: [
+        ...refused,
+        { path: "changes.0.phase.id", message: expect.stringContaining("this change was left out") },
+        { path: "changes", message: 'no change was applied, so the remaining items stay as they are, because changes: Phase "phase-1" is blocked, so this reassessment must correct it' },
+      ],
+    });
+  });
+
+  it("names each left-out change of a delivered reassessment by the place the agent gave it", async () => {
+    // Round 1 of a repeat over p1, p2, p3 ran p1. The first change fails, and
+    // leaving it out breaks the third change, which replaces the item that
+    // the first change added; the second change applies.
+    const repeatId = "workflow:node:2";
+    const roundOne = `${repeatId}:round:1`;
+    const items = [{ id: "p1", goal: "First" }, { id: "p2", goal: "Second" }, { id: "p3", goal: "Third" }];
+    const base = committedControl();
+    const ownership = { _tag: "round", workflowDefinitionId: "workflow", parentNodeId: repeatId, round: 1 } as const;
+    const control = () => ({
+      graph: {
+        ...base.graph,
+        nodes: [
+          {
+            kind: "repeat", id: repeatId, workflowDefinitionId: "workflow", order: 1, ownership: { _tag: "workflow", workflowDefinitionId: "workflow" }, state: { _tag: "running" }, name: "Repeat 2",
+            loop: { _tag: "each", source: { nodeId: "workflow:node:1", field: "items" }, width: 3, reassess: `${roundOne}:node:2`, items },
+          },
+          { kind: "agent", id: `${roundOne}:node:2`, workflowDefinitionId: "workflow", order: 2, definitionId: "work", name: "Reassess", retry: null, condition: null, ownership, state: { _tag: "running" } },
+        ],
+      },
+      attempts: [{ ...base.attempts[0]!, id: attempt.attemptId, logicalNodeId: `${roundOne}:node:2`, ownership, state: { _tag: "running" }, item: items[0]! }],
+    } satisfies Pick<CommittedWorkflowControl, "attempts" | "graph">);
+    const replaceAdded = { action: "replace", item_id: "p1", item: { id: "p1c", goal: "Revised" } };
+    const outcome = await run({
+      resolvedAgents: reassessBindings,
+      worker: workerReturning({ ...completed({
+        summary: "Drop the third item and revise the plan.",
+        changes: [{ action: "replace", item_id: "p2", item: { id: "p1", goal: "Clash" } }, { action: "drop", item_id: "p3" }, replaceAdded],
+      }), handoffIssues: [{ path: "summary", message: "too short" }] }),
+    }, { ...attempt, logicalNodeId: `${roundOne}:node:2` }, control);
+
+    expect(outcome).toMatchObject({
+      kind: "success",
+      reassessment: { changes: [{ kind: "drop_item", itemId: "p3" }] },
+      issues: [
+        { path: "summary" },
+        { path: "changes.0.item.id", message: expect.stringContaining("this change was left out") },
+        { path: "changes.2.item_id", message: expect.stringContaining("this change was left out"), hint: `change: ${JSON.stringify(replaceAdded)}` },
+      ],
+    });
+  });
+
+  it("applies a valid change of a delivered reassessment whose other fields fail their contract", async () => {
+    const { control } = reassessingAfter(blockedState, "phase-1", []);
+    const refused = [{ path: "files_modified", message: "Expected array, got 3" }];
+    const outcome = await run({
+      resolvedAgents: reassessBindings,
+      worker: workerReturning({ ...completed({
+        summary: "Re-spec phase 1 around the file that exists.",
+        files_modified: 3,
+        changes: [{ action: "replace", phase_id: "phase-1", phase: phaseUnit("phase-1") }],
+      }), handoffIssues: refused }),
+    }, reassessAttempt, control);
+
+    expect(outcome).toMatchObject({ kind: "success", reassessment: { changes: [{ kind: "replace" }] }, issues: refused });
+  });
+
+  it("delivers a reassessment with no plan change when its reason cannot be read", async () => {
+    const { control } = reassessingAfter(blockedState, "phase-1", []);
+    const outcome = await run({
+      resolvedAgents: reassessBindings,
+      worker: workerReturning({ ...completed({
+        changes: [{ action: "replace", phase_id: "phase-1", phase: phaseUnit("phase-1") }],
+      }), handoffIssues: [{ path: "summary", message: "Missing key" }] }),
+    }, reassessAttempt, control);
+
+    expect(outcome).toMatchObject({
+      kind: "success",
+      reassessment: null,
+      issues: [{ path: "summary" }, { path: "changes", message: expect.stringContaining("no change was applied, so the remaining items stay as they are, because summary:") }],
+    });
+  });
+
+  it("delivers a handoff whose correction ran out, with each list a later phase needs salvaged and every other field as sent", async () => {
+    const studied = testResolvedAgent("work", workSkill, {
+      countedLists: ["sources", "targets"],
+      admittedLists: ["exclusions"],
+      output: {
+        fields: {
+          sources: { type: "list", max: 2, unique: "url", description: "Sources.", of: { type: "object", fields: { url: { type: "string" } } } },
+          targets: { type: "list", description: "Targets.", of: { type: "string" } },
+          exclusions: { type: "list", max: 1, description: "Exclusions.", of: { type: "string" } },
+          notes: { type: "list", max: 1, description: "Notes.", of: { type: "string" } },
+        },
+      },
+    });
+    const content = {
+      summary: "Studied it.",
+      sources: [{ url: "a" }, { url: "a" }, { link: "b" }, { url: "c" }, { url: "d" }],
+      targets: "every module",
+      exclusions: ["x", 7, "y"],
+      notes: ["one", "two"],
+    };
+    const outcome = await run({
+      resolvedAgents: new Map([[studied.definitionId, studied]]),
+      worker: workerReturning({ ...completed(content), handoffIssues: [{ path: "notes", message: "Expected a value with a length of at most 1" }] }),
+    });
+
+    expect(outcome).toMatchObject({
+      kind: "success",
+      handoff: { summary: "Studied it.", sources: [{ url: "a" }, { url: "c" }], targets: [], exclusions: ["x", "y"], notes: ["one", "two"] },
+      issues: [
+        { path: "notes", message: "Expected a value with a length of at most 1" },
+        { path: "sources.1", message: 'the item was left out because an earlier item has the same "url"', hint: 'item: {"url":"a"}' },
+        { path: "sources.2", message: expect.stringContaining("the item was left out because url: Missing key"), hint: 'item: {"link":"b"}' },
+        { path: "sources.4", message: "the item was left out because the list holds at most 2 items", hint: 'item: {"url":"d"}' },
+        { path: "targets", message: "the value is not a list, so it was read as an empty list", hint: 'value: "every module"' },
+        { path: "exclusions.1", message: expect.stringContaining("the item was left out because it:"), hint: "item: 7" },
+      ],
+    });
+  });
+
   it("rejects a blocked-phase correction whose proposed id also names a queued attempt", async () => {
     const { control } = reassessingAfter(blockedState, "phase-1", [pendingPhaseOne]);
     const outcome = await run({

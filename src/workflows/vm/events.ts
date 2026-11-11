@@ -7,6 +7,7 @@ import {
 } from "./committed-control.js";
 import { ReassessmentChangeV3Schema, SharedEventArmsV3 } from "./historical-codecs.js";
 import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
+import { HandoffIssueSchema } from "./graph-types.js";
 
 const IdSchema = Schema.NonEmptyString;
 const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
@@ -17,12 +18,6 @@ const AttemptFailureFields = {
   conversationId: Schema.NullOr(IdSchema),
   toolUses: Schema.optionalKey(NonNegativeIntSchema),
 };
-
-const HandoffIssueSchema = Schema.Struct({
-  path: Schema.String,
-  message: Schema.String,
-  hint: Schema.optionalKey(Schema.String),
-});
 
 const AttemptFailureSchema = Schema.Union([
   Schema.Struct({
@@ -66,11 +61,25 @@ const ReassessmentProposalSchema = Schema.Struct({
   changes: Schema.NonEmptyArray(ReassessmentChangeSchema),
 });
 
+// Remove after 2027-10-17. The outcome of encodings 10 to 13, which predate
+// delivered handoffs.
+const AttemptOutcomeV13Schema = Schema.Struct({
+  attemptId: IdSchema,
+  conversationId: Schema.NullOr(IdSchema),
+  handoff: Schema.Record(Schema.String, Schema.Unknown),
+  reassessment: Schema.NullOr(ReassessmentProposalSchema),
+  toolUses: Schema.optionalKey(NonNegativeIntSchema),
+});
+
 const AttemptOutcomeSchema = Schema.Struct({
   attemptId: IdSchema,
   conversationId: Schema.NullOr(IdSchema),
   handoff: Schema.Record(Schema.String, Schema.Unknown),
   reassessment: Schema.NullOr(ReassessmentProposalSchema),
+  /** The problems that remain in a handoff that the runtime delivered after
+   *  the agent's handoff correction ran out. Absent for a handoff that its
+   *  contract accepted, and in every outcome recorded before 2026-11-11. */
+  issues: Schema.optionalKey(Schema.Array(HandoffIssueSchema)),
   toolUses: Schema.optionalKey(NonNegativeIntSchema),
 });
 
@@ -85,7 +94,8 @@ const AttemptBlockedSchema = Schema.Struct({
   handoff: Schema.Record(Schema.String, Schema.Unknown),
 });
 
-const ProposalEventArmsBeforeRecover = [
+/** The arms before RECOVER, with the outcome shape of their encoding. */
+const proposalEventArmsBeforeRecover = <Outcome extends Schema.Top>(outcome: Outcome) => [
   Schema.Struct({ type: Schema.Literal("START") }),
   Schema.Struct({ type: Schema.Literal("ADVANCE") }),
   Schema.Struct({
@@ -95,7 +105,7 @@ const ProposalEventArmsBeforeRecover = [
   }),
   Schema.Struct({
     type: Schema.Literal("ATTEMPT_SUCCEEDED"),
-    outcome: AttemptOutcomeSchema,
+    outcome,
   }),
   Schema.Struct({
     type: Schema.Literal("ATTEMPT_BLOCKED"),
@@ -171,7 +181,7 @@ const RecoverEventSchema = Schema.Struct({
   progressed: Schema.Array(IdSchema),
 });
 export const WorkflowProposalEventSchema = Schema.Union([
-  ...ProposalEventArmsBeforeRecover,
+  ...proposalEventArmsBeforeRecover(AttemptOutcomeSchema),
   ResumeEventSchema,
   RecoverEventSchema,
   ...ProposalEventArmsAfterRecover,
@@ -185,7 +195,7 @@ export const WorkflowProposalEventSchema = Schema.Union([
 // and `progressed: []`, their exact meaning, because no version before 14
 // reruns a reader (`normalizeHistoricalWorkflowEvent`).
 export const WorkflowProposalEventV13Schema = Schema.Union([
-  ...ProposalEventArmsBeforeRecover,
+  ...proposalEventArmsBeforeRecover(AttemptOutcomeV13Schema),
   SharedEventArmsV3[7],
   SharedEventArmsV3[8],
   ...ProposalEventArmsAfterRecover,

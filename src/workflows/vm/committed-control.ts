@@ -83,12 +83,14 @@ export const CommittedWorkflowControlSchema = Schema.Struct({
 
 export type CommittedWorkflowControl = typeof CommittedWorkflowControlSchema.Type;
 
-// Remove after 2027-10-17. Version 11 predates continuation attempts; its
-// pinned contract must not admit the new provenance carried by version 12.
+// Remove after 2027-10-17. Version 11 predates continuation attempts and
+// delivered handoffs; its pinned contract must not admit the new provenance
+// carried by version 12 or the issues of a delivered handoff.
+const { handoffIssues: _handoffIssues, ...AttemptV11Fields } = AttemptSchema.fields;
 export const WorkflowControlV11Schema = Schema.Struct({
   ...CommittedWorkflowControlSchema.fields,
   attempts: Schema.Array(Schema.Struct({
-    ...AttemptSchema.fields,
+    ...AttemptV11Fields,
     provenance: Schema.Union([
       Schema.TaggedStruct("authored", {}),
       Schema.TaggedStruct("retry", {}),

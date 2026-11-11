@@ -113,6 +113,17 @@ interface WorkflowTreeEvidence {
   /** The first line of the summary that the agent's completed attempt
    *  handed off. */
   readonly summary?: string
+  /** The problems that remain in a handoff that the runtime delivered after
+   *  the agent's handoff correction ran out: how many, and the first of them
+   *  as short `path: message` lines. Absent for a handoff that its contract
+   *  accepted. */
+  readonly contractIssues?: WorkflowTreeContractIssues
+}
+
+/** The problems of a delivered handoff, as the card shows them. */
+interface WorkflowTreeContractIssues {
+  readonly count: number
+  readonly lines: readonly string[]
 }
 
 /** Where one round of a repeat stands: its 1-based number, and, once the

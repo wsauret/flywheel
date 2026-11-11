@@ -41,7 +41,7 @@ const WorkflowTreeSchema: Schema.Codec<WorkflowTree> = Schema.Struct({
     Schema.Struct({
       ...node, kind: Schema.Literal("agent"), definitionId: Schema.String, attempts: Count,
       currentAttemptId: Schema.optionalKey(Schema.String),
-      evidence: Schema.optionalKey(Schema.Struct({ summary: Schema.optionalKey(Schema.String) })),
+      evidence: Schema.optionalKey(Schema.Struct({ summary: Schema.optionalKey(Schema.String), contractIssues: Schema.optionalKey(Schema.Struct({ count: Count, lines: Schema.Array(Schema.String) })) })),
       item: Schema.optionalKey(Schema.Struct({ nodeId: Schema.String, key: Schema.String, label: Schema.String, ordinal: Count, text: Schema.String })),
       nodeId: Schema.optionalKey(Schema.String), waitsOn: Schema.optionalKey(Schema.Array(Schema.String)),
     }),

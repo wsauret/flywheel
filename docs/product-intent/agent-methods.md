@@ -16,11 +16,11 @@ A survey reports how many of its required targets it surveyed out of all of them
 
 ## PI-AGENT-060: A workflow join shows what it dropped
 
-A workflow join that narrows the results of its agents reports what it dropped and why, beside what it kept. A join that removes a duplicate names the item of the agent whose entry it kept. A join that keeps the top entries names each entry below the cut. Each join names the agents that failed, and its result does not depend on the order in which the agents finished.
+A workflow join that narrows the results of its agents reports what it dropped and why, beside what it kept. A join that removes a duplicate names the item of the agent whose entry it kept. A join that keeps the top entries names each entry below the cut. Each join names the agents that failed, and its result does not depend on the order in which the agents finished. An agent whose handoff was delivered after it did not pass its contract is a finished agent for the join.
 
 ## PI-AGENT-061: Workflow votes count a failed agent as an abstention
 
-A phase over a list can cast several independent votes on each item, and no vote sees another. Its join gives each item one verdict and reports the valid, refuted, and abstaining votes against its thresholds. An agent that failed counts as an abstention, so a verdict that no agent supported never passes.
+A phase over a list can cast several independent votes on each item, and no vote sees another. Its join gives each item one verdict and reports the valid, refuted, and abstaining votes against its thresholds. An agent that failed counts as an abstention, so a verdict that no agent supported never passes. An agent whose handoff was delivered after it did not pass its contract votes with what it sent, and a vote that is not one of the declared values counts as an abstention.
 
 ## PI-AGENT-062: A repeated search stops when a round finds nothing new
 
@@ -344,7 +344,11 @@ Agents that do not wait on each other run at the same time. When several send th
 
 ## PI-AGENT-115: A failed agent fails its item or its phase
 
-An agent fails after the retries that its workflow states, or after three stops in a row without a handoff despite reminders, with no message or Resume between them. A failed agent of a phase over a list fails only its item, and the join names that item, while any other failed agent fails its phase. A failed phase ends any repeat around it, the later phases do not run, and the run fails once that phase's other agents finish. A run whose phases all ran but that still has a failed item agent also fails.
+An agent fails after the retries that its workflow states, or after three stops in a row without a handoff despite reminders, with no message or Resume between, never for its contract (PI-AGENT-129). A failed agent of a phase over a list fails only its item, and the join names that item, while any other failed agent fails its phase. A failed phase ends any repeat around it, the later phases do not run, and the run fails once that phase's other agents finish. A run whose phases all ran with a failed item agent also fails.
+
+## PI-AGENT-129: A handoff that fails its contract is delivered, not lost
+
+An agent whose handoff fails its contract three times in a row does not fail. Its last handoff is delivered with the remaining problems to later phases, joins, and the completion. Each list that a later phase, repeat, or join counts keeps the items its contract can read, up to its maximum. Each item left out is recorded whole with the problems, so no work is lost. A reassessment with no valid change leaves the plan as it is. The completion and the card mark the agent as finished with a handoff that did not pass its contract.
 
 ## PI-AGENT-116: A failed run resumes its failed agents
 
@@ -352,7 +356,7 @@ A failed run tells its parent at once and stays resumable, unless it failed beca
 
 ## PI-AGENT-117: The completion result gives the parent every agent's result
 
-The completion gives the parent each agent's result in workflow order, labeled by phase or agent id and item. It names each agent that failed, was skipped, or did not run. A finished agent's result is its handoff with its recorded commands and their results. Each join's output appears too. The results share one size limit, which the latest results take first. The completion names each result that did not fit and how to read it. Each failed agent appears with its reason, and the card shows it as failed. The completion says that a Resume reruns the failed agents.
+The completion gives the parent each agent's result in workflow order, labeled by phase or agent id and item. It names each agent that failed, was skipped, or did not run. A finished agent's result is its handoff with its recorded commands and their results. Each join's output appears too. The results share one size limit, latest first. The completion names each result that did not fit and how to read it. Each failed agent appears with its reason, and the card shows it as failed; a delivered handoff shows its problems (PI-AGENT-129). It says that a Resume reruns them.
 
 ## PI-AGENT-118: An unattended agent recovers from provider faults on its own
 

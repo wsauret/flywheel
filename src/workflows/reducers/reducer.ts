@@ -187,6 +187,10 @@ export interface RegisteredReducer {
    *  at load (refer to `DEFAULT_COUNTED_LIST_MAX`), so the join has a worst
    *  case. */
   readonly countedLists: (params: ReducerParams) => readonly string[];
+  /** The list fields of the source output that `admit` reads, such as the
+   *  exclusions of a coverage join. A source handoff delivered after its
+   *  correction ran out salvages them, so admission can read them. */
+  readonly admittedLists: (params: ReducerParams) => readonly string[];
   /** The coverage that a coverage reducer's output states: the status, the
    *  required numerator and denominator, and the required unsurveyed keys.
    *  It reads only the output, so it cannot disagree with it. A reducer
@@ -222,6 +226,7 @@ interface ReducerDefinition<Params extends ReducerParams> {
   readonly reduce: (params: Params, input: ReducerInput) => ReducerOutput;
   readonly itemFields?: (params: Params) => readonly string[];
   readonly countedLists?: (params: Params) => readonly string[];
+  readonly admittedLists?: (params: Params) => readonly string[];
   readonly coverage?: (output: ReducerOutput) => WorkflowTreeCoverage;
   readonly selection?: (output: ReducerOutput, contract: FieldMap) => JoinSelection;
   readonly syntheticReport?: (params: Params, contract: FieldMap, count: number) => { readonly [field: string]: unknown };
@@ -244,6 +249,7 @@ export function defineReducer<Params extends ReducerParams>(definition: ReducerD
     reduce: (params, input) => definition.reduce(decode(params), input),
     itemFields: (params) => definition.itemFields?.(decode(params)) ?? [],
     countedLists: (params) => definition.countedLists?.(decode(params)) ?? [],
+    admittedLists: (params) => definition.admittedLists?.(decode(params)) ?? [],
     ...(definition.coverage === undefined ? {} : { coverage: definition.coverage }),
     ...(definition.selection === undefined ? {} : { selection: definition.selection }),
     ...(definition.syntheticReport === undefined ? {} : { syntheticReport: (params: ReducerParams, contract: FieldMap, count: number) => definition.syntheticReport?.(decode(params), contract, count) ?? {} }),
