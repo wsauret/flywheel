@@ -1,0 +1,14 @@
+src/orchestration/agent-runtime/continuation-messages.ts
+  h_4b47e9e4a8b456 8-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3a9e3a7974be01b77a74abc10167a5e9d4ebe406",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
