@@ -420,14 +420,17 @@ describe("bash tool: mutation commands", () => {
     expect(await remainingCopies(root)).toEqual([]);
   });
 
-  it("runs in the copy: the working directory maps into it and the literal project root is rewritten at path boundaries", async () => {
+  it("runs in the copy: the working directory maps into it, the literal project root is rewritten at path boundaries, and a written copy root lands as the real root", async () => {
     const root = project([[path.join("sub", "a.txt"), "a\n"]]);
-    const { scripts, launches } = await runMutation(root, () => {}, { command: `cat ${root}/sub/a.txt ${root}x/b ${root}` }, { executionCwd: path.join(root, "sub") });
-    const copyRoot = path.dirname(launches[0]!.cwd!);
+    // As the shell would: the rewritten literal root and `$(pwd)` both name the copy.
+    const { scripts, launches } = await runMutation(root, (cwd) => fs.writeFileSync(path.join(cwd, "out.txt"), `${path.dirname(cwd)}/sub/a.txt ${root}x/b\n${cwd}\n`), { command: `echo "${root}/sub/a.txt ${root}x/b" > out.txt && pwd >> out.txt` }, { executionCwd: path.join(root, "sub") });
+    // The mutation guard's probe launches first, with no working directory.
+    const copyRoot = path.dirname(launches.at(-1)!.cwd!);
 
-    expect(path.basename(launches[0]!.cwd!)).toBe("sub");
+    expect(path.basename(launches.at(-1)!.cwd!)).toBe("sub");
     expect(copyRoot.startsWith(path.join(root, ".flywheel", "sessions", "session-1", "scratch", "mutations"))).toBe(true);
-    expect(scripts.join("\n")).toContain(`cat ${copyRoot}/sub/a.txt ${root}x/b ${copyRoot}`);
+    expect(scripts.join("\n")).toContain(`echo "${copyRoot}/sub/a.txt ${root}x/b" > out.txt`);
+    expect(fs.readFileSync(path.join(root, "sub", "out.txt"), "utf8")).toBe(`${root}/sub/a.txt ${root}x/b\n${path.join(root, "sub")}\n`);
   });
 
   it("lands a command a planned replacement handed over on the build that adopted it, once, with the edit result the launching build lands", async () => {

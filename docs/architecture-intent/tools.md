@@ -97,7 +97,7 @@ Attribution receives only mutations whose durable publication settled, as one im
 
 ## ARCH-TOOLS-020: Only a declared mutating shell command lands its file changes
 
-A command declared as mutating runs in a private copy of the project as it was when the command started. An interrupted command lands nothing, and any other lands only its accepted file-content changes and removes each directory it removed once that directory is empty. Its evidence names each removed directory once and records, at every settlement, its writes to the session's own folder, which it shares instead of copying and never publishes. A plain shell command, and every command of a headless runtime, writes in place and enters no file-change record or attribution.
+A command declared as mutating runs in a private copy of the project as it was when it started. An interrupted command lands nothing. Any other lands only its accepted file-content changes, with the real project root wherever it wrote the copy's root, and removes each directory it removed once that directory is empty. Its evidence names each removed directory once and records, at every settlement, its writes to the session's own folder, which it shares and never publishes. A plain shell command, and every command of a headless runtime, writes in place and enters no file-change record or attribution.
 Because: A private copy is the only way that another agent's concurrent writes never appear in the command or get attributed to it.
 Not: Diffing the shared working tree after a command, which attributes concurrent work to it.
 

@@ -374,7 +374,7 @@ export function scanCopyChanges(copy: CopiedProject): CopyChanges {
       unsupported.push({ path, reason: blocked });
       continue;
     }
-    const after = readFileSync(copyPath);
+    const after = withRealRoot(copy, readFileSync(copyPath));
     if (sameRealBytes(join(copy.realRoot, path), after)) continue;
     changes.push({ path, after, expected: before?.real ?? { kind: "absent" }, mode: before ? undefined : mode });
   }
@@ -395,6 +395,24 @@ export function scanCopyChanges(copy: CopiedProject): CopyChanges {
   const removed = removedDirectories(copy.baseRoot, copy.copyRoot, [...copy.files].map(([path, file]) => [path, file.real.size] as const),
     (directory, name) => shared.has(join(directory, name)) || isGitMetadata(join(copy.baseRoot, directory), name));
   return { changes: changes.sort(byPath), unsupported: unsupported.sort(byPath), removedDirectories: removed };
+}
+
+/** Matches each literal occurrence of `root` that ends at a path boundary:
+ *  the next character is no word character, `.`, or `-`. */
+export function rootAtPathBoundary(root: string): RegExp {
+  return new RegExp(`${root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w.-])`, "g");
+}
+
+/** The command ran with the real root rewritten to the copy root, and its own
+ *  working directory is the copy, so a file it wrote can name the copy root.
+ *  The landed file names the real root there instead. Bytes that hold no copy
+ *  root are returned unchanged. */
+function withRealRoot(copy: CopiedProject, bytes: Buffer): Buffer {
+  const copyRoot = Buffer.from(copy.copyRoot);
+  if (!bytes.includes(copyRoot)) return bytes;
+  // Latin-1 maps each byte to one character and back, so every other byte is kept.
+  const realRoot = Buffer.from(copy.realRoot).toString("latin1");
+  return Buffer.from(bytes.toString("latin1").replace(rootAtPathBoundary(copyRoot.toString("latin1")), () => realRoot), "latin1");
 }
 
 function isGitMetadata(directory: string, name: string): boolean {

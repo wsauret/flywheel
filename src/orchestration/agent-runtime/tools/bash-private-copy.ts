@@ -21,7 +21,7 @@ import { readCopyRepositoryState, type StateDigest } from "./bash-copy-repositor
 import { runPrivateCopyJob } from "./bash-private-copy-jobs.js";
 import { PRIVATE_COPY_RECORD, type PrivateCopyRecordRead, type ReadCopy, type RecordedCopy } from "./bash-private-copy-record.js";
 import type { CopyGeometry, PrivateCopyPool, ReusableCopy } from "./bash-private-copy-pool.js";
-import type { CopiedProject, CopyChanges, CopyTopologyRequest } from "./bash-private-copy-tree.js";
+import { rootAtPathBoundary, type CopiedProject, type CopyChanges, type CopyTopologyRequest } from "./bash-private-copy-tree.js";
 import { BEFORE_IMAGE, type SessionFolderSnapshot } from "./bash-session-observation.js";
 
 const log = Log.create({ service: "bash-private-copy" });
@@ -321,8 +321,7 @@ export function pathInCopy(copy: PrivateProjectCopy, path: string): string {
 
 /** Rewrites each literal occurrence of the real project root that ends at a path boundary to the copy root. */
 export function rewriteProjectRoot(copy: PrivateProjectCopy, command: string): string {
-  const root = copy.realRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return command.replace(new RegExp(`${root}(?![\\w.-])`, "g"), () => copy.copyRoot);
+  return command.replace(rootAtPathBoundary(copy.realRoot), () => copy.copyRoot);
 }
 
 const removals = new Set<Promise<void>>();
