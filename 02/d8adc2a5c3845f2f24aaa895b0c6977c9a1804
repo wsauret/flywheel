@@ -1,0 +1,14 @@
+tests/release/budgets.json
+  h_4b47e9e4a8b456 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "02d8adc2a5c3845f2f24aaa895b0c6977c9a1804",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
