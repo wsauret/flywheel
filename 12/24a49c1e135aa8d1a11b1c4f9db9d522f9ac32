@@ -1,0 +1,14 @@
+bench/harbor/configs/tb-haiku-high-agent-types.toml
+  h_4b47e9e4a8b456 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1224a49c1e135aa8d1a11b1c4f9db9d522f9ac32",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
