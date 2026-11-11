@@ -391,6 +391,12 @@ export const DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID = "workflow-definit
 const DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_REASON =
   "Control recorded a reviewer-uat persona without the rule that it writes only in its scratchpad at literal paths; the session adopts the same persona with that rule, because the current definitions prove the rule is the only difference."
 
+/** A grant of a family role, such as the `reviewer` grant of the general agent, started to reach the personas of
+ *  every member role. Resume records this adoption through `withFamilyRoleGrants`. Remove after 2027-05-10. */
+export const DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID = "workflow-definition-identity-family-role-grants-v1"
+const DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_REASON =
+  "Control recorded the personas that the agents could dispatch while a role grant matched only the exact persona role; the session adopts the same identity with the personas that a grant reaches through their family role added, because those personas and the skills they require are the only difference."
+
 /** The strict ordered chain of definition-identity adoptions. Replay accepts
  * recorded adoptions only in increasing order and only once each, so a session
  * that already adopted an earlier migration can still receive a later one.
@@ -421,6 +427,7 @@ export const DEFINITION_IDENTITY_MIGRATIONS = [
   { id: DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, reason: DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID, reason: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID, reason: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_REASON },
+  { id: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID, reason: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_REASON },
 ] as const
 
 export type DefinitionIdentityMigrationId = typeof DEFINITION_IDENTITY_MIGRATIONS[number]["id"]
@@ -539,14 +546,17 @@ export function briefContentSha256(agent: Pick<ResolvedAgent, "briefId" | "name"
  *  hash. Dispatch reachability decides the personas, not the agents' own
  *  lists: a persona that an agent can dispatch, or that runs an agent,
  *  composes its grantees' prompts too, so every persona the run can reach
- *  participates in identity and contributes its required packages. */
+ *  participates in identity and contributes its required packages. `reach`
+ *  is the dispatch walk; only a proof that rebuilds what an earlier build
+ *  recorded passes the walk of that build. */
 export function composedIdentity(
   workflowId: string,
   agents: readonly Pick<ResolvedAgent, "subagents" | "persona" | "dependencies">[],
   options: DefinitionIdentityOptions,
+  reach: typeof reachableAgentNames = reachableAgentNames,
 ): Pick<StepDefinitionIdentity, "skills" | "personas"> {
   const personas: ReadonlyMap<string, AgentDefinition> = options.personas ?? new Map()
-  const personaNames = reachableAgentNames(agents.flatMap(({ subagents, persona }) => persona === undefined ? subagents : [persona, ...subagents]), personas)
+  const personaNames = reach(agents.flatMap(({ subagents, persona }) => persona === undefined ? subagents : [persona, ...subagents]), personas)
   const personaSkillIds = personaNames.flatMap((name) => {
     const persona = personas.get(name)
     return persona?.kind === "persona" ? persona.requiredSkills ?? [] : []
@@ -601,8 +611,14 @@ export function buildDefinitionIdentity(
     steps: entries, // stored key of control v11
     // Identity pins every persona that dispatch can reach, so each agent composes what it may dispatch, not only
     // its authored list. The frozen step-grammar identity composes the authored lists, as that build did.
-    ...composedIdentity(workflow.id, [...agents.values()].map((agent) => ({ ...agent, subagents: workflowAgentSubagents(agent) })), options),
+    ...composedIdentity(workflow.id, dispatchingAgents(agents), options),
   })
+}
+
+/** The agents of a workflow as its identity composes them: each with the personas its record may dispatch (refer to
+ *  `workflowAgentSubagents`), not only its authored list. */
+export function dispatchingAgents(agents: ReadonlyMap<string, ResolvedAgent>): readonly ResolvedAgent[] {
+  return [...agents.values()].map((agent) => ({ ...agent, subagents: workflowAgentSubagents(agent) }))
 }
 
 /** The identity hash of one persona. It covers every field that shapes what

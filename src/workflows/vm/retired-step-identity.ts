@@ -32,6 +32,7 @@ import {
   type DefinitionIdentityOptions,
   type StepDefinitionIdentity,
 } from "./definition-identity.js";
+import { reachedByExactGrants } from "./persona-identity-proofs.js";
 import { retiredBuiltInDefinition } from "./retired-built-in-definitions.js";
 import { retiredOutputContractPairs } from "./retired-output-contracts.js";
 
@@ -67,7 +68,8 @@ function phaseIdentities(flow: readonly WorkflowFlowEntry[]): readonly { readonl
 }
 
 /** The identity that the last step-grammar build computed for `view`, with
- *  the brief of each step from the current agent of the same record key.
+ *  the brief of each step from the current agent of the same record key and
+ *  the personas that its grants reached before family roles.
  *  A step whose record the current definition lacks has no entry, so the
  *  comparison with a recorded identity names it. The agent of a repeat's
  *  reassess phase hashes the frozen reassessment contract of the `for` slot
@@ -102,7 +104,7 @@ export function retiredStepIdentity(
         outputSha256: output.schemaSha256,
       };
     }),
-    ...composedIdentity(record.id, stepAgents.map(({ agent }) => agent), options),
+    ...composedIdentity(record.id, stepAgents.map(({ agent }) => agent), options, reachedByExactGrants),
   };
 }
 

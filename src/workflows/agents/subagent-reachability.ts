@@ -1,8 +1,8 @@
-import type { AgentDefinition } from "../../infra/agent-definition.js";
+import { roleCovers, type AgentDefinition } from "../../infra/agent-definition.js";
 import { CHECKPOINT_TOOL_NAMES } from "../../infra/agent-assets/session-notes.js";
 
 /** Resolves a definition's `subagentRoles` grant against a registry: the names
- *  of persona agents whose role is granted. The general agent has no role, so
+ *  of persona agents whose role a granted role covers. The general agent has no role, so
  *  it is never a grantee - nesting cannot recurse through it. Self-grants are
  *  always dropped: a persona granting its own role must not be able to respawn
  *  itself indefinitely.
@@ -19,7 +19,7 @@ export function grantedSubagentTypes(
   const granted = new Set<string>();
   for (const [name, candidate] of registry) {
     if (name === agent.name) continue;
-    if (candidate.kind === "persona" && roles.includes(candidate.role)) granted.add(name);
+    if (candidate.kind === "persona" && roles.some((role) => roleCovers(role, candidate.role))) granted.add(name);
   }
   return granted;
 }

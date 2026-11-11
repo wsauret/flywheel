@@ -1,4 +1,4 @@
-import type { AgentDefinition } from "../../../../infra/agent-definition.js";
+import { roleCovers, type AgentDefinition } from "../../../../infra/agent-definition.js";
 import type { HandoffToolSchema } from "../../../workflow-host/handoff-tool-schema.js";
 import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
 import { formatToolInputProblems } from "../../../agent-runtime/tools/validate-input.js";
@@ -22,15 +22,15 @@ export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition
       : `- ${a.name}: ${a.description}${routing(a, has)}\n  Tools: ${a.tools.join(", ")}`)
     .join("\n");
   const personas = Array.from(agents.values()).filter((agent) => agent.kind === "persona");
-  const roles = new Set(personas.map((agent) => agent.role));
+  const offers = (role: string) => personas.some((agent) => roleCovers(role, agent.role));
   const useCases: string[] = [];
-  if (roles.has("ship") && has("bash")) {
+  if (offers("ship") && has("bash")) {
     useCases.push(`- Repository publication: use the Ship agent after the parent has completed implementation, review, and verification.${has("type:general") ? " Do not use fork." : ""} Send only the files you changed and a short summary of user intent and implemented design. Use your tracked file list. Do not run Git analysis or prepare a commit message for this handoff. Do not send verification evidence or ask Ship to evaluate it. Ship inspects the selected diffs, writes the commit message, commits complete selected files, including concurrent edits, and pushes. Do not ask Ship to separate authorship, select hunks, or create isolation worktrees. Add publication instructions only when the user requested a PR or a nondefault destination. For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover, as you wrote them for your reply; that account is the one exception to the evidence rule, and Ship puts it in the pull request description as written, without assessing it. Ship returns publication evidence, or a summary of the one precise condition that stopped publication. After a successful publication, your reply gives the three things that your instructions define.`);
   }
-  if (roles.has("reviewer")) {
+  if (offers("reviewer")) {
     useCases.push("- Review/analysis: use a reviewer agent for code review or plan evaluation.");
   }
-  if (roles.has("advisor")) {
+  if (offers("advisor")) {
     useCases.push(`- Advisor consultation: use the advisor when two materially different approaches remain plausible and project evidence does not decide between them; a consequential decision depends on an uncertain assumption; a focused attempt failed and the next diagnostic or implementation move is unclear; or an independent second opinion is needed before an expensive, risky, or difficult-to-reverse action. Do not use Advisor for factual lookup, keyword search, or repository discovery; an obvious or reversible local choice; implementation; or routine review of a finished diff or plan. A user-selected pre-approval design review is the narrow exception to the finished-plan restriction. Send a concise decision packet with the exact decision, relevant context and project authority, plausible alternatives, evidence that supports or weakens each alternative, prior attempts and what they ruled out, and the uncertainty that warrants consultation.${has("type:general") ? " Use fork: true only when accumulated conversation context is material evidence." : ""} Advisor returns private, read-only guidance; the parent owns the final decision, execution, verification, and user communication. Advisor failure or unavailability must not block the parent: continue with available evidence and do not retry or respawn solely for consultation.`);
   }
 

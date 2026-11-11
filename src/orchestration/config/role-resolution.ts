@@ -12,7 +12,7 @@ import { beginTierResolutionOperation, resolveModelForTierAcrossFamilies, type T
 import { modelTierForReference } from "../../protocol/model-tier-reference.js";
 import { ROLE_MODEL_DEFAULTS, roleModelDefault, selectRoleModelDefault } from "./role-model-defaults.js";
 import { canonicalRoleId } from "./retired-config-names.js";
-import { DEFAULT_ROLES, parentRoleId, type RoleMetadata, type RoleId, type ResolvedRole, type ResolvedRoles } from "./roles.js";
+import { DEFAULT_ROLES, parentRoleId, type RoleId, type ResolvedRole, type ResolvedRoles } from "./roles.js";
 import type { FlywheelConfig } from "./schema.js";
 import { profileRoleSettings } from "./env.js";
 
@@ -36,34 +36,23 @@ function canonicalizeRoleKeys(record: ProfileRoles): ProfileRoles {
   return Object.fromEntries(out);
 }
 
-function roleDefaults(roleId: RoleId): RoleMetadata {
-  const known = DEFAULT_ROLES[roleId];
-  if (known) return known;
+/** The role whose configured setting `roleId` falls back to when the configuration has none for it: the family role
+ *  of a persona role, the family seat of the same brief for a brief seat of a persona role, and the Workflow Agent
+ *  for a brief's own seat. A brief seat resolves through the Workflow Agent, so a person's Workflow Agent setting wins
+ *  over the seat's shipped default. A record seat holds a pair that a launch bound, which no other seat reaches. */
+function fallbackRoleId(roleId: RoleId): RoleId | undefined {
   const selector = parseBriefRoleId(roleId);
-  const base = selector?.personaRole ? DEFAULT_ROLES[selector.personaRole] : undefined;
-  const parent = selector?.personaRole ? parentRoleId(selector.personaRole) : undefined;
-  // A brief seat resolves through the Workflow Agent, so a person's Workflow
-  // Agent setting wins over the seat's shipped default. A record seat holds
-  // a pair that a launch bound, which no other seat reaches.
-  const resolutionParent = selector?.personaRole !== undefined
-    ? parent === undefined ? undefined : briefPersonaRoleId(selector.briefId, parent)
-    : selector !== undefined && selector.definitionId === undefined ? "workflow-agent" : undefined;
-  return {
-    id: roleId,
-    label: roleId,
-    group: "agents",
-    order: 0,
-    ...roleModelDefault(roleId).tier,
-    ...(resolutionParent === undefined ? {} : { parentRoleId: resolutionParent }),
-    description: base?.description ?? "",
-  };
+  if (selector === undefined) return parentRoleId(roleId);
+  if (selector.personaRole === undefined) return selector.definitionId === undefined ? "workflow-agent" : undefined;
+  const parent = parentRoleId(selector.personaRole);
+  return parent === undefined ? undefined : briefPersonaRoleId(selector.briefId, parent);
 }
 
 function configuredRole(
   configuredRoles: ProfileRoles,
   roleId: RoleId,
 ): ProfileRoles[string] | undefined {
-  const parentId = roleDefaults(roleId).parentRoleId;
+  const parentId = fallbackRoleId(roleId);
   return configuredRoles[roleId]
     ?? (parentId ? configuredRoles[parentId] : undefined);
 }

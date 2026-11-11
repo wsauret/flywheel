@@ -231,6 +231,56 @@ export function withDefaultAdvisor<Identity extends DefinitionIdentity>(
   }
 }
 
+/** Every agent name a dispatch that starts at `roots` reached in a build before family roles (refer to `roleCovers`):
+ *  `reachableAgentNames` as it walked when a grant covered only a persona of exactly the granted role. Remove after
+ *  2027-05-10. */
+export function reachedByExactGrants(roots: Iterable<string>, registry: ReadonlyMap<string, AgentDefinition>): readonly string[] {
+  const reached = new Set<string>()
+  const pending = [...roots]
+  while (pending.length > 0) {
+    const name = pending.pop()
+    if (name === undefined || reached.has(name)) continue
+    reached.add(name)
+    const roles = registry.get(name)?.subagentRoles ?? []
+    for (const [granted, candidate] of registry) {
+      if (granted !== name && candidate.kind === "persona" && roles.includes(candidate.role)) pending.push(granted)
+    }
+  }
+  return [...reached].sort()
+}
+
+/** The recorded identity with the personas that `agents` reach only through a family role grant, and the skills only
+ *  those personas require, added at their current hashes, when the recorded identity names none of those personas: a
+ *  build before family roles walked the grants with `reachedByExactGrants`, so the `reviewer` grant of the general
+ *  agent reached no reviewer persona. A build with family roles pinned every persona that a family grant reached, so
+ *  an identity that names one of them is current, and a family persona that it lacks was added after the pause and
+ *  still reports as drift. Only an entry the recorded identity lacks is added, so every recorded hash stays and an
+ *  edited persona or skill still reports as drift. Returns the same identity when it adds nothing. Remove after
+ *  2027-05-10. */
+export function withFamilyRoleGrants<Identity extends DefinitionIdentity>(
+  identity: Identity,
+  workflowId: string,
+  agents: Parameters<typeof composedIdentity>[1],
+  options: DefinitionIdentityOptions,
+): Identity {
+  const reached = composedIdentity(workflowId, agents, options)
+  const exact = composedIdentity(workflowId, agents, options, reachedByExactGrants)
+  const exactPersonas = new Set(exact.personas.map(({ personaName }) => personaName))
+  const exactSkills = new Set(exact.skills.map(({ skillId }) => skillId))
+  const recordedPersonas = new Set(identity.personas.map(({ personaName }) => personaName))
+  const recordedSkills = new Set(identity.skills.map(({ skillId }) => skillId))
+  const familyOnly = reached.personas.filter(({ personaName }) => !exactPersonas.has(personaName))
+  if (familyOnly.length === 0 || familyOnly.some(({ personaName }) => recordedPersonas.has(personaName))) return identity
+  // A grant reaches only a resolved persona, but a required skill can be unresolved. Its entry hashes as missing,
+  // which equals an absent entry, so only a resolved one is a difference.
+  const skills = reached.skills.filter(({ skillId, sha256 }) => sha256 !== null && !exactSkills.has(skillId) && !recordedSkills.has(skillId))
+  return {
+    ...identity,
+    personas: [...identity.personas, ...familyOnly].sort((left, right) => left.personaName < right.personaName ? -1 : 1),
+    skills: [...identity.skills, ...skills].sort((left, right) => left.skillId < right.skillId ? -1 : 1),
+  }
+}
+
 /** The reviewer-uat block that tells the reviewer where its shell admits writes, paired with the empty text it
  *  replaced. Remove after 2027-05-10. */
 const RETIRED_UAT_SCRATCHPAD_TEXT: RetiredPersonaText = new Map([

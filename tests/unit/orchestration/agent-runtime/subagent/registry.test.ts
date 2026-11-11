@@ -19,6 +19,22 @@ describe("subagent tool — registry", () => {
       expect(renderSubagentRoster(new Map(), () => true)).toBe("# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.");
     });
 
+    it("adds review routing when a persona of the reviewer role family is scoped", () => {
+      const reviewer = {
+        kind: "persona" as const,
+        name: "reviewer-code-quality",
+        description: "Reviews implemented code.",
+        role: "reviewer-quality",
+        tools: ["read"],
+        maxTurns: 20,
+        systemPrompt: "Review the supplied change.",
+      };
+      const review = "- Review/analysis: use a reviewer agent for code review or plan evaluation.";
+
+      expect(renderSubagentRoster(new Map([[reviewer.name, reviewer]]), () => true)).toContain(review);
+      expect(renderSubagentRoster(makeDeps().agentRegistry, () => true)).not.toContain(review);
+    });
+
     it("adds Advisor routing policy only when Advisor is scoped", () => {
       const advisor = {
         kind: "persona" as const,

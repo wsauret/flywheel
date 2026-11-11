@@ -6,7 +6,8 @@ interface AgentDefinitionBase {
   /** Persona roles this agent may dispatch as nested subagents. Empty or
    *  absent means the agent is a leaf: its runner gets no subagent registry.
    *  Grants are roles (not names) so user/project personas that register
-   *  under a granted role are covered automatically. */
+   *  under a granted role are covered automatically, and a grant of a family
+   *  role covers each member of that family (refer to {@link roleCovers}). */
   subagentRoles?: readonly string[];
 }
 
@@ -39,3 +40,21 @@ interface GeneralAgentDefinition extends AgentDefinitionBase {
 }
 
 export type AgentDefinition = PersonaAgentDefinition | GeneralAgentDefinition;
+
+/** The role families: each member role mapped to the family role that covers it. This is the one home of the
+ *  relation. A grant of a family role reaches the personas of every member role, and a model setting for the
+ *  family role is the default of every member seat. */
+const FAMILY_ROLES: ReadonlyMap<string, string> = new Map(
+  ["quality", "elegance", "design", "data-integrity", "performance", "security", "mechanism", "uat"]
+    .map((lens) => [`reviewer-${lens}`, "reviewer"]),
+);
+
+/** The family role that covers `role`, or undefined when `role` belongs to no family. */
+export function familyRole(role: string): string | undefined {
+  return FAMILY_ROLES.get(role);
+}
+
+/** Whether a grant of the role `grant` covers a persona of the role `role`: the same role, or its family role. */
+export function roleCovers(grant: string, role: string): boolean {
+  return role === grant || familyRole(role) === grant;
+}

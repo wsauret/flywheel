@@ -8,6 +8,7 @@ import type { CommittedWorkflowControl } from "./committed-control.js"
 import {
   buildDefinitionIdentity,
   DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
+  DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
   DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID,
@@ -17,6 +18,7 @@ import {
   DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID,
   DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID,
   definitionIdentityMismatches,
+  dispatchingAgents,
   isContentOnlyIdentityChange,
   WorkflowDefinitionDriftError,
   type DefinitionIdentity,
@@ -29,6 +31,7 @@ import { adoptPhaseGrammarIdentity, retiredStepIdentity, retiredStepView, withou
 import {
   acrossRetiredLexicon,
   withDefaultAdvisor,
+  withFamilyRoleGrants,
   withoutRecordedTurnCaps,
   withoutRetiredLexiconText,
   withoutRetiredPromptSwitches,
@@ -174,6 +177,7 @@ function provenIdentityAdoptions(recorded: DefinitionIdentity, input: IdentityPr
     [DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, (identity) => withoutRetiredLexiconText(identity, personas)],
     [DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID, (identity) => withDefaultAdvisor(identity, workflow.id, options)],
     [DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID, (identity) => withUatScratchpadRule(identity, personas)],
+    [DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID, (identity) => withFamilyRoleGrants(identity, workflow.id, dispatchingAgents(agents), options)],
   ]
   const adoptions: IdentityAdoption[] = []
   let identity = recorded

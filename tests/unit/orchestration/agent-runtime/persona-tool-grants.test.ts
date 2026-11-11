@@ -16,7 +16,7 @@ import { deriveChildRuntimeSurfaces, personaToolEntries } from "../../../../src/
 import { createPersonaDefinitionSchema } from "../../../../src/workflows/agents/persona-schema.js";
 import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js";
 import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/registry.js";
-import { personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
+import { grantedSubagentTypes, personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 import { createToolRegistry } from "../../../../src/orchestration/tool-catalog.js";
 import { composeFirstPartyModules, SHIPPED_MODULES, type ModuleId } from "../../../../src/orchestration/modules.js";
@@ -95,6 +95,17 @@ describe("persona tool grants", () => {
     const implementer = registry.get("implementer");
     if (!implementer || implementer.kind !== "persona") throw new Error("Missing bundled persona: implementer");
     expect(personaToolNames(implementer, registry)).toContain("bash");
+  });
+
+  it("reaches every bundled reviewer persona through a grant of the reviewer role, and none through an explorer grant", () => {
+    const registry = loadStandalonePersonaRegistry(PERSONA_DIR, repoDefinitions().skills(), shippedPersonaToolEntries);
+    const general = registry.get("general");
+    const implementer = registry.get("implementer");
+    if (!general || !implementer) throw new Error("Missing bundled agent: general or implementer");
+    const reviewers = Object.keys(EXPECTED_PERSONA_TOOLS).filter((name) => name.startsWith("reviewer-"));
+
+    expect([...grantedSubagentTypes(general, registry)].toSorted()).toEqual(["explorer", ...reviewers].toSorted());
+    expect([...grantedSubagentTypes(implementer, registry)]).toEqual(["explorer"]);
   });
 
   it("keeps Advisor private, read-only, and decision-focused", () => {

@@ -1,3 +1,4 @@
+import { familyRole } from "../../infra/agent-definition.js";
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { canonicalRoleId, RETIRED_COMPACTION_ROLE_IDS } from "./retired-config-names.js";
 import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
@@ -31,7 +32,6 @@ export interface RoleMetadata {
   order: number;
   tier: ModelTier;
   effort: Effort;
-  parentRoleId?: RoleId;
   /** One user-facing line the model modal shows for the selected role. */
   description: string;
 }
@@ -61,23 +61,23 @@ export function requireRole(roles: ResolvedRoles, id: RoleId): ResolvedRole {
 export const WORKFLOW_AGENT_ROLE_ID: RoleId = "workflow-agent";
 export const TOP_LEVEL_ROLE_IDS: readonly RoleId[] = ["chat", WORKFLOW_AGENT_ROLE_ID];
 
+/** The role whose setting and agent type cover `roleId`, in any spelling: its family role. */
 export function parentRoleId(roleId: RoleId): RoleId | undefined {
-  const metadata: RoleMetadata | undefined = DEFAULT_ROLES[canonicalRoleId(roleId)];
-  return metadata?.parentRoleId;
+  return familyRole(canonicalRoleId(roleId));
 }
 
 export const DEFAULT_ROLES = {
   chat: { id: "chat", label: "Chat", group: "core", order: 0, ...roleModelDefault("chat").tier, description: "Replies to you in chat." },
   [WORKFLOW_AGENT_ROLE_ID]: { id: WORKFLOW_AGENT_ROLE_ID, label: "Workflow", group: "agents", order: 0, ...roleModelDefault(WORKFLOW_AGENT_ROLE_ID).tier, description: "Runs the agents of workflows." },
   reviewer: { id: "reviewer", label: "Reviewer", group: "agents", order: 1, ...roleModelDefault("reviewer").tier, description: "Reviews code and plans as a subagent." },
-  "reviewer-quality": { id: "reviewer-quality", label: "Quality", group: "agents", order: 2, ...roleModelDefault("reviewer-quality").tier, parentRoleId: "reviewer", description: "Reviews correctness and maintainability." },
-  "reviewer-elegance": { id: "reviewer-elegance", label: "Elegance", group: "agents", order: 3, ...roleModelDefault("reviewer-elegance").tier, parentRoleId: "reviewer", description: "Reviews structural elegance." },
-  "reviewer-design": { id: "reviewer-design", label: "Design", group: "agents", order: 4, ...roleModelDefault("reviewer-design").tier, parentRoleId: "reviewer", description: "Reviews user-facing interface work." },
-  "reviewer-data-integrity": { id: "reviewer-data-integrity", label: "Data Integrity", group: "agents", order: 5, ...roleModelDefault("reviewer-data-integrity").tier, parentRoleId: "reviewer", description: "Reviews durable data behavior." },
-  "reviewer-performance": { id: "reviewer-performance", label: "Performance", group: "agents", order: 6, ...roleModelDefault("reviewer-performance").tier, parentRoleId: "reviewer", description: "Reviews runtime and resource costs." },
-  "reviewer-security": { id: "reviewer-security", label: "Security", group: "agents", order: 7, ...roleModelDefault("reviewer-security").tier, parentRoleId: "reviewer", description: "Reviews trust boundaries and exploitability." },
-  "reviewer-mechanism": { id: "reviewer-mechanism", label: "Mechanism", group: "agents", order: 8, ...roleModelDefault("reviewer-mechanism").tier, parentRoleId: "reviewer", description: "Verifies precise runtime mechanisms." },
-  "reviewer-uat": { id: "reviewer-uat", label: "UAT", group: "agents", order: 9, ...roleModelDefault("reviewer-uat").tier, parentRoleId: "reviewer", description: "Exercises user-visible behavior." },
+  "reviewer-quality": { id: "reviewer-quality", label: "Quality", group: "agents", order: 2, ...roleModelDefault("reviewer-quality").tier, description: "Reviews correctness and maintainability." },
+  "reviewer-elegance": { id: "reviewer-elegance", label: "Elegance", group: "agents", order: 3, ...roleModelDefault("reviewer-elegance").tier, description: "Reviews structural elegance." },
+  "reviewer-design": { id: "reviewer-design", label: "Design", group: "agents", order: 4, ...roleModelDefault("reviewer-design").tier, description: "Reviews user-facing interface work." },
+  "reviewer-data-integrity": { id: "reviewer-data-integrity", label: "Data Integrity", group: "agents", order: 5, ...roleModelDefault("reviewer-data-integrity").tier, description: "Reviews durable data behavior." },
+  "reviewer-performance": { id: "reviewer-performance", label: "Performance", group: "agents", order: 6, ...roleModelDefault("reviewer-performance").tier, description: "Reviews runtime and resource costs." },
+  "reviewer-security": { id: "reviewer-security", label: "Security", group: "agents", order: 7, ...roleModelDefault("reviewer-security").tier, description: "Reviews trust boundaries and exploitability." },
+  "reviewer-mechanism": { id: "reviewer-mechanism", label: "Mechanism", group: "agents", order: 8, ...roleModelDefault("reviewer-mechanism").tier, description: "Verifies precise runtime mechanisms." },
+  "reviewer-uat": { id: "reviewer-uat", label: "UAT", group: "agents", order: 9, ...roleModelDefault("reviewer-uat").tier, description: "Exercises user-visible behavior." },
   explorer: { id: "explorer", label: "Explorer", group: "agents", order: 10, ...roleModelDefault("explorer").tier, description: "Investigates the codebase without changing it." },
   implementer: { id: "implementer", label: "Implementer", group: "agents", order: 11, ...roleModelDefault("implementer").tier, description: "Implements scoped tasks as a subagent." },
   ship: { id: "ship", label: "Ship", group: "agents", order: 12, ...roleModelDefault("ship").tier, description: "Publishes verified repository changes." },

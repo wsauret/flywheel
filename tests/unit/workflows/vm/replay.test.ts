@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test"
+import { Schema } from "effect"
+import { StepGrammarWorkflowSchema } from "../../../../src/workflows/retired-step-grammar/schema.js"
+import { retiredStepIdentity } from "../../../../src/workflows/vm/retired-step-identity.js"
 import type { AsyncGuardedEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
@@ -8,9 +11,11 @@ import {
   buildDefinitionIdentity,
   DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID,
   DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
+  DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID,
   DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID,
+  DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID,
   DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID,
   DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID,
   personaIdentitySha256,
@@ -381,6 +386,69 @@ describe("workflow fact replay", () => {
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
+  it("adopts the reviewer that a grant of its family role reaches for a run recorded before family roles once, and still reports a later reviewer edit as drift", async () => {
+    const { reviewer, personas, reviewSkills } = familyReview()
+    const compiled = compileWorkflowControl(generalWorkflow, resolveWorkflowAgents(generalWorkflow), { skills: reviewSkills, personas })
+    expect(compiled.definitionIdentity.personas.map(({ personaName }) => personaName)).toContain("reviewer-code-quality")
+    const facts = pausedFacts(compiled, {
+      ...compiled.definitionIdentity,
+      personas: compiled.definitionIdentity.personas.filter(({ personaName }) => personaName !== "reviewer-code-quality"),
+      skills: compiled.definitionIdentity.skills.filter(({ skillId }) => skillId === "work"),
+    })
+
+    const appends: GuardedEventStoreAppend[] = []
+    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, reviewSkills, personas, generalWorkflow))
+    expect(appends).toHaveLength(1)
+    expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID } })
+    expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
+
+    const [adoption] = appends
+    if (!adoption) throw new Error("Expected the family grant adoption")
+    const { expectedSeq: _expectedSeq, ...persisted } = adoption
+    const adopted = [...facts, { ...persisted, id: "adoption", position: facts.length + 1, seq: facts.length }]
+    const resumedAgain: GuardedEventStoreAppend[] = []
+    await replayWorkflowFromFacts(adopted, { type: "RESUME", readers: {} }, deps(resumedAgain, reviewSkills, personas, generalWorkflow))
+    expect(resumedAgain).toEqual([])
+
+    const rejected: GuardedEventStoreAppend[] = []
+    const edited = new Map(personas).set("reviewer-code-quality", { ...reviewer, description: `${reviewer.description} Edited.` })
+    await expect(replayWorkflowFromFacts(adopted, { type: "RESUME", readers: {} }, deps(rejected, reviewSkills, edited, generalWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    expect(rejected[0]).toMatchObject({ payload: { changes: [{ component: "persona", personaName: "reviewer-code-quality" }] } })
+  })
+
+  it("reports a family reviewer added after a run that the current build paused as drift, and records no family adoption", async () => {
+    const { reviewer, personas, reviewSkills } = familyReview()
+    const compiled = compileWorkflowControl(generalWorkflow, resolveWorkflowAgents(generalWorkflow), { skills: reviewSkills, personas })
+    const facts = pausedFacts(compiled, compiled.definitionIdentity)
+    const added = new Map(personas).set("project-security", { ...reviewer, name: "project-security", role: "reviewer-security", requiredSkills: [] })
+
+    const rejected: GuardedEventStoreAppend[] = []
+    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, reviewSkills, added, generalWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
+    expect(rejected[0]).toMatchObject({ payload: { changes: [{ component: "persona", personaName: "project-security" }] } })
+  })
+
+  it("adopts the phase grammar for a step-grammar run whose general agent reaches a family reviewer", async () => {
+    const { general, personas, reviewSkills } = familyReview()
+    const view = Schema.decodeUnknownSync(StepGrammarWorkflowSchema)({
+      id: "workflow",
+      name: "Workflow",
+      steps: { work: { instructions: workPhase.brief, name: "Work", dependencies: ["work"], writes: [] } },
+      flow: [{ step: "work" }],
+    })
+    const stepWorkflow: WorkflowDefinition = { ...generalWorkflow, retiredStepGrammar: { workflow: view, stepIds: new Map(), briefIds: new Map() } }
+    const agents = resolveWorkflowAgents(stepWorkflow)
+    const compiled = compileWorkflowControl(stepWorkflow, agents, { skills: reviewSkills, personas })
+    // The step-grammar build recorded the identity of the view, whose grants reached no reviewer through its family.
+    const recorded = retiredStepIdentity(view, stepWorkflow, agents, { skills: reviewSkills, personas: new Map([["general", general]]) })
+    expect(recorded.personas.map(({ personaName }) => personaName)).toEqual(["general"])
+
+    const appends: GuardedEventStoreAppend[] = []
+    const result = await replayWorkflowFromFacts(pausedFacts(compiled, recorded), { type: "RESUME", readers: {} }, deps(appends, reviewSkills, personas, stepWorkflow))
+    expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID } }])
+    expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
+  })
+
   it("adopts the reviewer-uat hash recorded before its scratchpad rule, and keeps any other change as drift", async () => {
     const uat = repoDefinitions().captureRevision().personas.get("reviewer-uat")
     if (!uat) throw new Error("Expected the bundled reviewer-uat")
@@ -447,6 +515,30 @@ function pausedOverTurnCaps() {
   if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
   const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
   return { facts, personas, current }
+}
+
+/** The work phase, able to dispatch the general agent, whose `reviewer` grant covers the reviewer family. */
+const generalWorkflow: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["general"] }] }
+
+/** The general agent and one family reviewer: a project override of reviewer-code-quality that requires a skill, so
+ *  a run recorded before family roles pinned neither the reviewer nor its skill. */
+function familyReview() {
+  const repo = repoDefinitions().captureRevision().personas
+  const general = repo.get("general")
+  const bundled = repo.get("reviewer-code-quality")
+  if (!general || bundled?.kind !== "persona") throw new Error("Expected the bundled general agent and reviewer-code-quality")
+  const reviewer = { ...bundled, requiredSkills: ["implementation"] }
+  const personas = new Map<string, AgentDefinition>([["general", general], ["reviewer-code-quality", reviewer]])
+  const reviewSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("implementation")])
+  return { general, reviewer, personas, reviewSkills }
+}
+
+/** The facts of a session that `compiled` initialized with `definitionIdentity` recorded, then paused. */
+function pausedFacts(compiled: ReturnType<typeof compileWorkflowControl>, definitionIdentity: DefinitionIdentity): StoredFact[] {
+  const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity })
+  const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+  if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
+  return [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
 }
 
 /** A session initialized before skill identity, whose control the workspace
