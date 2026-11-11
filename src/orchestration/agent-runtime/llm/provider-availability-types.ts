@@ -2,6 +2,7 @@
  *  about the accounts it spends from, and the shapes those answers take. The
  *  semantics live with the implementation in `provider-availability.ts`. */
 
+import type { CapacityHold } from "../../../infra/llm/provider-error-copy.js";
 import type { AccessProviderCandidate, AccessProviderId, ProviderSettingValues } from "../../../infra/llm/access-provider.js";
 import type { AvailabilityAuthority } from "../../../infra/llm/availability-store.js";
 import type { SubscriptionUsageMetric } from "../../../infra/llm/subscription-usage.js";
@@ -20,10 +21,12 @@ export interface QuotaProbe {
 /** One provider's terminal quota observation, as this owner projects it. The
  *  reset is the provider-reported one, or the bounded safe recheck moment
  *  when the provider reported none: a suppression always states when it
- *  ends. */
+ *  ends. `hold` names which of these it is, and whether a provider-reported
+ *  reset ends a usage limit or a rate limit. */
 export interface QuotaExhaustion {
   readonly exhaustedAtMs: number;
   readonly resetsAtMs: number;
+  readonly hold: CapacityHold;
 }
 
 /** Result of a terminal quota observation. The durable transition itself is

@@ -25,6 +25,8 @@ import {
   DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
   DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID,
   DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
+  DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID,
+  DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID,
   DEFINITION_IDENTITY_RENAME_MIGRATION_ID,
   DEFINITION_IDENTITY_RENAME_MIGRATION_REASON,
   DEFINITION_IDENTITY_SKILL_NAMESPACE_RENAME_MIGRATION_ID,
@@ -391,7 +393,7 @@ describe("a persona identity that a build before the advisor default recorded", 
 })
 
 describe("a persona hash that a build before the workflow lexicon recorded", () => {
-  // The personas as they read before the capability-text edit, which no proof covers.
+  // The personas as they read before the capability-text edit, as the proofs of older persona edits read them.
   const bundled = personasAtCapabilityTextBase(repoDefinitions().captureRevision().personas)
   const named = (name: string): AgentDefinition => {
     const persona = bundled.get(name)
@@ -492,6 +494,8 @@ describe("workflow definition identity migration", () => {
       DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
       DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID,
       DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
+      DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID,
+      DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID,
     ])
     for (const { id, reason } of DEFINITION_IDENTITY_MIGRATIONS) {
       expect(definitionIdentityMigrationReason(id)).toBe(reason)
