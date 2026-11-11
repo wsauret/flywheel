@@ -34,7 +34,7 @@ Running flywheel with no arguments starts the interactive TUI. An explicit --pro
 | `--session <id>` | Attach an existing headless chat without automatic Resume. |
 | `--one-shot` | Return after durable handoff and owned work settle; plain parking is incomplete. |
 | `--acp` | Speak Agent Client Protocol version 1 on standard input and output instead of the JSONL channel. |
-| `--unattended` | With --acp, run one unattended prompt. Omit built-in chat review, publication, and communication guidance. Omit the skill tool, its catalog, and ask_user. |
+| `--unattended` | With --acp, run one unattended prompt. Omit built-in chat review, publication, and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit. |
 | `--auth-snapshot <path>` | Consume a matching one-use auth snapshot from a trusted source. |
 | `--jsonl` | Write versioned JSONL progress and terminal records. |
 | `--allow-persistent-processes` | Allow tools to start processes that survive this invocation. |

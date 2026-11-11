@@ -15,7 +15,7 @@ export const HEADLESS_USAGE =
   "  --session        Attach an existing chat without resuming its interrupted turn.\n" +
   "  --one-shot       Return after durable handoff and owned work settle; plain parking is incomplete.\n" +
   "  --acp            Speak Agent Client Protocol version 1 on stdin and stdout instead of the JSONL channel.\n" +
-  "  --unattended     With --acp, run one unattended prompt. Omit built-in chat review, publication, and communication guidance. Omit the skill tool, its catalog, and ask_user.\n" +
+  "  --unattended     With --acp, run one unattended prompt. Omit built-in chat review, publication, and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit.\n" +
   "  --task           Run one direct task through the shared production runner.\n" +
   "  --system-prompt  Replace the complete system prompt for a direct headless task; recorded in request-audit history, not secret input.\n" +
   "  --model          Use a model ID or an enabled-model tier (cheap, mid, powerful) instead of the configured chat role.\n" +

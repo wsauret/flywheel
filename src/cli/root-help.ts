@@ -53,7 +53,7 @@ const ROOT_OPTIONS: readonly RootOption[] = [
   { flags: "--session <id>", description: "Attach an existing headless chat without automatic Resume." },
   { flags: "--one-shot", description: "Return after durable handoff and owned work settle; plain parking is incomplete." },
   { flags: "--acp", description: "Speak Agent Client Protocol version 1 on standard input and output instead of the JSONL channel." },
-  { flags: "--unattended", description: "With --acp, run one unattended prompt. Omit built-in chat review, publication, and communication guidance. Omit the skill tool, its catalog, and ask_user." },
+  { flags: "--unattended", description: "With --acp, run one unattended prompt. Omit built-in chat review, publication, and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit." },
   { flags: "--auth-snapshot <path>", description: "Consume a matching one-use auth snapshot from a trusted source." },
   { flags: "--jsonl", description: "Write versioned JSONL progress and terminal records." },
   { flags: "--allow-persistent-processes", description: "Allow tools to start processes that survive this invocation." },
