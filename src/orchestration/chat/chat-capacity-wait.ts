@@ -6,12 +6,15 @@ import { capacityContinuations } from "../session/planned-session-continuation.j
 
 /** A chat's capacity wait (PI-MODEL-039): a turn whose every route is spent
  *  until a stated time waits for it and continues on its own, with its
- *  durable row armed in `eventStore`'s ledger. Every other failure stands,
- *  as it did: the person decides whether to send again. `resilience` is the
- *  pair of hooks the turn's runs take. */
+ *  durable row armed in `eventStore`'s ledger. The chat of an `unattended`
+ *  run lets a spent usage limit stand as its failure and waits only for a
+ *  rate limit or an outage recheck (PI-AGENT-128). Every other failure stands, as it did:
+ *  the person decides whether to send again. `resilience` is the pair of
+ *  hooks the turn's runs take. */
 export function createChatCapacityWait(input: {
   readonly sessionId: string
   readonly conversationId: string
+  readonly unattended: boolean
   readonly eventStore: AsyncEventStateReadSurface
   readonly onNotice: (operation: SessionNoticeOperation) => void
 }) {
@@ -19,6 +22,7 @@ export function createChatCapacityWait(input: {
     sessionId: input.sessionId,
     runId: input.conversationId,
     caller: "chat",
+    unattendedRun: input.unattended,
     agentName: "Chat",
     onNotice: input.onNotice,
     capacity: capacityWaitAuthority(input.eventStore, { target: { kind: "chat", sessionId: input.sessionId } }),

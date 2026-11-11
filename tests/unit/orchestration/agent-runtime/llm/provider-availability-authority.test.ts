@@ -134,7 +134,7 @@ describe("durable availability authority", () => {
     availability.refreshProjection();
 
     expect(availability.quotaExhaustion(OPENAI))
-      .toEqual({ exhaustedAtMs: 500_000, resetsAtMs: FUTURE_RESET_MS });
+      .toEqual({ exhaustedAtMs: 500_000, resetsAtMs: FUTURE_RESET_MS, hold: { kind: "usage_limit", stated: true } });
   });
 
   test("a stored live row leaves the provider available", () => {
@@ -386,7 +386,7 @@ describe("durable availability authority", () => {
     // The observation still stands here: this process does not retry a
     // provider it just watched run out.
     expect(availability.quotaExhaustion(OPENAI))
-      .toEqual({ exhaustedAtMs: NOW_MS, resetsAtMs: FUTURE_RESET_MS });
+      .toEqual({ exhaustedAtMs: NOW_MS, resetsAtMs: FUTURE_RESET_MS, hold: { kind: "usage_limit", stated: true } });
   });
 
   test("a suppression the account rejected to a newer live row lands on the re-offer", () => {
@@ -403,7 +403,7 @@ describe("durable availability authority", () => {
 
     availability.markQuotaExhausted(OPENAI, FUTURE_RESET_MS + 1_000);
     expect(availability.quotaExhaustion(OPENAI))
-      .toEqual({ exhaustedAtMs: NOW_MS, resetsAtMs: FUTURE_RESET_MS + 1_000 });
+      .toEqual({ exhaustedAtMs: NOW_MS, resetsAtMs: FUTURE_RESET_MS + 1_000, hold: { kind: "usage_limit", stated: true } });
     expect(rowsFor(other, SUBJECT)).toEqual([expect.objectContaining({
       provider: "openai_api",
       state: "exhausted",
@@ -525,7 +525,7 @@ describe("durable availability authority", () => {
     // An expired bound holds nobody back, so the repeat is news: it renews the
     // suppression rather than leave every process reading one that expired.
     expect(h.availability.quotaExhaustion(OPENAI))
-      .toEqual({ exhaustedAtMs: NOW_MS + SAFE_RECHECK_MS, resetsAtMs: NOW_MS + 2 * SAFE_RECHECK_MS });
+      .toEqual({ exhaustedAtMs: NOW_MS + SAFE_RECHECK_MS, resetsAtMs: NOW_MS + 2 * SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } });
     expect(rowsFor(other, SUBJECT)).toEqual([expect.objectContaining({
       state: "exhausted",
       generation: 2,
