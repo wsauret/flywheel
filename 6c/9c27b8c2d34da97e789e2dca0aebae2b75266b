@@ -1,0 +1,40 @@
+scripts/build-claude-plugin.ts
+  h_4b47e9e4a8b456 62-63
+scripts/claude-plugin-host.ts
+  h_4b47e9e4a8b456 9,87-89
+src/orchestration/agent-runtime/global-guidelines.ts
+  h_4b47e9e4a8b456 3,9,24
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 123-132,144-145,154-155,161-162,164
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 2,4-26,50-67,72-73,76-81,83,86-95,98-121,124-130,132-153,182,184,188,190-195,201-242,249,275,290-292,294,299,303-307
+src/orchestration/agent-runtime/model-interaction-profile.ts
+  h_4b47e9e4a8b456 3,13-16,19,21-31,34-37
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 91
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 23,77-78,80-82,277-281,347-348,353-355
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1233,1243
+tests/unit/orchestration/agent-runtime/llm/model-compat.test.ts
+  h_4b47e9e4a8b456 58,70,79-80
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 6,9,25-28,30-32,36,41-45,51-64,81-84,104,121,123-131,137-139,142-147,163-190
+tests/unit/orchestration/agent-runtime/model-interaction-profile.test.ts
+  h_4b47e9e4a8b456 6-13,28,31,35,41-42,44
+tests/unit/orchestration/agent-runtime/runner.test.ts
+  h_4b47e9e4a8b456 425-426
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 509-513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6c9c27b8c2d34da97e789e2dca0aebae2b75266b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
