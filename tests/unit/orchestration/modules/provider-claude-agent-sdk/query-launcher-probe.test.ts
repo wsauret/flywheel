@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import type { Options, SDKControlGetContextUsageResponse } from "@anthropic-ai/claude-agent-sdk";
+import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
 import { probeCliModel, type QueryFunction } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { forwardDiagnostics, records } from "./_bridge-harness.js";
@@ -63,15 +64,25 @@ describe("probing a model's access through the CLI", () => {
   });
 
   test("an abort before the count answers rejects with its reason and closes the engine without an interrupt, and a clean stop writes no record at the default level", async () => {
-    const engine = countingEngine([], undefined);
-    const controller = new AbortController();
-    const unfinished = probeCliModel(engine.config, "claude-fable-5-2", controller.signal, engine.sdkQuery, noLock);
-    const reason = new DOMException("The access probe timed out", "TimeoutError");
-    controller.abort(reason);
-    expect(await unfinished.then(() => undefined, (error: unknown) => error)).toBe(reason);
-    while (engine.events.length < 1) await Bun.sleep(1);
-    expect(engine.events).toEqual(["close"]);
-    await Bun.sleep(5);
-    expect(records.filter(({ type }) => type.startsWith("provider.claude_sdk."))).toEqual([]);
+    // The stop goes on after the abort answered, so the test waits for the stop record that the probe offers to the log.
+    const offered = Promise.withResolvers<void>();
+    const write = DebugLog.record;
+    const record = spyOn(DebugLog, "record").mockImplementation((input) => {
+      if (input.type === "provider.claude_sdk.access_probe.stopped") offered.resolve();
+      write(input);
+    });
+    try {
+      const engine = countingEngine([], undefined);
+      const controller = new AbortController();
+      const unfinished = probeCliModel(engine.config, "claude-fable-5-2", controller.signal, engine.sdkQuery, noLock);
+      const reason = new DOMException("The access probe timed out", "TimeoutError");
+      controller.abort(reason);
+      expect(await unfinished.then(() => undefined, (error: unknown) => error)).toBe(reason);
+      await offered.promise;
+      expect(engine.events).toEqual(["close"]);
+      expect(records.filter(({ type }) => type.startsWith("provider.claude_sdk."))).toEqual([]);
+    } finally {
+      record.mockRestore();
+    }
   });
 });
