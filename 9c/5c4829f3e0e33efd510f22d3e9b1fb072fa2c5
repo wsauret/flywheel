@@ -1,0 +1,16 @@
+bench/harbor/configs/dswe-haiku-high-review-b2.toml
+  h_4b47e9e4a8b456 1-79
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 227-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9c5c4829f3e0e33efd510f22d3e9b1fb072fa2c5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
