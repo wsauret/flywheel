@@ -1,0 +1,16 @@
+src/cli/event-search.ts
+  h_4b47e9e4a8b456 203-205,210-213
+tests/unit/cli/event-search-reconstruct.test.ts
+  h_4b47e9e4a8b456 27-33,41-44,57,117-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9d199a5f066c7f600638c6487e2a984f2df2fd17",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
