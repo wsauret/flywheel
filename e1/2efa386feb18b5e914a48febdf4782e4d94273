@@ -1,0 +1,52 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 392-404
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 213
+src/infra/llm/llm-helpers.ts
+  h_4b47e9e4a8b456 11-12,16,24,29-30
+src/infra/llm/usage-authority-migration.ts
+  h_4b47e9e4a8b456 16-18
+src/infra/llm/usage-entry.ts
+  h_4b47e9e4a8b456 28-30,35-38
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 280
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 446,496
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 560-563,571
+src/orchestration/agent-runtime/llm/provider-description.ts
+  h_4b47e9e4a8b456 15-16
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 34,655
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 45-71
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 202
+tests/unit/infra/llm/usage-pricing.test.ts
+  h_4b47e9e4a8b456 16-17,21,48-49,55-59
+tests/unit/orchestration/agent-runtime/attempt-settlement-regressions.test.ts
+  h_4b47e9e4a8b456 4-5,52-59,67,69,80-84,87-107,128,130
+tests/unit/orchestration/agent-runtime/default-cache-retention.test.ts
+  h_4b47e9e4a8b456 1-38
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 134,145,150
+tests/unit/orchestration/agent-runtime/runtime-assembly-tree-host.test.ts
+  h_4b47e9e4a8b456 62,87-94
+tests/unit/orchestration/modules/subagents/subagent-continuation.test.ts
+  h_4b47e9e4a8b456 290-292
+tests/unit/orchestration/session/_budget-store-fixtures.ts
+  h_4b47e9e4a8b456 111,124-127
+tests/unit/orchestration/session/budget-store-metrics.test.ts
+  h_4b47e9e4a8b456 80-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e12efa386feb18b5e914a48febdf4782e4d94273",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
