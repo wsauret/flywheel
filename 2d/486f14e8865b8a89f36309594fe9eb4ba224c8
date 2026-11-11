@@ -1,0 +1,22 @@
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 27-28,31,36-41,44
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 36
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 126,131,136,141,149,169
+tests/unit/orchestration/agent-runtime/core/execution-notes.test.ts
+  h_4b47e9e4a8b456 76,86
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 626-627,646,649
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2d486f14e8865b8a89f36309594fe9eb4ba224c8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
