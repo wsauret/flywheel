@@ -52,7 +52,7 @@ import { accessProviderAccountKey, accessProviderCandidateKey, candidateProvider
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
-import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type ProviderUnavailableCause } from "../../../infra/llm/provider-error-copy.js";
+import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type CapacityHold, type CapacityReset, type ProviderUnavailableCause } from "../../../infra/llm/provider-error-copy.js";
 import { summarizeProviderError } from "../../../infra/llm/provider-error-diagnostic.js";
 import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError, SUBSCRIPTION_PAID_REVIEW_DETAIL } from "./errors.js";
@@ -61,7 +61,7 @@ import { ThinkingStallError } from "./thinking-stall.js";
 import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
 import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure } from "./provider-failure.js";
 import { SAFE_RECHECK_MS } from "./provider-availability.js";
-import type { ProviderAvailability, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
+import type { ProviderAvailability, QuotaExhaustion, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
 import type {
   LLMClient,
   ModelClient,
@@ -148,9 +148,9 @@ function retryDelayMs(retry: number, failure: FailoverFailure): number {
 
 /** What the availability owner states about one provider's ability to pay for
  *  the next request. `detail` states the cap or reset in user-facing words
- *  and never carries a credential; `resetsAtMs` is the machine-readable
- *  moment the quota returns, when the provider reported one, so the terminal
- *  error can name the earliest recovery across the whole chain. `probe`
+ *  and never carries a credential; `reset` is the machine-readable moment the
+ *  candidate can serve again and what held it when the walk passed it, so the
+ *  terminal error can name the earliest recovery across the whole chain. `probe`
  *  marks the request as the fleet's one recheck of a provider whose
  *  suppression bound passed: the request must conclude it. */
 type QuotaState =
@@ -165,8 +165,13 @@ type UnavailableState = {
   readonly kind: "terminal";
   readonly reason: "quota" | "unavailable" | "ineligible" | FailoverFailure;
   readonly detail: string;
-  readonly resetsAtMs: number | undefined;
+  readonly reset: CapacityReset | undefined;
 };
+
+/** The reset of an exhaustion that a shared gate holds. */
+function resetOf(exhaustion: QuotaExhaustion): CapacityReset {
+  return { atMs: exhaustion.resetsAtMs, hold: exhaustion.hold };
+}
 
 const log = Log.create({ service: "provider-failover" });
 
@@ -279,8 +284,8 @@ export interface CandidateReadinessInputs {
  *  `availability` first. */
 export function candidateReadiness(candidate: AccessProviderCandidate, inputs: CandidateReadinessInputs): CandidateReadiness {
   const provider = candidateProviderId(candidate);
-  const refused = (reason: UnavailableState["reason"], detail: string, resetsAtMs?: number): CandidateReadiness =>
-    ({ kind: "refused", state: { available: false, kind: "terminal", reason, detail, resetsAtMs } });
+  const refused = (reason: UnavailableState["reason"], detail: string, reset?: CapacityReset): CandidateReadiness =>
+    ({ kind: "refused", state: { available: false, kind: "terminal", reason, detail, reset } });
   const conditioned = inputs.conditions.some((condition) =>
     condition.scope === "provider"
       ? condition.providerId === provider
@@ -290,7 +295,7 @@ export function candidateReadiness(candidate: AccessProviderCandidate, inputs: C
   if (unservable !== undefined) return refused("ineligible", unservable);
   const service = inputs.availability.serviceStanding(provider);
   if (service.kind === "suppressed") {
-    return refused("unavailable", `unreachable; one request will recheck it at ${new Date(service.exhaustion.resetsAtMs).toISOString()}.`, service.exhaustion.resetsAtMs);
+    return refused("unavailable", `unreachable; one request will recheck it at ${new Date(service.exhaustion.resetsAtMs).toISOString()}.`, resetOf(service.exhaustion));
   }
   const admission = spendModeState(candidate, inputs.subscriptionSpendAuthorizationFor, inputs.subscriptionAllowanceFor);
   const quota = admission.available ? standingQuotaState(candidate, inputs.availability, "plans") : admission;
@@ -381,7 +386,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
         ...(signal === undefined ? {} : { signal }),
       });
       if (decision.kind === "eligible") return true;
-      recordSpent({ candidate: attribution.candidate, state: { available: false, kind: "terminal", reason: "ineligible", detail: decision.detail, resetsAtMs: undefined } });
+      recordSpent({ candidate: attribution.candidate, state: { available: false, kind: "terminal", reason: "ineligible", detail: decision.detail, reset: undefined } });
       return false;
     }
 
@@ -463,7 +468,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
               if (probe === undefined) {
                 const current = availability.serviceStanding(provider);
                 if (current.kind === "recheck_pending") pending.push(current);
-                else recordSpent({ candidate, state: { available: false, kind: "terminal", reason: "unavailable", detail: "the outage recheck could not be coordinated.", resetsAtMs: undefined } });
+                else recordSpent({ candidate, state: { available: false, kind: "terminal", reason: "unavailable", detail: "the outage recheck could not be coordinated.", reset: undefined } });
                 continue;
               }
               probes.push(probe);
@@ -493,7 +498,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
               recordSpent({
                 candidate,
                 ...(attribution.routeKind === "free" ? { wireModelId: attribution.wireModelId } : {}),
-                state: { available: false, kind: "terminal", reason: error.failure, detail: errorMessage(error), resetsAtMs: undefined },
+                state: { available: false, kind: "terminal", reason: error.failure, detail: errorMessage(error), reset: undefined },
               });
             }
           } finally {
@@ -533,7 +538,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
             kind: "terminal",
             reason: failure,
             detail: `unreachable after ${attempts} attempts (${extractProviderErrorDetail(errorMessage(failure.cause)).replace(/\.\s*$/, "")}).`,
-            resetsAtMs: standing.kind === "suppressed" ? standing.exhaustion.resetsAtMs : undefined,
+            reset: standing.kind === "suppressed" ? resetOf(standing.exhaustion) : undefined,
           },
         });
       },
@@ -554,7 +559,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
             kind: "terminal",
             reason: failure,
             detail: extractProviderErrorDetail(errorMessage(failure.cause)).replace(/\.\s*$/, ""),
-            resetsAtMs: standing?.kind === "suppressed" ? standing.exhaustion.resetsAtMs : undefined,
+            reset: standing?.kind === "suppressed" ? resetOf(standing.exhaustion) : undefined,
           },
         });
       },
@@ -696,7 +701,7 @@ function standingQuotaState(candidate: AccessProviderCandidate, availability: Pr
   const standing = candidateProviderId(candidate) === "chatgpt" ? availability.chatGptStanding(candidate) : availability.genericQuotaStanding(candidate);
   if (standing.kind === "live") return UNMETERED;
   if (standing.kind === "suppressed") {
-    return { available: false, kind: "terminal", reason: "quota", detail: `out of quota until ${new Date(standing.exhaustion.resetsAtMs).toISOString()}.`, resetsAtMs: standing.exhaustion.resetsAtMs };
+    return { available: false, kind: "terminal", reason: "quota", detail: `out of quota until ${new Date(standing.exhaustion.resetsAtMs).toISOString()}.`, reset: resetOf(standing.exhaustion) };
   }
   if (standing.kind === "recheck_pending") return { available: false, kind: "pending", pending: standing };
   if (mode !== "serves") return { available: true, probeDue: true };
@@ -704,7 +709,7 @@ function standingQuotaState(candidate: AccessProviderCandidate, availability: Pr
   if (probe !== undefined) return { available: true, probe };
   const afterClaim = candidateProviderId(candidate) === "chatgpt" ? availability.chatGptStanding(candidate) : availability.genericQuotaStanding(candidate);
   if (afterClaim.kind === "recheck_pending") return { available: false, kind: "pending", pending: afterClaim };
-  return { available: false, kind: "terminal", reason: "unavailable", detail: "the quota recheck could not be coordinated.", resetsAtMs: undefined };
+  return { available: false, kind: "terminal", reason: "unavailable", detail: "the quota recheck could not be coordinated.", reset: undefined };
 }
 
 function spendModeState(
@@ -715,7 +720,7 @@ function spendModeState(
   if (candidate.spendMode === "included") {
     const allowance = subscriptionAllowanceFor?.(candidate);
     return allowance?.allowance === "refused"
-      ? { available: false, kind: "terminal", reason: "ineligible", detail: allowance.detail, resetsAtMs: undefined }
+      ? { available: false, kind: "terminal", reason: "ineligible", detail: allowance.detail, reset: undefined }
       : UNMETERED;
   }
   if (candidate.kind === "singleton" || candidate.spendMode === "direct_api") return UNMETERED;
@@ -726,7 +731,7 @@ function spendModeState(
       && authorization.envelope.instanceId === candidate.instanceId
       && authorization.envelope.mode === candidate.spendMode;
   })();
-  if (!authorized) return { available: false, kind: "terminal", reason: "ineligible", detail: SUBSCRIPTION_PAID_REVIEW_DETAIL, resetsAtMs: undefined };
+  if (!authorized) return { available: false, kind: "terminal", reason: "ineligible", detail: SUBSCRIPTION_PAID_REVIEW_DETAIL, reset: undefined };
   return UNMETERED;
 }
 
@@ -757,8 +762,7 @@ function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[]
     .map((entry) => `${shortName(candidateProviderId(entry.candidate))}: ${entry.state.detail}`))]
     .join(" ");
   const resets = legacy
-    .map((candidate) => candidate.state.resetsAtMs)
-    .filter((resetsAtMs): resetsAtMs is number => resetsAtMs !== undefined);
+    .flatMap((candidate) => candidate.state.reset === undefined ? [] : [candidate.state.reset.atMs]);
   const earliestResetsAtMs = resets.length === 0 ? undefined : Math.min(...resets);
   // String-only consumers retain the legacy reset channel. Current terminal
   // presentation uses the typed copy and never classifies this wrapper.
@@ -773,22 +777,29 @@ function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[]
   // states when to try again (PI-MODEL-039). The bound lives on this
   // request's recovery alone: it marks nothing that other sessions read.
   const recheckAtMs = Date.now() + SAFE_RECHECK_MS;
+  // Both shared gates must reopen, including for an earlier free route. When no gate holds the candidate now, such as
+  // when its bound passed during the walk, what held it when the walk passed it still names its hold: a spent limit is
+  // still a spent limit and a rate limit still a rate limit, and a recheck must not stand in for either.
+  const sharedGateReset = (provider: AccessProviderId, entry: SkippedCandidate, cause: ProviderUnavailableCause): CapacityReset => {
+    const service = availability.serviceStanding(provider);
+    const quota = provider === "chatgpt" ? availability.chatGptStanding(entry.candidate) : availability.genericQuotaStanding(entry.candidate);
+    const holds = [service, quota].flatMap((standing) => standing.kind === "suppressed" ? [standing.exhaustion] : []);
+    if (holds.length === 0) {
+      const observed: CapacityHold = entry.state.reset?.hold ?? (cause === "quota" ? { kind: "usage_limit", stated: false } : { kind: "recheck" });
+      // The recheck moment is no reset that the provider stated.
+      return { atMs: recheckAtMs, hold: observed.kind === "usage_limit" ? { kind: "usage_limit", stated: false } : observed };
+    }
+    return resetOf(holds.reduce((held, exhaustion) => exhaustion.resetsAtMs > held.resetsAtMs ? exhaustion : held));
+  };
   const candidates = skipped.map((entry) => {
     const provider = candidateProviderId(entry.candidate);
     const cause = typeof entry.state.reason === "string" ? entry.state.reason : failureCopyCause(entry.state.reason);
-    let resetsAtMs = entry.state.resetsAtMs;
-    if (waitingClears(cause)) {
-      const service = availability.serviceStanding(provider);
-      const quota = provider === "chatgpt" ? availability.chatGptStanding(entry.candidate) : availability.genericQuotaStanding(entry.candidate);
-      const bounds = [service, quota].flatMap((standing) => standing.kind === "suppressed" ? [standing.exhaustion.resetsAtMs] : []);
-      // Both shared gates must reopen, including for an earlier free route.
-      resetsAtMs = bounds.length === 0 ? recheckAtMs : Math.max(...bounds);
-    }
     return {
       provider: `${shortName(provider)}${entry.wireModelId === undefined ? "" : ` (free route ${entry.wireModelId})`}`,
       cause,
       detail: typeof entry.state.reason === "string" ? entry.state.detail : errorMessage(entry.state.reason.cause),
-      resetsAtMs,
+      // A cause that only a person clears states no reset.
+      reset: waitingClears(cause) ? sharedGateReset(provider, entry, cause) : undefined,
       bankedReset: bankedResetFor?.(entry.candidate) === true,
     };
   });

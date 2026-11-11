@@ -238,7 +238,7 @@ describe("runHeadlessTask ownership", () => {
     let runs = 0
     const createAgent: AgentFactory = () => {
       runs += 1
-      const terminal = { kind: "api_error" as const, message: "no capacity", recovery: { kind: "at" as const, atMs: Date.now() + 3_600_000 } }
+      const terminal = { kind: "api_error" as const, message: "no capacity", recovery: { kind: "at" as const, atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } as const } }
       return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }) }
     }
     const write = spyOn(process.stderr, "write").mockImplementation(() => true)
@@ -288,15 +288,21 @@ describe("runHeadlessTask ownership", () => {
       runs += 1
       return completedAgent(options)
     }
-    // The real deadline fires at once, and setup passes every raced step, so
-    // the deadline is already expired when the turn asks for its context.
+    // The real deadline fires on its timer, and setup passes every raced step
+    // once it fired, so the deadline is already expired when the turn asks for
+    // its context. Its timer can fire after setup ends, so setup waits for it.
     const create = headlessDeadline.createHeadlessDeadline
     const deadline = spyOn(headlessDeadline, "createHeadlessDeadline").mockImplementation(() => {
       const real = create(0)
+      const fired = Promise.withResolvers<void>()
+      void real.awaitActive(fired.promise, () => { fired.resolve() })
       return {
         get expired() { return real.expired },
         get expiry() { return real.expiry },
-        awaitSetup: (operation) => operation,
+        awaitSetup: async (operation) => {
+          await fired.promise
+          return await operation
+        },
         awaitActive: real.awaitActive,
         dispose: real.dispose,
       }

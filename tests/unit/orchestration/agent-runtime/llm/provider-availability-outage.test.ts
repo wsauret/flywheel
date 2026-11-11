@@ -28,7 +28,7 @@ describe("provider outage coordination on the service row", () => {
 
     expect(second.availability.serviceStanding("openai_api")).toEqual({
       kind: "suppressed",
-      exhaustion: { exhaustedAtMs: NOW_MS, resetsAtMs: NOW_MS + OUTAGE_HOLD_MS },
+      exhaustion: { exhaustedAtMs: NOW_MS, resetsAtMs: NOW_MS + OUTAGE_HOLD_MS, hold: { kind: "recheck" } },
     });
     // The outage is the service's fact alone: the account's quota rows state
     // nothing, so the moment the provider answers again nothing holds it.

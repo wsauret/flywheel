@@ -72,16 +72,19 @@ export function fakeAvailability(script: AvailabilityScript, nowMs = Date.now())
     },
     observeChatGptRateHeaders: () => {},
     observeChatGptUsage: () => {},
-    observeAnthropicRateLimit: () => {},
+    // Mirrors the owner: the latest future reset that the rate-limit headers state holds the account as a rate limit.
+    observeAnthropicRateLimit: (candidate, headers) => {
+      const resets = [...headers.entries()].flatMap(([name, value]) => /^anthropic-ratelimit-.+-reset$/.test(name) ? [Date.parse(value)] : []).filter((ms) => ms > state.nowMs);
+      if (resets.length > 0) entries.set(providerId(candidate), { exhaustedAtMs: state.nowMs, resetsAtMs: Math.max(...resets), hold: { kind: "rate_limit" } });
+    },
     // Mirrors the real funnel closely enough for the single-write-path tests:
     // a terminal ChatGPT frame lands as the account's suppression directly,
     // never through the chain's markQuotaExhausted.
     observeChatGptQuotaExhausted: (_candidate, resetsAtSeconds) => {
       const prior = script.chatGpt;
-      const exhaustion = {
-        exhaustedAtMs: state.nowMs,
-        resetsAtMs: resetsAtSeconds === undefined ? state.nowMs + SAFE_RECHECK_MS : resetsAtSeconds * 1000,
-      };
+      const exhaustion: QuotaExhaustion = resetsAtSeconds === undefined
+        ? { exhaustedAtMs: state.nowMs, resetsAtMs: state.nowMs + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } }
+        : { exhaustedAtMs: state.nowMs, resetsAtMs: resetsAtSeconds * 1000, hold: { kind: "usage_limit", stated: true } };
       script.chatGpt = exhaustion;
       leases.delete("chatgpt");
       return { exhaustion, newlyExhausted: prior === undefined, reportedResetAtMs: resetsAtSeconds === undefined ? undefined : resetsAtSeconds * 1000 };
@@ -90,7 +93,9 @@ export function fakeAvailability(script: AvailabilityScript, nowMs = Date.now())
     markQuotaExhausted: (candidate, resetsAtMs) => {
       const provider = providerId(candidate);
       const prior = entries.get(provider);
-      const exhaustion = { exhaustedAtMs: state.nowMs, resetsAtMs: resetsAtMs ?? state.nowMs + SAFE_RECHECK_MS };
+      const exhaustion: QuotaExhaustion = resetsAtMs === undefined
+        ? { exhaustedAtMs: state.nowMs, resetsAtMs: state.nowMs + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } }
+        : { exhaustedAtMs: state.nowMs, resetsAtMs, hold: { kind: "usage_limit", stated: true } };
       entries.set(provider, exhaustion);
       leases.delete(provider);
       return { exhaustion, newlyExhausted: prior === undefined, reportedResetAtMs: resetsAtMs };
@@ -104,7 +109,7 @@ export function fakeAvailability(script: AvailabilityScript, nowMs = Date.now())
     genericQuotaStanding: (candidate) => standingFor(providerId(candidate)),
     serviceStanding: (provider) => standingOver(serviceEntries.get(provider), serviceLeases.get(provider)),
     markUnreachable: (provider) => {
-      serviceEntries.set(provider, { exhaustedAtMs: state.nowMs, resetsAtMs: state.nowMs + SAFE_RECHECK_MS });
+      serviceEntries.set(provider, { exhaustedAtMs: state.nowMs, resetsAtMs: state.nowMs + SAFE_RECHECK_MS, hold: { kind: "recheck" } });
       serviceLeases.delete(provider);
     },
     markReachable: (provider) => {

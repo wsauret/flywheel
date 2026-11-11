@@ -30,7 +30,7 @@ describe("usage availability fold", () => {
     ]))
     const capped = candidate("chatgpt", "capped"); const fresh = candidate("chatgpt", "fresh"); const unread = candidate("chatgpt", "unread"); const copilot = candidate("github_copilot", "copilot")
     const view = owner.forCandidates("Personal", [capped, fresh, unread, copilot])
-    expect(view.chatGptStanding(capped)).toEqual({ kind: "suppressed", exhaustion: { exhaustedAtMs: NOW_MS, resetsAtMs: RESET_MS } })
+    expect(view.chatGptStanding(capped)).toEqual({ kind: "suppressed", exhaustion: { exhaustedAtMs: NOW_MS, resetsAtMs: RESET_MS, hold: { kind: "usage_limit", stated: true } } })
     expect(view.chatGptStanding(fresh).kind).toBe("live")
     expect(view.chatGptStanding(unread).kind).toBe("live")
     expect(view.genericQuotaStanding(copilot).kind).toBe("live")

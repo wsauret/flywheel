@@ -328,6 +328,7 @@ export function createWorkerCallback(
       sessionId,
       runId: attempt.id,
       caller: "workflow-agent",
+      unattendedRun: opts.capabilityAccess?.unattended === true,
       agentName: attempt.name,
       onNotice: (operation) => { emitAgent("agent.notice.changed", { sessionId, data: { operation } }) },
       awaitAccessSettled: opts.awaitModelAccessSettled,
