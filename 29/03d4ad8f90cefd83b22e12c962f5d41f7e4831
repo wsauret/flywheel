@@ -1,0 +1,26 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 261-262
+bench/harbor/quota-preflight.ts
+  h_4b47e9e4a8b456 1-131
+bench/harbor/run-harbor.ts
+  h_4b47e9e4a8b456 11,32-33,219,226-228,238-242
+tests/integration/bench/harbor-runner.test.ts
+  h_4b47e9e4a8b456 33
+tests/unit/bench/harbor-flywheel-config-evidence.test.ts
+  h_4b47e9e4a8b456 28
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 8,42,140-154
+tests/unit/bench/harbor-quota-preflight.test.ts
+  h_4b47e9e4a8b456 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2903d4ad8f90cefd83b22e12c962f5d41f7e4831",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
