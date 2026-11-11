@@ -1,0 +1,38 @@
+src/infra/agent-definition.ts
+  h_4b47e9e4a8b456 9-10,43-60
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 15,39-43,45-48,55
+src/orchestration/config/roles.ts
+  h_4b47e9e4a8b456 1,64,66,73-80
+src/orchestration/modules/subagents/execution/prompts.ts
+  h_4b47e9e4a8b456 1,25,27,30,33
+src/workflows/agents/subagent-reachability.ts
+  h_4b47e9e4a8b456 1,5,22
+src/workflows/vm/definition-identity.ts
+  h_4b47e9e4a8b456 394-399,430,549-551,556,559,614,618-623
+src/workflows/vm/persona-identity-proofs.ts
+  h_4b47e9e4a8b456 234-283
+src/workflows/vm/replay.ts
+  h_4b47e9e4a8b456 11,21,34,180
+src/workflows/vm/retired-step-identity.ts
+  h_4b47e9e4a8b456 35,71-72,107
+tests/unit/orchestration/agent-runtime/persona-tool-grants.test.ts
+  h_4b47e9e4a8b456 19,100-110
+tests/unit/orchestration/agent-runtime/subagent/registry.test.ts
+  h_4b47e9e4a8b456 22-37
+tests/unit/workflows/vm/definition-identity.test.ts
+  h_4b47e9e4a8b456 27,494
+tests/unit/workflows/vm/replay.test.ts
+  h_4b47e9e4a8b456 2-4,14,18,389-451,520-543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2d57795c8fa9607cf977d8b662626df6dedca3d3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
