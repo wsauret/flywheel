@@ -23,7 +23,7 @@ import {
 } from "../../src/orchestration/modules/development/benchmark/comparison-v2-store.js";
 import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
 import { ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/role-model-defaults.js";
-import type { BenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/evidence.js";
+import { formatAccountingObservation } from "../../src/orchestration/modules/development/benchmark/report-accounting.js";
 
 const JUDGE_SYSTEM_PROMPT = "";
 const SCORING_VERSION = "cross-implement-v2";
@@ -248,13 +248,6 @@ function buildPairs(sources: readonly CandidateSource[]): PairCell[] {
   return pairs.sort((a, b) => pairKey(a.task, a.repeat, a.labelA, a.labelB).localeCompare(pairKey(b.task, b.repeat, b.labelA, b.labelB)));
 }
 
-function observationSum(accounting: readonly BenchmarkAccounting[], field: "estimatedUsd" | "billedUsd" | "tokens"): string {
-  const values = accounting.map((entry) => entry[field]);
-  if (!values.every((value) => value.kind === "observed")) return "unavailable";
-  const total = values.reduce((sum, value) => sum + (value.kind === "observed" ? value.value : 0), 0);
-  return field === "tokens" ? String(total) : `$${total.toFixed(4)}`;
-}
-
 function average(values: readonly number[]): string {
   return (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1);
 }
@@ -275,7 +268,7 @@ function report(sources: readonly CandidateSource[], verdicts: readonly JudgeVer
     const traps = ["self-corrected", "followed-blindly", "silently-lucky", "unclear"].map((outcome) =>
       source.trapScores.reduce((sum, score) => sum + score.traps.filter((trap) => trap.outcome === outcome).length, 0));
     const accounting = source.runs.map((run) => run.accounting);
-    return `| ${index + 1} | ${source.label.replaceAll("|", "\\|")} | ${source.variant.id.replaceAll("|", "\\|")} | ${acceptancePassed}/${acceptanceTotal} | ${traps.join(" | ")} | ${wins}-${losses}-${ties} | ${observationSum(accounting, "estimatedUsd")} | ${observationSum(accounting, "billedUsd")} | ${observationSum(accounting, "tokens")} | ${average(source.runs.map((run) => run.durationMs))} | ${average(source.runs.map((run) => run.linesAdded))} | ${average(source.runs.map((run) => run.linesRemoved))} | ${average(source.runs.map((run) => run.filesTouched))} |`;
+    return `| ${index + 1} | ${source.label.replaceAll("|", "\\|")} | ${source.variant.id.replaceAll("|", "\\|")} | ${acceptancePassed}/${acceptanceTotal} | ${traps.join(" | ")} | ${wins}-${losses}-${ties} | ${formatAccountingObservation(accounting, "estimatedUsd", "total")} | ${formatAccountingObservation(accounting, "billedUsd", "total")} | ${formatAccountingObservation(accounting, "tokens", "total")} | ${average(source.runs.map((run) => run.durationMs))} | ${average(source.runs.map((run) => run.linesAdded))} | ${average(source.runs.map((run) => run.linesRemoved))} | ${average(source.runs.map((run) => run.filesTouched))} |`;
   });
   const judgeAccounting = attempts.map((attempt) => attempt.accounting);
   const failed = attempts.length - verdicts.length;
@@ -286,7 +279,7 @@ function report(sources: readonly CandidateSource[], verdicts: readonly JudgeVer
     "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ...rows,
     "",
-    `Judge attempts: ${attempts.length}; failed: ${failed}; estimated equivalent: ${observationSum(judgeAccounting, "estimatedUsd")}; billed: ${observationSum(judgeAccounting, "billedUsd")}; tokens: ${observationSum(judgeAccounting, "tokens")}.`,
+    `Judge attempts: ${attempts.length}; failed: ${failed}; estimated equivalent: ${formatAccountingObservation(judgeAccounting, "estimatedUsd", "total")}; billed: ${formatAccountingObservation(judgeAccounting, "billedUsd", "total")}; tokens: ${formatAccountingObservation(judgeAccounting, "tokens", "total")}.`,
     "",
     "| Task | Repeat | Candidate A | Candidate B | Winner | Rationale |",
     "|---|---:|---|---|---|---|",

@@ -22,6 +22,10 @@ Not: A recovery policy that retries or fails over inside a request.
 
 Headless chat is a frontend over the production project runtime, not a second chat composition. Its commands reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf. Its framing is the versioned JSONL channel or Agent Client Protocol version 1, over one channel and one settlement rule.
 
+## ARCH-RUNTIME-080: Headless settlement waits for the turn's recorded usage
+
+The headless channel settles only when the root's work is no longer busy and the root's totals state every usage that the work recorded. A budget read after settlement therefore states the whole turn.
+
 ## ARCH-RUNTIME-005: One account service is the sole public serving placement
 
 One resident account service per account and lane is the sole public protocol and control placement, and each project has at most one open composition inside it, so every surface reaches the same live sessions. The account service renders nothing: the terminal, editor windows, browsers, and paired devices are all its clients. Each project composition keeps its own event store, projections, and writable fact lane, and account routing and process initiation never become project facts.
