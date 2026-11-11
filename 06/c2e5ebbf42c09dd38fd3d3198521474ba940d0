@@ -1,0 +1,20 @@
+bench/harbor/METHODOLOGY.md
+  h_4b47e9e4a8b456 229-239
+bench/harbor/README.md
+  h_4b47e9e4a8b456 20
+bench/harbor/benchmarks.ts
+  h_4b47e9e4a8b456 121-153
+bench/harbor/configs/haiku-high-agent-types.toml
+  h_4b47e9e4a8b456 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "06c2e5ebbf42c09dd38fd3d3198521474ba940d0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
