@@ -116,21 +116,25 @@ describe("native ripgrep", () => {
     // workers, not slow storage. A long search takes its worker only when its
     // supervisor thread runs, and on a loaded runner the waiting call's
     // supervisor can run first; a call that still finds a free worker shows
-    // that the pool is not full yet, so it is sent again. The waiting call's
-    // deadline leaves room for its supervisor thread to start: on a saturated
-    // 4-core Windows Server runner a new thread can first run more than 20 ms
-    // later, and a supervisor that starts past its deadline reports the wall
-    // limit instead.
+    // that the pool is not full yet, so it is sent again. A wall-limit stop
+    // comes from the same scheduling: on a saturated 4-core Windows Server
+    // runner the waiting call's supervisor can first run past its deadline,
+    // or it takes a free worker that the long searches starve. Neither shows
+    // a full pool, so that call is also sent again, at most a few times so
+    // that the test stays well inside its time budget.
     const saturating = new AbortController();
     const long = Array.from({ length: os.availableParallelism() + 4 }, () =>
       grep({ pattern: "(?=a)a+(?<!a)", engine: "pcre2", path: target, timeoutMs: 10_000, maxCount: 1 }, saturating.signal).catch((error: unknown) => error));
     try {
       let waited: number;
       let stopped: unknown;
+      let wallStops = 0;
+      const resend = (error: unknown) => error === undefined
+        || (error instanceof SearchStoppedError && error.stop === "wall-backstop" && ++wallStops < 5);
       do {
         waited = performance.now();
         stopped = await grep({ pattern: "needle", path: literal, timeoutMs: 200 }).then(() => undefined, (error: unknown) => error);
-      } while (stopped === undefined);
+      } while (resend(stopped));
       expect(stopped).toEqual(new SearchStoppedError("no-worker"));
       expect(performance.now() - waited).toBeLessThan(1_000);
     } finally {
