@@ -601,5 +601,25 @@ describe("strategy concurrency settlement", () => {
     expect(combined.accounting.accounting.estimatedUsd).toEqual({ kind: "observed", value: 0.03 });
     expect(combined.accounting.accounting.tokens).toEqual({ kind: "observed", value: 30 });
     expect(combined.accounting.accounting.pricedEntryCount).toBe(2);
+
+    // A lower-bound facet keeps every exact facet's amount in the bound.
+    const lowerBound = { ...observed(2), estimatedUsd: { kind: "unavailable" as const, reason: "attempt b reported no usage", atLeast: 2 }, tokens: { kind: "unavailable" as const, reason: "attempt b reported no usage", atLeast: 200 } };
+    const unknown = { ...observed(0), estimatedUsd: { kind: "unavailable" as const, reason: "no committed usage" }, tokens: { kind: "unavailable" as const, reason: "no committed usage" } };
+    const bounded = await settleConcurrent([
+      Promise.resolve({ accounting: { ...observed(1), tokens: { kind: "observed" as const, value: 100 } }, durationMs: 1, summary: "exact" }),
+      Promise.reject(new PersonaTaskFailure({ kind: "failed", message: "facet failed" }, { durationMs: 1, accounting: lowerBound }, "facet failed")),
+      Promise.reject(new PersonaTaskFailure({ kind: "failed", message: "facet failed" }, { durationMs: 1, accounting: unknown }, "facet failed")),
+    ]).then(() => undefined, (error) => error);
+    if (!(bounded instanceof PersonaTaskFailure)) throw new Error("Expected a PersonaTaskFailure");
+    expect(bounded.accounting.accounting.estimatedUsd).toEqual({ kind: "unavailable", reason: "attempt b reported no usage; no committed usage", atLeast: 3 });
+    expect(bounded.accounting.accounting.tokens).toEqual({ kind: "unavailable", reason: "attempt b reported no usage; no committed usage", atLeast: 300 });
+    expect(bounded.accounting.accounting.billedUsd).toEqual({ kind: "observed", value: 3 });
+
+    // With no facet stating an amount, the combined total has no lower bound.
+    const none = await settleConcurrent([
+      Promise.reject(new PersonaTaskFailure({ kind: "failed", message: "facet failed" }, { durationMs: 1, accounting: unknown }, "facet failed")),
+    ]).then(() => undefined, (error) => error);
+    if (!(none instanceof PersonaTaskFailure)) throw new Error("Expected a PersonaTaskFailure");
+    expect(none.accounting.accounting.estimatedUsd).toEqual({ kind: "unavailable", reason: "no committed usage" });
   });
 });

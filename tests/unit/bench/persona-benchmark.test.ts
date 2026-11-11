@@ -99,13 +99,9 @@ describe("persona benchmark service", () => {
     expect(outcome.counts).toEqual({
       failedJudgeCalls: 0,
       unsuccessfulAttempts: 0,
-      unsuccessfulEstimatedUsd: 0,
-      unsuccessfulBilledUsd: 0,
-      unsuccessfulTokens: 0,
+      unsuccessfulAccounting: { estimatedUsd: { kind: "observed", value: 0 }, billedUsd: { kind: "observed", value: 0 }, tokens: { kind: "observed", value: 0 }, providers: { kind: "observed", value: [] }, pricedEntryCount: 0, unpricedEntryCount: 0 },
       unsuccessfulAccountingUnavailable: 0,
-      judgeEstimatedUsd: 0.01 * plan.tasks.length,
-      judgeBilledUsd: 0.01 * plan.tasks.length,
-      judgeTokens: 500 * plan.tasks.length,
+      judgeAccounting: expect.objectContaining({ tokens: { kind: "observed", value: 500 * plan.tasks.length } }),
       judgeAccountingUnavailable: 0,
     });
     expect(outcome.report).toContain("Unsuccessful cell attempts: 0");
@@ -176,8 +172,10 @@ describe("persona benchmark service", () => {
     expect(judgeAttempts.every((attempt) => attempt.persona === "explorer" && attempt.mode === "research")).toBe(true);
     // Judge spend is benchmark overhead: it is reported, and it never joins the
     // candidate totals the report compares.
-    expect(outcome.counts.judgeEstimatedUsd).toBeCloseTo(0.01 * plan.tasks.length, 10);
-    expect(outcome.counts.judgeTokens).toBe(500 * plan.tasks.length);
+    const { estimatedUsd, billedUsd, tokens } = outcome.counts.judgeAccounting;
+    expect(estimatedUsd.kind === "observed" ? estimatedUsd.value : undefined).toBeCloseTo(0.01 * plan.tasks.length, 10);
+    expect(billedUsd.kind === "observed" ? billedUsd.value : undefined).toBeCloseTo(0.01 * plan.tasks.length, 10);
+    expect(tokens).toEqual({ kind: "observed", value: 500 * plan.tasks.length });
     expect(outcome.counts.judgeAccountingUnavailable).toBe(0);
     expect(outcome.report).toContain("Judge overhead");
   });

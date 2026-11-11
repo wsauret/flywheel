@@ -30,6 +30,7 @@ import {
   type BenchmarkOutcome,
   type BenchmarkPlan,
 } from "./benchmark/persona-benchmark.js";
+import { formatOverheadAccounting } from "./benchmark/report-accounting.js";
 import { variantSeat, type VariantSpec } from "./benchmark/variant.js";
 import type { BackgroundWorkResult } from "../../agent-runtime/background-work.js";
 import { toolCallIdentity, type RuntimeTool, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js";
@@ -260,7 +261,7 @@ function completionResult(outcome: BenchmarkOutcome, resultId: string): Backgrou
     content: [
       `Benchmark ${resultId} completed. Report: ${outcome.reportPath}.`,
       `Failed judge calls: ${outcome.counts.failedJudgeCalls}. Unsuccessful cell attempts: ${outcome.counts.unsuccessfulAttempts}.`,
-      `Judge overhead, separate from the candidate comparison: $${outcome.counts.judgeEstimatedUsd.toFixed(4)} estimated equivalent, $${outcome.counts.judgeBilledUsd.toFixed(4)} billed, and ${outcome.counts.judgeTokens} tokens, with ${outcome.counts.judgeAccountingUnavailable} judge call(s) whose accounting was unavailable.`,
+      `Judge overhead, separate from the candidate comparison: ${formatOverheadAccounting(outcome.counts.judgeAccounting)}, with ${outcome.counts.judgeAccountingUnavailable} judge call(s) whose accounting was unavailable.`,
     ].join(" "),
   };
 }

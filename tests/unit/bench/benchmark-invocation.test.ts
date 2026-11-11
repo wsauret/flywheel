@@ -77,6 +77,30 @@ describe("benchmark usage accounting", () => {
     expect(accounting.observe().estimatedUsd.kind).toBe("unavailable");
     expect(accounting.observe().billedUsd).toEqual({ kind: "observed", value: 0 });
   });
+
+  it("reports a lower bound and names the attempt when a served attempt reported no usage", () => {
+    const accounting = createBenchmarkAccounting();
+    const { tokens: _tokens, price: _price, currency: _currency, ...attempt } = BASE_USAGE;
+    const unmeasured = "00000000-0000-4000-8000-000000000004";
+    accounting.commit({ ...attempt, attemptId: unmeasured, coverage: "unmeasured" });
+    accounting.commit(BASE_USAGE);
+
+    const observed = accounting.observe();
+    expect(observed.estimatedUsd).toEqual({ kind: "unavailable", reason: expect.stringContaining(unmeasured), atLeast: 0.25 });
+    expect(observed.tokens).toEqual({ kind: "unavailable", reason: expect.stringContaining(unmeasured), atLeast: 21 });
+    expect(observed.billedUsd).toEqual({ kind: "observed", value: 0 });
+    expect([observed.pricedEntryCount, observed.unpricedEntryCount]).toEqual([1, 1]);
+  });
+
+  it("marks the totals of a report that ended early as lower bounds", () => {
+    const accounting = createBenchmarkAccounting();
+    accounting.commit({ ...BASE_USAGE, coverage: "partial", classification: "real_spend", spendMode: "direct_api" });
+
+    const observed = accounting.observe();
+    expect(observed.estimatedUsd).toMatchObject({ kind: "unavailable", atLeast: 0.25 });
+    expect(observed.billedUsd).toMatchObject({ kind: "unavailable", atLeast: 0.25 });
+    expect(observed.tokens).toMatchObject({ kind: "unavailable", atLeast: 21 });
+  });
 });
 
 describe("benchmark Agent invocation", () => {

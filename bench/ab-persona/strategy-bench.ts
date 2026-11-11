@@ -22,6 +22,7 @@ import { sameVariants } from "../../src/orchestration/modules/development/benchm
 import { createBenchmarkRuntime, type OwnedBenchmarkRuntime } from "../shared/runtime.js";
 import { judgePairs, type JudgeCandidate } from "../../src/orchestration/modules/development/benchmark/judge.js";
 import { judgeOverhead, renderReport, unsuccessfulOverhead } from "../../src/orchestration/modules/development/benchmark/reports.js";
+import { combineBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/report-accounting.js";
 import { asPersonaTaskFailure, PersonaTaskFailure, renderPersonaTaskGuidance, runPersonaTask, type BenchmarkRuntime, type PersonaDefinition, type PersonaTaskRequest } from "../../src/orchestration/modules/development/benchmark/persona-run.js";
 import { requireCampaignSource, runningSourceIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/snapshot-workspace.js";
@@ -246,25 +247,6 @@ interface CellOutcome {
   summary: string;
 }
 
-function combineAccounting(values: readonly BenchmarkAccounting[]): BenchmarkAccounting {
-  const combineNumber = (field: "estimatedUsd" | "billedUsd" | "tokens") => {
-    const unavailable = values.find((value) => value[field].kind === "unavailable")?.[field];
-    if (unavailable?.kind === "unavailable") return unavailable;
-    return { kind: "observed", value: values.reduce((total, value) => total + (value[field].kind === "observed" ? value[field].value : 0), 0) } as const;
-  };
-  const unavailableProviders = values.find((value) => value.providers.kind === "unavailable")?.providers;
-  return {
-    estimatedUsd: combineNumber("estimatedUsd"),
-    billedUsd: combineNumber("billedUsd"),
-    tokens: combineNumber("tokens"),
-    providers: unavailableProviders?.kind === "unavailable"
-      ? unavailableProviders
-      : { kind: "observed", value: [...new Set(values.flatMap((value) => value.providers.kind === "observed" ? value.providers.value : []))].sort() },
-    pricedEntryCount: values.reduce((total, value) => total + value.pricedEntryCount, 0),
-    unpricedEntryCount: values.reduce((total, value) => total + value.unpricedEntryCount, 0),
-  };
-}
-
 interface CellContext {
   deps: BenchmarkRuntime;
   seat: PersonaSeat;
@@ -300,7 +282,7 @@ export async function settleConcurrent(promises: readonly Promise<CellOutcome>[]
   if (!first) return fulfilled;
   throw new PersonaTaskFailure(first.terminal, {
     durationMs: fulfilled.reduce((total, value) => total + value.durationMs, 0) + failures.reduce((total, failure) => total + failure.accounting.durationMs, 0),
-    accounting: combineAccounting([
+    accounting: combineBenchmarkAccounting([
       ...fulfilled.map((value) => value.accounting),
       ...failures.map((failure) => failure.accounting.accounting),
     ]),
@@ -318,7 +300,7 @@ async function runCell(ctx: CellContext, task: PlanTask, strategyId: string, lab
     return { ...outcome, summary: `## Facet: ${facet.id}\n\n${outcome.summary}` };
   }));
   return {
-    accounting: combineAccounting(facetOutcomes.map((outcome) => outcome.accounting)),
+    accounting: combineBenchmarkAccounting(facetOutcomes.map((outcome) => outcome.accounting)),
     durationMs: Math.round(performance.now() - startedAt),
     summary: facetOutcomes.map((outcome) => outcome.summary).join("\n\n"),
   };

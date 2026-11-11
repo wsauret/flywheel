@@ -3,7 +3,7 @@ import type { JudgeVerdict } from "./judge.js";
 import type { ReviewScore } from "./scoring.js";
 import type { AttemptRecord, JudgeAttemptRecord } from "./run-store.js";
 import type { BenchmarkAccounting } from "./evidence.js";
-import { formatAccountingObservation } from "./report-accounting.js";
+import { combineBenchmarkAccounting, formatAccountingObservation, formatOverheadAccounting } from "./report-accounting.js";
 
 interface ReportVariant {
   id: string;
@@ -25,15 +25,11 @@ export interface ReportArgs {
 export interface ReportCounts {
   failedJudgeCalls: number;
   unsuccessfulAttempts: number;
-  unsuccessfulEstimatedUsd: number;
-  unsuccessfulBilledUsd: number;
-  unsuccessfulTokens: number;
+  unsuccessfulAccounting: BenchmarkAccounting;
+  /** Unsuccessful attempts with at least one unavailable cost or token total. */
   unsuccessfulAccountingUnavailable: number;
-  judgeEstimatedUsd: number;
-  judgeBilledUsd: number;
-  judgeTokens: number;
-  /** Judge calls whose cost or tokens could not be observed, so the reported
-   *  overhead is a floor rather than a total. */
+  judgeAccounting: BenchmarkAccounting;
+  /** Judge calls with at least one unavailable cost or token total. */
   judgeAccountingUnavailable: number;
 }
 
@@ -100,55 +96,38 @@ function overallVerdict(args: ReportArgs, verdicts: readonly JudgeVerdict[]): st
 }
 
 function attemptNote(counts: ReportCounts): string {
-  const accounting = counts.unsuccessfulAccountingUnavailable === 0
-    ? `$${counts.unsuccessfulEstimatedUsd.toFixed(4)} estimated equivalent, $${counts.unsuccessfulBilledUsd.toFixed(4)} billed, and ${counts.unsuccessfulTokens} tokens`
-    : "unavailable because at least one attempt lacks complete accounting";
-  return `- Unsuccessful cell attempts: ${counts.unsuccessfulAttempts}. Their separate cumulative accounting is ${accounting}. Accounting was unavailable for ${counts.unsuccessfulAccountingUnavailable} attempt(s). Every attempt is recorded in the campaign ledger and retried by --resume.`;
+  return `- Unsuccessful cell attempts: ${counts.unsuccessfulAttempts}. Their separate cumulative accounting is ${formatOverheadAccounting(counts.unsuccessfulAccounting)}. Accounting was unavailable for ${counts.unsuccessfulAccountingUnavailable} attempt(s). Every attempt is recorded in the campaign ledger and retried by --resume.`;
 }
 
-export function unsuccessfulOverhead(attempts: readonly AttemptRecord[]): Pick<ReportCounts, "unsuccessfulEstimatedUsd" | "unsuccessfulBilledUsd" | "unsuccessfulTokens" | "unsuccessfulAccountingUnavailable"> {
-  let unsuccessfulEstimatedUsd = 0;
-  let unsuccessfulBilledUsd = 0;
-  let unsuccessfulTokens = 0;
-  let unsuccessfulAccountingUnavailable = 0;
-  for (const attempt of attempts) {
-    if (attempt.accounting.estimatedUsd.kind === "observed") unsuccessfulEstimatedUsd += attempt.accounting.estimatedUsd.value;
-    if (attempt.accounting.billedUsd.kind === "observed") unsuccessfulBilledUsd += attempt.accounting.billedUsd.value;
-    if (attempt.accounting.tokens.kind === "observed") unsuccessfulTokens += attempt.accounting.tokens.value;
-    if (
-      attempt.accounting.estimatedUsd.kind === "unavailable"
-      || attempt.accounting.billedUsd.kind === "unavailable"
-      || attempt.accounting.tokens.kind === "unavailable"
-    ) unsuccessfulAccountingUnavailable++;
-  }
-  return { unsuccessfulEstimatedUsd, unsuccessfulBilledUsd, unsuccessfulTokens, unsuccessfulAccountingUnavailable };
+function hasUnavailableTotal(accounting: BenchmarkAccounting): boolean {
+  return accounting.estimatedUsd.kind === "unavailable" || accounting.billedUsd.kind === "unavailable" || accounting.tokens.kind === "unavailable";
+}
+
+/** What the unsuccessful cell attempts spent. An attempt with no complete
+ *  accounting makes the total a lower bound, never a silent zero. */
+export function unsuccessfulOverhead(attempts: readonly Pick<AttemptRecord, "accounting">[]): Pick<ReportCounts, "unsuccessfulAccounting" | "unsuccessfulAccountingUnavailable"> {
+  return {
+    unsuccessfulAccounting: combineBenchmarkAccounting(attempts.map((attempt) => attempt.accounting)),
+    unsuccessfulAccountingUnavailable: attempts.filter((attempt) => hasUnavailableTotal(attempt.accounting)).length,
+  };
 }
 
 /** What benchmark judging itself spent, from the ledger of every judge call.
- *  A call that could not be measured raises the unavailable count instead of
- *  contributing a zero, so the reported spend is never overstated. */
-export function judgeOverhead(attempts: readonly JudgeAttemptRecord[]): Pick<ReportCounts, "judgeEstimatedUsd" | "judgeBilledUsd" | "judgeTokens" | "judgeAccountingUnavailable"> {
-  let judgeEstimatedUsd = 0;
-  let judgeBilledUsd = 0;
-  let judgeTokens = 0;
-  let judgeAccountingUnavailable = 0;
-  for (const attempt of attempts) {
-    if (attempt.accounting.estimatedUsd.kind === "observed") judgeEstimatedUsd += attempt.accounting.estimatedUsd.value;
-    if (attempt.accounting.billedUsd.kind === "observed") judgeBilledUsd += attempt.accounting.billedUsd.value;
-    if (attempt.accounting.tokens.kind === "observed") judgeTokens += attempt.accounting.tokens.value;
-    if (attempt.accounting.estimatedUsd.kind === "unavailable" || attempt.accounting.billedUsd.kind === "unavailable" || attempt.accounting.tokens.kind === "unavailable") judgeAccountingUnavailable++;
-  }
-  return { judgeEstimatedUsd, judgeBilledUsd, judgeTokens, judgeAccountingUnavailable };
+ *  A call that could not be fully measured makes the total a lower bound
+ *  instead of contributing a zero, so the reported spend is never overstated
+ *  as exact. */
+export function judgeOverhead(attempts: readonly Pick<JudgeAttemptRecord, "accounting">[]): Pick<ReportCounts, "judgeAccounting" | "judgeAccountingUnavailable"> {
+  return {
+    judgeAccounting: combineBenchmarkAccounting(attempts.map((attempt) => attempt.accounting)),
+    judgeAccountingUnavailable: attempts.filter((attempt) => hasUnavailableTotal(attempt.accounting)).length,
+  };
 }
 
 /** Benchmark judging is overhead, not a measurement of the candidates, so its
  *  spend is reported on its own line and joins no candidate total. */
 export function judgeOverheadNote(counts: ReportCounts): string {
   const unavailable = counts.judgeAccountingUnavailable;
-  const accounting = unavailable === 0
-    ? `$${counts.judgeEstimatedUsd.toFixed(4)} estimated equivalent, $${counts.judgeBilledUsd.toFixed(4)} billed, and ${counts.judgeTokens} tokens`
-    : "unavailable because at least one judge call lacks complete accounting";
-  return `- Judge overhead, excluded from every candidate total above: ${accounting}, from the campaign ledger. Accounting was unavailable for ${unavailable} judge call${unavailable === 1 ? "" : "s"}.`;
+  return `- Judge overhead, excluded from every candidate total above: ${formatOverheadAccounting(counts.judgeAccounting)}, from the campaign ledger. Accounting was unavailable for ${unavailable} judge call${unavailable === 1 ? "" : "s"}.`;
 }
 
 export function renderReport(args: ReportArgs, tasks: readonly BenchmarkTask[], results: readonly RunResult[], verdicts: readonly JudgeVerdict[], stamp: string, counts: ReportCounts): string {

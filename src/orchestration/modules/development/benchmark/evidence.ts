@@ -5,10 +5,17 @@ const BenchmarkObservationSchema = <Value extends Schema.Top>(value: Value) => S
   Schema.Struct({ kind: Schema.Literal("unavailable"), reason: Schema.NonEmptyString }),
 ]);
 
+/** A total. An unavailable total can state `atLeast`: the sum of the entries that did report, which is a lower
+ *  bound of the exact total. A record from before 2026-11-10, or one with no committed usage, has none. */
+const BenchmarkAmountSchema = <Value extends Schema.Top>(value: Value) => Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("observed"), value }),
+  Schema.Struct({ kind: Schema.Literal("unavailable"), reason: Schema.NonEmptyString, atLeast: Schema.optionalKey(value) }),
+]);
+
 export const BenchmarkAccountingSchema = Schema.Struct({
-  estimatedUsd: BenchmarkObservationSchema(Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0))),
-  billedUsd: BenchmarkObservationSchema(Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0))),
-  tokens: BenchmarkObservationSchema(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  estimatedUsd: BenchmarkAmountSchema(Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0))),
+  billedUsd: BenchmarkAmountSchema(Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0))),
+  tokens: BenchmarkAmountSchema(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
   providers: BenchmarkObservationSchema(Schema.Array(Schema.NonEmptyString)),
   pricedEntryCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   unpricedEntryCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),

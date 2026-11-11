@@ -6,10 +6,16 @@ type BenchmarkObservation<Value> =
   | { readonly kind: "observed"; readonly value: Value }
   | { readonly kind: "unavailable"; readonly reason: string };
 
+/** A total. When the exact total is unavailable because an attempt reported no complete usage or has no price,
+ *  `atLeast` holds the sum of what the committed entries did report, and the reason names those attempts. */
+type BenchmarkAmount =
+  | { readonly kind: "observed"; readonly value: number }
+  | { readonly kind: "unavailable"; readonly reason: string; readonly atLeast?: number };
+
 interface BenchmarkAccountingObservation {
-  readonly estimatedUsd: BenchmarkObservation<number>;
-  readonly billedUsd: BenchmarkObservation<number>;
-  readonly tokens: BenchmarkObservation<number>;
+  readonly estimatedUsd: BenchmarkAmount;
+  readonly billedUsd: BenchmarkAmount;
+  readonly tokens: BenchmarkAmount;
   readonly providers: BenchmarkObservation<readonly string[]>;
   readonly pricedEntryCount: number;
   readonly unpricedEntryCount: number;
@@ -23,9 +29,13 @@ export interface BenchmarkAccounting {
 }
 
 const NO_USAGE = "the benchmark reported no committed usage";
-const PRICE_UNAVAILABLE = "at least one committed usage entry has no estimated price";
+const PRICE_INCOMPLETE = "the total is a lower bound, because these attempts have no complete estimated price";
 const PROVIDER_UNAVAILABLE = "at least one committed usage entry has no provider attribution";
-const USAGE_UNMEASURED = "at least one served attempt reported no usage";
+const USAGE_INCOMPLETE = "the total is a lower bound, because these served attempts reported no complete usage";
+
+function amount(value: number, missing: readonly string[], reason: string): BenchmarkAmount {
+  return missing.length === 0 ? { kind: "observed", value } : { kind: "unavailable", reason: `${reason}: ${missing.join(", ")}`, atLeast: value };
+}
 
 /** Accumulates canonical committed usage without inventing values for missing measurements. */
 export function createBenchmarkAccounting(): BenchmarkAccounting {
@@ -57,41 +67,38 @@ export function createBenchmarkAccounting(): BenchmarkAccounting {
 
       let estimatedUsd = 0;
       let billedUsd = 0;
-      let estimatedPriceAvailable = true;
-      let billedPriceAvailable = true;
       let providerAvailable = true;
       let tokens = 0;
       let pricedEntryCount = 0;
       let unpricedEntryCount = 0;
-      let unmeasured = false;
+      // The attempts that each total lacks. A served attempt with no usage report, a report that ended early, and a
+      // report with no rate card each leave the exact total unknown; the sums below are then lower bounds.
+      const unmeasuredTokens: string[] = [];
+      const unpricedEstimate: string[] = [];
+      const unpricedBilled: string[] = [];
       const providers = new Set<string>();
       for (const { entry } of entries.values()) {
         if (entry.attribution.kind === "candidate") providers.add(entry.attribution.providerId);
         else providerAvailable = false;
-        // An unmeasured attempt makes every total unknown; a partial one counts its lower bounds.
-        if (entry.coverage === "unmeasured") {
-          unmeasured = true;
-          unpricedEntryCount++;
-          estimatedPriceAvailable = false;
-          if (entry.classification === "real_spend") billedPriceAvailable = false;
-          continue;
-        }
-        tokens += entry.tokens.input + entry.tokens.output + (entry.tokens.cacheRead ?? 0) + entry.tokens.cacheWrite + entry.tokens.reasoning;
-        if (entry.price.kind === "unavailable") {
-          unpricedEntryCount++;
-          estimatedPriceAvailable = false;
-          if (entry.classification === "real_spend") billedPriceAvailable = false;
-        } else {
+        const priced = entry.coverage !== "unmeasured" && entry.price.kind === "priced" ? entry.price.estimatedUsd : undefined;
+        if (entry.coverage !== "unmeasured") tokens += entry.tokens.input + entry.tokens.output + (entry.tokens.cacheRead ?? 0) + entry.tokens.cacheWrite + entry.tokens.reasoning;
+        if (entry.coverage !== "complete") unmeasuredTokens.push(entry.attemptId);
+        if (priced === undefined) unpricedEntryCount++;
+        else {
           pricedEntryCount++;
-          estimatedUsd += entry.price.estimatedUsd;
-          if (entry.classification === "real_spend") billedUsd += entry.price.estimatedUsd;
+          estimatedUsd += priced;
+          if (entry.classification === "real_spend") billedUsd += priced;
+        }
+        if (priced === undefined || entry.coverage !== "complete") {
+          unpricedEstimate.push(entry.attemptId);
+          if (entry.classification === "real_spend") unpricedBilled.push(entry.attemptId);
         }
       }
 
       return {
-        estimatedUsd: estimatedPriceAvailable ? { kind: "observed", value: estimatedUsd } : { kind: "unavailable", reason: PRICE_UNAVAILABLE },
-        billedUsd: billedPriceAvailable ? { kind: "observed", value: billedUsd } : { kind: "unavailable", reason: PRICE_UNAVAILABLE },
-        tokens: unmeasured ? { kind: "unavailable", reason: USAGE_UNMEASURED } : { kind: "observed", value: tokens },
+        estimatedUsd: amount(estimatedUsd, unpricedEstimate, PRICE_INCOMPLETE),
+        billedUsd: amount(billedUsd, unpricedBilled, PRICE_INCOMPLETE),
+        tokens: amount(tokens, unmeasuredTokens, USAGE_INCOMPLETE),
         providers: providerAvailable
           ? { kind: "observed", value: [...providers].sort() }
           : { kind: "unavailable", reason: PROVIDER_UNAVAILABLE },
