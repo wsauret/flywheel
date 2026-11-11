@@ -8,6 +8,7 @@ import { harborDisplayModel, resolveHarborConfig, type JsonMap, type ResolvedHar
 import { harborBenchmark } from "./benchmarks.js";
 import { appendRoundRun, requireRoundIdentity, roundPath, type RoundIdentity, type UnlaunchedOutcome } from "./rounds.js";
 import { command, harborPython } from "./harbor-process.js";
+import { quotaPreflightLines, quotaRefusal, readQuotaPreflight, type QuotaPreflight } from "./quota-preflight.js";
 import { awaitHostedJob, decodeResolvedTasks, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, localJobConfig, offlineAgentHosts, releaseTagFor, repositoryConfigPath, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type ResolvedTask } from "./harbor-jobs.js";
 
 const WHEELHOUSE_TARGET = "/opt/flywheel-verifier-wheelhouse";
@@ -28,6 +29,8 @@ interface PrepareDependencies {
   buildAgentPackage: (commit: string, configPath: string, configSha256: string, answerKeyRule: boolean, releaseTag: string | null, output: string) => Promise<AgentPackageBuild>;
   publishAgentPackage: (directory: string, repository: string) => Promise<AgentPackagePublication>;
   validateHostedConfig: (path: string) => Promise<void>;
+  /** Reads what the auth profile's stores state about the quota of each account that the run's snapshot exports. */
+  quotaPreflight: (config: ResolvedHarborConfig, nowMs: number) => Promise<QuotaPreflight>;
 }
 
 export interface PreparedHarborRun {
@@ -213,13 +216,16 @@ function defaultDependencies(overrides: Partial<PrepareDependencies>): PrepareDe
     buildAgentPackage: overrides.buildAgentPackage ?? defaultBuildAgentPackage,
     publishAgentPackage: overrides.publishAgentPackage ?? defaultPublishAgentPackage,
     validateHostedConfig: overrides.validateHostedConfig ?? defaultValidateHostedConfig,
+    quotaPreflight: overrides.quotaPreflight ?? ((config, nowMs) => readQuotaPreflight({ authProfile: config.authProfile, credentialProviders: config.flywheelConfig.credentialProviders, tokenKeychainItems: config.agentPackage.claudeTokenKeychainItems, projectRoot: REPOSITORY_ROOT, nowMs })),
   };
 }
 
 /** Prepares one run: resolves the command line and every task, builds and
  *  publishes the agent package of HEAD, and writes the generated Harbor
  *  config, the run manifest, the metadata, and the preparation plan into one
- *  artifact directory, which appears whole or not at all. */
+ *  artifact directory, which appears whole or not at all. Refuses, before it
+ *  writes anything, a run whose every account the auth profile's stores state
+ *  out of quota (`quota-preflight.ts`). */
 export async function prepareHarborRun(args: string[], overrides: Partial<PrepareDependencies> = {}): Promise<PreparedHarborRun> {
   const dependencies = defaultDependencies(overrides);
   const config = await resolveHarborConfig(args, { cwd: dependencies.cwd });
@@ -229,6 +235,11 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
   const identity: RoundIdentity = { sourceCommit, arm: { path: config.flywheelConfig.path, sha256: config.flywheelConfig.sha256 }, model: config.model, effort: config.flywheelConfig.chatEffort };
   // Refused before the package is built and published, which costs time and a push.
   if (config.round !== undefined) await requireRoundIdentity(config.jobsDirectory, config.round, config.benchmark.id, identity);
+  // Also a dry run, which proves that the run it previews would launch. Refused before the package is built.
+  const quota = await dependencies.quotaPreflight(config, dependencies.now().getTime());
+  for (const line of quotaPreflightLines(quota)) console.error(line);
+  const quotaRefused = quotaRefusal(quota);
+  if (quotaRefused !== undefined) throw new Error(quotaRefused);
   const tasks = await dependencies.resolveTasks(config.dataset, config.datasetRef, config.taskNames);
   const offlineTasks = Object.entries(tasks).filter(([, task]) => task.agent_network_mode !== "public").map(([name]) => name);
   const allowedHosts = offlineTasks.length === 0 ? [] : offlineAgentHosts(config);

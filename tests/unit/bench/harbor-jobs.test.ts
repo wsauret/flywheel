@@ -5,6 +5,7 @@ import { load } from "js-yaml";
 import { prepareHarborRun } from "../../../bench/harbor/run-harbor.js";
 import { releaseTagFor, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type ResolvedTask } from "../../../bench/harbor/harbor-jobs.js";
 import { readRound, roundPath } from "../../../bench/harbor/rounds.js";
+import type { AccountQuota } from "../../../bench/harbor/quota-preflight.js";
 import { HARBOR_BENCHMARKS } from "../../../bench/harbor/benchmarks.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { ARM_CONFIG, harborLaunchArgs as launchArgs } from "../../fixtures/harbor-run.js";
@@ -38,6 +39,7 @@ describe("Harbor jobs", () => {
       return build(commit, releaseTag);
     },
     publishAgentPackage: async () => PUBLICATION,
+    quotaPreflight: async () => ({ profile: "Fixture", accounts: [] }),
   });
   const read = async (path: string) => JSON.parse(await readFile(path, "utf8"));
 
@@ -133,6 +135,21 @@ describe("Harbor jobs", () => {
     // A task list that a round's first run selects is the round's measurement.
     const listed = await prepareHarborRun([...launchArgs, "--task-names", "kv-store-grpc", "--round", "r4", "--execute", "--job-name", "listed"], dependencies(root, []));
     expect((await readRound(roundPath(join(root, "jobs"), "r4"))).runs).toEqual([{ directory: listed.artifactDirectory, purpose: "measure", split: "task-list" }]);
+  });
+
+  test("a run, also a dry run, whose every account the profile's stores state out of quota is refused before any package is built; an account they could not check lets it prepare", async () => {
+    const root = temporaryDirectory("harbor-quota-");
+    const builds: unknown[][] = [];
+    const spent = (untilMs: number) => ({ providerId: "chatgpt", account: `until ${untilMs}`, kind: "spent" as const, untilMs });
+    const unchecked = { providerId: "claude_agent_sdk", account: "token of keychain item one", kind: "unchecked" as const, reason: "no host store has observed it" };
+    const withQuota = (accounts: readonly AccountQuota[]) => ({ ...dependencies(root, builds), quotaPreflight: async () => ({ profile: "Fixture", accounts }) });
+    const reset = Date.parse("2026-11-13T14:00:00.000Z");
+    for (const mode of [[], ["--execute"]]) {
+      await expect(prepareHarborRun([...BRINGUP, ...mode, "--job-name", `spent${mode.length}`], withQuota([spent(reset + 1000), spent(reset)]))).rejects.toThrow("every account of the auth profile Fixture that the arm uses is out of quota, the first until 2026-11-13T14:00:00.000Z");
+    }
+    expect(builds).toEqual([]);
+    await prepareHarborRun([...BRINGUP, "--job-name", "unchecked"], withQuota([spent(reset), unchecked]));
+    expect(builds).toHaveLength(1);
   });
 
   test("a run that would join a round of another commit, arm, or benchmark is refused before any package is built", async () => {

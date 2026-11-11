@@ -30,6 +30,7 @@ function packageDependencies(cwd: string, built: string[] = []) {
       return { build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/flywheel-linux-x64.tar.xz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: configPath, sha256: configSha256 }, store_analyzer: { path: "store-analysis/trial-store-analysis.js", source_path: "bench/harbor/trial-store-analysis.ts", sha256: "0".repeat(64) }, benchmark_rules: null };
     },
     publishAgentPackage: async () => PUBLICATION,
+    quotaPreflight: async () => ({ profile: "Fixture", accounts: [] }),
   };
 }
 

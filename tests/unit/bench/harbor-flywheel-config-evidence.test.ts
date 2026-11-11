@@ -25,6 +25,7 @@ describe("Harbor Flywheel config evidence", () => {
       releaseTagFor: async () => null,
       buildAgentPackage: async (commit, configPath, configSha256, _answerKeyRule, releaseTag) => ({ build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/flywheel-linux-x64.tar.xz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: configPath, sha256: configSha256 }, store_analyzer: { path: "store-analysis/trial-store-analysis.js", source_path: "bench/harbor/trial-store-analysis.ts", sha256: "0".repeat(64) }, benchmark_rules: null }),
       publishAgentPackage: async () => ({ repository: "owner/agent", ref: "refs/heads/build/abcdef012345", commit: "d".repeat(40), branch: "build/abcdef012345", tag: null }),
+      quotaPreflight: async () => ({ profile: "Fixture", accounts: [] }),
     });
     const manifest = JSON.parse(await readFile(result.manifest, "utf8"));
     const plan = JSON.parse(await readFile(result.preparationPlan, "utf8"));
