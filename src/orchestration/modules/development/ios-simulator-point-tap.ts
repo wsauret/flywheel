@@ -47,6 +47,9 @@ export async function executeIosSimulatorPointTap(input: IosSimulatorPointTapInp
     String(x),
     "-y",
     String(y),
+    // The default style's simulator tap reports success but has no effect on Safari web content on iOS 27.2; a physical touch down and up reaches every target.
+    "--tap-style",
+    "physical",
     "--udid",
     simulatorId,
   ], {
