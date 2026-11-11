@@ -7,20 +7,30 @@ import type { AgentRunResult } from "../../../../src/orchestration/agent-runtime
 import { composeModuleRuntimes } from "../../../../src/infra/module-runtime"
 import { registerCapacityWaits } from "../../../../src/orchestration/session/capacity-wait"
 import { authorizePlannedSessionContinuation, capacityContinuations } from "../../../../src/orchestration/session/planned-session-continuation"
+import { exhaustedProvidersCopy, type CapacityHold } from "../../../../src/infra/llm/provider-error-copy"
+import { createChatInvocationCompletion } from "../../../../src/orchestration/chat/runner-completion"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { flushMicrotasks, makeLifecycle, useStore } from "./_chat-runner-lifecycle-fixtures"
 
 const makeDirectory = temporaryDirectories()
-const spent = (atMs: number): AgentRunResult => ({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: "No access provider can run the model", recovery: { kind: "at", atMs } } })
+const CAUSE_OF_HOLD = { usage_limit: "quota", rate_limit: "rate_limit", recheck: "connection" } as const
+
+/** A run that no route served until `atMs`, which `hold` held it to. */
+const spent = (atMs: number, hold: CapacityHold = { kind: "usage_limit", stated: true }): AgentRunResult => {
+  const candidates = [{ provider: "ChatGPT", cause: CAUSE_OF_HOLD[hold.kind], detail: "spent", reset: { atMs, hold } }]
+  return { servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: "No access provider can run the model", copy: exhaustedProvidersCopy(candidates), recovery: { kind: "at", atMs, hold } } }
+}
 
 /** A lifecycle on a real store whose capacity ledger is registered, as the
- *  executor composes a chat. */
-function capacityLifecycle(prefix: string) {
+ *  executor composes a chat; `unattended` makes it the root chat of an
+ *  unattended one-shot Agent Client Protocol run. */
+function capacityLifecycle(prefix: string, options: { readonly unattended?: true } = {}) {
   let store!: ReturnType<typeof useStore>
   let ledger!: ReturnType<typeof registerCapacityWaits>
   const made = makeLifecycle(undefined, (prepared) => {
     store = useStore(prepared, makeDirectory(prefix))
     ledger = registerCapacityWaits(prepared.infra.eventStore, { reader: prepared.infra.eventStore, writer: asAsyncEventWriter(store) })
+    if (options.unattended) prepared.rootChatCompletion = createChatInvocationCompletion(undefined, undefined, true)
   })
   const turnEnds: string[] = []
   made.deps.treeWriter.commitTurnEnd = async (by) => { turnEnds.push(String(by)); return { kind: "user", content: "interrupted", origin: "system" } }
@@ -136,4 +146,46 @@ describe("chat runner lifecycle capacity wait", () => {
       await chat.dispose()
     }
   })
+
+  for (const stated of [true, false]) {
+  it(`ends an unattended one-shot chat's turn at once when every route's usage limit or credit is spent ${stated ? "until a stated reset, names that time" : "with no stated reset, says that no reset time is known"}, and arms no wait (PI-AGENT-128)`, async () => {
+    const chat = capacityLifecycle("flywheel-unattended-capacity-", { unattended: true })
+    const notices: string[] = []
+    chat.eventBus.subscribeToType("agent.notice.changed", ({ data: { operation } }) => {
+      if (operation.type === "upsert") notices.push(operation.notice.title)
+    }, { deliveryClass: "ui", delivery: "direct" })
+    try {
+      chat.lifecycle.enqueueInput("first message")
+      while (chat.resolvers.length < 1) await flushMicrotasks()
+      const resetsAt = Date.now() + 3_600_000
+      chat.resolvers[0]?.(spent(resetsAt, { kind: "usage_limit", stated }))
+      while (chat.lifecycle.turnState !== "idle") await flushMicrotasks()
+      expect(chat.resolvers.length).toBe(1)
+      expect(notices).not.toContain("Waiting for model capacity")
+      expect(await chat.rows()).toEqual([])
+      expect(chat.failures.join("\n")).toContain(new Date(resetsAt).toLocaleString())
+      if (stated) expect(chat.failures.join("\n")).not.toContain("No reset time is known.")
+      else expect(chat.failures.join("\n")).toContain("No reset time is known.")
+    } finally {
+      await chat.dispose()
+    }
+  })
+  }
+
+  for (const [hold, routes] of [[{ kind: "rate_limit" }, "is rate limited until a time that its provider stated"], [{ kind: "recheck" }, "lost its connection"]] as const) {
+    it(`waits and continues in an unattended one-shot chat whose every route ${routes}, which clears by itself (PI-AGENT-118)`, async () => {
+      const chat = capacityLifecycle(`flywheel-unattended-${hold.kind}-`, { unattended: true })
+      try {
+        chat.lifecycle.enqueueInput("first message")
+        while (chat.resolvers.length < 1) await flushMicrotasks()
+        const clearsAt = Date.now() + 10
+        chat.resolvers[0]?.(spent(clearsAt, hold))
+        while (chat.resolvers.length < 2) await flushMicrotasks()
+        expect(Date.now()).toBeGreaterThanOrEqual(clearsAt)
+        expect(chat.lifecycle.turnState).toBe("active")
+      } finally {
+        await chat.dispose()
+      }
+    })
+  }
 })

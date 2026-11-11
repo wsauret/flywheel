@@ -7,7 +7,9 @@ import type { WorkflowTransitionResult } from "./commands.js"
 import type { CommittedWorkflowControl } from "./committed-control.js"
 import {
   buildDefinitionIdentity,
+  DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID,
   DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
+  DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID,
   DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
   DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID,
@@ -30,8 +32,10 @@ import {
 import { adoptPhaseGrammarIdentity, retiredStepIdentity, retiredStepView, withoutRetiredStepScopes } from "./retired-step-identity.js"
 import {
   acrossRetiredLexicon,
+  withCapabilityMarkers,
   withDefaultAdvisor,
   withFamilyRoleGrants,
+  withoutExplorerModelClaim,
   withoutRecordedTurnCaps,
   withoutRetiredLexiconText,
   withoutRetiredPromptSwitches,
@@ -170,14 +174,16 @@ function provenIdentityAdoptions(recorded: DefinitionIdentity, input: IdentityPr
     [DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID, (identity) => withoutRetiredToolSteering(identity, personas)],
     [DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID, (identity) => withoutRetiredPromptSwitches(identity, personas)],
     [DEFINITION_IDENTITY_SCENARIO_BUDGET_MIGRATION_ID, (identity) => withoutRetiredScenarioBudget(identity, personas)],
-    // The frozen identity of the retired grammar hashes the personas as they read now, so the proof reads the
-    // recorded personas through the lexicon proof that follows it, and leaves the lexicon change to that proof.
-    [DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID, (identity) => acrossRetiredLexicon(identity, personas, (lexical) =>
-      adoptPhaseGrammarIdentity(lexical, view === undefined ? undefined : retiredStepIdentity(view, workflow, agents, options), current))],
+    // The frozen identity of the retired grammar hashes the personas as that grammar read them, so the proof reads
+    // the recorded personas through the lexicon proof that follows it, and leaves the lexicon change to that proof.
+    [DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID, (identity) => acrossRetiredLexicon(identity, personas, (lexical, retiredPersonas) =>
+      adoptPhaseGrammarIdentity(lexical, view === undefined ? undefined : retiredStepIdentity(view, workflow, agents, { ...options, personas: retiredPersonas }), current))],
     [DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, (identity) => withoutRetiredLexiconText(identity, personas)],
     [DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID, (identity) => withDefaultAdvisor(identity, workflow.id, options)],
     [DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID, (identity) => withUatScratchpadRule(identity, personas)],
     [DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID, (identity) => withFamilyRoleGrants(identity, workflow.id, dispatchingAgents(agents), options)],
+    [DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID, (identity) => withCapabilityMarkers(identity, personas)],
+    [DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID, (identity) => withoutExplorerModelClaim(identity, personas)],
   ]
   const adoptions: IdentityAdoption[] = []
   let identity = recorded

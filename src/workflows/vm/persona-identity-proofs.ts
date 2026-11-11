@@ -22,7 +22,7 @@ export function withoutRecordedTurnCaps<Identity extends DefinitionIdentity>(
   identity: Identity,
   personas: ReadonlyMap<string, AgentDefinition>,
 ): Identity {
-  return adoptProvenPersonas(identity, personas, (persona) => {
+  return adoptProvenBeforeBundledMark(identity, personas, (persona) => {
     const caps = [...new Set([persona.maxTurns, ...RETIRED_TURN_CAPS])]
     return lexiconForms(persona).flatMap((form) => caps.map((maxTurns) => hashDefinition({ ...form, maxTurns }).sha256))
   })
@@ -138,7 +138,7 @@ export function withoutRetiredToolSteering<Identity extends DefinitionIdentity>(
   identity: Identity,
   personas: ReadonlyMap<string, AgentDefinition>,
 ): Identity {
-  return adoptProvenPersonas(identity, personas, (persona) => lexiconForms(persona).flatMap((form) => {
+  return adoptProvenBeforeBundledMark(identity, personas, (persona) => lexiconForms(persona).flatMap((form) => {
     const retired = withRetiredText(form, RETIRED_TOOL_STEERING)
     return retired ? budgetedHashes(retired, persona.maxTurns) : []
   }))
@@ -167,7 +167,7 @@ export function withoutRetiredPromptSwitches<Identity extends DefinitionIdentity
   identity: Identity,
   personas: ReadonlyMap<string, AgentDefinition>,
 ): Identity {
-  return adoptProvenPersonas(identity, personas, (persona) => {
+  return adoptProvenBeforeBundledMark(identity, personas, (persona) => {
     if (persona.kind !== "persona") return []
     const forms = lexiconForms(persona).flatMap((form) => [form, withRetiredText(form, RETIRED_TOOL_STEERING)]).filter((form) => form !== undefined)
     return forms.flatMap((form) => RETIRED_PROMPT_SWITCHES.flatMap((switches) => budgetedHashes({ ...form, ...switches }, persona.maxTurns)))
@@ -183,7 +183,7 @@ export function withoutRetiredScenarioBudget<Identity extends DefinitionIdentity
   identity: Identity,
   personas: ReadonlyMap<string, AgentDefinition>,
 ): Identity {
-  return adoptProvenPersonas(identity, personas, (persona) => lexiconForms(persona).flatMap((form) => {
+  return adoptProvenBeforeBundledMark(identity, personas, (persona) => lexiconForms(persona).flatMap((form) => {
     const retired = withRetiredText(form, RETIRED_SCENARIO_BUDGET)
     return retired ? [{}, ...RETIRED_PROMPT_SWITCHES].flatMap((switches) => budgetedHashes({ ...retired, ...switches }, persona.maxTurns)) : []
   }))
@@ -197,7 +197,7 @@ export function withoutRetiredLexiconText<Identity extends DefinitionIdentity>(
   identity: Identity,
   personas: ReadonlyMap<string, AgentDefinition>,
 ): Identity {
-  return adoptProvenPersonas(identity, personas, (persona) => {
+  return adoptProvenBeforeBundledMark(identity, personas, (persona) => {
     const retired = withRetiredText(persona, RETIRED_LEXICON_TEXT)
     return retired ? [personaIdentitySha256(retired)] : []
   })
@@ -281,41 +281,173 @@ export function withFamilyRoleGrants<Identity extends DefinitionIdentity>(
   }
 }
 
-/** The reviewer-uat block that tells the reviewer where its shell admits writes, paired with the empty text it
- *  replaced. Remove after 2027-05-10. */
-const RETIRED_UAT_SCRATCHPAD_TEXT: RetiredPersonaText = new Map([
-  ["reviewer-uat", [[
-    "\n\n{{if:bash}}\nCreate every fixture, isolated home, and evidence file inside your scratchpad, and name each one with a literal path, not a shell variable; the shell refuses other writes.\n{{end}}",
-    "",
-  ]]],
-])
+/** An edit of the bundled personas since persona identity covered the bundled mark: each clause it rewrote, paired
+ *  with the exact text it replaced, and whether it started to mark bundled personas. */
+interface BundledPersonaEdit {
+  readonly retired: RetiredPersonaText
+  readonly marks?: true
+}
 
-/** The recorded identity with each persona hash that reviewer-uat produced before its scratchpad rule replaced by
+/** 2026-11-07 (78b5473c9): capability markers replaced the clauses that named tools, and persona identity started to
+ *  cover the bundled mark. Remove after 2027-05-11. */
+const CAPABILITY_MARKERS: BundledPersonaEdit = {
+  marks: true,
+  retired: new Map([
+    ["advisor", [[
+      "Inspect the repository read-only, only to verify",
+      "Use read, search, list, and read-only shell commands only to verify",
+    ]]],
+    ["explorer", [
+      ["and makes targeted external lookups such as documentation.", "and makes targeted non-repository external lookups such as documentation with the web tool."],
+      [
+        "- **Locate before reading.** Find every plausibly relevant location, then read only the functions or line ranges you need. Do not read entire files to find one function.",
+        "- **Search before reading.** Use search to locate relevant code, then read only the functions or line ranges that matter. Do not read entire files to find one function; use `symbol:` or `offset`/`limit` to read just what you need.",
+      ],
+      [
+        "- **Enumerate before reading.** First find every location plausibly relevant to your facet.",
+        "- **Enumerate before reading.** First surface every location plausibly relevant to your facet with search and list.",
+      ],
+      [
+        "- Use whichever of your tools fit for discovery, search, and reading.\n{{if:bash}}\n- For GitHub repository data, use read-only `gh` commands through bash or exec for pull requests, commits, diffs, reviews, and issues.\n{{end}}\n{{if:web}}\n- Use web only for data that your other tools cannot provide.\n{{end}}",
+        "- Use whichever tools fit: the file tools or read-only shell commands both work for discovery, search, and reading.\n- For GitHub repository data, use read-only `gh` commands through bash or exec for pull requests, commits, diffs, reviews, and issues. Use web only when `gh` is unavailable or cannot provide the required data.",
+      ],
+    ]],
+    ["implementer", [[
+      "{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}",
+      "- Use the read, search, file edit, and write tools for project files; bash grep, sed, cat, ls, and heredoc scripts are not substitutes.",
+    ]]],
+    ["ship", [
+      ["{{if:bash}}\nFollow the composed Ship method.", "Follow the composed Ship method."],
+      ["Keep commit-message drafts and other publication scratch files", "You may use Write or Bash to create commit-message drafts and other publication scratch files"],
+      ["or modify repository file contents.\n{{else}}\nYou have no shell, so you cannot inspect, commit, or push. Change nothing and return Not published, with the missing shell as the condition that stopped publication.\n{{end}}", "or modify repository file contents."],
+    ]],
+    ["reviewer-uat", [[
+      "{{if:bash}}\nBound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:\n{{else}}\nA single command must remain bounded:\n{{end}}",
+      "Bound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:",
+    ]]],
+  ]),
+}
+
+/** 2026-11-10 (588fa3a9f): reviewer-uat named its fellow reviewers behind an agent-type marker, when agent types
+ *  became capability terms, and explorer and implementer stopped telling the dispatcher to dispatch general instead.
+ *  Remove after 2027-05-11. */
+const AGENT_TYPE_MARKERS: BundledPersonaEdit = {
+  retired: new Map([
+    ["reviewer-uat", [[
+      "{{if:type:reviewer-quality&type:reviewer-performance&type:reviewer-data-integrity&type:reviewer-security&type:reviewer-elegance}}\nThe code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{else}}\nThe code-reading reviewer personas judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{end}}",
+      "The code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.",
+    ]]],
+    ["explorer", [["when the brief asks for full coverage.", "when the brief asks for full coverage. For investigation that needs your full intelligence, dispatch general instead."]]],
+    ["implementer", [["with full tool access.", "with full tool access. For open-ended work that needs your own judgment and conversation context, dispatch general instead."]]],
+  ]),
+}
+
+/** 2026-11-10 (e3297eb73): reviewer-uat got the block that tells it where its shell admits writes, which replaced no
+ *  text. Remove after 2027-05-10. */
+const UAT_SCRATCHPAD_RULE: BundledPersonaEdit = {
+  retired: new Map([
+    ["reviewer-uat", [[
+      "\n\n{{if:bash}}\nCreate every fixture, isolated home, and evidence file inside your scratchpad, and name each one with a literal path, not a shell variable; the shell refuses other writes.\n{{end}}",
+      "",
+    ]]],
+  ]),
+}
+
+/** 2026-11-11: explorer stopped claiming that it runs on a cheaper model, which is false when every role resolves to
+ *  one model. Remove after 2027-05-11. */
+const EXPLORER_MODEL_CLAIM: BundledPersonaEdit = {
+  retired: new Map([
+    ["explorer", [["Fast read-only investigation. Answers", "Fast read-only investigation on a cheaper model. Answers"]]],
+  ]),
+}
+
+/** Every edit of the bundled personas since persona identity covered the bundled mark, newest first. */
+const BUNDLED_PERSONA_EDITS = [EXPLORER_MODEL_CLAIM, UAT_SCRATCHPAD_RULE, AGENT_TYPE_MARKERS, CAPABILITY_MARKERS] as const
+
+/** `persona` as it read before `edit`, with `edit` and every later edit undone, when it is a bundled persona that
+ *  `edit` names; an edit that marks names every bundled persona. Undefined for any other persona, or when its text
+ *  lacks a clause that one of those edits rewrote. */
+function bundledPersonaBefore(persona: AgentDefinition, edit: BundledPersonaEdit): AgentDefinition | undefined {
+  if (persona.kind !== "persona" || persona.bundled !== true || !(edit.marks || edit.retired.has(persona.name))) return undefined
+  const undone = BUNDLED_PERSONA_EDITS.slice(0, BUNDLED_PERSONA_EDITS.indexOf(edit) + 1)
+  const form = undone.reduce<AgentDefinition | undefined>((earlier, { retired }) => earlier && retired.has(earlier.name) ? withRetiredText(earlier, retired) : earlier, persona)
+  if (form?.kind !== "persona" || !undone.some(({ marks }) => marks)) return form
+  const { bundled: _mark, ...unmarked } = form
+  return unmarked
+}
+
+/** The personas as they read before `edit`: each bundled persona with `edit` and every later edit undone, and any
+ *  other persona as it is. */
+function personasBefore(personas: ReadonlyMap<string, AgentDefinition>, edit: BundledPersonaEdit): ReadonlyMap<string, AgentDefinition> {
+  return new Map([...personas].map(([name, persona]) => [name, bundledPersonaBefore(persona, edit) ?? persona]))
+}
+
+/** `adoptProvenPersonas` over the personas as they read before the bundled mark, which every proof of an older edit
+ *  reads. The hashes it adopts are those of that era, and `withCapabilityMarkers` adopts them in turn. */
+function adoptProvenBeforeBundledMark<Identity extends DefinitionIdentity>(
+  identity: Identity,
+  personas: ReadonlyMap<string, AgentDefinition>,
+  hashes: (persona: AgentDefinition) => readonly string[],
+): Identity {
+  return adoptProvenPersonas(identity, personasBefore(personas, CAPABILITY_MARKERS), hashes)
+}
+
+/** The recorded identity with each persona hash that a bundled persona produced before one of `edits` replaced by
  *  the current identity hash of that persona. A recorded hash qualifies only when it equals the current definition
- *  without exactly that rule, so any other change still reports as drift. Returns the same identity when no hash
- *  changes. Remove after 2027-05-10. */
+ *  with exactly that edit and every later edit undone, so any other change still reports as drift. Returns the same
+ *  identity when no hash changes. */
+function adoptBefore<Identity extends DefinitionIdentity>(
+  identity: Identity,
+  personas: ReadonlyMap<string, AgentDefinition>,
+  edits: readonly BundledPersonaEdit[],
+): Identity {
+  return adoptProvenPersonas(identity, personas, (persona) => edits.flatMap((edit) => {
+    const form = bundledPersonaBefore(persona, edit)
+    return form ? [personaIdentitySha256(form)] : []
+  }))
+}
+
+/** The recorded identity with each reviewer-uat hash that a build before its scratchpad rule produced replaced by
+ *  the current identity hash (refer to `adoptBefore`). Remove after 2027-05-10. */
 export function withUatScratchpadRule<Identity extends DefinitionIdentity>(
   identity: Identity,
   personas: ReadonlyMap<string, AgentDefinition>,
 ): Identity {
-  return adoptProvenPersonas(identity, personas, (persona) => {
-    const retired = withRetiredText(persona, RETIRED_UAT_SCRATCHPAD_TEXT)
-    return retired ? [personaIdentitySha256(retired)] : []
-  })
+  return adoptBefore(identity, personas, [UAT_SCRATCHPAD_RULE])
 }
 
-/** The result of `adopt`, a proof that compares the recorded persona hashes with the current definitions, as it
- *  reads when each persona hash that the text before the workflow lexicon produced is first proven current. Each
- *  such persona keeps its recorded hash in the result, so `adopt` records no persona change and the lexicon proof,
- *  which comes later in the chain, records it. Returns the same identity when `adopt` adopts nothing. Remove after
- *  2027-04-30. */
+/** The recorded identity with each persona hash that a build before the capability-marker edits produced replaced
+ *  by the current identity hash (refer to `adoptBefore`): a bundled persona before 2026-11-07, which the proofs of
+ *  older edits leave in that form, or a persona that the edit of 2026-11-10 names between the two edits. Remove
+ *  after 2027-05-11. */
+export function withCapabilityMarkers<Identity extends DefinitionIdentity>(
+  identity: Identity,
+  personas: ReadonlyMap<string, AgentDefinition>,
+): Identity {
+  return adoptBefore(identity, personas, [AGENT_TYPE_MARKERS, CAPABILITY_MARKERS])
+}
+
+/** The recorded identity with each explorer hash that the description claiming a cheaper model produced replaced by
+ *  the current identity hash (refer to `adoptBefore`). Remove after 2027-05-11. */
+export function withoutExplorerModelClaim<Identity extends DefinitionIdentity>(
+  identity: Identity,
+  personas: ReadonlyMap<string, AgentDefinition>,
+): Identity {
+  return adoptBefore(identity, personas, [EXPLORER_MODEL_CLAIM])
+}
+
+/** The result of `adopt`, a proof that compares the recorded persona hashes with the personas it receives, as it
+ *  reads when each persona hash that the text before the workflow lexicon produced is first proven current. `adopt`
+ *  receives the personas as they read before the bundled mark, which the lexicon proof also reads. Each such persona
+ *  keeps its recorded hash in the result, so `adopt` records no persona change and the lexicon proof, which comes
+ *  later in the chain, records it. Returns the same identity when `adopt` adopts nothing. Remove after 2027-04-30. */
 export function acrossRetiredLexicon(
   identity: DefinitionIdentity,
   personas: ReadonlyMap<string, AgentDefinition>,
-  adopt: (identity: DefinitionIdentity) => DefinitionIdentity,
+  adopt: (identity: DefinitionIdentity, personas: ReadonlyMap<string, AgentDefinition>) => DefinitionIdentity,
 ): DefinitionIdentity {
   const proven = withoutRetiredLexiconText(identity, personas)
-  const adopted = adopt(proven)
+  const adopted = adopt(proven, personasBefore(personas, CAPABILITY_MARKERS))
   if (adopted === proven) return identity
   if (proven === identity) return adopted
   const recorded = new Map(identity.personas.map(({ personaName, sha256 }) => [personaName, sha256]))
