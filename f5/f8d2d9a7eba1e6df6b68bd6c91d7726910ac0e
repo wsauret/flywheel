@@ -1,0 +1,28 @@
+src/workflows/agents/personas/explorer.md
+  h_4b47e9e4a8b456 3
+src/workflows/vm/definition-identity.ts
+  h_4b47e9e4a8b456 400-413,445-446
+src/workflows/vm/persona-identity-proofs.ts
+  h_4b47e9e4a8b456 25,141,170,186,200,284-329,331-395,397-411,416-436,439-443,447,450
+src/workflows/vm/replay.ts
+  h_4b47e9e4a8b456 10,12,35,38,177-180,185-186
+tests/unit/orchestration/migrations/_persona-budget.ts
+  h_4b47e9e4a8b456 110-152,154-156,183,194-196,199-200
+tests/unit/workflows/vm/definition-identity.test.ts
+  h_4b47e9e4a8b456 28-29,396,497-498
+tests/unit/workflows/vm/historical-replay.test.ts
+  h_4b47e9e4a8b456 28
+tests/unit/workflows/vm/replay.test.ts
+  h_4b47e9e4a8b456 12,15,29,320,329,339-340,344,352,368,377,474-521,543-546
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f5f8d2d9a7eba1e6df6b68bd6c91d7726910ac0e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
