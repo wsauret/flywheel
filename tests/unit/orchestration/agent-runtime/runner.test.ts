@@ -422,7 +422,8 @@ describe("ordinary runtime request", () => {
       expect(systemPrompt).toContain("PROJECT INSTRUCTIONS");
       expect(systemPrompt).toContain("# Durable Memory");
       expect(systemPrompt).toContain("CANDIDATE MEMORY");
-      expect(systemPrompt).toContain("Open a run of tool work with one sentence that names the next step.");
+      // gpt-6-luna has a guidance entry, so its chat renders the model chat body with its progress block.
+      expect(systemPrompt).toContain("Give short updates while you work");
       expect((JSON.stringify(request?.messages).match(new RegExp(task, "g")) ?? []).length).toBe(1);
     } finally {
       runner.end();

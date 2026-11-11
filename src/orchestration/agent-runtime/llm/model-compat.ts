@@ -120,8 +120,16 @@ function normalizeModelId(model: string): string {
   return model.toLowerCase().replace(/_/g, "-");
 }
 
-/** A canonical model id that ends in its version: `claude-fable-5.2` is version 5.2 of the family `claude-fable`. */
-const VERSIONED_MODEL = /^(.+?)-(\d+)(?:\.(\d+))?$/u;
+/** A canonical model id with its version last, or before one tier name: `claude-fable-5.2` is version 5.2 of the
+ *  family `claude-fable`, and `gpt-6.1-sol` is version 6.1 of the family `gpt-sol`. */
+const VERSIONED_MODEL = /^(.+?)-(\d+)(?:\.(\d+))?(?:-([a-z]+))?$/u;
+
+/** The family, major, and minor version of `canonical`, or undefined for an id without a version. */
+function modelVersion(canonical: string): { readonly family: string; readonly major: number; readonly minor: number } | undefined {
+  const match = VERSIONED_MODEL.exec(canonical);
+  if (match?.[1] === undefined) return undefined;
+  return { family: match[4] === undefined ? match[1] : `${match[1]}-${match[4]}`, major: Number(match[2]), minor: Number(match[3] ?? 0) };
+}
 
 /** One per-model setting of `model`: the value of the model's own entry, or the value that it inherits from the entry
  *  of `inheritedFrom`, an earlier version of its family. */
@@ -133,8 +141,8 @@ export interface FamilySetting<T> {
 /**
  * The one lookup of a per-model setting by model family. A model takes its own entry first (any spelling of its id,
  * date snapshots included), else the entry of the newest earlier version of its family in the same major line
- * (`claude-fable-5.2` takes `claude-fable-5.1`), else nothing. It never inherits from a later version, another major
- * line, or another family, so a model that the provider turns on runs with its family's known settings from that day
+ * (`claude-fable-5.2` takes `claude-fable-5.1`, and `gpt-6.2-sol` takes `gpt-6.1-sol`), else nothing. It never
+ * inherits from a later version, another major line, or another family, so a model that the provider turns on runs with its family's known settings from that day
  * until it gets its own entry.
  */
 export function familySettings<T>(entries: Iterable<readonly [string, T]>): (model: string) => FamilySetting<T> | undefined {
@@ -143,19 +151,17 @@ export function familySettings<T>(entries: Iterable<readonly [string, T]>): (mod
   for (const [model, value] of entries) {
     const canonical = canonicalModelId(model);
     own.set(canonical, value);
-    const version = VERSIONED_MODEL.exec(canonical);
-    if (version?.[1] !== undefined) versions.push({ model: canonical, family: version[1], major: Number(version[2]), minor: Number(version[3] ?? 0), value });
+    const version = modelVersion(canonical);
+    if (version !== undefined) versions.push({ model: canonical, ...version, value });
   }
   return (model) => {
     const canonical = canonicalModelId(model);
     const value = own.get(canonical);
     if (value !== undefined) return { value };
-    const version = VERSIONED_MODEL.exec(canonical);
-    if (version?.[1] === undefined) return undefined;
-    const major = Number(version[2]);
-    const minor = Number(version[3] ?? 0);
+    const version = modelVersion(canonical);
+    if (version === undefined) return undefined;
     const earlier = versions
-      .filter((entry) => entry.family === version[1] && entry.major === major && entry.minor < minor)
+      .filter((entry) => entry.family === version.family && entry.major === version.major && entry.minor < version.minor)
       .reduce<(typeof versions)[number] | undefined>((newest, entry) => (newest === undefined || entry.minor > newest.minor ? entry : newest), undefined);
     return earlier === undefined ? undefined : { value: earlier.value, inheritedFrom: earlier.model };
   };

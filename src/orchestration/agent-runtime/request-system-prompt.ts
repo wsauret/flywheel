@@ -88,6 +88,6 @@ export async function requestSystemPromptOptions(facts: RequestPromptFacts): Pro
     capabilities,
     moduleFragments,
     ...(facts.sessionIdentity ? { sessionIdentity: facts.sessionIdentity } : {}),
-    ...(facts.interactionProfile.chatGuidance ? { chatGuidance: facts.interactionProfile.chatGuidance } : {}),
+    ...(facts.interactionProfile.modelGuidance ? { modelGuidance: facts.interactionProfile.modelGuidance } : {}),
   };
 }

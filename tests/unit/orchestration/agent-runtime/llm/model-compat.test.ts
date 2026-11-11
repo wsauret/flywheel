@@ -55,7 +55,7 @@ describe("supportsAdaptiveThinking", () => {
 });
 
 describe("familySettings", () => {
-  const setting = familySettings([["claude-x-5", "five"], ["claude-x-5-1", "five-one"], ["claude-x-5.3", "five-three"], ["gpt-5.1", "gpt"]]);
+  const setting = familySettings([["claude-x-5", "five"], ["claude-x-5-1", "five-one"], ["claude-x-5.3", "five-three"], ["gpt-5.1", "gpt"], ["gpt-6.1-sol", "sol"]]);
 
   it("prefers the model's own entry, in any spelling of its id", () => {
     expect(setting("claude-x-5.1")).toEqual({ value: "five-one" });
@@ -67,6 +67,7 @@ describe("familySettings", () => {
     expect(setting("claude-x-5-2")).toEqual({ value: "five-one", inheritedFrom: "claude-x-5.1" });
     expect(setting("claude-x-5.4")).toEqual({ value: "five-three", inheritedFrom: "claude-x-5.3" });
     expect(setting("gpt-5.2")).toEqual({ value: "gpt", inheritedFrom: "gpt-5.1" });
+    expect(setting("gpt-6.2-sol")).toEqual({ value: "sol", inheritedFrom: "gpt-6.1-sol" });
   });
 
   it("never inherits from a later version, another major line, or another family", () => {
@@ -75,6 +76,8 @@ describe("familySettings", () => {
     expect(setting("claude-y-5.2")).toBeUndefined();
     expect(setting("gpt-5")).toBeUndefined();
     expect(setting("claude-x-5.2-fast")).toBeUndefined();
+    expect(setting("gpt-6.2-luna")).toBeUndefined();
+    expect(setting("gpt-7-sol")).toBeUndefined();
   });
 });
 

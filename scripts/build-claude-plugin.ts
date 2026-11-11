@@ -59,8 +59,8 @@ const RUNTIME_PERSONAS: ReadonlyMap<string, string> = new Map([
   ["ship", "it publishes through Flywheel's delegation and handoff contract"],
 ]);
 
-/** The guidance blocks of the chat body that the main agent carries: the body of Flywheel's default chat model. */
-const CHAT_GUIDANCE = resolveModelInteractionProfile(ROLE_MODEL_DEFAULTS.chat.anthropic.model, "anthropic").chatGuidance;
+/** The chat blocks of the chat body that the main agent carries: the body of Flywheel's default chat model. */
+const CHAT_GUIDANCE = resolveModelInteractionProfile(ROLE_MODEL_DEFAULTS.chat.anthropic.model, "anthropic").modelGuidance?.chat;
 /** The model families that the host names by alias; any other model goes by its full id. */
 const MODEL_ALIASES = ["opus", "sonnet", "haiku"] as const;
 

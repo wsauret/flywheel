@@ -3,9 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOptions, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPromptParts, buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOptions, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { resolveModelInteractionProfile } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { testDirectories } from "../../../helpers/directories.js";
 import { promptOptions } from "../../../helpers/prompt-capabilities.js";
@@ -21,24 +22,45 @@ const promptRealm = testDirectories(promptRealmRoot);
 const corePrompt = loadSystemPrompt(promptRealm);
 const engineeringDoctrine = loadEngineeringDoctrine(promptRealm);
 const buildSystemPrompt = (options: BuildSystemPromptOptions): string => renderSystemPrompt(buildSystemPromptTiers(options));
-/** The interactive chat prompt of `model`, with its guidance as the request planner resolves it. */
-const build = (model: string, overrides: Partial<Parameters<typeof promptOptions>[0]> = {}): string => {
-  const chatGuidance = resolveModelInteractionProfile(model, "anthropic").chatGuidance;
-  return buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "chat", chatHost: { communication: true }, ...(chatGuidance ? { chatGuidance } : {}), ...overrides }));
+/** The guidance of `model` as the request planner resolves it, served by its own vendor. */
+const guidanceOf = (model: string): Pick<BuildSystemPromptOptions, "modelGuidance"> => {
+  const modelGuidance = resolveModelInteractionProfile(model, model.startsWith("gpt-") ? "openai" : "anthropic").modelGuidance;
+  return modelGuidance ? { modelGuidance } : {};
 };
+/** The interactive chat prompt of `model`, with its guidance as the request planner resolves it. */
+const build = (model: string, overrides: Partial<Parameters<typeof promptOptions>[0]> = {}): string =>
+  buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "chat", chatHost: { communication: true }, ...guidanceOf(model), ...overrides }));
 
 /** One phrase that marks each guidance block in a rendered body. */
 const BLOCK_MARKERS = {
-  progress: "Open with one line on what you will do",
+  progress: "Give short updates while you work",
   scope: "# Scope",
   "final-message": "# The final message",
   finishing: "# Finishing the work",
   initiative: "# Initiative",
-  "original-work": "build an original game",
+  ambiguity: "# Ambiguity",
+  authorization: "# Authorization",
+  "plain-writing": "# Plain writing",
+  corrections: "# Corrections",
+  "quiet-caveats": "# Caveats",
   "model-limits": "speed up AI development",
   "shell-optional": "The `bash` tool is a good route",
   "shell-first": "Use the `bash` tool for every job it can do",
 } as const;
+
+/** One phrase that marks each base rule, which the model chat body and the general chat prompt both state once. */
+const BASE_MARKERS = [
+  "Do not work them out again, and do not reopen them",
+  "When you compare options, finish with the one that you recommend",
+  "report the action that was refused, what refused it, and the reason that it gave",
+  "Ask for permission only where a capable colleague would ask",
+  "A draft pull request, a separate worktree, and the resolution of a merge conflict are such preparation",
+  "A permission covers that kind of step for the rest of the task",
+  "Name the real risks and limits that remain",
+  "It replaces that goal only when the user cancels it or asks for work that cannot go with it",
+] as const;
+
+const occurrences = (text: string, phrase: string): number => text.split(phrase).length - 1;
 
 /** The guidance blocks that `body` holds, in the order it renders them. */
 function blocksOf(body: string): string[] {
@@ -56,6 +78,10 @@ describe("model chat body", () => {
     const tuned = build("claude-opus-5.5", { tools, engineeringDoctrine, agentsMd, skills: ["code-review"] });
 
     expect(tuned).toStartWith("You are Flywheel's chat agent.");
+    for (const rule of BASE_MARKERS) {
+      expect(occurrences(tuned, rule)).toBe(1);
+      expect(occurrences(general, rule)).toBe(1);
+    }
     for (const kept of DOCTRINE_SECTIONS) expect(tuned).toContain(kept);
     for (const replaced of [...CORE_SECTIONS, "PROPORTIONALITY:", "CONVERSATION-FIRST DELIVERY:", "CHAT CHANGE REVIEW:", "COMMUNICATION:"]) {
       expect(general).toContain(replaced);
@@ -75,7 +101,7 @@ describe("model chat body", () => {
     expect(tuned).not.toContain("end your reply with three things");
     expect(tuned).not.toContain("**Orchestration pays for itself.**");
     expect(tuned).toContain("review it yourself against the intent");
-    expect(tuned).toContain("number them and state the one you recommend");
+    expect(tuned).toContain("Number the options that you offer");
     // No skill, memory, workflow, or subagent tool: the body names none of them and keeps each method.
     for (const absent of ["`design` skill", "memory", "subagent", "workflow", "the recorded history"]) expect(tuned).not.toContain(absent);
     expect(tuned).toContain("restate their model, name the exact premise where you differ");
@@ -92,20 +118,33 @@ describe("model chat body", () => {
   it("adds each model's guidance blocks in its order, a later family version inheriting the newest earlier entry", () => {
     const withFileTools = [...TOOLS, spec("edit"), spec("write")];
     const expected: readonly (readonly [model: string, blocks: readonly string[]])[] = [
-      ["claude-opus-5.5", ["original-work", "shell-optional"]],
+      ["claude-opus-5.5", ["shell-optional"]],
       ["claude-sonnet-5.5", []],
-      ["claude-fable-5.1", ["progress", "scope", "final-message", "finishing", "shell-first"]],
-      ["claude-fable-5.2", ["finishing", "original-work", "model-limits"]],
-      ["claude-fable-5.3", ["finishing", "original-work", "model-limits"]],
-      ["claude-haiku-5.5", ["scope", "finishing", "initiative"]],
+      ["claude-fable-5.1", ["progress", "scope", "ambiguity", "final-message", "finishing", "initiative", "shell-first"]],
+      ["claude-fable-5.2", ["finishing", "model-limits"]],
+      ["claude-fable-5.3", ["finishing", "model-limits"]],
+      ["claude-haiku-5.5", ["scope", "ambiguity", "finishing", "initiative"]],
+      ["gpt-6.1-sol", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "corrections", "quiet-caveats"]],
+      ["gpt-6.2-sol", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "corrections", "quiet-caveats"]],
+      ["gpt-6-sol", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "corrections", "quiet-caveats"]],
+      ["gpt-6-astra", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "quiet-caveats"]],
+      ["gpt-6-luna", ["progress", "final-message", "finishing", "initiative", "ambiguity", "authorization", "plain-writing", "quiet-caveats"]],
     ];
     for (const [model, blocks] of expected) {
       const body = build(model, { tools: withFileTools });
       expect(body).toStartWith("You are Flywheel's chat agent.");
       expect(blocksOf(body)).toEqual([...blocks]);
-      for (const shared of ["# This session", "# Acting", "they/them", "you resume from your session notes. Never"]) expect(body).toContain(shared);
+      for (const shared of ["# This session", "# Acting", "they/them", "Use no name that you made up during the work"]) expect(body).toContain(shared);
+      // Each base rule renders once: an add-in block keeps only the conditions that it adds to the base.
+      for (const rule of [...BASE_MARKERS, "closing offers", "one idea per sentence", "one-line update before your first tool call", "Persist until the task is fully handled", "a separate worktree", "A long session is"]) expect(occurrences(body, rule)).toBe(1);
       expect(body).not.toContain("\u2014");
     }
+    // Every GPT entry but luna's takes an authorized next step without ending the turn.
+    const continues = "When the session already shows that the next step is authorized, take it. Do not end the turn to check.";
+    for (const model of ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-astra"]) expect(build(model)).toContain(continues);
+    expect(build("gpt-6-luna")).not.toContain(continues);
+    // A new major version is a new line: it gets the general prompt until it has its own entry.
+    expect(build("gpt-7-luna")).not.toStartWith("You are Flywheel's chat agent.");
     // Moving the blocked-part rule from scope to finishing keeps it once in a body that has both.
     expect(build("claude-fable-5.1").split("If one part is truly blocked").length).toBe(2);
     expect(build("claude-opus-5.5", { tools: [...TOOLS, spec("recall")] })).toContain("session notes and the recorded history");
@@ -121,12 +160,34 @@ describe("model chat body", () => {
     for (const model of ["claude-opus-5.5", "claude-fable-5.1"]) expect(shellNote(build(model, { tools: noBash }))).toBeUndefined();
   });
 
-  it("keeps the general prompt outside interactive chat even for a model with guidance", () => {
-    for (const model of ["claude-opus-5.5", "claude-haiku-5.5"]) {
-      const chatGuidance = resolveModelInteractionProfile(model, "anthropic").chatGuidance;
-      expect(chatGuidance).toBeDefined();
-      const subagent = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "subagent", ...(chatGuidance ? { chatGuidance } : {}) }));
-      expect(subagent).toBe(buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "subagent" })));
+  it("keeps the general prompt outside interactive chat, adding only a subagent's or workflow agent's agent blocks after the core prompt", () => {
+    const purposes: readonly (readonly [AgentPurpose, Pick<BuildSystemPromptOptions, "promptKind" | "unattended">])[] = [
+      [{ kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" }, { promptKind: "subagent", unattended: true }],
+      [{ kind: "workflow-agent", briefScope: { briefId: "implement" }, workflowAttemptId: "implement:attempt:1" }, { promptKind: "workflow-agent", unattended: true }],
+      [{ kind: "unattended-chat" }, { promptKind: "chat", unattended: true }],
+      [{ kind: "headless-task", prompt: { kind: "assembled", corePrompt: "You are a helpful AI Agent." } }, { promptKind: "headless" }],
+    ];
+    const expected: readonly (readonly [model: string, blocks: readonly string[]])[] = [
+      ["gpt-6.1-sol", ["finishing", "corrections", "quiet-caveats"]],
+      ["gpt-6-sol", ["finishing", "corrections", "quiet-caveats"]],
+      ["gpt-6-astra", ["finishing", "quiet-caveats"]],
+      ["gpt-6-luna", ["finishing", "quiet-caveats"]],
+      ["claude-opus-5.5", []],
+      ["claude-haiku-5.5", []],
+    ];
+    for (const [model, blocks] of expected) {
+      for (const [purpose, kind] of purposes) {
+        const options = (guided: boolean) => promptOptions({ corePrompt, tools: TOOLS, ...kind, purpose, ...(guided ? guidanceOf(model) : {}) });
+        const parts = buildSystemPromptParts(options(true));
+        const agentBlocks = purpose.kind === "subagent" || purpose.kind === "workflow-agent" ? blocks : [];
+        expect(blocksOf(parts.map((part) => part.text).join("\n\n"))).toEqual([...agentBlocks]);
+        expect(parts.filter((part) => part.label !== "model agent guidance")).toEqual(buildSystemPromptParts(options(false)));
+        if (agentBlocks.length > 0) {
+          expect(parts.map((part) => part.label).slice(0, 2)).toEqual(["core system prompt", "model agent guidance"]);
+          // The agent learns how its turn ends from its unattended section, never from the chat's turn rules.
+          expect(parts[1]?.text).not.toContain("until the user writes again");
+        }
+      }
     }
   });
 });

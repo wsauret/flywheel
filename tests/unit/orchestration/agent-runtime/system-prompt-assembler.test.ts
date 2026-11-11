@@ -506,11 +506,11 @@ describe("renderCommunicationBlock", () => {
     const without = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([]));
 
     expect(withTool).not.toContain("ask_user");
-    expect(withTool).not.toContain("so that the user can reply with a single number");
-    expect(withTool).toContain("8. Ground every claim");
-    expect(withTool).toContain("14. Explain designs");
-    expect(without).toContain("8. Use numbered lists when offering options");
-    expect(without).toContain("15. Explain designs");
+    expect(withTool).not.toContain("so that the user can reply with one number");
+    expect(withTool).toContain("9. Ground every claim");
+    expect(withTool).toContain("15. Explain designs");
+    expect(without).toContain("9. Number the options that you offer");
+    expect(without).toContain("16. Explain designs");
   });
 
   it("points a challenge to the design skill only while that skill can load", () => {

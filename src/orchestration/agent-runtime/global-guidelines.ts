@@ -1,10 +1,12 @@
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { SECRET_REPLACEMENT } from "../../infra/redact-secrets.js";
+import { refusedCallRule } from "./model-chat-body.js";
 
 export const GLOBAL_GUIDELINE_ID = {
   batchIndependentToolCalls: "batch-independent-tool-calls",
   savedOutputRecovery: "saved-output-recovery",
   secretRedactionMarker: "secret-redaction-marker",
+  refusedToolCalls: "refused-tool-calls",
 } as const;
 
 export type GlobalGuidelineId = typeof GLOBAL_GUIDELINE_ID[keyof typeof GLOBAL_GUIDELINE_ID];
@@ -19,6 +21,7 @@ const GLOBAL_GUIDELINES: GlobalGuidelineText = Object.freeze({
     return recovery && `When a tool truncates its output and names a saved-output file, ${recovery} for the part you need instead of re-running a broader call; it holds the complete result the truncated view came from.`;
   },
   [GLOBAL_GUIDELINE_ID.secretRedactionMarker]: () => `\`${SECRET_REPLACEMENT}\` in tool output usually marks a runtime redaction, not the true bytes; the command or edit itself ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret (over-matched code), recover the bytes through a transformed view of the file, such as each line reversed; if it is a real credential, leave it masked.`,
+  [GLOBAL_GUIDELINE_ID.refusedToolCalls]: () => refusedCallRule("the user or a Flywheel policy"),
 });
 
 

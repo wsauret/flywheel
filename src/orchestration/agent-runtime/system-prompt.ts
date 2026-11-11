@@ -20,7 +20,7 @@ import type { RuntimeTool } from "./tools/types.js";
 import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
 import type { SessionIdentity } from "../session/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
-import { FLYWHEEL_CHAT_HOST, renderModelChatBody, type ModelChatGuidance } from "./model-chat-body.js";
+import { ACT_WHEN_READY, FAITHFUL_REPORT, FLYWHEEL_CHAT_HOST, longSessionRule, NUMBERED_OPTIONS, PERMISSION_SCOPE, PERMISSION_THRESHOLD, renderModelAgentGuidance, renderModelChatBody, type ModelGuidance } from "./model-chat-body.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
 import { LIST_SESSIONS_TOOL_NAME } from "./tools/list-sessions.js";
 import { SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS } from "../session/session-artifacts.js";
@@ -74,8 +74,12 @@ export function renderCommunicationBlock(style: { progress: string; modelNotes: 
   ].join("\n");
   // The ask_user description owns the rule on when to ask, so a prompt that carries the tool states no option rule here.
   const closingRules = [
-    ...(has("ask_user") ? [] : ["Use numbered lists when offering options so that the user can reply with a single number. Be sure to state which option you recommend and why in a single line."]),
+    ACT_WHEN_READY,
+    ...(has("ask_user") ? [] : [NUMBERED_OPTIONS]),
     "Ground every claim about code, tests, or tools in what you observed. List the file paths and line numbers the evidence came from. Mark inferences as inferences and name the assumptions behind them.",
+    FAITHFUL_REPORT,
+    `${PERMISSION_THRESHOLD} ${PERMISSION_SCOPE}`,
+    longSessionRule(`When Flywheel resets the context, continue from your session notes${has("recall") ? " and the recorded history" : ""}`),
     "When something fails, report what broke, what it means for the task, and what you will do next. No full error log unless asked.",
     "Say what you found, the cause with its key evidence, and what you are about to change at the start of the turn that issues the first edit. Keep it conversational.",
     `Explain designs, results, and other artifacts in your reply in plain terms. Never send the user to read a file to understand the work. When the user questions a claim, says they are confused, or proposes a simpler model, ${has("skill:design") ? "apply the Challenge method of the `design` skill: restate" : "restate"} their model, name the exact premise where you differ, settle facts with evidence without defending or conceding by reflex, and leave preferences to the user.`,
@@ -270,9 +274,11 @@ export interface BuildSystemPromptOptions {
   /** Accepted for prompt tooling compatibility; provider notes are appended only during attempt preparation. */
   promptNotes?: { progress: string; modelNotes: string };
   agentsMd?: string;
-  /** The guidance blocks of the serving model's chat body. In an interactive chat the body replaces the core prompt
-   *  and the proportionality, delivery, review, and communication blocks; the engineering doctrine still follows it. */
-  chatGuidance?: ModelChatGuidance;
+  /** The guidance blocks of the serving model. In an interactive chat its chat blocks render in the model chat body,
+   *  which replaces the core prompt and the proportionality, delivery, review, and communication blocks; the
+   *  engineering doctrine still follows it. A subagent or a workflow agent keeps the general prompt and gets the
+   *  agent blocks after the core prompt. */
+  modelGuidance?: ModelGuidance;
   tools: ReadonlyArray<ToolPromptFields>;
   /** Resolved `<env>` block of this runner's directory pair. Absent for a
    *  caller with no environment, such as prompt tooling and unit tests. */
@@ -338,12 +344,15 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const writesFiles = has("edit") || has("write");
   const hasImplementationSurface = hasDispatchSurface || writesFiles;
   const engineeringDoctrine = renderedDoctrine(opts);
-  if (chat && opts.chatGuidance) {
-    stable("model chat body", renderModelChatBody(opts.chatGuidance, has, FLYWHEEL_CHAT_HOST));
+  if (chat && opts.modelGuidance) {
+    stable("model chat body", renderModelChatBody(opts.modelGuidance.chat, has, FLYWHEEL_CHAT_HOST));
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
     if (toolContext) stable("tool context", toolContext);
   } else {
     stable("core system prompt", renderAgentAsset(opts.corePrompt ?? bundledSystemPrompt, "system-prompt.md", opts.purpose?.kind === "unattended-chat" ? unattendedChatCheck(has) : has));
+    if (opts.modelGuidance && (opts.purpose?.kind === "subagent" || opts.purpose?.kind === "workflow-agent")) {
+      stable("model agent guidance", renderModelAgentGuidance(opts.modelGuidance.agent));
+    }
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
     if (hasDispatchSurface) stable("proportionality", renderProportionalityGuidance(has));
     if (hasImplementationSurface && hasAskUser && chat) stable("conversation-first delivery", renderConversationFirstDelivery(has));
