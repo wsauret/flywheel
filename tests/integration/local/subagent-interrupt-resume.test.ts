@@ -225,10 +225,21 @@ function requestCutover(): Promise<"busy" | "retiring"> {
 async function until<T>(label: string, read: () => Promise<T>, accept: (value: T) => boolean): Promise<T> {
   const deadline = Date.now() + STEP_MS
   let last: T | undefined
+  // A poll can open a fresh reader while the service writes, so one transient
+  // read failure (such as SQLITE_CANTOPEN) is retried until the deadline.
+  let lastError: unknown
   for (;;) {
-    last = await read()
-    if (accept(last)) return last
-    if (Date.now() > deadline) throw new Error(`${label} did not happen within ${STEP_MS}ms; last: ${JSON.stringify(last)}`)
+    let polled: { value: T } | undefined
+    try {
+      polled = { value: await read() }
+    } catch (error) {
+      lastError = error
+    }
+    if (polled) {
+      last = polled.value
+      if (accept(last)) return last
+    }
+    if (Date.now() > deadline) throw new Error(`${label} did not happen within ${STEP_MS}ms; last: ${JSON.stringify(last)}; last error: ${String(lastError)}`, { cause: lastError })
     await Bun.sleep(50)
   }
 }
