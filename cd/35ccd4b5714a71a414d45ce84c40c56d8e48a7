@@ -1,0 +1,24 @@
+src/infra/log.ts
+  h_4b47e9e4a8b456 33-34,247-249,251-252
+tests/unit/infra/log-session-reopen.test.ts
+  h_4b47e9e4a8b456 63-74
+tests/unit/orchestration/chat/chat-runner-lifecycle-recall.test.ts
+  h_4b47e9e4a8b456 167,195-197
+tests/unit/orchestration/headless/headless-run.test.ts
+  h_4b47e9e4a8b456 291-293,297-298,302-305
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 13,361-363,367
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher-probe.test.ts
+  h_4b47e9e4a8b456 1,3,67-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cd35ccd4b5714a71a414d45ce84c40c56d8e48a7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
