@@ -1,0 +1,46 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 72,259
+bench/harbor/harbor-config.ts
+  h_4b47e9e4a8b456 21,115-117,214,216-217,307,340,349
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 193-199,201-206
+bench/harbor/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 151,165-169
+bench/harbor/run-harbor.ts
+  h_4b47e9e4a8b456 100,102,322,483
+bench/harbor/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 111,117
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 227,229
+docs/provider-terms.md
+  h_4b47e9e4a8b456 239,242
+src/cli/headless-snapshot-auth.ts
+  h_4b47e9e4a8b456 11
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 245-248,254
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 1,74-75,83-84,238-242,309,311,373-375,382,386-391,435,544-546,549-550,552-561
+src/orchestration/modules/provider-claude-agent-sdk/module.ts
+  h_4b47e9e4a8b456 95-96
+tests/integration/bench/harbor-runner.test.ts
+  h_4b47e9e4a8b456 170,219
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 37,132,134-135
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 69,91,146-147,149-156
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  h_4b47e9e4a8b456 195-207,219,240-245,248-249,252-255
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 7-13,70-118,143-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5ef5796ee0ea3e20417cce23c8065ddac4d22f5e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
