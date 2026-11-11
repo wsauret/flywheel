@@ -99,6 +99,15 @@ export function beforeScenarioBudgetCut<Definition extends AgentDefinition>(pers
   return { ...persona, systemPrompt }
 }
 
+/** A bundled reviewer-uat persona as the builds before its scratchpad rule shipped it. Throws when the rule is
+ *  missing, so a later edit of the rule updates this fixture. */
+export function beforeUatScratchpadRule<Definition extends AgentDefinition>(persona: Definition): Definition {
+  if (persona.kind !== "persona" || persona.name !== "reviewer-uat") return persona
+  const rule = "\n\n{{if:bash}}\nCreate every fixture, isolated home, and evidence file inside your scratchpad, and name each one with a literal path, not a shell variable; the shell refuses other writes.\n{{end}}"
+  if (!persona.systemPrompt.includes(rule)) throw new Error(`Persona ${persona.name} lacks the scratchpad rule`)
+  return { ...persona, systemPrompt: persona.systemPrompt.replace(rule, "") }
+}
+
 /** Each clause of a bundled persona that the capability-text edit of
  *  2026-11-06 rewrote, paired with its text at dd2fab076, the last revision
  *  before that edit. No identity proof covers that edit, so a workflow paused
@@ -146,12 +155,13 @@ const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: 
 ]);
 
 /** A bundled persona as it read at dd2fab076, before the capability-text
- *  edit, which also added the bundled mark to persona identity. Throws when a
- *  rewritten clause is missing, so a later edit of these personas updates
+ *  edit, which also added the bundled mark to persona identity. Starts from
+ *  {@link beforeUatScratchpadRule}, because that rule came later. Throws when
+ *  a rewritten clause is missing, so a later edit of these personas updates
  *  this fixture. */
 export function atCapabilityTextBase(definition: AgentDefinition): AgentDefinition {
   if (definition.kind !== "persona") return definition;
-  const { bundled: _mark, ...persona } = definition;
+  const { bundled: _mark, ...persona } = beforeUatScratchpadRule(definition);
   const clauses = CAPABILITY_TEXT_AT_BASE.get(persona.name);
   if (!clauses) return persona;
   let { description, systemPrompt } = persona;

@@ -15,6 +15,7 @@ import {
   DEFINITION_IDENTITY_RETIRED_STEP_SCOPE_MIGRATION_ID,
   DEFINITION_IDENTITY_SCENARIO_BUDGET_MIGRATION_ID,
   DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID,
+  DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID,
   definitionIdentityMismatches,
   isContentOnlyIdentityChange,
   WorkflowDefinitionDriftError,
@@ -33,6 +34,7 @@ import {
   withoutRetiredPromptSwitches,
   withoutRetiredScenarioBudget,
   withoutRetiredToolSteering,
+  withUatScratchpadRule,
 } from "./persona-identity-proofs.js"
 import type { WorkflowEvent } from "./events.js"
 import { recoverWorkflowControl } from "./recovery.js"
@@ -171,6 +173,7 @@ function provenIdentityAdoptions(recorded: DefinitionIdentity, input: IdentityPr
       adoptPhaseGrammarIdentity(lexical, view === undefined ? undefined : retiredStepIdentity(view, workflow, agents, options), current))],
     [DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, (identity) => withoutRetiredLexiconText(identity, personas)],
     [DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID, (identity) => withDefaultAdvisor(identity, workflow.id, options)],
+    [DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID, (identity) => withUatScratchpadRule(identity, personas)],
   ]
   const adoptions: IdentityAdoption[] = []
   let identity = recorded

@@ -67,6 +67,10 @@ If a scenario needs more than five minutes, split it into bounded actions and ob
 
 Choose the highest-leverage narrow checks first. Use the system's public `--help` and live-drive documentation to discover its surfaces.
 
+{{if:bash}}
+Create every fixture, isolated home, and evidence file inside your scratchpad, and name each one with a literal path, not a shell variable; the shell refuses other writes.
+{{end}}
+
 ### Stop conditions
 
 Stop and report when **any** of these hold:

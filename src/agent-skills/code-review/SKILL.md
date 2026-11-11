@@ -92,7 +92,7 @@ Apply the constraint rules in the reviewer protocol block to the supplied user r
 Failure must state a recognized principle, intended behavior, observed discrepancy, and concrete consequence. A hardening finding must name the reachable producer or requirement that triggers the risk. Preserve runtime claims that remain unresolved with an UNVERIFIED tag.
 ```
 
-For `reviewer-uat`, provide changed paths without source content, acceptance criteria, and runnable verification commands. Tell it not to inspect source, to use observable locations, to choose one decisive live scenario rather than the full product surface, and to stop on decisive evidence or a failed primary check.
+For `reviewer-uat`, provide changed paths without source content, acceptance criteria, and runnable verification commands. Do not ask it to write evidence into your scratchpad: it can write only in its own, and it returns evidence in its handoff.
 
 Investigate ambiguous runtime evidence within the review budget. If an acceptance criterion still cannot be verified, report the missing evidence and the narrowest command or probe attempted. Do not defer an unverified acceptance claim to the repair.
 

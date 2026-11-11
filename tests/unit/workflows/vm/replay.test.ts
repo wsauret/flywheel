@@ -12,12 +12,14 @@ import {
   DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID,
   DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID,
+  DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID,
+  personaIdentitySha256,
   WorkflowDefinitionDriftError,
   type DefinitionIdentity,
 } from "../../../../src/workflows/vm/definition-identity.js"
 import { replayWorkflowFromFacts } from "../../../../src/workflows/vm/replay.js"
 import { foldWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { atCapabilityTextBase, beforeLexiconCut, beforeToolSteeringCut } from "../../orchestration/migrations/_persona-budget.js"
+import { atCapabilityTextBase, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../orchestration/migrations/_persona-budget.js"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js"
 import {
   buildWorkflowControlInitializedFact,
@@ -376,6 +378,32 @@ describe("workflow fact replay", () => {
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("explorer", { ...explorer, description: `${explorer.description} Edited.` })
     await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
+  })
+
+  it("adopts the reviewer-uat hash recorded before its scratchpad rule, and keeps any other change as drift", async () => {
+    const uat = repoDefinitions().captureRevision().personas.get("reviewer-uat")
+    if (!uat) throw new Error("Expected the bundled reviewer-uat")
+    const workflowWithUat: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["reviewer-uat"] }] }
+    const personas = new Map<string, AgentDefinition>([["reviewer-uat", uat]])
+    const uatSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("uat")])
+    const compiled = compileWorkflowControl(workflowWithUat, resolveWorkflowAgents(workflowWithUat), { skills: uatSkills, personas })
+    const recordedSha256 = personaIdentitySha256(beforeUatScratchpadRule(uat))
+    const recorded = { ...compiled.definitionIdentity, personas: compiled.definitionIdentity.personas.map((entry) => entry.personaName === "reviewer-uat" ? { ...entry, sha256: recordedSha256 } : entry) }
+    const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
+    const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+    if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
+    const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
+
+    const appends: GuardedEventStoreAppend[] = []
+    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, uatSkills, personas, workflowWithUat))
+    expect(appends).toHaveLength(1)
+    expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID } })
+    expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
+
+    const rejected: GuardedEventStoreAppend[] = []
+    const edited = new Map(personas).set("reviewer-uat", { ...uat, description: `${uat.description} Edited.` })
+    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, uatSkills, edited, workflowWithUat))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 })

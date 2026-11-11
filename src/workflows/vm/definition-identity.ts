@@ -385,6 +385,12 @@ export const DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID = "workflow-defini
 const DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_REASON =
   "Control recorded the personas that the agents could dispatch before every agent could dispatch the advisor; the session adopts the same identity with the current advisor persona added, because the advisor is the only difference."
 
+/** The reviewer-uat persona started to tell the reviewer to write only in its scratchpad, at literal paths. Resume
+ *  records this adoption through `withUatScratchpadRule`. Remove after 2027-05-10. */
+export const DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID = "workflow-definition-identity-uat-scratchpad-v1"
+const DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_REASON =
+  "Control recorded a reviewer-uat persona without the rule that it writes only in its scratchpad at literal paths; the session adopts the same persona with that rule, because the current definitions prove the rule is the only difference."
+
 /** The strict ordered chain of definition-identity adoptions. Replay accepts
  * recorded adoptions only in increasing order and only once each, so a session
  * that already adopted an earlier migration can still receive a later one.
@@ -414,6 +420,7 @@ export const DEFINITION_IDENTITY_MIGRATIONS = [
   { id: DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID, reason: DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, reason: DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID, reason: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_REASON },
+  { id: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID, reason: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_REASON },
 ] as const
 
 export type DefinitionIdentityMigrationId = typeof DEFINITION_IDENTITY_MIGRATIONS[number]["id"]

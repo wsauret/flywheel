@@ -231,6 +231,29 @@ export function withDefaultAdvisor<Identity extends DefinitionIdentity>(
   }
 }
 
+/** The reviewer-uat block that tells the reviewer where its shell admits writes, paired with the empty text it
+ *  replaced. Remove after 2027-05-10. */
+const RETIRED_UAT_SCRATCHPAD_TEXT: RetiredPersonaText = new Map([
+  ["reviewer-uat", [[
+    "\n\n{{if:bash}}\nCreate every fixture, isolated home, and evidence file inside your scratchpad, and name each one with a literal path, not a shell variable; the shell refuses other writes.\n{{end}}",
+    "",
+  ]]],
+])
+
+/** The recorded identity with each persona hash that reviewer-uat produced before its scratchpad rule replaced by
+ *  the current identity hash of that persona. A recorded hash qualifies only when it equals the current definition
+ *  without exactly that rule, so any other change still reports as drift. Returns the same identity when no hash
+ *  changes. Remove after 2027-05-10. */
+export function withUatScratchpadRule<Identity extends DefinitionIdentity>(
+  identity: Identity,
+  personas: ReadonlyMap<string, AgentDefinition>,
+): Identity {
+  return adoptProvenPersonas(identity, personas, (persona) => {
+    const retired = withRetiredText(persona, RETIRED_UAT_SCRATCHPAD_TEXT)
+    return retired ? [personaIdentitySha256(retired)] : []
+  })
+}
+
 /** The result of `adopt`, a proof that compares the recorded persona hashes with the current definitions, as it
  *  reads when each persona hash that the text before the workflow lexicon produced is first proven current. Each
  *  such persona keeps its recorded hash in the result, so `adopt` records no persona change and the lexicon proof,
