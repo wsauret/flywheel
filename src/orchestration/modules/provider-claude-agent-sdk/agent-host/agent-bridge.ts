@@ -260,7 +260,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     return { place, key: hostKey(place), cwd, stepEffort: values.effort };
   };
 
-  const stream = async (view: CliView, signal: AbortSignal, input: HostedRequestInput): Promise<AsyncIterable<Anthropic.RawMessageStreamEvent | TransportContextFrame>> => {
+  const stream = async (view: CliView, signal: AbortSignal, input: HostedRequestInput, onProgress: () => void): Promise<AsyncIterable<Anthropic.RawMessageStreamEvent | TransportContextFrame>> => {
     const { place, key, cwd, stepEffort } = placement(view);
     const { requestContext } = input;
     if (held?.key !== key) {
@@ -389,7 +389,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       const toolUseIds = answer.message.content.flatMap((block) => block.type === "tool_use" ? [block.id] : []);
       if (current.phase.kind === "running") current.phase = answer.stopReason === "tool_use" ? { kind: "parked", toolUseIds } : { kind: "idle" };
       config.recordOutcome("served");
-    });
+    }, onProgress);
     // The record takes the dispatcher's requests that the host holds now, and waits for none.
     const transportRecord = (): TransportContextFrame => ({
       type: "transport_context",
@@ -446,7 +446,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       };
       requestSignal.addEventListener("abort", settle, { once: true });
       try {
-        const data = await stream(cliView(params, options.origins, config.projectRoot), requestSignal, options);
+        const data = await stream(cliView(params, options.origins, config.projectRoot), requestSignal, options, () => { options.onProgress?.(); });
         return { data: Object.assign(data, { controller }), response: new Response(null) };
       } catch (error) {
         settle();

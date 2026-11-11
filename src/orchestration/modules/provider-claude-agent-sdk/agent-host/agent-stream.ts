@@ -9,8 +9,9 @@ import type { HostStepItem } from "./host-gate.js";
 
 /** How often the stream reads the agent file while it waits for the engine's row of a block. */
 const ROW_POLL_MS = 20;
-/** The longest wait for the engine's row of a block that the step already streamed. The engine writes it within
- *  moments of the block's end. */
+/** The longest wait for the engine's row of a signed block after the step's stop chunk. Since engine 2.1.321 the
+ *  engine writes the rows of a response's blocks only when the response ends, so a row can arrive long after its
+ *  block ended, but within moments of the stop chunk. */
 const ROW_BOUND_MS = 10_000;
 
 /** One event of an admitted step, as the host gate hands it on. */
@@ -33,30 +34,64 @@ type OpenBlock =
  * The Anthropic stream of one hosted agent's step, from the chunks that the engine's step hook passed on and the rows
  * that the engine wrote to the agent file (spike results; plan rule H10). It re-encodes the real model's response and
  * adds nothing: each thinking block takes its signature, and each redacted thinking block its data, from the engine's
- * row of that block, because the hook passes neither on. The usage is the response's own, from its stop chunk. A
+ * row of that block, because the hook passes neither on. The engine can write that row as late as the response's end,
+ * so while a row is missing the stream keeps reading the step's events ahead and yields them, in order, once the row
+ * arrives; a row that is already present streams at once. The usage is the response's own, from its stop chunk. A
  * step that ends without a stop chunk failed: the stream throws `failure()`, the service's answer from the record of
  * the step's request (`HostedRequests.failure`), which the shared adapter classifies as on the native route. `from`
  * is the number of signed blocks that the agent file held before the step was admitted. `onAnswer` gets the response
- * once it ended.
+ * once it ended. `onProgress` hears each event that the stream holds back, so that the adapter's stream deadline counts
+ * it as the response's progress.
  *
  * @yields {Anthropic.RawMessageStreamEvent} The Anthropic stream events of the response.
  */
-export async function* hostedStreamEvents(events: AsyncIterable<StepEvent>, rows: AgentRows, from: number, model: string, failure: () => Promise<Error>, onAnswer: (answer: HostedAnswer) => void): AsyncGenerator<Anthropic.RawMessageStreamEvent> {
+export async function* hostedStreamEvents(events: AsyncIterable<StepEvent>, rows: AgentRows, from: number, model: string, failure: () => Promise<Error>, onAnswer: (answer: HostedAnswer) => void, onProgress: () => void): AsyncGenerator<Anthropic.RawMessageStreamEvent> {
   const content: CliBlock[] = [];
   let open: OpenBlock | undefined;
   let started = false;
   let signedRead = from;
+  const iterator = events[Symbol.asyncIterator]();
+  let pending: Promise<IteratorResult<StepEvent>> | undefined;
+  /** The step's events that arrived while the stream waited for a row, in order. */
+  const ahead: StepEvent[] = [];
+  let stopped = false;
 
+  const pull = (): Promise<IteratorResult<StepEvent>> => (pending ??= iterator.next());
+  const read = async (): Promise<StepEvent> => {
+    const result = await pull();
+    pending = undefined;
+    const event: StepEvent = result.done === true ? { kind: "done" } : result.value;
+    if (event.kind === "item" && event.item.kind === "stop") stopped = true;
+    return event;
+  };
+
+  /** The next signed block's row. Until the step's stop chunk arrives, the wait reads the step's events ahead, so the
+   *  step's own stream bounds it; after the stop chunk, `ROW_BOUND_MS` bounds it. A step that ends without a stop chunk
+   *  failed, whatever its rows hold. */
   const nextSigned = async (): Promise<SignedBlock> => {
-    const deadline = Date.now() + ROW_BOUND_MS;
+    let deadline: number | undefined;
+    let held = false;
     while (true) {
       const block = rows.read()[signedRead];
       if (block !== undefined) {
         signedRead += 1;
         return block;
       }
-      if (Date.now() > deadline) throw new LlmStreamError(`The ${CLAUDE_AGENT_SDK_LABEL} agent host wrote no row for a signed block of the response`, "transient");
-      await Bun.sleep(ROW_POLL_MS);
+      // The event that ended this block waits for the row too, so it is held back like the events read ahead.
+      if (!held) {
+        held = true;
+        onProgress();
+      }
+      if (stopped) {
+        deadline ??= Date.now() + ROW_BOUND_MS;
+        if (Date.now() > deadline) throw new LlmStreamError(`The ${CLAUDE_AGENT_SDK_LABEL} agent host wrote no row for a signed block of the response`, "transient");
+        await Bun.sleep(ROW_POLL_MS);
+      } else if (await Promise.race([pull().then(() => true), Bun.sleep(ROW_POLL_MS).then(() => false)])) {
+        const event = await read();
+        if (event.kind === "done") throw await failure();
+        ahead.push(event);
+        onProgress();
+      }
     }
   };
 
@@ -89,7 +124,8 @@ export async function* hostedStreamEvents(events: AsyncIterable<StepEvent>, rows
     }
   }
 
-  for await (const event of events) {
+  while (true) {
+    const event = ahead.shift() ?? await read();
     if (event.kind === "done") break;
     const { item } = event;
     if (!started) {
