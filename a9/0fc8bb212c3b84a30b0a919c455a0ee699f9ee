@@ -1,0 +1,16 @@
+src/orchestration/chat/session-engines.ts
+  h_4b47e9e4a8b456 2-3,6,14-22,122-166,286,291,307-308,337,375
+tests/unit/orchestration/chat/session-engines.test.ts
+  h_4b47e9e4a8b456 1,3,29-30,33,42,51,66-67,76,78,94,98-100,111-126,388-480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a90fc8bb212c3b84a30b0a919c455a0ee699f9ee",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
