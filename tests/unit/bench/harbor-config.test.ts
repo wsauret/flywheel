@@ -60,7 +60,7 @@ describe("Harbor config resolution", () => {
     expect(all.taskNames).toEqual(["terminal-bench/adaptive-rejection-sampler", "terminal-bench/kv-store-grpc"]);
     // Harbor Hub refuses a job that names too many tasks, so a whole-benchmark job names the exclusions.
     expect(all.datasetFilter).toEqual({ exclude_task_names: ["terminal-bench/qemu-startup", "terminal-bench/qemu-alpine-ssh"] });
-    expect(all).toMatchObject({ split: "all", round: { name: "r1", purpose: "measure" }, expectedTrials: 6, grade: "leaderboard_valid" });
+    expect(all).toMatchObject({ split: "all", round: "r1", expectedTrials: 6, grade: "leaderboard_valid" });
     // An exclusion that the dataset does not hold means the descriptor no longer names the board's whole benchmark.
     await expect(resolveAll(async () => dataset.slice(0, 3))).rejects.toThrow("holds no excluded task terminal-bench/qemu-startup");
   });
@@ -171,9 +171,8 @@ describe("Harbor config resolution", () => {
     await expect(resolveArgs(["--benchmark", "terminal-bench-2.1", "--arm", "bench/harbor/configs/tb-mini-openai.toml", "--agent-repo", "owner/agent", ...ONE_TASK])).rejects.toThrow("--auth-profile");
   });
 
-  test("a round run measures its split, a task-list run in a round is a rerun, and a round name must be a slug", async () => {
-    expect((await resolveArgs([...launchArgs, "--split", "holdout", "--round", "r3"])).round).toEqual({ name: "r3", purpose: "measure" });
-    expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--round", "r3"])).round).toEqual({ name: "r3", purpose: "rerun" });
+  test("a run names the round it joins, and a round name must be a slug", async () => {
+    expect((await resolveArgs([...launchArgs, "--split", "holdout", "--round", "r3"])).round).toBe("r3");
     await expect(resolveArgs([...launchArgs, ...ONE_TASK, "--round", "R 3"])).rejects.toThrow("must be a lowercase slug");
   });
 });

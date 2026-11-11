@@ -54,7 +54,7 @@ When the agent phase of a selected task has no public network, as on DeepSWE, th
 | `--arm <path>` | required | The arm's Flywheel config. |
 | `--auth-profile <id>` | required | The Flywheel auth profile that the snapshot comes from. |
 | `--split <name>` or `--task-names <a,b>` | neither: every task | A split of the descriptor, or an explicit list. Give at most one of the two. A bare task name takes the benchmark's task namespace. Each name must match a task of the pinned dataset. With neither, the run takes every task of the pinned dataset except the descriptor's exclusions and measures the reserved split `all`. |
-| `--round <name>` | none | The round that an executing run joins. A run with `--split` or with no task selection joins as a measurement, a run with `--task-names` as a rerun. A dry run joins no round, but its benchmark and identity are checked against the round. The name is a lowercase slug. See [A hill-climb round](#a-hill-climb-round). |
+| `--round <name>` | none | The round that an executing run joins. A run with `--split` or with no task selection joins as a measurement of its split. A run with `--task-names` joins as a measurement of the reserved split `task-list` when no run of the round has measured anything yet, and as a rerun otherwise. A dry run joins no round, but its benchmark and identity are checked against the round. The name is a lowercase slug. See [A hill-climb round](#a-hill-climb-round). |
 | `--attempts <n>` | `3` | Attempts per task. Fewer than 3 needs `--allow-low-k`. |
 | `--concurrency <n>` | `4` | Trials at the same time. On Hub, set it to the trial count to run every trial at once. |
 | `--timeout-multiplier <x>` | `1` | Harbor's agent and verifier timeout multiplier. |
@@ -83,7 +83,7 @@ An admission flag acknowledges an exception. It does not make the result leaderb
 
 A round is a named record of runs whose scored attempts pool into one score of one arm on one benchmark. The launcher writes it at `<jobs dir>/rounds/<name>.json` when an executing run with `--round` is prepared, so a run that fails later is still listed, and its manifest state tells how far it got.
 
-The two entry points name a round in two forms. The launcher's `--round` takes the round name, and the launcher prints the record path, `round <name>: <jobs dir>/rounds/<name>.json`, when it records the run. Each `hill.ts` command takes that record path with `--round`.
+The two entry points name a round in two forms. The launcher's `--round` takes the round name, and the launcher prints the record path and how the run joined, such as `round <name>: <jobs dir>/rounds/<name>.json (measures split subset)` or `(rerun)`, when it records the run. Each `hill.ts` command takes that record path with `--round`.
 
 A round measures one setup. Its first run records the round's identity: the benchmark, the Flywheel commit that the agent package is built from, the arm path and SHA-256, and the chat model and effort that the arm pins. Before it builds or publishes a package, the launcher refuses a run that names the round with another benchmark, commit, arm digest, model, or effort, and names the recorded and the offered value. So one round is one commit and one arm: commit a change to Flywheel or to the arm, then start a new round. A round recorded before rounds had an identity still reads, and its next run sets the identity.
 
@@ -149,10 +149,10 @@ ROUND="$JOBS/rounds/r3.json"
 
    - Each attempt slot that a measurement lost can run again at most 2 times, the board's rule.
    - The command refuses while any run of the round is `prepared` or `launched`, so a round with an unfinished run is never planned twice. For a `launched` run, the refusal names the `resume-hosted` command that settles it.
-   - A run that ended before Harbor ran any trial (`snapshot_failed`, `hub_dry_run_refused`, or `hub_launch_refused`) measured nothing, so it plans no attempt, and the command lists it. For such a measurement, start a fresh measure run of its split.
+   - A run that ended before Harbor ran any trial (`snapshot_failed`, `hub_dry_run_refused`, or `hub_launch_refused`) measured nothing, so it plans no attempt, and the command lists it. For such a measurement, start a fresh measure run of its split, or, for the split `task-list`, run its task list into the round again, which then joins as the measurement.
    - The rerun sets `--benchmark`, `--task-names`, `--attempts`, `--round`, `--jobs-dir`, and the round's recorded `--arm` itself, and refuses each of them, and `--split`, after `--`, with an error that names the flag. Only a round recorded before rounds had an identity takes `--arm` after `--`.
    - A hub-broken task of the descriptor is not rerun: no agent can pass it on Harbor Hub.
-   - Each generated command selects its tasks with `--task-names`, so it joins the round as a rerun. A command whose attempt count is below 3 adds `--allow-low-k`.
+   - Each generated command selects its tasks with `--task-names`, and the round already has a measurement, so it joins the round as a rerun. A command whose attempt count is below 3 adds `--allow-low-k`.
 
    Run the plan again after the reruns finalize, until it shows no open attempt that the cap allows.
 
@@ -188,6 +188,10 @@ bun bench/harbor/hill.ts score --round <jobs dir>/rounds/<name>.json --board
 ```
 
 A round of all tasks prints no projection, because it measured the full benchmark itself. Its paired comparison with each harness of the board uses all 87 tasks.
+
+### Task-list round
+
+An explicit task list can also be a round of its own, such as an A/B comparison over chosen tasks: give each arm its own round, and make the task list the first run of each. That run measures the reserved split `task-list`, so `hill.ts rerun` plans its lost trials and `hill.ts score` scores the split `task-list`. Give a round one task list: a later list joins as a rerun, which adds attempts only to tasks that the round measured.
 
 ## Bring-up with one task
 

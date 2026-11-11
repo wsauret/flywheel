@@ -79,8 +79,8 @@ async function fixtureRound() {
   writeRun(rerun, ["flaky"], 1, [
     { id: "flaky-3", task: "flaky", reward: 1, stdout: "failed to download https://github.com/x\n===== 3 passed in 1.0s =====\n" },
   ]);
-  await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: measure, purpose: "measure", split: "subset" }, IDENTITY);
-  await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: rerun, purpose: "rerun" }, IDENTITY);
+  await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: measure, split: "subset" }, IDENTITY);
+  await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: rerun }, IDENTITY);
   const path = roundPath(jobs, "r1");
   return { path, round: await readRound(path), jobs };
 }
@@ -89,7 +89,7 @@ describe("round records", () => {
   it("keeps every run of appends that race on one round", async () => {
     const jobs = join(temporary("harbor-round-race-"), "jobs");
     const directories = Array.from({ length: 6 }, (_, index) => `/scratch/run-${index}`);
-    await Promise.all(directories.map((directory) => appendRoundRun(jobs, "r1", BENCHMARK.id, { directory, purpose: "measure", split: "subset" }, IDENTITY)));
+    await Promise.all(directories.map((directory) => appendRoundRun(jobs, "r1", BENCHMARK.id, { directory, split: "subset" }, IDENTITY)));
     const round = await readRound(roundPath(jobs, "r1"));
     expect(round.runs.map((run) => run.directory).sort()).toEqual(directories);
     expect(round.identity).toEqual(IDENTITY);
@@ -97,8 +97,8 @@ describe("round records", () => {
 
   it("binds a round to the identity of its first run and refuses another, naming both values", async () => {
     const jobs = join(temporary("harbor-round-identity-"), "jobs");
-    await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: "/scratch/first", purpose: "measure", split: "subset" }, IDENTITY);
-    await expect(appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: "/scratch/second", purpose: "rerun" }, { ...IDENTITY, sourceCommit: "d".repeat(40) })).rejects.toThrow(`round r1 holds source commit ${"c".repeat(40)}, not ${"d".repeat(40)}`);
+    await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: "/scratch/first", split: "subset" }, IDENTITY);
+    await expect(appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: "/scratch/second" }, { ...IDENTITY, sourceCommit: "d".repeat(40) })).rejects.toThrow(`round r1 holds source commit ${"c".repeat(40)}, not ${"d".repeat(40)}`);
     await expect(requireRoundIdentity(jobs, "r1", BENCHMARK.id, { ...IDENTITY, arm: { path: "other.toml", sha256: "b".repeat(64) } })).rejects.toThrow(`round r1 holds arm sha256 ${"a".repeat(64)}, not ${"b".repeat(64)}`);
     await expect(requireRoundIdentity(jobs, "r1", BENCHMARK.id, { ...IDENTITY, model: "model-2" })).rejects.toThrow("round r1 holds model model-1, not model-2");
     await expect(requireRoundIdentity(jobs, "r1", "deep-swe-1.1", IDENTITY)).rejects.toThrow("round r1 holds terminal-bench-2.1, not deep-swe-1.1");
@@ -113,8 +113,8 @@ describe("round records", () => {
     writeFileSync(path, JSON.stringify({ name: "r1", benchmark: BENCHMARK.id, runs: [{ directory: "/scratch/old", purpose: "measure", split: "subset" }] }));
     expect((await readRound(path)).identity).toBeUndefined();
     await requireRoundIdentity(jobs, "r1", BENCHMARK.id, IDENTITY);
-    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: "/scratch/new", purpose: "rerun" }, IDENTITY);
-    expect(grown).toEqual({ name: "r1", benchmark: BENCHMARK.id, identity: IDENTITY, runs: [{ directory: "/scratch/old", purpose: "measure", split: "subset" }, { directory: "/scratch/new", purpose: "rerun" }] });
+    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: "/scratch/new", split: "holdout" }, IDENTITY);
+    expect(grown).toEqual({ name: "r1", benchmark: BENCHMARK.id, identity: IDENTITY, runs: [{ directory: "/scratch/old", purpose: "measure", split: "subset" }, { directory: "/scratch/new", purpose: "measure", split: "holdout" }] });
     expect(await readRound(path)).toEqual(grown);
   });
 });
@@ -174,7 +174,7 @@ describe("round reruns", () => {
     for (const name of ["rerun-2", "rerun-3"]) {
       const directory = join(jobs, "..", name);
       writeRun(directory, ["lost"], 2, [1, 2].map((slot) => ({ id: `${name}-lost-${slot}`, task: "lost", reward: null, category: "provider_infra" })));
-      grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory, purpose: "rerun" }, IDENTITY);
+      grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory }, IDENTITY);
     }
     expect((await rerunNeeds(BENCHMARK, round, await roundTrials(BENCHMARK, round))).needs).toEqual([
       { task: "broken", planned: 2, scored: 1, missing: 1, rerunAttempts: 0, allowed: 1 },
@@ -195,10 +195,10 @@ describe("round reruns", () => {
     // Both slots of "lost" were lost. The first rerun fills one and loses the other; the second loses it again.
     const first = join(jobs, "..", "rerun-a");
     writeRun(first, ["lost"], 2, [{ id: "a-1", task: "lost", reward: 1 }, { id: "a-2", task: "lost", reward: null, category: "provider_infra" }]);
-    await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: first, purpose: "rerun" }, IDENTITY);
+    await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: first }, IDENTITY);
     const second = join(jobs, "..", "rerun-b");
     writeRun(second, ["lost"], 1, [{ id: "b-1", task: "lost", reward: null, category: "provider_infra" }]);
-    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: second, purpose: "rerun" }, IDENTITY);
+    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: second }, IDENTITY);
     expect((await rerunNeeds(BENCHMARK, grown, await roundTrials(BENCHMARK, grown))).needs.find((need) => need.task === "lost")).toEqual({ task: "lost", planned: 2, scored: 1, missing: 1, rerunAttempts: 3, allowed: 0 });
   });
 
@@ -208,8 +208,8 @@ describe("round reruns", () => {
     writeRun(measure, ["other"], 3, [], { state: "prepared" });
     const pending = join(jobs, "..", "rerun-pending");
     writeRun(pending, ["lost"], 2, [], { state: "launched" });
-    await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: measure, purpose: "measure", split: "holdout" }, IDENTITY);
-    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: pending, purpose: "rerun" }, IDENTITY);
+    await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: measure, split: "holdout" }, IDENTITY);
+    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: pending }, IDENTITY);
     await expect(rerunNeeds(BENCHMARK, grown, await roundTrials(BENCHMARK, grown))).rejects.toThrow(`runs of r1 have not finished: ${measure} (prepared), ${pending} (launched; settle it with: bun bench/harbor/run-harbor.ts resume-hosted ${pending})`);
   });
 
@@ -218,12 +218,39 @@ describe("round reruns", () => {
     const before = (await rerunNeeds(BENCHMARK, round, await roundTrials(BENCHMARK, round))).needs;
     const unlaunched = join(jobs, "..", "measure-refused");
     writeRun(unlaunched, ["other", "lost"], 3, [], { state: "refused", outcome: "hub_dry_run_refused" });
-    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: unlaunched, purpose: "measure", split: "holdout" }, IDENTITY);
+    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: unlaunched, split: "holdout" }, IDENTITY);
     const planned = await rerunNeeds(BENCHMARK, grown, await roundTrials(BENCHMARK, grown));
     expect(planned.needs).toEqual(before);
     expect(planned.unlaunched).toEqual([{ run: { directory: unlaunched, purpose: "measure", split: "holdout" }, outcome: "hub_dry_run_refused" }]);
     // It measured nothing, so its split gets no score.
     expect([...(await measuredSplits(BENCHMARK, grown)).keys()]).toEqual(["subset"]);
+  });
+
+  it("measures a round whose first run that ran trials is a task list, and plans its lost trials", async () => {
+    const root = temporary("harbor-round-listed-");
+    const jobs = join(root, "jobs");
+    const refused = join(root, "refused");
+    const listed = join(root, "listed");
+    const rerun = join(root, "rerun");
+    writeRun(refused, ["solid", "lost"], 2, [], { state: "refused", outcome: "snapshot_failed" });
+    // Hub lost "lost-2" with no reward, and the ledger has no row for it.
+    writeRun(listed, ["solid", "lost"], 2, [
+      { id: "solid-1", task: "solid", reward: 1 },
+      { id: "solid-2", task: "solid", reward: 0 },
+      { id: "lost-1", task: "lost", reward: 1 },
+      { id: "lost-2", task: "lost", reward: null, ledger: false },
+    ]);
+    writeRun(rerun, ["lost"], 1, [{ id: "lost-3", task: "lost", reward: 0 }]);
+    await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: refused }, IDENTITY);
+    // The refused list measured nothing, so the next list is still the measurement.
+    const round = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: listed }, IDENTITY);
+    expect(round.runs.map(({ purpose, split }) => [purpose, split])).toEqual([["measure", "task-list"], ["measure", "task-list"]]);
+    expect((await rerunNeeds(BENCHMARK, round, await roundTrials(BENCHMARK, round))).needs).toEqual([{ task: "lost", planned: 2, scored: 1, missing: 1, rerunAttempts: 0, allowed: 1 }]);
+    expect([...await measuredSplits(BENCHMARK, round)]).toEqual([["task-list", ["solid", "lost"]]]);
+    // A list into a round that measured something is a rerun, and its scored trial fills the lost slot.
+    const grown = await appendRoundRun(jobs, "r1", BENCHMARK.id, { directory: rerun }, IDENTITY);
+    expect(grown.runs.at(-1)).toEqual({ directory: rerun, purpose: "rerun" });
+    expect((await rerunNeeds(BENCHMARK, grown, await roundTrials(BENCHMARK, grown))).needs).toEqual([]);
   });
 
   it("refuses launcher flags that the rerun sets itself, naming the flag", async () => {
@@ -241,6 +268,6 @@ describe("round reruns", () => {
     const { path, round } = await fixtureRound();
     const [command] = rerunCommands(BENCHMARK, path, { ...round, identity: { ...IDENTITY, arm: { path: ARM_CONFIG, sha256: IDENTITY.arm.sha256 } } }, (await rerunNeeds(BENCHMARK, round, await roundTrials(BENCHMARK, round))).needs, ["--auth-profile", "Fixture", "--agent-repo", "owner/agent"], "/repo");
     const config = await resolveHarborConfig(command!.slice(2), { cwd: process.cwd(), env: {} });
-    expect(config).toMatchObject({ taskNames: ["terminal-bench/lost"], attempts: 2, grade: "local_low_k", dryRun: true, round: { name: "r1", purpose: "rerun" } });
+    expect(config).toMatchObject({ taskNames: ["terminal-bench/lost"], attempts: 2, grade: "local_low_k", dryRun: true, round: "r1" });
   });
 });

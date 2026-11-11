@@ -1,11 +1,11 @@
 import { mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { isJsonMap, isMissingFile } from "./analysis/json.js";
-import { harborBenchmark } from "./benchmarks.js";
+import { isJsonMap, isMissingFile, jsonMap, readJsonFile } from "./analysis/json.js";
+import { TASK_LIST, harborBenchmark } from "./benchmarks.js";
 
 /** Why a run belongs to its round: a measurement of one split, or a rerun of
  *  trials that infrastructure or a lost grader left unscored. */
-export type RoundRunPurpose = "measure" | "rerun";
+type RoundRunPurpose = "measure" | "rerun";
 
 export interface RoundRun {
   /** The absolute path of the run's artifact directory. */
@@ -43,6 +43,32 @@ export interface Round {
  *  Such a run measured nothing, so rerun planning counts no attempt of it. */
 export const UNLAUNCHED_OUTCOMES = ["snapshot_failed", "hub_dry_run_refused", "hub_launch_refused"] as const;
 export type UnlaunchedOutcome = (typeof UNLAUNCHED_OUTCOMES)[number];
+const UNLAUNCHED: ReadonlySet<unknown> = new Set(UNLAUNCHED_OUTCOMES);
+
+/** A run that joins a round: the split it measures, or none for a run of an explicit task list. */
+export interface RoundJoin {
+  readonly directory: string;
+  readonly split?: string;
+}
+
+/** Whether a measure run measured anything, or still may: its manifest is
+ *  not the refusal of a run that ended before Harbor ran any trial. */
+async function measuredSomething(run: RoundRun): Promise<boolean> {
+  const where = join(run.directory, "run_manifest.json");
+  const manifest = jsonMap(await readJsonFile(where), where);
+  return !(manifest.state === "refused" && UNLAUNCHED.has(manifest.outcome));
+}
+
+/** Why a joining run belongs to the round. A run of a split measures it. A
+ *  run of an explicit task list measures the split `task-list` when no
+ *  measurement of the round measured anything yet, so an ad hoc list can be
+ *  a round of its own, and is a rerun of its tasks otherwise. */
+async function joinedRun(existing: Round | undefined, joining: RoundJoin): Promise<RoundRun> {
+  if (joining.split !== undefined) return { directory: joining.directory, purpose: "measure", split: joining.split };
+  const measures = existing?.runs.filter((run) => run.purpose === "measure") ?? [];
+  const measured = (await Promise.all(measures.map(measuredSomething))).some(Boolean);
+  return measured ? { directory: joining.directory, purpose: "rerun" } : { directory: joining.directory, purpose: "measure", split: TASK_LIST };
+}
 
 /** How long an append waits for another process's append to the same round. */
 const LOCK_WAIT_MS = 10_000;
@@ -138,19 +164,21 @@ async function withRoundLock<T>(path: string, work: () => Promise<T>): Promise<T
 }
 
 /** Adds one run to a round, and creates the round on its first run, which
- *  sets the round's identity. A run of another benchmark or identity is
- *  refused; a round without an identity takes the run's. The record is
- *  replaced by rename under the round lock, so concurrent appends all land
- *  and a reader never sees half of it. */
-export async function appendRoundRun(jobsDirectory: string, name: string, benchmark: string, run: RoundRun, identity: RoundIdentity): Promise<Round> {
+ *  sets the round's identity. The run's purpose is decided under the round
+ *  lock from the round's runs, as `joinedRun` states, and the joined run is
+ *  the last run of the returned round. A run of another benchmark or
+ *  identity is refused; a round without an identity takes the run's. The
+ *  record is replaced by rename under the round lock, so concurrent appends
+ *  all land and a reader never sees half of it. */
+export async function appendRoundRun(jobsDirectory: string, name: string, benchmark: string, joining: RoundJoin, identity: RoundIdentity): Promise<Round> {
   harborBenchmark(benchmark);
   const path = roundPath(jobsDirectory, name);
   await mkdir(dirname(path), { recursive: true });
   return withRoundLock(path, async () => {
     const existing = await readOptionalRound(path);
     refuseOtherSetup(existing, benchmark, identity);
-    if (existing?.runs.some((recorded) => recorded.directory === run.directory)) throw new Error(`round ${name} already holds ${run.directory}`);
-    const round = decodeRound({ name, benchmark, identity, runs: [...(existing?.runs ?? []), run] }, path);
+    if (existing?.runs.some((recorded) => recorded.directory === joining.directory)) throw new Error(`round ${name} already holds ${joining.directory}`);
+    const round = decodeRound({ name, benchmark, identity, runs: [...(existing?.runs ?? []), await joinedRun(existing, joining)] }, path);
     const temporary = `${path}.${crypto.randomUUID()}.tmp`;
     await writeFile(temporary, `${JSON.stringify(round, null, 2)}\n`);
     await rename(temporary, path);

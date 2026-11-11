@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { harborBenchmark, type HarborBenchmark } from "./benchmarks.js";
+import { TASK_LIST, harborBenchmark, type HarborBenchmark } from "./benchmarks.js";
 import { readRound, type Round } from "./rounds.js";
 import { confirmedTrials, readAnswerKey, recordVerdicts, scanAnswerKeys, writeAnswerKey, answerKeyPath, type AnswerKeyVerdict } from "./analysis/answer-key.js";
 import { jsonMap, readJsonFile } from "./analysis/json.js";
@@ -143,7 +143,7 @@ async function scoreCommand(values: ReadonlyMap<string, string>, switches: Reado
 async function rerunCommand(values: ReadonlyMap<string, string>, switches: ReadonlySet<string>, rest: readonly string[]): Promise<number> {
   const { path, round, benchmark } = await roundOf(values);
   const { needs, unlaunched } = await rerunNeeds(benchmark, round, await roundTrials(benchmark, round));
-  for (const { run, outcome } of unlaunched) console.log(`  ${run.directory} ended before any trial ran (${outcome}); it plans no rerun${run.purpose === "measure" ? `: start a fresh measure run of split ${run.split ?? ""}` : ""}`);
+  for (const { run, outcome } of unlaunched) console.log(`  ${run.directory} ended before any trial ran (${outcome}); it plans no rerun${run.purpose !== "measure" ? "" : run.split === TASK_LIST ? ": run its task list into the round again" : `: start a fresh measure run of split ${run.split ?? ""}`}`);
   if (needs.length === 0) console.log(`${round.name}: every planned attempt is scored`);
   const broken = new Set(benchmark.hubBroken.map((entry) => entry.task));
   for (const need of needs) console.log(`  ${need.task.padEnd(40)} missing ${need.missing} of ${need.planned}, ${need.rerunAttempts} rerun attempts so far, ${broken.has(need.task) ? "hub-broken, not rerun" : need.allowed === 0 ? "rerun cap reached" : `rerun ${need.allowed}`}`);

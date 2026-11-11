@@ -11,7 +11,7 @@ import { CREDENTIAL_PROVIDER_MODULES } from "../../src/orchestration/credential-
 import type { AccessProviderDefinition } from "../../src/infra/llm/access-provider.js";
 import { ALL_TASKS, harborBenchmark, type HarborBenchmark } from "./benchmarks.js";
 import { command, harborPython } from "./harbor-process.js";
-import { roundPath, type RoundRunPurpose } from "./rounds.js";
+import { roundPath } from "./rounds.js";
 
 const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
 /** The auth profile id a trial with a Flywheel config runs under. The trial's
@@ -50,17 +50,12 @@ interface HarborInteraction {
   executableToolName: string;
 }
 
-/** The round a run joins, and why it belongs there. */
-interface HarborRoundSelection {
-  name: string;
-  purpose: RoundRunPurpose;
-}
-
 export interface ResolvedHarborConfig {
   benchmark: HarborBenchmark;
   /** The split a measurement run selects; absent for an explicit task list. */
   split?: string;
-  round?: HarborRoundSelection;
+  /** The name of the round that an executing run joins. */
+  round?: string;
   authProfile: string;
   expectedInteraction: HarborInteraction;
   /** The digest of everything that states the run (benchmark, arm, tasks,
@@ -368,7 +363,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   return {
     benchmark,
     ...(measured === undefined ? {} : { split: measured }),
-    ...(roundName === undefined ? {} : { round: { name: roundName, purpose: measured === undefined ? "rerun" : "measure" } }),
+    ...(roundName === undefined ? {} : { round: roundName }),
     authProfile, expectedInteraction: harborInteraction(model), profileSha256, flywheelConfig, model,
     dataset: benchmark.dataset.name, datasetRef: benchmark.dataset.ref, agentPackage,
     ...(hosting ? { hosted: hosting } : {}),

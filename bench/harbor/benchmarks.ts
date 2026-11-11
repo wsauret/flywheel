@@ -44,6 +44,10 @@ export interface HarborBenchmark {
  *  benchmark's exclusions, which is the board's whole benchmark. */
 export const ALL_TASKS = "all";
 
+/** The split that a round's first run of an explicit task list measures: the
+ *  tasks of that list. */
+export const TASK_LIST = "task-list";
+
 const TERMINAL_BENCH_2_1: HarborBenchmark = {
   id: "terminal-bench-2.1",
   display: "Terminal-Bench 2.1",

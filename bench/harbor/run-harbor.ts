@@ -6,7 +6,7 @@ import { reconcileDisclosureLedger, type DisclosureLedger } from "./disclosure-l
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION, TOOL_OUTCOME_ANALYZER_RESULT_VERSION, type ToolOutcomeAnalysis } from "./analyze-tool-outcomes.js";
 import { harborDisplayModel, resolveHarborConfig, type JsonMap, type ResolvedHarborConfig } from "./harbor-config.js";
 import { harborBenchmark } from "./benchmarks.js";
-import { appendRoundRun, requireRoundIdentity, roundPath, type RoundIdentity, type RoundRun, type UnlaunchedOutcome } from "./rounds.js";
+import { appendRoundRun, requireRoundIdentity, roundPath, type RoundIdentity, type UnlaunchedOutcome } from "./rounds.js";
 import { command, harborPython } from "./harbor-process.js";
 import { awaitHostedJob, decodeResolvedTasks, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, localJobConfig, offlineAgentHosts, releaseTagFor, repositoryConfigPath, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type ResolvedTask } from "./harbor-jobs.js";
 
@@ -228,7 +228,7 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
   const sourceCommit = seed.revision;
   const identity: RoundIdentity = { sourceCommit, arm: { path: config.flywheelConfig.path, sha256: config.flywheelConfig.sha256 }, model: config.model, effort: config.flywheelConfig.chatEffort };
   // Refused before the package is built and published, which costs time and a push.
-  if (config.round !== undefined) await requireRoundIdentity(config.jobsDirectory, config.round.name, config.benchmark.id, identity);
+  if (config.round !== undefined) await requireRoundIdentity(config.jobsDirectory, config.round, config.benchmark.id, identity);
   const tasks = await dependencies.resolveTasks(config.dataset, config.datasetRef, config.taskNames);
   const offlineTasks = Object.entries(tasks).filter(([, task]) => task.agent_network_mode !== "public").map(([name]) => name);
   const allowedHosts = offlineTasks.length === 0 ? [] : offlineAgentHosts(config);
@@ -267,7 +267,7 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
       version: 1,
       benchmark: config.benchmark.id,
       split: config.split ?? null,
-      round: config.dryRun ? null : config.round?.name ?? null,
+      round: config.dryRun ? null : config.round ?? null,
       state: config.dryRun ? "finalized" : "prepared",
       seed: dependencies.seed(),
       seed_provenance: { revision: seed.revision, clean: seed.clean, dirty_paths: seed.dirtyPaths ?? [] },
@@ -343,9 +343,9 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
     // still listed in its round; its manifest state tells how far it got.
     // A dry run measures nothing and joins no round.
     if (config.round !== undefined && !config.dryRun) {
-      const run: RoundRun = { directory: artifactDirectory, purpose: config.round.purpose, ...(config.split === undefined ? {} : { split: config.split }) };
-      await appendRoundRun(config.jobsDirectory, config.round.name, config.benchmark.id, run, identity);
-      console.error(`round ${config.round.name}: ${roundPath(config.jobsDirectory, config.round.name)}`);
+      const { runs } = await appendRoundRun(config.jobsDirectory, config.round, config.benchmark.id, { directory: artifactDirectory, ...(config.split === undefined ? {} : { split: config.split }) }, identity);
+      const joined = runs.at(-1)!;
+      console.error(`round ${config.round}: ${roundPath(config.jobsDirectory, config.round)} (${joined.purpose === "measure" ? `measures split ${joined.split}` : "rerun"})`);
     }
     return { artifactDirectory, generatedConfig: finalGeneratedPath, preparationPlan: join(artifactDirectory, "preparation-plan.json"), manifest: finalManifestPath, harborCommand: execution.command, dryRun: config.dryRun };
   } catch (error) {

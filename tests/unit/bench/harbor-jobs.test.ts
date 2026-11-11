@@ -121,7 +121,7 @@ describe("Harbor jobs", () => {
     await expect(prepareHarborRun(args, dependencies(temporaryDirectory("harbor-offline-refused-"), [], "no-network"))).rejects.toThrow("the arm enables providers that declare no API hosts: chatgpt");
   });
 
-  test("an executing run in a round is recorded in the round at preparation with the round's identity; a dry run is not", async () => {
+  test("an executing run in a round is recorded in the round at preparation with the round's identity and its purpose; a dry run is not", async () => {
     const root = temporaryDirectory("harbor-round-");
     const executed = await prepareHarborRun([...launchArgs, "--split", "subset", "--round", "r3", "--execute"], dependencies(root, []));
     const rerun = await prepareHarborRun([...launchArgs, "--task-names", "kv-store-grpc", "--round", "r3", "--execute", "--job-name", "rerun"], dependencies(root, []));
@@ -130,6 +130,9 @@ describe("Harbor jobs", () => {
     const manifest = await read(executed.manifest);
     expect(round).toEqual({ name: "r3", benchmark: "terminal-bench-2.1", identity: { sourceCommit: COMMIT, arm: { path: ARM_CONFIG, sha256: manifest.flywheel_config.sha256 }, model: "gpt-6.1-terra", effort: "medium" }, runs: [{ directory: executed.artifactDirectory, purpose: "measure", split: "subset" }, { directory: rerun.artifactDirectory, purpose: "rerun" }] });
     expect(manifest.round).toBe("r3");
+    // A task list that a round's first run selects is the round's measurement.
+    const listed = await prepareHarborRun([...launchArgs, "--task-names", "kv-store-grpc", "--round", "r4", "--execute", "--job-name", "listed"], dependencies(root, []));
+    expect((await readRound(roundPath(join(root, "jobs"), "r4"))).runs).toEqual([{ directory: listed.artifactDirectory, purpose: "measure", split: "task-list" }]);
   });
 
   test("a run that would join a round of another commit, arm, or benchmark is refused before any package is built", async () => {
