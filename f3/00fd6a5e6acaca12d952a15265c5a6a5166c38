@@ -1,0 +1,82 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 363,369-372
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 19,345,349
+src/infra/llm/provider-error-copy.ts
+  h_4b47e9e4a8b456 86-103,106-111,113,121,123-136,151,160,170
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 55,64,151-153,168,171-175,287-288,298,389,471,501,541,562,704,712,723,734,765,780-793,801-802
+src/orchestration/agent-runtime/llm/provider-availability-types.ts
+  h_4b47e9e4a8b456 5,24-25,29
+src/orchestration/agent-runtime/llm/provider-availability.ts
+  h_4b47e9e4a8b456 15,63-66,188-197,242,333,422,425,428,537
+src/orchestration/agent-runtime/unattended-recovery.ts
+  h_4b47e9e4a8b456 10-18,56,85-87,146-147,186-190,194-199,207,234,271-281,294,317,321
+src/orchestration/chat/chat-capacity-wait.ts
+  h_4b47e9e4a8b456 9-13,17,25
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 102
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 203
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 331
+tests/unit/infra/llm/provider-error-copy.test.ts
+  h_4b47e9e4a8b456 91-93,143-144,159-160,169,179-215,220-221,224,229-230
+tests/unit/orchestration/agent-resilience.test.ts
+  h_4b47e9e4a8b456 33
+tests/unit/orchestration/agent-runtime/failure-message.test.ts
+  h_4b47e9e4a8b456 88-89
+tests/unit/orchestration/agent-runtime/llm/_provider-chain-harness.ts
+  h_4b47e9e4a8b456 75-79,85-87,96-98,112
+tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+  h_4b47e9e4a8b456 68
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 73
+tests/unit/orchestration/agent-runtime/llm/failover-client-auth.test.ts
+  h_4b47e9e4a8b456 299
+tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+  h_4b47e9e4a8b456 6,178,335,344,352,369-414
+tests/unit/orchestration/agent-runtime/llm/failover-client-outage.test.ts
+  h_4b47e9e4a8b456 568
+tests/unit/orchestration/agent-runtime/llm/failover-client.test.ts
+  h_4b47e9e4a8b456 57,179,234,320,338,361,476,484
+tests/unit/orchestration/agent-runtime/llm/provider-availability-authority.test.ts
+  h_4b47e9e4a8b456 137,389,406,528
+tests/unit/orchestration/agent-runtime/llm/provider-availability-outage.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts
+  h_4b47e9e4a8b456 25,31,36,53,74,178,185
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 83-84,88,98
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 12,540,554-569
+tests/unit/orchestration/agent-runtime/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 60,78-79,104,114,118,145,156,218,241,245-271,304,316,408
+tests/unit/orchestration/auth/provider-observations/usage-availability-fold.test.ts
+  h_4b47e9e4a8b456 33
+tests/unit/orchestration/chat/chat-runner-lifecycle-capacity.test.ts
+  h_4b47e9e4a8b456 10-11,16-22,25-27,33,149-190
+tests/unit/orchestration/headless/headless-run.test.ts
+  h_4b47e9e4a8b456 241
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 409
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host.test.ts
+  h_4b47e9e4a8b456 67
+tests/unit/orchestration/modules/provider-claude-agent-sdk/sdk-events.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/workflow-host/_worker-step-fixtures.ts
+  h_4b47e9e4a8b456 40
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 38,463,474,477,490-507,529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f300fd6a5e6acaca12d952a15265c5a6a5166c38",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
