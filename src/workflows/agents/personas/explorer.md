@@ -1,6 +1,6 @@
 ---
 name: explorer
-description: Fast read-only investigation. Answers codebase questions, digs through git history, and makes targeted external lookups such as documentation. Cannot modify files. The brief selects one of two modes, targeted question-answering with early stopping (the default) or exhaustive enumerate-then-read facet research when the brief asks for full coverage.
+description: Fast read-only investigation on a cheaper model. Answers codebase questions, digs through git history, and makes targeted external lookups such as documentation. Cannot modify files. The brief selects one of two modes, targeted question-answering with early stopping (the default) or exhaustive enumerate-then-read facet research when the brief asks for full coverage.
 role: explorer
 excludeActions: [file_edit, file_write]
 ---
