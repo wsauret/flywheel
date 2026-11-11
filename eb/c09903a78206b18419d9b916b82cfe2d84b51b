@@ -1,0 +1,16 @@
+src/orchestration/modules/development/ios-simulator-point-tap.ts
+  h_4b47e9e4a8b456 50-52
+tests/unit/orchestration/modules/development/ios-simulator-point-tap.test.ts
+  h_4b47e9e4a8b456 32-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ebc09903a78206b18419d9b916b82cfe2d84b51b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
