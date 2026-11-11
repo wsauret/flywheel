@@ -1,0 +1,22 @@
+src/infra/checkpoint-sections.ts
+  h_4b47e9e4a8b456 1-15
+src/infra/tools/displays/session-note.ts
+  h_4b47e9e4a8b456 2-3,21-28,36-37
+src/orchestration/agent-runtime/tools/session-checkpoint.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/session/conversation-checkpoint.ts
+  h_4b47e9e4a8b456 3,89,97,99-104,108
+tests/unit/infra/tools/tool-contracts-registry.test.ts
+  h_4b47e9e4a8b456 171-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b8edf976f97be318f838cd31d646c9b55be1ec54",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
