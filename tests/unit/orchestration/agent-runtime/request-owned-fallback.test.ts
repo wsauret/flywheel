@@ -64,21 +64,47 @@ interface Scenario {
   measuredFailures?: boolean
   model?: string
   responseText?: string
-  /** How many responses of the serving candidate open with this looping reasoning before it answers. */
-  loopingReasoning?: { responses: number; text: string }
+  /** How many responses of the serving candidate open with this looping reasoning before it answers, and what the
+   *  looping response streams before its reasoning: visible text, or a signed thinking block with an executed tool call. */
+  loopingReasoning?: { responses: number; text: string; lead?: "text" | "signed tool call" }
 }
 
-/** Streams `text` as one thinking block in small deltas, the way a looping
- *  model does, until the attempt aborts the request.
- *  @yields {RawMessageStreamEvent} The thinking block's start, deltas, signature, and stop frames. */
-async function* thinkingFrames(text: string, signal: AbortSignal): AsyncGenerator<RawMessageStreamEvent> {
-  yield { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "", signature: "" } }
+/** Streams `text` in small deltas, the way a looping model does, until the
+ *  attempt aborts the request. The first 1024 chars close as their own signed
+ *  thinking block, so the attempt holds a complete deliberation part when the
+ *  loop trips.
+ *  @yields {RawMessageStreamEvent} The thinking blocks' start, deltas, signature, and stop frames. */
+async function* thinkingFrames(text: string, signal: AbortSignal, index = 0): AsyncGenerator<RawMessageStreamEvent> {
+  yield { type: "content_block_start", index, content_block: { type: "thinking", thinking: "", signature: "" } }
   for (let at = 0; at < text.length; at += 64) {
     if (signal.aborted) throw new DOMException("This operation was aborted", "AbortError")
-    yield { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: text.slice(at, at + 64) } }
+    yield { type: "content_block_delta", index, delta: { type: "thinking_delta", thinking: text.slice(at, at + 64) } }
+    if (at + 64 === 1024) {
+      yield { type: "content_block_delta", index, delta: { type: "signature_delta", signature: "sig-first" } }
+      yield { type: "content_block_stop", index }
+      yield { type: "content_block_start", index, content_block: { type: "thinking", thinking: "", signature: "" } }
+    }
   }
-  yield { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: "sig" } }
+  yield { type: "content_block_delta", index, delta: { type: "signature_delta", signature: "sig" } }
+  yield { type: "content_block_stop", index }
+}
+
+/** The part of a looping response before its looping reasoning (`Scenario.loopingReasoning.lead`), and the index of
+ *  the next block. A tool call waits for its eager execution, so the call is durable work when the loop trips.
+ *  @yields {RawMessageStreamEvent} The lead blocks' frames. */
+async function* leadFrames(lead: "text" | "signed tool call" | undefined, executed: Promise<void>): AsyncGenerator<RawMessageStreamEvent, number> {
+  if (lead === "text") {
+    yield* textFrames("visible before the loop")
+    return 1
+  }
+  if (lead !== "signed tool call") return 0
+  yield { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "", signature: "" } }
+  yield { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "probe first" } }
+  yield { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: "sig-plan" } }
   yield { type: "content_block_stop", index: 0 }
+  yield* toolFrames("executed-tool", true)
+  await executed
+  return 2
 }
 
 async function fixture(scenario: Scenario) {
@@ -99,6 +125,7 @@ async function fixture(scenario: Scenario) {
   const store = createSqliteEventStore(join(root, "flywheel.sqlite"))
   const writer = createSessionFactWriter({ sessionId: "session", writer: asAsyncEventWriter(store) })
   const history: ConversationMessage[] = []
+  let leafId: string | null = null
   const audit: ProviderRequestAuditFact[] = []
   const usage: UsageEntry[] = []
   const events: RuntimeEvent[] = []
@@ -153,8 +180,12 @@ async function fixture(scenario: Scenario) {
                     }
                     throw scenario.failures[failureIndex]
                   }
-                  if (looping && scenario.loopingReasoning) yield* thinkingFrames(scenario.loopingReasoning.text, signal)
-                  yield* textFrames(scenario.responseText ?? "finished on authorized API", looping ? 1 : 0)
+                  let next = 0
+                  if (looping && scenario.loopingReasoning) {
+                    next = yield* leadFrames(scenario.loopingReasoning.lead, executed.promise)
+                    yield* thinkingFrames(scenario.loopingReasoning.text, signal, next++)
+                  }
+                  yield* textFrames(scenario.responseText ?? "finished on authorized API", next)
                   yield { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 7, input_tokens: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, output_tokens_details: null, server_tool_use: null } }
                   yield { type: "message_stop" }
                 },
@@ -185,7 +216,7 @@ async function fixture(scenario: Scenario) {
     purpose: { kind: "interactive-chat" }, runtimeSurfaces: {}, toolNames: [],
     moduleSelection: testCapabilityModules, awaitModelAccessSettled: async () => {}, captureRuntimeConfig: testRuntimeConfigCapture,
     lifecycle: { kind: "one-shot" },
-    conversation: { kind: "durable-tree", reserveMessageId: async () => crypto.randomUUID(), sessionId: "session", conversationId: "conversation", priorMessages: [{ kind: "user", content: "work" }], append: (message) => { history.push(message); order.push(`canonical:${message.kind}`) }, captureCommittedForkMessages: async () => [], resolveLeafId: async () => null, committedTree: async () => ({ leafId: null, entriesById: {} }) },
+    conversation: { kind: "durable-tree", reserveMessageId: async () => crypto.randomUUID(), sessionId: "session", conversationId: "conversation", priorMessages: [{ kind: "user", content: "work" }], append: (message, entryId) => { history.push(message); leafId = entryId ?? null; order.push(`canonical:${message.kind}`) }, captureCommittedForkMessages: async () => [], resolveLeafId: async () => leafId, committedTree: async () => ({ leafId: null, entriesById: {} }) },
     sessionEventStore: asAsyncEventReadSurface(store), sessionEventWriter: writer,
     auditObserver: (fact) => { audit.push(fact); order.push(`audit:${fact.type}`) },
     usageProfile: { profileId: "default", authorityIncarnation: "test-authority", acquireAuthority: async () => ({ profileId: "default", authorityIncarnation: "test-authority", append: (entry) => {
@@ -383,7 +414,15 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
     expect(f.snapshots.join("\n")).not.toMatch(/Reconnecting|"status":"failed"/)
     expect(f.events.filter((event) => event.type === "model.stream.retried")).toHaveLength(0)
     expect(f.history.filter((message) => message.kind === "user")).toEqual([])
-    expect(f.history.at(-1)).toMatchObject({ kind: "assistant", content: expect.arrayContaining([{ type: "text", text: "finished on authorized API" }]) })
+    // A stopped attempt's looping deliberation never enters the history, so no later request replays it.
+    expect(f.history).toHaveLength(1)
+    expect(f.history[0]).not.toHaveProperty("incomplete")
+    // Every attempt sent the prompt assembled from the same leaf, so each one's audit reconstructs from that leaf.
+    const assembled = f.audit.flatMap((fact) => fact.type === "prompt.assembled" ? [fact.payload] : [])
+    expect(assembled).toHaveLength(wires)
+    for (const payload of assembled) {
+      expect(payload).toMatchObject({ treeLeafEntryId: null, messageCount: assembled[0]!.messageCount, promptSha256: assembled[0]!.promptSha256 })
+    }
     // Each stopped attempt is its own request with its own usage.
     const requests = f.audit.filter((fact) => fact.type === "model.requested")
     expect(requests).toHaveLength(wires)
@@ -395,6 +434,40 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
     expect(f.usage.map((entry) => entry.attemptId)).toEqual(requests.map((fact) => fact.payload.requestId))
     expect(f.availability.serviceEntryCount()).toBe(0)
     expect(f.availability.genericEntryCount()).toBe(0)
+  })
+
+  test("visible text before looping reasoning stays durable and the resample's audit names the leaf its prompt was assembled from", async () => {
+    const text = readFileSync(join(import.meta.dir, "../../../fixtures/reasoning-repetition/loop.txt"), "utf8")
+    const f = await fixture({ failures: [], loopingReasoning: { responses: 1, text, lead: "text" }, measuredFailures: true })
+    expect(await f.run()).toEqual({ kind: "completed" })
+
+    expect(f.wires).toHaveLength(2)
+    // The text a person saw stays, without the looping deliberation after it.
+    expect(f.history[0]).toEqual(expect.objectContaining({ kind: "assistant", incomplete: true, content: [{ type: "text", text: "visible before the loop" }] }))
+    expect(f.history.at(-1)).toMatchObject({ kind: "assistant", content: [{ type: "text", text: "finished on authorized API" }] })
+    // The partial moved the tree leaf, but the resample sent the prompt assembled before it, so its audit names that leaf.
+    const assembled = f.audit.flatMap((fact) => fact.type === "prompt.assembled" ? [fact.payload] : [])
+    expect(assembled).toHaveLength(2)
+    for (const payload of assembled) {
+      expect(payload).toMatchObject({ treeLeafEntryId: null, messageCount: assembled[0]!.messageCount, promptSha256: assembled[0]!.promptSha256 })
+    }
+  })
+
+  test("a looping partial with an executed tool call keeps its signed thinking, so the next request replays a valid tool turn", async () => {
+    const text = readFileSync(join(import.meta.dir, "../../../fixtures/reasoning-repetition/loop.txt"), "utf8")
+    const f = await fixture({ failures: [], eagerTool: true, loopingReasoning: { responses: 1, text, lead: "signed tool call" }, measuredFailures: true })
+    expect(await f.run()).toEqual({ kind: "completed" })
+
+    expect(f.executions()).toBe(1)
+    const partial = f.history.find((message) => message.kind === "assistant" && message.incomplete === true)
+    expect(partial).toBeDefined()
+    if (partial?.kind !== "assistant") throw new Error("expected the committed partial")
+    // The closed, signed blocks stay in order with the call; the unsigned block where the loop tripped goes.
+    expect(partial.content).toEqual([
+      { type: "thinking", thinking: "probe first", signature: "sig-plan" },
+      expect.objectContaining({ type: "tool_use", id: "executed-tool", name: "probe" }),
+      expect.objectContaining({ type: "thinking", signature: "sig-first" }),
+    ])
   })
 
   test("eager tool result commits once before replacement sees history and unfinished preview vanishes", async () => {

@@ -87,6 +87,9 @@ export interface AssistantAttemptInput {
    *  request whose owner keeps no record, such as compaction: its bounded requests record at DEBUG only. */
   imageLimitCut?: ImageLimitCutRecord;
   messageCount: number;
+  /** The durable conversation-tree leaf that `messages` were assembled from, which every attempt of the prepared
+   *  request records (`ProviderRequestAuditWriter.captureTreeLeaf`). Absent for a conversation without a durable tree. */
+  treeLeafEntryId?: string | null;
   estimatedContextTokens: number;
   onEvent: (event: ProviderStreamEvent) => void;
   reserveMessageId?: () => Promise<string>;
@@ -410,6 +413,7 @@ function recordAuditRequest(
     ...(historyLowering === undefined ? {} : { historyLowering }),
     requestContext: input.requestContext,
     contextApplication: prepared?.contextApplication,
+    ...(input.treeLeafEntryId === undefined ? {} : { treeLeafEntryId: input.treeLeafEntryId }),
   });
 }
 

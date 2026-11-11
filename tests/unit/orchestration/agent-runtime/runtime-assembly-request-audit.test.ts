@@ -87,6 +87,7 @@ async function recordedFacts(extraOptions: Partial<AgentOptions>): Promise<Provi
     providerOptions: undefined,
     staleMasking: undefined,
     requestContext: undefined,
+    treeLeafEntryId: await assembled.requestAudit?.captureTreeLeaf?.(),
   })
   return facts
 }

@@ -170,6 +170,9 @@ export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (R
   const request = input.request ?? await input.client.admitRequest();
   const onEvent = input.onEvent;
   const revision = requestRevision<PreparedExecution<T>>(input);
+  // The leaf that the last preparation assembled its messages from. The walk resamples a prepared request without
+  // preparing it again, so each of its attempts records this leaf, not the one that an earlier attempt's partial moved.
+  let treeLeafEntryId: string | null | undefined;
   return request.run<T | AssistantTurnResult>({
     signal: input.signal,
     providerOptions: input.providerOptions,
@@ -178,7 +181,11 @@ export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (R
       onRetry: (retry) => onEvent(streamRetryEvent(retry)),
       onResample: (resample: ProviderResample) => onEvent({ kind: "stream_resample", ...resample }),
     }),
-    prepare: revision.prepare,
+    prepare: async (attempt) => {
+      const prepared = await revision.prepare(attempt);
+      treeLeafEntryId = await revision.current().input.requestAudit?.captureTreeLeaf?.();
+      return prepared;
+    },
     execute: async (candidate) => {
       // The hold sits here, where the serving route and the exact prefix are
       // known and nothing of the request has started yet. The client learns
@@ -205,7 +212,10 @@ export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (R
   async function executeCandidate(candidate: ServingCandidate, ticket: PrefixHoldTicket | undefined): Promise<AdmittedModelRequestExecution<T | AssistantTurnResult>> {
     const current = revision.current();
     const fold = async <Value>(executionInput: Partial<ExecutionInput>, settle: (attempt: Attempt) => Promise<SettledAttempt<Value>>): Promise<AdmittedModelRequestExecution<Value>> => {
-      const merged = { ...current.input, ...executionInput, cacheRetention: candidate.prepared.cacheRetention };
+      const merged = {
+        ...current.input, ...executionInput, cacheRetention: candidate.prepared.cacheRetention,
+        ...(treeLeafEntryId === undefined ? {} : { treeLeafEntryId }),
+      };
       const attemptInput = ticket === undefined ? merged : {
         ...merged,
         onEvent: (event: ProviderStreamEvent) => {

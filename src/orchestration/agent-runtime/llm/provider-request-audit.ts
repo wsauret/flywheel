@@ -69,7 +69,15 @@ export interface ProviderRequestAuditWriter {
     historyLowering?: PromptHistoryLowering;
     requestContext: string | undefined;
     contextApplication?: ProviderRequestAuditContextApplication;
+    /** The durable conversation-tree leaf that `messages` were assembled from (`captureTreeLeaf`). Absent for a
+     *  conversation that has no durable tree. */
+    treeLeafEntryId?: string | null;
   }): ProviderRequestAuditHandle | Promise<ProviderRequestAuditHandle>;
+  /** Reads the durable conversation-tree leaf that a request's history ends at. A request reads it once when it
+   *  assembles its messages and records it for every attempt that sends them, because an attempt's own partial can
+   *  move the leaf before the walk resamples the same prepared request. Present only for a conversation that has a
+   *  durable tree. */
+  captureTreeLeaf?(): Promise<string | null>;
   recordDispatch?(handle: ProviderRequestAuditHandle): void;
   recordResponse(handle: ProviderRequestAuditHandle, input: {
     outcome: ProviderRequestAuditResponseInput["outcome"];
@@ -114,8 +122,8 @@ interface ProviderRequestAuditWriterDeps {
   /** In-memory observer of every recorded fact; a run that summarizes its own
    *  requests (headless) accumulates from here instead of re-reading a store. */
   observe?: (fact: ProviderRequestAuditFact) => void;
-  /** Resolves the durable conversation-tree leaf the assembled messages came
-   *  from, recorded as the Tier-1 tree pointer so the reconstruction helper can
+  /** Resolves the durable conversation-tree leaf (`captureTreeLeaf`), recorded
+   *  as the Tier-1 tree pointer so the reconstruction helper can
    *  historical-fold the exact history. Injected by the orchestration layer
    *  that owns the tree (chat, workflow worker). Absent for subagents; they
    *  record Tier-1 metadata only. */
@@ -167,7 +175,7 @@ export function createProviderRequestAuditWriter(
       ...(input.historyLowering ? { historyLowering: input.historyLowering } : {}),
       ...(input.requestContext ? { requestContext: input.requestContext } : {}),
       ...(input.contextApplication ? { contextApplication: input.contextApplication } : {}),
-      ...(deps.resolveTreeLeafEntryId ? { treeLeafEntryId: await deps.resolveTreeLeafEntryId() } : {}),
+      ...(input.treeLeafEntryId === undefined ? {} : { treeLeafEntryId: input.treeLeafEntryId }),
       ...(deps.parentToolUseId ? { parentToolUseId: deps.parentToolUseId } : {}),
     }, dedup);
     starts.set(requestId, performance.now());
@@ -248,5 +256,7 @@ export function createProviderRequestAuditWriter(
     await recordProviderStreamSummary(audit, { requestId: handle.requestId, identity: deps.identity, turn: handle.turn, ...input });
   }
 
-  return { recordRequest, recordDispatch, recordResponse, recordAbandonedResponse, recordUsage, recordStreamStarted, recordStreamEvent, recordStreamCompleted, recordStreamSummary };
+  return {
+    ...(deps.resolveTreeLeafEntryId ? { captureTreeLeaf: deps.resolveTreeLeafEntryId } : {}),
+    recordRequest, recordDispatch, recordResponse, recordAbandonedResponse, recordUsage, recordStreamStarted, recordStreamEvent, recordStreamCompleted, recordStreamSummary };
 }

@@ -52,8 +52,27 @@ export function createAssistantMessageSettlement(options: AssistantMessageSettle
           : assistantMetadata, undefined, entryId)
         return toolCalls
       case "incomplete": case "output_overflow":
-      case "context_overflow": case "stream_error":
-        return commitPartial(assistantContent, assistantMetadata ?? lastAssistantMetadata, false, entryId)
+      case "context_overflow": case "stream_error": {
+        const repeated = outcome.kind === "stream_error" && outcome.error._tag === "DegenerateRepetition"
+        const content = repeated ? withoutLoopingDeliberation(assistantContent, options.observedCalls().length > 0) : assistantContent
+        return commitPartial(content, assistantMetadata ?? lastAssistantMetadata, false, entryId)
+      }
     }
   }
+}
+
+/** The partial of a response that a repetition trip stopped, as the history keeps it. The walk resamples the same
+ *  request, and a later request joins this incomplete partial to the resample's answer (`lowerProviderHistory`), so the
+ *  partial's deliberation, where the loop ran, stays out of context (ARCH-PROVIDERS-075). One exception keeps the next
+ *  request valid: a partial that holds a tool call keeps its replayable deliberation (a signed thinking block or an
+ *  encrypted reasoning item), because a provider that signs deliberation refuses an assistant tool turn without it.
+ *  An unsigned thinking block never replays (anthropic-messages.ts), so it goes in both cases. Visible text and tool
+ *  calls stay: a person saw the text, and an executed call needs its durable reference. */
+function withoutLoopingDeliberation(content: readonly ContentBlock[], observedCalls: boolean): ContentBlock[] {
+  const holdsCall = observedCalls || content.some((block) => block.type === "tool_use")
+  return content.filter((block) => {
+    if (block.type === "thinking") return holdsCall && block.signature !== undefined && block.signature !== ""
+    if (block.type === "reasoning") return holdsCall
+    return true
+  })
 }
