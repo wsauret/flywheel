@@ -386,6 +386,10 @@ Headless automation runs as a headless chat or as a direct task. The headless wo
 
 The answer to a prompt is "end_turn" when its turn completed and "cancelled" when the caller cancelled it. It is "refusal" when the provider refused the conversation content, by its policy or by a content filter that stopped every retry. Any other failed turn answers the prompt with an error that states why and names the kind of failure, never with "end_turn".
 
+## PI-AGENT-127: An Agent Client Protocol prompt reports its usage before its answer
+
+The last usage update before the answer to a prompt states the context use and the cost through the turn's last model request. An update that repeats the one the client already holds is not sent.
+
 ## PI-AGENT-031: Chat orchestrates substantive work with workflows
 
 While Workflows is On, the root chat agent delegates every substantive task and works directly only on conversational turns and trivial mechanical edits. It aims for the most complete and correct result, not the cheapest one, and reaches it as soon as possible. While Workflows is Ask, the agent launches only when its judgment says the task needs a workflow, and each launch needs the person's approval. While Workflows is Off, no workflow can launch, and the chat works directly or through subagents.

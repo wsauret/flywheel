@@ -230,7 +230,7 @@ Every client keeps the displayed conversation session's model and effort in view
 
 ## PI-INTERACTION-020: Context shows progress toward compaction
 
-The terminal context control shows progress toward automatic compaction when that is enabled, and otherwise the current context token count. Its running count uses the active model's token units. Opening it shows context details and an explicit Compact now action without starting compaction. Context growth does not prompt users to start a new conversation.
+The terminal context control shows progress toward the token count at which automatic compaction will run for that session. When compaction is off or cannot run for the session, it shows the share of the context window. Its running count uses the active model's token units. Opening it shows context details and an explicit Compact now action without starting compaction. Context growth does not prompt users to start a new conversation.
 
 ## PI-INTERACTION-106: Context counts reflect what the model receives
 
