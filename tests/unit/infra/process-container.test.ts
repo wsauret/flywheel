@@ -97,6 +97,9 @@ describe("container settlement", () => {
   })
 
   test("keeps an interval to observe the kill in, even when the term spent the whole grace", async () => {
+    // Freeze the clock before the escalation reads its first deadline, so no
+    // real time passes between that read and the first virtual sleep.
+    setSystemTime(new Date(Date.now()))
     const signals: string[] = []
     let killed = false
     let probes = 0
