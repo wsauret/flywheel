@@ -16,7 +16,7 @@ When the request itself caused a failure, such as a rejected or malformed reques
 
 ## PI-MODEL-060: A failing candidate is retried in place before failover
 
-Flywheel retries a candidate that drops the connection, throttles, or reports overload in place with bounded backoff, and moves on only when those retries are spent. The session status shows the reconnect progress while it waits. A lost connection alone never marks a provider unreachable for other sessions, and only a failure the provider stated does. A first mark holds briefly and lengthens only while the outage persists.
+Flywheel retries a candidate that drops the connection, throttles, or reports overload in place with bounded backoff, and moves on only when those retries are spent. A rate limit that names no spent usage window, such as too many concurrent requests, is throttling that clears as other requests finish, never spent quota, whatever its text says. The session status shows the reconnect progress while it waits. A lost connection alone never marks a provider unreachable for other sessions, and only a failure the provider stated does. A first mark holds briefly and lengthens only while the outage persists.
 
 ## PI-MODEL-083: A response whose reasoning repeats itself is resampled
 
@@ -342,8 +342,8 @@ On every client and in the auth login command, Flywheel refuses a free-plan sign
 
 ## PI-MODEL-039: Every agent waits out spent capacity and continues
 
-When no candidate can serve an agent until a stated time, such as a usage-limit reset, the agent waits until that time and continues its turn on its own. This holds for a chat, a workflow agent, a subagent, and a headless task. If every candidate is still spent then, the agent waits again. A spent candidate that states no time is checked again after a short interval. A wait that the runtime serves continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens its project if it closed.
+When no candidate can serve an agent until a stated time, such as a usage-limit reset, the agent waits until then and continues its turn on its own. An unattended Agent Client Protocol run does not wait for a spent limit (PI-AGENT-128). If every candidate is still spent then, the agent waits again. A spent candidate that states no time is checked again after a short interval. A wait that the runtime serves continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens its project if it closed.
 
 ## PI-MODEL-063: Capacity wait status and end
 
-While an agent waits for model capacity, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait.
+While an agent waits for model capacity, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
