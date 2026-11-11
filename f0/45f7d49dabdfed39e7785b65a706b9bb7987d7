@@ -1,0 +1,22 @@
+bench/findings/README.md
+  h_4b47e9e4a8b456 92-128
+bench/findings/reviewer-results.md
+  h_4b47e9e4a8b456 3,16,18,21,42-91
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 47-48,52-53
+tests/unit/orchestration/config/config-models-roles.test.ts
+  h_4b47e9e4a8b456 38
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 31-32,67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f045f7d49dabdfed39e7785b65a706b9bb7987d7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
