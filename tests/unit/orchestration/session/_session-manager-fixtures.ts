@@ -30,12 +30,15 @@ export async function advanceTestWorkflow(manager: SessionManager, store: EventS
   const bindings = testResolvedAgents([testResolvedAgent(TEST_BINDING_ID, TEST_SKILL, { name: TEST_SKILL.name })]);
   const facts = store.read({ aggregateId: `workflow:${workflowId}` });
   const control = replayWorkflowControl(facts);
+  // One clock read per commit, as the runtime stamps one commit, so durations
+  // derived across its facts never depend on when each was mapped.
+  const timestamp = Date.now();
   const result = composeWorkflowCompanions(transitionWorkflow(replayWorkflow(control), event), {
-    queue: loadQueueFromEvents(facts), resolvedAgents: bindings, timestamp: Date.now(), addenda: [],
+    queue: loadQueueFromEvents(facts), resolvedAgents: bindings, timestamp, addenda: [],
   });
   if (result.command.kind !== "commit") throw new Error("Expected a workflow commit");
   const events = result.command.proposal.facts.map((fact, index) => ({
-    aggregateId: `workflow:${workflowId}`, sessionId: workflowId, timestamp: Date.now(), ...fact,
+    aggregateId: `workflow:${workflowId}`, sessionId: workflowId, timestamp, ...fact,
     ...(index === 0 && result.command.kind === "commit" ? { expectedSeq: result.command.proposal.expectedSeq } : {}),
   }));
   if ((await manager.commitWorkflow({ workflowId, events })).kind !== "stored") throw new Error("Workflow test publication conflicted");
