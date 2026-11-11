@@ -1,0 +1,38 @@
+scripts/claude-plugin-host.ts
+  h_4b47e9e4a8b456 88
+src/agent-skills/design/SKILL.md
+  h_4b47e9e4a8b456 46
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 20,31
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 54-55,57-65,72,76,81,85,90-91,99,104-105,109,111,122,124-127,134,136-137,142-143,149,155,235,259-262,274-275,283-284
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 23,78,80-81,84,87-88,103
+src/orchestration/modules/learning.ts
+  h_4b47e9e4a8b456 104-108
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1233,1243,1253
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 276
+tests/unit/orchestration/agent-runtime/conversation-first-delivery.test.ts
+  h_4b47e9e4a8b456 85
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 43
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 9,11-17,19,68-72,77-95,121,153,169,184,187-201
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 187,237-247,477,511,520-523,526,529-533
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 465,467-468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f4fd53ced12b31e42a8e7f00685f72e55d6fc8ef",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
