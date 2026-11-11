@@ -1,0 +1,30 @@
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
+  h_4b47e9e4a8b456 17-18,331-333,343,359-362,366-367
+src/orchestration/modules/provider-claude-agent-sdk/bridge.ts
+  h_4b47e9e4a8b456 261
+src/orchestration/modules/provider-claude-agent-sdk/extra-usage-guard.ts
+  h_4b47e9e4a8b456 9,64-65,115,138,156
+src/orchestration/modules/provider-claude-agent-sdk/sdk-events.ts
+  h_4b47e9e4a8b456 121-126,130-143,145-150,188-190,192,197
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 12,90,100
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 13,45-46,49-50,86-89,367-369,373,418
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host.test.ts
+  h_4b47e9e4a8b456 12,67,174-191
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge.test.ts
+  h_4b47e9e4a8b456 11,535,552-561,567,571
+tests/unit/orchestration/modules/provider-claude-agent-sdk/sdk-events.test.ts
+  h_4b47e9e4a8b456 11,14,20,149-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f752c144fe763f0b00dd5ea31615cc44a8e18227",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
