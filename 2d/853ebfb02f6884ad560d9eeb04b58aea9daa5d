@@ -1,0 +1,194 @@
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 138
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 205
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 218
+scripts/build-claude-plugin.ts
+  h_4b47e9e4a8b456 30,63,203
+src/orchestration/agent-runtime/active-request-context.ts
+  h_4b47e9e4a8b456 216
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 32
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 30,122-126
+src/orchestration/agent-runtime/llm/conversions/anthropic-messages.ts
+  h_4b47e9e4a8b456 23,27,44
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 32
+src/orchestration/agent-runtime/llm/provider-description.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/agent-runtime/llm/provider-history.ts
+  h_4b47e9e4a8b456 9-10,95-103,126,184,267-269
+src/orchestration/agent-runtime/llm/runtime-reminders.ts
+  h_4b47e9e4a8b456 72-76,80,109-111,117,148,151,155,164-165,253,275,293-300,302-303,305,310,319,328,335,341,353,355-362,376-380,382-384,392-393,396-419,422-423,427,439,444,446,462-465
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 99,134-135,138,599
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 2-3,5-6,8-14,16,20-24,48,50,52-54,57-59,64,72-76,89-90,200-201,212-215,217-219,236,238-241,245-246,248,251,253,260,275-279,284-286,292-295
+src/orchestration/agent-runtime/model-interaction-profile.ts
+  h_4b47e9e4a8b456 13-14
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 35,171,319
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 5-7,21,110-112,177-181,189-190,254-255,259-260,263,265
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 115
+src/orchestration/modules/provider-anthropic-api/module.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/modules/provider-claude-agent-sdk/cli-view.ts
+  h_4b47e9e4a8b456 4,34,119-122
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/provider-claude-agent-sdk/in-place.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/provider-claude-agent-sdk/transcript.ts
+  h_4b47e9e4a8b456 8,209
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 9,55-60
+src/orchestration/modules/workflows/models.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/session/conversation/conversation-entry-schemas.ts
+  h_4b47e9e4a8b456 286
+src/orchestration/session/conversation/conversation-tree-context.ts
+  h_4b47e9e4a8b456 6,107
+src/orchestration/session/provider-request-audit-types.ts
+  h_4b47e9e4a8b456 284
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 36,1223-1224
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.ts
+  h_4b47e9e4a8b456 20
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-notices.test.ts
+  h_4b47e9e4a8b456 14,123
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+  h_4b47e9e4a8b456 18,398,661
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-conformance.test.ts
+  h_4b47e9e4a8b456 20
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-wire.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/agent-runtime/agent-loop-history.test.ts
+  h_4b47e9e4a8b456 109
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 399
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 72-75,240-241
+tests/unit/orchestration/agent-runtime/assistant-turn-login-recovery.test.ts
+  h_4b47e9e4a8b456 49
+tests/unit/orchestration/agent-runtime/auxiliary-fallback-regressions.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/agent-runtime/budget-exhaust.test.ts
+  h_4b47e9e4a8b456 43,57,266,333,387
+tests/unit/orchestration/agent-runtime/capability-checks.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/agent-runtime/context/loop-interrupt-carryover.test.ts
+  h_4b47e9e4a8b456 54
+tests/unit/orchestration/agent-runtime/context/loop-interruption-barrier.test.ts
+  h_4b47e9e4a8b456 88
+tests/unit/orchestration/agent-runtime/context/loop-outgoing-context.test.ts
+  h_4b47e9e4a8b456 319,381
+tests/unit/orchestration/agent-runtime/context/loop-stream-error.test.ts
+  h_4b47e9e4a8b456 64,119
+tests/unit/orchestration/agent-runtime/context/notes-capability.test.ts
+  h_4b47e9e4a8b456 24,128
+tests/unit/orchestration/agent-runtime/context/notes-only-compaction.test.ts
+  h_4b47e9e4a8b456 97
+tests/unit/orchestration/agent-runtime/llm/_provider-chain-harness.ts
+  h_4b47e9e4a8b456 75-79,85-87,96-98,112
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 73
+tests/unit/orchestration/agent-runtime/llm/llm-converters.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/agent-runtime/llm/provider-history.test.ts
+  h_4b47e9e4a8b456 1-206
+tests/unit/orchestration/agent-runtime/llm/runtime-reminders.test.ts
+  h_4b47e9e4a8b456 5,27,37,59,92,100,102,136,152-153,157,164-165,168,170,172-221,244,253,257-260,262-264,273-274
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 55-58,74-90,120-122,124-125,127-133,135-137,144-145,158-162,165,167-168,172-183,189-191,193,204-206,211-218,221,229-232,240-249
+tests/unit/orchestration/agent-runtime/model-interaction-profile.test.ts
+  h_4b47e9e4a8b456 29,43-44
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 270-274,279,293,421,423-424,451
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 17,206,209,221,248-249,270,302,318-319,358,376,386,398-399,419-420,426-427,447,583,587,604,606,621
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 146,220,240,275,304,332
+tests/unit/orchestration/agent-runtime/runner.test.ts
+  h_4b47e9e4a8b456 424
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 87,89-90,92,96-97,100,153-154,158,160-161,163-166,168-169,178-179,185-186,274,276-277,445,475-476,510,522,600,604-606
+tests/unit/orchestration/agent-runtime/tools/skill.test.ts
+  h_4b47e9e4a8b456 551
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 530,539,541,543
+tests/unit/orchestration/agent-runtime/tools/workflow-tool.test.ts
+  h_4b47e9e4a8b456 487,497,499,502
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 111,138,147,150-151
+tests/unit/orchestration/agent-runtime/workflow-agent-system-prompt.test.ts
+  h_4b47e9e4a8b456 50
+tests/unit/orchestration/app-service/runtime-supervisor-workflow-stop.test.ts
+  h_4b47e9e4a8b456 91
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 331
+tests/unit/orchestration/chat/chat-session-agent-runtime-queue.test.ts
+  h_4b47e9e4a8b456 476
+tests/unit/orchestration/chat/chat-session-agent-runtime-reconnect.test.ts
+  h_4b47e9e4a8b456 90
+tests/unit/orchestration/chat/chat-session-agent-runtime-resume.test.ts
+  h_4b47e9e4a8b456 201,259,476
+tests/unit/orchestration/chat/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 114
+tests/unit/orchestration/modules/provider-anthropic-api/module.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 14,185
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge-in-place.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/provider-claude-agent-sdk/cli-view.test.ts
+  h_4b47e9e4a8b456 4,101-111
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/modules/provider-claude-agent-sdk/in-place.test.ts
+  h_4b47e9e4a8b456 5,28,145
+tests/unit/orchestration/modules/provider-claude-agent-sdk/transcript.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 137
+tests/unit/orchestration/modules/subagents/subagent-continuation.test.ts
+  h_4b47e9e4a8b456 33
+tests/unit/orchestration/modules/subagents/subagent-prompt-inspectability.test.ts
+  h_4b47e9e4a8b456 213
+tests/unit/orchestration/modules/subagents/subagent-restored-wait.test.ts
+  h_4b47e9e4a8b456 48,104
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 215
+tests/unit/orchestration/session/conversation-tree-context.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 38,221,273,463,466,474,477,490-507,529,599-615
+tests/unit/orchestration/workflow-host/worker-opening-turn.test.ts
+  h_4b47e9e4a8b456 32
+tests/unit/orchestration/workflow-host/workflow-agent-interruption.test.ts
+  h_4b47e9e4a8b456 111
+tests/unit/orchestration/workflow-host/workflow-interruption.test.ts
+  h_4b47e9e4a8b456 119
+tests/unit/orchestration/workflow-host/workflow-runner.test.ts
+  h_4b47e9e4a8b456 312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2d853ebfb02f6884ad560d9eeb04b58aea9daa5d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
