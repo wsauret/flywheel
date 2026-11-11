@@ -1,0 +1,30 @@
+scripts/uat/harness.ts
+  h_4b47e9e4a8b456 14,375-376,379
+scripts/uat/tmux-driver.ts
+  h_4b47e9e4a8b456 123-130,132-135,146-149,152-155
+src/infra/cli-subprocess.ts
+  h_4b47e9e4a8b456 5-11,13
+src/orchestration/agent-runtime/tools/bash-script.ts
+  h_4b47e9e4a8b456 138-143
+src/orchestration/agent-runtime/tools/shell-environment.ts
+  h_4b47e9e4a8b456 6,41,56
+tests/unit/infra/cli-subprocess.test.ts
+  h_4b47e9e4a8b456 8,14-20
+tests/unit/orchestration/agent-runtime/tools/tools-bash-environment.test.ts
+  h_4b47e9e4a8b456 213
+tests/unit/orchestration/agent-runtime/tools/tools-bash.test.ts
+  h_4b47e9e4a8b456 525,533-536,541,545,550-553,556,575
+tests/unit/scripts/uat/harness.test.ts
+  h_4b47e9e4a8b456 3,5,41-70,185,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0936de92aaa16bd1d6338da152782e602a09deba",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
