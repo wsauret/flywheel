@@ -35,7 +35,7 @@ import { childSessionProjectionAttachment } from "../session-store/child-session
 import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../infra/retained-operation-hosts.js"
 import { workflowLaunchHost } from "../workflow-host/launch-operation-contract.js"
 import { createRuntimeConfigOwner } from "../config/runtime-config-owner.js"
-import { buildCustomProvidersFromConfig, logCustomProviderDiagnostics, publishCustomProvidersFromConfig } from "../config/custom-providers.js"
+import { publishCustomProvidersFromConfig } from "../config/custom-providers.js"
 import { startModulePolicy } from "../config/module-policy.js"
 import { prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPartyModuleComposition } from "../modules.js";
 import { createRuntimeModuleComposer } from "./runtime-module-composition.js"
@@ -249,9 +249,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   scope.own("persistent-process-client", options.persistentProcesses, (client) => { client.close() })
   const runtimeConfig = scope.own("runtime-config", await createRuntimeConfigOwner({ userDataRoot }), (owner) => owner.dispose())
   const { config: initialConfig, warnings: initialConfigWarnings } = runtimeConfig.snapshot()
-  const initialProviderCandidate = buildCustomProvidersFromConfig(initialConfig.custom_providers)
-  publishCustomProvidersFromConfig(initialProviderCandidate)
-  logCustomProviderDiagnostics(initialProviderCandidate)
+  publishCustomProvidersFromConfig(initialConfig.custom_providers)
   if (initialConfigWarnings.length > 0) log.warn("runtime-config-normalized", { code: "runtime-config-normalized", count: initialConfigWarnings.length })
   // Every mutating and work-admitting root migrates the obsolete Learning
   // opt-out and builds its own capability projection before it can admit
@@ -482,9 +480,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     await subscriptionUsage.refresh()
   }), (unsubscribe) => unsubscribe())
   scope.own("custom-providers-subscription", runtimeConfig.subscribe("custom_providers", async (snapshot) => {
-    const candidate = buildCustomProvidersFromConfig(snapshot.config.custom_providers)
-    publishCustomProvidersFromConfig(candidate)
-    logCustomProviderDiagnostics(candidate)
+    publishCustomProvidersFromConfig(snapshot.config.custom_providers)
     await moduleProjection.refresh()
     await subscriptionUsage.refresh()
   }), (unsubscribe) => unsubscribe())

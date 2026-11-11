@@ -20,7 +20,7 @@ import { AuthProfileManager, type AuthProfileResolution } from "../orchestration
 import { accessProviderRegistry } from "../orchestration/agent-runtime/llm/access-provider-registry.js"
 import { webAuthProviderDefinitions, type FirstPartyModuleComposition } from "../orchestration/modules.js"
 import { createRuntimeConfigOwner } from "../orchestration/config/runtime-config-owner.js"
-import { buildCustomProvidersFromConfig, publishCustomProvidersFromConfig } from "../orchestration/config/custom-providers.js"
+import { publishCustomProvidersFromConfig } from "../orchestration/config/custom-providers.js"
 import { PromptCancelled, promptCancelledExitCode, type ReadlinePrompt } from "./readline-prompt.js"
 
 export interface AuthOperations {
@@ -134,8 +134,7 @@ export async function runAuth(args: string[], directories: ProjectDirectories, d
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, watch: false })
   try {
     const config = runtimeConfig.snapshot().config
-    const custom = buildCustomProvidersFromConfig(config.custom_providers)
-    publishCustomProvidersFromConfig(custom)
+    const custom = publishCustomProvidersFromConfig(config.custom_providers)
     const providers = credentialProviders(deps.composition(config.modules), new Set(custom.slice.definitions.map(({ id }) => id)))
     if (!command) { deps.log(usage(providers)); return }
     const manager = new AuthProfileManager({ ...directories, config: () => config })

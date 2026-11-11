@@ -17,7 +17,7 @@ import { installedAccessProviderIds } from "../credential-provider-modules.js"
 import { installedModules } from "../module-catalog.js"
 import { composePortableModuleServices } from "../app-service/module-service-host.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
-import { buildCustomProvidersFromConfig, logCustomProviderDiagnostics, publishCustomProvidersFromConfig } from "../config/custom-providers.js"
+import { publishCustomProvidersFromConfig } from "../config/custom-providers.js"
 import type { CaptureSubscriptionAdmission } from "../agent-runtime/factory.js"
 import type { SubscriptionUsageProfile } from "../auth/provider-observations/subscription-usage-service.js"
 import { createHeadlessSubscriptionAdmission } from "./headless-profile-runtime.js"
@@ -102,9 +102,7 @@ export async function runHeadlessBootstrap<T>(
 ): Promise<T> {
   const { directories } = options
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, watch: false })
-  const providerCandidate = buildCustomProvidersFromConfig(runtimeConfig.snapshot().config.custom_providers)
-  publishCustomProvidersFromConfig(providerCandidate)
-  logCustomProviderDiagnostics(providerCandidate)
+  publishCustomProvidersFromConfig(runtimeConfig.snapshot().config.custom_providers)
   // The policy publishes the run's own selection, so the composition below,
   // every capability check, and every grant read that one selection.
   const capabilityPolicy = await (options.awaitModulePolicy ?? (async <A>(operation: Promise<A>) => await operation))(

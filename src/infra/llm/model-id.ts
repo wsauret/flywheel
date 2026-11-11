@@ -45,6 +45,13 @@ export function canonicalCatalogModelId(wireModelId: string): CanonicalCatalogMo
   };
 }
 
+/** Classifies a user-authored model spelling. The authored spelling stays the wire id, but its identity and
+ *  contributor classification read the case-insensitive spelling, so `Vendor/Model-Contributor` is the contributor
+ *  offering of `vendor/model`. */
+export function authoredCatalogModelId(model: string): CanonicalCatalogModel {
+  return canonicalCatalogModelId(canonicalize(model));
+}
+
 /** Moving provider aliases are routes, not stable model identities. */
 export function isMovingModelAlias(wireModelId: string): boolean {
   return wireModelId.charCodeAt(0) === 126;

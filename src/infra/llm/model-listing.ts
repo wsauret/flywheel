@@ -11,7 +11,7 @@ import { BoundedJsonError, readBoundedJson, readBoundedJsonWithByteLength } from
 import { accessProviderAccountIdentity, accessProviderAccountKey, compareAutomaticSelection, type AccessProviderAccountIdentity, type AccessProviderCandidate, type AccessProviderCatalogFetchResult, type AccessProviderDefinition, type AccessProviderId, type AccessProviderSelection } from "./access-provider.js";
 import { customProviderById } from "./custom-provider-registry.js";
 import { recordCatalogDiscoveryDiagnostics, recordProviderCatalogFailure, type CatalogDiscoveryDiagnostics } from "./model-catalog-diagnostics.js";
-import { resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogLimits, type CatalogModelOffering, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS, resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogLimits, type CatalogModelOffering, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
 import { catalogRowsToModelMap, decodeDiscoveryRows, joinCatalogRows, modelsDevBaseline, preferredCatalog, reconcileSavedCatalogRows, staticOfferingMap, withModelRefusals, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
 import { settleTasks } from "./model-listing-settlement.js";
 import type { ModelsClient } from "./models.js";
@@ -601,7 +601,9 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
       const custom = customProviderById(providerId);
       if (custom) {
         const candidate: AccessProviderCandidate = { kind: "singleton", providerId, spendMode: options.providers.spendMode(providerId) };
-        const models = staticOfferingMap(custom.modelIds, "openai-completions");
+        const catalogId = options.providers.catalogId(providerId);
+        const catalog = catalogId === undefined || options.modelsClient === undefined ? [] : options.modelsClient.getProviderCatalog([catalogId], DEFAULT_DYNAMIC_CATALOG_LIMITS.canonicalRows);
+        const models = staticOfferingMap(custom.modelIds, "openai-completions", catalog);
         tasks.push(async () => ({ providerId, candidate, result: { models } }));
         continue;
       }

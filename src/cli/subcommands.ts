@@ -59,12 +59,9 @@ const EVENT_VERBS: Readonly<Subcommands> = {
 
 const HEADLESS_VERBS: Readonly<Subcommands> = {
   "snapshot-auth": async (args, directories, launcher) => {
-    const { composeFirstPartyModules } = await import("../orchestration/modules.js")
-    const { accessProviderRegistry } = await import("../orchestration/agent-runtime/llm/access-provider-registry.js")
     const { createKeyResolver, createOwnedCredentialCommandRunner } = await import("../infra/auth/resolve-key.js")
-    const { runHeadlessSnapshotAuth } = await import("./headless-snapshot-auth.js")
-    const providers = accessProviderRegistry(composeFirstPartyModules()).selection.definitions
-    await runHeadlessSnapshotAuth(args, directories, createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope)), providers)
+    const { runHeadlessSnapshotAuth, snapshotAuthProviders } = await import("./headless-snapshot-auth.js")
+    await runHeadlessSnapshotAuth(args, directories, createKeyResolver(createOwnedCredentialCommandRunner(launcher.scope)), await snapshotAuthProviders(directories))
   },
 }
 

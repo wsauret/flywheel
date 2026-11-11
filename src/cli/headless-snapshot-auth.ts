@@ -4,6 +4,10 @@ import type { KeyResolver } from "../infra/auth/resolve-key.js"
 import { writeHeadlessAuthSnapshot } from "../orchestration/headless/benchmark-auth-file.js"
 import type { AccessProviderDefinition } from "../infra/llm/access-provider.js"
 import { isAuthProfileName } from "../infra/paths.js"
+import { accessProviderRegistry } from "../orchestration/agent-runtime/llm/access-provider-registry.js"
+import { publishCustomProvidersFromConfig } from "../orchestration/config/custom-providers.js"
+import { createRuntimeConfigOwner } from "../orchestration/config/runtime-config-owner.js"
+import { composeFirstPartyModules } from "../orchestration/modules.js"
 
 const USAGE = "Usage: flywheel headless snapshot-auth --auth-profile <id-or-unique-display-name> --output </private/flywheel-auth-bundle-*/auth.json> [--provider <id>]... [--min-valid-seconds <n>] [--as-profile <id>]\n" +
   "  --provider           Export only this credential provider's credentials, such as chatgpt. Repeat it to keep more providers.\n" +
@@ -15,6 +19,18 @@ const USAGE = "Usage: flywheel headless snapshot-auth --auth-profile <id-or-uniq
 
 const FLAGS = new Set(["--auth-profile", "--output", "--min-valid-seconds", "--as-profile", "--provider"])
 const REPEATABLE_FLAGS = new Set(["--provider"])
+
+/** The providers whose credentials a snapshot can carry: the installed catalog and the [custom_providers] entries of
+ *  the account config, which this publishes as a headless run does, so their credentials export like built-in ones. */
+export async function snapshotAuthProviders(directories: StartupDirectories): Promise<readonly AccessProviderDefinition[]> {
+  const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, watch: false })
+  try {
+    publishCustomProvidersFromConfig(runtimeConfig.snapshot().config.custom_providers)
+  } finally {
+    await runtimeConfig.dispose()
+  }
+  return accessProviderRegistry(composeFirstPartyModules()).selection.definitions
+}
 
 /** Exports one resolved auth profile for transfer to a headless runtime. */
 export async function runHeadlessSnapshotAuth(args: readonly string[], directories: StartupDirectories, resolveKey: KeyResolver, providers: readonly AccessProviderDefinition[]): Promise<void> {

@@ -2,10 +2,11 @@
 import { createHash } from "node:crypto";
 import { CatalogDiscoveryDiagnosticAccumulator, type CatalogDiscoveryDiagnostics } from "./model-catalog-diagnostics.js";
 import { normalizeResolvedCatalogRows, offeringTransport, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogJsonValue, type CatalogModelOffering, type CatalogSourceRow, type ModelCatalogContribution, type OfferingTransport } from "./model-catalog-resolution.js";
-import type { ModelsClient, ProviderModelInfoField } from "./models.js";
+import type { ModelInfo, ModelsClient, ProviderModelInfoField } from "./models.js";
 import { narrowContextWindow, preferCatalogModelInfoFields, providerModelInfo } from "./provider-model-info.js";
 import type { SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
-import { canonicalCatalogModelId, isMovingModelAlias, preferredWireModelId, type CatalogDataUse } from "./model-id.js";
+import { authoredCatalogModelId, canonicalCatalogModelId, canonicalModelId, isMovingModelAlias, preferredWireModelId, type CatalogDataUse } from "./model-id.js";
+import { canonicalize } from "../canonical-name.js";
 
 const STATIC_OFFERING_ORDER: readonly CatalogDataUse[] = ["standard", "contributor"];
 
@@ -182,14 +183,29 @@ export function catalogRowsToModelMap(
   }))]));
 }
 
-export function staticOfferingMap(wireModelIds: Iterable<string>, transport: OfferingTransport): ReadonlyMap<string, readonly CatalogModelOffering[]> {
+interface DescribedWire {
+  readonly wireModelId: string;
+  readonly metadata: ModelInfo;
+}
+
+/** The offerings of a provider whose model list is user-authored: each declared wire spelling under its authored
+ *  identity. A declared model takes its metadata from the `catalog` row with the same wire id, ignoring case, so a
+ *  dated snapshot keeps its own row; else from the preferred row of its canonical model; else it carries none. */
+export function staticOfferingMap(
+  wireModelIds: Iterable<string>,
+  transport: OfferingTransport,
+  catalog: readonly DescribedWire[],
+): ReadonlyMap<string, readonly CatalogModelOffering[]> {
+  const byWire = preferredRowsBy(catalog, canonicalize);
+  const byModel = preferredRowsBy(catalog, canonicalModelId);
   const result = new Map<string, Map<CatalogDataUse, CatalogModelOffering>>();
   for (const wireModelId of wireModelIds) {
-    const { modelId, dataUse } = canonicalCatalogModelId(wireModelId);
+    const { modelId, dataUse } = authoredCatalogModelId(wireModelId);
     const offerings = result.get(modelId) ?? new Map<CatalogDataUse, CatalogModelOffering>();
     const previous = offerings.get(dataUse);
     if (previous === undefined || preferredWireModelId(previous.wireModelId, wireModelId) === wireModelId) {
-      offerings.set(dataUse, Object.freeze({ wireModelId, metadata: null, dataUse, transport }));
+      const resolvedMetadata = (byWire.get(canonicalize(wireModelId)) ?? byModel.get(canonicalModelId(wireModelId)))?.metadata;
+      offerings.set(dataUse, Object.freeze({ wireModelId, metadata: null, dataUse, transport, ...(resolvedMetadata === undefined ? {} : { resolvedMetadata }) }));
     }
     result.set(modelId, offerings);
   }
@@ -200,6 +216,16 @@ export function staticOfferingMap(wireModelIds: Iterable<string>, transport: Off
       return offering === undefined ? [] : [offering];
     })),
   ]));
+}
+
+/** One row per key, chosen by wire preference rather than catalog order. */
+function preferredRowsBy(catalog: readonly DescribedWire[], key: (wireModelId: string) => string): ReadonlyMap<string, DescribedWire> {
+  const result = new Map<string, DescribedWire>();
+  for (const row of catalog) {
+    const previous = result.get(key(row.wireModelId));
+    if (previous === undefined || preferredWireModelId(previous.wireModelId, row.wireModelId) === row.wireModelId) result.set(key(row.wireModelId), row);
+  }
+  return result;
 }
 
 type OfferingMap = ReadonlyMap<string, readonly CatalogModelOffering[]>;

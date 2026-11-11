@@ -57,7 +57,8 @@ export function buildCustomProvidersFromConfig(section: FlywheelConfig["custom_p
         continue;
       }
       claimedModels.set(canonical, id);
-      modelIds.add(canonical);
+      // The declared spelling is the wire id the endpoint expects; readers match it by canonical identity.
+      modelIds.add(model.trim());
     }
     if (invalidModelId) continue;
     if (modelIds.size === 0) {
@@ -77,15 +78,20 @@ export function buildCustomProvidersFromConfig(section: FlywheelConfig["custom_p
 }
 
 /** Emit only aggregate, fixed-code diagnostics for authored provider config. */
-export function logCustomProviderDiagnostics(candidate: CustomProviderConfigCandidate): void {
+function logCustomProviderDiagnostics(candidate: CustomProviderConfigCandidate): void {
   if (candidate.slice.rejections.length > 0) log.warn("custom-provider-config-rejected", { code: "custom-provider-config-rejected", count: candidate.slice.rejections.length });
   const warningCount = candidate.warnings.length - candidate.slice.rejections.length;
   if (warningCount > 0) log.warn("custom-provider-config-warning", { code: "custom-provider-config-warning", count: warningCount });
 }
 
-/** Publishes a ready candidate. Registry publication retires prior cache identities. */
-export function publishCustomProvidersFromConfig(candidate: CustomProviderConfigCandidate): void {
+/** Validates the section, publishes it as the live registry, and records its aggregate diagnostics. Every owner that
+ *  applies [custom_providers] publishes through here, so all share one diagnostic policy. Registry publication retires
+ *  prior cache identities. Returns the published candidate. */
+export function publishCustomProvidersFromConfig(section: FlywheelConfig["custom_providers"]): CustomProviderConfigCandidate {
+  const candidate = buildCustomProvidersFromConfig(section);
   publishCustomProviderSlice(candidate.slice);
+  logCustomProviderDiagnostics(candidate);
+  return candidate;
 }
 
 export function installCustomProvidersFromConfig(section: FlywheelConfig["custom_providers"], warnings: string[]): void {

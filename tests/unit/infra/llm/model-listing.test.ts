@@ -1,4 +1,4 @@
-import { afterEach, expect, spyOn, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import type { CredentialSlotClassifier } from "../../../../src/infra/auth/auth-store-types.js";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,7 +9,6 @@ import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.
 import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
 import { DebugLog } from "../../../../src/infra/debug-log.js";
 import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import { installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { createModelsClient } from "../../../../src/infra/llm/models.js";
 import { testCapabilityModules, testProviderSelection } from "../../../helpers/provider-authority.js";
@@ -62,10 +61,6 @@ function delayedProvider(
     ...(billing === "subscription" ? { billing } : { billing, spendMode: "direct_api" }),
   };
 }
-
-afterEach(() => {
-  installCustomProviders([]);
-});
 
 test("OpenCode Go isolates account discovery and falls back from a 503 to models.dev", async () => {
   const original = globalThis.fetch;
@@ -511,54 +506,6 @@ test("cached-first discovery shows pending Google Vertex candidates and admits c
   expect(checked.providers.get("google_vertex")).toEqual(new Set(["gemini-3.8-flash", "gemini-2.5-flash-image", "gemini-embedding-001"]));
   expect(checked.candidates.get(accessProviderAccountKey({ kind: "singleton", providerId: "google_vertex" }))?.outcome).toMatchObject({ kind: "catalog", provenance: "models-dev-bundled" });
   expect(refreshes.count).toBe(0);
-});
-
-test("configured custom providers publish static singleton candidate catalogs", async () => {
-  installCustomProviders([{
-    id: "local_llama",
-    displayName: "Local Llama",
-    baseUrl: "http://localhost:8080/v1",
-    modelIds: new Set(["llama-3.3-70b", "gpt-4o", "local-contributor", "gpt-4o-contributor"]),
-    catalogId: undefined,
-    contextLimit: 128_000,
-  }]);
-  const original = globalThis.fetch;
-  let fetchCalls = 0;
-  globalThis.fetch = Object.assign(async () => {
-    fetchCalls += 1;
-    throw new Error("custom provider listing must remain static");
-  }, { preconnect: original.preconnect });
-  try {
-    const client = createModelListingClient({
-      classifySlot,
-      authDir: AUTH_DIR,
-      providers: testProviderSelection(),
-      captureSubscriptions: () => new Map(),
-    });
-    const candidate = { kind: "singleton", providerId: "local_llama", spendMode: "direct_api" } as const;
-    const catalogs = await client.getModelCatalogs({
-      ...AUTH_NONE,
-      providers: authProviders({ base: AUTH_NONE.providers, apiKeys: { local_llama: "local-key" } }),
-    });
-
-    expect(catalogs.providers.get("local_llama")).toEqual(new Set(["llama-3.3-70b", "gpt-4o", "local"]));
-    expect(catalogs.candidates.get(accessProviderAccountKey(candidate))).toEqual({
-      candidate,
-      models: new Map([
-        ["llama-3.3-70b", [{ wireModelId: "llama-3.3-70b", metadata: null, dataUse: "standard", transport: "openai-completions" }]],
-        ["gpt-4o", [
-          { wireModelId: "gpt-4o", metadata: null, dataUse: "standard", transport: "openai-completions" },
-          { wireModelId: "gpt-4o-contributor", metadata: null, dataUse: "contributor", transport: "openai-completions" },
-        ]],
-        ["local", [
-          { wireModelId: "local-contributor", metadata: null, dataUse: "contributor", transport: "openai-completions" },
-        ]],
-      ]),
-    });
-    expect(fetchCalls).toBe(0);
-  } finally {
-    globalThis.fetch = original;
-  }
 });
 
 test("the settlement deadline cancels admitted work before publishing its fallback", async () => {

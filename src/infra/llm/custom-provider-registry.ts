@@ -1,4 +1,4 @@
-import { canonicalCatalogModelId } from "./model-id.js";
+import { authoredCatalogModelId, canonicalCatalogModelId } from "./model-id.js";
 
 /**
  * Custom access-provider registry.
@@ -24,7 +24,7 @@ export interface CustomProviderDefinition {
   readonly displayName: string;
   /** OpenAI-compatible chat-completions base URL, e.g. "http://localhost:8080/v1". */
   readonly baseUrl: string;
-  /** The complete model vocabulary this provider serves. */
+  /** The complete model vocabulary this provider serves, as the declared wire spellings. */
   readonly modelIds: ReadonlySet<string>;
   /** models.dev provider key whose entries carry this endpoint's limits and
    *  API-equivalent pricing. Absent: inferred from `id` when a models.dev
@@ -38,7 +38,7 @@ export interface CustomProviderDefinition {
 export function customProviderOwning(modelId: string): CustomProviderDefinition | undefined {
   const canonical = canonicalCatalogModelId(modelId).modelId;
   for (const definition of installed.values()) {
-    if ([...definition.modelIds].some((candidate) => canonicalCatalogModelId(candidate).modelId === canonical)) return definition;
+    if ([...definition.modelIds].some((candidate) => authoredCatalogModelId(candidate).modelId === canonical)) return definition;
   }
   return undefined;
 }
@@ -136,7 +136,7 @@ export function customProviderModelUnavailableReason(providerId: string, modelId
   const definition = installed.get(providerId);
   if (!definition) return `Unknown custom provider: ${providerId}`;
   const canonical = canonicalCatalogModelId(modelId).modelId;
-  return [...definition.modelIds].some((candidate) => canonicalCatalogModelId(candidate).modelId === canonical)
+  return [...definition.modelIds].some((candidate) => authoredCatalogModelId(candidate).modelId === canonical)
     ? undefined
     : `${definition.displayName} serves only the models declared under [custom_providers.${providerId}] in flywheel.toml, not "${modelId}".`;
 }

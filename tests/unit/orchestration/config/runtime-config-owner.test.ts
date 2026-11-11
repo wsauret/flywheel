@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { Log } from "../../../../src/infra/log.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js";
-import { buildCustomProvidersFromConfig, logCustomProviderDiagnostics, publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";
+import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner, type RuntimeConfigOwnerOptions } from "../../../../src/orchestration/config/runtime-config-owner.js";
 import { ConfigPublicationError, withConfigOwnership } from "../../../../src/orchestration/config/config-file.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
@@ -548,13 +548,11 @@ effort = "low"
       owner.subscribeAll(() => { throw new Error(sentinels[1]); });
       writeFileSync(test.configPath, "show_thinking = true\n");
       await owner.refresh();
-      const candidate = buildCustomProvidersFromConfig({
+      publishCustomProvidersFromConfig({
         SECRET_PROVIDER_ID: { base_url: "https://secret.example", models: ["secret-model"] },
         alpha: { base_url: "https://secret.example", models: ["secret-model"] },
         beta: { base_url: "https://secret.example", models: ["secret-model"] },
       });
-      publishCustomProvidersFromConfig(candidate);
-      logCustomProviderDiagnostics(candidate);
       await owner.dispose();
     } finally {
       // The level is process-global; a later file in this process expects INFO.

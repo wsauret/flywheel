@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { Redacted } from "effect"
-import { chmodSync, existsSync, mkdtempSync, readFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { runHeadlessSnapshotAuth } from "../../../src/cli/headless-snapshot-auth.js"
+import { runHeadlessSnapshotAuth, snapshotAuthProviders } from "../../../src/cli/headless-snapshot-auth.js"
 import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js"
+import { installCustomProviders } from "../../../src/infra/llm/custom-provider-registry.js"
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import { composeFirstPartyModules } from "../../../src/orchestration/modules.js"
 import { applyWindowsPrivateDirectoryAcl } from "../../../src/infra/windows-private-directory-acl.js"
@@ -21,6 +22,7 @@ function privateOutput(root: string): string {
 
 afterEach(() => {
   process.exitCode = 0
+  installCustomProviders([])
 })
 
 describe("flywheel headless snapshot-auth", () => {
@@ -83,6 +85,28 @@ describe("flywheel headless snapshot-auth", () => {
     expect(JSON.parse(readFileSync(output, "utf8")).credentials).toEqual({
       openai_api: { type: "api_key", key: "resolved-openai_api-key", lineageId: lineages.openai_api },
       deepseek: { type: "api_key", key: "resolved-deepseek-key", lineageId: lineages.deepseek },
+    })
+  })
+
+  test("exports the credential of a [custom_providers] entry that the account config declares", async () => {
+    const root = temporary("flywheel-snapshot-cli-custom-")
+    const directories = { ...testDirectories(root), userDataRoot: join(root, "user-data") }
+    mkdirSync(directories.userDataRoot, { recursive: true })
+    writeFileSync(join(directories.userDataRoot, "flywheel.toml"), '[custom_providers.hosted]\nbase_url = "https://hosted.example/v1"\nmodels = ["Vendor/Model-1"]\n')
+    const access = await new AuthProfileStore(directories.userDataRoot).create("cli-custom-profile", "CLI Custom Profile")
+    const lineageId = crypto.randomUUID()
+    access.writeFile("auth.json", JSON.stringify({ hosted: { type: "api_key", key: "hosted-key", lineageId } }))
+    access.close()
+    const output = privateOutput(root)
+    const printed = spyOn(process.stdout, "write").mockImplementation(() => true)
+    try {
+      await runHeadlessSnapshotAuth(["--auth-profile", "cli-custom-profile", "--provider", "hosted", "--output", output], directories, async (key) => Redacted.make(`resolved-${key}`), await snapshotAuthProviders(directories))
+    } finally {
+      printed.mockRestore()
+    }
+    expect(process.exitCode).not.toBe(2)
+    expect(JSON.parse(readFileSync(output, "utf8")).credentials).toEqual({
+      hosted: { type: "api_key", key: "resolved-hosted-key", lineageId },
     })
   })
 })
