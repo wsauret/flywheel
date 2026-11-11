@@ -1,0 +1,16 @@
+src/orchestration/headless/snapshot-eligibility.ts
+  h_4b47e9e4a8b456 12-17,25
+tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts
+  h_4b47e9e4a8b456 30-34,212-217,229-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b9de81049af8f7bcb74bc1dba6eaa715b23d75aa",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
