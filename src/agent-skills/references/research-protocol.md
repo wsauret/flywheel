@@ -38,10 +38,10 @@ Documentarian mode - document what exists, do not suggest changes.
 
 {{end}}
 {{if:subagent&type:explorer&type:implementer&type:general}}
-- **Model:** explorers run on their own configured cheaper model; never set `model` on a dispatch. Implementation subagents (`implementer`, `general`) inherit the parent model.
+- **Model:** explorers run on their configured explorer model; never set `model` on a dispatch. `general` inherits the parent model; `implementer` runs on its configured role model.
 {{end}}
 {{if:subagent&type:explorer&!type:implementer|subagent&type:explorer&!type:general}}
-- **Model:** explorers run on their own configured cheaper model; never set `model` on a dispatch.
+- **Model:** explorers run on their configured explorer model; never set `model` on a dispatch.
 {{end}}
 {{if:subagent&type:explorer}}
 - **Input:** pass file paths, not file content - every explorer reads for itself. Send the phase-only excerpt of a plan rather than the whole plan, under 100 lines where possible.
