@@ -1,0 +1,26 @@
+src/orchestration/agent-runtime/agent-loop-tools.ts
+  h_4b47e9e4a8b456 55-56,358,364-368
+src/orchestration/agent-runtime/global-guidelines.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 312-315
+src/orchestration/agent-runtime/tools/tool-concurrency-gate.ts
+  h_4b47e9e4a8b456 20-25
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1233
+tests/unit/orchestration/agent-runtime/agent-loop-request-tool-surface.test.ts
+  h_4b47e9e4a8b456 1-190
+tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+  h_4b47e9e4a8b456 10,12,509-539,542-555,558-568,571-578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2c6fdf0ade60b28869db92100acc13e2592a6249",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
