@@ -1,0 +1,60 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 363-369
+docs/product-intent/remote-access.md
+  h_4b47e9e4a8b456 117-128
+relay/app/bootstrap.ts
+  h_4b47e9e4a8b456 9,29,33,37-61,185-186,196-197,201,203
+relay/app/build.ts
+  h_4b47e9e4a8b456 3-4
+relay/app/device-store.test.ts
+  h_4b47e9e4a8b456 3,5,113-136,148-188
+relay/app/device-store.ts
+  h_4b47e9e4a8b456 3,10-13,57-72,84-96,106,121-122,130
+relay/app/install-carry.test.ts
+  h_4b47e9e4a8b456 1-90
+relay/app/install-carry.ts
+  h_4b47e9e4a8b456 1-112
+relay/app/page-start.test.ts
+  h_4b47e9e4a8b456 3,5,18,26-27,32-36,40,45,47-48,71,74-76,89,91-93,96-103,106-107,111-156
+relay/app/page-start.ts
+  h_4b47e9e4a8b456 1,4,6,19-20,29-31,36-41,58,60-89,108,132
+scripts/lint-relay.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/remote/cli/index.ts
+  h_4b47e9e4a8b456 7,186
+src/protocol/modules/remote.ts
+  h_4b47e9e4a8b456 140-143
+src/protocol/modules/remote/relay-device.ts
+  h_4b47e9e4a8b456 24-26
+src/tui/modules/remote/modal.tsx
+  h_4b47e9e4a8b456 12,19,43-45,47-49,65-71,76-79,165,167-168
+tests/unit/orchestration/modules/remote/remote-cli.test.ts
+  h_4b47e9e4a8b456 137
+tests/unit/tui/modules/remote/modal.test.tsx
+  h_4b47e9e4a8b456 196,203-220
+webview/phone/install-guide.test.ts
+  h_4b47e9e4a8b456 49,66,73-84
+webview/phone/install-guide.ts
+  h_4b47e9e4a8b456 70-77,79,81,83,85
+webview/src/host.ts
+  h_4b47e9e4a8b456 36-37
+webview/src/modules/remote/install-guide.css
+  h_4b47e9e4a8b456 23-26,29-30,51-53
+webview/src/modules/remote/install-guide.tsx
+  h_4b47e9e4a8b456 45,81
+webview/src/modules/remote/sheet.test.ts
+  h_4b47e9e4a8b456 159-163
+webview/src/modules/remote/sheet.tsx
+  h_4b47e9e4a8b456 6,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "69e21a38341641890f3b930567242394fc7622a6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
