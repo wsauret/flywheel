@@ -20,7 +20,7 @@ import type { RuntimeTool } from "./tools/types.js";
 import { renderCapabilityText, type CapabilityCheck } from "../../infra/capability-text.js";
 import type { SessionIdentity } from "../session/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
-import { FLYWHEEL_CHAT_HOST, renderClaude5ChatBody, type Claude5ChatVariant } from "./claude-5-chat-prompt.js";
+import { FLYWHEEL_CHAT_HOST, renderModelChatBody, type ModelChatGuidance } from "./model-chat-body.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
 import { LIST_SESSIONS_TOOL_NAME } from "./tools/list-sessions.js";
 import { SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS } from "../session/session-artifacts.js";
@@ -270,9 +270,9 @@ export interface BuildSystemPromptOptions {
   /** Accepted for prompt tooling compatibility; provider notes are appended only during attempt preparation. */
   promptNotes?: { progress: string; modelNotes: string };
   agentsMd?: string;
-  /** The serving model's tuned chat body. In an interactive chat it replaces the core prompt and the
-   *  proportionality, delivery, review, and communication blocks; the engineering doctrine still follows it. */
-  chatPrompt?: Claude5ChatVariant;
+  /** The guidance blocks of the serving model's chat body. In an interactive chat the body replaces the core prompt
+   *  and the proportionality, delivery, review, and communication blocks; the engineering doctrine still follows it. */
+  chatGuidance?: ModelChatGuidance;
   tools: ReadonlyArray<ToolPromptFields>;
   /** Resolved `<env>` block of this runner's directory pair. Absent for a
    *  caller with no environment, such as prompt tooling and unit tests. */
@@ -338,8 +338,8 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const writesFiles = has("edit") || has("write");
   const hasImplementationSurface = hasDispatchSurface || writesFiles;
   const engineeringDoctrine = renderedDoctrine(opts);
-  if (chat && opts.chatPrompt) {
-    stable("model chat body", renderClaude5ChatBody(opts.chatPrompt, has, FLYWHEEL_CHAT_HOST));
+  if (chat && opts.chatGuidance) {
+    stable("model chat body", renderModelChatBody(opts.chatGuidance, has, FLYWHEEL_CHAT_HOST));
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
     if (toolContext) stable("tool context", toolContext);
   } else {

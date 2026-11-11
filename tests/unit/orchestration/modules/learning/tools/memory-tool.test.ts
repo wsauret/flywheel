@@ -164,6 +164,15 @@ describe("memory tool", () => {
     expect(description).not.toContain("environment facts > procedures");
   });
 
+  it("weighs soft feedback and keeps a caution about a destructive action until a person confirms it", () => {
+    const description = makeTool().description;
+    expect(description).toContain("ask once and carry on");
+    expect(description).toContain("what was said, who said it, when, why, and where it applies");
+    expect(description).toContain("marks your own interpretation as yours");
+    expect(description).toContain("check whether its reason still holds, and remove the entry when it does not");
+    expect(description).toContain("until a person confirms that action");
+  });
+
   it("requires sizing the final memory update before submission", () => {
     const description = makeTool().description;
     expect(description).toContain("BEFORE CALLING");

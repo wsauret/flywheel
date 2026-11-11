@@ -6,7 +6,7 @@
  *  the host's, a backticked plugin skill or agent name becomes its plugin-qualified name, and the few sentences
  *  that describe Flywheel's runtime in prose are rewritten through an exact-phrase ledger. */
 
-import type { ChatHost } from "../src/orchestration/agent-runtime/claude-5-chat-prompt.js";
+import type { ChatHost } from "../src/orchestration/agent-runtime/model-chat-body.js";
 
 interface NativeTool {
   /** How exported text names the tool, with its backticks. */

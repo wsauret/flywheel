@@ -57,6 +57,10 @@ REACH: 'project' = durable user preferences and working context specific to this
 
 WHEN: consider explicit preferences, corrections that reveal lasting preferences, stable user context, and hard-won repository or tool facts that are not instructions or cheaply rediscovered. Ask whether the fact will help across many future sessions, is supported by evidence, and is absent from an existing authority. Prioritize facts that prevent the user having to explain themselves again. A mistake or verified fix alone is not a reason to save memory. Saving nothing is often correct.
 
+FEEDBACK: give soft feedback only the weight its context supports. When you cannot tell whether a remark is an instruction or only a comment, ask once and carry on with the work. A saved preference records what was said, who said it, when, why, and where it applies, and marks your own interpretation as yours.
+
+CAUTIONS: when an entry holds a caution or a limit, check whether its reason still holds, and remove the entry when it does not. Keep a caution about a risky, irreversible, or destructive action until a person confirms that action. This applies also to cautions that you wrote. An old or general go-ahead is not that confirmation.
+
 DESTINATIONS: Session notes hold progress, plans, handoffs, temporary findings, and completed-work summaries; never put these in memory. Shared repository instructions, commands, conventions, and architectural guidance belong in AGENTS.md or their existing repository authority. Maintain that authority rather than duplicating it in memory.${skills ? " Repeatable procedures belong in skills." : ""}
 
 MAKING ROOM: free room in this order: delete stale entries first, then rotate out whole lower-priority entries. Compress an entry only while it stays a plain sentence a human can understand without this session's context; past that point intent is lost, so drop a whole entry instead of compressing many into fragments. If a call is still rejected, use the returned current entries and usage to recalculate one corrected batch.

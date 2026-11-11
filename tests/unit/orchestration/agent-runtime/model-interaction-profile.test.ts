@@ -20,19 +20,21 @@ describe("model interaction profile resolution", () => {
     expect(resolveModelInteractionProfile("gpt-5", "openai")).toBe(resolveModelInteractionProfile("gpt-5", "openai"))
   })
 
-  test("gives the tuned chat body only to the canonical Claude 5 models and their later family versions, without changing tool contracts", () => {
-    const variants = { "claude-opus-5.5": "opus-5.5", "claude-sonnet-5.5": "sonnet-5.5", "claude-fable-5.1": "fable-5.1", "claude-fable-5.2": "fable-5.1" } as const
-    for (const [model, variant] of Object.entries(variants)) {
+  test("gives chat guidance only to the models of the guidance table and their later family versions, without changing tool contracts", () => {
+    for (const model of ["claude-opus-5.5", "claude-sonnet-5.5", "claude-fable-5.1", "claude-fable-5.2", "claude-haiku-5.5"]) {
       const profile = resolveModelInteractionProfile(model, "anthropic")
-      expect(profile.chatPrompt).toBe(variant)
+      expect(profile.chatGuidance).toBeDefined()
       expect(profile.id).toBe("default")
       expect(profile.fileEditContract).toBe(resolveModelInteractionProfile("claude-sonnet-4", "anthropic").fileEditContract)
       expect(resolveModelInteractionProfile(model, "anthropic")).toBe(profile)
-      expect(resolveModelInteractionProfile(`anthropic/${model}`, "anthropic").chatPrompt).toBeUndefined()
-      expect(resolveModelInteractionProfile(model, "openai").chatPrompt).toBe(variant)
+      expect(resolveModelInteractionProfile(`anthropic/${model}`, "anthropic").chatGuidance).toBeUndefined()
+      expect(resolveModelInteractionProfile(model, "openai")).toBe(profile)
     }
-    for (const model of ["claude-opus-5", "claude-fable-5", "claude-sonnet-4"]) {
-      expect(resolveModelInteractionProfile(model, "anthropic").chatPrompt).toBeUndefined()
+    // A later version shares the profile object of its newest earlier entry.
+    expect(resolveModelInteractionProfile("claude-fable-5.3", "anthropic")).toBe(resolveModelInteractionProfile("claude-fable-5.2", "anthropic"))
+    expect(resolveModelInteractionProfile("claude-fable-5.2", "anthropic")).not.toBe(resolveModelInteractionProfile("claude-fable-5.1", "anthropic"))
+    for (const model of ["claude-opus-5", "claude-fable-5", "claude-sonnet-4", "claude-haiku-5"]) {
+      expect(resolveModelInteractionProfile(model, "anthropic").chatGuidance).toBeUndefined()
     }
   })
 })

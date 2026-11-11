@@ -1,31 +1,16 @@
 /**
- * The interactive chat body for the Claude 5 models, written for those models in place of the general chat prompt.
+ * The interactive chat body for the models that have a guidance entry, written in place of the general chat prompt.
  *
  * The body has three layers. The shared part tells the model how a Flywheel session works and how to act in it.
- * Each variant then adds what its model needs: Opus and Sonnet a code-style line, Fable progress updates, scope,
- * final-message, and end-of-turn rules. The Flywheel commitments that follow restate, in short form, every behavior
- * that the general chat prompt (core prompt, delivery, review, and communication blocks) commits Flywheel agents to.
- * The engineering doctrine (writing, commits, elegance, instrumentation) is not restated: the assembler renders it
- * in full after this body.
+ * Then come the guidance blocks of the model's entry in `MODEL_CHAT_GUIDANCE`, in the entry's order: each block is
+ * one reusable piece of guidance that any model can take. The Flywheel commitments that follow restate, in short
+ * form, every behavior that the general chat prompt (core prompt, delivery, review, and communication blocks)
+ * commits Flywheel agents to. The engineering doctrine (writing, commits, elegance, instrumentation) is not
+ * restated: the assembler renders it in full after this body.
  */
 
 import type { CapabilityCheck } from "../../infra/capability-text.js";
-import { familySettings } from "./llm/model-compat.js";
 import { ASK_USER_DISCUSSION_RULE } from "./tools/ask-user.js";
-
-export type Claude5ChatVariant = "opus-5.5" | "sonnet-5.5" | "fable-5.1";
-
-/** The canonical model ids that receive this body, with the variant each one gets. A later version of one of their
- *  families gets the variant of its newest earlier version (`familySettings`). */
-const chatVariant = familySettings<Claude5ChatVariant>([
-  ["claude-opus-5.5", "opus-5.5"],
-  ["claude-sonnet-5.5", "sonnet-5.5"],
-  ["claude-fable-5.1", "fable-5.1"],
-]);
-
-export function claude5ChatVariant(model: string): Claude5ChatVariant | undefined {
-  return chatVariant(model)?.value;
-}
 
 /** What the body says about the agent host that runs it, for the capabilities `has` of the request. Every other line
  *  is the same in every host; an export to another host translates the Flywheel tool and skill names in the rendered
@@ -60,13 +45,11 @@ const ACTING = `# Acting
 - Report what happened, not what you hoped. When a test fails, say so and show its output. When you skipped a step, name it. When work is done and verified, say that without qualifiers.
 - Use they/them for any person whose pronouns nobody stated, the user included. Never infer pronouns from a name: names do not reliably signal them, and a wrong guess hurts a real person. This holds for all text the user can see, visible thinking included.`;
 
-const MATCH_CODE = "New code belongs to the file it joins: copy that file's naming, idioms, and amount of commenting.";
-
 const PROGRESS = "Open with one line on what you will do, and give short updates while you work. Close each turn with a summary that makes sense without the earlier messages: what you learned, what you changed, and what remains.";
 
 const SCOPE = `# Scope
 - Do the task that the user asked for, read at face value, not a task you infer from guesses about their motives. Stay inside what the request implies, and take no action clearly beyond it.
-- Deliver all of it. Do not make it smaller, larger, or different: only the user can reduce the scope. If one part is blocked, finish every other part completely, then name what is missing and why.
+- Deliver all of it. Do not make it smaller, larger, or different: only the user can reduce the scope.
 - Settle small ambiguities yourself. Ask only when two reasonable readings lead to clearly different work. When a question comes up mid-task, first do all the work that does not depend on its answer, then state your assumption or ask at a natural pause. Stop and wait only when every assumption would be unsafe, or a wrong one would make the result useless.
 - If the request has a real flaw, say so in one or two sentences and build anyway: deliver the complete result on stated assumptions and point out what the user must weigh. If the user hears the concern and repeats the request, it is their decision: say that you will proceed, then do all of it. Keep disagreements about premises, scope, or approach fair and factual.
 - Decline only work that is truly harmful or forbidden; a sensitive subject alone is no reason. When you decline, say so in one sentence, offer the nearest help you can give, and do not lecture. None of this removes the need to confirm a risky or destructive step.`;
@@ -78,9 +61,23 @@ The user can miss tool calls, tool output, and your text between them. Expect th
 - **Code and numbers.** Describe code in words. Name a file, function, or flag only where the reader must go to it, at most one per sentence and two per paragraph. Put commands, code, and error text in fenced blocks. Put a count or measurement in a small table or on its own line, and only when it changes what the reader will do.
 - **Layout.** Use a list for parallel items, such as findings, steps, options, or files, with one or two sentences per item. Keep a single point or one line of argument in prose. You may bold the first words of an item or paragraph, never a whole sentence. Use no headings below about 500 words, and at most three above. Use no formatting at all when the user asks for none.`;
 
-const END_OF_TURN = `# Ending the turn
-- Read your last paragraph before you stop. If it holds a plan, an analysis, next steps, a question you can answer yourself, or a promise of later work, do that work now with tools. Retry after errors and collect missing facts yourself. A long session is not a reason to stop. End the turn only when the task is done or only the user can supply what you need.
+const FINISHING = `# Finishing the work
+- When you end the turn, all work stops until the user writes again, and they can be away for a long time. Do not end it while work that they asked for is still owed. A status note or a recommendation is welcome, but continue with every part that does not depend on their answer. When you are about to offer to wait, or to invite the user to redirect you, do the next part of the task instead.
+- Read your last paragraph before you stop. If it holds a plan, next steps, a question you can answer yourself, or a promise of later work, do that work now with tools. A long session is not a reason to stop.
+- Errors, timeouts, locked files, empty results, and failing tools are part of the work. Find the cause, then work through it: wait and try again, correct the request, or use a different tool or source. Try a step before you report that it fails. Setting up the project so that it builds and its tests run is also part of the work.
+- If one part is truly blocked, finish every other part completely. Then start the final message with what is stuck and why, and say what you ruled out.
+- Some blocks are deliberate, such as a file marked not to be changed, access that someone withheld, or a safety guardrail. Leave such a block in place, say what you found, and look for a different way to finish the task.
+- End the turn only when the task is done, or when only the user can supply what you need.
 - Before a command that changes system state, such as a restart, a deletion, or a configuration edit, confirm that the evidence supports that exact action. A familiar symptom can have a different cause.`;
+
+const INITIATIVE = `# Initiative
+- The reasoning effort setting controls how much you think, not how much of the request you finish. Carry a large request through to the end in the turn that asked for it, with no extra pause to confirm because the work is big.
+- Once the work is approved or needs no approval, make each file edit without asking first: the user can see and undo edits in the working tree. Ask first only when an edit would overwrite work that the user has in progress.
+- Choices that the request leaves open are yours to make. Take the option that you recommend, continue, and list those choices at the end of your final message.`;
+
+const ORIGINAL_WORK = "For a game request, build an original game: new work may use the conventions of a genre or the user's own designs and assets. Do not reproduce an identifiable existing game. A copy under a new name or label is still a copy.";
+
+const MODEL_LIMITS = "Your training limited a narrow set of skills that could most directly speed up AI development, such as the optimization of accelerator kernels. In that work, trust your first ideas less and read the documentation more often. Otherwise, help with that work as usual. Ordinary machine learning work is not affected. This limit alone is not a reason to suggest a different model.";
 
 const capitalize = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
@@ -95,28 +92,45 @@ function fileTools(has: CapabilityCheck, names: readonly string[]): string | und
   return tools.length === 0 ? undefined : orList(tools);
 }
 
-function shellOptional(has: CapabilityCheck): string {
+function shellOptional(has: CapabilityCheck): string | undefined {
+  if (!has("bash")) return undefined;
   const tools = fileTools(has, ["edit", "write"]);
   return `The \`bash\` tool is a good route for much of the work when it is simpler: \`cat\`, \`head\`, or \`sed -n\` to read, \`grep\` and \`find\` to search, and \`sed\`, heredocs, or short scripts for small mechanical edits. Choose freely.${tools ? ` Use ${tools} when a shell edit is fragile, such as an exact or multi-line replacement, or \`sed\` options that behave differently on macOS and Linux.` : ""}`;
 }
 
-function shellFirst(has: CapabilityCheck): string {
+function shellFirst(has: CapabilityCheck): string | undefined {
+  if (!has("bash")) return undefined;
   const tools = fileTools(has, ["read", "edit", "write"]);
   return `Use the \`bash\` tool for every job it can do: \`cat\`, \`head\`, or \`sed -n\` to read, \`grep\` and \`find\` to search, and \`sed\`, heredocs, or short scripts to change files.${tools ? ` Use ${tools} only when bash cannot do the job.` : ""}`;
 }
 
-interface VariantText {
-  /** The variant's own guidance, rendered after the shared part. */
-  readonly sections: readonly string[];
-  /** The shell note, rendered only when the request has a shell. */
-  readonly shell?: (has: CapabilityCheck) => string;
-}
+/** The guidance blocks, by id. Each renders its text for the capabilities `has` of the request, or nothing when the
+ *  request lacks what the block is about. */
+const GUIDANCE_BLOCKS = {
+  progress: () => PROGRESS,
+  scope: () => SCOPE,
+  "final-message": () => FINAL_MESSAGE,
+  finishing: () => FINISHING,
+  initiative: () => INITIATIVE,
+  "original-work": () => ORIGINAL_WORK,
+  "model-limits": () => MODEL_LIMITS,
+  "shell-optional": shellOptional,
+  "shell-first": shellFirst,
+} as const satisfies { readonly [id: string]: (has: CapabilityCheck) => string | undefined };
 
-const VARIANTS = {
-  "opus-5.5": { sections: [MATCH_CODE], shell: shellOptional },
-  "sonnet-5.5": { sections: [MATCH_CODE] },
-  "fable-5.1": { sections: [PROGRESS, SCOPE, FINAL_MESSAGE, END_OF_TURN], shell: shellFirst },
-} as const satisfies { readonly [variant in Claude5ChatVariant]: VariantText };
+type GuidanceBlockId = keyof typeof GUIDANCE_BLOCKS;
+/** One model's guidance blocks, in render order. */
+export type ModelChatGuidance = readonly GuidanceBlockId[];
+
+/** The canonical model ids that receive the chat body, each with its guidance blocks. A later version of one of their
+ *  families gets the entry of its newest earlier version (`familySettings`). */
+export const MODEL_CHAT_GUIDANCE: readonly (readonly [model: string, guidance: ModelChatGuidance])[] = [
+  ["claude-opus-5.5", ["original-work", "shell-optional"]],
+  ["claude-sonnet-5.5", []],
+  ["claude-fable-5.1", ["progress", "scope", "final-message", "finishing", "shell-first"]],
+  ["claude-fable-5.2", ["finishing", "original-work", "model-limits"]],
+  ["claude-haiku-5.5", ["scope", "finishing", "initiative"]],
+];
 
 function commitments(has: CapabilityCheck, host: ChatHost): string {
   const review = has("skill:code-review")
@@ -163,18 +177,16 @@ export const FLYWHEEL_CHAT_HOST: ChatHost = {
   statesAskRule: false,
 };
 
-/** Render the chat body for one Claude 5 variant, for the capabilities `has` of one request, in one host. `has` is
- *  the request's tree check (ARCH-CONTEXT-033), so the body is the same for every agent of one chat tree. In Flywheel the result
- *  replaces the general core prompt and chat delivery, review, and communication blocks; the engineering doctrine,
- *  tool context, AGENTS.md, and the session parts render after it unchanged. */
-export function renderClaude5ChatBody(variant: Claude5ChatVariant, has: CapabilityCheck, host: ChatHost): string {
-  const { sections, shell }: VariantText = VARIANTS[variant];
+/** Render the chat body with the guidance blocks `guidance` of one model, for the capabilities `has` of one request,
+ *  in one host. `has` is the request's tree check (ARCH-CONTEXT-033), so the body is the same for every agent of one
+ *  chat tree. In Flywheel the result replaces the general core prompt and chat delivery, review, and communication
+ *  blocks; the engineering doctrine, tool context, AGENTS.md, and the session parts render after it unchanged. */
+export function renderModelChatBody(guidance: ModelChatGuidance, has: CapabilityCheck, host: ChatHost): string {
   return [
     INTRO,
     host.session(has),
     ACTING,
-    ...sections,
-    ...(shell && has("bash") ? [shell(has)] : []),
+    ...guidance.flatMap((id) => GUIDANCE_BLOCKS[id](has) ?? []),
     commitments(has, host),
   ].join("\n\n");
 }

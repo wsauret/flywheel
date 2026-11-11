@@ -27,7 +27,8 @@ import { Log } from "../src/infra/log.js";
 import { isRecord } from "../src/infra/record.js";
 import { renderCapabilityText, type CapabilityCheck } from "../src/infra/capability-text.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
-import { claude5ChatVariant, renderClaude5ChatBody } from "../src/orchestration/agent-runtime/claude-5-chat-prompt.js";
+import { renderModelChatBody } from "../src/orchestration/agent-runtime/model-chat-body.js";
+import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
 import { roleModelDefault, ROLE_MODEL_DEFAULTS } from "../src/orchestration/config/role-model-defaults.js";
@@ -58,8 +59,8 @@ const RUNTIME_PERSONAS: ReadonlyMap<string, string> = new Map([
   ["ship", "it publishes through Flywheel's delegation and handoff contract"],
 ]);
 
-/** The variant whose chat body the main agent carries: the body of Flywheel's default chat model. */
-const CHAT_VARIANT = claude5ChatVariant(ROLE_MODEL_DEFAULTS.chat.anthropic.model);
+/** The guidance blocks of the chat body that the main agent carries: the body of Flywheel's default chat model. */
+const CHAT_GUIDANCE = resolveModelInteractionProfile(ROLE_MODEL_DEFAULTS.chat.anthropic.model, "anthropic").chatGuidance;
 /** The model families that the host names by alias; any other model goes by its full id. */
 const MODEL_ALIASES = ["opus", "sonnet", "haiku"] as const;
 
@@ -199,8 +200,8 @@ export function buildClaudePlugin(version: string, author: string): ClaudePlugin
   const files = new Map<string, string>();
   files.set(".claude-plugin/plugin.json", `${JSON.stringify({ name: CLAUDE_PLUGIN.name, version, description: CLAUDE_PLUGIN.description, author: { name: author } }, null, 2)}\n`);
   files.set("settings.json", `${JSON.stringify({ agent: CLAUDE_PLUGIN.name }, null, 2)}\n`);
-  if (CHAT_VARIANT === undefined) throw new Error(`The default chat model ${ROLE_MODEL_DEFAULTS.chat.anthropic.model} has no Claude 5 chat body`);
-  const chatBody = renderClaude5ChatBody(CHAT_VARIANT, has, CLAUDE_PLUGIN_HOST);
+  if (CHAT_GUIDANCE === undefined) throw new Error(`The default chat model ${ROLE_MODEL_DEFAULTS.chat.anthropic.model} has no chat guidance entry`);
+  const chatBody = renderModelChatBody(CHAT_GUIDANCE, has, CLAUDE_PLUGIN_HOST);
   files.set(`agents/${CLAUDE_PLUGIN.name}.md`, frontmatter(
     { name: CLAUDE_PLUGIN.name, description: CLAUDE_PLUGIN.description },
     hostText([chatBody, rendered(readFileSync(DOCTRINE, "utf8")).trim()].join(SYSTEM_PROMPT_SEPARATOR)),
