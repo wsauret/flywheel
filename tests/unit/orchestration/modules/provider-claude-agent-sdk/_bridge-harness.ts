@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
+import { Log } from "../../../../../src/infra/log.js";
 import { environmentReminder, parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
 import type { BlockOrigin, BlockOrigins } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
@@ -357,11 +358,13 @@ export interface Harness {
 
 export const records: DebugLogRecordInput[] = [];
 export const payloads = (type: string) => records.filter((record) => record.type === type).map(({ payload }) => payload);
-/** Collects every diagnostic record of each test in `records`. A test file calls it once at its top level. */
+/** Collects every diagnostic record that the default level writes, for each test, in `records`. A test file calls it
+ *  once at its top level. The level is set for each test because it is process-wide, and an earlier test file in the
+ *  same `bun test` process can leave it at DEBUG. */
 export function forwardDiagnostics(): void {
   beforeEach(async () => {
     records.length = 0;
-    await DebugLog.forward((record) => { records.push(record); });
+    await Log.init({ level: "INFO", forward: (record) => { records.push(record); } });
   });
   afterEach(async () => { await DebugLog.close(); });
 }
@@ -406,7 +409,7 @@ export function withBridge(body: (harness: Harness) => Promise<void>, options: {
       markQuotaExhausted: (resetsAtMs) => {
         quotaMarks.push(resetsAtMs);
         if (options.quotaRowRefused === true) throw new QuotaCoordinationError({ message: "The account's quota row did not take the mark", provider: "claude_agent_sdk", reason: "row-refused" });
-        return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000 }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
+        return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
       },
       // Every test serves the included route, whose guard refuses extra usage, unless it asks for the paid route.
       extraUsage: options.extraUsage ?? "refuse", reportsExtraUsage: () => options.reportsExtraUsage ?? true, accountEmail: () => options.email, onExtraUsageStop: (stop) => { usageStops.push(stop); },
