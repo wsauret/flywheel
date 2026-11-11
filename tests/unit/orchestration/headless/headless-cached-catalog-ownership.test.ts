@@ -27,6 +27,11 @@ import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot } from "../
 import { applyWindowsPrivateDirectoryAcl } from "../../../../src/infra/windows-private-directory-acl.js";
 import { testAccountHome } from "../../../helpers/directories.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
+import { installedModules } from "../../../../src/orchestration/module-catalog.js";
+import { createClaudeAgentSdkModule } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
+import { CLAUDE_AGENT_SDK_MODULE_ID, CLAUDE_AGENT_SDK_PROVIDER_ID } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
+import { connectionEligibilitySources } from "../../../../src/orchestration/headless/snapshot-eligibility.js";
+import type { LauncherScope } from "../../../../src/infra/process-supervisor.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -204,6 +209,12 @@ describe("headless cached catalog ownership", () => {
       const grok = catalogs.candidates.get(accessProviderAccountKey({ kind: "subscription", providerId: "supergrok", instanceId: "primary" }));
       expect(grok?.models?.has("grok-allowed") ?? false).toBe(carried);
       expect(grok?.visibleModels?.has("grok-refused")).toBe(!carried);
+      // The run's own audit lists fresh, and the transferred outcomes still decide what serves.
+      const audited = await connectionEligibilitySources(connection, profileDirectory, testCapabilityModules, getSharedModelsClient(userDataRoot)).resolveCatalog({
+        userDataRoot, authDirectory: () => profileDirectory, moduleSelection: testCapabilityModules, auth, discoveryMode: "audit",
+      });
+      expect([...audited.inventoryCandidates.get(accessProviderAccountKey({ kind: "singleton", providerId: "google_vertex" }))?.enabledOfferings?.keys() ?? []])
+        .toEqual(carried ? [vertexModel] : []);
       expect(requests.some((url) => url.includes(":countTokens") || url.includes("/responses"))).toBe(false);
       expect(await readFile(join(profileDirectory, "provider-model-catalogs.json"))).toEqual(catalogBefore);
       expect(await readFile(join(profileDirectory, "model-preferences.json"))).toEqual(preferencesBefore);
@@ -211,6 +222,69 @@ describe("headless cached catalog ownership", () => {
       expect(await readdir(transferredAuthDirectory)).toEqual([]);
     } finally {
       await runtime.dispose();
+      await rm(userDataRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("an access-only audit serves the Claude token login's own fresh lineup, which no saved row or probe can replace", async () => {
+    const userDataRoot = await mkdtemp(join(tmpdir(), "flywheel-headless-access-only-audit-"));
+    const access = await new AuthProfileStore(userDataRoot).create("default");
+    const profileDirectory = access.authDirectory;
+    access.close();
+    const snapshotFile = modelsSnapshotFile(userDataRoot);
+    await mkdir(dirname(snapshotFile), { recursive: true });
+    // models.dev prices the listed Haiku and offers Opus 4.8, which the CLI lineup omits and only a probe could admit.
+    const anthropicRow = (id: string) => [id, {
+      id, name: id, family: "claude", reasoning: true, tool_call: true, attachment: true, temperature: true,
+      modalities: { input: ["text"], output: ["text"] }, limit: { context: 200_000, output: 32_000 }, cost: { input: 1, output: 5 },
+    }] as const;
+    await writeFile(snapshotFile, JSON.stringify({
+      ...modelsDevDocument(),
+      anthropic: { name: "Anthropic", npm: "@ai-sdk/anthropic", models: Object.fromEntries(["claude-haiku-5-5", "claude-opus-4-8"].map(anthropicRow)) },
+    }));
+    const stage = join(userDataRoot, "flywheel-auth-bundle-test");
+    await mkdir(stage, { mode: 0o700 });
+    if (process.platform === "win32") applyWindowsPrivateDirectoryAcl(stage);
+    else chmodSync(stage, 0o700);
+    const authFile = join(stage, "auth.json");
+    await writeFile(authFile, JSON.stringify({ profile: "default", credentials: {}, externalLogins: { claude_agent_sdk: [{ access: "sk-ant-oat-token" }] } }), { mode: 0o600 });
+
+    const listings: string[] = [];
+    const claude = createClaudeAgentSdkModule({
+      account: () => ({ home: testAccountHome(), user: "flywheel-test" }),
+      describeLogin: async ({ configDir }) => {
+        listings.push(configDir);
+        return { loggedIn: true, models: [{ value: "haiku", resolvedModel: "claude-haiku-5-5", displayName: "Haiku", description: "Haiku 5.5" }] };
+      },
+      probeModel: async () => { throw new Error("an access-only connection probes nothing"); },
+    });
+    const catalog = installedModules().map((module) => module.id === CLAUDE_AGENT_SDK_MODULE_ID ? claude : module);
+    const moduleSelection = () => composeFirstPartyModules(catalog);
+    const providers = accessProviderRegistry(moduleSelection()).selection.definitions;
+    const { connection, release } = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(authFile, providers), join(userDataRoot, "transferred"), providers);
+    const [account] = connection.subscriptionCredentials.get(CLAUDE_AGENT_SDK_PROVIDER_ID) ?? [];
+    const launcher: LauncherScope = {
+      spawnOwned: () => Promise.reject(new Error("no launch in a unit test")),
+      adoptOwned: () => Promise.reject(new Error("no adoption in a unit test")),
+      open: () => launcher,
+      close: async () => ({ settled: true }),
+    };
+
+    try {
+      const resolved = await connectionEligibilitySources(connection, profileDirectory, moduleSelection, getSharedModelsClient(userDataRoot)).resolveCatalog({
+        userDataRoot,
+        authDirectory: () => profileDirectory,
+        moduleSelection,
+        auth: connection.auth,
+        discoveryMode: "audit",
+        launcher,
+      });
+      const candidate = resolved.inventoryCandidates.get(accessProviderAccountKey({ kind: "subscription", providerId: CLAUDE_AGENT_SDK_PROVIDER_ID, instanceId: account!.instanceId }));
+      expect(candidate?.outcome).toMatchObject({ kind: "catalog", liveOutcome: "valid" });
+      expect(listings).toHaveLength(1);
+      expect([...candidate?.enabledOfferings?.values() ?? []].flat().map(({ wireModelId }) => wireModelId)).toContain("claude-haiku-5-5");
+    } finally {
+      release();
       await rm(userDataRoot, { recursive: true, force: true });
     }
   });
