@@ -9,7 +9,7 @@ import { hostValues } from "../../../../../../src/orchestration/modules/provider
 import type { CliUserFrame, HostLaunch, LaunchedHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { queueIterable } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/queue-iterable.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
-import { apiErrorLine, assistantError, cliInit, ENVELOPE, includedReport, forwardDiagnostics, payloads, rateLimitReport, refused, responseBlock, sentBlock } from "../_bridge-harness.js";
+import { apiErrorLine, assistantError, cliInit, concurrentsRejected, ENVELOPE, GENERIC_USAGE_LIMIT_TEXT, includedReport, forwardDiagnostics, payloads, rateLimitReport, refused, responseBlock, sentBlock } from "../_bridge-harness.js";
 import { silentVersions, type SilentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
 import type { ExtraUsage, ExtraUsageStop } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/extra-usage-guard.js";
 import { hostSessionFolder } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.js";
@@ -64,7 +64,7 @@ function fakeEngineHost(options: { readonly dispatcherStepDeadlineMs?: number; r
     values: hostValues({ tools: [], wireModelId: "claude-opus-5-5", contextLimit: 200_000, thinking: { type: "adaptive" }, extraBody: {}, eagerInputStreaming: true, promptCaching: true, effort: "high" }),
     markQuotaExhausted: (resetsAtMs) => {
       quotaMarks.push(resetsAtMs);
-      return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000 }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
+      return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
     },
     recordModelRefusal: () => {},
     extraUsage: "allow", reportsExtraUsage: true, onExtraUsageStop: (stop) => { usageStops.push(stop); }, recordUsage: () => {},
@@ -169,6 +169,24 @@ describe("the shared agent host", () => {
     expect(payloads("provider.claude_sdk.host.coordinator_exhausted")).toEqual([]);
     for (let tick = 0; tick < 20 && payloads("provider.claude_sdk.host.closed").length === 0; tick += 1) await Bun.sleep(1);
     expect(payloads("provider.claude_sdk.host.closed")).toMatchObject([{ sessionId: host.sessionId, reason: "quota" }]);
+  });
+
+  test("a coordinator request that the engine refused with its usage-limit text for too many concurrent requests is throttling: it marks no quota, keeps the host and its coordinator model, and fails the frame's agent with the rate limit and its retry delay", async () => {
+    const { host, quotaMarks, emit, stderr, nextFrame } = fakeEngineHost();
+    const dispatched = host.dispatch("a0000000000000001", noListener).then(() => undefined, (error: unknown) => error);
+    emit(cliInit({ session_id: host.sessionId, claude_code_version: "2.1.321", plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
+    const uuid = await nextFrame();
+    stderr([
+      ...sentBlock("log_d1"), ...responseBlock("error", 429, { "request-id": "req_1", "retry-after": "7" }, "log_d1"),
+      apiErrorLine(429, '{"type":"error","error":{"type":"rate_limit_error","message":"Number of concurrent connections has exceeded your rate limit."},"request_id":"req_1"}'),
+    ]);
+    const [report, result] = refused("rate_limit", 429, GENERIC_USAGE_LIMIT_TEXT);
+    emit(concurrentsRejected, report, { ...result, user_message_uuid: uuid });
+    expect(classifyAnthropicError(await dispatched)).toMatchObject({ kind: "rate_limit", retryDelayMs: 7000 });
+    expect(quotaMarks).toEqual([]);
+    expect(payloads("provider.claude_sdk.host.coordinator_demoted")).toEqual([]);
+    expect(payloads("provider.claude_sdk.host.closed")).toEqual([]);
+    await host.close("lifetime-end");
   });
 
   test("a task's end reaches its agent's listener once, and the host keeps no listener of an ended task, so its later close tells that agent nothing", async () => {

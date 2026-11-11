@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
+import { Log } from "../../../../../src/infra/log.js";
 import { environmentReminder, parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
 import type { BlockOrigin, BlockOrigins } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
@@ -41,10 +42,12 @@ const TURN_TOTALS: Pick<SDKResultSuccess, "duration_ms" | "duration_api_ms" | "n
 };
 
 /** The fields, subtypes, and events that the CLI sends and the SDK's declared SDKMessage union omits: the `ping`
- *  event and the per-turn effort change (CLI 2.1.295 and 2.1.296). */
+ *  event, the per-turn effort change (CLI 2.1.295 and 2.1.296), and the rejection of a request on too many concurrent
+ *  requests, a limit that is no usage window and has no utilization and no reset (CLI 2.1.321). */
 type CliOnlyMessage =
   | { readonly type: "stream_event"; readonly parent_tool_use_id: null; readonly event: { readonly type: "ping" } }
-  | { readonly type: "system"; readonly subtype: "per_turn_effort_changed"; readonly per_turn_effort_active: boolean };
+  | { readonly type: "system"; readonly subtype: "per_turn_effort_changed"; readonly per_turn_effort_active: boolean }
+  | { readonly type: "rate_limit_event"; readonly rate_limit_info: { readonly status: "rejected"; readonly rateLimitType: "concurrents" } };
 /** One of those messages as the SDK hands it on: the SDK parses each JSON line of the CLI's output and types the
  *  result as an SDKMessage without checking it, so the fixture takes the same path. */
 export function cliOnlyMessage(message: CliOnlyMessage): SDKMessage {
@@ -80,6 +83,10 @@ export type CliOutput = SDKMessage | typeof STEP | typeof REQUEST_STEP;
 /** The CLI's usage report after a response that included usage served. */
 export const includedReport = rateLimitReport({ status: "allowed", resetsAt: 1_791_540_527, rateLimitType: "five_hour", overageStatus: "allowed", isUsingOverage: false });
 export const turnDone = turnResult({ api_error_status: null, terminal_reason: "completed" });
+/** The engine's report of a request that it refused on too many concurrent requests (CLI 2.1.321). */
+export const concurrentsRejected = cliOnlyMessage({ type: "rate_limit_event", rate_limit_info: { status: "rejected", rateLimitType: "concurrents" } });
+/** The text that the engine writes for a rejected limit that it does not know as a usage window (CLI 2.1.321). */
+export const GENERIC_USAGE_LIMIT_TEXT = "You've hit your usage limit";
 
 export const messageStart = (cacheRead = 0) => event({ type: "message_start", message: { id: "msg", type: "message", role: "assistant", model: "claude-sonnet-5-5", content: [], stop_reason: null, stop_sequence: null,
   container: null, context_management: null, diagnostics: null, stop_details: null,
@@ -357,11 +364,13 @@ export interface Harness {
 
 export const records: DebugLogRecordInput[] = [];
 export const payloads = (type: string) => records.filter((record) => record.type === type).map(({ payload }) => payload);
-/** Collects every diagnostic record of each test in `records`. A test file calls it once at its top level. */
+/** Collects every diagnostic record that the default level writes, for each test, in `records`. A test file calls it
+ *  once at its top level. The level is set for each test because it is process-wide, and an earlier test file in the
+ *  same `bun test` process can leave it at DEBUG. */
 export function forwardDiagnostics(): void {
   beforeEach(async () => {
     records.length = 0;
-    await DebugLog.forward((record) => { records.push(record); });
+    await Log.init({ level: "INFO", forward: (record) => { records.push(record); } });
   });
   afterEach(async () => { await DebugLog.close(); });
 }
@@ -406,7 +415,7 @@ export function withBridge(body: (harness: Harness) => Promise<void>, options: {
       markQuotaExhausted: (resetsAtMs) => {
         quotaMarks.push(resetsAtMs);
         if (options.quotaRowRefused === true) throw new QuotaCoordinationError({ message: "The account's quota row did not take the mark", provider: "claude_agent_sdk", reason: "row-refused" });
-        return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000 }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
+        return { exhaustion: { exhaustedAtMs: 0, resetsAtMs: resetsAtMs ?? 300_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: resetsAtMs };
       },
       // Every test serves the included route, whose guard refuses extra usage, unless it asks for the paid route.
       extraUsage: options.extraUsage ?? "refuse", reportsExtraUsage: () => options.reportsExtraUsage ?? true, accountEmail: () => options.email, onExtraUsageStop: (stop) => { usageStops.push(stop); },

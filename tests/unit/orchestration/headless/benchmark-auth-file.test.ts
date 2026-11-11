@@ -9,7 +9,7 @@ import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-p
 import { credentialForCandidate } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { QuotaExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { createProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/provider-availability.js"
-import { accountLimitResetAtMs, cliFailure } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js"
+import { cliFailure, usageLimitRejection } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js"
 import { chain, fakeClient, served, subscriptionCandidate, textStream, throwingStream } from "../agent-runtime/llm/_provider-chain-harness.js"
 
 import { apiKey } from "../../../../src/infra/auth/auth-context.js"
@@ -87,7 +87,7 @@ describe("headless auth snapshot", () => {
       const spent = candidates[0]!
       const other = candidates[1]!
       const weekly = "You've hit your weekly limit · resets Nov 14, 9am (America/Chicago)"
-      const resetsAtMs = accountLimitResetAtMs({ status: "rejected", rateLimitType: "seven_day", resetsAt: Math.floor(Date.now() / 1000) + 3 * 86_400 })
+      const rejection = usageLimitRejection({ status: "rejected", rateLimitType: "seven_day", resetsAt: Math.floor(Date.now() / 1000) + 3 * 86_400 })
       const builds: string[] = []
       const instanceOf = (candidate: AccessProviderCandidate) => candidate.kind === "subscription" ? candidate.instanceId : ""
       const client = chain({
@@ -97,7 +97,7 @@ describe("headless auth snapshot", () => {
           if (credentialForCandidate(connection, candidate)?.type !== "external") throw new Error("the candidate has no token login")
           builds.push(instanceOf(candidate))
           if (instanceOf(candidate) !== instanceOf(spent)) return fakeClient(provider, textStream(instanceOf(candidate)))
-          const refusal = cliFailure({ error: "rate_limit", text: weekly }, { isError: true, status: 429, terminalReason: undefined, text: weekly, userMessageUuid: undefined }, (reset) => availability.markQuotaExhausted(candidate, reset), resetsAtMs)
+          const refusal = cliFailure({ error: "rate_limit", text: weekly }, { isError: true, status: 429, terminalReason: undefined, text: weekly, userMessageUuid: undefined }, (reset) => availability.markQuotaExhausted(candidate, reset), rejection)
           if (!(refusal instanceof QuotaExhaustedError)) throw new Error(`the weekly refusal is a ${refusal.name}`)
           return fakeClient(provider, throwingStream(refusal))
         },

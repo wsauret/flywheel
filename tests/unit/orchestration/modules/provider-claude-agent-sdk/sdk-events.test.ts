@@ -8,16 +8,16 @@ import type { QuotaExhaustionObservation } from "../../../../../src/orchestratio
 import { ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { classifySdkMessage, cliFailure, cliResendFailure, readSdkMessages, type CliErrorReport, type CliTurnResult } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js";
 import type { WireFailure } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/service-requests.js";
-import { assistantError, cliInit, cliOnlyMessage, ENVELOPE, event, rateLimitReport, turnError, turnResult, type CliRateLimitInfo } from "./_bridge-harness.js";
+import { assistantError, cliInit, cliOnlyMessage, ENVELOPE, event, GENERIC_USAGE_LIMIT_TEXT, rateLimitReport, turnError, turnResult, type CliRateLimitInfo } from "./_bridge-harness.js";
 
 const turn = (overrides: Partial<CliTurnResult> = {}): CliTurnResult => ({ isError: true, status: null, terminalReason: undefined, text: "", userMessageUuid: undefined, ...overrides });
-const OBSERVATION: QuotaExhaustionObservation = { exhaustion: { exhaustedAtMs: 1, resetsAtMs: 2_000 }, newlyExhausted: true, reportedResetAtMs: 2_000 };
+const OBSERVATION: QuotaExhaustionObservation = { exhaustion: { exhaustedAtMs: 1, resetsAtMs: 2_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: 2_000 };
 /** The reset that each quota mark of `fail` named. */
 const marks: (number | undefined)[] = [];
 const fail = (report: CliErrorReport | undefined, result: CliTurnResult | undefined, wire?: WireFailure) => cliFailure(report, result, (resetsAtMs) => {
   marks.push(resetsAtMs);
   return OBSERVATION;
-}, 2_000, wire);
+}, { resetsAtMs: 2_000 }, wire);
 
 describe("the SDK message classification", () => {
   test("separates the main stream's events from pings and subagent events", () => {
@@ -146,6 +146,11 @@ describe("the error map", () => {
     const limit = '{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit."}}';
     const spent = fail({ error: "rate_limit", text: "You've hit your session limit · resets 5pm" }, turn({ status: 429 }), { status: 429, body: limit, headers });
     expect(spent).toBeInstanceOf(QuotaExhaustedError);
+    // The engine writes its usage-limit text for every limit that rejected the request, also one that is no usage
+    // window, such as too many concurrent requests (CLI 2.1.321). Without a rejected usage window that text is the
+    // service's rate limit, and it marks no quota (PI-MODEL-060).
+    const throttled = cliFailure({ error: "rate_limit", text: GENERIC_USAGE_LIMIT_TEXT }, turn({ status: 429 }), () => { throw new Error("the rate limit marked the quota"); }, undefined, { status: 429, body: limit, headers });
+    expect(throttled).toBeInstanceOf(Anthropic.RateLimitError);
   });
 
   test("a login that the engine refuses before it sends a request names Flywheel's login command, not the engine's /login", () => {

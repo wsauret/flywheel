@@ -258,7 +258,7 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
 
     /** The error map of the live query's open request, with the service's answer that the bridge kept for it. */
     const failureOf = (live: LiveQuery, report: CliErrorReport | undefined, result: CliTurnResult | undefined) =>
-      cliFailure(report, result, config.markQuotaExhausted, live.usage.limitResetAtMs, live.answer);
+      cliFailure(report, result, config.markQuotaExhausted, live.usage.limitRejection, live.answer);
 
     /** A request that the CLI ended with an error: its report and its turn result, either of which can be missing. */
     const failAtTurnEnd = (live: LiveQuery, rule: "turn-result-during-request" | "error-hold-expired", report: CliErrorReport | undefined, result: CliTurnResult | undefined) =>

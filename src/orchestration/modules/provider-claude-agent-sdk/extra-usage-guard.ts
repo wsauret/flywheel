@@ -6,7 +6,7 @@ import type { NotificationOccurrence } from "../../../infra/notification-episode
 import { QuotaExhaustedError } from "../../agent-runtime/llm/errors.js";
 import { SAFE_RECHECK_MS } from "../../agent-runtime/llm/provider-availability.js";
 import type { UsageWindows } from "./account-usage.js";
-import { accountLimitResetAtMs, quotaFailure, type QuotaMark, type SdkInput } from "./sdk-events.js";
+import { quotaFailure, usageLimitRejection, type QuotaMark, type SdkInput, type UsageLimitRejection } from "./sdk-events.js";
 
 /** Whether an account may serve requests from Claude extra usage. */
 export type ExtraUsage = "refuse" | "allow";
@@ -61,8 +61,8 @@ const REPORT_WAIT_MS = 2_000;
  * `settle` waited for that report and read it.
  */
 export interface UsageReports {
-  /** When the account's whole allowance that the last report rejected resets, for the error map. */
-  readonly limitResetAtMs: number | undefined;
+  /** The spent usage window that the last report rejected, for the error map. */
+  readonly limitRejection: UsageLimitRejection | undefined;
   /** Called by the reader of the query's stream as each SDK input arrives, before the actor reads it, and with
    *  undefined once the stream ended, so that `settle` sees the first report while the actor waits. */
   arrived(input: SdkInput | undefined): void;
@@ -112,7 +112,7 @@ const STOP_TEXT = {
 } as const satisfies { readonly [Evidence in ExtraUsageEvidence]: string };
 
 export function usageReports(config: UsageReportsConfig): UsageReports {
-  let limitResetAtMs: number | undefined;
+  let limitRejection: UsageLimitRejection | undefined;
   let served = false;
   let reported = false;
   /** The guard's one stop: the account is marked and the person told once, and every later decision returns it. */
@@ -135,7 +135,7 @@ export function usageReports(config: UsageReportsConfig): UsageReports {
   const owed = (): boolean => guarded && served && !reported && stopped === undefined;
 
   const readReport = (input: UsageReport): GuardStop | undefined => {
-    limitResetAtMs = accountLimitResetAtMs(input.info);
+    limitRejection = usageLimitRejection(input.info);
     if (input.windows !== undefined) config.recordUsage(input.windows);
     // The CLI omits the extra-usage state from the reports of a usage-based login, so none of them confirms included usage.
     const billing = input.billing === "included" && !config.reportsExtraUsage ? "unconfirmed" : input.billing;
@@ -153,7 +153,7 @@ export function usageReports(config: UsageReportsConfig): UsageReports {
   };
 
   return {
-    get limitResetAtMs() { return limitResetAtMs; },
+    get limitRejection() { return limitRejection; },
     read(input) {
       if (input.kind === "rate-limit") return input === settled ? undefined : readReport(input);
       // The report precedes the turn result on the CLI's stream.

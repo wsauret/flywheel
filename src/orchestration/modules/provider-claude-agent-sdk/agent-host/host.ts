@@ -14,8 +14,8 @@ import type { UsageWindows } from "../account-usage.js";
 import { usageReports, type ExtraUsage, type ExtraUsageStop, type GuardStop } from "../extra-usage-guard.js";
 import { EngineCannotStartError } from "../login-observations.js";
 import { observeEngine } from "../observed-engine.js";
-import { isUsageLimitText, type CliUserFrame, type HostLaunch, type LaunchedHost } from "../query-launcher.js";
-import { classifySdkMessage, cliFailure, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../sdk-events.js";
+import type { CliUserFrame, HostLaunch, LaunchedHost } from "../query-launcher.js";
+import { classifySdkMessage, cliFailure, reportsSpentUsage, type CliErrorReport, type CliTurnResult, type QuotaMark } from "../sdk-events.js";
 import { wireFailure, type WireFailure } from "../service-requests.js";
 import { bridgeSessionId } from "../session-id.js";
 import { stepGateFailure, type PluginGateServer } from "../step-gate.js";
@@ -328,7 +328,9 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
 
   /** Moves the coordinator off its model after its request failed with the service's answer `wire`, when the failure
    *  is one of the model or the login's use of it, as the native classification reads that answer: the service refuses
-   *  the model (`ModelAccessRefusedError`), refuses the login the model (403), or limits the login's rate. The failure
+   *  the model (`ModelAccessRefusedError`) or refuses the login the model (403). A rate limit is `undefined`: it is
+   *  throttling of the whole login that clears as other requests finish (PI-MODEL-060), so the frame's agents fail with
+   *  the service's answer and its retry delay, and the failover client's retry owns the wait. The failure
    *  is the coordinator's alone, so neither the login nor the account's quota is marked, and no agent's model is
    *  refused. A model that the service refuses is recorded as one that the login refuses, so later hosts skip it. The
    *  coordinator goes to its next model (`demoted`), and the frame's agents go into the next frame. When no model
@@ -338,7 +340,7 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
   const demote = (wire: WireFailure, report: CliErrorReport | undefined): "demoted" | "exhausted" | undefined => {
     const classified = classifyAnthropicError(wireFailure(wire));
     const refused = classified instanceof ModelAccessRefusedError;
-    if (!refused && wire.status !== 403 && !(classified instanceof LlmStreamError && classified.kind === "rate_limit")) return undefined;
+    if (!refused && wire.status !== 403) return undefined;
     if (refused && classified.refusal.kind === "model") config.recordModelRefusal(coordinator.wireModelId, classified.refusal);
     const evidence = { sessionId, from: coordinator.model, error: report?.error ?? classified.name, ...(wire.status === undefined ? {} : { status: wire.status }) };
     const next = fallbacks.shift();
@@ -354,15 +356,15 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
   };
 
   /** Decides a frame whose turn the engine ended with an error, from the service's answer to the frame's first failed
-   *  request (`HostedRequests.frameFailure`). A refusal for the login's spent usage, which the engine reports as a rate
-   *  limit with its usage-limit text, belongs to the login and not to the model: every coordinator model would get it,
-   *  so the error map marks the login's quota. A request that the service answered without a record that Flywheel can
-   *  read is drift of the engine's debug output, never a failure that its SDK error kind classifies. */
+   *  request (`HostedRequests.frameFailure`). A refusal for the login's spent usage (`reportsSpentUsage`), which the
+   *  engine reports as a rate limit with its usage-limit text, belongs to the login and not to the model: every
+   *  coordinator model would get it, so the error map marks the login's quota. A request that the service answered
+   *  without a record that Flywheel can read is drift of the engine's debug output, never a failure that its SDK error kind classifies. */
   const frameFailed = async (done: Frame, result: CliTurnResult) => {
     const wire = await requests.frameFailure(done.nonce);
     if (closed) return;
-    if (isUsageLimitText(done.report?.text ?? result.text)) frameEnded(done, cliFailure(done.report, result, config.markQuotaExhausted, reports.limitResetAtMs));
-    else if (wire === undefined) frameEnded(done, result.status === null ? cliFailure(done.report, result, config.markQuotaExhausted, reports.limitResetAtMs) : requests.drifted("record-incomplete"));
+    if (reportsSpentUsage(done.report?.text ?? result.text, reports.limitRejection)) frameEnded(done, cliFailure(done.report, result, config.markQuotaExhausted, reports.limitRejection));
+    else if (wire === undefined) frameEnded(done, result.status === null ? cliFailure(done.report, result, config.markQuotaExhausted, reports.limitRejection) : requests.drifted("record-incomplete"));
     else {
       const moved = demote(wire, done.report);
       if (moved === "demoted") frameEnded(done, undefined, true);

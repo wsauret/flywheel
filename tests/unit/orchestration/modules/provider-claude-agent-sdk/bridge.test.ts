@@ -8,7 +8,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import {
-  A1, A2, admittedStart, answers, apiErrorLine, assistantError, callHandler, cliInit, ENVELOPE, event, extendedWindowRefused, forwardDiagnostics, includedReport, init, logLines, messageStart, messageStop, MODEL_REQUEST_LINE, parked,
+  A1, A2, admittedStart, answers, apiErrorLine, assistantError, callHandler, cliInit, concurrentsRejected, ENVELOPE, event, extendedWindowRefused, forwardDiagnostics, GENERIC_USAGE_LIMIT_TEXT, includedReport, init, logLines, messageStart, messageStop, MODEL_REQUEST_LINE, parked,
   modelRequest, payloads, ping, R1, rateLimitReport, records, refused, request, responseBlock, send, settle, STEP, stopReason, text, toolUse, turnDone, turnResult, U1, U1_WITH_ENVIRONMENT, U2, until, withBridge, type FakeQuery, originsOf,
 } from "./_bridge-harness.js";
 
@@ -532,7 +532,7 @@ describe("the bridge request machine", () => {
     expect(queries).toHaveLength(1);
   }));
 
-  test("a spent allowance marks the account until the reset that the query's rejected rate-limit event named, and the error carries that mark for the walk", () => withBridge(async ({ ops, queries, quotaMarks }) => {
+  test("a spent allowance marks the account until the reset that the query's rejected rate-limit event named, and the error carries that mark for the walk, while the same text without a rejected usage window is a rate limit that marks nothing", () => withBridge(async ({ ops, queries, quotaMarks }) => {
     const limited = refused("rate_limit", 429, "You've hit your session limit · resets 10:59pm");
     const first = await send(ops, request([U1]));
     queries[0]?.emit(init);
@@ -549,21 +549,26 @@ describe("the bridge request machine", () => {
     expect(error).toMatchObject({ message: "You've hit your session limit · resets 10:59pm", quotaObservation: { reportedResetAtMs: 1_791_525_709_000 } });
     expect(quotaMarks).toEqual([1_791_525_709_000]);
 
-    // A query whose CLI reported no rejected window marks the account with no reset, so the safe recheck bounds it.
-    const second = await send(ops, request([U1]));
-    queries[1]?.emit(init, rateLimitReport({ status: "allowed_warning", rateLimitType: "seven_day", utilization: 0.95, resetsAt: 1_791_900_000 }), ...limited);
-    expect(await second.error).toMatchObject({ quotaObservation: { reportedResetAtMs: undefined } });
-    expect(quotaMarks).toEqual([1_791_525_709_000, undefined]);
+    // The engine writes its usage-limit text for every limit that rejected the request (CLI 2.1.321). When the query's
+    // last report rejected no usage window, as for too many concurrent requests, the request failed on throttling that
+    // clears as other requests end: the service's rate limit, which marks no quota (PI-MODEL-060).
+    const reports = [rateLimitReport({ status: "allowed_warning", rateLimitType: "seven_day", utilization: 0.95, resetsAt: 1_791_900_000 }), concurrentsRejected];
+    for (const [index, report] of reports.entries()) {
+      const throttled = await send(ops, request([U1]));
+      queries[index + 1]?.emit(init, report, ...refused("rate_limit", 429, GENERIC_USAGE_LIMIT_TEXT));
+      expect(await throttled.error).toBeInstanceOf(Anthropic.RateLimitError);
+    }
+    expect(quotaMarks).toEqual([1_791_525_709_000]);
 
     // A spent window of one model holds the whole account only until the safe recheck: the account key carries no
     // model, and the account still serves its other models.
     for (const [index, rateLimitType] of (["seven_day_opus", "seven_day_sonnet", "seven_day_overage_included"] as const).entries()) {
       const modelOnly = await send(ops, request([U1]));
-      queries[index + 2]?.emit(init, rateLimitReport({ status: "rejected", rateLimitType, resetsAt: 1_791_530_128 }),
+      queries[index + 3]?.emit(init, rateLimitReport({ status: "rejected", rateLimitType, resetsAt: 1_791_530_128 }),
         ...refused("rate_limit", 429, "You've hit your Opus limit · resets 12:15am"));
       expect(await modelOnly.error).toMatchObject({ quotaObservation: { reportedResetAtMs: undefined } });
     }
-    expect(quotaMarks).toEqual([1_791_525_709_000, undefined, undefined, undefined, undefined]);
+    expect(quotaMarks).toEqual([1_791_525_709_000, undefined, undefined, undefined]);
   }));
 
   test("a spent allowance whose mark the account's row does not take fails the request with the coordination error, as native", () => withBridge(async ({ ops, queries, quotaMarks }) => {

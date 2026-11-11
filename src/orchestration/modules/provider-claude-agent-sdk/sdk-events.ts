@@ -118,16 +118,36 @@ function perTurnEffortActive(message: SDKMessage): boolean | undefined {
   return typeof active === "boolean" ? active : undefined;
 }
 
+type UsageWindow = NonNullable<SDKRateLimitInfo["rateLimitType"]>;
+
+/** The usage windows that the SDK declares. The engine also rejects requests on limits that are no usage window, such
+ *  as too many concurrent requests (`concurrents`, CLI 2.1.321), which the SDK's declared type omits. */
+const USAGE_WINDOWS: ReadonlySet<string> = new Set<UsageWindow>(["five_hour", "seven_day", "seven_day_opus", "seven_day_sonnet", "seven_day_overage_included", "overage"]);
+
 /** The windows that spend one model's allowance only. The account key carries no model, so a reset of one of these
  *  windows never bounds the whole account: the mark falls back to the safe recheck, and the account's other models
  *  stay in service. */
-const MODEL_WINDOWS: ReadonlySet<SDKRateLimitInfo["rateLimitType"]> = new Set(["seven_day_opus", "seven_day_sonnet", "seven_day_overage_included"]);
+const MODEL_WINDOWS: ReadonlySet<UsageWindow> = new Set(["seven_day_opus", "seven_day_sonnet", "seven_day_overage_included"]);
 
-/** When the account's whole allowance resets, in epoch ms, from one rate-limit event: the reset of a rejected window
- *  that covers every model on the account, else undefined. */
-export function accountLimitResetAtMs(info: Pick<SDKRateLimitInfo, "status" | "rateLimitType" | "resetsAt">): number | undefined {
-  if (info.status !== "rejected" || info.resetsAt === undefined || MODEL_WINDOWS.has(info.rateLimitType)) return undefined;
-  return info.resetsAt * 1000;
+/** A spent usage window that a rejected rate-limit event named. `resetsAtMs` is when the account's whole allowance
+ *  resets, in epoch ms: the event's reset when the window covers every model on the account, else undefined. */
+export interface UsageLimitRejection {
+  readonly resetsAtMs: number | undefined;
+}
+
+/** The spent usage window that one rate-limit event names, or undefined when the event rejected nothing or rejected the
+ *  request on a limit that is no usage window. */
+export function usageLimitRejection(info: Pick<SDKRateLimitInfo, "status" | "rateLimitType" | "resetsAt">): UsageLimitRejection | undefined {
+  if (info.status !== "rejected" || info.rateLimitType === undefined || !USAGE_WINDOWS.has(info.rateLimitType)) return undefined;
+  return { resetsAtMs: info.resetsAt === undefined || MODEL_WINDOWS.has(info.rateLimitType) ? undefined : info.resetsAt * 1000 };
+}
+
+/** Whether the CLI's error text reports the account's spent allowance. The engine writes its usage-limit text for every
+ *  limit that rejected the request (CLI 2.1.321), so the text reports spent usage only when the query's last rejected
+ *  rate-limit event named a usage window (`rejection`). Any other limit, such as too many concurrent requests, is
+ *  throttling (PI-MODEL-060). */
+export function reportsSpentUsage(text: string, rejection: UsageLimitRejection | undefined): rejection is UsageLimitRejection {
+  return rejection !== undefined && isUsageLimitText(text);
 }
 
 /**
@@ -165,16 +185,16 @@ export function readSdkMessage(message: SDKMessage, acks: Pick<ReplayAcks, "sett
  * `wire` is the service's own answer to the request when the CLI's debug output logged it and the bridge kept it for
  * the turn's end: then the failure is the native error of that answer, except where the CLI's text reports the
  * account's spent allowance or a refusal of one model, which the CLI reads from the service's usage headers.
- * A spent allowance is recorded at this boundary, as the ChatGPT adapter records its own at its transport: only
- * that class calls `markQuotaExhausted`, with the reset that the CLI's rejected rate-limit event named, and the
- * error carries the observation, so the walk records nothing a second time.
+ * A spent allowance (`reportsSpentUsage`) is recorded at this boundary, as the ChatGPT adapter records its own at its
+ * transport: only that class calls `markQuotaExhausted`, with the reset of the usage window that the CLI's rejected
+ * rate-limit event named (`rejection`), and the error carries the observation, so the walk records nothing a second time.
  */
-export function cliFailure(report: CliErrorReport | undefined, turnResult: CliTurnResult | undefined, markQuotaExhausted: QuotaMark, resetsAtMs: number | undefined, wire?: WireFailure): Error {
+export function cliFailure(report: CliErrorReport | undefined, turnResult: CliTurnResult | undefined, markQuotaExhausted: QuotaMark, rejection: UsageLimitRejection | undefined, wire?: WireFailure): Error {
   const result = turnResult?.isError === true ? turnResult : undefined;
   const text = report?.text || result?.text || "The Claude CLI ended the request without a stop reason";
   const status = result?.status ?? null;
   if (/Stream idle timeout/u.test(text)) return new StreamIdleTimeoutError(text, "idle");
-  if (isUsageLimitText(text)) return quotaFailure(text, () => markQuotaExhausted(resetsAtMs));
+  if (reportsSpentUsage(text, rejection)) return quotaFailure(text, () => markQuotaExhausted(rejection.resetsAtMs));
   // The CLI states both refusals of one model only in its error kind and text: a 404 is `model_not_found`, and a
   // long-context refusal is a 429 `rate_limit` (its own `long_context_credits_required` does not reach the SDK).
   if (report?.error === "model_not_found") return new ModelAccessRefusedError(text, { kind: "model" });
