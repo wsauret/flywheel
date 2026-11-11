@@ -226,6 +226,17 @@ The `holdout` split is the in-sample proposal of `hill.ts subset propose --bench
 - Each trial home carries no answer-key rule file. Nothing that the rule forbids is reachable from an agent phase without network.
 - Most of the board's DeepSWE trials ran with network access. An offline Flywheel arm is therefore compared with a mostly online field, and a comparison with the board's field must state that difference.
 
+### FrontierHarness Eval v1.1
+
+Descriptor `frontier-harness-1.1`, no board key. FrontierHarness Eval (frontierharness.org) publishes its own harness board, not the harness leaderboard that `hill.ts board` reads, so `board` commands, `subset propose`, and `score --board` refuse this benchmark. Its board runs every harness on five models, each at max effort through Baseten, with 4 attempts per task, and reports pass rate, cost, and time. A comparison with that board reads its published trial data and must state each difference of model route, effort, and attempt count.
+
+The dataset has 62 tasks, all in the `terminal-bench` namespace, and the board excludes none. The `tb21` split is its 45 Terminal-Bench 2.1 tasks. Each is the same task package, at the same digest, as in the `terminal-bench-2.1` descriptor, so earlier Terminal-Bench 2.1 trials of these tasks measure the same work. The `tb4` split is its 17 Terminal-Bench 4 tasks, which the benchmark's authors chose from Terminal-Bench 4 by proportional domain quotas and the shortest historical runtimes. Each `tb4` task allows the agent 8 hours, so a `tb4` run can take hours. The splits are the board's own subsets. Neither projects to the whole benchmark.
+
+- The agent phase has public network, so each trial home carries the answer-key rule file. Its sources add the benchmark's own published names to those of Terminal-Bench.
+- The `tb21` graders are those of Terminal-Bench 2.1, so the GitHub-download rule of `verifier_infra` applies. Each `tb4` grader runs in a separate verifier environment of its own image and downloads nothing from GitHub.
+- A local run seals no wheelhouse. No local run of the `tb4` graders has been made, and the hosted run is the supported route.
+- No task is hub-broken. Harbor's oracle agent passed each `tb4` task 2 of 2 times on Harbor Hub on 2026-11-11, and the `tb21` tasks are those of Terminal-Bench 2.1 without its one hub-broken task.
+
 ## Removed capabilities
 
 The removed `--headless --task` installed-agent adapter carried two trial inputs that the agent package does not have:

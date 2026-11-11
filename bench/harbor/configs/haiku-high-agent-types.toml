@@ -1,0 +1,73 @@
+# Flywheel config of a Haiku arm that turns off the advisor, reviewer, and ship agent types with subagents.disabled_types.
+# It runs Flywheel's Claude engine route on the person's Claude subscription,
+# with the token that the person made with `claude setup-token`, which the
+# trial's auth snapshot carries (PI-MODEL-082). Every role runs
+# claude-haiku-5.5 at effort high, so one model serves the whole trial.
+# The launcher validates this file with Flywheel's config schema before any
+# trial and installs it in the trial as $HOME/.flywheel/flywheel.toml under
+# the neutral auth profile id "benchmark".
+
+allow_persistent_processes = true
+# Headless shell commands write in place; the guard that stops a write
+# outside the project would refuse ordinary task setup such as package installs.
+shell_write_guard = false
+idle_compaction = false
+auto_delete_session_days = 0
+
+disabled_modules = [
+  "ask-user",
+  "bug-reports",
+  "code-mode",
+  "development",
+  "experiments",
+  "learning",
+  "mcp",
+  "papercuts",
+  "project-notifications",
+  "provider-anthropic-api",
+  "provider-chatgpt",
+  "provider-deepseek",
+  "provider-github-copilot",
+  "provider-google-api",
+  "provider-google-vertex",
+  "provider-openai-api",
+  "provider-opencode-go",
+  "provider-openrouter",
+  "provider-supergrok",
+  "remote",
+  "side-question",
+  "web",
+  "web-chatgpt",
+  "web-exa",
+  "workflows",
+]
+
+# The general, explorer, and implementer agent types stay on.
+[subagents]
+disabled_types = ["advisor", "reviewer", "ship"]
+
+[updates]
+auto_install = false
+
+[profiles.benchmark]
+allow_training_routes = false
+
+[profiles.benchmark.roles.chat]
+model = "claude-haiku-5.5"
+effort = "high"
+
+[profiles.benchmark.roles.title-generation]
+model = "claude-haiku-5.5"
+effort = "high"
+
+[profiles.benchmark.roles.subagent-summary]
+model = "claude-haiku-5.5"
+effort = "high"
+
+[profiles.benchmark.roles.explorer]
+model = "claude-haiku-5.5"
+effort = "high"
+
+[profiles.benchmark.roles.implementer]
+model = "claude-haiku-5.5"
+effort = "high"

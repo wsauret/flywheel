@@ -118,7 +118,39 @@ const DEEP_SWE_1_1: HarborBenchmark = {
   localVerifierWheelhouse: false,
 };
 
-export const HARBOR_BENCHMARKS: readonly HarborBenchmark[] = [TERMINAL_BENCH_2_1, DEEP_SWE_1_1];
+const FRONTIER_HARNESS_1_1: HarborBenchmark = {
+  id: "frontier-harness-1.1",
+  display: "FrontierHarness Eval v1.1",
+  dataset: { name: "frontier-harness-eval/frontier-harness-eval", ref: "sha256:9236400fc1a6619eb72a663445c580417be9bbbab32f816c7dff76d0a96ab24a" },
+  taskNamespace: "terminal-bench",
+  splits: {
+    tb4: [
+      "batched-eval-parity", "bun-sourcemap-leak", "cargo-flight-dispatch", "embedding-drift-monitor", "foodstuff-beta-activity",
+      "freecad-impeller", "glycan-ms2-elucidation", "gsea-proteomics", "html-js-filter", "intrastat-meldung",
+      "music-harmony", "mvcc-lsm-compaction", "ontology-kg-querying", "roy-polymorph-cn", "session-window-debug",
+      "vpp-loss-divergence", "wal-recovery-ordering",
+    ],
+    tb21: [
+      "adaptive-rejection-sampler", "caffe-cifar-10", "cancel-async-tasks", "chess-best-move", "circuit-fibsqrt",
+      "code-from-image", "constraints-scheduling", "dna-assembly", "dna-insert", "feal-linear-cryptanalysis",
+      "filter-js-from-html", "fix-code-vulnerability", "fix-git", "fix-ocaml-gc", "gcode-to-text",
+      "hf-model-inference", "install-windows-3.11", "kv-store-grpc", "large-scale-text-editing", "log-summary-date-ranges",
+      "mailman", "make-doom-for-mips", "merge-diff-arc-agi-task", "model-extraction-relu-logits", "mteb-leaderboard",
+      "nginx-request-logging", "openssl-selfsigned-cert", "path-tracing-reverse", "polyglot-c-py", "polyglot-rust-c",
+      "portfolio-optimization", "prove-plus-comm", "pypi-server", "pytorch-model-cli", "pytorch-model-recovery",
+      "regex-log", "rstan-to-pystan", "sam-cell-seg", "schemelike-metacircular-eval", "sparql-university",
+      "sqlite-db-truncate", "sqlite-with-gcov", "tune-mjcf", "video-processing", "vulnerable-secret",
+    ],
+  },
+  excluded: [],
+  hubBroken: [],
+  answerKeyRule: true,
+  answerKeySources: ["frontier-harness-eval", "frontierharness", "frontier_harness", "terminal-bench", "terminal_bench", "tbench", "harbor-framework", "harborframework", "laude-institute", "laude"],
+  verifierDownloadsFromGithub: true,
+  localVerifierWheelhouse: false,
+};
+
+export const HARBOR_BENCHMARKS: readonly HarborBenchmark[] = [TERMINAL_BENCH_2_1, DEEP_SWE_1_1, FRONTIER_HARNESS_1_1];
 
 /** Returns the registered benchmark with this id, or throws an error that lists every registered id. */
 export function harborBenchmark(id: string): HarborBenchmark {
