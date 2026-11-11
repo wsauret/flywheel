@@ -196,6 +196,56 @@ describe("eligibility preparation settlement", () => {
     }
   })
 
+  test("an account that stays pending discovers again only after the cooldown, though each discovery reaches the sessions", async () => {
+    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const modes: string[] = []
+    let clock = 0
+    let applied = 0
+    const prepare = createEligibilityPreparation({
+      allowTrainingRoutes: () => false,
+      userDataRoot: DIRECTORIES.userDataRoot,
+      resolveKey: async () => undefined,
+      moduleSelection: () => composeFirstPartyModules([]),
+      prepare: service.prepare,
+      publish: service.publish,
+      current: service.state,
+      inputRevision: () => ({ auth: "auth-v1", preferences: "preferences-v1" }),
+      now: () => clock,
+      // As the auth runtime does, each session that takes the new state admits its next request settled. The bound
+      // only keeps a regression from running without end.
+      apply: async () => {
+        applied += 1
+        if (applied < 10) await prepare(PROFILE, { settled: true })
+      },
+      resolveCatalog: async ({ discoveryMode }) => {
+        modes.push(discoveryMode ?? "missing")
+        return {
+          providers: new Map(),
+          accounts: new Map([[PENDING_KEY, emptyModels()]]),
+          inventoryCandidates: new Map([[PENDING_KEY, { candidate: PENDING, configured: true, currentConnection: true, enabledOfferings: null, inventoryOfferings: null, outcome: { kind: "unavailable", reason: "discovery-pending" } }]]),
+          modelInfos: new Map(),
+          enabledModels: new Map(),
+        }
+      },
+    })
+    try {
+      await prepare(PROFILE)
+      await turns()
+      expect(modes).toEqual(["cached-first", "refresh"])
+      expect(applied).toBe(1)
+
+      clock += 5 * 60 * 1000
+      const settled = await prepare(PROFILE, { settled: true })
+      await turns()
+      expect(settled.inventoryCandidates.get(PENDING_KEY)?.catalog).toEqual({ kind: "unavailable", reason: "discovery-pending" })
+      expect(modes).toEqual(["cached-first", "refresh", "refresh"])
+      expect(applied).toBe(2)
+    } finally {
+      await prepare.dispose()
+      await service.dispose()
+    }
+  })
+
   test.each(["another account serves", "a contributor account cannot serve", "a contributor account is permitted", "the first model passes", "the deadline passes"] as const)("settled admission waits for the access audit only while no account can serve, at most until the listing deadline, and the finished audit reaches sessions: %s", async (ending) => {
     const contributor = ending.startsWith("a contributor")
     const otherAccount = ending === "another account serves" || contributor

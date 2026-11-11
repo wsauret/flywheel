@@ -299,11 +299,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
             ...account,
             effective: new Set(candidate.enabledOfferings?.keys()),
           }] as const]
-        }))].map(([providerId, models]) => [providerId, {
-          ...models,
-          catalog: models.effective,
-          curatedDefault: models.effective,
-        }]))
+        }))].map(([providerId, models]) => [providerId, { ...models, catalog: models.effective, curatedDefault: models.effective }]))
         : resolved.providers
       const releaseDates = resolveReleaseDates(inventoryCandidates)
       const idle = idleFreePlans(profile, auth, composition, idleOf(current))
@@ -318,8 +314,11 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   const settle = async (profile: EligibilityProfile, published: Promise<ProviderModelEligibilityState>, options?: EligibilityPreparationOptions): Promise<ProviderModelEligibilityState> => {
     const state = await published
     if (options?.settled !== true || !hasPendingDiscovery(state)) return state
-    const discovery = latestDiscovery(profile.id) ?? discoverAfter(profile, Promise.resolve(state), "pending")
-    return awaitWithAbortSignal(discovery.ready, options.signal)
+    const running = latestDiscovery(profile.id)
+    // A discovery that ends pending publishes a new state, and the sessions that take it admit settled again, so
+    // only the cooldown keeps a state that stays pending from discovering without end (PI-MODEL-046).
+    if (running === undefined && cadence.coolingDown(profile)) return state
+    return awaitWithAbortSignal((running ?? discoverAfter(profile, Promise.resolve(state), "pending")).ready, options.signal)
   }
   /** Serializes saved-only publications after conclusive probes. Each probe
    * waits for its own complete profile view before another result can commit. */
