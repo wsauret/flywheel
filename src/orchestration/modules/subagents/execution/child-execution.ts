@@ -200,6 +200,7 @@ export function createChildExecution(options: {
     sessionId: childSessionId,
     runId: childRunId,
     caller: "subagent",
+    unattendedRun: capabilityAccess.unattended === true,
     agentName: agentType,
     holdAlive: startStallKeepAlive,
     onNotice: (operation) => { published.emit("agent.notice.changed", { sessionId: childSessionId, data: { operation } }); },

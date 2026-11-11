@@ -360,11 +360,15 @@ A workflow agent, subagent, or headless task recovers from provider faults alone
 
 ## PI-AGENT-030: Headless chat uses standard input and output
 
-Headless chat behaves like interactive chat, with standard input and output replacing the graphical or terminal client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration, and its session keeps the quick title. It adds no provider filter, billing ceiling, or usage pause. Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
+Headless chat behaves like interactive chat, with standard input and output replacing the client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration, and its session keeps the quick title. It adds no provider filter, billing ceiling, or usage pause. Unattended runs skip usage-limit waits (PI-AGENT-128). Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
 An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, and questions. It keeps the skill methods that need no person, and leaves out each skill that a person answers or approves. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies. It also leaves out guidance for inspecting its own session records.
+
+## PI-AGENT-128: An unattended Agent Client Protocol run does not wait for model capacity
+
+No person can end a wait of an unattended one-shot Agent Client Protocol run, and the run has no deadline of its own. When no candidate can serve any agent of the run because each usage limit, quota, or credit is spent, that agent fails at once. The failure names the reset time that a provider stated, or says that no reset time is known. The agent waits out a rate limit or an outage, which clear by themselves (PI-AGENT-118). The prompt is answered with that failure, and the run publishes its evidence and ends.
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 

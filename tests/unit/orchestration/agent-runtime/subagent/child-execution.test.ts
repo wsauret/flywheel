@@ -9,7 +9,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFact } from "../../../../../src/orchestration/session/session-fact-writer.js";
-import { buildRegistry, createNotificationCapture, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
+import { buildRegistry, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";
 
@@ -537,7 +537,7 @@ describe("child execution recovery", () => {
     const clock = spyOn(Date, "now").mockImplementation(() => realNow() + passed);
     const waits = recoveryWaits(async () => { entered.resolve(); await release.promise; passed = 120_000; });
     try {
-      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 60_000 } }, "complete"]);
+      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 60_000, hold: { kind: "usage_limit", stated: true } } }, "complete"]);
       await createSubagentDispatch(run.deps).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext());
       await entered.promise;
       const before = run.bumps();
@@ -550,5 +550,21 @@ describe("child execution recovery", () => {
       expect(run.runs()).toBe(2);
       expect(run.notices.at(-1)).toEqual(expect.objectContaining({ data: { operation: expect.objectContaining({ type: "resolve" }) } }));
     } finally { release.resolve(); waits.restore(); clock.mockRestore(); }
+  });
+
+  // No person can end the wait of an unattended run, whose chat waits on the child's work (PI-AGENT-074).
+  it("lets a stated usage limit stand at once as the failure of a child of an unattended run, which shows no wait", async () => {
+    const waiting = Promise.withResolvers<"waiting">();
+    const release = Promise.withResolvers<void>();
+    const waits = recoveryWaits(async () => { waiting.resolve("waiting"); await release.promise; });
+    try {
+      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } } }, "complete"]);
+      const unattended = makeCapabilityAccess({ grant: grantOf(["subagents"]), unattended: true });
+      await createSubagentDispatch(run.deps).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext({ capabilityAccess: unattended }));
+      expect(await Promise.race([run.settled.then((result) => result.status), waiting.promise])).toBe("failed");
+      expect(run.runs()).toBe(1);
+      expect(waits.waits).toEqual([]);
+      expect(run.notices).toEqual([]);
+    } finally { release.resolve(); waits.restore(); }
   });
 });

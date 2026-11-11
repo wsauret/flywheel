@@ -80,10 +80,12 @@ export interface SubagentContext {
 
 /** A capability boundary that records every admission it was asked for. `admit`
  *  answers each request in turn, so a case can admit one dispatch and then
- *  refuse everything after it. */
+ *  refuse everything after it. `unattended` makes it the boundary of an
+ *  unattended run's tree. */
 export function makeCapabilityAccess(answers: {
   readonly grant?: CapabilityGrant;
   readonly admit?: (request: CapabilityRequest) => CapabilityAdmission;
+  readonly unattended?: true;
 }): CapabilityAccess & { readonly requests: CapabilityRequest[] } {
   const requests: CapabilityRequest[] = [];
   const access = capabilityAccessFor({
@@ -93,7 +95,7 @@ export function makeCapabilityAccess(answers: {
       if (!answers.admit) throw new Error("admit was called with no answer configured");
       return answers.admit(request);
     },
-  }, answers.grant);
+  }, answers.grant, undefined, answers.unattended === true);
   return Object.assign(access, { requests });
 }
 
