@@ -1,6 +1,9 @@
 import { Effect, Exit, Scope } from "effect"
+import { isAbortError } from "../../infra/abort.js"
+import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
+import { coalesceRepeats } from "../../infra/repeat-coalescer.js"
 import type { AgentOptions } from "../agent-runtime/types.js"
 import type { Claim, ConversationMessage, ProviderDemand } from "../agent-runtime/llm/types.js"
 import type { RequestPreparer } from "../agent-runtime/request-preparation.js"
@@ -8,6 +11,15 @@ import { openProviderSession, type HeldProviderSession, type ProviderSession } f
 import type { ResolvedRole, RoleResolver } from "../config/roles.js"
 
 const log = Log.create({ service: "session-engines" })
+/** How long one failing step collects repeats before it reports them. */
+const STEP_FAILURE_WINDOW_MS = 60_000
+
+/** One failure of a contained step. */
+interface StepFailure {
+  readonly operation: string
+  readonly fields: { readonly sessionId: string; readonly model?: string }
+  readonly error: unknown
+}
 
 /** Why the session plans its engines: a client began to show it, its role assignments changed, the environment that
  *  serves its requests changed (credentials, model listing, provider connections), its turn ended, which is where a
@@ -107,9 +119,51 @@ export function createSessionEngines(deps: SessionEnginesDeps): SessionEngines {
   /** A plan for a provider's ask is queued and has not started. */
   let staleQueued = false
 
-  /** Runs `task` and records its failure, so a failed step never stops the steps after it. */
-  const contained = (operation: string, task: () => Promise<void>): Promise<void> =>
-    task().then(() => undefined, (error: unknown) => { recordBackgroundFailure(log, operation, { sessionId }, error) })
+  // A step fails the same way at every plan while its cause lasts, such as an exhausted subscription, and plans come
+  // every few seconds. One step, and for a host plan one selection, is one condition: its first failure records in
+  // full, and its repeats count until the step succeeds, fails another way, or is retired (ARCH-RUNTIME-077).
+  const failures = coalesceRepeats<StepFailure>({
+    windowMs: STEP_FAILURE_WINDOW_MS,
+    first: (_condition, failure) => { recordBackgroundFailure(log, failure.operation, failure.fields, failure.error) },
+    repeated: (_condition, repeats) => {
+      const [failure] = repeats.events
+      if (failure === undefined) return
+      log.warn(`${failure.operation} failed again`, { ...failure.fields, error: errorMessage(failure.error), count: repeats.count, windowMs: repeats.windowMs })
+    },
+  })
+  /** The model and error of each condition that failed last, which a failure of another kind ends. */
+  const failing = new Map<string, string>()
+  const stepCondition = (operation: string, selection?: string): string => JSON.stringify([operation, selection ?? null])
+  /** The condition ended: reports its repeats now and forgets its last failure. */
+  const settle = (condition: string): void => {
+    failing.delete(condition)
+    failures.end(condition)
+  }
+  /** Nothing plans until the next show, so every failing step's episode ends. */
+  const settleAll = (): void => {
+    failing.clear()
+    failures.end()
+  }
+
+  /** Runs `task` and records its failure, so a failed step never stops the steps after it. A step for one `model`
+   *  names it, and a host plan names its `selection`, so that each selection's failures coalesce on their own. */
+  const contained = (operation: string, task: () => Promise<void>, step?: { readonly model: string; readonly selection?: string }): Promise<void> => {
+    const fields = step === undefined ? { sessionId } : { sessionId, model: step.model }
+    const condition = stepCondition(operation, step?.selection)
+    return task().then(() => { settle(condition) }, (error: unknown) => {
+      if (isAbortError(error)) {
+        recordBackgroundFailure(log, operation, fields, error)
+        return
+      }
+      // The chat's one condition spans its selections, so a failure for another model is another kind.
+      const kind = JSON.stringify([step?.model ?? null, errorMessage(error)])
+      if (failing.get(condition) !== kind) {
+        failures.end(condition)
+        failing.set(condition, kind)
+      }
+      failures.observe(condition, { operation, fields, error })
+    })
+  }
   const enqueue = (operation: string, task: () => Promise<void>): void => {
     work = work.then(() => contained(operation, task))
   }
@@ -229,11 +283,12 @@ export function createSessionEngines(deps: SessionEnginesDeps): SessionEngines {
         const previous = selection.claim
         selection.claim = result.claim
         await previous?.release()
-      })
+      }, { model: role.model, selection: key })
     }
     for (const [key, selection] of hosts) {
       if (wanted.has(key)) continue
       hosts.delete(key)
+      settle(stepCondition("plan session host", key))
       await releaseSelection(selection)
     }
   }
@@ -249,7 +304,8 @@ export function createSessionEngines(deps: SessionEnginesDeps): SessionEngines {
       // Every send and turn end changes the session's metadata, which notices a role change, so only a changed
       // selection plans.
       if (reason === "role-change" && plannedFor(roles)) return
-      await contained("plan chat engine", () => planChat(reason, roles.get("chat")))
+      const chatRole = roles.get("chat")
+      await contained("plan chat engine", () => planChat(reason, chatRole), chatRole === undefined ? undefined : { model: chatRole.model })
       if (reason !== "turn-end") await planHosts(reason, roles.values())
     })
   }
@@ -278,6 +334,7 @@ export function createSessionEngines(deps: SessionEnginesDeps): SessionEngines {
     enqueue("release session engines", async () => {
       if (shown) return
       const released = await releaseClaims()
+      settleAll()
       await closeDemand()
       // The release of the chat's claim stops its idle engine. A turn's engine that no claim holds, such as the one
       // that took the show's reservation, ends with the chat's client, now or when the running turn ends.
@@ -315,6 +372,7 @@ export function createSessionEngines(deps: SessionEnginesDeps): SessionEngines {
       const released = await releaseClaims()
       await chat.close()
       await closeDemand()
+      settleAll()
       // INFO: one record when the session's runner ends.
       log.info("session engines closed", { sessionId, hosts: released })
     },

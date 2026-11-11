@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { Effect, Scope } from "effect"
+import { Log } from "../../../../src/infra/log.js"
 import { createSessionEngines } from "../../../../src/orchestration/chat/session-engines.js"
 import type { ResolvedRole, ResolvedRoles } from "../../../../src/orchestration/config/roles.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
@@ -25,10 +26,11 @@ interface Prestart {
 /** A session whose pre-starts the test sees and ends: each preparation waits until `finish`, or ends at once when
  *  `instant`. Each anticipation returns a claim of its own, and `events` records each claim and each release in
  *  order. */
-function harness(initial: readonly (readonly [string, string])[], instant = true) {
-  let roles = new Map(initial)
+function harness(initial: readonly (readonly [string, string, string?])[], instant = true) {
+  let roles = new Map(initial.map(([roleId, ...selection]) => [roleId, selection] as const))
   let chatFails = false
   let declining = false
+  let hostFailure: { readonly message: string; readonly effort: string | undefined } | undefined
   // A preparation that settles after its stop, as one whose walk had passed its last stop check.
   let settlesAfterStop = false
   let anticipations = 0
@@ -37,7 +39,7 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
   /** The claims that no holder released yet. */
   const held = new Set<Claim>()
   const authorities = {
-    resolveRoles: async (): Promise<ResolvedRoles> => new Map([...roles].map(([roleId, model]): [string, ResolvedRole] => [roleId, { roleId, model, effort: "medium" }])),
+    resolveRoles: async (): Promise<ResolvedRoles> => new Map([...roles].map(([roleId, [model, effort = "medium"]]): [string, ResolvedRole] => [roleId, { roleId, model, effort }])),
     prepareRequest: (async (options, { signal }) => {
       const ended = Promise.withResolvers<void>()
       if (!settlesAfterStop) signal.addEventListener("abort", () => { ended.reject(signal.reason) }, { once: true })
@@ -46,6 +48,7 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
       events.push(`start ${target} ${options.model}`)
       if (instant) ended.resolve()
       await ended.promise
+      if (target === "host" && hostFailure !== undefined && (hostFailure.effort ?? options.effort) === options.effort) throw new Error(hostFailure.message)
       if (target === "host" && declining) return undefined
       const attempt = { ...fakeAttempt("anthropic_api", options.model ?? ""), anticipatesRequests: true as const }
       const name = `${target} ${options.model} #${prestarts.length}`
@@ -60,8 +63,8 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
     }) satisfies RequestPreparer,
   }
   const counter = countStateRequests(authorities)
-  const options = (model: string, purpose: AgentOptions["purpose"], provider: ProviderSession): AgentOptions & { readonly providerSession: ProviderSession } => ({
-    ...testDirectories("/scratch"), model, purpose, providerSession: provider, moduleSelection: composeFirstPartyModules,
+  const options = (model: string, purpose: AgentOptions["purpose"], provider: ProviderSession, effort?: string): AgentOptions & { readonly providerSession: ProviderSession } => ({
+    ...testDirectories("/scratch"), model, ...(effort === undefined ? {} : { effort }), purpose, providerSession: provider, moduleSelection: composeFirstPartyModules,
     onEvent: () => {}, runtimeSurfaces: {}, conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" },
   })
   const engines = createSessionEngines({
@@ -70,9 +73,9 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
     resolveRoles: () => counter.reader.resolveRoles(),
     chatOptions: async (provider) => {
       if (chatFails) throw new Error("the environment probe could not launch git")
-      return { options: options(roles.get("chat") ?? "", { kind: "interactive-chat" }, provider), readHistory: async () => [] }
+      return { options: options(roles.get("chat")?.[0] ?? "", { kind: "interactive-chat" }, provider), readHistory: async () => [] }
     },
-    hostOptions: (role, provider) => options(role.model, SESSION_TITLE_PURPOSE, provider),
+    hostOptions: (role, provider) => options(role.model, SESSION_TITLE_PURPOSE, provider, role.effort),
   })
   /** Records `name` when `scope` closes. */
   const onClose = (scope: Scope.Scope | undefined, name: string) => {
@@ -88,10 +91,13 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
   return {
     engines, prestarts, events, onClose, chatClient, held,
     settled: () => new Promise((resolve) => setTimeout(resolve, 5)),
-    setRoles: (next: readonly (readonly [string, string])[]) => { roles = new Map(next) },
+    setRoles: (next: readonly (readonly [string, string, string?])[]) => { roles = new Map(next.map(([roleId, ...selection]) => [roleId, selection] as const)) },
     failChat: () => { chatFails = true },
     /** Whether the hosts' route anticipates no request, as while the subscription is exhausted and another provider serves. */
     declineHosts: (decline: boolean) => { declining = decline },
+    /** Fails every host preparation, or each one of `effort`, with `message`, as an exhausted subscription does, or
+     *  none when `message` is undefined. */
+    failHosts: (message: string | undefined, effort?: string) => { hostFailure = message === undefined ? undefined : { message, effort } },
     settleAfterStop: () => { settlesAfterStop = true },
     anticipations: () => anticipations,
     /** The preparations since the last call. */
@@ -99,6 +105,22 @@ function harness(initial: readonly (readonly [string, string])[], instant = true
     /** Asks the session to plan again, as a provider does at an engine end that a plan can repair. */
     stale: () => { engines.chat.demand?.stale() },
     planned: () => prestarts.map(({ target, model }) => `${target} ${model}`),
+  }
+}
+
+interface Warning {
+  readonly message: unknown
+  readonly fields: { readonly [key: string]: unknown } | undefined
+}
+
+/** Runs `body` with the session engines' warnings captured in `records`, in order. */
+async function withWarnings(body: (records: Warning[]) => Promise<void>): Promise<void> {
+  const records: Warning[] = []
+  const warn = spyOn(Log.create({ service: "session-engines" }), "warn").mockImplementation((message, fields) => { records.push({ message, fields }) })
+  try {
+    await body(records)
+  } finally {
+    warn.mockRestore()
   }
 }
 
@@ -361,6 +383,99 @@ describe("a session's engines", () => {
     h.engines.setShown(true)
     await h.settled()
     expect(h.planned()).toEqual(["host claude-opus"])
+  })
+
+  test("a host plan that fails the same way at every plan records once and counts its repeats, a failure of another kind records at once, and the next plan that succeeds reports the count", async () => {
+    await withWarnings(async (records) => {
+      const h = harness([["chat", "claude-opus"], ["reviewer", "claude-haiku"]])
+      h.failHosts("out of quota")
+      h.engines.setShown(true)
+      await h.settled()
+      for (let plan = 0; plan < 5; plan++) {
+        h.stale()
+        await h.settled()
+      }
+      expect(records.map(({ message, fields }) => [message, fields?.model])).toEqual([
+        ["plan session host failed", "claude-opus"],
+        ["plan session host failed", "claude-haiku"],
+      ])
+
+      h.failHosts("credentials expired")
+      for (let plan = 0; plan < 3; plan++) {
+        h.stale()
+        await h.settled()
+      }
+      h.failHosts(undefined)
+      for (let plan = 0; plan < 2; plan++) {
+        h.stale()
+        await h.settled()
+      }
+      expect(records.slice(2).map(({ message, fields }) => [message, fields?.model, fields?.error, fields?.count])).toEqual([
+        ["plan session host failed again", "claude-opus", "out of quota", 5],
+        ["plan session host failed", "claude-opus", "credentials expired", undefined],
+        ["plan session host failed again", "claude-haiku", "out of quota", 5],
+        ["plan session host failed", "claude-haiku", "credentials expired", undefined],
+        ["plan session host failed again", "claude-opus", "credentials expired", 2],
+        ["plan session host failed again", "claude-haiku", "credentials expired", 2],
+      ])
+      await h.engines.close()
+    })
+  })
+
+  test("two host selections of one model fail and succeed on their own: the success of one leaves the other's repeats counting", async () => {
+    await withWarnings(async (records) => {
+      const h = harness([["chat", "claude-opus"], ["reviewer", "claude-opus", "high"]])
+      h.failHosts("out of quota", "high")
+      h.engines.setShown(true)
+      await h.settled()
+      for (let plan = 0; plan < 4; plan++) {
+        h.stale()
+        await h.settled()
+      }
+      h.failHosts(undefined)
+      h.stale()
+      await h.settled()
+      expect(records.map(({ message, fields }) => [message, fields?.model, fields?.count])).toEqual([
+        ["plan session host failed", "claude-opus", undefined],
+        ["plan session host failed again", "claude-opus", 4],
+      ])
+      await h.engines.close()
+    })
+  })
+
+  test("a failing host selection that the session retires, by a role change or a hide, reports its repeats at once", async () => {
+    await withWarnings(async (records) => {
+      const h = harness([["chat", "claude-opus"], ["reviewer", "claude-opus", "high"]])
+      h.failHosts("out of quota", "high")
+      h.engines.setShown(true)
+      await h.settled()
+      for (let plan = 0; plan < 3; plan++) {
+        h.stale()
+        await h.settled()
+      }
+      h.setRoles([["chat", "claude-opus"]])
+      h.engines.rolesChanged()
+      await h.settled()
+      expect(records.map(({ message, fields }) => [message, fields?.count])).toEqual([
+        ["plan session host failed", undefined],
+        ["plan session host failed again", 3],
+      ])
+
+      h.setRoles([["chat", "claude-opus"], ["reviewer", "claude-opus", "high"]])
+      h.engines.rolesChanged()
+      await h.settled()
+      for (let plan = 0; plan < 2; plan++) {
+        h.stale()
+        await h.settled()
+      }
+      h.engines.setShown(false)
+      await h.settled()
+      expect(records.slice(2).map(({ message, fields }) => [message, fields?.count])).toEqual([
+        ["plan session host failed", undefined],
+        ["plan session host failed again", 2],
+      ])
+      await h.engines.close()
+    })
   })
 
   test("close releases every claim, ends every provider runtime and the session's demand, and plans nothing after", async () => {
