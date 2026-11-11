@@ -1,0 +1,35 @@
+{
+  "base": "2378b4b1d12219d17a24a8b679dae3e91171d2b0",
+  "files": [
+    {
+      "anchor": "7dd83e1c328eb34e83f672057f2c65b401dad098",
+      "path": "docs/product-intent/remote-access.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "7dd83e1c328eb34e83f672057f2c65b401dad098",
+      "path": "webview/src/app/screen-stack.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "webview/src/app/screen-stack.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "medium",
+      "end": 1791076605907,
+      "findings": [],
+      "model": "gpt-6.1-sol",
+      "parent": "64f88ba1e701",
+      "persona": "reviewer-code-performance",
+      "run": "ca61ba986717",
+      "session": "0b1c950356f9",
+      "start": 1791076555659
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

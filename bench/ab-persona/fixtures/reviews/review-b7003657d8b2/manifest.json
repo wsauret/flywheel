@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/orchestration/agent-runtime/tools/bash-project-mutation.ts, the new `agent.bash.mutation.refused` record in `runInPrivateCopy` stores `errorMessage(error)` in its payload, and the errors that `takePrivateProjectCopy` throws carry the raw stderr of Git subprocesses (src/orchestration/agent-runtime/tools/bash-private-copy.ts), so external process output enters a diagnostic record that must hold only ids, counts, hashes, and kinds. A review catches it only if it says that the refusal diagnostic records the unbounded error message or subprocess stderr text, against the content-free record rule.",
+      "category": "security",
+      "files": [
+        "src/orchestration/agent-runtime/tools/bash-project-mutation.ts"
+      ],
+      "finder": "gpt-6.1-sol",
+      "id": "keep-external-stderr-out-of-the-refusal-diagnostic",
+      "title": "Keep external stderr out of the refusal diagnostic"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Security review of write guard fix"
+}

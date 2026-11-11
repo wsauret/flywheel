@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/infra/llm/provider-error-copy.ts, `exhaustedProvidersCopy` appends the banked-reset sentence after the recheck sentence that states the time, and the guidance from `exhaustedGuidance` (\"Wait until then and send a message to retry...\") is joined directly after the message (`blockedFailureMessage` in src/orchestration/agent-runtime/failure-message.ts), so \"then\" no longer refers to the recheck time and reads as \"after you apply the reset\". A review catches it only if it says that the new sentence separates \"Wait until then\" (or the guidance) from the time it refers to, or makes its referent ambiguous.",
+      "category": "design",
+      "files": [
+        "src/infra/llm/provider-error-copy.ts"
+      ],
+      "finder": "claude-opus-5.5",
+      "id": "the-banked-reset-sentence-separates-wait-until-then-from-the",
+      "title": "The banked-reset sentence separates \"Wait until then\" from the time it refers to"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Copy review: reset hint"
+}

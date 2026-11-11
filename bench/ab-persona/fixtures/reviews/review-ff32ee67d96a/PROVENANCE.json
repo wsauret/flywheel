@@ -1,0 +1,162 @@
+{
+  "base": "ed4e0f005171f93a614b141fb0552d749274257b",
+  "files": [
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "docs/product-intent/remote-access.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/app/budget-render-fixture.tsx",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/client/session-readings.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/client/session.test.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/client/session.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/client/view-state.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/client/view-state.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/modules/remote/menu.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/modules/remote/push-registration.test.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "76d40958b713266595676f5603bf13d908e6f6f6",
+      "path": "webview/src/modules/remote/push-registration.ts",
+      "reversedMutations": 2
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "docs/adrs/adr-007-agent-runtime-process-placements.md",
+    "src/infra/auth/locked-json-store.ts",
+    "src/orchestration/modules/remote/remote-access.ts",
+    "src/orchestration/modules/remote/remote-identity.ts",
+    "src/orchestration/modules/remote/remote-pairing-store.ts",
+    "tests/unit/infra/auth/locked-json-store.test.ts",
+    "tests/unit/orchestration/modules/remote/remote-access.test.ts",
+    "tests/unit/orchestration/modules/remote/remote-pairing-store.test.ts",
+    "webview/src/app/app-readiness-fixture.tsx",
+    "webview/src/client/session-live-patches.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792855903448,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -529,14 +527,6 @@\n     if (disposed) return\n     const unlisted = catalogBefore.find((row) => row.id === sessionId)\n     catalogBefore = catalog.rows\n-    const key = catalog.rows\n-      .filter((row) => row.lifecycleState === \"active\")\n-      .map((row) => `${row.id}:${row.lifecycleState}`)\n-      .join(\",\")\n-    if (key !== detailKey) {\n-      detailKey = key\n-      void readings.refreshRowDetail(catalog.rows)\n-    }\n     readings.reconcile([...catalog.rows, ...children.rows])\n     leaveGone(unlisted)\n     if (sessionId !== undefined && !knows(sessionId)) openTranscript(undefined)",
+              "mutation": "fd6c7ef6-adfd-473e-ac7f-f3599bf5131c",
+              "path": "webview/src/client/session.ts"
+            },
+            {
+              "hunk": "@@ -114,10 +115,6 @@\n   async function refreshRowDetail(rows: readonly SessionRow[]): Promise<void> {\n     if (disposed) return\n     detailRows = rows\n-    if (questionPresenceLoaded) {\n-      questionPresenceLoaded = false\n-      changed()\n-    }\n     try {\n       // One question read over the rows that are actually live: a durable\n       // session with no runtime cannot be waiting on anyone.",
+              "mutation": "3051a3b0-aa37-475c-a1c4-8779904bdad3",
+              "path": "webview/src/client/session-readings.ts"
+            },
+            {
+              "hunk": "@@ -125,8 +122,7 @@\n       const questions = live.length > 0 ? await questionRetry.read(() => connection.query({ type: \"questionSnapshot\", sessionIds: live })) : undefined\n       if (disposed || detailRows !== rows) return\n       questionRetry.succeeded()\n-      awaitingAnswer = new Set(questions?.views.flatMap((entry) => entry.view ? [entry.sessionId] : []))\n-      questionPresenceLoaded = true\n+      awaitingAnswer = new Map(questions?.views.flatMap((entry) => entry.view ? [[entry.sessionId, entry.view.timestamp] as const] : []))\n       changed()\n     } catch (cause) {\n       if (detailRows === rows) questionRetry.failed(cause)",
+              "mutation": "3051a3b0-aa37-475c-a1c4-8779904bdad3",
+              "path": "webview/src/client/session-readings.ts"
+            }
+          ],
+          "label": "reconnect-never-refreshes-question-presence-when-the-catalog",
+          "location": "webview/src/client/session.ts:532-539; webview/src/client/session-readings.ts:114-132",
+          "severity": "P1",
+          "title": "Reconnect never refreshes question presence when the catalog membership is unchanged"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -125,8 +122,7 @@\n       const questions = live.length > 0 ? await questionRetry.read(() => connection.query({ type: \"questionSnapshot\", sessionIds: live })) : undefined\n       if (disposed || detailRows !== rows) return\n       questionRetry.succeeded()\n-      awaitingAnswer = new Set(questions?.views.flatMap((entry) => entry.view ? [entry.sessionId] : []))\n-      questionPresenceLoaded = true\n+      awaitingAnswer = new Map(questions?.views.flatMap((entry) => entry.view ? [[entry.sessionId, entry.view.timestamp] as const] : []))\n       changed()\n     } catch (cause) {\n       if (detailRows === rows) questionRetry.failed(cause)",
+              "mutation": "3051a3b0-aa37-475c-a1c4-8779904bdad3",
+              "path": "webview/src/client/session-readings.ts"
+            },
+            {
+              "hunk": "@@ -115,20 +115,17 @@\n       void refresh()\n     }\n   }))\n-  // Catalog state covers questions in chats other than the one on screen.\n-  createEffect(on(() => [dismissalKey(), client.state().questionPresenceLoaded, client.state().sessions] as const, ([, loaded, sessions]) => {\n-    if (!loaded) return\n-    const next = new Set(sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))\n-    const remembered = dismissedWaiting()\n-    if (!remembered) return\n-    if ([...next].some((id) => !remembered.has(id))) {\n+  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt] as const, ([, openedAt]) => {\n+    const remembered = dismissedAt()\n+    // Phone and machine clock skew can shift when a question counts as newer.\n+    if (remembered !== undefined && openedAt !== undefined && openedAt > remembered) {\n       remember(undefined)\n       void refresh()\n-    } else if (next.size !== remembered.size) remember(next)\n+    }\n   }))\n   const registration = {\n-    state, busy, dismissed: () => dismissedWaiting() !== undefined,\n-    dismiss: () => remember(new Set(client.state().sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))),\n+    state, busy, dismissed: () => dismissedAt() !== undefined,\n+    dismiss: () => remember(Date.now()),\n     enable, snapshot,\n   }\n   registrations.set(client, registration)",
+              "mutation": "430344cf-0c88-4870-8354-bf104eaf1bf4",
+              "path": "webview/src/modules/remote/push-registration.ts"
+            },
+            {
+              "hunk": "@@ -115,10 +115,13 @@\n       void refresh()\n     }\n   }))\n-  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt] as const, ([, openedAt]) => {\n+  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt, state().kind] as const, ([, openedAt, kind]) => {\n     const remembered = dismissedAt()\n     // Phone and machine clock skew can shift when a question counts as newer.\n-    if (remembered !== undefined && openedAt !== undefined && openedAt > remembered) {\n+    if (remembered === undefined || openedAt === undefined || openedAt <= remembered || kind === \"loading\") return\n+    // A question this phone was notified of does not reopen the offer later.\n+    if (kind === \"on\") remember(openedAt)\n+    else {\n       remember(undefined)\n       void refresh()\n     }",
+              "mutation": "1ebdf6c1-7b1c-4965-9654-3fb666ae64cd",
+              "path": "webview/src/modules/remote/push-registration.ts"
+            }
+          ],
+          "label": "a-pending-question-snapshot-can-overwrite-a-newer-question-p",
+          "location": "webview/src/client/session-readings.ts:125-130; webview/src/modules/remote/push-registration.ts:113-125",
+          "severity": "P1",
+          "title": "A pending question snapshot can overwrite a newer question patch"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -115,20 +115,17 @@\n       void refresh()\n     }\n   }))\n-  // Catalog state covers questions in chats other than the one on screen.\n-  createEffect(on(() => [dismissalKey(), client.state().questionPresenceLoaded, client.state().sessions] as const, ([, loaded, sessions]) => {\n-    if (!loaded) return\n-    const next = new Set(sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))\n-    const remembered = dismissedWaiting()\n-    if (!remembered) return\n-    if ([...next].some((id) => !remembered.has(id))) {\n+  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt] as const, ([, openedAt]) => {\n+    const remembered = dismissedAt()\n+    // Phone and machine clock skew can shift when a question counts as newer.\n+    if (remembered !== undefined && openedAt !== undefined && openedAt > remembered) {\n       remember(undefined)\n       void refresh()\n-    } else if (next.size !== remembered.size) remember(next)\n+    }\n   }))\n   const registration = {\n-    state, busy, dismissed: () => dismissedWaiting() !== undefined,\n-    dismiss: () => remember(new Set(client.state().sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))),\n+    state, busy, dismissed: () => dismissedAt() !== undefined,\n+    dismiss: () => remember(Date.now()),\n     enable, snapshot,\n   }\n   registrations.set(client, registration)",
+              "mutation": "430344cf-0c88-4870-8354-bf104eaf1bf4",
+              "path": "webview/src/modules/remote/push-registration.ts"
+            },
+            {
+              "hunk": "@@ -115,10 +115,13 @@\n       void refresh()\n     }\n   }))\n-  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt] as const, ([, openedAt]) => {\n+  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt, state().kind] as const, ([, openedAt, kind]) => {\n     const remembered = dismissedAt()\n     // Phone and machine clock skew can shift when a question counts as newer.\n-    if (remembered !== undefined && openedAt !== undefined && openedAt > remembered) {\n+    if (remembered === undefined || openedAt === undefined || openedAt <= remembered || kind === \"loading\") return\n+    // A question this phone was notified of does not reopen the offer later.\n+    if (kind === \"on\") remember(openedAt)\n+    else {\n       remember(undefined)\n       void refresh()\n     }",
+              "mutation": "1ebdf6c1-7b1c-4965-9654-3fb666ae64cd",
+              "path": "webview/src/modules/remote/push-registration.ts"
+            }
+          ],
+          "label": "paint-coalescing-hides-the-answered-to-waiting-transition-in",
+          "location": "webview/src/modules/remote/push-registration.ts:113-127",
+          "severity": "P1",
+          "title": "Paint coalescing hides the answered-to-waiting transition in a remembered chat"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -115,20 +115,17 @@\n       void refresh()\n     }\n   }))\n-  // Catalog state covers questions in chats other than the one on screen.\n-  createEffect(on(() => [dismissalKey(), client.state().questionPresenceLoaded, client.state().sessions] as const, ([, loaded, sessions]) => {\n-    if (!loaded) return\n-    const next = new Set(sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))\n-    const remembered = dismissedWaiting()\n-    if (!remembered) return\n-    if ([...next].some((id) => !remembered.has(id))) {\n+  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt] as const, ([, openedAt]) => {\n+    const remembered = dismissedAt()\n+    // Phone and machine clock skew can shift when a question counts as newer.\n+    if (remembered !== undefined && openedAt !== undefined && openedAt > remembered) {\n       remember(undefined)\n       void refresh()\n-    } else if (next.size !== remembered.size) remember(next)\n+    }\n   }))\n   const registration = {\n-    state, busy, dismissed: () => dismissedWaiting() !== undefined,\n-    dismiss: () => remember(new Set(client.state().sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))),\n+    state, busy, dismissed: () => dismissedAt() !== undefined,\n+    dismiss: () => remember(Date.now()),\n     enable, snapshot,\n   }\n   registrations.set(client, registration)",
+              "mutation": "430344cf-0c88-4870-8354-bf104eaf1bf4",
+              "path": "webview/src/modules/remote/push-registration.ts"
+            }
+          ],
+          "label": "tapping-later-before-question-presence-loads-immediately-los",
+          "location": "webview/src/modules/remote/push-registration.ts:129-131",
+          "severity": "P2",
+          "title": "Tapping Later before question presence loads immediately loses the dismissal"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "bb19e7fb90d2",
+      "persona": "reviewer-code-quality",
+      "run": "ff32ee67d96a",
+      "session": "8785ca7e8a9c",
+      "start": 1792855635430
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

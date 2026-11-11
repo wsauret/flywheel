@@ -1,0 +1,203 @@
+diff --git a/scripts/binary-native-assets.ts b/scripts/binary-native-assets.ts
+index 34d3dda..eb9afd0 100644
+--- a/scripts/binary-native-assets.ts
++++ b/scripts/binary-native-assets.ts
+@@ -84,6 +84,9 @@ export const TREE_SITTER_WASM_FILES = [
+   "tree-sitter-python.wasm",
+ ] as const;
+ 
++/** OpenTUI's tree-sitter Worker script, staged under its package name. */
++export const OPENTUI_PARSER_WORKER_FILE = "parser.worker.js";
++
+ export const TOKENIZER_ASSET_FILE = "flywheel-tokenizer.wasm.zst";
+ 
+ /** The launchd program for the macOS account service, as the application
+@@ -397,6 +400,7 @@ export async function copyNativeAssets(
+     await copyFile(forwarderSource, join(nativeDir, WINDOWS_GIT_FORWARDER_EXECUTABLE));
+   }
+   await copyFile(await openTuiLibraryPath(root, platformArch), join(nativeDir, `libopentui${nativeLibraryExt(platformArch)}`));
++  await copyFile(join(root, "node_modules", "@opentui", "core", OPENTUI_PARSER_WORKER_FILE), join(nativeDir, OPENTUI_PARSER_WORKER_FILE));
+   await copyTreeSitterWasmAssets(root, nativeDir);
+ 
+   const runtimeNodeModulesDir = join(nativeDir, "node_modules");
+@@ -433,6 +437,7 @@ export async function verifyNativeAssets(nativeDir: string, platformArch: string
+   for (const asset of TREE_SITTER_WASM_ASSETS) {
+     if (!entries.includes(asset.destination)) missing.push(asset.destination);
+   }
++  if (!entries.includes(OPENTUI_PARSER_WORKER_FILE)) missing.push(OPENTUI_PARSER_WORKER_FILE);
+ 
+   const openTuiExt = nativeLibraryExt(platformArch);
+   if (!entries.some((entry) => isOpenTuiLibrary(entry, openTuiExt))) {
+diff --git a/scripts/build-binary.ts b/scripts/build-binary.ts
+index 3e5b123..64091b7 100644
+--- a/scripts/build-binary.ts
++++ b/scripts/build-binary.ts
+@@ -16,12 +16,13 @@ import {
+   ensureTargetNativePackages,
+   type NativeProvenance,
+   nativeLibraryExt,
++  OPENTUI_PARSER_WORKER_FILE,
+   platformArchForTarget,
+   TREE_SITTER_WASM_FILES,
+   verifyNativeAssets,
+ } from "./binary-native-assets.js";
+ import { BINARY_COMPILE_FLAGS, BINARY_ENTRIES, bundledEntryName } from "./binary-entries.js";
+-import { patchBundleScript } from "./bundle-asset-patch.js";
++import { patchBundleScript, unrewrittenAssetBindings } from "./bundle-asset-patch.js";
+ import { GENERATED_MANIFESTS, manifestRestoreSource } from "./build-manifest.js";
+ import { patchOpenTuiNativePackageImportFiles, restorePatchedFiles } from "./opentui-native-package-patch.js";
+ import { BUILD_METADATA_FILE, buildExecutable, computeBuildId } from "../src/infra/update/build-identity.js";
+@@ -177,22 +178,32 @@ console.log("Patching asset paths...");
+ const canonicalAssetNames = new Set([
+   `libopentui${nativeLibraryExt(platformArch)}`,
+   ...TREE_SITTER_WASM_FILES,
++  OPENTUI_PARSER_WORKER_FILE,
+ ]);
+ let patchCount = 0;
+ let attributedChunkImportCount = 0;
+ const canonicalizedAssets = new Set<string>();
++const unrewritten: string[] = [];
+ for (const output of bundleResult.outputs) {
+   if (!output.path.endsWith(".js")) continue;
+   const patched = patchBundleScript(await readFile(output.path, "utf-8"), { platformArch, canonicalAssetNames });
+   patchCount += patched.assetReferences;
+   attributedChunkImportCount += patched.attributedChunkImports;
+   for (const name of patched.canonicalizedAssets) canonicalizedAssets.add(name);
++  for (const path of unrewrittenAssetBindings(patched.source)) unrewritten.push(`${basename(output.path)}: ${path}`);
+   await Bun.write(output.path, patched.source);
+ }
+ if (patchCount === 0) {
+   console.error("Asset path patch matched 0 references — bundle output format changed.");
+   process.exit(1);
+ }
++// A file-asset binding the patch missed resolves inside the executable's
++// virtual FS at runtime, where the asset is absent, so the feature behind it
++// silently stops working in every installed build.
++if (unrewritten.length > 0) {
++  console.error(`Asset path patch left ${unrewritten.length} relative file-asset binding(s): ${unrewritten.join(", ")}`);
++  process.exit(1);
++}
+ console.log(`  patched ${patchCount} asset reference(s), ${attributedChunkImportCount} attributed chunk import(s)`);
+ 
+ // Step 2b: Compile bundle into standalone binary.
+diff --git a/scripts/bundle-asset-patch.ts b/scripts/bundle-asset-patch.ts
+index 6c7bc5b..0a27b32 100644
+--- a/scripts/bundle-asset-patch.ts
++++ b/scripts/bundle-asset-patch.ts
+@@ -1,7 +1,8 @@
+ // Rewrites one bundled script so its native asset references resolve next to
+ // the executable on disk instead of inside Bun's standalone-binary virtual FS.
+ //
+-// Bun.build() emits sibling wasm/scm/dylib/so/dll assets with hashed names and
++// Bun.build() emits sibling wasm/scm/dylib/so/dll assets, and Worker scripts
++// such as OpenTUI's tree-sitter parser worker, with hashed names and
+ // rewrites each asset import into a module-level string binding, e.g.
+ // `var tree_sitter_default = "./tree-sitter-abc.wasm";`. `bun build --compile`
+ // only embeds files referenced via `with { type: "file" }` in source, so the
+@@ -27,7 +28,7 @@ export interface BundleAssetPatchResult {
+   readonly canonicalizedAssets: ReadonlySet<string>
+ }
+ 
+-const assetBindingPattern = /(var \w+_default = )"\.\/([^"\\]+\.(?:wasm|scm|dylib|so|dll))"/g
++const assetBindingPattern = /(var \w+_default = )"\.\/([^"\\]+\.(?:wasm|scm|dylib|so|dll|js))"/g
+ 
+ // Splitting moves a dynamically imported asset into its own chunk but keeps
+ // the import attribute on the rewritten specifier, e.g.
+@@ -38,6 +39,10 @@ const assetBindingPattern = /(var \w+_default = )"\.\/([^"\\]+\.(?:wasm|scm|dyli
+ // imported as code.
+ const attributedChunkImportPattern = /import\("(\.\/chunk-[^"]+\.js)", \{ with: \{ type: "(?:file|wasm)" \} \}\)/g
+ 
++// Every relative string binding Bun emits for a `type: "file"` import,
++// whatever its extension.
++const relativeAssetBindingPattern = /var \w+_default = "(\.\/[^"\\]+)"/g
++
+ const hashedAssetPattern = /-[a-z0-9]{8}(\.[a-z0-9]+)$/
+ 
+ export function nativeAssetPathExpression(platformArch: string, name: string): string {
+@@ -66,3 +71,10 @@ export function patchBundleScript(source: string, options: BundleAssetPatchOptio
+     })
+   return { source: patched, assetReferences, attributedChunkImports, canonicalizedAssets }
+ }
++
++/** The relative paths of file-asset bindings left in a patched script. Each
++ *  one resolves inside the executable's virtual FS, where no asset exists, so
++ *  any result means the asset never loads at runtime. */
++export function unrewrittenAssetBindings(source: string): string[] {
++  return [...source.matchAll(relativeAssetBindingPattern)].map((match) => match[1] ?? "")
++}
+diff --git a/tests/unit/scripts/binary-native-assets.test.ts b/tests/unit/scripts/binary-native-assets.test.ts
+index 6e40395..3f9681e 100644
+--- a/tests/unit/scripts/binary-native-assets.test.ts
++++ b/tests/unit/scripts/binary-native-assets.test.ts
+@@ -15,6 +15,7 @@ import {
+   hostPlatformArch,
+   nativeEnv,
+   nativeRuntimePackages,
++  OPENTUI_PARSER_WORKER_FILE,
+   platformArchForTarget,
+   resolveRipgrepStagingPath,
+   resolveNativeAddonStagingPath,
+@@ -205,6 +206,11 @@ describe("native asset staging", () => {
+     await expect(verifyNativeAssets(nativeDir, "win32-x64", repo)).rejects.toThrow("flywheel-git-forwarder.exe");
+   });
+ 
++  it("requires the tree-sitter parser worker, which highlighting cannot run without", async () => {
++    const nativeDir = temporaryDirectory("flywheel-native-worker-missing-");
++    await expect(verifyNativeAssets(nativeDir, hostPlatformArch(), repo)).rejects.toThrow(OPENTUI_PARSER_WORKER_FILE);
++  });
++
+   it("patches its own copy of a runtime package that the checkout installs as a link, never the linked package", async () => {
+     const root = temporaryDirectory("flywheel-native-linked-");
+     // A checkout whose packages are links, as a linker that links each
+@@ -230,6 +236,9 @@ describe("native asset staging", () => {
+     expect(readFileSync(join(nativeDir, "tree-sitter-python.wasm"))).toEqual(
+       readFileSync(join(repo, "node_modules", "@vscode", "tree-sitter-wasm", "wasm", "tree-sitter-python.wasm")),
+     );
++    expect(readFileSync(join(nativeDir, OPENTUI_PARSER_WORKER_FILE))).toEqual(
++      readFileSync(join(repo, "node_modules", "@opentui", "core", "parser.worker.js")),
++    );
+     expect(colour(linkedSharp)).toBe(installed);
+     expect(colour(join(nativeDir, "node_modules", "sharp"))).toContain("require('../../@img/colour/index.cjs')");
+     // A fresh checkout's install is enough to stage a complete native runtime on every platform.
+diff --git a/tests/unit/scripts/bundle-asset-patch.test.ts b/tests/unit/scripts/bundle-asset-patch.test.ts
+index 4b031d8..cb85992 100644
+--- a/tests/unit/scripts/bundle-asset-patch.test.ts
++++ b/tests/unit/scripts/bundle-asset-patch.test.ts
+@@ -1,8 +1,8 @@
+ import { describe, expect, it } from "bun:test"
+ 
+-import { nativeAssetPathExpression, patchBundleScript } from "../../../scripts/bundle-asset-patch.js"
++import { nativeAssetPathExpression, patchBundleScript, unrewrittenAssetBindings } from "../../../scripts/bundle-asset-patch.js"
+ 
+-const canonicalAssetNames = new Set(["libopentui.dll", "libopentui.dylib", "tree-sitter.wasm"])
++const canonicalAssetNames = new Set(["libopentui.dll", "libopentui.dylib", "parser.worker.js", "tree-sitter.wasm"])
+ 
+ describe("bundle asset patch", () => {
+   it("redirects split-bundle asset bindings to the native directory and canonical names", () => {
+@@ -29,6 +29,26 @@ describe("bundle asset patch", () => {
+     ])
+   })
+ 
++  it("redirects the tree-sitter parser worker binding to its canonical name in the native directory", () => {
++    const patched = patchBundleScript(`var parser_worker_default = "./parser.worker-f20nzkxz.js";`, { platformArch: "darwin-arm64", canonicalAssetNames })
++
++    expect(patched.assetReferences).toBe(1)
++    expect([...patched.canonicalizedAssets]).toEqual(["parser.worker-f20nzkxz.js"])
++    expect(patched.source).toBe(`var parser_worker_default = ${nativeAssetPathExpression("darwin-arm64", "parser.worker.js")};`)
++  })
++
++  it("names every relative file-asset binding that a patch left unrewritten", () => {
++    const source = [
++      `var parser_worker_default = "./parser.worker-f20nzkxz.js";`,
++      `var font_default = "./font-0a1b2c3d.ttf";`,
++      `var tree_sitter_default = ${nativeAssetPathExpression("darwin-arm64", "tree-sitter.wasm")};`,
++      `var label_default = "plain string";`,
++    ].join("\n")
++
++    expect(unrewrittenAssetBindings(source)).toEqual(["./parser.worker-f20nzkxz.js", "./font-0a1b2c3d.ttf"])
++    expect(unrewrittenAssetBindings(patchBundleScript(source, { platformArch: "darwin-arm64", canonicalAssetNames }).source)).toEqual(["./font-0a1b2c3d.ttf"])
++  })
++
+   it("builds the native path at runtime from the platform's own path module", () => {
+     // The expression runs inside the executable, so it joins with the
+     // platform's separators and never bakes in the build host's layout.

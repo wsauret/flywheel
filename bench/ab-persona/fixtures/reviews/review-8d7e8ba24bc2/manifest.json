@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In tests/unit/orchestration/app-service/project-state-channel.test.ts, the test \"relays the Worker's response unread\" cannot detect a relay that decodes and re-encodes the body: its byte-equality case uses a body made by the same canonical encoder, which a decode and re-encode reproduces byte for byte, and its \"unreadable\" body is valid MessagePack that only fails schema validation. A catch must say that the test still passes if readdressProjectStateResponse (or the account relay) unpacks and repacks the body, and so does not prove the no-decode claim; naming a non-canonical or non-MessagePack body as the missing case also counts.",
+      "category": "quality",
+      "files": [
+        "tests/unit/orchestration/app-service/project-state-channel.test.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "the-unread-relay-test-passes-with-body-decode-and-re-encode",
+      "title": "The unread-relay test passes with body decode and re-encode restored"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review relay byte forwarding"
+}

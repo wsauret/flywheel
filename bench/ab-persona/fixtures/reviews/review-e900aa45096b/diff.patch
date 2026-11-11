@@ -1,0 +1,97 @@
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index 95160b9..484877a 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -8,7 +8,7 @@ Flywheel text fields provide consistent, discoverable terminal editing controls
+ 
+ The chat prompt and Ask User text inputs use the same editing behavior. Hotkey help is compact and groups the keys relevant to the active control. The Usage view presents its navigation vertically.
+ 
+-In the terminal slash popup, plain Enter submits the command text as typed unless the user explicitly chose a suggestion with arrow keys or a click. Tab completes a suggestion without executing it. Changing the query cancels the prior selection choice. Hovering or initially highlighting a match does not authorize replacing the typed command.
++In the terminal slash popup, Enter completes and executes the currently highlighted suggestion. Tab completes a suggestion without executing it. When no suggestion is available, Enter submits the command text as typed.
+ 
+ ## PI-INTERACTION-002: Transcript selection follows edge dragging
+ 
+@@ -58,6 +58,8 @@ Stop ends a background command, a subagent's current work, or a workflow, and a
+ 
+ Subagent dispatches appear as compact activity rows in the parent transcript. A running subagent row shows up to four recent operation lines as they arrive. Every openable row keeps an open-view affordance after the child settles and never shows an expand-or-collapse affordance. On the web client, subagent rows show activity at the left and keep their open-view affordance visible at the right, independent of text truncation. Tool output bodies, including streaming previews and completed diffs, are not rendered in the parent transcript. A subagent's own session retains its normal tool output views.
+ 
++While a subagent initializes, its row shows only Initializing. Its goal, model, controls, and activity appear together when the child is ready.
++
+ A workflow launched from a chat appears in the chat's transcript as an activity row like a subagent row, marked with the workflow glyph before its name. The row states the workflow's goal, its total operations and tokens across all steps, and its duration. It names no model, because each step can run on a different model. A running workflow row shows up to four recent operation lines.
+ 
+ Subagent and workflow rows open their child's ordinary transcript. In the terminal they open a nested viewer, and Close or Escape returns to the preceding view without interrupting work. On the web client they select the child and preserve parent navigation. Settled rows remain openable.
+@@ -276,6 +278,8 @@ Session navigation lists chats only. The terminal session picker, the web sessio
+ 
+ Automatically generated tab titles capitalize the first letter of every word. Their longer session titles keep natural sentence casing.
+ 
++People can edit a session's tab title and longer description independently. Editing either leaves the other unchanged. Tab titles have a 14-character limit.
++
+ ## PI-INTERACTION-042: An open session is always served
+ 
+ A session open in a tab is always served. After a runtime restart it comes back on its own, idle, with any interrupted work marked in the transcript, and the person never sees it as unserved or is asked to do anything to bring it back. Escape on an idle chat does nothing.
+diff --git a/src/tui/output-blocks/user-message-block.tsx b/src/tui/output-blocks/user-message-block.tsx
+index 02f9a6b..7fca911 100644
+--- a/src/tui/output-blocks/user-message-block.tsx
++++ b/src/tui/output-blocks/user-message-block.tsx
+@@ -121,6 +121,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
+             paddingTop={1}
+             paddingBottom={1}
+             paddingLeft={1}
++            paddingRight={1}
+             backgroundColor={theme.backgroundElement}
+             flexShrink={0}
+             flexDirection="column"
+@@ -170,6 +171,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
+                 paddingTop={1}
+                 paddingBottom={1}
+                 paddingLeft={1}
++                paddingRight={1}
+                 backgroundColor={theme.backgroundElement}
+                 flexShrink={0}
+                 flexDirection="column"
+diff --git a/tests/unit/tui/output-blocks/user-message-block.test.tsx b/tests/unit/tui/output-blocks/user-message-block.test.tsx
+index 500e762..30db78a 100644
+--- a/tests/unit/tui/output-blocks/user-message-block.test.tsx
++++ b/tests/unit/tui/output-blocks/user-message-block.test.tsx
+@@ -61,14 +61,35 @@ describe("user message delivery feedback", () => {
+ })
+ 
+ describe("a sent message's words", () => {
+-  it("shows them as they were sent, with no Markdown applied", async () => {
++  it("shows literal words and wraps inside a grey right margin as the width changes", async () => {
+     const content = "which is larger, 17*23 or 19*21? Keep **this** and `that`."
+-    const result = await testRender(() => <ThemeProvider mode="dark"><UserMessageBlock block={{ kind: "userMessage", id: "mine", content, timestamp: 1, pending: false, injected: false }} /></ThemeProvider>, { width: 90, height: 6 })
++    const [width, setWidth] = createSignal(90)
++    let colors: ReturnType<typeof useTheme>["theme"] | undefined
++    function Harness() {
++      colors = useTheme().theme
++      return <box width={width()} flexDirection="column"><UserMessageBlock block={{ kind: "userMessage", id: "mine", content, timestamp: 1, pending: false, injected: false }} /></box>
++    }
++    const result = await testRender(() => <ThemeProvider mode="dark"><Harness /></ThemeProvider>, { width: 90, height: 6 })
+     try {
+-      await result.renderOnce()
+-      expect(result.captureCharFrame()).toContain(content)
+-      const spans = result.captureSpans().lines.flatMap((line) => line.spans).filter((item) => content.includes(item.text.trim()) && item.text.trim().length > 0)
+-      expect(spans.every((item) => (item.attributes & ITALIC) === 0)).toBe(true)
++      for (const [columns, textRows] of [[90, 1], [content.length + 3, 1], [content.length + 2, 2], [35, 2], [90, 1]] as const) {
++        setWidth(columns)
++        await result.renderOnce()
++        const rows = result.captureCharFrame().split("\n").filter((line) => line.startsWith("┃"))
++        expect(rows).toHaveLength(textRows + 2)
++        expect(rows.slice(1, -1).map((line) => line.slice(2).trim()).join(" ")).toBe(content)
++        for (const row of rows) {
++          expect(row[columns - 1]).toBe(" ")
++          expect(row.slice(columns).trim()).toBe("")
++        }
++        if (!colors) throw new Error("Missing theme")
++        const lines = result.captureSpans().lines.slice(0, rows.length)
++        for (const line of lines) {
++          const cells = line.spans.flatMap((span) => Array.from({ length: span.width }, () => span))
++          expect(cells[columns - 1]?.bg.equals(colors.backgroundElement)).toBe(true)
++        }
++        const spans = lines.flatMap((line) => line.spans).filter((item) => item.text.trim().length > 0)
++        expect(spans.every((item) => (item.attributes & ITALIC) === 0)).toBe(true)
++      }
+     } finally { result.renderer.destroy() }
+   })
+ })

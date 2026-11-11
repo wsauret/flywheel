@@ -1,0 +1,1002 @@
+diff --git a/src/infra/event-store-types.ts b/src/infra/event-store-types.ts
+index c90ae40..f61707c 100644
+--- a/src/infra/event-store-types.ts
++++ b/src/infra/event-store-types.ts
+@@ -512,10 +512,9 @@ function isAsyncGuardedEventAppender(writer: AsyncEventAppender): writer is Asyn
+   )
+ }
+ 
+-/** Out-of-band maintenance for replace-only projections: row deletion and
+- *  superseded-row pruning. Never part of the event-sourcing append path. */
++/** Out-of-band maintenance for replace-only projections: superseded-row
++ *  pruning. Never part of the event-sourcing append path. */
+ interface AsyncEventMaintenance {
+-  deleteByAggregateTypeAndRequestId(aggregateId: string, eventType: string, requestId: string, maxRows?: number): Promise<number>
+   pruneSupersededEvents(aggregateId: string, eventType: string): Promise<number>
+   /** Keyed sibling of `pruneSupersededEvents`: keep the newest row of
+    *  `eventType` per distinct `payloadKey` JSON-path value, delete the rest.
+@@ -571,7 +570,6 @@ export interface LocalSqliteEventStore extends EventStoreReadSurface, EventWrite
+    *  history disposable. Deletes the sequence authority so the next append
+    *  starts at seq 0, and returns the number of fact rows removed. */
+   deleteAggregate(aggregateId: string): number
+-  deleteByAggregateTypeAndRequestId(aggregateId: string, eventType: string, requestId: string, maxRows?: number): number
+   /** Out-of-band maintenance: delete every row of `type` on `aggregateId`
+    *  except the latest, returning the number pruned. For replace-only
+    *  projections (where each event supersedes the prior) the older rows are
+@@ -613,7 +611,6 @@ type LocalEventWrites = {
+   appendBatch(events: readonly EventStoreAppend[]): StoredFact[] | Promise<StoredFact[]>
+   appendGuarded(event: GuardedEventStoreAppend): GuardedAppendResult | Promise<GuardedAppendResult>
+   appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): GuardedAppendResult | Promise<GuardedAppendResult>
+-  deleteByAggregateTypeAndRequestId(aggregateId: string, eventType: string, requestId: string, maxRows?: number): number | Promise<number>
+   pruneSupersededEvents(aggregateId: string, eventType: string): number | Promise<number>
+   pruneSupersededKeyedEvents?(aggregateId: string, eventType: string, payloadKey: string): number | Promise<number>
+   putInFlight?(sessionId: string, kind: string, key: string, payload: unknown): void | Promise<void>
+@@ -644,8 +641,6 @@ export function asAsyncEventWriter(store: LocalEventWrites): AsyncGuardedEventWr
+       stageSessionContentNodes: async (sessionId: string, nodes: readonly SessionContentNodeRow[]) => { await stageNodes(sessionId, nodes) },
+     } : {}),
+     ...asAsyncEventAppender(store),
+-    deleteByAggregateTypeAndRequestId: async (aggregateId, eventType, requestId, maxRows) =>
+-      store.deleteByAggregateTypeAndRequestId(aggregateId, eventType, requestId, maxRows),
+     pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
+     ...(store.pruneSupersededKeyedEvents
+       ? { pruneSupersededKeyedEvents: async (aggregateId: string, eventType: string, payloadKey: string) => store.pruneSupersededKeyedEvents?.(aggregateId, eventType, payloadKey) ?? 0 }
+@@ -681,7 +676,6 @@ function isLocalEventWrites(store: EventReader): store is EventReader & LocalEve
+     "appendBatch" in store && typeof store.appendBatch === "function" &&
+     "appendGuarded" in store && typeof store.appendGuarded === "function" &&
+     "appendBatchGuarded" in store && typeof store.appendBatchGuarded === "function" &&
+-    "deleteByAggregateTypeAndRequestId" in store && typeof store.deleteByAggregateTypeAndRequestId === "function" &&
+     "pruneSupersededEvents" in store && typeof store.pruneSupersededEvents === "function"
+   )
+ }
+diff --git b/src/orchestration/app-service/project-state-commit-window.ts b/src/orchestration/app-service/project-state-commit-window.ts
+new file mode 100644
+index 0000000..010223a
+--- /dev/null
++++ b/src/orchestration/app-service/project-state-commit-window.ts
+@@ -0,0 +1,404 @@
++import { pageReadQuery, type FactQuery, type StoredFact } from "../../infra/event-store-types.js"
++import { factRetention } from "../../infra/fact-retention-registry.js"
++import { Log } from "../../infra/log.js"
++import { coalesceRepeats } from "../../infra/repeat-coalescer.js"
++import { boundedProjectStateSlice, isDegradedStoredFact, PROJECT_STATE_MAX_BYTES, PROJECT_STATE_MAX_PAGE_ROWS } from "./project-state-protocol.js"
++
++/** The estimated encoded bytes of the facts the window holds (user decision). */
++const RETAINED_BYTES = 8 * 1024 * 1024
++/** A fact larger than this is indexed but not held, so one large fact cannot
++ *  push the rest of the window out. A read that matches it goes remote. */
++const MAX_HELD_FACT_BYTES = 512 * 1024
++/** The fields of a fact beside its payload, estimated once for every fact. */
++const FACT_OVERHEAD_BYTES = 256
++/** Keys of the recency index. Each committed aggregate, type, family, and
++ *  session above the floor is one key; past this the window re-anchors. */
++const MAX_RECENCY_KEYS = 65_536
++const REANCHOR_REPORT_MS = 60_000
++
++/** The query fields a local read can answer. Any other field goes remote. */
++const LOCAL_QUERY_FIELDS = new Set(["aggregateId", "aggregateIds", "aggregatePrefix", "sessionId", "types", "afterPosition", "beforePosition", "order", "limit"])
++
++interface Entry {
++  readonly position: number
++  readonly aggregateId: string
++  readonly type: string
++  readonly sessionId: string
++  readonly family: string | undefined
++  readonly bytes: number
++  /** Absent for a fact the window indexes but does not hold. */
++  held: { json: string; fields: Omit<StoredFact, "payload"> } | { fact: StoredFact } | undefined
++}
++
++/** One index key's entries in position order. Eviction removes the oldest
++ *  entry of the window, which is the first entry of each list that holds it. */
++interface EntryList {
++  entries: Entry[]
++  head: number
++}
++
++/** Fills the slot of an evicted entry, so an index list holds no entry the
++ *  window dropped while it waits for compaction. */
++const VACATED: Entry = { position: 0, aggregateId: "", type: "", sessionId: "", family: undefined, bytes: 0, held: undefined }
++/** An index list compacts once this many of its slots are vacated and they
++ *  are at least half of the list, in amortized constant time per eviction. */
++const COMPACTION_FLOOR = 32
++
++type ReanchorReason = "gap" | "unannounced" | "recency-bound"
++
++/** Committed facts the executor heard in the `state.stored` broadcast, so a
++ *  read of recent history can be answered without a state request.
++ *
++ *  The window is exact above its floor F: every fact committed at a position
++ *  in (F, C] arrived, where C is the position it is complete through. The
++ *  state Worker sends every commit notification before the response of any
++ *  request that runs after the commit, and the account relays both in order,
++ *  so a captured position H that the window has reached (C >= H) proves that
++ *  no committed fact at or below H is missing. A fact above C + 1 is a gap
++ *  and a captured H above C is a commit that was never broadcast, such as a
++ *  write by another process on the same store: both re-anchor the window at
++ *  that position and clear it.
++ *
++ *  The window holds the newest facts within its byte budget. Older facts
++ *  above the floor are dropped from the held suffix but stay in the recency
++ *  index, which proves that a key did not move after a position. A degraded
++ *  substitute and a fact over the size cap are indexed but not held, so a
++ *  read whose range meets one goes to the state Worker.
++ *
++ *  The store deletes superseded facts of replace-latest families
++ *  (`factRetention`) out of band, and a prune sends no notification. Facts
++ *  of those families are therefore indexed but never held either: a read
++ *  that meets one goes to the store, and a read that only proves one moved
++ *  stays exact, because a prune never deletes the newest fact of a key. */
++export interface ProjectStateCommitWindow {
++  /** A `state.stored` broadcast, in arrival order. */
++  receive(events: readonly StoredFact[]): void
++  /** A committed position the state Worker captured: anchors the window, or
++   *  re-anchors it when commits at or below it never arrived. */
++  observe(position: number): void
++  /** The broadcast stream was interrupted. Until the next observation, every
++   *  read goes remote. */
++  unanchor(): void
++  /** True when the window answers a page of `query` after `afterPosition`
++   *  through what it heard now, so a read that pays for a capture first
++   *  almost always reads no page from the store. */
++  mayAnswerPage(query: FactQuery, afterPosition: number): boolean
++  /** One page as the state Worker would answer it, or undefined when the
++   *  window cannot prove it complete. */
++  page(query: FactQuery, upperPosition: number, afterPosition: number): { facts: StoredFact[]; continuationPosition: number | null } | undefined
++  /** True when the window answers a bounded slice of `query` through what
++   *  it heard now. */
++  maySlice(query: FactQuery): boolean
++  /** The bounded slice of `query` through `upperPosition`, as SQL would order
++   *  and limit it, or undefined when the window cannot prove it complete. */
++  slice(query: FactQuery, upperPosition: number): StoredFact[] | undefined
++  /** Ends the window: it answers nothing more and no later capture anchors
++   *  it again. Idempotent. */
++  close(): void
++}
++
++export function createProjectStateCommitWindow(): ProjectStateCommitWindow {
++  const log = Log.create({ service: "project-state-commit-window" })
++  const reanchors = coalesceRepeats<{ readonly floor: number }>({
++    windowMs: REANCHOR_REPORT_MS,
++    first: (reason, { floor }) => log.info("commit window re-anchored", { reason, floor }),
++    repeated: (reason, repeats) => log.info("commit window re-anchored repeatedly", { reason, count: repeats.count, windowMs: repeats.windowMs }),
++  })
++  let anchored = false
++  let closed = false
++  let floor = 0
++  let complete = 0
++  let retainedFloor = 0
++  let retainedBytes = 0
++  let all: EntryList = { entries: [], head: 0 }
++  const lists = { aggregate: new Map<string, EntryList>(), type: new Map<string, EntryList>(), family: new Map<string, EntryList>(), session: new Map<string, EntryList>() }
++  const newest = { aggregate: new Map<string, number>(), type: new Map<string, number>(), family: new Map<string, number>(), session: new Map<string, number>() }
++
++  function anchorAt(position: number): void {
++    anchored = true
++    floor = position
++    complete = position
++    retainedFloor = position
++    retainedBytes = 0
++    all = { entries: [], head: 0 }
++    for (const map of Object.values(lists)) map.clear()
++    for (const map of Object.values(newest)) map.clear()
++  }
++
++  function reanchor(position: number, reason: ReanchorReason): void {
++    anchorAt(position)
++    reanchors.observe(reason, { floor: position })
++  }
++
++  function add(fact: StoredFact): void {
++    const family = familyOf(fact.aggregateId)
++    let held: Entry["held"]
++    let bytes = FACT_OVERHEAD_BYTES
++    if (!isDegradedStoredFact(fact) && !prunable(fact.type)) {
++      // The store holds the payload's JSON form, which can differ from the
++      // appender's object: a key set to `undefined` survives the broadcast
++      // but not the store. A local read answers with the stored form.
++      const json = JSON.stringify(fact.payload)
++      if (json.length + FACT_OVERHEAD_BYTES <= MAX_HELD_FACT_BYTES) {
++        held = { json, fields: storedFields(fact) }
++        bytes += json.length
++      }
++    }
++    const entry: Entry = { position: fact.position, aggregateId: fact.aggregateId, type: fact.type, sessionId: fact.sessionId, family, bytes, held }
++    all.entries.push(entry)
++    append(lists.aggregate, entry.aggregateId, entry)
++    append(lists.type, entry.type, entry)
++    append(lists.session, entry.sessionId, entry)
++    if (family !== undefined) append(lists.family, family, entry)
++    newest.aggregate.set(entry.aggregateId, entry.position)
++    newest.type.set(entry.type, entry.position)
++    newest.session.set(entry.sessionId, entry.position)
++    if (family !== undefined) newest.family.set(family, entry.position)
++    retainedBytes += bytes
++    while (retainedBytes > RETAINED_BYTES) evictOldest()
++  }
++
++  function evictOldest(): void {
++    // SAFETY: retainedBytes is positive only while an entry remains.
++    const entry = all.entries[all.head]!
++    advance(all)
++    entry.held = undefined
++    retainedBytes -= entry.bytes
++    retainedFloor = entry.position
++    shift(lists.aggregate, entry.aggregateId)
++    shift(lists.type, entry.type)
++    shift(lists.session, entry.sessionId)
++    if (entry.family !== undefined) shift(lists.family, entry.family)
++  }
++
++  function recencyKeys(): number {
++    return newest.aggregate.size + newest.type.size + newest.family.size + newest.session.size
++  }
++
++  /** True when no fact matching `query` was committed in (after, C]. Valid
++   *  only for `after >= floor`. */
++  function provesNoneAfter(query: FactQuery, after: number): boolean {
++    const unmoved = (map: Map<string, number>, key: string) => (map.get(key) ?? 0) <= after
++    if (complete <= after) return true
++    if (query.aggregateId !== undefined && unmoved(newest.aggregate, query.aggregateId)) return true
++    if (query.aggregateIds?.every((id) => unmoved(newest.aggregate, id))) return true
++    if (query.types?.every((type) => unmoved(newest.type, type))) return true
++    if (query.sessionId !== undefined && unmoved(newest.session, query.sessionId)) return true
++    return query.aggregatePrefix !== undefined && unmoved(newest.family, query.aggregatePrefix)
++  }
++
++  /** The entry lists of the most selective field of `query` in (after, upper]. */
++  function candidates(query: FactQuery, after: number, upper: number): EntryList[] {
++    const keyed = (map: Map<string, EntryList>, keys: Iterable<string>) => [...new Set(keys)].flatMap((key) => map.get(key) ?? [])
++    const options: EntryList[][] = []
++    if (query.aggregateId !== undefined) options.push(keyed(lists.aggregate, [query.aggregateId]))
++    if (query.aggregateIds !== undefined) options.push(keyed(lists.aggregate, query.aggregateIds))
++    if (query.types !== undefined) options.push(keyed(lists.type, query.types))
++    if (query.sessionId !== undefined) options.push(keyed(lists.session, [query.sessionId]))
++    if (query.aggregatePrefix !== undefined) options.push(keyed(lists.family, [query.aggregatePrefix]))
++    if (options.length === 0) return [all]
++    let best: EntryList[] = []
++    let bestCount = Number.POSITIVE_INFINITY
++    for (const option of options) {
++      const count = option.reduce((total, list) => total + countWithin(list, after, upper), 0)
++      if (count < bestCount) {
++        best = option
++        bestCount = count
++      }
++    }
++    return best
++  }
++
++  /** The matches of `query` in (after, upper], in `order`, up to `limit`, or
++   *  undefined when one of them is indexed but not held. */
++  function collect(query: FactQuery, after: number, upper: number, order: "asc" | "desc", limit: number): StoredFact[] | undefined {
++    const facts: StoredFact[] = []
++    if (limit <= 0) return facts
++    const aggregateIds = query.aggregateIds && new Set(query.aggregateIds)
++    const types = query.types && new Set(query.types)
++    for (const entry of merged(candidates(query, after, upper), after, upper, order)) {
++      if (query.aggregateId !== undefined && entry.aggregateId !== query.aggregateId) continue
++      if (aggregateIds && !aggregateIds.has(entry.aggregateId)) continue
++      if (types && !types.has(entry.type)) continue
++      if (query.sessionId !== undefined && entry.sessionId !== query.sessionId) continue
++      if (query.aggregatePrefix !== undefined && entry.family !== query.aggregatePrefix) continue
++      const fact = materialize(entry)
++      if (!fact) return undefined
++      facts.push(fact)
++      if (facts.length === limit) break
++    }
++    return facts
++  }
++
++  return {
++    receive(events) {
++      if (!anchored) return
++      for (const fact of events) {
++        if (fact.position <= complete) continue
++        if (fact.position > complete + 1) reanchor(fact.position - 1, "gap")
++        complete = fact.position
++        add(fact)
++      }
++      if (recencyKeys() > MAX_RECENCY_KEYS) reanchor(complete, "recency-bound")
++    },
++    observe(position) {
++      if (closed) return
++      if (!anchored) anchorAt(position)
++      else if (complete < position) reanchor(position, "unannounced")
++    },
++    unanchor() {
++      anchored = false
++    },
++    mayAnswerPage(query, afterPosition) {
++      return page(query, complete, afterPosition) !== undefined
++    },
++    page,
++    maySlice(query) {
++      return boundedProjectStateSlice(query, PROJECT_STATE_MAX_PAGE_ROWS, PROJECT_STATE_MAX_BYTES) && slice(query, complete) !== undefined
++    },
++    slice,
++    close() {
++      if (closed) return
++      closed = true
++      anchored = false
++      reanchors.end()
++    },
++  }
++
++  function page(query: FactQuery, upperPosition: number, afterPosition: number): { facts: StoredFact[]; continuationPosition: number | null } | undefined {
++    if (!anchored || !locallyAnswerable(query) || upperPosition > complete) return undefined
++    const bounds = pageReadQuery(query, upperPosition, afterPosition, PROJECT_STATE_MAX_PAGE_ROWS)
++    // SAFETY: pageReadQuery always sets the composed upper bound.
++    const upper = Math.min(upperPosition, bounds.query.beforePosition! - 1)
++    if (upper <= bounds.after) return { facts: [], continuationPosition: null }
++    if (bounds.after < floor) return undefined
++    if (provesNoneAfter(bounds.query, bounds.after)) return { facts: [], continuationPosition: null }
++    if (bounds.after < retainedFloor) return undefined
++    // The lookahead fact shows whether a next page exists, as in the store's page.
++    const facts = collect(bounds.query, bounds.after, upper, "asc", bounds.rows + 1)
++    if (!facts) return undefined
++    const answered = facts.slice(0, bounds.rows)
++    // SAFETY: a lookahead fact past the page means the page holds bounds.rows >= 1 facts.
++    return { facts: answered, continuationPosition: facts.length > answered.length ? answered.at(-1)!.position : null }
++  }
++
++  function slice(query: FactQuery, upperPosition: number): StoredFact[] | undefined {
++    if (!anchored || !locallyAnswerable(query) || query.limit === undefined || upperPosition > complete) return undefined
++    const after = query.afterPosition ?? 0
++    const upper = Math.min(upperPosition, (query.beforePosition ?? Number.POSITIVE_INFINITY) - 1)
++    if (query.limit === 0 || upper <= after) return []
++    if (after >= floor && provesNoneAfter(query, after)) return []
++    const order = query.order ?? "asc"
++    if (order === "asc" && after < retainedFloor) return undefined
++    const facts = collect(query, Math.max(after, retainedFloor), upper, order, query.limit)
++    // A newest-first read below the held suffix is complete only when it
++    // found its limit inside it.
++    if (!facts || (after < retainedFloor && facts.length < query.limit)) return undefined
++    return facts
++  }
++}
++
++/** A fact of a family whose superseded facts the store prunes. */
++function prunable(type: string): boolean {
++  const policy = factRetention(type)?.policy
++  return policy === "replace-latest" || policy === "replace-latest-keyed"
++}
++
++function locallyAnswerable(query: FactQuery): boolean {
++  for (const [field, value] of Object.entries(query)) {
++    if (value !== undefined && !LOCAL_QUERY_FIELDS.has(field)) return false
++  }
++  // The store refuses these shapes as producer bugs; the remote read keeps
++  // that refusal. A prefix deeper than one family has no family index.
++  if (query.aggregateId !== undefined && (query.aggregateIds !== undefined || query.aggregatePrefix !== undefined)) return false
++  return query.aggregatePrefix === undefined || familyOf(query.aggregatePrefix) === query.aggregatePrefix
++}
++
++/** The aggregate family of an id, `workflow:` for `workflow:abc`, as a
++ *  `FactQuery.aggregatePrefix` names it. */
++function familyOf(aggregateId: string): string | undefined {
++  const separator = aggregateId.indexOf(":")
++  return separator === -1 ? undefined : aggregateId.slice(0, separator + 1)
++}
++
++/** The fields of a fact as the store returns them: optional references that
++ *  are absent or empty are omitted, as the row mapping omits them. */
++function storedFields(fact: StoredFact): Omit<StoredFact, "payload"> {
++  return {
++    position: fact.position, id: fact.id, aggregateId: fact.aggregateId, seq: fact.seq, type: fact.type,
++    version: fact.version, timestamp: fact.timestamp, actor: fact.actor, sessionId: fact.sessionId,
++    ...(fact.runId ? { runId: fact.runId } : {}),
++    ...(fact.parentEventId ? { parentEventId: fact.parentEventId } : {}),
++    ...(fact.causedByEventId ? { causedByEventId: fact.causedByEventId } : {}),
++  }
++}
++
++/** The held fact, decoded on its first read and shared by every later one,
++ *  as one broadcast is shared by every listener. */
++function materialize(entry: Entry): StoredFact | undefined {
++  const held = entry.held
++  if (!held) return undefined
++  if ("fact" in held) return held.fact
++  const fact = { ...held.fields, payload: JSON.parse(held.json) }
++  entry.held = { fact }
++  return fact
++}
++
++function append(map: Map<string, EntryList>, key: string, entry: Entry): void {
++  const list = map.get(key)
++  if (list) list.entries.push(entry)
++  else map.set(key, { entries: [entry], head: 0 })
++}
++
++function advance(list: EntryList): void {
++  list.entries[list.head] = VACATED
++  list.head += 1
++  if (list.head >= COMPACTION_FLOOR && list.head * 2 >= list.entries.length) {
++    list.entries = list.entries.slice(list.head)
++    list.head = 0
++  }
++}
++
++function shift(map: Map<string, EntryList>, key: string): void {
++  // SAFETY: every evicted entry was appended to its key's list.
++  const list = map.get(key)!
++  advance(list)
++  if (list.head >= list.entries.length) map.delete(key)
++}
++
++/** The index of the first entry of `list` above `position`. */
++function firstAbove(list: EntryList, position: number): number {
++  let low = list.head
++  let high = list.entries.length
++  while (low < high) {
++    const middle = (low + high) >>> 1
++    // SAFETY: middle lies in [head, length).
++    if (list.entries[middle]!.position <= position) low = middle + 1
++    else high = middle
++  }
++  return low
++}
++
++function countWithin(list: EntryList, after: number, upper: number): number {
++  return firstAbove(list, upper) - firstAbove(list, after)
++}
++
++/** The entries of `lists` in (after, upper], merged in position order. Each
++ *  step costs the number of lists, so a read costs its matches, never the
++ *  size of the window.
++ *  @yields {Entry} Each entry in (after, upper], in `order`. */
++function* merged(lists: readonly EntryList[], after: number, upper: number, order: "asc" | "desc"): Generator<Entry> {
++  const cursors = lists.map((list) => ({ list, index: order === "asc" ? firstAbove(list, after) : firstAbove(list, upper) - 1, end: order === "asc" ? firstAbove(list, upper) : firstAbove(list, after) - 1 }))
++  for (;;) {
++    let next: { readonly cursor: (typeof cursors)[number]; readonly entry: Entry } | undefined
++    for (const cursor of cursors) {
++      if (cursor.index === cursor.end) continue
++      // SAFETY: the index lies strictly between the cursor's bounds.
++      const entry = cursor.list.entries[cursor.index]!
++      if (!next || (order === "asc" ? entry.position < next.entry.position : entry.position > next.entry.position)) next = { cursor, entry }
++    }
++    if (!next) return
++    yield next.entry
++    next.cursor.index += order === "asc" ? 1 : -1
++  }
++}
+diff --git b/tests/integration/local/executor-commit-stream-order.test.ts b/tests/integration/local/executor-commit-stream-order.test.ts
+new file mode 100644
+index 0000000..ce6b210
+--- /dev/null
++++ b/tests/integration/local/executor-commit-stream-order.test.ts
+@@ -0,0 +1,120 @@
++/**
++ * The executor's commit window rests on one ordering promise of the real
++ * stack: the state Worker sends the commit notification of every commit made
++ * on its store connection before the response of any request that runs after
++ * it, and the account relays both to the executor in that order. A captured
++ * position that the executor has heard through therefore proves that it heard
++ * every such commit at or below it.
++ *
++ * The account side here is real: the project state Worker on its own thread,
++ * served over the internal process channel by `serveProjectStateChannel`. The
++ * executor side is a second process that composes the state port as the
++ * executor does and writes and reads concurrently. The account writes on its
++ * own lane, and a second SQLite connection on the same file writes as a
++ * headless run would; no broadcast carries its commits, which is why the
++ * window keeps a capture barrier.
++ */
++
++import { expect, test } from "bun:test"
++import { mkdir } from "node:fs/promises"
++import { join } from "node:path"
++import { fileURLToPath } from "node:url"
++import { runtimeWorkerUrl } from "../../../src/cli/runtime-launch.js"
++import type { EventStoreAppend } from "../../../src/infra/event-store-types.js"
++import { listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../src/infra/internal-process-channel.js"
++import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
++import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
++import { projectExecutorChannelLimits } from "../../../src/orchestration/app-service/project-executor-protocol.js"
++import { serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state-channel.js"
++import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state-client.js"
++import { temporaryDirectories } from "../../helpers/directories.js"
++
++const temporaryDirectory = temporaryDirectories()
++
++const PROBE_ENTRY = fileURLToPath(new URL("_executor-commit-stream-probe.ts", import.meta.url))
++const WRITE_MS = 2_000
++
++interface ProbeResult {
++  readonly anchor: number
++  readonly outOfOrder: number
++  readonly late: number
++  readonly responses: number
++  readonly broadcast: readonly number[]
++}
++
++function fact(aggregateId: string, n: number): EventStoreAppend {
++  return { aggregateId, sessionId: aggregateId, type: "probe.fact", version: 1, timestamp: n, actor: "probe", payload: { n } }
++}
++
++test("every commit of the account's store connection reaches the executor in position order and before any response that covers it", async () => {
++  const root = temporaryDirectory("executor-commit-stream-")
++  const cwd = process.cwd()
++  const directories = { projectRoot: root, executionCwd: root, accountHome: join(root, "account"), userDataRoot: join(root, "account", ".flywheel") }
++  await mkdir(join(root, ".git"))
++  await mkdir(directories.userDataRoot, { recursive: true })
++  const state = spawnProjectStateWorker(directories, root, runtimeWorkerUrl()).acquire()
++  const served: (() => Promise<void>)[] = []
++  let server: InternalProcessChannelServer | undefined
++  let probe: Bun.Subprocess<"pipe", "pipe", "pipe"> | undefined
++  let foreign: ReturnType<typeof createSqliteEventStore> | undefined
++  try {
++    await state.capturePosition()
++    expect(await state.execution({ kind: "generation.admit", projectId: "probe", generation: 1 })).toEqual({ kind: "ok" })
++    // A Unix socket path has a limit of about 104 bytes, so the server
++    // listens by a relative name with the root as the cwd.
++    process.chdir(root)
++    server = listenInternalProcessChannel<unknown, unknown>({
++      path: "state.sock", decode: (value) => value, ...projectExecutorChannelLimits("state"),
++      onConnection(endpoint) {
++        served.push(serveProjectStateChannel(state, endpoint, { kind: "executor", projectId: "probe", generation: 1 }))
++      },
++    })
++    await server.ready
++    probe = Bun.spawn([process.execPath, PROBE_ENTRY, "state.sock"], { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "pipe", windowsHide: true })
++    const output = Promise.all([new Response(probe.stdout).text(), new Response(probe.stderr).text(), probe.exited])
++    foreign = createSqliteEventStore(resolveEventStoreDbFile(root))
++    const foreignStore = foreign
++    const foreignPositions: number[] = []
++    const deadline = performance.now() + WRITE_MS
++    await Promise.all([
++      (async () => {
++        for (let n = 0; performance.now() < deadline; n++) {
++          await state.writer.append(fact("account", n))
++          await Bun.sleep(2)
++        }
++      })(),
++      (async () => {
++        for (let n = 0; performance.now() < deadline; n++) {
++          foreignPositions.push(foreignStore.append(fact("foreign", n)).position)
++          await Bun.sleep(37)
++        }
++      })(),
++    ])
++    probe.stdin.write("done\n")
++    await probe.stdin.flush()
++    const [stdout, stderr, exitCode] = await output
++    if (exitCode !== 0) throw new Error(`the executor-side probe exited ${exitCode}: ${stderr}`)
++    const result: ProbeResult = JSON.parse(stdout.trim().split("\n").at(-1)!)
++    const committed = (await state.readSlice({ types: ["probe.fact"], afterPosition: result.anchor })).facts.map((event) => event.position)
++
++    expect(result.responses).toBeGreaterThan(100)
++    expect(result.outOfOrder).toBe(0)
++    expect(result.late).toBe(0)
++    const foreignSet = new Set(foreignPositions)
++    expect(foreignPositions.length).toBeGreaterThan(0)
++    expect(result.broadcast.filter((position) => position > result.anchor)).toEqual(committed.filter((position) => !foreignSet.has(position)))
++  } finally {
++    // The server removes its socket by the relative name when it closes, so
++    // the cwd changes back after that, also when a close step throws.
++    try {
++      probe?.kill()
++      await probe?.exited
++      foreign?.close()
++      for (const stop of served) await stop()
++      await server?.dispose()
++      await state.close()
++    } finally {
++      process.chdir(cwd)
++    }
++  }
++}, 60_000)
+diff --git a/tests/integration/local/project-lane-failure-recovery.test.ts b/tests/integration/local/project-lane-failure-recovery.test.ts
+index 9aa4963..f6d5d89 100644
+--- a/tests/integration/local/project-lane-failure-recovery.test.ts
++++ b/tests/integration/local/project-lane-failure-recovery.test.ts
+@@ -78,7 +78,6 @@ test("the real state Worker fences every executor state producer while account w
+       { kind: "append", item },
+       { kind: "append.batch", items: [item] },
+       { kind: "append", item: { sessionId: "session", events: [], inFlight: [{ op: "put", kind: "tool", key: "old", payload: {} }] } },
+-      { kind: "maintenance.delete", aggregateId: "session:session", eventType: "test.fenced", requestId: "old", maxRows: 1 },
+       { kind: "maintenance.prune", aggregateId: "session:session", eventType: "test.fenced" },
+       { kind: "maintenance.prune-keyed", aggregateId: "session:session", eventType: "test.fenced", payloadKey: "id" },
+       { kind: "session.control", command: { kind: "session.update-label", id: "session", labels: { label: "Old", shortLabel: "Old" }, source: "generated" } },
+diff --git a/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts b/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts
+index bb5d620..93b9fe0 100644
+--- a/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts
++++ b/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts
+@@ -271,10 +271,10 @@ describe.each(surfaces)("event read surface contract: %s", (_surface, open) => {
+   test("the aggregate count follows surviving rows and the sequence keeps the last assigned value", async () => {
+     const { reader, store } = await open()
+     expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([0, -1])
+-    store.appendBatch([fact("one", { requestId: "a" }), fact("one", { requestId: "b" }), fact("one", { requestId: "c" })])
++    store.appendBatch([fact("queue.state.changed"), fact("queue.state.changed"), fact("queue.state.changed")])
+     expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([3, 2])
+-    for (const requestId of ["a", "b", "c"]) store.deleteByAggregateTypeAndRequestId("session:s", "one", requestId)
+-    expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([0, 2])
++    expect(store.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(2)
++    expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([1, 2])
+   })
+ 
+   test("eager reads and contentFor resolve every reference site and no other field, deferred pages resolve none, and integrity gaps fail at the hydration seam", async () => {
+diff --git a/tests/unit/orchestration/app-service/project-execution-state.test.ts b/tests/unit/orchestration/app-service/project-execution-state.test.ts
+index 66bf6b2..1259453 100644
+--- a/tests/unit/orchestration/app-service/project-execution-state.test.ts
++++ b/tests/unit/orchestration/app-service/project-execution-state.test.ts
+@@ -36,7 +36,6 @@ function fixture() {
+     owedRecoveries: () => [],
+     settleRecovery: async () => {},
+     appendWriteItem: store.writerLane.appendWriteItem,
+-    deleteByAggregateTypeAndRequestId: store.deleteByAggregateTypeAndRequestId,
+     pruneSupersededEvents: store.pruneSupersededEvents,
+     pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents!(aggregate, type, key),
+     pruneRetiredFamilyChunk: () => { throw new Error("unexpected retired-family prune") },
+@@ -180,7 +179,6 @@ describe("project execution state", () => {
+       expect(stoppedCalls).toBe(0)
+       expect(await store.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(0)
+       expect(await store.pruneSupersededKeyedEvents!("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
+-      expect(await store.deleteByAggregateTypeAndRequestId("session:s", "test.fact", "absent")).toBe(0)
+ 
+       const pending = store.append(fact({ draining: true }))
+       await runtime.dispose()
+diff --git a/tests/unit/orchestration/app-service/project-state-channel.test.ts b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+index a75394c..c7bf6f8 100644
+--- a/tests/unit/orchestration/app-service/project-state-channel.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+@@ -129,7 +129,6 @@ function stateHarness() {
+     appendBatch: async () => [],
+     appendGuarded: async () => ({ kind: "stored", events: [storedFact] }),
+     appendBatchGuarded: async () => ({ kind: "stored", events: [] }),
+-    deleteByAggregateTypeAndRequestId: async () => 0,
+     pruneSupersededEvents: async () => 0,
+     pruneSupersededKeyedEvents: async () => 0,
+   }
+diff --git a/tests/unit/orchestration/app-service/project-state-client.test.ts b/tests/unit/orchestration/app-service/project-state-client.test.ts
+index 64559e0..e07b341 100644
+--- a/tests/unit/orchestration/app-service/project-state-client.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-client.test.ts
+@@ -372,17 +372,15 @@ describe("project state client", () => {
+     await expect(batch).resolves.toEqual([{ ...first, id: "2", position: 2, seq: 1 }, { ...second, id: "3", position: 3, seq: 0 }])
+ 
+     const operations = [
+-      client.writer.deleteByAggregateTypeAndRequestId("a", "t", "r"),
+       client.writer.pruneSupersededEvents("a", "t"),
+       client.writer.pruneSupersededKeyedEvents!("a", "t", "$.key"),
+     ]
+     expect(harness.sent.slice(2).map(({ operation }) => operation)).toEqual([
+-      { kind: "maintenance.delete", aggregateId: "a", eventType: "t", requestId: "r", maxRows: Number.MAX_SAFE_INTEGER },
+       { kind: "maintenance.prune", aggregateId: "a", eventType: "t" },
+       { kind: "maintenance.prune-keyed", aggregateId: "a", eventType: "t", payloadKey: "$.key" },
+     ])
+     for (const request of harness.sent.slice(2)) harness.respond({ id: request.id, result: { kind: "maintenance", affected: request.id } })
+-    await expect(Promise.all(operations)).resolves.toEqual([3, 4, 5])
++    await expect(Promise.all(operations)).resolves.toEqual([3, 4])
+   })
+ 
+   test("writer exposes refusal and typed settlement failures without retrying", async () => {
+diff --git b/tests/unit/orchestration/app-service/project-state-commit-window.test.ts b/tests/unit/orchestration/app-service/project-state-commit-window.test.ts
+new file mode 100644
+index 0000000..c00b40d
+--- /dev/null
++++ b/tests/unit/orchestration/app-service/project-state-commit-window.test.ts
+@@ -0,0 +1,304 @@
++import { afterEach, describe, expect, spyOn, test } from "bun:test"
++import { closeFixtures, fixture } from "./_project-state-worker-fixture.js"
++import { ProjectStateUnavailableError, type ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
++import { createProjectStateCommitWindow } from "../../../../src/orchestration/app-service/project-state-commit-window.js"
++import { createEventProjection } from "../../../../src/infra/event-projection.js"
++import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
++import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type EventStoreAppend, type FactQuery, type StoredFact } from "../../../../src/infra/event-store-types.js"
++
++afterEach(closeFixtures)
++
++function fact(payload: { [key: string]: unknown } = {}): EventStoreAppend {
++  return { aggregateId: "session:s", type: "test.fact", version: 1, timestamp: 1, actor: "test", sessionId: "s", payload }
++}
++
++describe("commit window", () => {
++  function appendOf(aggregateId: string, type = "test.fact", payload: { [key: string]: unknown } = {}): EventStoreAppend {
++    return { aggregateId, type, sessionId: aggregateId.split(":").at(-1)!, version: 1, timestamp: 1, actor: "test", payload }
++  }
++
++  /** A client with its window, anchored as the executor's startup capture
++   *  anchors it, after `history` facts it never heard. */
++  async function windowed(history: readonly EventStoreAppend[] = []) {
++    const state = await fixture(undefined, undefined, false, [], { commitWindow: true })
++    if (history.length > 0) state.store.appendBatch(history)
++    await state.client.capturePosition()
++    const enqueue = spyOn(state.service, "enqueue")
++    return {
++      ...state,
++      /** The state requests made since the last call. */
++      requests() {
++        const kinds = enqueue.mock.calls.map(([, operation]) => operation.kind)
++        enqueue.mockClear()
++        return kinds
++      },
++    }
++  }
++
++  /** Every page of `query` in (after, ceiling]. */
++  async function readAll(surface: AsyncEventStateReadSurface, query: FactQuery, ceiling: number, after: number) {
++    const facts: unknown[] = []
++    for (let cursor: number | null = after; cursor !== null;) {
++      const page: Awaited<ReturnType<AsyncEventStateReadSurface["readPage"]>> = await surface.readPage(query, ceiling, cursor)
++      facts.push(...page.facts)
++      cursor = page.continuationPosition
++    }
++    return facts
++  }
++
++  /** The positions of one aggregate's facts, as a held reader folds them. */
++  interface Folded { readonly positions: readonly number[] }
++
++  function counter(client: ProjectStateClient, aggregateId: string) {
++    return createEventProjection<Folded>(client, {
++      aggregateId, factTypes: ["test.fact"],
++      initialState: () => ({ positions: [] }),
++      reduce: (state, event) => ({ positions: [...state.positions, event.position] }),
++    })
++  }
++
++  test("a commit costs every held reader one shared capture and no page, whatever the member count or history", async () => {
++    for (const [members, history] of [[3, 0], [30, 0], [3, 2_000]] as const) {
++      const { client, requests } = await windowed(Array.from({ length: history }, (_, index) => appendOf(`session:m${index % members}`)))
++      const projections = Array.from({ length: members }, (_, index) => counter(client, `session:m${index}`))
++      await Promise.all(projections.map((projection) => projection.replay()))
++      requests()
++      const stored = await client.writer.append(appendOf("session:m0"))
++      requests()
++      await Promise.all(projections.map((projection) => projection.replay()))
++      expect(requests()).toEqual(["position.capture"])
++      expect(projections[0]!.getState().positions.at(-1)).toBe(stored.position)
++      const tail = await client.readSlice({ aggregateId: "session:m0", order: "desc", limit: 1 })
++      expect(tail.facts).toEqual([stored])
++      expect(requests()).toEqual(["position.capture"])
++      await closeFixtures()
++    }
++  })
++
++  test("local pages and tail slices equal the store's answer", async () => {
++    const { client, store, requests } = await windowed([appendOf("session:old")])
++    const floor = store.currentPosition()
++    let seed = 7
++    const random = (bound: number) => {
++      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648
++      return seed % bound
++    }
++    const aggregates = ["session:a", "session:b", "workflow:a", "conversation:x", "plain"]
++    const types = ["t.one", "t.two", "t.three"]
++    for (let batch = 0; batch < 40; batch += 1) {
++      await client.writer.appendBatch(Array.from({ length: 1 + random(4) }, () => appendOf(
++        aggregates[random(aggregates.length)]!, types[random(types.length)], { value: random(100), absent: undefined, list: [undefined, 1] },
++      )))
++    }
++    const sql = asAsyncEventReadSurface(store)
++    const ceiling = store.currentPosition()
++    requests()
++    let compared = 0
++    for (let read = 0; read < 300; read += 1) {
++      const pick = <T>(values: readonly T[]) => random(2) === 0 ? undefined : [...new Set(Array.from({ length: 1 + random(2) }, () => values[random(values.length)]!))]
++      const aggregateIds = random(3) === 0 ? pick(aggregates) : undefined
++      const query: FactQuery = {
++        ...(aggregateIds ? { aggregateIds } : random(3) === 0 ? { aggregateId: aggregates[random(aggregates.length)] } : random(3) === 0 ? { aggregatePrefix: ["session:", "workflow:", "conversation:"][random(3)] } : {}),
++        ...(random(4) === 0 ? { sessionId: ["a", "b", "x"][random(3)] } : {}),
++        ...(pick(types) ? { types: pick(types) } : {}),
++        ...(random(4) === 0 ? { afterPosition: floor + random(ceiling - floor) } : {}),
++        ...(random(4) === 0 ? { beforePosition: floor + random(ceiling - floor + 2) } : {}),
++        ...(random(3) === 0 ? { limit: 1 + random(5) } : {}),
++      }
++      const after = floor + random(ceiling - floor + 1)
++      const page = await readAll(client, query, ceiling, after)
++      expect(page).toStrictEqual(await readAll(sql, query, ceiling, after))
++      const tail = { ...query, afterPosition: query.afterPosition ?? floor, order: "desc" as const, limit: 1 + random(5) }
++      const slice = (await client.readSlice(tail)).facts
++      expect(slice).toStrictEqual((await sql.readSlice(tail)).facts)
++      compared += page.length + slice.length
++    }
++    expect(compared).toBeGreaterThan(300)
++    expect(requests().filter((kind) => kind !== "position.capture")).toEqual([])
++  })
++
++  test("history past the byte budget and a fact past the size cap are read from the store", async () => {
++    const { client, store, requests } = await windowed()
++    const floor = store.currentPosition()
++    const text = "x".repeat(100_000)
++    for (let index = 0; index < 90; index += 1) await client.writer.append(appendOf(`session:s${index % 3}`, "test.fact", { text, index }))
++    const large = await client.writer.append(appendOf("session:s0", "test.fact", { text: "y".repeat(600_000) }))
++    const tail = await client.writer.append(appendOf("session:s1"))
++    const sql = asAsyncEventReadSurface(store)
++    const ceiling = store.currentPosition()
++    requests()
++    expect((await client.readPage({ aggregateId: "session:s1" }, ceiling, large.position)).facts).toEqual([tail])
++    expect(requests()).toEqual([])
++    for (const [query, after] of [[{ aggregateId: "session:s0" }, large.position - 1], [{ types: ["test.fact"] }, floor]] as const) {
++      expect(await readAll(client, query, ceiling, after)).toStrictEqual(await readAll(sql, query, ceiling, after))
++      expect([...new Set(requests())]).toEqual(["facts.page"])
++    }
++  })
++
++  test("a commit that no broadcast announced re-anchors the window, and the next read finds it", async () => {
++    const { client, path, requests } = await windowed()
++    const projection = counter(client, "session:s")
++    await client.writer.append(appendOf("session:s"))
++    await projection.replay()
++    const foreign = createSqliteEventStore(path)
++    try {
++      const unannounced = foreign.append(appendOf("session:s"))
++      requests()
++      await projection.replay()
++      expect(projection.getState().positions.at(-1)).toBe(unannounced.position)
++      expect(requests()).toEqual(["position.capture", "facts.page"])
++      const announced = await client.writer.append(appendOf("session:s"))
++      requests()
++      await projection.replay()
++      expect(projection.getState().positions.at(-1)).toBe(announced.position)
++      expect(requests()).toEqual(["position.capture"])
++    } finally {
++      foreign.close()
++    }
++  })
++
++  test("a lost broadcast or a detached transport never hides a fact from a read", async () => {
++    const { client, requests, dropNextStored, detach } = await windowed()
++    const projection = counter(client, "session:s")
++    await projection.replay()
++    const expected: number[] = []
++    // A lost broadcast at the top of history: the capture shows it.
++    dropNextStored()
++    expected.push((await client.writer.append(appendOf("session:s"))).position)
++    await projection.replay()
++    expect(projection.getState().positions).toEqual(expected)
++    // A lost broadcast below a later one: the later one shows the gap.
++    dropNextStored()
++    expected.push((await client.writer.append(appendOf("session:s"))).position)
++    expected.push((await client.writer.append(appendOf("session:s"))).position)
++    requests()
++    await projection.replay()
++    expect(projection.getState().positions).toEqual(expected)
++    expect(requests()).toEqual(["facts.page"])
++    // A detached transport can lose any broadcast until a read anchors again.
++    detach()
++    expected.push((await client.writer.append(appendOf("session:s"))).position)
++    requests()
++    await projection.replay()
++    expect(projection.getState().positions).toEqual(expected)
++    expect(requests()).toEqual(["facts.page"])
++  })
++
++  test("a fact whose broadcast is a degraded substitute is read from the store", async () => {
++    const { client, store, requests, failContentStaging } = await windowed()
++    const after = store.currentPosition()
++    failContentStaging(new Error("disk full"))
++    store.append({ ...appendOf("session:s", "tool.result.recorded", {
++      toolUseId: "old", outcome: "ok",
++      details: { mutation: { version: 1, files: [{ path: "a", change: "modified", unifiedDiff: "-old\n+new\n" }], omissions: [] } },
++    }), actor: "flywheel" })
++    requests()
++    // The read starts before the substitute arrives, so it pays for a capture.
++    await expect(client.readPage({ aggregateId: "session:s" }, undefined, after)).rejects.toThrow("disk full")
++    expect(requests()).toEqual(["position.capture", "facts.page"])
++  })
++
++  test("a cold read below the window costs one request", async () => {
++    const { client, requests } = await windowed([appendOf("session:s"), appendOf("session:s")])
++    const page = await client.readPage({ aggregateId: "session:s" }, undefined, 0)
++    expect(page.facts).toHaveLength(2)
++    expect(requests()).toEqual(["facts.page"])
++    const tail = await client.readSlice({ aggregateId: "session:s", order: "desc", limit: 1 })
++    expect(tail.facts.map((stored) => stored.position)).toEqual([page.facts[1]!.position])
++    expect(requests()).toEqual(["facts.slice"])
++  })
++
++  test("a read after a prune of superseded facts equals the store's answer", async () => {
++    const { client, store, requests } = await windowed()
++    const floor = store.currentPosition()
++    for (let index = 0; index < 2; index += 1) await client.writer.append(appendOf("session:s", "queue.state.changed", { index }))
++    expect(await client.writer.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(1)
++    const sql = asAsyncEventReadSurface(store)
++    const ceiling = store.currentPosition()
++    const query = { aggregateId: "session:s", types: ["queue.state.changed"] }
++    requests()
++    expect(await readAll(client, query, ceiling, floor)).toStrictEqual(await readAll(sql, query, ceiling, floor))
++    const tail = { ...query, order: "desc" as const, limit: 2 }
++    expect((await client.readSlice(tail)).facts).toStrictEqual((await sql.readSlice(tail)).facts)
++    expect(requests()).toEqual(["facts.page", "facts.slice"])
++  })
++
++  test("a closed transport ends every local read, and no capture that settles later anchors the window again", async () => {
++    const { client, store, closeTransport } = await windowed()
++    const floor = store.currentPosition()
++    await client.writer.append(appendOf("session:s"))
++    const ceiling = store.currentPosition()
++    closeTransport("worker exited")
++    expect(client.available).toBe(false)
++    await expect(client.readPage({ aggregateId: "session:s" }, ceiling, floor)).rejects.toBeInstanceOf(ProjectStateUnavailableError)
++    await expect(client.readSlice({ aggregateId: "session:s", order: "desc", limit: 1 })).rejects.toBeInstanceOf(ProjectStateUnavailableError)
++
++    // A close drains the reads already sent; the ceiling one of them
++    // captured must not anchor the closed window.
++    const closing = await windowed([appendOf("session:cold")])
++    const remote = closing.client.readPage({ aggregateId: "session:cold" }, undefined, 0)
++    const closed = closing.client.close()
++    const { upperPosition } = await remote
++    await closed
++    await expect(closing.client.readPage({ aggregateId: "session:cold" }, upperPosition, upperPosition)).rejects.toBeInstanceOf(ProjectStateUnavailableError)
++  })
++})
++
++describe("commit window memory", () => {
++  function storedOf(position: number, aggregateId: string, payload: { [key: string]: unknown }): StoredFact {
++    return { position, id: String(position), aggregateId, seq: position, type: "test.fact", version: 1, timestamp: 1, actor: "test", sessionId: "s", payload }
++  }
++
++  /** Weak references to the facts a reader got from the window, which the
++   *  window then evicts behind a newer fact of the same key. */
++  function evictedReads(window: ReturnType<typeof createProjectStateCommitWindow>): WeakRef<StoredFact>[] {
++    window.observe(0)
++    const text = "x".repeat(100_000)
++    const refs: WeakRef<StoredFact>[] = []
++    let position = 0
++    for (let index = 0; index < 40; index += 1) {
++      window.receive([storedOf(++position, `session:k${index % 4}`, { index })])
++      const read = window.slice({ aggregateId: `session:k${index % 4}`, order: "desc", limit: 1 }, position)
++      refs.push(new WeakRef(read![0]!))
++    }
++    for (let index = 0; index < 90; index += 1) window.receive([storedOf(++position, `session:k${index % 4}`, { text })])
++    // The oldest facts left the held suffix, so an oldest-first read goes remote.
++    expect(window.slice({ aggregateId: "session:k0", order: "asc", limit: 1 }, position)).toBeUndefined()
++    return refs
++  }
++
++  test("an evicted fact releases its payload", async () => {
++    const window = createProjectStateCommitWindow()
++    const refs = evictedReads(window)
++    await Bun.sleep(0)
++    Bun.gc(true)
++    expect(refs.filter((ref) => ref.deref() !== undefined)).toHaveLength(0)
++    window.close()
++  })
++})
++
++describe("commit notification order", () => {
++  test("answers a request only after the commit notifications of the commits before it", async () => {
++    const { store, client, storedNotifications, holdContentStaging } = await fixture()
++    const staging = Promise.withResolvers<void>()
++    holdContentStaging(staging.promise)
++    // Its notification stages historical evidence, so it waits on the gate.
++    const committed = store.append({ ...fact({
++      toolUseId: "old", outcome: "ok",
++      details: { mutation: { version: 1, files: [{ path: "a", change: "modified", unifiedDiff: "-old\n+new\n" }], omissions: [] } },
++    }), type: "tool.result.recorded", actor: "flywheel" })
++    const notifiedAtResponse = client.capturePosition().then((position) => ({
++      position, notified: storedNotifications.flat().some((event) => event.position === committed.position),
++    }))
++    await Bun.sleep(1)
++    staging.resolve()
++    expect(await notifiedAtResponse).toEqual({ position: committed.position, notified: true })
++  })
++
++  test("a failed commit notification fails no response", async () => {
++    const { client, failNextStored } = await fixture()
++    failNextStored()
++    const stored = await client.writer.append(fact())
++    expect(await client.capturePosition()).toBe(stored.position)
++  })
++})
+diff --git a/tests/unit/orchestration/app-service/project-state-worker.test.ts b/tests/unit/orchestration/app-service/project-state-worker.test.ts
+index b206ecc..5078158 100644
+--- a/tests/unit/orchestration/app-service/project-state-worker.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-worker.test.ts
+@@ -471,7 +471,7 @@ describe("project state read and write boundary", () => {
+ 
+   test("writer preserves batch atomicity, typed rejection, and maintenance behavior through the service", async () => {
+     const { store, client } = await fixture()
+-    const first = await client.writer.append(fact({ requestId: "remove" }))
++    const first = await client.writer.append(fact({ requestId: "first" }))
+     expect(first.position).toBe(1)
+ 
+     const batch = [
+@@ -481,7 +481,6 @@ describe("project state read and write boundary", () => {
+     await expect(client.writer.appendBatchGuarded(batch)).resolves.toMatchObject({ kind: "conflict" })
+     expect(store.currentPosition()).toBe(1)
+ 
+-    expect(await client.writer.deleteByAggregateTypeAndRequestId("session:s", "test.fact", "remove")).toBe(1)
+     expect(await client.writer.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(0)
+     expect(await client.writer.pruneSupersededKeyedEvents?.("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
+   })

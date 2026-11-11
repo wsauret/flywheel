@@ -1,0 +1,406 @@
+diff --git a/docs/product-intent/model-access.md b/docs/product-intent/model-access.md
+index 7eb9cd4..43554b7 100644
+--- a/docs/product-intent/model-access.md
++++ b/docs/product-intent/model-access.md
+@@ -20,7 +20,7 @@ Flywheel notifies once on an observed crossing from below each configured subscr
+ 
+ ## PI-MODEL-006: Banked subscription usage resets
+ 
+-Usage lists every available banked reset with its expiration, earliest first. A single reset is one line; multiple resets form a vertical bulleted list. One Apply action reviews the earliest-expiring reset. Whenever a banked reset is available, the user can review and confirm its application from the Usage view. The provider decides at redemption whether a limit resets, and Flywheel reports that outcome and refreshes usage after it.
++Usage lists every available banked reset with its expiration, earliest first. A single reset is one line; multiple resets form a vertical bulleted list. One Apply action reviews the earliest-expiring reset. Whenever a banked reset is available, the user can review and confirm its application from the Usage view. The provider decides at redemption whether a limit resets, and Flywheel reports that outcome and refreshes usage after it. In an interactive client, when no provider can serve a request and an account refused for used-up included usage has a banked reset, the refusal says so and names Usage as the place to apply it.
+ 
+ ## PI-MODEL-004: Consolidated model identity
+ 
+diff --git a/src/infra/llm/provider-error-copy.ts b/src/infra/llm/provider-error-copy.ts
+index 3b617ab..fd5a922 100644
+--- a/src/infra/llm/provider-error-copy.ts
++++ b/src/infra/llm/provider-error-copy.ts
+@@ -96,12 +96,16 @@ export function exhaustedProvidersRecovery(candidates: readonly { readonly cause
+ 
+ /** Renders request-local evidence after routing ends. Causes and hold bounds
+  * come from routing owners, never from parsing the aggregate's prose.
+- * Admission skips retain their detail without becoming dispatched failures. */
++ * Admission skips retain their detail without becoming dispatched failures.
++ * `bankedReset` marks a candidate whose account holds a banked reset; the
++ * message names its provider only when quota refused that candidate, and
++ * never predicts whether applying the reset lets the request run. */
+ export function exhaustedProvidersCopy(candidates: readonly {
+   readonly provider: string;
+   readonly cause: ProviderUnavailableCause;
+   readonly detail: string;
+   readonly resetsAtMs: number | undefined;
++  readonly bankedReset?: boolean;
+ }[]): ProviderErrorCopy {
+   const causes = new Set(candidates.map((candidate) => candidate.cause).filter((cause) => cause !== "ineligible"));
+   const [firstCause] = causes;
+@@ -116,11 +120,14 @@ export function exhaustedProvidersCopy(candidates: readonly {
+   const skipped = cause !== "ineligible" && candidates.some((candidate) => candidate.cause === "ineligible")
+     ? " Other candidates could not be used for this request."
+     : "";
++  const bankedResets = [...new Set(candidates.filter((candidate) => candidate.cause === "quota" && candidate.bankedReset === true).map((candidate) => candidate.provider))]
++    .map((provider) => ` ${provider} has a banked reset. Open Usage (/usage) to apply it.`)
++    .join("");
+   return {
+     ...base,
+     message: `${base.message}${skipped}${waitBound !== undefined
+       ? ` A request after ${waitBound} can recheck provider availability.`
+-      : bound === undefined ? "" : ` Some candidates have a reset or recheck bound at ${bound}.`}`,
++      : bound === undefined ? "" : ` Some candidates have a reset or recheck bound at ${bound}.`}${bankedResets}`,
+     guidance: exhaustedGuidance(cause, waitBound !== undefined),
+     detail: [...new Set(candidates.map((candidate) =>
+       `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${extractProviderErrorDetail(redactSecrets(candidate.detail))}`
+diff --git a/src/orchestration/agent-runtime/factory.ts b/src/orchestration/agent-runtime/factory.ts
+index 7517086..cb2825f 100644
+--- a/src/orchestration/agent-runtime/factory.ts
++++ b/src/orchestration/agent-runtime/factory.ts
+@@ -19,8 +19,8 @@ import { createWebSearch } from "./web-search/select.js";
+ import type { WebSearchProviderId } from "./web-search/types.js";
+ import { createWebSearchProviderResolver, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../modules.js";
+ import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
+-import type { SubscriptionSpendAuthorization, SubscriptionSpendConsentCapture } from "../subscription-spend-consent/subscription-spend-consent-service.js";
+-import type { RequestAdmission, SubscriptionAllowanceResolver } from "./llm/provider-availability-types.js";
++import type { SubscriptionSpendAuthorization } from "../subscription-spend-consent/subscription-spend-consent-service.js";
++import type { RequestAdmission } from "./llm/provider-availability-types.js";
+ import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
+ import type { SubscriptionAdmissionCapture } from "../subscription-spend-consent/admission-capture.js";
+ import type { AuthConditionOwner } from "../auth/auth-condition-owner.js";
+@@ -65,18 +65,19 @@ export type CaptureProviderConnection = (runtimeConfig?: RuntimeConfigRequestCap
+ export type CaptureSubscriptionAdmission = (candidates: readonly AccessProviderCandidate[], providerSettings: RuntimeConfigRequestCapture["providerSettings"]) => Promise<SubscriptionAdmissionCapture>;
+ 
+ 
+-async function requestAdmissionFromCaptures(capture: SubscriptionSpendConsentCapture | undefined, connection: ProviderConnection | undefined, subscriptionAllowanceFor?: SubscriptionAllowanceResolver): Promise<RequestAdmission> {
++async function requestAdmissionFromCaptures(capture: SubscriptionAdmissionCapture | undefined, connection: ProviderConnection | undefined): Promise<RequestAdmission> {
+   const authorizations = new Map<string, SubscriptionSpendAuthorization>();
+-  if (capture !== undefined) {
++  const consent = capture?.consent;
++  if (consent !== undefined) {
+     const accountMatches = (providerId: string, instanceId: string, subjectDigest: string): boolean => {
+-      if (connection?.profileId === undefined || connection.profileId !== capture.profileId) return false;
++      if (connection?.profileId === undefined || connection.profileId !== consent.profileId) return false;
+       const account = connection.subscriptionCredentials.get(providerId)?.find((candidate) => candidate.instanceId === instanceId);
+       return account?.identity !== undefined
+         && createSubscriptionAccountIdentity(providerId, instanceId, account.identity).subjectDigest === subjectDigest;
+     };
+-    for (const authorization of capture.authorizations.values()) {
++    for (const authorization of consent.authorizations.values()) {
+       const envelope = authorization.envelope;
+-      if (authorization.profileId !== capture.profileId
++      if (authorization.profileId !== consent.profileId
+         || authorization.account.providerId !== envelope.providerId
+         || authorization.account.instanceId !== envelope.instanceId
+         || authorization.account.subjectDigest !== envelope.subjectDigest
+@@ -88,7 +89,7 @@ async function requestAdmissionFromCaptures(capture: SubscriptionSpendConsentCap
+     subscriptionSpendAuthorizationFor: (candidate: AccessProviderCandidate) => candidate.kind === "subscription"
+       ? authorizations.get(`${candidate.providerId}\0${candidate.instanceId}\0${candidate.spendMode}`)
+       : undefined,
+-    ...(subscriptionAllowanceFor === undefined ? {} : { subscriptionAllowanceFor }),
++    ...(capture === undefined ? {} : { subscriptionAllowanceFor: capture.subscriptionAllowanceFor, bankedResetFor: capture.bankedResetFor }),
+   });
+ }
+ 
+@@ -212,7 +213,7 @@ export function createAgentRuntime(deps: {
+   const requestAdmission = (connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture): AdmittedClientOptions["requestAdmission"] => {
+     return async (candidates) => {
+       const capture = await deps.captureSubscriptionAdmission?.(candidates, runtimeConfig.providerSettings);
+-      return requestAdmissionFromCaptures(capture?.consent, connection, capture?.subscriptionAllowanceFor);
++      return requestAdmissionFromCaptures(capture, connection);
+     };
+   };
+   // The definition owner names the project this runtime serves, so every client
+diff --git a/src/orchestration/agent-runtime/llm/client-factory.ts b/src/orchestration/agent-runtime/llm/client-factory.ts
+index b666663..4d5a173 100644
+--- a/src/orchestration/agent-runtime/llm/client-factory.ts
++++ b/src/orchestration/agent-runtime/llm/client-factory.ts
+@@ -345,6 +345,7 @@ function buildChainClient(
+       ...(tokenizerIdentity === undefined ? {} : { tokenizerIdentity }),
+       subscriptionSpendAuthorizationFor: policy.subscriptionSpendAuthorizationFor,
+       ...(policy.subscriptionAllowanceFor === undefined ? {} : { subscriptionAllowanceFor: policy.subscriptionAllowanceFor }),
++      ...(policy.bankedResetFor === undefined ? {} : { bankedResetFor: policy.bankedResetFor }),
+     });
+   };
+   const admittedRequest = async (diagnostic: boolean): Promise<AdmittedModelRequest> => {
+diff --git a/src/orchestration/agent-runtime/llm/failover-client.ts b/src/orchestration/agent-runtime/llm/failover-client.ts
+index 1266793..b6f36e9 100644
+--- a/src/orchestration/agent-runtime/llm/failover-client.ts
++++ b/src/orchestration/agent-runtime/llm/failover-client.ts
+@@ -60,7 +60,7 @@ import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-st
+ import { ThinkingStallError } from "./thinking-stall.js";
+ import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
+ import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure } from "./provider-failure.js";
+-import type { ProviderAvailability, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
++import type { ProviderAvailability, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
+ import type {
+   LLMClient,
+   ModelClient,
+@@ -486,7 +486,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+           continue;
+         }
+         if (mode === "serves") deps.routing.record({ kind: "refused", model: deps.model, passed: passedCandidates(spent) });
+-        throw exhaustedChainError(deps.model, spent, shortName, availability);
++        throw exhaustedChainError(deps.model, spent, shortName, availability, deps.requestAdmission?.bankedResetFor);
+       }
+     }
+ 
+@@ -706,7 +706,7 @@ function failureCopyCause(failure: FailoverFailure): ProviderUnavailableCause {
+   return failure._tag === "OverloadedFailure" ? "overload" : "connection";
+ }
+ 
+-function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[], shortName: (provider: AccessProviderId) => string, availability: ProviderAvailability): AllCandidatesExhaustedError {
++function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[], shortName: (provider: AccessProviderId) => string, availability: ProviderAvailability, bankedResetFor: SubscriptionBankedResetResolver | undefined): AllCandidatesExhaustedError {
+   // Workflow control parses this legacy message, whose contract is the last
+   // reason per candidate. Typed display retains every request-local route.
+   const legacy = [...new Map(skipped.map((entry) => [accessProviderCandidateKey(entry.candidate), entry])).values()];
+@@ -743,6 +743,7 @@ function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[]
+       cause,
+       detail: typeof entry.state.reason === "string" ? entry.state.detail : errorMessage(entry.state.reason.cause),
+       resetsAtMs,
++      bankedReset: bankedResetFor?.(entry.candidate) === true,
+     };
+   });
+   return new AllCandidatesExhaustedError({
+diff --git a/src/orchestration/agent-runtime/llm/provider-availability-types.ts b/src/orchestration/agent-runtime/llm/provider-availability-types.ts
+index 4478ae4..d870d80 100644
+--- a/src/orchestration/agent-runtime/llm/provider-availability-types.ts
++++ b/src/orchestration/agent-runtime/llm/provider-availability-types.ts
+@@ -76,9 +76,14 @@ interface ProviderAllowanceInput {
+ }
+ export type ProviderAllowanceFactory = (input: ProviderAllowanceInput) => Promise<SubscriptionAllowanceResolver>;
+ 
++/** Whether the candidate's account holds an available banked reset in the
++ *  usage reading already published in memory when the request was admitted. */
++export type SubscriptionBankedResetResolver = (candidate: AccessProviderCandidate) => boolean;
++
+ export interface RequestAdmission {
+   readonly subscriptionSpendAuthorizationFor: SubscriptionSpendAuthorizationResolver;
+   readonly subscriptionAllowanceFor?: SubscriptionAllowanceResolver;
++  readonly bankedResetFor?: SubscriptionBankedResetResolver;
+ }
+ 
+ /** The availability owner as one client sees it: every read and every
+diff --git a/src/orchestration/subscription-spend-consent/admission-capture.ts b/src/orchestration/subscription-spend-consent/admission-capture.ts
+index a8b730f..02aca92 100644
+--- a/src/orchestration/subscription-spend-consent/admission-capture.ts
++++ b/src/orchestration/subscription-spend-consent/admission-capture.ts
+@@ -3,7 +3,8 @@ import { heldDirectoryDerivation } from "../../infra/watched-directory-values.js
+ import { SUBSCRIPTION_SPEND_CONSENT_FILE, subscriptionSpendConsentRevision, type SubscriptionSpendConsentRevision } from "../../infra/auth/subscription-spend-consent-store.js"
+ import type { AccessProviderCandidate } from "../../infra/llm/access-provider.js"
+ import { providerSettingValues, type AccessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
+-import type { SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver } from "../agent-runtime/llm/provider-availability-types.js"
++import { availableSubscriptionUsageResetCredits } from "../../infra/llm/subscription-usage.js"
++import type { SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver } from "../agent-runtime/llm/provider-availability-types.js"
+ import type { RuntimeConfigRequestCapture } from "../agent-runtime/request-config.js"
+ import type { SubscriptionUsageProfile } from "../auth/provider-observations/subscription-usage-service.js"
+ import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from "../auth/provider-observations/subscription-usage-service-pool.js"
+@@ -14,6 +15,7 @@ import type { SubscriptionSpendConsentCapture } from "./subscription-spend-conse
+ export interface SubscriptionAdmissionCapture {
+   readonly consent: SubscriptionSpendConsentCapture
+   readonly subscriptionAllowanceFor: SubscriptionAllowanceResolver
++  readonly bankedResetFor: SubscriptionBankedResetResolver
+ }
+ 
+ const CONSENT_REVISION = heldDirectoryDerivation<SubscriptionSpendConsentRevision>([SUBSCRIPTION_SPEND_CONSENT_FILE])
+@@ -32,6 +34,17 @@ async function captureAllowance(registry: Pick<AccessProviderRegistry, "allowanc
+   return Object.freeze((candidate: AccessProviderCandidate): SubscriptionAllowanceAdmission => resolvers.get(candidate.providerId)?.(candidate) ?? UNKNOWN_ALLOWANCE)
+ }
+ 
++/** Reads only the usage publication already in memory, the one Usage shows,
++ *  so a runtime that has not read an account, such as a headless run, names
++ *  no banked reset for it and the request makes no durable read. */
++function captureBankedResets(usage: SubscriptionUsageServiceLease["service"]): SubscriptionBankedResetResolver {
++  const banked = new Set((usage.snapshot()?.accounts ?? []).flatMap((state) =>
++    "snapshot" in state && state.snapshot !== undefined && availableSubscriptionUsageResetCredits(state.snapshot.resetCredits).length > 0
++      ? [`${state.account.providerId}\0${state.account.instanceId}`]
++      : []))
++  return Object.freeze((candidate: AccessProviderCandidate) => candidate.kind === "subscription" && banked.has(`${candidate.providerId}\0${candidate.instanceId}`))
++}
++
+ /** Captures included-allowance policy and saved paid permissions. Releases an acquired lease on success or failure; the capture owns no service. */
+ export async function captureSubscriptionAdmission(input: {
+   readonly candidates: readonly AccessProviderCandidate[]
+@@ -59,7 +72,7 @@ export async function captureSubscriptionAdmission(input: {
+         readRevision: () => CONSENT_REVISION.read(input.profile.directory, () => subscriptionSpendConsentRevision(opened())),
+         lockedCapture: () => createSubscriptionSpendConsentRuntime({ profileId: input.profile.id, access: opened(), usage: lease.service, providers: input.registry.selection.definitions }).capture(),
+       })
+-      return Object.freeze({ consent, subscriptionAllowanceFor })
++      return Object.freeze({ consent, subscriptionAllowanceFor, bankedResetFor: captureBankedResets(lease.service) })
+     } finally { access?.close() }
+   } finally {
+     if (input.residentLease === undefined) await lease.release()
+diff --git a/tests/unit/infra/llm/provider-error-copy.test.ts b/tests/unit/infra/llm/provider-error-copy.test.ts
+index a1f7d11..5cd2353 100644
+--- a/tests/unit/infra/llm/provider-error-copy.test.ts
++++ b/tests/unit/infra/llm/provider-error-copy.test.ts
+@@ -152,6 +152,27 @@ describe("extractProviderErrorDetail", () => {
+   });
+ });
+ 
++describe("exhaustedProvidersCopy", () => {
++  it("names each provider whose quota-refused account holds a banked reset, without predicting that it helps", () => {
++    const hint = "ChatGPT has a banked reset. Open Usage (/usage) to apply it.";
++    const banked = exhaustedProvidersCopy([
++      { provider: "ChatGPT", cause: "quota", detail: "out of quota", resetsAtMs: undefined, bankedReset: true },
++      { provider: "ChatGPT", cause: "quota", detail: "out of quota", resetsAtMs: undefined, bankedReset: true },
++      { provider: "OpenAI", cause: "quota", detail: "insufficient_quota", resetsAtMs: undefined },
++    ]);
++    expect(banked.title).toBe("Out of credits");
++    expect(banked.message.endsWith(` ${hint}`)).toBe(true);
++    expect(banked.message.match(/banked reset/g)).toHaveLength(1);
++    expect(banked.message).not.toContain("OpenAI has");
++
++    const plain = exhaustedProvidersCopy([{ provider: "ChatGPT", cause: "quota", detail: "out of quota", resetsAtMs: undefined }]);
++    expect(plain.message).not.toContain("banked reset");
++    // A reset restores used-up included usage only, so another refusal names none.
++    const throttled = exhaustedProvidersCopy([{ provider: "ChatGPT", cause: "rate_limit", detail: "slow down", resetsAtMs: undefined, bankedReset: true }]);
++    expect(throttled.message).not.toContain("banked reset");
++  });
++});
++
+ describe("exhaustedProvidersRecovery", () => {
+   const at = Date.parse("2026-10-10T12:00:00.000Z");
+ 
+diff --git a/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts b/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+index 40aadfe..7864ff7 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+@@ -157,6 +157,7 @@ test("runtime admission uses captured paid permission with the captured training
+       rows: [{ envelope, status: "accepted" }],
+       authorizations: new Map([[envelope.id, { envelope, profileId: "default", account, authorityIncarnation: "test", authorityRevision: 1 }]]) },
+       subscriptionAllowanceFor: () => ({ freshness: "fresh", allowance: "finite" }),
++      bankedResetFor: () => false,
+     }),
+   });
+   const request = await (await runtime.createLLMClient("gpt-6-luna")).admitRequest();
+diff --git a/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts b/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+index edb169b..5a24c1d 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+@@ -87,6 +87,7 @@ describe("provider credential binding", () => {
+       captureSubscriptionAdmission: async () => ({
+         consent: { profileId: "default", rows: [], authorizations: new Map() },
+         subscriptionAllowanceFor: () => ({ freshness: "fresh", allowance: "finite" }),
++        bankedResetFor: () => false,
+       }),
+     });
+     const client = await runtime.createLLMClient("gpt-6-luna");
+diff --git a/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts b/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+index a3b4944..a2da4f6 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+@@ -143,6 +143,7 @@ describe("subscription consent serving composition", () => {
+         capturedRevisions.push(authorityRevision)
+         return Object.freeze({
+           subscriptionAllowanceFor: () => ({ freshness: "unknown" as const, allowance: "unknown" as const }),
++          bankedResetFor: () => false,
+           consent: Object.freeze({
+             profileId: "profile-a",
+             usageGeneration: 7,
+diff --git a/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts b/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+index 777a08a..7d9fb08 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+@@ -504,6 +504,7 @@ describe("createAgentRuntime connection forwarding", () => {
+         consentCaptures += 1;
+         return {
+           subscriptionAllowanceFor: () => ({ freshness: "fresh", allowance: "finite" }),
++          bankedResetFor: () => false,
+           consent: {
+             profileId: "default",
+             usageGeneration: consentCaptures,
+diff --git a/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts b/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+index ed305c9..4d3095a 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
+ import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+ import { describeAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
+ import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
+-import type { ProviderAvailability, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
++import type { ProviderAvailability, RequestAdmission, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
+ import { AllCandidatesExhaustedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
+ import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
+ import {
+@@ -428,8 +428,8 @@ describe("expired-suppression probes", () => {
+ describe("all candidates exhausted", () => {
+   /** Aggregate rejection of one request over a chain no candidate can serve.
+    *  Holding the client is fine; the request is what cannot be served. */
+-  async function exhaustedChain(availability: ProviderAvailability): Promise<AllCandidatesExhaustedError> {
+-    const error = await requestEvents(chain({ availability })).then(
++  async function exhaustedChain(availability: ProviderAvailability, requestAdmission?: RequestAdmission): Promise<AllCandidatesExhaustedError> {
++    const error = await requestEvents(chain({ availability, ...(requestAdmission === undefined ? {} : { requestAdmission }) })).then(
+       () => { throw new Error("expected the request to reject") },
+       (thrown) => thrown,
+     );
+@@ -457,6 +457,22 @@ describe("all candidates exhausted", () => {
+     expect(copy.guidance).toContain("Wait until then");
+   });
+ 
++  test("names a quota-refused account's banked reset from the request admission", async () => {
++    const availability = fakeAvailability({ chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + 7_200_000 } });
++    availability.availability.markQuotaExhausted(singletonCandidate("openai_api"), Date.now() + 3_600_000);
++    const hint = "ChatGPT has a banked reset. Open Usage (/usage) to apply it.";
++    const admission = (banked: boolean): RequestAdmission => ({
++      subscriptionSpendAuthorizationFor: () => undefined,
++      bankedResetFor: (candidate) => banked && candidate.providerId === "chatgpt",
++    });
++
++    const banked = describeAgentFailure(toFailureReason(await exhaustedChain(availability.availability, admission(true))));
++    expect(banked.title).toBe("Out of credits");
++    expect(banked.message).toContain(hint);
++    const none = describeAgentFailure(toFailureReason(await exhaustedChain(availability.availability, admission(false))));
++    expect(none.message).not.toContain("banked reset");
++  });
++
+   test("a failed quota recheck claim reports unavailability without inventing quota exhaustion or a reset", async () => {
+     // Every suppression now states its bound, so the one genuinely reset-less
+     // rejection left is a due recheck whose probe claim could not land: the
+diff --git b/tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts b/tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts
+new file mode 100644
+index 0000000..41180c8
+--- /dev/null
++++ b/tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts
+@@ -0,0 +1,45 @@
++import { afterEach, describe, expect, test } from "bun:test"
++import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js"
++import type { SubscriptionUsageResetCredits } from "../../../../src/infra/llm/subscription-usage.js"
++import { createSubscriptionUsageService } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
++import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
++import { captureSubscriptionAdmission } from "../../../../src/orchestration/subscription-spend-consent/admission-capture.js"
++import { createSubscriptionSpendConsentCaptureCache } from "../../../../src/orchestration/subscription-spend-consent/capture-cache.js"
++import type { SubscriptionSpendConsentCapture } from "../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js"
++import { createProfileFixture, definition, registry, report, writeAccounts } from "../auth/provider-observations/_service-fixtures.js"
++
++const { profile, cleanup } = createProfileFixture()
++afterEach(cleanup)
++
++describe("subscription admission capture", () => {
++  test("names the accounts whose published usage reading holds an available banked reset", async () => {
++    const resolved = { id: "default", directory: profile("banked-reset-admission") }
++    const chatgpt = definition("chatgpt")
++    writeAccounts(resolved.directory, [chatgpt])
++    let resetCredits: SubscriptionUsageResetCredits = { availableCount: 1, credits: [{ id: "reset-1", resetType: "codex_rate_limits", status: "available" }] }
++    const providers = registry([chatgpt], new Map([[chatgpt.id, async () => ({ kind: "success" as const, report: { ...report(chatgpt.id, Date.now()), resetCredits } })]]))
++    const pool = createSubscriptionUsageServicePool({ create: () => createSubscriptionUsageService({ profile: () => resolved, registry: () => providers, thresholds: () => [] }) })
++    const residentLease = await pool.acquire(resolved)
++    const consentCache = createSubscriptionSpendConsentCaptureCache<SubscriptionSpendConsentCapture>()
++    const admit = () => captureSubscriptionAdmission({
++      candidates: [], providerSettings: {}, registry: { allowance: new Map(), settings: new Map(), selection: providers.selection },
++      profile: resolved, residentLease, pool, consentCache,
++    })
++    const account: AccessProviderCandidate = { kind: "subscription", providerId: "chatgpt", instanceId: "account", spendMode: "included" }
++    try {
++      // No reading is published yet, as in a headless run that never reads this account.
++      expect((await admit()).bankedResetFor(account)).toBe(false)
++
++      await residentLease.service.check()
++      const banked = await admit()
++      expect(banked.bankedResetFor(account)).toBe(true)
++      expect(banked.bankedResetFor({ ...account, spendMode: "prepaid" })).toBe(true)
++      expect(banked.bankedResetFor({ ...account, instanceId: "other" })).toBe(false)
++      expect(banked.bankedResetFor({ kind: "singleton", providerId: "openai_api", spendMode: "direct_api" })).toBe(false)
++
++      resetCredits = { availableCount: 0, credits: [] }
++      await residentLease.service.check({ forceRefresh: true })
++      expect((await admit()).bankedResetFor(account)).toBe(false)
++    } finally { await residentLease.release(); pool.closeAdmission(); await pool.settled() }
++  })
++})

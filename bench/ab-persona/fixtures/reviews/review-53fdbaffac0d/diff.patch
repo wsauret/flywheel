@@ -1,0 +1,1060 @@
+diff --git a/docs/adrs/adr-020-subscription-spend-consent.md b/docs/adrs/adr-020-subscription-spend-consent.md
+index 3054e54..e976654 100644
+--- a/docs/adrs/adr-020-subscription-spend-consent.md
++++ b/docs/adrs/adr-020-subscription-spend-consent.md
+@@ -26,7 +26,7 @@ Canonical spend classes and candidate order remain under ADR-005. Auth-profile p
+ 
+ Each resolved profile directory contains one SQLite consent authority with an immutable incarnation and monotonic revision. It stores only `accepted` or `declined` decisions keyed by canonical envelope identity. Absence is `unreviewed`. The transient protocol projection groups envelopes by verified account, publishes profile identity, usage generation, authority incarnation and revision, and orders accounts and their `prepaid` then `automatic` modes canonically. Provider display and billing data appear once per account. Each mode carries its exact evidence, decision, envelope id, and whether positive evidence permits enabling it.
+ 
+-Both mode envelopes exist for every verified account with included quota. Missing mode evidence is the mode's explicit `unknown` value, so a prior decision remains visible and revocable without becoming eligible for paid admission. A question is asked only for positive evidence with an unreviewed decision. Closing Provider Settings or failing to verify an account writes nothing. Closing the paid-use question is an answer: it records `declined` for that account's modes that were waiting for one and leaves earlier decisions alone. For one account, a save from Provider Settings reviews modes that are currently enableable or previously accepted; unavailable unreviewed modes remain untouched. A save binds the complete canonical profile envelope set for stale safety but writes decisions only for its explicit `reviewedEnvelopeIds`, and `acceptedEnvelopeIds` is a subset of that reviewed set. Hidden sibling-account decisions and absences remain unchanged.
++Both mode envelopes exist for every verified account with included quota. Missing mode evidence is the mode's explicit `unknown` value, so a prior decision remains visible and revocable without becoming eligible for paid admission. A question is asked only for positive evidence with an unreviewed decision. Each paid-use checkbox shows the saved decision. Each tick or untick writes that one mode at once, on every client. The control shows that a write is in progress and keeps the saved value until the runtime commits the decision. A failed write keeps the saved value and explains the failure. Closing Provider Settings or failing to verify an account writes nothing because no draft is pending. Continue and every close of the paid-use question record `declined` only for that account's modes still waiting for an answer and leave earlier decisions alone. Every mutation binds the complete canonical profile envelope set for stale safety but writes decisions only for its explicit `reviewedEnvelopeIds`, and `acceptedEnvelopeIds` is a subset of that reviewed set. Hidden sibling-account decisions and absences remain unchanged.
+ 
+ The authority incarnation distinguishes a replacement authority from an older file with the same revision. One profile writer lock excludes concurrent profile mutations, and one atomic publication commits decision changes with the next revision. The durable authority and revision, not the lock, own the result.
+ 
+@@ -50,15 +50,15 @@ Static provider contribution and construction remain under ADR-015. Provider evi
+ 
+ ### 5. The Paid-Use Question And Notifications
+ 
+-The paid-use question is one dedicated view for one exact account. It names the provider and the signed-in identity, states in plain words that the provider reports paid capacity for the account and that Flywheel keeps paid use off until the person allows it, shows one checkbox per paid mode with its evidence, and offers Continue. Continue records the ticked modes as `accepted` and the rest of the account's reviewable modes as `declined`. Escape, the frame's close affordance, and `q` record `declined` for the modes that were waiting for an answer and close the question. No key is swallowed, no path exits Flywheel, and a write that fails still closes the question with a visible notice, because an unanswered mode is already off and the question returns at the next boundary. An unanswered mode never blocks any other work.
++The paid-use question is one dedicated view for one exact account. It names the provider and the signed-in identity, states in plain words that the provider reports paid capacity for the account and that Flywheel keeps paid use off until the person allows it, shows one checkbox per paid mode with its evidence, and offers Continue. Each checkbox writes its decision at once and keeps the question open. Continue, Escape, the frame's close affordance, and `q` record `declined` only for modes still waiting for an answer and close the question. No key is swallowed, no path exits Flywheel, and a closing write that fails still closes the question with a visible notice, because an unanswered mode is already off and the question returns at the next boundary. An unanswered mode never blocks any other work.
+ 
+ Subscription login settlement refreshes the profile's usage evidence and consent view before it completes, so the connecting client decides from evidence rather than racing it. When the settled account has a mode waiting for an answer, the TUI ends the connection flow on that account's paid-use question and returns to the provider list after the answer; the connected account is asked first, and an earlier account of the same provider that still waits is asked otherwise. If settlement cannot read the evidence, no question appears, the client says paid use stays off, and later detection is handled below.
+ 
+-At startup and profile activation, the TUI asks the question once for the first account of the active profile that waits for an answer, at a safe foreground boundary and never during an active model turn. Because closing records an answer, the question does not return for that account. Two waiting accounts take two answers, one question each, the next asked from the committed consent view. Editor and phone clients never interrupt work: they keep a pending indicator and their Provider Settings view, explain beside each unanswered mode that it is off until ticked and saved, and deep-link an explicit login continuation or notification to the exact account and mode.
++At startup and profile activation, the TUI asks the question once for the first account of the active profile that waits for an answer, at a safe foreground boundary and never during an active model turn. Because closing records an answer, the question does not return for that account. Two waiting accounts take two answers, one question each, the next asked from the committed consent view. Editor and phone clients never interrupt work: they keep a pending indicator and their Provider Settings view, explain beside each unanswered mode that it is off until ticked, and deep-link an explicit login continuation or notification to the exact account and mode.
+ 
+ If paid capacity becomes detectable later, the current request remains blocked and the runtime publishes a durable project notification through ADR-019. The notification action identifies the exact provider, account correlation, and first unreviewed positive envelope; it opens the paid-use question while that account still waits for an answer and Provider Settings afterwards. Presentation history is not consent authority. Paid admission remains blocked until the exact envelope has an accepted durable decision. Detection failure does not block included quota and does not create a decision.
+ 
+-Provider Settings shows provider health and quota status for every exact account. For an account with included quota it also shows, under one `Paid use in Flywheel` heading, the provider-reported balance, accrued use, or cap evidence for prepaid and automatic billing with one checkbox-only control per mode, and the provider billing destination when available. The account's signed-in identity, or the masked tail of its API key, is content beside its status, plan, and health, never part of the view's title. A mode with unavailable evidence and no accepted decision is passive and cannot be selected. A previously accepted mode remains visible and revocable when evidence becomes unavailable, but unavailable evidence never authorizes paid use. The surface edits only the selected account while every save binds the complete canonical profile envelope set. Opening provider billing keeps Provider Settings open, never opens model selection, and mutates neither provider billing nor Flywheel consent. Model selection is a separate explicit action. A normal account edit can close without saving. Provider billing controls remain the spend-limit authority; Flywheel records permission only. Its profile-local pooled-seat ceiling is independent routing policy, not a consent decision or a universal monetary limit.
++Provider Settings shows provider health and quota status for every exact account. For an account with included quota it also shows, under one `Paid use in Flywheel` heading, the provider-reported balance, accrued use, or cap evidence for prepaid and automatic billing with one checkbox-only control per mode, and the provider billing destination when available. The account's signed-in identity, or the masked tail of its API key, is content beside its status, plan, and health, never part of the view's title. A mode with unavailable evidence and no accepted decision is passive and cannot be selected. A previously accepted mode remains visible and revocable when evidence becomes unavailable, but unavailable evidence never authorizes paid use. Each tick or untick writes only the selected mode while binding the complete canonical profile envelope set. Provider Settings has no Save key or Save button. Closing writes nothing because there is no pending draft. Opening provider billing keeps Provider Settings open, never opens model selection, and mutates neither provider billing nor Flywheel consent. Model selection is a separate explicit action. Provider billing controls remain the spend-limit authority; Flywheel records permission only. Its profile-local pooled-seat ceiling is independent routing policy, not a consent decision or a universal monetary limit.
+ 
+ ## Authority Boundaries
+ 
+@@ -108,7 +108,7 @@ Flywheel keeps profile-scoped request accounting under ADR-017, but that ledger
+ - Preserve envelope identity across token refresh only when profile and account identity remain unchanged.
+ - Store accepted and declined decisions only. Derive unreviewed state from decision absence, and derive review need from positive current evidence plus an unreviewed decision.
+ - Derive both mode envelopes for every verified account with included quota in canonical account order and `prepaid`, then `automatic` mode order. Preserve missing evidence as explicit `unknown` so accepted or declined decisions remain visible and revocable but cannot enable paid admission.
+-- Write nothing when Provider Settings closes or account verification fails. Closing the paid-use question records `declined` for that account's modes that were waiting for an answer. A Provider Settings save reviews every currently enableable or previously accepted mode and leaves unavailable unreviewed modes untouched.
++- Save each checkbox change at once and show only saved decisions, with an in-progress state and failure feedback. Write nothing when Provider Settings closes or account verification fails. Continue and every close of the paid-use question record `declined` only for that account's modes still waiting for an answer.
+ - Bind every mutation to profile, authority incarnation and revision, and the exact canonical envelope set. Require accepted ids to be a subset of reviewed ids, update only reviewed envelopes, revalidate current account identity under the profile writer lock before atomic publication, and never carry a decision across identity lineage.
+ - Treat delivery cursor position as review context, never as consent compare-and-set authority.
+ - Review only the active profile and never grandfather a decision across profile, provider, stable-instance, subject, or mode replacement.
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index dee2a02..d4884b8 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -413,3 +413,15 @@ When a client cannot read data for a surface in the background, the surface keep
+ ## PI-INTERACTION-064: Crashes report themselves
+ 
+ When a client crashes or the runtime reports a fault, Flywheel sends a bug report to the Flywheel maintainers on its own, and the crash screen or fault notice says that it sent one and shows a short report id the person can quote. A report holds the error, the app version and build, the platform, the surface, and the recent diagnostic records of the client, the account service, and the project executor; it holds no conversation or file content. The person can also send a report with an optional note at any time with the report command. When a report cannot be sent, the screen says so and offers to copy the report.
++
++## PI-INTERACTION-065: Unused chats can delete themselves
++
++Settings offers automatic deletion of unused chats, off by default. When a person turns it on with a whole number of days, Flywheel deletes each chat that no one has used and that has done no work for that many days, with the workflows and child sessions its deletion removes, the same as a person's delete. A chat that is open in a tab, working, or owning running work is never deleted this way. Flywheel deletes in a project when the project opens, once a day while it stays open, and when the setting changes.
++
++## PI-INTERACTION-066: An activity turns red only for a real stall
++
++In the terminal, the status line shows how long the current activity has gone without progress from the model. Each activity starts in its neutral color when it appears and turns red only after time spent in it with no new output or activity change. A wait on subagents or a reply, compaction, a notice, or a lost connection is not a stall: while one shows, no stall time builds up, and the activity that follows starts neutral.
++
++## PI-INTERACTION-067: Settings save as they change
++
++On every client, a change to a setting is saved as soon as the person makes it. No settings surface has a Save key or a Save button. A choice, such as a checkbox, a switch, or a highlighted theme, saves when the person changes it. A model and its effort are one choice: the person adjusts both, and confirming the model saves them together. A typed value, such as a number or a name, saves when the person finishes it: on Enter, on leaving the field, on Escape, or when the surface closes. A typed value that is not valid is not saved, and the field says why. Each control shows the saved value: while a change is being saved the control says so, and a change that cannot be saved returns the control to the saved value with a notice that says why. Closing or leaving a settings surface never discards a change. Entering an API key is a connection step and is submitted explicitly. A bulk change that turns off every module asks for confirmation first.
+diff --git a/docs/product-intent/model-access.md b/docs/product-intent/model-access.md
+index ad8d64b..86183b2 100644
+--- a/docs/product-intent/model-access.md
++++ b/docs/product-intent/model-access.md
+@@ -94,7 +94,7 @@ Flywheel skips a paid provider candidate before dispatch only when current provi
+ 
+ ## PI-MODEL-018: Paid use is asked once and never blocks
+ 
+-Connecting a subscription account whose provider reports paid capacity ends with one paid-use question that names the account, explains that paid use stays off until allowed, and offers each paid mode as a choice. Closing the question records that paid use stays off, so it does not return. Paid capacity detected outside a connection flow raises the same question once at the next safe moment, closable the same way, and it never blocks other work. Provider Settings remains the place to change the answer later.
++Connecting a subscription account whose provider reports paid capacity ends with one paid-use question that names the account, explains that paid use stays off until allowed, and offers each paid mode as a choice. Closing the question records that paid use stays off, so it does not return. Paid capacity detected outside a connection flow raises the same question once at the next safe moment, closable the same way, and it never blocks other work. Provider Settings remains the place to change the answer later. An allowed paid mode works like an API key: after the account's included usage is gone, Flywheel sends requests through it, and the provider decides whether to serve them. Usage readings are shown for tracking and never block an allowed paid mode.
+ 
+ Automated terminal checks can explicitly suppress automatic account setup and paid-use questions without changing authentication, paid-use permissions, or recorded answers. Manual account controls remain available.
+ 
+diff --git a/src/tui/components/modal-copy.ts b/src/tui/components/modal-copy.ts
+index 12bdcd6..9adbf9c 100644
+--- a/src/tui/components/modal-copy.ts
++++ b/src/tui/components/modal-copy.ts
+@@ -21,9 +21,9 @@ export const modalCopyLimit = (frameWidth: number): number => frameWidth - MODAL
+ export const SUBSCRIPTION_SPEND_CONSENT_COPY = {
+   prepaidWarning: "Prepaid credits can run out. Auto-reload may buy more.",
+   questionTitle: "ALLOW PAID USE IN FLYWHEEL",
+-  questionRule: "Flywheel keeps paid use off until you allow it here. Tick a mode to allow it, then continue. Close this question to keep paid use off.",
++  questionRule: "Flywheel keeps paid use off until you allow it here. Each tick saves at once. Continue or close to keep unanswered modes off.",
+   questionControls: "↑↓ choose · space toggle · enter continue",
+-  questionClose: "esc keep off",
++  questionClose: "esc continue",
+   answerFailed: "Paid use stays off. Flywheel could not record your answer and will ask again.",
+   mutationFeedback: {
+     stale: "Subscription capacity changed. Review the current modes.",
+diff --git a/src/tui/hooks/create-modals.tsx b/src/tui/hooks/create-modals.tsx
+index d1513c4..7d5a743 100644
+--- a/src/tui/hooks/create-modals.tsx
++++ b/src/tui/hooks/create-modals.tsx
+@@ -378,7 +378,7 @@ export function createModalModals(deps: ModalsDeps) {
+       onOpenModels={authModal.openAccountModels}
+       onToggleFreeRoutes={authModal.toggleFreeRoutes}
+       onToggleConsent={authModal.subscriptionSpendConsent.toggle}
+-      onSaveConsent={() => { void authModal.subscriptionSpendConsent.save() }}
++      onContinueConsent={() => { void authModal.subscriptionSpendConsent.decline() }}
+       onConfirmDisconnect={authModal.confirmDisconnect}
+       onCancelDisconnect={authModal.cancelDisconnect}
+       onAnswerLoginQuestion={authModal.answerLoginQuestion}
+diff --git a/src/tui/hooks/use-subscription-spend-consent-control.ts b/src/tui/hooks/use-subscription-spend-consent-control.ts
+index eeae1e1..a8aff20 100644
+--- a/src/tui/hooks/use-subscription-spend-consent-control.ts
++++ b/src/tui/hooks/use-subscription-spend-consent-control.ts
+@@ -43,7 +43,7 @@ interface ReviewContext {
+ 
+ export type SubscriptionSpendConsentControlState =
+   | { readonly kind: "closed" }
+-  | ({ readonly kind: "detail"; readonly cursor: number; readonly checkedEnvelopeIds: readonly string[]; readonly saving: boolean; readonly feedback?: string } & ReviewContext)
++  | ({ readonly kind: "detail"; readonly cursor: number; readonly savingEnvelopeIds: readonly string[]; readonly feedback?: string } & ReviewContext)
+ 
+ type DetailState = Extract<SubscriptionSpendConsentControlState, { kind: "detail" }>
+ 
+@@ -59,14 +59,13 @@ interface SubscriptionSpendConsentControlDeps {
+ 
+ export interface SubscriptionSpendConsentControl {
+   state: Accessor<SubscriptionSpendConsentControlState>
+-  /** Provider Settings rows for one account: editing that closes without saving. */
++  /** Provider Settings rows for one account. Each toggle writes at once; closing writes nothing. */
+   openProviderSettings: (consent: SubscriptionSpendConsentView, snapshotPosition: RuntimePosition, accountCorrelationId: string, owner: ModalHandle, focusEnvelopeId?: string) => void
+   /** The paid-use question for one account: closing records "not allowed" for its unanswered modes. */
+   openQuestion: (consent: SubscriptionSpendConsentView, snapshotPosition: RuntimePosition, accountCorrelationId: string, owner: ModalHandle) => void
+   close: () => void
+-  toggle: (envelopeId: string) => void
+-  save: () => Promise<void>
+-  /** Escape, the frame's close affordance, or q on the question. */
++  toggle: (envelopeId: string) => Promise<void>
++  /** Continue, Escape, the frame's close affordance, or q on the question. */
+   decline: () => Promise<void>
+   handleKey: (event: { name: string; sequence?: string; preventDefault?: () => void }) => boolean
+ }
+@@ -86,8 +85,7 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
+     setState({
+       kind: "detail",
+       cursor: normalizeCursor(account.modes, surface, requested),
+-      checkedEnvelopeIds: account.modes.filter((mode) => mode.decision === "accepted").map((mode) => mode.envelopeId),
+-      saving: false,
++      savingEnvelopeIds: [],
+       consent: { ...consent, accounts: [account] },
+       canonicalConsent: consent,
+       snapshotPosition,
+@@ -108,21 +106,21 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
+ 
+   function moveCursor(offset: -1 | 1): void {
+     const current = state()
+-    if (current.kind !== "detail" || current.saving) return
++    if (current.kind !== "detail" || current.savingEnvelopeIds.length > 0) return
+     const positions = cursorPositions(modes(current), current.surface)
+     const position = positions.indexOf(current.cursor)
+     const next = Math.max(0, Math.min(positions.length - 1, position + offset))
+     setState({ ...current, cursor: positions[next] ?? current.cursor })
+   }
+ 
+-  function toggle(envelopeId: string): void {
++  async function toggle(envelopeId: string): Promise<void> {
+     const current = state()
+-    if (current.kind !== "detail" || current.saving) return
++    if (current.kind !== "detail" || current.savingEnvelopeIds.length > 0) return
+     const mode = modes(current).find((candidate) => candidate.envelopeId === envelopeId)
+     if (!mode) return
+-    const checked = current.checkedEnvelopeIds.includes(envelopeId)
++    const checked = mode.decision === "accepted"
+     if (!checked && !mode.canEnable) return
+-    setState({ ...current, checkedEnvelopeIds: checked ? current.checkedEnvelopeIds.filter((id) => id !== envelopeId) : [...current.checkedEnvelopeIds, envelopeId] })
++    await commit(current, [envelopeId], checked ? [] : [envelopeId], settle, (pending, feedback) => setState({ ...pending, savingEnvelopeIds: [], feedback }))
+   }
+ 
+   function mutationBase(current: ReviewContext) {
+@@ -137,25 +135,23 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
+     const refreshed = await deps.refresh(pending.canonicalConsent.profileId)
+     if (!mutationIsCurrent(pending, pendingOwner)) return
+     if (!refreshed || refreshed.consent.kind !== "available") {
+-      setState({ ...pending, saving: false, feedback: SUBSCRIPTION_SPEND_CONSENT_COPY.mutationFeedback.staleUnavailable })
++      setState({ ...pending, savingEnvelopeIds: [], feedback: SUBSCRIPTION_SPEND_CONSENT_COPY.mutationFeedback.staleUnavailable })
+       return
+     }
+     const accountId = pending.consent.accounts[0]?.accountCorrelationId
+     const account = refreshed.consent.accounts.find((candidate) => candidate.accountCorrelationId === accountId)
+     if (!account) {
+-      setState({ ...pending, saving: false, feedback: SUBSCRIPTION_SPEND_CONSENT_COPY.mutationFeedback.staleUnavailable })
++      setState({ ...pending, savingEnvelopeIds: [], feedback: SUBSCRIPTION_SPEND_CONSENT_COPY.mutationFeedback.staleUnavailable })
+       return
+     }
+-    const checked = new Set(pending.checkedEnvelopeIds)
+     setState({
+       ...pending,
+       consent: { ...refreshed.consent, accounts: [account] },
+       canonicalConsent: refreshed.consent,
+       snapshotPosition: refreshed.snapshotPosition,
+       envelopeIds: subscriptionSpendConsentEnvelopeIds(refreshed.consent),
+-      checkedEnvelopeIds: account.modes.filter((mode) => checked.has(mode.envelopeId) && modeCanChange(mode)).map((mode) => mode.envelopeId),
+       cursor: normalizeCursor(account.modes, pending.surface, pending.cursor),
+-      saving: false,
++      savingEnvelopeIds: [],
+       feedback: SUBSCRIPTION_SPEND_CONSENT_COPY.mutationFeedback.stale,
+     })
+   }
+@@ -172,7 +168,7 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
+    *  every reviewed envelope not in `accepted` becomes declined. */
+   async function commit(current: DetailState, reviewed: readonly string[], accepted: readonly string[], onCommitted: (pending: DetailState, consent: SubscriptionSpendConsentView) => void, onFailed: (pending: DetailState, feedback: string) => void): Promise<void> {
+     if (reviewed.length === 0) { onCommitted(current, current.canonicalConsent); return }
+-    const pending = { ...current, saving: true, feedback: undefined }
++    const pending = { ...current, savingEnvelopeIds: reviewed, feedback: undefined }
+     const pendingOwner = owner
+     setState(pending)
+     try {
+@@ -187,11 +183,6 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
+   }
+ 
+   function settle(pending: DetailState, consent: SubscriptionSpendConsentView): void {
+-    if (pending.surface === "question") {
+-      close()
+-      deps.onAnswered(consent, pending.snapshotPosition)
+-      return
+-    }
+     const accountCorrelationId = pending.consent.accounts[0]?.accountCorrelationId
+     const account = consent.kind === "available" ? consent.accounts.find((candidate) => candidate.accountCorrelationId === accountCorrelationId) : undefined
+     if (consent.kind !== "available" || account === undefined) { close(); return }
+@@ -200,32 +191,26 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
+       consent: { ...consent, accounts: [account] },
+       canonicalConsent: consent,
+       envelopeIds: subscriptionSpendConsentEnvelopeIds(consent),
+-      checkedEnvelopeIds: account.modes.filter((mode) => mode.decision === "accepted").map((mode) => mode.envelopeId),
+       cursor: normalizeCursor(account.modes, pending.surface, pending.cursor),
+-      saving: false,
++      savingEnvelopeIds: [],
+     })
+   }
+ 
+-  async function save(): Promise<void> {
+-    const current = state()
+-    if (current.kind !== "detail" || current.saving) return
+-    const reviewed = modes(current).filter(modeCanChange).map((mode) => mode.envelopeId)
+-    const reviewedSet = new Set(reviewed)
+-    await commit(current, reviewed, current.checkedEnvelopeIds.filter((envelopeId) => reviewedSet.has(envelopeId)), settle, (pending, feedback) => setState({ ...pending, saving: false, feedback }))
+-  }
+-
+   /** Closing the question is an answer: the modes still waiting for one become
+    *  declined, and earlier acceptances are left alone. A write that fails still
+    *  closes, because an unanswered mode is already off and the question returns
+    *  at the next boundary. */
+   async function decline(): Promise<void> {
+     const current = state()
+-    if (current.kind !== "detail" || current.saving) return
++    if (current.kind !== "detail" || current.savingEnvelopeIds.length > 0) return
+     const reviewed = modes(current).filter(modeAwaitsAnswer).map((mode) => mode.envelopeId)
+-    await commit(current, reviewed, [], settle, () => { close(); deps.onAnswerFailed() })
++    await commit(current, reviewed, [], (pending, consent) => {
++      close()
++      deps.onAnswered(consent, pending.snapshotPosition)
++    }, () => { close(); deps.onAnswerFailed() })
+   }
+ 
+-  const handleKey = createSubscriptionSpendConsentInput({ state, toggle, moveCursor, save, decline, openBrowser: deps.openBrowser })
++  const handleKey = createSubscriptionSpendConsentInput({ state, toggle, moveCursor, decline, openBrowser: deps.openBrowser })
+ 
+   return {
+     state,
+@@ -233,7 +218,6 @@ export function useSubscriptionSpendConsentControl(deps: SubscriptionSpendConsen
+     openQuestion: (consent, snapshotPosition, accountCorrelationId, nextOwner) => open(consent, snapshotPosition, accountCorrelationId, nextOwner, "question"),
+     close,
+     toggle,
+-    save,
+     decline,
+     handleKey,
+   }
+diff --git a/src/tui/hooks/use-subscription-spend-consent-modal.ts b/src/tui/hooks/use-subscription-spend-consent-modal.ts
+index e544ed9..6e13156 100644
+--- a/src/tui/hooks/use-subscription-spend-consent-modal.ts
++++ b/src/tui/hooks/use-subscription-spend-consent-modal.ts
+@@ -9,7 +9,6 @@ interface SubscriptionSpendConsentInputDeps {
+   readonly state: Accessor<SubscriptionSpendConsentControlState>
+   readonly toggle: (envelopeId: string) => void
+   readonly moveCursor: (offset: -1 | 1) => void
+-  readonly save: () => Promise<void>
+   readonly decline: () => Promise<void>
+   readonly openBrowser: (url: string) => Promise<boolean>
+ }
+@@ -28,7 +27,7 @@ export function createSubscriptionSpendConsentInput(deps: SubscriptionSpendConse
+       void deps.decline()
+       return true
+     }
+-    if (current.saving) return question
++    if (current.savingEnvelopeIds.length > 0) return question
+     const modes = current.consent.accounts.flatMap((account) => account.modes)
+     if (key === "up" || key === "down") {
+       event.preventDefault?.()
+@@ -44,7 +43,7 @@ export function createSubscriptionSpendConsentInput(deps: SubscriptionSpendConse
+     }
+     if (question && activate) {
+       event.preventDefault?.()
+-      void deps.save()
++      void deps.decline()
+       return true
+     }
+     if (key === "b") {
+@@ -55,11 +54,6 @@ export function createSubscriptionSpendConsentInput(deps: SubscriptionSpendConse
+       }
+       return billingUrl !== undefined
+     }
+-    if (key === "s" && !question) {
+-      event.preventDefault?.()
+-      void deps.save()
+-      return true
+-    }
+     return question
+   }
+ }
+diff --git a/src/tui/modals/auth-modal.tsx b/src/tui/modals/auth-modal.tsx
+index aafdb19..a644434 100644
+--- a/src/tui/modals/auth-modal.tsx
++++ b/src/tui/modals/auth-modal.tsx
+@@ -5,7 +5,7 @@ import { useTheme } from "@tui/context/theme"
+ import type { TuiTheme } from "@tui/context/theme/resolve"
+ import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
+ import { ModalFrame } from "@tui/components/modal-frame"
+-import { createEffect, createMemo, createSignal, For, Match, on, onCleanup, Show, Switch, type Accessor } from "solid-js"
++import { createEffect, createMemo, createSignal, For, Index, Match, on, onCleanup, Show, Switch, type Accessor } from "solid-js"
+ import { ControlledTextField } from "../components/controlled-text-field.js"
+ import type { TextEditorPresentation } from "../keymap/text-entry.js"
+ import { filterProviderModelRows, soleAccount, type AuthRow, type AuthView } from "../hooks/auth-modal-options.js"
+@@ -49,7 +49,7 @@ interface AuthModalProps {
+   onToggleConsent?: (envelopeId: string) => void
+   onOpenModels?: () => void
+   onToggleFreeRoutes?: () => void
+-  onSaveConsent?: () => void
++  onContinueConsent?: () => void
+   onConfirmDisconnect?: () => void
+   onCancelDisconnect?: () => void
+   onAnswerLoginQuestion: (login: boolean) => void
+@@ -75,10 +75,10 @@ export function AuthModal(props: AuthModalProps) {
+           {(v) => <ProviderModelsView view={v()} presentation={props.inputPresentation} width={Math.max(1, modalWidth() - 10)} maxHeight={listMaxHeight()} onSelect={props.onSelectModel ?? (() => {})} onRecheck={props.onRecheckModels ?? (() => {})} />}
+         </Match>
+         <Match when={props.view.kind === "provider-settings" ? props.view : undefined}>
+-          {(v) => <ProviderSettingsView view={v()} consent={props.consent?.()} onOpenModels={props.onOpenModels ?? (() => {})} onToggleFreeRoutes={props.onToggleFreeRoutes ?? (() => {})} onToggle={props.onToggleConsent ?? (() => {})} onSave={props.onSaveConsent ?? (() => {})} />}
++          {(v) => <ProviderSettingsView view={v()} consent={props.consent?.()} onOpenModels={props.onOpenModels ?? (() => {})} onToggleFreeRoutes={props.onToggleFreeRoutes ?? (() => {})} onToggle={props.onToggleConsent ?? (() => {})} />}
+         </Match>
+         <Match when={props.view.kind === "paid-use-question" ? props.view : undefined}>
+-          {(v) => <PaidUseQuestionView view={v()} consent={props.consent?.()} onToggle={props.onToggleConsent ?? (() => {})} onContinue={props.onSaveConsent ?? (() => {})} />}
++          {(v) => <PaidUseQuestionView view={v()} consent={props.consent?.()} onToggle={props.onToggleConsent ?? (() => {})} onContinue={props.onContinueConsent ?? (() => {})} />}
+         </Match>
+         <Match when={props.view.kind === "api-key-input" ? props.view : undefined}>
+           {(v) => <ApiKeyInputView presentation={props.inputPresentation} keyPrefix={v().keyPrefix} label={v().label} width={Math.max(1, modalWidth() - 10)} />}
+@@ -337,7 +337,7 @@ function connectionFact(status: { readonly source: AuthProviderSource; readonly
+   return presentation.text === "expired" ? { label: "Status", value: "Expired · reconnect to continue", tone: "warning" } : { label: "Status", value: "Active", tone: "success" }
+ }
+ 
+-function ProviderSettingsView(props: { view: Extract<AuthView, { kind: "provider-settings" }>; consent?: SubscriptionSpendConsentControlState; onOpenModels: () => void; onToggleFreeRoutes: () => void; onToggle: (envelopeId: string) => void; onSave: () => void }) {
++function ProviderSettingsView(props: { view: Extract<AuthView, { kind: "provider-settings" }>; consent?: SubscriptionSpendConsentControlState; onOpenModels: () => void; onToggleFreeRoutes: () => void; onToggle: (envelopeId: string) => void }) {
+   const { theme } = useTheme()
+   const accountTarget = () => props.view.target.kind === "account" ? props.view.target : undefined
+   const capability = () => accountTarget()?.capability
+@@ -394,7 +394,7 @@ function PaidUseQuestionView(props: { view: Extract<AuthView, { kind: "paid-use-
+       <For each={paidUseQuestionLines(props.view.option.label, props.view.account.identity, props.view.capability)}>{(line) => <text fg={theme.text} wrapMode="word">{line}</text>}</For>
+     </box>
+     <PaidUse title={SUBSCRIPTION_SPEND_CONSENT_COPY.questionTitle} capability={props.view.capability} detail={detail()} onToggle={props.onToggle} />
+-    <box marginTop={1}><Button label="Continue" hotkey="enter" focused={continueFocused()} disabled={detail()?.saving === true} onPress={props.onContinue} /></box>
++    <box marginTop={1}><Button label="Continue" hotkey="enter" focused={continueFocused()} disabled={(detail()?.savingEnvelopeIds.length ?? 0) > 0} onPress={props.onContinue} /></box>
+     <box marginTop={1}><ModalFooter rows={paidUseQuestionFooterRows(props.view.capability.billingUrl !== undefined)} align="left" /></box>
+   </box>
+ }
+@@ -402,21 +402,23 @@ function PaidUseQuestionView(props: { view: Extract<AuthView, { kind: "paid-use-
+ /** The consent rows ADR-020 requires: one checkbox per paid mode with its evidence, passive when evidence cannot admit it. */
+ function PaidUse(props: { title: string; capability: SettingsCapability; detail: ReturnType<typeof subscriptionSpendConsentDetail>; onToggle: (envelopeId: string) => void }) {
+   const { theme } = useTheme()
++  const modes = () => props.detail?.consent.accounts[0]?.modes ?? props.capability.modes
+   const label = (mode: SettingsCapability["modes"][number]) => mode.mode === "prepaid" ? "Prepaid" : "Automatic billing"
+-  const width = () => Math.max(...props.capability.modes.map((mode) => label(mode).length))
++  const width = () => Math.max(...modes().map((mode) => label(mode).length))
+   const evidence = (mode: SettingsCapability["modes"][number]) => [subscriptionSpendEvidenceStatus(mode.evidence), ...subscriptionSpendExactEvidence(mode.evidence).map((line) => line.replace(": ", " "))].join(" · ")
+   return <Section title={props.title}>
+-    <For each={props.capability.modes}>{(mode, index) => {
+-      const checked = () => props.detail?.checkedEnvelopeIds.includes(mode.envelopeId) === true
+-      const actionable = () => props.detail !== undefined && (mode.canEnable || mode.decision === "accepted")
+-      const focused = () => actionable() && props.detail?.cursor === index()
+-      const state = () => checked() && !mode.canEnable ? " · on, currently unavailable" : ""
+-      return <box backgroundColor={focused() ? theme.backgroundElement : undefined} onMouseDown={() => { if (actionable() && (mode.canEnable || checked())) props.onToggle(mode.envelopeId) }}>
+-        <Show when={actionable()} fallback={<text fg={theme.textMuted}>{`      ${label(mode).padEnd(width())}  ${evidence(mode)}`}</text>}>
+-          <text fg={checked() ? theme.success : mode.canEnable ? theme.text : theme.textMuted}>{`${focused() ? ">" : " "} [${checked() ? "x" : " "}] ${label(mode).padEnd(width())}  ${evidence(mode)}${state()}`}</text>
++    <Index each={modes()}>{(mode, index) => {
++      const checked = () => props.detail !== undefined && mode().decision === "accepted"
++      const actionable = () => props.detail !== undefined && (mode().canEnable || mode().decision === "accepted")
++      const focused = () => actionable() && props.detail?.cursor === index
++      const saving = () => props.detail?.savingEnvelopeIds.includes(mode().envelopeId) === true
++      const state = () => checked() && !mode().canEnable ? " · on, currently unavailable" : ""
++      return <box backgroundColor={focused() ? theme.backgroundElement : undefined} onMouseDown={() => { if (actionable()) props.onToggle(mode().envelopeId) }}>
++        <Show when={actionable()} fallback={<text fg={theme.textMuted}>{`      ${label(mode()).padEnd(width())}  ${evidence(mode())}`}</text>}>
++          <text fg={saving() ? theme.textMuted : checked() ? theme.success : mode().canEnable ? theme.text : theme.textMuted}>{`${focused() ? ">" : " "} [${checked() ? "x" : " "}] ${label(mode()).padEnd(width())}  ${evidence(mode())}${state()}${saving() ? " · Saving..." : ""}`}</text>
+         </Show>
+       </box>
+-    }}</For>
++    }}</Index>
+     <Show when={subscriptionSpendWarnsPrepaid(props.detail, props.capability)}><text fg={theme.warning}>{SUBSCRIPTION_SPEND_CONSENT_COPY.prepaidWarning}</text></Show>
+     <Show when={props.capability.billingUrl}>{(url) => <Facts rows={[{ label: "Billing", value: url(), tone: "muted" }]} />}</Show>
+     <Show when={props.detail?.feedback}>{(feedback) => <text fg={theme.warning}>{feedback()}</text>}</Show>
+diff --git a/src/tui/modals/subscription-spend-consent-modal.tsx b/src/tui/modals/subscription-spend-consent-modal.tsx
+index 11ccbae..bd61184 100644
+--- a/src/tui/modals/subscription-spend-consent-modal.tsx
++++ b/src/tui/modals/subscription-spend-consent-modal.tsx
+@@ -14,7 +14,7 @@ export function subscriptionSpendConsentDetail(control: SubscriptionSpendConsent
+ export function subscriptionSpendFooterRows(detail: Pick<Detail, "cursor"> | undefined, billingAvailable: boolean): readonly string[] {
+   const actions = AUTH_CONTROL_COPY.providerSettingsActions
+   if (detail !== undefined && detail.cursor >= 0) {
+-    return [`↑↓ choose · space/enter toggle · s save${billingAvailable ? " · b billing" : ""}`, actions]
++    return [`↑↓ choose · space/enter toggle${billingAvailable ? " · b billing" : ""}`, actions]
+   }
+   return [[billingAvailable ? "b billing" : undefined, actions].filter((value): value is string => value !== undefined).join(" · ")]
+ }
+diff --git a/tests/unit/tui/hooks/use-subscription-spend-consent-control.test.ts b/tests/unit/tui/hooks/use-subscription-spend-consent-control.test.ts
+index f7a1816..72c4f46 100644
+--- a/tests/unit/tui/hooks/use-subscription-spend-consent-control.test.ts
++++ b/tests/unit/tui/hooks/use-subscription-spend-consent-control.test.ts
+@@ -46,8 +46,7 @@ describe("subscription spend consent account control", () => {
+   it("binds the canonical envelope list and writes only reviewed modes for one account", async () => {
+     const fixture = harness()
+     fixture.control.openProviderSettings(consent, 9, "account-a", fixture.owner)
+-    fixture.control.toggle("a-prepaid")
+-    await fixture.control.save()
++    await fixture.control.toggle("a-prepaid")
+     expect(fixture.dispatch).toHaveBeenCalledWith({
+       type: "subscription_spend_consent.save",
+       profileId: "work",
+@@ -62,7 +61,7 @@ describe("subscription spend consent account control", () => {
+     fixture.dispose()
+   })
+ 
+-  it("starts on the subscription and skips passive paid modes", () => {
++  it("starts on the subscription and skips passive paid modes", async () => {
+     const fixture = harness()
+     fixture.control.openProviderSettings(consent, 9, "account-a", fixture.owner)
+     expect(fixture.control.state()).toMatchObject({ kind: "detail", cursor: -1 })
+@@ -70,6 +69,7 @@ describe("subscription spend consent account control", () => {
+     fixture.control.handleKey({ name: "down" })
+     expect(fixture.control.state()).toMatchObject({ kind: "detail", cursor: 0 })
+     expect(fixture.control.handleKey({ name: "return" })).toBe(true)
++    await Promise.resolve()
+     fixture.control.handleKey({ name: "down" })
+     expect(fixture.control.state()).toMatchObject({ kind: "detail", cursor: 0 })
+     fixture.control.handleKey({ name: "up" })
+@@ -77,15 +77,23 @@ describe("subscription spend consent account control", () => {
+     fixture.dispose()
+   })
+ 
+-  it("toggles only the focused billing checkbox with Enter or Space", () => {
+-    const fixture = harness()
++  it("toggles only the focused billing checkbox with Enter or Space", async () => {
++    const accepted = { ...consent, authorityRevision: 5, accounts: consent.accounts.map((account) => account.accountCorrelationId !== "account-a" ? account : { ...account, modes: account.modes.map((mode) => mode.envelopeId !== "a-prepaid" ? mode : { ...mode, decision: "accepted" as const }) }) }
++    const replies = [accepted, consent]
++    const fixture = harness({ dispatch: async () => ({ kind: "committed", consent: replies.shift()! }) })
+     fixture.control.openProviderSettings(consent, 9, "account-a", fixture.owner)
+     expect(fixture.control.handleKey({ name: "return" })).toBe(false)
+     fixture.control.handleKey({ name: "down" })
+     expect(fixture.control.handleKey({ name: "return" })).toBe(true)
+-    expect(fixture.control.state()).toMatchObject({ checkedEnvelopeIds: ["a-prepaid"] })
++    await Promise.resolve()
++    expect(fixture.control.state()).toMatchObject({ consent: { accounts: [accepted.accounts[0]] } })
+     expect(fixture.control.handleKey({ name: "space", sequence: " " })).toBe(true)
+-    expect(fixture.control.state()).toMatchObject({ checkedEnvelopeIds: [] })
++    await Promise.resolve()
++    expect(fixture.dispatch.mock.calls.map(([mutation]) => [mutation.reviewedEnvelopeIds, mutation.acceptedEnvelopeIds])).toEqual([
++      [["a-prepaid"], ["a-prepaid"]],
++      [["a-prepaid"], []],
++    ])
++    expect(fixture.control.state()).toMatchObject({ consent: { accounts: [consent.accounts[0]] } })
+     fixture.dispose()
+   })
+ 
+@@ -94,6 +102,7 @@ describe("subscription spend consent account control", () => {
+     fixture.control.openProviderSettings(consent, 9, "account-a", fixture.owner)
+     expect(fixture.control.handleKey({ name: "escape" })).toBe(false)
+     expect(fixture.control.handleKey({ name: "q" })).toBe(false)
++    expect(fixture.control.handleKey({ name: "s" })).toBe(false)
+     expect(fixture.dispatch).not.toHaveBeenCalled()
+     fixture.dispose()
+   })
+@@ -101,26 +110,25 @@ describe("subscription spend consent account control", () => {
+   it("allows an accepted unavailable mode to be revoked", async () => {
+     const fixture = harness()
+     fixture.control.openProviderSettings(consent, 9, "account-b", fixture.owner)
+-    fixture.control.toggle("b-prepaid")
+-    await fixture.control.save()
+-    expect(fixture.dispatch.mock.calls[0]?.[0]).toMatchObject({ reviewedEnvelopeIds: ["b-prepaid", "b-automatic"], acceptedEnvelopeIds: ["b-automatic"] })
++    await fixture.control.toggle("b-prepaid")
++    expect(fixture.dispatch.mock.calls[0]?.[0]).toMatchObject({ reviewedEnvelopeIds: ["b-prepaid"], acceptedEnvelopeIds: [] })
+     fixture.dispose()
+   })
+ 
+   it("leaves an unavailable unreviewed mode untouched", async () => {
+     const fixture = harness()
+     fixture.control.openProviderSettings(consent, 9, "account-a", fixture.owner)
+-    await fixture.control.save()
+-    expect(fixture.dispatch.mock.calls[0]?.[0]).toMatchObject({ reviewedEnvelopeIds: ["a-prepaid"], acceptedEnvelopeIds: [] })
++    await fixture.control.toggle("a-automatic")
++    expect(fixture.dispatch).not.toHaveBeenCalled()
+     fixture.dispose()
+   })
+ 
+   it("refreshes stale canonical state without closing", async () => {
+-    const current = { ...consent, authorityRevision: 5 }
++    const current = { ...consent, authorityRevision: 5, accounts: consent.accounts.map((account) => ({ ...account, modes: account.modes.map((mode) => ({ ...mode, decision: "declined" as const })) })) }
+     const fixture = harness({ dispatch: async (_mutation) => ({ kind: "stale" }), refresh: async () => ({ consent: current, snapshotPosition: 22 }) })
+-    fixture.control.openProviderSettings(consent, 9, "account-a", fixture.owner)
+-    await fixture.control.save()
+-    expect(fixture.control.state()).toMatchObject({ kind: "detail", snapshotPosition: 22, saving: false })
++    fixture.control.openProviderSettings(consent, 9, "account-b", fixture.owner)
++    await fixture.control.toggle("b-prepaid")
++    expect(fixture.control.state()).toMatchObject({ kind: "detail", snapshotPosition: 22, savingEnvelopeIds: [], consent: { accounts: [current.accounts[1]] }, feedback: "Subscription capacity changed. Review the current modes." })
+     fixture.dispose()
+   })
+ 
+@@ -128,7 +136,8 @@ describe("subscription spend consent account control", () => {
+     let settle!: (value: SubscriptionSpendConsentMutationResult) => void
+     const fixture = harness({ dispatch: (_mutation) => new Promise((resolve) => { settle = resolve }) })
+     fixture.control.openProviderSettings(consent, 9, "account-a", fixture.owner)
+-    const pending = fixture.control.save()
++    const pending = fixture.control.toggle("a-prepaid")
++    expect(fixture.control.state()).toMatchObject({ savingEnvelopeIds: ["a-prepaid"], consent: { accounts: [consent.accounts[0]] } })
+     fixture.control.close()
+     settle({ kind: "committed", consent })
+     await pending
+@@ -149,16 +158,26 @@ describe("subscription spend consent account control", () => {
+     fixture.dispose()
+   })
+ 
+-  it("records the ticked modes on Continue and reports the answer", async () => {
+-    const fixture = harness()
+-    fixture.control.openQuestion(consent, 9, "account-a", fixture.owner)
+-    fixture.control.handleKey({ name: "space", sequence: " " })
++  it("saves a question tick in place and Continue declines only unanswered modes", async () => {
++    const question = { ...consent, accounts: [{ ...consent.accounts[0]!, modes: consent.accounts[0]!.modes.map((mode) => mode.mode === "automatic" ? { ...mode, canEnable: true, evidence: { kind: "automatic-billing" as const, enablement: "enabled" as const } } : mode) }] }
++    const accepted = { ...question, authorityRevision: 5, accounts: question.accounts.map((account) => ({ ...account, modes: account.modes.map((mode) => mode.envelopeId === "a-prepaid" ? { ...mode, decision: "accepted" as const } : mode) })) }
++    const answered = { ...accepted, authorityRevision: 6, accounts: accepted.accounts.map((account) => ({ ...account, modes: account.modes.map((mode) => mode.envelopeId === "a-automatic" ? { ...mode, decision: "declined" as const } : mode) })) }
++    const replies = [accepted, answered]
++    const fixture = harness({ dispatch: async () => ({ kind: "committed", consent: replies.shift()! }) })
++    fixture.control.openQuestion(question, 9, "account-a", fixture.owner)
++    await fixture.control.toggle("a-prepaid")
++    expect(fixture.control.state()).toMatchObject({ kind: "detail", consent: accepted })
++    expect(fixture.onAnswered).not.toHaveBeenCalled()
++    fixture.control.handleKey({ name: "down" })
+     fixture.control.handleKey({ name: "down" })
+     expect(fixture.control.handleKey({ name: "return" })).toBe(true)
+     await Promise.resolve()
+     await Promise.resolve()
+-    expect(fixture.dispatch.mock.calls[0]?.[0]).toMatchObject({ reviewedEnvelopeIds: ["a-prepaid"], acceptedEnvelopeIds: ["a-prepaid"] })
+-    expect(fixture.onAnswered).toHaveBeenCalledWith(consent, 9)
++    expect(fixture.dispatch.mock.calls.map(([mutation]) => [mutation.authorityRevision, mutation.reviewedEnvelopeIds, mutation.acceptedEnvelopeIds])).toEqual([
++      [4, ["a-prepaid"], ["a-prepaid"]],
++      [5, ["a-automatic"], []],
++    ])
++    expect(fixture.onAnswered).toHaveBeenCalledWith(answered, 9)
+     expect(fixture.control.state()).toEqual({ kind: "closed" })
+     fixture.dispose()
+   })
+@@ -166,8 +185,9 @@ describe("subscription spend consent account control", () => {
+   it("declines only the mode that waited for an answer on Escape", async () => {
+     const fixture = harness()
+     fixture.control.openQuestion(consent, 9, "account-a", fixture.owner)
+-    fixture.control.handleKey({ name: "space", sequence: " " })
+-    await fixture.control.decline()
++    fixture.control.handleKey({ name: "escape" })
++    await Promise.resolve()
++    await Promise.resolve()
+     expect(fixture.dispatch.mock.calls[0]?.[0]).toMatchObject({ reviewedEnvelopeIds: ["a-prepaid"], acceptedEnvelopeIds: [] })
+     expect(fixture.onAnswered).toHaveBeenCalledWith(consent, 9)
+     expect(fixture.control.state()).toEqual({ kind: "closed" })
+@@ -184,11 +204,11 @@ describe("subscription spend consent account control", () => {
+     fixture.dispose()
+   })
+ 
+-  it("keeps a failed Continue open with its feedback", async () => {
++  it("keeps a failed tick at the durable value with its feedback", async () => {
+     const fixture = harness({ dispatch: async () => ({ kind: "contention" }) })
+     fixture.control.openQuestion(consent, 9, "account-a", fixture.owner)
+-    await fixture.control.save()
+-    expect(fixture.control.state()).toMatchObject({ kind: "detail", saving: false, feedback: "Another update is in progress. Try again." })
++    await fixture.control.toggle("a-prepaid")
++    expect(fixture.control.state()).toMatchObject({ kind: "detail", savingEnvelopeIds: [], consent: { accounts: [consent.accounts[0]] }, feedback: "Another update is in progress. Try again." })
+     fixture.dispose()
+   })
+ })
+diff --git a/tests/unit/tui/modals/auth-modal-capability-render.test.tsx b/tests/unit/tui/modals/auth-modal-capability-render.test.tsx
+index 933e72d..68d28d1 100644
+--- a/tests/unit/tui/modals/auth-modal-capability-render.test.tsx
++++ b/tests/unit/tui/modals/auth-modal-capability-render.test.tsx
+@@ -33,7 +33,8 @@ describe("AuthModal capability detail", () => {
+       ],
+     }
+     const consentView = { kind: "available" as const, profileId: "default", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1, accounts: [capability] }
+-    const consent = { kind: "detail" as const, cursor: 1, checkedEnvelopeIds: ["prepaid"], saving: false, consent: consentView, canonicalConsent: consentView, snapshotPosition: 1, envelopeIds: ["prepaid", "automatic"], surface: "settings" as const }
++    const savingEnvelopeIds: readonly string[] = []
++    const consent = { kind: "detail" as const, cursor: 1, savingEnvelopeIds, consent: consentView, canonicalConsent: consentView, snapshotPosition: 1, envelopeIds: ["prepaid", "automatic"], surface: "settings" as const }
+     const [consentState, setConsentState] = createSignal<typeof consent | { readonly kind: "closed" }>({ kind: "closed" })
+     const result = await testRender(() => createComponent(ThemeProvider, {
+       mode: "dark",
+@@ -60,9 +61,13 @@ describe("AuthModal capability detail", () => {
+       expect(frame).toContain("  [x] Prepaid            Funded · Remaining 12.5 USD")
+       expect(frame).toContain("> [ ] Automatic billing  Enabled")
+       expect(frame).not.toContain("> Models")
+-      expect(frame).toContain("s save · b billing")
++      expect(frame).toContain("space/enter toggle · b billing")
++      expect(frame).not.toContain("s save")
+       expect(frame).not.toContain("exit Flywheel")
+       expect(frame).toContain("Billing  https://example.com/billing")
++      setConsentState({ ...consent, savingEnvelopeIds: ["automatic"] })
++      await result.renderOnce()
++      expect(result.captureCharFrame()).toContain("> [ ] Automatic billing  Enabled · Saving...")
+     } finally {
+       result.renderer.destroy()
+     }
+@@ -83,7 +88,7 @@ describe("AuthModal capability detail", () => {
+       ],
+     }
+     const consentView = { kind: "available" as const, profileId: "default", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1, accounts: [capability] }
+-    const consent = { kind: "detail" as const, cursor: 1, checkedEnvelopeIds: [], saving: false, consent: consentView, canonicalConsent: consentView, snapshotPosition: 1, envelopeIds: ["prepaid", "automatic"], surface: "question" as const }
++    const consent = { kind: "detail" as const, cursor: 1, savingEnvelopeIds: [], consent: consentView, canonicalConsent: consentView, snapshotPosition: 1, envelopeIds: ["prepaid", "automatic"], surface: "question" as const }
+     const result = await testRender(() => createComponent(ThemeProvider, {
+       mode: "dark",
+       get children() {
+@@ -98,12 +103,12 @@ describe("AuthModal capability detail", () => {
+       expect(frame).toContain("Settings › Auth › ChatGPT Subscription › Paid Use")
+       expect(frame).toContain("ChatGPT Subscription is connected as user@example.com.")
+       expect(frame).toContain("automatic billing.")
+-      expect(frame.replace(/[│\n]/g, " ").replace(/\s+/g, " ")).toContain("keep paid use off.")
++      expect(frame.replace(/[│\n]/g, " ").replace(/\s+/g, " ")).toContain("keep unanswered modes off.")
+       expect(frame).toContain("ALLOW PAID USE IN FLYWHEEL")
+       expect(frame).toContain("      Prepaid            Unknown")
+       expect(frame).toContain("> [ ] Automatic billing  Enabled")
+       expect(frame).toContain("Continue")
+-      expect(frame).toContain("esc keep off · b billing")
++      expect(frame).toContain("esc continue · b billing")
+       expect(frame).not.toContain("exit Flywheel")
+       expect(frame).toContain(" x ")
+     } finally {
+@@ -127,7 +132,7 @@ describe("AuthModal capability detail", () => {
+       ],
+     }
+     const consentView = { kind: "available" as const, profileId: "default", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1, accounts: [capability] }
+-    const consent = { kind: "detail" as const, cursor: 2, checkedEnvelopeIds: ["accepted-unavailable"], saving: false, consent: consentView, canonicalConsent: consentView, snapshotPosition: 1, envelopeIds: ["prepaid", "automatic", "accepted-unavailable"], surface: "settings" as const }
++    const consent = { kind: "detail" as const, cursor: 2, savingEnvelopeIds: [], consent: consentView, canonicalConsent: consentView, snapshotPosition: 1, envelopeIds: ["prepaid", "automatic", "accepted-unavailable"], surface: "settings" as const }
+     const result = await testRender(() => createComponent(ThemeProvider, {
+       mode: "dark",
+       get children() {
+diff --git a/tests/unit/tui/modals/auth-modal-paid-use-question.test.ts b/tests/unit/tui/modals/auth-modal-paid-use-question.test.ts
+index 41cdd7f..e49e684 100644
+--- a/tests/unit/tui/modals/auth-modal-paid-use-question.test.ts
++++ b/tests/unit/tui/modals/auth-modal-paid-use-question.test.ts
+@@ -49,7 +49,9 @@ function harness() {
+   fixture.dispatch.mockImplementation(async (request) => {
+     if (request.type === "auth.login") return await runtimeLogin(request)
+     if (request.type === "auth.login.answer") return await runtimeAnswer(request)
+-    return request.type === "subscription_spend_consent.save" ? { kind: "committed" as const, consent: answered } : { ok: true as const }
++    return request.type === "subscription_spend_consent.save"
++      ? { kind: "committed" as const, consent: { ...answered, accounts: [{ ...capability, modes: capability.modes.map((mode) => request.reviewedEnvelopeIds.includes(mode.envelopeId) ? { ...mode, decision: request.acceptedEnvelopeIds.includes(mode.envelopeId) ? "accepted" as const : "declined" as const } : mode) }] } }
++      : { ok: true as const }
+   })
+   const consentSaves = () => fixture.dispatch.mock.calls.map(([request]) => request).filter((request) => request.type === "subscription_spend_consent.save")
+   return { ...fixture, consentSaves }
+@@ -129,7 +131,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
+         return
+       }
+       expect(modal.authView()).toMatchObject({ kind: "paid-use-question", returnTo: "list", option: { id: "github_copilot" }, account: { identity: "wsauret" } })
+-      expect(modal.subscriptionSpendConsent.state()).toMatchObject({ kind: "detail", surface: "question", cursor: 1, checkedEnvelopeIds: [] })
++      expect(modal.subscriptionSpendConsent.state()).toMatchObject({ kind: "detail", surface: "question", cursor: 1 })
+ 
+       modals.input({ name: "escape" })
+       await until(() => modal.authView().kind === "list")
+@@ -140,14 +142,16 @@ describe("paid-use question (PI-MODEL-018)", () => {
+     })
+   })
+ 
+-  it("opens standalone for a waiting account and Continue records the ticked mode, then closes the modal", async () => {
++  it("opens standalone, saves a tick in place, and Continue closes without another write", async () => {
+     await createRoot(async (dispose) => {
+       const { modal, modals, consentSaves } = harness()
+       expect(modal.openPaidUseQuestion(authView(), 9, "github_copilot", accountCorrelationId)).toBe(true)
+       expect(modal.authView()).toMatchObject({ kind: "paid-use-question", returnTo: "close" })
+       modals.input({ name: "space", sequence: " " })
++      await until(() => consentSaves().length === 1 && modal.subscriptionSpendConsent.state().kind === "detail")
++      await Promise.resolve()
+       modals.input({ name: "down" })
+-      expect(modal.subscriptionSpendConsent.state()).toMatchObject({ cursor: -1, checkedEnvelopeIds: ["copilot-automatic"] })
++      expect(modal.subscriptionSpendConsent.state()).toMatchObject({ kind: "detail", cursor: -1, consent: { accounts: [{ modes: [expect.anything(), expect.objectContaining({ decision: "accepted" })] }] } })
+       modals.input({ name: "return" })
+       await until(() => modals.stack.length === 0)
+       expect(consentSaves()).toEqual([expect.objectContaining({ clientSnapshotPosition: 9, reviewedEnvelopeIds: ["copilot-automatic"], acceptedEnvelopeIds: ["copilot-automatic"] })])
+diff --git a/tests/unit/tui/modals/subscription-spend-consent-modal.test.tsx b/tests/unit/tui/modals/subscription-spend-consent-modal.test.tsx
+index 87c84e5..2df7ec9 100644
+--- a/tests/unit/tui/modals/subscription-spend-consent-modal.test.tsx
++++ b/tests/unit/tui/modals/subscription-spend-consent-modal.test.tsx
+@@ -11,11 +11,11 @@ describe("subscription spend consent presentation", () => {
+ 
+   it("uses billing controls only while a consent checkbox is focused", () => {
+     expect(subscriptionSpendFooterRows({ cursor: 0 }, true)).toEqual([
+-      "↑↓ choose · space/enter toggle · s save · b billing",
++      "↑↓ choose · space/enter toggle · b billing",
+       "r reconnect · d disconnect · ← back",
+     ])
+     expect(subscriptionSpendFooterRows({ cursor: 0 }, false)).toEqual([
+-      "↑↓ choose · space/enter toggle · s save",
++      "↑↓ choose · space/enter toggle",
+       "r reconnect · d disconnect · ← back",
+     ])
+   })
+@@ -31,9 +31,9 @@ describe("subscription spend consent presentation", () => {
+     expect(paidUseQuestionLines("Copilot Subscription", "wsauret", capability)).toEqual([
+       "Copilot Subscription is connected as wsauret.",
+       "GitHub reports that this account can also pay for use beyond its plan: automatic billing.",
+-      "Flywheel keeps paid use off until you allow it here. Tick a mode to allow it, then continue. Close this question to keep paid use off.",
++      "Flywheel keeps paid use off until you allow it here. Each tick saves at once. Continue or close to keep unanswered modes off.",
+     ])
+-    expect(paidUseQuestionFooterRows(true)).toEqual(["↑↓ choose · space toggle · enter continue", "esc keep off · b billing"])
++    expect(paidUseQuestionFooterRows(true)).toEqual(["↑↓ choose · space toggle · enter continue", "esc continue · b billing"])
+     expect(paidUseQuestionFooterRows(false).join(" ")).not.toContain("exit")
+   })
+ 
+diff --git a/webview/src/app/providers-sheet-interaction-fixture.ts b/webview/src/app/providers-sheet-interaction-fixture.ts
+index 8f2635b..30b392d 100644
+--- a/webview/src/app/providers-sheet-interaction-fixture.ts
++++ b/webview/src/app/providers-sheet-interaction-fixture.ts
+@@ -9,6 +9,7 @@ import type { ClientContextValue, ConfirmRequest } from "./client-context.js"
+ import { ProvidersSheet } from "./sheets/providers-sheet.js"
+ import { ProfilesSheet } from "./sheets/profiles-sheet.js"
+ import type { RuntimeAuthProfileDeletionPreview, RuntimeAuthProfileMutationResult } from "../../../src/protocol/auth-profile-selection-protocol-types.js"
++import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../src/protocol/subscription-spend-consent-protocol-types.js"
+ import { createComponent, createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
+ import { actionOwner } from "./action-owner-fixture.js"
+ import { BROWSER_LOGIN_COPY } from "../../../src/protocol/client/provider-account-copy.js"
+@@ -113,10 +114,13 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
+   readonly question: RuntimeAuthLoginQuestion
+   readonly response?: Promise<RuntimeAuthLoginResult>
+   readonly manualResponse?: Promise<RuntimeAuthLoginResult>
+-}, prompt?: RuntimeAuthLoginPrompt) {
++}, prompt?: RuntimeAuthLoginPrompt, paidUse?: {
++  readonly consent: SubscriptionSpendConsentView
++  readonly response: () => Promise<SubscriptionSpendConsentMutationResult>
++}) {
+   return createRoot((disposeRoot) => {
+     const root = createElement("root")
+-    const [auth, setAuth] = createSignal(providers === undefined ? initialAuth : { ...initialAuth, providers })
++    const [auth, setAuth] = createSignal({ ...initialAuth, ...(providers === undefined ? {} : { providers }), ...(paidUse === undefined ? {} : { subscriptionSpendConsent: paidUse.consent }) })
+     const [focus, setFocus] = createSignal<SheetFocus | undefined>(recovery && !recovery.manualResponse ? { kind: "reconnect-account", question: recovery.question } : providers === undefined ? { kind: "connect-provider", providerId: "chatgpt" } : undefined)
+     const mutations: FrontendMutation[] = []
+     const opened: string[] = []
+@@ -124,6 +128,13 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
+     const completionInputs: string[] = []
+     const confirmations: ConfirmRequest[] = []
+     const retried: string[] = []
++    const actions = actionOwner()
++    let consentAction: Promise<boolean> | undefined
++    const run: typeof actions.run = (key, work, onFailure) => {
++      const pending = actions.run(key, work, onFailure)
++      if (key.startsWith("provider-consent")) consentAction = pending
++      return pending
++    }
+     // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the render fixture supplies exactly the Providers sheet context it exercises
+     const client = {
+       state: () => ({ authStatus: { snapshotPosition: 1, auth: auth() } }),
+@@ -132,6 +143,7 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
+       connection: {
+         async dispatch(mutation: FrontendMutation) {
+           mutations.push(mutation)
++          if (mutation.type === "subscription_spend_consent.save" && paidUse) return await paidUse.response()
+           if (mutation.type === "auth.login.cancel") return { ok: true }
+           if (mutation.type === "auth.login" && !mutation.loginQuestionId && recovery?.manualResponse) return await recovery.manualResponse
+           if (mutation.type === "auth.login" && recovery?.response) return await recovery.response
+@@ -148,7 +160,7 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
+           throw new Error(`Unexpected mutation: ${mutation.type}`)
+         },
+       },
+-      actions: { ...actionOwner(), canOpenExternal: true, openExternal: (url: string) => { opened.push(url) } },
++      actions: { ...actions, run, canOpenExternal: true, openExternal: (url: string) => { opened.push(url) } },
+       report: (severity: "info" | "warning", message: string) => { reports.push({ severity, message }) },
+       closeSheet() {},
+       retryLoginQuestion: (id: string) => { retried.push(id) },
+@@ -181,6 +193,16 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
+         Reflect.deleteProperty(globalThis, "__flywheelProvidersSheetTestClient")
+       },
+       ready: tick,
++      consentSettled: async () => { await consentAction },
++      publishConsent: (consent: SubscriptionSpendConsentView) => setAuth((current) => ({ ...current, subscriptionSpendConsent: consent })),
++      checkboxes: () => nodes(root).filter((node) => node.tag === "input" && node.properties.type === "checkbox"),
++      tickMode(index: number, checked: boolean): boolean {
++        const input = nodes(root).filter((node) => node.tag === "input" && node.properties.type === "checkbox")[index]
++        if (!input) throw new Error(`Missing checkbox ${index}`)
++        const currentTarget = { checked }
++        invoke(input, "onChange", { currentTarget })
++        return currentTarget.checked
++      },
+       focus: setFocus,
+       async settleSuccess(): Promise<void> {
+         setAuth((current) => ({ ...current, settlement: { kind: "completed", operationId: "browser-operation", providerId: "chatgpt" } }))
+diff --git a/webview/src/app/providers-sheet-interaction.test.ts b/webview/src/app/providers-sheet-interaction.test.ts
+index f59b8c8..631c55d 100644
+--- a/webview/src/app/providers-sheet-interaction.test.ts
++++ b/webview/src/app/providers-sheet-interaction.test.ts
+@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
+ import { BROWSER_LOGIN_COPY } from "../../../src/protocol/client/provider-account-copy.js"
+ import { importBuiltModule } from "../test-support/import-built-module.js"
+ import { loadSolidFixture } from "../test-support/solid-transform.js"
++import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../src/protocol/subscription-spend-consent-protocol-types.js"
+ 
+ const build = await Bun.build({
+   entrypoints: [fileURLToPath(new URL("providers-sheet-interaction-fixture.ts", import.meta.url))],
+@@ -270,6 +271,56 @@ test("a new auth snapshot keeps the provider cards the sheet already shows", asy
+   }
+ })
+ 
++test("paid-use ticks write one saved decision, keep their checkbox through publication, and restore it on failure", async () => {
++  const provider = {
++    providerId: "chatgpt", displayName: "ChatGPT", kind: "subscription", source: "oauth",
++    expired: false, modelCapable: true, loginMethod: "browser-auth", statusRank: 0, group: "model",
++    accounts: [{ instanceId: "account", accountCorrelationId: "account", identity: "person@example.com", displayLabel: "Personal", expired: false, source: "oauth" }],
++  } as const
++  const consent: Extract<SubscriptionSpendConsentView, { kind: "available" }> = {
++    kind: "available", profileId: "personal", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1,
++    accounts: [{ accountCorrelationId: "account", providerId: "chatgpt", providerDisplayName: "ChatGPT", providerStatus: "ok", modes: [
++      { mode: "prepaid", envelopeId: "prepaid", canEnable: true, decision: "unreviewed", evidence: { kind: "prepaid", availability: "funded" } },
++      { mode: "automatic", envelopeId: "automatic", canEnable: true, decision: "accepted", evidence: { kind: "automatic-billing", enablement: "enabled" } },
++    ] }],
++  }
++  const accepted = { ...consent, authorityRevision: 2, accounts: consent.accounts.map((account) => ({ ...account, modes: account.modes.map((mode) => ({ ...mode, decision: "accepted" as const })) })) }
++  const pending = Promise.withResolvers<SubscriptionSpendConsentMutationResult>()
++  let response = pending.promise
++  const mounted = mountProviderBrowserLogin(undefined, [provider], undefined, undefined, { consent, response: () => response })
++  try {
++    await mounted.ready()
++    const checkbox = mounted.checkboxes()[0]!
++    assert.equal(checkbox.properties.checked, false)
++    assert.equal(mounted.tickMode(0, true), false, "the native checkbox must keep the saved value while writing")
++    assert.deepEqual(mounted.mutations(), [{
++      type: "subscription_spend_consent.save", profileId: "personal", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1,
++      clientSnapshotPosition: 1, envelopeIds: ["prepaid", "automatic"], reviewedEnvelopeIds: ["prepaid"], acceptedEnvelopeIds: ["prepaid"],
++    }])
++    assert.equal(checkbox.properties["aria-busy"], true)
++    assert.match(mounted.text(), /Saving\.\.\./)
++    assert.ok(!mounted.buttonLabels().includes("Save"))
++    mounted.publishConsent(accepted)
++    pending.resolve({ kind: "committed", consent: accepted })
++    await mounted.consentSettled()
++    assert.equal(mounted.checkboxes()[0], checkbox)
++    assert.equal(checkbox.properties.checked, true)
++    assert.equal(checkbox.properties["aria-busy"], undefined)
++
++    response = Promise.resolve({ kind: "storage-failure" })
++    assert.equal(mounted.tickMode(0, false), true)
++    await mounted.consentSettled()
++    assert.equal(mounted.checkboxes()[0], checkbox)
++    assert.equal(checkbox.properties.checked, true)
++    assert.deepEqual(mounted.mutations().at(-1), {
++      type: "subscription_spend_consent.save", profileId: "personal", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 2,
++      clientSnapshotPosition: 1, envelopeIds: ["prepaid", "automatic"], reviewedEnvelopeIds: ["prepaid"], acceptedEnvelopeIds: [],
++    })
++    assert.equal(mounted.reports().at(-1)?.severity, "warning")
++    assert.match(mounted.reports().at(-1)!.message, /could not save paid-use settings/)
++  } finally { mounted.dispose() }
++})
++
+ test("the shared Providers sheet submits and settles browser completion", async () => {
+   const mounted = mountProviderBrowserLogin()
+   try {
+diff --git a/webview/src/app/sheets/providers-sheet.tsx b/webview/src/app/sheets/providers-sheet.tsx
+index 9337117..36bab80 100644
+--- a/webview/src/app/sheets/providers-sheet.tsx
++++ b/webview/src/app/sheets/providers-sheet.tsx
+@@ -7,7 +7,7 @@ import type { AuthProviderStatus, RuntimeAuthLoginQuestion } from "../../../../s
+ import { awaitsSettlement, initialLoginStep, loginOutcome, loginSettlement, type LoginStep, type LoginTarget } from "../../../../src/protocol/client/auth-login.js"
+ import { actionKey } from "../../client/action-key.js"
+ import { describeFailure } from "../../client/failure-message.js"
+-import { buildProviderViewState, createProviderConsentMutation, type ProviderViewAccount, type ProviderViewProviderRow } from "../../client/provider-view-model.js"
++import { buildProviderViewState, createProviderConsentMutation } from "../../client/provider-view-model.js"
+ import type { SheetFocus } from "../../../../src/protocol/client/host-contract.js"
+ import { BROWSER_LOGIN_COPY, LOGIN_QUESTION_COPY } from "../../../../src/protocol/client/provider-account-copy.js"
+ import { useClient } from "../client-context.js"
+@@ -21,16 +21,15 @@ import "../../styles/providers.css"
+  *  terminal, and then an editor-only flow; here it is the sheet itself asking
+  *  for the one thing the provider needs, so the phone can do it too. The
+  *  runtime keeps the credentials and publishes the view; this sheet holds only
+- *  the step of a login in progress and the consent boxes a person has ticked
+- *  but not yet saved. */
++ *  the step of a login in progress. Consent boxes show the runtime's saved decisions. */
+ 
+ /** Why an unanswered paid mode is highlighted: it is off, and only the person can turn it on (PI-MODEL-018). */
+-const PAID_USE_PENDING_NOTE = "Off. Flywheel keeps paid use off until you tick this box and save."
++const PAID_USE_PENDING_NOTE = "Off. Flywheel keeps paid use off until you tick this box."
+ 
+ const REFUSALS = {
+-  stale: "Provider settings changed. Review the refreshed account and save again.",
+-  contention: "Provider settings changed. Review the refreshed account and save again.",
+-  "invalid-envelope": "Paid capacity changed. Refresh providers before saving.",
++  stale: "Provider settings changed. Review the current account and try again.",
++  contention: "Another update is in progress. Try again.",
++  "invalid-envelope": "Paid capacity changed. Refresh providers before trying again.",
+   "storage-failure": "Flywheel could not save paid-use settings. Check runtime storage and retry.",
+ } as const
+ 
+@@ -75,11 +74,9 @@ export function ProvidersSheet() {
+   const finishKey = actionKey("provider-login-finish")
+   const busy = () => client.actions.working(loginKey) || client.actions.working(finishKey)
+   const refreshKey = () => actionKey("providers-refresh", auth()?.profile.id)
+-  const consentKey = (account: ProviderViewAccount) => actionKey("provider-consent", account.id)
++  const consentKey = (envelopeId: string) => actionKey("provider-consent", envelopeId)
+   const disconnectKey = (providerId: string, instanceId?: string) => actionKey("provider-disconnect", `${providerId}:${instanceId ?? ""}`)
+   const renameKey = (providerId: string, instanceId: string) => actionKey("provider-rename", `${providerId}:${instanceId}`)
+-  /** Consent boxes ticked per account and not yet saved. */
+-  const [drafts, setDrafts] = createSignal<{ readonly [accountId: string]: readonly string[] }>({})
+   const providerElements = new Map<string, HTMLElement>()
+   const paidUseElements = new Map<string, HTMLInputElement>()
+ 
+@@ -247,30 +244,14 @@ export function ProvidersSheet() {
+     (cause) => client.report("warning", `Flywheel could not refresh providers: ${describeFailure(cause)}`))
+   }
+ 
+-  const accepted = (account: ProviderViewAccount): readonly string[] =>
+-    drafts()[account.id] ?? account.modes.filter((mode) => mode.checked).map((mode) => mode.envelopeId)
+-  const dirty = (account: ProviderViewAccount): boolean => {
+-    const draft = drafts()[account.id]
+-    if (draft === undefined) return false
+-    const current = account.modes.filter((mode) => mode.checked).map((mode) => mode.envelopeId)
+-    return draft.length !== current.length || draft.some((id) => !current.includes(id))
+-  }
+-  const tick = (account: ProviderViewAccount, envelopeId: string, checked: boolean): void => {
+-    const next = new Set(accepted(account))
+-    if (checked) next.add(envelopeId)
+-    else next.delete(envelopeId)
+-    setDrafts((current) => ({ ...current, [account.id]: [...next] }))
+-  }
+-
+-  async function save(provider: ProviderViewProviderRow, account: ProviderViewAccount): Promise<void> {
++  async function tick(providerId: string, accountId: string, envelopeId: string, checked: boolean): Promise<void> {
+     const current = snapshot()
+     if (!current) return
+-    const mutation = createProviderConsentMutation(current, provider.id, account.id, accepted(account))
++    const mutation = createProviderConsentMutation(current, providerId, accountId, envelopeId, checked)
+     if (!mutation) return
+-    await client.actions.run(consentKey(account), async () => {
++    await client.actions.run(consentKey(envelopeId), async () => {
+       const result = await client.connection.dispatch(mutation)
+       if (result.kind === "committed") {
+-        setDrafts((rest) => Object.fromEntries(Object.entries(rest).filter(([id]) => id !== account.id)))
+         client.report("info", "Paid-use settings saved.")
+       } else {
+         client.report("warning", REFUSALS[result.kind])
+@@ -382,12 +363,17 @@ export function ProvidersSheet() {
+                                     <input
+                                       type="checkbox"
+                                       ref={(element) => registerPaidUseElement(paidUseElementKey(provider().id, account().id, mode().envelopeId), element)}
+-                                      disabled={!mode().editable || client.actions.working(consentKey(account()))}
+-                                      checked={accepted(account()).includes(mode().envelopeId)}
+-                                      onChange={(event) => tick(account(), mode().envelopeId, event.currentTarget.checked)}
++                                      disabled={!mode().editable || account().modes.some((row) => client.actions.working(consentKey(row.envelopeId)))}
++                                      aria-busy={client.actions.working(consentKey(mode().envelopeId)) || undefined}
++                                      checked={mode().checked}
++                                      onChange={(event) => {
++                                        const checked = event.currentTarget.checked
++                                        event.currentTarget.checked = mode().checked
++                                        void tick(provider().id, account().id, mode().envelopeId, checked)
++                                      }}
+                                     />
+                                     <span class="mode-text">
+-                                      <span class="mode-label">{mode().label} <span class="mode-status">{mode().status}</span></span>
++                                      <span class="mode-label">{mode().label} <span class="mode-status">{mode().status}{client.actions.working(consentKey(mode().envelopeId)) ? " · Saving..." : ""}</span></span>
+                                       <Show when={mode().details.length > 0}><span class="mode-details">{mode().details.join(" · ")}</span></Show>
+                                       <Show when={mode().canEnable && mode().decision === "unreviewed"}><span class="mode-details">{PAID_USE_PENDING_NOTE}</span></Show>
+                                       <Show when={!mode().editable}><span class="mode-details">Use in Flywheel: unavailable</span></Show>
+@@ -413,11 +399,6 @@ export function ProvidersSheet() {
+                               <Show when={account().billingUrl && client.actions.canOpenExternal}>
+                                 <button class="ghost-text" onClick={() => client.actions.openExternal(account().billingUrl ?? "")}>Provider billing</button>
+                               </Show>
+-                              <Show when={account().modes.some((row) => row.editable)}>
+-                                <button class="primary" disabled={!dirty(account())} aria-busy={client.actions.working(consentKey(account())) || undefined} onClick={() => { void save(provider(), account()) }}>
+-                                  {client.actions.working(consentKey(account())) ? "Saving…" : "Save"}
+-                                </button>
+-                              </Show>
+                             </div>
+                           </article>
+                         )}
+diff --git a/webview/src/client/provider-view-model.test.ts b/webview/src/client/provider-view-model.test.ts
+index 475878b..23383c5 100644
+--- a/webview/src/client/provider-view-model.test.ts
++++ b/webview/src/client/provider-view-model.test.ts
+@@ -110,9 +110,9 @@ describe("provider view model", () => {
+     assert.deepEqual(providers.find((provider) => provider.id === "claude_agent_sdk")?.accounts.map(({ status, problem }) => ({ status, problem })), [{ status: "Needs attention", problem: undefined }])
+   })
+ 
+-  test("builds one generation-bound account mutation and preserves hidden modes", () => {
++  test("builds a generation-bound decision for one tick and preserves other modes", () => {
+     const current = snapshot()
+-    const mutation = createProviderConsentMutation(current, "supergrok", firstAccountId, ["first-automatic", "second-automatic"])
++    const mutation = createProviderConsentMutation(current, "supergrok", firstAccountId, "first-prepaid", true)
+ 
+     assert.deepEqual(mutation, {
+       type: "subscription_spend_consent.save",
+@@ -122,18 +122,22 @@ describe("provider view model", () => {
+       authorityRevision: 4,
+       clientSnapshotPosition: 12,
+       envelopeIds: ["first-prepaid", "first-automatic", "second-prepaid", "second-automatic"],
+-      reviewedEnvelopeIds: ["first-prepaid", "first-automatic"],
+-      acceptedEnvelopeIds: ["first-automatic"],
++      reviewedEnvelopeIds: ["first-prepaid"],
++      acceptedEnvelopeIds: ["first-prepaid"],
+     })
++    assert.deepEqual(createProviderConsentMutation(current, "supergrok", firstAccountId, "first-automatic", false), {
++      ...mutation, reviewedEnvelopeIds: ["first-automatic"], acceptedEnvelopeIds: [],
++    })
++    assert.equal(createProviderConsentMutation(current, "chatgpt", secondAccountId, "second-prepaid", true), undefined)
+   })
+ 
+   test("counts nothing pending and writes nothing for an account that is not shown", () => {
+     const current = snapshot()
+     const hidden = { ...current.auth, providers: [] }
+     assert.equal(buildProviderViewState(hidden).pendingCount, 0)
+-    assert.equal(createProviderConsentMutation({ ...current, auth: hidden }, "supergrok", firstAccountId, ["first-prepaid"]), undefined)
++    assert.equal(createProviderConsentMutation({ ...current, auth: hidden }, "supergrok", firstAccountId, "first-prepaid", true), undefined)
+     const replaced = { ...current.auth, providers: current.auth.providers.map((provider) => provider.providerId === "supergrok" ? { ...provider, accounts: [{ ...provider.accounts[0]!, instanceId: "replacement", accountCorrelationId: subscriptionSpendAccountCorrelationId(profileId, "supergrok", "replacement") }] } : provider) }
+     assert.equal(buildProviderViewState(replaced).pendingCount, 1)
+-    assert.equal(createProviderConsentMutation({ ...current, auth: replaced }, "supergrok", firstAccountId, ["first-prepaid"]), undefined)
++    assert.equal(createProviderConsentMutation({ ...current, auth: replaced }, "supergrok", firstAccountId, "first-prepaid", true), undefined)
+   })
+ })
+diff --git a/webview/src/client/provider-view-model.ts b/webview/src/client/provider-view-model.ts
+index 65b41cb..e98798f 100644
+--- a/webview/src/client/provider-view-model.ts
++++ b/webview/src/client/provider-view-model.ts
+@@ -106,18 +106,14 @@ export function buildProviderViewState(auth: RuntimeAuthView): ProviderViewState
+   return { profileName: auth.profile.displayName, pendingCount, providers }
+ }
+ 
+-export function createProviderConsentMutation(snapshot: RuntimeAuthStatusSnapshotResult, providerId: string, accountCorrelationId: string, acceptedEnvelopeIds: readonly string[]): SubscriptionSpendConsentMutation | undefined {
++/** Builds one paid-mode decision from the saved account view. Returns nothing for a hidden or unavailable control. */
++export function createProviderConsentMutation(snapshot: RuntimeAuthStatusSnapshotResult, providerId: string, accountCorrelationId: string, envelopeId: string, checked: boolean): SubscriptionSpendConsentMutation | undefined {
+   const consent = snapshot.auth.subscriptionSpendConsent
+   if (consent.kind !== "available") return undefined
+   const visibleAccount = buildProviderViewState(snapshot.auth).providers.find((provider) => provider.id === providerId)?.accounts.find((account) => account.id === accountCorrelationId)
+   if (visibleAccount === undefined) return undefined
+-  const account = consent.accounts.find((candidate) => candidate.providerId === providerId && candidate.accountCorrelationId === accountCorrelationId)
+-  if (account === undefined) return undefined
+-  const visibleEnvelopeIds = new Set(visibleAccount.modes.map((mode) => mode.envelopeId))
+-  const reviewedEnvelopeIds = account.modes.filter((mode) => visibleEnvelopeIds.has(mode.envelopeId) && (mode.canEnable || mode.decision === "accepted")).map((mode) => mode.envelopeId)
+-  if (reviewedEnvelopeIds.length === 0) return undefined
+-  const reviewed = new Set(reviewedEnvelopeIds)
+-  const accepted = new Set(acceptedEnvelopeIds)
++  const mode = visibleAccount.modes.find((candidate) => candidate.envelopeId === envelopeId)
++  if (mode === undefined || !mode.editable) return undefined
+   return {
+     type: "subscription_spend_consent.save",
+     profileId: consent.profileId,
+@@ -126,8 +122,8 @@ export function createProviderConsentMutation(snapshot: RuntimeAuthStatusSnapsho
+     authorityRevision: consent.authorityRevision,
+     clientSnapshotPosition: snapshot.snapshotPosition,
+     envelopeIds: subscriptionSpendConsentEnvelopeIds(consent),
+-    reviewedEnvelopeIds,
+-    acceptedEnvelopeIds: reviewedEnvelopeIds.filter((id) => accepted.has(id) && reviewed.has(id)),
++    reviewedEnvelopeIds: [envelopeId],
++    acceptedEnvelopeIds: checked ? [envelopeId] : [],
+   }
+ }
+ 

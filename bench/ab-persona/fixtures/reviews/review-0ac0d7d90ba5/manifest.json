@@ -1,0 +1,39 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/tui/hooks/composer-attachments.ts, pasteParts splits candidates with a regex whose \\S class stops at the narrow no-break space (U+202F) that macOS screenshot file names contain, so a drop of two or more such screenshot paths yields fragments such as `PM.png` that are not absolute, and the whole paste falls back to one candidate that attaches no image per file. A catch must say that a multi-file drop of macOS screenshot paths (or of paths holding a non-ASCII whitespace character) is not split into one attachment per image, and name the whitespace handling of the split as the cause.",
+      "category": "elegance",
+      "files": [
+        "src/tui/hooks/composer-attachments.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "multiple-macos-screenshot-paths-still-collapse-into-one-fail",
+      "title": "Multiple macOS screenshot paths still collapse into one failed attachment"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In src/tui/hooks/composer-attachments.ts, pasteParts treats a paste as a multi-file drop whenever it has two or more whitespace-separated candidates that are all absolute, so a single path with an unescaped space before a separator, such as `/scratch/album /photo.png` (a directory name that ends in a space), is split and only the suffix `/photo.png` reaches image lookup. A catch must say that a single path with a real unescaped space can now be split into several candidates, so the claim that a single path behaves exactly as before does not hold, with such an input or the all-absolute condition named.",
+      "category": "quality",
+      "files": [
+        "src/tui/hooks/composer-attachments.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "preserve-existing-single-paths-that-also-resemble-a-path-lis",
+      "title": "Preserve existing single paths that also resemble a path list"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In tests/unit/tui/hooks/prompt-attachments.test.ts, the new test \"attaches each image of a multi-file terminal drop and keeps other paths as text\" compares raw POSIX strings (`/scratch/one.png`, `/scratch/My Shot.png`) in its `images` set with the paths findImagePath receives, which pathText has passed through `resolve`, so on Windows the resolved drive-letter paths never match and the test fails. A catch must say that this new test's fixture paths are not normalized with path.resolve (as the neighboring screenshot test does) and therefore fail on Windows.",
+      "category": "quality",
+      "files": [
+        "tests/unit/tui/hooks/prompt-attachments.test.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "normalize-the-new-test-fixture-paths-for-windows",
+      "title": "Normalize the new test fixture paths for Windows"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Elegance review multi-drop"
+}

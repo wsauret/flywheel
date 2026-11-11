@@ -1,0 +1,397 @@
+diff --git a/src/infra/owned-subprocess-backend.ts b/src/infra/owned-subprocess-backend.ts
+index 6c6a025..4993d9a 100644
+--- a/src/infra/owned-subprocess-backend.ts
++++ b/src/infra/owned-subprocess-backend.ts
+@@ -3,11 +3,9 @@ import * as fs from "node:fs"
+ import type { FileSink } from "bun"
+ 
+ import { encodeSupervisorWord } from "./command-handover.js"
+-import { namedExitStatus } from "./exit-status.js"
+ import {
+   controlledContainer,
+   emptied,
+-  endAtOnce,
+   identifyGuardian,
+   reachCommand,
+   type ControlledContainer,
+@@ -16,10 +14,11 @@ import {
+ } from "./owned-command-control.js"
+ import {
+   commandSupervisorArgv,
++  windowsContainerName,
++  windowsControlChannelName,
+   type CommandSupervisorPolicy,
+   type ContainerPolicy,
+-} from "./owned-command-policy.js"
+-import { windowsContainerName, windowsControlChannelName } from "./owned-command-supervisor.js"
++} from "./owned-command-supervisor.js"
+ import {
+   bunContainerProbe,
+   unixContainer,
+@@ -32,14 +31,10 @@ import {
+   type ContainerRef,
+   type ManagedContainer,
+   type ProcessIdentity,
+-  type TerminationCause,
+ } from "./process-container.js"
+-import type { StopHold } from "./stop-hold.js"
+-import { markedContainer, markedEnvironment, strictDescendantSettlementRequired } from "./container-mark.js"
+ import { createDarwinProcessApi, openLibprocCalls, type DarwinProcessApi } from "./darwin-process-api.js"
+ import { windowsJobApi, type WindowsJob, type WindowsJobApi, type WindowsJobOpen } from "./windows-job-object.js"
+ import type { ProcessPriority } from "./process-priority.js"
+-import { drainSupervisorDiagnostics, type SupervisorDiagnostics } from "./process-diagnostic-reader.js"
+ 
+ /** Platform launches for owned subprocesses.
+  *
+@@ -116,14 +111,8 @@ interface HostSpawnOptions {
+  *  closing it tells the child the launcher is gone - the same two things an
+  *  inherited descriptor conveys. */
+ interface ControlChannel {
+-  readonly diagnostics?: ReadableStream<Uint8Array>
+   say(word: string): void
+-  /** The supervisor exited, so a peer that never connected never will. The
+-   *  diagnostics then end, which they cannot do otherwise for a supervisor
+-   *  that was ended before it ever ran. */
+-  supervisorExited(): void
+-  /** Defers transport close until the retained return reader has drained. */
+-  close(after?: Promise<void>): void
++  close(): void
+ }
+ 
+ /** The platform syscall surface the backends need, injected so launches are
+@@ -141,7 +130,6 @@ export interface ProcessGroupHost extends ProcessHostBase {
+   readonly containers: "process-group"
+   writeFd(fd: number, text: string): void
+   closeFd(fd: number): void
+-  readFd(fd: number): ReadableStream<Uint8Array>
+ }
+ 
+ interface JobObjectHost extends ProcessHostBase {
+@@ -155,30 +143,18 @@ interface JobObjectHost extends ProcessHostBase {
+ export type ProcessHost = ProcessGroupHost | JobObjectHost
+ 
+ export interface OwnedLaunchOptions {
+-  /** Ends marked descendants on natural payload exit. Inherited strict
+-   *  process policy also requires this and cannot be weakened by omission. */
+-  readonly onPayloadExit?: "end-descendants"
+-  readonly diagnostics?: SupervisorDiagnostics
+   readonly cwd?: string
+   readonly env?: ProcessEnvironment
+   readonly priority?: ProcessPriority
+-  /** Gives the payload EOF from launch, including across handover. The default
+-   *  inherits stdin or holds it open when handover is enabled. */
+-  readonly stdin?: "ignore"
+   /** The launch may later be handed over to another owner. Only such a
+    *  launch's supervisor answers the handover word, and it holds the
+-   *  payload's stdin itself unless ignored, so this process's exit never ends
+-   *  that stream. */
++   *  payload's stdin itself, so this process's exit never ends that stream. */
+   readonly handover?: boolean
+   /** The launched process's own owned launches are held by their own
+    *  containers alone, never by this launch's. Every POSIX launch already
+    *  leads its own session; on Windows this launch's job lets the children of
+    *  its members leave it. */
+   readonly childrenBreakAway?: boolean
+-  /** Defers the first signal of every end of this launch (see `StopHold`):
+-   *  the supervisor's stop or end, the guardian's sweep or generation close,
+-   *  and this side's own emptying after a supervisor that died. */
+-  readonly stopHold?: StopHold
+ }
+ 
+ interface ContainerLaunchOptions extends OwnedLaunchOptions, ContainerPolicy {
+@@ -191,9 +167,8 @@ interface OwnedLaunch extends ControlledContainer {
+   /** Lets the payload run. Called only after the guardian owns the container. */
+   admit(): void
+   /** Ends the launch. Before admission the payload never runs; after it the
+-   *  container is emptied. Repeated calls are the same request. With `end`,
+-   *  this side ends the container at once (see `ControlledContainer`). */
+-  stop(end?: TerminationCause): void
++   *  container is emptied. Repeated calls are the same request. */
++  stop(): void
+ }
+ 
+ export interface OwnedProcessBackend {
+@@ -209,9 +184,6 @@ export interface OwnedProcessBackend {
+   emptyUnserved(command: HandedOverCommand, supervisorIdentity: string | undefined, killGraceMs: number): Promise<boolean>
+   /** The container `ref` names, addressed from outside it. */
+   container(ref: ContainerRef): ManagedContainer
+-  /** What ending the command `ref` names reaches: its container, and on
+-   *  macOS and Linux every process the command started that left it. */
+-  ending(ref: ContainerRef): ManagedContainer
+   /** What `ref` proves about its container: the container's stable identity, a
+    *  proven absence, or nothing at all. Comparing identities before signalling
+    *  is what keeps a recycled pid from being killed in place of the container
+@@ -356,8 +328,8 @@ const bunSpawnSurface = {
+       stdout: proc.stdout,
+       stderr: proc.stderr,
+       exited: proc.exited,
+-      get exitCode() { return namedExitStatus(proc.exitCode, proc.signalCode).code },
+-      get signalCode() { return namedExitStatus(proc.exitCode, proc.signalCode).signal },
++      get exitCode() { return proc.exitCode },
++      get signalCode() { return proc.signalCode },
+       unref: () => { proc.unref() },
+     }
+   },
+@@ -372,7 +344,6 @@ function bunHost(): ProcessHost {
+     return {
+       ...base,
+       containers: "process-group",
+-      readFd: (fd) => Bun.file(fd).stream(),
+       writeFd(fd, text) {
+         try {
+           fs.writeSync(fd, text)
+@@ -401,10 +372,7 @@ const bunProcessHost: ProcessHost = bunHost()
+  *  because admission can be decided before the supervisor has finished
+  *  starting. */
+ function bunControlChannel(name: string): ControlChannel {
+-  let output!: ReadableStreamDefaultController<Uint8Array>
+-  let outputEnded = false
+-  const diagnostics = new ReadableStream<Uint8Array>({ start(controller) { output = controller } })
+-  let peer: { write(bytes: string): void; end(): void } | undefined
++  let peer: { write(bytes: string): void } | undefined
+   let pending = ""
+   // Held apart from `closed` on purpose. A word spoken before the supervisor
+   // connects is worth holding, because the supervisor is still arriving. A word
+@@ -416,10 +384,6 @@ function bunControlChannel(name: string): ControlChannel {
+     listening = false
+     peer = undefined
+     pending = ""
+-    if (!outputEnded) {
+-      outputEnded = true
+-      output.close()
+-    }
+   }
+   const server = Bun.listen({
+     unix: name,
+@@ -442,13 +406,12 @@ function bunControlChannel(name: string): ControlChannel {
+       error: settled,
+       end: settled,
+       close: settled,
+-      data(_socket, bytes) {
+-        if (!outputEnded) output.enqueue(bytes.slice())
++      data() {
++        // The supervisor never answers; the channel carries decisions one way.
+       },
+     },
+   })
+   return {
+-    diagnostics,
+     say(word) {
+       if (!listening) return
+       if (peer === undefined) {
+@@ -463,21 +426,12 @@ function bunControlChannel(name: string): ControlChannel {
+         settled()
+       }
+     },
+-    supervisorExited() {
+-      // A connected peer's pipe ends by itself. With none, nothing else ever
+-      // ends the diagnostics, and the container's settlement waits on them.
+-      if (peer === undefined) settled()
+-    },
+-    close(after) {
+-      if (after !== undefined) {
+-        void after.then(() => { this.close() })
+-        return
+-      }
++    close() {
+       if (stopped) return
+       stopped = true
+-      // A Windows pipe's peer stays open when only its listener stops.
+-      peer?.end()
+       settled()
++      // Stopping the listener closes the connection with it, and that end of
++      // channel is what tells the supervisor its launcher is gone.
+       server.stop(true)
+     },
+   }
+@@ -486,7 +440,7 @@ function bunControlChannel(name: string): ControlChannel {
+ /** The admission protocol, which is the same on every platform: one word that
+  *  lets the payload run, said at most once, and a stop that ends the exchange.
+  *  Only what carries the word differs, and that is the channel's business. */
+-function admission(channel: ControlChannel, diagnosticsDrained: Promise<void>): Pick<OwnedLaunch, "admit" | "stop"> {
++function admission(channel: ControlChannel): Pick<OwnedLaunch, "admit" | "stop"> {
+   let phase: "pending" | "admitted" | "stopped" = "pending"
+   const say = (word: "go" | "stop", next: "admitted" | "stopped"): void => {
+     if (phase === "stopped") return
+@@ -500,7 +454,7 @@ function admission(channel: ControlChannel, diagnosticsDrained: Promise<void>):
+     },
+     stop() {
+       say("stop", "stopped")
+-      channel.close(diagnosticsDrained)
++      channel.close()
+     },
+   }
+ }
+@@ -543,19 +497,11 @@ function releasablePipe(source: ReadableStream<Uint8Array> | undefined): Releasa
+ function launchedContainer(
+   child: HostChild,
+   channel: ControlChannel,
+-  supervised: ManagedContainer,
+-  options: Pick<ContainerLaunchOptions, "killGraceMs" | "handover" | "diagnostics" | "stopHold" | "onPayloadExit">,
++  container: ManagedContainer,
++  options: Pick<ContainerLaunchOptions, "killGraceMs" | "handover">,
+   letGo: () => void,
+ ): OwnedLaunch {
+-  // A supervisor that died left its payload unattended, and this side's end
+-  // of it honors the launch's stop hold as the supervisor's own would.
+-  const container: ManagedContainer = options.stopHold === undefined ? supervised : { ...supervised, stopHold: options.stopHold }
+-  const diagnostics = options.onPayloadExit === undefined ? options.diagnostics : {
+-    ...options.diagnostics,
+-    context: { ...options.diagnostics?.context, onPayloadExit: options.onPayloadExit },
+-  }
+-  const diagnosticsDrained = drainSupervisorDiagnostics(channel.diagnostics, child.pid, diagnostics)
+-  const control = admission(channel, diagnosticsDrained.done)
++  const control = admission(channel)
+   const killGraceMs = options.killGraceMs
+   const pipe = (source: ReadableStream<Uint8Array> | undefined): ReleasablePipe => (options.handover === true ? releasablePipe(source) : { stream: source, release: () => {} })
+   const stdout = pipe(child.stdout)
+@@ -566,20 +512,14 @@ function launchedContainer(
+       stdio: { stdin: child.stdin, stdout: stdout.stream, stderr: stderr.stream },
+       gone: child.exited,
+       async settle() {
+-        channel.supervisorExited()
+-        await diagnosticsDrained.done
+         channel.close()
+         const status: OwnedExitStatus = { code: child.exitCode, signal: child.signalCode, statusOf: container.populated() ? "supervisor" : "payload" }
+         await emptied({ pid: child.pid, container }, killGraceMs, "command supervisor exited with work left", Bun.sleep)
+         return status
+       },
+       say: (line) => { channel.say(line) },
+-      stop(end) {
+-        control.stop()
+-        if (end !== undefined) endAtOnce(container, end)
+-      },
++      stop: control.stop,
+       letGo() {
+-        void diagnosticsDrained.release()
+         channel.close()
+         stdout.release()
+         stderr.release()
+@@ -593,20 +533,11 @@ function launchedContainer(
+ 
+ function descriptorChannel(fd: number | undefined, host: ProcessGroupHost): ControlChannel {
+   let closed = false
+-  const diagnostics = fd === undefined ? undefined : host.readFd(fd)
+   return {
+-    diagnostics,
+     say(word) {
+       if (!closed && fd !== undefined) host.writeFd(fd, word)
+     },
+-    // The supervisor held the other end of the descriptor from its start, so
+-    // its exit already ended the diagnostics.
+-    supervisorExited() {},
+-    close(after) {
+-      if (after !== undefined) {
+-        void after.then(() => { this.close() })
+-        return
+-      }
++    close() {
+       if (closed) return
+       closed = true
+       if (fd !== undefined) host.closeFd(fd)
+@@ -630,31 +561,22 @@ function supervisorPolicy(options: ContainerLaunchOptions, guardianIdentity: str
+     container,
+     ...(options.priority === undefined ? {} : { priority: options.priority }),
+     ...(options.handover === true ? { handover: true } : {}),
+-    ...(options.stdin === undefined ? {} : { stdin: options.stdin }),
+-    ...(options.stopHold === undefined ? {} : { stopHold: options.stopHold }),
+-    ...(options.onPayloadExit === undefined ? {} : { onPayloadExit: options.onPayloadExit }),
+   }
+ }
+ 
+ function unixBackend(host: ProcessGroupHost): OwnedProcessBackend {
+   const backend: OwnedProcessBackend = {
+-    launch(command, input) {
+-      const options = strictDescendantSettlementRequired() ? { ...input, onPayloadExit: "end-descendants" as const } : input
++    launch(command, options) {
+       const guardianIdentity = identifyGuardian(unixProcessIdentity(options.guardianPid, host))
+       const child = host.spawn(commandSupervisorArgv(command, supervisorPolicy(options, guardianIdentity, { kind: "process-group" })), {
+         cwd: options.cwd,
+-        // The supervisor and every process the command starts carry the
+-        // launch's token, which is how ending the command reaches a process
+-        // that left its group.
+-        env: markedEnvironment(options.env, options.token, options.onPayloadExit === "end-descendants"),
++        env: options.env,
+         detached: true,
+         control: true,
+       })
+       // A process group is named by a pid, so a handed-over launch has no
+       // handle to let go of.
+-      const group = unixContainer(child.pid, host)
+-      const settlement = options.onPayloadExit === "end-descendants" ? markedContainer(group, child.pid, options.token, host) : group
+-      return launchedContainer(child, descriptorChannel(child.controlFd, host), settlement, options, () => {})
++      return launchedContainer(child, descriptorChannel(child.controlFd, host), unixContainer(child.pid, host), options, () => {})
+     },
+     reach: (command, killGraceMs) => reachCommand(command, backend, (pid) => unixProcessIdentity(pid, host), killGraceMs),
+     async emptyUnserved(command, supervisorIdentity, killGraceMs) {
+@@ -669,7 +591,6 @@ function unixBackend(host: ProcessGroupHost): OwnedProcessBackend {
+       return true
+     },
+     container: (ref) => unixContainer(ref.pid, host),
+-    ending: (ref) => markedContainer(unixContainer(ref.pid, host), ref.pid, ref.token, host),
+     inspect: (ref) => unixContainerIdentity(ref.pid, host),
+     // A process group is named by a pid, so nothing is held to release.
+     forget: () => {},
+@@ -695,15 +616,14 @@ function windowsBackend(host: JobObjectHost): OwnedProcessBackend {
+   }
+ 
+   const backend: OwnedProcessBackend = {
+-    launch(command, input) {
+-      const options = strictDescendantSettlementRequired() ? { ...input, onPayloadExit: "end-descendants" as const } : input
++    launch(command, options) {
+       const guardianIdentity = identifyGuardian(windowsProcessIdentity(options.guardianPid, host))
+       // Created before the supervisor exists, so there is no moment where a
+       // running process has no container to be ended through.
+-      // A job whose members' children leave it is created without that
+-      // limit: its supervisor sets it once the payload runs inside it, so the
+-      // payload is never outside its container.
+-      const job = jobs.create(windowsContainerName(options.token), options.priority === undefined ? {} : { priority: options.priority })
++      const job = jobs.create(windowsContainerName(options.token), {
++        ...(options.priority === undefined ? {} : { priority: options.priority }),
++        ...(options.childrenBreakAway === true ? { childrenBreakAway: true } : {}),
++      })
+       if (job === undefined) throw new Error("the container for this launch could not be created, so nothing may be launched into it")
+       held.set(options.token, job)
+       const abandon = (): void => {
+@@ -722,13 +642,11 @@ function windowsBackend(host: JobObjectHost): OwnedProcessBackend {
+             token: options.token,
+             ...(options.childrenBreakAway === true ? { childrenBreakAway: true } : {}),
+           })),
+-          // This process's own job ends its members when this process exits.
+-          // A command that may be handed over, and one whose stop hold its
+-          // supervisor must carry past that exit, are launched outside it.
+-          // Their container job, which the supervisor holds open, carries
+-          // them across the exit, and the supervisor ends that container
+-          // itself when this process's channel ends.
+-          { cwd: options.cwd, env: options.onPayloadExit === "end-descendants" ? markedEnvironment(options.env, options.token, true) : options.env, detached: options.handover === true || options.stopHold !== undefined, control: false },
++          // A command that may be handed over is launched outside this
++          // process's own job, which ends its members when this process
++          // exits. Its container job, which the supervisor holds open, is
++          // what carries it across that exit.
++          { cwd: options.cwd, env: options.env, detached: options.handover === true, control: false },
+         )
+       } catch (err) {
+         control.close()
+@@ -737,9 +655,9 @@ function windowsBackend(host: JobObjectHost): OwnedProcessBackend {
+       }
+       // The supervisor joins the container before it is told anything, so a
+       // generation closed between here and admission ends it while the payload
+-      // has still never run. Everything it starts afterwards joins by itself;
+-      // in a job whose members' children leave it, the payload joins before
+-      // the supervisor lets its children leave.
++      // has still never run. Everything it starts afterwards joins by itself,
++      // except in a job whose members' children leave it, where the
++      // supervisor puts its payload in the job itself.
+       if (!job.admit(child.pid)) {
+         control.close()
+         abandon()
+@@ -763,9 +681,6 @@ function windowsBackend(host: JobObjectHost): OwnedProcessBackend {
+       // so it reports itself populated rather than surrendering.
+       return open.kind === "opened" ? windowsJobContainer(open.job, ref.pid) : { signal: () => {}, populated: () => true }
+     },
+-    // A job holds every process its members start, so ending it reaches
+-    // everything the command started.
+-    ending: (ref) => backend.container(ref),
+     inspect(ref) {
+       // The name is the identity. A container is created once under a token
+       // that is never reused, so reaching it at all proves it is the same one,

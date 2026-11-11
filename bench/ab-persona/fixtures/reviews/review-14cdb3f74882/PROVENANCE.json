@@ -1,0 +1,117 @@
+{
+  "base": "149c9f6414ca0a657050f03b8e21f142c91148d9",
+  "files": [
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "scripts/uat/harness.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "scripts/uat/tmux-driver.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "scripts/uat/tui.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "tests/helpers/real-process-fixture.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "tests/integration/local/real-process-fixture.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "tests/integration/scripts/uat/harness.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "tests/integration/scripts/uat/lifecycle.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "tests/unit/helpers/real-process-fixture.test.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "d2a0221d79b1b32babab2340fda7bf12417057f3",
+      "path": "tests/unit/scripts/uat/harness.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "docs/adrs/adr-007-agent-runtime-process-placements.md",
+    "src/infra/darwin-process-api.ts",
+    "src/workflows/vm/fact-fold.ts",
+    "tests/unit/infra/_owned-subprocess-platform-fixtures.ts",
+    "tests/unit/infra/container-mark.test.ts",
+    "tests/unit/infra/darwin-process-api.test.ts",
+    "tests/unit/infra/process-container.test.ts",
+    "tests/unit/workflows/vm/fact-fold.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "low",
+      "end": 1792623733229,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -265,81 +280,147 @@\n export const RELEASE_HARNESS_ENVIRONMENT = { FLYWHEEL_INTERNAL_RELEASE_HARNESS: \"account-service-isolation-v1\" } as const\n const RELEASE_HARNESS_MARKER = `FLYWHEEL_INTERNAL_RELEASE_HARNESS=${RELEASE_HARNESS_ENVIRONMENT.FLYWHEEL_INTERNAL_RELEASE_HARNESS}`\n \n-/** Live processes that a harness run under `root` started, this process\n- *  excluded: each carries the release harness marker in its environment and\n- *  names `root` in its environment or command line. The process table is the\n- *  whole source, so a process whose run directory another run already\n- *  removed is still found, and so is a detached service whose client has\n- *  exited.\n- *\n- *  On Windows a command line that names `root` also matches without the\n- *  marker, because the kernel refuses some processes' environments to a\n- *  script and every process a gate run starts runs a binary installed under\n- *  its root. The environment is what finds a UAT service, which runs the\n- *  person's installed binary with only its HOME under the sandbox. */\n+/** What the process table states about one process: the arguments it was\n+ *  started with, and its environment, or nothing when the kernel refused to\n+ *  show it. */\n+export interface ProcessEvidence {\n+  readonly argv: readonly string[]\n+  readonly environment: readonly string[] | undefined\n+}\n+\n+/** Whether a harness run under `root` started the process `evidence`\n+ *  describes. Its environment must carry the release harness marker, on every\n+ *  platform; a process whose environment the kernel refused to show is never\n+ *  one. Then an environment value, an argument, or the value of an\n+ *  `--option=value` argument must be `root` or a path below it. */\n+export function harnessOwns(evidence: ProcessEvidence, root: string): boolean {\n+  const { environment } = evidence\n+  if (environment === undefined || !environment.includes(RELEASE_HARNESS_MARKER)) return false\n+  const valueOf = (entry: string): string => entry.slice(entry.indexOf(\"=\") + 1)\n+  return environment.some((variable) => namesPath(valueOf(variable), root))\n+    || evidence.argv.some((argument) => namesPath(argument, root) || (argument.includes(\"=\") && namesPath(valueOf(argument), root)))\n+}\n+\n+/** Live processes that a harness run under `root` started, as `harnessOwns`\n+ *  decides, this process excluded. The process table is the whole source, so\n+ *  a process whose run directory another run already removed is still found,\n+ *  and so is a detached service whose client has exited. */\n export function harnessProcesses(root: string): readonly TaggedProcess[] {\n-  const table = process.platform === \"linux\" ? procfsTable() : process.platform === \"win32\" ? windowsTable() : psTable()\n-  const found: TaggedProcess[] = []\n-  for (const { pid, command, environment } of table) {\n-    if (pid === process.pid) continue\n-    const marked = environment.includes(RELEASE_HARNESS_MARKER)\n-      && (namesDirectory(command, root) || environment.some((variable) => namesDirectory(variable, root)))\n-    if (marked || (process.platform === \"win32\" && namesDirectory(command, root))) found.push({ pid, command })\n-  }\n-  return found\n+  return processSnapshot().filter((entry) => entry.pid !== process.pid && harnessOwns(entry, root)).map(confirmed)\n }\n \n-interface ProcessEntry {\n+interface SnapshotEntry extends ProcessEvidence {\n   readonly pid: number\n   readonly command: string\n-  readonly environment: readonly string[]\n+  /** The identity the pid held before the evidence was read. */\n+  readonly before: ProcessIdentity | undefined\n }\n \n-/** Linux states each process's command line and environment under /proc,\n- *  with a NUL after every entry. A process that exits or belongs to another\n- *  user while the table is read is left out. */\n-function procfsTable(): readonly ProcessEntry[] {\n-  const entries: ProcessEntry[] = []\n-  for (const name of fs.readdirSync(\"/proc\")) {\n-    if (!/^\\d+$/.test(name)) continue\n+/** Every live process with its evidence. Each identity is read before any\n+ *  evidence, and `confirmed` reads it again after: two equal reads prove that\n+ *  the evidence between them came from that one process, because a recycled\n+ *  pid never repeats a creation identity. */\n+function processSnapshot(): readonly SnapshotEntry[] {\n+  const before = new Map<number, ProcessIdentity>()\n+  for (const pid of livePids()) {\n+    const identity = identifyProcess(pid)\n+    if (identity) before.set(pid, identity)\n+  }\n+  const evidence = process.platform === \"linux\" ? procfsEvidence(before.keys()) : process.platform === \"win32\" ? windowsEvidence() : darwinEvidence(before.keys())\n+  return evidence.map((entry) => ({ ...entry, before: before.get(entry.pid) }))\n+}\n+\n+/** The discovered process, with the identity it held while its evidence was\n+ *  read. A pid that changed hands meanwhile, or that could not be identified,\n+ *  is reported without one, and nothing signals it on this evidence. */\n+function confirmed(entry: SnapshotEntry): TaggedProcess {\n+  const { pid, command, before } = entry\n+  const identity = before !== undefined && identifyProcess(pid)?.identity === before.identity ? before : undefined\n+  return identity ? { pid, command, identity } : { pid, command }\n+}\n+\n+function livePids(): Iterable<number> {\n+  if (process.platform === \"linux\") return fs.readdirSync(\"/proc\").filter((name) => /^\\d+$/.test(name)).map(Number)\n+  const pids = process.platform === \"win32\" ? windowsProcessApi()?.list()?.map((row) => row.pid) : darwinProcess.pids()\n+  if (pids === undefined) throw new Error(\"could not read the process table\")\n+  return pids\n+}\n+\n+/** Linux states each process's arguments and environment under /proc, with\n+ *  a NUL after every entry. Another user's environment reads as refused, and\n+ *  a process that exits while the table is read is left out. */\n+function procfsEvidence(pids: Iterable<number>): readonly (ProcessEvidence & { readonly pid: number; readonly command: string })[] {\n+  const entries: (ProcessEvidence & { readonly pid: number; readonly command: string })[] = []\n+  const fields = (pid: number, file: string): string[] => fs.readFileSync(path.join(\"/proc\", String(pid), file), \"utf8\").split(\"\\0\").filter((field) => field.length > 0)\n+  for (const pid of pids) {\n+    let argv: string[]\n     try {\n-      const fields = (file: string) => fs.readFileSync(path.join(\"/proc\", name, file), \"utf8\").split(\"\\0\").filter((field) => field.length > 0)\n-      entries.push({ pid: Number(name), command: fields(\"cmdline\").join(\" \"), environment: fields(\"environ\") })\n+      argv = fields(pid, \"cmdline\")\n     } catch {\n       continue\n     }\n+    let environment: string[] | undefined\n+    try {\n+      environment = fields(pid, \"environ\")\n+    } catch {\n+      environment = undefined\n+    }\n+    entries.push({ pid, command: argv.join(\" \"), argv, environment })\n   }\n   return entries\n }\n \n-/** Windows names each environment in the process's own memory, which the\n- *  kernel lets a script read for a process of the same user only. Any other\n- *  process reads as one with no environment. */\n-function windowsTable(): readonly ProcessEntry[] {\n-  const api = windowsProcessApi()\n-  return [...commandLines()].map(([pid, command]) => ({ pid, command, environment: api?.environment(pid) ?? [] }))\n-}\n+let libprocCalls: LibprocCalls | undefined\n \n-/** macOS `ps -E` appends the environment to each command, space-separated\n- *  and unquoted. The same table without it states where each command ends,\n- *  so an argument never reads as a variable, and each variable runs to the\n- *  next `NAME=`, so a value that holds a space stays whole. */\n-function psTable(): readonly ProcessEntry[] {\n-  const commands = psLines(false)\n-  const entries: ProcessEntry[] = []\n-  for (const [pid, line] of psLines(true)) {\n-    const command = commands.get(pid)\n-    // A process that started or changed its command between the two reads\n-    // is left for the next read, which the sweep makes after every round.\n-    if (command === undefined || !line.startsWith(command)) continue\n-    entries.push({ pid, command, environment: line.slice(command.length).trim().split(/\\s+(?=[A-Za-z_][A-Za-z0-9_]*=)/).filter((variable) => variable.length > 0) })\n+/** macOS states the arguments and environment a process was started with in\n+ *  one `KERN_PROCARGS2` read: `argc`, the executable path, NUL padding, the\n+ *  arguments, then the environment up to an empty string. `ps` joins the\n+ *  arguments with spaces and so loses where a path that holds a space ends.\n+ *  The kernel answers for a process of the same user only; another process\n+ *  is left out. */\n+function darwinEvidence(pids: Iterable<number>): readonly (ProcessEvidence & { readonly pid: number; readonly command: string })[] {\n+  libprocCalls ??= openLibprocCalls(bunFfi)\n+  const calls = libprocCalls\n+  const decoder = new TextDecoder()\n+  const entries: (ProcessEvidence & { readonly pid: number; readonly command: string })[] = []\n+  for (const pid of pids) {\n+    const bytes = calls.processArguments(pid)\n+    if (bytes === undefined || bytes.byteLength < 4) continue\n+    const argc = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getInt32(0, true)\n+    let offset = 4\n+    const next = (): string | undefined => {\n+      const end = bytes.indexOf(0, offset)\n+      if (end < 0) return undefined\n+      const value = decoder.decode(bytes.subarray(offset, end))\n+      offset = end + 1\n+      return value\n+    }\n+    if (argc < 0 || next() === undefined) continue\n+    while (offset < bytes.byteLength && bytes[offset] === 0) offset += 1\n+    const argv: string[] = []\n+    while (argv.length < argc) {\n+      const value = next()\n+      if (value === undefined) break\n+      argv.push(value)\n+    }\n+    if (argv.length < argc) continue\n+    const environment: string[] = []\n+    for (let value = next(); value !== undefined && value.length > 0; value = next()) environment.push(value)\n+    entries.push({ pid, command: argv.join(\" \"), argv, environment })\n   }\n   return entries\n }\n \n+/** Windows names each environment in the process's own memory, which the\n+ *  kernel lets a script read for a process of the same user only. Any other\n+ *  process reads as refused. */\n+function windowsEvidence(): readonly (ProcessEvidence & { readonly pid: number; readonly command: string })[] {\n+  const api = windowsProcessApi()\n+  return [...windowsCommandLines()].map(([pid, command]) => ({ pid, command, argv: commandLineArguments(command), environment: api?.environment(pid) }))\n+}\n+\n /** Every live process's full command line by pid, from one table read. */\n-function commandLines(): ReadonlyMap<number, string> {\n-  if (process.platform !== \"win32\") return psLines(false)\n+function windowsCommandLines(): ReadonlyMap<number, string> {\n   // Windows exposes no command line through the kernel calls the product\n   // uses, and nothing else on the platform prints one, so this is the one\n   // place a shell-hosted query is the only option. It runs once per sweep",
+              "mutation": "62298986-1f53-4cf8-8c2b-c4db40d1a070",
+              "path": "tests/helpers/real-process-fixture.ts"
+            }
+          ],
+          "label": "require-the-harness-marker-on-windows",
+          "location": "tests/helpers/real-process-fixture.ts:285-287",
+          "severity": "P1",
+          "title": "Require the harness marker on Windows"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -236,28 +236,43 @@\n   }\n }\n \n-/** Live processes whose full command line names directory `tag`, this process\n- *  excluded. The whole table is read at once because a stray process is found\n- *  by what it was launched with, not by a pid the test already knows. */\n+/** Live processes, this process excluded, with an argument that mentions\n+ *  directory `tag`: the directory is the whole argument, starts it, or\n+ *  follows whitespace, a quote, or `=` inside it, and is followed by a path\n+ *  separator, a quote, or the end. A fixture's directory is a fresh temporary\n+ *  name, so a mention inside source text that a process was started with,\n+ *  such as `bun -e`, finds that process too. */\n export function taggedProcesses(tag: string): readonly TaggedProcess[] {\n-  const found: TaggedProcess[] = []\n-  for (const [pid, command] of commandLines()) {\n-    if (pid !== process.pid && namesDirectory(command, tag)) found.push({ pid, command })\n-  }\n-  return found\n+  const mention = mentionPattern(tag)\n+  return processSnapshot()\n+    .filter((entry) => entry.pid !== process.pid && entry.argv.some((argument) => mention.test(normalizedPath(argument))))\n+    .map(confirmed)\n }\n \n-/** Whether `text` names `directory` or a path below it: the directory starts\n- *  the text or follows whitespace, a quote, or `=`, and the text ends or\n- *  continues with a path separator, whitespace, or a quote there. A sibling\n- *  that only shares a string prefix, such as `gate3.ps1` beside `gate`, never\n- *  matches. Both path separators are accepted, and a drive-letter path\n- *  compares without case, as Windows does. */\n-export function namesDirectory(text: string, directory: string): boolean {\n-  const escaped = directory.replaceAll(\"\\\\\", \"/\").replace(/\\/+$/, \"\").replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\")\n-  return new RegExp(`(?:^|[\\\\s\"'=])${escaped}(?=$|[/\\\\s\"'])`, /^[a-z]:[\\\\/]/i.test(directory) ? \"i\" : \"\").test(text.replaceAll(\"\\\\\", \"/\"))\n+/** Whether `value` is `directory` or a path below it. A sibling that only\n+ *  shares a string prefix, such as `gate3.ps1` or `gate other` beside `gate`,\n+ *  never matches. Both path separators are accepted, and a drive-letter or\n+ *  UNC path compares without case, as Windows does. */\n+export function namesPath(value: string, directory: string): boolean {\n+  const root = normalizedPath(directory).replace(/\\/+$/, \"\")\n+  const candidate = normalizedPath(value)\n+  const [left, right] = caseInsensitivePath(directory) ? [candidate.toLowerCase(), root.toLowerCase()] : [candidate, root]\n+  return left === right || left.startsWith(`${right}/`)\n }\n \n+function mentionPattern(directory: string): RegExp {\n+  const escaped = normalizedPath(directory).replace(/\\/+$/, \"\").replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\")\n+  return new RegExp(`(?:^|[\\\\s\"'=])${escaped}(?=$|[/\"'])`, caseInsensitivePath(directory) ? \"i\" : \"\")\n+}\n+\n+function normalizedPath(text: string): string {\n+  return text.replaceAll(\"\\\\\", \"/\")\n+}\n+\n+function caseInsensitivePath(directory: string): boolean {\n+  return /^(?:[a-z]:[\\\\/]|[\\\\/]{2})/i.test(directory)\n+}\n+\n /** The entry the release harness sets in the environment of every process\n  *  it starts (scripts/perf-gate.ts, tests/release/run.ts, and\n  *  scripts/uat/harness.ts), which each child inherits. The user's installed",
+              "mutation": "62298986-1f53-4cf8-8c2b-c4db40d1a070",
+              "path": "tests/helpers/real-process-fixture.ts"
+            },
+            {
+              "hunk": "@@ -256,7 +256,7 @@\n  *  shares a string prefix, such as `gate3.ps1` or `gate other` beside `gate`,\n  *  never matches. Both path separators are accepted, and a drive-letter or\n  *  UNC path compares without case, as Windows does. */\n-export function namesPath(value: string, directory: string): boolean {\n+function namesPath(value: string, directory: string): boolean {\n   const root = normalizedPath(directory).replace(/\\/+$/, \"\")\n   const candidate = normalizedPath(value)\n   const [left, right] = caseInsensitivePath(directory) ? [candidate.toLowerCase(), root.toLowerCase()] : [candidate, root]",
+              "mutation": "57cfed8e-ec3d-4864-a309-8a1fc703147c",
+              "path": "tests/helpers/real-process-fixture.ts"
+            }
+          ],
+          "label": "do-not-treat-spaces-inside-directory-names-as-path-boundarie",
+          "location": "tests/helpers/real-process-fixture.ts:257-258",
+          "severity": "P1",
+          "title": "Do not treat spaces inside directory names as path boundaries"
+        },
+        {
+          "location": "tests/helpers/real-process-fixture.ts:391-395",
+          "rejected": "cited line not added by the reviewed diff",
+          "severity": "P1",
+          "title": "Bind discovery to the process identity that matched"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "fc78e765653f",
+      "persona": "reviewer-code-quality",
+      "run": "14cdb3f74882",
+      "session": "f4ddfcdfaf30",
+      "start": 1792623544290
+    }
+  ],
+  "scrubbedLines": {
+    "tests/integration/scripts/uat/harness.test.ts": 12
+  },
+  "unresolvedImports": [],
+  "variant": "restore"
+}

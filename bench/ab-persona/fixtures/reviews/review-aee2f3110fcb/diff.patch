@@ -1,0 +1,116 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index f6321f0..17f7ce6 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -17,7 +17,7 @@
+ 
+ - Consult the relevant ADR when working near its authority: `docs/adrs/adr-000-flywheel-thesis.md`, `docs/adrs/adr-001-event-sourced-substrate.md`, `docs/adrs/adr-002-context-engineering-and-inspectability.md`, `docs/adrs/adr-003-agent-as-environment-operator.md`, `docs/adrs/adr-004-intent-contracts-and-evaluation.md`, `docs/adrs/adr-005-flywheel-design-principles.md`, `docs/adrs/adr-006-workflow-control-and-attempts.md`, `docs/adrs/adr-007-agent-runtime-process-placements.md`, `docs/adrs/adr-008-durable-sessions-and-conversations.md`, `docs/adrs/adr-009-tool-execution-safety.md`, `docs/adrs/adr-010-runtime-ui-protocol.md`, `docs/adrs/adr-011-durable-learning-scope-and-consent.md`, `docs/adrs/adr-012-configurable-modules.md`, `docs/adrs/adr-013-project-and-execution-directory-semantics.md`, `docs/adrs/adr-014-binary-distribution-and-updates.md`, `docs/adrs/adr-015-internal-modules.md`, `docs/adrs/adr-016-terminology.md`, `docs/adrs/adr-021-design-intent-and-the-first-draft.md`, and `docs/adrs/adr-022-subagent-child-sessions.md`. ADR-021 governs how agents work here: chat captures design intent, every implementation route returns a first draft, and the agent that holds the intent revises the draft from its recorded deviations and the review's findings until it realizes the design, adding nothing beyond it. Read it before changing any implementer prompt, dispatch prompt, or result contract.
+ 
+-- Every commit message follows the changelog commit contract in `src/agent-skills/references/commit-contract.md`. Public release notes are generated from commit history: `bun run release` reads every commit whose header parses and drops the rest, so a header that does not parse is a release note lost.
++- Every commit message follows this repository's changelog contract. Use `<type>(<scope>)?: <subject>`, with type `feat`, `fix`, `perf`, `docs`, `refactor`, `test`, `chore`, or `release`. The optional scope is lowercase. Write an imperative lowercase subject with no trailing period. About 72 characters is a readability target, not a validated limit or a reason to rewrite a commit. Reserve `feat`, `fix`, and `perf` for observable shipped-product outcomes, with subjects that stand alone as release notes. Use `chore` for CI, release-process, and repository-tooling work, including speed improvements. Add a `Changelog:` trailer when the engineering subject differs from the user-facing sentence. Pair `!` after the type with a `BREAKING CHANGE:` body paragraph stating what breaks and what the user must do. Group one complete user-visible unit per commit, including its supporting tests and refactors. Validate messages with `bun run scripts/commit-contract.ts`. Public release notes are generated from commit history: `bun run release` reads every commit whose header parses and drops the rest, so a header that does not parse is a release note lost.
+ 
+ - There are other agents working on this tree. NEVER discard changes not related to your work! It is not because your subagent went rogue, it is because another independent agent working at my direction made changes and I do not want them lost! Never stash or remove those changes for the sake of running lint or tests. Run the standard validation when it can produce a meaningful signal; if unrelated concurrent work blocks a global gate, run the narrowest relevant validation for your touched files. Do not "fix" any other agent's files unless asked. Knowing your own changes never requires git: track the files you touch yourself, and do not survey git status or diffs to protect concurrent work; simply avoid files outside your task. When publishing in a concurrent worktree, stage and commit each whole file your unit touched, including concurrent changes already present in that file. Never partial-stage, split, or omit another agent's changes within a touched file. Other agents can revise their work in later commits. Commits are the remote log of work completed, not rollback boundaries.
+ - Startup responsiveness is load-bearing. Keep first-frame rendering, prompt input, and chat runner readiness free of noncritical synchronous work and contention. Defer optional initialization, maintenance, preloading, and views through owned background or lazy execution with contained failures. A change that can affect startup must pass `bun run test:perf`; a measured startup regression greater than 20% is never acceptable.
+@@ -32,6 +32,8 @@
+ 
+ The method for a task is not in this file. It lives in installed skill packages that you load with the `skill` tool. Your prompt lists every installed skill by trigger. Scan those triggers, load what the work names, then act; load before you plan, not after you are stuck. Never copy a skill body back into this file, a workflow binding, or a persona.
+ 
++Reusable skills and workflow guidance apply to any target repository. Keep Flywheel development stack, architecture, paths, and validation policy here or in the development module's skills. Generic guidance may defer to repository instructions when present; it must not assume those instructions exist. Product tool and workflow contracts remain in their owning reusable packages.
++
+ When adopting prompts from other sources, copy the source verbatim and then make Flywheel-specific edits. Inspect the implementation before any runtime probe.
+ 
+ | Work in front of you | Skill |
+diff --git a/src/agent-skills/references/commit-contract.md b/src/agent-skills/references/commit-contract.md
+index 40f22dd..6d2c82c 100644
+--- a/src/agent-skills/references/commit-contract.md
++++ b/src/agent-skills/references/commit-contract.md
+@@ -1,9 +1,9 @@
+ # Commit Contract
+ 
+-Use `<type>(<scope>)?: <subject>`. Type is `feat`, `fix`, `perf`, `docs`, `refactor`, `test`, `chore`, or `release`. The optional scope is lowercase. Write an imperative lowercase subject with no trailing period. About 72 characters for the whole first line reads well in a log, but that is a target, not a limit: the validator does not measure length, a longer header is fine, and length is never a reason to amend a commit, rewrite a pushed one, or report anything.
++Follow the target repository's commit convention when one is documented. Otherwise, write a concise subject that describes the outcome. Do not assume a type vocabulary, release-note format, trailer, or subject-length limit.
+ 
+-Reserve `feat`, `fix`, and `perf` for outcomes a user of the shipped product can observe. Their subjects must read as standalone release-note entries to a user who has never seen the code. Use excluded types for internal work: CI, release-process, and repository-tooling work is `chore` even when it improves speed. Add a `Changelog:` trailer when the engineering subject differs from the user-facing sentence.
++When the repository generates release notes from commits, follow its rules for user-facing subjects and internal changes. Describe breaking changes and required user action when applicable, using the repository's convention if it defines one.
+ 
+-Pair `!` after the type with a `BREAKING CHANGE:` body paragraph that states what breaks and what the user must do. Group one complete user-visible unit per commit; supporting tests and refactors ride with that unit. Never use a miscellaneous grouping.
++Group one complete unit per commit; supporting tests and refactors ride with that unit. Never use a miscellaneous grouping.
+ 
+-Validate commit messages with `bun run scripts/commit-contract.ts`.
+\ No newline at end of file
++Run the repository's commit-message validator if it defines one. Do not assume a particular command, script path, or runtime.
+\ No newline at end of file
+diff --git a/src/agent-skills/ship/SKILL.md b/src/agent-skills/ship/SKILL.md
+index 10921e9..435ed52 100644
+--- a/src/agent-skills/ship/SKILL.md
++++ b/src/agent-skills/ship/SKILL.md
+@@ -29,7 +29,7 @@ Missing Bash, Git, credentials, or a push target blocks before mutation. Report
+ 
+ {{ref:commit-contract}}
+ 
+-Write one logical commit message from the intent and design summary plus the selected diffs. The supplied whole-file group is the publication unit, including concurrent edits. The commit contract's grouping rule does not authorize splitting, regrouping, or rejecting that group. Apply its message-authoring rules, including its type vocabulary, release-note voice, and breaking-change pair. Run the repository commit validator when available. Never add assistant attribution or co-author lines.
++Write one logical commit message from the intent and design summary plus the selected diffs. The supplied whole-file group is the publication unit, including concurrent edits. The commit contract's grouping rule does not authorize splitting, regrouping, or rejecting that group. Follow repository-specific message rules when present. Run the repository commit validator when available. Never add assistant attribution or co-author lines.
+ 
+ ## Publish
+ 
+diff --git a/src/agent-skills/test-driven-development/SKILL.md b/src/agent-skills/test-driven-development/SKILL.md
+index 526fe40..ffd0c1d 100644
+--- a/src/agent-skills/test-driven-development/SKILL.md
++++ b/src/agent-skills/test-driven-development/SKILL.md
+@@ -29,7 +29,7 @@ Do not write a test that:
+ 
+ When implementation already exists, establish RED against the unchanged baseline or safely isolate only your own change. Never discard other work or reconstruct unavailable history to manufacture evidence. If no test framework exists, use the narrowest repeatable executable behavior check.
+ 
+-Unit tests stay fast and hermetic. Protect logic with unit tests and verify a changed real boundary with a focused end-to-end script. A persistent regression test that needs a real seam belongs in the integration tier, but that does not require running an integration suite for each change. Run integration suites rarely, primarily for release readiness. For ordinary validation, use unit tests and the focused script; reserve a suite run for an explicit request or a named evidence gap those checks cannot close. Do not bypass a shared validation lane by wrapping a suite in a script.
++Unit tests stay fast and hermetic. By default, protect logic with unit tests and verify a changed real boundary with a dedicated testing script. Place persistent regression tests according to existing test conventions. Do not assume the repository has an integration tier or that integration tests are expensive. If repository instructions specify a different test hierarchy or required gates, follow them.
+ 
+ ## Result
+ 
+diff --git a/src/agent-skills/verification/SKILL.md b/src/agent-skills/verification/SKILL.md
+index 3554af2..f9e538d 100644
+--- a/src/agent-skills/verification/SKILL.md
++++ b/src/agent-skills/verification/SKILL.md
+@@ -9,7 +9,7 @@ Use the smallest complete verification of the work, then stop. Start with the ch
+ 
+ Choose the fewest focused checks that prove the change. Tests alone are sufficient when they establish the required behavior. A test that mocks an external boundary does not prove that boundary: when the change touches a live service, a dependency's behavior, or a real entrypoint, a throwaway probe against the real thing is the gap tests cannot cover, and it belongs in the selected checks. Use UAT beyond that only for a specific gap or an explicit acceptance requirement. Honor explicit repository gates. Do not add broader suites, adjacent scenarios, or verification agents without a concrete evidence gap.
+ 
+-For ordinary changes, prefer unit tests plus a focused end-to-end script against the changed behavior's real boundary. Integration suites are primarily release-readiness checks, not routine change validation. Run them rarely: for release readiness, an explicit request, or a named gap that unit tests and a focused script cannot close. When suites share a validation lane, a long integration run blocks other agents' checks. Run the focused script outside that lane, but never use a script to bypass the lane for an integration suite. Explain any exceptional integration-suite run before starting it.
++For ordinary changes, prefer unit tests plus a dedicated testing script that exercises the changed behavior through its real boundary. Do not assume integration tests exist or that their name implies a particular cost or scope. If repository instructions specify test tiers, required gates, or execution rules, follow them. Otherwise, use this default.
+ 
+ Assume past observations are stale. Prior test output, subagent results, and review reports can guide the checks but do not prove the current state. Run the selected checks yourself against the current implementation, then read their output and exit status. A new verification pass requires fresh observations; do not accept an earlier run because no change is known. Minimal verification means the smallest decisive fresh check, not recycled evidence.
+ 
+diff --git a/src/workflows/references/reviewer-protocol.md b/src/workflows/references/reviewer-protocol.md
+index 875ff02..c03590e 100644
+--- a/src/workflows/references/reviewer-protocol.md
++++ b/src/workflows/references/reviewer-protocol.md
+@@ -5,7 +5,7 @@
+ There is no discovery phase.
+ 
+ 1. If the input plan carries `context.project_docs[]`, use those paths verbatim as `PROJECT_CONTEXT_PATHS`. This is the normal path: spec-create already vetted them during research.
+-2. Only if the field is absent or empty: run ONE turn of batched glob searches - `docs/architecture.md`, `docs/adrs/**/*.md`, `docs/coding-guidelines*.md` - issued as parallel calls in a single turn. Collect the matching paths. Do not read the matches; the content is for reviewers, not for you.
++2. Only if the field is absent or empty: use document paths identified by repository instructions or existing project context. If none are known, run one bounded path-discovery pass for architecture, decision records, and coding guidelines using the repository's layout. No matching documents is valid. Do not read the matches; the content is for reviewers, not for you.
+ 
+ Inline `PROJECT_CONTEXT_PATHS` in every reviewer dispatch under "PROJECT CONTEXT PATHS." If there are no paths, pass `none`. You may search or read further context later when a specific synthesis question requires it, but never as a mandatory pre-dispatch phase.
+ 
+diff --git a/src/workflows/skills/fly.spec-create/SKILL.md b/src/workflows/skills/fly.spec-create/SKILL.md
+index 4fb0e04..7c75692 100644
+--- a/src/workflows/skills/fly.spec-create/SKILL.md
++++ b/src/workflows/skills/fly.spec-create/SKILL.md
+@@ -49,6 +49,8 @@ Three arrays plus one optional: `key_files[]` (repo-relative paths with one-line
+ 
+ Each phase is `{ id, goal, files, tasks, verification, qualitative_verification }` and each task is `{ id, description, files, test_scenarios }`, with no other fields. `test_scenarios[]` are plain strings that state the expected behavior; `files[]` are plain repo-relative paths.
+ 
++The example below illustrates the schema, not a required stack or layout. Use the target repository's actual language, framework, paths, and verification commands.
++
+ ```json
+ {
+   "id": "phase-1",
+@@ -67,7 +69,7 @@ Each phase is `{ id, goal, files, tasks, verification, qualitative_verification
+ }
+ ```
+ 
+-`verification` is always a runnable command that proves this phase alone: a focused test file, a type or schema smoke check, or a small script, never the project's full-suite commands unless nothing narrower can prove the phase. For a surface one command cannot prove (a server, a rendered view), use a minimal smoke command such as `bun run src/server.ts 2>&1 | grep -q 'listening on'` and put the judgment in `qualitative_verification`. Apply the composed method's phase sizing and never emit a code-review phase: reviewer routing the user requested is a `context.constraints[]` entry for the workflow's code-review step. A UAT phase that drives the running application against acceptance criteria is legitimate implementer-owned verification.
++`verification` is always a runnable command that proves this phase alone: a focused test file, a type or schema smoke check, or a small script, never the project's full-suite commands unless nothing narrower can prove the phase. For a surface one command cannot prove (a server, a rendered view), use a focused script against its real boundary and put the remaining judgment in `qualitative_verification`. Apply the composed method's phase sizing and never emit a code-review phase: reviewer routing the user requested is a `context.constraints[]` entry for the workflow's code-review step. A UAT phase that drives the running application against acceptance criteria is legitimate implementer-owned verification.
+ 
+ ### `success_criteria`
+ 

@@ -1,0 +1,949 @@
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index 7b92442..040b052 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -36,7 +36,7 @@ An unavailable preview check or advice that arrives after final execution never
+ 
+ On the web client, every tool row arrives collapsed, edits and writes included, and shows no input, output, or diff until the user opens it. A streaming diff renders only inside a row the user has opened. A running command's Detach and Stop controls sit at the end of its own row, over the tail of a long command, so the row keeps its one-line height. A file-editing row names every file it changes beside the tool name, while its input arrives and once it has run, so a collapsed edit never reads as a bare tool name.
+ 
+-In the terminal, unexpanded output previews show at most their first 20 displayed rows after wrapping, with a separate limit for each file. An unexpanded diff instead shows each of those lines in one row, cut at the right edge, so it has its final height before its content loads and nothing below it moves as the content arrives. A file with cut or hidden lines shows its expansion control, and expanding it shows every line in full, wrapped. Headings and expansion controls remain outside this limit. Further content streams out of sight until expanded, subject to displayed retention limits.
++In the terminal, unexpanded output previews, diffs included, show at most their first 20 displayed rows after wrapping, with a separate limit for each file. A diff preview arrives with its file's details, so it has its final height when it appears and nothing below it moves as content loads. Wrapped diff lines continue under the code, beside the line number. A file with hidden rows or lines shows its expansion control, and expanding it shows every line in full, wrapped. Headings and expansion controls remain outside this limit. Further content streams out of sight until expanded, subject to displayed retention limits.
+ 
+ Session-note mutations are clearly labeled and fully collapsed by default; users can expand them to inspect the content or diff.
+ 
+diff --git a/src/protocol/client/file-change-body.ts b/src/protocol/client/file-change-body.ts
+index 92503d8..d2b621b 100644
+--- a/src/protocol/client/file-change-body.ts
++++ b/src/protocol/client/file-change-body.ts
+@@ -261,7 +261,9 @@ export function fileDiffFiles(
+         && evidenceView.patch.reference.sha256 === file.patch.reference.sha256 && evidenceView.patch.reference.bytes === file.patch.reference.bytes
+         ? evidenceView.patch : undefined
+       const isExpanded = typeof expanded === "function" ? expanded({ id: file.path, path: file.displayPath }) : expanded
+-      const allRows = patch === undefined ? [] : parseMutationDiffRows({ version: 1, files: [{ path: file.path, change: file.change, unifiedDiff: patch.text }], omissions: [] })
++      // A collapsed file shows its page preview, so it has its final rows before any patch read.
++      const text = isExpanded ? patch?.text : entry.preview
++      const allRows = text === undefined ? [] : parseMutationDiffRows({ version: 1, files: [{ path: file.path, change: file.change, unifiedDiff: text }], omissions: [] })
+       const selected = isExpanded ? allRows : allRows.slice(0, TOOL_PREVIEW_LINE_LIMIT)
+       return [{
+         id: file.path, path: file.displayPath,
+@@ -269,12 +271,13 @@ export function fileDiffFiles(
+         presentation: writes === "all" || (writes === "added" && file.change === "added") ? "write" as const : "edit" as const,
+         rows: selected.map(({ path: _path, ...row }, index) => ({
+           ...row, id: `${file.path}:${index}`,
+-          partial: patch !== undefined && !patch.complete && !patch.text.endsWith("\n") && index === allRows.length - 1,
++          partial: isExpanded && patch !== undefined && !patch.complete && !patch.text.endsWith("\n") && index === allRows.length - 1,
+         })),
+         renderedLines: file.retainedLines, sourceOmittedLines: file.omittedLines,
+         omittedLines: file.omittedLines + file.retainedLines - selected.length,
+         expanded: isExpanded, evidence: file,
+-        evidenceStatus: file.patch.kind === "omitted" ? "omitted" as const : file.patch.kind === "unavailable" ? "unavailable" as const : patch?.status ?? "idle" as const,
++        evidenceStatus: file.patch.kind === "omitted" ? "omitted" as const : file.patch.kind === "unavailable" ? "unavailable" as const
++          : isExpanded ? patch?.status ?? "idle" as const : entry.preview === undefined ? "idle" as const : "ready" as const,
+         ...(file.patch.kind === "omitted" ? { omissionReason: file.patch.reason } : {}),
+       }]
+     }) ?? []
+diff --git a/src/tui/adapters/color-diff.ts b/src/tui/adapters/color-diff.ts
+index 1917f25..a75f56c 100644
+--- a/src/tui/adapters/color-diff.ts
++++ b/src/tui/adapters/color-diff.ts
+@@ -24,7 +24,10 @@ type DiffSegment = {
+   bg?: RGBA
+ }
+ 
++/** One diff line. The gutter (line number and marker) renders apart from the code, so a
++ *  wrapped code line continues under the code rather than under the gutter. */
+ type DiffLine = {
++  gutter: DiffSegment[]
+   segments: DiffSegment[]
+   lineBg?: RGBA
+ }
+@@ -37,15 +40,18 @@ type Style = { foreground: Color; background: Color }
+ type Block = [Style, string]
+ type Marker = "+" | "-" | " "
+ 
+-function blocksToDiffLine(blocks: Block[], lineBg: Color): DiffLine {
+-  const segments = blocks.map(([style, text]) => {
++function blocksToSegments(blocks: Block[], lineBg: Color): DiffSegment[] {
++  return blocks.map(([style, text]) => {
+     const seg: DiffSegment = { text }
+     if (style.foreground) seg.fg = style.foreground
+     // Only emit bg on segments where it differs from the line bg (word highlights)
+     if (style.background && style.background !== lineBg) seg.bg = style.background
+     return seg
+   })
+-  return { segments, lineBg: lineBg ?? undefined }
++}
++
++function blocksToDiffLine(gutter: Block[], code: Block[], lineBg: Color): DiffLine {
++  return { gutter: blocksToSegments(gutter, lineBg), segments: blocksToSegments(code, lineBg), lineBg: lineBg ?? undefined }
+ }
+ 
+ type Theme = {
+@@ -215,17 +221,15 @@ function wordDiffStrings(oldStr: string, newStr: string): [Range[], Range[]] {
+ type Highlight = {
+   marker: Marker | null
+   lineNumber: number
+-  lines: Block[][]
++  line: Block[]
+ }
+ 
+ function removeNewlines(h: Highlight): void {
+-  h.lines = h.lines.map((line) =>
+-    line.flatMap(([style, text]) =>
+-      text
+-        .split("\n")
+-        .filter((p) => p.length > 0)
+-        .map((p): Block => [style, p]),
+-    ),
++  h.line = h.line.flatMap(([style, text]) =>
++    text
++      .split("\n")
++      .filter((p) => p.length > 0)
++      .map((p): Block => [style, p]),
+   )
+ }
+ 
+@@ -235,30 +239,21 @@ function lineNumberColor(marker: Marker | null, theme: Theme): Color {
+   return theme.foreground
+ }
+ 
+-function addLineNumber(h: Highlight, theme: Theme, maxDigits: number): void {
++function lineNumberBlock(h: Highlight, theme: Theme, maxDigits: number): Block {
+   const style: Style = {
+     foreground: lineNumberColor(h.marker, theme),
+     background: h.marker ? lineBackground(h.marker, theme) : theme.background,
+   }
+-  for (let i = 0; i < h.lines.length; i++) {
+-    const prefix =
+-      i === 0
+-        ? ` ${String(h.lineNumber).padStart(maxDigits)} `
+-        : " ".repeat(maxDigits + 2)
+-    const line = h.lines[i]
+-    if (line) line.unshift([style, prefix])
+-  }
++  return [style, ` ${String(h.lineNumber).padStart(maxDigits)} `]
+ }
+ 
+-function addMarker(h: Highlight, theme: Theme): void {
+-  if (!h.marker) return
++function markerBlocks(h: Highlight, theme: Theme): Block[] {
++  if (!h.marker) return []
+   const style: Style = {
+     foreground: decorationColor(h.marker, theme),
+     background: lineBackground(h.marker, theme),
+   }
+-  for (const line of h.lines) {
+-    line.unshift([style, h.marker])
+-  }
++  return [[style, h.marker]]
+ }
+ 
+ interface SplitState {
+@@ -316,16 +311,7 @@ function applyBackground(h: Highlight, theme: Theme, ranges: Range[]): void {
+   const lineBg = lineBackground(h.marker, theme)
+   const wordBg = wordBackground(h.marker, theme)
+   const state: SplitState = { rangeIdx: 0, byteOff: 0 }
+-
+-  for (let li = 0; li < h.lines.length; li++) {
+-    const newLine: Block[] = []
+-    const line = h.lines[li]
+-    if (!line) continue
+-    for (const [style, text] of line) {
+-      newLine.push(...splitBlockByRanges(style, text, ranges, lineBg, wordBg, theme.highlightForeground, state))
+-    }
+-    h.lines[li] = newLine
+-  }
++  h.line = h.line.flatMap(([style, text]) => splitBlockByRanges(style, text, ranges, lineBg, wordBg, theme.highlightForeground, state))
+ }
+ 
+ function maxLineNumber(hunk: Hunk): number {
+@@ -388,16 +374,10 @@ export function renderHunk(hunk: Hunk, colors: DiffThemeColors, highlightSyntax?
+       : syntax.map((segment) => [{ ...defaultStyle(theme), foreground: segment.color ?? theme.foreground }, segment.text])
+     const lineBg = highlightSyntax === undefined ? lineBackground(marker, theme) : null
+ 
+-    const h: Highlight = { marker: highlightSyntax === undefined ? marker : null, lineNumber, lines: [tokens] }
++    const h: Highlight = { marker: highlightSyntax === undefined ? marker : null, lineNumber, line: tokens }
+     removeNewlines(h)
+-    if (highlightSyntax === undefined) {
+-      applyBackground(h, theme, ranges[i] ?? [])
+-      addMarker(h, theme)
+-    }
+-    addLineNumber(h, theme, maxDigits)
+-    for (const line of h.lines) {
+-      out.push(blocksToDiffLine(line, lineBg))
+-    }
++    applyBackground(h, theme, ranges[i] ?? [])
++    out.push(blocksToDiffLine([lineNumberBlock(h, theme, maxDigits), ...markerBlocks(h, theme)], h.line, lineBg))
+   }
+   return out
+ }
+@@ -424,13 +404,10 @@ export function renderTypedDiffRows(rows: readonly TypedDiffRow[], colors: DiffT
+     const h: Highlight = {
+       marker: highlightSyntax === undefined ? marker : null,
+       lineNumber: lineNumber ?? 0,
+-      lines: [tokens],
+-    }
+-    if (highlightSyntax === undefined) {
+-      applyBackground(h, theme, [])
+-      addMarker(h, theme)
++      line: tokens,
+     }
+-    if (lineNumber !== undefined) addLineNumber(h, theme, maxDigits)
+-    return blocksToDiffLine(h.lines[0] ?? [], lineBg)
++    applyBackground(h, theme, [])
++    const gutter = [...(lineNumber === undefined ? [] : [lineNumberBlock(h, theme, maxDigits)]), ...markerBlocks(h, theme)]
++    return blocksToDiffLine(gutter, h.line, lineBg)
+   })
+ }
+diff --git a/src/tui/output-blocks/diff-preview.tsx b/src/tui/output-blocks/diff-preview.tsx
+index 9576b50..dabcca2 100644
+--- a/src/tui/output-blocks/diff-preview.tsx
++++ b/src/tui/output-blocks/diff-preview.tsx
+@@ -3,7 +3,7 @@
+ import { TOOL_PREVIEW_LINE_LIMIT, type DiffOmission, type ProvisionalDiffFile } from "@infra/output-blocks"
+ import type { MutationDiff } from "@infra/mutation-diff.js"
+ import { diffOmittedLinesForFile } from "../../protocol/diff-omission.js"
+-import { RGBA, ScrollBoxRenderable, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk, type TextRenderable } from "@opentui/core"
++import { RGBA, ScrollBoxRenderable, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
+ import { renderHunk, renderTypedDiffRows, type DiffSyntaxHighlighter } from "@tui/adapters/color-diff"
+ import { parseUnifiedDiff, type Hunk, type TypedDiffRow } from "@tui/adapters/diff-parser"
+ import { fileDiffFiles, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../protocol/client/file-change-body.js"
+@@ -22,6 +22,7 @@ import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/utils/border.js"
+ import { bindSelectableStyledTextContent } from "@tui/utils/reactive-text.js"
+ import { Button } from "../components/button.js"
+ import { OVERSCAN_ROWS } from "../output-window/output-window-scroll.js"
++import { PreviewViewport } from "./preview-viewport.js"
+ 
+ /** One unified patch a block discloses. `path` is the heading shown above its
+  *  lines; an unnamed source (the legacy per-tool `diff`) renders bare, because
+@@ -124,6 +125,7 @@ const OMISSION_REASON_TEXT: OmissionReasonText = {
+ 
+ interface PreviewLine {
+   readonly kind: "line"
++  readonly gutter: StyledText
+   readonly styled: StyledText
+   readonly lineBg: RGBA | undefined
+ }
+@@ -133,8 +135,8 @@ type DiffFile = ParsedDiffs["files"][number]
+ interface DiffPreviewProps {
+   /** Fully disclosed review evidence has no parent-owned expand/collapse action. */
+   readOnly?: boolean
+-  /** Reports whether a collapsed file cuts any displayed line at the right edge. */
+-  onCut?: (index: number, cut: boolean) => void
++  /** Reports whether a file's wrapped rows exceed the collapsed preview budget. */
++  onOverflow?: (index: number, overflow: boolean) => void
+   parsed: ParsedDiffs
+   /** Patches the source declined to retain. Current writers omit only sensitive
+    *  targets; legacy size omissions remain readable but cannot be recovered. */
+@@ -152,6 +154,15 @@ interface DiffPreviewProps {
+   onRetryFile?: (index: number) => void
+ }
+ 
++function styledSegments(segments: readonly { readonly text: string; readonly fg?: RGBA; readonly bg?: RGBA }[]): StyledText {
++  return new StyledText(segments.map((segment) => {
++    let chunk: TextChunk = { __isChunk: true, text: segment.text }
++    if (segment.fg) chunk = stFg(segment.fg)(chunk)
++    if (segment.bg) chunk = stBg(segment.bg)(chunk)
++    return chunk
++  }))
++}
++
+ /** The one unified-diff renderer: legacy per-tool diffs, tool mutation
+  *  artifacts, and review-notice mutations all disclose through it, so the
+  *  preview budget, the truncation note, and the colors have one owner. */
+@@ -177,51 +188,19 @@ export function DiffPreview(props: DiffPreviewProps) {
+   const fileRemoteOmittedLines = (index: number): number =>
+     diffOmittedLinesForFile(props.diffOmission, index, props.parsed.files.length)
+ 
+-  const fileRows = (file: DiffFile, highlightSyntax: DiffSyntaxHighlighter | undefined, diffColors: ReturnType<typeof colors>): PreviewLine[] => {
+-    const out: PreviewLine[] = []
+-    for (const hunk of file.hunks) {
+-      for (const line of renderHunk(hunk, diffColors, highlightSyntax)) {
+-        const chunks: TextChunk[] = line.segments.map((segment) => {
+-          let chunk: TextChunk = { __isChunk: true, text: segment.text }
+-          if (segment.fg) chunk = stFg(segment.fg)(chunk)
+-          if (segment.bg) chunk = stBg(segment.bg)(chunk)
+-          return chunk
+-        })
+-        out.push({ kind: "line", styled: new StyledText(chunks), lineBg: line.lineBg })
+-      }
+-    }
+-    for (const line of renderTypedDiffRows(file.rows, diffColors, highlightSyntax, file.presentation === "write" ? file.renderedLines : 0)) {
+-      const chunks: TextChunk[] = line.segments.map((segment) => {
+-        let chunk: TextChunk = { __isChunk: true, text: segment.text }
+-        if (segment.fg) chunk = stFg(segment.fg)(chunk)
+-        if (segment.bg) chunk = stBg(segment.bg)(chunk)
+-        return chunk
+-      })
+-      out.push({ kind: "line", styled: new StyledText(chunks), lineBg: line.lineBg })
+-    }
+-    return out
+-  }
++  const fileRows = (file: DiffFile, highlightSyntax: DiffSyntaxHighlighter | undefined, diffColors: ReturnType<typeof colors>): PreviewLine[] =>
++    [
++      ...file.hunks.flatMap(hunk => renderHunk(hunk, diffColors, highlightSyntax)),
++      ...renderTypedDiffRows(file.rows, diffColors, highlightSyntax, file.presentation === "write" ? file.renderedLines : 0),
++    ].map(line => ({ kind: "line", gutter: styledSegments(line.gutter), styled: styledSegments(line.segments), lineBg: line.lineBg }))
+ 
+   const DiffFilePreview = (fileProps: { file: DiffFile; index: number }) => {
+-    // A collapsed file shows each line in one row, cut at the right edge, so its height is known
+-    // from metadata before its bytes arrive. A cut line still offers the toggle, never a note row.
+-    const cutRows = new Set<TextRenderable>()
+-    const [cut, setCut] = createSignal(false)
+-    const markCut = (text: TextRenderable, isCut: boolean) => {
+-      if (isCut) cutRows.add(text)
+-      else cutRows.delete(text)
+-      if (cutRows.size > 0 === cut()) return
+-      setCut(cutRows.size > 0)
+-      props.onCut?.(fileProps.index, cut())
+-    }
+-    const measureCut = (text: TextRenderable) => {
+-      // Before its first layout a text has no width, and every line would read as cut.
+-      const measure = () => markCut(text, text.width > 0 && text.maxScrollX > 0)
+-      text.on("line-info-change", measure)
+-      onCleanup(() => {
+-        text.off("line-info-change", measure)
+-        markCut(text, false)
+-      })
++    // Collapsed rows wrap and clip at the preview budget; rows past it offer the toggle.
++    const [overflow, setOverflow] = createSignal(false)
++    const reportOverflow = (next: boolean) => {
++      if (next === overflow()) return
++      setOverflow(next)
++      props.onOverflow?.(fileProps.index, next)
+     }
+     const syntaxColors = () => fileProps.file.presentation === "write" ? themeCtx.writeSyntaxColors : undefined
+     const highlighter = createMemo(() => {
+@@ -260,7 +239,7 @@ export function DiffPreview(props: DiffPreviewProps) {
+       && fileProps.file.evidenceStatus !== "omitted"
+       && fileProps.file.evidenceStatus !== "unavailable"
+       && fileProps.file.evidenceStatus !== "error"
+-      && (retainedOmitted() > 0 || remoteOmitted() > 0 || fileProps.file.expanded || cut() || fileProps.file.moreBytes === true)
++      && (retainedOmitted() > 0 || remoteOmitted() > 0 || fileProps.file.expanded || overflow() || fileProps.file.moreBytes === true)
+     const toggle = useUnifiedToggle(
+       canToggle,
+       () => props.onToggleFile?.(fileProps.index),
+@@ -273,7 +252,7 @@ export function DiffPreview(props: DiffPreviewProps) {
+       ? sourceOmitted() > 0
+         ? `  ... +${sourceOmitted()} lines (truncated, click to collapse)`
+         : "  (click to collapse)"
+-      : `  ... +${collapsedOmitted()} lines (click to expand)`
++      : collapsedOmitted() > 0 ? `  ... +${collapsedOmitted()} lines (click to expand)` : "  ... more (click to expand)"
+     const heading = () => {
+       if (fileProps.file.hideHeading || fileProps.file.evidenceStatus === "omitted") return undefined
+       const label = fileProps.file.action === undefined
+@@ -284,12 +263,8 @@ export function DiffPreview(props: DiffPreviewProps) {
+       return `  ${label} ${fileProps.file.expanded ? "▾" : "▸"}`
+     }
+     const rows = createMemo(() => renderRows()(fileProps.file))
+-    // The cue follows the loaded rows inside the reservation, so it never changes the file's height.
+     const loading = () => rows().length < fileProps.file.visibleLines
+       && (fileProps.file.evidenceStatus === "idle" || fileProps.file.evidenceStatus === "loading" || fileProps.file.moreBytes === true)
+-    // Rows a file shows once its bytes arrive. Arriving bytes fill them and do not move later content.
+-    const reservedRows = () => fileProps.file.evidenceStatus === "idle" || fileProps.file.evidenceStatus === "loading"
+-      || fileProps.file.evidenceStatus === "ready" ? fileProps.file.visibleLines : 0
+ 
+     return (
+       <box
+@@ -310,32 +285,33 @@ export function DiffPreview(props: DiffPreviewProps) {
+         onMouseOut={toggle.onMouseOut}
+       >
+         {heading() !== undefined ? <text fg={theme.textMuted}>{heading()}</text> : null}
+-        <box flexDirection="column" flexShrink={0} minHeight={reservedRows()}>
++        <PreviewViewport expanded={fileProps.file.expanded} onOverflow={reportOverflow}>
+           <box ref={(box: BoxRenderable) => props.onBodyLayout?.(fileProps.index, box)} flexDirection="column" flexShrink={0} width="100%">
+             <Index each={rows()}>
+               {(row) => {
+                 // eslint-disable-next-line solid/reactivity -- the binding tracks the row in its own effect
+-                const bindRow = bindSelectableStyledTextContent(() => row().styled)
++                const bindGutter = bindSelectableStyledTextContent(() => row().gutter)
++                // eslint-disable-next-line solid/reactivity -- the binding tracks the row in its own effect
++                const bindCode = bindSelectableStyledTextContent(() => row().styled)
++                // The gutter keeps its width, so a wrapped line continues under its code.
+                 return (
+-                  <box width="100%" flexShrink={0} backgroundColor={row().lineBg}>
+-                    <text ref={(text: TextRenderable) => {
+-                      bindRow(text)
+-                      measureCut(text)
+-                    }} wrapMode={fileProps.file.expanded ? "word" : "none"} />
++                  <box width="100%" flexDirection="row" flexShrink={0} backgroundColor={row().lineBg}>
++                    <text ref={bindGutter} flexShrink={0} />
++                    <text ref={bindCode} flexGrow={1} flexShrink={1} minWidth={0} wrapMode="word" />
+                   </box>
+                 )
+               }}
+             </Index>
+           </box>
+-          {loading() ? <text fg={theme.textMuted}>{"  Loading..."}</text> : null}
+-        </box>
++        </PreviewViewport>
++        {loading() ? <text fg={theme.textMuted}>{"  Loading..."}</text> : null}
+         {fileProps.file.evidenceStatus === "omitted"
+           ? <text fg={theme.textMuted}>{`  ${fileProps.file.path}  (diff omitted: ${OMISSION_REASON_TEXT[fileProps.file.omissionReason ?? ""]})`}</text>
+           : fileProps.file.evidenceStatus === "unavailable"
+           ? <text fg={theme.textMuted}>{"  Change evidence is unavailable"}</text>
+           : fileProps.file.evidenceStatus === "error"
+           ? <box flexDirection="row" paddingLeft={2}><text fg={theme.textMuted}>Could not load change evidence.</text><Button label="Retry" onPress={() => props.onRetryFile?.(fileProps.index)} /></box>
+-          : fileProps.file.expanded ? (hasExpandedNote() ? <text selectable={false} fg={theme.textMuted}>{note()}</text> : null) : (collapsedOmitted() > 0 ? <text selectable={false} fg={theme.textMuted}>{note()}</text> : null)}
++          : fileProps.file.expanded ? (hasExpandedNote() ? <text selectable={false} fg={theme.textMuted}>{note()}</text> : null) : (collapsedOmitted() > 0 || overflow() ? <text selectable={false} fg={theme.textMuted}>{note()}</text> : null)}
+       </box>
+     )
+   }
+@@ -359,9 +335,9 @@ export function DiffPreview(props: DiffPreviewProps) {
+   )
+ }
+ 
+-/** A resident reader owns metadata and byte prefixes. A mounted preview acquires its first
+- * metadata page; layout acquires bytes within the viewport margin, and the tail sentinel
+- * advances metadata in that band. */
++/** A resident reader owns metadata, previews, and byte prefixes. A mounted preview acquires its
++ * first metadata page, whose previews give collapsed files their rows; layout acquires bytes of
++ * expanded files within the viewport margin, and the tail sentinel advances metadata in that band. */
+ export function MutationEvidencePreview(props: {
+   ownerId: string
+   evidence: MutationEvidence
+@@ -369,7 +345,7 @@ export function MutationEvidencePreview(props: {
+   writes?: FileWritePolicy
+   onToggleFile?: (index: number) => void
+   diffColors?: Accessor<DiffColorMode>
+-  onCut?: (index: number, cut: boolean) => void
++  onOverflow?: (index: number, overflow: boolean) => void
+   pendingProposal?: Extract<FileChangeBody, { kind: "proposed" }>
+   hideSingleHeading?: boolean
+   showActions?: boolean
+@@ -379,8 +355,8 @@ export function MutationEvidencePreview(props: {
+   const { theme } = useTheme()
+   const handle = () => openEvidence(props.ownerId, props.evidence.manifest)
+   const files = () => handle()?.files
+-  // File headings and reserved bodies come from metadata, so the row's height is final only
+-  // once its metadata page has settled. Patch bytes fill reserved rows and never hold it.
++  // File headings and collapsed rows come from the metadata page and its previews, so the row's
++  // height is final once that page has settled. Expanded patch bytes never hold it.
+   const metadataSettled = createMemo(() => files()?.status !== "idle" && files()?.status !== "loading")
+   // eslint-disable-next-line solid/reactivity -- the row reads the hold in its own geometry memo
+   useRowGeometry().hold(metadataSettled)
+@@ -394,26 +370,28 @@ export function MutationEvidencePreview(props: {
+   // One model per file. An owner publication reads each file's patch-view identity, and only a
+   // file whose view changed rebuilds its model; the aggregate below still visits every model.
+   const fileModels = mapArray(entries, (entry, index) => {
++    const expanded = createMemo(() => typeof props.expanded === "function" ? props.expanded(index()) : props.expanded)
++    // Only an expanded file reads its patch; a collapsed file shows its page preview.
+     const patch = createMemo(() => {
+       const current = handle()
+-      return current === undefined ? undefined : untrack(() => current.patch(entry))?.view
++      return current === undefined || !expanded() ? undefined : untrack(() => current.patch(entry))?.view
+     })
+     const fileModel = createMemo(() => {
+       const view = metadata()
+       if (view === undefined) return []
+-      const expanded = typeof props.expanded === "function" ? props.expanded(index()) : props.expanded
++      const fileExpanded = expanded()
+       const patchView = patch()
+-      return fileDiffFiles({ kind: "actual", mutationEvidence: props.evidence }, expanded, props.writes, {
++      return fileDiffFiles({ kind: "actual", mutationEvidence: props.evidence }, fileExpanded, props.writes, {
+         files: { ...view, files: [entry] }, ...(patchView === undefined ? {} : { patch: patchView }),
+       }).map(({ action, ...model }) => {
+         const completeRows = model.presentation === "edit" ? model.rows.filter(row => !row.partial).length : 0
+-        const hunks = completeRows > 0 && patchView
+-          ? parseUnifiedDiff(patchView.complete ? patchView.text : patchView.text.slice(0, patchView.text.lastIndexOf("\n") + 1), completeRows).hunks : []
++        const text = !fileExpanded ? entry.preview
++          : patchView && (patchView.complete ? patchView.text : patchView.text.slice(0, patchView.text.lastIndexOf("\n") + 1))
++        const hunks = completeRows > 0 && text ? parseUnifiedDiff(text, completeRows).hunks : []
+         return {
+           ...model, ...(props.showActions === true ? { action } : {}),
+           hunks, rows: hunks.length > 0 ? model.rows.filter(row => row.partial) : model.rows,
+-          // The file's final visible count, so its body and note keep one height while bytes arrive.
+-          visibleLines: expanded ? model.renderedLines : Math.min(TOOL_PREVIEW_LINE_LIMIT, model.renderedLines),
++          visibleLines: fileExpanded ? model.renderedLines : model.rows.length,
+           omittedLines: model.sourceOmittedLines,
+           hideHeading: props.hideSingleHeading === true && props.evidence.applied === 1,
+           moreBytes: patchView !== undefined && !patchView.complete,
+@@ -443,33 +421,22 @@ export function MutationEvidencePreview(props: {
+       }
+     }
+     const nearby = (box: BoxRenderable) => box.screenY < bottom + OVERSCAN_ROWS && box.screenY + Math.max(1, box.height) > top - OVERSCAN_ROWS
+-    const page = current.files
+-    const pageEntries = entries()
+-    for (const [index, entry] of pageEntries.entries()) {
++    for (const [index, entry] of entries().entries()) {
++      const expanded = typeof props.expanded === "function" ? props.expanded(index) : props.expanded
+       const box = fileBoxes.get(index)
+       const body = bodyBoxes.get(index)
+-      if (!box || !body || !nearby(box)) continue
++      if (!expanded || !box || !body || !nearby(box)) continue
+       const patch = current.patch(entry)
+       if (!patch || (patch.view.status !== "idle" && patch.view.status !== "ready") || patch.view.complete) continue
+-      const expanded = typeof props.expanded === "function" ? props.expanded(index) : props.expanded
+-      // A collapsed file shows one row per line, so its rows end at its visible line count.
+-      const budget = expanded ? Math.max(TOOL_PREVIEW_LINE_LIMIT, bottom - body.screenY) : Math.min(TOOL_PREVIEW_LINE_LIMIT, entry.file.retainedLines)
++      const budget = Math.max(TOOL_PREVIEW_LINE_LIMIT, bottom - body.screenY)
+       if (patch.view.text.length === 0 || body.height < budget) {
+         const rows = patch.view.text.length === 0 ? budget : budget - body.height
+         void patch.continue(Math.min(TOOL_PREVIEW_LINE_LIMIT, Math.max(1, rows)), Math.max(1, body.width - 6))
+       }
+     }
+-    // Patch reads can increase the next frame's height. Wait for them before
+-    // treating a temporarily short layout as the metadata page's real end.
+-    const pageHasPendingPreviews = pageEntries.some((entry, index) => {
+-      const box = fileBoxes.get(index)
+-      if (!box || !nearby(box)) return false
+-      const patch = current.patch(entry)
+-      return patch !== undefined && (patch.view.status === "idle" || patch.view.status === "loading")
+-    })
+-    if (page.status === "ready" && page.nextOffset !== null && !pageHasPendingPreviews && nearby(tail)) void current.loadFiles()
++    if (current.files.status === "ready" && current.files.nextOffset !== null && nearby(tail)) void current.loadFiles()
+   })
+-  // A mounted preview requests its file list at once, so its headings and reserved bodies
++  // A mounted preview requests its file list at once, so its headings and collapsed rows
+   // are measured at their final height before it nears the viewport. Bytes stay near it.
+   const opened = createMemo(handle)
+   createEffect(on(opened, current => { if (current?.files.status === "idle") void current.loadFiles() }))
+@@ -480,7 +447,7 @@ export function MutationEvidencePreview(props: {
+       {pending() ? <text fg={theme.textMuted} selectable={false}>Proposed changes</text> : null}
+       <Show when={pending() || parsed().files.length > 0 || files()?.files.some(entry => entry.kind === "omitted")}><DiffPreview parsed={pending() ? parseDiffs(props.pendingProposal?.proposedDiff.files ?? [], props.expanded, props.writes) : parsed()}
+         omissions={files()?.files.flatMap(entry => entry.kind === "omitted" ? [{ path: entry.displayPath, reason: entry.reason }] : [])}
+-        onToggleFile={props.onToggleFile} onCut={props.onCut}
++        onToggleFile={props.onToggleFile} onOverflow={props.onOverflow}
+         diffColors={props.diffColors} fileCount={props.evidence.applied}
+         onRetryFile={index => {
+           const current = handle()
+diff --git a/src/tui/output-blocks/tool-entry.tsx b/src/tui/output-blocks/tool-entry.tsx
+index 3454c6d..397ba0c 100644
+--- a/src/tui/output-blocks/tool-entry.tsx
++++ b/src/tui/output-blocks/tool-entry.tsx
+@@ -191,16 +191,17 @@ export function ToolEntry(props: ToolEntryProps) {
+   ))
+ 
+   const [contentOverflow, setContentOverflow] = createSignal(false)
+-  const [diffCut, setDiffCut] = createSignal<readonly boolean[]>([])
+-  const reportDiffCut = (index: number, cut: boolean) => setDiffCut(previous => {
+-    if (previous[index] === cut) return previous
++  // A file whose wrapped rows pass the collapsed budget is truncated even when its line count is not.
++  const [diffOverflow, setDiffOverflow] = createSignal<readonly boolean[]>([])
++  const reportDiffOverflow = (index: number, overflow: boolean) => setDiffOverflow(previous => {
++    if (previous[index] === overflow) return previous
+     const next = [...previous]
+-    next[index] = cut
++    next[index] = overflow
+     return next
+   })
+   const fileDiffTruncated = (index: number) =>
+-    (evidenceFiles()[index]?.file.retainedLines ?? parsedDiff().files[index]?.renderedLines ?? 0) > TOOL_PREVIEW_LINE_LIMIT || remoteFileDiffOmitted(index) > 0 || diffCut()[index] === true
+-  const diffTruncated = () => parsedDiff().renderedLines > TOOL_PREVIEW_LINE_LIMIT || remoteDiffOmitted() > 0 || diffSources().some((_, index) => diffCut()[index])
++    (evidenceFiles()[index]?.file.retainedLines ?? parsedDiff().files[index]?.renderedLines ?? 0) > TOOL_PREVIEW_LINE_LIMIT || remoteFileDiffOmitted(index) > 0 || diffOverflow()[index] === true
++  const diffTruncated = () => parsedDiff().renderedLines > TOOL_PREVIEW_LINE_LIMIT || remoteDiffOmitted() > 0 || diffSources().some((_, index) => diffOverflow()[index])
+   const anyFileDiffExpanded = () => diffSources().some((_, index) => fileDiffExpanded(index))
+ 
+   const contentPreview = createMemo(() =>
+@@ -483,7 +484,7 @@ export function ToolEntry(props: ToolEntryProps) {
+                 ? (index) => setFileDiffExpanded(index, !fileDiffExpanded(index))
+                 : undefined}
+               diffColors={props.diffColors}
+-              onCut={reportDiffCut}
++              onOverflow={reportDiffOverflow}
+             />
+           </Show>
+           <Show when={evidence()}>
+@@ -500,7 +501,7 @@ export function ToolEntry(props: ToolEntryProps) {
+               })()}
+               onToggleFile={hasFileDiffDisclosure() ? (index) => setFileDiffExpanded(index, !fileDiffExpanded(index)) : undefined}
+               diffColors={props.diffColors}
+-              onCut={reportDiffCut}
++              onOverflow={reportDiffOverflow}
+             />}
+           </Show>
+           <PreviewViewport
+diff --git a/tests/unit/tui/output-blocks/diff-preview.test.ts b/tests/unit/tui/output-blocks/diff-preview.test.ts
+index d723d48..690966a 100644
+--- a/tests/unit/tui/output-blocks/diff-preview.test.ts
++++ b/tests/unit/tui/output-blocks/diff-preview.test.ts
+@@ -97,6 +97,14 @@ async function renderDiffPreviewArtifacts(sources: readonly DiffSource[], writes
+   }
+ }
+ 
++/** The width inside the scroll viewport that holds a row. */
++function viewportContentWidth(row: BoxRenderable): number {
++  for (let parent = row.parent; parent; parent = parent.parent) {
++    if (parent instanceof ScrollBoxRenderable) return parent.content.width
++  }
++  throw new Error("Expected a scroll viewport")
++}
++
+ /** Two-hunk unified diff whose hunk content lines exceed the preview budget.
+  *  The structural lines (file headers, `@@` hunk headers) are deliberate: the
+  *  preview must never count or show them. */
+@@ -332,7 +340,8 @@ describe("diff preview rendering", () => {
+     }], true)
+ 
+     for (const artifact of [proposed, actual]) {
+-      const code = artifact.styled.find((styled) => styled.chunks.map((chunk) => chunk.text).join("").includes("const value"))
++      const codeIndex = artifact.styled.findIndex((styled) => styled.chunks.map((chunk) => chunk.text).join("").includes("const value"))
++      const code = artifact.styled[codeIndex]
+       expect(code).toBeDefined()
+       const codeForegrounds = code?.chunks
+         .filter((chunk) => /const|value|number|answer/.test(chunk.text))
+@@ -341,7 +350,8 @@ describe("diff preview rendering", () => {
+       expect(new Set(codeForegrounds.map((color) => color.toString())).size).toBeGreaterThan(1)
+       expect(artifact.backgrounds.every((background) => background.a === 0)).toBe(true)
+       expect(code?.chunks.every((chunk) => chunk.bg === undefined)).toBe(true)
+-      expect(code?.chunks.map((chunk) => chunk.text).join("")).toMatch(/^\s*1\s+const value: number = answer$/)
++      expect(artifact.styled[codeIndex - 1]?.chunks.map((chunk) => chunk.text).join("")).toMatch(/^\s*1\s+$/)
++      expect(code?.chunks.map((chunk) => chunk.text).join("")).toBe("const value: number = answer")
+       expect(code?.chunks.find((chunk) => chunk.text.includes("answer"))?.fg).toEqual(writeSyntaxColors.text)
+     }
+   })
+@@ -468,8 +478,10 @@ describe("diff preview rendering", () => {
+       path: "notes.unknown",
+       unifiedDiff: "@@ -0,0 +1 @@\n+plain content",
+     }], true)
+-    const code = artifact.styled.find((styled) => styled.chunks.map((chunk) => chunk.text).join("").includes("plain content"))
+-    expect(code?.chunks.map((chunk) => chunk.text).join("")).toMatch(/^\s*1\s+plain content$/)
++    const codeIndex = artifact.styled.findIndex((styled) => styled.chunks.map((chunk) => chunk.text).join("").includes("plain content"))
++    const code = artifact.styled[codeIndex]
++    expect(artifact.styled[codeIndex - 1]?.chunks.map((chunk) => chunk.text).join("")).toMatch(/^\s*1\s+$/)
++    expect(code?.chunks.map((chunk) => chunk.text).join("")).toBe("plain content")
+     expect(code?.chunks.every((chunk) => chunk.bg === undefined)).toBe(true)
+     expect(artifact.backgrounds.every((background) => background.a === 0)).toBe(true)
+   })
+@@ -491,14 +503,16 @@ describe("diff preview rendering", () => {
+       path: "data/value.unknown-extension",
+       unifiedDiff: "@@ -0,0 +1 @@\n+plain value",
+     }])
+-    const line = artifact.styled.find((styled) => styled.chunks.some((chunk) => chunk.text.includes("plain value")))
++    const lineIndex = artifact.styled.findIndex((styled) => styled.chunks.some((chunk) => chunk.text.includes("plain value")))
++    const line = artifact.styled[lineIndex]
+ 
+-    expect(line?.chunks.map((chunk) => chunk.text).join("")).toContain("+plain value")
++    expect(artifact.styled[lineIndex - 1]?.chunks.map((chunk) => chunk.text).join("")).toMatch(/\+$/)
++    expect(line?.chunks.map((chunk) => chunk.text).join("")).toBe("plain value")
+     expect(line?.chunks.find((chunk) => chunk.text.includes("plain value"))?.fg).toBeDefined()
+     expect(artifact.backgrounds.some((background) => background !== undefined)).toBe(true)
+   })
+ 
+-  it("wraps each diff line at its highlight width beside a visible scrollbar", async () => {
++  it("wraps each diff line under its code, inside a full-width highlight beside a visible scrollbar", async () => {
+     const [{ DiffPreview, parseDiffs }, { ThemeProvider }, { createElement, insert }] = await Promise.all([
+       loadDiffPreview(),
+       import("../../../../src/tui/context/theme.js"),
+@@ -524,16 +538,27 @@ describe("diff preview rendering", () => {
+     try {
+       await result.renderOnce()
+       const descendants: unknown[] = [result.renderer.root]
+-      const rows: { text: number; highlight: number }[] = []
++      const rows: BoxRenderable[] = []
+       for (const node of descendants) {
+-        if (node instanceof TextRenderable && node.parent instanceof BoxRenderable && node.parent.backgroundColor.a > 0) {
+-          rows.push({ text: node.width, highlight: node.parent.width })
+-        }
++        if (node instanceof BoxRenderable && node.backgroundColor.a > 0) rows.push(node)
+         if (node && typeof node === "object" && "getChildren" in node && typeof node.getChildren === "function") descendants.push(...node.getChildren())
+       }
++      const frame = result.captureCharFrame().split("\n")
+ 
+       expect(rows).toHaveLength(16)
+-      expect(rows.filter((row) => row.text !== row.highlight)).toEqual([])
++      expect(viewportContentWidth(rows[0]!)).toBeLessThan(61)
++      for (const row of rows) {
++        const [gutter, code] = row.getChildren()
++        if (!(gutter instanceof TextRenderable) || !(code instanceof TextRenderable)) throw new Error("Expected a gutter and a code text")
++        // The highlight spans the content width, and the code ends at its right edge.
++        expect(row.width).toBe(viewportContentWidth(row))
++        expect(code.x + code.width).toBe(row.x + row.width)
++        // A wrapped line continues under its code, never under the gutter.
++        expect(code.x).toBe(gutter.x + gutter.width)
++        expect(code.height).toBeGreaterThan(1)
++        const continuation = frame[code.y + 1]
++        if (continuation !== undefined && code.y + 1 < 12) expect(continuation.slice(row.x, code.x).trim()).toBe("")
++      }
+     } finally {
+       result.renderer.destroy()
+     }
+diff --git a/tests/unit/tui/output-blocks/tool-entry-evidence-publications.test.ts b/tests/unit/tui/output-blocks/tool-entry-evidence-publications.test.ts
+index 1fcedaf..192b6c8 100644
+--- a/tests/unit/tui/output-blocks/tool-entry-evidence-publications.test.ts
++++ b/tests/unit/tui/output-blocks/tool-entry-evidence-publications.test.ts
+@@ -19,16 +19,14 @@ function editEntry(id: string, mutationEvidence: ToolEntryType["mutationEvidence
+ 
+ type EvidenceFixture = Awaited<ReturnType<typeof mutationEvidenceFixture>>
+ 
+-/** Render one evidence row above a marker, then serve gated patch windows one at a time and
+- * paint the first frame after each, until a painted frame asks for no further window. The
+- * marker's row tells whether the preview above it changed height. */
+-async function observeArrival(fixture: EvidenceFixture, options: { expand?: boolean } = {}) {
++/** Render one evidence row, expand it, then serve gated patch windows one at a time and
++ * paint the first frame after each, until a painted frame asks for no further window. */
++async function observeExpandedArrival(fixture: EvidenceFixture) {
+   let gate = Promise.withResolvers<void>()
+   fixture.holdPatches(gate.promise)
+   const marker: ToolEntryType = { kind: "tool", id: "marker", name: "bash", presentation: { name: "Bash", detail: "END-MARKER" }, status: "completed", timestamp: 1 }
+   const result = await renderToolEntries([editEntry("edit-1", fixture.evidence), marker], { height: 80, evidenceReader: fixture.reader })
+   const lines = () => result.captureCharFrame().split("\n")
+-  const markerRow = () => lines().findIndex(line => line.includes("END-MARKER"))
+   const held = () => fixture.reader.open("tool:edit-1", fixture.evidence.manifest)
+   const settled = () => fixture.entries.every(entry => held().patch(entry)?.view.status === "ready")
+   // A painted frame acquires windows synchronously, so every loading patch waits at the gate here.
+@@ -40,10 +38,9 @@ async function observeArrival(fixture: EvidenceFixture, options: { expand?: bool
+     await result.renderOnce()
+     await held().loadFiles()
+     await result.renderOnce()
+-    if (options.expand === true) await result.mockMouse.click(4, 0)
++    await result.mockMouse.click(4, 0)
+     await result.renderOnce()
+     const waiting = result.captureCharFrame()
+-    const reserved = markerRow()
+     const frames: string[][] = []
+     for (let loading = loadingPatches(); loading.length > 0; loading = loadingPatches()) {
+       // Each released read either ends its request or asks for its next window at the new gate.
+@@ -56,11 +53,31 @@ async function observeArrival(fixture: EvidenceFixture, options: { expand?: bool
+       await result.renderOnce()
+       frames.push(lines())
+     }
+-    return { waiting, reserved, frames, rows: frames.map(frame => frame.findIndex(line => line.includes("END-MARKER"))), settled: settled(),
+-      complete: fixture.entries.map(entry => held().patch(entry)?.view.complete) }
++    return { waiting, frames, settled: settled() }
+   } finally { gate.resolve(); result.renderer.destroy(); fixture.reader.dispose() }
+ }
+ 
++/** Render one collapsed evidence row above a marker, settle its metadata page, then paint more
++ * frames. The marker's row tells whether the preview above it changed height after metadata. */
++async function observeCollapsed(fixture: EvidenceFixture) {
++  const marker: ToolEntryType = { kind: "tool", id: "marker", name: "bash", presentation: { name: "Bash", detail: "END-MARKER" }, status: "completed", timestamp: 1 }
++  const result = await renderToolEntries([editEntry("edit-1", fixture.evidence), marker], { height: 80, evidenceReader: fixture.reader })
++  const lines = () => result.captureCharFrame().split("\n")
++  try {
++    await result.renderOnce()
++    await fixture.reader.open("tool:edit-1", fixture.evidence.manifest).loadFiles()
++    await result.renderOnce()
++    const frames: string[][] = [lines()]
++    for (let frame = 0; frame < 3; frame++) {
++      await fixture.settle()
++      await result.renderOnce()
++      frames.push(lines())
++    }
++    return { frames, rows: frames.map(frame => frame.findIndex(line => line.includes("END-MARKER"))),
++      patchReads: fixture.calls.filter(call => call.type === "mutationPatchWindow").length }
++  } finally { result.renderer.destroy(); fixture.reader.dispose() }
++}
++
+ describe("tool entry evidence publications", () => {
+   it("re-runs only the row whose evidence publishes, so work per publication does not grow with mounted rows", async () => {
+     const fixture = await mutationEvidenceFixture([{ path: "src/first.ts", patch: editDiff(26), lines: 26 }])
+@@ -71,9 +88,9 @@ describe("tool entry evidence publications", () => {
+       expect(result.captureCharFrame()).toContain("const first = 1")
+       const opens = new Map<string, number>()
+       const open = fixture.reader.open
+-      fixture.reader.open = (ownerId, manifest) => {
++      fixture.reader.open = (ownerId, manifest, openOptions) => {
+         opens.set(ownerId, (opens.get(ownerId) ?? 0) + 1)
+-        return open(ownerId, manifest)
++        return open(ownerId, manifest, openOptions)
+       }
+       // Publications without a frame between them: each re-run is reactive work, not layout.
+       const held = open("tool:edit-0", fixture.evidence.manifest)
+@@ -111,8 +128,8 @@ describe("tool entry evidence publications", () => {
+       return countedView
+     }
+     const open = fixture.reader.open
+-    fixture.reader.open = (ownerId, manifest) => {
+-      const handle = open(ownerId, manifest)
++    fixture.reader.open = (ownerId, manifest, openOptions) => {
++      const handle = open(ownerId, manifest, openOptions)
+       let wrapped = handles.get(handle)
+       if (!wrapped) {
+         wrapped = {
+@@ -134,7 +151,9 @@ describe("tool entry evidence publications", () => {
+       }
+       return wrapped
+     }
+-    const result = await renderToolEntries([editEntry("edit-many", fixture.evidence)], { height: 200, evidenceReader: fixture.reader })
++    // Only an expanded file reads its patch, so every file starts expanded.
++    const disclosure = { disclosure: (key: string) => key.includes("#diff:") ? true : undefined, setDisclosure: () => {} }
++    const result = await renderToolEntries([editEntry("edit-many", fixture.evidence)], { height: 200, evidenceReader: fixture.reader, disclosure })
+     try {
+       for (let frame = 0; frame < 4; frame++) { await result.renderOnce(); await fixture.settle() }
+       expect(result.captureCharFrame()).toContain(`src/file${fileCount - 1}.ts`)
+@@ -149,51 +168,49 @@ describe("tool entry evidence publications", () => {
+     } finally { result.renderer.destroy(); fixture.reader.dispose() }
+   })
+ 
+-  it("keeps each mounted preview's height while its patch bytes arrive", async () => {
++  it("gives each collapsed file its final rows from the metadata page, with no patch read", async () => {
+     const fixture = await mutationEvidenceFixture([
+       { path: "src/long.ts", patch: editDiff(26), lines: 26 },
+       { path: "src/short.ts", patch: editDiff(8), lines: 8 },
+     ], { windowBytes: 120 })
+-    const arrival = await observeArrival(fixture)
+-    expect(arrival.waiting).toContain("src/short.ts")
+-    expect(arrival.waiting).toContain("Loading")
+-    expect(arrival.waiting).not.toContain("const first = 1")
+-    expect(arrival.reserved).toBeGreaterThan(TOOL_PREVIEW_LINE_LIMIT + 8)
+-    expect(arrival.settled).toBe(true)
+-    expect(arrival.complete[1]).toBe(true)
+-    const last = arrival.frames.at(-1)!.join("\n")
+-    expect(last).toContain("const filler4 = 4")
+-    expect(last).toContain("const filler15 = 15")
+-    expect(arrival.rows.length).toBeGreaterThan(2)
+-    expect(arrival.rows.filter(row => row !== arrival.reserved)).toEqual([])
++    const observed = await observeCollapsed(fixture)
++    const first = observed.frames[0]!.join("\n")
++    expect(first).toContain("src/short.ts")
++    expect(first.match(/const first = 1/g)).toHaveLength(2)
++    expect(first).toContain("const filler4 = 4")
++    expect(first).toContain("+6 lines (click to expand)")
++    expect(first).not.toContain("Loading")
++    expect(observed.patchReads).toBe(0)
++    expect(observed.rows.filter(row => row !== observed.rows[0])).toEqual([])
+   })
+ 
+-  it("cuts each collapsed line at the edge, so lines that would wrap keep the reserved height", async () => {
++  it("wraps a collapsed long-line file to the preview rows at its final height when metadata settles", async () => {
+     const before = Array.from({ length: 6 }, (_line, index) => `const value${index} = ${index}`).join("\n")
+     const after = Array.from({ length: 6 }, (_line, index) => `const value${index} = "${"word ".repeat(30)}tail${index}"`).join("\n")
+     const fixture = await mutationEvidenceFixture(buildMutationDiff([{ path: "src/example.ts", before: { kind: "text", text: before }, after: { kind: "text", text: after } }]), { windowBytes: 120 })
+-    const arrival = await observeArrival(fixture)
+-    expect(arrival.settled).toBe(true)
+-    const last = arrival.frames.at(-1)!
+-    expect(last.filter(line => line.includes("word word"))).toHaveLength(6)
+-    expect(last.join("\n")).not.toContain("tail0")
+-    expect(arrival.rows.length).toBeGreaterThan(2)
+-    expect(arrival.rows.filter(row => row !== arrival.reserved)).toEqual([])
++    const observed = await observeCollapsed(fixture)
++    const first = observed.frames[0]!
++    // Six removed lines, then added lines that wrap under their code until the preview rows end.
++    expect(first.filter(line => /const value|word|tail/.test(line))).toHaveLength(TOOL_PREVIEW_LINE_LIMIT)
++    expect(first.join("\n")).toContain("tail0")
++    expect(first.join("\n")).not.toContain("tail5")
++    expect(first.join("\n")).toContain("click to expand")
++    expect(observed.patchReads).toBe(0)
++    expect(observed.rows.filter(row => row !== observed.rows[0])).toEqual([])
+   })
+ 
+-  it("shows no loading row for a created empty file before or after its bytes", async () => {
++  it("shows no loading row for a created empty file", async () => {
+     const fixture = await mutationEvidenceFixture(buildMutationDiff([{ path: "src/empty.ts", before: { kind: "absent" }, after: { kind: "text", text: "" } }]))
+-    const arrival = await observeArrival(fixture)
+-    expect(arrival.settled).toBe(true)
+-    expect([arrival.waiting, ...arrival.frames.map(frame => frame.join("\n"))].filter(frame => frame.includes("Loading"))).toEqual([])
+-    expect(arrival.rows.filter(row => row !== arrival.reserved)).toEqual([])
++    const observed = await observeCollapsed(fixture)
++    expect(observed.frames.map(frame => frame.join("\n")).filter(frame => frame.includes("Loading"))).toEqual([])
++    expect(observed.patchReads).toBe(0)
++    expect(observed.rows.filter(row => row !== observed.rows[0])).toEqual([])
+   })
+ 
+-  it("shows the loading cue after the loaded rows of an expanded file, inside its reservation", async () => {
++  it("shows the loading cue after the loaded rows of an expanded file", async () => {
+     const fixture = await mutationEvidenceFixture([{ path: "src/example.ts", patch: editDiff(40), lines: 40 }], { windowBytes: 120 })
+-    const arrival = await observeArrival(fixture, { expand: true })
++    const arrival = await observeExpandedArrival(fixture)
+     expect(arrival.waiting).toContain("Loading")
+-    expect(arrival.reserved).toBeGreaterThan(40)
+     expect(arrival.settled).toBe(true)
+     const partial = arrival.frames.filter(frame => frame.some(line => line.includes("const first = 1")) && frame.some(line => line.includes("Loading")))
+     expect(partial.length).toBeGreaterThan(1)
+@@ -202,6 +219,6 @@ describe("tool entry evidence publications", () => {
+       expect(frame.findIndex(line => line.includes("Loading"))).toBe(lastLoaded + 1)
+     }
+     expect(arrival.frames.at(-1)!.join("\n")).not.toContain("Loading")
+-    expect(arrival.rows.filter(row => row !== arrival.reserved)).toEqual([])
++    expect(arrival.frames.at(-1)!.join("\n")).toContain("const filler36 = 36")
+   })
+ })
+diff --git a/tests/unit/tui/output-blocks/tool-preview-displayed-rows.test.ts b/tests/unit/tui/output-blocks/tool-preview-displayed-rows.test.ts
+index 1cca1c8..a1a0a0f 100644
+--- a/tests/unit/tui/output-blocks/tool-preview-displayed-rows.test.ts
++++ b/tests/unit/tui/output-blocks/tool-preview-displayed-rows.test.ts
+@@ -45,7 +45,7 @@ it.each(["write", "streaming"] as const)("caps wrapped %s previews and expands w
+   }
+ })
+ 
+-it("cuts a collapsed legacy diff line at the edge and expands it to wrapped full text", async () => {
++it("wraps a collapsed legacy diff line, caps it at the preview rows, and expands it to full text", async () => {
+   const result = await renderToolEntry({
+     kind: "tool", id: "edit-1", name: "edit", status: "completed", timestamp: 0,
+     presentation: resolveToolPresentation("edit", { path: "example.ts" }, "/workspace"),
+@@ -56,9 +56,9 @@ it("cuts a collapsed legacy diff line at the edge and expands it to wrapped full
+     await result.renderOnce()
+     await result.renderOnce()
+     expect(lines()[0]).toContain("▸")
+-    expect(lines().filter((line) => line.includes("wrapped"))).toHaveLength(1)
++    expect(lines().filter((line) => line.includes("wrapped"))).toHaveLength(20)
+     expect(lines().join("\n")).not.toContain("tail-end")
+-    expect(lines().join("\n")).not.toContain("click to expand")
++    expect(lines().join("\n")).toContain("click to expand")
+     await result.mockMouse.click(4, 0)
+     await result.mockMouse.moveTo(47, 95)
+     await result.renderOnce()
+@@ -69,13 +69,13 @@ it("cuts a collapsed legacy diff line at the edge and expands it to wrapped full
+     await result.renderOnce()
+     await result.renderOnce()
+     expect(lines()[0]).toContain("▸")
+-    expect(lines().filter((line) => line.includes("wrapped"))).toHaveLength(1)
++    expect(lines().filter((line) => line.includes("wrapped"))).toHaveLength(20)
+   } finally {
+     result.renderer.destroy()
+   }
+ })
+ 
+-it("cuts each collapsed file at the edge and keeps an expansion control for each file", async () => {
++it("wraps each collapsed file to the preview rows and keeps an expansion control for each file", async () => {
+   const files = ["first", "second"].map((name) => ({
+     path: `${name}.ts`,
+     change: "modified" as const,
+@@ -92,10 +92,11 @@ it("cuts each collapsed file at the edge and keeps an expansion control for each
+     for (let frame = 0; frame < 3; frame++) { await result.renderOnce(); await fixture.settle() }
+     const lines = result.captureCharFrame().split("\n")
+     for (const name of ["first", "second"]) {
+-      expect(lines.filter((line) => line.includes(name) && !line.includes(`${name}.ts`))).toHaveLength(1)
++      expect(lines.filter((line) => line.includes(name) && !line.includes(`${name}.ts`))).toHaveLength(20)
++      expect(lines.join("\n")).not.toContain(`${name}-tail`)
+     }
+-    expect(lines.join("\n")).not.toContain("click to expand")
+-    // Cut text is each file's only hidden content, so the action heading's chevron is the cue at rest.
++    // Wrapped rows past the preview are each file's only hidden content.
++    expect(lines.filter((line) => line.includes("click to expand"))).toHaveLength(2)
+     for (const name of ["first", "second"]) {
+       expect(lines.find((line) => line.includes(`${name}.ts`))).toMatch(new RegExp(`${name}\\.ts \\(\\w+\\) ▸`))
+     }
+@@ -103,7 +104,7 @@ it("cuts each collapsed file at the edge and keeps an expansion control for each
+     await result.mockMouse.click(8, headingRow)
+     for (let frame = 0; frame < 3; frame++) { await result.renderOnce(); await fixture.settle() }
+     const expanded = result.captureCharFrame().split("\n")
+-    expect(expanded.filter((line) => line.includes("first") && !line.includes("first.ts"))).toHaveLength(1)
++    expect(expanded.filter((line) => line.includes("first") && !line.includes("first.ts"))).toHaveLength(20)
+     expect(expanded.filter((line) => line.includes("second") && !line.includes("second.ts")).length).toBeGreaterThan(20)
+     expect(expanded.join("\n")).toContain("second-tail")
+     expect(expanded.join("\n")).not.toContain("first-tail")
+diff --git a/webview/src/app/file-diff.tsx b/webview/src/app/file-diff.tsx
+index dc48c16..ad8a55b 100644
+--- a/webview/src/app/file-diff.tsx
++++ b/webview/src/app/file-diff.tsx
+@@ -120,7 +120,7 @@ function EvidenceDiff(props: FileDiffProps & { body: Extract<FileChangeBody, { m
+     const { reader: source, owner, manifest } = identity()
+     if (source === undefined || owner === undefined) return undefined
+     onCleanup(() => source.release(owner))
+-    return source.open(owner, manifest)
++    return source.open(owner, manifest, { previews: true })
+   })
+   const revision = ownerRevision(reader, () => props.evidenceOwner)
+   createEffect(on(identity, () => setActualStarted(false)))
+@@ -168,16 +168,17 @@ function EvidenceFile(props: FileDiffProps & {
+   onCleanup(() => patch()?.release())
+   const view = createMemo(on([() => props.revision, patch], ([, current]) => current?.view))
+   createEffect(on(view, current => {
+-    if (current?.text || current?.status === "unavailable" || current?.status === "error" || props.entry.file.patch.kind !== "retained") props.onBytes()
++    if (props.entry.preview !== undefined || current?.text || current?.status === "unavailable" || current?.status === "error" || props.entry.file.patch.kind !== "retained") props.onBytes()
+   }))
+   const file = createMemo(() => fileDiffFiles(props.body, props.fileExpanded ?? false, props.writes, {
+     files: { status: "ready", offset: 0, files: [props.entry], nextOffset: null },
+     patch: view(),
+   })[0]!)
+   let section!: HTMLElement
++  // A collapsed file renders its page preview; only an expanded file reads its patch.
+   onMount(() => {
+     visibleDiff(section, visible => {
+-      if (visible && patch()?.view.status === "idle") void patch()?.continue(20, 120)
++      if (visible && file().expanded && patch()?.view.status === "idle") void patch()?.continue(20, 120)
+     })
+   })
+   return <DiffFile {...props} file={file()} hidden={props.pending} sectionRef={element => { section = element }}

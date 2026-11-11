@@ -1,0 +1,749 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 566a183..f9fad48 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -5,28 +5,26 @@
+ **Runtime:** Bun (not Node) | **TUI:** OpenTUI + SolidJS | **Config:** TOML
+ **SolidJS requires the `"browser"` export condition.** `bin/flywheel` handles this via `bun --conditions=browser`.
+ 
+-This file is the complete guide for contributors. The maintainer also checks out a small private companion repository at the gitignored `private/` folder of the clone. Its @private/AGENTS.maintainer.md adds the rules for the maintainer's shared working tree, publication, and release readiness. That import is optional: a contributor's checkout has no `private/` folder, the import then loads nothing, and every rule a contributor needs is in this file.
+-
+ ## 1. Hard Rules
+ 
+ - MAXIMIZE *ELEGANCE*, NOT MINIMIZE CHURN! THIS IS THE MOST IMPORTANT PRINCIPLE FOR EVERY DESIGN! Always pick the design that maximizes elegance no matter how big the refactor. Better now than months down the line when there are even more dependencies in place.
+ 
+-- `docs/elegance.md` is Flywheel's canonical project-specific definition of elegance and the rubric for architecture audits. Read it in full when judging whether the project is maximally elegant. This file operationalizes much of that standard for coding agents, but not in full.
++- `docs/adrs/adr-005-flywheel-design-principles.md` is Flywheel's canonical project-specific definition of elegance and the rubric for architecture audits. Read it in full when judging whether the project is maximally elegant. This file operationalizes much of that standard for coding agents, but not in full.
+ 
++- ADRs are living, present-tense authorities, not change logs. When shipped work changes an architectural claim, rewrite the owning ADR in the same unit so it reads as if authored in its current form for the first time; do not add revision history, amendment prose, or `Updated` metadata. Follow `docs/adrs/README.md`.
++- Completed and superseded plans are permanent implementation records. Never delete them. Move them to `docs/plans/archive/` and remove their entries from `docs/plans/README.md`.
+ - Handle only reachable states. A state is reachable when a person or an external producer can cause it through a supported entry point: a client surface, the CLI, the published protocol as shipped clients use it, or an external boundary such as a provider stream, a subprocess, or the file system. A state that only a direct internal call or a test fixture can create is hypothetical: add no code for it, and do not treat a test that asserts it as a product requirement. Before you call a failure a regression, trace how a person reaches it. When a test fails on a state that no person can reach, rewrite the test around the reachable flow instead of changing the product.
+-- This repository opts into the living product-intent authority indexed by `docs/product-intent/README.md`. Before changing or judging user-observable Flywheel behavior, read the index and the relevant domain file. A conflict with the persisted corpus is a bug or blocker, unless the person states a different intent; then the corpus changes to match it.
+-- Before judging whether a subscription route follows its provider's terms, read `docs/provider-terms.md`. This covers the Claude engine route, the sign-in client IDs, the request headers that identify a client, and the use of several accounts of one provider. Flywheel follows precedent: a practice that widely used open-source agents ship publicly is acceptable. The page's section "How a review uses this page" lists the practices that the maintainer settled on that basis. A review or an audit never reports one of them as a finding, a blocker, or a risk, also when it finds provider terms that the page does not quote. Only the reopen events that the page names reopen a question.
+-- Repository code, comments, and documents name no other coding-agent harness. `docs/provider-terms.md` is the one place that names such projects as precedent. Credit for borrowed work goes in `THIRD-PARTY-NOTICES.md` and the license bundles, and a file or directory that a notice cites by path keeps its upstream references. The only other names allowed are external identifiers that Flywheel must spell exactly to interoperate, such as an environment variable, a header, or a model id, and benchmark arms that run another harness as the comparison treatment.
+-- This repository opts into the living architecture-intent authority indexed by `docs/architecture-intent/README.md`. Before changing or judging Flywheel's internal organization, read the index and the relevant domain file. A conflict with the persisted corpus is a bug or blocker, unless the person states a different intent; then the corpus changes to match it. `docs/terminology.md` is the lexicon for Flywheel's terms.
++- This repository opts into the living product-intent authority indexed by `docs/product-intent/README.md`. Before changing or judging user-observable Flywheel behavior, read the index and the relevant domain file. A conflict with the persisted corpus is a bug or blocker.
+ 
+-- Chat captures design intent (PI-AGENT-003, ARCH-AGENCY-015), every implementation route returns a first draft (ARCH-AGENCY-020), and the agent that holds the intent revises the draft from its recorded deviations and the review's findings until it realizes the design, adding nothing beyond it (ARCH-AGENCY-021, ARCH-AGENCY-023, ARCH-AGENCY-024). Read `docs/architecture-intent/agency.md` before changing any implementer prompt, dispatch prompt, or result contract (ARCH-AGENCY-026).
++- Consult the relevant ADR when working near its authority: `docs/adrs/adr-000-flywheel-thesis.md`, `docs/adrs/adr-001-event-sourced-substrate.md`, `docs/adrs/adr-002-context-engineering-and-inspectability.md`, `docs/adrs/adr-003-agent-as-environment-operator.md`, `docs/adrs/adr-004-intent-contracts-and-evaluation.md`, `docs/adrs/adr-005-flywheel-design-principles.md`, `docs/adrs/adr-006-workflow-control-and-attempts.md`, `docs/adrs/adr-007-agent-runtime-process-placements.md`, `docs/adrs/adr-008-durable-sessions-and-conversations.md`, `docs/adrs/adr-009-tool-execution-safety.md`, `docs/adrs/adr-010-runtime-ui-protocol.md`, `docs/adrs/adr-011-durable-learning-scope-and-consent.md`, `docs/adrs/adr-012-configurable-modules.md`, `docs/adrs/adr-013-project-and-execution-directory-semantics.md`, `docs/adrs/adr-014-binary-distribution-and-updates.md`, `docs/adrs/adr-015-internal-modules.md`, `docs/adrs/adr-016-terminology.md`, `docs/adrs/adr-021-design-intent-and-the-first-draft.md`, and `docs/adrs/adr-022-subagent-child-sessions.md`. ADR-021 governs how agents work here: chat captures design intent, every implementation route returns a first draft, and the agent that holds the intent revises the draft from its recorded deviations and the review's findings until it realizes the design, adding nothing beyond it. Read it before changing any implementer prompt, dispatch prompt, or result contract.
+ 
+ - Every commit message follows this repository's changelog contract. Use `<type>(<scope>)?: <subject>`, with type `feat`, `fix`, `perf`, `docs`, `refactor`, `test`, `chore`, or `release`. The optional scope is lowercase. Write an imperative lowercase subject with no trailing period. About 72 characters is a readability target, not a validated limit or a reason to rewrite a commit. Reserve `feat`, `fix`, and `perf` for observable shipped-product outcomes, with subjects that stand alone as release notes. Use `chore` for CI, release-process, and repository-tooling work, including speed improvements. Add a `Changelog:` trailer when the engineering subject differs from the user-facing sentence. Pair `!` after the type with a `BREAKING CHANGE:` body paragraph stating what breaks and what the user must do. Group one complete user-visible unit per commit, including its supporting tests and refactors. Validate a draft message before committing by piping it to `bun run scripts/commit-contract.ts check-message`; `check --base <sha> --head <sha>` validates existing commits. Public release notes are generated from commit history: `bun run release` reads every commit whose header parses and drops the rest, so a header that does not parse is a release note lost.
+ 
++- There are other agents working on this tree. NEVER discard changes not related to your work! It is not because your subagent went rogue, it is because another independent agent working at my direction made changes and I do not want them lost! Never stash or remove those changes for the sake of running lint or tests. Run the standard validation when it can produce a meaningful signal; if unrelated concurrent work blocks a global gate, run the narrowest relevant validation for your touched files. Do not "fix" any other agent's files unless asked. When a gate fails in another chat's file, tell that chat once (file, gate, exact error), then ignore failures in that file and publish your own work. Do not wait for its fix, coordinate its commits, or take over its publication. When the installed build fails on another chat's uncommitted work, build and verify from a worktree at your own commit. Knowing your own changes never requires git: track the files you touch yourself, and do not survey git status or diffs to protect concurrent work; simply avoid files outside your task. When publishing in a concurrent worktree, stage and commit each whole file your unit touched, including concurrent changes already present in that file. Never partial-stage, split, or omit another agent's changes within a touched file. Other agents can revise their work in later commits. Commits are the remote log of work completed, not rollback boundaries.
+ - Startup responsiveness is load-bearing. Keep first-frame rendering, prompt input, and chat runner readiness free of noncritical synchronous work and contention. Defer optional initialization, maintenance, preloading, and views through owned background or lazy execution with contained failures. A change that can affect startup must pass `bun run test:perf`; a measured startup regression greater than 20% is never acceptable.
+ - Interactive clients attach through the one resident `flywheel serve` account service. It is the only production serving owner, opens isolated project compositions on demand, and owns dormant remote wake. Do not add per-project server rendezvous, serving processes, launch aliases, or a second remote coordinator.
+ - Local token counting uses the one committed universal tokenizer asset. Release and readiness rebuild it once from source, verify it, and reuse it in every archive. Each archive places it in the native directory of the immutable build, and the runtime loads it lazily from there. Ordinary development, startup, and token counting require neither Rust nor a tokenizer network request.
+-- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file. A derived database that rebuilds from the store, such as the session-summary index, the conversation search index, or the projection fold cache, is not durable user state: it keys what it keeps by the code identity or version that wrote it, and an entry it cannot prove current is a miss that rebuilds, with no conversion, dated comment, or warning.
++- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file.
+ - Flywheel supports macOS, Linux, and Windows as first-class platforms. Preserve platform-specific workarounds unless the user explicitly authorizes changing that compatibility contract. Every repository-owned Bun process launch in production code, tests, scripts, and benchmarks must state `windowsHide: true`; Windows job-object, console-hiding, ACL, path, and process-tree behavior is load-bearing. Platform compatibility tests and guards are locked acceptance contracts: when one fails after a change, fix the implementation. Never delete, skip, weaken, or rewrite the expected behavior to make it pass. If the implementation cannot satisfy the contract, stop and report a blocker.
+ 
+ ---
+@@ -53,56 +51,62 @@ When adopting prompts from other sources, copy the source verbatim and then make
+ | TUI state: stores, signals, memos, effects | `solid-reactivity` |
+ | Async lifecycle: Effect services, typed errors, fibers, disposal | `effect-lifecycle` |
+ | Rendering TUI output: text, layout, selection | `tui-rendering` |
+-| Writing or reviewing a web client surface so it never flickers or moves the reader | `webview-rendering` |
+ | Planning or reviewing a rendered user-facing surface: layout, styles, theming, interaction states | `interface-design` |
+ | Verifying the installed binary against real input | `flywheel-uat` |
+ | Verifying the packaged VS Code extension in a live editor | `vscode-uat` |
+ | Verifying the web client in a browser, on the preview page or over the relay | `webview-uat` |
+ | Verifying the phone app in the iOS Simulator, in Safari or installed | `ios-uat` |
+-| Debugging a session from its facts and diagnostic records | `session-debugging` |
+-| A refactor that must keep behavior unchanged across a seam | `refactor-safety-net` |
+-| Auditing a skill package or workflow brief prompt | `skill-prompt-audit` |
+ 
+ Authored workflows follow the conditional references in `workflow-authoring` for specification, implementation, and review briefs. Each brief composes its reusable method owners.
+ 
+-Reaching a skill: `action:"load"` returns one skill's instructions and names the files it declares, and `action:"resource"` returns one of those files. Some briefs and personas declare the skills they need as `dependencies`, so that text already sits in your prompt; loading is still your job for anything the prompt did not compose. Its owning skill, workflow, or persona composes a dependency. A dependency states one method and the shape of its own report only, so every dispatch, routing, or synthesis decision stays with the definition that composes it. Skills are for agents: a person never types a skill. Everything a person runs is a built-in slash command, and a command that needs an agent method, such as `/experiment design`, starts that skill's method as the chat's next turn. Reusable Flywheel agent methods and the references their bodies include ship under `src/agent-skills/`; a workflow states its own method in the inline briefs of its workflow file; Flywheel's own development methods (`flywheel-design`, `typescript-bun`, `effect-lifecycle`, `solid-reactivity`, `tui-rendering`, `webview-rendering`, `session-debugging`, `refactor-safety-net`, `skill-prompt-audit`, `flywheel-uat`, `vscode-uat`, `webview-uat`, and `ios-uat`) ship in the development module's bundle under `src/orchestration/modules/development/definitions/skills/` and exist only in a source run. External packages install from `~/.flywheel/skills` or the shared `~/.agents/skills`, and a skill added mid-session becomes available without a restart.
++Repository publication is delegated work, not a skill-loading task. After implementation, review, and verification are complete, parent chat agents send `ship` the files they changed and a short summary of user intent and implemented design. Use the tracked file list, not preparatory Git analysis. Do not send verification evidence or a prepared commit message. Ship owns Git inspection, commit-message writing, whole-file staging including concurrent edits, commit, and push. Do not ask it to separate authorship, select hunks, or create isolation worktrees. Parent chat agents never load the `ship` skill themselves.
++
++Reaching a skill: `action:"load"` returns one skill's instructions and names the files it declares, and `action:"resource"` returns one of those files. Some briefs and personas declare the skills they need as `dependencies`, so that text already sits in your prompt; loading is still your job for anything the prompt did not compose. A dependency is not user-invocable; its owning skill, workflow, or persona composes it. A dependency states one method and the shape of its own report only, so every dispatch, routing, or synthesis decision stays with the definition that composes it. A user invokes any other skill that is not Flywheel-managed with `/<id>`, such as `/typescript-bun`. A skill marked `managed: flywheel` uses `/learned.<id>` and a `[Learned Skill]` description label. Reusable Flywheel agent methods ship under `src/agent-skills/`; workflow-owned methods ship under `src/workflows/skills/`; Flywheel's own development methods (`flywheel-design`, `typescript-bun`, `effect-lifecycle`, `solid-reactivity`, `tui-rendering`, `flywheel-uat`, `vscode-uat`, `webview-uat`, and `ios-uat`) ship in the development module's bundle under `src/orchestration/modules/development/definitions/skills/` and exist only in a source run. External packages install from `~/.flywheel/skills` or the shared `~/.agents/skills`, and a skill added mid-session becomes available without a restart.
+ 
+ ---
+ 
+ ## 3. State Ownership
+ 
+-- Keep one source of truth per value. State drives effects, never the reverse, and everything downstream is a derived view (ARCH-SUBSTRATE-001).
+-- Add a runtime event to the `FlywheelEvent` discriminated union in `src/infra/events.ts` and update every exhaustive consumer in the same change (ARCH-SUBSTRATE-010).
+-- Name events with lowercase dot-delimited domain and action segments, such as `agent.run.started` (ARCH-NAMING-007).
+-- Producers emit raw events; subscribers filter (ARCH-STRUCTURE-007).
++**One source of truth per value. State drives effects, never the reverse.** A value that lives in one store does not also live as an adapter property, a registry field, and a signal. Everything downstream is a derived view.
++
++`FlywheelEvent` is a discriminated union in `src/infra/events.ts`. Event names use lowercase dot-delimited domain and action segments, such as `agent.run.started`. Producers emit raw events; subscribers filter. Adding a new event means adding to the union and updating all exhaustive consumers.
+ 
+ ### Session Lifecycle
+ 
+-- Persist only `active | inactive`. `SessionManager` is the sole authority for persisted lifecycle state and session relationships, and every transition goes through `SessionManager.updateLifecycleState()` (ARCH-SESSIONS-003).
+-- Keep workflow terminal state (`paused | completed | failed`) in committed `workflow:<sessionId>` control, never in session metadata or workflow-view state (ARCH-WORKFLOWS-006).
+-- The session store owns the active runner pool and the runtime projection: output blocks, tokens, cost, and the derived `activity` axis. It has no persisted lifecycle state and no workflow-result authority (ARCH-SESSIONS-002).
+-- The UI derives `sessionState()` from the protocol-fed session catalog and never reads `SessionManager` or the session store directly (ARCH-PROTOCOL-002).
+-- Attach the runner of a session open in a client tab eagerly on open and again on every reattach; attaching never resumes a turn (ARCH-SESSIONS-038). A session no client shows stays paused, only an explicit user message restarts work, and completed workflows remain viewable history (PI-INTERACTION-042, PI-INTERACTION-043, PI-INTERACTION-022).
+-- Delete is an action, not a state. Add no `archived` or `trashed` states (ARCH-SESSIONS-003).
+-- Never add status fields, shadow signals, or new state stores. Read lifecycle from the owning projection (ARCH-SUBSTRATE-001, ARCH-SESSIONS-003).
++**`active | inactive`.** `SessionManager` is the sole authority for persisted lifecycle state and session relationships. The session store owns the active runner pool and runtime projection.
++
++- Workflow terminal state (`paused | completed | failed`) lives in committed `workflow:<sessionId>` control, not session metadata or workflow-view state.
++- A session open in a client tab has its runner attached, eagerly on open and again on every reattach; the tab's lifecycle is the session's, which is the runner's (ADR-008). A session no client shows stays paused, attaching never resumes a turn, and only an explicit user message restarts work; completed workflows remain viewable history.
++- **Session store** = runner pool and runtime projection. It holds output blocks, tokens, cost, and the derived `activity` axis. It has no persisted lifecycle state and no workflow-result authority.
++- **UI** derives `sessionState()` from the protocol-fed session catalog. It does not read `SessionManager` or the session store directly.
++- **Delete is an action**, not a state. No `archived` or `trashed` states.
++- **Never add status fields, shadow signals, or new state stores.** Read lifecycle from the owning projection and transition it through `SessionManager.updateLifecycleState()`.
+ 
+ ---
+ 
+ ## 4. Boundary Discipline
++Be liberal at external boundaries and strict inside Flywheel.
++
++External systems are allowed to be messy: user config, provider streams, LLM tool-call arguments, network responses, SDK callbacks, CLI subprocess output. Boundary adapters may accept recoverable variation, normalize once into Flywheel's canonical typed shape, and surface clear typed errors when semantics are missing or unsafe.
+ 
+-- Be liberal at external boundaries and strict inside Flywheel. A boundary adapter normalizes external input (user config, provider streams, LLM tool-call arguments, network responses, SDK callbacks, CLI subprocess output) once into Flywheel's canonical typed shape, or surfaces a clear typed error (ARCH-BOUNDARIES-001).
+-- Use `safeParse` only for external-boundary normalization or the reviewed historical recovery boundary. Use `parse` for all current writes, workflow control, and post-recovery execution (ARCH-BOUNDARIES-001).
+-- Never put `.default()` on a schema field that the current producer always sets (ARCH-BOUNDARIES-004).
+-- Read history through the one strict-first recovery boundary, whose recovered history feeds both transcript display and provider API context (ARCH-SUBSTRATE-012). Recorded tool results remain context and are never redispatched (ARCH-SUBSTRATE-038).
+-- Keep unreadable bytes immutable. They never block workspace startup, other sessions, or future appends; only a project-wide SQLite or project-directory open failure is a startup failure (ARCH-SUBSTRATE-013).
+-- Hold secrets (API keys, OAuth tokens, credentials) as `Redacted.Redacted` everywhere in memory. Unwrap with `Redacted.value` only at the provider-call adapter or one explicit serialization boundary through a plain `to*`/`from*` DTO, and never put a secret in logs, traces, errors, or snapshots (ARCH-BOUNDARIES-009).
+-- Keep provider attribution and session identity in fields separate from prompt-cache keys. A cache-disabled request, including compaction, keeps the session headers it needs and emits no prompt-cache key (ARCH-PROVIDERS-026).
+-- Prune model config only against the complete authoritative schema or registry, never the slots of a partial read. Correct destructive pruning at its completeness boundary; never disable pruning (ARCH-RUNTIME-069).
++Once data crosses into Flywheel-owned state, Postel's law stops. Current writers, workflow control, and post-recovery execution parse strictly. Historical facts cross one reviewed recovery boundary: parse strictly first, apply only family-owned salvage rules, then emit typed degraded gaps for bytes that remain unreadable. The same canonical recovered history powers transcript display and provider API context, so display and execution never disagree about the readable past. Recorded tool results remain context and are never redispatched.
++
++Use `safeParse` only for external-boundary normalization or the reviewed historical recovery boundary. Use `parse` for all current writes and post-recovery control. Schemas must not carry `.default()` on fields the current producer always sets. Unreadable bytes stay immutable. They never block workspace startup, other sessions, or future appends. A project-wide SQLite or project-directory open failure remains a startup failure.
++
++Secrets (API keys, OAuth tokens, credentials) are `Redacted.Redacted` in memory everywhere; unwrap (`Redacted.value`) only at the provider-call adapter or one explicit serialization boundary, which uses a plain `to*`/`from*` DTO so the crossing is intentional. No secret in logs, traces, errors, or snapshots. See ADR-005 "Secret Handling."
++
++Provider attribution and session identity use fields separate from prompt-cache keys. Cache-disabled requests, including compaction, can still require session headers. Preserving identity must not cause prompt-cache keys to be emitted.
++
++Model-config pruning removes deprecated and unknown keys using the complete authoritative schema or registry, never the slots requested by a partial read. Preserve pruning; correct destructive pruning at its completeness boundary rather than disabling it.
+ 
+ ---
+ 
+ ## 5. Validation
+ 
++### Release readiness ownership
++
++The current agent owns full release readiness across macOS, Linux, and Windows. Run the complete macOS readiness pass and its declared Linux containers, then run the complete native Windows pass through the `windows-ssh` skill. Do not stop at local success or hand Windows testing to another agent by default. Follow `docs/guides/deployment-readiness-playbook.md` and `docs/guides/windows-deployment-readiness-playbook.md` for the same candidate revision. Preserve remote isolation and the user's installation. Report unavailable access or required desktop-only evidence as blockers, not passes. Cross-compilation does not prove runtime behavior. This requirement applies to chat agents, development-mode agents, and release skills.
++
+ **Always use `bun run` scripts - avoid invoking tools directly.**
+ 
+ **A dependency change ships whole.** A unit that adds, removes, or upgrades a package commits `package.json` and `bun.lock` together, and `bun install --frozen-lockfile` must pass on the result. Its handoff to the user states that checkouts need `bun install`. `bun run install:local` runs `bun install --frozen-lockfile` before it builds, so a pull that changes dependencies never breaks the local install.
+@@ -113,20 +117,21 @@ Reaching a skill: `action:"load"` returns one skill's instructions and names the
+ 
+ Validate ordinary changes with unit tests and a focused end-to-end script that exercises the changed behavior through its real boundary. Write temporary scripts in the session scratchpad and run them outside the shared validation lane. Do not wrap an integration suite in a script to bypass the lane. Run integration suites rarely, primarily for release readiness, not as routine proof that a change works. Outside release readiness, run one only when explicitly requested or when a named evidence gap cannot be closed by unit tests and a focused script. Explain that gap before occupying the lane.
+ 
+-Launch a scratch script that imports `src/` with `bun --env-file=.env.test`, or call `Log.suppress()` in it, so its diagnostics stay out of the person's account log.
+-
+ | Command | When to run | What it does |
+ |---|---|---|
+ | `bun run test` | Before committing a unit | Fast unit suite |
+ | `bun run test:integration:no-api` | Release readiness; rarely for an explicit request or an evidence gap that focused checks cannot close | Every file under `tests/integration/` except `providers/`; needs no credentials and costs nothing |
++| `bun run test:integration:api` | Release readiness; rarely for an explicit request or a provider evidence gap that a focused live script cannot close | `tests/integration/providers/`, which serves `gpt-6-luna` on the hardcoded `Personal` auth profile through production routing, so a subscription or an API key can serve it and each run spends quota or money; it fails when that profile cannot serve the model. Its Claude engine tier runs on the Claude login of the same `Personal` profile and fails without one |
++| `bun run test:integration:all` | Before a release, or to run every integration test | Both modes, in that order |
+ | `bun run lint` | Before committing a unit | TypeScript for `src` and separately for `tests` and `scripts`, oxlint including SolidJS reactivity, unused exports, file and naming limits, safety comments, terminal I/O, owned-process launches, and doc coherence |
+ | `bun run check:boundaries` | After adding/moving files | Source-layer and client-host dependency enforcement |
+ | `bun run lint:module-containment` | After changing a module, registry, module home, protocol domain, or fact family | Fails registry/home drift, foreign imports into module homes, and module-owned vocabulary outside its owner; `scripts/module-containment-allowlist.ts` is permanently empty |
+-| `bun run test:perf` | After a change that can affect startup | Builds the host archive and measures startup (empty store, large store, and a remote first attach through a loopback relay) against absolute budgets and the published baseline in one run; startup regressions above 20% fail. Run it alone on the machine; a concurrent gate inflates both |
++| `bun run test:perf` | After a change that can affect startup | Builds the host archive and measures startup (empty and large store) against absolute budgets and the published baseline in one run; startup regressions above 20% fail. Run it alone on the machine; a concurrent gate inflates both |
++| `bun run test:perf:release` | Before a release (`bun run release` runs it) | The full performance set: startup plus session modal, runner reconciliation, scroll, and account-service memory against their absolute ceilings |
+ 
+-`tsconfig.json` covers `src` only, so `tests` and `scripts` are type-checked by their own project (`tsconfig.tests.json`) through `lint:test-types`. Both must stay free of type errors.
++`tsconfig.json` covers `src` only, so `tests` and `scripts` are type-checked by their own project (`tsconfig.tests.json`) through `lint:test-types`. That check is a ratchet over `scripts/test-types-baseline.txt`, which states how many errors each file is known to carry: a file that gains one fails, a file that loses one fails until its ledger row is lowered with `bun run lint:test-types -- --update <path>` (or every improved row with `--update-all`), and a file absent from the ledger must be clean. Never raise a count to make the gate pass; the ledger only shrinks. A file you touch is a good place to pay some of it down.
+ 
+-Run these commands bare. Do not pipe them through `head`, `tail`, `grep`, or any other output filter. They already pre-filter their output to failures, so read the complete output directly.
++Run these commands bare. Do not pipe them through `head`, `tail`, `grep`, or any other output filter. They already pre-filter their output to failures, so read the complete output directly. If unrelated concurrent work blocks a global gate, keep the worktree intact, run the narrowest relevant validation for your touched files instead.
+ 
+ These gates bind the session that owns the change. A delegated subagent runs only the verification its brief names, at most once before handoff; the dispatching session owns the suite-level gates above.
+ 
+@@ -174,8 +179,6 @@ Test and UAT TUI launches use `FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS=1` to suppres
+ 
+ ## 7. Module Boundaries
+ 
+-Source layers depend in one direction (ARCH-STRUCTURE-001):
+-
+ ```text
+ src/
+   cli/             --> composition root, imports from everything
+@@ -188,13 +191,13 @@ src/
+ 
+ **Dependency direction (one-way):** infra <- protocol <- workflows <- orchestration <- tui.
+ 
+-- Import nothing from `src/` except `src/protocol/` in the three workspace members outside it (ARCH-STRUCTURE-001, ARCH-STRUCTURE-043, ARCH-PROTOCOL-003, ARCH-PROTOCOL-031): `webview/` (the web client, with host shells in `webview/local/` and `webview/editor/`), `vscode/` (the editor host, which takes the host contract from `src/protocol/client/`), and `relay/` (the phone host and the relay Worker).
+-- `bun run check:boundaries` enforces all three, and `bun run lint:relay` type-checks both relay deployables against their own runtimes. `bun run lint:webview` adds the client's stylesheet gate: colours, font sizes, z-indexes, and container widths come only from `webview/src/styles/tokens.css` and its width ladder (ARCH-PROTOCOL-064).
+-- Keep every client surface (terminal, desktop web, phone web, and editor) mounted while the thing it shows exists. UI state belongs to the surface and stays local, and network updates patch it in place (PI-INTERACTION-062, ARCH-PROTOCOL-062). Stability takes precedence over showing new data sooner. For the web method and guard tests, load the `webview-rendering` package before you change a web client surface.
+-- Run `bun run check:boundaries` after any file addition or move.
+-- Render ordinary TUI action buttons with `src/tui/components/button.tsx`, never a copy of its styling in a new clickable box; callers own actions, keyboard routing, and progress text. Tabs, selectable rows, header chrome, and transcript-inline Stop/Detach keep their specialized rendering (ARCH-PROTOCOL-065).
++Three workspace members live outside `src/` and compile against the published client contract only: their sole `src` import root is `src/protocol/`. `webview/` is the web client, one SolidJS bundle every host mounts, with its host shells under `webview/local/` (the page the runtime serves) and `webview/editor/` (the shell the extension loads from the runtime's build); it imports no host module. `vscode/` is the editor host: it supervises `flywheel serve`, pumps protocol bytes between the webview and the runtime socket, and answers the client's capability requests; it carries no client and imports the host contract from `src/protocol/client/`. `relay/` is the phone host and the relay Worker. `bun run check:boundaries` enforces all three, `bun run lint:relay` type-checks both relay deployables against their own runtimes, and `bun run lint:webview` adds the client's stylesheet gate: colours, font sizes, z-indexes, and container widths come only from `webview/src/styles/tokens.css` and its width ladder.
++
++Web client UI updates its rendered nodes in place and keeps the reader's position; read `docs/guides/webview-render-continuity.md` before you change a client surface, for the rules and the tests that guard them.
++
++Run `bun run check:boundaries` after any file addition or move.
+ 
+-Each layer and module home owns one kind of concern (ARCH-STRUCTURE-002, ARCH-STRUCTURE-018, ARCH-WORKFLOWS-010), and each layer has one static module registry (ARCH-STRUCTURE-017):
++Ordinary TUI action buttons use `src/tui/components/button.tsx`. It owns one-cell horizontal padding, default colors, and hover/focus highlighting; callers own actions, keyboard routing, and progress text. Do not copy its styling into a new clickable box. Tabs, selectable rows, header chrome, and transcript-inline Stop/Detach keep their specialized rendering.
+ 
+ | Module | Owns | Never contains |
+ |---|---|---|
+@@ -211,32 +214,29 @@ Each layer and module home owns one kind of concern (ARCH-STRUCTURE-002, ARCH-ST
+ | `protocol/modules.ts`, `orchestration/credential-provider-modules.ts` with `orchestration/modules.ts`, `tui/modules.ts`, `webview/src/modules.ts` | The module registries: one static list per layer, with the orchestration list split so a login loads only the modules that claim a credential provider id | Module-specific branches |
+ 
+ **New code:**
++A new capability is a module unless it is kernel. The kernel is the event store, the session manager, the conversation and its recovery, the runner, provider admission and the failover walk, the protocol core, the transcript, the composer, the session catalog, config, and the auth store; everything else registers as a module with one id and one home per layer, plus one line in each registry it reaches.
++
++The home for each kind of code (module protocol, runtime, and client homes; workflow templates with inline briefs and output contracts; hooks; runner stacks; migrations; skills) is the routing list in `docs/architecture.md` under "Where New Code Lives". Read it before adding a file.
++
++The module-containment allowlist is empty. Module facts, retained history readers, and historical migrations compose from the installed catalog even while the module is disabled; new capability work composes from enabled admission. The kernel owns migration ordering and workspace exclusion, not module transformations.
++
++Imports reveal misplacement - deep relative paths mean the file is in the wrong place. One domain, one home. No re-exports, bridge files, or compatibility shims. When a module moves, update every import - no forwarding addresses.
++
++Development tooling lives in the development module. Nothing in `src/` branches on `isDevelopmentBuild()` to expose a tool or a definition: a capability that exists only for developing Flywheel is a contribution of `src/orchestration/modules/development/`, absent from a release because the release entry never installs it.
+ 
+-- Make a new capability a module unless ARCH-STRUCTURE-008 lists it as kernel, and give it one line in each registry it reaches.
+-- The home for each kind of code (module protocol, runtime, and client homes; workflow templates with inline briefs and output contracts; hooks; runner stacks; migrations; skills) is the routing list in `docs/architecture.md` under "Where New Code Lives". Read it before adding a file.
+-- Keep the module-containment allowlist empty (ARCH-STRUCTURE-020). Module facts, retained history readers, and historical migrations compose from the installed catalog even while the module is disabled; new capability work composes from enabled admission (ARCH-STRUCTURE-029).
+-- The kernel owns migration ordering and workspace exclusion, not module transformations (ARCH-SUBSTRATE-045).
+-- Give each domain one home. Deep relative imports mean the file is in the wrong place; when a module moves, update every import, with no re-exports, bridge files, compatibility shims, or forwarding addresses (ARCH-STRUCTURE-003).
+-- Put a capability that exists only for developing Flywheel in `src/orchestration/modules/development/`, which a release never installs. Nothing in `src/` branches on `isDevelopmentBuild()` to expose a tool or a definition (ARCH-STRUCTURE-013).
+-- Add behavior by registration, not by editing a switch (ARCH-STRUCTURE-017). First-party modules and their tools register through `src/orchestration/modules.ts`, or `src/orchestration/credential-provider-modules.ts` for a module that claims a credential provider id, and one descriptor under `src/orchestration/modules/`. Commands register at the TUI command dispatch and controller boundary; the other registries are listed in the `typescript-bun` package.
+-- A module's optional per-runner runtime is constructed only while the module is enabled, and tool factories, exposure and execution gates, and prompt fragments read it through the module's typed handle from `{ kernel, modules }` deps (ARCH-STRUCTURE-027). A module's optional process-scoped service is declared the same way and built once per process in dependency order (ARCH-RUNTIME-048).
+-- State a condition that a person should see through the composition's notify seam, never by naming the notifications module (ARCH-STRUCTURE-034).
+-- Runtime and workflow hooks are typed callbacks on their owning boundary (ARCH-STRUCTURE-042). A hook that affects model-visible context or durable state must be inspectable and recorded (ARCH-CONTEXT-003).
+-- Register every projection's lifetime with `src/infra/projection-registry.ts`, and never build one per call: wrap the construction in `heldProjection(reader, key, () => createEventProjection(...))`, where the key names the family and every id the factory closes over (ARCH-SUBSTRATE-016). `createEventProjection` initializes lazily on its first awaited operation, and rebuilding it discards its cursor and repeats history.
+-- Read a registered projection with `replay()`. Only an owner that feeds the projection itself through `apply()` reads `getState()` (ARCH-SUBSTRATE-016).
+-- `bun run lint:projections` checks projection construction and unfed `getState()` reads through source-text patterns. These checks do not prove registration or freshness through aliases, helpers, or arbitrary source formatting.
++New behavior arrives by registration, not by editing a switch. First-party modules and their tools register through `src/orchestration/modules.ts`, or `src/orchestration/credential-provider-modules.ts` for a module that claims a credential provider id, and one descriptor under `src/orchestration/modules/`; a module declares an optional per-runner runtime that composition constructs only when the module is enabled, and tool factories, exposure and execution gates, and prompt fragments read it through the module's typed handle from `{ kernel, modules }` deps; a module declares an optional process-scoped service the same way, built once per process in dependency order, and a condition a person should see is stated through the composition's notify seam, never by naming the notifications module. Commands register at the TUI command dispatch and controller boundary; the other registries are listed in the `typescript-bun` package. Runtime and workflow hooks are typed callbacks on their owning boundary; a hook that affects model-visible context or durable state must be inspectable and recorded.
+ 
+-Advance derived state; never recompute it (ARCH-SUBSTRATE-017). A hot path is code that runs per store change, per stored-fact batch, per tick, per live subscription, or per member, item, or agent of a loop. Every hot path follows three rules:
++Projections register their lifetime with `src/infra/projection-registry.ts` and are never built per call. `createEventProjection` replays at construction, so a factory over it reads a whole aggregate every time it runs, and the call site shows no sign of that cost. Wrap the construction in `heldProjection(reader, key, () => createEventProjection(...))`, where the key names the family and every id the factory closes over. `bun run lint:projections` fails a projection built outside a registration, and fails a `getState()` read by a caller that never feeds the projection through `apply()`, which is the stale read below.
+ 
+-1. Read the owning live state: the session store entry, the summary index and its pushes, or a registered projection through `replay()`. A new durable read on a hot path states, in a comment at the call, why no owner can serve it.
+-2. Do work bounded by the change, never by the number of members, items, or history entries.
+-3. Fold once, then advance. Never read an aggregate from its start and fold it again on a hot path, under any spelling: `createEventProjection`, `read({ aggregateId })` or `readSlice` with no lower position bound followed by a reduce, or a cache keyed by sequence that rereads everything when the sequence moves. A one-shot path (an explicit person command, a migration pass, recovery, startup) may read in full, but never once per item of a loop. Never add a hot path to the one-shot ledger `scripts/aggregate-read-allowlist.ts`.
++Read a registered projection with `replay()`, which folds only what is new and sees another process's commits. `getState()` is for an owner that feeds the projection itself through `apply()`, and returns stale state for anyone else.
+ 
+-A change to a hot path ships with a work-count test at its owner: drive N changes over M members and assert the reads or state requests per change, which must not grow with M or with history length. Count them with `countStateRequests` from `tests/helpers/state-requests.ts`. Wall time is not that test.
++Derived state is advanced, never recomputed. A hot path is code that runs per store change, per stored-fact batch, per tick, per live subscription, or per member, item, or agent of a loop. Every hot path follows three rules:
+ 
+-The aggregate-read part of `bun run lint:projections` parses `src/**/*.ts` and `src/**/*.tsx` with the shared tree-sitter loader. It flags unbounded `readSlice`, `capturedFacts`, and `readCapturedFacts` queries outside a syntactic `heldProjection` ancestor. It also checks `read` and `readTolerant` when every visible query key belongs to `FactQuery`. Queries resolve through object literals, lexical `const` bindings, spreads, conditional alternatives, and TypeScript expression wrappers. Every visible alternative must carry a defined `afterPosition`, `fromSeq`, `positions`, `limit`, `toolUseIds`, or `parentToolUseIds` bound; `beforePosition` alone does not count. The loop rule flags these reads and the named durable-request methods in `scripts/aggregate-reads.ts`, including `readPage` and `capturePosition`, inside `for...of`, `for...in`, or the listed array-iteration callbacks in the same function. Reviewed exceptions live in `scripts/aggregate-read-allowlist.ts`; unmatched exceptions fail.
++1. Read the owning live state. A view of session, child, or workflow state reads the existing in-memory owner: the session store entry, the summary index and its pushes, or a registered projection through `replay()`. Do not write a new durable reader for state that an owner already keeps live. A new durable read on a hot path states, in a comment at the call, why no owner can serve it.
++2. Do work bounded by the change. A change handler costs work proportional to what changed, never to the number of members, items, or history entries. A durable read per member inside a per-change handler is O(members) per change and O(members^2) over a run: a 50-agent workflow card that read each agent on every change starved commits and doubled agent start time.
++3. Fold once, then advance. Never read an aggregate from its start and fold it again on a hot path, under any spelling: `createEventProjection`, `read({ aggregateId })` or `readSlice` with no lower position bound followed by a reduce, or a cache keyed by sequence that rereads everything when the sequence moves. Keep the fold and read only facts after its last position. A one-shot path (an explicit person command, a migration pass, recovery, startup) may read in full, but never once per item of a loop.
+ 
+-This syntax check is not complete coverage of the derived-state rule. It does not follow helper calls, imported queries, mutable query objects, aliased or computed method names, or receiver types. Unresolved queries and spreads, and opaque bound values, are trusted; their runtime values can still be unbounded. Counted `for` and `while` loops are excluded as paging or retry syntax. It cannot identify a caller's cadence, prove that a bound advances, or prove that a `heldProjection` ancestor owns the read. Review callers and use work-count tests to cover these blind spots.
++A change to a hot path ships with a work-count test at its owner: drive N changes over M members and assert the reads or state requests per change, which must not grow with M or with history length. Wall time is not that test.
+ 
+ ---
+ 
+@@ -244,30 +244,30 @@ This syntax check is not complete coverage of the derived-state rule. It does no
+ 
+ No package owns these; they are this system's own substrate rules.
+ 
+-| Pattern | Instead | Statement |
++| Pattern | Why it's wrong | Instead |
+ |---|---|---|
+-| Deterministic work modeled as an executable workflow node | Typed XState control event and `workflow:<sessionId>` fact proposal; deterministic nodes never invoke a model | ARCH-WORKFLOWS-004 |
+-| Hand-extracting fields from a known fact with `asString`/`asNumber` | Decode the fact once via `parseProjectionFact`; read typed fields | ARCH-SUBSTRATE-011 |
+-| Parallel idempotency key / dedup record / attempt "resumed" marker | The event-sourced conversation is the ledger; a retry replays it, never re-runs | ARCH-SUBSTRATE-038 |
+-| A tool input schema whose root is a union (`oneOf`, `anyOf`, `allOf`) or anything other than one `type: "object"` schema | One flat object with a discriminating enum field such as `kind` or `action`; the handler enforces per-variant requirements; `materializeToolInputSchema` refuses any other root and the planner test materializes every registration | ARCH-TOOLS-003 |
+-| A direct raw external-process launch or shell wrapper in production code | Ordinary launches use `spawnOwned`, `runOwnedCommand`, or `openExternalUrl`; explicitly authorized survival uses only `src/infra/persistent-subprocess.ts`; raw launch stays in the authority modules listed by `bun run lint:owned-processes` (`scripts/check-owned-process-launches.ts`), which enforces it | ARCH-TOOLS-022 |
++| Deterministic work modeled as an executable workflow node | Executable nodes are agent/worker boundaries (ADR-006). Deterministic branching and coordination belong only to the compiler and raw XState oracle's closed typed vocabulary; they are never workers. | Typed XState control event and `workflow:<sessionId>` fact proposal; deterministic nodes never invoke a model. |
++| Hand-extracting fields from a known fact with `asString`/`asNumber` | Validate-and-discard: the schema exists, the reader re-derives it | Decode the fact once via `parseProjectionFact`; read typed fields |
++| Parallel idempotency key / dedup record / attempt "resumed" marker | Second source of truth for what already ran | The event-sourced conversation is the ledger; a retry replays it, never re-runs (ADR-005 "Retry and Idempotency") |
++| A tool input schema whose root is a union (`oneOf`, `anyOf`, `allOf`) or anything other than one `type: "object"` schema | Anthropic rejects the request with "input schema root must declare type object" and every session on that provider fails at its first message; OpenAI tolerates it, so GPT sessions hide the defect, and Flywheel's structural input validator reads only an object root | One flat object with a discriminating enum field such as `kind` or `action`; the handler enforces per-variant requirements; `materializeToolInputSchema` refuses any other root and the planner test materializes every registration |
++| A direct raw external-process launch or shell wrapper in production code | An external process bypasses its lifecycle authority (ADR-009) | Ordinary launches use `spawnOwned`, `runOwnedCommand`, or `openExternalUrl`; explicitly authorized survival uses only `src/infra/persistent-subprocess.ts`; raw launch stays in the authority modules listed by `bun run lint:owned-processes` (`scripts/check-owned-process-launches.ts`), which enforces it |
+ 
+ ---
+ 
+ ## 9. Session Folder Layout and Debugging
+ 
+-Durable per-session state, including each conversation's typed checkpoint and every earlier version, lives in `.flywheel/flywheel.sqlite` as facts; diagnostics are JSONL records under `.flywheel/log/`. The session directory holds only the `owner.pid` lock and disposable `scratch/`. Legacy Markdown notes are imported into checkpoint Working notes on first use. When debugging a session, start with `flywheel events search` (`bun run events:search` in the source tree).
++Durable per-session state lives in `.flywheel/flywheel.sqlite` as typed facts; diagnostics are JSONL records under `.flywheel/log/`. The session directory holds only the `owner.pid` lock and `scratch/`, where Markdown notes under `scratch/notes/` are the one session-lifetime file exception. When debugging a session, start with `flywheel events search` (`bun run events:search` in the source tree).
+ 
+ ### Instrumentation
+ 
+ Instrument every decision so that a person can tell what happened, when, and why, and keep the logs storage-neutral. Every diagnostic record you add or touch follows these rules:
+ 
+-- One INFO record per decision, state change, or finished unit of work, with the evidence it rested on. Every kill, restart, refusal, replacement or update step, registration change, and exit is recorded once (ARCH-RUNTIME-076).
+-- Per-call, per-request, and per-iteration paths log at DEBUG. `loggedOperation` in `src/infra/operation-log.ts` writes a start and done pair as one done record with its duration, above DEBUG only past `slowMs` or on failure (ARCH-RUNTIME-076).
+-- No content in a record: ids, byte counts, hashes, and kinds only. Conversation text, tool output, prompts, and file content live in `.flywheel/flywheel.sqlite`, which `flywheel events search` reads (ARCH-RUNTIME-075).
+-- Repeats coalesce: the first occurrence of a condition records, and later repeats become one count reported when the condition ends or changes. `coalesceRepeats` in `src/infra/repeat-coalescer.ts` does this, and an owner whose failures repeat routes them to it through the `onFailure` option of `loggedOperation` (ARCH-RUNTIME-077).
+-- `src/infra/diagnostics-registry.ts` decides every record family's tier: `info`, `debug`, or `notable`, which reaches the default level only for a record its producer marks failed or slow. An unregistered type is DEBUG, `bun run lint:diagnostics` enforces the registry, and `tests/integration/local/diagnostics-volume-budget.test.ts` fails when steady-state log volume grows (ARCH-RUNTIME-078).
++- One INFO record per decision, state change, or finished unit of work, with the evidence it rested on. Every kill, restart, refusal, replacement or update step, registration change, and exit is recorded once.
++- Per-call, per-request, and per-iteration paths log at DEBUG. `loggedOperation` in `src/infra/operation-log.ts` writes a start and done pair as one done record with its duration, above DEBUG only past `slowMs` or on failure.
++- No content in a record: ids, byte counts, hashes, and kinds only. Conversation text, tool output, prompts, and file content live in `.flywheel/flywheel.sqlite`, which `flywheel events search` reads.
++- Repeats coalesce: the first occurrence of a condition records, and later repeats become one count reported when the condition ends or changes. `coalesceRepeats` in `src/infra/repeat-coalescer.ts` does this, and an owner whose failures repeat routes them to it through the `onFailure` option of `loggedOperation`.
++- `src/infra/diagnostics-registry.ts` decides every record family's tier: `info`, `debug`, or `notable`, which reaches the default level only for a record its producer marks failed or slow. An unregistered type is DEBUG, `bun run lint:diagnostics` enforces the registry, and `tests/integration/local/diagnostics-volume-budget.test.ts` fails when steady-state log volume grows.
+ 
+-The folder layout, the fact and debug-log split, content-addressed tool text, the in-flight-state rule, the store maintenance commands, and the diagnostics mechanics are in `docs/architecture.md`, "Session Artifacts" and its "Diagnostics" part. Read them when adding per-session state, a fact family, or a diagnostic record. When debugging a session, load the `session-debugging` package.
++The folder layout, the fact and debug-log split, content-addressed tool text, the in-flight-state rule, the `events search` recipes, and the diagnostics volume tiers are in `docs/guides/session-debugging.md`. Read it when adding per-session state, a fact family, or a diagnostic record, and when debugging a session.
+ 
+ </coding_guidelines>
+diff --git b/docs/adrs/adr-021-design-intent-and-the-first-draft.md b/docs/adrs/adr-021-design-intent-and-the-first-draft.md
+new file mode 100644
+index 0000000..dc6af17
+--- /dev/null
++++ b/docs/adrs/adr-021-design-intent-and-the-first-draft.md
+@@ -0,0 +1,185 @@
++# ADR-021: Design Intent And The First Draft
++
++**Kind**: Foundational vision
++**Status**: Accepted
++**Deciders**: Flywheel Core Team
++
++---
++
++## Summary
++
++Every change moves through three acts. Chat captures the user's design intent and the user approves the chat agent's design. An implementation route turns the approved design into a first draft. The agent that holds the design intent revises that draft into the final one.
++
++A first draft is always wrong in some detail. No specification written before the code is touched survives contact with the code unchanged. Flywheel therefore grants implementers authority over implementation design beneath the approved design, expects drift between the design and the first draft, requires that drift to be recorded, and makes revision by the intent-holding agent the ordinary next step rather than an exception.
++
++---
++
++## Context
++
++Autonomous implementation fails in three familiar ways.
++
++A perfect upfront specification with literal obedience fails because the specification is never complete. The implementer either stops at the first contradiction and returns a blocker for a detail it could have settled, or it follows the specification into code that is faithful to the plan and wrong for the codebase.
++
++Unbounded implementer autonomy fails because the implementer redefines the goal. It meets a convenient interpretation, rewrites success after seeing its result, and reports completion against a target the user never approved. ADR-004 names this goalpost drift.
++
++Trusting the returned result fails because activity is not proof. A handoff proves that a worker returned a valid payload. Only the agent that holds the design intent can judge whether the payload realizes it.
++
++The remedy is to split authority by tier, grant autonomy inside the lower tier, record every deviation, and put revision where the intent lives.
++
++---
++
++## Decision
++
++### 1. Two Tiers Of Authority
++
++The approved design is design intent. It holds the purpose that decides unforeseen tradeoffs, the feature set, key decisions with the date and the user's words for each decision made after the first request, non-goals and acceptable outcomes, constraints including each rejected alternative and its reason, verification expectations, and any recorded product intent. Design intent is fixed by the user's approval. Inside an implementation route nobody changes it: an implementer that finds the design itself contradicted by the repository messages its parent with `message_session` and waits for its reply, because a session waits only on its parent or on its own child. A parent that does not hold the design asks its own parent in the same way, so the question reaches the chat that holds the design. That chat takes the contradiction to the user as a criteria change under ADR-004, then revises the design and replies, or stops the route.
++
++Everything beneath the approved design is implementation design: the specification's milestones and their order, file lists, decomposition, contract directives, local shapes, and the planned approach to each task. Implementation design is the implementer's to revise. It is the best available hypothesis when written and it is expected to be corrected against repository reality.
++
++Review of that hypothesis is asymmetric. Evidence-backed reductions and simpler substitutions are welcome when they preserve every approved outcome and constraint. Additional work must have a concrete causal link to an approved outcome and be the smallest sufficient addition; an independently useful improvement does not earn scope. A technical approach need not be impossible or unsafe before evidence can reject it as unnecessary or insufficiently beneficial. Explicit user decisions remain fixed, and reductions never mean dropping required behavior or proof.
++
++An agent that prepares a specification resolves every uncertainty it can before implementation starts. That readiness bar removes known unknowns; it does not claim the specification is complete.
++
++The tier line is a literal label. The design method writes the fixed part under the heading Design intent and keeps illustration, such as a candidate file or an example shape, outside it. That heading travels unchanged with the intent: into the session notes checkpoint, the workflow launch description, every request addendum that a parent sends to its workflow, every subagent brief, and every reviewer prompt. A specification refers to that intent rather than copying it into a second authority. A request addendum is implementation direction unless it holds that heading; direction never overrides the Design intent of the original request, and within one tier later text applies where it conflicts with earlier text. An implementer or reviewer never infers the tier from the wording of a sentence; it reads the label.
++
++Every agent of a workflow receives the request that started its workflow, so the scope and the Design intent in that request bind the agent's work. The agent reads the original request as background, not as its brief. Its work is its own brief and the inputs that it declares. The request comes under the heading `## User Request`, after a section that states that rule. The rule stays out of the request section and is not part of the user's words. An agent that took the request as its brief would redo the whole run, or launch the workflow again, instead of its one part. The rule covers only the original request: a request addendum stays direction that the agent follows.
++
++### 2. Chat Captures Intent
++
++Intent capture happens in chat. The chat agent explores, runs experiments and proofs of concept, loads the design method, closes every open question through evidence or an exact user decision, selects one implementation route, and presents the complete design for approval. An open question never passes into an implementation route. Only the root chat asks the user: a child session or an agent of a workflow that meets a user-owned choice messages its parent, and the parent asks the user when it must. The design method owns this act; ADR-004 owns how the resulting intent is recorded.
++
++### 3. The Route Produces A First Draft
++
++Every route produces a first draft: inline work, an implementation subagent, and an authored workflow alike. A chat agent writes and launches a workflow whose briefs follow the conditional references of `workflow-authoring` and compose the reusable method owners. The draft is an honest complete attempt at the design intent under the implementer's own verification. It is never a completion claim for the change.
++
++A draft can establish that no implementation change is needed. It then records the already-satisfied outcome or rejected premise and decisive evidence rather than manufacturing a change or a test unrelated to the decision. The intent holder reviews that evidence against the same approved commitments. Inconclusive investigation remains unresolved, not a successful no-change result.
++
++Inside the route the implementer acts autonomously. It resolves implementation-level uncertainty by inspection and focused experiment, revises implementation design when evidence contradicts it, expands the files it touches to what the outcome needs, and continues. It does not ask for approval, and it does not return blocked because a file list, milestone boundary, or planned approach was wrong. A user-owned choice that inspection cannot settle goes to its parent as a message, and the implementer continues from the reply. It messages its parent and waits only for a design-invalidating contradiction, an explicit user prohibition, or an external prerequisite that prevents every viable next action. It never returns a blocker and never hands off unfinished work as complete.
++
++Every material deviation from the implementation design is recorded in the draft's typed result: what the plan said, what was done instead, why, and the evidence. An authored workflow declares the deviation fields in its brief's output contract, following `workflow-authoring/references/implement-briefs.md`. A repair handoff carries the cumulative record forward. Subagent completion records carry deviations in the summary. A deviation that is recorded is expected drift. A deviation that is hidden is the ADR-004 violation.
++
++### 4. The Intent Holder Revises
++
++The agent that holds the design intent in its context revises the first draft. For inline work that is the same agent. For a subagent or a workflow it is the dispatching chat agent, which learns of the terminal result through a runtime notification or from the user. A workflow's completion reaches the parent the way a subagent's does: the notification and the durable parent-conversation entry carry the terminal verdict, the coverage that each survey's join reports, each bound or stuck repeat stop, and each agent's handoff in graph order with the checks that the agent recorded, within one size limit that the latest handoffs take first, rendered by one function so the two deliveries never disagree. Incomplete survey coverage and bound or stuck repeat stops can accompany a completed run, so the notification's words communicate partial results. ADR-006 defines when a repeat stops at its bound or as stuck.
++
++The intent holder controls the children it started with `process`. It reads a child's progress with `status`, interrupts a child whose work drifts from the intent, and continues the child with a Resume or with a message that carries the revision. An interrupted child returns no draft. A child that the intent holder or the runtime interrupted never blocks the intent holder's handoff: the intent holder does the child's work itself, leaves it, or continues it. A person's interrupt of a child is the person's decision, so only the person continues that child, and the child stays the intent holder's active work: the intent holder is not told, and its handoff waits for the child.
++
++Revision is one act fed by two sources. The first is the draft's recorded deviations, which the intent holder reads itself: they are small, and they are the implementer's own map of where it diverged. The second is the independent review that ADR-003 requires for judgment-heavy completion. Reviewers receive the design, its constraints, and the recorded deviations, and they check the draft against the design as well as for defects: each deviation and each discrepancy comes back classified as consistent with the design or as drift, with evidence. Reviewers report; they do not decide acceptance, because only the intent holder can judge whether a deviation serves the intent better than the plan did.
++
++The intent holder then revises. It judges every drift finding and deviation against the design and the original request, realigns what missed the intent, keeps what serves it, fixes the defects alongside, and verifies with the smallest complete proof. It keeps revising until the draft realizes the approved design and is verified; it never leaves the draft in a half-realigned state because a pass ended. The bound on revision is the approved design, not a count: revision realizes the design and adds nothing beyond it. Drift is the normal input to this act, not a defect report and not a reason to restart. Editing a concrete draft with review evidence in hand is cheaper and more accurate than writing from a specification, because the draft exposes what the design could not know, and reading the whole draft is work reviewers do so the intent holder does not read it twice.
++
++One proportional exception: when the deviations or the summary show that the draft is structurally off the design, the intent holder realigns the structure first and reviews the realigned draft, because reviewing code about to be removed is the real waste.
++
++Revision does not reopen design intent. When the draft shows that the approved design itself must change, the reviser presents that change to the user as a design revision. It does not quietly adopt a more convenient target and call the result complete.
++
++---
++
++## Invariants
++
++### 1. Intent Is Fixed, Implementation Design Is Fluid
++
++Approval fixes design intent. Beneath it, implementation design changes as the code demands. The fixed tier carries the literal label Design intent on every surface, and any instruction to an implementer states which tier it addresses.
++
++### 2. A First Draft Is Never Completion
++
++A returned draft, handoff, generated specification, or verification claim is evidence. Completion of the change is claimed only after the intent holder has revised and the required review has run.
++
++### 3. Drift Is Recorded, Never Hidden
++
++Every material deviation from implementation design travels with the draft in its typed result. The reviser can reconstruct what the plan said and why the implementer diverged.
++
++### 4. Implementers Never Block On Implementation Design
++
++A wrong file list, a missing path, an extra caller, a milestone that cannot pass alone, or a failed planned approach is work to revise, not a reason to stop. A message to the parent that holds the design names a design contradiction, a user prohibition, or an external prerequisite with evidence, and the implementer waits for the reply.
++
++### 5. The Reviser Holds The Intent
++
++Revision belongs to the agent whose context carries the approved design. A fresh agent given only the draft cannot revise it against intent it never saw. A forked agent that copies the parent's context can.
++
++Context compacts, so the intent does not live only in the conversation. The session notes checkpoint keeps a labeled Design intent section from the moment the request arrives: the user's words and the understood design, updated as discussion and experiments change it and marked approved at approval. After compaction the reviser reads that section back as the exact intent instead of reconstructing it from a summary.
++
++### 6. Revision Uses Review
++
++Independent review runs on the first draft with the design, its constraints, and the recorded deviations. It reports drift and defects as classified evidence, and the intent holder revises from that evidence until the draft realizes the approved design. Reviewers never decide whether a deviation is acceptable.
++
++---
++
++## Grain
++
++The three acts scale with the route.
++
++- Inline: the same agent designs, drafts, and revises. Revision is the deliberate reread of the change against the approved design with the review's findings, not a separate turn.
++- Subagent: the parent designs and dispatches one milestone or fix. The subagent's completion record carries its deviations. The parent reviews the draft with them and revises it into the design.
++- Workflow: the chat agent designs, authors, and launches. Its briefs follow the specification, implementation, and review references of `workflow-authoring` for the phases that it needs. The agents ground and revise implementation design and record deviations in their handoffs. The chat agent reviews the terminal result with those records and revises it into the design.
++
++The structure is proportional. A one-file fix needs a glance against the request. A multi-phase workflow needs the recorded deviations read against every design decision.
++
++---
++
++## Design Test
++
++A change that adds or edits an implementation route, a brief, a persona, a dispatch prompt, or a result contract must answer:
++
++- which tier each instruction addresses, intent or implementation design;
++- where the implementer records a deviation and in what typed field;
++- who receives the draft, and whether that receiver holds the design intent;
++- whether the receiver's prompt tells it to review the draft against the design and revise from the classified findings until the draft realizes the design; and
++- what makes the implementer message its parent and wait, and whether every such message names a design contradiction, a user prohibition, or an external prerequisite.
++
++If an instruction tells an implementer to stop for a wrong file list or to ask the user directly, or tells a receiver to trust a handoff as completion, the change violates this doctrine.
++
++---
++
++## Non-Goals
++
++### A New Handoff Or Result Schema
++
++Rejected. Each authored workflow declares its deviation record in the brief's output contract, and the subagent completion record carries deviations in its summary. The doctrine uses these results; it does not add a parallel drift record or require one universal field schema.
++
++### A Rework Phase Inside The Workflow
++
++Rejected. The chat agent holds the design intent and owns final revision. An authored workflow can repair findings and verify its integrated draft, but those phases do not replace the chat agent's judgment against the approved design. Revisions within a phase address implementation design; the chat agent's revision addresses fidelity to intent.
++
++### License To Change Requirements
++
++Rejected. Implementer autonomy stops at the approved design. Requested behavior, explicit prohibitions, and required quality checks are intent, and weakening them to reach completion is the goalpost drift ADR-004 forbids.
++
++### An Approval Gate Around Revision
++
++Rejected. The intent holder revises without asking. It asks only when the draft shows that the approved design itself must change, which is a user-owned decision.
++
++---
++
++## Consequences
++
++### Positive
++
++- Implementers finish instead of blocking on details a specification could not know.
++- Drift becomes information the reviser uses rather than a failure the user must adjudicate.
++- The user approves intent once and receives a revised result, not a first draft presented as final.
++- Reviewers read the draft and report drift beside defects; the intent holder reads deviations and findings instead of reading the whole draft twice.
++- The same three acts describe a one-line fix and a multi-phase workflow.
++
++### Negative
++
++- Every delegated route costs a revision pass in the parent's context after the draft returns.
++- Implementers must write deviation records that a reader who never saw the code can follow.
++- Prompts for implementers carry two tiers of instruction and must keep them distinct.
++
++### Risks
++
++- **Implementer over-drift:** the implementer revises past implementation design into intent. The tier boundary in every implementer prompt, the recorded deviations, and the intent holder's revision bound it.
++- **Rubber-stamp revision:** the reviser accepts the draft without judging it against the design. The parent-side instructions require independent inspection of the result against the design and the original request, and reviewers return drift as classified evidence the reviser must dispose of one finding at a time.
++- **Deviation theater:** deviations are recorded as prose that hides a requirement change. The authored output contract accounts for each original obligation and distinguishes an agent's deviation from a quoted instruction by the person or parent. Each deviation carries evidence and risk.
++
++---
++
++## Governing Rules
++
++- The approved design is design intent and is fixed by the user's approval. Everything beneath it is implementation design and belongs to the implementer.
++- Chat closes every open question before it starts an implementation route. Only the root chat asks the user.
++- Every route returns a first draft. The implementer verifies its draft and records every material deviation in its typed result.
++- An implementer never stops for a wrong file list, missing path, extra caller, milestone conflict, or failed approach, and it never returns a blocker. For a design contradiction, a user prohibition, or an external prerequisite, it messages the parent that holds the design with evidence and waits for its reply.
++- Review runs on the first draft with the design and the recorded deviations as context. It classifies each deviation and discrepancy as consistent with the design or as drift, with evidence, and never decides acceptance.
++- The agent that holds the design intent revises the draft from its recorded deviations and the review's classified findings until it realizes the approved design and the original request, and adds nothing beyond that design. Drift is expected input. A draft that is structurally off the design is realigned first and reviewed after.
++- A change to design intent discovered during drafting or revision returns to the user as a design revision and is never adopted silently.
+diff --git a/src/agent-skills/ship/SKILL.md b/src/agent-skills/ship/SKILL.md
+index e4300a1..2349864 100644
+--- a/src/agent-skills/ship/SKILL.md
++++ b/src/agent-skills/ship/SKILL.md
+@@ -10,9 +10,9 @@ Publish the selected files without losing existing edits.
+ 
+ ## Input and preflight
+ 
+-Start with the files to publish and a short summary of user intent and implemented design. For a pull request, the caller can also supply a shape guide that it wrote for the change. Use this method directly or through the Ship subagent. In direct use, take these inputs from the work already completed in the current conversation. In delegated use, take them from the caller's handoff. Neither route needs a prepared commit message.
++Start with the files to publish and a short summary of user intent and implemented design. Use this method directly or through the Ship subagent. In direct use, take these inputs from the work already completed in the current conversation. In delegated use, take them from the caller's handoff. Neither route needs a prepared commit message.
+ 
+-Verification and review precede publication. This method does not request verification evidence, assess it, or repeat those checks. Integration of newer remote work still happens here. The caller repeats its narrow verification for selected files that integration changes.
++Verification and review precede publication. This method does not request verification evidence, assess it, or repeat those checks.
+ 
+ Use `commit + push` to the current branch's normal push target by default. Extra publication instructions are needed only for a user-requested pull request or nondefault destination. Do not ask the user to select the default mode.
+ 
+@@ -20,11 +20,11 @@ Before branch or index mutation:
+ 
+ 1. Inspect Git status and the selected files' diffs, including staged changes and untracked files. The supplied file list defines scope; do not discover a different unit from intent or add other paths.
+ 2. Commit each selected file's complete current contents, including edits from other agents. Same-file overlap is expected and is not a blocker. Do not reconstruct authorship, partially stage files, split the supplied group, or create worktrees to isolate edits.
+-3. Leave uncommitted edits outside the supplied list untouched; only commits that integration brings in change those files. Never reset, restore, stash, clean, reconstruct, or auto-format files, and never use `--autostash`. Preserve pre-existing staged changes outside the list without including them in this commit.
++3. Leave files outside the supplied list untouched. Never reset, restore, stash, clean, reconstruct, or auto-format files. Preserve pre-existing staged changes outside the list without including them in this commit.
+ 4. Preflight Bash, Git, current branch, remote, credentials, and push target. Check pull-request tooling only for a requested PR. Work in the current execution directory. Integration and cleanup of an existing worktree remain its owner's responsibility.
+-5. Fetch the push target. Newer remote work, including commits that change selected files, is integrated after the commit, as Publish describes. It is never a reason to stop or a separate catch-up task.
++5. Fetch the push target. When HEAD already contains its tip, continue. When it does not, list the commits that HEAD lacks. If none of them changes a selected file, bring them in with `git merge`, as a fast-forward when possible; Git refuses rather than overwrite uncommitted edits, and a refusal stops publication. If any of them changes a selected file, stop: the selected files were verified on an older base, and committing them would carry stale copies over newer remote work.
+ 
+-Missing Bash, Git, credentials, or a push target blocks before mutation. Report a selected path with no remaining change rather than inventing work for it.
++Missing Bash, Git, credentials, or a push target blocks before mutation. Report a selected path with no remaining change rather than inventing work for it. A stop for newer remote work names the commits and the selected files they change, and its recovery is to apply the change in a worktree at the fetched tip, verify it there, and publish from that worktree.
+ 
+ ## Commit
+ 
+@@ -34,16 +34,12 @@ Write one logical commit message from the intent and design summary plus the sel
+ 
+ ## Publish
+ 
+-Commit on the checked-out branch. When HEAD lacks the fetched push-target tip, integrate it with a plain `git merge <push target>`. Resolve each conflict in the committed files so that both sides' intent survives, and record the selected files that integration changed. When Git refuses because the merge would overwrite an uncommitted file outside the list, leave that file untouched: create a temporary worktree detached at the new commit, run the same merge there, push from it, and remove it. The new commit stays an ancestor of the push target, and the uncommitted file's owner resolves its own overlap when it commits.
++Commit on the checked-out branch and push `HEAD` by branch name; require remote evidence before claiming publication. Never build a commit outside the branch, such as with `commit-tree`, `read-tree`, `merge-tree`, or `update-ref`, and never push a commit id. A rejected push is a stop, not a cue to construct a different commit. In `commit + push` mode, stop after a successful push.
+ 
+-Push `HEAD` by branch name; require remote evidence before claiming publication. Never build a commit with plumbing such as `commit-tree`, `read-tree`, `merge-tree`, or `update-ref`, and never push a commit id. The fallback's merge in a detached worktree is the only commit made off the branch, and it pushes as `HEAD:<branch>`. A rejected push is a stop, not a cue to construct a different commit.
+-
+-After a successful push, use `git worktree list` to find each local checkout of the pushed branch, including the current one after a temporary-worktree push. Bring it to the new remote tip with `git merge --ff-only`. When Git refuses, leave that checkout untouched and report it.
+-
+-In `branch + PR` mode, create the feature branch before staging when the current branch is a base branch. Discover the actual base. Create or update a pull request whose description explains context, decisions, constraints, validation, and review guidance that the diff cannot show. When the caller supplied a shape guide, put it in the description verbatim; it is the caller's account, so do not assess, edit, or verify it. Do not restate the file inventory or invent rationale.
++In `branch + PR` mode, create the feature branch before staging when the current branch is a base branch. Discover the actual base. Create or update a pull request whose description explains context, decisions, constraints, validation, and review guidance that the diff cannot show. Do not restate the file inventory or invent rationale.
+ 
+ Missing or unauthenticated pull-request tooling can leave a successful branch, commit, and push intact, but report the pull request as unavailable. A push failure preserves the commit and reports the exact recovery command; never force-push without explicit approval.
+ 
+ ## Stop and result
+ 
+-Stop after successful push in commit mode or pull-request publication in PR mode, including the destination checkout update. Report final branch, commit and committed paths, push state, pull request URL or state when applicable, and the exact recovery command where needed. Name selected files that integration changed so the caller repeats its narrow verification. The caller fixes forward and does not revert integrated work. Never claim publication without remote evidence.
+\ No newline at end of file
++Stop after successful push in commit mode or pull-request publication in PR mode. Report final branch, commit and committed paths, push state, pull request URL or state when applicable, and the exact recovery command where needed. Never claim publication without remote evidence.
+\ No newline at end of file
+diff --git a/src/agent-skills/worktree-lifecycle/SKILL.md b/src/agent-skills/worktree-lifecycle/SKILL.md
+index 24e5ded..faec5af 100644
+--- a/src/agent-skills/worktree-lifecycle/SKILL.md
++++ b/src/agent-skills/worktree-lifecycle/SKILL.md
+@@ -1,6 +1,7 @@
+ ---
+ description: Use when creating or adopting a Git worktree.
+ related: ship
++user-invocable: false
+ ---
+ 
+ # Worktree Lifecycle
+@@ -13,18 +14,18 @@ Start with create or adopt action, canonical path, branch or base, intended dest
+ 
+ ## Method
+ 
+-1. Create or adopt the worktree and keep its ownership record current. Create a new worktree from a freshly fetched destination tip. In a new worktree, install dependencies from the lockfile before the first gate. Post the full absolute path of the worktree to the user as soon as it exists, so that they can open it in a file explorer and inspect its files and diffs.
++1. Create or adopt the worktree and keep its ownership record current. Create a new worktree from a freshly fetched destination tip. In a new worktree, install dependencies from the lockfile before the first gate.
+ 2. Keep work durable through commits or an explicit handoff before the owner exits.
+ 3. After a rebase with conflicts, compare the old and new commits with `git range-diff` and confirm that each change from the destination side in the conflicted files survives.
+-4. Before final verification, fetch the destination and rebase onto its tip. When the base changed, run the gates again, because verification on the old base does not cover the rebased tree.
+-5. When publication is required, dispatch `ship` once without forked history in the existing worktree. Send the files to publish and a short summary of user intent and implemented design. Add a destination only when it differs from the normal push target. Keep integration and cleanup ownership in the parent, consume Ship's publication evidence, then resume destination integration and cleanup. When the parent's integration advances the remote destination, bring that branch's local checkout to the new tip with `git merge --ff-only`; when Git refuses, leave that checkout untouched.
++4. Before publication, fetch the destination and rebase onto its tip. When the base changed, run the gates again, because verification on the old base does not cover the rebased tree.
++5. When publication is required, dispatch `ship` once without forked history in the existing worktree. Send the files to publish and a short summary of user intent and implemented design. Add a destination only when it differs from the normal push target. Keep integration and cleanup ownership in the parent, consume Ship's publication evidence, then resume destination integration and cleanup.
+ 6. Consume fresh verification evidence. Run only lifecycle-specific clean-state and destination-containment proofs here.
+ 7. Prove ancestry where applicable with `git merge-base --is-ancestor <commit> <destination>`.
+ 8. Remove only the owned worktree after integration proof and a clean safety check, using `git worktree remove <path>` without force.
+ 
+ ## Stop and result
+ 
+-Stop after safe cleanup or a durable handoff that transfers explicit ownership. Report the full absolute path, branch, owner, destination, publication or handoff state, integration proof, cleanup state, and remaining action.
++Stop after safe cleanup or a durable handoff that transfers explicit ownership. Report path, branch, owner, destination, publication or handoff state, integration proof, cleanup state, and remaining action.
+ 
+ ## Failure and recovery
+ 
+diff --git a/tests/unit/workflows/built-in-skills.test.ts b/tests/unit/workflows/built-in-skills.test.ts
+index 6f9b6e6..9108f2c 100644
+--- a/tests/unit/workflows/built-in-skills.test.ts
++++ b/tests/unit/workflows/built-in-skills.test.ts
+@@ -9,7 +9,7 @@ import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/
+ import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";
+ import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../helpers/project-definitions.js";
+ import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
+-import { BUNDLED_SKILL_DIR } from "../../../src/workflows/skill-source-inventory.js";
++import { BUNDLED_SKILL_SOURCES } from "../../../src/workflows/skill-source-inventory.js";
+ import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
+ import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
+ import { renderSkillClosure } from "../../../src/workflows/skill-context.js";
+@@ -17,7 +17,7 @@ import type { SkillRegistryRevision } from "../../../src/workflows/skill-schema.
+ import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
+ 
+ const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
+-const SKILL_ROOTS = [{ authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const }];
++const SKILL_ROOTS = BUNDLED_SKILL_SOURCES.map(({ kind, packageDir }) => ({ authority: "bundled" as const, dir: packageDir, reach: "global" as const, sourceKind: kind }));
+ const PERSONA_DIR = join(REPO_ROOT, "src", "workflows", "agents", "personas");
+ 
+ // Bundled packages only: the installing user's external roots must not decide
+@@ -41,6 +41,7 @@ const EXPECTED_IDS = [
+   "elegance-review-principles",
+   "experiment-charter",
+   "experiment-finalize",
++  "fly.research",
+   "implementation",
+   "implementation-planning",
+   "interface-design",
+@@ -79,6 +80,7 @@ const INGREDIENT_IDS = [
+   "design",
+   "elegance-review-principles",
+   "implementation-planning",
++  "research",
+   "root-cause-analysis",
+   "test-driven-development",
+   "uat",
+@@ -156,10 +158,10 @@ describe("bundled skill packages", () => {
+     expect(design?.body).toContain("discovery, experiments, spikes, or proof-of-concept work");
+     expect(design?.body).toContain("In the same turn, call `ask_user`");
+     expect(design?.body).toContain("call `ask_user` again");
+-    expect(design?.body).toContain("Existing scope approval takes precedence over per-design approval");
++    expect(design?.body).toContain("Existing scope approval takes precedence over per-design approval checkpoints");
+     expect(design?.body).toContain("fix all broken lint and tests");
+-    expect(design?.body).toContain("An ordinary bug investigation still requires fix-design approval");
+-    expect(design?.body).toContain("Tool consent requirements remain binding");
++    expect(design?.body).toContain("Ordinary bug investigations still require fix-design approval");
++    expect(design?.body).toContain("Separate tool consent requirements remain binding");
+     expect(design?.body).toContain("State the deciding observation and its acceptance criterion");
+     expect(design?.body).toContain("Close every rejected hypothesis with the evidence that rejected it");
+     expect(design?.body).toContain("recommend no delivery route");
+@@ -211,16 +213,6 @@ describe("bundled skill packages", () => {
+     expect(design?.body).toContain("analyze representative data");
+     expect(design?.body).toContain("disposable proof-of-concept tests");
+     expect(design?.body).toContain("remaining inference");
+-    // The spike precedes every design: code claims cite code, every other load-bearing claim rests on a spike.
+-    expect(design?.body).toContain("Spike before you design");
+-    expect(design?.body).toContain("Prove a claim about what code does by citing the code");
+-    expect(design?.body).toContain("rests on what a spike observed");
+-    expect(design?.body).toContain("Prototype competing shapes only when inspection cannot tell the viable shapes apart");
+-    expect(design?.body).toContain("Your confidence after a code survey is never proof");
+-    expect(design?.body).toContain("changes the approach before you show any design");
+-    expect(design?.body).toContain("returns that finding with its evidence, and only evidence-supported alternatives, instead of a design");
+-    expect(design?.body).toContain("labeled untested theory");
+-    expect(design?.body).toContain("A decisive no-change conclusion completes the request without approval or delivery");
+     expect(research?.body).toContain("Prefer empirical evidence over static reasoning");
+     expect(research?.body).toContain("run actual code paths");
+     expect(research?.body).toContain("focused experiments in scratch");
+@@ -231,6 +223,7 @@ describe("bundled skill packages", () => {
+     const ship = bundled.get("ship");
+ 
+     expect(lifecycle?.modelInvocable).toBe(true);
++    expect(lifecycle?.userInvocable).toBe(false);
+     expect(lifecycle?.trigger.length).toBeLessThanOrEqual(60);
+     expect(lifecycle?.body).toContain("git merge-base --is-ancestor");
+     expect(lifecycle?.body).toContain("dispatch `ship` once without forked history");
+@@ -239,36 +232,32 @@ describe("bundled skill packages", () => {
+     expect(lifecycle?.body).not.toContain("session scratch");
+     expect(lifecycle?.body).not.toContain("worktree remove --force");
+     expect(lifecycle?.body).not.toMatch(/git (?:checkout --|reset --hard|stash|clean)/);
+-    expect(ship?.body).toContain("Leave uncommitted edits outside the supplied list untouched");
+-    expect(ship?.body).toContain("never use `--autostash`");
+-    expect(ship?.body).toContain("When the caller supplied a shape guide, put it in the description verbatim");
+-    expect(ship?.body).toContain("do not assess, edit, or verify it");
+-    expect(ship?.body).toContain("Use `commit + push` to the current branch's normal push target by default");
++    expect(ship?.body).toContain("Leave files outside the supplied list untouched");
+   });
+ 
+-  it("publishes both experiment methods as routers over declared references and one finalizer script", () => {
++  it("publishes both experiment methods as user-invocable routers over declared references and one finalizer script", () => {
+     const charter = bundled.get("experiment-charter");
+     const finalize = bundled.get("experiment-finalize");
+ 
++    expect(charter?.userInvocable).toBe(true);
+     expect(charter?.resources.map((resource) => resource.path)).toEqual(["references/loop-rules.md", "references/scripts.md"]);
++    expect(finalize?.userInvocable).toBe(true);
+     expect(finalize?.resources.map((resource) => resource.path)).toEqual(["finalize.sh", "references/groups-json.md"]);
+   });
+ 
+-  it("ships Flywheel's own methods only in the development module, model-loadable", () => {
+-    const ids = ["effect-lifecycle", "flywheel-design", "flywheel-uat", "ios-uat", "refactor-safety-net", "session-debugging", "skill-prompt-audit", "solid-reactivity", "tui-rendering", "typescript-bun", "vscode-uat", "webview-rendering", "webview-uat"];
++  it("ships Flywheel's own methods only in the development module, model-loadable but user-hidden", () => {
++    const ids = ["effect-lifecycle", "flywheel-design", "flywheel-uat", "ios-uat", "solid-reactivity", "tui-rendering", "typescript-bun", "vscode-uat", "webview-uat"];
+ 
+     for (const id of ids) {
+       expect(bundled.has(id), id).toBe(false);
+       const skill = development.get(id);
+       expect(skill?.source.kind === "filesystem" ? skill.source.bundle : undefined, id).toBe("development");
+       expect(skill?.modelInvocable, id).toBe(true);
++      expect(skill?.userInvocable, id).toBe(false);
+     }
+ 
+     expect(development.get("flywheel-design")?.dependencies).toEqual(["design"]);
+-    const design = development.get("flywheel-design")?.body;
+-    expect(design).toContain("## Intent");
+-    expect(design).toContain("`docs/product-intent/`");
+-    expect(design).toContain("`docs/architecture-intent/`");
++    expect(development.get("flywheel-design")?.body).toContain("## Product intent");
+     const uat = development.get("flywheel-uat")
+     expect(uat?.body).toContain("Credential-backed UAT is the default")
+     expect(uat?.body).toContain("Clone only that profile's `auth.json` and optional `profile.json`")
+@@ -299,6 +288,19 @@ describe("bundled skill packages", () => {
+     expect(rendered[1]).toContain(development.get("flywheel-design")?.body);
+   });
+ 
++  // A body that directs a handoff is workflow transport, so it is never a
++  // package a chat surface can invoke.
++  it("keeps every body that directs a handoff out of chat invocation", () => {
++    const HANDOFF_INSTRUCTION = /\b(?:call|calling|emit|emitting)\s+(?:the\s+|a\s+)?[a-z-]*handoff\b/i;
++    const directing = [...bundled.values()].filter((skill) => HANDOFF_INSTRUCTION.test(skill.body));
++
++    expect(directing.map((skill) => skill.id)).toContain("fly.research");
++    for (const skill of directing) {
++      expect(skill.userInvocable, skill.id).toBe(false);
++      expect(skill.modelInvocable, skill.id).toBe(false);
++    }
++  });
++
+   it("points only at installed packages", () => {
+     for (const skill of bundled.values()) {
+       for (const related of skill.relatedIds) expect(bundled.has(related)).toBe(true);
+@@ -342,6 +344,7 @@ describe("deterministic composition", () => {
+     expect(dependencies("vscode-uat")).toEqual(["uat"]);
+     expect(dependencies("tui-rendering")).toEqual([]);
+     expect(dependencies("code-review")).toEqual(["elegance-review-principles"]);
++    expect(dependencies("fly.research")).toEqual(["research"]);
+     const fixtures = fixtureDefinitions();
+     const workflow = workflowIn(fixtures.captureRevision(), FIXTURE_WORKFLOW_ID);
+     const agents = resolveWorkflowAgents(workflow);
+@@ -354,6 +357,7 @@ describe("deterministic composition", () => {
+     const ship = bundled.get("ship");
+     expect(ship?.delegate).toBe("ship");
+     expect(ship?.modelInvocable).toBe(false);
++    expect(ship?.userInvocable).toBe(false);
+     expect(revision.modelInvocable.some((skill) => skill.id === "ship")).toBe(false);
+     // The cross-harness keys stay absent, so a harness without the Ship agent
+     // reads an ordinary invocable skill.
+@@ -443,6 +447,7 @@ describe("deterministic composition", () => {
+     expect(ingredientIds).toEqual(INGREDIENT_IDS);
+     for (const skillId of ingredientIds) {
+       const skill = development.get(skillId);
++      expect(skill?.userInvocable, skillId).toBe(skillId === "design");
+       expect(skill?.modelInvocable, skillId).toBe(true);
+       expect(modelInvocableIds.has(skillId), skillId).toBe(true);
+     }
+@@ -451,18 +456,6 @@ describe("deterministic composition", () => {
+   it("requires inline revision text in the built-in design approval", () => {
+     const body = bundled.get("design")?.body
+     expect(body).toContain("`Revise design` with `requires_text: true`")
+-    expect(body).toContain("A text answer that rejects the approach, not a detail, returns the work to step 1")
+-    expect(body).toContain("When you cannot tell a correction from a rethink, ask")
+-  })
+-
+-  it("settles challenges on the disputed premise and reshapes published code against its existing proof", () => {
+-    const body = bundled.get("design")?.body
+-    expect(body).toContain("first restate their model")
+-    expect(body).toContain("name the exact premise where it differs from yours")
+-    expect(body).toContain("Do not defend or concede by reflex")
+-    expect(body).toContain("treat the behavioral proof that the change already passed, its tests, probes, and measurements, as a fixed contract")
+-    expect(body).toContain("only after the same proof passes again")
+-    expect(body).toContain("A local objection, such as a name, a misplaced function, or a missing case, is an ordinary fix: verify it and publish it to the same change")
+   })
+ 
+ });
+@@ -617,6 +610,7 @@ describe("always-on kernel", () => {
+   // safety, evidence, secrets, persistence and tool boundaries, verification.
+   it("keeps the universal invariants", () => {
+     for (const invariant of [
++      "NEVER discard changes",
+       "Redacted",
+       "bun run test",
+       "bun run lint",

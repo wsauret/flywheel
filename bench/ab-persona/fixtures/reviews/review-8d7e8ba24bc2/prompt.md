@@ -1,0 +1,17 @@
+Review this completed change.
+
+CHANGE: uncommitted working-tree changes in these files only (other agents edit this tree concurrently, including src/infra/sqlite-event-store*.ts and event-store types for a separate unit; ignore those; use `git diff -- <path>`): src/orchestration/app-service/project-state-protocol.ts, src/orchestration/app-service/project-state-client.ts, src/orchestration/app-service/project-state-channel.ts, tests/unit/orchestration/app-service/project-state-channel.test.ts, project-state-client.test.ts, project-state-commit-window.test.ts, project-execution-state.test.ts, project-execution-runtime.test.ts, _project-state-worker-fixture.ts, tests/unit/infra/event-loop-lag.test.ts.
+
+PROJECT CONTEXT PATHS: docs/architecture-intent/README.md and its runtime, substrate (ARCH-SUBSTRATE-018), boundaries (ARCH-BOUNDARIES-001), and protocol (ARCH-PROTOCOL-031) domain files; AGENTS.md sections 1, 4 (in your instructions).
+
+Intent (unit D6 of the approved design): the account service relays state-Worker read responses to project executors without decoding and re-encoding them; the executor decodes once and is the validation boundary; responses the account consumes itself stay decoded and validated. Measured cost before: decode 49% and encode 17% of account busy time during a cold chat open.
+
+Recorded deviations: the response wire format changed from one msgpack map `{id, head?, result}` to two msgpack values in one frame (id, then body), so readdressing is one copy without hand-parsing msgpack; `exchange` removed and bookkeeping moved into `settle()`; a malformed relayed body now closes the executor's channel instead of the account's Worker client; on a commit-window client a relayed answer gives no head (only the account relays and it has no commit window). Known unrelated failures: `lint:tsc` on `foldEvidence` and two prune-count tests are from the concurrent fold-cache unit.
+
+ASSIGNED CLAIMS (verify each; report evidence):
+1. Version skew: can an account service and a state Worker or executor of different builds exchange these frames (for example an executor generation started by an older or newer build, an upgrade while `flywheel serve` runs, a source run talking to an installed service)? Trace how the processes are launched and whether the protocol carries a version or build check. If skew is reachable, the frame change breaks it; report the path.
+2. Every response path (results, errors, refusals for pressure or generation, detach, transport loss, invalid frames) still reaches the right peer with the right id, and pending requests settle exactly once.
+3. The new test proves byte-identical relay and that the account performs no body decode on relayed reads, and it fails for that reason when the relay decodes (the implementer showed RED by mutation).
+4. No production test seam was added, and no dead code remains (old envelope handling kept only for tests?). `decodeProjectStateResponse` still accepting the old envelope object: is that used outside tests? If only tests use it, it is dead production code.
+
+Classify each deviation and discrepancy as consistent with the intent or drift, with evidence. Use `<path>:<line>` locations. Run focused tests if useful; never stash or revert the working tree; do not write repository files. Return prose findings, one block each with Title, Severity, Location, Failure, Fix, or state No findings. Failure format: `<Principle name>. <Intent>. <Observation>. <Reasoning>.` Keep `UNVERIFIED` tags. Hardening findings name a reachable trigger or cap at P3.

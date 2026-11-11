@@ -1,0 +1,615 @@
+diff --git a/scripts/uat/harness.ts b/scripts/uat/harness.ts
+index 94287c4..760fe4f 100644
+--- a/scripts/uat/harness.ts
++++ b/scripts/uat/harness.ts
+@@ -6,7 +6,8 @@ import { utimesSync } from "node:fs"
+ import { createHash } from "node:crypto"
+ import { Schema } from "effect"
+ import { copyActiveBuild } from "../../tests/helpers/placed-build.js"
+-import { AuthProfileManager } from "../../src/orchestration/auth/auth-profile-manager.js"
++import { RELEASE_HARNESS_ENVIRONMENT } from "../../tests/helpers/real-process-fixture.js"
++import { AuthProfileManager, type AuthProfileManagerOptions } from "../../src/orchestration/auth/auth-profile-manager.js"
+ import { ContainedDirectory } from "../../src/infra/descriptor-directory.js"
+ import { authDir, requireAuthProfileName } from "../../src/infra/paths.js"
+ import { resolveInstalledBinary } from "./installed-binary.js"
+@@ -44,12 +45,13 @@ export interface TuiUatSandbox {
+  *  sandbox path. Whichever launch starts the service, `flywheel web` reads the
+  *  same record and opens the sandbox hub. Same contract the release runner
+  *  uses (src/cli/release-harness.ts). */
+-export function sandboxEnvironment(sandbox: Pick<TuiUatSandbox, "root" | "authProfile">) {
++export function sandboxEnvironment(sandbox: Pick<TuiUatSandbox, "root" | "authProfile">, nonSecretEnv?: TuiUatOptions["nonSecretEnv"]) {
+   return {
+-    FLYWHEEL_INTERNAL_RELEASE_HARNESS: "account-service-isolation-v1",
++    ...RELEASE_HARNESS_ENVIRONMENT,
+     FLYWHEEL_INTERNAL_RELEASE_HUB_PORT: "0",
+     FLYWHEEL_INTERNAL_RELEASE_HUB_RECORD: join(sandbox.root, "hub-origin"),
+     FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS: "1",
++    ...nonSecretEnv,
+     ...(sandbox.authProfile === undefined ? {} : { FLYWHEEL_AUTH_PROFILE: sandbox.authProfile }),
+   }
+ }
+@@ -136,11 +138,20 @@ export async function cloneAuthProfileFiles(sourceProfile: string, destination:
+   }
+ }
+ 
+-async function cloneEffectiveAuth(sourceProjectRoot: string, home: string): Promise<string> {
++/** Resolve a start request against its source auth catalog without changing credentials or selection. */
++export function resolveTuiUatAuthProfile(options: Pick<TuiUatOptions, "sourceProjectRoot" | "nonSecretEnv">, source: Omit<AuthProfileManagerOptions, "projectRoot">) {
++  return new AuthProfileManager({
++    ...source,
++    projectRoot: options.sourceProjectRoot,
++    env: { ...(source.env ?? process.env), ...options.nonSecretEnv },
++  }).inspect()
++}
++
++async function cloneEffectiveAuth(options: TuiUatOptions, home: string): Promise<string> {
+   const sourceHome = process.env.HOME
+   if (!sourceHome) throw new Error("HOME is required to resolve the configured auth profile")
+   const sourceUserDataRoot = join(sourceHome, ".flywheel")
+-  const resolution = new AuthProfileManager({ userDataRoot: sourceUserDataRoot, projectRoot: sourceProjectRoot }).inspect()
++  const resolution = resolveTuiUatAuthProfile(options, { userDataRoot: sourceUserDataRoot, env: process.env })
+   const destination = authDir(join(home, ".flywheel"), resolution.id)
+   const account = ContainedDirectory.open(home, [".flywheel"], { privateDirectories: true, noFollowBase: true })
+   account.close()
+@@ -182,7 +193,7 @@ export async function prepareTuiUatSandbox(options: TuiUatOptions): Promise<TuiU
+     const userDataRoot = join(home, ".flywheel")
+     await mkdir(userDataRoot, { recursive: true, mode: 0o700 })
+     if (options.config !== undefined) await writeFile(join(userDataRoot, "flywheel.toml"), options.config, { mode: 0o600 })
+-    const authProfile = options.cloneAuth === false ? undefined : await cloneEffectiveAuth(options.sourceProjectRoot, home)
++    const authProfile = options.cloneAuth === false ? undefined : await cloneEffectiveAuth(options, home)
+     return { ...sandbox, authProfile }
+   } catch (error) {
+     await rm(home, { recursive: true, force: true })
+@@ -191,11 +202,8 @@ export async function prepareTuiUatSandbox(options: TuiUatOptions): Promise<TuiU
+ }
+ 
+ export async function removeUatHome(home: string, stop: () => void | Promise<void> = () => {}): Promise<void> {
+-  try {
+-    await stop()
+-  } finally {
+-    await rm(home, { recursive: true, force: true })
+-  }
++  await stop()
++  await rm(home, { recursive: true, force: true })
+ }
+ 
+ /** tmux on macOS and Linux, or psmux on Windows, which installs as `tmux` and
+@@ -280,7 +288,7 @@ export async function startTuiUat(options: TuiUatOptions): Promise<TuiUatApp> {
+       home: sandbox.home,
+       projectRoot: sandbox.project,
+       stderrFile: sandbox.stderrFile,
+-      env: { ...sandboxEnvironment(sandbox), ...options.nonSecretEnv },
++      env: sandboxEnvironment(sandbox, options.nonSecretEnv),
+     })
+     await writeFile(join(sandbox.root, STATE_FILE), JSON.stringify({ binaryPath, idleTimeoutMs, authProfile: sandbox.authProfile }), { mode: 0o600 })
+     await writeFile(join(sandbox.root, ACTIVITY_FILE), "", { mode: 0o600 })
+@@ -330,14 +338,14 @@ export async function startTuiUat(options: TuiUatOptions): Promise<TuiUatApp> {
+ export async function attachTuiUat(root: string): Promise<TuiUatApp> {
+   const state = await readSession(root)
+   await utimes(join(state.sandbox.root, ACTIVITY_FILE), new Date(), new Date())
+-  return decorateApp(attachApp(state.sessionName), state.sandbox, state.sessionName, state.idleTimeoutMs)
++  return decorateApp(attachApp(state.sessionName, state.sandbox.home), state.sandbox, state.sessionName, state.idleTimeoutMs)
+ }
+ 
+ /** Stop only this sandbox's process tree, remove its HOME and credentials, then end the owning tmux session. Evidence and the isolated project remain. */
+ export async function stopTuiUat(root: string): Promise<void> {
+   const { sandbox, sessionName } = await readSession(root)
+   try {
+-    await removeUatHome(sandbox.home, () => attachApp(sessionName).dispose(true))
++    await removeUatHome(sandbox.home, () => attachApp(sessionName, sandbox.home).dispose(true))
+     await rm(join(sandbox.root, STATE_FILE), { force: true })
+     await rm(join(sandbox.root, ACTIVITY_FILE), { force: true })
+   } finally {
+diff --git a/scripts/uat/tmux-driver.ts b/scripts/uat/tmux-driver.ts
+index 94f0297..9a94455 100644
+--- a/scripts/uat/tmux-driver.ts
++++ b/scripts/uat/tmux-driver.ts
+@@ -1,7 +1,6 @@
+ import { spawnSync } from "node:child_process"
+ 
+-import { windowsProcessIdentity } from "../../src/infra/process-container.js"
+-import { windowsProcessApi } from "../../src/infra/windows-process-api.js"
++import { stopHarnessProcesses } from "../../tests/helpers/real-process-fixture.js"
+ 
+ const PANE_WIDTH = "160"
+ const PANE_HEIGHT = "40"
+@@ -32,6 +31,8 @@ export class PanePollError extends Error {
+ export type SgrMouseAction = "hover" | "press" | "release"
+ 
+ export interface TmuxApp {
++  /** Whether the session still holds the app pane, independent of its reaper. */
++  hasPane(): boolean
+   capture(): string
+   captureHistory(): string
+   sendKeys(...keys: string[]): void
+@@ -106,7 +107,7 @@ export function launchCommand(options: LaunchOptions, platform: NodeJS.Platform
+ 
+ export function launchApp(options: LaunchOptions): TmuxApp {
+   tmux(["new-session", "-d", "-s", options.sessionName, "-n", "app", "-x", PANE_WIDTH, "-y", PANE_HEIGHT, "-c", options.workDir, launchCommand(options)])
+-  return attachApp(options.sessionName)
++  return attachApp(options.sessionName, options.home ?? options.workDir)
+ }
+ 
+ /** Start an owned companion. Killing the session also ends this process. */
+@@ -120,10 +121,11 @@ export function killTmuxSession(sessionName: string): void {
+ }
+ 
+ /** Attach without recreating the session or changing its selected window. */
+-export function attachApp(sessionName: string): TmuxApp {
++export function attachApp(sessionName: string, home: string): TmuxApp {
+   let disposed = false
+   const target = `${sessionName}:app`
+ 
++  const hasPane = (): boolean => tmux(["list-panes", "-s", "-t", sessionName, "-F", "#{window_name}"]).trim().split("\n").includes("app")
+   const capture = (): string => tmux(["capture-pane", "-p", "-t", target])
+   const captureHistory = (): string => tmux(["capture-pane", "-p", "-S", "-", "-t", target])
+   const sendKeys = (...keys: string[]): void => {
+@@ -184,93 +186,14 @@ export function attachApp(sessionName: string): TmuxApp {
+     throw new PanePollError(`pollPane(${label}) timed out after ${timeoutMs}ms; last pane:\n${last}`, last)
+   }
+ 
+-  function descendantsOf(pid: string): string[] {
+-    if (process.platform === "win32") {
+-      // Windows keeps a parent pid on every process and offers no group, so
+-      // the tree is the closure of parenthood over one table snapshot. A
+-      // parent pid outlives its process and Windows reuses pids, so the
+-      // parenthood graph can hold a cycle: the closure visits each pid once.
+-      const rows = windowsProcessApi()?.list() ?? []
+-      const tree = new Set([pid])
+-      for (const parent of tree) {
+-        for (const row of rows) if (String(row.parentPid) === parent) tree.add(String(row.pid))
+-      }
+-      tree.delete(pid)
+-      return [...tree]
+-    }
+-    const children = spawnSync("pgrep", ["-P", pid], { encoding: "utf8", windowsHide: true }).stdout.trim().split("\n").filter(Boolean)
+-    return children.flatMap((child) => [child, ...descendantsOf(child)])
+-  }
+-
+-  /** Each live pid's process group; a pid that has already ended is absent. */
+-  function processGroups(pids: readonly string[]): Map<string, string> {
+-    const rows = spawnSync("ps", ["-o", "pid=,pgid=", "-p", pids.join(",")], { encoding: "utf8", windowsHide: true }).stdout.trim().split("\n")
+-    const groups = new Map<string, string>()
+-    for (const row of rows) {
+-      const [pid, pgid] = row.trim().split(/\s+/)
+-      if (pid && pgid && pgid !== "0") groups.set(pid, pgid)
+-    }
+-    return groups
+-  }
+-
+-  function isAlive(pid: string): boolean {
+-    // Signal zero is a POSIX idiom; Windows answers from the kernel instead.
+-    if (process.platform === "win32") return windowsProcessIdentity(Number(pid)).kind === "process"
+-    try {
+-      process.kill(Number(pid), 0)
+-      return true
+-    } catch {
+-      return false
+-    }
+-  }
+-
+-  /** Ends `pids`: TERM to every process group they belong to, and KILL to
+-   *  whatever is still running after the grace. The grace exists so nothing is
+-   *  still running when the caller deletes the workspace (a Worker starting in
+-   *  an unlinked cwd panics Bun), not to grant a graceful exit; a cooperative
+-   *  process is gone well inside it. The resident account service, its
+-   *  guardian, and each project's supervisor detach into their own process
+-   *  groups so they outlive the client, and this harness owns them all, so
+-   *  every group gets the TERM. Windows has no signal that runs another
+-   *  process's graceful path, so there each process is terminated outright,
+-   *  in the order given. */
+-  function terminate(pids: readonly string[]): void {
+-    if (pids.length === 0) return
+-    if (process.platform === "win32") {
+-      for (const pid of pids) { try { process.kill(Number(pid)) } catch { /* the process can end between the snapshot and the kill */ } }
+-    } else {
+-      for (const pgid of new Set(processGroups(pids).values())) spawnSync("kill", ["-TERM", `-${pgid}`], { windowsHide: true })
+-    }
+-    const deadline = performance.now() + 2_000
+-    while (performance.now() < deadline && pids.some(isAlive)) Bun.sleepSync(100)
+-    for (const pid of pids) if (isAlive(pid)) {
+-      if (process.platform === "win32") { try { process.kill(Number(pid)) } catch { /* already gone */ } }
+-      else spawnSync("kill", ["-KILL", pid], { windowsHide: true })
+-    }
+-  }
+-
+   function dispose(keepSession = false): void {
+     if (disposed) return
++    const remaining = stopHarnessProcesses([home])
++    if (remaining.length > 0) throw new Error(`sandbox processes survived stop: ${remaining.map(({ pid }) => pid).join(", ")}`)
+     disposed = true
+-    const panePid = spawnSync("tmux", ["list-panes", "-t", target, "-F", "#{pane_pid}"], { encoding: "utf8", windowsHide: true }).stdout.trim().split("\n")[0]
+-    if (panePid) {
+-      const tree = [panePid, ...descendantsOf(panePid)]
+-      if (process.platform === "win32") terminate(tree.toReversed())
+-      else {
+-        // The client ends before the services it attached to. A client that
+-        // is still running when its account service closes the socket
+-        // launches a new service, which starts after this snapshot in a
+-        // process group of its own; ending both at once left such services
+-        // running for hours after a perf gate run.
+-        const groups = processGroups(tree)
+-        const client = tree.filter((pid) => groups.get(pid) === groups.get(panePid))
+-        terminate(client)
+-        terminate(tree.filter((pid) => !client.includes(pid)))
+-      }
+-    }
+     if (!keepSession) killTmuxSession(sessionName)
+   }
+ 
+-  return { capture, captureHistory, sendKeys, sendLiteral, submit, sendText, mouse, click, clickText, hover, pollPane, dispose }
++  return { hasPane, capture, captureHistory, sendKeys, sendLiteral, submit, sendText, mouse, click, clickText, hover, pollPane, dispose }
+ }
+ 
+diff --git a/scripts/uat/tui.ts b/scripts/uat/tui.ts
+index 43c6fcb..5a8289a 100644
+--- a/scripts/uat/tui.ts
++++ b/scripts/uat/tui.ts
+@@ -136,7 +136,12 @@ async function main(): Promise<void> {
+         throw new Error(`unknown verb: ${verb}; use --help`)
+     }
+     if (verb === "type" || verb === "submit" || verb === "keys" || verb === "click") await Bun.sleep(100)
+-    console.log(app.capture())
++    try {
++      console.log(app.capture())
++    } catch (error) {
++      if (verb !== "keys" || app.hasPane()) throw error
++      console.log("App pane exited")
++    }
+   } catch (error) {
+     if (error instanceof PanePollError) console.error(error.lastCapture)
+     else if (app) {
+diff --git a/tests/helpers/real-process-fixture.ts b/tests/helpers/real-process-fixture.ts
+index 2af0c7d..bf8b66f 100644
+--- a/tests/helpers/real-process-fixture.ts
++++ b/tests/helpers/real-process-fixture.ts
+@@ -7,6 +7,7 @@ import { ownedProcessBackend } from "../../src/infra/owned-subprocess-backend.js
+ import type { LauncherScope } from "../../src/infra/process-supervisor.js"
+ import { windowsProcessIdentity } from "../../src/infra/process-container.js"
+ import { windowsJobApi } from "../../src/infra/windows-job-object.js"
++import { windowsProcessApi } from "../../src/infra/windows-process-api.js"
+ import { windowsContainerName } from "../../src/infra/owned-command-supervisor.js"
+ import { listProcesses, type ProcessRow } from "../../src/infra/process-table.js"
+ import { removeWhenReleased } from "./remove-when-released.js"
+@@ -235,42 +236,28 @@ export function containerHolds(owned: { readonly pid: number; readonly token: st
+   }
+ }
+ 
+-/** Live processes whose full command line contains `tag`, this process
++/** Live processes whose full command line names directory `tag`, this process
+  *  excluded. The whole table is read at once because a stray process is found
+  *  by what it was launched with, not by a pid the test already knows. */
+ export function taggedProcesses(tag: string): readonly TaggedProcess[] {
+-  const probe = process.platform === "win32"
+-    // Windows exposes no command line through the kernel calls the product
+-    // uses, and nothing else on the platform prints one, so this is the one
+-    // place a shell-hosted query is the only option. It runs once per fixture
+-    // teardown rather than per probe, which is what makes the cost bearable
+-    // here and not in the product.
+-    ? Bun.spawnSync([
+-      "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+-      // One line per process, whatever the command line holds. A launch that
+-      // carries source text - `bun -e "..."` - has newlines inside its own
+-      // command line, and without flattening them the line that names a
+-      // fixture is a continuation line with no pid in front of it, which this
+-      // reader would skip and report as nothing running.
+-      "Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId) $($_.CommandLine -replace '[\\r\\n]+', ' ')\" }",
+-    ], { stdout: "pipe", stderr: "ignore", windowsHide: true })
+-    : Bun.spawnSync(["ps", "-axww", "-o", "pid=,args="], { stdout: "pipe", stderr: "ignore", windowsHide: true })
+-  if (!probe.success) throw new Error("could not read the process table")
+   const found: TaggedProcess[] = []
+-  for (const raw of new TextDecoder().decode(probe.stdout).split("\n")) {
+-    // A carriage return is a line terminator to a regular expression, so `.`
+-    // never reaches one and an anchored pattern never matches a line that
+-    // still carries it. Windows ends every line with one.
+-    const line = raw.trim()
+-    if (!line.includes(tag)) continue
+-    const match = /^(\d+)\s+(.+)$/.exec(line)
+-    if (!match) continue
+-    const pid = Number(match[1])
+-    if (pid !== process.pid) found.push({ pid, command: String(match[2]) })
++  for (const [pid, command] of commandLines()) {
++    if (pid !== process.pid && namesDirectory(command, tag)) found.push({ pid, command })
+   }
+   return found
+ }
+ 
++/** Whether `text` names `directory` or a path below it: the directory starts
++ *  the text or follows whitespace, a quote, or `=`, and the text ends or
++ *  continues with a path separator, whitespace, or a quote there. A sibling
++ *  that only shares a string prefix, such as `gate3.ps1` beside `gate`, never
++ *  matches. Both path separators are accepted, and a drive-letter path
++ *  compares without case, as Windows does. */
++export function namesDirectory(text: string, directory: string): boolean {
++  const escaped = directory.replaceAll("\\", "/").replace(/\/+$/, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
++  return new RegExp(`(?:^|[\\s"'=])${escaped}(?=$|[/\\s"'])`, /^[a-z]:[\\/]/i.test(directory) ? "i" : "").test(text.replaceAll("\\", "/"))
++}
++
+ /** The entry the release harness sets in the environment of every process
+  *  it starts (scripts/perf-gate.ts, tests/release/run.ts, and
+  *  scripts/uat/harness.ts), which each child inherits. The user's installed
+@@ -278,21 +265,26 @@ export function taggedProcesses(tag: string): readonly TaggedProcess[] {
+ export const RELEASE_HARNESS_ENVIRONMENT = { FLYWHEEL_INTERNAL_RELEASE_HARNESS: "account-service-isolation-v1" } as const
+ const RELEASE_HARNESS_MARKER = `FLYWHEEL_INTERNAL_RELEASE_HARNESS=${RELEASE_HARNESS_ENVIRONMENT.FLYWHEEL_INTERNAL_RELEASE_HARNESS}`
+ 
+-/** Live processes that a harness run under `root` started: each carries the
+- *  release harness marker in its environment and names `root` in its
+- *  environment or command line, this process excluded. The process table is
+- *  the whole source, so a process whose run directory another run already
+- *  removed is still found.
++/** Live processes that a harness run under `root` started, this process
++ *  excluded: each carries the release harness marker in its environment and
++ *  names `root` in its environment or command line. The process table is the
++ *  whole source, so a process whose run directory another run already
++ *  removed is still found, and so is a detached service whose client has
++ *  exited.
+  *
+- *  Windows exposes no other process's environment to anything a script can
+- *  call, so there `root` in the command line is the whole match: every
+- *  process a harness run starts runs a binary installed under its root. */
++ *  On Windows a command line that names `root` also matches without the
++ *  marker, because the kernel refuses some processes' environments to a
++ *  script and every process a gate run starts runs a binary installed under
++ *  its root. The environment is what finds a UAT service, which runs the
++ *  person's installed binary with only its HOME under the sandbox. */
+ export function harnessProcesses(root: string): readonly TaggedProcess[] {
+-  if (process.platform === "win32") return taggedProcesses(root)
++  const table = process.platform === "linux" ? procfsTable() : process.platform === "win32" ? windowsTable() : psTable()
+   const found: TaggedProcess[] = []
+-  for (const entry of process.platform === "linux" ? procfsTable() : psTable()) {
+-    if (entry.pid === process.pid || !entry.environment.includes(RELEASE_HARNESS_MARKER)) continue
+-    if (entry.command.includes(root) || entry.environment.some((variable) => variable.includes(root))) found.push({ pid: entry.pid, command: entry.command })
++  for (const { pid, command, environment } of table) {
++    if (pid === process.pid) continue
++    const marked = environment.includes(RELEASE_HARNESS_MARKER)
++      && (namesDirectory(command, root) || environment.some((variable) => namesDirectory(variable, root)))
++    if (marked || (process.platform === "win32" && namesDirectory(command, root))) found.push({ pid, command })
+   }
+   return found
+ }
+@@ -320,32 +312,71 @@ function procfsTable(): readonly ProcessEntry[] {
+   return entries
+ }
+ 
++/** Windows names each environment in the process's own memory, which the
++ *  kernel lets a script read for a process of the same user only. Any other
++ *  process reads as one with no environment. */
++function windowsTable(): readonly ProcessEntry[] {
++  const api = windowsProcessApi()
++  return [...commandLines()].map(([pid, command]) => ({ pid, command, environment: api?.environment(pid) ?? [] }))
++}
++
+ /** macOS `ps -E` appends the environment to each command, space-separated
+  *  and unquoted. The same table without it states where each command ends,
+- *  so an argument never reads as a variable. */
++ *  so an argument never reads as a variable, and each variable runs to the
++ *  next `NAME=`, so a value that holds a space stays whole. */
+ function psTable(): readonly ProcessEntry[] {
+-  const read = (withEnvironment: boolean): Map<number, string> => {
+-    const probe = Bun.spawnSync(["ps", "-Aww", ...(withEnvironment ? ["-E"] : []), "-o", "pid=,command="], { stdout: "pipe", stderr: "ignore", windowsHide: true })
+-    if (!probe.success) throw new Error("could not read the process table")
+-    const lines = new Map<number, string>()
+-    for (const line of new TextDecoder().decode(probe.stdout).split("\n")) {
+-      const match = /^\s*(\d+) (.*)$/.exec(line)
+-      if (match) lines.set(Number(match[1]), String(match[2]))
+-    }
+-    return lines
+-  }
+-  const commands = read(false)
++  const commands = psLines(false)
+   const entries: ProcessEntry[] = []
+-  for (const [pid, line] of read(true)) {
++  for (const [pid, line] of psLines(true)) {
+     const command = commands.get(pid)
+     // A process that started or changed its command between the two reads
+     // is left for the next read, which the sweep makes after every round.
+     if (command === undefined || !line.startsWith(command)) continue
+-    entries.push({ pid, command, environment: line.slice(command.length).split(/\s+/).filter((variable) => variable.length > 0) })
++    entries.push({ pid, command, environment: line.slice(command.length).trim().split(/\s+(?=[A-Za-z_][A-Za-z0-9_]*=)/).filter((variable) => variable.length > 0) })
+   }
+   return entries
+ }
+ 
++/** Every live process's full command line by pid, from one table read. */
++function commandLines(): ReadonlyMap<number, string> {
++  if (process.platform !== "win32") return psLines(false)
++  // Windows exposes no command line through the kernel calls the product
++  // uses, and nothing else on the platform prints one, so this is the one
++  // place a shell-hosted query is the only option. It runs once per sweep
++  // round rather than per probe, which is what makes the cost bearable here
++  // and not in the product.
++  const probe = Bun.spawnSync([
++    "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
++    // One line per process, whatever the command line holds. A launch that
++    // carries source text - `bun -e "..."` - has newlines inside its own
++    // command line, and without flattening them the line that names a
++    // fixture is a continuation line with no pid in front of it, which this
++    // reader would skip and report as nothing running.
++    "Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId) $($_.CommandLine -replace '[\\r\\n]+', ' ')\" }",
++  ], { stdout: "pipe", stderr: "ignore", windowsHide: true })
++  if (!probe.success) throw new Error("could not read the process table")
++  const lines = new Map<number, string>()
++  for (const raw of new TextDecoder().decode(probe.stdout).split("\n")) {
++    // A carriage return is a line terminator to a regular expression, so `.`
++    // never reaches one and an anchored pattern never matches a line that
++    // still carries it. Windows ends every line with one.
++    const match = /^(\d+)\s+(.+)$/.exec(raw.trim())
++    if (match) lines.set(Number(match[1]), String(match[2]))
++  }
++  return lines
++}
++
++function psLines(withEnvironment: boolean): Map<number, string> {
++  const probe = Bun.spawnSync(["ps", "-Aww", ...(withEnvironment ? ["-E"] : []), "-o", "pid=,command="], { stdout: "pipe", stderr: "ignore", windowsHide: true })
++  if (!probe.success) throw new Error("could not read the process table")
++  const lines = new Map<number, string>()
++  for (const line of new TextDecoder().decode(probe.stdout).split("\n")) {
++    const match = /^\s*(\d+) (.*)$/.exec(line)
++    if (match) lines.set(Number(match[1]), String(match[2]))
++  }
++  return lines
++}
++
+ /** Ends every live process that a harness run under one of `roots` started,
+  *  as `harnessProcesses` finds them, and answers the ones still running when
+  *  `timeoutMs` elapses; an empty answer proves the table held none at the
+diff --git a/tests/integration/local/real-process-fixture.test.ts b/tests/integration/local/real-process-fixture.test.ts
+index a7b58a2..cc7c5a1 100644
+--- a/tests/integration/local/real-process-fixture.test.ts
++++ b/tests/integration/local/real-process-fixture.test.ts
+@@ -114,6 +114,7 @@ describe("harness process sweep", () => {
+     // Another run's service, and a process without the marker that names the
+     // root in its command line, as a user's own service never carries it.
+     const otherRun = sleeper(scratch, { env: { ...MARKER, HOME: path.join(scratch.dir, "run-other", "candidate-home") } })
++    const prefixSibling = sleeper(scratch, { env: { ...MARKER, HOME: `${root}3.ps1` }, args: [`${root}3.ps1`] })
+     const unmarked = sleeper(scratch, { args: [root] })
+     // Another run's gate removed the run directory.
+     fs.rmSync(root, { recursive: true, force: true })
+@@ -125,6 +126,7 @@ describe("harness process sweep", () => {
+     expect(stopHarnessProcesses([root], 5_000)).toEqual([])
+     await scratch.waitForGone(service)
+     expect(processAlive(otherRun)).toBe(true)
++    expect(processAlive(prefixSibling)).toBe(true)
+     expect(processAlive(unmarked)).toBe(true)
+   })
+ })
+diff --git a/tests/integration/scripts/uat/harness.test.ts b/tests/integration/scripts/uat/harness.test.ts
+index da39594..258401a 100644
+--- a/tests/integration/scripts/uat/harness.test.ts
++++ b/tests/integration/scripts/uat/harness.test.ts
+@@ -119,13 +119,19 @@ describe("TUI UAT sandbox", () => {
+     }
+   })
+ 
+-  it("removes credential homes after cleanup callback failures", async () => {
++  it("keeps credential homes until process cleanup succeeds", async () => {
+     const root = await mkdtemp(join(tmpdir(), "flywheel-uat-cleanup-"))
+     await writeFile(join(root, "auth.json"), "secret")
+     await chmod(root, 0o700)
+-    await expect(removeUatHome(root, async () => {
+-      throw new Error("stop failed")
+-    })).rejects.toThrow("stop failed")
+-    await expect(lstat(root)).rejects.toThrow()
++    try {
++      await expect(removeUatHome(root, async () => {
++        throw new Error("stop failed")
++      })).rejects.toThrow("stop failed")
++      expect((await lstat(root)).isDirectory()).toBe(true)
++      await removeUatHome(root)
++      await expect(lstat(root)).rejects.toThrow()
++    } finally {
++      await rm(root, { recursive: true, force: true })
++    }
+   })
+ })
+diff --git a/tests/integration/scripts/uat/lifecycle.test.ts b/tests/integration/scripts/uat/lifecycle.test.ts
+index 98cc977..a9e41ec 100644
+--- a/tests/integration/scripts/uat/lifecycle.test.ts
++++ b/tests/integration/scripts/uat/lifecycle.test.ts
+@@ -28,6 +28,7 @@ afterEach(async () => {
+ 
+ function fakeApp(): driver.TmuxApp {
+   return {
++    hasPane: () => true,
+     capture: () => "visible pane",
+     captureHistory: () => "full history",
+     sendKeys: () => {},
+diff --git b/tests/unit/helpers/real-process-fixture.test.ts b/tests/unit/helpers/real-process-fixture.test.ts
+new file mode 100644
+index 0000000..1c01176
+--- /dev/null
++++ b/tests/unit/helpers/real-process-fixture.test.ts
+@@ -0,0 +1,14 @@
++import { describe, expect, it } from "bun:test"
++import { namesDirectory } from "../../helpers/real-process-fixture.js"
++
++describe("directory-tagged process discovery", () => {
++  it.each(["/workspace/gate", "C:\\workspace\\gate"])("matches directory boundaries under %s, not sibling prefixes", (root) => {
++    const separator = root.includes("\\") ? "\\" : "/"
++    expect(namesDirectory(`bun "${root}${separator}candidate${separator}flywheel" serve`, root)).toBe(true)
++    expect(namesDirectory(`bun "${root}3.ps1"`, root)).toBe(false)
++    expect(namesDirectory(`bun --home="${root}"`, root)).toBe(true)
++    expect(namesDirectory(`bun "${root}-other${separator}flywheel"`, root)).toBe(false)
++    expect(namesDirectory(`bun "${root}.ps1"`, root)).toBe(false)
++    expect(namesDirectory(`bun "${root}${separator}a file.ts"`, root)).toBe(true)
++  })
++})
+diff --git a/tests/unit/scripts/uat/harness.test.ts b/tests/unit/scripts/uat/harness.test.ts
+index 0d6a8a3..021cfeb 100644
+--- a/tests/unit/scripts/uat/harness.test.ts
++++ b/tests/unit/scripts/uat/harness.test.ts
+@@ -1,14 +1,42 @@
+ import { describe, expect, it, spyOn } from "bun:test"
+ import * as childProcess from "node:child_process"
+-import { sandboxEnvironment } from "../../../../scripts/uat/harness.js"
++import { join } from "node:path"
++import { resolveTuiUatAuthProfile, sandboxEnvironment } from "../../../../scripts/uat/harness.js"
++import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
+ import { attachApp, encodeSgrMouse, launchApp, launchCommand, PanePollError } from "../../../../scripts/uat/tmux-driver.js"
+ import { releaseHarnessRuntimeOptions } from "../../../../src/cli/serve.js"
+ import { runWeb } from "../../../../src/cli/web.js"
+ import { temporaryDirectories } from "../../../helpers/directories.js"
++import * as fixture from "../../../helpers/real-process-fixture.js"
+ 
+ const temporary = temporaryDirectories()
+ 
+ describe("TUI UAT sandbox", () => {
++  it.each<{ route: string; scenarioEnv: { readonly [name: string]: string }; harnessEnv: { readonly [name: string]: string } }>([
++    { route: "scenario environment over the default", scenarioEnv: { FLYWHEEL_AUTH_PROFILE: "Personal" }, harnessEnv: {} },
++    { route: "scenario environment over the harness environment", scenarioEnv: { FLYWHEEL_AUTH_PROFILE: "Personal" }, harnessEnv: { FLYWHEEL_AUTH_PROFILE: "Work" } },
++    { route: "harness environment", scenarioEnv: {}, harnessEnv: { FLYWHEEL_AUTH_PROFILE: "Personal" } },
++  ])("selects the same canonical clone source and launch profile from $route", ({ scenarioEnv, harnessEnv }) => {
++    const root = temporary("uat-auth-source-")
++    const store = new AuthProfileStore(root)
++    const inspect = spyOn(store, "inspect").mockReturnValue({
++      profiles: [{ id: "personal", displayName: "Personal" }, { id: "work", displayName: "Work" }],
++      stickyProfile: "work",
++      retirements: {},
++    })
++    try {
++      const profile = resolveTuiUatAuthProfile({ sourceProjectRoot: root, nonSecretEnv: scenarioEnv }, {
++        userDataRoot: root, env: harnessEnv, store, config: () => ({ auth: { project_profiles: {} } }),
++      })
++      expect(profile.id).toBe("personal")
++      expect(profile.directory).toBe(join(root, "auth", "profiles", "personal"))
++      expect(sandboxEnvironment({ root, authProfile: profile.id }, scenarioEnv).FLYWHEEL_AUTH_PROFILE).toBe("personal")
++      expect(inspect).toHaveBeenCalledTimes(1)
++    } finally {
++      inspect.mockRestore()
++    }
++  })
++
+   it("opens the hub its own account service bound, never the operator's fixed hub", async () => {
+     const env = sandboxEnvironment({ root: temporary("uat-sandbox-") })
+     const hub = releaseHarnessRuntimeOptions(env).startHub!({ lane: "installed", listProjects: async () => [], openProject: async () => "", forgetProject: async () => {}, credential: "credential" })
+@@ -28,13 +56,29 @@ describe("TUI UAT sandbox", () => {
+ })
+ 
+ describe("TUI UAT driver", () => {
++  it("sweeps the sandbox after the app pane has exited and refuses an incomplete stop", () => {
++    const spawn = spyOn(childProcess, "spawnSync").mockReturnValue({
++      pid: 1, output: [], stdout: "", stderr: "can't find window: app", status: 1, signal: null,
++    })
++    const stop = spyOn(fixture, "stopHarnessProcesses").mockReturnValue([])
++    try {
++      attachApp("uat", "/sandbox/home").dispose(true)
++      expect(stop).toHaveBeenCalledWith(["/sandbox/home"])
++      stop.mockReturnValue([{ pid: 41001, command: "/sandbox/home/flywheel serve" }])
++      expect(() => attachApp("uat", "/sandbox/home").dispose(true)).toThrow("41001")
++    } finally {
++      stop.mockRestore()
++      spawn.mockRestore()
++    }
++  })
++
+   it("attaches without relaunching and clicks the last visible text in display-cell coordinates", () => {
+     const pane = "Open\n中文 Open"
+     const spawn = spyOn(childProcess, "spawnSync").mockReturnValue({
+       pid: 1, output: [], stdout: pane, stderr: "", status: 0, signal: null,
+     })
+     try {
+-      const app = attachApp("uat")
++      const app = attachApp("uat", "/sandbox/home")
+       expect(spawn).not.toHaveBeenCalled()
+       app.clickText("Open", true)
+       expect(spawn.mock.calls[1]?.[1]).toEqual(["send-keys", "-t", "uat:app", "-l", "\u001b[<0;6;2M"])

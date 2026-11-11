@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/orchestration/agent-runtime/tools/skill.ts (SCAN_THEN_LOAD_GUIDANCE), the new sentence says a skill whose `# Skill: <id>` block is visible is loaded and must not be loaded again, but a visible block does not record a load for the current runner: the Git worktree gate of the bash policy (treeSafetyBlock in src/orchestration/agent-runtime/tools/bash-command-policy.ts) passes only after a skill-tool load in this runner, so a runner that inherits the block (a fork or resumed history) is refused and told to make the load that the guidance forbids. A review catches this when it says the new guidance conflicts with a load-dependent execution gate or with per-runner load tracking; a remark about wording or redundancy alone does not count.",
+      "category": "elegance",
+      "files": [
+        "src/orchestration/agent-runtime/tools/skill.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "distinguish-visible-skill-context-from-a-current-run-load",
+      "title": "Distinguish visible skill context from a current-run load"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review method-turn title fix"
+}

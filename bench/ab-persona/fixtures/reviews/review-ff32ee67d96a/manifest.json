@@ -1,0 +1,52 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In webview/src/client/session.ts, the catalog listener calls `readings.refreshRowDetail` only when `detailKey` (the live row membership) changes, so a reconnect that reseeds an unchanged catalog reads no question presence: a reading that succeeded earlier stays loaded but stale, and a reading that a lost lane interrupted leaves `questionPresenceLoaded` false with no retry, because the read retry in src/protocol/client/background-reads.ts ignores lane losses (webview/src/client/session-readings.ts `refreshRowDetail`). A review catches it only if it names this mechanism: no question re-read after reconnect with unchanged membership, or the flag stuck false after a read lost with its lane.",
+      "category": "quality",
+      "files": [
+        "webview/src/client/session-readings.ts",
+        "webview/src/client/session.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "reconnect-never-refreshes-question-presence-when-the-catalog",
+      "title": "Reconnect never refreshes question presence when the catalog membership is unchanged"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In webview/src/client/session-readings.ts, `refreshRowDetail` replaces `awaitingAnswer` with the question snapshot's result and sets `questionPresenceLoaded` without regard to `snapshotPosition`, so a `question.updated` patch that arrived while the snapshot read was pending is overwritten by the older snapshot; the registration in webview/src/modules/remote/push-registration.ts ignores state while the flag is false and no longer clears the dismissal on `question.updated`, so the new question never reopens the offer. A review catches it only if it says that a snapshot completing after a newer question patch discards that patch.",
+      "category": "quality",
+      "files": [
+        "webview/src/client/session-readings.ts",
+        "webview/src/modules/remote/push-registration.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "a-pending-question-snapshot-can-overwrite-a-newer-question-p",
+      "title": "A pending question snapshot can overwrite a newer question patch"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In webview/src/modules/remote/push-registration.ts, the dismissal is reconciled only from `client.state().sessions`, which the app publishes in coalesced paints (webview/src/app/app.tsx batches session changes for 16 ms), and the `question.updated` listener now only calls `refresh()`; when `question.removed` and the next `question.updated` of a remembered chat arrive before one paint, both published states show the chat as waiting, so the chat is never pruned and the offer does not reopen. A review catches it only if it says that the answered-then-asked transition can be invisible to the reconcile effect because intermediate states are coalesced.",
+      "category": "quality",
+      "files": [
+        "webview/src/modules/remote/push-registration.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "paint-coalescing-hides-the-answered-to-waiting-transition-in",
+      "title": "Paint coalescing hides the answered-to-waiting transition in a remembered chat"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In webview/src/modules/remote/push-registration.ts, `dismiss` saves the chats that `client.state().sessions` shows as waiting even while `questionPresenceLoaded` is false, and the offer (webview/src/modules/remote/push-guide.tsx) can be visible before that flag is true; a tap on Later then saves an incomplete, usually empty, set, and the first loaded reading treats each chat that was already waiting as new and removes the dismissal. A review catches it only if it says that a dismissal made before question presence loads is lost or reopens the offer when the first reading arrives.",
+      "category": "quality",
+      "files": [
+        "webview/src/modules/remote/push-registration.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "tapping-later-before-question-presence-loads-immediately-los",
+      "title": "Tapping Later before question presence loads immediately loses the dismissal"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Re-review Later fix"
+}

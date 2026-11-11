@@ -1,0 +1,134 @@
+{
+  "base": "209dbaa2cc40e6b068871d569b0d675e6c717840",
+  "files": [
+    {
+      "anchor": null,
+      "path": "docs/architecture-intent/protocol.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "50fcc6c9d8510b2c0cf89448e3d5c0c3fecefc20",
+      "path": "docs/architecture-intent/runtime.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": null,
+      "path": "docs/elegance.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "docs/privacy.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "docs/product-intent/remote-access.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "src/orchestration/modules/remote/account-relay-service.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "src/orchestration/modules/remote/remote-pairing-exchange.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": null,
+      "path": "src/orchestration/modules/remote/terminal-remote.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": null,
+      "path": "src/protocol/modules/remote/machine-picker.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "src/protocol/modules/remote/project-creation.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "src/protocol/modules/remote/relay-client.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "tests/unit/orchestration/modules/remote/account-relay-service.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "tests/unit/orchestration/modules/remote/remote-access.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "tests/unit/orchestration/modules/remote/terminal-remote.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "69a6d74bf157d12a43d63bfc2c4cd4d6773e30a2",
+      "path": "tests/unit/protocol/modules/remote/relay-client.test.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": null,
+      "path": "webview/src/modules/remote/runtimes.tsx",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793545685532,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -152,8 +152,9 @@\n       // the next launch shows the earlier name until the machine wakes.\n       const named = placements.find((placement) => isMachinePlacement(state.paired.runtimeId, placement))?.projectLabel\n       if (named !== undefined && named !== LEGACY_MACHINE_PLACEMENT_LABEL && named !== state.paired.label) {\n-        state.paired = { ...state.paired, label: named }\n-        store.putRuntime(state.paired).catch(() => {})\n+        const renamed = { ...state.paired, label: named }\n+        state.paired = renamed\n+        writeRuntimes(() => store.putRuntime(renamed)).catch(() => {})\n       }\n       publish()\n     }, (reason) => {",
+              "mutation": "1e0a380a-153b-4f20-97d9-de6173467012",
+              "path": "src/protocol/modules/remote/relay-client.ts"
+            }
+          ],
+          "label": "concurrent-presence-updates-lose-a-saved-machine-name",
+          "location": "src/protocol/modules/remote/relay-client.ts:133-147; relay/app/device-store.ts:89-96",
+          "severity": "P2",
+          "title": "Concurrent presence updates lose a saved machine name"
+        },
+        {
+          "location": "docs/product-intent/remote-access.md:13-15; docs/privacy.md:42",
+          "rejected": "cited line not added by the reviewed diff; no later edit by the reviewing lineage",
+          "severity": "P2",
+          "title": "The remote privacy intent contradicts the approved plain-status choice"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "a2da7dac2bdc",
+      "persona": "reviewer-code-elegance",
+      "run": "d063757f80a8",
+      "session": "94412914f735",
+      "start": 1793545361920
+    },
+    {
+      "effort": "high",
+      "end": 1793545681793,
+      "findings": [],
+      "model": "gpt-6-astra",
+      "parent": "a2da7dac2bdc",
+      "persona": "reviewer-code-quality",
+      "run": "486718d38e4c",
+      "session": "8f1462fbda2c",
+      "start": 1793545375937
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

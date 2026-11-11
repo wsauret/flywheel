@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In scripts/bundle-asset-patch.ts, `relativeAssetBindingPattern` (used by `unrewrittenAssetBindings`) and `assetBindingPattern` match only identifiers that end exactly in `_default`, but Bun numbers the identifier when two file assets share a basename (`highlights_default2 = \"./highlights-<hash>.scm\"`), so such a binding is neither rewritten nor reported and the build guard in scripts/build-binary.ts passes. A review catches it only if it says that suffixed or numbered `_default` bindings (basename collisions) escape the pattern, which makes the claim that the guard catches every relative file-asset binding false.",
+      "category": "elegance",
+      "files": [
+        "scripts/bundle-asset-patch.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "reject-bun-s-numbered-asset-bindings-too",
+      "title": "Reject Bun's numbered asset bindings too"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Elegance review worker shipping"
+}

@@ -1,0 +1,893 @@
+diff --git a/docs/adrs/adr-005-flywheel-design-principles.md b/docs/adrs/adr-005-flywheel-design-principles.md
+index 5b1dc89..5965370 100644
+--- a/docs/adrs/adr-005-flywheel-design-principles.md
++++ b/docs/adrs/adr-005-flywheel-design-principles.md
+@@ -137,7 +137,13 @@ One source of truth per value.
+ - Typed execution resources belong to actual agent sessions. Workflow bookkeeping and work-owner controls belong to the run. Imported resource provenance preserves recorded scratch and note paths without copying files.
+ For each project context, installed skill packages live in one published registry revision assembled for that project root. One immutable source inventory declares Flywheel's reusable agent-method root and workflow-method root with their architectural kinds. The revision retains the complete bundled corpus and derives the production core corpus, its sorted package-identity manifest, the model catalog, the TUI slash catalog, and every composed prompt section. No consumer maintains its own package list or body copy, and source-root kind never participates in package identity.
+ Account-level definition reconciliation has one authority for each datum. Override membership is positional: a non-bundled definition is an override exactly when it sits at the catalog path of a default in the bundled default catalog, and a definition with no bundled counterpart is the user's own and is never reconciled. The strict sidecar manifest at `<userDataRoot>/definition-override-baselines.json` is the sole authority for the acknowledged-default identity of each physical project or global override. The bundled default catalog is the sole authority for the defaults shipped by the running build. Override files carry no identity metadata; every identity is a digest of exact file bytes. Override-adjacent snapshots are rebase evidence, and at first observation an existing snapshot's identity seeds the acknowledged baseline before the manifest becomes the authority. The manifest is machine-owned and the snapshots can rebuild it, so a manifest that cannot be read never stops a project from opening: its bytes move aside next to it with a warning, and every override is observed again as at first observation. Conflict and staleness status are derived by comparing the manifest's acknowledged hash with the bundled catalog's current hash; no status field is persisted or synchronized.
+-Canonical access-provider candidate order is a fixed pure function over canonical spend mode, numeric provider rank, and captured account order. One admitted request owns the ordered walk. Each candidate retains its grouped exact-wire model offerings, and each exact route is selected at most once; in-place transient retries and same-account login recovery retain that selection. Before provider work starts, Flywheel selects ordinary standard routes when present, otherwise contributor routes only when the captured active-profile policy allows training routes. An exact-account preference can instead place a contribution-declared free standard route before its ordinary standard sibling without changing candidate order. A failover-class failure on that free route advances to the ordinary sibling before the next candidate and does not by itself publish account quota or provider outage state. A settled output, authentication rejection, provider rejection, malformed request, or unknown failure never advances to a sibling. Offering preference never reorders candidates, so an allowed earlier subscription contributor route remains ahead of a later API standard route. Captured authentication conditions, incompatibility, authorization, availability, quota, proven unaffordability, and a route that cannot run on this machine, such as a provider whose local program is missing or too old, can skip an exact candidate. After provider work starts, only the named failover class for spent quota, throttling, overload, or provider-stated outage advances the walk after settlement. Authentication rejection waits only through the interactive external-login condition described under Secret Handling; otherwise it terminates under its own classification. Provider rejection, malformed requests, and unknown provider failures terminate under their own classifications. None invents quota or service observations. Accounts with included usage expand into `included`, `prepaid`, and `automatic` candidates. An external account that its engine explicitly classifies as usage-only has one `direct_api` candidate with subscription account identity; direct APIs use `direct_api`, and aggregators use `aggregator`. Spend classes always order included value before prepaid balance, automatic spend, direct API spend, and aggregator spend. Full request and routing identity includes spend mode, while one named canonical account identity intentionally owns credentials, model catalogs, and eligibility across that account's modes. Catalog and declaration order are non-semantic. Availability reads current normalized profile observations without polling providers or copying credit state. Included mode requires no paid-use consent. ADR-020 owns the additional evidence-and-consent admission required for prepaid and automatic subscription candidates; direct API and aggregator credentials authorize their paid-use paths by presence, and explicitly classified usage-only external accounts use normal metered billing without entering that authority. A denied or unreviewed subscription envelope skips only its exact mode, does not create retry or suppression state, and lets the fixed candidate walk continue. A profile-local ceiling is policy, not consent: it can hold pooled Copilot seats below their provider allowance, never enables paid use, and never changes candidate order. ChatGPT rate headers affect included mode only. Availability v8 keys each exact account-mode row by the effective auth profile identity and candidate identity in its own partition; provider outage rows remain provider-scoped and global across profiles, so neither profile-local account state nor provider-wide service state can alias the other. ADR-017's profile-scoped protocol-v6 Usage authority keeps provider observations separate from its immutable Flywheel request ledger. Each provider metric has a stable key, explicit scope, and exact-or-unavailable timing; current account quota totals report every containing exact account-wide window independently and include only source-local ledger entries inside that window's half-open bounds. Shared request settlement records the exact serving candidate, opaque auth-owned credential lineage distinct from canonical account identity, token counts, and price evidence for every served attempt. The profile ledger commits before the atomic session usage and budget fact mirror. Provider refresh never rewrites request accounting, provider-observation history and ledger ranges remain separate, and provider invoices remain authoritative for actual charges.
++Canonical access-provider candidate order is a fixed pure function over canonical spend mode, numeric provider rank, and captured account order. One admitted request owns the ordered walk. Each candidate retains its grouped exact-wire model offerings, and each exact route is selected at most once; in-place transient retries and same-account login recovery retain that selection. Before provider work starts, Flywheel selects ordinary standard routes when present, otherwise contributor routes only when the captured active-profile policy allows training routes. An exact-account preference can instead place a contribution-declared free standard route before its ordinary standard sibling without changing candidate order. A failover-class failure on that free route advances to the ordinary sibling before the next candidate and does not by itself publish account quota or provider outage state. A settled output, authentication rejection, provider rejection, malformed request, or unknown failure never advances to a sibling. Offering preference never reorders candidates, so an allowed earlier subscription contributor route remains ahead of a later API standard route.
++
++Captured authentication conditions, incompatibility, authorization, availability, quota, proven unaffordability, and a route that cannot run on this machine can skip an exact candidate. A provider whose local program is missing or too old is one such route. After provider work starts, only the named failover class for spent quota, throttling, overload, or provider-stated outage advances the walk after settlement. Authentication rejection waits only through the interactive external-login condition described under Secret Handling; otherwise it terminates under its own classification. Provider rejection, malformed requests, and unknown provider failures terminate under their own classifications. None invents quota or service observations.
++
++Accounts with included usage expand into `included`, `prepaid`, and `automatic` candidates. An external account that its engine explicitly classifies as usage-only has one `direct_api` candidate with subscription account identity; direct APIs use `direct_api`, and aggregators use `aggregator`. Spend classes always order included value before prepaid balance, automatic spend, direct API spend, and aggregator spend. Full request and routing identity includes spend mode, while one named canonical account identity owns credentials, model catalogs, and eligibility across that account's modes. Catalog and declaration order are non-semantic. Included mode requires no paid-use consent. ADR-020 admits supported prepaid and automatic subscription candidates by accepted exact-envelope consent alone, without any usage reading, freshness, balance, or enablement requirement. Included allowance and affordability checks and the profile-local pooled Copilot ceiling gate included candidates only. They never refuse an accepted paid candidate. Direct API and aggregator credentials authorize their paid-use paths by presence, and explicitly classified usage-only external accounts use normal metered billing without entering that authority. A denied or unreviewed subscription envelope skips only its exact mode, does not create retry or suppression state, and lets the fixed candidate walk continue. Provider refusal on an authorized paid candidate follows normal quota failover with the provider's reason. ChatGPT rate headers affect included mode only.
++
++Availability v8 keys each exact account-mode row by the effective auth profile identity and candidate identity in its own partition. Provider outage rows remain provider-scoped and global across profiles, so profile-local account state and provider-wide service state cannot alias each other. ADR-017's profile-scoped protocol-v6 Usage authority keeps provider observations separate from its immutable Flywheel request ledger. Each provider metric has a stable key, explicit scope, and exact-or-unavailable timing. Current account quota totals report every containing exact account-wide window independently and include only source-local ledger entries inside that window's half-open bounds. Shared request settlement records the exact serving candidate, opaque auth-owned credential lineage distinct from canonical account identity, token counts, and price evidence for every served attempt. The profile ledger commits before the atomic session usage and budget fact mirror. Provider refresh never rewrites request accounting, provider-observation history and ledger ranges remain separate, and provider invoices remain authoritative for actual charges.
+ 
+ Downstream representations are projections. A value that exists in one authority file or store field should not also live as a shadow signal, registry property, adapter field, or duplicated status enum.
+ 
+diff --git a/docs/adrs/adr-009-tool-execution-safety.md b/docs/adrs/adr-009-tool-execution-safety.md
+index 78abe8f..3796c26 100644
+--- a/docs/adrs/adr-009-tool-execution-safety.md
++++ b/docs/adrs/adr-009-tool-execution-safety.md
+@@ -55,7 +55,7 @@ The writer stages immutable chunks and manifest pages before settlement and prov
+ 
+ `edit` is the one file edit tool. It has two registrations, and the serving-model interaction profile selects one of them for each request: OpenAI GPT and peerAgent2 identities receive the peerAgent2 patch grammar presented as `apply_patch`, and every other model receives the string edit presented as `edit`. A presented tool declares its own wire shape; `apply_patch` carries the Lark grammar that OpenAI custom tools constrain generation with, and adapters build custom tools from that declaration rather than from the tool's name. The request surface records each presented name against its registration id and its tool name, and capability grants, bash policy, dispatch admission, and model-facing guidance read the tool name or the presented name through that map, so no consumer outside the profile spells a model next to a tool name. Both presentations plan differently and publish through one shared path that admits, prepares the durable operation, publishes under compare-and-swap, reads back, and settles. `read` and `search` return ordinary one-based decimal line numbers. Their output creates no editing protocol or cache authority. Each agent loop keeps one in-memory read ledger of what its reads returned (content hash and covered lines) and what its searches showed (covered lines only). A shell command that exits 0 and consists only of `cat`, `nl`, `bat`, `head`, `tail`, or `sed -n` reads of plain project file paths counts as a read of the lines it printed, unless output compression shortened them. A publication consults the ledger and attaches a warning when the target was never read in this loop, changed since it was read, or was read only in part that misses the replaced lines; a change with a later `file.changed` fact names that writer. The warning never blocks: Flywheel has no approval gates, and the compare-and-swap already refuses the one race that corrupts silently. A verified publication refreshes the ledger, so an edit that follows an edit is not stale. `write` refuses content whose every line carries a read line-number prefix. A successful update returns its unified diff hunks to the model, bounded to a model line limit while the UI keeps the longer rendering, so the model sees exactly what landed without a re-read; a creation returns only its path and line count because the model authored that content. `replace_all` publishes only when every occurrence matched exactly or through line-ending recovery; a normalizing tier that matched several occurrences refuses, because a fuzzy match must be reviewed one occurrence at a time.
+ 
+-The string edit replaces one uniquely matched string in one existing strict UTF-8 file, or every match when explicitly requested. The patch edit accepts the bounded peerAgent2 V4A grammar for add, delete, update, and move. Deterministic formatting recovery may normalize line endings, proven read or search number prefixes, trailing whitespace, Unicode punctuation and spaces, or one uniform indentation shift. Similarity diagnostics never authorize publication. Input that is binary, malformed UTF-8, oversized, ambiguous, overlapping, empty where a match is required, or a no-op is refused before mutation.
++The string edit replaces one uniquely matched string in one existing strict UTF-8 file, or every match when explicitly requested. The patch edit accepts the bounded peerAgent2 V4A grammar for add, delete, update, and move. Deterministic formatting recovery may normalize line endings, proven read or search number prefixes, trailing whitespace, Unicode punctuation and spaces, or one uniform indentation shift. Similarity diagnostics never authorize publication. Input that is binary, malformed UTF-8, oversized, ambiguous, overlapping, or empty where a match is required is refused before mutation. A no-op succeeds and reports the unchanged files without publishing them or recording mutation facts. A mixed patch publishes only its changing files and reports its unchanged files.
+ 
+ Parsing and planning are TypeScript in `src/infra/file-edit/`: the peerAgent2 V4A patch parser, the peerAgent2 seek tiers (exact, trailing whitespace, both margins, folded punctuation) that apply each chunk at the first match after the previous chunk, the string edit ladder, and the line-ending model. They receive text and caller-owned snapshots, enforce bounds, and return plans with replacement byte spans; they never receive a filesystem path and hold no write authority. A refusal names the path and the expected lines in plain words. The only native code in file editing is the Windows retained directory authority in `src/infra/descriptor-directory-win32-native.ts`, bound through `bun:ffi` to the kernel libraries every Windows process already runs on: handle-relative opens through `NtCreateFile`, snapshot reads, compare-then-rename publication, DACL evidence, and deletion. It is a platform primitive that only the win32 contained-directory backend loads, not an editing decision. TypeScript retains the physical parent authorities, canonical queue keys, exact byte and access snapshots, compare-and-swap preconditions, publication and deletion, verified readback, attribution, and durable settlement. Final targets that are symbolic links or reparse points are refused.
+ 
+@@ -251,11 +251,11 @@ A Bash command without `mutates` writes in place, and its changes stay outside t
+ 
+ Agents run Git commands as separate calls without `mutates` and never chain them onto a mutating command. A PATH-first Git wrapper refuses repository-write modes before invoking Git and tells the agent to rerun the Git command as a separate call without `mutates`. Read-only Git commands, including scripts and build tools that only read Git, remain allowed. Agents set `mutates: true` only when a command exists to change the project files they are working on, so that the change is recorded and reviewed like a file tool change. Examples are heredoc and `cat >` writes, `sed -i`, scripts that rewrite files, formatters, generators, and plain `mv` and `rm`. Agents leave it unset when the writes are side effects of running something: dependency or binary installs, builds, tests, caches, and servers. They name the target tree with `cwd`, not an absolute `cd` in the command. They create scripts with the write tool and use Bash only to run them. The declaration is the first input field, so the row reads Edit while the command arrives. Once files land, added files use the write content presentation and its syntax palette; modified and removed files use edit diffs. The row reads Write when every landed file was added, otherwise Edit. Every client derives these choices from the shared file-change model.
+ 
+-Wholly ignored directories are shared with the selected tree instead of copied. The running session's entire folder, `.flywheel/sessions/<id>/`, stays shared: writes land directly and are reported as reviewed file changes by comparison with a before image inside the copy home. The image excludes `owner.pid` at the session folder root. At the scratch root only, it excludes `mutations/`, runtime background command files named `flywheel-agent-bg-*`, and foreground output spools named `flywheel-foreground-*`. Other entries are cloned as whole files or directories; scratch itself is cloned by its eligible root entries. A concurrent write to the same session folder during the command is reported as the command's. The runtime derives the session folder from the known copy home under `<sessionDir>/scratch/mutations/`, verifies the `scratch` and `mutations` names, and never follows a command-writable link to find the root. In-memory fingerprints of the image detect removed, replaced, or changed files and report that session-folder changes could not be verified. Only regular image files are read; image links are never followed. A later build has no in-memory fingerprints and trusts the retained regular image files without proving their integrity. Copies without an image observe no session-folder changes. Session-folder observation runs on every settlement, including interruption and repository refusal, before the image is discarded. It records evidence only and never publishes session-folder writes or adds them to Session Changes. Other session folders and runtime stores stay outside this observation. The scanning Worker transfers both byte endpoints and computes binary identities so the runtime does not copy or hash large binary files. The copy is a copy-on-write clone where the filesystem supports one and a full copy where it does not, as on most Windows volumes. A project is outside Git only when Git says so and no `.git` entry stands at or above it. A Git that times out, is ended, or refuses a repository it found fails the copy, because a copy that shares no ignored directory clones every dependency tree and build output. Capture fails open after root selection: a command whose copy cannot be taken runs in place, its result says that its changes were not recorded as mutations, and one `agent.bash.mutation.uncaptured` record beside `agent.bash.mutation.applied` gives the capture failure rate. Git-write refusal still applies when capture is unavailable. A command whose Git wrapper cannot be prepared is refused before launch.
++Wholly ignored directories are shared with the selected tree instead of copied. The running session's entire folder, `.flywheel/sessions/<id>/`, stays shared: writes land directly and are reported as reviewed file changes by comparison with a before image inside the copy home. The image excludes `owner.pid` at the session folder root. At the scratch root only, it excludes `mutations/`, runtime background command files named `flywheel-agent-bg-*`, and foreground output spools named `flywheel-foreground-*`. Other entries are cloned as whole files or directories; scratch itself is cloned by its eligible root entries. A concurrent write to the same session folder during the command is reported as the command's. The runtime derives the session folder from the known copy home under `<sessionDir>/scratch/mutations/`, verifies the `scratch` and `mutations` names, and never follows a command-writable link to find the root. In-memory fingerprints of the image detect removed, replaced, or changed files and report that session-folder changes could not be verified. Only regular image files are read; image links are never followed. A later build has no in-memory fingerprints and trusts the retained regular image files without proving their integrity. Copies without an image observe no session-folder changes. Session-folder observation runs on every settlement, including interruption and repository refusal, before the image is discarded. It records evidence only and never publishes session-folder writes or adds them to Session Changes. Other session folders and runtime stores stay outside this observation. The scanning Worker transfers both byte endpoints and computes binary identities so the runtime does not copy or hash large binary files. The copy is a copy-on-write clone where the filesystem supports one and a full copy where it does not, as on most Windows volumes. A project is outside Git only when Git says so and no `.git` entry stands at or above it. A Git that times out, is ended, or refuses a repository it found fails the copy, because a copy that shares no ignored directory clones every dependency tree and build output. Capture fails open after root selection: a command whose copy cannot be taken runs in place, its result says that its changes were not recorded as mutations, and one `agent.bash.mutation.uncaptured` record beside `agent.bash.mutation.applied` gives the capture failure rate. The OS guard exists only to keep a command's writes inside its copy, so a command that runs in place runs without it, like a command without `mutates`. Git-write refusal still applies when capture is unavailable. A command whose Git wrapper cannot be prepared is refused before launch.
+ 
+ Each command has a private Git directory in its copy home so permitted read-only Git sees the repository's history, refs, HEAD, index, configuration, excludes, and stash history. Git initializes that directory with the repository's object format and ref backend, including SHA-256 and reftable. Git alternates read the real common object store; no shared object directory is symlinked into the copy. A `.git` file at the copy tree root names the private directory. Git discovers the repository from its current directory, including after a `cd` into another tree. A project below the Git top level is laid out at its prefix, and index entries outside the project are marked skip-worktree. The private config preserves the repository format, common config, worktree config only when `extensions.worktreeConfig` enables it, and effective excludes, then fixes the private work tree and excludes file and disables automatic garbage collection. A split index brings its shared index files and becomes a standalone private index. Read execution suppresses optional locks, fsmonitor, and configured textconv cache writes. After setup completes, one semantic repository baseline belongs to the file-only execution policy. The baseline supports the landing backstop, not Git publication.
+ 
+-On macOS, Seatbelt refuses writes to the real selected tree, all registered work trees of the same repository, and the real Git directories. Literal ancestor rules also refuse removal or renaming of directory nodes that contain protected roots, without closing their writable contents. On Linux, bubblewrap mounts those paths read-only. Shared entries of the selected tree stay writable, but never reopen its Git directory. The session scratch directory and copy home stay writable even when they lie inside a guarded tree. Protected trees and Git directories inside these writable allowances stay protected, including the shared entries' copied aliases on Linux. A refused write names its target tree in the result and tells the agent to select it with `cwd`, including when the error names both a private source and a protected destination. A mixed-path error with a relative destination names the protected roots when no exact root can be identified. Other folders are not guarded. Windows runs the copy unguarded by the OS mutation guard, with a PATH-first native Git wrapper, the same private Git read view, and file-only landing. A macOS or Linux host whose guard launcher is unavailable runs the command in place through the uncaptured path and reports that capture was unavailable. Git-write refusal still applies.
++On macOS, Seatbelt refuses writes to the real selected tree, all existing registered work trees of the same repository, and the real Git directories. A registered work tree that no longer exists is not guarded and does not fail guard setup or launch. The selected tree and Git directories remain required. Literal ancestor rules also refuse removal or renaming of directory nodes that contain protected roots, without closing their writable contents. On Linux, bubblewrap mounts those paths read-only. Shared entries of the selected tree stay writable, but never reopen its Git directory. The session scratch directory and copy home stay writable even when they lie inside a guarded tree. Protected trees and Git directories inside these writable allowances stay protected, including the shared entries' copied aliases on Linux. A refused write names its target tree in the result and tells the agent to select it with `cwd`, including when the error names both a private source and a protected destination. A mixed-path error with a relative destination names the protected roots when no exact root can be identified. Other folders are not guarded. Windows runs the copy unguarded by the OS mutation guard, with a PATH-first native Git wrapper, the same private Git read view, and file-only landing. A macOS or Linux host whose guard launcher is unavailable runs the command in place through the uncaptured path and reports that capture was unavailable. Git-write refusal still applies.
+ 
+ When the command exits, foreground, auto-yielded, or background, landing checks its repository baseline before publishing any project file. The check compares HEAD and index entries by path, mode, object id, and stage. For the files backend, it compares all refs including symbolic targets and the ordered stash stack. For reftable, it hashes the active table list and every listed table in order, without reading objects or migrating formats. This stack includes dangling symbolic refs and all reflogs. The private copy seeds its reftable stack directly from these complete metadata bytes. Read-only Git commands do not change the stack; any ref or reflog write changes it. A missing table or a list that changes during inspection refuses the comparison. The check also rejects unexpected root or nested Git registrations. A detected change or an unavailable comparison applies no project file changes, preserves the copy and its record, and names the copy in a bounded recovery report. Session-folder writes already landed and remain reviewable in the command's evidence. Raw index stat refreshes do not count as semantic changes. Git objects, the index, HEAD, refs, stash, configuration, remotes, hooks, and registrations never land from the copy. The wrapper and backstop form a cooperative command boundary, not hostile-process containment. Absolute executables, replaced search paths, and in-process libraries can bypass the wrapper. Worktree-only bypass changes can land when the repository baseline remains unchanged. The final-state comparison does not prove which program wrote a file. The files-backend comparison does not detect a change that was reversed before landing; the reftable comparison rejects ref or reflog writes even when their final values match the baseline.
+ 
+diff --git a/docs/product-intent/agent-methods.md b/docs/product-intent/agent-methods.md
+index c086e4d..2a5ed88 100644
+--- a/docs/product-intent/agent-methods.md
++++ b/docs/product-intent/agent-methods.md
+@@ -104,7 +104,7 @@ When a conversation continues with a model that has a different tool contract, F
+ 
+ ## PI-AGENT-017: Shell changes remain inspectable
+ 
+-When an agent declares that a shell command mutates files, Flywheel captures the changes in the work tree that contains the command's working directory and shows that call the way a file tool shows its change: a file the command created reads as a write, and a file it changed or deleted reads as an edit. This presentation starts from the moment the declaration arrives and is backed by the same mutation evidence in session history. While the command's input arrives and while it runs, its row reads as an edit with one line that says a bash command is running, without the command text. When it settles without landed changes, its row reads as the ordinary shell command it ran. The changes never include concurrent work by other agents. When a file changed elsewhere while the command ran, Flywheel rebases the command's change onto the current file; only the regions both sides changed are marked as conflicts, and the agent is told to resolve them. A command declared as mutating captures only its changes to file contents. Git commands that change the repository run without that declaration; inside a mutating command they are refused with a message that says so. A write to another work tree of the same repository is refused with a message that tells the agent to set the command's working directory to that tree. Shell commands that are not declared as mutating run without extra repository work, and Flywheel does not show their changes as file writes or edits or include them in the session's changes.
++When an agent declares that a shell command mutates files, Flywheel captures the changes in the work tree that contains the command's working directory and shows that call the way a file tool shows its change: a file the command created reads as a write, and a file it changed or deleted reads as an edit. This presentation starts from the moment the declaration arrives and is backed by the same mutation evidence in session history. While the command's input arrives and while it runs, its row reads as an edit with one line that says a bash command is running, without the command text. When it settles without landed changes, its row reads as the ordinary shell command it ran. The changes never include concurrent work by other agents. When a file changed elsewhere while the command ran, Flywheel rebases the command's change onto the current file; only the regions both sides changed are marked as conflicts, and the agent is told to resolve them. A command declared as mutating captures only its changes to file contents. Git commands that change the repository run without that declaration; inside a mutating command they are refused with a message that says so. A write to another work tree of the same repository is refused with a message that tells the agent to set the command's working directory to that tree. When Flywheel cannot capture a mutating command's changes, it runs the command in place, as if it were not declared as mutating, and says that its changes were not captured. Shell commands that are not declared as mutating run without extra repository work, and Flywheel does not show their changes as file writes or edits or include them in the session's changes.
+ 
+ Every agent's shell refuses recognized writes and deletes outside the project, the `.flywheel` folders, and the project's registered worktrees, except device sinks. The working directory does not widen that allowance. A target that Flywheel cannot place is refused too. An unknown working directory does not refuse a write whose literal path Flywheel can place inside the allowance. The refusal first says that the command was blocked because it is not a safe command. It stops the whole command, names the target and reason, and directs the agent to the project or scratchpad. An unplaceable target requires a literal path. The refusal ends by telling the agent not to rephrase the command to reach the same target. This is a guard against mistakes, not a sandbox for arbitrary programs. A read-only agent, such as the explorer or a reviewer, may write only in its scratchpad or to device sinks; other recognized writes and deletes are refused.
+ 
+@@ -158,7 +158,7 @@ Every agent wait on managed work, including shell commands, subagents, and workf
+ 
+ ## PI-AGENT-026: A child hands off only after its background work ends
+ 
+-A subagent or an agent of a workflow hands off only when no command that it started in the background still runs, including a server or another service. It waits for a command that finishes on its own, and it stops a service before it hands off. A handoff that it tries earlier is refused, and the refusal names each command that still runs.
++A subagent or an agent of a workflow hands off only when none of its background work remains: no command that it started still runs, including a server or another service, and no subagent or workflow that it started still runs or has a result that has not reached it. It waits for work that finishes on its own, and it stops a service before it hands off. A handoff that it tries earlier is refused, and the refusal names each item of work.
+ 
+ ## PI-AGENT-027: A message to a workflow reaches the agents that it is for
+ 
+@@ -205,3 +205,11 @@ A caller can inspect resolved settings without making a model request. Run evide
+ ## PI-AGENT-031: Chat orchestrates substantive work with workflows
+ 
+ While Workflows is On, the root chat agent delegates every substantive task. It aims for the most complete and correct result, not the cheapest one, and reaches it as soon as possible. It writes a workflow file for the task and launches it by content or path. It uses a workflow only when at least two agents are needed and a later agent reads an earlier agent's output. It gives one agent's work to a subagent and independent work to parallel subagents. Work in several phases runs as separate dispatches in sequence. The chat reads each result before it starts the next phase. Independent units of work start at the same time. A unit waits only for a named prerequisite or for a file that a running unit changes, and the order in which units commit does not make a unit wait. It prefers workflows that verify findings adversarially, unless the work is trivial or already verified. It works without delegation only on conversational turns and trivial mechanical edits. While Workflows is Ask, the agent launches only when its judgment says the task needs a workflow, and each launch needs the person's approval. While Workflows is Off, no workflow can launch, and the chat works directly or through subagents.
++
++## PI-AGENT-032: Tool calls are read for what they mean
++
++Flywheel carries out a tool call whose meaning is clear even when its form is wrong, such as a value in the wrong type or encoding, a misspelled key or option, a wrapped argument object, or a path that identifies exactly one existing file in another form. The result begins with a note that states how Flywheel read the call. Flywheel never changes a value that is already valid, never invents missing content, never chooses between two possible meanings, and never relaxes a safety, permission, or containment check; it refuses such a call with what the agent needs to correct it.
++
++## PI-AGENT-033: Every finished background task reaches its parent
++
++When a subagent, workflow, or background command ends, its result always reaches the conversation of the agent that started it, including after contention, a restart, a planned replacement, or a stop, and while that agent is mid-turn or waiting. Until it arrives, it counts as that agent's outstanding work.
+diff --git a/src/infra/code-mode/codemode.ts b/src/infra/code-mode/codemode.ts
+index 00ac518..768f2d5 100644
+--- a/src/infra/code-mode/codemode.ts
++++ b/src/infra/code-mode/codemode.ts
+@@ -51,6 +51,9 @@ export type ExecuteOptions<Provided extends Record<string, unknown> = {}> = {
+   onToolCallStart?: (call: ToolRuntime.ToolCallStarted) => Effect.Effect<void, never, Services<Provided>>
+   /** Observes each admitted tool call as it succeeds, fails, or is interrupted. */
+   onToolCallEnd?: (call: ToolRuntime.ToolCallEnded) => Effect.Effect<void, never, Services<Provided>>
++  /** Lets a host resolve an unknown callable name at its own admission boundary.
++   *  Input still crosses the data-only boundary and calls retain all execution limits. */
++  onUnknownTool?: (name: string, input: unknown) => Effect.Effect<unknown, unknown, Services<Provided>>
+   /** Observes every raw rendered line in order, including dropped lines, after the retention view updates. Interruption propagates. */
+   onLog?: (line: string, view: ConsoleLogView) => Effect.Effect<void, never, Services<Provided>>
+ }
+diff --git a/src/infra/code-mode/interpreter/execute.ts b/src/infra/code-mode/interpreter/execute.ts
+index 629dc22..d6ba443 100644
+--- a/src/infra/code-mode/interpreter/execute.ts
++++ b/src/infra/code-mode/interpreter/execute.ts
+@@ -73,6 +73,7 @@ export const executeWithLimits = <const Provided extends Record<string, unknown>
+       {
+         onToolCallStart: options.onToolCallStart,
+         onToolCallEnd: options.onToolCallEnd,
++        onUnknownTool: options.onUnknownTool,
+       },
+     )
+     const logs = new RetainedLogs(Math.min(
+diff --git a/src/infra/code-mode/tool-runtime.ts b/src/infra/code-mode/tool-runtime.ts
+index 1066fb7..365d9bd 100644
+--- a/src/infra/code-mode/tool-runtime.ts
++++ b/src/infra/code-mode/tool-runtime.ts
+@@ -59,6 +59,7 @@ export type ToolCallEnded = {
+ export type ToolCallHooks<R = never> = {
+   readonly onToolCallStart?: ((call: ToolCallStarted) => Effect.Effect<void, never, R>) | undefined
+   readonly onToolCallEnd?: ((call: ToolCallEnded) => Effect.Effect<void, never, R>) | undefined
++  readonly onUnknownTool?: ((name: string, input: unknown) => Effect.Effect<unknown, unknown, R>) | undefined
+ }
+ 
+ export type ToolDescription = {
+@@ -465,10 +466,17 @@ const namespaceKeys = <R>(root: ToolNode<R>, path: ReadonlyArray<string>): Reado
+   return Array.from(node.children.keys())
+ }
+ 
+-const resolve = <R>(root: ToolNode<R>, path: ReadonlyArray<string>): Tool<R> => {
++const resolve = <R>(root: ToolNode<R>, path: ReadonlyArray<string>, onUnknownTool?: ToolCallHooks<R>["onUnknownTool"]): Tool<R> => {
+   const segments = canonicalSegments(path)
+   const node = lookup(root, segments)
+   if (node === undefined) {
++    if (onUnknownTool !== undefined) return {
++      _tag: "CodeModeTool",
++      description: "",
++      input: Schema.Unknown,
++      output: Schema.Unknown,
++      execute: (input) => onUnknownTool(segments.join("."), input),
++    }
+     throw new ToolRuntimeError("UnknownTool", `Unknown tool '${segments.join(".")}'.`, [
+       "The tool may have been removed or renamed. Use searchCatalog to find available tools.",
+     ])
+@@ -577,7 +585,7 @@ export const make = <R>(
+       Effect.gen(function* () {
+         const name = canonicalSegments(path).join(".")
+         const externalArgs = args.map((arg) => copyOut(copyIn(arg, `Arguments for tool '${name}'`), "json"))
+-        const tool = resolve(root, path)
++        const tool = resolve(root, path, hooks?.onUnknownTool)
+         return yield* executeTool(name, tool, externalArgs)
+       }),
+   }
+diff --git a/src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts b/src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts
+index 63b8e0f..7606544 100644
+--- a/src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts
++++ b/src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts
+@@ -13,9 +13,12 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../infra/runtime-fac
+ import { extractToolContentFact, type ExtractedToolContentFact } from "../../../infra/tool-content-extraction.js";
+ import { runInTaskSlices, type TaskSliceScheduling } from "../../../infra/task-scheduling.js";
+ import { bridgeExternalPromise } from "../external-promise-bridge.js";
++import { readJsonValue } from "../llm/json-parse.js";
++import { asRecord } from "../../../infra/record.js";
++import { describeInputRepair } from "./coerce-input.js";
+ import type { ExecutionWhitelist } from "./tool-policy.js";
+ import { evaluateToolPolicy } from "./tool-policy.js";
+-import { executePreparedTool, prepareToolCall, preparedToolAdmission, type PreparedToolCall, type ToolExecutionGate } from "./tool-dispatch.js";
++import { executePreparedTool, prepareToolCall, preparedToolAdmission, withInputRepairNotice, type PreparedToolCall, type ToolExecutionGate } from "./tool-dispatch.js";
+ import type { ToolConcurrencyGate } from "./tool-concurrency-gate.js";
+ import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
+ import type { ToolCall } from "../llm/types.js";
+@@ -34,7 +37,7 @@ export interface NestedToolFactPublisher {
+ }
+ 
+ export interface NestedToolDispatchBatch {
+-  execute(name: string, input: RuntimeToolInput): Effect.Effect<ToolResult, PersistenceWriteRefused>;
++  execute(name: string, input: unknown): Effect.Effect<ToolResult, PersistenceWriteRefused>;
+   /** Stops registration, interrupts and joins owned calls, then fills only missing terminal cells. */
+   close(): Effect.Effect<void>;
+ }
+@@ -53,71 +56,72 @@ export interface ToolDispatchExecutionOptions {
+ /** Shared Effect-native admission and Promise-bridge path for provider and code callers. */
+ export function executeDispatchedTool(options: ToolDispatchExecutionOptions): Effect.Effect<ToolResult, PersistenceWriteRefused> {
+   const { prepared, context } = options;
+-  if (prepared.validationResult !== undefined) {
+-    options.onSettled?.(prepared.validationResult);
+-    return Effect.succeed(prepared.validationResult);
+-  }
+-  const evaluatePolicy = Effect.promise(() => awaitWithAbortSignal(evaluateToolPolicy(prepared.call, {
+-    availableTools: context.availableTools,
+-    effectiveBundledSkillIds: context.effectiveBundledSkillIds,
+-    executionWhitelist: options.executionWhitelist,
+-  }), options.signal));
+-
+   let bridge: ReturnType<typeof bridgeExternalPromise<ToolResult>> | undefined;
+-  const admitted = Effect.uninterruptibleMask((restore) => Effect.scoped(Effect.gen(function* () {
+-    yield* Effect.sync(() => writeToolLifecycleDiagnostic(prepared.call, "admission-wait"));
+-    yield* Effect.acquireRelease(
+-      Effect.promise(async () => options.gate.acquire(await preparedToolAdmission(prepared, context, options.admissionSignal), options.admissionSignal)),
+-      (release) => Effect.sync(() => {
+-        release();
+-        writeToolLifecycleDiagnostic(prepared.call, "permit-released");
+-      }),
+-    );
+-    yield* Effect.sync(() => writeToolLifecycleDiagnostic(prepared.call, "admitted"));
+-    const admissionExit = yield* Effect.exit(restore(Effect.void));
+-    if (Exit.isFailure(admissionExit) && Cause.hasInterrupts(admissionExit.cause)) {
+-      return { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const };
++  return Effect.gen(function* () {
++    const admission = yield* Effect.promise(() => preparedToolAdmission(prepared, context, options.admissionSignal));
++    if (prepared.validationResult !== undefined) {
++      options.onSettled?.(prepared.validationResult);
++      return prepared.validationResult;
+     }
+-    writeToolLifecycleDiagnostic(prepared.call, "handler-started");
+-    bridge = bridgeExternalPromise<ToolResult>((bridgeSignal) => {
+-      const signal = mergeAbortSignals(options.signal, bridgeSignal);
+-      return executePreparedTool(prepared, { ...context, signal }, options.toolExecutionGate ? { gate: options.toolExecutionGate } : {}).then((result) =>
+-        signal.aborted && result.outcome === "error" ? { ...result, outcome: "interrupted" as const } : result);
+-    });
+-    const exit = yield* Effect.exit(restore(bridge.owned));
+-    const settlement = bridge.settlement() ?? exit;
+-    if (Exit.isSuccess(settlement)) return settlement.value;
+-    const failure = Cause.squash(settlement.cause);
+-    if (failure instanceof PersistenceWriteRefused) return yield* Effect.fail(failure);
+-    if (Cause.hasInterrupts(settlement.cause)) {
+-      return { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const };
++    const verdict = yield* Effect.promise(() => awaitWithAbortSignal(evaluateToolPolicy({ ...prepared.call, input: prepared.input }, {
++      availableTools: context.availableTools,
++      effectiveBundledSkillIds: context.effectiveBundledSkillIds,
++      executionWhitelist: options.executionWhitelist,
++    }), options.signal));
++    if (!verdict.allowed) {
++      const result = withInputRepairNotice(prepared, { content: verdict.reason, outcome: "error" });
++      options.onSettled?.(result);
++      return result;
+     }
+-    return { content: `Tool '${prepared.call.name}' failed: ${errorMessage(Cause.squash(settlement.cause))}`, outcome: "error" as const };
+-  })).pipe(Effect.catchCause((cause) => {
+-    const failure = Cause.squash(cause);
+-    if (failure instanceof PersistenceWriteRefused) return Effect.fail(failure);
+-    const settlement = bridge?.settlement();
+-    if (settlement !== undefined && settlement !== null && Exit.isSuccess(settlement)) return Effect.succeed(settlement.value);
+-    return Effect.succeed(Cause.hasInterrupts(cause) || options.signal?.aborted === true
+-      ? { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const }
+-      : { content: `Tool '${prepared.call.name}' failed: ${errorMessage(Cause.squash(cause))}`, outcome: "error" as const });
+-  }), Effect.tap((result) => Effect.sync(() => {
+-    writeToolLifecycleDiagnostic(prepared.call, "handler-settled");
+-    if (bridge === undefined && result.outcome === "interrupted") return;
+-    options.onSettled?.(result);
+-  }))));
+-  return Effect.flatMap(evaluatePolicy, (verdict) => {
+-    if (verdict.allowed) return admitted;
+-    const result = { content: verdict.reason, outcome: "error" as const };
+-    options.onSettled?.(result);
+-    return Effect.succeed(result);
++    return yield* Effect.uninterruptibleMask((restore) => Effect.scoped(Effect.gen(function* () {
++      yield* Effect.sync(() => writeToolLifecycleDiagnostic(prepared.call, "admission-wait"));
++      yield* Effect.acquireRelease(
++        Effect.promise(() => options.gate.acquire(admission, options.admissionSignal)),
++        (release) => Effect.sync(() => {
++          release();
++          writeToolLifecycleDiagnostic(prepared.call, "permit-released");
++        }),
++      );
++      yield* Effect.sync(() => writeToolLifecycleDiagnostic(prepared.call, "admitted"));
++      const admissionExit = yield* Effect.exit(restore(Effect.void));
++      if (Exit.isFailure(admissionExit) && Cause.hasInterrupts(admissionExit.cause)) {
++        return { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const };
++      }
++      writeToolLifecycleDiagnostic(prepared.call, "handler-started");
++      bridge = bridgeExternalPromise<ToolResult>((bridgeSignal) => {
++        const signal = mergeAbortSignals(options.signal, bridgeSignal);
++        return executePreparedTool(prepared, { ...context, signal }, options.toolExecutionGate ? { gate: options.toolExecutionGate } : {}).then((result) =>
++          signal.aborted && result.outcome === "error" ? { ...result, outcome: "interrupted" as const } : result);
++      });
++      const exit = yield* Effect.exit(restore(bridge.owned));
++      const settlement = bridge.settlement() ?? exit;
++      if (Exit.isSuccess(settlement)) return settlement.value;
++      const failure = Cause.squash(settlement.cause);
++      if (failure instanceof PersistenceWriteRefused) return yield* Effect.fail(failure);
++      if (Cause.hasInterrupts(settlement.cause)) {
++        return { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const };
++      }
++      return { content: `Tool '${prepared.call.name}' failed: ${errorMessage(Cause.squash(settlement.cause))}`, outcome: "error" as const };
++    })).pipe(Effect.catchCause((cause) => {
++      const failure = Cause.squash(cause);
++      if (failure instanceof PersistenceWriteRefused) return Effect.fail(failure);
++      const settlement = bridge?.settlement();
++      if (settlement !== undefined && settlement !== null && Exit.isSuccess(settlement)) return Effect.succeed(settlement.value);
++      return Effect.succeed(Cause.hasInterrupts(cause) || options.signal?.aborted === true
++        ? { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const }
++        : { content: `Tool '${prepared.call.name}' failed: ${errorMessage(Cause.squash(cause))}`, outcome: "error" as const });
++    }), Effect.tap((result) => Effect.sync(() => {
++      writeToolLifecycleDiagnostic(prepared.call, "handler-settled");
++      if (bridge === undefined && result.outcome === "interrupted") return;
++      options.onSettled?.(result);
++    }))));
+   }).pipe(Effect.catchCause((cause) => {
+     const failure = Cause.squash(cause);
+     if (failure instanceof PersistenceWriteRefused) return Effect.fail(failure);
+     return Effect.succeed(
+-    Cause.hasInterrupts(cause) || options.signal?.aborted === true
+-      ? { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const }
+-      : { content: `Tool '${prepared.call.name}' failed: ${errorMessage(Cause.squash(cause))}`, outcome: "error" as const },
++      Cause.hasInterrupts(cause) || options.signal?.aborted === true
++        ? { content: `Tool '${prepared.call.name}' was interrupted before it could complete.`, outcome: "interrupted" as const }
++        : { content: `Tool '${prepared.call.name}' failed: ${errorMessage(Cause.squash(cause))}`, outcome: "error" as const },
+     );
+   }));
+ }
+@@ -161,16 +165,25 @@ export function createNestedToolDispatchBatch(options: {
+     );
+   });
+ 
+-  const execute = (name: string, input: RuntimeToolInput): Effect.Effect<ToolResult, PersistenceWriteRefused> => Effect.suspend(() => {
++  const execute = (name: string, rawInput: unknown): Effect.Effect<ToolResult, PersistenceWriteRefused> => Effect.suspend(() => {
+     if (closed) return Effect.succeed({ content: "Code tool dispatch is closed.", outcome: "interrupted" });
+     sequence += 1;
++    const input = asRecord(typeof rawInput === "string" ? readJsonValue(rawInput)?.value : rawInput);
+     const call: ToolCall = {
+       id: `${options.parentToolUseId}#${sequence}`,
+       name,
+-      input,
++      input: input ?? {},
++      ...(input ? {} : { inputParseError: `Tool '${name}' received an input that is not an object.` }),
+       ...(options.modelRequestId ? { modelRequestId: options.modelRequestId } : {}),
+     };
+-    const prepared = prepareToolCall(call, options.tools, options.executionAdmission?.(name));
++    const prepared = prepareToolCall(call, options.tools);
++    prepared.capabilityAdmission = options.executionAdmission?.(prepared.call.name);
++    const notices = [
++      ...(typeof rawInput === "string" && input ? [describeInputRepair({ kind: "parsed_value", path: "input", type: "object" })] : []),
++      ...(prepared.call.repairedFrom ? [`Note: tool '${prepared.call.repairedFrom}' was read as '${prepared.call.name}'.`] : []),
++      ...(prepared.repairNotice ? [prepared.repairNotice] : []),
++    ];
++    if (notices.length > 0) prepared.repairNotice = notices.join("\n");
+     const entry: NestedEntry = { call: prepared.call };
+     entries.push(entry);
+ 
+diff --git a/src/orchestration/agent-runtime/tools/tool-paths.ts b/src/orchestration/agent-runtime/tools/tool-paths.ts
+index 1a691e0..32472cc 100644
+--- a/src/orchestration/agent-runtime/tools/tool-paths.ts
++++ b/src/orchestration/agent-runtime/tools/tool-paths.ts
+@@ -2,7 +2,8 @@ import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
+ import { basename, dirname, extname, isAbsolute, join, normalize, parse, relative, resolve, sep } from "node:path";
+ 
+ import { listFiles } from "./ripgrep.js";
+-import type { RuntimeToolInput, ToolAdmissionContext } from "./types.js";
++import { canonicalMutationPath } from "../../../infra/file-mutation-queue.js";
++import type { RuntimeToolInput, ToolAdmissionContext, ToolResult } from "./types.js";
+ 
+ /**
+  * Normalize a tool path argument. Absolute paths are passed through; relative
+@@ -78,10 +79,10 @@ export type PathKind = "file" | "directory" | "any";
+ 
+ type MissingPathRecovery =
+   | { readonly kind: "healed"; readonly path: string }
+-  | { readonly kind: "missing"; readonly suggestions: readonly string[] };
++  | { readonly kind: "missing"; readonly suggestions: readonly string[]; readonly ambiguous?: boolean };
+ 
+ const SUGGESTION_LIMIT = 5;
+-const REROOT_DEPTH = 2;
++const LOOKUP_DEPTH = 12;
+ const LOOKUP_ENTRY_LIMIT = 1000;
+ const LOOKUP_TIMEOUT_MS = 2_000;
+ // Words shorter than this ("src", "ts", "v2") match too many unrelated names.
+@@ -93,8 +94,6 @@ interface Walk {
+   readonly complete: boolean;
+ }
+ 
+-const EMPTY_WALK: Walk = { entries: [], complete: true };
+-
+ async function walk(scope: ToolAdmissionContext, options: { path: string; pattern?: string; include?: "directories"; depth?: number }): Promise<Walk> {
+   try {
+     const result = await listFiles({
+@@ -131,24 +130,20 @@ export function within(path: string, root: string): boolean {
+  * input. The walker follows symlinks, so a path below the execution directory
+  * can lead outside it.
+  */
+-export function admissible(scope: ToolAdmissionContext, path: string): boolean {
++function admissible(scope: ToolAdmissionContext, path: string): boolean {
+   const real = realpathSync(path);
+   return within(real, realpathSync(scope.executionCwd)) && !(scope.protectedTraversalRoots ?? []).some((root) => within(real, root));
+ }
+ 
+-/**
+- * Walk `directory` for entries whose slash-separated path is exactly
+- * `relativePath` (at `depth`, the number of its segments) or, without a depth,
+- * ends with it anywhere below. Returns absolute paths.
+- */
+-async function findLiteral(scope: ToolAdmissionContext, directory: string, relativePath: string, depth?: number): Promise<Walk> {
++/** Find exact basename matches below `directory`, without treating metacharacters as selectors. */
++async function findLiteral(scope: ToolAdmissionContext, directory: string, name: string): Promise<Walk> {
+   // The native layer rewrites escaped glob syntax (`[{]` breaks brace
+   // balancing), so metacharacters match any character and only exact hits stay.
+-  const glob = relativePath.replace(/[*?[\]{}!]/g, "?");
+-  const found = await walk(scope, depth === undefined ? { path: directory, pattern: `**/${glob}` } : { path: directory, pattern: glob, depth });
++  const glob = name.replace(/[*?[\]{}!]/g, "?");
++  const found = await walk(scope, { path: directory, pattern: `**/${glob}`, depth: LOOKUP_DEPTH });
+   const entries = found.entries
+     .map((entry) => entry.replace(/\/$/, ""))
+-    .filter((entry) => entry === relativePath || entry.endsWith(`/${relativePath}`))
++    .filter((entry) => entry === name || entry.endsWith(`/${name}`))
+     .map((entry) => join(directory, entry));
+   return { entries, complete: found.complete };
+ }
+@@ -180,17 +175,15 @@ function displayPath(cwd: string, path: string): string {
+  * considered.
+  *
+  * Every candidate comes from a gitignore-aware walk that skips hidden and
+- * artifact directories and stops at a fixed entry budget, so the cost does not
+- * grow with the repository:
+- * - re-root: `<dir>/<requested>` for each directory at most two levels below
+- *   the execution directory (`tui` -> `src/tui`), confirmed by a walk from
+- *   `<dir>` as deep as the requested path;
+- * - same name: the requested name anywhere under its nearest existing parent,
+- *   never under the execution directory itself.
++ * ignored paths and stops at fixed time and entry budgets:
++ * - same name: the requested basename anywhere below the execution directory;
++ * - same stem: the requested name with another extension in its own directory.
+  *
+  * Candidates that resolve outside the execution directory or inside a
+  * protected root are dropped. Returns `healed` only when exactly one existing
+- * path of the wanted kind remains and every walk completed. Otherwise returns
++ * path of the wanted kind remains and its lookup completed. Local sibling
++ * recovery does not depend on the depth of unrelated directory trees.
++ * Otherwise returns
+  * `missing` with up to five display paths: the requested name with another
+  * extension in the requested directory, the candidates, then children of the
+  * nearest existing parent whose names share a word with the requested name.
+@@ -199,7 +192,7 @@ function displayPath(cwd: string, path: string): string {
+  * healed: it is offered, rebased under the execution directory, only when
+  * that rebased path exists (`/repo/src/a.ts` for `/repo/project/src/a.ts`).
+  */
+-async function recoverMissingPath(scope: ToolAdmissionContext, resolvedPath: string, kind: PathKind): Promise<MissingPathRecovery> {
++async function recoverMissingPath(scope: ToolAdmissionContext, resolvedPath: string, kind: PathKind, projectCandidate?: string): Promise<MissingPathRecovery> {
+   const cwd = scope.executionCwd;
+   const requested = relative(cwd, resolvedPath);
+   if (requested === "" || requested === ".." || requested.startsWith(`..${sep}`) || isAbsolute(requested)) {
+@@ -209,24 +202,23 @@ async function recoverMissingPath(scope: ToolAdmissionContext, resolvedPath: str
+ 
+   const parent = nearestExistingDirectory(dirname(resolvedPath), cwd);
+   const name = basename(resolvedPath);
+-  const requestedSlash = requested.split(sep).join("/");
+-  const [prefixes, sameName, siblings] = await Promise.all([
+-    walk(scope, { path: cwd, include: "directories", depth: REROOT_DEPTH }),
+-    parent === cwd ? EMPTY_WALK : findLiteral(scope, parent, name),
++  const [sameName, siblings, frontier] = await Promise.all([
++    findLiteral(scope, cwd, name),
+     walk(scope, { path: parent, depth: 1 }),
++    // The native walk reports completion at its depth cap. A directory on
++    // that frontier can hide another match, so it cannot prove uniqueness.
++    walk(scope, { path: cwd, include: "directories", pattern: Array.from({ length: LOOKUP_DEPTH }, () => "*").join("/"), depth: LOOKUP_DEPTH }),
+   ]);
+-  // A prefix directory passing the ignore rules does not mean the target
+-  // below it does, so each plausible re-root target is confirmed by a walk.
+-  const rerooted = await Promise.all(prefixes.entries
+-    .filter((directory) => hasKind(join(cwd, directory, requested), kind))
+-    .map((directory) => findLiteral(scope, join(cwd, directory), requestedSlash, requestedSlash.split("/").length)));
+ 
+-  const fits = [...new Set([...rerooted.flatMap((found) => found.entries), ...sameName.entries])]
+-    .filter((path) => hasKind(path, kind) && admissible(scope, path));
+-  const complete = [prefixes, sameName, ...rerooted].every((found) => found.complete);
++  const otherExtensions = parent === dirname(resolvedPath) ? sameStemSiblings(parent, name) : [];
++  // The sibling walk enforces the same ignore rules as basename discovery.
++  const allowedSiblings = new Set(siblings.entries.map((entry) => join(parent, entry.replace(/\/$/, ""))));
++  const localFits = otherExtensions.filter((path) => allowedSiblings.has(path) && hasKind(path, kind) && admissible(scope, path));
++  const fits = [...new Set([...localFits, ...sameName.entries.filter((path) => hasKind(path, kind) && admissible(scope, path)), ...(projectCandidate ? [projectCandidate] : [])])];
++  const complete = [sameName, siblings, frontier].every((found) => found.complete) && frontier.entries.length === 0;
+ 
+   const [only] = fits;
+-  if (only !== undefined && fits.length === 1 && complete) return { kind: "healed", path: only };
++  if (only !== undefined && fits.length === 1 && (complete || (siblings.complete && localFits.includes(only)))) return { kind: "healed", path: only };
+ 
+   const words = nameWords(name);
+   const similar = siblings.entries
+@@ -234,8 +226,7 @@ async function recoverMissingPath(scope: ToolAdmissionContext, resolvedPath: str
+     .filter((sibling) => sibling.shared > 0)
+     .sort((a, b) => b.shared - a.shared)
+     .map((sibling) => sibling.path);
+-  const otherExtensions = parent === dirname(resolvedPath) ? sameStemSiblings(parent, name).filter((path) => hasKind(path, kind) && admissible(scope, path)) : [];
+-  return { kind: "missing", suggestions: [...new Set([...otherExtensions, ...fits, ...similar])].slice(0, SUGGESTION_LIMIT).map((path) => displayPath(cwd, path)) };
++  return { kind: "missing", ambiguous: fits.length > 1 || !complete, suggestions: [...new Set([...fits, ...similar.filter((path) => admissible(scope, path))])].slice(0, SUGGESTION_LIMIT).map((path) => displayPath(cwd, path)) };
+ }
+ 
+ // An extension a sibling may carry instead of the requested one, as peerAgent1's similar-file lookup accepts.
+@@ -271,6 +262,119 @@ export async function missingPathHint(context: ToolAdmissionContext, resolvedPat
+ /** An input repair: the replacement input and the notice that leads the tool result. */
+ export interface PathInputRepair {
+   readonly repair?: { readonly input: RuntimeToolInput; readonly notice: string };
++  /** No unique target was established, so a search must not widen instead. */
++  readonly ambiguous?: boolean;
++  readonly reservedPaths?: readonly string[];
++}
++
++type PathSplit = (rawPath: string) => { readonly path: string; readonly suffix: string; readonly valid?: boolean };
++const wholePath: PathSplit = (path) => ({ path, suffix: "" });
++
++/**
++ * Read an existing path list without choosing between valid separator
++ * interpretations. An exact existing path, including a valid selector, wins.
++ * Lookup work is bounded; uncertainty refuses rather than selecting a prefix.
++ */
++export function existingPathList(raw: string, context: ToolAdmissionContext, kind: PathKind, split: PathSplit = wholePath): readonly string[] | undefined {
++  const exact = split(raw);
++  if (exact.valid !== false && hasKind(resolveToolPath(context.executionCwd, exact.path), kind)) return undefined;
++  const boundaries = [...raw.matchAll(/[,\s]/g)].map((match) => match.index);
++  const tooMany = () => new Error(`Path '${raw}' has too many possible separators. Send each path in a separate call.`);
++  if (boundaries.length > LOOKUP_ENTRY_LIMIT) throw tooMany();
++  let probes = 0;
++  const memo = new Map<number, readonly (readonly string[])[]>();
++  const visit = (start: number): readonly (readonly string[])[] => {
++    if (start === raw.length) return [[]];
++    const cached = memo.get(start);
++    if (cached) return cached;
++    const alternatives = new Map<string, readonly string[]>();
++    const add = (paths: readonly string[]) => { alternatives.set(JSON.stringify(paths), paths); };
++    for (const end of [...boundaries.filter((boundary) => boundary >= start), raw.length]) {
++      const part = raw.slice(start, end).trim();
++      if (part.length === 0) {
++        if (end < raw.length) for (const paths of visit(end + 1)) add(paths);
++      } else {
++        if (++probes > LOOKUP_ENTRY_LIMIT) throw tooMany();
++        const parsed = split(part);
++        const path = resolveToolPath(context.executionCwd, parsed.path);
++        if (parsed.valid === false || !hasKind(path, kind) || !admissible(context, path)) continue;
++        if (end === raw.length) add([part]);
++        else for (const paths of visit(end + 1)) add([part, ...paths]);
++      }
++      if (alternatives.size > 1) break;
++    }
++    const result = [...alternatives.values()];
++    memo.set(start, result);
++    return result;
++  };
++  const alternatives = visit(0).filter((parts) => parts.length > 1);
++  if (alternatives.length > 1) throw new Error(`Path '${raw}' can name different path lists: ${alternatives.map((parts) => parts.map((path) => `'${path}'`).join(", ")).join(" or ")}. Send each path in a separate call.`);
++  return alternatives[0];
++}
++
++/**
++ * Normalize read/list batches before admission. An exact path wins over its
++ * possible separators. Every batch member must already exist inside the usual
++ * healing scope; canonical targets let downstream gates inspect every member.
++ */
++export async function prepareReadOnlyPathInput(
++  input: Readonly<RuntimeToolInput>,
++  context: ToolAdmissionContext,
++  kind: PathKind,
++  action: "read" | "listed",
++  split: PathSplit = wholePath,
++  signal?: AbortSignal,
++): Promise<PathInputRepair> {
++  signal?.throwIfAborted();
++  if (typeof input.path !== "string" && !Array.isArray(input.path)) return {};
++  let paths: string[];
++  let multiple = false;
++  if (Array.isArray(input.path)) {
++    if (!input.path.every((path): path is string => typeof path === "string")) return {};
++    paths = input.path;
++    multiple = true;
++  } else {
++    const raw = input.path;
++    const parts = existingPathList(raw, context, kind, split);
++    multiple = parts !== undefined;
++    paths = parts ? [...parts] : [raw];
++  }
++  const notices: string[] = [];
++  if (multiple && typeof input.path === "string") notices.push(`[Path '${input.path}' names several paths; ${action} each in order.]`);
++  let ambiguous = false;
++  const prepared: string[] = [];
++  for (const path of paths) {
++    signal?.throwIfAborted();
++    const healed = await healMissingPathInput({ ...input, path }, context, kind, split);
++    signal?.throwIfAborted();
++    ambiguous ||= healed.ambiguous === true;
++    const finalPath = healed.repair?.input.path;
++    prepared.push(typeof finalPath === "string" ? finalPath : path);
++    if (healed.repair) notices.push(healed.repair.notice);
++  }
++  return {
++    ...(ambiguous ? { ambiguous: true } : {}),
++    reservedPaths: prepared.map((path) => canonicalMutationPath(resolveToolPath(context.executionCwd, split(path).path))),
++    ...(notices.length > 0 ? { repair: { input: { ...input, path: multiple ? prepared : prepared[0] }, notice: notices.join("\n") } } : {}),
++  };
++}
++
++/** Run batch members in order, retaining text headers and image parts. */
++export async function executePathBatch(paths: readonly string[], execute: (path: string) => Promise<ToolResult>): Promise<ToolResult> {
++  const results: ToolResult[] = [];
++  for (const path of paths) results.push(await execute(path));
++  const outcome = results.some((result) => result.outcome === "error") ? "error"
++    : results.some((result) => result.outcome === "interrupted") ? "interrupted" : "ok";
++  if (results.every((result) => typeof result.content === "string")) {
++    return { content: results.map((result, index) => `### ${paths[index]}\n${result.content}`).join("\n\n"), outcome };
++  }
++  return {
++    content: results.flatMap((result, index) => [
++      { type: "text" as const, text: `### ${paths[index]}` },
++      ...(typeof result.content === "string" ? [{ type: "text" as const, text: result.content }] : result.content),
++    ]),
++    outcome,
++  };
+ }
+ 
+ /** What a path tool needs at a session path: an existing entry of a kind, or a place for a new file. */
+@@ -312,7 +416,7 @@ export function sessionPathInput(
+   input: Readonly<RuntimeToolInput>,
+   context: ToolAdmissionContext,
+   target: SessionPathTarget,
+-  split: (rawPath: string) => { readonly path: string; readonly suffix: string } = (path) => ({ path, suffix: "" }),
++  split: PathSplit = wholePath,
+ ): PathInputRepair {
+   if (typeof input.path !== "string") return {};
+   const { path: requested, suffix } = split(input.path);
+@@ -339,15 +443,34 @@ export async function healMissingPathInput(
+   input: Readonly<RuntimeToolInput>,
+   context: ToolAdmissionContext,
+   kind: PathKind,
+-  split: (rawPath: string) => { readonly path: string; readonly suffix: string } = (path) => ({ path, suffix: "" }),
++  split: PathSplit = wholePath,
+ ): Promise<PathInputRepair> {
+   const session = sessionPathInput(input, context, kind, split);
+   if (session.repair || typeof input.path !== "string") return session;
+   const { path: requested, suffix } = split(input.path);
+   const resolved = resolveToolPath(context.executionCwd, requested);
+   if (existsSync(resolved)) return {};
+-  const recovery = await recoverMissingPath(context, resolved, kind);
+-  if (recovery.kind === "missing") return {};
++  let projectCandidate: string | undefined;
++  // A worktree can lack a path that was shown relative to the owning project.
++  // This exact-root recovery alone may leave executionCwd; discovery cannot.
++  if (context.projectRoot !== undefined && !isAbsolute(requested)) {
++    const root = resolve(context.projectRoot);
++    const candidate = resolveToolPath(root, requested);
++    if (within(candidate, root) && hasKind(candidate, kind)
++      && within(realpathSync(candidate), realpathSync(root))
++      && !(context.protectedTraversalRoots ?? []).some((protectedRoot) => within(realpathSync(candidate), protectedRoot))) {
++      projectCandidate = candidate;
++    }
++  }
++  const recovery = await recoverMissingPath(context, resolved, kind, projectCandidate);
++  if (recovery.kind === "missing") {
++    if (projectCandidate && recovery.ambiguous) throw new Error(`Cannot resolve path '${requested}' to one existing path. Candidates: ${recovery.suggestions.join(", ")}; project-root candidate '${projectCandidate}'.`);
++    return recovery.ambiguous ? { ambiguous: true } : {};
++  }
++  if (recovery.path === projectCandidate) return { repair: {
++    input: { ...input, path: `${projectCandidate}${suffix}` },
++    notice: `[Path '${requested}' does not exist in the execution directory; using '${projectCandidate}' under the project root instead.]`,
++  } };
+   const healed = inputPath(context.executionCwd, recovery.path);
+   return {
+     repair: {
+diff --git a/src/orchestration/modules/code-mode/invocation-guest.ts b/src/orchestration/modules/code-mode/invocation-guest.ts
+index 526bc02..60e0b1d 100644
+--- a/src/orchestration/modules/code-mode/invocation-guest.ts
++++ b/src/orchestration/modules/code-mode/invocation-guest.ts
+@@ -116,21 +116,26 @@ export function runGuest(port: GuestPort): () => void {
+ 
+   const run = async (start: Extract<HostMessage, { type: "start" }>, current: Invocation): Promise<void> => {
+     const logs = createLogStream(port)
+-    const tools = toolTrie(start.descriptors, (descriptor, input) => Effect.callback<CodeToolResult, ToolError>((resume) => {
++    const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, ToolError>((resume) => {
+       const id = nextCallId++
+       current.pending.set(id, resume)
+       logs.flush()
+-      port.postMessage({ type: "call", id, name: descriptor.name, input })
++      port.postMessage({ type: "call", id, name, input })
+       // An interrupted call is dropped here; the host's nested batch owns
+       // the dispatched work and closes it.
+       return Effect.sync(() => { current.pending.delete(id) })
+-    }))
++    })
++    const tools = toolTrie(start.descriptors, (descriptor, input) => call(descriptor.name, input))
+     const { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs } = start.limits
+     // The Worker runs one invocation at a time. The baseline comes from the
+     // Worker's start or from the last reset, which collected every earlier
+     // invocation's garbage first, so growth past it is this program's alone.
+     const baseline = baselineHeapBytes
+-    const execution = CodeMode.execute({ code: start.source, tools, limits: { maxToolCalls, maxLogBytes }, onLog: logs.onLog })
++    const execution = CodeMode.execute({
++      code: start.source, tools, limits: { maxToolCalls, maxLogBytes }, onLog: logs.onLog,
++      onUnknownTool: (name, input) => call(name, input).pipe(Effect.flatMap((result) =>
++        result.outcome === "error" ? Effect.fail(toolError(String(result.content))) : Effect.succeed(result))),
++    })
+       .pipe(Effect.map((result) => ({ result, ending: "returned" as const })))
+     const heapWatchdog = Effect.gen(function* () {
+       while (true) {
+diff --git a/src/orchestration/modules/code-mode/invocation-runner.ts b/src/orchestration/modules/code-mode/invocation-runner.ts
+index b3de674..ccd8caf 100644
+--- a/src/orchestration/modules/code-mode/invocation-runner.ts
++++ b/src/orchestration/modules/code-mode/invocation-runner.ts
+@@ -5,7 +5,8 @@ import { probeLoopUnit } from "../../../infra/event-loop-lag.js"
+ import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js"
+ import { redactSecretEntries, redactSecrets } from "../../../infra/redact-secrets.js"
+ import type { NestedToolDispatchBatch } from "../../agent-runtime/tools/nested-tool-dispatch.js"
+-import type { ToolContext, ToolResult } from "../../agent-runtime/tools/types.js"
++import { boundedStringCodeModeOutput, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js"
++import { repairToolName } from "../../agent-runtime/tools/tool-dispatch.js"
+ import type { CodeModeToolSet } from "./descriptors.js"
+ import { GuestMessage, type CallReply, type HostMessage } from "./invocation-protocol.js"
+ import type { CodeModeLimits } from "./limits.js"
+@@ -134,14 +135,11 @@ function attachBridge(worker: InvocationWorker, tools: CodeModeToolSet, batch: N
+     probeLoopUnit("code-mode", "call-result-post", () => worker.postMessage({ type: "call-result", id, reply: answer } satisfies HostMessage))
+   }
+   const call = (id: number, name: string, input: unknown): void => {
+-    const tool = tools.callable.get(name)
+-    if (tool === undefined) return reply(id, { kind: "refused", message: `Unknown tool '${name}'.` })
+-    const decoded = Schema.decodeUnknownExit(Schema.Record(Schema.String, Schema.Unknown))(input)
+-    if (Exit.isFailure(decoded)) return reply(id, { kind: "refused", message: `Tool '${name}' received an input that is not an object.` })
+     const index = callIndex++
+-    void Effect.runPromise(batch.execute(name, decoded.value)).then((result) => {
++    void Effect.runPromise(batch.execute(name, input)).then((result) => {
+       if (closed) return
+-      const encoded = tool.codeModeOutput.encode(result)
++      const tool = tools.callable.get(name) ?? tools.callable.get(repairToolName(name, tools.callable) ?? "")
++      const encoded = (tool?.codeModeOutput ?? boundedStringCodeModeOutput).encode(result)
+       const images = typeof result.content === "string" ? [] : result.content.flatMap((part) => part.type === "image" ? [part] : [])
+       const bytes = Buffer.byteLength(encoded.content, "utf8") + images.reduce((total, image) => total + Buffer.byteLength(image.data, "utf8"), 0)
+       if (acceptedBytes + bytes > limits.maxAggregateResultBytes) {
+diff --git a/tests/unit/orchestration/agent-runtime/tools/tool-paths.test.ts b/tests/unit/orchestration/agent-runtime/tools/tool-paths.test.ts
+index 1bc5c00..c062dab 100644
+--- a/tests/unit/orchestration/agent-runtime/tools/tool-paths.test.ts
++++ b/tests/unit/orchestration/agent-runtime/tools/tool-paths.test.ts
+@@ -1,9 +1,10 @@
+-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
++import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+ import * as fs from "node:fs";
+ import * as os from "node:os";
+ import * as path from "node:path";
+ 
+-import { healMissingPathInput, missingPathHint, resolveToolPath, sessionPathInput } from "../../../../../src/orchestration/agent-runtime/tools/tool-paths.js";
++import { healMissingPathInput, missingPathHint, prepareReadOnlyPathInput, resolveToolPath, sessionPathInput } from "../../../../../src/orchestration/agent-runtime/tools/tool-paths.js";
++import * as ripgrep from "../../../../../src/orchestration/agent-runtime/tools/ripgrep.js";
+ import type { ToolAdmissionContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+ 
+ describe("resolveToolPath", () => {
+@@ -107,7 +108,7 @@ describe("healMissingPathInput", () => {
+     file("src/tui/app.ts");
+     file("web/tui/app.ts");
+ 
+-    expect(await healMissingPathInput({ path: "tui" }, { executionCwd: root }, "directory")).toEqual({});
++    expect(await healMissingPathInput({ path: "tui" }, { executionCwd: root }, "directory")).toEqual({ ambiguous: true });
+     expect(await missingPathHint({ executionCwd: root }, path.join(root, "tui"), "directory")).toBe("\nDid you mean one of these existing paths? src/tui/, web/tui/");
+   });
+ 
+@@ -116,10 +117,12 @@ describe("healMissingPathInput", () => {
+     file("out/tui/app.ts");
+     file("src/generated/report.txt");
+     file("web/generated/report.txt");
+-    fs.writeFileSync(path.join(root, ".gitignore"), "out/\nsrc/generated/\n");
++    file("src/ignored.tsx");
++    fs.writeFileSync(path.join(root, ".gitignore"), "out/\nsrc/generated/\nsrc/ignored.tsx\n");
+ 
+     expect((await healMissingPathInput({ path: "tui" }, { executionCwd: root }, "directory")).repair?.input).toEqual({ path: "src/tui" });
+     expect((await healMissingPathInput({ path: "generated/report.txt" }, { executionCwd: root }, "file")).repair?.input).toEqual({ path: "web/generated/report.txt" });
++    expect((await healMissingPathInput({ path: "src/ignored.ts" }, { executionCwd: root }, "file")).repair).toBeUndefined();
+   });
+ 
+   it("never heals to or suggests a path whose link leads outside the execution directory", async () => {
+@@ -143,13 +146,76 @@ describe("healMissingPathInput", () => {
+     expect((await healMissingPathInput({ path: "src/report{v2.txt" }, { executionCwd: root }, "file")).repair?.input).toEqual({ path: "src/drafts/report{v2.txt" });
+   });
+ 
+-  it("suggests, without healing, the requested name with another extension in the same directory", async () => {
++  it("heals the requested name with one other extension, but never chooses between siblings", async () => {
+     file("src/app.tsx");
+     file("src/app.test.ts");
+     file("lib/app.js");
++    file(`${Array.from({ length: 13 }, (_, index) => `deep${index}`).join("/")}/unrelated.txt`);
+ 
+-    expect(await healMissingPathInput({ path: "src/app.ts" }, { executionCwd: root }, "file")).toEqual({});
++    expect((await healMissingPathInput({ path: "src/app.ts" }, { executionCwd: root }, "file")).repair?.input).toEqual({ path: "src/app.tsx" });
+     expect(await missingPathHint({ executionCwd: root }, path.join(root, "src/app.ts"), "file")).toBe("\nDid you mean src/app.tsx?");
++    file("src/app.js");
++    expect((await healMissingPathInput({ path: "src/app.ts" }, { executionCwd: root }, "file")).repair).toBeUndefined();
++    const hint = await missingPathHint({ executionCwd: root }, path.join(root, "src/app.ts"), "file");
++    expect(hint).toContain("src/app.js");
++    expect(hint).toContain("src/app.tsx");
++  });
++
++  it("finds a unique basename anywhere in the execution directory and refuses duplicates", async () => {
++    file("src/orchestration/modules/workflows/cli/verify.ts");
++    expect((await healMissingPathInput({ path: "src/workflows/cli/verify.ts" }, { executionCwd: root }, "file")).repair?.input).toEqual({ path: "src/orchestration/modules/workflows/cli/verify.ts" });
++    file(`${Array.from({ length: 13 }, (_, index) => `deep${index}`).join("/")}/verify.ts`);
++    expect((await healMissingPathInput({ path: "src/workflows/cli/verify.ts" }, { executionCwd: root }, "file")).repair).toBeUndefined();
++    file("tests/verify.ts");
++    expect((await healMissingPathInput({ path: "src/workflows/cli/verify.ts" }, { executionCwd: root }, "file")).repair).toBeUndefined();
++    expect(await missingPathHint({ executionCwd: root }, path.join(root, "src/workflows/cli/verify.ts"), "file")).toContain("tests/verify.ts");
++  });
++
++  it("recovers project-relative paths from a worktree without following links outside the project or into protected roots", async () => {
++    const cwd = path.join(root, "worktree");
++    fs.mkdirSync(cwd);
++    file(".flywheel/sessions/other/scratch/brief.md");
++    const scope = { executionCwd: cwd, projectRoot: root };
++    const requested = ".flywheel/sessions/other/scratch/brief.md";
++    const target = path.join(root, requested);
++    const healed = await healMissingPathInput({ path: requested }, scope, "file");
++    expect(healed.repair?.input).toEqual({ path: target });
++    expect(healed.repair?.notice).toContain("project root");
++    expect(await healMissingPathInput({ path: requested }, { ...scope, protectedTraversalRoots: [fs.realpathSync(path.dirname(target))] }, "file")).toEqual({});
++    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "tool-paths-project-outside-"));
++    try {
++      fs.writeFileSync(path.join(outside, "secret.md"), "hidden");
++      fs.symlinkSync(outside, path.join(root, "linked"), "junction");
++      expect(await healMissingPathInput({ path: "linked/secret.md" }, scope, "file")).toEqual({});
++    } finally {
++      fs.rmSync(outside, { recursive: true, force: true });
++    }
++  });
++
++  it("refuses competing project-root and local extension recoveries", async () => {
++    file("src/widget.tsx");
++    file("worktree/src/widget.ts");
++    const scope = { executionCwd: path.join(root, "worktree"), projectRoot: root };
++    await expect(healMissingPathInput({ path: "src/widget.tsx" }, scope, "file")).rejects.toThrow("src/widget.ts");
++    await expect(healMissingPathInput({ path: "src/widget.tsx" }, scope, "file")).rejects.toThrow(path.join(root, "src/widget.tsx"));
++  });
++
++  it("starts no batch lookups after cancellation", async () => {
++    const abort = new AbortController();
++    const lookup = spyOn(ripgrep, "listFiles").mockImplementation(async () => {
++      abort.abort();
++      return { entries: [], truncated: false, nextOffset: 0, limit: 1000, traversalIssues: 0, entryLimitReached: false };
++    });
++    try {
++      const input = { path: ["missing-one", "missing-two", "missing-three"] };
++      await expect(prepareReadOnlyPathInput(input, { executionCwd: root }, "any", "read", undefined, abort.signal)).rejects.toThrow();
++      expect(lookup).toHaveBeenCalledTimes(3);
++      lookup.mockClear();
++      await expect(prepareReadOnlyPathInput(input, { executionCwd: root }, "any", "read", undefined, abort.signal)).rejects.toThrow();
++      expect(lookup).not.toHaveBeenCalled();
++    } finally {
++      lookup.mockRestore();
++    }
+   });
+ 
+   it("suggests, without healing, a path outside the execution directory rebased under it", async () => {
+diff --git a/tests/unit/orchestration/modules/code-mode/code.test.ts b/tests/unit/orchestration/modules/code-mode/code.test.ts
+index cc40bef..0186c54 100644
+--- a/tests/unit/orchestration/modules/code-mode/code.test.ts
++++ b/tests/unit/orchestration/modules/code-mode/code.test.ts
+@@ -219,12 +219,14 @@ describe("code tool", () => {
+     expect(result.content).toBe("done\n\nLogs:\nbefore\n[redacted secret]\nafter\n\n");
+   });
+ 
+-  it("formats failures with suggestions", async () => {
++  it("refuses unresolved names with the host's callable-map diagnostic", async () => {
+     const run = fixture([]);
+     const result = await run.tool.execute({ source: "return await tools.missing({})" }, run.context);
+ 
+     expect(result.outcome).toBe("error");
+-    expect(result.content).toBe("Unknown tool 'missing'.\nThe tool may have been removed or renamed. Use searchCatalog to find available tools.");
++    expect(result.content).toContain("Unknown tool 'missing'");
++    expect(result.content).toContain("not registered in the current session");
++    expect(run.facts).toEqual(["validation:outer#1"]);
+     expect(result.details).toBeUndefined();
+   });
+ 
+@@ -391,7 +393,7 @@ describe("code tool", () => {
+     expect(run.facts.filter((fact) => fact.startsWith("result:"))).toHaveLength(2);
+   });
+ 
+-  it("refuses a name outside the invocation's own callable map without dispatching it", async () => {
++  it("keeps unknown names and non-object inputs refused at the shared boundary", async () => {
+     let dispatched = 0;
+     const replies: unknown[] = [];
+     const guest = () => scriptedWorker((message, worker) => {
+@@ -411,11 +413,26 @@ describe("code tool", () => {
+     const run = fixture([own], {}, service);
+     expect(await run.tool.execute({ source: "unused by the scripted guest" }, run.context)).toEqual({ outcome: "ok", content: "done" });
+     expect(replies).toEqual([
+-      { kind: "refused", message: "Unknown tool 'other.secret'." },
+-      { kind: "refused", message: "Tool 'own' received an input that is not an object." },
++      { kind: "ok", outcome: "error", content: expect.stringContaining("Unknown tool 'other.secret'") },
++      { kind: "ok", outcome: "error", content: expect.stringContaining("not an object") },
+     ]);
+     expect(dispatched).toBe(0);
+-    expect(run.facts).toEqual([]);
++    expect(run.facts).toEqual(["validation:outer#1", "validation:outer#2"]);
++  });
++
++  it("lets a nested name repair and JSON-text input reach the shared dispatcher", async () => {
++    const inputs: unknown[] = [];
++    const read = runtimeTool("demo.lookup", async input => { inputs.push(input); return { content: "ran", outcome: "ok" }; });
++    read.inputSchema = { type: "object", properties: { count: { type: "number" } }, required: ["count"] };
++    const run = fixture([read]);
++    const result = await run.tool.execute({ source: `return await tools.demo.Lookup('{"count":"2"}')` }, run.context);
++    expect(result.outcome).toBe("ok");
++    const reply = JSON.parse(String(result.content));
++    expect(reply.outcome).toBe("ok");
++    expect(reply.content).toContain("Note: the text value of `input` was read as an object.");
++    expect(reply.content).toContain("tool 'demo.Lookup' was read as 'demo.lookup'");
++    expect(inputs).toEqual([{ count: 2 }]);
++    expect(run.facts).toEqual(["input:outer#1", "result:outer#1:ok"]);
+   });
+ 
+   it("enforces call, aggregate, and timeout limits as diagnostics", async () => {

@@ -1,0 +1,58 @@
+{
+  "base": "3f0640d3c2f318635ed8aa9bf1c05bc57a3ffbc7",
+  "files": [
+    {
+      "anchor": "76e7dba6580f07d0fde3e0123f8ae98d77b7fe25",
+      "path": "AGENTS.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76e7dba6580f07d0fde3e0123f8ae98d77b7fe25",
+      "path": "src/agent-skills/references/commit-contract.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76e7dba6580f07d0fde3e0123f8ae98d77b7fe25",
+      "path": "src/agent-skills/ship/SKILL.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76e7dba6580f07d0fde3e0123f8ae98d77b7fe25",
+      "path": "src/agent-skills/test-driven-development/SKILL.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76e7dba6580f07d0fde3e0123f8ae98d77b7fe25",
+      "path": "src/agent-skills/verification/SKILL.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76e7dba6580f07d0fde3e0123f8ae98d77b7fe25",
+      "path": "src/workflows/references/reviewer-protocol.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "76e7dba6580f07d0fde3e0123f8ae98d77b7fe25",
+      "path": "src/workflows/skills/fly.spec-create/SKILL.md",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "low",
+      "end": 1790634965030,
+      "findings": [],
+      "model": "gpt-6-astra",
+      "parent": "6b3f8027995b",
+      "persona": "reviewer-code-elegance",
+      "run": "aee2f3110fcb",
+      "session": "ef22a0a2529a",
+      "start": 1790634927145
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

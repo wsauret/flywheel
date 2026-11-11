@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "exhaustedProvidersCopy in src/infra/llm/provider-error-copy.ts appends the banked-reset hint only to `message`, but it always sets `detail`, and providerErrorProse in the same file returns `detail ?? message`, so workflow step failures and subagent failure summaries (formatAgentFailure) never carry the hint, contrary to the claim that the hint reaches the providerErrorProse registers. A review catches this when it says the hint is absent from the prose or detail path that workflow or subagent failures use.",
+      "category": "quality",
+      "files": [
+        "src/infra/llm/provider-error-copy.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "the-banked-reset-hint-disappears-from-workflow-and-subagent",
+      "title": "The banked-reset hint disappears from workflow and subagent failure prose"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Quality review: reset hint"
+}

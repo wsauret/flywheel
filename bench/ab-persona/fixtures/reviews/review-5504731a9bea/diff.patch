@@ -1,0 +1,162 @@
+diff --git a/docs/product-intent/README.md b/docs/product-intent/README.md
+index 5c0834d..b6805a3 100644
+--- a/docs/product-intent/README.md
++++ b/docs/product-intent/README.md
+@@ -14,7 +14,7 @@ A product-intent statement can describe behavior that the implementation does no
+ ## Corpus contract
+ 
+ - Give every statement one stable identifier and one canonical domain file. Keep the identifier through wording changes and file moves.
+-- Write concise, present-tense, user-observable statements. Exclude implementation, rationale, history, acceptance criteria, file paths, and delivery mechanics.
++- Write concise, present-tense, user-observable statements of one to four sentences each. Exclude implementation, rationale, history, acceptance criteria, file paths, and delivery mechanics, so a statement carries no `Because:` or `Not:` line.
+ - Add a statement only when no current statement owns the behavior. Rewrite the current statement when its intended meaning or behavior changes. Git history is the archive of prior wording.
+ - When a changed intent contradicts or narrows any other statement, rewrite each of those statements so that it states the current intent on its own terms. Do not keep the old wording and add an exception or a pointer to the changed statement.
+ - Do not edit the corpus for work that only restores or preserves current intent.
+diff --git a/scripts/check-intent-corpora.ts b/scripts/check-intent-corpora.ts
+index 71c4b2f..f8653e0 100644
+--- a/scripts/check-intent-corpora.ts
++++ b/scripts/check-intent-corpora.ts
+@@ -5,14 +5,16 @@ import * as path from "node:path";
+ // the living authorities that code, tests, and documents cite by statement id,
+ // so a malformed or duplicated id, an unlinked domain file, a statement that
+ // names implementation detail, or a citation that resolves to nothing is a
+-// build failure. The retired architecture decision records are no authority,
++// build failure. A statement stays short enough to read as one contract: one
++// to four sentences, and an architecture statement adds at most one sentence of
++// rationale and one of rejected alternative. The retired architecture decision records are no authority,
+ // so a citation of them fails too.
+ //
+ // The citing scope is every tracked and unignored text file, listed by Git
+ // rather than a directory crawl, because ignored worktrees under the
+ // repository hold whole copies of the tree.
+ 
+-type IntentRule = "statement-format" | "duplicate-id" | "domain-link" | "grain" | "dangling-id" | "adr-reference";
++type IntentRule = "statement-format" | "duplicate-id" | "domain-link" | "grain" | "length" | "dangling-id" | "adr-reference";
+ 
+ interface IntentViolation {
+   file: string;
+@@ -43,6 +45,12 @@ const GENERIC_ADR_PATH_FILES = new Set([
+ const DOMAIN_LINK = /\]\(([^)/#\s]+\.md)\)/g;
+ const INLINE_CODE = /`[^`]+`/;
+ const FILE_EXTENSION = /\.(?:ts|tsx|js|jsx|mjs|cjs|json|jsonl|md|toml|ya?ml|sqlite|db|sh|ps1|exe|lock|txt|pid|log|plist)$/i;
++const RATIONALE_LINE = /^(Because|Not):/;
++const CODE_SPAN = /`[^`]*`/g;
++// A terminator ends a sentence only before the end of the text or before a
++// word that can open one, so "e.g. the" stays inside its sentence.
++const SENTENCE_END = /[.?!](?=\s+[A-Z`"'\u201C([]|\s*$)/g;
++const MAX_SENTENCES = 4;
+ const TOKEN_EDGE = /^[("'[]+|[)"'\],.;:!?]+$/g;
+ 
+ // Historical records and frozen benchmark inputs keep the wording they were
+@@ -105,6 +113,34 @@ function grainProblem(line: string, repoPaths: ReadonlySet<string>): string | nu
+   return null;
+ }
+ 
++function sentenceCount(text: string): number {
++  return text.replace(CODE_SPAN, "`c`").match(SENTENCE_END)?.length ?? 0;
++}
++
++/** The length rule for the statement whose heading is `lines[index]`: a body
++ *  of one to four sentences, and for architecture at most one single-sentence
++ *  `Because:` and `Not:` line each. Product statements carry no rationale. */
++function lengthProblems(lines: readonly string[], index: number, architecture: boolean): string[] {
++  const out: string[] = [];
++  const next = lines.findIndex((candidate, at) => at > index && candidate.startsWith("## "));
++  const body = lines.slice(index + 1, next === -1 ? undefined : next).map((line) => line.trim()).filter((line) => line.length > 0);
++  const sentences = sentenceCount(body.filter((line) => !RATIONALE_LINE.test(line)).join(" "));
++  if (sentences < 1 || sentences > MAX_SENTENCES) out.push(`body has ${sentences} sentences; expected 1 to ${MAX_SENTENCES}`);
++  for (const label of ["Because", "Not"]) {
++    const labeled = body.filter((line) => line.startsWith(`${label}:`));
++    if (!architecture) {
++      if (labeled.length > 0) out.push(`has ${labeled.length} ${label}: lines; product statements carry no rationale`);
++      continue;
++    }
++    if (labeled.length > 1) out.push(`has ${labeled.length} ${label}: lines; expected at most 1`);
++    for (const line of labeled) {
++      const count = sentenceCount(line.slice(label.length + 1));
++      if (count !== 1) out.push(`${label}: line has ${count} sentences; expected 1`);
++    }
++  }
++  return out;
++}
++
+ function repositoryPaths(files: readonly string[]): Set<string> {
+   const paths = new Set<string>();
+   for (const file of files) {
+@@ -134,10 +170,13 @@ function checkCorpus(repoRoot: string, files: readonly string[], dir: string, st
+   const architecture = dir === ARCHITECTURE_DIR;
+   for (const file of domainFiles) {
+     if (!linked.has(file)) out.push({ file, line: 1, rule: "domain-link", detail: `domain file is not linked from ${readme}` });
+-    for (const [index, text] of readLines(repoRoot, file).entries()) {
++    const lines = readLines(repoRoot, file);
++    for (const [index, text] of lines.entries()) {
+       const line = index + 1;
+       const format = formatProblem(file, text);
+       if (format !== null) out.push({ file, line, rule: "statement-format", detail: format });
++      const statementHeading = format === null && file !== UPDATES_FILE && text.startsWith("## ");
++      for (const detail of statementHeading ? lengthProblems(lines, index, architecture) : []) out.push({ file, line, rule: "length", detail });
+       const id = format === null ? STATEMENT_ID.exec(text)?.[1] : undefined;
+       if (id !== undefined) {
+         const first = statements.get(id);
+diff --git a/tests/unit/scripts/check-intent-corpora.test.ts b/tests/unit/scripts/check-intent-corpora.test.ts
+index 714eebb..5083bbe 100644
+--- a/tests/unit/scripts/check-intent-corpora.test.ts
++++ b/tests/unit/scripts/check-intent-corpora.test.ts
+@@ -75,7 +75,7 @@ describe("check-intent-corpora", () => {
+   it("rejects a statement id stated twice", () => {
+     expect(check({
+       ...CLEAN,
+-      "docs/architecture-intent/alpha.md": `${ALPHA}## ${arch("ALPHA-001")}: Restated\n`,
++      "docs/architecture-intent/alpha.md": `${ALPHA}## ${arch("ALPHA-001")}: Restated\n\nRestated.\n`,
+     })).toEqual([{ file: "docs/architecture-intent/alpha.md", line: 6, rule: "duplicate-id" }]);
+   });
+ 
+@@ -83,7 +83,7 @@ describe("check-intent-corpora", () => {
+     expect(check({
+       ...CLEAN,
+       "docs/architecture-intent/README.md": `${ARCHITECTURE_README}- [Gamma](gamma.md): missing.\n`,
+-      "docs/product-intent/delta.md": `# Delta\n\n## ${intent("DELTA-001")}: Unlinked\n`,
++      "docs/product-intent/delta.md": `# Delta\n\n## ${intent("DELTA-001")}: Unlinked\n\nUnlinked.\n`,
+     })).toEqual([
+       { file: "docs/architecture-intent/README.md", line: 6, rule: "domain-link" },
+       { file: "docs/product-intent/delta.md", line: 1, rule: "domain-link" },
+@@ -94,7 +94,7 @@ describe("check-intent-corpora", () => {
+     expect(check({
+       ...CLEAN,
+       "bin/launch": "#!/bin/sh\n",
+-      "docs/architecture-intent/alpha.md": `${ALPHA}The \`owner\` decides.\nIt lives in src/owner/.\nIt reads owner.ts first.\nThe reader and/or writer decides.\nIt starts from bin/launch.\n`,
++      "docs/architecture-intent/alpha.md": `${ALPHA}The \`owner\` decides,\nlives in src/owner/,\nreads owner.ts first,\nand the reader and/or writer decides.\nIt starts from bin/launch.\n`,
+     })).toEqual([
+       { file: "docs/architecture-intent/alpha.md", line: 6, rule: "grain" },
+       { file: "docs/architecture-intent/alpha.md", line: 7, rule: "grain" },
+@@ -103,6 +103,31 @@ describe("check-intent-corpora", () => {
+     ]);
+   });
+ 
++  it("caps a statement at four sentences, outside code spans, with one single-sentence rationale per label", () => {
++    const four = "One owner decides. It writes the value. Readers wait. Writers stop.";
++    const statement = (heading: string, ...body: string[]): string => `## ${heading}: Bounded\n\n${body.join("\n")}\n\n`;
++    expect(check({
++      ...CLEAN,
++      "docs/architecture-intent/alpha.md": [
++        ALPHA,
++        statement(arch("ALPHA-002"), four, "Because: Two owners disagree, e.g. on replay.", "Not: A shared value."),
++        statement(arch("ALPHA-003"), four, "Readers wait again."),
++        statement(arch("ALPHA-005"), "One owner decides.", "Because: Two owners disagree.", "Because: Replay drifts."),
++        statement(arch("ALPHA-006"), "One owner decides.", "Not: A shared value. A copy."),
++      ].join(""),
++      "docs/product-intent/beta.md": [
++        BETA,
++        statement(intent("BETA-002"), "Press `stop. Then. Go.` once.", "It writes the value. Readers wait. Writers stop."),
++        statement(intent("BETA-003"), "Work stays visible.", "Because: People lose track."),
++      ].join(""),
++    })).toEqual([
++      { file: "docs/architecture-intent/alpha.md", line: 12, rule: "length" },
++      { file: "docs/architecture-intent/alpha.md", line: 17, rule: "length" },
++      { file: "docs/architecture-intent/alpha.md", line: 23, rule: "length" },
++      { file: "docs/product-intent/beta.md", line: 11, rule: "length" },
++    ]);
++  });
++
+   it("rejects citations of missing statements and of retired records in any listed file", () => {
+     expect(check({
+       ...CLEAN,

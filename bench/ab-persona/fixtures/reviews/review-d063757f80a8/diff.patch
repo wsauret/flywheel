@@ -1,0 +1,245 @@
+diff --git a/docs/privacy.md b/docs/privacy.md
+index 344d49e..5918d6c 100644
+--- a/docs/privacy.md
++++ b/docs/privacy.md
+@@ -39,7 +39,7 @@ Flywheel makes these requests on its own. None of them sends your conversations
+ | Update check | About 10 seconds after the background service starts, then every 30 minutes. Only a build that names a release repository checks: an official release checks `wsauret/flywheel`, and a fork's release checks the fork's repository. A local build or a source run never checks, and its update status says so. | `github.com`, the release files of that repository | A plain download request with no Flywheel identifiers | No setting stops the check. Set `updates.auto_install = false`, or turn off Automatic Updates in Settings, to stop Flywheel from installing what it finds. |
+ | Release notes | Once, after an update installs | `api.github.com`, the release list of the same repository | A plain request with no Flywheel identifiers | No setting |
+ | Model catalog | When a login is first prepared, and when you open the model picker or the login screen, at most once every 5 minutes | `models.dev/catalog.json` | A plain request with no Flywheel identifiers | No setting. Flywheel uses a saved or bundled copy when the request fails. |
+-| Remote access relay | Only after you pair a phone or another device, or while a pairing code is open | `wss://relay.flywl.sh` | The machine's random id and public key, the ids of paired devices, the Flywheel version, and for each project a hash of its path and its name. The traffic between your devices is end-to-end encrypted, so the relay cannot read your chats. The relay is the same Cloudflare Worker that receives bug reports, so Cloudflare's Workers Logs keep an invocation log for each connection, which can hold your IP address, for the period that Automatic bug reports states. | Turn off **Remote access** in Settings, or revoke every paired device. |
++| Remote access relay | Only after you pair a phone or another device, or while a pairing code is open | `wss://relay.flywl.sh` | The machine's random id, name, and public key, the ids of paired devices, the Flywheel version, and for each project a hash of its path and its name. The traffic between your devices is end-to-end encrypted, so the relay cannot read your chats. The relay is the same Cloudflare Worker that receives bug reports, so Cloudflare's Workers Logs keep an invocation log for each connection, which can hold your IP address, for the period that Automatic bug reports states. | Turn off **Remote access** in Settings, or revoke every paired device. |
+ | Phone notifications | When a chat asks you a question that stays unanswered for 1.5 seconds, and a paired phone allowed notifications | The push service of the phone's browser, such as Apple's or Google's | An encrypted message with the machine name, the project name, the chat title, and a link | Turn off **Remote access**, or do not allow notifications on the phone. |
+ | Model lists, prices, and usage | When the model catalog refreshes, and every 5 minutes while a client is open for subscription usage | Only the model providers that you connected, and the OpenAI price page for OpenAI models | Your credentials for that provider, as each provider requires | Disconnect the provider or turn off its module. Turn off **Usage** in Settings to stop the background usage checks. |
+ | Login refresh | When a stored login expires | The provider that issued the login | The refresh token for that login | Remove the login. |
+diff --git a/docs/product-intent/remote-access.md b/docs/product-intent/remote-access.md
+index 1c8ee2a..6fc4592 100644
+--- a/docs/product-intent/remote-access.md
++++ b/docs/product-intent/remote-access.md
+@@ -76,4 +76,4 @@ A machine whose Flywheel is too old or too new for the relay is refused, and the
+ 
+ ## PI-REMOTE-018: A source run pairs devices on its own
+ 
+-The installed Flywheel and a source run of Flywheel on the same machine pair devices separately, and both can be attached to the relay at once. A paired device shows the source run as its own machine, with (dev) after the machine's name.
++The installed Flywheel and a source run of Flywheel on the same machine pair devices separately, and both can be attached to the relay at once. A paired device lists the installed Flywheel under the machine's name, and the source run as its own machine named dev followed by the machine's name in parentheses, as in `dev (Studio)`. Neither is named after a project. A paired device shows each machine's current name, which it learns whenever that machine is awake, without pairing again.
+diff --git a/src/orchestration/modules/remote/account-relay-service.ts b/src/orchestration/modules/remote/account-relay-service.ts
+index 6828690..c66a93e 100644
+--- a/src/orchestration/modules/remote/account-relay-service.ts
++++ b/src/orchestration/modules/remote/account-relay-service.ts
+@@ -10,7 +10,7 @@ import { decodeJsonFrame, DEFAULT_RELAY_URL, DEFAULT_REMOTE_APP_ORIGIN, fromBase
+ import { decodeRemoteAccountRequest, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../protocol/modules/remote/account-requests.js"
+ import type { RemoteConnectionState } from "../../../protocol/modules/remote.js"
+ import type { AccountModuleRequestServer } from "../../app-service/module-service-host.js"
+-import { decodeProjectCreateRequest, MACHINE_PLACEMENT_LABEL, machinePlacementId, type ProjectCreateRequest, type ProjectCreationAnswer } from "../../../protocol/modules/remote/project-creation.js"
++import { decodeProjectCreateRequest, machinePlacementId, type ProjectCreateRequest, type ProjectCreationAnswer } from "../../../protocol/modules/remote/project-creation.js"
+ import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
+ import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
+ import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
+@@ -295,14 +295,16 @@ export function createAccountRelayService(options: {
+   }))))
+ 
+   /** The machine placement: announced while a device is paired, whatever
+-   *  projects exist, so a machine with none still offers to create one. */
++   *  projects exist, so a machine with none still offers to create one. It
++   *  carries the machine's name, which paired devices adopt as the machine's
++   *  label, so a renamed machine needs no new pairing. */
+   const machine = createRelayControlChannel({
+     relayUrl: () => (pairing ?? [...windows].at(-1))?.relayUrl ?? relayUrl,
+     identity: requireIdentity,
+     placement: () => {
+       // The channel resolves the identity before it reads the placement.
+       if (identity === undefined) throw new Error("the machine placement has no identity yet")
+-      return { id: machinePlacementId(identity.runtimeId), projectLabel: MACHINE_PLACEMENT_LABEL, version: options.version, protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }
++      return { id: machinePlacementId(identity.runtimeId), projectLabel: machineName(options.lane), version: options.version, protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }
+     },
+     ...(options.client === undefined ? {} : { client: options.client }),
+     devices: () => devices,
+diff --git a/src/orchestration/modules/remote/remote-pairing-exchange.ts b/src/orchestration/modules/remote/remote-pairing-exchange.ts
+index 36bc03b..9cdd068 100644
+--- a/src/orchestration/modules/remote/remote-pairing-exchange.ts
++++ b/src/orchestration/modules/remote/remote-pairing-exchange.ts
+@@ -26,10 +26,11 @@ export interface PairingWindow {
+ }
+ 
+ /** The name a device lists the machine under, apart from its projects: the
+- *  host name, and for a source run which lane it is. */
++ *  host name, and for a source run `dev (<host>)`, so the second machine
++ *  that a developer pairs reads as dev mode, not as a project. */
+ export function machineName(lane: ServeLane): string {
+   const name = hostname().replace(/\.local$/, "")
+-  return lane === "dev" ? `${name} (dev)` : name
++  return lane === "dev" ? `dev (${name})` : name
+ }
+ 
+ /** A new window whose code names `relayUrl`, the runtime's key, and `label`. */
+diff --git a/src/protocol/modules/remote/project-creation.ts b/src/protocol/modules/remote/project-creation.ts
+index 4708272..d263238 100644
+--- a/src/protocol/modules/remote/project-creation.ts
++++ b/src/protocol/modules/remote/project-creation.ts
+@@ -32,9 +32,11 @@ export function isMachinePlacement(runtimeId: string, placement: Pick<Placement,
+   return placement.id === machinePlacementId(runtimeId)
+ }
+ 
+-/** What the machine placement names itself in presence. A device that knows
+- *  the machine placement never shows it as a project. */
+-export const MACHINE_PLACEMENT_LABEL = "New project from repository"
++/** What the machine placement of v0.1.1 and v0.1.2 names itself in presence,
++ *  in place of the machine's name. A device keeps the label it paired with
++ *  when it sees this one. Remove once the relay protocol version moves past
++ *  5, because no runtime that sends it can attach then. */
++export const LEGACY_MACHINE_PLACEMENT_LABEL = "New project from repository"
+ 
+ /** The device's one request on the machine placement's channel. */
+ const ProjectCreateRequestSchema = Schema.Struct({ type: Schema.Literal("project.create"), repository: Schema.NonEmptyString })
+diff --git a/src/protocol/modules/remote/relay-client.ts b/src/protocol/modules/remote/relay-client.ts
+index 60e4d53..e9cdb33 100644
+--- a/src/protocol/modules/remote/relay-client.ts
++++ b/src/protocol/modules/remote/relay-client.ts
+@@ -5,7 +5,7 @@ import { reconnectBackoffMs } from "../../client/connection.js"
+ import { attachDeviceChannel, RelayRefusal, watchPresence, type PresenceWatch } from "./relay-channel.js"
+ import type { MachinePicker, MachinePickerSnapshot, RemoteCreation, RemotePairing, RemoteRuntimeSummary, RemoteStart } from "./machine-picker.js"
+ import { parseRepository } from "../../repository-reference.js"
+-import { requestProjectCreation } from "./project-creation.js"
++import { isMachinePlacement, LEGACY_MACHINE_PLACEMENT_LABEL, requestProjectCreation } from "./project-creation.js"
+ import { deviceIdentity, type DeviceStore, type PairedRuntime, type RemoteSelection } from "./relay-device.js"
+ import { pairDevice } from "./relay-pairing.js"
+ import { fromBase64Url, RELAY_PROJECT_START_TIMEOUT_MS, type Placement } from "./relay-protocol.js"
+@@ -52,7 +52,7 @@ export interface RelayClient extends MachinePicker {
+ }
+ 
+ interface RuntimeState {
+-  readonly paired: PairedRuntime
++  paired: PairedRuntime
+   placements: readonly Placement[]
+   presence: RemoteRuntimeSummary["presence"]
+   watch: PresenceWatch | undefined
+@@ -138,6 +138,14 @@ export async function createRelayClient(store: DeviceStore): Promise<RelayClient
+         if (waiter.selection.runtimeId === state.paired.runtimeId && placements.some((placement) => placement.id === waiter.selection.placementId && placement.state === "live")) waiter.resolve()
+       }
+       if (start !== undefined && placementOf(start.selection)?.state === "live") start = undefined
++      // The machine placement carries the machine's current name. The store
++      // keeps it for while the machine sleeps; a write that fails only means
++      // the next launch shows the earlier name until the machine wakes.
++      const named = placements.find((placement) => isMachinePlacement(state.paired.runtimeId, placement))?.projectLabel
++      if (named !== undefined && named !== LEGACY_MACHINE_PLACEMENT_LABEL && named !== state.paired.label) {
++        state.paired = { ...state.paired, label: named }
++        store.putRuntime(state.paired).catch(() => {})
++      }
+       publish()
+     }, (reason) => {
+       // A lost presence socket says nothing about the machine's availability.
+diff --git a/tests/unit/orchestration/modules/remote/account-relay-service.test.ts b/tests/unit/orchestration/modules/remote/account-relay-service.test.ts
+index 569e561..622abcc 100644
+--- a/tests/unit/orchestration/modules/remote/account-relay-service.test.ts
++++ b/tests/unit/orchestration/modules/remote/account-relay-service.test.ts
+@@ -15,7 +15,7 @@ import * as pairing from "../../../../../src/orchestration/modules/remote/remote
+ import { canonicalPathWithMissingTail } from "../../../../../src/infra/canonical-path.js"
+ import { createAccountProjectClone } from "../../../../../src/orchestration/app-service/account-project-clone.js"
+ import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/remote-identity.js"
+-import { MACHINE_PLACEMENT_LABEL, requestProjectCreation, type CreatedProject } from "../../../../../src/protocol/modules/remote/project-creation.js"
++import { requestProjectCreation, type CreatedProject } from "../../../../../src/protocol/modules/remote/project-creation.js"
+ import { asKeyPair, fromBase64Url, keyDigest, ownedBytes, parsePairingCodeUrl, toBase64Url, type OpenFrame, type RuntimeControlFrame } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
+ import { openPairingChannel, type DeviceIdentity } from "../../../../../src/protocol/modules/remote/relay-channel.js"
+ import { temporaryDirectories } from "../../../../helpers/directories.js"
+@@ -439,9 +439,9 @@ describe("account relay service", () => {
+     projects.openAdmission()
+     const service = createAccountRelayService({ userDataRoot, lane: "installed", version: "test", registry, projects, projectClone, keepAwake: NO_KEEP_AWAKE })
+     try {
+-      // A machine with no project yet still offers to create one.
++      // A machine with no project yet still offers to create one, under the machine's name.
+       await until(() => stub.placements(identity.runtimeId).some((placement) => placement.id === identity.runtimeId))
+-      expect(stub.placements(identity.runtimeId)).toEqual([expect.objectContaining({ id: identity.runtimeId, projectLabel: MACHINE_PLACEMENT_LABEL, state: "live" })])
++      expect(stub.placements(identity.runtimeId)).toEqual([expect.objectContaining({ id: identity.runtimeId, projectLabel: machineName("installed"), state: "live" })])
+       const opening: CreatedProject[] = []
+       const created = await requestProjectCreation({
+         relay: stub.url, runtimeId: identity.runtimeId, runtimePublicKey: toBase64Url(identity.publicKey), device, repository: "owner/tool",
+diff --git a/tests/unit/orchestration/modules/remote/remote-access.test.ts b/tests/unit/orchestration/modules/remote/remote-access.test.ts
+index 24c74ec..46371f5 100644
+--- a/tests/unit/orchestration/modules/remote/remote-access.test.ts
++++ b/tests/unit/orchestration/modules/remote/remote-access.test.ts
+@@ -134,8 +134,8 @@ describe("remote access against a relay", () => {
+     const remote = createRemote({ lane: "dev" })
+     const { result } = await pairDevice(remote)
+     if (result.type !== "pair.accepted") throw new Error(`pairing was ${result.type}`)
+-    expect(result.runtimeLabel).toBe(`${hostname().replace(/\.local$/, "")} (dev)`)
+-    expect((await remote.notificationAddress()).machine).toBe(`${hostname().replace(/\.local$/, "")} (dev)`)
++    expect(result.runtimeLabel).toBe(`dev (${hostname().replace(/\.local$/, "")})`)
++    expect((await remote.notificationAddress()).machine).toBe(`dev (${hostname().replace(/\.local$/, "")})`)
+     await viewWhere(remote, (current) => current.devices.length === 1 && current.pairing === null)
+     expect(readRemotePairingStore(userDataRoot, "dev").devices).toHaveLength(1)
+     expect(readRemotePairingStore(userDataRoot, "installed").devices).toEqual([])
+@@ -146,7 +146,8 @@ describe("remote access against a relay", () => {
+     const label = "Private phone label for encrypted pairing regression"
+     const { device, result, runtimeId } = await pairDevice(remote, label)
+     // The device lists the machine by its host name, not by a project's.
+-    const machine = `${hostname().replace(/\.local$/, "")}${lane === "dev" ? " (dev)" : ""}`
++    const host = hostname().replace(/\.local$/, "")
++    const machine = lane === "dev" ? `dev (${host})` : host
+     expect(result).toEqual({ type: "pair.accepted", runtimeLabel: machine })
+     const view = await viewWhere(remote, (current) => current.devices.length === 1 && current.pairing === null)
+     expect(view.devices[0]!.id).toBe(device.id)
+diff --git a/tests/unit/orchestration/modules/remote/terminal-remote.test.ts b/tests/unit/orchestration/modules/remote/terminal-remote.test.ts
+index 7c208fe..7eaab4f 100644
+--- a/tests/unit/orchestration/modules/remote/terminal-remote.test.ts
++++ b/tests/unit/orchestration/modules/remote/terminal-remote.test.ts
+@@ -10,7 +10,7 @@ import type { ReleaseSide } from "../../../../../src/infra/update/release-fit.js
+ import type { TerminalRemoteChoice } from "../../../../../src/orchestration/terminal-remote.js"
+ import * as channel from "../../../../../src/protocol/modules/remote/relay-channel.js"
+ import * as creating from "../../../../../src/protocol/modules/remote/project-creation.js"
+-import { MACHINE_PLACEMENT_LABEL, machinePlacementId } from "../../../../../src/protocol/modules/remote/project-creation.js"
++import { machinePlacementId } from "../../../../../src/protocol/modules/remote/project-creation.js"
+ import type { Placement } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
+ import { RUNTIME_PROTOCOL_VERSION } from "../../../../../src/protocol/runtime-liveness.js"
+ import { temporaryDirectories } from "../../../../helpers/directories.js"
+@@ -195,7 +195,7 @@ describe("a terminal paired with a remote machine", () => {
+ 
+ describe("creating a project on a paired machine from the terminal", () => {
+   const runtimeId = "machine"
+-  const machinePlacement: Placement = { id: machinePlacementId(runtimeId), projectLabel: MACHINE_PLACEMENT_LABEL, version: "test", protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }
++  const machinePlacement: Placement = { id: machinePlacementId(runtimeId), projectLabel: "box", version: "test", protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }
+   const project: Placement = { id: "project", projectLabel: "flywheel", version: "test", protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" }
+   const restores: (() => void)[] = []
+   let laptop: string
+@@ -320,7 +320,7 @@ describe("the terminal picker", () => {
+   test("lists a machine's projects but never its machine placement, which it offers as a new project from a repository", () => {
+     const runtimeId = "machine-1"
+     const project = { id: "placement-1", projectLabel: "flywheel", version: "test", protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" as const }
+-    const machinePlacement = { id: machinePlacementId(runtimeId), projectLabel: MACHINE_PLACEMENT_LABEL, version: "test", protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" as const }
++    const machinePlacement = { id: machinePlacementId(runtimeId), projectLabel: "box", version: "test", protocolVersion: RUNTIME_PROTOCOL_VERSION, state: "live" as const }
+     const view = pickerView({ deviceLabel: "laptop", runtimes: [{ runtimeId, label: "box", relay: "https://relay.example.test", placements: [machinePlacement, project], presence: "online" }], selected: undefined, pairing: { status: "idle" } })
+     expect(view.lines).toEqual(["  box:", "    1. flywheel (open)", "    2. New project from repository"])
+     expect(view.choices).toEqual([
+diff --git a/tests/unit/protocol/modules/remote/relay-client.test.ts b/tests/unit/protocol/modules/remote/relay-client.test.ts
+index 02a80c9..5155665 100644
+--- a/tests/unit/protocol/modules/remote/relay-client.test.ts
++++ b/tests/unit/protocol/modules/remote/relay-client.test.ts
+@@ -204,6 +204,21 @@ describe("relay client presence recovery", () => {
+     expect(client.snapshot().selected).toEqual(selected)
+   })
+ 
++  test("adopts and keeps the name the machine placement carries", async () => {
++    const named: Placement = { ...live, id: "machine", projectLabel: "dev (desk)" }
++    watches[0]![3]([named, live])
++    expect(client.snapshot().runtimes[0]?.label).toBe("dev (desk)")
++    await Promise.resolve()
++    expect(stored.runtimes).toEqual([{ ...paired, label: "dev (desk)" }])
++  })
++
++  test("keeps the paired name when an earlier runtime's machine placement carries no name", async () => {
++    watches[0]![3]([{ ...live, id: "machine", projectLabel: creating.LEGACY_MACHINE_PLACEMENT_LABEL }, live])
++    expect(client.snapshot().runtimes[0]?.label).toBe("Machine")
++    await Promise.resolve()
++    expect(stored.runtimes).toEqual([paired])
++  })
++
+   test("shows the picker when pairing is revoked and does not retry", async () => {
+     watches[0]![3]([live])
+     watches[0]![4]("device_not_paired")
+@@ -501,7 +516,7 @@ describe("picker states", () => {
+   })
+ 
+   test("lists the machine placement as an offer to create a project, never as a project", () => {
+-    const offer: Placement = { ...live, id: "r1", projectLabel: creating.MACHINE_PLACEMENT_LABEL }
++    const offer: Placement = { ...live, id: "r1", projectLabel: "desk" }
+     expect(canCreateProject(machine({ placements: [offer, open] }))).toBe(true)
+     expect(canCreateProject(machine({ placements: [open] }))).toBe(false)
+     expect(projectPlacements(machine({ placements: [offer, open] }))).toEqual([open])

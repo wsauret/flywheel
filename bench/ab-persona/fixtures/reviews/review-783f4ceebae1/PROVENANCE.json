@@ -1,0 +1,218 @@
+{
+  "base": "9fd3597cb37e3108c960a8b9734c09d9be9fca07",
+  "files": [
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "AGENTS.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "README.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "docs/architecture-intent/README.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "docs/architecture.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "docs/guides/elegance.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "docs/product-intent/README.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "docs/terminology.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "package.json",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "scripts/check-doc-coherence.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "scripts/check-intent-corpora.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "scripts/check-terminology.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "scripts/lint-parallel.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "src/orchestration/modules/development/definitions/skills/flywheel-design/SKILL.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "58a5a5ae5e3bc7e017af782f4d5540d94730748d",
+      "path": "tests/unit/scripts/check-intent-corpora.test.ts",
+      "reversedMutations": 1
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "SECURITY.md",
+    "bench/chat-ab/workflow-authorship/patches/authored-forced.patch",
+    "bench/chat-ab/workflow-authorship/patches/handcrafted-forced.patch",
+    "bench/chat-ab/workflow-authorship/patches/handcrafted.patch",
+    "docs/adrs/README.md",
+    "docs/adrs/adr-000-flywheel-thesis.md",
+    "docs/adrs/adr-001-event-sourced-substrate.md",
+    "docs/adrs/adr-002-context-engineering-and-inspectability.md",
+    "docs/adrs/adr-003-agent-as-environment-operator.md",
+    "docs/adrs/adr-004-intent-contracts-and-evaluation.md",
+    "docs/adrs/adr-005-flywheel-design-principles.md",
+    "docs/adrs/adr-006-workflow-control-and-attempts.md",
+    "docs/adrs/adr-007-agent-runtime-process-placements.md",
+    "docs/adrs/adr-008-durable-sessions-and-conversations.md",
+    "docs/adrs/adr-009-tool-execution-safety.md",
+    "docs/adrs/adr-010-runtime-ui-protocol.md",
+    "docs/adrs/adr-011-durable-learning-scope-and-consent.md",
+    "docs/adrs/adr-012-configurable-modules.md",
+    "docs/adrs/adr-013-project-and-execution-directory-semantics.md",
+    "docs/adrs/adr-014-binary-distribution-and-updates.md",
+    "docs/adrs/adr-015-internal-modules.md",
+    "docs/adrs/adr-016-terminology.md",
+    "docs/adrs/adr-017-subscription-usage.md",
+    "docs/adrs/adr-018-runtime-config-projection.md",
+    "docs/adrs/adr-019-durable-project-notifications.md",
+    "docs/adrs/adr-020-subscription-spend-consent.md",
+    "docs/adrs/adr-021-design-intent-and-the-first-draft.md",
+    "docs/adrs/adr-022-subagent-child-sessions.md",
+    "docs/architecture-intent/boundaries.md",
+    "docs/architecture-intent/directories.md",
+    "docs/architecture-intent/distribution.md",
+    "docs/architecture-intent/providers.md",
+    "docs/architecture-intent/runtime.md",
+    "docs/architecture-intent/sessions.md",
+    "docs/architecture-intent/structure.md",
+    "docs/architecture-intent/substrate.md",
+    "docs/architecture-intent/tools.md",
+    "docs/product-intent/agent-methods.md",
+    "docs/product-intent/capabilities.md",
+    "docs/product-intent/interaction.md",
+    "docs/product-intent/local-access.md",
+    "docs/product-intent/model-access.md",
+    "docs/product-intent/remote-access.md",
+    "docs/product-intent/updates.md",
+    "install.ps1",
+    "install.sh",
+    "oxlint.config.ts",
+    "tests/unit/orchestration/agent-runtime/context/stale-tool-result-masker.test.ts",
+    "tests/unit/workflows/built-in-skills.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792969714195,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -62,6 +62,8 @@\n   \"docs/adrs/\",\n   \"docs/product-intent/\",\n   \"docs/architecture\",\n+  \"docs/guides/elegance.md\",\n+  \"docs/terminology.md\",\n ];\n \n /** Heavy payload fields per mutation tool. Only these fields mask; the rest",
+              "mutation": "1581fb15-7ef8-4c61-841f-1da8d400231b",
+              "path": "src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts"
+            }
+          ],
+          "label": "relocated-policy-documents-lose-masking-protection",
+          "location": "src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts:61-65",
+          "severity": "P1",
+          "title": "Relocated policy documents lose masking protection"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -50,8 +50,6 @@\n const FILE_EXTENSION = /\\.(?:ts|tsx|js|jsx|mjs|cjs|json|jsonl|md|toml|ya?ml|sqlite|db|sh|ps1|exe|lock|txt|pid|log|plist)$/i;\n const TOKEN_EDGE = /^[(\"'[]+|[)\"'\\],.;:!?]+$/g;\n \n-const CITING_ROOTS = [\"src/\", \"scripts/\", \"tests/\", \"webview/\", \"vscode/\", \"relay/\", \"bench/\", \"plugin/\", \"docs/\"];\n-const CITING_FILES = new Set([\"AGENTS.md\", \"CLAUDE.md\", \"README.md\", \"CONTRIBUTING.md\"]);\n // Historical records and frozen benchmark inputs keep the wording they were\n // written or measured with.\n const UNCITING_ROOTS = [",
+              "mutation": "0a47a9cc-5dd8-4ca4-bb55-5930ebe98417",
+              "path": "scripts/check-intent-corpora.ts"
+            },
+            {
+              "hunk": "@@ -145,9 +143,7 @@\n }\n \n function inCitingScope(file: string): boolean {\n-  if (CITING_FILES.has(file)) return true;\n-  if (UNCITING_ROOTS.some((root) => file.startsWith(root))) return false;\n-  return CITING_ROOTS.some((root) => file.startsWith(root));\n+  return !UNCITING_ROOTS.some((root) => file.startsWith(root));\n }\n \n function checkCitations(repoRoot: string, files: readonly string[], statements: ReadonlyMap<string, Statement>): IntentViolation[] {",
+              "mutation": "0a47a9cc-5dd8-4ca4-bb55-5930ebe98417",
+              "path": "scripts/check-intent-corpora.ts"
+            }
+          ],
+          "label": "the-citation-gate-silently-excludes-nonexempt-repository-fil",
+          "location": "scripts/check-intent-corpora.ts:53-54,147-150",
+          "severity": "P1",
+          "title": "The citation gate silently excludes nonexempt repository files"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -89,22 +89,34 @@\n   return PRODUCT_HEADING.test(line) ? null : \"expected ## PI-<DOMAIN>-<NNN>: <title>\";\n }\n \n-function pathLike(token: string): boolean {\n+/** `repoPaths` holds every listed file and each of its parent directories, so\n+ *  an extensionless repository path such as a launcher script is caught while\n+ *  prose such as \"and/or\" passes. */\n+function pathLike(token: string, repoPaths: ReadonlySet<string>): boolean {\n   if (FILE_EXTENSION.test(token) && /\\w\\.\\w/.test(token)) return true;\n   if (!token.includes(\"/\")) return false;\n+  if (repoPaths.has(token.replace(/\\/$/, \"\"))) return true;\n   return /^(?:\\.{1,2}|~)?\\//.test(token) || token.endsWith(\"/\") || token.split(\"/\").length > 2;\n }\n \n-function grainProblem(line: string): string | null {\n+function grainProblem(line: string, repoPaths: ReadonlySet<string>): string | null {\n   if (INLINE_CODE.test(line)) return \"inline code span\";\n   for (const raw of line.split(/\\s+/)) {\n     const token = raw.replace(TOKEN_EDGE, \"\");\n-    if (token.length > 0 && pathLike(token)) return `path-like token '${token}'`;\n+    if (token.length > 0 && pathLike(token, repoPaths)) return `path-like token '${token}'`;\n   }\n   return null;\n }\n \n-function checkCorpus(repoRoot: string, files: readonly string[], dir: string, statements: Map<string, Statement>): IntentViolation[] {\n+function repositoryPaths(files: readonly string[]): Set<string> {\n+  const paths = new Set<string>();\n+  for (const file of files) {\n+    for (let at = file.length; at > 0; at = file.lastIndexOf(\"/\", at - 1)) paths.add(file.slice(0, at));\n+  }\n+  return paths;\n+}\n+\n+function checkCorpus(repoRoot: string, files: readonly string[], dir: string, statements: Map<string, Statement>, repoPaths: ReadonlySet<string>): IntentViolation[] {\n   const out: IntentViolation[] = [];\n   const domainFiles = corpusFiles(files, dir).filter((file) => path.posix.basename(file) !== README);\n   const readme = `${dir}/${README}`;",
+              "mutation": "7f95990f-683c-4b22-aa3b-b3e9aa1d865f",
+              "path": "scripts/check-intent-corpora.ts"
+            }
+          ],
+          "label": "extensionless-relative-file-paths-bypass-the-architecture-gr",
+          "location": "scripts/check-intent-corpora.ts:94-98",
+          "severity": "P1",
+          "title": "Extensionless relative file paths bypass the architecture grain check"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -35,8 +35,8 @@\n // The plugin's own record set is a different authority, so a path into it is\n // not a citation of Flywheel's retired records.\n const ADR_REFERENCE = /(?<!plugin\\/)docs\\/adrs|\\bADR-\\d+/gi;\n-// The plugin package keeps its own record set under its own docs/adrs, so its\n-// references to that directory are not citations of Flywheel's retired records.\n+// The plugin package keeps its own record set, so its references to that set\n+// are not citations of Flywheel's retired records.\n const PLUGIN_ROOT = \"plugin/\";\n // The stale-tool-result masker never masks reads of any repository's ADRs, so\n // it and its test name the conventional directory as generic behavior.",
+              "mutation": "0a47a9cc-5dd8-4ca4-bb55-5930ebe98417",
+              "path": "scripts/check-intent-corpora.ts"
+            }
+          ],
+          "label": "the-new-lint-fails-on-its-own-explanatory-comment",
+          "location": "scripts/check-intent-corpora.ts:38",
+          "severity": "P2",
+          "title": "The new lint fails on its own explanatory comment"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "490c011755fa",
+      "persona": "reviewer-code-quality",
+      "run": "783f4ceebae1",
+      "session": "6ba6146f29f7",
+      "start": 1792969436080
+    }
+  ],
+  "scrubbedLines": {
+    "docs/architecture.md": 24,
+    "docs/terminology.md": 2,
+    "README.md": 8,
+    "scripts/check-terminology.ts": 8,
+    "tests/unit/scripts/check-intent-corpora.test.ts": 4
+  },
+  "unresolvedImports": [],
+  "variant": "restore",
+  "rejectedLabels": [
+    {
+      "id": "relocated-policy-documents-lose-masking-protection",
+      "reason": "the pinned tree outside the fixture files already holds a test that names the defect (stale-tool-result-masker.test.ts asserts that reads of the relocated elegance guide and docs/terminology.md are never masked)"
+    }
+  ]
+}

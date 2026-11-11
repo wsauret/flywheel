@@ -1,0 +1,325 @@
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index 14d5cb6..2ac6338 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -266,7 +266,7 @@ The list opens on active work: commands that run, and subagents and workflows th
+ 
+ The list is complete. It shows work whose card is outside the loaded part of a long transcript, and work that finished before Flywheel restarted. A command whose end Flywheel did not record shows that it ended, without an exit status.
+ 
+-Clicking or tapping a row closes the list and shows the row's card in the transcript, and loads older transcript when necessary. A row nested under another child shows the card of the child that contains it. Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate `x` control stops a row that is still active, and the `x` key does the same in the terminal. On the web client, Stop asks for confirmation first.
++Clicking or tapping a row closes the list and shows the row's card in the transcript, and loads older transcript when necessary. A row nested under another child shows the card of the child that contains it. In the terminal, the card's background stays highlighted for three seconds so the person can find it. Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate `x` control stops a row that is still active, and the `x` key does the same in the terminal. On the web client, Stop asks for confirmation first.
+ 
+ Background commands start with their output collapsed. In the terminal, a person selects a running command with the arrow keys and presses Space to show or hide its recent live output directly under it, independently of other commands.
+ 
+diff --git b/src/tui/context/landing-highlight.ts b/src/tui/context/landing-highlight.ts
+new file mode 100644
+index 0000000..6d16130
+--- /dev/null
++++ b/src/tui/context/landing-highlight.ts
+@@ -0,0 +1,22 @@
++import type { RGBA } from "@opentui/core"
++import { useTheme } from "@tui/context/theme"
++import { type Accessor, createContext, useContext } from "solid-js"
++
++// The entry id a transcript landing (a /bg row click) just scrolled to.
++// OutputWindow owns the value and clears it after a short time; the card that
++// represents the entry paints the shared hover background so the person can
++// find it in the transcript.
++const LandingTargetContext = createContext<Accessor<string | undefined>>(() => undefined)
++
++export const LandingTargetProvider = LandingTargetContext.Provider
++
++/** The background of a card that represents any of `ids`: the shared hover
++ *  color while one of them is the landing target, otherwise undefined. */
++export function useLandingBackground(ids: () => readonly (string | undefined)[]): Accessor<RGBA | undefined> {
++  const target = useContext(LandingTargetContext)
++  const { theme } = useTheme()
++  return () => {
++    const id = target()
++    return id !== undefined && ids().includes(id) ? theme.backgroundElement : undefined
++  }
++}
+diff --git a/src/tui/modules/workflows/activity-block.tsx b/src/tui/modules/workflows/activity-block.tsx
+index 0154121..62d2248 100644
+--- a/src/tui/modules/workflows/activity-block.tsx
++++ b/src/tui/modules/workflows/activity-block.tsx
+@@ -19,6 +19,7 @@ import { hasSelectedCells } from "@tui/utils/selection.js"
+ import { stLink, stStrike } from "@tui/utils/text-attributes.js"
+ import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
+ import { useRowWidth } from "@tui/context/row-width.js"
++import { useLandingBackground } from "@tui/context/landing-highlight.js"
+ import { displayWidth } from "@tui/utils/text.js"
+ import { createEffect, createMemo, on, onCleanup, Show } from "solid-js"
+ import { BlockFrame, BLOCK_GUTTER_WIDTH } from "@tui/output-blocks/block-frame.js"
+@@ -54,6 +55,7 @@ export function WorkflowActivityBlock(props: AgentGroupBlockProps) {
+   const clock = useTickPool().createSharedTick(1000, () => agentGroupClockRuns(props.block) || isActive())
+   const headerRowWidth = useRowWidth()
+   const headerMeasured = createMeasuredWidth(() => headerRowWidth.width() - BLOCK_GUTTER_WIDTH)
++  const landingBackground = useLandingBackground(() => [props.block.id, props.block.toolUseId])
+ 
+   // A workflow card draws its first frame from its block. While its run goes
+   // on, or once a person made a choice on it, it folds the workflow's view
+@@ -223,6 +225,7 @@ export function WorkflowActivityBlock(props: AgentGroupBlockProps) {
+     <BlockFrame active={isActive}>
+       <box
+         flexDirection="column"
++        backgroundColor={landingBackground()}
+         onMouseDown={groupAction.onMouseDown}
+         onMouseUp={handleHeaderMouseUp}
+         onMouseOver={groupAction.onMouseOver}
+diff --git a/src/tui/output-blocks/agent-group-block.tsx b/src/tui/output-blocks/agent-group-block.tsx
+index 3da9b8a..a95c07c 100644
+--- a/src/tui/output-blocks/agent-group-block.tsx
++++ b/src/tui/output-blocks/agent-group-block.tsx
+@@ -11,6 +11,7 @@ import { errorMessage } from "../../infra/error-message.js"
+ import { parseSessionLink } from "../../protocol/client/session-links.js"
+ import { useClientExtensions } from "../context/client-extensions.js"
+ import { useNavigateUri } from "../context/navigation.js"
++import { useLandingBackground } from "../context/landing-highlight.js"
+ import { useSubagentControls } from "../context/subagent-controls.js"
+ import { useTheme } from "../context/theme.js"
+ import { useTickPool } from "../context/tick-pool-context.js"
+@@ -105,6 +106,7 @@ function ChildActivityBlock(props: AgentGroupBlockProps) {
+     return new StyledText(wrapToolRowChunks([], [...chunksFor(shown), ...suffix], measured.width()))
+   })
+   const lineContent = createMemo(() => new StyledText(subagentLineChunks(line(), measured.width(), theme)))
++  const landingBackground = useLandingBackground(() => [props.block.id, props.block.toolUseId])
+   function press(this: BoxRenderable, event: MouseEvent): void {
+     const text = header().chunks.map((chunk) => chunk.text).join("")
+     for (const control of headerControls()) {
+@@ -117,7 +119,7 @@ function ChildActivityBlock(props: AgentGroupBlockProps) {
+     }
+     action.onMouseUp(event)
+   }
+-  return <BlockFrame active={active}><box flexDirection="column" onMouseDown={action.onMouseDown} onMouseUp={press} onMouseOver={action.onMouseOver} onMouseOut={action.onMouseOut}>
++  return <BlockFrame active={active}><box flexDirection="column" backgroundColor={landingBackground()} onMouseDown={action.onMouseDown} onMouseUp={press} onMouseOver={action.onMouseOver} onMouseOut={action.onMouseOut}>
+     <box ref={measured.ref} selectable={false} width="100%"><text ref={bindStyledTextContent(header)} overflow="hidden" wrapMode="none" /></box>
+     <Show when={!initializing()}><text ref={bindStyledTextContent(lineContent)} overflow="hidden" wrapMode="none" /></Show>
+     <Show when={line().failureDetail}>{(detail) => <text paddingLeft={4} fg={theme.textMuted} overflow="hidden" wrapMode="none">{detail()}</text>}</Show>
+diff --git a/src/tui/output-blocks/question-history-block.tsx b/src/tui/output-blocks/question-history-block.tsx
+index d151349..18a76ef 100644
+--- a/src/tui/output-blocks/question-history-block.tsx
++++ b/src/tui/output-blocks/question-history-block.tsx
+@@ -6,6 +6,7 @@ import { useTheme } from "@tui/context/theme"
+ import { createMeasuredWidth } from "@tui/hooks/create-measured-width.js"
+ import { bindStyledTextContent } from "@tui/utils/reactive-text.js"
+ import { useRowWidth } from "@tui/context/row-width.js"
++import { useLandingBackground } from "@tui/context/landing-highlight.js"
+ import { createMemo, Index } from "solid-js"
+ import { BlockFrame, BLOCK_GUTTER_WIDTH } from "./block-frame.js"
+ import { adaptQuestionHistoryRows } from "./question-history-format.js"
+@@ -27,10 +28,11 @@ export function QuestionHistoryBlock(props: QuestionHistoryBlockProps) {
+   // wrap into their final shape on the mount frame (same as ToolRunBlock).
+   const rowWidth = useRowWidth()
+   const measured = createMeasuredWidth(() => rowWidth.width() - BLOCK_GUTTER_WIDTH)
++  const landingBackground = useLandingBackground(() => [props.block.toolUseId])
+ 
+   return (
+     <BlockFrame>
+-      <box flexDirection="column" ref={measured.ref}>
++      <box flexDirection="column" ref={measured.ref} backgroundColor={landingBackground()}>
+         <box>
+           <text
+             ref={bindStyledTextContent(headerContent)}
+diff --git a/src/tui/output-blocks/tool-entry.tsx b/src/tui/output-blocks/tool-entry.tsx
+index a79df8c..798152a 100644
+--- a/src/tui/output-blocks/tool-entry.tsx
++++ b/src/tui/output-blocks/tool-entry.tsx
+@@ -22,6 +22,7 @@ import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/utils/border"
+ import { useRenderer } from "@opentui/solid"
+ import { type Accessor, batch, createEffect, createMemo, createSignal, Show } from "solid-js"
+ import { fileDisclosureKey, useBlockDisclosure } from "@tui/context/block-disclosure.js"
++import { useLandingBackground } from "@tui/context/landing-highlight.js"
+ import type { DiffColorMode } from "../../orchestration/config/schema.js"
+ import { BlockFrame, BLOCK_GUTTER_WIDTH } from "./block-frame.js"
+ import { useRowWidth } from "@tui/context/row-width.js"
+@@ -76,6 +77,7 @@ export function ToolEntry(props: ToolEntryProps) {
+   const measured = createMeasuredWidth(() => rowWidth.width() - BLOCK_GUTTER_WIDTH)
+   const hasError = () => props.block.status === "error"
+   const disclosure = useBlockDisclosure()
++  const landingBackground = useLandingBackground(() => [props.block.id])
+   const identity = () => props.disclosureId ?? blockIdentity(props.block)
+   const bodyKey = () => `${identity()}#body`
+   const contentKey = () => `${identity()}#content`
+@@ -409,6 +411,7 @@ export function ToolEntry(props: ToolEntryProps) {
+     <box
+       ref={measured.ref}
+       flexDirection="column"
++      backgroundColor={landingBackground()}
+       onMouseDown={toggle.onMouseDown}
+       onMouseUp={handleMouseUp}
+       onMouseOver={toggle.onMouseOver}
+diff --git a/src/tui/output-blocks/tool-row.tsx b/src/tui/output-blocks/tool-row.tsx
+index db726e2..9ba7ad9 100644
+--- a/src/tui/output-blocks/tool-row.tsx
++++ b/src/tui/output-blocks/tool-row.tsx
+@@ -14,6 +14,7 @@ import { hasSelectedCells } from "@tui/utils/selection.js"
+ import { stStrike } from "@tui/utils/text-attributes.js"
+ import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
+ import { useBlockDisclosure } from "@tui/context/block-disclosure.js"
++import { useLandingBackground } from "@tui/context/landing-highlight.js"
+ import { useRenderer } from "@opentui/solid"
+ import { createEffect, createMemo, Show } from "solid-js"
+ import { chunkDisplayWidth, wrapToolRowChunks } from "./tool-row-wrap.js"
+@@ -103,6 +104,7 @@ export function ToolRow(props: ToolRowProps) {
+   // virtualization unmounts far rows, and a remounted row must restore the
+   // output the user left disclosed.
+   const disclosure = useBlockDisclosure()
++  const landingBackground = useLandingBackground(() => [props.tool.id])
+   const identity = () => props.tool.disclosureId ?? blockIdentity(props.tool)
+   const outputKey = () => `${identity()}${hasDisclosureInvocationBody() ? "#body" : "#output"}`
+   const outputExpanded = () => disclosure.disclosure(outputKey()) === true
+@@ -324,6 +326,7 @@ export function ToolRow(props: ToolRowProps) {
+   return (
+     <box
+       flexDirection="column"
++      backgroundColor={landingBackground()}
+       onMouseDown={toggle.onMouseDown}
+       onMouseUp={handleMouseUp}
+       onMouseOver={toggle.onMouseOver}
+diff --git a/src/tui/output-window/output-window.tsx b/src/tui/output-window/output-window.tsx
+index 96d7d41..7305025 100644
+--- a/src/tui/output-window/output-window.tsx
++++ b/src/tui/output-window/output-window.tsx
+@@ -12,6 +12,7 @@ import { RowWidthProvider } from "@tui/context/row-width.js"
+ import { TranscriptViewportHeightProvider } from "@tui/context/transcript-viewport.js"
+ import { ImageClipBottomProvider } from "@tui/context/attachment-images.js"
+ import { BlockDisclosureProvider } from "@tui/context/block-disclosure.js"
++import { LandingTargetProvider } from "@tui/context/landing-highlight.js"
+ import { MutationEvidenceProvider } from "../context/mutation-evidence.js"
+ import { parseSessionLink } from "../../protocol/client/session-links.js"
+ import { useTheme } from "@tui/context/theme"
+@@ -41,6 +42,9 @@ export type OutputWindowCommand =
+   | { readonly id: number; readonly type: OutputWindowCommandType }
+   | { readonly id: number; readonly type: "block"; readonly entryId: string }
+ 
++/** How long the card a block command lands on keeps its highlight. */
++const LANDING_HIGHLIGHT_MS = 3000
++
+ interface StreamingToolTextById { readonly [toolUseId: string]: ToolStreamingText }
+ interface OutputWindowProps {
+   transcript: OutputTranscriptView
+@@ -174,6 +178,16 @@ export function OutputWindow(props: OutputWindowProps) {
+   const unregisterSelectionAutoScroll = untrack(() => props.registerSelectionAutoScroll?.(scroll.selectionAutoScroll))
+   onCleanup(() => unregisterSelectionAutoScroll?.())
+   createOutputWindowRenderDiagnostics({ freshness: transcript.freshness, snapshot, projection })
++  // A landing marks its card for a while so the eye finds it after the jump;
++  // the next landing replaces the target and restarts the time.
++  const [landingTarget, setLandingTarget] = createSignal<string>()
++  let landingTimer: ReturnType<typeof setTimeout> | undefined
++  function highlightLanding(entryId: string): void {
++    clearTimeout(landingTimer)
++    setLandingTarget(entryId)
++    landingTimer = setTimeout(() => setLandingTarget(undefined), LANDING_HIGHLIGHT_MS)
++  }
++  onCleanup(() => clearTimeout(landingTimer))
+   let lastCommandId = untrack(() => props.command?.id ?? 0)
+   function runCommand(command: OutputWindowCommand): void {
+     switch (command.type) {
+@@ -182,7 +196,9 @@ export function OutputWindow(props: OutputWindowProps) {
+       case "block":
+         void transcript.loadAround(command.entryId).then(() => {
+           const blockIndex = untrack(() => targetTimelineBlockIndex(projection(), command.entryId))
+-          if (blockIndex !== undefined) scroll.toBlock(blockIndex)
++          if (blockIndex === undefined) return
++          scroll.toBlock(blockIndex)
++          highlightLanding(command.entryId)
+         }).catch(() => {})
+         return
+       default: return scroll.page(command.type)
+@@ -205,6 +221,7 @@ export function OutputWindow(props: OutputWindowProps) {
+     <RowWidthProvider value={{ width: rowWidth, report: setRowWidth }}>
+     <ScrollPreserveProvider value={scroll.preserveScroll}>
+     <TranscriptViewportHeightProvider value={transcriptRows}>
++    <LandingTargetProvider value={landingTarget}>
+       <box flexDirection="column" flexGrow={1}>
+         <box paddingLeft={1} paddingRight={0} flexDirection="column" flexGrow={1} position="relative">
+           <scrollbox
+@@ -342,6 +359,7 @@ export function OutputWindow(props: OutputWindowProps) {
+           </box>
+         </box>
+       </box>
++    </LandingTargetProvider>
+     </TranscriptViewportHeightProvider>
+     </ScrollPreserveProvider>
+     </RowWidthProvider>
+diff --git a/tests/unit/tui/output-window.test.tsx b/tests/unit/tui/output-window.test.tsx
+index e1b276c..ac7f418 100644
+--- a/tests/unit/tui/output-window.test.tsx
++++ b/tests/unit/tui/output-window.test.tsx
+@@ -5,9 +5,12 @@ import { createSignal } from "solid-js"
+ import { marked } from "marked"
+ import { createComponent } from "solid-js/web"
+ import type { AnyBlock, TextBlock, ToolEntry, ToolStreamingText } from "../../../src/infra/output-blocks.js"
++import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
+ import type { OutputWindowCommand } from "../../../src/tui/output-window/output-window.js"
+ import type { OutputTranscriptView, TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
+-import { transcriptOf } from "./_output-window-transcript.js"
++import { renderWindow, transcriptOf } from "./_output-window-transcript.js"
++import flywheelTheme from "../../../src/tui/context/theme/flywheel.json" with { type: "json" }
++import { resolveTheme } from "../../../src/tui/context/theme/resolve.js"
+ import { twoColorPng } from "../../helpers/image.js"
+ import { ImageRenderable, NativeImage, ScrollBoxRenderable, type BaseRenderable, type TextRenderable } from "@opentui/core"
+ import { captureNativeOutput } from "./_native-output.js"
+@@ -246,6 +249,61 @@ describe("OutputWindow", () => {
+     }
+   })
+ 
++  it("highlights only the landed call of a tool run until a later landing replaces it or three seconds pass", async () => {
++    const ranBash = (id: string, command: string): FrontendOutputBlock => ({
++      ...pendingBash(id),
++      action: "shell_exec",
++      presentation: { name: "Bash", detail: command },
++      status: "completed",
++    })
++    const { result, setCommand } = await renderWindow(transcriptOf([
++      ranBash("first-process", "bun run first"),
++      ranBash("target-process", "bun run target"),
++    ]), 12, 60)
++    const theme = resolveTheme(flywheelTheme, "dark")
++    // The detail splits into highlighted spans; its last word names the call.
++    const background = (text: string) => result.captureSpans().lines
++      .flatMap((line) => line.spans)
++      .find((span) => span.text.includes(text))?.bg
++    // The renderer runs on real timers; only the three-second highlight timer
++    // is held so the test can expire it without waiting.
++    const highlightTimers: (() => void)[] = []
++    const realSetTimeout = globalThis.setTimeout
++    const timers = spyOn(globalThis, "setTimeout").mockImplementation(new Proxy(realSetTimeout, {
++      apply(target, _receiver, args: Parameters<typeof setTimeout>) {
++        if (args[1] !== 3000) return target(...args)
++        const [callback] = args
++        highlightTimers.push(() => callback())
++        return target(() => {}, 0)
++      },
++    }))
++    try {
++      expect(result.captureCharFrame()).toMatch(/Ran[^]*bun run first[^]*bun run target/)
++      setCommand({ id: 1, type: "block", entryId: "target-process" })
++      await Promise.resolve()
++      await Promise.resolve()
++      await result.renderOnce()
++      expect(background("target")?.equals(theme.backgroundElement)).toBe(true)
++      expect(background("first")?.equals(theme.backgroundElement)).toBe(false)
++      expect(highlightTimers).toHaveLength(1)
++
++      setCommand({ id: 2, type: "block", entryId: "first-process" })
++      await Promise.resolve()
++      await Promise.resolve()
++      await result.renderOnce()
++      expect(background("first")?.equals(theme.backgroundElement)).toBe(true)
++      expect(background("target")?.equals(theme.backgroundElement)).toBe(false)
++      expect(highlightTimers).toHaveLength(2)
++
++      highlightTimers[1]!()
++      await result.renderOnce()
++      expect(background("first")?.equals(theme.backgroundElement)).toBe(false)
++    } finally {
++      timers.mockRestore()
++      result.renderer.destroy()
++    }
++  })
++
+   it("renders the session intro before real output without putting it in outputBlocks", async () => {
+     const outputBlocks: readonly TextBlock[] = [{
+       kind: "text",

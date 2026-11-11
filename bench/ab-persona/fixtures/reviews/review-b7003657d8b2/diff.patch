@@ -1,0 +1,409 @@
+diff --git a/docs/adrs/adr-009-tool-execution-safety.md b/docs/adrs/adr-009-tool-execution-safety.md
+index 78abe8f..da99c8a 100644
+--- a/docs/adrs/adr-009-tool-execution-safety.md
++++ b/docs/adrs/adr-009-tool-execution-safety.md
+@@ -251,11 +251,11 @@ A Bash command without `mutates` writes in place, and its changes stay outside t
+ 
+ Agents run Git commands as separate calls without `mutates` and never chain them onto a mutating command. A PATH-first Git wrapper refuses repository-write modes before invoking Git and tells the agent to rerun the Git command as a separate call without `mutates`. Read-only Git commands, including scripts and build tools that only read Git, remain allowed. Agents set `mutates: true` only when a command exists to change the project files they are working on, so that the change is recorded and reviewed like a file tool change. Examples are heredoc and `cat >` writes, `sed -i`, scripts that rewrite files, formatters, generators, and plain `mv` and `rm`. Agents leave it unset when the writes are side effects of running something: dependency or binary installs, builds, tests, caches, and servers. They name the target tree with `cwd`, not an absolute `cd` in the command. They create scripts with the write tool and use Bash only to run them. The declaration is the first input field, so the row reads Edit while the command arrives. Once files land, added files use the write content presentation and its syntax palette; modified and removed files use edit diffs. The row reads Write when every landed file was added, otherwise Edit. Every client derives these choices from the shared file-change model.
+ 
+-Wholly ignored directories are shared with the selected tree instead of copied. The running session's entire folder, `.flywheel/sessions/<id>/`, stays shared: writes land directly and are reported as reviewed file changes by comparison with a before image inside the copy home. The image excludes `owner.pid` at the session folder root. At the scratch root only, it excludes `mutations/`, runtime background command files named `flywheel-agent-bg-*`, and foreground output spools named `flywheel-foreground-*`. Other entries are cloned as whole files or directories; scratch itself is cloned by its eligible root entries. A concurrent write to the same session folder during the command is reported as the command's. The runtime derives the session folder from the known copy home under `<sessionDir>/scratch/mutations/`, verifies the `scratch` and `mutations` names, and never follows a command-writable link to find the root. In-memory fingerprints of the image detect removed, replaced, or changed files and report that session-folder changes could not be verified. Only regular image files are read; image links are never followed. A later build has no in-memory fingerprints and trusts the retained regular image files without proving their integrity. Copies without an image observe no session-folder changes. Session-folder observation runs on every settlement, including interruption and repository refusal, before the image is discarded. It records evidence only and never publishes session-folder writes or adds them to Session Changes. Other session folders and runtime stores stay outside this observation. The scanning Worker transfers both byte endpoints and computes binary identities so the runtime does not copy or hash large binary files. The copy is a copy-on-write clone where the filesystem supports one and a full copy where it does not, as on most Windows volumes. A project is outside Git only when Git says so and no `.git` entry stands at or above it. A Git that times out, is ended, or refuses a repository it found fails the copy, because a copy that shares no ignored directory clones every dependency tree and build output. Capture fails open after root selection: a command whose copy cannot be taken runs in place, its result says that its changes were not recorded as mutations, and one `agent.bash.mutation.uncaptured` record beside `agent.bash.mutation.applied` gives the capture failure rate. Git-write refusal still applies when capture is unavailable. A command whose Git wrapper cannot be prepared is refused before launch.
++Wholly ignored directories are shared with the selected tree instead of copied. The running session's entire folder, `.flywheel/sessions/<id>/`, stays shared: writes land directly and are reported as reviewed file changes by comparison with a before image inside the copy home. The image excludes `owner.pid` at the session folder root. At the scratch root only, it excludes `mutations/`, runtime background command files named `flywheel-agent-bg-*`, and foreground output spools named `flywheel-foreground-*`. Other entries are cloned as whole files or directories; scratch itself is cloned by its eligible root entries. A concurrent write to the same session folder during the command is reported as the command's. The runtime derives the session folder from the known copy home under `<sessionDir>/scratch/mutations/`, verifies the `scratch` and `mutations` names, and never follows a command-writable link to find the root. In-memory fingerprints of the image detect removed, replaced, or changed files and report that session-folder changes could not be verified. Only regular image files are read; image links are never followed. A later build has no in-memory fingerprints and trusts the retained regular image files without proving their integrity. Copies without an image observe no session-folder changes. Session-folder observation runs on every settlement, including interruption and repository refusal, before the image is discarded. It records evidence only and never publishes session-folder writes or adds them to Session Changes. Other session folders and runtime stores stay outside this observation. The scanning Worker transfers both byte endpoints and computes binary identities so the runtime does not copy or hash large binary files. The copy is a copy-on-write clone where the filesystem supports one and a full copy where it does not, as on most Windows volumes. A project is outside Git only when Git says so and no `.git` entry stands at or above it. A Git that times out, is ended, or refuses a repository it found fails the copy, because a copy that shares no ignored directory clones every dependency tree and build output. A command whose copy cannot be taken is refused before launch, and one `agent.bash.mutation.refused` record states why. A command whose Git wrapper cannot be prepared is refused before launch.
+ 
+ Each command has a private Git directory in its copy home so permitted read-only Git sees the repository's history, refs, HEAD, index, configuration, excludes, and stash history. Git initializes that directory with the repository's object format and ref backend, including SHA-256 and reftable. Git alternates read the real common object store; no shared object directory is symlinked into the copy. A `.git` file at the copy tree root names the private directory. Git discovers the repository from its current directory, including after a `cd` into another tree. A project below the Git top level is laid out at its prefix, and index entries outside the project are marked skip-worktree. The private config preserves the repository format, common config, worktree config only when `extensions.worktreeConfig` enables it, and effective excludes, then fixes the private work tree and excludes file and disables automatic garbage collection. A split index brings its shared index files and becomes a standalone private index. Read execution suppresses optional locks, fsmonitor, and configured textconv cache writes. After setup completes, one semantic repository baseline belongs to the file-only execution policy. The baseline supports the landing backstop, not Git publication.
+ 
+-On macOS, Seatbelt refuses writes to the real selected tree, all registered work trees of the same repository, and the real Git directories. Literal ancestor rules also refuse removal or renaming of directory nodes that contain protected roots, without closing their writable contents. On Linux, bubblewrap mounts those paths read-only. Shared entries of the selected tree stay writable, but never reopen its Git directory. The session scratch directory and copy home stay writable even when they lie inside a guarded tree. Protected trees and Git directories inside these writable allowances stay protected, including the shared entries' copied aliases on Linux. A refused write names its target tree in the result and tells the agent to select it with `cwd`, including when the error names both a private source and a protected destination. A mixed-path error with a relative destination names the protected roots when no exact root can be identified. Other folders are not guarded. Windows runs the copy unguarded by the OS mutation guard, with a PATH-first native Git wrapper, the same private Git read view, and file-only landing. A macOS or Linux host whose guard launcher is unavailable runs the command in place through the uncaptured path and reports that capture was unavailable. Git-write refusal still applies.
++On macOS, Seatbelt refuses writes to the real selected tree, all existing registered work trees of the same repository, and the real Git directories. A registered work tree that no longer exists is not guarded and does not fail guard setup or launch. The selected tree and Git directories remain required. Literal ancestor rules also refuse removal or renaming of directory nodes that contain protected roots, without closing their writable contents. On Linux, bubblewrap mounts those paths read-only. Shared entries of the selected tree stay writable, but never reopen its Git directory. The session scratch directory and copy home stay writable even when they lie inside a guarded tree. Protected trees and Git directories inside these writable allowances stay protected, including the shared entries' copied aliases on Linux. A refused write names its target tree in the result and tells the agent to select it with `cwd`, including when the error names both a private source and a protected destination. A mixed-path error with a relative destination names the protected roots when no exact root can be identified. Other folders are not guarded. Windows runs the copy unguarded by the OS mutation guard, with a PATH-first native Git wrapper, the same private Git read view, and file-only landing. Copy or guard setup failure refuses the command before launch and says that the agent can retry or rerun without `mutates` to run in place without capture. A macOS or Linux host whose guard launcher is unavailable runs the command in place through the uncaptured path and reports that capture was unavailable. One `agent.bash.mutation.uncaptured` record identifies that fallback. Git-write refusal still applies.
+ 
+ When the command exits, foreground, auto-yielded, or background, landing checks its repository baseline before publishing any project file. The check compares HEAD and index entries by path, mode, object id, and stage. For the files backend, it compares all refs including symbolic targets and the ordered stash stack. For reftable, it hashes the active table list and every listed table in order, without reading objects or migrating formats. This stack includes dangling symbolic refs and all reflogs. The private copy seeds its reftable stack directly from these complete metadata bytes. Read-only Git commands do not change the stack; any ref or reflog write changes it. A missing table or a list that changes during inspection refuses the comparison. The check also rejects unexpected root or nested Git registrations. A detected change or an unavailable comparison applies no project file changes, preserves the copy and its record, and names the copy in a bounded recovery report. Session-folder writes already landed and remain reviewable in the command's evidence. Raw index stat refreshes do not count as semantic changes. Git objects, the index, HEAD, refs, stash, configuration, remotes, hooks, and registrations never land from the copy. The wrapper and backstop form a cooperative command boundary, not hostile-process containment. Absolute executables, replaced search paths, and in-process libraries can bypass the wrapper. Worktree-only bypass changes can land when the repository baseline remains unchanged. The final-state comparison does not prove which program wrote a file. The files-backend comparison does not detect a change that was reversed before landing; the reftable comparison rejects ref or reflog writes even when their final values match the baseline.
+ 
+diff --git a/docs/product-intent/agent-methods.md b/docs/product-intent/agent-methods.md
+index c086e4d..cd1cbdd 100644
+--- a/docs/product-intent/agent-methods.md
++++ b/docs/product-intent/agent-methods.md
+@@ -104,7 +104,7 @@ When a conversation continues with a model that has a different tool contract, F
+ 
+ ## PI-AGENT-017: Shell changes remain inspectable
+ 
+-When an agent declares that a shell command mutates files, Flywheel captures the changes in the work tree that contains the command's working directory and shows that call the way a file tool shows its change: a file the command created reads as a write, and a file it changed or deleted reads as an edit. This presentation starts from the moment the declaration arrives and is backed by the same mutation evidence in session history. While the command's input arrives and while it runs, its row reads as an edit with one line that says a bash command is running, without the command text. When it settles without landed changes, its row reads as the ordinary shell command it ran. The changes never include concurrent work by other agents. When a file changed elsewhere while the command ran, Flywheel rebases the command's change onto the current file; only the regions both sides changed are marked as conflicts, and the agent is told to resolve them. A command declared as mutating captures only its changes to file contents. Git commands that change the repository run without that declaration; inside a mutating command they are refused with a message that says so. A write to another work tree of the same repository is refused with a message that tells the agent to set the command's working directory to that tree. Shell commands that are not declared as mutating run without extra repository work, and Flywheel does not show their changes as file writes or edits or include them in the session's changes.
++When an agent declares that a shell command mutates files, Flywheel captures the changes in the work tree that contains the command's working directory and shows that call the way a file tool shows its change: a file the command created reads as a write, and a file it changed or deleted reads as an edit. This presentation starts from the moment the declaration arrives and is backed by the same mutation evidence in session history. While the command's input arrives and while it runs, its row reads as an edit with one line that says a bash command is running, without the command text. When it settles without landed changes, its row reads as the ordinary shell command it ran. The changes never include concurrent work by other agents. When a file changed elsewhere while the command ran, Flywheel rebases the command's change onto the current file; only the regions both sides changed are marked as conflicts, and the agent is told to resolve them. A command declared as mutating captures only its changes to file contents. Git commands that change the repository run without that declaration; inside a mutating command they are refused with a message that says so. A write to another work tree of the same repository is refused with a message that tells the agent to set the command's working directory to that tree. When Flywheel cannot take a mutating command's private copy, it refuses the command before it runs and says why; a macOS or Linux host with no write guard for such commands runs them in place and says that their changes were not captured. Shell commands that are not declared as mutating run without extra repository work, and Flywheel does not show their changes as file writes or edits or include them in the session's changes.
+ 
+ Every agent's shell refuses recognized writes and deletes outside the project, the `.flywheel` folders, and the project's registered worktrees, except device sinks. The working directory does not widen that allowance. A target that Flywheel cannot place is refused too. An unknown working directory does not refuse a write whose literal path Flywheel can place inside the allowance. The refusal first says that the command was blocked because it is not a safe command. It stops the whole command, names the target and reason, and directs the agent to the project or scratchpad. An unplaceable target requires a literal path. The refusal ends by telling the agent not to rephrase the command to reach the same target. This is a guard against mistakes, not a sandbox for arbitrary programs. A read-only agent, such as the explorer or a reviewer, may write only in its scratchpad or to device sinks; other recognized writes and deletes are refused.
+ 
+@@ -205,3 +205,7 @@ A caller can inspect resolved settings without making a model request. Run evide
+ ## PI-AGENT-031: Chat orchestrates substantive work with workflows
+ 
+ While Workflows is On, the root chat agent delegates every substantive task. It aims for the most complete and correct result, not the cheapest one, and reaches it as soon as possible. It writes a workflow file for the task and launches it by content or path. It uses a workflow only when at least two agents are needed and a later agent reads an earlier agent's output. It gives one agent's work to a subagent and independent work to parallel subagents. Work in several phases runs as separate dispatches in sequence. The chat reads each result before it starts the next phase. Independent units of work start at the same time. A unit waits only for a named prerequisite or for a file that a running unit changes, and the order in which units commit does not make a unit wait. It prefers workflows that verify findings adversarially, unless the work is trivial or already verified. It works without delegation only on conversational turns and trivial mechanical edits. While Workflows is Ask, the agent launches only when its judgment says the task needs a workflow, and each launch needs the person's approval. While Workflows is Off, no workflow can launch, and the chat works directly or through subagents.
++
++## PI-AGENT-032: Tool calls are read for what they mean
++
++Flywheel carries out a tool call whose meaning is clear even when its form is wrong, such as a value in the wrong type or encoding, a misspelled key or option, a wrapped argument object, or a path that identifies exactly one existing file in another form. The result begins with a note that states how Flywheel read the call. Flywheel never changes a value that is already valid, never invents missing content, never chooses between two possible meanings, and never relaxes a safety, permission, or containment check; it refuses such a call with what the agent needs to correct it.
+diff --git a/src/infra/diagnostics-registry.ts b/src/infra/diagnostics-registry.ts
+index 594467c..a7d3865 100644
+--- a/src/infra/diagnostics-registry.ts
++++ b/src/infra/diagnostics-registry.ts
+@@ -108,16 +108,21 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
+   // One record per bash command that ran in a private project copy: file,
+   // conflict, and unsupported-change counts plus the apply duration.
+   ["agent.bash.mutation.applied", { tier: "info" }],
+-  // One record per `mutates` command whose private copy could not be taken, so
+-  // it ran in the real project without capture. Beside the record above, it
+-  // gives the rate at which mutation capture fails.
++  // One record per `mutates` command that ran in place without capture because
++  // the host's mutation guard was unavailable.
+   ["agent.bash.mutation.uncaptured", { tier: "info" }],
++  // One record per command refused before launch because copy or guard setup failed.
++  ["agent.bash.mutation.refused", { tier: "info" }],
+   // One content-free record per command refused by static write-target analysis.
+   ["agent.shell.write_refused", { tier: "info" }],
+   // One record per message_session refusal of a text that repeats the last
+   // text of the sender to the same recipient less than 30 seconds before;
+   // repeats coalesce into a count.
+   ["session.message.duplicate_refused", { tier: "info" }],
++  // One record per deleted chat; passes without deletions stay at DEBUG.
++  ["session.auto_delete.deleted", { tier: "info" }],
++  ["session.auto_delete.swept", { tier: "debug" }],
++  ["session.auto_delete.failed", { tier: "notable" }],
+   // The Claude Agent SDK bridge. One record per query start and
+   // stop, with the trigger or the reason and the stop procedure's outcome; one
+   // per in-place rotation; one per CLI version's in-place decision; one
+diff --git a/src/orchestration/agent-runtime/tools/bash-mutation-guard.ts b/src/orchestration/agent-runtime/tools/bash-mutation-guard.ts
+index 641b742..36188e7 100644
+--- a/src/orchestration/agent-runtime/tools/bash-mutation-guard.ts
++++ b/src/orchestration/agent-runtime/tools/bash-mutation-guard.ts
+@@ -4,16 +4,17 @@
+  * script builds at run time.
+  *
+  * On macOS the command runs under a Seatbelt profile that denies writes under
+- * repository's registered trees and Git directories except through the entries
++ * the repository's existing registered trees and Git directories except through the entries
+  * the selected copy shares. Linux makes these paths read-only with bubblewrap.
+  * Both guards keep the session scratch directory and copy home writable.
+  * Windows runs without an OS guard. A macOS or Linux host that refuses its
+- * guard runs the command without capture, in place.
++ * guard runs the command without capture, in place. Other copy or guard setup
++ * failures refuse the command before launch.
+  */
+ 
+ import { realpathSync } from "node:fs";
+ import { dirname, isAbsolute, join, relative, sep } from "node:path";
+-import { errorMessage } from "../../../infra/error-message.js";
++import { errnoCode, errorMessage } from "../../../infra/error-message.js";
+ import { Log } from "../../../infra/log.js";
+ import type { OwnedCommandRunner } from "../../../infra/owned-command.js";
+ import type { LandableCopy, PrivateProjectCopy } from "./bash-private-copy.js";
+@@ -53,8 +54,8 @@ export async function probeMutationGuard(run: OwnedCommandRunner, platform: Node
+   }
+ }
+ 
+-/** Returns the argv that runs `argv` under the guard for `copy`. Throws when a
+- *  path the guard names no longer exists. */
++/** Returns the argv that runs `argv` under the guard for `copy`. Missing
++ *  registered worktrees are omitted; missing required paths fail setup or launch. */
+ export function guardedArgv(kind: MutationGuardKind, copy: GuardedCopy): (argv: readonly string[]) => string[] {
+   switch (kind) {
+     case "seatbelt": {
+@@ -63,19 +64,20 @@ export function guardedArgv(kind: MutationGuardKind, copy: GuardedCopy): (argv:
+     }
+     case "mount-namespace": {
+       const roots = protectedRoots(copy);
++      const readOnlyBind = (path: string, target = path): string[] => [roots.get(path) === "optional" ? "--ro-bind-try" : "--ro-bind", path, target];
+       const binds = [
+-        ...roots.flatMap(path => ["--ro-bind", path, path]),
++        ...[...roots.keys()].flatMap(path => readOnlyBind(path)),
+         ...copy.shared.flatMap(path => ["--bind", join(copy.realRoot, path), join(copy.realRoot, path)]),
+         // A shared ancestor can contain another registered tree or the Git directory.
+-        ...finalReadOnlyRoots(copy).flatMap(path => ["--ro-bind", path, path]),
++        ...finalReadOnlyRoots(copy).flatMap(path => readOnlyBind(path)),
+         ...[copy.scratchDir, copy.home].filter((path): path is string => path !== undefined).flatMap(path => ["--bind", path, path]),
+-        ...rootsInsideWritableHomes(copy).flatMap(path => ["--ro-bind", path, path]),
++        ...rootsInsideWritableHomes(copy).flatMap(path => readOnlyBind(path)),
+         ...copy.shared.flatMap(path => ["--bind", join(copy.realRoot, path), join(copy.copyRoot, path)]),
+         ...finalReadOnlyRoots(copy).flatMap(root => {
+           const path = relative(copy.realRoot, root);
+           // A writable bind is a second mount, so it needs its own read-only child mounts.
+           return copy.shared.some(shared => path === shared || path.startsWith(`${shared}${sep}`))
+-            ? ["--ro-bind", root, join(copy.copyRoot, path)] : [];
++            ? readOnlyBind(root, join(copy.copyRoot, path)) : [];
+         }),
+       ];
+       return argv => ["bwrap", "--dev-bind", "/", "/", ...binds, "--", ...argv];
+@@ -90,9 +92,20 @@ export function guardedArgv(kind: MutationGuardKind, copy: GuardedCopy): (argv:
+  *  resolved paths, and the last matching rule wins. */
+ export function seatbeltProfile(copy: GuardedCopy): string {
+   const allowed = copy.shared.map(path => join(copy.realRoot, path));
++  const roots = [...protectedRoots(copy)].flatMap(([path, requirement]) => {
++    try {
++      return [{ path, resolved: realpathSync(path) }];
++    } catch (error) {
++      // Another process can delete a registered worktree after Git discovery.
++      if (requirement === "optional" && errnoCode(error) === "ENOENT") return [];
++      throw error;
++    }
++  });
++  const finalRoots = new Set(finalReadOnlyRoots(copy));
++  const rootsInWritableHomes = new Set(rootsInsideWritableHomes(copy));
+   const ancestors = new Set<string>();
+-  for (const root of protectedRoots(copy)) {
+-    for (let path = dirname(realpathSync(root)); ; path = dirname(path)) {
++  for (const root of roots) {
++    for (let path = dirname(root.resolved); ; path = dirname(path)) {
+       ancestors.add(path);
+       if (path === dirname(path)) break;
+     }
+@@ -100,19 +113,19 @@ export function seatbeltProfile(copy: GuardedCopy): string {
+   return [
+     "(version 1)",
+     "(allow default)",
+-    ...protectedRoots(copy).map(path => `(deny file-write* (subpath ${sbplString(realpathSync(path))}))`),
++    ...roots.map(root => `(deny file-write* (subpath ${sbplString(root.resolved)}))`),
+     // An allow rule with no filter would allow every write, so it exists only with paths.
+     ...(allowed.length > 0 ? [`(allow file-write* ${allowed.map(path => `(subpath ${sbplString(realpathSync(path))})`).join(" ")})`] : []),
+-    ...finalReadOnlyRoots(copy).map(path => `(deny file-write* (subpath ${sbplString(realpathSync(path))}))`),
++    ...roots.filter(root => finalRoots.has(root.path)).map(root => `(deny file-write* (subpath ${sbplString(root.resolved)}))`),
+     `(allow file-write* ${[copy.scratchDir, copy.home].filter((path): path is string => path !== undefined).map(path => `(subpath ${sbplString(realpathSync(path))})`).join(" ")})`,
+-    ...rootsInsideWritableHomes(copy).map(path => `(deny file-write* (subpath ${sbplString(realpathSync(path))}))`),
++    ...roots.filter(root => rootsInWritableHomes.has(root.path)).map(root => `(deny file-write* (subpath ${sbplString(root.resolved)}))`),
+     // A writable ancestor must not relocate a protected subtree out of its rule.
+     ...[...ancestors].map(path => `(deny file-write-unlink (literal ${sbplString(path)}))`),
+   ].join("\n");
+ }
+ 
+ function rootsInsideWritableHomes(copy: GuardedCopy): string[] {
+-  return protectedRoots(copy).filter(root => [copy.scratchDir, copy.home].some(home => {
++  return [...protectedRoots(copy).keys()].filter(root => [copy.scratchDir, copy.home].some(home => {
+     if (!home) return false;
+     const path = relative(home, root);
+     return path === "" || (!isAbsolute(path) && path !== ".." && !path.startsWith(`..${sep}`));
+@@ -124,7 +137,7 @@ function rootsInsideWritableHomes(copy: GuardedCopy): string[] {
+  *  shows such a denial, and the returned note tells the agent why. */
+ export function deniedWriteNote(kind: MutationGuardKind, copy: Pick<GuardedCopy, "home" | "realRoot" | "git"> & Partial<Pick<GuardedCopy, "copyRoot" | "shared">>, output: string): string | undefined {
+   if (kind === "none") return undefined;
+-  const roots = protectedRoots(copy);
++  const roots = [...protectedRoots(copy).keys()];
+   const aliases = new Map(roots.map(root => {
+     const path = relative(copy.realRoot, root);
+     const shared = copy.shared?.some(entry => path === entry || path.startsWith(`${entry}${sep}`));
+@@ -156,8 +169,13 @@ function finalReadOnlyRoots(copy: Pick<GuardedCopy, "realRoot" | "git">): string
+   return [...new Set([...others, ...gitRoots(copy)])];
+ }
+ 
+-function protectedRoots(copy: Pick<GuardedCopy, "realRoot" | "git">): string[] {
+-  return [...new Set([copy.realRoot, ...(copy.git?.kind === "repository" ? copy.git.workTrees : []), ...gitRoots(copy)])];
++function protectedRoots(copy: Pick<GuardedCopy, "realRoot" | "git">): Map<string, "required" | "optional"> {
++  const roots = new Map<string, "required" | "optional">([[copy.realRoot, "required"]]);
++  for (const tree of copy.git?.kind === "repository" ? copy.git.workTrees : []) {
++    if (!roots.has(tree)) roots.set(tree, "optional");
++  }
++  for (const root of gitRoots(copy)) roots.set(root, "required");
++  return roots;
+ }
+ 
+ function sbplString(value: string): string {
+diff --git a/src/orchestration/agent-runtime/tools/bash-project-mutation.ts b/src/orchestration/agent-runtime/tools/bash-project-mutation.ts
+index 4e0db94..c3fb56d 100644
+--- a/src/orchestration/agent-runtime/tools/bash-project-mutation.ts
++++ b/src/orchestration/agent-runtime/tools/bash-project-mutation.ts
+@@ -91,8 +91,9 @@ export type MutationExecution = IsolatedExecution | Pick<IsolatedExecution, "env
+  *  once it lands, or when the launch fails. Rejected and unverifiable copies stay available
+  *  with their records, including Git-backed legacy copies that were interrupted. A command a planned replacement
+  *  handed to a later build lands there instead (`handedOverPrivateCopy`), so
+- *  this build neither lands nor deletes its copy. A command whose copy cannot be
+- *  taken still runs, in the real project, uncaptured (`runUncaptured`). The landing
++ *  this build neither lands nor deletes its copy. Copy setup failures refuse the
++ *  command before launch. A macOS or Linux host without a mutation guard runs
++ *  in the real project, uncaptured (`runUncaptured`). The landing
+  *  checks execution policy, repository topology, and semantic Git state before publishing file contents only. */
+ export async function runInPrivateCopy(input: {
+   readonly context: ToolContext;
+@@ -114,19 +115,26 @@ export async function runInPrivateCopy(input: {
+   }
+   const runCommand = ownedCommandRunner({ spawnOwned });
+   const guard = await hostMutationGuard(runCommand);
++  if (guard === "none" && process.platform !== "win32") {
++    return await runUncaptured(input, guard, new Error("the host's mutation guard is unavailable"), env);
++  }
+   let copy: PrivateProjectCopy;
+   let executionCwd: string;
+   let guarded: (argv: readonly string[]) => string[];
+   try {
+-    if (guard === "none" && process.platform !== "win32") throw new Error("the host's mutation guard is unavailable");
+     // A model-supplied cwd can name the tree through a link or another letter case; the project root is already physical.
+     executionCwd = realpathSync.native(context.executionCwd);
+     copy = await takePrivateProjectCopy({ projectRoot: context.projectRoot, executionCwd, home: input.home, scratchDir: context.scratchDir, runGit: runCommand, guard });
+     guarded = guardedArgv(guard, copy);
+   } catch (error) {
+     discardPrivateCopy({ home: input.home });
++    DebugLog.record({
++      type: "agent.bash.mutation.refused",
++      ...(context.sessionId ? { sessionId: context.sessionId } : {}),
++      payload: { ...(context.toolUseId ? { toolUseId: context.toolUseId } : {}), guard, error: errorMessage(error) },
++    });
+     if (error instanceof NoContainingWorkTreeError) return { content: `Error: ${error.message}`, outcome: "error" };
+-    return await runUncaptured(input, guard, error, env);
++    return { content: `Error: Flywheel could not take a private copy of the project (${errorMessage(error)}). This mutating command was not launched. Retry, or rerun without \`mutates\` to run it in place without capture.`, outcome: "error" };
+   }
+   let landing: Promise<ProjectMutationLanding> | undefined;
+   const land: PrivateCopy["land"] = (settlement) => {
+@@ -148,11 +156,9 @@ export async function runInPrivateCopy(input: {
+   }
+ }
+ 
+-/** Runs a command whose copy could not be taken in the real project instead:
+- *  the command always runs, and only the capture of its changes is lost. The
+- *  result says so, so the agent can review the project, and the one
+- *  `agent.bash.mutation.uncaptured` record beside `agent.bash.mutation.applied`
+- *  gives the rate at which capture fails. */
++/** Runs in place when a macOS or Linux host has no mutation guard. The result
++ *  states that changes were not captured; one `agent.bash.mutation.uncaptured`
++ *  record identifies the unavailable guard. The Git wrapper still applies. */
+ async function runUncaptured(input: Parameters<typeof runInPrivateCopy>[0], guard: MutationGuardKind, error: unknown, env: ShellEnvironment): Promise<ToolResult> {
+   const { context } = input;
+   DebugLog.record({
+diff --git a/tests/unit/orchestration/agent-runtime/tools/bash-mutation-guard.test.ts b/tests/unit/orchestration/agent-runtime/tools/bash-mutation-guard.test.ts
+index f5bbd13..ca9f2a5 100644
+--- a/tests/unit/orchestration/agent-runtime/tools/bash-mutation-guard.test.ts
++++ b/tests/unit/orchestration/agent-runtime/tools/bash-mutation-guard.test.ts
+@@ -48,12 +48,13 @@ describe("bash mutation guard launch", () => {
+     fs.mkdirSync(path.join(root, ".git"));
+     const home = path.join(root, ".flywheel", "mutations");
+     const sibling = path.join(root, "node_modules", "sibling");
++    const missing = path.join(real, "vanished-parent", "worktree");
+     fs.mkdirSync(home, { recursive: true });
+     fs.mkdirSync(sibling);
+     const alias = path.join(real, "alias");
+     fs.symlinkSync(root, alias, process.platform === "win32" ? "junction" : "dir");
+ 
+-    const git = { kind: "repository" as const, gitDir: path.join(root, ".git"), commonDir: path.join(root, ".git"), privateGitDir: path.join(home, "git"), workTrees: [sibling] };
++    const git = { kind: "repository" as const, gitDir: path.join(root, ".git"), commonDir: path.join(root, ".git"), privateGitDir: path.join(home, "git"), workTrees: [alias, sibling, missing] };
+     const profile = seatbeltProfile({ home, realRoot: alias, copyRoot: "/copy", shared: ["node_modules"], git, scratchDir: home });
+ 
+     expect(profile.split("\n").slice(0, 9)).toEqual([
+@@ -68,6 +69,12 @@ describe("bash mutation guard launch", () => {
+       `(allow file-write* (subpath ${JSON.stringify(home)}) (subpath ${JSON.stringify(home)}))`,
+     ]);
+     expect(profile.split("\n").slice(9).every(rule => rule.startsWith("(deny file-write-unlink (literal "))).toBe(true);
++    expect(profile).not.toContain(missing);
++    expect(profile).not.toContain(path.dirname(missing));
++    expect(() => seatbeltProfile({ home, realRoot: missing, copyRoot: "/copy", shared: [], git: { ...git, workTrees: [missing] } })).toThrow();
++    expect(() => seatbeltProfile({ home, realRoot: root, copyRoot: "/copy", shared: [], git: { ...git, gitDir: missing, workTrees: [missing] } })).toThrow();
++    expect(() => seatbeltProfile({ home: missing, realRoot: root, copyRoot: "/copy", shared: [] })).toThrow();
++    expect(() => seatbeltProfile({ home, scratchDir: missing, realRoot: root, copyRoot: "/copy", shared: [] })).toThrow();
+     // Without shared entries an allow rule would have no filter and allow every write.
+     expect(seatbeltProfile({ home, realRoot: root, copyRoot: "/copy", shared: [] }).split("\n").slice(0, 4)).toEqual([
+       "(version 1)", "(allow default)", `(deny file-write* (subpath ${JSON.stringify(root)}))`,
+@@ -94,20 +101,23 @@ describe("bash mutation guard launch", () => {
+     const realRoot = path.resolve("/work/project");
+     const copyRoot = path.join(home, "tree", "project");
+     const nested = path.join(realRoot, "node_modules", "sibling");
++    const missing = path.resolve("/vanished-parent/worktree");
+     const gitDir = path.join(realRoot, ".git");
+-    const wrap = guardedArgv("mount-namespace", { home, realRoot, copyRoot, shared: ["node_modules"], git: { kind: "repository", gitDir, commonDir: gitDir, privateGitDir: path.join(home, "git"), workTrees: [nested] } });
++    const wrap = guardedArgv("mount-namespace", { home, realRoot, copyRoot, shared: ["node_modules"], git: { kind: "repository", gitDir, commonDir: gitDir, privateGitDir: path.join(home, "git"), workTrees: [realRoot, nested, missing, gitDir] } });
+ 
+     expect(wrap(["/bin/bash", "/scratch/script.sh"])).toEqual([
+       "bwrap", "--dev-bind", "/", "/",
+       "--ro-bind", realRoot, realRoot,
+-      "--ro-bind", nested, nested,
++      "--ro-bind-try", nested, nested,
++      "--ro-bind-try", missing, missing,
+       "--ro-bind", gitDir, gitDir,
+       "--bind", path.join(realRoot, "node_modules"), path.join(realRoot, "node_modules"),
+-      "--ro-bind", nested, nested,
++      "--ro-bind-try", nested, nested,
++      "--ro-bind-try", missing, missing,
+       "--ro-bind", gitDir, gitDir,
+       "--bind", home, home,
+       "--bind", path.join(realRoot, "node_modules"), path.join(copyRoot, "node_modules"),
+-      "--ro-bind", nested, path.join(copyRoot, "node_modules", "sibling"),
++      "--ro-bind-try", nested, path.join(copyRoot, "node_modules", "sibling"),
+       "--", "/bin/bash", "/scratch/script.sh",
+     ]);
+     expect(guardedArgv("none", { home: "/home", realRoot: "/work/project", copyRoot: "/copy", shared: [] })(["sh", "x"])).toEqual(["sh", "x"]);
+diff --git a/tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-uncaptured.test.ts b/tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-uncaptured.test.ts
+index bfae336..b4e7690 100644
+--- a/tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-uncaptured.test.ts
++++ b/tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-uncaptured.test.ts
+@@ -89,18 +89,16 @@ describe("bash tool: mutation capture failures", () => {
+     }
+   });
+ 
+-  it.each((["foreground", "held", "background"] as const).flatMap((mode) =>
+-    (process.platform === "win32" ? [false] : [false, true]).map((unavailable) => [mode, unavailable] as const),
+-  ))("guards uncaptured %s commands and counts the miss (guard unavailable: %s)", async (mode, unavailable) => {
++  it.skipIf(process.platform === "win32").each(["foreground", "held", "background"] as const)("keeps the Git wrapper for uncaptured %s commands when the host guard is unavailable", async (mode) => {
+     const root = fs.realpathSync(createDirectory("agent-bash-mutations-uncaptured-"));
+     fs.writeFileSync(path.join(root, "a.txt"), "a\n");
+-    // The fake Git answers 128 to every read, which below a .git entry is a refusal, so no copy can be taken.
++    // Copy discovery would fail here, but an unavailable guard selects the in-place path first.
+     fs.mkdirSync(path.join(root, ".git"));
+     const scratchDir = path.join(root, ".flywheel", "scratch");
+     const store = createRecordingFileMutationStore();
+     const spawn = mutationSpawnProbe((cwd) => fs.writeFileSync(path.join(cwd, "a.txt"), "mine\n"));
+     const record = spyOn(DebugLog, "record");
+-    const guard = unavailable ? spyOn(mutationGuard, "hostMutationGuard").mockResolvedValue("none") : undefined;
++    const guard = spyOn(mutationGuard, "hostMutationGuard").mockResolvedValue("none");
+     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
+     try {
+       const result = await createBashDefinition({ operations: makeMockOps({ ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); } }) })
+@@ -121,19 +119,58 @@ describe("bash tool: mutation capture failures", () => {
+       expect(fs.existsSync(path.join(wrapper, process.platform === "win32" ? "git.exe" : "git"))).toBe(true);
+       expect(path.isAbsolute(env.FLYWHEEL_MUTATION_GIT_REAL ?? "")).toBe(true);
+       expect(env.FLYWHEEL_MUTATION_GIT_RUNTIME).toBe(process.execPath);
+-      expect(result.content).toStartWith(`Flywheel could not take a private copy of the project (${unavailable ? "the host's mutation guard is unavailable" : "git rev-parse exited with 128 below a .git entry"}`);
++      expect(result.content).toStartWith("Flywheel could not take a private copy of the project (the host's mutation guard is unavailable");
+       expect(result.content).toContain("its file changes were not recorded as mutations");
+       expect(store.facts.filter((fact) => fact.type === "file.changed")).toEqual([]);
+       expect(record.mock.calls.map(([input]) => input).filter((input) => input.type === "agent.bash.mutation.uncaptured")).toEqual([
+-        expect.objectContaining({ payload: expect.objectContaining({ toolUseId: "bash-1" }) }),
++        expect.objectContaining({ payload: { toolUseId: "bash-1", guard: "none", error: "the host's mutation guard is unavailable" } }),
+       ]);
++      expect(record.mock.calls.some(([input]) => input.type === "agent.bash.mutation.refused")).toBe(false);
++      await privateCopyRemovals();
++      const mutation = path.join(scratchDir, "mutations");
++      expect(fs.existsSync(mutation) ? fs.readdirSync(mutation) : []).toEqual([]);
++    } finally {
++      await registry.terminateAll();
++      record.mockRestore();
++      guard.mockRestore();
++    }
++  });
++
++  it.each(["foreground", "held", "background"] as const)("refuses a %s command whose private copy fails without launching in place", async (mode) => {
++    const root = project([["a.txt", "old\n"]]);
++    // Git's 128 response below a .git entry refuses copying this repository.
++    fs.mkdirSync(path.join(root, ".git"));
++    const scratchDir = path.join(root, ".flywheel", "scratch");
++    const store = createRecordingFileMutationStore();
++    const spawn = mutationSpawnProbe((cwd) => fs.writeFileSync(path.join(cwd, "a.txt"), "mine\n"));
++    const record = spyOn(DebugLog, "record");
++    const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
++    try {
++      const result = await createBashDefinition({ operations: makeMockOps({ ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); } }) })
++        .execute({ command: "reshape", mutates: true, background: mode === "background" }, makeContext({
++          projectRoot: root, executionCwd: root, scratchDir, spawnOwned: spawn.spawnOwned, toolUseId: "bash-1", sessionEventWriter: store.writer,
++          capabilityAccess: capabilityAccessHolding(["background-commands"]),
++          ...(mode !== "foreground" ? { backgroundTasks: registry } : {}),
++          ...(mode === "held" ? { foregroundBashHold: createForegroundBashHoldController(() => {}) } : {}),
++        }));
++
++      expect(result.outcome).toBe("error");
++      expect(result.content).toContain("git rev-parse exited with 128 below a .git entry");
++      expect(result.content).toContain("This mutating command was not launched.");
++      expect(result.content).toContain("Retry, or rerun without `mutates` to run it in place without capture.");
++      expect(spawn.launches.filter((launch) => launch.cwd !== undefined)).toEqual([]);
++      expect(fs.readFileSync(path.join(root, "a.txt"), "utf8")).toBe("old\n");
++      expect(store.facts.filter((fact) => fact.type === "file.changed")).toEqual([]);
++      expect(record.mock.calls.map(([input]) => input).filter((input) => input.type === "agent.bash.mutation.refused")).toEqual([
++        expect.objectContaining({ payload: { toolUseId: "bash-1", guard: process.platform === "win32" ? "none" : process.platform === "darwin" ? "seatbelt" : "mount-namespace", error: expect.stringContaining("git rev-parse exited with 128 below a .git entry") } }),
++      ]);
++      expect(record.mock.calls.some(([input]) => input.type === "agent.bash.mutation.uncaptured")).toBe(false);
+       await privateCopyRemovals();
+       const mutation = path.join(scratchDir, "mutations");
+       expect(fs.existsSync(mutation) ? fs.readdirSync(mutation) : []).toEqual([]);
+     } finally {
+       await registry.terminateAll();
+       record.mockRestore();
+-      guard?.mockRestore();
+     }
+   });
+ 

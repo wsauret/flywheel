@@ -1,0 +1,130 @@
+{
+  "base": "20c6fc1610df66f29912679499122cdc9ad8cea9",
+  "files": [
+    {
+      "anchor": "f41752f9db712ca7a5798ae8604a785a2b5f7144",
+      "path": "docs/elegance.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4cf5c4f682e2c5933849c520cef6f18ac7268d9f",
+      "path": "docs/product-intent/interaction.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4cf5c4f682e2c5933849c520cef6f18ac7268d9f",
+      "path": "src/tui/hooks/composer-attachments.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4cf5c4f682e2c5933849c520cef6f18ac7268d9f",
+      "path": "tests/unit/tui/hooks/prompt-attachments.test.ts",
+      "reversedMutations": 2
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793402706124,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -30,13 +31,15 @@\n }\n \n /** Splits the paste into separators at even and candidates at odd indexes. A\n- *  terminal drops several files as absolute paths separated by unescaped\n- *  whitespace; any other paste stays one candidate, so a single path keeps a\n- *  real space in its name. */\n-function pasteParts(text: string): readonly string[] {\n-  const parts = text.split(/((?:\\\\[\\s\\S]|\\S)+)/)\n+ *  terminal drops several files as absolute paths separated by unescaped ASCII\n+ *  whitespace; macOS screenshot names hold U+202F, so other spaces stay inside a\n+ *  path. Any other paste, or one whose whole text names an existing entry, stays\n+ *  one candidate, so a single path keeps a real space in its name. */\n+function pasteParts(text: string, cwd: string): readonly string[] {\n+  const parts = text.split(/((?:\\\\[\\s\\S]|[^ \\t\\r\\n])+)/)\n   const candidates = parts.filter((_, index) => index % 2 === 1)\n-  return candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate)) ? parts : [\"\", text]\n+  const list = candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate))\n+  return list && !pathText(text, cwd)?.paths.some((path) => existsSync(path)) ? parts : [\"\", text]\n }\n \n async function findImagePath(paths: readonly string[]): Promise<string | undefined> {",
+              "mutation": "e3c89bdf-8fc2-42e3-9f27-1f8bc35cf139",
+              "path": "src/tui/hooks/composer-attachments.ts"
+            }
+          ],
+          "label": "multiple-macos-screenshot-paths-still-collapse-into-one-fail",
+          "location": "src/tui/hooks/composer-attachments.ts:36-39",
+          "severity": "P1",
+          "title": "Multiple macOS screenshot paths still collapse into one failed attachment"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -30,13 +31,15 @@\n }\n \n /** Splits the paste into separators at even and candidates at odd indexes. A\n- *  terminal drops several files as absolute paths separated by unescaped\n- *  whitespace; any other paste stays one candidate, so a single path keeps a\n- *  real space in its name. */\n-function pasteParts(text: string): readonly string[] {\n-  const parts = text.split(/((?:\\\\[\\s\\S]|\\S)+)/)\n+ *  terminal drops several files as absolute paths separated by unescaped ASCII\n+ *  whitespace; macOS screenshot names hold U+202F, so other spaces stay inside a\n+ *  path. Any other paste, or one whose whole text names an existing entry, stays\n+ *  one candidate, so a single path keeps a real space in its name. */\n+function pasteParts(text: string, cwd: string): readonly string[] {\n+  const parts = text.split(/((?:\\\\[\\s\\S]|[^ \\t\\r\\n])+)/)\n   const candidates = parts.filter((_, index) => index % 2 === 1)\n-  return candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate)) ? parts : [\"\", text]\n+  const list = candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate))\n+  return list && !pathText(text, cwd)?.paths.some((path) => existsSync(path)) ? parts : [\"\", text]\n }\n \n async function findImagePath(paths: readonly string[]): Promise<string | undefined> {",
+              "mutation": "e3c89bdf-8fc2-42e3-9f27-1f8bc35cf139",
+              "path": "src/tui/hooks/composer-attachments.ts"
+            }
+          ],
+          "label": "the-all-absolute-heuristic-does-not-preserve-every-single-un",
+          "location": "src/tui/hooks/composer-attachments.ts:36-39",
+          "severity": "P1",
+          "title": "The all-absolute heuristic does not preserve every single unescaped path"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "c66d44acef99",
+      "persona": "reviewer-code-elegance",
+      "run": "0ac0d7d90ba5",
+      "session": "b5ec49a70f22",
+      "start": 1793402539950
+    },
+    {
+      "effort": "high",
+      "end": 1793402711834,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -30,13 +31,15 @@\n }\n \n /** Splits the paste into separators at even and candidates at odd indexes. A\n- *  terminal drops several files as absolute paths separated by unescaped\n- *  whitespace; any other paste stays one candidate, so a single path keeps a\n- *  real space in its name. */\n-function pasteParts(text: string): readonly string[] {\n-  const parts = text.split(/((?:\\\\[\\s\\S]|\\S)+)/)\n+ *  terminal drops several files as absolute paths separated by unescaped ASCII\n+ *  whitespace; macOS screenshot names hold U+202F, so other spaces stay inside a\n+ *  path. Any other paste, or one whose whole text names an existing entry, stays\n+ *  one candidate, so a single path keeps a real space in its name. */\n+function pasteParts(text: string, cwd: string): readonly string[] {\n+  const parts = text.split(/((?:\\\\[\\s\\S]|[^ \\t\\r\\n])+)/)\n   const candidates = parts.filter((_, index) => index % 2 === 1)\n-  return candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate)) ? parts : [\"\", text]\n+  const list = candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate))\n+  return list && !pathText(text, cwd)?.paths.some((path) => existsSync(path)) ? parts : [\"\", text]\n }\n \n async function findImagePath(paths: readonly string[]): Promise<string | undefined> {",
+              "mutation": "e3c89bdf-8fc2-42e3-9f27-1f8bc35cf139",
+              "path": "src/tui/hooks/composer-attachments.ts"
+            }
+          ],
+          "label": "preserve-existing-single-paths-that-also-resemble-a-path-lis",
+          "location": "src/tui/hooks/composer-attachments.ts:36-39",
+          "severity": "P1",
+          "title": "Preserve existing single paths that also resemble a path list"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -163,7 +163,8 @@\n   })\n \n   it(\"attaches each image of a multi-file terminal drop and keeps other paths as text\", async () => {\n-    const images = new Set([\"/scratch/one.png\", \"/scratch/My Shot.png\"])\n+    const screenshot = \"Shot at 2.43.28\u202fPM.png\"\n+    const images = new Set([path.resolve(\"/scratch/one.png\"), path.resolve(`/scratch/${screenshot}`)])\n     const { textarea } = createFakeTextarea(\"compare \")\n     const attachments = createPromptAttachments(syntax, () => \"chat-1\", noClipboard, {\n       findImagePath: async (paths) => paths.find((candidate) => images.has(candidate)),",
+              "mutation": "0d027932-bf07-4f84-906b-4d65d6067a3d",
+              "path": "tests/unit/tui/hooks/prompt-attachments.test.ts"
+            },
+            {
+              "hunk": "@@ -163,7 +163,7 @@\n   })\n \n   it(\"attaches each image of a multi-file terminal drop and keeps other paths as text\", async () => {\n-    const screenshot = \"Shot at 2.43.28\u202fPM.png\"\n+    const screenshot = \"Shot at 2.43.28\\u202FPM.png\"\n     const images = new Set([path.resolve(\"/scratch/one.png\"), path.resolve(`/scratch/${screenshot}`)])\n     const { textarea } = createFakeTextarea(\"compare \")\n     const attachments = createPromptAttachments(syntax, () => \"chat-1\", noClipboard, {",
+              "mutation": "4d03f720-4f76-452a-ae34-e49da70e1a43",
+              "path": "tests/unit/tui/hooks/prompt-attachments.test.ts"
+            }
+          ],
+          "label": "normalize-the-new-test-fixture-paths-for-windows",
+          "location": "tests/unit/tui/hooks/prompt-attachments.test.ts:165-170",
+          "severity": "P2",
+          "title": "Normalize the new test fixture paths for Windows"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "c66d44acef99",
+      "persona": "reviewer-code-quality",
+      "run": "079d3afb22a0",
+      "session": "5af953b6dc1f",
+      "start": 1793402552356
+    },
+    {
+      "effort": "medium",
+      "end": 1793402593103,
+      "findings": [],
+      "model": "claude-sonnet-5.5",
+      "parent": "c66d44acef99",
+      "persona": "reviewer-code-security",
+      "run": "b15480bca32e",
+      "session": "98779c29031d",
+      "start": 1793402559607
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore",
+  "rejectedLabels": [
+    {
+      "id": "the-all-absolute-heuristic-does-not-preserve-every-single-un",
+      "reason": "duplicate of preserve-existing-single-paths-that-also-resemble-a-path-lis"
+    }
+  ]
+}

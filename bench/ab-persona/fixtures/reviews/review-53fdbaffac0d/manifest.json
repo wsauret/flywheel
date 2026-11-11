@@ -1,0 +1,29 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/tui/hooks/use-subscription-spend-consent-control.ts, `decline()` returns at once while `savingEnvelopeIds` is not empty, so Escape, q, Continue, and the frame close of the paid-use question are dropped while a checkbox's immediate write is pending (the input handler in use-subscription-spend-consent-modal.ts still reports the key as handled); the question stays open, the other unanswered mode is not declined, and a stalled write cannot be dismissed. A review catches it only if it says that a close request on the question is ignored or lost while a toggle write is in flight.",
+      "category": "quality",
+      "files": [
+        "src/tui/hooks/use-subscription-spend-consent-control.ts",
+        "src/tui/hooks/use-subscription-spend-consent-modal.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "honor-question-close-while-an-immediate-checkbox-write-is-pe",
+      "title": "Honor question close while an immediate checkbox write is pending"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In src/tui/hooks/use-subscription-spend-consent-control.ts, `commit()` returns without calling `onFailed` when `mutationIsCurrent` is false, and its catch path does the same, so a checkbox write that fails after the person left Provider Settings (Escape, Left, or frame close, which are allowed while the write is pending) gives no failure feedback anywhere. A review catches it only if it says that a failed immediate save is silent when the surface closed before the write settled.",
+      "category": "quality",
+      "files": [
+        "src/tui/hooks/use-subscription-spend-consent-control.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "report-an-immediate-save-failure-even-after-provider-setting",
+      "title": "Report an immediate-save failure even after Provider Settings closes"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review U1 quality"
+}

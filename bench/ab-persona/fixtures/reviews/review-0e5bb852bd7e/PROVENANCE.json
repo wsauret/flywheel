@@ -1,0 +1,166 @@
+{
+  "base": "8fcfb609942c582531fd09e859ae5ce102326566",
+  "files": [
+    {
+      "anchor": "ede7ff2e906ebc1bb852275c19ed189371da5a81",
+      "path": "AGENTS.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "ede7ff2e906ebc1bb852275c19ed189371da5a81",
+      "path": "docs/architecture-intent/README.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "d26dc916dc655e45cf686c98fb03c58dca2e1806",
+      "path": "docs/architecture-intent/providers.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "1cbdfa5e2336fd55d1806002cfbd1b27b8d0c2a3",
+      "path": "src/cli/subcommands.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "04923801737b4f076e088eeea2feab399c53cf00",
+      "path": "src/infra/diagnostics-registry.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1cbdfa5e2336fd55d1806002cfbd1b27b8d0c2a3",
+      "path": "src/orchestration/modules.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "04923801737b4f076e088eeea2feab399c53cf00",
+      "path": "src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts",
+      "reversedMutations": 5
+    },
+    {
+      "anchor": "04923801737b4f076e088eeea2feab399c53cf00",
+      "path": "src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "04923801737b4f076e088eeea2feab399c53cf00",
+      "path": "src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "04923801737b4f076e088eeea2feab399c53cf00",
+      "path": "tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "04923801737b4f076e088eeea2feab399c53cf00",
+      "path": "tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "04923801737b4f076e088eeea2feab399c53cf00",
+      "path": "tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "docs/plans/README.md",
+    "docs/plans/archive/claude-host-model-sharing.md",
+    "docs/plans/claude-host-model-sharing.md",
+    "docs/product-intent/model-access.md",
+    "src/cli/account-module-request.ts",
+    "src/cli/runtime-attach.ts",
+    "src/orchestration/agent-runtime/llm/peerAgent1-reminders.ts",
+    "src/orchestration/agent-runtime/llm/client-factory.ts",
+    "src/orchestration/agent-runtime/runtime-assembly.ts",
+    "src/orchestration/app-service/account-service-runtime.ts",
+    "src/orchestration/app-service/account-socket-router.ts",
+    "src/orchestration/app-service/module-service-host.ts",
+    "src/orchestration/cli-contribution.ts",
+    "src/orchestration/modules/development/cli/cache-report.ts",
+    "src/orchestration/modules/development/cli/claude-sdk.ts",
+    "src/orchestration/modules/development/cli/efficiency.ts",
+    "src/orchestration/modules/development/cli/fetch-article.ts",
+    "src/orchestration/modules/development/cli/raindrop.ts",
+    "src/orchestration/modules/learning.ts",
+    "src/orchestration/modules/mcp/module.ts",
+    "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts",
+    "src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-plugin/hooks/register.js.txt",
+    "src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.ts",
+    "src/orchestration/modules/provider-claude-agent-sdk/client.ts",
+    "src/orchestration/modules/remote/account-relay-service.ts",
+    "src/orchestration/modules/remote/cli/index.ts",
+    "src/orchestration/modules/remote/cli/registration.ts",
+    "src/orchestration/modules/remote/remote-access.ts",
+    "src/orchestration/modules/remote/remote-pairing-exchange.ts",
+    "src/orchestration/modules/remote/remote-pairing-store.ts",
+    "src/orchestration/modules/remote/service.ts",
+    "src/orchestration/modules/workflows.ts",
+    "src/protocol/account-attach.ts",
+    "src/protocol/modules/remote/account-requests.ts",
+    "src/protocol/modules/remote/relay-channel.ts",
+    "tests/integration/orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.ts",
+    "tests/integration/orchestration/modules/provider-claude-agent-sdk/_fake-host.ts",
+    "tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-recovery.test.ts",
+    "tests/unit/cli/account-module-request.test.ts",
+    "tests/unit/cli/module-nouns.test.ts",
+    "tests/unit/cli/serve-admission.test.ts",
+    "tests/unit/cli/startup.test.ts",
+    "tests/unit/cli/web.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/peerAgent1-reminders.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts",
+    "tests/unit/orchestration/app-service/account-service-lifecycle.test.ts",
+    "tests/unit/orchestration/app-service/account-socket-router.test.ts",
+    "tests/unit/orchestration/app-service/bun-socket-rpc.test.ts",
+    "tests/unit/orchestration/chat/runner-profile-admission.test.ts",
+    "tests/unit/orchestration/modules/module-service.test.ts",
+    "tests/unit/orchestration/modules/provider-anthropic-api/module.test.ts",
+    "tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts",
+    "tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.test.ts",
+    "tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts",
+    "tests/unit/orchestration/modules/remote/_remote-device-fixtures.ts",
+    "tests/unit/orchestration/modules/remote/account-relay-service.test.ts",
+    "tests/unit/orchestration/modules/remote/remote-access-ownership.test.ts",
+    "tests/unit/orchestration/modules/remote/remote-access.test.ts",
+    "tests/unit/orchestration/modules/remote/remote-cli.test.ts",
+    "tests/unit/orchestration/modules/remote/terminal-remote.test.ts",
+    "tests/unit/orchestration/session/execution-evidence.test.ts",
+    "tests/unit/protocol/account-attach.test.ts",
+    "tests/unit/scripts/uat/harness.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792980295206,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -135,7 +135,7 @@\n     dispatcherSteps: (nonce) => admittedSteps.get(nonce) ?? 0,\n     denied(nonce) {\n       // Steps are admitted in order, so the count of admitted steps is the index of the step that answers the denial.\n-      lastSteps.set(nonce, Math.max(lastSteps.get(nonce) ?? 1, admittedSteps.get(nonce) ?? 0));\n+      lastSteps.set(nonce, Math.min(LAST_DISPATCHER_STEP, Math.max(lastSteps.get(nonce) ?? 1, admittedSteps.get(nonce) ?? 0)));\n     },\n     admit(agentId, values, sink) {\n       const previous = admissions.get(agentId);",
+              "mutation": "42558b46-8442-4e79-aa3a-1349fab6f770",
+              "path": "src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts"
+            }
+          ],
+          "label": "bound-denial-recovery-within-one-dispatcher-frame",
+          "location": "src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts:136-138",
+          "severity": "P2",
+          "title": "Bound denial recovery within one dispatcher frame"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "917cf582c126",
+      "persona": "reviewer-code-quality",
+      "run": "0e5bb852bd7e",
+      "session": "1cd672886735",
+      "start": 1792979993698
+    }
+  ],
+  "scrubbedLines": {
+    "src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts": 8,
+    "tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts": 18
+  },
+  "unresolvedImports": [
+    "src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts: ../../agent-runtime/llm/peerAgent1-reminders.js"
+  ],
+  "variant": "restore"
+}

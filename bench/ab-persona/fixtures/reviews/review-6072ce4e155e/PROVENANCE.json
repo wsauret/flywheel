@@ -1,0 +1,128 @@
+{
+  "base": "6177a6d0c6a953b9389bc709bb9c0dca98df953b",
+  "files": [
+    {
+      "anchor": "fc3a1d3a02fcaa64c34c3ef80e48a44c0d27b703",
+      "path": "docs/architecture-intent/README.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "fc3a1d3a02fcaa64c34c3ef80e48a44c0d27b703",
+      "path": "docs/guides/elegance.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "docs/product-intent/model-access.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "src/infra/llm/provider-error-copy.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "src/orchestration/agent-runtime/factory.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "src/orchestration/agent-runtime/llm/client-factory.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "src/orchestration/agent-runtime/llm/failover-client.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "src/orchestration/agent-runtime/llm/provider-availability-types.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "56267c0fe5b3f569f2690c63196fe91b6093ad71",
+      "path": "src/orchestration/headless/headless-profile-runtime.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "src/orchestration/subscription-spend-consent/admission-capture.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/infra/llm/provider-error-copy.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "tests/unit/orchestration/subscription-spend-consent/subscription-spend-consent-service.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793072642125,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -120,17 +121,14 @@\n   const skipped = cause !== \"ineligible\" && candidates.some((candidate) => candidate.cause === \"ineligible\")\n     ? \" Other candidates could not be used for this request.\"\n     : \"\";\n-  const bankedResets = [...new Set(candidates.filter((candidate) => candidate.cause === \"quota\" && candidate.bankedReset === true).map((candidate) => candidate.provider))]\n-    .map((provider) => ` ${provider} has a banked reset. Open Usage (/usage) to apply it.`)\n-    .join(\"\");\n   return {\n     ...base,\n     message: `${base.message}${skipped}${waitBound !== undefined\n       ? ` A request after ${waitBound} can recheck provider availability.`\n-      : bound === undefined ? \"\" : ` Some candidates have a reset or recheck bound at ${bound}.`}${bankedResets}`,\n+      : bound === undefined ? \"\" : ` Some candidates have a reset or recheck bound at ${bound}.`}`,\n     guidance: exhaustedGuidance(cause, waitBound !== undefined),\n     detail: [...new Set(candidates.map((candidate) =>\n-      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${extractProviderErrorDetail(redactSecrets(candidate.detail))}`\n+      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${candidate.cause === \"quota\" && candidate.bankedReset === true ? `${BANKED_RESET_HINT} ` : \"\"}${extractProviderErrorDetail(redactSecrets(candidate.detail))}`\n     ))].join(\" \"),\n     action: SWITCH_MODELS_ACTION,\n   };",
+              "mutation": "b35ab70f-1888-41af-9fac-25fe0e39bfd1",
+              "path": "src/infra/llm/provider-error-copy.ts"
+            }
+          ],
+          "label": "the-banked-reset-hint-disappears-from-workflow-and-subagent",
+          "location": "src/infra/llm/provider-error-copy.ts:128-134; src/infra/llm/provider-error-copy.ts:274-275",
+          "severity": "P1",
+          "title": "The banked-reset hint disappears from workflow and subagent failure prose"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "d865ea362254",
+      "persona": "reviewer-code-quality",
+      "run": "6072ce4e155e",
+      "session": "44add24713ef",
+      "start": 1793072483795
+    }
+  ],
+  "scrubbedLines": {
+    "docs/product-intent/model-access.md": 10,
+    "src/orchestration/agent-runtime/llm/provider-availability-types.ts": 2,
+    "tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts": 4
+  },
+  "unresolvedImports": [],
+  "variant": "restore"
+}

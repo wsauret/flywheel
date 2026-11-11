@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "createChildMeasureReader in src/orchestration/modules/subagents/history/child-measures.ts asks the registry for a child's projection on every read and never pins or keeps it, while the `subagent-measure` family in src/infra/projection-registry.ts holds 256 entries, so once more than 256 children are measured over one store an evicted child's fold is rebuilt and its history is read again from the start on its next change. A review catches this when it says that eviction past the family bound (or the missing pin or retention) makes the work of a change grow with child count or history length, against ARCH-SUBSTRATE-017 or the reader's own comment; naming the 256 bound without the reread consequence does not count.",
+      "category": "quality",
+      "files": [
+        "src/orchestration/modules/subagents/history/child-measures.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "registry-eviction-makes-an-existing-card-reread-its-complete",
+      "title": "Registry eviction makes an existing card reread its complete child history"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review subagent measure projection"
+}

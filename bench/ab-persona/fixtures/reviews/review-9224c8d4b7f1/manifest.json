@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "Step 5 of src/agent-skills/ship/SKILL.md integrates with `git merge --autostash` and then unstages the paths that the autostash apply staged, but autostash does not restore the index, so changes that another agent had staged in files outside the selected list return unstaged or are unstaged by the step; this breaks step 3's rule to preserve pre-existing staged changes outside the list. A review catches this when it says the autostash integration loses, or gives no way to preserve, the pre-existing staged state of unrelated files.",
+      "category": "elegance",
+      "files": [
+        "src/agent-skills/ship/SKILL.md"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "preserve-unrelated-staged-changes-across-autostash-integrati",
+      "title": "Preserve unrelated staged changes across autostash integration"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review publication sync guidance"
+}

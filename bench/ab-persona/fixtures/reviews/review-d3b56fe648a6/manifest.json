@@ -1,0 +1,28 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/orchestration/agent-runtime/tools/tool-paths.ts, `recoverMissingPath` returns `healed` for a single same-stem sibling when `siblings.complete && localFits.includes(only)` although the repository-wide basename lookup was incomplete (`complete` is false), so a file with the exact requested name deeper than the lookup reached is a competing meaning that the code never sees, and the call silently picks the sibling. A review catches it only if it says that the local-sibling heal proceeds after an incomplete basename search and can therefore choose between two meanings instead of refusing.",
+      "category": "quality",
+      "files": [
+        "src/orchestration/agent-runtime/tools/tool-paths.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "do-not-treat-an-incomplete-basename-search-as-proof-of-uniqu",
+      "title": "Do not treat an incomplete basename search as proof of uniqueness"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In src/orchestration/modules/code-mode/invocation-guest.ts, the `onUnknownTool` hook passed to `CodeMode.execute` turns every result with `outcome: \"error\"` into a thrown failure, including an error result that the repaired tool itself returned after it ran; a script that calls the exact tool name receives that result as a value, so the same script with a repaired name aborts instead of reaching its own error handling. A review catches it only if it says that a repaired nested call throws on a tool's error result where an exact-name call returns it.",
+      "category": "quality",
+      "files": [
+        "src/orchestration/modules/code-mode/invocation-guest.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "preserve-the-result-contract-after-repairing-a-nested-tool-n",
+      "title": "Preserve the result contract after repairing a nested tool name"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review fix-phase repairs"
+}

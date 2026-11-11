@@ -1,0 +1,67 @@
+{
+  "base": "de283bd401c910057dc8b5e498f8409a667cdac5",
+  "files": [
+    {
+      "anchor": "cad59a0d09ff65c763826f7a989b34de8f899243",
+      "path": "AGENTS.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "5c8f976f632c194f89e808cb8fdc57617f7607da",
+      "path": "docs/adrs/adr-021-design-intent-and-the-first-draft.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "cad59a0d09ff65c763826f7a989b34de8f899243",
+      "path": "src/agent-skills/ship/SKILL.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "cad59a0d09ff65c763826f7a989b34de8f899243",
+      "path": "src/agent-skills/worktree-lifecycle/SKILL.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "05c71900a5273127108b299573dc55989c186d1d",
+      "path": "tests/unit/workflows/built-in-skills.test.ts",
+      "reversedMutations": 1
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "medium",
+      "end": 1792379388825,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -22,7 +22,7 @@\n 2. Commit each selected file's complete current contents, including edits from other agents. Same-file overlap is expected and is not a blocker. Do not reconstruct authorship, partially stage files, split the supplied group, or create worktrees to isolate edits.\n 3. Leave files outside the supplied list untouched, except where step 5's integration changes them. Never reset, restore, stash, clean, reconstruct, or auto-format files; step 5's transient `--autostash` and index-only unstaging are the only exceptions. Preserve pre-existing staged changes outside the list without including them in this commit.\n 4. Preflight Bash, Git, current branch, remote, credentials, and push target. Check pull-request tooling only for a requested PR. Work in the current execution directory. Integration and cleanup of an existing worktree remain its owner's responsibility.\n-5. Fetch the push target. When HEAD lacks its tip, integrate it with `git merge --autostash <push target>`, as a fast-forward when possible. Find unresolved paths with `git diff --name-only --diff-filter=U`; the merge exit code does not identify autostash conflicts. Resolve every conflict so that both sides' intent survives. Unstage the paths that the autostash apply staged, and leave their working-tree contents unchanged. Drop only the integration's retained autostash entry, and only after every file is resolved. Record selected files that integration changed.\n+5. Fetch the push target. When HEAD lacks its tip, autostash does not keep the index, so first save the staged changes of paths outside the selected list with `git diff --cached --binary -- <paths>` to a file outside the repository. Then integrate the tip with `git merge --autostash <push target>`, as a fast-forward when possible. Find unresolved paths with `git diff --name-only --diff-filter=U`; the merge exit code does not identify autostash conflicts. Resolve every conflict so that both sides' intent survives. Unstage the paths that the autostash apply staged, and leave their working-tree contents unchanged. Drop only the integration's retained autostash entry, and only after every file is resolved. Record selected files that integration changed.\n \n Missing Bash, Git, credentials, or a push target blocks before mutation. Report a selected path with no remaining change rather than inventing work for it. Newer remote work, including selected-file overlap, requires integration, not a separate catch-up task.",
+              "mutation": "0f4e7efa-b013-4f91-ade1-ffa89c5e7035",
+              "path": "src/agent-skills/ship/SKILL.md"
+            },
+            {
+              "hunk": "@@ -22,7 +22,7 @@\n 2. Commit each selected file's complete current contents, including edits from other agents. Same-file overlap is expected and is not a blocker. Do not reconstruct authorship, partially stage files, split the supplied group, or create worktrees to isolate edits.\n 3. Leave files outside the supplied list untouched, except where step 5's integration changes them. Never reset, restore, stash, clean, reconstruct, or auto-format files; step 5's transient `--autostash` and index-only unstaging are the only exceptions. Preserve pre-existing staged changes outside the list without including them in this commit.\n 4. Preflight Bash, Git, current branch, remote, credentials, and push target. Check pull-request tooling only for a requested PR. Work in the current execution directory. Integration and cleanup of an existing worktree remain its owner's responsibility.\n-5. Fetch the push target. When HEAD lacks its tip, autostash does not keep the index, so first save the staged changes of paths outside the selected list with `git diff --cached --binary -- <paths>` to a file outside the repository. Then integrate the tip with `git merge --autostash <push target>`, as a fast-forward when possible. Find unresolved paths with `git diff --name-only --diff-filter=U`; the merge exit code does not identify autostash conflicts. Resolve every conflict so that both sides' intent survives. Unstage the paths that the autostash apply staged, and leave their working-tree contents unchanged. Drop only the integration's retained autostash entry, and only after every file is resolved. Record selected files that integration changed.\n+5. Fetch the push target. When HEAD lacks its tip, autostash does not keep the index, so first save the staged changes of paths outside the selected list with `git diff --cached --binary -- <paths>` to a file outside the repository. Then integrate the tip with `git merge --autostash <push target>`, as a fast-forward when possible. Find unresolved paths with `git diff --name-only --diff-filter=U`; the merge exit code does not identify autostash conflicts. Resolve every conflict so that both sides' intent survives. Unstage the paths that the autostash apply staged, and leave their working-tree contents unchanged. Restore the saved staged changes with `git apply --cached`; when they no longer apply, report the paths. Drop only the integration's retained autostash entry, and only after every file is resolved. Record selected files that integration changed.\n \n Missing Bash, Git, credentials, or a push target blocks before mutation. Report a selected path with no remaining change rather than inventing work for it. Newer remote work, including selected-file overlap, requires integration, not a separate catch-up task.",
+              "mutation": "84d8bfdf-7356-4098-802d-d05b728debd6",
+              "path": "src/agent-skills/ship/SKILL.md"
+            }
+          ],
+          "label": "preserve-unrelated-staged-changes-across-autostash-integrati",
+          "location": "src/agent-skills/ship/SKILL.md:23-25",
+          "severity": "P2",
+          "title": "Preserve unrelated staged changes across autostash integration"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "27a65af06cce",
+      "persona": "reviewer-code-elegance",
+      "run": "9224c8d4b7f1",
+      "session": "c5015946efb3",
+      "start": 1792379304354
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

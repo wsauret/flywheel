@@ -1,0 +1,2093 @@
+diff --git a/docs/architecture-intent/README.md b/docs/architecture-intent/README.md
+index 12e67ab..8611c2d 100644
+--- a/docs/architecture-intent/README.md
++++ b/docs/architecture-intent/README.md
+@@ -8,7 +8,7 @@ An architecture-intent statement can describe an organization that the implement
+ 
+ - Product intent (`docs/product-intent/`) states what experience the product must provide.
+ - Architecture intent states how Flywheel's internals must be organized to provide it.
+-- `docs/elegance.md` states the elegance rubric that judges both.
++- `docs/guides/elegance.md` states the elegance rubric that judges both.
+ - Designs and plans state what change is approved for delivery.
+ - Code and tests provide implementation and evidence. They do not define architecture intent by themselves.
+ 
+diff --git b/docs/guides/elegance.md b/docs/guides/elegance.md
+new file mode 100644
+index 0000000..1310603
+--- /dev/null
++++ b/docs/guides/elegance.md
+@@ -0,0 +1,237 @@
++# Elegance
++
++This guide is Flywheel's canonical, project-specific definition of elegance and the rubric used to audit the codebase. Elegant Flywheel code works with the grain of its tools, makes ownership and causality obvious, contains no duplicated authority or speculative ceremony, and leaves each line doing load-bearing work for the intended user experience. A reader should be able to explain why every boundary and abstraction exists from the behavior or invariant it protects. Architecture intent (`docs/architecture-intent/`) owns the specific rules for how Flywheel's internals are organized: where a section below names a topic and cites statement identifiers, those statements are the authority, and this rubric judges designs and code against them.
++
++## Stack Roles
++
++Solid confinement to client layers and the scope of Effect: ARCH-STRUCTURE-004, ARCH-STRUCTURE-005.
++
++## Core Thesis
++
++**Work with the grain of your tools.**
++
++- Bun's grain is "the runtime does it."
++- Solid's grain is fine-grained reactivity.
++- TypeScript's grain is structural inference.
++- Effect's grain is scoped async lifecycle.
++
++If a pattern feels ceremonious, the idiomatic solution is usually simpler.
++
++## Tool Divisions
++
++Each first-class tool owns one architectural job:
++
++| Tool | Owns | Does not own |
++|---|---|---|
++| Bun | Runtime, subprocesses, file APIs, tests, build scripts | Wrapper layers that only rename Bun or Node APIs |
++| TypeScript | Domain modeling, discriminated unions, structural inference, factory DI contracts | Runtime validation of external data without a schema |
++| SolidJS | Client reactivity, where ARCH-STRUCTURE-004 allows it | Async lifecycle |
++| Effect | Async lifecycle, as ARCH-STRUCTURE-005 scopes it | Everything that ARCH-STRUCTURE-005 excludes |
++| OpenTUI | Terminal rendering primitives, input surfaces, display constraints | Domain state, persistence, workflow control, session policy, agent runtime policy |
++
++## Core Motto
++
++Maximize elegance, not minimal churn. Prefer the design that leaves the codebase simpler, more symmetric, and easier to extend, even when that requires a larger refactor now.
++
++## Layer Boundaries
++
++Source layers, their one-way dependency direction, and one home per domain: ARCH-STRUCTURE-001, ARCH-STRUCTURE-003.
++
++## Decision Checklist
++
++Run these before planning or implementing a change:
++
++| # | Check | If violated |
++|---|---|---|
++| 1 | Is there exactly one source of truth for this data? | Use the existing fact, projection, domain record, TUI store, or workflow-view field. Do not copy it. |
++| 2 | Store or event bus? | UI-readable state enters the TUI store through protocol data. Independent infrastructure notifications go to the bus. |
++| 3 | Memo or effect? | Derived value -> memo. I/O -> effect. Signal-setting inside an effect that reads another signal usually wants a memo. |
++| 4 | Async lifecycle or reactive state? | Resource lifecycle -> Effect. UI-readable state -> Solid store/signal. |
++| 5 | Does this belong in orchestration or TUI? | Business logic -> orchestration. Rendering/JSX -> TUI. |
++| 6 | Does this belong in workflows or orchestration? | XState workflow policy, facts, attempts, and projections -> workflows. Config, sessions, agent runtime, and production wiring -> orchestration. |
++| 7 | Can TypeScript infer this? | Annotate module boundaries. Delete interior annotations the compiler does not need. |
++| 8 | Is this abstraction used in 2+ places? | If not, inline it unless SRP would be harmed. |
++| 9 | Is disposal ordered and awaited? | Fire-and-forget loses data. Follow ARCH-RUNTIME-029. |
++| 10 | Would deleting this code change behavior? | If not, delete it. |
++| 11 | Internal or external boundary? | Tolerance belongs only where ARCH-BOUNDARIES-001 allows it; data we wrote follows ARCH-BOUNDARIES-004. |
++
++## State Ownership
++
++One source of truth per value, durable state as facts and projections, and the owner of each kind of state: ARCH-SUBSTRATE-001, ARCH-SUBSTRATE-002, ARCH-SUBSTRATE-015, ARCH-SUBSTRATE-017, ARCH-SUBSTRATE-022, ARCH-SUBSTRATE-023, ARCH-WORKFLOWS-006, ARCH-SESSIONS-001, ARCH-SESSIONS-006, ARCH-SESSIONS-043, ARCH-CONTEXT-013, ARCH-CONTEXT-014, ARCH-LEARNING-006, ARCH-LEARNING-010, ARCH-DIRECTORIES-014, ARCH-PROVIDERS-031, ARCH-PROVIDERS-033, ARCH-PROVIDERS-038, ARCH-PROVIDERS-063, ARCH-PROTOCOL-063, PI-AGENT-010.
++
++## Postel Boundary Discipline
++
++Liberal external boundaries, strict internal state, historical recovery, and durable user state: ARCH-BOUNDARIES-001, ARCH-BOUNDARIES-002, ARCH-BOUNDARIES-004, ARCH-BOUNDARIES-005, ARCH-BOUNDARIES-006, ARCH-SUBSTRATE-013, ARCH-SUBSTRATE-014, ARCH-SUBSTRATE-027, ARCH-SUBSTRATE-030, ARCH-SUBSTRATE-031, ARCH-DIRECTORIES-007, ARCH-PROVIDERS-039, UPD-003, UPD-023, PI-CAP-011.
++
++## Secret Handling
++
++Redaction, the one serialization crossing, and external logins: ARCH-BOUNDARIES-009, ARCH-BOUNDARIES-012, ARCH-BOUNDARIES-013, ARCH-PROVIDERS-066, PI-MODEL-027.
++
++## Retry and Idempotency
++
++The conversation as the retry ledger, the one provider fallback owner, and unattended recovery: ARCH-SUBSTRATE-038, ARCH-SUBSTRATE-037, ARCH-PROVIDERS-032, ARCH-RUNTIME-003, ARCH-CONTEXT-010, PI-MODEL-031.
++
++## Reactive Architecture
++
++Where reactivity may live: ARCH-STRUCTURE-004. How client stores, memos, and effects divide ownership: ARCH-PROTOCOL-063. Reactive cleanup belongs to ownership roots: ARCH-RUNTIME-029.
++
++| Primitive | Role |
++|---|---|
++| `createStore` / `createSignal` | Client source of truth |
++| `createMemo` | Derived state |
++| `createEffect` | I/O boundary |
++| `batch()` | Coalesced writes |
++| `createRoot` | Ownership scope outside component trees |
++
++Avoid reactive diamonds: if a memo reads both an original signal and a store that an effect derives from that signal, it can observe stale intermediate states. Derive directly from the original source or collapse the dependency path.
++
++## Event Bus vs Store
++
++Bus notifications versus readable store state, and event naming: ARCH-STRUCTURE-007, ARCH-NAMING-007.
++
++## Session Lifecycle
++
++The two persisted lifecycle states and their one owner: ARCH-SESSIONS-003.
++
++## Definition and Registration
++
++Behavior arrives by registration, and workflows carry no registry: ARCH-STRUCTURE-017, ARCH-WORKFLOWS-009.
++
++## Skill Packages
++
++The instruction stack, progressive disclosure of packages, registry revisions, slash invocation, and external package trust: ARCH-CONTEXT-016, ARCH-LEARNING-005, ARCH-LEARNING-010, ARCH-BOUNDARIES-008, ARCH-TOOLS-038, PI-AGENT-028, PI-AGENT-037, PI-AGENT-038.
++
++## Harness Minimalism
++
++Agent-facing features use existing observable primitives: ARCH-AGENCY-006.
++
++## TypeScript Discipline
++
++Use inference over annotation. Exported functions and module boundaries get explicit return types; interior variables should usually infer.
++
++Prefer discriminated unions over optional fields. Narrow on `kind`, `type`, or another required discriminator.
++
++Use `effect/Schema` for validation (part of core `effect` in v4; there is no Zod in the codebase). Where tolerant and strict parsing belong: ARCH-BOUNDARIES-001, ARCH-BOUNDARIES-004.
++
++Use `satisfies` when validating object shape without widening.
++
++No `any`, no `Function`, no `// @ts-ignore`. Use `unknown` and narrow.
++
++The strict compiler flags are on and load-bearing: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noFallthroughCasesInSwitch`. Under `noUncheckedIndexedAccess` an indexed access is `T | undefined` -- branch or guard it. `exactOptionalPropertyTypes` is deliberately off: it surfaces ~300 low-signal `{ x?: T }`-vs-`{ x: T | undefined }` errors for negligible bug-catching; revisit only with a specific motivating bug.
++
++Casts and non-null assertions are the exception, not a tool. No `as Type` (other than `as const`) and no `!` without a `// SAFETY:` comment naming the invariant that makes it sound. Branch, parse, or restructure first; a cast is the last resort for an invariant TypeScript genuinely cannot express (a registry-erasure or branding seam).
++
++## Interface Design
++
++Use factory functions with explicit dependency injection:
++
++- `createSessionManager(deps)`
++- `createWorkflowRunner(opts)`
++- `createAgentRuntime(deps)`
++- `createWorkflowVmHost(deps)`
++High-level modules depend on narrow abstractions. A wrapper is justified when it enables polymorphism, lifecycle ownership, or test injection. A wrapper that only repeats a Bun or SDK interface is ceremony.
++
++Deep modules should expose simple interfaces. If a consumer needs internal knowledge to use a module correctly, the interface is too shallow.
++
++## Bun as Runtime
++
++Bun is the framework:
++
++- `Bun.spawn()` over `child_process`, and only inside a process-launch authority: ordinary production code starts an external process through `spawnOwned`, `runOwnedCommand`, or `openExternalUrl` (ARCH-TOOLS-022), while explicitly authorized survival uses only `src/infra/persistent-subprocess.ts`; no caller uses a raw launch primitive of its own
++- `Bun.file()` where it fits
++- Bun test runner through `bun run test`
++- Bun bundler/build scripts
++
++Before adding a dependency, check whether Bun, Solid core, Effect, or the standard library already owns the capability.
++
++## Effect Integration
++
++Effect owns async lifecycle only and is colocated with its domain owner: ARCH-STRUCTURE-005.
++
++## Disposal and Lifecycle
++
++Ordered, awaited disposal and attribution that follows publication: ARCH-RUNTIME-029, ARCH-TOOLS-019.
++
++## TUI Rendering Boundary
++
++Clients render derived state and send actions: ARCH-PROTOCOL-002.
++
++## Code Quality
++
++### SOLID
++
++We follow SOLID, resolved through this project's constraints.
++
++**Single Responsibility.** Extract when the unit owns non-trivial cohesive logic. Inline trivial forwarding.
++
++**Dependency Inversion.** Use DI when it creates a useful seam for tests, runtime selection, or lifecycle ownership. Do not wrap Bun APIs just to rename them.
++
++**Interface Segregation.** Pass the smallest interface that satisfies the caller.
++
++**Open/Closed.** Prefer extension through registration and discriminated unions. When adding a union member, update exhaustive consumers.
++
++### Conciseness
++
++- No abstraction for a single use unless SRP genuinely applies.
++- No callback chains that just forward.
++- No backward-compatibility shims.
++- Delete dead code immediately.
++- No speculative code -- add a capability when a phase needs it, not before.
++- Built means wired: every export has a non-test consumer in `src/`, and code that compiles but is never reached from the production entry point does not exist. Verify in the live TUI, not only in tests.
++- No mocks or fakes in production code -- wire new code into the real system; mocks live only in tests.
++- Cohesion over line count: split a file when it carries more than one reason to change or forces a reader to hold unrelated concepts (AGENTS.md sets the operational 600-code-line backstop; blank and comment lines do not count).
++- Sparse syntax, dense behavior.
++
++### Comments
++
++Comments explain why a primitive or boundary exists, not what the next line does.
++
++JSDoc the public surface of deep/domain modules and boundary APIs -- the symbols a caller drives through types and hover and should not have to read the body to use. Do not JSDoc-restate a well-named, well-typed signature: this is an application, not a published library, so the test for any comment is "does it add what the signature can't" -- a why, an invariant, a contract, or a safety note.
++
++## Testing
++
++Use project scripts:
++
++- `bun run test` after changes
++- `bun run lint` after changes
++- `bun run check:boundaries` after file additions or moves
++
++Unit tests should not call external APIs or spawn heavyweight UI flows. Integration and E2E tests own real subprocesses, I/O, and TUI behavior. New TUI behavior needs live TUI verification.
++
++Tests should cover observable behavior, not implementation details. Each contract has one owner test at the strongest boundary that can observe it; another layer tests the same contract only for a distinct risk that owner cannot reach.
++
++## Anti-Patterns
++
++| Pattern | Why it is wrong | Instead |
++|---|---|---|
++| Signal inside an effect that reads another signal | Manual derived-state sync | `createMemo` |
++| `{ current: T }` shared ref-bag | Hidden mutable architecture | Named object with methods or store field |
++| Callback chain A -> B -> C where B forwards | Indirection without ownership | A writes store, C reads store |
++| Optional fields representing a union | Compiler cannot enforce variants | Discriminated union |
++| Business logic inside `createEffect` | Effects are I/O boundaries | Pure function or memo plus effect for I/O |
++| Wrapper that re-exports a Bun API | No depth | Call Bun directly |
++| Interior type annotations the compiler infers | Noise | Delete annotation |
++| Pre-filtering events before emitting | Couples producer to consumers | Emit raw, subscriber filters |
++| A view that rereads or refolds durable history, or reads each member, on every change | Quadratic cost that grows with members and history and starves commits | Read the owner's live state; advance a held fold from its last position |
++| `dispose()` without `await` | Data loss | ARCH-RUNTIME-029 |
++| Store value duplicated in signal/ref/adapter field | Two sources of truth | Read from the authority |
++| `src/effect/` technology namespace | Hides domain ownership | ARCH-STRUCTURE-005 |
++| `catch(unknown)` at Effect boundary | Loses typed error information | ARCH-STRUCTURE-005 |
++| Class-level `AbortController` for runtime lifecycle | Unstructured cancellation | `Fiber`; bridge to AbortController only at signal APIs |
++| Memo reads both source and effect-derived store | Reactive diamond/stale intermediate state | Derive from one dependency path |
++| `safeParse` on data we wrote | Tolerance where loudness is required | ARCH-BOUNDARIES-001 |
++| `?? defaultValue` on a field the writer always sets | Silent corruption past a producer bug | ARCH-BOUNDARIES-004 |
++| `flatMap(x => x ? [x] : [])` over a projection | Drops malformed rows without notice | ARCH-BOUNDARIES-004 |
++| `.default(...)` on a Schema field the writer always sets | Schema lies about the producer contract | ARCH-BOUNDARIES-004 |
++| `safeParse` / `?? undefined` on an owned fact in a reader | Softens an owned-data invariant into silent degradation | Decode once via `parseProjectionFact` (ARCH-BOUNDARIES-004) |
++| Hand-extracting fields from a known fact with `asString`/`asNumber` | Validate-and-discard: the schema exists, the reader re-derives it | Parse the fact into its typed shape once; read typed fields |
++| Parallel idempotency key / dedup record / attempt "resumed" marker | Second source of truth for what already ran | ARCH-SUBSTRATE-038 |
++| Repair/normalize/legacy branches on internal data | Hides writer drift | ARCH-BOUNDARIES-001 |
++| Optional options field guarded by a runtime `X requires Y` throw | The requirement is invisible at every construction site, so the untested path crashes on its first live request | Require the field on the type the constructor accepts; a completion seam produces that type (`RunnableAgentOptions`) |
++| `try { ... } catch { return [] }` reading our own SQLite or session disk | Silent empty state on real corruption | Throw; the substrate is broken |
++| "Backward compatibility" framing for internal schemas | Treats an internal storage shape as a public API | Migrate or invalidate stored state; preserve only user data that would otherwise be materially lost |
++| Provider/model quirks handled after canonicalization | Leaks external mess into internal code | ARCH-BOUNDARIES-002 |
++| Rejecting recoverable LLM/provider syntax damage before normalization | Treats nondeterministic external systems as if they owed us internal invariants | ARCH-BOUNDARIES-002 |
++| Package body copied into `AGENTS.md`, a brief, or a persona | Second source of truth for one procedure | Declare `requiredSkills`, or let the model load the package |
++| Dependency package that dispatches, routes findings, or synthesizes for its host | Couples one method to one orchestration, so a second host cannot compose it | The dependency states the method and its own report; the composing definition owns orchestration |
++| New always-loaded instruction block for a case-by-case need | Unbounded prompt growth for context most turns do not use | A skill package advertised by its trigger |
+diff --git a/docs/product-intent/model-access.md b/docs/product-intent/model-access.md
+index 5335bac..7eb9cd4 100644
+--- a/docs/product-intent/model-access.md
++++ b/docs/product-intent/model-access.md
+@@ -4,7 +4,7 @@ This document states the current intended experience for authentication, authori
+ 
+ ## PI-MODEL-001: Invisible automatic provider failover
+ 
+-Automatic provider failover is invisible while an eligible, authorized fallback exists. Flywheel tries candidates in the defined resolution order within the same logical turn and tool call, without user action or a failure notice. The resolution order is by spend class: included subscription use first, then prepaid balance, automatic subscription spend, direct API spend, and aggregator spend; inside a class, by provider rank, then, for included subscription use of a provider whose accounts reset their usage windows at different times, such as Claude, by the soonest known reset of the window whose quota expires, and then account order. An account with no known future reset follows the accounts with one. This puts included quota that expires sooner to use first, even when a chat must leave the account it was using. A candidate is passed over only when it cannot serve the request for its own reasons: its quota or credits are spent, it is rate limiting, it is overloaded, it is unreachable, or its account does not grant the model or the model's extended context window. A free-plan account is never a candidate while its profile holds another account of the same provider. Those failures do not prevent trying authorized later spend classes. A failure the request itself caused, such as a rejected or malformed request, bad credentials, or an error the provider did not classify, would repeat on every candidate; Flywheel reports it at once under its own name and never describes it as spent quota or credits. Flywheel preserves completed work and attributes usage and cost to each provider attempt. It reports a terminal quota failure only after every candidate has failed on that class or is ineligible. When a candidate drops the connection, throttles, or reports overload, Flywheel retries that candidate in place with bounded backoff, shows the reconnect progress in the session status while it waits, and moves to the next candidate only when those retries are spent. A lost connection alone never marks a provider unreachable for other sessions; only a failure the provider stated does, and a first mark holds briefly and lengthens only while the outage persists. An agent that finds every candidate spent until a stated time, a chat included, waits for that time and continues on its own (PI-MODEL-039).
++Automatic provider failover is invisible while an eligible, authorized fallback exists. Flywheel tries candidates in the defined resolution order within the same logical turn and tool call, without user action or a failure notice. The resolution order is by spend class: included subscription use first, then prepaid balance, automatic subscription spend, direct API spend, and aggregator spend; inside a class, by provider rank and then account order. A candidate is passed over only when it cannot serve the request for its own reasons: its quota or credits are spent, it is rate limiting, it is overloaded, it is unreachable, or its account does not grant the model or the model's extended context window. Those failures do not prevent trying authorized later spend classes. A failure the request itself caused, such as a rejected or malformed request, bad credentials, or an error the provider did not classify, would repeat on every candidate; Flywheel reports it at once under its own name and never describes it as spent quota or credits. Flywheel preserves completed work and attributes usage and cost to each provider attempt. It reports a terminal quota failure only after every candidate has failed on that class or is ineligible. When a candidate drops the connection, throttles, or reports overload, Flywheel retries that candidate in place with bounded backoff, shows the reconnect progress in the session status while it waits, and moves to the next candidate only when those retries are spent. A lost connection alone never marks a provider unreachable for other sessions; only a failure the provider stated does, and a first mark holds briefly and lengthens only while the outage persists. An agent of a workflow that finds every candidate spent until a stated time waits for that time and continues on its own (PI-AGENT-029); a chat reports the failure, because its person is there to choose.
+ 
+ ## PI-MODEL-002: Background process model visibility
+ 
+@@ -20,7 +20,7 @@ Flywheel notifies once on an observed crossing from below each configured subscr
+ 
+ ## PI-MODEL-006: Banked subscription usage resets
+ 
+-Usage lists every available banked reset with its expiration, earliest first. A single reset is one line; multiple resets form a vertical bulleted list. One Apply action reviews the earliest-expiring reset. Whenever a banked reset is available, the user can review and confirm its application from the Usage view. The provider decides at redemption whether a limit resets, and Flywheel reports that outcome and refreshes usage after it. In an interactive client, when no provider can serve a request and an account refused for used-up included usage has a banked reset, the refusal says so and names Usage as the place to apply it.
++Usage lists every available banked reset with its expiration, earliest first. A single reset is one line; multiple resets form a vertical bulleted list. One Apply action reviews the earliest-expiring reset. Whenever a banked reset is available, the user can review and confirm its application from the Usage view. The provider decides at redemption whether a limit resets, and Flywheel reports that outcome and refreshes usage after it.
+ 
+ ## PI-MODEL-004: Consolidated model identity
+ 
+@@ -72,21 +72,21 @@ Anthropic subscription account headlines show the weekly usage window. The five-
+ 
+ Each account's Flywheel activity separately reports the current local calendar month and each current account-wide provider usage window, with explicit date ranges. All-tracked activity remains available in Spend. Missing or partial accounting is explicit. An unknown price is flagged on its account and model and adds no money. A period reads incomplete only while accounting is still settling. An unavailable ledger reads unavailable, never zero.
+ 
+-Spend shows reported cache reuse, token breakdowns, and measured model-request counts over the selected range, overall and by account and model, separately from billed spend and subscription-equivalent value. A request that a provider served without reporting its usage counts as unmeasured, and a request whose report ended early counts as partially measured. Both are shown beside the measured count. An unmeasured request adds no tokens or money; a partially measured request adds the lower bounds it reported.
++Spend shows reported cache reuse, token breakdowns, and measured model-request counts over the selected range, overall and by account and model, separately from billed spend and subscription-equivalent value.
+ 
+-Usage is one view with Accounts, Spend, and History a tap apart, and a line beside that switch says when the reading is from, that it is refreshing, or that it failed. Each account is one row: its name, one reading of what is left or the reason there is none, and beneath it the plan, the signed-in identity, and whether paid use is allowed; no internal account id appears. Every account starts closed; a tap opens one at a time, and a tap on the open one closes it, showing its provider allowance as one bar per window with its reading and when it resets, its banked reset with the action to apply it, and what Flywheel did in the window. ChatGPT per-model windows stay hidden until asked for. Spend reads over a chosen range as totals and then each source with its models; History offers every account, metered keys included. For a subscription it charts each window the provider still reports and that saw use in the range, use rising as the window fills and dropping where the provider reset it, each reset marked once while the marks can be told apart, with the latest and peak readings beside the window's name; billed spend beyond the plan charts beneath when there was any. For a metered key it charts spend climbing through the range to its total. A Claude usage-only enterprise account reads as a metered account: no provider allowance and no usage windows, only what Flywheel tracked and billed.
++Usage is one view with Accounts, Spend, and History a tap apart, and a line beside that switch says when the reading is from, that it is refreshing, or that it failed. Each account is one row: its name, one reading of what is left or the reason there is none, and beneath it the plan, the signed-in identity, and whether paid use is allowed; no internal account id appears. Every account starts closed; a tap opens one at a time, and a tap on the open one closes it, showing its provider allowance as one bar per window with its reading and when it resets, its banked reset with the action to apply it, and what Flywheel did in the window. peerAgent2 model windows stay hidden until asked for. Spend reads over a chosen range as totals and then each source with its models; History offers every account, metered keys included. For a subscription it charts each window the provider still reports and that saw use in the range, use rising as the window fills and dropping where the provider reset it, each reset marked once while the marks can be told apart, with the latest and peak readings beside the window's name; billed spend beyond the plan charts beneath when there was any. For a metered key it charts spend climbing through the range to its total. A Claude usage-only enterprise account reads as a metered account: no provider allowance and no usage windows, only what Flywheel tracked and billed.
+ 
+ ## PI-MODEL-015: Model picker shows effort and price in place
+ 
+-The model picker shows each eligible model with the reasoning effort levels it supports and the effort that will apply. The user can adjust that effort in place before confirming model and effort together. Effort belongs to the selected role, not to the model: changing one role never changes another role's effort. Each model option uses the selected role's effort, adjusted to the levels that model supports. The picker shows the highlighted model's input, cached input, and output prices per million tokens with its position on the price range of the listed models. A model offered through several providers shows one price and one effort set: each value comes from the first provider in selection order that states it, then from models.dev, so a provider that lists only model identifiers still shows the price and efforts another source states for the same model. When the person confirms a model that the profile cannot use at that moment, Flywheel keeps the choice, and the confirmation names the model and effort that serve until the chosen model is usable, or says that no model can serve now.
++The model picker shows each eligible model with the reasoning effort levels it supports and the effort that will apply. The user can adjust that effort in place before confirming model and effort together. Effort belongs to the selected role, not to the model: changing one role never changes another role's effort. Each model option uses the selected role's effort, adjusted to the levels that model supports. The picker shows the highlighted model's input, cached input, and output prices per million tokens with its position on the price range of the listed models. A model offered through several providers shows one price and one effort set: each value comes from the first provider in selection order that states it, then from models.dev, so a provider that lists only model identifiers still shows the price and efforts another source states for the same model.
+ 
+-The model picker names a model's eligible providers in first-appearance resolution order for the active authentication profile, each provider once regardless of how many accounts or billing routes it offers, joined by arrows. The provider that would serve the model at the moment the picker reads its models stands out from the others; when no provider can serve the model then, none does. The terminal shows the highlighted model's providers by their full names beneath its price details with the label "Providers:", such as `Providers: ChatGPT Subscription → OpenAI API Key`. The web client shows them in each model's row as one line under its name, by each provider's short name: the providers up to and including the one that would serve, then a count of the providers after it, such as `ChatGPT +1`; when none can serve, every provider. The picker never names a model's API format.
++The model picker shows the highlighted model's eligible providers beneath its price details with the label "Providers:". Each provider appears once, in first-appearance resolution order for the active authentication profile, regardless of how many accounts or billing routes it offers.
+ 
+ Opening model selection or provider model controls shows saved choices immediately and requests background discovery at most once per authentication profile every five minutes, including failed attempts. Concurrent openings share the same discovery, and no periodic polling is required. Fresh results update the open view in place without blinking, clearing usable rows, or remounting unchanged rows. The highlighted model, supported pending effort, search text, and scroll position stay stable. Ordinary background discovery shows no loading transition or success toast while usable choices remain.
+ 
+ ## PI-MODEL-016: Every agent role has an eligible default
+ 
+-For every request, Flywheel resolves the role against the active auth profile's reachable models. It uses the role's saved model and effort when reachable, then its coded OpenAI preference, then its coded Anthropic preference, then the newest reachable model in its price tier. An unreachable saved pair is skipped, and the agent's transcript shows one system message that names the saved model and the model and effort that serve instead. The transcript shows another such message only when the serving selection changes or the saved model serves again, and the model never reads these messages. An unsupported effort maps to the nearest supported effort. When the tier is empty, Flywheel uses the nearest populated tier, or a reachable unranked model when no ranked model is reachable. A request and its resulting tool calls keep one selection; the next request resolves again. A profile whose model access is still being checked waits on discovery before selection, and a profile with nothing reachable shows the existing authentication or no-provider guidance.
++For every request, Flywheel resolves the role against the active auth profile's reachable models. It uses the role's saved model and effort when reachable, then its coded OpenAI preference, then its coded Anthropic preference, then the newest reachable model in its price tier. An unreachable saved pair is skipped silently. An unsupported effort maps to the nearest supported effort. When the tier is empty, Flywheel uses the nearest populated tier, or a reachable unranked model when no ranked model is reachable. A request and its resulting tool calls keep one selection; the next request resolves again. A profile whose model access is still being checked waits on discovery before selection, and a profile with nothing reachable shows the existing authentication or no-provider guidance.
+ 
+ ## PI-MODEL-011: Paid-provider admission uses provider evidence
+ 
+@@ -108,7 +108,7 @@ Linked subagent cards and child viewers show the model and reasoning effort that
+ 
+ ## PI-MODEL-021: Model selection applies at each request
+ 
+-An agent uses the current effective model, reasoning effort, and provider options at each request boundary. That selection stays fixed for the request and its resulting tool calls, not for the runner's lifetime. A selection change applies to the next request without replacing the runner, losing conversation state, or interrupting background work. A change to a model of another provider, or between the Claude engine and another route, also while the agent waits on the results of its tool calls, continues the same conversation and shows no warning: the agent reads its earlier replies, progress updates, and tool work as its own, but never the earlier model's private reasoning, so that reasoning cannot appear as something the agent said. General agents inherit the selection of the parent request that starts them.
++An agent uses the current effective model, reasoning effort, and provider options at each request boundary. That selection stays fixed for the request and its resulting tool calls, not for the runner's lifetime. A selection change applies to the next request without replacing the runner, losing conversation state, or interrupting background work. General agents inherit the selection of the parent request that starts them.
+ 
+ ## PI-MODEL-022: Prefilled SuperGrok sign-in
+ 
+@@ -130,7 +130,7 @@ Flywheel has no provider that runs the Claude sign-in itself. Claude subscriptio
+ 
+ When a person installs a release, each Claude account that the earlier native Anthropic Subscription provider stored moves to the Anthropic Subscription provider in the same profile. Flywheel finds the same account by its Claude account id, or by its email address when the stored account has no id. The account's saved model choices and paid-use decisions move with it, so they apply again when the person logs in to that account. Flywheel then deletes the stored Claude sign-in tokens. It never uses them for anything else, and it never writes them to a log.
+ 
+-The person must log in to each moved account once from Authentication, because a profile never uses a Claude login that the person made outside Flywheel. This is the one approved exception to the rule that an update never asks for a new login. The person does not reselect a model. Until the login, the Anthropic Subscription row shows its Log in button, not an error. Flywheel shows one notice for each profile that names each account that needs a login and tells the person to log in to it from Authentication. The log gets one warning for each account, with its email address.
++The person must log in to each moved account once from Authentication, because a profile never uses the person's own peerAgent1 login. This is the one approved exception to the rule that an update never asks for a new login. The person does not reselect a model. Until the login, the Anthropic Subscription row shows its Log in button, not an error. Flywheel shows one notice for each profile that names each account that needs a login and tells the person to log in to it from Authentication. The log gets one warning for each account, with its email address.
+ 
+ A stored request to turn on the earlier opt-in provider modules needs no repair. Flywheel reads it as the default selection and removes it from the configuration file.
+ 
+@@ -140,13 +140,13 @@ When a person enters an API key at a terminal prompt, the terminal never shows t
+ 
+ ## PI-MODEL-027: Claude through a Claude login for each profile
+ 
+-The Anthropic Subscription provider serves Claude models through the Claude engine that ships with Flywheel: the engine program that the Claude Agent SDK pins, in every release for every platform. Every surface that names the provider, such as Authentication, Settings, Doctor, notices, and `flywheel auth`, calls it Anthropic Subscription. The engine runs and keeps the Claude sign-in. Flywheel never reads, stores, or sends the Claude sign-in token. To show and route each account, it reads only the account details that the engine records, such as the email address. The provider works in the same way whether or not the person has a separate install of the engine, and it never uses such an install. A request at reasoning effort off uses the model's own off mode, as on the Anthropic API-key provider.
++The Anthropic Subscription provider serves Claude models through the Claude engine that ships with Flywheel: the peerAgent1 program that the Claude Agent SDK pins, in every release for every platform. Every surface that names the provider, such as Authentication, Settings, Doctor, notices, and `flywheel auth`, calls it Anthropic Subscription. The engine runs and keeps the Claude sign-in. Flywheel never reads, stores, or sends the Claude sign-in token. To show and route each account, it reads only the account details that the engine records, such as the email address. The provider works in the same way whether or not the person installed peerAgent1, and it never uses a peerAgent1 that the person installed.
+ 
+-Each Claude login belongs to one Flywheel profile, as every other credential does. The login button of a profile runs the engine's own login into a folder of that profile. A new profile has no Claude account, even when the person is signed in to Claude elsewhere on the computer, and a login in one profile does not appear automatically in another. When the same Claude account is logged in to two profiles, each profile has its own login, and Disconnect in one profile leaves the other profile logged in. Disconnect logs the account out of that profile only: a separate install of the engine and every other app keep their own logins. Flywheel never reads, uses, or changes a Claude login that it did not create. A profile in a separate Flywheel home of the same computer account can use a Claude login of a profile in the account's own Flywheel home by reference; both use that one login, and Disconnect in the separate home removes only the reference.
++Each Claude login belongs to one Flywheel profile, as every other credential does. The login button of a profile runs the engine's own login into a folder of that profile. A new profile has no Claude account, even when the person is signed in to peerAgent1, and a login in one profile does not appear automatically in another. When the same Claude account is logged in to two profiles, each profile has its own login, and Disconnect in one profile leaves the other profile logged in. Disconnect logs the account out of that profile only: the person's own peerAgent1 and every other app keep their own logins. Flywheel never reads, uses, or changes the person's own peerAgent1 login. A profile in a separate Flywheel home of the same computer account can use a Claude login of a profile in the account's own Flywheel home by reference; both use that one login, and Disconnect in the separate home removes only the reference.
+ 
+ The provider is on by default. Its Settings row is an ordinary provider row with no risk confirmation, and turning it off and on again asks nothing. Nothing needs to be installed for it. The engine never updates itself and never downloads anything; a new engine comes only with a new Flywheel release.
+ 
+-The engine that Flywheel runs and a separate install of the engine that the person runs never interact. Flywheel's engine reads and writes no setting, login, hook, instruction file, cache, log, data folder, editor connection, temporary file, or socket that belongs to the person's install or to the project's Claude configuration. It keeps each of these for a login in a folder of that login, and the person's install finds nothing of Flywheel's engine. Neither one sees or signals the other's processes. The machine's Claude policy, which an administrator sets for every Claude install on the machine, applies to both.
++The engine that Flywheel runs and the person's own peerAgent1 never interact. The engine reads and writes no setting, login, hook, instruction file, cache, log, data folder, editor connection, temporary file, or socket that belongs to the person's peerAgent1 or to the project's peerAgent1 configuration. It keeps each of these for a login in a folder of that login, and peerAgent1 finds nothing of the engine's. Neither one sees or signals the other's processes. The machine's peerAgent1 policy, which an administrator sets for every peerAgent1 on the machine, applies to both.
+ 
+ Each account row shows the account's email address and, when the engine names it, its plan. When the engine cannot read an account's login and sends no request, Flywheel starts a fresh engine and sends the same request once more, and the person sees nothing. When Claude refuses an account's login, or a fresh engine also cannot read it, the row says so and one notice says the same.
+ 
+@@ -164,7 +164,7 @@ Claude usage-only enterprise accounts use their account's normal metered billing
+ 
+ This provider preserves Flywheel's tool capabilities, tool execution, and the user's message text. Provider-specific tool names remain a transport presentation.
+ 
+-This provider and the Anthropic API-key provider give the model reminders with the same facts. At the start of each conversation context, the reminders state the working directory, git state, platform, shell, operating-system version, the model's name and knowledge cutoff, and today's local date. After later user input, a reminder states a change in the working directory, git state, model, or local date, and the request after a tool round states a change in the model or the local date. On every route, the environment block of the system prompt states the local date on which the turn started, so the prompt changes at most once a day, at a turn boundary. The local date is the same on every route and agrees with the date that the Claude engine states. On macOS and Linux it is the date in Flywheel's time zone, which `TZ` sets, and the engine gets that zone. On Windows it is the date in the Windows system zone, whatever `TZ` names, because the engine on Windows dates in the system zone and ignores `TZ`; Flywheel gives the engine no `TZ` there. Reminders are ordinary system-origin conversation entries: they are saved in model history but hidden from the visible transcript, survive resume and forks, reset with the active context, and remain in history when the user switches providers. On a Claude login the engine also gives the model the account's email address. That text is not in Flywheel's history, and the Anthropic API-key provider never sends it. An agent that runs in a shared Claude engine also receives text that the engine writes: an identity line, fixed agent instructions, the environment, model, and date, and a coordinator line each time it resumes. Flywheel records each of these as a system-origin entry in that agent's history, hidden from the visible transcript. On Windows with Git for Windows installed, the engine states the shell as bash, where the shared reminders state PowerShell. The person accepts that line. Each request that the engine sends states the environment once, also after a rotation and at each dispatch of a hosted agent, so the model never reads two shell lines. The description of Flywheel's shell tool states that commands run in PowerShell on Windows, and that description is the authority.
++This provider and the Anthropic API-key provider give the model the same compatibility reminders. At the start of each conversation context, the reminders state the working directory, git state, platform, shell, operating-system version, the model's name and knowledge cutoff, and today's local date. After later user input, a reminder states a change in the working directory, git state, model, or local date, and the request after a tool round states a change in the model or the local date. On every route, the environment block of the system prompt states the local date on which the turn started, so the prompt changes at most once a day, at a turn boundary. The local date is the same on every route and agrees with the date that the Claude engine states. On macOS and Linux it is the date in Flywheel's time zone, which `TZ` sets, and the engine gets that zone. On Windows it is the date in the Windows system zone, whatever `TZ` names, because the engine on Windows dates in the system zone and ignores `TZ`; Flywheel gives the engine no `TZ` there. Reminders are ordinary system-origin conversation entries: they are saved in model history but hidden from the visible transcript, survive resume and forks, reset with the active context, and remain in history when the user switches providers. On a Claude login the engine also gives the model the account's email address. That text is not in Flywheel's history, and the Anthropic API-key provider never sends it. An agent that runs in a shared Claude engine also receives text that the engine writes: an identity line, fixed agent instructions, the environment, model, and date, and a coordinator line each time it resumes. Flywheel records each of these as a system-origin entry in that agent's history, hidden from the visible transcript. On Windows with Git for Windows installed, a new engine query states the shell as bash, where the shared reminders state PowerShell. The person accepts that line. The description of Flywheel's shell tool states that commands run in PowerShell on Windows, and that description is the authority.
+ 
+ ## PI-MODEL-028: A workflow file can set each agent's model
+ 
+@@ -207,15 +207,3 @@ A person can declare a custom OpenAI-compatible chat-completions provider in fly
+ ## PI-MODEL-037: The automatic sign-in dialog never interrupts another dialog
+ 
+ When no provider is set up, the terminal opens Authentication on its own once each time it starts, and only when no other dialog is open. It checks again first and does not open when a provider was set up meanwhile. A message sent while no provider is set up is not sent: the terminal says why and opens Authentication. Authentication opened by hand always shows a fresh view.
+-
+-## PI-MODEL-038: Free-plan accounts never rotate
+-
+-Only paid subscription accounts rotate. A profile holds at most one free-plan account of a provider, and a free-plan account serves only while it is the only account of its provider in the profile. Flywheel reads each account's plan from its provider: a ChatGPT account on the Free plan and a GitHub Copilot account on Copilot Free are free-plan accounts. An account whose provider reports no plan counts as paid. SuperGrok accounts and Claude subscriptions always count as paid.
+-
+-When a person signs in to a free-plan account and the profile already holds an account of that provider, Flywheel refuses the account, stores nothing, and says why. When Flywheel cannot read the new account's plan and the profile already holds an account of that provider, it refuses the account the same way and says to try again later. When a person signs in to a paid account and the profile holds a free-plan account of that provider, Flywheel asks before it stores anything: "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions." Confirming stores the paid account and disconnects every free-plan account of that provider. Declining stores nothing. Every client and the `flywheel auth login` command follow these rules.
+-
+-A free-plan account that sits beside another account of its provider, because its paid plan lapsed or because it was connected before this rule, stays connected and does not serve. Its account row says why and offers to disconnect it, and Flywheel tells the person once. It serves again as soon as it is the only account of its provider or its plan becomes paid again.
+-
+-## PI-MODEL-039: Every agent waits out spent capacity and continues
+-
+-When no candidate can serve an agent until a stated time, such as a usage-limit reset, the agent waits until that time and then continues its turn on its own, with no action from the person. This holds for every agent: a chat, a workflow agent, a subagent, and a headless task. A spent candidate that states no time is checked again after a short interval, so a wait never turns into a failure while every candidate can still clear. When the time comes, the agent's next request decides: if a candidate serves it, the turn continues from where it stopped; if every candidate is still spent, the agent waits again for the next stated time. The wait of an agent that the runtime serves continues across a runtime restart, an unexpected exit, and a reboot, and whether or not a client shows the session. A headless task waits while its own process runs, and ends with that process. A project that closed during the wait opens again when the agent continues. A machine that sleeps through the time continues when it wakes. While it waits, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, a message from the person starts a turn at once, and a headless task's own deadline ends its wait. A wait never admits a paid candidate that the person did not allow, never applies a banked reset, and pages no one.
+diff --git a/src/infra/llm/provider-error-copy.ts b/src/infra/llm/provider-error-copy.ts
+index 41708f6..3b617ab 100644
+--- a/src/infra/llm/provider-error-copy.ts
++++ b/src/infra/llm/provider-error-copy.ts
+@@ -52,22 +52,13 @@ export interface ProviderErrorCopy {
+   action?: ProviderErrorAction;
+ }
+ 
+-const BANKED_RESET_HINT = "This account has a banked reset that you can apply in Usage (/usage).";
+ const SWITCH_MODELS_ACTION: ProviderErrorAction = { label: "Switch models", command: "/model" };
+ const MANAGE_AUTH_ACTION: ProviderErrorAction = { label: "Manage credentials", command: "/auth" };
+ 
+-export type ProviderUnavailableCause = "quota" | "rate_limit" | "server_error" | "overload" | "connection" | "stall" | "unavailable" | "route_unavailable" | "ineligible" | "model_access" | "extended_context";
++export type ProviderUnavailableCause = "quota" | "rate_limit" | "server_error" | "overload" | "connection" | "stall" | "unavailable" | "ineligible" | "model_access" | "extended_context";
+ 
+-/** Causes that only a person clears: what an account grants, and a route whose program is missing or unusable on
+- *  this machine. Waiting does not change them, so they carry no reset bound. */
+-const PERSON_CAUSES: ReadonlySet<ProviderUnavailableCause> = new Set(["route_unavailable", "ineligible", "model_access", "extended_context"]);
+-
+-/** Whether waiting can clear `cause`, so that it has a time at which a request can check it again. */
+-export function waitingClears(cause: ProviderUnavailableCause): boolean {
+-  return !PERSON_CAUSES.has(cause);
+-}
+-
+-const UNAVAILABLE_COPY = { presentation: "provider.unavailable", title: "Provider unavailable", message: "No configured provider can serve this model right now." } as const;
++/** Causes that state what an account grants. Waiting does not change them, so they carry no reset bound. */
++const GRANT_CAUSES: ReadonlySet<ProviderUnavailableCause> = new Set(["ineligible", "model_access", "extended_context"]);
+ 
+ const EXHAUSTED_COPY = {
+   quota: { presentation: "provider.out_of_credits", title: "Out of credits", message: "The eligible provider accounts for this model are out of quota or credits." },
+@@ -76,8 +67,7 @@ const EXHAUSTED_COPY = {
+   overload: { presentation: "provider.overloaded", title: "Provider overloaded", message: "The model providers reported overload." },
+   connection: { presentation: "provider.connection_lost", title: "Connection lost", message: "The connections to the model providers failed. This does not establish a provider outage." },
+   stall: { presentation: "provider.connection_lost", title: "Model response stalled", message: "The models stopped sending progress while composing their responses." },
+-  unavailable: UNAVAILABLE_COPY,
+-  route_unavailable: UNAVAILABLE_COPY,
++  unavailable: { presentation: "provider.unavailable", title: "Provider unavailable", message: "No configured provider can serve this model right now." },
+   ineligible: { presentation: "provider.unavailable", title: "No eligible provider", message: "None of the configured providers was eligible for this request." },
+   model_access: { presentation: "provider.unavailable", title: "Model not available", message: "The provider accounts for this model do not grant it." },
+   extended_context: { presentation: "provider.unavailable", title: "Extended context not available", message: "The provider accounts for this model do not grant its extended context window. Flywheel uses the standard window for the next request." },
+@@ -85,8 +75,8 @@ const EXHAUSTED_COPY = {
+ 
+ /** What a later request can do after no candidate served one: run once
+  *  `atMs` passes, when every candidate that waiting can help states when it
+- *  can serve again; run again with no known time; or nothing, when only
+- *  causes that a person clears refused it. */
++ *  can serve again; run again with no known time; or nothing, when only what
++ *  the accounts grant refused it. */
+ export type ProviderRecovery =
+   | { readonly kind: "at"; readonly atMs: number }
+   | { readonly kind: "retry" }
+@@ -97,7 +87,7 @@ export type ProviderRecovery =
+  *  the bound the copy states. An extended context refusal is retryable,
+  *  because the next request uses the standard window. */
+ export function exhaustedProvidersRecovery(candidates: readonly { readonly cause: ProviderUnavailableCause; readonly resetsAtMs: number | undefined }[]): ProviderRecovery {
+-  const retryable = candidates.filter((candidate) => waitingClears(candidate.cause));
++  const retryable = candidates.filter((candidate) => !GRANT_CAUSES.has(candidate.cause));
+   const bounds = retryable.flatMap((candidate) => candidate.resetsAtMs === undefined ? [] : [candidate.resetsAtMs]);
+   if (bounds.length > 0 && bounds.length === retryable.length) return { kind: "at", atMs: Math.min(...bounds) };
+   if (retryable.length > 0 || candidates.some((candidate) => candidate.cause === "extended_context")) return { kind: "retry" };
+@@ -106,16 +96,12 @@ export function exhaustedProvidersRecovery(candidates: readonly { readonly cause
+ 
+ /** Renders request-local evidence after routing ends. Causes and hold bounds
+  * come from routing owners, never from parsing the aggregate's prose.
+- * Admission skips retain their detail without becoming dispatched failures.
+- * `bankedReset` marks a candidate whose account holds a banked reset. Only a
+- * quota refusal names it, in that candidate's own line, which every register
+- * renders, and the line never predicts whether the reset lets the request run. */
++ * Admission skips retain their detail without becoming dispatched failures. */
+ export function exhaustedProvidersCopy(candidates: readonly {
+   readonly provider: string;
+   readonly cause: ProviderUnavailableCause;
+   readonly detail: string;
+   readonly resetsAtMs: number | undefined;
+-  readonly bankedReset?: boolean;
+ }[]): ProviderErrorCopy {
+   const causes = new Set(candidates.map((candidate) => candidate.cause).filter((cause) => cause !== "ineligible"));
+   const [firstCause] = causes;
+@@ -137,7 +123,7 @@ export function exhaustedProvidersCopy(candidates: readonly {
+       : bound === undefined ? "" : ` Some candidates have a reset or recheck bound at ${bound}.`}`,
+     guidance: exhaustedGuidance(cause, waitBound !== undefined),
+     detail: [...new Set(candidates.map((candidate) =>
+-      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${candidate.cause === "quota" && candidate.bankedReset === true ? `${BANKED_RESET_HINT} ` : ""}${extractProviderErrorDetail(redactSecrets(candidate.detail))}`
++      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${extractProviderErrorDetail(redactSecrets(candidate.detail))}`
+     ))].join(" "),
+     action: SWITCH_MODELS_ACTION,
+   };
+diff --git a/src/orchestration/agent-runtime/factory.ts b/src/orchestration/agent-runtime/factory.ts
+index d4ae889..7517086 100644
+--- a/src/orchestration/agent-runtime/factory.ts
++++ b/src/orchestration/agent-runtime/factory.ts
+@@ -1,11 +1,11 @@
+ import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-context.js";
+ import type { AccessProviderCandidate, AccessProviderModelEligibility, FailoverPlan } from "../../infra/llm/access-provider.js";
++import { createSubscriptionAccountIdentity } from "../../infra/llm/subscription-account-identity.js";
+ import type { ModelClient, ProviderSessionLifetime } from "./llm/types.js";
+ import type { ModelsClient } from "../../infra/llm/models.js";
+ import { getSharedModelsClient } from "../config/llm-clients.js";
+ import { captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "./llm/client-factory.js";
+ import { LiveAgent } from "./runner.js";
+-import { prepareRunRequest, type RequestPreparer } from "./request-preparation.js";
+ import type { AgentFactory, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
+ import type { ModuleServices } from "../../infra/module-service.js";
+ import type { EnvCaptureResolver } from "../../infra/env-detection.js";
+@@ -19,16 +19,16 @@ import { createWebSearch } from "./web-search/select.js";
+ import type { WebSearchProviderId } from "./web-search/types.js";
+ import { createWebSearchProviderResolver, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../modules.js";
+ import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
++import type { SubscriptionSpendAuthorization, SubscriptionSpendConsentCapture } from "../subscription-spend-consent/subscription-spend-consent-service.js";
++import type { RequestAdmission, SubscriptionAllowanceResolver } from "./llm/provider-availability-types.js";
+ import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
+-import { requestAdmissionFromCaptures, type SubscriptionAdmissionCapture } from "../subscription-spend-consent/admission-capture.js";
++import type { SubscriptionAdmissionCapture } from "../subscription-spend-consent/admission-capture.js";
+ import type { AuthConditionOwner } from "../auth/auth-condition-owner.js";
+ import type { UsageAuthorityGeneration } from "./usage-settlement.js";
+ import { accessProviderRegistry } from "./llm/access-provider-registry.js";
+ 
+ type ModulesInput = FirstPartyModuleComposition | FirstPartyModuleSnapshot;
+-/** Builds a client of `model` whose provider resources `providerSessionLifetime` owns. An absent snapshot or
+- *  configuration reads the runtime's current one. */
+-export type LLMClientFactory = (model: string, moduleSnapshot: FirstPartyModuleComposition | undefined, runtimeConfig: RuntimeConfigRequestCapture | undefined, providerSessionLifetime: ProviderSessionLifetime) => Promise<ModelClient>;
++export type LLMClientFactory = (model: string, moduleSnapshot?: FirstPartyModuleComposition, runtimeConfig?: RuntimeConfigRequestCapture, providerSessionLifetime?: ProviderSessionLifetime) => Promise<ModelClient>;
+ 
+ /** One request-time model runtime. Generation identity prevents a runner cache
+  *  from reusing clients after the owning session publishes new model state. */
+@@ -65,6 +65,33 @@ export type CaptureProviderConnection = (runtimeConfig?: RuntimeConfigRequestCap
+ export type CaptureSubscriptionAdmission = (candidates: readonly AccessProviderCandidate[], providerSettings: RuntimeConfigRequestCapture["providerSettings"]) => Promise<SubscriptionAdmissionCapture>;
+ 
+ 
++async function requestAdmissionFromCaptures(capture: SubscriptionSpendConsentCapture | undefined, connection: ProviderConnection | undefined, subscriptionAllowanceFor?: SubscriptionAllowanceResolver): Promise<RequestAdmission> {
++  const authorizations = new Map<string, SubscriptionSpendAuthorization>();
++  if (capture !== undefined) {
++    const accountMatches = (providerId: string, instanceId: string, subjectDigest: string): boolean => {
++      if (connection?.profileId === undefined || connection.profileId !== capture.profileId) return false;
++      const account = connection.subscriptionCredentials.get(providerId)?.find((candidate) => candidate.instanceId === instanceId);
++      return account?.identity !== undefined
++        && createSubscriptionAccountIdentity(providerId, instanceId, account.identity).subjectDigest === subjectDigest;
++    };
++    for (const authorization of capture.authorizations.values()) {
++      const envelope = authorization.envelope;
++      if (authorization.profileId !== capture.profileId
++        || authorization.account.providerId !== envelope.providerId
++        || authorization.account.instanceId !== envelope.instanceId
++        || authorization.account.subjectDigest !== envelope.subjectDigest
++        || !accountMatches(envelope.providerId, envelope.instanceId, envelope.subjectDigest)) continue;
++      authorizations.set(`${envelope.providerId}\0${envelope.instanceId}\0${envelope.mode}`, authorization);
++    }
++  }
++  return Object.freeze({
++    subscriptionSpendAuthorizationFor: (candidate: AccessProviderCandidate) => candidate.kind === "subscription"
++      ? authorizations.get(`${candidate.providerId}\0${candidate.instanceId}\0${candidate.spendMode}`)
++      : undefined,
++    ...(subscriptionAllowanceFor === undefined ? {} : { subscriptionAllowanceFor }),
++  });
++}
++
+ interface GenerationRuntimeToolSurfaces {
+   moduleServices?: ModuleServices;
+   webSearch?: RuntimeToolSurfaces["webSearch"];
+@@ -146,8 +173,6 @@ export function createAgentRuntime(deps: {
+   authConditions?: Pick<AuthConditionOwner, "snapshot" | "observeMutation">;
+   /** Receives every refusal of a model that a request of this runtime proved. */
+   recordModelRefusal?: AdmittedClientOptions["recordModelRefusal"];
+-  /** The composition's notify seam, which every provider client of this runtime receives (`AccessProviderBuild.notify`). */
+-  notify: AdmittedClientOptions["notify"];
+   /** Enables account login waiting only for an interactive executor. */
+   waitForLogin?: true;
+   /** The profile's wait for its model discovery to settle, which every runner this factory builds carries. */
+@@ -187,12 +212,12 @@ export function createAgentRuntime(deps: {
+   const requestAdmission = (connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture): AdmittedClientOptions["requestAdmission"] => {
+     return async (candidates) => {
+       const capture = await deps.captureSubscriptionAdmission?.(candidates, runtimeConfig.providerSettings);
+-      return requestAdmissionFromCaptures(capture, connection);
++      return requestAdmissionFromCaptures(capture?.consent, connection, capture?.subscriptionAllowanceFor);
+     };
+   };
+   // The definition owner names the project this runtime serves, so every client
+   // it builds writes provider diagnostics under that root and never resolves one.
+-  const admittedClientOptions = (providers: ReturnType<typeof accessProviderRegistry>, connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture, eligibility: AdmittedClientOptions["eligibility"], providerSessionLifetime: AdmittedClientOptions["providerSessionLifetime"]): AdmittedClientOptions => {
++  const admittedClientOptions = (providers: ReturnType<typeof accessProviderRegistry>, connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture, eligibility?: AdmittedClientOptions["eligibility"], providerSessionLifetime?: AdmittedClientOptions["providerSessionLifetime"]): AdmittedClientOptions => {
+     const admission = requestAdmission(connection, runtimeConfig);
+     return {
+       providers,
+@@ -200,7 +225,6 @@ export function createAgentRuntime(deps: {
+       requestAdmission: admission,
+       allowTrainingRoutes: runtimeConfig.allowTrainingRoutes,
+       providerSessionLifetime,
+-      notify: deps.notify,
+       ...(deps.launcher === undefined ? {} : { launcher: deps.launcher }),
+       ...(deps.authConditions === undefined ? {} : { observeAuthConditions: deps.authConditions.observeMutation }),
+       ...(deps.recordModelRefusal === undefined ? {} : { recordModelRefusal: deps.recordModelRefusal }),
+@@ -208,7 +232,7 @@ export function createAgentRuntime(deps: {
+       ...(eligibility === undefined ? {} : { eligibility }),
+     };
+   };
+-  const clientOptions = (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, connection: EffectiveProviderConnection, providerSessionLifetime: AdmittedClientOptions["providerSessionLifetime"]): CreateClientOptions => ({
++  const clientOptions = (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, connection: EffectiveProviderConnection, providerSessionLifetime?: AdmittedClientOptions["providerSessionLifetime"]): CreateClientOptions => ({
+     ...admittedClientOptions(accessProviderRegistry(moduleSnapshot), connection, runtimeConfig, undefined, providerSessionLifetime),
+     authDir: connection.authDir,
+     profileId: connection.profileId,
+@@ -253,9 +277,7 @@ export function createAgentRuntime(deps: {
+       ...(usageProfile ? { usageProfile } : {}),
+     }
+   }
+-  const createLLMClient: LLMClientFactory = async (model, requestedSnapshot, requestedConfig, providerSessionLifetime) => {
+-    const moduleSnapshot = requestedSnapshot ?? moduleSelection();
+-    const runtimeConfig = requestedConfig ?? deps.captureRuntimeConfig();
++  const createLLMClient: LLMClientFactory = async (model, moduleSnapshot = moduleSelection(), runtimeConfig = deps.captureRuntimeConfig(), providerSessionLifetime?: ProviderSessionLifetime) => {
+     const auth = deps.connection?.auth ?? accountAuth();
+     const providers = accessProviderRegistry(moduleSnapshot);
+     const connection = deps.connection ?? captureAccountConnection(auth, deps.authDirectory(), providers, deps.profileId);
+@@ -280,8 +302,7 @@ export function createAgentRuntime(deps: {
+       eligibility,
+       runtimeConfig,
+       admit(plans) {
+-        const createAdmittedLLMClient: LLMClientFactory = (model, _moduleSnapshot, requestConfig, providerSessionLifetime) => {
+-          const requestRuntimeConfig = requestConfig ?? runtimeConfig;
++        const createAdmittedLLMClient: LLMClientFactory = (model, _moduleSnapshot, requestRuntimeConfig = runtimeConfig, providerSessionLifetime?: ProviderSessionLifetime) => {
+           const plan = plans.get(model);
+           if (!plan) throw new Error(`Model "${model}" was not admitted for this run`);
+           return createAdmittedClient(plan, modelsClient, connection, admittedClientOptions(providers, connection, requestRuntimeConfig, eligibility, providerSessionLifetime));
+@@ -309,42 +330,27 @@ export function createAgentRuntime(deps: {
+       },
+     };
+   };
+-  /** The options, the client factory, and the model runtime of one agent that `options` describe, on `auth`. */
+-  const agentParts = (options: AgentOptions) => {
+-    const auth = deps.connection?.auth ?? options.auth ?? deps.getAuth();
+-    const agentClient: LLMClientFactory = async (model, requestedSnapshot, requestedConfig, providerSessionLifetime) => {
+-      const moduleSnapshot = requestedSnapshot ?? moduleSelection();
+-      const runtimeConfig = requestedConfig ?? deps.captureRuntimeConfig();
+-      const providers = accessProviderRegistry(moduleSnapshot);
+-      const connection = deps.connection ?? captureAccountConnection(auth, deps.authDirectory(), providers, deps.profileId);
+-      if (!deps.connection) return createClient(model, modelsClient, auth, {
+-        ...clientOptions(moduleSnapshot, runtimeConfig, connection, providerSessionLifetime),
+-        connection,
+-        eligibility: deps.getProviderModelEligibility?.(),
+-      });
+-      const eligibility = deps.getProviderModelEligibility?.();
+-      const plan = providers.selection.plan(model, connection, eligibility, runtimeConfig.allowTrainingRoutes);
+-      return createAdmittedClient(plan, modelsClient, connection, admittedClientOptions(providers, connection, runtimeConfig, eligibility, providerSessionLifetime));
+-    };
+-    return {
+-      runnable: { ...hostedOptions(options, auth), captureProviderConnection: options.captureProviderConnection ?? captureProviderConnection },
+-      agentClient,
+-      captureModelRuntime: options.captureModelRuntime ?? (async () => ({ generation: deps, createLLMClient, captureProviderConnection })),
+-    };
+-  };
+   const createAgent: AgentFactory = (options) => {
+-    const { runnable, agentClient, captureModelRuntime } = agentParts(options);
+-    return new LiveAgent(runnable, agentClient, deps.definitions, breadcrumbMaintenance, undefined, captureModelRuntime);
+-  };
+-  const prepareRequest: RequestPreparer = (options, preparation) => {
+-    const { runnable, agentClient, captureModelRuntime } = agentParts(options);
+-    return prepareRunRequest({
+-      ...preparation,
+-      options: { ...runnable, providerSession: options.providerSession },
+-      definitions: deps.definitions,
+-      captureModelRuntime,
+-      createRunner: (childOptions) => new LiveAgent(childOptions, agentClient, deps.definitions, breadcrumbMaintenance, undefined, captureModelRuntime),
+-    });
++    const auth = deps.connection?.auth ?? options.auth ?? deps.getAuth();
++    return new LiveAgent(
++      { ...hostedOptions(options, auth), captureProviderConnection: options.captureProviderConnection ?? captureProviderConnection },
++      async (model, moduleSnapshot = moduleSelection(), runtimeConfig = deps.captureRuntimeConfig(), providerSessionLifetime?: ProviderSessionLifetime) => {
++        const providers = accessProviderRegistry(moduleSnapshot);
++        const connection = deps.connection ?? captureAccountConnection(auth, deps.authDirectory(), providers, deps.profileId);
++        if (!deps.connection) return createClient(model, modelsClient, auth, {
++          ...clientOptions(moduleSnapshot, runtimeConfig, connection, providerSessionLifetime),
++          connection,
++          eligibility: deps.getProviderModelEligibility?.(),
++        });
++        const eligibility = deps.getProviderModelEligibility?.();
++        const plan = providers.selection.plan(model, connection, eligibility, runtimeConfig.allowTrainingRoutes);
++        return createAdmittedClient(plan, modelsClient, connection, admittedClientOptions(providers, connection, runtimeConfig, eligibility, providerSessionLifetime));
++      },
++      deps.definitions,
++      breadcrumbMaintenance,
++      undefined,
++      options.captureModelRuntime ?? (async () => ({ generation: deps, createLLMClient, captureProviderConnection })),
++    );
+   };
+-  return { moduleSelection, createAgent, prepareRequest, createLLMClient, captureProviderConnection, usageProfile };
++  return { moduleSelection, createAgent, createLLMClient, captureProviderConnection, usageProfile };
+ }
+diff --git a/src/orchestration/agent-runtime/llm/client-factory.ts b/src/orchestration/agent-runtime/llm/client-factory.ts
+index 79cd67c..b666663 100644
+--- a/src/orchestration/agent-runtime/llm/client-factory.ts
++++ b/src/orchestration/agent-runtime/llm/client-factory.ts
+@@ -20,7 +20,6 @@ import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
+ import type { CredentialSlotClassifier } from "../../../infra/auth/auth-store-types.js";
+ import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
+ import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-store.js";
+-import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js";
+ import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
+ import type { ModelFamily } from "../../../infra/llm/model-family.js";
+ import type { ProviderIdentity } from "../../../infra/llm/auth-error.js";
+@@ -34,7 +33,7 @@ import type {
+ } from "./provider-availability-types.js";
+ import { createFailoverClient, createRoutingDecisions } from "./failover-client.js";
+ import type { ProviderAffordabilityCapability } from "./provider-affordability.js";
+-import type { AdmittedModelRequest, AdmittedModelRequestPreparation, AdmittedModelRequestRun, LLMClient, ModelClient, PreparedCandidate, ProviderRequestAdmission, ProviderSessionLifetime, ServingAttempt, StagedProviderClient, StreamOptions } from "./types.js";
++import type { AdmittedModelRequest, AdmittedModelRequestRun, LLMClient, ModelClient, ProviderRequestAdmission, ProviderSessionLifetime, ServingAttempt, StagedProviderClient, StreamOptions } from "./types.js";
+ import { ApiError, fromStreamError, ModelUnavailable } from "../errors.js";
+ 
+ import type { AccessProviderRegistry } from "./access-provider-registry.js";
+@@ -64,8 +63,7 @@ export interface AccessProviderBuild {
+   readonly projectRoot: string;
+   readonly attribution: AccessProviderCandidateAttribution;
+   readonly tokenizerIdentity?: import("../../../infra/llm/model-id.js").ClaudeTokenizerIdentity;
+-  /** The owner of every resource that the client's connection holds beyond one request (`ProviderSessionLifetime`). */
+-  readonly providerSessionLifetime: ProviderSessionLifetime;
++  readonly providerSessionLifetime?: ProviderSessionLifetime;
+   /** Launch authority of the runtime generation the client serves. A provider
+    *  that runs a local process launches it here, so the process ends with the
+    *  generation; providers that make only network requests ignore it. */
+@@ -78,10 +76,6 @@ export interface AccessProviderBuild {
+    *  lineup without the models that it refused. Empty when the request captured no eligibility. It reads only the
+    *  captured eligibility. */
+   readonly accountOfferings: () => readonly AccessProviderCandidateAttribution[];
+-  /** The notify seam of the composition that the client serves (ARCH-STRUCTURE-034): a provider states here a
+-   *  condition of its account that the person must see, whichever request of the composition found it. It returns at
+-   *  once and never fails. */
+-  readonly notify: (episode: NotificationEpisodeInput) => void;
+ }
+ 
+ /** One refusal that a request proved: the account of `candidate`, on the credentials that `connection` captured,
+@@ -99,9 +93,7 @@ export type RecordModelRefusal = (record: ModelRefusalRecord) => void;
+ 
+ export type AccessProviderFactory = (build: AccessProviderBuild) => Promise<StagedProviderClient>;
+ 
+-/** Adds immutable request attribution to an adapter description and memoizes its connection. Concurrent and later
+- *  connects share one construction and its client. A construction that fails is forgotten, so the next connect
+- *  builds again on the state that the failure named (ARCH-PROVIDERS-036). */
++/** Adds immutable request attribution to an adapter description and memoizes its connection. */
+ export function stagedProviderClient(
+   build: AccessProviderBuild,
+   described: ServingAttempt,
+@@ -113,7 +105,9 @@ export function stagedProviderClient(
+     candidateAttribution: build.attribution,
+     accessProviderCandidate: build.candidate,
+     ...(build.attribution.catalogProvenance === undefined ? {} : { catalogProvenance: build.attribution.catalogProvenance }),
+-    credentialLineage: candidateCredentialLineage(build.connection, build.candidate),
++    credentialLineage: build.candidate.kind === "subscription"
++      ? build.candidate.instanceId
++      : build.connection.auth.credentialLineages?.[build.candidate.providerId],
+     modelFamily: described.modelFamily,
+     model: build.model,
+     ...(build.tokenizerIdentity === undefined ? {} : { tokenizerIdentity: build.tokenizerIdentity }),
+@@ -126,7 +120,6 @@ export function stagedProviderClient(
+     supportsReasoning: described.supportsReasoning,
+     promptNotes: described.promptNotes,
+     ...(described.sharedPromptPrefix === undefined ? {} : { sharedPromptPrefix: described.sharedPromptPrefix }),
+-    ...(described.anticipatesRequests === undefined ? {} : { anticipatesRequests: described.anticipatesRequests }),
+     ...(described.availableModels === undefined ? {} : { availableModels: described.availableModels }),
+     priceFor: described.priceFor.bind(described),
+   } satisfies ServingAttempt);
+@@ -134,16 +127,12 @@ export function stagedProviderClient(
+   return Object.freeze({
+     attempt,
+     connect() {
+-      if (connected !== undefined) return connected;
+-      const construction = create().then((client) => Object.freeze({
++      connected ??= create().then((client) => Object.freeze({
+         ...attempt,
+         streamWithTools: (options: StreamOptions) => client.streamWithTools(options),
+-        historyTarget: (options: StreamOptions) => client.historyTarget(options),
+-        ...(client.anticipate === undefined ? {} : { anticipate: client.anticipate.bind(client) }),
++        ...(client.anticipate === undefined ? {} : { anticipate: (options: StreamOptions) => { client.anticipate?.(options); } }),
+       }));
+-      connected = construction;
+-      void construction.catch(() => { if (connected === construction) connected = undefined; });
+-      return construction;
++      return connected;
+     },
+   });
+ }
+@@ -151,9 +140,7 @@ export function stagedProviderClient(
+ export interface AdmittedClientOptions {
+   /** Enabled provider definitions and factories captured for this client. */
+   providers: AccessProviderRegistry;
+-  /** The owner of the provider resources that the client's connections hold. A client can serve, so its creator
+-   *  owns them, also when it only plans. */
+-  providerSessionLifetime: ProviderSessionLifetime;
++  providerSessionLifetime?: ProviderSessionLifetime;
+   /** Launch authority every provider build receives. */
+   launcher?: LauncherScope;
+   /** Eligibility captured before this client was admitted. */
+@@ -178,8 +165,6 @@ export interface AdmittedClientOptions {
+   recordModelRefusal?: RecordModelRefusal;
+   /** Interactive clients can wait for an external account's login before resending its request. */
+   waitForLogin?: true;
+-  /** The composition's notify seam, which every provider build receives (`AccessProviderBuild.notify`). */
+-  notify: (episode: NotificationEpisodeInput) => void;
+ }
+ 
+ export interface CreateClientOptions extends AdmittedClientOptions {
+@@ -276,7 +261,7 @@ function buildChainClient(
+   // sockets. The key carries everything an admission bakes into the adapter.
+   const adapters = new Map<string, Promise<StagedProviderClient>>();
+   const routing = createRoutingDecisions();
+-  const treeLogin = options.providerSessionLifetime.treeLogin;
++  const treeLogin = options.providerSessionLifetime?.treeLogin;
+   const record = options.recordModelRefusal;
+   const recordRefusal = (attribution: AccessProviderCandidateAttribution, refusal: ModelRefusal): void => {
+     record?.({ connection, candidate: attribution.candidate, wireModelId: attribution.wireModelId, refusal });
+@@ -317,7 +302,6 @@ function buildChainClient(
+             ...(options.launcher === undefined ? {} : { launcher: options.launcher }),
+             recordModelRefusal: (wireModelId, refusal) => { record?.({ connection, candidate, wireModelId, refusal }); },
+             accountOfferings: () => [...eligibility?.modelIds ?? []].flatMap((offered) => eligibility?.candidateOfferings?.(candidate, offered, options.allowTrainingRoutes) ?? []),
+-            notify: options.notify,
+           })
+         : Promise.reject(new Error(`Provider ${provider} is not enabled`));
+       adapters.set(key, built);
+@@ -334,7 +318,7 @@ function buildChainClient(
+       affordability,
+       requestAdmission: admission,
+       availability,
+-      credentialLineage: (candidate) => candidateCredentialLineage(connection, candidate),
++      credentialLineage: (candidate) => candidate.kind === "subscription" ? candidate.instanceId : connection.auth.credentialLineages?.[candidate.providerId],
+       conditions: connection.auth.conditions,
+       ...(options.observeAuthConditions === undefined ? {} : { observeAuthConditions: options.observeAuthConditions }),
+       recordModelRefusal: recordRefusal,
+@@ -361,8 +345,6 @@ function buildChainClient(
+       ...(tokenizerIdentity === undefined ? {} : { tokenizerIdentity }),
+       subscriptionSpendAuthorizationFor: policy.subscriptionSpendAuthorizationFor,
+       ...(policy.subscriptionAllowanceFor === undefined ? {} : { subscriptionAllowanceFor: policy.subscriptionAllowanceFor }),
+-      ...(policy.bankedResetFor === undefined ? {} : { bankedResetFor: policy.bankedResetFor }),
+-      ...(policy.expiringResetFor === undefined ? {} : { expiringResetFor: policy.expiringResetFor }),
+     });
+   };
+   const admittedRequest = async (diagnostic: boolean): Promise<AdmittedModelRequest> => {
+@@ -394,11 +376,6 @@ function buildChainClient(
+ 
+ 
+ 
+-/** The credential lineage that `candidate` spends on `connection`: a subscription account's instance, or the lineage of the stored provider key. */
+-export function candidateCredentialLineage(connection: ProviderConnection, candidate: AccessProviderCandidate): string | undefined {
+-  return candidate.kind === "subscription" ? candidate.instanceId : connection.auth.credentialLineages?.[candidate.providerId];
+-}
+-
+ export function credentialForCandidate(connection: ProviderConnection, candidate: AccessProviderCandidate): RuntimeCredential | undefined {
+   if (candidate.kind !== "subscription") return undefined;
+   return connection.subscriptionCredentials.get(candidate.providerId)?.find((entry) => entry.instanceId === candidate.instanceId)?.credential;
+@@ -451,13 +428,6 @@ function withRuntimeErrorBoundary(client: ModelClient): ModelClient {
+             throw fromStreamError(error);
+           }
+         },
+-        async prepare(request: AdmittedModelRequestPreparation): Promise<PreparedCandidate> {
+-          try {
+-            return await admitted.prepare(request);
+-          } catch (error) {
+-            throw fromStreamError(error);
+-          }
+-        },
+         plannedAttempt: admitted.plannedAttempt,
+       });
+     },
+diff --git a/src/orchestration/agent-runtime/llm/failover-client.ts b/src/orchestration/agent-runtime/llm/failover-client.ts
+index 2820605..1266793 100644
+--- a/src/orchestration/agent-runtime/llm/failover-client.ts
++++ b/src/orchestration/agent-runtime/llm/failover-client.ts
+@@ -52,7 +52,7 @@ import { accessProviderAccountKey, accessProviderCandidateKey, candidateProvider
+ import type { ModelFamily } from "../../../infra/llm/model-family.js";
+ import { errorMessage } from "../../../infra/error-message.js";
+ import { Log } from "../../../infra/log.js";
+-import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type ProviderUnavailableCause } from "../../../infra/llm/provider-error-copy.js";
++import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, type ProviderUnavailableCause } from "../../../infra/llm/provider-error-copy.js";
+ import { summarizeProviderError } from "../../../infra/llm/provider-error-diagnostic.js";
+ import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
+ import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError, SUBSCRIPTION_PAID_REVIEW_DETAIL } from "./errors.js";
+@@ -60,14 +60,11 @@ import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-st
+ import { ThinkingStallError } from "./thinking-stall.js";
+ import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
+ import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure } from "./provider-failure.js";
+-import { SAFE_RECHECK_MS } from "./provider-availability.js";
+-import type { ProviderAvailability, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
++import type { ProviderAvailability, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
+ import type {
+   LLMClient,
+   ModelClient,
+-  AdmittedModelRequestPreparation,
+   AdmittedModelRequestRun,
+-  PreparedCandidate,
+   ServingAttempt,
+   PreparedServingRequest,
+   StagedProviderClient,
+@@ -82,10 +79,9 @@ export interface ProviderChainDeps {
+   readonly family: ModelFamily;
+   /** Immutable candidate order captured by the request admission owner. */
+   readonly candidateAttributions: readonly AccessProviderCandidateAttribution[] | (() => readonly AccessProviderCandidateAttribution[]);
+-  /** The account key (`accessProviderAccountKey`) that each request tries first among its provider's accounts in one
+-   *  spend mode, read when the request captures its candidates: the login of the chat tree's live shared host
+-   *  (`SharedTree.login`). In included use a sooner expiring-window reset still goes first, so the login only breaks
+-   *  ties. Within that order the walk's eligibility and failover decide when the request leaves the login. */
++  /** The account key (`accessProviderAccountKey`) that each request tries first within each spend mode, read when the
++   *  request captures its candidates: the login of the chat tree's live shared host (`SharedTree.login`). The walk's
++   *  eligibility and failover still decide, so the request leaves that login only when it cannot serve. */
+   readonly preferredAccount?: () => string | undefined;
+   readonly build: (attribution: AccessProviderCandidateAttribution) => Promise<StagedProviderClient>;
+   readonly affordability?: ReadonlyMap<AccessProviderId, ProviderAffordabilityCapability>;
+@@ -235,60 +231,16 @@ type Selection = {
+ );
+ 
+ 
+-/** Whether a walk backs a real request, the preparation of one that nothing sends yet, or a planning read. Only a
+- *  serving walk may take a probe lease or record its routing choice, because only a request can conclude a lease and
+- *  only a request is routed. A preparing walk otherwise selects, builds, checks, and connects as a serving walk does,
+- *  and waits on a pending recheck as it does. */
+-type WalkMode = "serves" | "prepares" | "plans";
++/** Whether a walk backs a real request or a planning read. Only a serving
++ *  walk may take a probe lease, because only a request can conclude one. */
++type WalkMode = "serves" | "plans";
+ 
+-/** What live state says about one candidate serving a request now. `ready`
+- *  can serve; its due flags name the fleet rechecks that a serving request
+- *  must claim before it sends. `pending` waits on a recheck another request
+- *  holds. `refused` cannot serve, with the reason. */
+-export type CandidateReadiness =
+-  | { readonly kind: "ready"; readonly quotaProbeDue: boolean; readonly serviceProbeDue: boolean }
+-  | { readonly kind: "pending"; readonly pending: RecheckPending }
+-  | { readonly kind: "refused"; readonly state: UnavailableState };
+-
+-/** The live state that decides candidate readiness. */
+-export interface CandidateReadinessInputs {
+-  readonly availability: ProviderAvailability;
+-  readonly family: ModelFamily;
+-  readonly providerOptions?: ProviderRequestOptions;
+-  /** Read at each call, so a condition recorded during a walk applies to the candidates after it. */
+-  readonly conditions: readonly AuthStoreCondition[];
+-  readonly credentialLineage?: (candidate: AccessProviderCandidate) => string | undefined;
+-  readonly subscriptionSpendAuthorizationFor?: SubscriptionSpendAuthorizationResolver;
+-  readonly subscriptionAllowanceFor?: SubscriptionAllowanceResolver;
+-}
+-
+-/** Decides from state alone whether `candidate` can serve now: storage
+- *  conditions, request options, the provider's outage row, the spend mode's
+- *  admission, and the account's quota rows, in that order. It claims no
+- *  probe and builds no adapter, so the request walk and a read-only view
+- *  such as the model picker reach the same answer. The caller refreshes
+- *  `availability` first. */
+-export function candidateReadiness(candidate: AccessProviderCandidate, inputs: CandidateReadinessInputs): CandidateReadiness {
+-  const provider = candidateProviderId(candidate);
+-  const refused = (reason: UnavailableState["reason"], detail: string, resetsAtMs?: number): CandidateReadiness =>
+-    ({ kind: "refused", state: { available: false, kind: "terminal", reason, detail, resetsAtMs } });
+-  const conditioned = inputs.conditions.some((condition) =>
+-    condition.scope === "provider"
+-      ? condition.providerId === provider
+-      : inputs.credentialLineage?.(candidate) !== undefined);
+-  if (conditioned) return refused("ineligible", "authentication storage needs attention.");
+-  const unservable = providerOptionsUnservableReason(provider, inputs.family, inputs.providerOptions);
+-  if (unservable !== undefined) return refused("ineligible", unservable);
+-  const service = inputs.availability.serviceStanding(provider);
+-  if (service.kind === "suppressed") {
+-    return refused("unavailable", `unreachable; one request will recheck it at ${new Date(service.exhaustion.resetsAtMs).toISOString()}.`, service.exhaustion.resetsAtMs);
+-  }
+-  const admission = spendModeState(candidate, inputs.subscriptionSpendAuthorizationFor, inputs.subscriptionAllowanceFor);
+-  const quota = admission.available ? standingQuotaState(candidate, inputs.availability, "plans") : admission;
+-  if (!quota.available) return quota.kind === "pending" ? { kind: "pending", pending: quota.pending } : { kind: "refused", state: quota };
+-  if (service.kind === "recheck_pending") return { kind: "pending", pending: service };
+-  return { kind: "ready", quotaProbeDue: quota.probeDue === true, serviceProbeDue: service.kind === "probe_due" };
+-}
++/** How the service row gates one candidate: pass through, pass through as
++ *  the fleet's due recheck, or skip with the reason. */
++type ServiceGate =
++  | { readonly kind: "pass"; readonly probeDue: boolean }
++  | { readonly kind: "terminal"; readonly state: UnavailableState }
++  | { readonly kind: "pending"; readonly pending: RecheckPending };
+ 
+ 
+ /** Owns request-local selection and publishes availability only after execution settles. */
+@@ -299,25 +251,51 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+   const captureAttributions = (): readonly AccessProviderCandidateAttribution[] => {
+     const captured = typeof deps.candidateAttributions === "function" ? deps.candidateAttributions() : deps.candidateAttributions;
+     const preferred = deps.preferredAccount?.();
+-    const resetFor = deps.requestAdmission?.expiringResetFor;
+-    // Runs of one provider's accounts in one spend mode keep their order, so
+-    // class and rank still decide first (PI-MODEL-001). Inside a run, included
+-    // use spends the account whose quota expires soonest first, and the tree's
+-    // login, which pins an account and never a spend mode, breaks ties.
++    if (preferred === undefined) return Object.freeze([...captured]);
++    // The tree pins its login, never a spend mode: within each run of one
++    // spend mode the preferred account goes first, and the runs keep their
++    // order, so included use still comes before paid use (PI-MODEL-001).
+     const runs: AccessProviderCandidateAttribution[][] = [];
+     for (const attribution of captured) {
+       const run = runs.at(-1);
+-      const head = run?.[0]?.candidate;
+-      if (run !== undefined && head?.spendMode === attribution.candidate.spendMode && head.providerId === attribution.candidate.providerId) run.push(attribution);
++      if (run?.[0]?.candidate.spendMode === attribution.candidate.spendMode) run.push(attribution);
+       else runs.push([attribution]);
+     }
+-    const reset = (attribution: AccessProviderCandidateAttribution) => (attribution.candidate.spendMode === "included" ? resetFor?.(attribution.candidate) : undefined) ?? Number.MAX_SAFE_INTEGER;
+-    const sticky = (attribution: AccessProviderCandidateAttribution) => accessProviderAccountKey(attribution.candidate) === preferred ? 0 : 1;
+-    return Object.freeze(runs.flatMap((run) => run.toSorted((left, right) => reset(left) - reset(right) || sticky(left) - sticky(right))));
++    const first = (attribution: AccessProviderCandidateAttribution) => accessProviderAccountKey(attribution.candidate) === preferred;
++    return Object.freeze(runs.flatMap((run) => [...run.filter(first), ...run.filter((attribution) => !first(attribution))]));
+   };
+ 
+ 
+ 
++  function quotaState(candidate: AccessProviderCandidate, mode: WalkMode): QuotaState {
++    const admission: QuotaState = spendModeState(candidate, deps.subscriptionSpendAuthorizationFor, deps.subscriptionAllowanceFor);
++    return admission.available ? standingQuotaState(candidate, availability, mode) : admission;
++  }
++
++  /** How the provider's service row gates this candidate. Read-only: claiming
++   *  the recheck a due bound admits happens only after the quota gate also
++   *  passed, so a quota-suppressed candidate costs no claim-and-release. A
++   *  planning read predicts what a request would do - probe - without a
++   *  lease it could never conclude. */
++  function serviceGate(provider: AccessProviderId, mode: WalkMode): ServiceGate {
++    const standing = availability.serviceStanding(provider);
++    if (standing.kind === "live") return { kind: "pass", probeDue: false };
++    if (standing.kind === "suppressed") {
++      return {
++        kind: "terminal",
++        state: {
++          available: false,
++          kind: "terminal",
++          reason: "unavailable",
++          detail: `unreachable; one request will recheck it at ${new Date(standing.exhaustion.resetsAtMs).toISOString()}.`,
++          resetsAtMs: standing.exhaustion.resetsAtMs,
++        },
++      };
++    }
++    if (standing.kind === "recheck_pending") return { kind: "pending", pending: standing };
++    return { kind: "pass", probeDue: mode === "serves" };
++  }
++
+   /** Concludes won probes when the provider admits the request. */
+   function admit(serving: Selection): void {
+     for (const probe of serving.probes) {
+@@ -389,15 +367,13 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+       };
+     }
+ 
+-    const readinessInputs: CandidateReadinessInputs = {
+-      availability,
+-      family: deps.family,
+-      conditions,
+-      ...(providerOptions === undefined ? {} : { providerOptions }),
+-      ...(deps.credentialLineage === undefined ? {} : { credentialLineage: deps.credentialLineage }),
+-      ...(deps.subscriptionSpendAuthorizationFor === undefined ? {} : { subscriptionSpendAuthorizationFor: deps.subscriptionSpendAuthorizationFor }),
+-      ...(deps.subscriptionAllowanceFor === undefined ? {} : { subscriptionAllowanceFor: deps.subscriptionAllowanceFor }),
+-    };
++    function isConditioned(candidate: AccessProviderCandidate): boolean {
++      const provider = candidateProviderId(candidate);
++      return conditions.some((condition) =>
++        condition.scope === "provider"
++          ? condition.providerId === provider
++          : deps.credentialLineage?.(candidate) !== undefined);
++    }
+ 
+     function recordAuthConditions(next: readonly AuthStoreCondition[]): void {
+       conditions.push(...next);
+@@ -406,7 +382,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+ 
+     async function selectNext(): Promise<Selection> {
+       for (;;) {
+-        if (mode !== "plans") waitSignal.throwIfAborted();
++        if (mode === "serves") waitSignal.throwIfAborted();
+         availability.refreshProjection();
+         const pending: RecheckPending[] = [];
+         let pendingPlan: AccessProviderCandidateAttribution | undefined;
+@@ -418,21 +394,36 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+             && (entry.wireModelId === undefined || entry.wireModelId === attribution.wireModelId)
+           )) continue;
+           const provider = candidateProviderId(candidate);
+-          const readiness = candidateReadiness(candidate, readinessInputs);
+-          if (readiness.kind === "refused") {
+-            recordSpent({ candidate, state: readiness.state });
++          if (isConditioned(candidate)) {
++            recordSpent({ candidate, state: { available: false, kind: "terminal", reason: "ineligible", detail: "authentication storage needs attention.", resetsAtMs: undefined } });
++            continue;
++          }
++          const unservable = providerOptionsUnservableReason(provider, deps.family, providerOptions);
++          if (unservable !== undefined) {
++            recordSpent({ candidate, state: { available: false, kind: "terminal", reason: "ineligible", detail: unservable, resetsAtMs: undefined } });
+             continue;
+           }
+-          if (readiness.kind === "pending") {
+-            pending.push(readiness.pending);
++          const gate = serviceGate(provider, mode);
++          if (gate.kind === "terminal") {
++            recordSpent({ candidate, state: gate.state });
++            continue;
++          }
++          let state = quotaState(candidate, "plans");
++          if (!state.available) {
++            if (state.kind === "pending") {
++              pending.push(state.pending);
++              pendingPlan ??= attribution;
++            }
++            else recordSpent({ candidate, state });
++            continue;
++          }
++          if (gate.kind === "pending") {
++            pending.push(gate.pending);
+             pendingPlan ??= attribution;
+             continue;
+           }
+-          // A planning read predicts what a request would do - probe - without
+-          // a lease it could never conclude.
+-          const probes: QuotaProbe[] = [];
+-          if (mode === "serves" && readiness.quotaProbeDue) {
+-            const state = standingQuotaState(candidate, availability, mode);
++          if (mode === "serves" && state.probeDue) {
++            state = standingQuotaState(candidate, availability, mode);
+             if (!state.available) {
+               if (state.kind === "pending") {
+                 pending.push(state.pending);
+@@ -442,10 +433,10 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+               }
+               continue;
+             }
+-            if (state.probe !== undefined) probes.push(state.probe);
+           }
+-          if (mode !== "plans") waitSignal.throwIfAborted();
+-          if (mode === "serves" && readiness.serviceProbeDue) {
++          if (mode === "serves") waitSignal.throwIfAborted();
++          const probes: QuotaProbe[] = state.probe === undefined ? [] : [state.probe];
++          if (gate.probeDue) {
+             const probe = availability.claimServiceProbe(provider);
+             if (probe === undefined) {
+               for (const held of probes) availability.releaseQuotaProbe(candidate, held);
+@@ -470,8 +461,6 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+             }
+             waitSignal.throwIfAborted();
+             const client = await staged.connect();
+-            // A request stopped while its candidate connected is neither served nor prepared.
+-            waitSignal.throwIfAborted();
+             if (mode === "serves") deps.routing.record({ kind: "served", model: deps.model, chosen: provider, passed: passedCandidates(spent) });
+             return select(attribution, client, prepared, probes);
+           } catch (error) {
+@@ -497,7 +486,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+           continue;
+         }
+         if (mode === "serves") deps.routing.record({ kind: "refused", model: deps.model, passed: passedCandidates(spent) });
+-        throw exhaustedChainError(deps.model, spent, shortName, availability, deps.requestAdmission?.bankedResetFor);
++        throw exhaustedChainError(deps.model, spent, shortName, availability);
+       }
+     }
+ 
+@@ -645,15 +634,9 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
+         selection = await walk.selectNext();
+       }
+     }
+-    async function prepare(request: AdmittedModelRequestPreparation): Promise<PreparedCandidate> {
+-      const selected = await requestWalk(capturedAttributions, "prepares", request.providerOptions, request.signal, request.prepare).start();
+-      if (selected.client === undefined) throw new Error("Prepared selection has no connected provider client");
+-      return Object.freeze({ attempt: selected.servingAttempt, client: selected.client, prepared: selected.prepared });
+-    }
+     return Object.freeze({
+       candidateAttributions: capturedAttributions,
+       run,
+-      prepare,
+       plannedAttempt: (providerOptions?: ProviderRequestOptions) => requestWalk(capturedAttributions, "plans", providerOptions).start().then((selected) => selected.servingAttempt),
+     });
+   }
+@@ -675,7 +658,7 @@ function standingQuotaState(candidate: AccessProviderCandidate, availability: Pr
+     return { available: false, kind: "terminal", reason: "quota", detail: `out of quota until ${new Date(standing.exhaustion.resetsAtMs).toISOString()}.`, resetsAtMs: standing.exhaustion.resetsAtMs };
+   }
+   if (standing.kind === "recheck_pending") return { available: false, kind: "pending", pending: standing };
+-  if (mode !== "serves") return { available: true, probeDue: true };
++  if (mode === "plans") return { available: true, probeDue: true };
+   const probe = availability.claimQuotaProbe(candidate);
+   if (probe !== undefined) return { available: true, probe };
+   const afterClaim = candidateProviderId(candidate) === "chatgpt" ? availability.chatGptStanding(candidate) : availability.genericQuotaStanding(candidate);
+@@ -710,9 +693,9 @@ function failureCopyCause(failure: FailoverFailure): ProviderUnavailableCause {
+   if (failure._tag === "QuotaExhaustedFailure") return "quota";
+   if (failure._tag === "ModelAccessFailure") return failure.cause instanceof ModelAccessRefusedError && failure.cause.refusal.kind === "extended-context" ? "extended_context" : "model_access";
+   if (failure._tag === "AuthConditionFailure") return "ineligible";
+-  // A route that cannot run on this machine comes back only when a person
+-  // installs or repairs its program, so waiting does not clear it.
+-  if (failure._tag === "RouteUnavailableFailure") return "route_unavailable";
++  // A route that cannot run on this machine can come back, such as after an
++  // install replaces its program, so it is not a grant cause.
++  if (failure._tag === "RouteUnavailableFailure") return "unavailable";
+   if (failure._tag === "RateLimitFailure") return "rate_limit";
+   if (failure.cause instanceof ThinkingStallError || (failure.cause instanceof StreamIdleTimeoutError && failure.cause.phase === "idle")) return "stall";
+   // Adapters can classify a 503 as overload while retaining the HTTP status
+@@ -723,7 +706,7 @@ function failureCopyCause(failure: FailoverFailure): ProviderUnavailableCause {
+   return failure._tag === "OverloadedFailure" ? "overload" : "connection";
+ }
+ 
+-function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[], shortName: (provider: AccessProviderId) => string, availability: ProviderAvailability, bankedResetFor: SubscriptionBankedResetResolver | undefined): AllCandidatesExhaustedError {
++function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[], shortName: (provider: AccessProviderId) => string, availability: ProviderAvailability): AllCandidatesExhaustedError {
+   // Workflow control parses this legacy message, whose contract is the last
+   // reason per candidate. Typed display retains every request-local route.
+   const legacy = [...new Map(skipped.map((entry) => [accessProviderCandidateKey(entry.candidate), entry])).values()];
+@@ -743,29 +726,23 @@ function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[]
+   const detail = legacy.some((entry) => entry.state.detail === SUBSCRIPTION_PAID_REVIEW_DETAIL)
+     ? SUBSCRIPTION_PAID_REVIEW_DETAIL
+     : undefined;
+-  // A route that waiting can help but that no shared gate holds, such as one
+-  // that lost its connection or whose recheck claim did not land, is checked
+-  // again after the safe recheck interval, so a chain of spent routes always
+-  // states when to try again (PI-MODEL-039). The bound lives on this
+-  // request's recovery alone: it marks nothing that other sessions read.
+-  const recheckAtMs = Date.now() + SAFE_RECHECK_MS;
+   const candidates = skipped.map((entry) => {
+     const provider = candidateProviderId(entry.candidate);
+     const cause = typeof entry.state.reason === "string" ? entry.state.reason : failureCopyCause(entry.state.reason);
+     let resetsAtMs = entry.state.resetsAtMs;
+-    if (waitingClears(cause)) {
++    // A refused grant has no reset: waiting does not change what the account grants.
++    if (cause !== "ineligible" && cause !== "model_access" && cause !== "extended_context") {
+       const service = availability.serviceStanding(provider);
+       const quota = provider === "chatgpt" ? availability.chatGptStanding(entry.candidate) : availability.genericQuotaStanding(entry.candidate);
+       const bounds = [service, quota].flatMap((standing) => standing.kind === "suppressed" ? [standing.exhaustion.resetsAtMs] : []);
+       // Both shared gates must reopen, including for an earlier free route.
+-      resetsAtMs = bounds.length === 0 ? recheckAtMs : Math.max(...bounds);
++      resetsAtMs = bounds.length === 0 ? undefined : Math.max(...bounds);
+     }
+     return {
+       provider: `${shortName(provider)}${entry.wireModelId === undefined ? "" : ` (free route ${entry.wireModelId})`}`,
+       cause,
+       detail: typeof entry.state.reason === "string" ? entry.state.detail : errorMessage(entry.state.reason.cause),
+       resetsAtMs,
+-      bankedReset: bankedResetFor?.(entry.candidate) === true,
+     };
+   });
+   return new AllCandidatesExhaustedError({
+diff --git a/src/orchestration/agent-runtime/llm/provider-availability-types.ts b/src/orchestration/agent-runtime/llm/provider-availability-types.ts
+index cf12fb5..4478ae4 100644
+--- a/src/orchestration/agent-runtime/llm/provider-availability-types.ts
++++ b/src/orchestration/agent-runtime/llm/provider-availability-types.ts
+@@ -76,21 +76,9 @@ interface ProviderAllowanceInput {
+ }
+ export type ProviderAllowanceFactory = (input: ProviderAllowanceInput) => Promise<SubscriptionAllowanceResolver>;
+ 
+-/** Whether the candidate's account holds an available banked reset in the
+- *  usage reading already published in memory when the request was admitted. */
+-export type SubscriptionBankedResetResolver = (candidate: AccessProviderCandidate) => boolean;
+-
+-/** When the candidate's account resets its provider's expiring usage window,
+- *  as the usage reading already published in memory when the request was
+- *  admitted states it. It answers only with a moment after admission;
+- *  undefined means no known future reset. */
+-export type SubscriptionExpiringResetResolver = (candidate: AccessProviderCandidate) => number | undefined;
+-
+ export interface RequestAdmission {
+   readonly subscriptionSpendAuthorizationFor: SubscriptionSpendAuthorizationResolver;
+   readonly subscriptionAllowanceFor?: SubscriptionAllowanceResolver;
+-  readonly bankedResetFor?: SubscriptionBankedResetResolver;
+-  readonly expiringResetFor?: SubscriptionExpiringResetResolver;
+ }
+ 
+ /** The availability owner as one client sees it: every read and every
+@@ -105,7 +93,7 @@ export interface ProviderAvailability {
+    * timer and revision cadence. Aborting detaches only this caller; the last
+    * caller leaving cancels the shared wait. Owner disposal rejects all waits. */
+   waitForChange(pending: RecheckPending, signal: AbortSignal): Promise<void>;
+-  /** Folds the rate-limit headers of any ChatGPT response, ok or error,
++  /** Folds the peerAgent2 rate-limit headers of any ChatGPT response, ok or error,
+    *  into the account's per-window rows: a window under its limit or reported
+    *  inactive is a live observation, a window at its limit suppresses the
+    *  account, and a window the response does not describe states nothing.
+@@ -123,13 +111,6 @@ export interface ProviderAvailability {
+    *  happened. */
+   observeChatGptUsage(candidate: AccessProviderCandidate, metrics: readonly SubscriptionUsageMetric[], observedAtMs: number): void;
+   observeChatGptQuotaExhausted(candidate: AccessProviderCandidate, resetsAtSeconds: number | undefined): QuotaExhaustionObservation;
+-  /** Folds the headers of an Anthropic API rate-limit 429 into the account's
+-   *  one row: it suppresses the account until the latest moment its
+-   *  `anthropic-ratelimit-*-reset` headers state every limit is full again,
+-   *  and states nothing when it carries no future reset. Recovery is never
+-   *  read from headers: only a fenced probe that settles successfully
+-   *  reopens the account. Best effort, like the ChatGPT header fold. */
+-  observeAnthropicRateLimit(candidate: AccessProviderCandidate, headers: Headers): void;
+   /** The account's standing on ChatGPT, folded over both usage windows: any
+    *  suppressed window holds the account, then any claimed recheck holds it,
+    *  then any window whose bound has passed admits one probe. */
+diff --git a/src/orchestration/headless/headless-profile-runtime.ts b/src/orchestration/headless/headless-profile-runtime.ts
+index 01b6ed4..65f5917 100644
+--- a/src/orchestration/headless/headless-profile-runtime.ts
++++ b/src/orchestration/headless/headless-profile-runtime.ts
+@@ -1,6 +1,4 @@
+ import type { KeyResolver } from "../../infra/auth/resolve-key.js"
+-import { Log } from "../../infra/log.js"
+-import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
+ import type { LauncherScope } from "../../infra/process-supervisor.js"
+ import type { ProviderConnection } from "../../infra/auth/auth-context.js"
+ import { createModelListingClient } from "../../infra/llm/model-listing.js"
+@@ -70,13 +68,6 @@ export function createHeadlessSubscriptionAdmission(moduleSelection: FirstPartyM
+   }
+ }
+ 
+-const log = Log.create({ service: "headless-profile-runtime" })
+-
+-/** The notify seam of a headless run: no person reads its notifications, so it records each raise by its source. */
+-function logNotification(episode: NotificationEpisodeInput): void {
+-  if (episode.type === "raise") log.warn("headless run raised a notification", { sourceId: episode.occurrence.sourceId, severity: episode.occurrence.severity })
+-}
+-
+ interface HeadlessProfileRuntimeOptions {
+   readonly userDataRoot: string
+   /** The one models.dev catalog client this run reads and refreshes. */
+@@ -86,7 +77,7 @@ interface HeadlessProfileRuntimeOptions {
+   readonly allowTrainingRoutes: boolean
+   readonly resolveKey: KeyResolver
+   readonly connection?: ProviderConnection
+-  readonly workflowPreparation: Omit<ProfileRequestWorkflowPreparation, "onNotification">
++  readonly workflowPreparation: ProfileRequestWorkflowPreparation
+   readonly captureRuntimeConfig: CaptureRuntimeConfig
+   readonly captureSubscriptionAdmission: CaptureSubscriptionAdmission
+   readonly acquireUsageSettlementAuthority: (profile: { readonly profileDir: string; readonly profileId: string }) => Promise<UsageSettlementAuthorityLease>
+@@ -192,7 +183,7 @@ export async function createHeadlessProfileRuntime(options: HeadlessProfileRunti
+   }
+   const requests = createProfileRequestService({
+     userDataRoot: options.userDataRoot,
+-    workflowPreparation: { ...options.workflowPreparation, onNotification: logNotification },
++    workflowPreparation: options.workflowPreparation,
+     prepareEligibility: async (profile, preparationOptions) => {
+       await prepareEligibility(profile, preparationOptions)
+       return prepareEligibility.capture(profile, (state, auth) => ({ worker: state.worker, auth }), preparationOptions.signal)
+diff --git a/src/orchestration/subscription-spend-consent/admission-capture.ts b/src/orchestration/subscription-spend-consent/admission-capture.ts
+index dd98ea5..a8b730f 100644
+--- a/src/orchestration/subscription-spend-consent/admission-capture.ts
++++ b/src/orchestration/subscription-spend-consent/admission-capture.ts
+@@ -1,25 +1,19 @@
+ import { openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../infra/auth/auth-profile-store.js"
+ import { heldDirectoryDerivation } from "../../infra/watched-directory-values.js"
+ import { SUBSCRIPTION_SPEND_CONSENT_FILE, subscriptionSpendConsentRevision, type SubscriptionSpendConsentRevision } from "../../infra/auth/subscription-spend-consent-store.js"
+-import { accessProviderAccountKey, type AccessProviderCandidate, type AccessProviderDefinition } from "../../infra/llm/access-provider.js"
++import type { AccessProviderCandidate } from "../../infra/llm/access-provider.js"
+ import { providerSettingValues, type AccessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
+-import { availableSubscriptionUsageResetCredits } from "../../infra/llm/subscription-usage.js"
+-import { metricUsedFraction } from "../../infra/llm/subscription-usage-store-codec.js"
+-import type { RequestAdmission, SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionExpiringResetResolver } from "../agent-runtime/llm/provider-availability-types.js"
++import type { SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver } from "../agent-runtime/llm/provider-availability-types.js"
+ import type { RuntimeConfigRequestCapture } from "../agent-runtime/request-config.js"
+ import type { SubscriptionUsageProfile } from "../auth/provider-observations/subscription-usage-service.js"
+ import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from "../auth/provider-observations/subscription-usage-service-pool.js"
+ import type { SubscriptionSpendConsentCaptureCache } from "./capture-cache.js"
+ import { createSubscriptionSpendConsentRuntime } from "./runtime-composition.js"
+-import type { SubscriptionSpendAuthorization, SubscriptionSpendConsentCapture } from "./subscription-spend-consent-service.js"
+-import type { ProviderConnection } from "../../infra/auth/auth-context.js"
+-import { createSubscriptionAccountIdentity } from "../../infra/llm/subscription-account-identity.js"
++import type { SubscriptionSpendConsentCapture } from "./subscription-spend-consent-service.js"
+ 
+ export interface SubscriptionAdmissionCapture {
+   readonly consent: SubscriptionSpendConsentCapture
+   readonly subscriptionAllowanceFor: SubscriptionAllowanceResolver
+-  readonly bankedResetFor: SubscriptionBankedResetResolver
+-  readonly expiringResetFor: SubscriptionExpiringResetResolver
+ }
+ 
+ const CONSENT_REVISION = heldDirectoryDerivation<SubscriptionSpendConsentRevision>([SUBSCRIPTION_SPEND_CONSENT_FILE])
+@@ -28,7 +22,7 @@ const UNKNOWN_ALLOWANCE: SubscriptionAllowanceAdmission = Object.freeze({ allowa
+ /** Folds every enabled provider's allowance admission into one resolver: a
+  *  provider that declares none, or that the request plans no candidate for,
+  *  answers unknown, which the walk does not gate on. */
+-async function captureAllowance(registry: Pick<AccessProviderRegistry, "allowance" | "settings">, candidates: readonly AccessProviderCandidate[], providerSettings: RuntimeConfigRequestCapture["providerSettings"], usage: Pick<SubscriptionUsageServiceLease["service"], "metric" | "checkAccounts">): Promise<SubscriptionAllowanceResolver> {
++async function captureAllowance(registry: Pick<AccessProviderRegistry, "allowance" | "settings">, candidates: readonly AccessProviderCandidate[], providerSettings: RuntimeConfigRequestCapture["providerSettings"], usage: SubscriptionUsageServiceLease["service"]): Promise<SubscriptionAllowanceResolver> {
+   const planned = new Set(candidates.map((candidate) => candidate.providerId))
+   const resolvers = new Map<string, SubscriptionAllowanceResolver>()
+   for (const [providerId, factory] of registry.allowance) {
+@@ -38,40 +32,6 @@ async function captureAllowance(registry: Pick<AccessProviderRegistry, "allowanc
+   return Object.freeze((candidate: AccessProviderCandidate): SubscriptionAllowanceAdmission => resolvers.get(candidate.providerId)?.(candidate) ?? UNKNOWN_ALLOWANCE)
+ }
+ 
+-/** Holds the usage publication already in memory, the one Usage shows, and
+- *  reads it only when a refusal asks. A runtime that has not read an account,
+- *  such as a headless run, names no banked reset for it, and a request makes
+- *  no durable read. */
+-function captureBankedResets(usage: SubscriptionUsageServiceLease["service"]): SubscriptionBankedResetResolver {
+-  const accounts = usage.snapshot()?.accounts ?? []
+-  return Object.freeze((candidate: AccessProviderCandidate) => {
+-    if (candidate.kind !== "subscription") return false
+-    const state = accounts.find((entry) => entry.account.providerId === candidate.providerId && entry.account.instanceId === candidate.instanceId)
+-    return state !== undefined && "snapshot" in state && state.snapshot !== undefined && availableSubscriptionUsageResetCredits(state.snapshot.resetCredits).length > 0
+-  })
+-}
+-
+-/** Holds, from the usage publication already in memory, when each account
+- *  resets the expiring window its provider declares. The moments are fixed
+- *  at admission: a reset at or before it is a reading the next poll has not
+- *  replaced yet, so it counts as unknown, as no reading does. A window that
+- *  reads fully used has no quota left to expire, so its reset is unknown too;
+- *  the account stays a candidate and only the provider's refusal ends it. */
+-function captureExpiringResets(definitions: readonly AccessProviderDefinition[], usage: SubscriptionUsageServiceLease["service"]): SubscriptionExpiringResetResolver {
+-  const windows = new Map(definitions.flatMap((definition) => definition.usage?.expiringWindow === undefined ? [] : [[definition.id, definition.usage.expiringWindow] as const]))
+-  const admittedAtMs = Date.now()
+-  const resets = new Map<string, number>()
+-  for (const state of usage.snapshot()?.accounts ?? []) {
+-    const window = windows.get(state.account.providerId)
+-    if (window === undefined || !("snapshot" in state) || state.snapshot === undefined) continue
+-    const metric = state.snapshot.metrics.find((entry) => entry.metricKey === window)
+-    if (metric === undefined || (metricUsedFraction(metric) ?? 0) >= 1) continue
+-    const resetAtMs = metric.timing.kind === "exact" ? metric.timing.endMs : metric.timing.resetAtMs
+-    if (resetAtMs !== undefined && resetAtMs > admittedAtMs) resets.set(accessProviderAccountKey({ kind: "subscription", providerId: state.account.providerId, instanceId: state.account.instanceId }), resetAtMs)
+-  }
+-  return Object.freeze((candidate: AccessProviderCandidate) => resets.get(accessProviderAccountKey(candidate)))
+-}
+-
+ /** Captures included-allowance policy and saved paid permissions. Releases an acquired lease on success or failure; the capture owns no service. */
+ export async function captureSubscriptionAdmission(input: {
+   readonly candidates: readonly AccessProviderCandidate[]
+@@ -81,16 +41,10 @@ export async function captureSubscriptionAdmission(input: {
+   readonly residentLease?: SubscriptionUsageServiceLease
+   readonly pool: Pick<SubscriptionUsageServicePool, "acquire">
+   readonly consentCache: SubscriptionSpendConsentCaptureCache<SubscriptionSpendConsentCapture>
+-  /** A read-only view, such as the model picker, reads an account's usage again only when the evidence in memory is
+-   *  out of date. A request forces the reads its provider asks for; a view that a person opens must not wait on them. */
+-  readonly view?: true
+ }): Promise<SubscriptionAdmissionCapture> {
+   const lease = input.residentLease ?? await input.pool.acquire(input.profile)
+   try {
+-    const usage = input.view === true
+-      ? { metric: lease.service.metric, checkAccounts: (accounts: Parameters<typeof lease.service.checkAccounts>[0]) => lease.service.checkAccounts(accounts) }
+-      : lease.service
+-    const subscriptionAllowanceFor = await captureAllowance(input.registry, input.candidates, input.providerSettings, usage)
++    const subscriptionAllowanceFor = await captureAllowance(input.registry, input.candidates, input.providerSettings, lease.service)
+     // A held consent revision and a cached capture answer the request without
+     // the profile directory, so it opens only for a read that needs it.
+     let access: AuthProfileAccess | undefined
+@@ -105,38 +59,9 @@ export async function captureSubscriptionAdmission(input: {
+         readRevision: () => CONSENT_REVISION.read(input.profile.directory, () => subscriptionSpendConsentRevision(opened())),
+         lockedCapture: () => createSubscriptionSpendConsentRuntime({ profileId: input.profile.id, access: opened(), usage: lease.service, providers: input.registry.selection.definitions }).capture(),
+       })
+-      return Object.freeze({ consent, subscriptionAllowanceFor, bankedResetFor: captureBankedResets(lease.service), expiringResetFor: captureExpiringResets(input.registry.selection.definitions, lease.service) })
++      return Object.freeze({ consent, subscriptionAllowanceFor })
+     } finally { access?.close() }
+   } finally {
+     if (input.residentLease === undefined) await lease.release()
+   }
+ }
+-
+-/** Builds the request admission that one subscription capture states for `connection`: only a paid-use authorization that names one of its accounts admits a paid spend mode. */
+-export async function requestAdmissionFromCaptures(capture: SubscriptionAdmissionCapture | undefined, connection: ProviderConnection | undefined): Promise<RequestAdmission> {
+-  const authorizations = new Map<string, SubscriptionSpendAuthorization>()
+-  const consent = capture?.consent
+-  if (consent !== undefined) {
+-    const accountMatches = (providerId: string, instanceId: string, subjectDigest: string): boolean => {
+-      if (connection?.profileId === undefined || connection.profileId !== consent.profileId) return false
+-      const account = connection.subscriptionCredentials.get(providerId)?.find((candidate) => candidate.instanceId === instanceId)
+-      return account?.identity !== undefined
+-        && createSubscriptionAccountIdentity(providerId, instanceId, account.identity).subjectDigest === subjectDigest
+-    }
+-    for (const authorization of consent.authorizations.values()) {
+-      const envelope = authorization.envelope
+-      if (authorization.profileId !== consent.profileId
+-        || authorization.account.providerId !== envelope.providerId
+-        || authorization.account.instanceId !== envelope.instanceId
+-        || authorization.account.subjectDigest !== envelope.subjectDigest
+-        || !accountMatches(envelope.providerId, envelope.instanceId, envelope.subjectDigest)) continue
+-      authorizations.set(`${envelope.providerId}\0${envelope.instanceId}\0${envelope.mode}`, authorization)
+-    }
+-  }
+-  return Object.freeze({
+-    subscriptionSpendAuthorizationFor: (candidate: AccessProviderCandidate) => candidate.kind === "subscription"
+-      ? authorizations.get(`${candidate.providerId}\0${candidate.instanceId}\0${candidate.spendMode}`)
+-      : undefined,
+-    ...(capture === undefined ? {} : { subscriptionAllowanceFor: capture.subscriptionAllowanceFor, bankedResetFor: capture.bankedResetFor, expiringResetFor: capture.expiringResetFor }),
+-  })
+-}
+diff --git a/tests/unit/infra/llm/provider-error-copy.test.ts b/tests/unit/infra/llm/provider-error-copy.test.ts
+index ec130f8..a1f7d11 100644
+--- a/tests/unit/infra/llm/provider-error-copy.test.ts
++++ b/tests/unit/infra/llm/provider-error-copy.test.ts
+@@ -152,25 +152,6 @@ describe("extractProviderErrorDetail", () => {
+   });
+ });
+ 
+-describe("exhaustedProvidersCopy", () => {
+-  it("names a banked reset in the line of each quota-refused account that holds one, without predicting that it helps", () => {
+-    const hint = "This account has a banked reset that you can apply in Usage (/usage).";
+-    const banked = exhaustedProvidersCopy([
+-      { provider: "ChatGPT", cause: "quota", detail: "out of quota", resetsAtMs: undefined, bankedReset: true },
+-      { provider: "OpenAI", cause: "quota", detail: "insufficient_quota", resetsAtMs: undefined },
+-    ]);
+-    expect(banked.title).toBe("Out of credits");
+-    expect(banked.detail).toBe(`ChatGPT: Out of credits. ${hint} out of quota OpenAI: Out of credits. insufficient_quota`);
+-    expect(banked.message).not.toContain("banked reset");
+-    // Embedded registers, such as a workflow step failure, render the lines.
+-    expect(providerErrorProse(banked)).toContain(`ChatGPT: Out of credits. ${hint}`);
+-
+-    // A reset restores used-up included usage only, so another refusal names none.
+-    const throttled = exhaustedProvidersCopy([{ provider: "ChatGPT", cause: "rate_limit", detail: "slow down", resetsAtMs: undefined, bankedReset: true }]);
+-    expect(throttled.detail).not.toContain("banked reset");
+-  });
+-});
+-
+ describe("exhaustedProvidersRecovery", () => {
+   const at = Date.parse("2026-10-10T12:00:00.000Z");
+ 
+diff --git a/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts b/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+index c21bf3b..40aadfe 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+@@ -11,7 +11,7 @@ import type { ProviderAvailability, QuotaStanding } from "../../../../../src/orc
+ import { chain, failoverFailure, fakeAvailability, fakeClient, preparedRequest, singletonCandidate, subscriptionCandidate, textStream } from "./_provider-chain-harness.js";
+ import { harness } from "./_provider-availability-harness.js";
+ import { testDirectories } from "../../../../helpers/directories.js";
+-import { testCapabilityModules, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
++import { testCapabilityModules } from "../../../../helpers/provider-authority.js";
+ import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+ import { repoDefinitions } from "../../../../helpers/project-definitions.js";
+ import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
+@@ -140,7 +140,7 @@ test("runtime admission uses captured paid permission with the captured training
+   const envelope = createSubscriptionSpendEnvelope("default", account, "automatic");
+   const trainingPolicyReads: boolean[] = [];
+   const runtimeConfig = Object.freeze({ ...testRuntimeConfigCapture(), allowTrainingRoutes: true });
+-  const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {}, profileId: "default", getAuth: () => auth, definitions: repoDefinitions(), moduleSelection: testCapabilityModules(), captureRuntimeConfig: () => runtimeConfig,
++  const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {}, profileId: "default", getAuth: () => auth, definitions: repoDefinitions(), moduleSelection: testCapabilityModules(), captureRuntimeConfig: () => runtimeConfig,
+     authDirectory: () => directory, connection, userDataRoot: directories.userDataRoot, modelsClient: fakeModelsClient,
+     getProviderModelEligibility: () => ({ modelUnavailableReason: () => undefined, candidateModelUnavailableReason: (candidate) => candidate.spendMode === "automatic" ? undefined : "automatic only", candidateOffering: (candidate, model, allowTrainingRoutes) => {
+       trainingPolicyReads.push(allowTrainingRoutes);
+@@ -157,11 +157,9 @@ test("runtime admission uses captured paid permission with the captured training
+       rows: [{ envelope, status: "accepted" }],
+       authorizations: new Map([[envelope.id, { envelope, profileId: "default", account, authorityIncarnation: "test", authorityRevision: 1 }]]) },
+       subscriptionAllowanceFor: () => ({ freshness: "fresh", allowance: "finite" }),
+-      bankedResetFor: () => false,
+-      expiringResetFor: () => undefined,
+     }),
+   });
+-  const request = await (await runtime.createLLMClient("gpt-6-luna", undefined, undefined, testProviderSessionLifetime())).admitRequest();
++  const request = await (await runtime.createLLMClient("gpt-6-luna")).admitRequest();
+   expect((await request.plannedAttempt()).accessProviderCandidate?.spendMode).toBe("automatic");
+   expect(trainingPolicyReads.every(Boolean)).toBe(true);
+ });
+diff --git a/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts b/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+index 9722c10..edb169b 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+@@ -22,12 +22,11 @@ import { requestEvents } from "./_provider-chain-harness.js";
+ import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+ import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
+ import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
+-import { fixedDefinitions } from "../../../../helpers/project-definitions.js";
++import { repoDefinitions } from "../../../../helpers/project-definitions.js";
+ import { roleCapture } from "../../../../helpers/role-capture.js";
+ import { resolveSessionRoles } from "../../../../../src/orchestration/config/session-role-resolver.js";
+ import { asModelClient } from "../_model-client.js";
+-import { testCapabilityModules, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+-import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
++import { testCapabilityModules } from "../../../../helpers/provider-authority.js";
+ 
+ const temporaryDirectory = temporaryDirectories();
+ 
+@@ -79,10 +78,8 @@ describe("provider credential binding", () => {
+       } }]]]),
+       oauthPersistence: "memory-only",
+     });
+-    // The definition owner names the test project, never the checkout: the finished
+-    // title run below sweeps its owner's project root for aged breadcrumbs.
+-    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
+-      profileId: "default", getAuth: () => noKeysAuth, definitions: fixedDefinitions({ projectRoot: directories.projectRoot }),
++    const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {},
++      profileId: "default", getAuth: () => noKeysAuth, definitions: repoDefinitions(),
+       moduleSelection: testCapabilityModules(), captureRuntimeConfig: testRuntimeConfigCapture,
+       authDirectory: () => { authDirectoryReads += 1; return CREDENTIALS; },
+       getProviderModelEligibility: () => eligibility, connection,
+@@ -90,18 +87,16 @@ describe("provider credential binding", () => {
+       captureSubscriptionAdmission: async () => ({
+         consent: { profileId: "default", rows: [], authorizations: new Map() },
+         subscriptionAllowanceFor: () => ({ freshness: "fresh", allowance: "finite" }),
+-        bankedResetFor: () => false,
+-        expiringResetFor: () => undefined,
+       }),
+     });
+-    const client = await runtime.createLLMClient("gpt-6-luna", undefined, undefined, testProviderSessionLifetime());
++    const client = await runtime.createLLMClient("gpt-6-luna");
+     const capture = await runtime.captureProviderConnection();
+     const plan = capture.providers.selection.plan("gpt-6-luna", capture.connection, eligibility);
+     expect(plan).toMatchObject({
+       kind: "admitted", model: "gpt-6-luna",
+       candidateAttributions: expect.arrayContaining([expect.objectContaining({ wireModelId: "gpt-6-luna" })]),
+     });
+-    const admittedClient = await capture.admit(new Map([["gpt-6-luna", plan]])).createLLMClient("gpt-6-luna", undefined, undefined, testProviderSessionLifetime());
++    const admittedClient = await capture.admit(new Map([["gpt-6-luna", plan]])).createLLMClient("gpt-6-luna");
+     expect((await client.plannedAttempt()).accessProvider).toBe("github_copilot");
+     expect((await admittedClient.plannedAttempt()).accessProvider).toBe("github_copilot");
+     expect(capture.connection).toBe(connection);
+@@ -144,7 +139,7 @@ describe("provider credential binding", () => {
+       ["included", { seatTier: "enterprise", billingType: "aws_marketplace", planDisplayName: "Claude Enterprise" }],
+       ["unknown", { planDisplayName: "Claude Enterprise", billingType: "usage_based" }],
+     ] as const) {
+-      const configDir = join(directory, LOGIN_ACCOUNTS_DIRECTORY, instanceId);
++      const configDir = join(directory, "peerAgent1", instanceId);
+       mkdirSync(configDir, { recursive: true });
+       writeFileSync(join(configDir, ".claude.json"), JSON.stringify({ oauthAccount: {
+         accountUuid: instanceId, emailAddress: `${instanceId}@example.com`, ...fields,
+@@ -171,7 +166,7 @@ describe("provider credential binding", () => {
+     expect(plan.candidates).toEqual(expected);
+     for (const candidate of plan.candidates) expect(Schema.decodeUnknownSync(AccessProviderCandidateSchema)(candidate)).toEqual(candidate);
+     expect(credentials.get("claude_agent_sdk")?.find(({ instanceId }) => instanceId === "metered")).toMatchObject({
+-      identity: "metered@example.com", lineageId: "metered", credential: { type: "external", configDir: join(directory, LOGIN_ACCOUNTS_DIRECTORY, "metered") },
++      identity: "metered@example.com", lineageId: "metered", credential: { type: "external", configDir: join(directory, "peerAgent1", "metered") },
+     });
+   });
+ 
+@@ -218,7 +213,6 @@ describe("provider credential binding", () => {
+       };
+       const plan = providers.selection.plan("gpt-5.5", connection, eligibility);
+       const client = await createAdmittedClient(plan, fakeModelsClient, connection, {
+-        notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
+         providers, eligibility, projectRoot: directory, allowTrainingRoutes: false,
+         requestAdmission: async () => Object.freeze({ spendSources: () => undefined, subscriptionSpendAuthorizationFor: () => undefined }),
+       });
+@@ -278,7 +272,6 @@ describe("provider credential binding", () => {
+       fakeModelsClient,
+       LIVE_ELIGIBILITY_AUTH,
+       {
+-        notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
+         authDir: CREDENTIALS,
+         profileId: "default",
+         allowTrainingRoutes: true,
+@@ -333,7 +326,6 @@ describe("provider credential binding", () => {
+       fakeModelsClient,
+       LIVE_ELIGIBILITY_AUTH,
+       {
+-        notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
+         authDir: CREDENTIALS,
+         profileId: "default",
+         allowTrainingRoutes: true,
+@@ -387,7 +379,6 @@ describe("provider credential binding", () => {
+     disabled = new Set(["openai_api"]);
+ 
+     const client = await createAdmittedClient(plan, fakeModelsClient, connection, {
+-      notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
+       providers,
+       projectRoot: directories.projectRoot,
+       requestAdmission: async () => {
+diff --git a/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts b/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+index a04e83c..a3b4944 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+@@ -15,7 +15,7 @@ import type { SubscriptionSpendConsentCapture } from "../../../../../src/orchest
+ import { authProviders } from "../../../../helpers/auth-context.js";
+ import { testDirectories } from "../../../../helpers/directories.js";
+ import { repoDefinitions } from "../../../../helpers/project-definitions.js";
+-import { testCapabilityModules, testProviderEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
++import { testCapabilityModules, testProviderEligibility, testProviderRegistry } from "../../../../helpers/provider-authority.js";
+ import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+ import { createProfileFixture, definition, registry, writeAccounts } from "../../auth/provider-observations/_service-fixtures.js";
+ 
+@@ -76,7 +76,7 @@ describe("subscription consent serving composition", () => {
+       oauthPersistence: "memory-only",
+     })
+     const eligibility = testProviderEligibility()
+-    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
++    const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {},
+       profileId, getAuth: () => connection.auth, definitions: repoDefinitions(), moduleSelection: testCapabilityModules(), captureRuntimeConfig: testRuntimeConfigCapture,
+       authDirectory: () => directory, connection, userDataRoot: directory,
+       getProviderModelEligibility: () => ({
+@@ -97,7 +97,7 @@ describe("subscription consent serving composition", () => {
+       }),
+     })
+     try {
+-      const admission = (await runtime.createLLMClient("gpt-6-luna", undefined, undefined, testProviderSessionLifetime())).admitRequest()
++      const admission = (await runtime.createLLMClient("gpt-6-luna")).admitRequest()
+       if (throwDuringConsent) {
+         await expect(admission).rejects.toThrow("consent capture failed")
+       } else {
+@@ -122,7 +122,7 @@ describe("subscription consent serving composition", () => {
+     const admissionOrder: string[] = []
+     const allowanceStarted = Promise.withResolvers<void>()
+     const allowanceRelease = Promise.withResolvers<void>()
+-    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
++    const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {},
+       profileId: "default",
+       getAuth: () => auth,
+       definitions: repoDefinitions(),
+@@ -143,8 +143,6 @@ describe("subscription consent serving composition", () => {
+         capturedRevisions.push(authorityRevision)
+         return Object.freeze({
+           subscriptionAllowanceFor: () => ({ freshness: "unknown" as const, allowance: "unknown" as const }),
+-          bankedResetFor: () => false,
+-          expiringResetFor: () => undefined,
+           consent: Object.freeze({
+             profileId: "profile-a",
+             usageGeneration: 7,
+@@ -161,7 +159,7 @@ describe("subscription consent serving composition", () => {
+     const plan = capture.providers.selection.plan("gpt-5.5", capture.connection, capture.eligibility)
+     expect(plan.kind).toBe("admitted")
+     if (plan.kind !== "admitted") throw new Error(plan.reason)
+-    const client = await capture.admit(new Map([["gpt-5.5", plan]])).createLLMClient("gpt-5.5", undefined, undefined, testProviderSessionLifetime())
++    const client = await capture.admit(new Map([["gpt-5.5", plan]])).createLLMClient("gpt-5.5")
+ 
+     expect(captures).toBe(0)
+     const first = client.plannedAttempt()
+diff --git a/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts b/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+index 365ccbd..777a08a 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+@@ -8,7 +8,7 @@ import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/
+ import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
+ import { createSubscriptionAccountIdentity } from "../../../../../src/infra/llm/subscription-account-identity.js";
+ import { HandoffCorrectionExhausted, isAgentRuntimeError, toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
+-import { captureAccountConnection, createAdmittedClient, createClient, stagedProviderClient, type AccessProviderBuild, type ModelRefusalRecord } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
++import { captureAccountConnection, createAdmittedClient, createClient, type AccessProviderBuild, type ModelRefusalRecord } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+ import { ModelAccessRefusedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
+ import { isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+ import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
+@@ -22,15 +22,14 @@ import { isWebSocketSseFallbackActive, recordWebSocketFailure, recordWebSocketSu
+ import { authDir } from "../../../../../src/infra/paths.js";
+ import { createModelsClient } from "../../../../../src/infra/llm/models.js";
+ import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
+-import { testCapabilityModules, testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
++import { testCapabilityModules, testProviderRegistry } from "../../../../helpers/provider-authority.js";
+ import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+-import { fixedDefinitions, repoDefinitions } from "../../../../helpers/project-definitions.js";
++import { repoDefinitions } from "../../../../helpers/project-definitions.js";
+ import { fakeAvailability, preparedRequest, requestEvents } from "./_provider-chain-harness.js";
+ import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
+ import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access-provider.js";
+ import { authProviders } from "../../../../helpers/auth-context.js";
+ import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+-import { ownHistoryTarget } from "../_model-client.js";
+ 
+ const noKeysAuth = {
+   providers: authProviders(),
+@@ -51,7 +50,7 @@ const TEST_ELIGIBILITY = {
+     resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
+   }),
+ };
+-const CLIENT_DIRECTORIES = { notify: () => {}, authDir: authDir(DIRECTORIES.userDataRoot, "default"), profileId: "default", projectRoot: DIRECTORIES.projectRoot, providers: testProviderRegistry(), eligibility: TEST_ELIGIBILITY, requestAdmission: EMPTY_ADMISSION, allowTrainingRoutes: false, providerSessionLifetime: testProviderSessionLifetime() };
++const CLIENT_DIRECTORIES = { authDir: authDir(DIRECTORIES.userDataRoot, "default"), profileId: "default", projectRoot: DIRECTORIES.projectRoot, providers: testProviderRegistry(), eligibility: TEST_ELIGIBILITY, requestAdmission: EMPTY_ADMISSION, allowTrainingRoutes: false };
+ const testModelsClient = () => fakeModelsClient;
+ 
+ describe("createClient universal chain", () => {
+@@ -205,7 +204,7 @@ describe("subscription usage binding", () => {
+       ? { allowance: "refused", detail: "the current Copilot allowance cannot be verified." } as const
+       : { allowance: "unknown" } as const;
+     const requestAdmission = async () => Object.freeze({ subscriptionSpendAuthorizationFor, subscriptionAllowanceFor });
+-    const options = { notify: () => {}, projectRoot: CLIENT_DIRECTORIES.projectRoot, providers, eligibility: TEST_ELIGIBILITY, availability: owner, requestAdmission, allowTrainingRoutes: false, providerSessionLifetime: testProviderSessionLifetime() };
++    const options = { projectRoot: CLIENT_DIRECTORIES.projectRoot, providers, eligibility: TEST_ELIGIBILITY, availability: owner, requestAdmission, allowTrainingRoutes: false };
+     const plan = providers.selection.plan("gpt-6-luna", connection, TEST_ELIGIBILITY);
+ 
+     const ordinary = await createClient("gpt-5.5", testModelsClient(), { ...noKeysAuth, providers: authProviders({ base: noKeysAuth.providers, apiKeys: { openai_api: "api-key" } }),}, { ...options, authDir: connection.authDir, profileId: "default" });
+@@ -237,8 +236,6 @@ describe("subscription usage binding", () => {
+       dispose: () => Promise.resolve(),
+     };
+     const client = await createAdmittedClient(plan, testModelsClient(), connection, {
+-      notify: () => {},
+-      providerSessionLifetime: testProviderSessionLifetime(),
+       projectRoot: CLIENT_DIRECTORIES.projectRoot,
+       providers,
+       eligibility: TEST_ELIGIBILITY,
+@@ -273,7 +270,7 @@ describe("subscription usage binding", () => {
+       factories: new Map(base.factories).set("github_copilot", async ({ candidate, model, family }) => {
+         builds += 1;
+         await gate.promise;
+-        const client = { historyTarget: ownHistoryTarget,
++        const client = {
+           accessProvider: "github_copilot",
+           accessProviderCandidate: candidate,
+           model,
+@@ -305,8 +302,6 @@ describe("subscription usage binding", () => {
+     const account = createSubscriptionAccountIdentity("github_copilot", "copilot-a", "subject");
+     const envelope = createSubscriptionSpendEnvelope("default", account, "automatic");
+     const client = await createAdmittedClient(plan, testModelsClient(), connection, {
+-      notify: () => {},
+-      providerSessionLifetime: testProviderSessionLifetime(),
+       providers,
+       projectRoot: CLIENT_DIRECTORIES.projectRoot,
+       allowTrainingRoutes: false,
+@@ -384,28 +379,6 @@ describe("subscription usage binding", () => {
+     expect((await client.plannedAttempt()).accessProvider).toBe("openai_api");
+     expect(builds).toBe(2);
+   });
+-
+-  test("a staged client whose connection failed connects again on its next request, and shares concurrent and successful connections", async () => {
+-    const base = testProviderRegistry();
+-    let connections = 0;
+-    const providers = {
+-      ...base,
+-      factories: new Map(base.factories).set("openai_api", async (build) => {
+-        const staged = await base.factories.get("openai_api")!(build);
+-        return stagedProviderClient(build, staged.attempt, async () => {
+-          connections += 1;
+-          if (connections === 1) throw new Error("engine directory unsafe");
+-          return await staged.connect();
+-        });
+-      }),
+-    };
+-    const client = await createClient("gpt-5.5", testModelsClient(), { ...noKeysAuth, providers: authProviders({ base: noKeysAuth.providers, apiKeys: { openai_api: "key" } }) }, { ...CLIENT_DIRECTORIES, providers });
+-    const serve = async () => await (await client.admitRequest()).run({ prepare: preparedRequest, execute: async ({ attempt }) => ({ kind: "success", value: attempt.accessProvider }) });
+-    await expect(serve()).rejects.toThrow("engine directory unsafe");
+-    expect(await Promise.all([serve(), serve()])).toEqual(["openai_api", "openai_api"]);
+-    expect(await serve()).toBe("openai_api");
+-    expect(connections).toBe(2);
+-  });
+ });
+ 
+ describe("createAgentRuntime connection forwarding", () => {
+@@ -419,7 +392,7 @@ describe("createAgentRuntime connection forwarding", () => {
+     }));
+     const providers = testProviderRegistry();
+     const connection = captureAccountConnection(auth, directory, providers, "default");
+-    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
++    const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {},
+       profileId: "default", getAuth: () => auth, definitions: repoDefinitions(),
+       moduleSelection: testCapabilityModules(), captureRuntimeConfig: testRuntimeConfigCapture,
+       authDirectory: () => directory, connection: captured ? connection : undefined,
+@@ -443,6 +416,11 @@ describe("createAgentRuntime connection forwarding", () => {
+       expect(isWebSocketSseFallbackActive(providerSessionKey)).toBe(true);
+       await Effect.runPromise(Scope.close(scope, Exit.void));
+       expect(isWebSocketSseFallbackActive(providerSessionKey)).toBe(false);
++      const standalone = await runtime.createLLMClient("gpt-5.5");
++      await standalone.plannedAttempt();
++      recordWebSocketFailure(providerSessionKey);
++      await Effect.runPromise(Scope.close(scope, Exit.void));
++      expect(isWebSocketSseFallbackActive(providerSessionKey)).toBe(true);
+     } finally {
+       await Effect.runPromise(Scope.close(reviewScope, Exit.void));
+       await Effect.runPromise(Scope.close(scope, Exit.void));
+@@ -468,7 +446,7 @@ describe("createAgentRuntime connection forwarding", () => {
+     const modules = composeFirstPartyModules(installedModules().map((module) => module.id === recording.id ? recording : module));
+     const auth = { ...noKeysAuth, providers: authProviders({ base: noKeysAuth.providers, apiKeys: { anthropic_api: "[redacted secret]" } }) };
+     const connection = captureAccountConnection(auth, CLIENT_DIRECTORIES.authDir, accessProviderRegistry(modules), "default");
+-    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
++    const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {},
+       profileId: "default", getAuth: () => auth, definitions: repoDefinitions(),
+       moduleSelection: modules, captureRuntimeConfig: testRuntimeConfigCapture,
+       authDirectory: () => CLIENT_DIRECTORIES.authDir, connection: captured ? connection : undefined,
+@@ -476,10 +454,10 @@ describe("createAgentRuntime connection forwarding", () => {
+       userDataRoot: DIRECTORIES.userDataRoot, modelsClient: testModelsClient(), launcher,
+     });
+ 
+-    await (await runtime.createLLMClient("claude-sonnet-4-6", undefined, undefined, testProviderSessionLifetime())).plannedAttempt();
++    await (await runtime.createLLMClient("claude-sonnet-4-6")).plannedAttempt();
+     const capture = await runtime.captureProviderConnection();
+     const plan = capture.providers.selection.plan("claude-sonnet-4-6", capture.connection, TEST_ELIGIBILITY);
+-    await (await capture.admit(new Map([["claude-sonnet-4-6", plan]])).createLLMClient("claude-sonnet-4-6", undefined, undefined, testProviderSessionLifetime())).plannedAttempt();
++    await (await capture.admit(new Map([["claude-sonnet-4-6", plan]])).createLLMClient("claude-sonnet-4-6")).plannedAttempt();
+ 
+     expect(builds.map((build) => build.launcher)).toEqual([launcher, launcher]);
+   });
+@@ -501,7 +479,7 @@ describe("createAgentRuntime connection forwarding", () => {
+     const envelope = createSubscriptionSpendEnvelope("default", account, "automatic");
+     let consentAccepted = true;
+     let consentCaptures = 0;
+-    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
++    const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {},
+       profileId: "default",
+       getAuth: () => auth,
+       definitions: repoDefinitions(),
+@@ -526,8 +504,6 @@ describe("createAgentRuntime connection forwarding", () => {
+         consentCaptures += 1;
+         return {
+           subscriptionAllowanceFor: () => ({ freshness: "fresh", allowance: "finite" }),
+-          bankedResetFor: () => false,
+-          expiringResetFor: () => undefined,
+           consent: {
+             profileId: "default",
+             usageGeneration: consentCaptures,
+@@ -546,10 +522,10 @@ describe("createAgentRuntime connection forwarding", () => {
+       },
+     });
+ 
+-    const directClient = await runtime.createLLMClient("gpt-6-luna", undefined, undefined, testProviderSessionLifetime());
++    const directClient = await runtime.createLLMClient("gpt-6-luna");
+     const capture = await runtime.captureProviderConnection();
+     const plan = capture.providers.selection.plan("gpt-6-luna", capture.connection, capture.eligibility);
+-    const admittedClient = await capture.admit(new Map([["gpt-6-luna", plan]])).createLLMClient("gpt-6-luna", undefined, undefined, testProviderSessionLifetime());
++    const admittedClient = await capture.admit(new Map([["gpt-6-luna", plan]])).createLLMClient("gpt-6-luna");
+     const providerDispatches = { count: 0 };
+     for (const client of [directClient, admittedClient]) {
+       consentAccepted = true;
+@@ -575,15 +551,12 @@ describe("createAgentRuntime connection forwarding", () => {
+ 
+   test("runs an admitted agent on its caller's module selection", async () => {
+     // A provider build that refuses keeps the run off the network; the module
+-    // selection is read before the request is built. The definition owner names
+-    // the test project, never the checkout: a finished run sweeps its owner's
+-    // project root for aged breadcrumbs, and in a developer's checkout that walk
+-    // reads thousands of session trees and deletes their old files.
++    // selection is read before the request is built.
+     const refusing = { ...anthropicApiModule, contributions: [{ ...anthropicApiModule.contributions[0], value: { ...anthropicApiModule.contributions[0].value, createClient: () => { throw new Error("no provider in a unit test"); } } }, anthropicApiModule.contributions[1]] } satisfies typeof anthropicApiModule;
+     const installed = installedModules().map((module) => module.id === refusing.id ? refusing : module);
+     const auth = { ...noKeysAuth, providers: authProviders({ base: noKeysAuth.providers, apiKeys: { anthropic_api: "[redacted secret]" } }) };
+-    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
+-      profileId: "default", getAuth: () => auth, definitions: fixedDefinitions({ projectRoot: DIRECTORIES.projectRoot }), moduleSelection: composeFirstPartyModules(installed), captureRuntimeConfig: testRuntimeConfigCapture,
++    const runtime = createAgentRuntime({ awaitModelAccessSettled: async () => {},
++      profileId: "default", getAuth: () => auth, definitions: repoDefinitions(), moduleSelection: composeFirstPartyModules(installed), captureRuntimeConfig: testRuntimeConfigCapture,
+       authDirectory: () => CLIENT_DIRECTORIES.authDir, getProviderModelEligibility: () => TEST_ELIGIBILITY, userDataRoot: DIRECTORIES.userDataRoot, modelsClient: testModelsClient(),
+     });
+     const capture = await runtime.captureProviderConnection();
+diff --git a/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts b/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+index 0f62edc..ed305c9 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+@@ -1,8 +1,8 @@
+ import { describe, expect, test } from "bun:test";
+ import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+-import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
++import { describeAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
+ import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
+-import type { ProviderAvailability, RequestAdmission, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
++import type { ProviderAvailability, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
+ import { AllCandidatesExhaustedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
+ import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
+ import {
+@@ -10,9 +10,9 @@ import {
+   failoverFailure,
+   requestEvents,
+   executeStream,
+-  expectSafeRecheck,
+   fakeAvailability,
+   fakeClient,
++  noticeCollector,
+   run,
+   SAFE_RECHECK_MS,
+   streamOptions,
+@@ -126,7 +126,7 @@ describe("streamed failover", () => {
+       providerOptions: undefined,
+       ...streamOptions,
+       interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
+-      reasoningEffort: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined,
++      reasoningEffort: undefined, cacheRetention: undefined, providerSessionKey: undefined,
+       requestAudit: undefined, staleMasking: undefined, requestContext: undefined,
+       turn: 1, messageCount: 0, estimatedContextTokens: 200, onEvent: () => {},
+       estimatedInputTokenClasses: (attempt) => attempt.accessProvider === "openai_api"
+@@ -337,6 +337,7 @@ describe("expired-suppression probes", () => {
+ 
+ 
+   test("a quota probe the request could not conclude is handed back at once", async () => {
++    const sink = noticeCollector();
+     const availability = fakeAvailability({});
+     const client = chain({
+       candidates: [singletonCandidate("openai_api")],
+@@ -346,7 +347,7 @@ describe("expired-suppression probes", () => {
+     availability.availability.markQuotaExhausted(singletonCandidate("openai_api"));
+     availability.advance(SAFE_RECHECK_MS + 1);
+ 
+-    await expect(run(client)).rejects.toThrow(AllCandidatesExhaustedError);
++    await expect(run(client, sink)).rejects.toThrow(AllCandidatesExhaustedError);
+ 
+     // The failure said nothing about quota, so the quota probe concluded
+     // nothing: the lease went back and the next request rechecks immediately.
+@@ -394,13 +395,15 @@ describe("expired-suppression probes", () => {
+   });
+ 
+   test("a rejected live publication hands the probe back", async () => {
++    const sink = noticeCollector();
+     const base = fakeAvailability({});
+     base.availability.markQuotaExhausted(singletonCandidate("openai_api"));
+     base.advance(SAFE_RECHECK_MS + 1);
+     const client = probeChain({ ...base.availability, markQuotaLive: () => false }, () => true);
+ 
+-    expect(await run(client)).toEqual([textDelta("openai_api")]);
++    expect(await run(client, sink)).toEqual([textDelta("openai_api")]);
+     expect(base.probeReleases).toEqual(["openai_api"]);
++    expect(sink.operations).toEqual([]);
+   });
+ 
+   test("a planning read predicts the probe without claiming it", async () => {
+@@ -425,8 +428,8 @@ describe("expired-suppression probes", () => {
+ describe("all candidates exhausted", () => {
+   /** Aggregate rejection of one request over a chain no candidate can serve.
+    *  Holding the client is fine; the request is what cannot be served. */
+-  async function exhaustedChain(availability: ProviderAvailability, requestAdmission?: RequestAdmission): Promise<AllCandidatesExhaustedError> {
+-    const error = await requestEvents(chain({ availability, ...(requestAdmission === undefined ? {} : { requestAdmission }) })).then(
++  async function exhaustedChain(availability: ProviderAvailability): Promise<AllCandidatesExhaustedError> {
++    const error = await requestEvents(chain({ availability })).then(
+       () => { throw new Error("expected the request to reject") },
+       (thrown) => thrown,
+     );
+@@ -454,39 +457,20 @@ describe("all candidates exhausted", () => {
+     expect(copy.guidance).toContain("Wait until then");
+   });
+ 
+-  test("names a quota-refused account's banked reset from the request admission", async () => {
+-    const availability = fakeAvailability({ chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + 7_200_000 } });
+-    availability.availability.markQuotaExhausted(singletonCandidate("openai_api"), Date.now() + 3_600_000);
+-    const hint = "This account has a banked reset that you can apply in Usage (/usage).";
+-    const admission = (banked: boolean): RequestAdmission => ({
+-      subscriptionSpendAuthorizationFor: () => undefined,
+-      bankedResetFor: (candidate) => banked && candidate.providerId === "chatgpt",
+-    });
+-
+-    const banked = toFailureReason(await exhaustedChain(availability.availability, admission(true)));
+-    expect(describeAgentFailure(banked).title).toBe("Out of credits");
+-    // The transcript and headless record, and a workflow or subagent failure, all carry it.
+-    expect(blockedFailureRecord(describeAgentFailure(banked))).toContain(hint);
+-    expect(formatAgentFailure(banked)).toContain(hint);
+-    const none = toFailureReason(await exhaustedChain(availability.availability, admission(false)));
+-    expect(blockedFailureRecord(describeAgentFailure(none))).not.toContain("banked reset");
+-  });
+-
+   test("a failed quota recheck claim reports unavailability without inventing quota exhaustion or a reset", async () => {
+     // Every suppression now states its bound, so the one genuinely reset-less
+-    // rejection left is a due recheck whose probe claim could not land. The
+-    // request states no reset, but its recovery rechecks after the safe interval.
++    // rejection left is a due recheck whose probe claim could not land: the
++    // request holds back with no stated moment.
+     const availability = fakeAvailability({ probeClaimFails: true });
+     availability.availability.markQuotaExhausted(singletonCandidate("openai_api"));
+     availability.advance(SAFE_RECHECK_MS + 1);
+-    const before = Date.now();
+     const error = await requestEvents(chain({ availability: availability.availability, candidates: [singletonCandidate("openai_api")] })).then(
+       () => { throw new Error("expected the request to reject") },
+       (thrown) => thrown,
+     );
+-    expectSafeRecheck(error, before);
+     if (!(error instanceof AllCandidatesExhaustedError)) throw new Error("expected AllCandidatesExhaustedError");
+     expect(error.message).not.toContain("Capacity returns at");
++    expect(toFailureReason(error)).toMatchObject({ kind: "api_error", recovery: { kind: "retry" } });
+ 
+     const copy = describeAgentFailure(toFailureReason(error));
+     expect(copy.title).toBe("Provider unavailable");
+@@ -567,8 +551,6 @@ describe("spend-mode admission", () => {
+ 
+     const unreviewed = await refusal();
+     expect(unreviewed.detail).toBe("Subscription paid capacity requires review. Open Auth and select the account.");
+-    // Waiting does not change what the person allowed, so no bound is stated.
+-    expect(unreviewed.recovery).toEqual({ kind: "none" });
+     const skippedCopy = describeAgentFailure(toFailureReason(unreviewed));
+     expect(skippedCopy.title).toBe("No eligible provider");
+     expect(skippedCopy.detail).toContain(unreviewed.detail!);
+diff --git a/tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts a/tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts
+deleted file mode 100644
+index e38abee..0000000
+--- a/tests/unit/orchestration/subscription-spend-consent/admission-capture.test.ts
++++ /dev/null
+@@ -1,109 +0,0 @@
+-import { afterEach, describe, expect, test } from "bun:test"
+-import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js"
+-import { CHATGPT_RATE_LIMIT_RESET_TYPE, type SubscriptionUsageMetric, type SubscriptionUsageResetCredits } from "../../../../src/infra/llm/subscription-usage.js"
+-import { createSubscriptionUsageService } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
+-import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
+-import { captureSubscriptionAdmission } from "../../../../src/orchestration/subscription-spend-consent/admission-capture.js"
+-import { createSubscriptionSpendConsentCaptureCache } from "../../../../src/orchestration/subscription-spend-consent/capture-cache.js"
+-import type { SubscriptionSpendConsentCapture } from "../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js"
+-import { createProfileFixture, definition, registry, report, writeAccounts } from "../auth/provider-observations/_service-fixtures.js"
+-
+-const { profile, cleanup } = createProfileFixture()
+-afterEach(cleanup)
+-
+-describe("subscription admission capture", () => {
+-  test("names the accounts whose published usage reading holds an available banked reset", async () => {
+-    const resolved = { id: "default", directory: profile("banked-reset-admission") }
+-    const chatgpt = definition("chatgpt")
+-    writeAccounts(resolved.directory, [chatgpt])
+-    let resetCredits: SubscriptionUsageResetCredits = { availableCount: 1, credits: [{ id: "reset-1", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" }] }
+-    const providers = registry([chatgpt], new Map([[chatgpt.id, async () => ({ kind: "success" as const, report: { ...report(chatgpt.id, Date.now()), resetCredits } })]]))
+-    const pool = createSubscriptionUsageServicePool({ create: () => createSubscriptionUsageService({ profile: () => resolved, registry: () => providers, thresholds: () => [] }) })
+-    const residentLease = await pool.acquire(resolved)
+-    const consentCache = createSubscriptionSpendConsentCaptureCache<SubscriptionSpendConsentCapture>()
+-    const admit = () => captureSubscriptionAdmission({
+-      candidates: [], providerSettings: {}, registry: { allowance: new Map(), settings: new Map(), selection: providers.selection },
+-      profile: resolved, residentLease, pool, consentCache,
+-    })
+-    const account: AccessProviderCandidate = { kind: "subscription", providerId: "chatgpt", instanceId: "account", spendMode: "included" }
+-    try {
+-      // No reading is published yet, as in a headless run that never reads this account.
+-      expect((await admit()).bankedResetFor(account)).toBe(false)
+-
+-      await residentLease.service.check()
+-      const banked = await admit()
+-      expect(banked.bankedResetFor(account)).toBe(true)
+-      expect(banked.bankedResetFor({ ...account, spendMode: "prepaid" })).toBe(true)
+-      expect(banked.bankedResetFor({ ...account, instanceId: "other" })).toBe(false)
+-      expect(banked.bankedResetFor({ kind: "singleton", providerId: "openai_api", spendMode: "direct_api" })).toBe(false)
+-
+-      resetCredits = { availableCount: 0, credits: [] }
+-      await residentLease.service.check({ forceRefresh: true })
+-      expect((await admit()).bankedResetFor(account)).toBe(false)
+-    } finally { await residentLease.release(); pool.closeAdmission(); await pool.settled() }
+-  })
+-
+-  test("a view reads usage again only when the evidence in memory is out of date, where a request forces the read", async () => {
+-    const resolved = { id: "default", directory: profile("view-allowance-admission") }
+-    const chatgpt = definition("chatgpt")
+-    writeAccounts(resolved.directory, [chatgpt])
+-    let reads = 0
+-    const providers = registry([chatgpt], new Map([[chatgpt.id, async () => { reads += 1; return { kind: "success" as const, report: report(chatgpt.id, Date.now()) } }]]))
+-    const pool = createSubscriptionUsageServicePool({ create: () => createSubscriptionUsageService({ profile: () => resolved, registry: () => providers, thresholds: () => [] }) })
+-    const residentLease = await pool.acquire(resolved)
+-    const account: AccessProviderCandidate = { kind: "subscription", providerId: "chatgpt", instanceId: "account", spendMode: "included" }
+-    const allowance = new Map([[chatgpt.id, async ({ usage }: { readonly usage: { readonly checkAccounts: typeof residentLease.service.checkAccounts } }) => {
+-      await usage.checkAccounts([{ providerId: "chatgpt", instanceId: "account" }], { forceRefresh: true })
+-      return () => ({ allowance: "unknown" as const })
+-    }]])
+-    const admit = (view?: true) => captureSubscriptionAdmission({
+-      candidates: [account], providerSettings: {}, registry: { allowance, settings: new Map(), selection: providers.selection },
+-      profile: resolved, residentLease, pool, consentCache: createSubscriptionSpendConsentCaptureCache<SubscriptionSpendConsentCapture>(),
+-      ...(view === undefined ? {} : { view }),
+-    })
+-    try {
+-      await admit(true)
+-      expect(reads).toBe(1)
+-      await admit(true)
+-      expect(reads).toBe(1)
+-      await admit()
+-      expect(reads).toBe(2)
+-    } finally { await residentLease.release(); pool.closeAdmission(); await pool.settled() }
+-  })
+-
+-  test("holds each account's future reset of the expiring window its provider declares", async () => {
+-    const resolved = { id: "default", directory: profile("expiring-reset-admission") }
+-    const declaring = (id: string) => ({ ...definition(id), usage: { expiringWindow: "seven_day" } })
+-    const future = declaring("future"), exact = declaring("exact"), passed = declaring("passed"), unknown = declaring("unknown"), exhausted = declaring("exhausted"), undeclared = definition("undeclared")
+-    const providers = [future, exact, passed, unknown, exhausted, undeclared]
+-    writeAccounts(resolved.directory, providers)
+-    const soon = Date.now() + 86_400_000
+-    // A fully used window has no quota left to expire, so its reset orders nothing.
+-    const window = (timing: SubscriptionUsageMetric["timing"], usedFraction: number): SubscriptionUsageMetric => ({ metricKey: "seven_day", label: "Seven days", scope: { kind: "account" }, rank: 0, timing, usedFraction })
+-    const timings = new Map<string, SubscriptionUsageMetric["timing"]>([
+-      ["future", { kind: "unavailable", resetAtMs: soon }],
+-      ["exact", { kind: "exact", startMs: 1, endMs: soon + 1 }],
+-      ["passed", { kind: "unavailable", resetAtMs: Date.now() - 1 }],
+-      ["unknown", { kind: "unavailable" }],
+-      ["exhausted", { kind: "unavailable", resetAtMs: soon }],
+-      ["undeclared", { kind: "unavailable", resetAtMs: soon }],
+-    ])
+-    const readers = new Map(providers.map((provider) => [provider.id, async () => ({ kind: "success" as const, report: { ...report(provider.id, Date.now()), metrics: [window(timings.get(provider.id)!, provider.id === "exhausted" ? 1 : 0.5)] } })]))
+-    const usage = registry(providers, readers)
+-    const pool = createSubscriptionUsageServicePool({ create: () => createSubscriptionUsageService({ profile: () => resolved, registry: () => usage, thresholds: () => [] }) })
+-    const residentLease = await pool.acquire(resolved)
+-    const admit = () => captureSubscriptionAdmission({
+-      candidates: [], providerSettings: {}, registry: { allowance: new Map(), settings: new Map(), selection: usage.selection },
+-      profile: resolved, residentLease, pool, consentCache: createSubscriptionSpendConsentCaptureCache<SubscriptionSpendConsentCapture>(),
+-    })
+-    const account = (providerId: string, instanceId = "account"): AccessProviderCandidate => ({ kind: "subscription", providerId, instanceId, spendMode: "included" })
+-    try {
+-      expect((await admit()).expiringResetFor(account("future"))).toBeUndefined()
+-
+-      await residentLease.service.check()
+-      const captured = await admit()
+-      expect(providers.map(({ id }) => captured.expiringResetFor(account(id)))).toEqual([soon, soon + 1, undefined, undefined, undefined, undefined])
+-      expect(captured.expiringResetFor(account("future", "other"))).toBeUndefined()
+-    } finally { await residentLease.release(); pool.closeAdmission(); await pool.settled() }
+-  })
+-})

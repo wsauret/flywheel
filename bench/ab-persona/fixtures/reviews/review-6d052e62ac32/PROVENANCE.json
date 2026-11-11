@@ -1,0 +1,98 @@
+{
+  "base": "fbd0992d69a01a54ee0c5bbddbdbccb0d1334fa7",
+  "files": [
+    {
+      "anchor": "d2c8b5533f98c17725bb61558a303fe06c3bb2d8",
+      "path": "AGENTS.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "062ea19752668447599130cd736386f54745ecbd",
+      "path": "docs/architecture-intent/distribution.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "062ea19752668447599130cd736386f54745ecbd",
+      "path": "docs/architecture-intent/runtime.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "062ea19752668447599130cd736386f54745ecbd",
+      "path": "docs/elegance.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "6c850a5a183a95cf11446a07f40db85cae0f4461",
+      "path": "scripts/binary-native-assets.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "6c850a5a183a95cf11446a07f40db85cae0f4461",
+      "path": "scripts/build-binary.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "6c850a5a183a95cf11446a07f40db85cae0f4461",
+      "path": "scripts/bundle-asset-patch.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": null,
+      "path": "scripts/dev.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "6c850a5a183a95cf11446a07f40db85cae0f4461",
+      "path": "tests/unit/scripts/binary-native-assets.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "6c850a5a183a95cf11446a07f40db85cae0f4461",
+      "path": "tests/unit/scripts/bundle-asset-patch.test.ts",
+      "reversedMutations": 1
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793824316356,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -41,7 +42,7 @@\n \n // Every relative string binding Bun emits for a `type: \"file\"` import,\n // whatever its extension.\n-const relativeAssetBindingPattern = /var \\w+_default = \"(\\.\\/[^\"\\\\]+)\"/g\n+const relativeAssetBindingPattern = /var \\w+_default\\d* = \"(\\.\\/[^\"\\\\]+)\"/g\n \n const hashedAssetPattern = /-[a-z0-9]{8}(\\.[a-z0-9]+)$/",
+              "mutation": "fdc65e9d-4bf7-4e95-bbcf-9c00f3c861e1",
+              "path": "scripts/bundle-asset-patch.ts"
+            }
+          ],
+          "label": "reject-bun-s-numbered-asset-bindings-too",
+          "location": "scripts/bundle-asset-patch.ts:44; scripts/build-binary.ts:193-205",
+          "severity": "P1",
+          "title": "Reject Bun's numbered asset bindings too"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "321f00eac869",
+      "persona": "reviewer-code-elegance",
+      "run": "6d052e62ac32",
+      "session": "35d983010c19",
+      "start": 1793824086873
+    },
+    {
+      "effort": "high",
+      "end": 1793824238397,
+      "findings": [],
+      "model": "gpt-6-astra",
+      "parent": "321f00eac869",
+      "persona": "reviewer-code-quality",
+      "run": "5990dd3c0a79",
+      "session": "67247a68c332",
+      "start": 1793824095068
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "recorded"
+}

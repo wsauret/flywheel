@@ -1,0 +1,464 @@
+diff --git a/src/cli/subcommands.ts b/src/cli/subcommands.ts
+index dc90905..a8897d6 100644
+--- a/src/cli/subcommands.ts
++++ b/src/cli/subcommands.ts
+@@ -198,7 +198,14 @@ export function moduleNounDispatch(noun: InstalledCliNoun, selection: (directori
+       process.exitCode = 2
+       return
+     }
+-    await dispatch.run(rest, { directories, launcher, resources, modules })
++    const accountService = async () => {
++      const [{ createAccountRuntimeAttach, isRuntimeListening }, { launchRuntimeClient }] = await Promise.all([import("./runtime-attach.js"), import("./runtime-launch.js")])
++      const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
++      if (await isRuntimeListening(attach.socketPath)) return launchRuntimeClient({ ...directories, attach })
++      attach.close()
++      return undefined
++    }
++    await dispatch.run(rest, { directories, launcher, resources, modules, accountService })
+   }
+ }
+ 
+diff --git a/src/infra/diagnostics-registry.ts b/src/infra/diagnostics-registry.ts
+index e20f14a..625bb1b 100644
+--- a/src/infra/diagnostics-registry.ts
++++ b/src/infra/diagnostics-registry.ts
+@@ -161,7 +161,7 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
+   ["provider.claude_sdk.engine.reservation_ended", { tier: "info" }],
+   // A shared agent host: one record when it opens and one when it closes; one per dispatch frame whose delivery
+   // missed an agent, with the count; one per agent step that its gate refused; one per stop of an agent's task that
+-  // Flywheel decided, with its cause. A delivered frame is DEBUG.
++  // Flywheel decided, with its cause. A delivered frame and a dispatcher message that the host denied are DEBUG.
+   ["provider.claude_sdk.host.opened", { tier: "info" }],
+   ["provider.claude_sdk.host.closed", { tier: "info" }],
+   ["provider.claude_sdk.host.delivery_missed", { tier: "info" }],
+@@ -170,7 +170,7 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
+   ["provider.claude_sdk.host.agent_failed", { tier: "info" }],
+   ["provider.claude_sdk.host.agent_dispatched", { tier: "info" }],
+   ["provider.claude_sdk.host.task_stopped", { tier: "info" }],
+-  ["provider.claude_sdk.host.dispatch_fault", { tier: "info" }],
++  ["provider.claude_sdk.host.dispatch_denied", { tier: "debug" }],
+   ["provider.claude_sdk.host.plugins_reloaded", { tier: "info" }],
+   ["provider.claude_sdk.host.rewind_refused", { tier: "info" }],
+   ["provider.claude_sdk.host_gate.rejected", { tier: "debug" }],
+diff --git a/src/orchestration/modules.ts b/src/orchestration/modules.ts
+index 68c96a2..4b49380 100644
+--- a/src/orchestration/modules.ts
++++ b/src/orchestration/modules.ts
+@@ -25,6 +25,7 @@ import type { LauncherContext } from "../infra/process-supervisor.js"
+ import type { PersistentProcessManager } from "../infra/persistent-process-manager.js"
+ import type { WebSearchProvider, WebSearchProviderId } from "./agent-runtime/web-search/types.js"
+ import type { CommandOutcome } from "../protocol/command-catalog-protocol-types.js"
++import type { AttachedRuntimeClient } from "../protocol/app-service-types.js"
+ import type { ModuleHealthCheck } from "./module-health.js"
+ import type { CommandHost } from "./app-service/command-host.js"
+ import type { AccountModuleProtocolServices, ModuleProtocolContribution } from "./app-service/module-protocol-host.js"
+@@ -135,6 +136,13 @@ export interface CommandProcessResources {
+   readonly allowPersistentProcesses: boolean
+ }
+ 
++/** A protocol client of the lane's account service, attached to the
++ *  command's project. `dispose` closes it after its calls in flight finish. */
++export interface CliAccountServiceClient {
++  readonly client: Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe">
++  dispose(): Promise<void>
++}
++
+ /** What one `flywheel <noun> <verb>` runs against: the directory authorities
+  *  the composition root selected (ARCH-DIRECTORIES-003), the launcher generation it owns,
+  *  its process resources, and the module composition this project's
+@@ -144,6 +152,13 @@ export interface CliCommandContext {
+   readonly launcher: LauncherContext
+   readonly resources: CommandProcessResources
+   readonly modules: FirstPartyModuleComposition
++  /** Attaches to the lane's account service for the command's project when
++   *  one listens, which opens that project there, and resolves undefined
++   *  when none listens; it never starts a service. A verb that changes
++   *  state the service holds live sends the change through this client, so
++   *  the service applies it in the step that records it. The verb disposes
++   *  the client it receives. */
++  readonly accountService: () => Promise<CliAccountServiceClient | undefined>
+ }
+ 
+ export interface CliVerb {
+diff --git a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts
+index 6987b04..92898fe 100644
+--- a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts
++++ b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts
+@@ -75,7 +75,8 @@ export interface RefusedHostStep {
+  * The admission of one shared agent host (spike results, "Admission protocol"). The plugin drops every
+  * task-notification prompt itself. A main-thread turn is a dispatch turn only when its start text holds a nonce
+  * that the host pushed and has not seen yet; the gate admits that turn's step 0 and the step 1 that continues it
+- * after the SendMessage results, both with the dispatcher's values, and refuses every other main-thread step.
++ * after the SendMessage results, both with the dispatcher's values, and the one step that answers each step whose call
++ * the host denied (`denied`), and refuses every other main-thread step.
+  * A hosted agent's step is admitted only while the agent holds an unused admission, and that step's chunks go to the
+  * admission's sink. Every refused step answers as the empty refusal: no text, no tool use, no stop reason.
+  */
+@@ -84,6 +85,9 @@ export interface HostGate {
+   nonce(): string;
+   /** How many steps of the dispatch turn that `nonce` started the gate admitted. */
+   dispatcherSteps(nonce: string): number;
++  /** The host denied a call of the step that the dispatch turn of `nonce` runs now, so the gate also admits the next
++   *  step, which answers the denial. */
++  denied(nonce: string): void;
+   /** Admits the next step of `agentId` once with `values`. A newer admission of the agent replaces this one. */
+   admit(agentId: string, values: StepValues, sink: AgentStepSink): AgentAdmission;
+   /** Refuses every later step and drops every admission. */
+@@ -106,6 +110,8 @@ export function createHostGate(dispatcher: StepValues, onRefused: (step: Refused
+   /** The nonce of each dispatch turn by its turn id, and the steps of each nonce's turn that the gate admitted. */
+   const dispatchTurns = new Map<string, string>();
+   const admittedSteps = new Map<string, number>();
++  /** The last step index that each nonce's turn may send, when a denial raised it past step 1. */
++  const lastSteps = new Map<string, number>();
+   const admissions = new Map<string, OpenAdmission>();
+   /** The admission whose step streams now, by agent. */
+   const streaming = new Map<string, OpenAdmission>();
+@@ -127,6 +133,10 @@ export function createHostGate(dispatcher: StepValues, onRefused: (step: Refused
+       return nonce;
+     },
+     dispatcherSteps: (nonce) => admittedSteps.get(nonce) ?? 0,
++    denied(nonce) {
++      // Steps are admitted in order, so the count of admitted steps is the index of the step that answers the denial.
++      lastSteps.set(nonce, Math.max(lastSteps.get(nonce) ?? 1, admittedSteps.get(nonce) ?? 0));
++    },
+     admit(agentId, values, sink) {
+       const previous = admissions.get(agentId);
+       if (previous !== undefined) previous.closed = true;
+@@ -145,6 +155,7 @@ export function createHostGate(dispatcher: StepValues, onRefused: (step: Refused
+       pending.clear();
+       dispatchTurns.clear();
+       admittedSteps.clear();
++      lastSteps.clear();
+       for (const open of admissions.values()) open.closed = true;
+       admissions.clear();
+       streaming.clear();
+@@ -172,7 +183,7 @@ export function createHostGate(dispatcher: StepValues, onRefused: (step: Refused
+           if (closed) return refuse(step);
+           if (agentId === null) {
+             const nonce = dispatchTurns.get(turnId);
+-            if (nonce === undefined || index > 1) return refuse(step);
++            if (nonce === undefined || index > (lastSteps.get(nonce) ?? 1)) return refuse(step);
+             admittedSteps.set(nonce, (admittedSteps.get(nonce) ?? 0) + 1);
+             return { admit: true, ...dispatcher };
+           }
+diff --git a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
+index 1592551..8adef4a 100644
+--- a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
++++ b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.ts
+@@ -23,17 +23,20 @@ import type { HostValues } from "./host-registry.js";
+ 
+ /** The dispatcher's whole prompt. It is the same for every host, so its cache entry serves every frame. */
+ const DISPATCHER_PROMPT = `You start background agents. Each message names agent ids after "agents:". For each id, call SendMessage once with "to" set to that id and "message" set to exactly "${DISPATCH_MESSAGE}". Make every call in one response. When the results arrive, answer with the single word "Sent".`;
+-/** How many frames the dispatcher's conversation keeps before the host cuts it back to empty in place. */
+-const FRAMES_PER_CONVERSATION = 40;
+ /** How many frames may miss one agent before its dispatch fails. */
+ const DELIVERY_TRIES = 3;
+ 
+ /** How a hosted agent's task ended, as the engine reports it. */
+ export type TaskEnd = "completed" | "failed" | "stopped";
+ 
+-/** Why the host stopped a dispatcher's message to an agent: its target is not an agent of the frame, the dispatcher
+- *  sent the agent a second message, or the message is not `DISPATCH_MESSAGE`. */
+-type DispatchFault = "foreign" | "duplicate" | "changed";
++/** Why the host denied a dispatcher's message to an agent, with the error text that the dispatcher's model reads: its
++ *  target is not an agent of the frame, the dispatcher sent the agent a second message, or the message is not
++ *  `DISPATCH_MESSAGE`. */
++const DENIALS = {
++  foreign: "This id is not one that the current message names. Send only to the ids that it names.",
++  duplicate: "This agent already has its message. Do not send it again.",
++  changed: `Send exactly "${DISPATCH_MESSAGE}" as the message.`,
++} as const;
+ 
+ /** Why Flywheel stopped a hosted agent's task, which its `task_stopped` record names:
+  *  - `abort`: a person's or a parent's stop of the agent's session, while a step streams or the agent waits on a tool.
+@@ -44,9 +47,8 @@ type DispatchFault = "foreign" | "duplicate" | "changed";
+  *  - `restarted`: the agent's request starts it again from its own history.
+  *  - `own-engine`: the agent's request goes to its own engine, because no host can serve it.
+  *  - `request-failed`: the agent's request failed.
+- *  - `dispatch-failed`: the dispatch of the agent failed or was withdrawn.
+- *  - `dispatch-<fault>`: the dispatcher sent the agent a message that Flywheel did not ask for (`DispatchFault`). */
+-export type StopCause = "abort" | "lifetime-end" | "host-ended" | "moved-host" | "restarted" | "own-engine" | "request-failed" | "dispatch-failed" | `dispatch-${DispatchFault}`;
++ *  - `dispatch-failed`: the dispatch of the agent failed or was withdrawn. */
++export type StopCause = "abort" | "lifetime-end" | "host-ended" | "moved-host" | "restarted" | "own-engine" | "request-failed" | "dispatch-failed";
+ 
+ /** What one host tells the bridge of one of its agents. Each callback returns at once. */
+ interface AgentListener {
+@@ -112,7 +114,7 @@ interface Frame {
+   readonly uuid: string;
+   readonly nonce: string;
+   readonly batch: readonly Pending[];
+-  /** The agents to which the dispatcher sent its message in this frame. */
++  /** The agents to which the host let the dispatcher send its message in this frame. */
+   readonly sent: Set<string>;
+   /** The dispatcher's responses of the frame by message id, each as the record of its request. */
+   readonly steps: Map<string, ProviderTransportHiddenRequest>;
+@@ -157,7 +159,7 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
+   sweepLeftBehindSessions(config.configDir, config.cwd);
+   const launched = config.launchHost({
+     ...config.values, statesEffort: config.dispatcher.effort !== undefined, prompt: queueIterable(prompt, undefined), mcpServer: toolGate.server,
+-    cwd: config.cwd, sessionId, dispatcherPrompt: DISPATCHER_PROMPT,
++    cwd: config.cwd, sessionId, dispatcherPrompt: DISPATCHER_PROMPT, refuseDispatch: (input) => refuseDispatch(input),
+     gate: { socketVariable: AGENT_HOST_SOCKET_VARIABLE, socketPath: server.socketPath, pluginPath: server.pluginPath },
+     onStderrLine: () => {},
+   });
+@@ -208,10 +210,10 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
+     const payload = { sessionId, agents: done.batch.length, missed, ...(failure === undefined ? {} : { failed: failure.name }) };
+     if (missed > 0) DebugLog.record({ type: "provider.claude_sdk.host.delivery_missed", payload });
+     else DebugLog.record({ type: "provider.claude_sdk.host.frame", payload });
+-    if (frames % FRAMES_PER_CONVERSATION === 0 && conversationStart !== undefined) {
++    if (conversationStart !== undefined) {
+       const target = conversationStart;
+-      // The cut runs before the next frame, so the dispatcher's conversation stays short. A refused cut keeps its
+-      // target for the next one.
++      // The cut runs before the next frame, so each frame's dispatcher reads only its own frame. A refused cut keeps
++      // its target for the next one.
+       cutting = true;
+       void Effect.runPromiseExit(launched.rewind(target, done.uuid)).then((exit) => {
+         if (Exit.isSuccess(exit) && exit.value.rewound) conversationStart = undefined;
+@@ -247,15 +249,24 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
+     DebugLog.record({ type: "provider.claude_sdk.host.task_stopped", payload: { sessionId, agentId, path: sent ? "stop-on-start" : "queued", cause, ...named } });
+   };
+ 
+-  /** A message of the dispatcher that the frame did not ask for reaches the agent as text that Flywheel's history does
+-   *  not hold, so the host stops that agent and its bridge starts it again from its own history. */
+-  const faulted = (agentId: string, fault: DispatchFault) => {
+-    DebugLog.record({ type: "provider.claude_sdk.host.dispatch_fault", payload: { sessionId, agentId, fault } });
+-    const error = new LlmStreamError(`The ${CLAUDE_AGENT_SDK_LABEL} agent host's dispatcher sent the agent a message that Flywheel did not ask for`, "transient");
+-    const listener = listeners.get(agentId);
+-    if (listener === undefined) return;
+-    stop(agentId, `dispatch-${fault}`, error);
+-    listener.ended("failed", error);
++  /** Decides a SendMessage call of the dispatcher before it runs (`HostLaunch.refuseDispatch`). A message that the
++   *  frame did not ask for would reach its agent as text that Flywheel's history does not hold, so the host denies it:
++   *  the agent receives nothing, and the dispatcher's model reads the denial in one more step, which the gate admits.
++   *  An agent of the frame that receives no message goes into the next frame. */
++  const refuseDispatch = (input: unknown): string | undefined => {
++    const fields = asRecord(input);
++    const to = fields?.["to"];
++    const current = frame;
++    const deny = (fault: keyof typeof DENIALS) => {
++      if (current !== undefined) gate.denied(current.nonce);
++      DebugLog.record({ type: "provider.claude_sdk.host.dispatch_denied", payload: { sessionId, ...(typeof to === "string" ? { agentId: to } : {}), fault } });
++      return DENIALS[fault];
++    };
++    if (current === undefined || typeof to !== "string" || !current.batch.some(({ agentId }) => agentId === to)) return deny("foreign");
++    if (current.sent.has(to)) return deny("duplicate");
++    if (fields?.["message"] !== DISPATCH_MESSAGE) return deny("changed");
++    current.sent.add(to);
++    return undefined;
+   };
+ 
+   const readDispatcher = (message: Extract<SDKMessage, { type: "assistant" }>) => {
+@@ -273,21 +284,7 @@ export function openAgentHost(config: AgentHostConfig): AgentHost {
+     }
+     const current = frame;
+     current.steps.set(message.message.id, { source: "agent-host-dispatcher", status: 200, inputTokens: inputTokens(message.message.usage) });
+-    if (current.steps.size > gate.dispatcherSteps(current.nonce)) {
+-      void close("step-gate", stepGateFailure("step-not-asked", AGENT_HOST_PLUGIN));
+-      return;
+-    }
+-    for (const block of message.message.content) {
+-      if (block.type !== "tool_use" || block.name !== "SendMessage") continue;
+-      const input = asRecord(block.input);
+-      const to = input?.["to"];
+-      if (typeof to !== "string") continue;
+-      const fault: DispatchFault | undefined = !current.batch.some(({ agentId }) => agentId === to) ? "foreign"
+-        : current.sent.has(to) ? "duplicate"
+-          : input?.["message"] !== DISPATCH_MESSAGE ? "changed" : undefined;
+-      current.sent.add(to);
+-      if (fault !== undefined) faulted(to, fault);
+-    }
++    if (current.steps.size > gate.dispatcherSteps(current.nonce)) void close("step-gate", stepGateFailure("step-not-asked", AGENT_HOST_PLUGIN));
+   };
+ 
+   const read = (message: SDKMessage) => {
+diff --git a/src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts b/src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
+index 0eeed93..fb4de29 100644
+--- a/src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
++++ b/src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
+@@ -378,6 +378,9 @@ export interface HostLaunch {
+   readonly cwd: string;
+   readonly sessionId: string;
+   readonly dispatcherPrompt: string;
++  /** Decides each SendMessage call of the dispatcher from its input before the call runs: the reason that the model
++   *  reads as the call's error, or undefined to let the call run unchanged. Returns at once. */
++  readonly refuseDispatch: (input: unknown) => string | undefined;
+   readonly onStderrLine: (line: string) => void;
+ }
+ 
+@@ -407,7 +410,9 @@ const DISPATCHER_AGENT = "dispatcher";
+  * MCP server through its own definition's tool list, and the
+  * engine persists its session, because the agent files are where Flywheel reads each response's signed thinking
+  * (agent-host/agent-file.ts). The thinking option names the agents' thinking; the environment puts the field in
+- * every request's body (`agentHostEnvironment`).
++ * every request's body (`agentHostEnvironment`). The dispatcher's SendMessage calls pass a PreToolUse hook, the
++ * engine's tool gate in every permission mode: `canUseTool` never hears SendMessage, which allows itself, nor any
++ * call under bypassPermissions. The hosted agents call only Flywheel's tools, which the hook's matcher leaves out.
+  */
+ export function createHostLauncher(config: QueryLauncherConfig, sdkQuery: QueryFunction = query, files: StopFiles = configDirFiles(config)): (launch: HostLaunch) => LaunchedHost {
+   return (launch) => {
+@@ -431,6 +436,10 @@ export function createHostLauncher(config: QueryLauncherConfig, sdkQuery: QueryF
+           agents: { [DISPATCHER_AGENT]: { description: "Starts Flywheel agents", prompt: launch.dispatcherPrompt, tools: ["SendMessage"] } },
+           agent: DISPATCHER_AGENT,
+           plugins: [{ type: "local", path: launch.gate.pluginPath }],
++          hooks: { PreToolUse: [{ matcher: "SendMessage", hooks: [async (input) => {
++            const reason = input.hook_event_name === "PreToolUse" ? launch.refuseDispatch(input.tool_input) : undefined;
++            return reason === undefined ? {} : { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } };
++          }] }] },
+           mcpServers: { [TOOL_MCP_SERVER]: { type: "sdk", name: TOOL_MCP_SERVER, instance: launch.mcpServer } },
+           strictMcpConfig: true,
+           toolAliases: mcpToolAliases(launch.tools.map(({ name }) => name)),
+diff --git a/tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts b/tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+index 9e8c345..a7b0078 100644
+--- a/tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
++++ b/tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+@@ -199,7 +199,7 @@ describe("the shared agent host's own decisions", () => {
+     expect(engineStops).toBe(0);
+   }, 120_000);
+ 
+-  test("a dispatch whose message the dispatcher changed fails, and the agent never sends a request", async () => {
++  test("a dispatcher message whose text the dispatcher changed is denied, so the agent never reads it, and the dispatch fails after its tries", async () => {
+     registry = createHostRegistry();
+     await onFakeHost(temporary, (request, index) => {
+       if (!isDispatcher(request)) return lookupThenAnswer(request);
+@@ -208,8 +208,8 @@ describe("the shared agent host's own decisions", () => {
+     }, async ({ host, stage, projectRoot }) => {
+       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
+       const result = await agent.request();
+-      expect(result.error?.message).toContain("a message that Flywheel did not ask for");
+-      expect(diagnostics.payloads("provider.claude_sdk.host.dispatch_fault").map(({ fault }) => fault)).toEqual(["changed"]);
++      expect(result.error?.message).toContain("did not start the agent");
++      expect(diagnostics.payloads("provider.claude_sdk.host.dispatch_denied").map(({ fault }) => fault)).toEqual(["changed", "changed", "changed"]);
+       await Bun.sleep(1_000);
+       expect(host.requests.filter((request) => !isDispatcher(request))).toHaveLength(0);
+     }, { seams: { agentHosts } });
+@@ -369,7 +369,7 @@ describe("the shared agent host's history and records", () => {
+     }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => lateStart(launch(input)); } } });
+   }, 120_000);
+ 
+-  test("no dispatch frame goes out while a cut of the dispatcher's conversation runs", async () => {
++  test("the host cuts the dispatcher's conversation after each frame, and no frame goes out while the cut runs", async () => {
+     registry = createHostRegistry();
+     const cut = Promise.withResolvers<void>();
+     let cuts = 0;
+@@ -380,12 +380,8 @@ describe("the shared agent host's history and records", () => {
+     });
+     await onFakeHost(temporary, hostScript(() => ({ blocks: [{ thinking: "Done." }, { text: "Done." }] })), async ({ host, stage, projectRoot }) => {
+       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Report.");
+-      // Each request of an agent that answered is a dispatch, so 40 requests are the 40 frames before the cut.
+-      for (let frame = 0; frame < 40; frame += 1) {
+-        if (frame > 0) agent.history.push({ kind: "user", origin: "human", content: `Again ${frame}.` });
+-        expect((await agent.request()).error).toBeUndefined();
+-      }
+-      await until(() => cuts === 1, "the cut");
++      expect((await agent.request()).error).toBeUndefined();
++      await until(() => cuts === 1, "the cut after the first frame");
+       dispatcherAtCut = host.requests.filter(isDispatcher).length;
+       agent.history.push({ kind: "user", origin: "human", content: "After the cut." });
+       const next = agent.request();
+@@ -393,9 +389,13 @@ describe("the shared agent host's history and records", () => {
+       expect(host.requests.filter(isDispatcher)).toHaveLength(dispatcherAtCut);
+       cut.resolve();
+       expect((await next).error).toBeUndefined();
+-      expect(host.requests.filter(isDispatcher).length).toBeGreaterThan(dispatcherAtCut);
++      const after = host.requests.filter(isDispatcher).slice(dispatcherAtCut);
++      expect(after.length).toBeGreaterThan(0);
++      // The cut emptied the conversation, so the second frame's first request holds only that frame.
++      expect(wireMessages(after[0]!).filter((message) => message.role === "assistant")).toEqual([]);
++      await until(() => cuts === 2, "the cut after the second frame");
+     }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => heldCut(launch(input)); } } });
+-  }, 300_000);
++  }, 120_000);
+ 
+   test("an agent that answered releases its host, so the idle host closes, and the next request starts the agent on a new host", async () => {
+     registry = createHostRegistry(50);
+@@ -410,21 +410,39 @@ describe("the shared agent host's history and records", () => {
+     }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
+   }, 120_000);
+ 
+-  test("a second message of the dispatcher to one agent stops that agent before it sends a request", async () => {
++  test("a second message of the dispatcher to one agent is denied, in its first step or after its results, and the agent runs once under its id", async () => {
+     registry = createHostRegistry();
+-    await onFakeHost(temporary, (request, index) => {
++    // The dispatcher sends the agent's message twice in one response, sends it a third time after the results, and
++    // answers after that denial in a third step.
++    await onFakeHost(temporary, (request) => {
+       if (!isDispatcher(request)) return lookupThenAnswer(request);
+-      const reply = hostScript(lookupThenAnswer)(request, index);
+-      return { blocks: [...reply.blocks, ...reply.blocks.filter((block) => "tool" in block)] };
++      const answered = wireMessages(request).filter((message) => message.role === "assistant").length;
++      const send = { tool: "SendMessage", input: { to: JSON.stringify(request.body).match(/agents: (a[0-9a-f]{16})/u)?.[1], message: "Continue." } };
++      return answered === 0 ? { blocks: [send, send] } : answered === 1 ? { blocks: [send] } : { blocks: [{ text: "Sent" }] };
+     }, async ({ host, stage, projectRoot }) => {
+       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
+-      const result = await agent.request();
+-      expect(result.error?.message).toContain("a message that Flywheel did not ask for");
+-      await Bun.sleep(1_000);
+-      expect(host.requests.filter((request) => !isDispatcher(request))).toHaveLength(0);
+-      expect(diagnostics.payloads("provider.claude_sdk.host.dispatch_fault").map(({ fault }) => fault)).toEqual(["duplicate"]);
+-      // The host stops the agent once, although both the fault and the end of the agent's step stop it.
+-      expect(diagnostics.payloads("provider.claude_sdk.host.task_stopped")).toHaveLength(1);
++      const first = await agent.request();
++      expect(first.error).toBeUndefined();
++      const [call] = streamedToolCalls(first);
++      agent.result(call?.id ?? "", "VALUE");
++      const second = await agent.request();
++      expect(streamedText(second)).toBe("The value is ready.");
++      await until(() => diagnostics.payloads("provider.claude_sdk.host.frame").length === 1, "the frame's end");
++      expect(diagnostics.payloads("provider.claude_sdk.host.dispatch_denied").map(({ fault }) => fault)).toEqual(["duplicate", "duplicate"]);
++      const dispatcher = host.requests.filter(isDispatcher);
++      expect(dispatcher).toHaveLength(3);
++      const denials = dispatcher.slice(1).map((request) => {
++        const last = wireMessages(request).at(-1);
++        return typeof last?.content === "string" ? [] : last?.content.filter((block) => block.type === "tool_result").map((block) => block.is_error === true) ?? [];
++      });
++      expect(denials).toEqual([[false, true], [true]]);
++      // The agent read one dispatch, and its turn continued through its tool call with no second one.
++      const agentRequests = host.requests.filter((request) => !isDispatcher(request));
++      expect(agentRequests).toHaveLength(2);
++      expect(agentRequests.map((request) => lastUserTexts(request).filter((text) => text === DISPATCH_TEXT).length)).toEqual([1, 0]);
++      expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched")).toHaveLength(1);
++      expect(diagnostics.payloads("provider.claude_sdk.host.task_stopped")).toEqual([]);
++      expect(diagnostics.payloads("provider.claude_sdk.host.closed")).toEqual([]);
+     }, { seams: { agentHosts } });
+   }, 120_000);
+ });
+diff --git a/tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts b/tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts
+index ac61727..326502a 100644
+--- a/tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts
++++ b/tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts
+@@ -30,6 +30,21 @@ describe("the host gate", () => {
+     expect(refused.map(({ turnId, index }) => `${turnId}:${index}`)).toEqual(["notice:0", "frame:2", "replay:0"]);
+   });
+ 
++  test("a call denied in a dispatch turn's step admits the one step that answers the denial, and no step after it", () => {
++    const { gate: host, refused } = gate();
++    const nonce = host.nonce();
++    host.serve("/turn", { turnId: "frame", text: `${nonce}\nagents: a1` });
++    host.serve("/step", { turnId: "frame", index: 0, messageCount: 1, agentId: null });
++    // A denial in step 0 needs no more than the step 1 that every dispatch turn has.
++    host.denied(nonce);
++    expect(host.serve("/step", { turnId: "frame", index: 1, messageCount: 3, agentId: null })).toEqual({ admit: true, effort: "low" });
++    host.denied(nonce);
++    expect(host.serve("/step", { turnId: "frame", index: 2, messageCount: 5, agentId: null })).toEqual({ admit: true, effort: "low" });
++    expect(host.serve("/step", { turnId: "frame", index: 3, messageCount: 7, agentId: null })).toEqual({ admit: false });
++    expect(host.dispatcherSteps(nonce)).toBe(3);
++    expect(refused.map(({ turnId, index }) => `${turnId}:${index}`)).toEqual(["frame:3"]);
++  });
++
+   test("admits an agent's step once with its effort, hands its chunks to its sink in order, and refuses a step it did not admit", () => {
+     const { gate: host } = gate();
+     const recorded = recordingSink();
+diff --git a/tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts b/tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
+index 7e8a057..568c9cd 100644
+--- a/tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
++++ b/tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
+@@ -314,7 +314,7 @@ describe("the bridge query launcher", () => {
+         gate: { socketVariable: "AGENT_HOST_SOCKET", socketPath: "/scratch/gate.sock", pluginPath: "/scratch/plugin" },
+         tools: [{ name: "read", description: "Reads a file." }], wireModelId: "claude-sonnet-5-5", contextLimit: 1_000_000, thinking: { type: "adaptive" },
+         promptCaching: true, statesEffort, extraBody: { max_tokens: 32_000 }, eagerInputStreaming: true, cwd: "/work/project", sessionId: bridgeSessionId(),
+-        dispatcherPrompt: "Dispatch.", onStderrLine: () => {},
++        dispatcherPrompt: "Dispatch.", refuseDispatch: () => undefined, onStderrLine: () => {},
+       });
+       await launched.close();
+     }

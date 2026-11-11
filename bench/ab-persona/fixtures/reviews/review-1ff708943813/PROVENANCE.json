@@ -1,0 +1,28 @@
+{
+  "base": "bc0eb02e0692dd95e34a480c1208d6194caa2460",
+  "files": [
+    {
+      "anchor": "d3c45748e5ba663280c6cdd0decefdfc6d502977",
+      "path": "src/infra/owned-subprocess-backend.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "low",
+      "end": 1790694062559,
+      "findings": [],
+      "model": "gpt-6-astra",
+      "parent": "b3ff2c66e655",
+      "persona": "reviewer-code-quality",
+      "run": "1ff708943813",
+      "session": "fd5ecdbf1b57",
+      "start": 1790694002235
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

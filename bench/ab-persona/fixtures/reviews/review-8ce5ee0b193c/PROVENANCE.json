@@ -1,0 +1,77 @@
+{
+  "base": "6177a6d0c6a953b9389bc709bb9c0dca98df953b",
+  "files": [
+    {
+      "anchor": "e2a6a72e32e93bca7a4b6d399a3a0255d08a46fd",
+      "path": "docs/product-intent/interaction.md",
+      "reversedMutations": 7
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "docs/product-intent/model-access.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "src/infra/llm/provider-error-copy.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "191ad684fe3560e54cea3d255f211d2b8936f2f4",
+      "path": "src/protocol/modules/subscription-usage.ts",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/infra/llm/provider-error-copy.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "4680c02403af9a974828764560c16544e2bc6314",
+      "path": "tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "0299c0155e75e025598fe5bd4aa55aa37e0fd530",
+      "path": "webview/src/modules/subscription-usage/sheet.tsx",
+      "reversedMutations": 2
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "src/orchestration/subscription-spend-consent/admission-capture.ts",
+    "tests/unit/orchestration/subscription-spend-consent/subscription-spend-consent-service.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793072615573,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -120,17 +121,14 @@\n   const skipped = cause !== \"ineligible\" && candidates.some((candidate) => candidate.cause === \"ineligible\")\n     ? \" Other candidates could not be used for this request.\"\n     : \"\";\n-  const bankedResets = [...new Set(candidates.filter((candidate) => candidate.cause === \"quota\" && candidate.bankedReset === true).map((candidate) => candidate.provider))]\n-    .map((provider) => ` ${provider} has a banked reset. Open Usage (/usage) to apply it.`)\n-    .join(\"\");\n   return {\n     ...base,\n     message: `${base.message}${skipped}${waitBound !== undefined\n       ? ` A request after ${waitBound} can recheck provider availability.`\n-      : bound === undefined ? \"\" : ` Some candidates have a reset or recheck bound at ${bound}.`}${bankedResets}`,\n+      : bound === undefined ? \"\" : ` Some candidates have a reset or recheck bound at ${bound}.`}`,\n     guidance: exhaustedGuidance(cause, waitBound !== undefined),\n     detail: [...new Set(candidates.map((candidate) =>\n-      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${extractProviderErrorDetail(redactSecrets(candidate.detail))}`\n+      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${candidate.cause === \"quota\" && candidate.bankedReset === true ? `${BANKED_RESET_HINT} ` : \"\"}${extractProviderErrorDetail(redactSecrets(candidate.detail))}`\n     ))].join(\" \"),\n     action: SWITCH_MODELS_ACTION,\n   };",
+              "mutation": "b35ab70f-1888-41af-9fac-25fe0e39bfd1",
+              "path": "src/infra/llm/provider-error-copy.ts"
+            }
+          ],
+          "label": "the-banked-reset-sentence-separates-wait-until-then-from-the",
+          "location": "src/infra/llm/provider-error-copy.ts:128-130 (the sentence order in `message`); src/infra/llm/provider-error-copy.ts:143 (`exhaustedGuidance`); src/orchestration/agent-runtime/failure-message.ts:123 (`blockedFailureMessage` joins message and guidance into one paragraph)",
+          "severity": "P2",
+          "title": "The banked-reset sentence separates \"Wait until then\" from the time it refers to"
+        }
+      ],
+      "model": "claude-opus-5.5",
+      "parent": "d865ea362254",
+      "persona": "reviewer-code-design",
+      "run": "8ce5ee0b193c",
+      "session": "5345f6309593",
+      "start": 1793072504190
+    }
+  ],
+  "scrubbedLines": {
+    "docs/product-intent/model-access.md": 10
+  },
+  "unresolvedImports": [],
+  "variant": "restore"
+}

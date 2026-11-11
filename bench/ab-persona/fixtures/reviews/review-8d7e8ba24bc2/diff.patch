@@ -1,0 +1,555 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 53488a6..e98f1e3 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -25,7 +25,7 @@
+ - Startup responsiveness is load-bearing. Keep first-frame rendering, prompt input, and chat runner readiness free of noncritical synchronous work and contention. Defer optional initialization, maintenance, preloading, and views through owned background or lazy execution with contained failures. A change that can affect startup must pass `bun run test:perf`; a measured startup regression greater than 20% is never acceptable.
+ - Interactive clients attach through the one resident `flywheel serve` account service. It is the only production serving owner, opens isolated project compositions on demand, and owns dormant remote wake. Do not add per-project server rendezvous, serving processes, launch aliases, or a second remote coordinator.
+ - Local token counting uses the one committed universal tokenizer asset. Release and readiness rebuild it once from source, verify it, and reuse it in every archive. Each archive places it in the native directory of the immutable build, and the runtime loads it lazily from there. Ordinary development, startup, and token counting require neither Rust nor a tokenizer network request.
+-- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file.
++- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file. A derived database that rebuilds from the store, such as the session-summary index, the conversation search index, or the projection fold cache, is not durable user state: it keys what it keeps by the code identity or version that wrote it, and an entry it cannot prove current is a miss that rebuilds, with no conversion, dated comment, or warning.
+ - Flywheel supports macOS, Linux, and Windows as first-class platforms. Preserve platform-specific workarounds unless the user explicitly authorizes changing that compatibility contract. Every repository-owned Bun process launch in production code, tests, scripts, and benchmarks must state `windowsHide: true`; Windows job-object, console-hiding, ACL, path, and process-tree behavior is load-bearing. Platform compatibility tests and guards are locked acceptance contracts: when one fails after a change, fix the implementation. Never delete, skip, weaken, or rewrite the expected behavior to make it pass. If the implementation cannot satisfy the contract, stop and report a blocker.
+ 
+ ---
+diff --git a/src/orchestration/app-service/project-state-channel.ts b/src/orchestration/app-service/project-state-channel.ts
+index 2a151d7..35ac7ef 100644
+--- a/src/orchestration/app-service/project-state-channel.ts
++++ b/src/orchestration/app-service/project-state-channel.ts
+@@ -9,11 +9,12 @@ import {
+   decodeProjectStateMessage,
+   decodeProjectStateRequest,
+   encodeProjectStateResponse,
++  encodeProjectStateResponseFrame,
+   encodeProjectStateSessionChange,
+   encodeProjectStateStored,
+   type ProjectStateRequest,
+   type ProjectStateResponse,
+-  type ProjectStateServed,
++  type ProjectStateResponseFrame,
+ } from "./project-state-protocol.js"
+ 
+ /** Who a served state channel answers. An executor generation's writes are
+@@ -100,12 +101,13 @@ export function connectProjectStateChannel(
+   endpoint: InternalProcessEndpoint<unknown, unknown> & Partial<Pick<ReattachableProcessEndpoint<unknown, unknown>, "onDetach">>,
+   peer: ProjectStatePeer,
+ ): ProjectStateClient {
+-  const responses = new Set<(response: ProjectStateResponse) => void>()
++  const responses = new Set<(frame: ProjectStateResponseFrame) => boolean>()
+   const inFlight = new Set<number>()
+-  const answer = (response: ProjectStateResponse): void => {
+-    inFlight.delete(response.id)
+-    for (const listener of responses) listener(response)
++  const answer = (frame: ProjectStateResponseFrame): void => {
++    inFlight.delete(frame.id)
++    for (const listener of responses) if (!listener(frame)) endpoint.close("invalid project state response")
+   }
++  const fail = (response: ProjectStateResponse): void => answer(encodeProjectStateResponseFrame(response))
+   // A request in flight when the transport was lost has an unknown outcome:
+   // its bytes may or may not have reached the account. It fails with that
+   // truth instead of waiting forever or being replayed as a second write.
+@@ -114,7 +116,7 @@ export function connectProjectStateChannel(
+     for (const listener of detached) listener()
+     const ids = [...inFlight]
+     inFlight.clear()
+-    for (const id of ids) answer({ id, result: { kind: "failed", error: new Error(`project state channel detached before the reply arrived; the outcome is unknown: ${cause.message}`) } })
++    for (const id of ids) fail({ id, result: { kind: "failed", error: new Error(`project state channel detached before the reply arrived; the outcome is unknown: ${cause.message}`) } })
+   })
+   const stored = new Set<(events: readonly StoredFact[]) => void>()
+   const sessions = new Set<(change: SessionMetadataChange) => void>()
+@@ -130,7 +132,7 @@ export function connectProjectStateChannel(
+   endpoint.onClose((error) => lose(error.message))
+   endpoint.onMessage((value) => {
+     const message = decodeProjectStateMessage(value)
+-    if (message?.kind === "response") answer(message.response)
++    if (message?.kind === "response") answer(message.frame)
+     else if (message?.kind === "stored") for (const listener of stored) listener(message.events)
+     else if (message?.kind === "session-change") for (const listener of sessions) listener(message.change)
+     else endpoint.close("invalid project state response")
+@@ -159,7 +161,7 @@ export function connectProjectStateChannel(
+       void endpoint.send(encoded).catch((cause: unknown) => {
+         if (lost || !inFlight.has(request.id)) return
+         const error = cause instanceof Error ? cause : new Error(String(cause))
+-        answer({ id: request.id, result: { kind: "failed", error } })
++        fail({ id: request.id, result: { kind: "failed", error } })
+       })
+     },
+     onResponse(listener) {
+@@ -196,21 +198,23 @@ async function serveRequest(
+   peer: ProjectStatePeer,
+   send: (message: unknown) => void,
+ ): Promise<void> {
++  // A relayed answer is the Worker's frame, head included, which the peer
++  // reads; an answer the account makes itself has no head, because the
++  // Worker read nothing for it.
++  const refuse = (message: string): Uint8Array => encodeProjectStateResponse({ id: request.id, result: { kind: "refused", reason: "invalid", message } })
+   try {
+     const operation = request.operation
+-    // A relayed answer keeps the Worker's head; an answer the account makes
+-    // itself has none, because the Worker read nothing for it.
+-    let served: ProjectStateServed
++    let response: Uint8Array
+     switch (operation.kind) {
+       case "generation.admit":
+       case "generation.close":
+       case "generation.recover":
+-        served = { result: { kind: "refused", reason: "invalid", message: "Peer connections cannot control generation admission" } }
++        response = refuse("Peer connections cannot control generation admission")
+         break
+       case "execution.operation":
+-        served = peer.kind === "executor" && operation.projectId === peer.projectId && operation.generation === peer.generation
+-          ? await state.relay("execution", operation)
+-          : { result: { kind: "refused", reason: "invalid", message: "Peer generation does not match its channel" } }
++        response = peer.kind === "executor" && operation.projectId === peer.projectId && operation.generation === peer.generation
++          ? await state.relay("execution", operation, request.id)
++          : refuse("Peer generation does not match its channel")
+         break
+       case "position.capture":
+       case "facts.latest-position":
+@@ -225,14 +229,14 @@ async function serveRequest(
+       case "content.page":
+       case "content.node":
+       case "content.range":
+-        served = await state.relay("control", operation)
++        response = await state.relay("control", operation, request.id)
+         break
+       default:
+-        served = peer.kind === "executor"
+-          ? { result: { kind: "refused", reason: "invalid", message: "Executor writes require their generation wrapper" } }
+-          : await state.relay("control", operation)
++        response = peer.kind === "executor"
++          ? refuse("Executor writes require their generation wrapper")
++          : await state.relay("control", operation, request.id)
+     }
+-    send(encodeProjectStateResponse({ id: request.id, ...served }))
++    send(response)
+   } catch (cause) {
+     const error = cause instanceof Error ? cause : new Error(String(cause))
+     send(encodeProjectStateResponse({ id: request.id, result: { kind: "failed", error } }))
+diff --git a/src/orchestration/app-service/project-state-client.ts b/src/orchestration/app-service/project-state-client.ts
+index 43532c3..79c0a70 100644
+--- a/src/orchestration/app-service/project-state-client.ts
++++ b/src/orchestration/app-service/project-state-client.ts
+@@ -30,6 +30,7 @@ import { createProjectStateFreshness } from "./project-state-freshness.js"
+ import { recoveryOwnersOf } from "./session-recovery-gate.js"
+ import {
+   decodeProjectStateMessage,
++  decodeProjectStateResponse,
+   decodeProjectStateStartupStep,
+   validateProjectStateRequest,
+   decodeProjectStateClosed,
+@@ -38,13 +39,15 @@ import {
+   PROJECT_STATE_MAX_PAGE_ROWS,
+   operationUnits,
+   encodeProjectStateRequest,
++  encodeProjectStateResponse,
++  readdressProjectStateResponse,
+   type ProjectStateContentReference,
+   type ProjectStateContentRow,
+   type ProjectStateControlOperation,
+   type ProjectStateExecutionOperation,
+   type ProjectStateLane,
+   type ProjectStateRequest,
+-  type ProjectStateResponse,
++  type ProjectStateResponseFrame,
+   type ProjectStateResult,
+   type ProjectStateServed,
+   type ProjectStateSettlement,
+@@ -63,7 +66,10 @@ export class ProjectStateUnavailableError extends StateRequestNotServedError {
+ export interface ProjectStateClientTransport {
+   prepare?(request: ProjectStateRequest): ProjectStateRequest
+   send(request: ProjectStateRequest, encoded: Uint8Array): void
+-  onResponse(listener: (response: ProjectStateResponse) => void): void
++  /** Delivers each response with its body unread. The listener answers
++   *  false for a response it cannot read, and the transport then closes as it
++   *  does for any other invalid message. */
++  onResponse(listener: (frame: ProjectStateResponseFrame) => boolean): void
+   onClose(listener: (reason: string, cause?: Error) => void): void
+   onSessionChange(listener: (change: SessionMetadataChange) => void): () => void
+   onStored(listener: (events: readonly StoredFact[]) => void): () => void
+@@ -92,10 +98,12 @@ export interface ProjectStateClient extends AsyncEventStateReadSurface {
+   onStored(listener: (events: readonly StoredFact[]) => void): () => void
+   control(operation: ProjectStateControlOperation): Promise<ProjectStateResult>
+   execution(operation: ProjectStateExecutionOperation): Promise<ProjectStateResult>
+-  /** Sends one request on `lane` and answers what the state Worker served,
+-   *  with its head, so a channel that relays the answer to a peer relays
+-   *  the head too. Fails as `control` and `execution` do. */
+-  relay(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation): Promise<ProjectStateServed>
++  /** Sends one request on `lane` and answers the response frame for the
++   *  peer's request `id`: the state Worker's frame, head included, readdressed
++   *  with its body unread, or a frame of the answer this client gave itself,
++   *  such as a refusal for pressure. The peer reads and validates the body.
++   *  Fails as `control` and `execution` do. */
++  relay(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation, id: number): Promise<Uint8Array>
+   close(): Promise<void>
+ }
+ 
+@@ -105,6 +113,8 @@ interface PendingRequest {
+   readonly units: number
+   readonly capture: boolean
+   readonly resolve: (served: ProjectStateServed) => void
++  /** Set for a relay, which takes the state Worker's frame unread. */
++  readonly relay: ((frame: ProjectStateResponseFrame) => void) | undefined
+   readonly reject: (error: ProjectStateUnavailableError) => void
+ }
+ 
+@@ -213,24 +223,39 @@ export function createProjectStateClient(
+     return result.affected
+   }
+ 
+-  transport.onResponse((response) => {
+-    const pendingRequest = pending.get(response.id)
+-    if (!pendingRequest) return
+-    pending.delete(response.id)
++  transport.onResponse((frame) => {
++    const pendingRequest = pending.get(frame.id)
++    if (!pendingRequest) return true
++    if (pendingRequest.relay) {
++      settle(frame.id, pendingRequest, undefined)
++      pendingRequest.relay(frame)
++    } else {
++      const response = decodeProjectStateResponse(frame.bytes)
++      if (!response) return false
++      settle(frame.id, pendingRequest, response)
++      pendingRequest.resolve(response)
++    }
++    if (pending.size === 0) idle?.()
++    return true
++  })
++
++  /** Releases an answered request's admission. A relayed answer is unread,
++   *  so it gives the window no head, as an answer without one does. */
++  function settle(id: number, pendingRequest: PendingRequest, served: ProjectStateServed | undefined): void {
++    pending.delete(id)
+     totals[pendingRequest.lane].items -= pendingRequest.units
+     totals[pendingRequest.lane].bytes -= pendingRequest.bytes
+     // Before the requester resumes, so a read it starts next sees the window
+     // anchored at the head.
+     if (commitWindow && freshness) {
+-      const { head, result } = response
++      const head = served?.head
++      const result = served?.result
+       if (head !== undefined) commitWindow.observe(head)
+-      if (pendingRequest.capture && result.kind === "position") commitWindow.observe(result.position)
+-      const capture = !pendingRequest.capture ? undefined : result.kind === "position" ? result.position : stateReadError(result)
+-      freshness.answered(response.id, head, capture)
++      if (pendingRequest.capture && result?.kind === "position") commitWindow.observe(result.position)
++      const capture = !pendingRequest.capture || !result ? undefined : result.kind === "position" ? result.position : stateReadError(result)
++      freshness.answered(id, head, capture)
+     }
+-    pendingRequest.resolve(response)
+-    if (pending.size === 0) idle?.()
+-  })
++  }
+   transport.onClose((reason, cause) => {
+     available = false
+     // A closed transport never comes back, so the window answers nothing more.
+@@ -246,14 +271,16 @@ export function createProjectStateClient(
+     return dispatch(lane, operation, (served) => served.result)
+   }
+ 
+-  function exchange(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation): Promise<ProjectStateServed> {
+-    // A relay sends the head under its own request id, so the answer drops this one.
+-    return dispatch(lane, operation, ({ result, head }) => head === undefined ? { result } : { result, head })
+-  }
+-
+   /** Sends one request and answers `answer` of what was served, in the one
+-   *  promise the caller holds. */
+-  function dispatch<T>(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation, answer: (served: ProjectStateServed) => T): Promise<T> {
++   *  promise the caller holds. With `unread`, the state Worker's response
++   *  reaches it unread instead; answers this client gives itself still go
++   *  through `answer`. */
++  function dispatch<T>(
++    lane: ProjectStateLane,
++    operation: ProjectStateControlOperation | ProjectStateExecutionOperation,
++    answer: (served: ProjectStateServed) => T,
++    unread?: (frame: ProjectStateResponseFrame) => T,
++  ): Promise<T> {
+     if (!available) return Promise.reject(new ProjectStateUnavailableError("worker closed"))
+     const outbound = transport.prepare?.({ id: nextId, lane, operation }) ?? { id: nextId, lane, operation }
+     try {
+@@ -279,6 +306,7 @@ export function createProjectStateClient(
+       pending.set(id, {
+         ...admission, lane: outbound.lane, capture: operation === CAPTURE,
+         resolve: (served) => { end(); holdAppendedContent(operation, served.result); resolve(answer(served)) },
++        relay: unread && ((frame) => { end(); resolve(unread(frame)) }),
+         reject: (error) => { end(); reject(error) },
+       })
+       total.items += admission.units
+@@ -427,7 +455,9 @@ export function createProjectStateClient(
+     },
+     control: (operation) => request("control", operation),
+     execution: (operation) => request("execution", operation),
+-    relay: exchange,
++    relay: (lane, operation, id) => dispatch(lane, operation,
++      (served) => encodeProjectStateResponse({ id, ...served }),
++      (frame) => readdressProjectStateResponse(frame, id)),
+     capturePosition,
+     async latestPosition(type) {
+       const result = await request("control", { kind: "facts.latest-position", type })
+@@ -590,7 +620,7 @@ export function spawnProjectStateWorker(directories: ProjectDirectories, executi
+     active = true
+     const control = new MessageChannel()
+     const execution = new MessageChannel()
+-    const listeners = new Set<(response: ProjectStateResponse) => void>()
++    const listeners = new Set<(frame: ProjectStateResponseFrame) => boolean>()
+     const closeListeners = new Set<(reason: string, cause?: Error) => void>()
+     const sessionListeners = new Set<(change: SessionMetadataChange) => void>()
+     const storedListeners = new Set<(events: readonly StoredFact[]) => void>()
+@@ -604,8 +634,9 @@ export function spawnProjectStateWorker(directories: ProjectDirectories, executi
+         return
+       }
+       const message = decodeProjectStateMessage(event.data)
+-      if (message?.kind === "response") for (const listener of listeners) listener(message.response)
+-      else if (message?.kind === "stored") for (const listener of storedListeners) listener(message.events)
++      if (message?.kind === "response") {
++        for (const listener of listeners) if (!listener(message.frame)) notifyClose("invalid worker response")
++      } else if (message?.kind === "stored") for (const listener of storedListeners) listener(message.events)
+       else if (message?.kind === "session-change") for (const listener of sessionListeners) listener(message.change)
+       else notifyClose("invalid worker response")
+     }
+diff --git a/src/orchestration/app-service/project-state-protocol.ts b/src/orchestration/app-service/project-state-protocol.ts
+index c4f6127..1af7e72 100644
+--- a/src/orchestration/app-service/project-state-protocol.ts
++++ b/src/orchestration/app-service/project-state-protocol.ts
+@@ -1,4 +1,4 @@
+-import { pack, unpack } from "msgpackr"
++import { pack, unpack, unpackMultiple } from "msgpackr"
+ import { isStartupStep, type StartupReached } from "../../protocol/startup-steps.js"
+ import { Schema } from "effect"
+ import {
+@@ -293,9 +293,45 @@ function checkRequestRoute(request: ProjectStateRequest, lane: ProjectStateLane
+   }
+ }
+ 
++/** A response whose request id was read and whose body was not. The frame
++ *  is two MessagePack values: the request id, then the body `{ head?, result }`
++ *  from `bodyOffset` on. A relay readdresses the frame to its peer's request
++ *  without reading the body, so only the peer that consumes it decodes it. */
++export interface ProjectStateResponseFrame {
++  readonly id: number
++  readonly bytes: Uint8Array
++  readonly bodyOffset: number
++}
++
++/** Reads only the request id of a response frame, or undefined for bytes
++ *  that do not start with a request id and continue with a body. */
++export function readProjectStateResponseFrame(bytes: Uint8Array): ProjectStateResponseFrame | undefined {
++  let id: unknown
++  let bodyOffset: number | undefined
++  try {
++    unpackMultiple(bytes, (value, _start, end) => {
++      id = value
++      bodyOffset = end
++      return false
++    })
++  } catch {
++    return undefined
++  }
++  return typeof id === "number" && Number.isSafeInteger(id) && id > 0 && bodyOffset !== undefined && bodyOffset < bytes.byteLength
++    ? { id, bytes, bodyOffset }
++    : undefined
++}
++
++/** Reads and validates a whole response from its frame bytes, or from the
++ *  envelope object `{ id, head?, result }` that a frame carries. */
+ export function decodeProjectStateResponse(value: unknown): ProjectStateResponse | undefined {
+   try {
+-    const { id, head, result } = Schema.decodeUnknownSync(ResponseSchema, { onExcessProperty: "error" })(value instanceof Uint8Array ? unpack(value) : value)
++    let envelope = value
++    if (value instanceof Uint8Array) {
++      const frame = readProjectStateResponseFrame(value)
++      envelope = frame && { ...unpack(value.subarray(frame.bodyOffset)), id: frame.id }
++    }
++    const { id, head, result } = Schema.decodeUnknownSync(ResponseSchema, { onExcessProperty: "error" })(envelope)
+     return { id, result: decodedResult(result), ...(head === undefined ? {} : { head }) }
+   } catch {
+     return undefined
+@@ -337,18 +373,19 @@ function decodeProjectStateSessionChange(value: unknown): ProjectStateSessionCha
+ }
+ 
+ type ProjectStateMessage =
+-  | { readonly kind: "response"; readonly response: ProjectStateResponse }
++  | { readonly kind: "response"; readonly frame: ProjectStateResponseFrame }
+   | { readonly kind: "stored"; readonly events: readonly StoredFact[] }
+   | { readonly kind: "session-change"; readonly change: SessionMetadataChange }
+ 
+ /** One message a state client receives, or undefined for a message of no
+  *  kind it knows. A response is always the bytes `encodeProjectStateResponse`
+  *  made and a broadcast is always a tagged object, so each message meets only
+- *  the decoder of its own kind. */
++ *  the decoder of its own kind. A response arrives with its body unread: the
++ *  client reads the body of a request it consumes and relays the rest. */
+ export function decodeProjectStateMessage(value: unknown): ProjectStateMessage | undefined {
+   if (value instanceof Uint8Array) {
+-    const response = decodeProjectStateResponse(value)
+-    return response && { kind: "response", response }
++    const frame = readProjectStateResponseFrame(value)
++    return frame && { kind: "response", frame }
+   }
+   if (typeof value !== "object" || value === null || !("flywheel" in value)) return undefined
+   if (value.flywheel === "state.stored") {
+@@ -364,7 +401,26 @@ export function decodeProjectStateMessage(value: unknown): ProjectStateMessage |
+ 
+ /** Converts class-based errors to validated data in an owned, exact-size transferable buffer. */
+ export function encodeProjectStateResponse(response: ProjectStateResponse): Uint8Array {
+-  return new Uint8Array(pack(projectStateResponseData(response)))
++  return encodeProjectStateResponseFrame(response).bytes
++}
++
++export function encodeProjectStateResponseFrame(response: ProjectStateResponse): ProjectStateResponseFrame {
++  const { id, ...body } = projectStateResponseData(response)
++  return addressedFrame(id, pack(body))
++}
++
++/** The same response addressed to request `id`, in an owned, exact-size
++ *  transferable buffer. The body is copied, not read. */
++export function readdressProjectStateResponse(frame: ProjectStateResponseFrame, id: number): Uint8Array {
++  return addressedFrame(id, frame.bytes.subarray(frame.bodyOffset)).bytes
++}
++
++function addressedFrame(id: number, body: Uint8Array): ProjectStateResponseFrame {
++  const address = pack(id)
++  const bytes = new Uint8Array(address.byteLength + body.byteLength)
++  bytes.set(address)
++  bytes.set(body, address.byteLength)
++  return { id, bytes, bodyOffset: address.byteLength }
+ }
+ 
+ /** Typed code built the response, and the receiver decodes it, so encoding
+diff --git a/tests/unit/infra/event-loop-lag.test.ts b/tests/unit/infra/event-loop-lag.test.ts
+index 1c3d5ef..34fcc56 100644
+--- a/tests/unit/infra/event-loop-lag.test.ts
++++ b/tests/unit/infra/event-loop-lag.test.ts
+@@ -5,7 +5,7 @@ import { createEventProjection } from "../../../src/infra/event-projection"
+ import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types"
+ import { inMemoryEventReader } from "../../helpers/in-memory-event-reader"
+ import { createProjectStateClient } from "../../../src/orchestration/app-service/project-state-client"
+-import type { ProjectStateResponse } from "../../../src/orchestration/app-service/project-state-protocol"
++import { encodeProjectStateResponseFrame, type ProjectStateResponseFrame } from "../../../src/orchestration/app-service/project-state-protocol"
+ 
+ describe("loop probes", () => {
+   test("late samples name the units that ran across the gap, summed per unit, and coalesce repeats", async () => {
+@@ -60,7 +60,7 @@ describe("loop probes", () => {
+       const repeatWindow = callbacks.shift()!
+       expect(repeatWindow.delay).toBe(60_000)
+       now = 260
+-      let respond: ((response: ProjectStateResponse) => void) | undefined
++      let respond: ((frame: ProjectStateResponseFrame) => boolean) | undefined
+       const state = createProjectStateClient({
+         send() {},
+         onResponse(listener) { respond = listener },
+@@ -79,7 +79,7 @@ describe("loop probes", () => {
+         reduce: (value) => { now = 450; return value },
+       })
+       await projection.replay()
+-      respond!({ id: 1, result: { kind: "position", position: 1 } })
++      respond!(encodeProjectStateResponseFrame({ id: 1, result: { kind: "position", position: 1 } }))
+       await position
+       await state.close()
+       now = 460
+diff --git a/tests/unit/orchestration/app-service/project-state-channel.test.ts b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+index 8df9aa9..4ec8933 100644
+--- a/tests/unit/orchestration/app-service/project-state-channel.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+@@ -8,12 +8,12 @@ import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "
+ import { createReattachableProcessEndpoint } from "../../../../src/infra/reattachable-process-endpoint.js"
+ import { asAsyncEventWriter, CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused, type AsyncGuardedEventWriter, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+ import { connectProjectStateChannel, serveProjectStateChannel } from "../../../../src/orchestration/app-service/project-state-channel.js"
+-import type { ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
++import { createProjectStateClient, type ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
+ import { createProjectStateSessionManager } from "../../../../src/orchestration/app-service/project-state-sessions.js"
+-import type { ProjectStateControlOperation, ProjectStateExecutionOperation, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import type { ProjectStateControlOperation, ProjectStateExecutionOperation, ProjectStateRequest, ProjectStateResponseFrame, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
+ import { pack } from "msgpackr"
+-import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, decodeProjectStateResponse, decodeProjectStateRequest } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, encodeProjectStateResponseFrame, decodeProjectStateResponse, decodeProjectStateRequest, readProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import { ParentPublicationContendedError } from "../../../../src/orchestration/session/manager.js"
+ import { WorkflowParentRefusal } from "../../../../src/orchestration/session/child-session-publication.js"
+ import { buildSessionContent, buildSessionContentManifest, readSessionContentRecords } from "../../../../src/infra/session-content.js"
+@@ -147,11 +147,10 @@ function stateHarness() {
+     },
+     control,
+     execution,
+-    // The account's own state client answers what the Worker served, with its head.
++    // The account's own state client answers the frame the Worker served, with its head.
+     // Every execution operation names its project and no control operation does.
+-    relay: async (_lane, operation) => ({
+-      result: "projectId" in operation ? await execution(operation) : await control(operation),
+-      head: 1,
++    relay: async (_lane, operation, id) => encodeProjectStateResponse({
++      id, result: "projectId" in operation ? await execution(operation) : await control(operation), head: 1,
+     }),
+     capturePosition: async () => 0,
+     latestPosition: async () => 0,
+@@ -423,6 +422,70 @@ describe("project state channel", () => {
+     executorEndpoint.close()
+   })
+ 
++  test("relays the Worker's response unread: its body byte for byte under the executor's request id, read only by the executor", async () => {
++    const [ownerEndpoint, executorEndpoint] = endpointPair()
++    const workerRequests: ProjectStateRequest[] = []
++    let workerAnswers: ((frame: ProjectStateResponseFrame) => boolean) | undefined
++    let loseWorker: ((reason: string) => void) | undefined
++    let requested = Promise.withResolvers<void>()
++    const account = createProjectStateClient({
++      send(request) { workerRequests.push(request); requested.resolve() },
++      onResponse(listener) { workerAnswers = listener },
++      onClose(listener) { loseWorker = listener },
++      onSessionChange() { return () => {} },
++      onStored() { return () => {} },
++      close() {},
++    })
++    const dispose = serveProjectStateChannel(account, ownerEndpoint, { kind: "executor", projectId: "p", generation: 1 })
++    const received: Uint8Array[] = []
++    let arrived = Promise.withResolvers<void>()
++    executorEndpoint.onMessage((value) => {
++      if (!(value instanceof Uint8Array)) return
++      received.push(value)
++      arrived.resolve()
++    })
++    /** Sends the executor's request `id` and answers the Worker request it causes with `body`. */
++    async function relayed(id: number, workerFrame: (workerId: number) => Uint8Array): Promise<Uint8Array> {
++      requested = Promise.withResolvers()
++      arrived = Promise.withResolvers()
++      await executorEndpoint.send(encodeProjectStateRequest({ id, lane: "control", operation: { kind: "facts.page", query: { aggregateId: "a" }, maxRows: 1, maxBytes: 1024 } }))
++      await requested.promise
++      // The account read nothing of the body, so it never refuses the frame.
++      expect(workerAnswers?.(readProjectStateResponseFrame(workerFrame(workerRequests.at(-1)!.id))!)).toBe(true)
++      await arrived.promise
++      return received.at(-1)!
++    }
++
++    const result = { kind: "facts", facts: [stateHarness().storedFact], contentRows: [], upperPosition: 5, continuationPosition: null, encodedBytes: 1 } as const
++    let served: ProjectStateResponseFrame | undefined
++    const page = await relayed(7, (workerId) => (served = encodeProjectStateResponseFrame({ id: workerId, head: 5, result })).bytes)
++    const frame = readProjectStateResponseFrame(page)
++    expect(frame?.id).toBe(7)
++    expect(page.subarray(frame?.bodyOffset)).toEqual(served!.bytes.subarray(served!.bodyOffset))
++    expect(decodeProjectStateResponse(page)).toEqual({ id: 7, head: 5, result })
++
++    // A body no reader accepts still reaches the executor, whose decode is the
++    // boundary that refuses it; a body the account consumes itself is read there.
++    const unreadable = (workerId: number) => new Uint8Array(Buffer.concat([pack(workerId), pack({ result: { kind: "unknown" } })]))
++    const invalid = await relayed(8, unreadable)
++    expect(readProjectStateResponseFrame(invalid)?.id).toBe(8)
++    expect(decodeProjectStateResponse(invalid)).toBeUndefined()
++    const own = account.countByAggregate("a")
++    expect(workerAnswers?.(readProjectStateResponseFrame(unreadable(workerRequests.at(-1)!.id))!)).toBe(false)
++
++    // A Worker that goes away fails the relayed request in its own words.
++    arrived = Promise.withResolvers()
++    requested = Promise.withResolvers()
++    await executorEndpoint.send(encodeProjectStateRequest({ id: 9, lane: "control", operation: { kind: "position.capture" } }))
++    await requested.promise
++    loseWorker?.("worker closed")
++    await expect(own).rejects.toMatchObject({ name: "ProjectStateUnavailableError" })
++    await arrived.promise
++    expect(decodeProjectStateResponse(received.at(-1))).toMatchObject({ id: 9, result: { kind: "failed", error: { message: "project state is unavailable: worker closed" } } })
++    await dispose()
++    executorEndpoint.close()
++  })
++
+   test("invalid request closes the channel without invoking account state", async () => {
+     const [ownerEndpoint, executorEndpoint] = endpointPair()
+     const account = stateHarness()

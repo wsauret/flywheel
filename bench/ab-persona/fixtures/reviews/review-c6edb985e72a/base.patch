@@ -1,0 +1,651 @@
+diff --git a/src/orchestration/agent-runtime/runtime-event-mapper.ts b/src/orchestration/agent-runtime/runtime-event-mapper.ts
+index b77f52b..190c031 100644
+--- a/src/orchestration/agent-runtime/runtime-event-mapper.ts
++++ b/src/orchestration/agent-runtime/runtime-event-mapper.ts
+@@ -2,9 +2,6 @@ import type { RuntimeEvent } from "../../infra/runtime-event-types.js";
+ import { extractToolResultRecords } from "../../infra/runtime-tool-records.js";
+ import type { AgentStreamEvent } from "./types.js";
+ 
+-/** The stream events that observers read from one runtime event. Most runtime
+- *  events, such as every streamed delta, map to none, so an observer chain
+- *  does no work for them. */
+ export function mapRuntimeEventToAgentStreamEvents(event: RuntimeEvent): AgentStreamEvent[] {
+   const toolResults = extractToolResultRecords(event);
+   if (toolResults.length > 0) {
+@@ -24,12 +21,15 @@ export function mapRuntimeEventToAgentStreamEvents(event: RuntimeEvent): AgentSt
+     // empty signature and false-positive the repetition guard on any run
+     // of same-tool calls with different arguments.
+     const content = event.data.message?.content;
+-    return Array.isArray(content) && content.some((block) => block.type === "text") ? [{ type: "text" }] : [];
++    if (Array.isArray(content) && content.some((block) => block.type === "text")) {
++      return [{ type: "text" }];
++    }
++    return [{ type: "other" }];
+   }
+ 
+   if (event.type === "model.turn.completed") {
+     return [{ type: "result" }];
+   }
+ 
+-  return [];
++  return [{ type: "other" }];
+ }
+diff --git a/src/orchestration/agent-runtime/types.ts b/src/orchestration/agent-runtime/types.ts
+index 742bae6..cde177b 100644
+--- a/src/orchestration/agent-runtime/types.ts
++++ b/src/orchestration/agent-runtime/types.ts
+@@ -23,7 +23,6 @@ import type { SessionFactWriter } from "../session/session-fact-writer.js";
+ import type { DurableOwner } from "../../infra/durable-owner.js";
+ import type { NotificationEpisodeInput } from "../../infra/notification-episode.js";
+ import type { ConversationMessage } from "./llm/types.js";
+-import type { AgentRunTally } from "./agent-loop-state.js";
+ import type { CommittedTree, ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js";
+ import type { CaptureProviderConnection } from "./factory.js";
+ import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
+@@ -34,6 +33,7 @@ import type { ChildSlotRegistry } from "./child-slot-registry.js";
+ import type { StartModelWorkflow } from "./tools/workflow-tool.js";
+ import type { CapabilityAccess, ToolProfile } from "./tools/types.js";
+ import type { ModuleRuntimes } from "../../infra/module-runtime.js";
++import type { ConversationCache } from "../../infra/llm/conversation-cache.js";
+ import type { ToolOutcome } from "../../infra/tool-outcome.js";
+ import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal, FinalizedCheckpointSwap, RestoredAgentWait } from "./agent-loop-types.js";
+ import type { RecallPort } from "../../protocol/conversation-recall.js";
+@@ -46,6 +46,7 @@ import type { SkillRegistryRevision } from "../../workflows/skill-schema.js";
+ import type { ForegroundBashHoldController } from "./foreground-bash-hold.js";
+ import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js";
+ import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
++import type { ModelInteractionProfile } from "./model-interaction-profile.js";
+ import type { GitAiAttributionService } from "./git-ai-attribution-service.js";
+ import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
+ import type { ChildSessionAuthority } from "../module-seams.js";
+@@ -71,19 +72,10 @@ export type AgentPurpose =
+     }
+   | { readonly kind: "workflow-follow-up" }
+   | { readonly kind: "workflow-learning-review"; readonly review: LearningReviewRun }
+-  | {
+-      readonly kind: "subagent";
+-      readonly renderAs: PromptKind;
+-      readonly parentToolUseId: string;
+-      /** Approved parent intent that the subagent's publication recorded. */
+-      readonly inheritedIntent?: string;
+-    }
++  | { readonly kind: "subagent"; readonly renderAs: PromptKind; readonly parentToolUseId: string }
+   | { readonly kind: "headless-task"; readonly prompt: HeadlessPrompt }
+   | { readonly kind: "learning-review-audit"; readonly prompt: HeadlessPrompt }
+   | { readonly kind: "session-title" }
+-  /** A one-shot call that replays a chat's conversation and answers beside it with the chat's prompting. */
+-  | { readonly kind: "chat-side-call" }
+-  | { readonly kind: "subagent-failure-summary"; readonly prompt: HeadlessPrompt }
+   | { readonly kind: "chat-routing-benchmark" }
+   | { readonly kind: "persona-benchmark" };
+ 
+@@ -130,6 +122,15 @@ export type AgentConversation =
+           };
+         }
+     )
++  | {
++      readonly kind: "cached";
++      readonly cache: ConversationCache<ConversationMessage>;
++      readonly providerSessionKey: string;
++      readonly priorMessages?: ReadonlyArray<ConversationMessage>;
++      readonly sessionId?: string;
++      /** Inherited session barrier for runtime facts emitted by this ephemeral child. */
++      readonly awaitDurableFacts?: () => Promise<void>;
++    }
+   | { readonly kind: "ephemeral"; readonly append: (message: ConversationMessage) => void | Promise<void> }
+   | { readonly kind: "stateless" };
+ 
+@@ -164,8 +165,6 @@ export interface AgentLifecycleCallbacks {
+   readonly maintenance?: AgentLoopMaintenance;
+   readonly onCompactionContinuation?: () => void | Promise<void>;
+   readonly onTurnEnded?: (ctx: TurnEndedContext) => void | Promise<void>;
+-  /** After each settled tool batch; a runtime notice enqueued here reaches the next request with the batch's results. */
+-  readonly onToolBatchSettled?: () => void | Promise<void>;
+   readonly onTurnParked?: (ctx: TurnParkedContext) => void | Promise<void>;
+   readonly onTurnResumed?: () => void;
+   /** Brackets an account login wait after its failed request has settled. Stop ends the wait. */
+@@ -231,6 +230,8 @@ export interface AgentToolInput {
+ 
+ interface AgentBaseOptions {
+   model?: string;
++  /** Explicit serving profile captured by a strict host boundary. It does not follow live role or config changes. */
++  interactionProfile?: ModelInteractionProfile;
+   /** Model context for the current logical turn. Sent to providers but never appended to conversation history. */
+   requestContext?: string;
+   /** Fixed effort for a call without live roles, or an accessor for a fixed
+@@ -239,8 +240,6 @@ interface AgentBaseOptions {
+   /** Live role for request admission. Absent for intentionally fixed model calls. */
+   requestSelection?: (roles: Awaited<ReturnType<RoleResolver>>) => { roleId?: string; model?: string; effort?: string; providerOptions?: ProviderRequestOptions } | Promise<{ roleId?: string; model?: string; effort?: string; providerOptions?: ProviderRequestOptions }>;
+   providerOptions?: ProviderRequestOptions;
+-  /** The recorded brief of an unattended agent, which every reset opening restates. */
+-  standingBrief?: () => Promise<string | undefined>;
+   /** Token cap for proactive compaction before ratio-based context pressure.
+    *  An accessor read per compaction check so live settings edits apply. */
+   proactiveCompactionThreshold?: () => number;
+@@ -258,13 +257,6 @@ interface AgentBaseOptions {
+    *  the request advertises: a persona child sees the tools of an agent of a workflow and shares
+    *  their prompt cache, and a call outside its grant is refused. */
+   toolGrant?: ReadonlyArray<string>;
+-  /** Ambient tools that `toolGrant` would leave callable and this agent may
+-   *  not call: the deepest subagent's `process`. They stay advertised. */
+-  withheldTools?: ReadonlyArray<string>;
+-  /** The root session of the chat tree whose agent host serves this runner,
+-   *  for a runner whose own session identity does not name it: a side call
+-   *  of a chat or a workflow, such as a title or a learning review. */
+-  treeRootSessionId?: string;
+   /** Overrides ordinary tool selection, including ambient and nested authority. */
+   toolProfile?: ToolProfile;
+   /** Directory this runner's tools execute in. */
+@@ -275,7 +267,7 @@ interface AgentBaseOptions {
+    *  the project still reads and writes exactly this project. Every caller
+    *  states it, so nothing downstream derives a project root again. */
+   projectRoot: string;
+-  /** Startup-selected account data root (ARCH-DIRECTORIES-001): the account-global skill
++  /** Startup-selected account data root (ADR-013): the account-global skill
+    *  store, agent registry, and provider state this runner reads. */
+   userDataRoot: string;
+   /** Account home `userDataRoot` was derived from, for the few account paths
+@@ -301,27 +293,18 @@ interface AgentBaseOptions {
+     readonly acquireAuthority: (profileId: string) => Promise<UsageSettlementAuthorityLease>
+   };
+   maxLLMCalls?: number;
+-  /** The model calls that the earlier runs of this turn started, which count
+-   *  against `maxLLMCalls`: a run that recovery starts again keeps the budget
+-   *  that the failed run used (ARCH-RUNTIME-003). */
+-  priorLLMCalls?: number;
+-  /** The run's counts, owned by the turn that hosts the run, which reads them
+-   *  also when the run rejects. A run with no host keeps its own. */
+-  tally?: AgentRunTally;
+   agentRegistry?: ReadonlyMap<string, AgentDefinition>;
+   /** Skill revision this runner's deterministic required-skill composition
+    *  reads. A workflow passes the revision its host bound; chat and one-off
+    *  dispatches leave it absent and the current revision is captured. The
+    *  model-callable `skill` tool is unaffected: it always reads live. */
+   skills?: SkillRegistryRevision;
+-  /** Fixed project instructions that never reload. Absent means the runner
+-   *  loads the chain for its own directory at its start and at each person
+-   *  message, which is how every subagent gets its chain. */
+   agentsMd?: string;
+-  /** Frozen memory snapshot override. The workflow host captures one snapshot
+-   *  per workflow and passes the same bytes to every agent of the workflow
+-   *  and to its review. Absent means the runner captures memory at its start
+-   *  and at each person message; null means no snapshot on purpose. */
++  /** Frozen memory snapshot override. The session host captures the snapshot
++   *  once and passes the same bytes to every runner it builds (including the
++   *  review fork, whose replayed prompt must be byte-identical to the
++   *  parent's). Absent means the runner captures its own at first assembly;
++   *  null means no snapshot on purpose. */
+   memorySnapshot?: string | null;
+   resolveRoles?: RoleResolver;
+   /** When false, the prompt omits the engineering doctrine (writing, elegance,
+@@ -350,7 +333,7 @@ interface AgentBaseOptions {
+   usageObserver?: (entry: UsageEntry) => void;
+   /** Applies directly persisted nested tool facts to the owning session projection. */
+   applyNestedStoredFact?: (event: StoredFact) => void | Promise<void>;
+-  /** Capability boundary of this run (ARCH-RUNTIME-068): what its tool calls may do and
++  /** Capability boundary of this run (ADR-012): what its tool calls may do and
+    *  the grant of the operation that admitted it. The host that owns a
+    *  capability policy wires it; a realm that owns none wires nothing. */
+   capabilityAccess?: CapabilityAccess;
+@@ -373,9 +356,6 @@ interface AgentBaseOptions {
+   /** Captures the owning session's current model-serving revision before each
+    *  provider request. Children inherit the same authority from their runner. */
+   captureModelRuntime?: import("./factory.js").CaptureModelRuntime;
+-  /** The provider runtime of the session that this run serves, which outlives the run (`ProviderSession`). Absent:
+-   *  the run owns its own, which ends with the run. */
+-  providerSession?: import("./provider-runtime-cache.js").ProviderSession;
+   /** Render-event sink for background tools. `onEvent` bridges are gated on
+    *  turn liveness and drop events once their turn dies; background work
+    *  outlives turns, so its dispatch, stream, and terminal events route
+@@ -444,9 +424,7 @@ export type AgentFailureReason =
+   | { kind: "local_persistence_error"; error: import("../../infra/event-store-types.js").PersistenceWriteRefused }
+   | { kind: "context_overflow" }
+   | { kind: "output_overflow" }
+-  /** `candidatesExhausted` marks a request that no access provider candidate could serve, which an optional side
+-   *  call, such as a failure summary, answers with its fallback. Every other api_error is a fault of the request. */
+-  | { kind: "api_error"; message: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; candidatesExhausted?: true }
++  | { kind: "api_error"; message: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery }
+   | { kind: "model_unavailable"; message: string; missing: ModelUnavailableMissing }
+   | { kind: "transient_disconnect"; message: string }
+   | { kind: "stream_stalled"; message: string; attribution: StallAttribution }
+@@ -472,4 +450,5 @@ export type AgentStreamEvent =
+   | { type: "tool_use"; toolUseId: string; toolName: string; toolInput: AgentToolInput }
+   | { type: "tool_result"; toolUseId: string; outcome: ToolOutcome }
+   | { type: "text" }
+-  | { type: "result" };
++  | { type: "result" }
++  | { type: "other" };
+diff --git a/src/orchestration/workflow-host/agent-callback.ts b/src/orchestration/workflow-host/agent-callback.ts
+index 5fd4bfa..d4fe4af 100644
+--- a/src/orchestration/workflow-host/agent-callback.ts
++++ b/src/orchestration/workflow-host/agent-callback.ts
+@@ -10,6 +10,7 @@ import type { ModuleRuntimes } from "../../infra/module-runtime.js"
+ import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
+ import { resolveSessionDir } from "../../infra/paths.js"
+ import type { AttemptRow } from "../../workflows/view/types.js"
++import type { CompiledOutput } from "../../workflows/output-contract/compile.js"
+ import type { SkillRegistryRevision } from "../../workflows/skill-schema.js"
+ import type { AgentDefinition } from "../../infra/agent-definition.js"
+ import type { ResolvedAgent } from "../../workflows/agent-resolution.js"
+@@ -25,20 +26,19 @@ import { resolveWorkflowAgentRole } from "../config/role-selection.js"
+ import type { RoleResolver } from "../config/roles.js"
+ import { createReconnectNoticeConnectionStateHandler } from "../agent-runtime/agent-resilience.js"
+ import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
+-import { capacityWaitAuthority } from "../session/capacity-wait.js"
+ import { workerOutcome } from "./worker-outcome.js"
+ import { HandoffCorrectionExhausted } from "../agent-runtime/errors.js"
+ import { HandoffInvalidError } from "../../workflows/context-bundle/handoff-errors.js"
+-import { workflowAgentSubagents } from "../../workflows/agents/subagent-reachability.js"
+ import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
+ import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
+ import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor, type BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+ import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
+ import type { FirstPartyModuleComposition } from "../modules.js"
+ import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
+-import type { Agent, AgentFactory, AgentOptions, CreateChildConversation } from "../agent-runtime/types.js"
++import type { Agent, AgentFactory, AgentOptions, AgentStreamEvent, CreateChildConversation } from "../agent-runtime/types.js"
+ import type { CaptureProviderConnection, LLMClientFactory } from "../agent-runtime/factory.js"
+ import { handoffToolSchemaFromOutput } from "./handoff-tool-schema.js"
++import type { OutputConsumerCheck } from "../workflow-session-runtime.js"
+ import { createRunnerBusBridge } from "../runner/bus-bridge.js"
+ import { createWorkflowLoopObservers } from "./loop-observers.js"
+ import { AssistantPrefillSessionContextError } from "../session/conversation/conversation-tree-context.js"
+@@ -53,7 +53,9 @@ import { historicalWorkerTaskRootId } from "./historical-worker-task.js"
+ import { awaitPlannedChildResumes } from "../session/planned-session-continuation.js"
+ import { createWorkflowTurnInterruptions, type WorkflowTurnInterruptions } from "./turn-interruptions.js"
+ import type { RuntimeEvent } from "../../infra/runtime-event-types.js"
+-import { briefEntryId, recordedEntryText } from "../session/conversation/brief-entry.js"
++import { mapRuntimeEventToAgentStreamEvents } from "../agent-runtime/runtime-event-mapper.js"
++import type { StreamObserverTurnContext } from "../agent-runtime/stream-observers.js"
++import { briefEntryId } from "../session/conversation/brief-entry.js"
+ import { createToolUseCounter } from "../../infra/runtime-tool-records.js"
+ import { conversationToolUseIds } from "./started-agent-states.js"
+ import { acquireChildExecutionResources, type ChildExecutionResources } from "../session/child-execution-resources.js"
+@@ -87,13 +89,16 @@ export interface WorkerCallbackDeps {
+   accountHome: string
+   /** Directory where this workflow's workers and their tools execute. */
+   executionCwd: string
++  /** Host-owned workflow scratch root used by external artifact validation. */
++  workflowScratchDir: string
+   /** The workflow's one consumer of accepted messages: each agent opens its
+    *  own input, adopts the held messages at its start, and releases the
+    *  rest when it ends. */
+   agentInputs: WorkflowAgentInputs
+   attachChildProjection?: AttachChildSessionProjection
+-  /** Builds the batch observers of one agent, whose notices reach only that agent. */
+-  createObserverChain?: () => AgentObserverChain
++  /** Builds the stream observers of one agent, which read only that agent's
++   *  events and nudge only that agent through `enqueue`. */
++  createObserverChain?: (enqueue: (message: string) => void) => AgentObserverChain
+   sessionEventWriter: SessionFactWriter
+   /** Workflow session barrier shared by every production worker and nested child. */
+   applyNestedStoredFact?: AgentOptions["applyNestedStoredFact"]
+@@ -102,6 +107,9 @@ export interface WorkerCallbackDeps {
+   /** Admitted agents keyed by definition id. Each owns its output contract,
+    *  the personas its worker may dispatch, and the persona it runs as. */
+   resolvedAgents: ReadonlyMap<string, ResolvedAgent>
++  /** The checks of the enabled modules that consume outputs with the same
++   *  contract shape as `output`. Absent means no module checks. */
++  outputChecks?: (output: CompiledOutput) => readonly OutputConsumerCheck[]
+   /** Skill revision and personas the workflow host bound. Passed to every
+    *  runner this worker builds so deterministic required-skill composition,
+    *  for the agent and for any persona it dispatches, uses the pinned bytes. */
+@@ -140,9 +148,10 @@ interface WorkerHandoffContent {
+   [field: string]: unknown
+ }
+ 
+-/** The batch observers of one agent. */
++/** The stream observers of one agent. */
+ interface AgentObserverChain {
+-  onBatchSettled(): Promise<string[]>
++  onEvent(event: AgentStreamEvent): void
++  onTurnComplete(context?: StreamObserverTurnContext): Promise<string[]>
+   reset(): void
+ }
+ 
+@@ -293,19 +302,18 @@ export function createWorkerCallback(
+       (state) => resources.projection?.lifecycle.onConnectionState?.(state),
+       (operation) => { emitAgent("agent.notice.changed", { sessionId, data: { operation } }) },
+     )
+-    const observerChain = opts.createObserverChain?.()
++    const observerChain = opts.createObserverChain?.((message) => { injectionQueue.enqueue(message, { silent: true }) })
+     const countToolUses = createToolUseCounter(toolUseIds)
+     // The agent's live entry carries the same count, so the workflow's live
+     // view reads no durable tree while the agent runs.
+-    let toolUses = countToolUses()
+-    const reportToolUses = (): void => { onToolUses?.(toolUses); resources.projection?.updateOperations(toolUses) }
++    let toolUses = 0
++    const reportToolUses = (event?: RuntimeEvent): void => { toolUses = countToolUses(event); onToolUses?.(toolUses); resources.projection?.updateOperations(toolUses) }
+     reportToolUses()
+     const forward = (event: RuntimeEvent): void => {
+-      // An agent emits an event per streamed delta; only a new call restates
+-      // the count, which every view of the agent's session reads.
+-      const counted = countToolUses(event)
+-      if (counted !== toolUses) { toolUses = counted; reportToolUses() }
++      reportToolUses(event)
+       emitAgent(event.type, { sessionId, data: event.data })
++      if ("parent_tool_use_id" in event.data && event.data.parent_tool_use_id != null) return
++      for (const streamEvent of mapRuntimeEventToAgentStreamEvents(event)) observerChain?.onEvent(streamEvent)
+     }
+ 
+     // The agent owns its background work: everything it dispatches is drained
+@@ -341,9 +349,6 @@ export function createWorkerCallback(
+       agentName: attempt.name,
+       onNotice: (operation) => { emitAgent("agent.notice.changed", { sessionId, data: { operation } }) },
+       awaitAccessSettled: opts.awaitModelAccessSettled,
+-      // Each agent holds a row of its own session, and a continuation
+-      // resumes only the agents that hold one.
+-      capacity: capacityWaitAuthority(eventStore, { target: { kind: "workflow-agent", sessionId } }),
+     })
+     const initialEnd = await readChatTurnEndEvidence(opts.projectionReader, conversationId)
+     const initialQueue = await loadQueueSnapshotFromReader(opts.projectionReader, workflowId)
+@@ -371,19 +376,15 @@ export function createWorkerCallback(
+         let outcome = decide(opts.agentInputs.stateOf(attempt.id))
+         if (outcome.status === "refused") return outcome
+         if (outcome.status === "held" && outcome.reason === "interrupted" && input.producer?.kind !== "session") {
+-          const continued = await liveWorkflowControl(eventStore, workflowId)?.handBackMember(() => agentInput.resumeFromPerson())
+-          if (continued === undefined) return outcome
+-          if (continued) outcome = { status: "delivered", startsTurn: true }
++          if (!await liveWorkflowControl(eventStore, workflowId)?.admitMemberHandBack()) return outcome
++          if (agentInput.resumeFromPerson()) outcome = { status: "delivered", startsTurn: true }
+         }
+         if (injectionQueue.isHandingOff) return { status: "refused", reason: "handing_off" }
+         if (privateInputs.claimDelivery(input)) {
+           injectionQueue.enqueueMessage(input, { held: heldAtWakeLimit(outcome) })
+           resources.projection?.queueUserMessage(input)
+-          // A person's message ends a capacity wait at once, and the run
+-          // that continues reads it (PI-MODEL-039).
+-          if (input.producer?.kind !== "session" && recovery.continueNow()) return { status: "delivered", startsTurn: true }
+         }
+-        if (outcome.status === "held" && outcome.reason === "interrupted" && input.producer?.kind === "session" && input.producer.envelope?.relation === "parent" && await liveWorkflowControl(eventStore, workflowId)?.handBackMember(() => agentInput.resumeFromParent()) === true) {
++        if (outcome.status === "held" && outcome.reason === "interrupted" && input.producer?.kind === "session" && input.producer.envelope?.relation === "parent" && await liveWorkflowControl(eventStore, workflowId)?.admitMemberHandBack() && agentInput.resumeFromParent()) {
+           return { status: "delivered", startsTurn: true }
+         }
+         return outcome
+@@ -403,7 +404,12 @@ export function createWorkerCallback(
+     observers.reset()
+ 
+     const stepOutput = resolvedAgent.output
+-    const handoffSchema = stepOutput ? handoffToolSchemaFromOutput(stepOutput) : undefined
++    const handoffSchema = stepOutput
++      ? handoffToolSchemaFromOutput(stepOutput, {
++        workflowScratchRoot: opts.workflowScratchDir,
++        consumerChecks: opts.outputChecks?.(stepOutput) ?? [],
++      })
++      : undefined
+ 
+     // Captured by the handoff tool's in-memory sink. Null until the worker
+     // submits a handoff; the orchestrator records the fact from this content.
+@@ -492,7 +498,7 @@ export function createWorkerCallback(
+     const createContextOptions = async ({ providerSessionKey }: RetryState): Promise<AgentHostContextOptions> => {
+       const roles = await resolveRoles()
+       const selectedModel = selectModel(roles)
+-      const allowedSubagentTypes = persona?.allowedSubagentTypes ?? new Set(workflowAgentSubagents(resolvedAgent))
++      const allowedSubagentTypes = persona?.allowedSubagentTypes ?? new Set(resolvedAgent.subagents)
+ 
+       // Build context per attempt (resilience may rebuild the runner mid-turn):
+       // a retry must see entries flushed by the prior attempt, never stale
+@@ -531,7 +537,6 @@ export function createWorkerCallback(
+         }),
+         memorySnapshot,
+         moduleSelection: () => opts.moduleSelection,
+-        standingBrief: async () => recordedEntryText(await treeWriter.getState(), briefEntryId(attempt.id)),
+         conversation: {
+           kind: "durable-tree",
+           sessionId, conversationId,
+@@ -578,7 +583,6 @@ export function createWorkerCallback(
+           signal, inputSource: observers.inputSource,
+           onConnectionState: setRecoveredConnectionState,
+           onTurnEnded,
+-          onToolBatchSettled: observers.onToolBatchSettled,
+           onHandoffStarted: () => { injectionQueue.handoffStarted() },
+           onTurnParked: async (ctx) => {
+             if (ctx.userResumeRequired) {
+@@ -605,7 +609,7 @@ export function createWorkerCallback(
+             runnerAssembled = true
+             slot.modules = modules
+             for (const resolve of moduleWaiters.get(conversationId) ?? []) resolve(modules)
+-            if (firstGeneration) await awaitPlannedChildResumes({ reader: eventStore, projectionReader: opts.projectionReader, parentSessionId: sessionId, parentConversationId: conversationId })
++            if (firstGeneration) await awaitPlannedChildResumes({ reader: eventStore, projectionReader: opts.projectionReader, projectRoot, parentSessionId: sessionId, parentConversationId: conversationId })
+           },
+         },
+         sessionEventWriter: resources.eventWriter,
+@@ -670,7 +674,6 @@ export function createWorkerCallback(
+             if (next !== null) observers.reset()
+             return next
+           },
+-          settle: slot.recovery.settle,
+         },
+         onAttemptFailure: flushAttemptFailure,
+       }).catch((error: unknown) => {
+diff --git a/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts b/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts
+index e348fe6..b95561a 100644
+--- a/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts
++++ b/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts
+@@ -11,16 +11,22 @@ import { OutputProjector } from "../../../../src/infra/output/output-projector.j
+ import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
+ import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js";
+ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js";
+-import { parseRuntimeEventPayload, type RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
++import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
++import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js";
+ import { RequestToolMap } from "../../../helpers/request-tool-surface.js";
+ import { handleStreamEvent, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
+ import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js";
+ 
+ interface UnknownRecord { [key: string]: unknown }
+ 
++function eventOptions(onEvent: (event: RuntimeEvent) => void): AgentOptions {
++  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the emitter tests only its event sink
++  return { onEvent } as AgentOptions;
++}
++
+ function streamEventContext(onEvent: (event: RuntimeEvent) => void): Parameters<typeof emitAgentStreamEvent>[1] {
+   return {
+-    options: { onEvent },
++    options: eventOptions(onEvent),
+     contextWindow: 200_000,
+     costTracker: createTurnUsageTracker({ emit: onEvent, budgetStreamId: "test" }),
+     providerSessionKey: "test",
+@@ -34,10 +40,9 @@ function streamEventContext(onEvent: (event: RuntimeEvent) => void): Parameters<
+ // Helpers
+ // ---------------------------------------------------------------------------
+ 
+-/** Decodes untyped event data through the runtime event schema, as a stored
+- *  or streamed event is read. */
+ function makeEvent(type: RuntimeEvent["type"], data: UnknownRecord = {}): RuntimeEvent {
+-  return parseRuntimeEventPayload(type, data);
++  // eslint-disable-next-line typescript/consistent-type-assertions -- boundary: runtime event fixture accepts event-specific data
++  return { type, data: { type, ...data } } as RuntimeEvent;
+ }
+ 
+ function assistantWithToolUse(tools: Array<{ name: string; input: UnknownRecord; id?: string }>): RuntimeEvent {
+@@ -112,7 +117,7 @@ describe("mapRuntimeEventToAgentStreamEvents", () => {
+     // tool.input.completed.
+     const event = assistantWithToolUse([{ name: "Read", input: {}, id: "t1" }]);
+     const result = mapRuntimeEventToAgentStreamEvents(event);
+-    expect(result).toEqual([]);
++    expect(result).toEqual([{ type: "other" }]);
+   });
+ 
+   it("maps assistant event with mixed text + tool placeholders to text", () => {
+@@ -174,14 +179,11 @@ describe("mapRuntimeEventToAgentStreamEvents", () => {
+     expect(result[0]).toEqual({ type: "result" });
+   });
+ 
+-  it("maps assistant events with no content to nothing", () => {
++  it("maps assistant events with no content to other", () => {
+     const event = makeEvent("model.assistant_message.recorded", { message: {} });
+-    expect(mapRuntimeEventToAgentStreamEvents(event)).toEqual([]);
+-  });
+-
+-  it("maps streamed deltas to nothing", () => {
+-    const event = makeEvent("model.content.delta", { delta: { type: "text_delta", text: "x" }, block_key: "answer" });
+-    expect(mapRuntimeEventToAgentStreamEvents(event)).toEqual([]);
++    const result = mapRuntimeEventToAgentStreamEvents(event);
++    expect(result).toHaveLength(1);
++    expect(result[0]?.type).toBe("other");
+   });
+ });
+ 
+@@ -218,7 +220,7 @@ describe("provider progress presentation", () => {
+       assistantMetadata: undefined, lastAssistantMetadata: undefined, usageAnchor: undefined,
+       terminalEvent: undefined, transportContext: undefined,
+     };
+-    handleStreamEvent({ kind: "reasoning", id: "hidden", encryptedContent: "opaque", blockKey: "hidden" }, turn);
++    handleStreamEvent({ kind: "reasoning", id: "hidden", encryptedContent: "opaque" }, turn);
+     emitAgentStreamEvent({ kind: "tool_input_start", toolUseId: "ask", name: "ask_user" }, context);
+     const event = handleStreamEvent({ kind: "tool_use", toolCall: {
+       id: "ask", name: "ask_user", input: { context: "Choose the next step.", question: "Which?", options: ["A", "B"] },
+diff --git a/tests/unit/orchestration/chat/module-observers.test.ts b/tests/unit/orchestration/chat/module-observers.test.ts
+index 0e41294..7f13363 100644
+--- a/tests/unit/orchestration/chat/module-observers.test.ts
++++ b/tests/unit/orchestration/chat/module-observers.test.ts
+@@ -34,8 +34,8 @@ test("the selection is read at construction and turn boundaries, never per strea
+   } }
+   const observers = createModuleChatObservers(() => selection, context())
+   observers.onEvent({ type: "text" })
+-  observers.onEvent({ type: "result" })
+-  expect(events).toEqual(["text", "result"])
++  observers.onEvent({ type: "other" })
++  expect(events).toEqual(["text", "other"])
+   expect(reads).toBe(1)
+   await observers.onTurnComplete("turn_end")
+   expect(reads).toBe(2)
+diff --git a/tests/unit/orchestration/workflow-host/worker-callback.test.ts b/tests/unit/orchestration/workflow-host/worker-callback.test.ts
+index 1c53d58..fe0d6a9 100644
+--- a/tests/unit/orchestration/workflow-host/worker-callback.test.ts
++++ b/tests/unit/orchestration/workflow-host/worker-callback.test.ts
+@@ -43,8 +43,6 @@ import { DebugLog } from "../../../../src/infra/debug-log"
+ import { countStateRequests } from "../../../helpers/state-requests"
+ import { refusingLauncher } from "../../../helpers/launcher-fake"
+ import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
+-import { registerCapacityWaits } from "../../../../src/orchestration/session/capacity-wait"
+-import { liveSessionControl, messageDisposition } from "../../../../src/orchestration/session/live-session-control"
+ 
+ const temporary = temporaryDirectories()
+ const WORKFLOW = "workflow-1"
+@@ -64,7 +62,7 @@ async function agentStore(dir: string) {
+ /** A member worker built with the executor's command handover. */
+ function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover: CommandHandoverAuthority, emit: EmitFn = createEmit(new EventBus()), inputs = workflowAgentInputs(commandHandover.projectionReader, WORKFLOW), resolvedAgents: ReadonlyMap<string, ResolvedAgent> = resolveWorkflowAgents(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+   id: "wf", name: "Workflow", phases: [{ phase: "work", brief: "Do the work.", name: "Work" }],
+-})), personas: ReadonlyMap<string, AgentDefinition> = new Map(), onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void, workflowId = WORKFLOW, overrides: Partial<Pick<Parameters<typeof createWorkerCallback>[0], "attachChildProjection">> = {}) {
++})), personas: ReadonlyMap<string, AgentDefinition> = new Map(), onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void, workflowId = WORKFLOW) {
+   const { accountHome, userDataRoot } = testDirectories(dir)
+   return createWorkerCallback({
+     ...makeWorkflowDeps(),
+@@ -80,6 +78,7 @@ function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover:
+     userDataRoot,
+     accountHome,
+     executionCwd: dir,
++    workflowScratchDir: dir,
+     moduleSelection: composeFirstPartyModules(),
+     agentInputs: inputs.agentInputs,
+     deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
+@@ -96,7 +95,6 @@ function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover:
+     recall: async () => ({ hits: [] }),
+     commandHandover,
+     resolvedAgents,
+-    ...overrides,
+   }).worker
+ }
+ 
+@@ -378,38 +376,6 @@ describe("a step's loop notices", () => {
+     expect(retried.toolUses).toBe(2)
+     store.close()
+   })
+-
+-  it("restate operations only for events that change them", async () => {
+-    const dir = temporary("step-forward-work-")
+-    const store = await agentStore(dir)
+-    const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
+-    const operations: number[] = []
+-    const createAgent: AgentFactory = (options) => {
+-      const done = Promise.withResolvers<Awaited<Agent["done"]>>()
+-      return {
+-        async send() {
+-          for (let index = 0; index < 50; index++) {
+-            options.onEvent?.(createRuntimeEvent("model.content.delta", { type: "model.content.delta", delta: index % 2 === 0 ? { type: "text_delta", text: "x" } : { type: "thinking_delta", thinking: "x" }, block_key: "answer" }))
+-          }
+-          options.onEvent?.(createRuntimeEvent("tool.input.completed", { type: "tool.input.completed", model_request_id: "request-1", tool_use: { id: "call-1", name: "read", provider_call_id: "call-1", provider_tool_name: "read", executable_tool_name: "read", input: {}, execution: { mode: "foreground", trace_kind: "tool" } } }))
+-          done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } })
+-        },
+-        end() {},
+-        abort() {},
+-        get done() { return done.promise },
+-      }
+-    }
+-    const worker = handoverWorker(dir, createAgent, authority, undefined, undefined, undefined, undefined, undefined, WORKFLOW, {
+-      attachChildProjection: async () => ({
+-        onEvent() {}, lifecycle: {}, queueUserMessage() {}, updateMetrics() {}, updateBackgroundCommands() {}, updateForegroundBash() {},
+-        updateOperations: (count) => { operations.push(count) }, dispose: async () => {},
+-      }),
+-    })
+-
+-    await worker(STEP, "work", "", undefined, CONVERSATION)
+-    expect(operations).toEqual([0, 1])
+-    store.close()
+-  })
+ })
+ 
+ describe("a step's persona grant", () => {
+@@ -432,14 +398,14 @@ describe("a step's persona grant", () => {
+   })
+ 
+   it.each([
+-    [["reviewer"], ["reviewer", "advisor"]],
+-    [[], ["advisor"]],
+-  ])("restricts the dispatch registry to the declared subagents %j and the trial advisor default", async (subagents, expected) => {
++    [["reviewer"], ["reviewer"]],
++    [[], []],
++  ])("restricts the dispatch registry to the declared subagents %j", async (subagents, expected) => {
+     const dir = temporary("step-persona-grant-")
+     const store = await agentStore(dir)
+     try {
+       const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
+-      const personas = new Map<string, AgentDefinition>(["reviewer", "editor", "advisor"].map((name) => [name, {
++      const personas = new Map<string, AgentDefinition>(["reviewer", "editor"].map((name) => [name, {
+         kind: "persona", name, description: name, systemPrompt: name, tools: ["read"], role: name, maxTurns: 10,
+       }]))
+       const resolved = resolveWorkflowAgents(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+@@ -497,40 +463,6 @@ describe("a step's recovery between failed runs", () => {
+     }
+   })
+ 
+-  it("ends a capacity wait at once for a person's message, withdraws the wait for the message, and the turn that reads the message starts at once", async () => {
+-    const dir = temporary("step-capacity-message-")
+-    const store = await agentStore(dir)
+-    const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
+-    const ledger = registerCapacityWaits(authority.reader, { reader: authority.projectionReader, writer: authority.writer })
+-    const events: unknown[] = []
+-    const armed = Promise.withResolvers<void>()
+-    const diagnostic = spyOn(DebugLog, "record").mockImplementation((entry) => {
+-      if (entry.type !== "agent.capacity_wait") return
+-      events.push(entry.payload)
+-      const { payload } = entry
+-      if (typeof payload === "object" && payload !== null && "event" in payload && payload.event === "armed") armed.resolve()
+-    })
+-    try {
+-      // The walk states a time an hour away, so only the message can end the wait inside the test.
+-      const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000 } }) }
+-      const run = scriptedWorker(dir, authority, [noCapacityForAnHour, handoff])(STEP, "work", "", undefined, CONVERSATION)
+-      await armed.promise
+-      const control = liveSessionControl(authority.reader, sessionId)
+-      if (!control) throw new Error("a waiting step is live")
+-      const outcome = await control.deliver({ text: "Continue with what you have.", dispatchIds: ["person-1"] }, (state) => messageDisposition({ state, origin: "human", hop: 0, self: false }))
+-      expect(outcome).toEqual({ status: "delivered", startsTurn: true })
+-      expect((await run).output).toBe("completed")
+-      expect(events).toEqual([
+-        expect.objectContaining({ event: "armed", sessionId }),
+-        expect.objectContaining({ event: "withdrawn", sessionId, reason: "message" }),
+-      ])
+-    } finally {
+-      diagnostic.mockRestore()
+-      ledger.dispose()
+-      store.close()
+-    }
+-  })
+-
+   it("costs the same state requests for each recovery decision whatever the count of failed runs", async () => {
+     /** The state requests between consecutive model requests of a step whose
+      *  first `failures` runs fail and whose last run hands off. */

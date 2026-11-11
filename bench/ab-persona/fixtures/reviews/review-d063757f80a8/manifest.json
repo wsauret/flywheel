@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "The presence callback in watch() of src/protocol/modules/remote/relay-client.ts calls store.putRuntime for each renamed machine without serializing the writes, and the phone store's putRuntime in relay/app/device-store.ts reads the whole runtimes list and replaces it in a separate transaction, so two machines that report new names close together (for example the installed and dev lanes of one host) can overwrite each other's saved name, and the in-memory equality check then prevents a later save. A review catches this when it identifies the lost update between concurrent putRuntime calls (a read-modify-write race) on the persisted machine names.",
+      "category": "elegance",
+      "files": [
+        "src/protocol/modules/remote/relay-client.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "concurrent-presence-updates-lose-a-saved-machine-name",
+      "title": "Concurrent presence updates lose a saved machine name"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Elegance review: machine names"
+}

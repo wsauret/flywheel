@@ -1,0 +1,55 @@
+{
+  "base": "6494fdee94a85c52748c11d51818558e6aa4ec8b",
+  "files": [
+    {
+      "anchor": "562e9f78a98e840d60b37eb3cadb399c893e278e",
+      "path": "bench/harbor/METHODOLOGY.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "562e9f78a98e840d60b37eb3cadb399c893e278e",
+      "path": "bench/harbor/README.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "562e9f78a98e840d60b37eb3cadb399c893e278e",
+      "path": "bench/harbor/analysis/board-scoring.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "562e9f78a98e840d60b37eb3cadb399c893e278e",
+      "path": "bench/harbor/analysis/round-score.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "562e9f78a98e840d60b37eb3cadb399c893e278e",
+      "path": "bench/harbor/hill.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "562e9f78a98e840d60b37eb3cadb399c893e278e",
+      "path": "tests/unit/bench/harbor-board-scoring.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1794171776883,
+      "findings": [],
+      "model": "gpt-6-astra",
+      "parent": "f46efd5b1c87",
+      "persona": "reviewer-code-quality",
+      "run": "81e9ecba8a26",
+      "session": "0f6e2c2dfd45",
+      "start": 1794171745165
+    }
+  ],
+  "scrubbedLines": {
+    "prompt.md": 1
+  },
+  "unresolvedImports": [],
+  "variant": "recorded"
+}

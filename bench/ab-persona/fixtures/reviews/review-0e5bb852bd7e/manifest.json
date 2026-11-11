@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts, `denied(nonce)` raises the last admitted dispatcher step index on every denial, so a dispatcher that repeats a denied SendMessage on each answering step keeps being admitted without bound and its frame never ends; `DELIVERY_TRIES` in host.ts advances only in `frameEnded`, so it never limits this and queued agents cannot start. A review catches it only if it says that denials are not bounded within one frame (each denial admits one more step, repeatedly), not merely that a denial admits an extra step.",
+      "category": "quality",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "bound-denial-recovery-within-one-dispatcher-frame",
+      "title": "Bound denial recovery within one dispatcher frame"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review dispatcher deny and cut"
+}

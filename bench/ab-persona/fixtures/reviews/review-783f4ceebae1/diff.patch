@@ -1,0 +1,1591 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 1751ccf..9d4ebb5 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -9,14 +9,14 @@
+ 
+ - MAXIMIZE *ELEGANCE*, NOT MINIMIZE CHURN! THIS IS THE MOST IMPORTANT PRINCIPLE FOR EVERY DESIGN! Always pick the design that maximizes elegance no matter how big the refactor. Better now than months down the line when there are even more dependencies in place.
+ 
+-- `docs/adrs/adr-005-flywheel-design-principles.md` is Flywheel's canonical project-specific definition of elegance and the rubric for architecture audits. Read it in full when judging whether the project is maximally elegant. This file operationalizes much of that standard for coding agents, but not in full.
++- `docs/guides/elegance.md` is Flywheel's canonical project-specific definition of elegance and the rubric for architecture audits. Read it in full when judging whether the project is maximally elegant. This file operationalizes much of that standard for coding agents, but not in full.
+ 
+-- ADRs are living, present-tense authorities, not change logs. When shipped work changes an architectural claim, rewrite the owning ADR in the same unit so it reads as if authored in its current form for the first time; do not add revision history, amendment prose, or `Updated` metadata. Follow `docs/adrs/README.md`.
+ - Completed and superseded plans are permanent implementation records. Never delete them. Move them to `docs/plans/archive/` and remove their entries from `docs/plans/README.md`.
+ - Handle only reachable states. A state is reachable when a person or an external producer can cause it through a supported entry point: a client surface, the CLI, the published protocol as shipped clients use it, or an external boundary such as a provider stream, a subprocess, or the file system. A state that only a direct internal call or a test fixture can create is hypothetical: add no code for it, and do not treat a test that asserts it as a product requirement. Before you call a failure a regression, trace how a person reaches it. When a test fails on a state that no person can reach, rewrite the test around the reachable flow instead of changing the product.
+ - This repository opts into the living product-intent authority indexed by `docs/product-intent/README.md`. Before changing or judging user-observable Flywheel behavior, read the index and the relevant domain file. A conflict with the persisted corpus is a bug or blocker.
++- This repository opts into the living architecture-intent authority indexed by `docs/architecture-intent/README.md`. Before changing or judging Flywheel's internal organization, read the index and the relevant domain file. A conflict with the persisted corpus is a bug or blocker. `docs/terminology.md` is the lexicon for Flywheel's terms.
+ 
+-- Consult the relevant ADR when working near its authority: `docs/adrs/adr-000-flywheel-thesis.md`, `docs/adrs/adr-001-event-sourced-substrate.md`, `docs/adrs/adr-002-context-engineering-and-inspectability.md`, `docs/adrs/adr-003-agent-as-environment-operator.md`, `docs/adrs/adr-004-intent-contracts-and-evaluation.md`, `docs/adrs/adr-005-flywheel-design-principles.md`, `docs/adrs/adr-006-workflow-control-and-attempts.md`, `docs/adrs/adr-007-agent-runtime-process-placements.md`, `docs/adrs/adr-008-durable-sessions-and-conversations.md`, `docs/adrs/adr-009-tool-execution-safety.md`, `docs/adrs/adr-010-runtime-ui-protocol.md`, `docs/adrs/adr-011-durable-learning-scope-and-consent.md`, `docs/adrs/adr-012-configurable-modules.md`, `docs/adrs/adr-013-project-and-execution-directory-semantics.md`, `docs/adrs/adr-014-binary-distribution-and-updates.md`, `docs/adrs/adr-015-internal-modules.md`, `docs/adrs/adr-016-terminology.md`, `docs/adrs/adr-021-design-intent-and-the-first-draft.md`, and `docs/adrs/adr-022-subagent-child-sessions.md`. ADR-021 governs how agents work here: chat captures design intent, every implementation route returns a first draft, and the agent that holds the intent revises the draft from its recorded deviations and the review's findings until it realizes the design, adding nothing beyond it. Read it before changing any implementer prompt, dispatch prompt, or result contract.
++- Chat captures design intent (PI-AGENT-003, ARCH-AGENCY-015), every implementation route returns a first draft (ARCH-AGENCY-020), and the agent that holds the intent revises the draft from its recorded deviations and the review's findings until it realizes the design, adding nothing beyond it (ARCH-AGENCY-021, ARCH-AGENCY-023, ARCH-AGENCY-024). Read `docs/architecture-intent/agency.md` before changing any implementer prompt, dispatch prompt, or result contract (ARCH-AGENCY-026).
+ 
+ - Every commit message follows this repository's changelog contract. Use `<type>(<scope>)?: <subject>`, with type `feat`, `fix`, `perf`, `docs`, `refactor`, `test`, `chore`, or `release`. The optional scope is lowercase. Write an imperative lowercase subject with no trailing period. About 72 characters is a readability target, not a validated limit or a reason to rewrite a commit. Reserve `feat`, `fix`, and `perf` for observable shipped-product outcomes, with subjects that stand alone as release notes. Use `chore` for CI, release-process, and repository-tooling work, including speed improvements. Add a `Changelog:` trailer when the engineering subject differs from the user-facing sentence. Pair `!` after the type with a `BREAKING CHANGE:` body paragraph stating what breaks and what the user must do. Group one complete user-visible unit per commit, including its supporting tests and refactors. Validate a draft message before committing by piping it to `bun run scripts/commit-contract.ts check-message`; `check --base <sha> --head <sha>` validates existing commits. Public release notes are generated from commit history: `bun run release` reads every commit whose header parses and drops the rest, so a header that does not parse is a release note lost.
+ 
+@@ -68,37 +68,33 @@ Reaching a skill: `action:"load"` returns one skill's instructions and names the
+ 
+ ## 3. State Ownership
+ 
+-**One source of truth per value. State drives effects, never the reverse.** A value that lives in one store does not also live as an adapter property, a registry field, and a signal. Everything downstream is a derived view.
+-
+-`FlywheelEvent` is a discriminated union in `src/infra/events.ts`. Event names use lowercase dot-delimited domain and action segments, such as `agent.run.started`. Producers emit raw events; subscribers filter. Adding a new event means adding to the union and updating all exhaustive consumers.
++- Keep one source of truth per value. State drives effects, never the reverse, and everything downstream is a derived view (ARCH-SUBSTRATE-001).
++- Add a runtime event to the `FlywheelEvent` discriminated union in `src/infra/events.ts` and update every exhaustive consumer in the same change (ARCH-SUBSTRATE-010).
++- Name events with lowercase dot-delimited domain and action segments, such as `agent.run.started` (ARCH-NAMING-007).
++- Producers emit raw events; subscribers filter (ARCH-STRUCTURE-007).
+ 
+ ### Session Lifecycle
+ 
+-**`active | inactive`.** `SessionManager` is the sole authority for persisted lifecycle state and session relationships. The session store owns the active runner pool and runtime projection.
+-
+-- Workflow terminal state (`paused | completed | failed`) lives in committed `workflow:<sessionId>` control, not session metadata or workflow-view state.
+-- A session open in a client tab has its runner attached, eagerly on open and again on every reattach; the tab's lifecycle is the session's, which is the runner's (ADR-008). A session no client shows stays paused, attaching never resumes a turn, and only an explicit user message restarts work; completed workflows remain viewable history.
+-- **Session store** = runner pool and runtime projection. It holds output blocks, tokens, cost, and the derived `activity` axis. It has no persisted lifecycle state and no workflow-result authority.
+-- **UI** derives `sessionState()` from the protocol-fed session catalog. It does not read `SessionManager` or the session store directly.
+-- **Delete is an action**, not a state. No `archived` or `trashed` states.
+-- **Never add status fields, shadow signals, or new state stores.** Read lifecycle from the owning projection and transition it through `SessionManager.updateLifecycleState()`.
++- Persist only `active | inactive`. `SessionManager` is the sole authority for persisted lifecycle state and session relationships, and every transition goes through `SessionManager.updateLifecycleState()` (ARCH-SESSIONS-003).
++- Keep workflow terminal state (`paused | completed | failed`) in committed `workflow:<sessionId>` control, never in session metadata or workflow-view state (ARCH-WORKFLOWS-006).
++- The session store owns the active runner pool and the runtime projection: output blocks, tokens, cost, and the derived `activity` axis. It has no persisted lifecycle state and no workflow-result authority (ARCH-SESSIONS-002).
++- The UI derives `sessionState()` from the protocol-fed session catalog and never reads `SessionManager` or the session store directly (ARCH-PROTOCOL-002).
++- Attach the runner of a session open in a client tab eagerly on open and again on every reattach; attaching never resumes a turn (ARCH-SESSIONS-038). A session no client shows stays paused, only an explicit user message restarts work, and completed workflows remain viewable history (PI-INTERACTION-042, PI-INTERACTION-043, PI-INTERACTION-022).
++- Delete is an action, not a state. Add no `archived` or `trashed` states (ARCH-SESSIONS-003).
++- Never add status fields, shadow signals, or new state stores. Read lifecycle from the owning projection (ARCH-SUBSTRATE-001, ARCH-SESSIONS-003).
+ 
+ ---
+ 
+ ## 4. Boundary Discipline
+-Be liberal at external boundaries and strict inside Flywheel.
+-
+-External systems are allowed to be messy: user config, provider streams, LLM tool-call arguments, network responses, SDK callbacks, CLI subprocess output. Boundary adapters may accept recoverable variation, normalize once into Flywheel's canonical typed shape, and surface clear typed errors when semantics are missing or unsafe.
+-
+-Once data crosses into Flywheel-owned state, Postel's law stops. Current writers, workflow control, and post-recovery execution parse strictly. Historical facts cross one reviewed recovery boundary: parse strictly first, apply only family-owned salvage rules, then emit typed degraded gaps for bytes that remain unreadable. The same canonical recovered history powers transcript display and provider API context, so display and execution never disagree about the readable past. Recorded tool results remain context and are never redispatched.
+-
+-Use `safeParse` only for external-boundary normalization or the reviewed historical recovery boundary. Use `parse` for all current writes and post-recovery control. Schemas must not carry `.default()` on fields the current producer always sets. Unreadable bytes stay immutable. They never block workspace startup, other sessions, or future appends. A project-wide SQLite or project-directory open failure remains a startup failure.
+ 
+-Secrets (API keys, OAuth tokens, credentials) are `Redacted.Redacted` in memory everywhere; unwrap (`Redacted.value`) only at the provider-call adapter or one explicit serialization boundary, which uses a plain `to*`/`from*` DTO so the crossing is intentional. No secret in logs, traces, errors, or snapshots. See ADR-005 "Secret Handling."
+-
+-Provider attribution and session identity use fields separate from prompt-cache keys. Cache-disabled requests, including compaction, can still require session headers. Preserving identity must not cause prompt-cache keys to be emitted.
+-
+-Model-config pruning removes deprecated and unknown keys using the complete authoritative schema or registry, never the slots requested by a partial read. Preserve pruning; correct destructive pruning at its completeness boundary rather than disabling it.
++- Be liberal at external boundaries and strict inside Flywheel. A boundary adapter normalizes external input (user config, provider streams, LLM tool-call arguments, network responses, SDK callbacks, CLI subprocess output) once into Flywheel's canonical typed shape, or surfaces a clear typed error (ARCH-BOUNDARIES-001).
++- Use `safeParse` only for external-boundary normalization or the reviewed historical recovery boundary. Use `parse` for all current writes, workflow control, and post-recovery execution (ARCH-BOUNDARIES-001).
++- Never put `.default()` on a schema field that the current producer always sets (ARCH-BOUNDARIES-004).
++- Read history through the one strict-first recovery boundary, whose recovered history feeds both transcript display and provider API context (ARCH-SUBSTRATE-012). Recorded tool results remain context and are never redispatched (ARCH-SUBSTRATE-038).
++- Keep unreadable bytes immutable. They never block workspace startup, other sessions, or future appends; only a project-wide SQLite or project-directory open failure is a startup failure (ARCH-SUBSTRATE-013).
++- Hold secrets (API keys, OAuth tokens, credentials) as `Redacted.Redacted` everywhere in memory. Unwrap with `Redacted.value` only at the provider-call adapter or one explicit serialization boundary through a plain `to*`/`from*` DTO, and never put a secret in logs, traces, errors, or snapshots (ARCH-BOUNDARIES-009).
++- Keep provider attribution and session identity in fields separate from prompt-cache keys. A cache-disabled request, including compaction, keeps the session headers it needs and emits no prompt-cache key (ARCH-PROVIDERS-026).
++- Prune model config only against the complete authoritative schema or registry, never the slots of a partial read. Correct destructive pruning at its completeness boundary; never disable pruning (ARCH-RUNTIME-069).
+ 
+ ---
+ 
+@@ -183,6 +179,8 @@ Test and UAT TUI launches use `FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS=1` to suppres
+ 
+ ## 7. Module Boundaries
+ 
++Source layers depend in one direction (ARCH-STRUCTURE-001):
++
+ ```text
+ src/
+   cli/             --> composition root, imports from everything
+@@ -195,13 +193,13 @@ src/
+ 
+ **Dependency direction (one-way):** infra <- protocol <- workflows <- orchestration <- tui.
+ 
+-Three workspace members live outside `src/` and compile against the published client contract only: their sole `src` import root is `src/protocol/`. `webview/` is the web client, one SolidJS bundle every host mounts, with its host shells under `webview/local/` (the page the runtime serves) and `webview/editor/` (the shell the extension loads from the runtime's build); it imports no host module. `vscode/` is the editor host: it supervises `flywheel serve`, pumps protocol bytes between the webview and the runtime socket, and answers the client's capability requests; it carries no client and imports the host contract from `src/protocol/client/`. `relay/` is the phone host and the relay Worker. `bun run check:boundaries` enforces all three, `bun run lint:relay` type-checks both relay deployables against their own runtimes, and `bun run lint:webview` adds the client's stylesheet gate: colours, font sizes, z-indexes, and container widths come only from `webview/src/styles/tokens.css` and its width ladder.
+-
+-Every client surface (terminal, desktop web, phone web, and editor) stays mounted while the thing it shows exists, as PI-INTERACTION-062 in `docs/product-intent/interaction.md` requires. UI state belongs to the surface and stays local. Network updates patch it in place. Reconnection and re-reads never remove it or reset the person's choices, drafts, focus, or reading position. When data is not current, hold the actions that need it, not the surface. Stability takes precedence over showing new data sooner. For the web method and guard tests, read `docs/guides/webview-render-continuity.md` before you change a web client surface.
++- Three workspace members live outside `src/`, and their sole `src` import root is `src/protocol/` (ARCH-STRUCTURE-001, ARCH-PROTOCOL-003). `webview/` is the web client, one SolidJS bundle every host mounts, with its host shells under `webview/local/` (the page the runtime serves) and `webview/editor/` (the shell the extension loads from the runtime's build); it imports no host module. `vscode/` is the editor host: it supervises `flywheel serve`, pumps protocol bytes between the webview and the runtime socket, and answers the client's capability requests; it carries no client and imports the host contract from `src/protocol/client/`. `relay/` is the phone host and the relay Worker.
++- `bun run check:boundaries` enforces all three, and `bun run lint:relay` type-checks both relay deployables against their own runtimes. `bun run lint:webview` adds the client's stylesheet gate: colours, font sizes, z-indexes, and container widths come only from `webview/src/styles/tokens.css` and its width ladder (ARCH-PROTOCOL-064).
++- Keep every client surface (terminal, desktop web, phone web, and editor) mounted while the thing it shows exists. UI state belongs to the surface and stays local, and network updates patch it in place (PI-INTERACTION-062, ARCH-PROTOCOL-062). Stability takes precedence over showing new data sooner. For the web method and guard tests, read `docs/guides/webview-render-continuity.md` before you change a web client surface.
++- Run `bun run check:boundaries` after any file addition or move.
++- Render ordinary TUI action buttons with `src/tui/components/button.tsx`, never a copy of its styling in a new clickable box; callers own actions, keyboard routing, and progress text. Tabs, selectable rows, header chrome, and transcript-inline Stop/Detach keep their specialized rendering (ARCH-PROTOCOL-065).
+ 
+-Run `bun run check:boundaries` after any file addition or move.
+-
+-Ordinary TUI action buttons use `src/tui/components/button.tsx`. It owns one-cell horizontal padding, default colors, and hover/focus highlighting; callers own actions, keyboard routing, and progress text. Do not copy its styling into a new clickable box. Tabs, selectable rows, header chrome, and transcript-inline Stop/Detach keep their specialized rendering.
++Each layer and module home owns one kind of concern (ARCH-STRUCTURE-002, ARCH-STRUCTURE-018, ARCH-WORKFLOWS-010), and each layer has one static module registry (ARCH-STRUCTURE-017):
+ 
+ | Module | Owns | Never contains |
+ |---|---|---|
+@@ -218,27 +216,26 @@ Ordinary TUI action buttons use `src/tui/components/button.tsx`. It owns one-cel
+ | `protocol/modules.ts`, `orchestration/credential-provider-modules.ts` with `orchestration/modules.ts`, `tui/modules.ts`, `webview/src/modules.ts` | The module registries: one static list per layer, with the orchestration list split so a login loads only the modules that claim a credential provider id | Module-specific branches |
+ 
+ **New code:**
+-A new capability is a module unless it is kernel. The kernel is the event store, the session manager, the conversation and its recovery, the runner, provider admission and the failover walk, the protocol core, the transcript, the composer, the session catalog, config, and the auth store; everything else registers as a module with one id and one home per layer, plus one line in each registry it reaches.
+-
+-The home for each kind of code (module protocol, runtime, and client homes; workflow templates with inline briefs and output contracts; hooks; runner stacks; migrations; skills) is the routing list in `docs/architecture.md` under "Where New Code Lives". Read it before adding a file.
+-
+-The module-containment allowlist is empty. Module facts, retained history readers, and historical migrations compose from the installed catalog even while the module is disabled; new capability work composes from enabled admission. The kernel owns migration ordering and workspace exclusion, not module transformations.
+-
+-Imports reveal misplacement - deep relative paths mean the file is in the wrong place. One domain, one home. No re-exports, bridge files, or compatibility shims. When a module moves, update every import - no forwarding addresses.
+-
+-Development tooling lives in the development module. Nothing in `src/` branches on `isDevelopmentBuild()` to expose a tool or a definition: a capability that exists only for developing Flywheel is a contribution of `src/orchestration/modules/development/`, absent from a release because the release entry never installs it.
+-
+-New behavior arrives by registration, not by editing a switch. First-party modules and their tools register through `src/orchestration/modules.ts`, or `src/orchestration/credential-provider-modules.ts` for a module that claims a credential provider id, and one descriptor under `src/orchestration/modules/`; a module declares an optional per-runner runtime that composition constructs only when the module is enabled, and tool factories, exposure and execution gates, and prompt fragments read it through the module's typed handle from `{ kernel, modules }` deps; a module declares an optional process-scoped service the same way, built once per process in dependency order, and a condition a person should see is stated through the composition's notify seam, never by naming the notifications module. Commands register at the TUI command dispatch and controller boundary; the other registries are listed in the `typescript-bun` package. Runtime and workflow hooks are typed callbacks on their owning boundary; a hook that affects model-visible context or durable state must be inspectable and recorded.
+-
+-Projections register their lifetime with `src/infra/projection-registry.ts` and are never built per call. `createEventProjection` initializes lazily on its first awaited operation; rebuilding it discards its cursor and repeats history. Wrap the construction in `heldProjection(reader, key, () => createEventProjection(...))`, where the key names the family and every id the factory closes over. `bun run lint:projections` checks projection construction and unfed `getState()` reads through source-text patterns. These checks do not prove registration or freshness through aliases, helpers, or arbitrary source formatting.
+-
+-Read a registered projection with `replay()`, which folds only what is new and sees another process's commits. `getState()` is for an owner that feeds the projection itself through `apply()`, and returns stale state for anyone else.
+-
+-Derived state is advanced, never recomputed. A hot path is code that runs per store change, per stored-fact batch, per tick, per live subscription, or per member, item, or agent of a loop. Every hot path follows three rules:
+ 
+-1. Read the owning live state. A view of session, child, or workflow state reads the existing in-memory owner: the session store entry, the summary index and its pushes, or a registered projection through `replay()`. Do not write a new durable reader for state that an owner already keeps live. A new durable read on a hot path states, in a comment at the call, why no owner can serve it.
+-2. Do work bounded by the change. A change handler costs work proportional to what changed, never to the number of members, items, or history entries. A durable read per member inside a per-change handler is O(members) per change and O(members^2) over a run: a 50-agent workflow card that read each agent on every change starved commits and doubled agent start time.
+-3. Fold once, then advance. Never read an aggregate from its start and fold it again on a hot path, under any spelling: `createEventProjection`, `read({ aggregateId })` or `readSlice` with no lower position bound followed by a reduce, or a cache keyed by sequence that rereads everything when the sequence moves. Keep the fold and read only facts after its last position. A one-shot path (an explicit person command, a migration pass, recovery, startup) may read in full, but never once per item of a loop. Never add a hot path to the one-shot ledger `scripts/aggregate-read-allowlist.ts`.
++- Make a new capability a module unless it is kernel: the event store, the session manager, the conversation and its recovery, the runner, provider admission and the failover walk, the protocol core, the transcript, the composer, the session catalog, config, and the auth store. A module has one id, one home per layer, and one line in each registry it reaches (ARCH-STRUCTURE-008).
++- The home for each kind of code (module protocol, runtime, and client homes; workflow templates with inline briefs and output contracts; hooks; runner stacks; migrations; skills) is the routing list in `docs/architecture.md` under "Where New Code Lives". Read it before adding a file.
++- Keep the module-containment allowlist empty (ARCH-STRUCTURE-020). Module facts, retained history readers, and historical migrations compose from the installed catalog even while the module is disabled; new capability work composes from enabled admission (ARCH-STRUCTURE-029).
++- The kernel owns migration ordering and workspace exclusion, not module transformations (ARCH-SUBSTRATE-045).
++- Give each domain one home. Deep relative imports mean the file is in the wrong place; when a module moves, update every import, with no re-exports, bridge files, compatibility shims, or forwarding addresses (ARCH-STRUCTURE-003).
++- Put a capability that exists only for developing Flywheel in `src/orchestration/modules/development/`, which a release never installs. Nothing in `src/` branches on `isDevelopmentBuild()` to expose a tool or a definition (ARCH-STRUCTURE-013).
++- Add behavior by registration, not by editing a switch (ARCH-STRUCTURE-017). First-party modules and their tools register through `src/orchestration/modules.ts`, or `src/orchestration/credential-provider-modules.ts` for a module that claims a credential provider id, and one descriptor under `src/orchestration/modules/`. Commands register at the TUI command dispatch and controller boundary; the other registries are listed in the `typescript-bun` package.
++- A module's optional per-runner runtime is constructed only while the module is enabled, and tool factories, exposure and execution gates, and prompt fragments read it through the module's typed handle from `{ kernel, modules }` deps (ARCH-STRUCTURE-027). A module's optional process-scoped service is declared the same way and built once per process in dependency order (ARCH-RUNTIME-048).
++- State a condition that a person should see through the composition's notify seam, never by naming the notifications module (ARCH-STRUCTURE-034).
++- Runtime and workflow hooks are typed callbacks on their owning boundary (ARCH-STRUCTURE-042). A hook that affects model-visible context or durable state must be inspectable and recorded (ARCH-CONTEXT-003).
++- Register every projection's lifetime with `src/infra/projection-registry.ts`, and never build one per call: wrap the construction in `heldProjection(reader, key, () => createEventProjection(...))`, where the key names the family and every id the factory closes over (ARCH-SUBSTRATE-016). `createEventProjection` initializes lazily on its first awaited operation, and rebuilding it discards its cursor and repeats history.
++- Read a registered projection with `replay()`. Only an owner that feeds the projection itself through `apply()` reads `getState()` (ARCH-SUBSTRATE-016).
++- `bun run lint:projections` checks projection construction and unfed `getState()` reads through source-text patterns. These checks do not prove registration or freshness through aliases, helpers, or arbitrary source formatting.
++
++Advance derived state; never recompute it (ARCH-SUBSTRATE-017). A hot path is code that runs per store change, per stored-fact batch, per tick, per live subscription, or per member, item, or agent of a loop. Every hot path follows three rules:
++
++1. Read the owning live state: the session store entry, the summary index and its pushes, or a registered projection through `replay()`. A new durable read on a hot path states, in a comment at the call, why no owner can serve it.
++2. Do work bounded by the change, never by the number of members, items, or history entries.
++3. Fold once, then advance. Never read an aggregate from its start and fold it again on a hot path, under any spelling: `createEventProjection`, `read({ aggregateId })` or `readSlice` with no lower position bound followed by a reduce, or a cache keyed by sequence that rereads everything when the sequence moves. A one-shot path (an explicit person command, a migration pass, recovery, startup) may read in full, but never once per item of a loop. Never add a hot path to the one-shot ledger `scripts/aggregate-read-allowlist.ts`.
+ 
+ A change to a hot path ships with a work-count test at its owner: drive N changes over M members and assert the reads or state requests per change, which must not grow with M or with history length. Count them with `countStateRequests` from `tests/helpers/state-requests.ts`. Wall time is not that test.
+ 
+@@ -252,13 +249,13 @@ This syntax check is not complete coverage of the derived-state rule. It does no
+ 
+ No package owns these; they are this system's own substrate rules.
+ 
+-| Pattern | Why it's wrong | Instead |
++| Pattern | Instead | Statement |
+ |---|---|---|
+-| Deterministic work modeled as an executable workflow node | Executable nodes are agent/worker boundaries (ADR-006). Deterministic branching and coordination belong only to the compiler and raw XState oracle's closed typed vocabulary; they are never workers. | Typed XState control event and `workflow:<sessionId>` fact proposal; deterministic nodes never invoke a model. |
+-| Hand-extracting fields from a known fact with `asString`/`asNumber` | Validate-and-discard: the schema exists, the reader re-derives it | Decode the fact once via `parseProjectionFact`; read typed fields |
+-| Parallel idempotency key / dedup record / attempt "resumed" marker | Second source of truth for what already ran | The event-sourced conversation is the ledger; a retry replays it, never re-runs (ADR-005 "Retry and Idempotency") |
+-| A tool input schema whose root is a union (`oneOf`, `anyOf`, `allOf`) or anything other than one `type: "object"` schema | Anthropic rejects the request with "input schema root must declare type object" and every session on that provider fails at its first message; OpenAI tolerates it, so GPT sessions hide the defect, and Flywheel's structural input validator reads only an object root | One flat object with a discriminating enum field such as `kind` or `action`; the handler enforces per-variant requirements; `materializeToolInputSchema` refuses any other root and the planner test materializes every registration |
+-| A direct raw external-process launch or shell wrapper in production code | An external process bypasses its lifecycle authority (ADR-009) | Ordinary launches use `spawnOwned`, `runOwnedCommand`, or `openExternalUrl`; explicitly authorized survival uses only `src/infra/persistent-subprocess.ts`; raw launch stays in the authority modules listed by `bun run lint:owned-processes` (`scripts/check-owned-process-launches.ts`), which enforces it |
++| Deterministic work modeled as an executable workflow node | Typed XState control event and `workflow:<sessionId>` fact proposal; deterministic nodes never invoke a model | ARCH-WORKFLOWS-004 |
++| Hand-extracting fields from a known fact with `asString`/`asNumber` | Decode the fact once via `parseProjectionFact`; read typed fields | ARCH-SUBSTRATE-011 |
++| Parallel idempotency key / dedup record / attempt "resumed" marker | The event-sourced conversation is the ledger; a retry replays it, never re-runs | ARCH-SUBSTRATE-038 |
++| A tool input schema whose root is a union (`oneOf`, `anyOf`, `allOf`) or anything other than one `type: "object"` schema | One flat object with a discriminating enum field such as `kind` or `action`; the handler enforces per-variant requirements; `materializeToolInputSchema` refuses any other root and the planner test materializes every registration | ARCH-TOOLS-003 |
++| A direct raw external-process launch or shell wrapper in production code | Ordinary launches use `spawnOwned`, `runOwnedCommand`, or `openExternalUrl`; explicitly authorized survival uses only `src/infra/persistent-subprocess.ts`; raw launch stays in the authority modules listed by `bun run lint:owned-processes` (`scripts/check-owned-process-launches.ts`), which enforces it | ARCH-TOOLS-022 |
+ 
+ ---
+ 
+diff --git a/README.md b/README.md
+index 47389a6..430edf0 100644
+--- a/README.md
++++ b/README.md
+@@ -48,7 +48,7 @@ Run this from PowerShell:
+ irm https://github.com/wsauret/flywheel/releases/latest/download/install.ps1 | iex
+ ```
+ 
+-The installers resolve one immutable release tag, download the compiled binary for your OS and CPU architecture, and verify it against `SHASUMS256.txt`. Installed builds keep themselves up to date: `flywheel update` (or the automatic background check) downloads and verifies the next release, then activates it without disturbing a running session. How builds are stored, activated, and cleaned up is documented in [ADR-014](docs/adrs/adr-014-binary-distribution-and-updates.md).
++The installers resolve one immutable release tag, download the compiled binary for your OS and CPU architecture, and verify it against `SHASUMS256.txt`. Installed builds keep themselves up to date: `flywheel update` (or the automatic background check) downloads and verifies the next release, then activates it without disturbing a running session. How builds are stored, activated, and cleaned up is documented in [the distribution architecture intent](docs/architecture-intent/distribution.md).
+ 
+ To pin a version or choose where the `flywheel` launcher is placed:
+ 
+@@ -104,6 +104,6 @@ The installer selects the archive for the machine it runs on. A musl Linux needs
+ 
+ ## Architecture
+ 
+-The design is documented as a set of living ADRs under `docs/adrs/`, starting with the thesis (ADR-000): Flywheel converts vetted human intent into verified software change through a chain of recorded evidence. Agents propose; deterministic code owns durable state. If you want to understand why the system looks the way it does, start there.
++The design is documented in two living intent corpora, architecture intent under `docs/architecture-intent/` and product intent under `docs/product-intent/`, starting with [agency](docs/architecture-intent/agency.md) (ARCH-AGENCY-001): Flywheel converts vetted human intent into verified software change through a chain of recorded evidence. Agents propose; deterministic code owns durable state. If you want to understand why the system looks the way it does, start there.
+ 
+ The designs are inspired by my favorite aspects of the wonderful harnesses that have been released such as [peerAgent5](https://ampcode.com), [peerAgent32](https://peerAgent31.dev), [peerAgent3](https://opencode.ai), [peerAgent2](https://developers.openai.com/peerAgent2), [peerAgent1](https://claude.com/peerAgent1), [peerAgent6](https://peerAgent6-agent.nousresearch.com), [peerAgent13](https://x.ai/cli), and [peerAgent26](https://factory.ai). You may see aspects of their design choices sprinkled across Flywheel, but it should also be apparent that the way they come together is to form something new and different.
+diff --git b/docs/architecture-intent/README.md b/docs/architecture-intent/README.md
+new file mode 100644
+index 0000000..0e059ae
+--- /dev/null
++++ b/docs/architecture-intent/README.md
+@@ -0,0 +1,43 @@
++# Architecture Intent
++
++This directory is the Flywheel repository's living authority for intended architecture. It states how Flywheel's internals must be organized independently of current code, delivery plans, and history. Repositories that use Flywheel do not inherit this policy unless they declare their own architecture-intent authority.
++
++An architecture-intent statement can describe an organization that the implementation does not yet satisfy. Code and plans are judged against the recorded statement, not the reverse. A statement that the code does not meet is recorded structural debt.
++
++## Authority boundaries
++
++- Product intent (`docs/product-intent/`) states what experience the product must provide.
++- Architecture intent states how Flywheel's internals must be organized to provide it.
++- `docs/guides/elegance.md` states the elegance rubric that judges both.
++- Designs and plans state what change is approved for delivery.
++- Code and tests provide implementation and evidence. They do not define architecture intent by themselves.
++
++A statement belongs here only when a user cannot observe it. A rule that a person can observe through a client, the CLI, or an installed file belongs in product intent.
++
++## Corpus contract
++
++- Give every statement one stable identifier of the form `ARCH-<DOMAIN>-<NNN>` and one canonical domain file. Keep the identifier through wording changes and file moves.
++- Write each statement as a heading `## ARCH-<DOMAIN>-<NNN>: <title>` followed by a concise, present-tense rule of one to four sentences.
++- After the rule, a statement may carry one line `Because: <one sentence>` and one line `Not: <one rejected alternative>`. Add them only when a reader without them is likely to propose the rejected design again.
++- Name boundaries, owners, invariants, layers, and modules. Do not name functions, types, file paths, fact versions, or other implementation details, and do not record history, delivery mechanics, or acceptance criteria.
++- Add a statement only when no current statement owns the rule. Rewrite the current statement when its intended meaning changes. Git history is the archive of prior wording.
++- Do not edit the corpus for work that only restores or preserves current intent.
++- Code, tests, and documents cite a statement by its identifier.
++
++## Domains
++
++- [Agency](agency.md): how agents, evidence, and deterministic code divide authority over intent, work, and completion.
++- [Boundaries](boundaries.md): external input normalization, strict internal state, and secret handling.
++- [Context](context.md): model-visible context assembly, inspectability, and compaction.
++- [Directories](directories.md): account, project, and execution directory authorities and project selection.
++- [Distribution](distribution.md): binary builds, releases, installation, and update activation.
++- [Learning](learning.md): durable memory and skill scope, consent, and audit.
++- [Naming](naming.md): concept naming and the grammars for facts, requests, and identifiers.
++- [Protocol](protocol.md): the runtime and client contract and client rendering boundaries.
++- [Providers](providers.md): provider admission, accounting, and paid-use consent.
++- [Runtime](runtime.md): the runner host, process placement, the account service, and runtime configuration.
++- [Sessions](sessions.md): sessions, conversations, child sessions, and their lifecycle.
++- [Structure](structure.md): source layers, the kernel, modules, registration, and code homes.
++- [Substrate](substrate.md): durable history, projections, state ownership, recovery, and retry.
++- [Tools](tools.md): tool execution safety, external processes, and file mutation.
++- [Workflows](workflows.md): workflow control, attempts, and verification.
+diff --git a/docs/architecture.md b/docs/architecture.md
+index 4919656..9b49cdc 100644
+--- a/docs/architecture.md
++++ b/docs/architecture.md
+@@ -2,29 +2,29 @@
+ 
+ Current architecture for Flywheel's terminal and web clients: how the layers compose, where state lives, how chat, workflows, and delegated subagents run, and which extension points carry new behavior.
+ 
+-Related ADRs, ordered from the most conceptually central to the most implementation-specific:
+-
+-- `docs/adrs/adr-000-flywheel-thesis.md` - the organizing thesis the other ADRs apply
+-- `docs/adrs/adr-001-event-sourced-substrate.md` - event-sourced substrate and replay boundary semantics
+-- `docs/adrs/adr-002-context-engineering-and-inspectability.md` - context inspectability, provenance, and progressive disclosure
+-- `docs/adrs/adr-003-agent-as-environment-operator.md` - agent operation, feedback, evaluation, subagents, hooks, and back-pressure
+-- `docs/adrs/adr-004-intent-contracts-and-evaluation.md` - intent contracts, evaluation records, and proof surfaces
+-- `docs/adrs/adr-021-design-intent-and-the-first-draft.md` - the three-act work process: chat captures design intent, an implementation route returns a first draft, and the intent-holding agent revises it into the design from the review's drift and defect findings
+-- `docs/adrs/adr-005-flywheel-design-principles.md` - the canonical Flywheel elegance standard: layer, reactivity, event, DI, disposal, and harness-minimalism principles
+-- `docs/adrs/adr-006-workflow-control-and-attempts.md` - SQLite workflow authority, pure transition control, the async host, and the queue projection
+-- `docs/adrs/adr-007-agent-runtime-process-placements.md` - one logical runtime and runner host across account control, state Worker, lower-priority executor, local headless composition, and focused test placements
+-- `docs/adrs/adr-008-durable-sessions-and-conversations.md` - durable session tree and workflow facts as the authorities from which the rendered transcript is derived
+-- `docs/adrs/adr-009-tool-execution-safety.md` - tool concurrency/liveness plus the full-autonomy and environment-containment decision
+-- `docs/adrs/adr-010-runtime-ui-protocol.md` - the sequenced cursor/patch protocol, including absolute transcript coordinates and bounded cursor replay
+-- `docs/adrs/adr-013-project-and-execution-directory-semantics.md` - root directory authorities, auth profile placement, and execution-directory propagation
+-- `docs/adrs/adr-015-internal-modules.md` - statically composed module contributions, provider routing, and request-pinned provider selection
+-- `docs/adrs/adr-017-subscription-usage.md` - unified profile-scoped Usage authority for provider observations, immutable request accounting, recovery, and runtime publication
+-- `docs/adrs/adr-018-runtime-config-projection.md` - unified runtime configuration decoding, immutable revisions, application boundaries, mutation ordering, and last-valid retention
+-- `docs/adrs/adr-022-subagent-child-sessions.md` - normative child-session ownership, run binding, completion, messages, deletion, accounting, and inspection invariants for subagents
++Intended architecture is a living authority indexed by `docs/architecture-intent/README.md`, with one file per domain:
++
++- `docs/architecture-intent/agency.md` - how agents, evidence, and deterministic code divide authority over intent, work, and completion
++- `docs/architecture-intent/boundaries.md` - external input normalization, strict internal state, and secret handling
++- `docs/architecture-intent/context.md` - model-visible context assembly, inspectability, and compaction
++- `docs/architecture-intent/directories.md` - account, project, and execution directory authorities and project selection
++- `docs/architecture-intent/distribution.md` - binary builds, releases, installation, and update activation
++- `docs/architecture-intent/learning.md` - durable memory and skill scope, consent, and audit
++- `docs/architecture-intent/naming.md` - concept naming and the grammars for facts, requests, and identifiers
++- `docs/architecture-intent/protocol.md` - the runtime and client contract and client rendering boundaries
++- `docs/architecture-intent/providers.md` - provider admission, accounting, and paid-use consent
++- `docs/architecture-intent/runtime.md` - the runner host, process placement, the account service, and runtime configuration
++- `docs/architecture-intent/sessions.md` - sessions, conversations, child sessions, and their lifecycle
++- `docs/architecture-intent/structure.md` - source layers, the kernel, modules, registration, and code homes
++- `docs/architecture-intent/substrate.md` - durable history, projections, state ownership, recovery, and retry
++- `docs/architecture-intent/tools.md` - tool execution safety, external processes, and file mutation
++- `docs/architecture-intent/workflows.md` - workflow control, attempts, and verification
++
++`docs/guides/elegance.md` is the elegance rubric that judges the architecture, and `docs/terminology.md` is the glossary of its terms.
+ 
+ Unbuilt workflow directions are plans, not architecture records: the active plans named by `docs/plans/swarm-inspired-decomposition-and-coordination.md`, and the gated options in `docs/plans/swarm-evidence-gated-options.md`.
+-ADR-022 describes shared child-session ownership, nested terminal viewers, hierarchical web selection, and runtime-admitted controls. Navigation lists chats only. Historical inline subagent facts retain their existing presentation.
+-Current intended user behavior is a separate living authority indexed by `docs/product-intent/README.md`. Product intent defines what the product must do even when current code does not yet comply; ADRs define the architecture that implements it.
++Subagents use shared child-session ownership, nested terminal viewers, hierarchical web selection, and runtime-admitted controls (ARCH-SESSIONS-010, ARCH-PROTOCOL-050). Navigation lists chats only. Historical inline subagent facts retain their existing presentation.
++Current intended user behavior is a separate living authority indexed by `docs/product-intent/README.md`. Product intent defines what the product must do even when current code does not yet comply; architecture intent defines the architecture that implements it.
+ 
+ ## The Experience
+ 
+@@ -63,7 +63,7 @@ infra <- workflows <- orchestration <- tui
+ 
+ ## Process Placement
+ 
+-The source-layer direction above is one axis; physical placement is another (ADR-007). One `createRunnerHost()` composition serves chat, the agents of workflows, subagents, direct headless tasks, persona benchmarks, learning reviews, and title generation. Typed ports supply each caller's input, tools, capabilities, persistence, observers, and result contract.
++The source-layer direction above is one axis; physical placement is another (ARCH-RUNTIME-006). One `createRunnerHost()` composition serves chat, the agents of workflows, subagents, direct headless tasks, persona benchmarks, learning reviews, and title generation. Typed ports supply each caller's input, tools, capabilities, persistence, observers, and result contract.
+ 
+ ```text
+ TUI placement
+@@ -119,11 +119,11 @@ Live ownership and immutable ancestry are separate projections. Current workflow
+ 
+ The subagent tool marks its execution as child-owned viewport work. Generalized reconciliation keeps the launching card and terminal result in the parent while the child's transcript and live output remain under the child session. The TUI opens linked children in nested viewers without tabs and traverses reciprocal live lineage through depth three. Web and phone clients select linked children through ordinary session navigation and preserve that selection in browser history. Both clients derive Steer, Interrupt, Resume, Stop, Delete, and settled read-only behavior from runtime-admitted actions. Historical inline runs retain their existing parent-card presentation.
+ 
+-The optional JSONL output is a closed, secret-safe machine contract derived from selected ephemeral runtime events, followed by one terminal record. It is process-attached and has no replay or durable sequence authority. It is not a projection: ADR-016 reserves that term for deterministic folds over durable facts. SQLite facts remain the post-run authority.
++The optional JSONL output is a closed, secret-safe machine contract derived from selected ephemeral runtime events, followed by one terminal record. It is process-attached and has no replay or durable sequence authority. It is not a projection (ARCH-PROTOCOL-061): `docs/terminology.md` reserves that term for deterministic folds over durable facts. SQLite facts remain the post-run authority.
+ 
+ Two consequences worth carrying into every other section of this doc:
+ 
+-- **"Reactive Dataflow" and "Session Infra and Derived Output" (Audit Module Stack layer 9) below describe executor-side dataflow until private output reaches the account sequencer.** The OpenTUI client is on the other side of the public `RuntimeClient` protocol; it never shares store identity with orchestration (ADR-005). Where this doc says "the store" or "SessionStore" without qualification, that is runtime-side state, not something the TUI reads by reference.
++- **"Reactive Dataflow" and "Session Infra and Derived Output" (Audit Module Stack layer 9) below describe executor-side dataflow until private output reaches the account sequencer.** The OpenTUI client is on the other side of the public `RuntimeClient` protocol; it never shares store identity with orchestration (ARCH-PROTOCOL-001). Where this doc says "the store" or "SessionStore" without qualification, that is runtime-side state, not something the TUI reads by reference.
+ - A TUI client that loses its account-service connection treats it as `reconnect_required` and rebuilds its view from fresh public runtime snapshots folded from authoritative SQLite facts and current executor output rather than trusting local state. The client surfaces this as workspace connection state (`create-workspace-connection-state.ts`) rather than a silent frozen UI.
+ 
+ ## Audit Module Stack
+@@ -154,7 +154,7 @@ Access-provider routing is automatic and universal: callers request a model and
+ 
+ `failover-client.ts` owns the admitted request's `run` callback walk. It scans the complete remaining canonical order before waiting on pending quota or service rechecks. It waits only when no candidate can serve now, then refreshes and rescans after an authority revision or lease deadline. Rejected candidates cause no client construction, probe claim, request preparation, audit opening, or provider I/O. A due recheck is claimed only after all read-only gates pass, and its fence is the only authority that can renew or conclude it. A candidate is left behind only on the named failover class, `FailoverFailure` in `provider-failure.ts`: spent quota, rate limiting, overload, an outage, or the account's refusal of the model or its extended window, after canonical work and accounting settle. The walk hands a refusal to the client's `recordModelRefusal` owner, which saves it through the model listing for the exact account generation and republishes eligibility. A failure the request or the account caused (a rejected request, an overflow, bad credentials, or an unclassified error) would repeat on every candidate, so the attempt that met it settles the request under that failure's own name and the walk never sees it. Local safety, preparation, authority, and durability failures remain strict, and cancellation stops the walk. Every prepared attempt records the exact provider and canonical account candidate that serves it.
+ 
+-Provider adapters are lazy and cached only by canonical account identity. Successful construction is shared and reused; rejected construction is evicted. Request admission, failover state, quota standing, and spend authorization remain request-local or authority-owned and never enter the adapter cache. `provider-availability.ts` is the process's single owner of routing quota state. It consumes current normalized profile observations without turning retained usage into fresh evidence. ChatGPT rate headers affect included mode only. Copilot finite, pooled, and unclassified observations retain their provider semantics; no reader guesses a per-seat finite allowance from a pool or an old row. Availability coordinates request-time suppression and provider service standing, while ADR-017's profile authority owns inspection history and freshness.
++Provider adapters are lazy and cached only by canonical account identity. Successful construction is shared and reused; rejected construction is evicted. Request admission, failover state, quota standing, and spend authorization remain request-local or authority-owned and never enter the adapter cache. `provider-availability.ts` is the process's single owner of routing quota state. It consumes current normalized profile observations without turning retained usage into fresh evidence. ChatGPT rate headers affect included mode only. Copilot finite, pooled, and unclassified observations retain their provider semantics; no reader guesses a per-seat finite allowance from a pool or an old row. Availability coordinates request-time suppression and provider service standing, while the profile Usage authority (ARCH-PROVIDERS-050) owns inspection history and freshness.
+ 
+ **1a. Profile-Scoped Usage** reads one protocol-v6 SQLite accounting authority per resolved auth profile. The `subscription-usage` module owns the optional inspection views, queries, refresh and reset actions, polling, and threshold notices. Accounting, provider admission evidence, and spend consent remain kernel authorities when the module is off. Separate provider-observation and immutable request-ledger families share the authority and lifecycle without deriving each other. Provider observations retain strict finite, pooled, or unclassified metrics, current readings, hourly history, freshness, alerts, and refresh coordination. The request ledger records every served request from the shared runtime path with exact candidate attribution, opaque auth-owned credential lineage distinct from account identity, tokens, and priced or unavailable evidence. Entries use UTC instants; current-month spend queries use local calendar boundaries. `usage.open`, `usage.accounts`, `usage.spend`, `usage.history`, and `usage.refresh` expose this authority through `RuntimeClient`. Refresh changes provider observations only. Usage shows Estimated billed spend and Included value separately, while provider invoices remain authoritative for actual charges. Key code lives in `src/infra/llm/usage-authority.ts`, `src/infra/llm/usage-entry.ts`, `src/orchestration/agent-runtime/usage-settlement.ts`, `src/orchestration/modules/subscription-usage/usage-projection.ts`, and `src/orchestration/modules/subscription-usage/protocol.ts`.
+ 
+@@ -168,7 +168,7 @@ Provider adapters are lazy and cached only by canonical account identity. Succes
+ 
+ **6. Agent Loop** is the core model/tool state machine. It owns context tracking, compaction, recovery, budget exhaustion, todo state, turn policy injections, and tool-based termination. Key code lives in `src/orchestration/agent-runtime/agent-loop.ts`, with per-turn assembly in `src/orchestration/agent-runtime/runtime-assembly.ts`, budget exhaustion in `src/orchestration/agent-runtime/budget-exhaust.ts`, and context-update emission in `src/orchestration/agent-runtime/context-token-anchor.ts`. Audit loop termination guarantees, context compaction invariants, hidden state, duplicate sources of truth, and recovery branches.
+ 
+-**7. Agent Runner Boundary** is the public runtime boundary used by the rest of Flywheel: `send`, `abort`, `interruptGeneration`, `done`, and conversation identity. Key code lives in `src/orchestration/agent-runtime/runner.ts`, `types.ts`, and `factory.ts`. The runner owns Effect lifecycle, phase, abort, interrupt, and `done` completion only; per-turn assembly delegates to `src/orchestration/agent-runtime/runtime-assembly.ts`. Provider `streamWithTools()` and `complete()` calls run in-process beside the agent loop that consumes them (ADR-007); no provider-call host process exists. Audit lifecycle ownership, abort/interrupt correctness, event emission, conversation persistence, and subagent cleanup.
++**7. Agent Runner Boundary** is the public runtime boundary used by the rest of Flywheel: `send`, `abort`, `interruptGeneration`, `done`, and conversation identity. Key code lives in `src/orchestration/agent-runtime/runner.ts`, `types.ts`, and `factory.ts`. The runner owns Effect lifecycle, phase, abort, interrupt, and `done` completion only; per-turn assembly delegates to `src/orchestration/agent-runtime/runtime-assembly.ts`. Provider `streamWithTools()` and `complete()` calls run in-process beside the agent loop that consumes them (ARCH-RUNTIME-006); no provider-call host process exists. Audit lifecycle ownership, abort/interrupt correctness, event emission, conversation persistence, and subagent cleanup.
+ 
+ **8. Runner Consumers: Chat and Workflow Worker Adapters** create runner contexts and apply different policies, prompts, handoff requirements, resume behavior, and message delivery. Key code lives in `src/orchestration/chat/session.ts`, `src/orchestration/workflow-host/agent-callback.ts`, , and `src/orchestration/runner/agent-turn.ts`. Audit shared versus divergent behavior, resume/retry semantics, connection-state handling, and turn policy boundaries.
+ 
+@@ -227,7 +227,7 @@ Per-session runtime state lives in `.flywheel/flywheel.sqlite` as typed facts. `
+ |---|---|
+ | Session index projection (folds `session:<sessionId>` metadata facts) | Kind, label, lifecycle, conversation identity, local settings, direct parent, immutable workflow membership, and accounting ancestry. SessionManager owns session relationships; navigation lists chats only. |
+ | Conversation tree projection (folds `conversation:<conversationId>`) | One append-only conversation per session, projected from `chat.tree.created` and `chat.entries.appended`. It supplies canonical model context and transcript history for chats, subagents, and workflow agents. |
+-| Fork diff projection (folds `session.forked` facts from `session:<sessionId>`) | Fork branch points and diff bases projected from `session.forked` facts. Chat forks still copy the ADR-008 tree, but the copied entry prefix and SQLite event prefix are durable typed facts. |
++| Fork diff projection (folds `session.forked` facts from `session:<sessionId>`) | Fork branch points and diff bases projected from `session.forked` facts. Chat forks still copy the conversation tree (ARCH-SESSIONS-042), but the copied entry prefix and SQLite event prefix are durable typed facts. |
+ | `workflow:<workflowId>` fact stream | Run registration, settings, current launch binding, and control. Strict control replay owns the graph, attempts, frontier, charges, and outcome; run facts survive control-root replacement. No session row or persisted XState snapshot represents the run. |
+ | Workflow-view projection (folds `queue.*` companions from `workflow:<workflowId>`) | Deterministic attempt rows, status, ordering, retry provenance, and mutation explanations. Derived membership joins real session and history ids. Views never select execution. |
+ | Definition lineage projection (folds `definition.*` and `workflow.compiled` from `workflow:<workflowId>`) | Recorded definitions, briefs, semantic hashes, canonical request identity, and compiled phase shape. |
+@@ -251,7 +251,7 @@ Inline mutation evidence written before 2026-10-16 is normalized at the family r
+ 
+ SQLite replacement is gated by measured writer failure, not speculation. The repeatable gate is `FLYWHEEL_EVENT_STORE_STRESS=1 bun test tests/integration/event-store-writer-inthread.test.ts`, which drives realistic high-volume payloads through the writer lane and asserts the load target: at least 5,000 facts/sec for 60 seconds, p95 commit ack latency <= 100ms, p99 <= 250ms, WAL <= 512MB, checkpoint <= 500ms, and no duplicate IDs or sequence gaps. Append-log-first ingestion or a non-SQLite dependency is justified only after that topology fails the numeric SLA after targeted fixes.
+ 
+-Resumable conversation history flows through the durable conversation tree, keyed `conversation:<conversationId>` (see ADR-008). The same path serves chat and workflow workers: the runner reads the durable active branch via `walkContextBranchFromLeaf` and `buildSessionContext` (`src/orchestration/session/conversation/conversation-tree-context.ts`), which honors compaction reconstruction, omits `displayOnly` entries from the model-visible context, and rewrites branch summaries into virtual user messages. Chat mints a stable `conversationId` for its tree; `ChatSessionState` is the single authority for `providerConversationId` (the distinct provider-side continuation/cache identifier). Save points (`ConversationTreeWriter.flushSavePoint`) bound when in-turn writes become durable; `commitUserTurn` is durable before the provider request begins. The tree's batch append (`ConversationTreeStorage.appendEntries`) validates the full batch against a working index and commits it as one `chat.entries.appended` SQLite fact, with a `chat.reasoning.reported` fact in the same transaction when its assistant messages carry the reasoning tokens their provider reported, so a completed turn lands atomically. The count is its own fact because an earlier build's fold reads only the fact types it knows: that build still reads every entry. Fork is a publish-bounded primitive: the target tree facts are written and validated before the `session.created` and `session.forked` facts are appended, so a crash before publish leaves no listable session.
++Resumable conversation history flows through the durable conversation tree, keyed `conversation:<conversationId>` (ARCH-SESSIONS-047). The same path serves chat and workflow workers: the runner reads the durable active branch via `walkContextBranchFromLeaf` and `buildSessionContext` (`src/orchestration/session/conversation/conversation-tree-context.ts`), which honors compaction reconstruction, omits `displayOnly` entries from the model-visible context, and rewrites branch summaries into virtual user messages. Chat mints a stable `conversationId` for its tree; `ChatSessionState` is the single authority for `providerConversationId` (the distinct provider-side continuation/cache identifier). Save points (`ConversationTreeWriter.flushSavePoint`) bound when in-turn writes become durable; `commitUserTurn` is durable before the provider request begins. The tree's batch append (`ConversationTreeStorage.appendEntries`) validates the full batch against a working index and commits it as one `chat.entries.appended` SQLite fact, with a `chat.reasoning.reported` fact in the same transaction when its assistant messages carry the reasoning tokens their provider reported, so a completed turn lands atomically. The count is its own fact because an earlier build's fold reads only the fact types it knows: that build still reads every entry. Fork is a publish-bounded primitive: the target tree facts are written and validated before the `session.created` and `session.forked` facts are appended, so a crash before publish leaves no listable session.
+ 
+ The rendered transcript is not read from an independent durable output index. Each agent's transcript folds its own conversation and execution facts. Workflow cards and headers read run/control projections separately. Live `OutputSession` mints output deltas for the owning session. No rendered-output cache facts are written.
+ 
+@@ -275,9 +275,9 @@ interface Agent {
+ }
+ ```
+ 
+-The whole runtime runs inside the runtime worker (ADR-007). Provider `streamWithTools()` and `complete()` calls execute in-process beside the agent loop that consumes them; there is no spawned provider-call host. `SessionManager` remains the authority for `active`/`inactive`, and the composition's in-thread writer remains the SQLite writer authority.
++The whole runtime runs inside the runtime worker (ARCH-RUNTIME-006). Provider `streamWithTools()` and `complete()` calls execute in-process beside the agent loop that consumes them; there is no spawned provider-call host. `SessionManager` remains the authority for `active`/`inactive`, and the composition's in-thread writer remains the SQLite writer authority.
+ 
+-The runtime resolves access per request, exposes native tools, and emits raw events. Chats, subagents, and workflow agents use session-owned durable conversation context. Ephemeral auxiliary calls can use an in-process cache, never as durable history. The agent loop receives assembled messages rather than owning conversation persistence (ADR-007, ADR-008).
++The runtime resolves access per request, exposes native tools, and emits raw events. Chats, subagents, and workflow agents use session-owned durable conversation context. Ephemeral auxiliary calls can use an in-process cache, never as durable history. The agent loop receives assembled messages rather than owning conversation persistence (ARCH-RUNTIME-002, ARCH-SESSIONS-002).
+ 
+ `Agent` wraps raw runners so orchestration talks to a stable boundary: `send`, `abort`, `end`, `interrupt`, and `done`.
+ 
+@@ -285,7 +285,7 @@ Every model request is attributable. `src/orchestration/agent-runtime/llm/provid
+ 
+ ## Chat Flow
+ 
+-When the TUI starts, `FlywheelShell` starts a chat. Every start opens a new chat, and the runtime records it when it opens, so the catalog can list it. The runtime removes an empty chat when its tab closes or when a stop finds that no client holds its project, so opening and closing an unused chat does not leave an orphaned session record. A stop that a client holds the project through keeps the empty chat for the tab that attaches it again (ADR-008).
++When the TUI starts, `FlywheelShell` starts a chat. Every start opens a new chat, and the runtime records it when it opens, so the catalog can list it. The runtime removes an empty chat when its tab closes or when a stop finds that no client holds its project, so opening and closing an unused chat does not leave an orphaned session record. A stop that a client holds the project through keeps the empty chat for the tab that attaches it again (ARCH-RUNTIME-024).
+ 
+ On a chat message:
+ 
+@@ -522,7 +522,7 @@ Built-in definitions have one registration point for each domain. Consumers deri
+ - Built-in TUI commands register in the collection returned by `buildCommandDefinitions()` in `src/tui/commands/command-definitions.ts`. Skill commands are projections of the skill registry. Workflows publish no command.
+ - Runtime event types register in `RUNTIME_EVENT_DEFINITIONS` in `src/infra/runtime-event-types.ts`. Event subscribers attach to the relevant event types after this collection defines their schemas, actors, and durable mappings.
+ - Settings register in `SETTING_DEFINITIONS` in `src/orchestration/config/setting-definitions.ts`; config schema fields, persistence behavior, and settings presentation derive from the definitions that apply to each consumer.
+-- Runtime configuration is decoded once into ADR-018's immutable Runtime Config Projection. One general watcher treats filesystem events as hints and rereads canonical bytes; subscribers own domain effects, request paths capture one revision, and safety-sensitive module admission and update activation still revalidate under their owning locks.
++- Runtime configuration is decoded once into the immutable runtime config projection (ARCH-RUNTIME-056, ARCH-RUNTIME-057). One general watcher treats filesystem events as hints and rereads canonical bytes; subscribers own domain effects, request paths capture one revision, and safety-sensitive module admission and update activation still revalidate under their owning locks.
+ - Skills and personas load through `src/workflows/definition-registry.ts`. Workflow files load only through content or path launch, and each brief is inline. Account and project workflow folders do not load; their files remain unchanged, with one warning per folder.
+ - Agent tools register in `TOOL_REGISTRY` in `src/orchestration/agent-runtime/tools/tool-registry.ts`. The request planner derives provider schemas, prompt guidance, dispatch, code adaptation, and omission evidence from that inventory and the active typed surfaces. Display identity, detail extraction, and diff materialization remain a separate infra contract looked up by canonical tool name. Every registration's input schema root is one `type: "object"` schema; a union root (`oneOf`, `anyOf`, `allOf`) is banned because providers reject it, so variants are one flat object with a discriminating enum field.
+ - Skills load through one registry from reusable packages under `src/agent-skills/`, workflow-owned packages under `src/workflows/skills/`, and the external stores. Only `userInvocable` packages publish slash commands; model invocation and deterministic dependency composition are separate policies.
+diff --git b/docs/guides/elegance.md b/docs/guides/elegance.md
+new file mode 100644
+index 0000000..d5e335f
+--- /dev/null
++++ b/docs/guides/elegance.md
+@@ -0,0 +1,241 @@
++# Elegance
++
++This guide is Flywheel's canonical, project-specific definition of elegance and the rubric used to audit the codebase. Elegant Flywheel code works with the grain of its tools, makes ownership and causality obvious, contains no duplicated authority or speculative ceremony, and leaves each line doing load-bearing work for the intended user experience. A reader should be able to explain why every boundary and abstraction exists from the behavior or invariant it protects. Architecture intent (`docs/architecture-intent/`) owns the specific rules for how Flywheel's internals are organized: where a section below names a topic and cites statement identifiers, those statements are the authority, and this rubric judges designs and code against them.
++
++`AGENTS.md` operationalizes this standard for coding agents. The overlap is deliberate: this guide is the durable human-readable audit rubric, while `AGENTS.md` is the instruction surface applied during work. Neither may be slimmed by silently dropping a rule; any rule removed from this guide must first remain fully represented in `AGENTS.md`, and any disagreement must be resolved in both documents.
++
++## Stack Roles
++
++Solid confinement to client layers and the scope of Effect: ARCH-STRUCTURE-004, ARCH-STRUCTURE-005.
++
++## Core Thesis
++
++**Work with the grain of your tools.**
++
++- Bun's grain is "the runtime does it."
++- Solid's grain is fine-grained reactivity.
++- TypeScript's grain is structural inference.
++- Effect's grain is scoped async lifecycle.
++
++If a pattern feels ceremonious, the idiomatic solution is usually simpler.
++
++## Tool Divisions
++
++Each first-class tool owns one architectural job:
++
++| Tool | Owns | Does not own |
++|---|---|---|
++| Bun | Runtime, subprocesses, file APIs, tests, build scripts | Wrapper layers that only rename Bun or Node APIs |
++| TypeScript | Domain modeling, discriminated unions, structural inference, factory DI contracts | Runtime validation of external data without a schema |
++| SolidJS | UI-readable reactive state, memos, stores, component ownership, OpenTUI rendering reactivity | Async resource lifecycle, provider stream cancellation, typed runtime error channels |
++| Effect | Scoped async lifecycle, resource acquisition/release, structured concurrency, `Fiber` interruption, `Deferred`, typed errors, Effect-native streams/PubSub/Schema where adopted | Business logic, XState transition policy, session state authority, Solid's reactive graph |
++| OpenTUI | Terminal rendering primitives, input surfaces, display constraints | Domain state, persistence, workflow control, session policy, agent runtime policy |
++
++Effect is first-class for lifecycle and typed async boundaries; Solid remains first-class for TUI reactivity; TypeScript remains first-class for concise domain structure; Bun remains first-class for runtime primitives.
++
++## Core Motto
++
++Maximize elegance, not minimal churn. Prefer the design that leaves the codebase simpler, more symmetric, and easier to extend, even when that requires a larger refactor now.
++
++## Layer Boundaries
++
++Source layers, their one-way dependency direction, and one home per domain: ARCH-STRUCTURE-001, ARCH-STRUCTURE-003.
++
++## Decision Checklist
++
++Run these before planning or implementing a change:
++
++| # | Check | If violated |
++|---|---|---|
++| 1 | Is there exactly one source of truth for this data? | Use the existing fact, projection, domain record, TUI store, or workflow-view field. Do not copy it. |
++| 2 | Store or event bus? | UI-readable state enters the TUI store through protocol data. Independent infrastructure notifications go to the bus. |
++| 3 | Memo or effect? | Derived value -> memo. I/O -> effect. Signal-setting inside an effect that reads another signal usually wants a memo. |
++| 4 | Async lifecycle or reactive state? | Resource lifecycle -> Effect. UI-readable state -> Solid store/signal. |
++| 5 | Does this belong in orchestration or TUI? | Business logic -> orchestration. Rendering/JSX -> TUI. |
++| 6 | Does this belong in workflows or orchestration? | XState workflow policy, facts, attempts, and projections -> workflows. Config, sessions, agent runtime, and production wiring -> orchestration. |
++| 7 | Can TypeScript infer this? | Annotate module boundaries. Delete interior annotations the compiler does not need. |
++| 8 | Is this abstraction used in 2+ places? | If not, inline it unless SRP would be harmed. |
++| 9 | Is disposal ordered and awaited? | Finalize, flush, dispose. Fire-and-forget loses data. |
++| 10 | Would deleting this code change behavior? | If not, delete it. |
++| 11 | Internal or external boundary? | External input -> accept recoverable variation, normalize once, then publish a typed internal shape or a clear typed error. We wrote the data -> reader throws on malformed input, writer enforces the invariant. |
++
++## State Ownership
++
++One source of truth per value, durable state as facts and projections, and the owner of each kind of state: ARCH-SUBSTRATE-001, ARCH-SUBSTRATE-002, ARCH-SUBSTRATE-015, ARCH-SUBSTRATE-017, ARCH-SUBSTRATE-022, ARCH-SUBSTRATE-023, ARCH-WORKFLOWS-006, ARCH-SESSIONS-001, ARCH-SESSIONS-006, ARCH-SESSIONS-043, ARCH-CONTEXT-013, ARCH-CONTEXT-014, ARCH-LEARNING-006, ARCH-LEARNING-010, ARCH-DIRECTORIES-014, ARCH-PROVIDERS-031, ARCH-PROVIDERS-033, ARCH-PROVIDERS-038, ARCH-PROVIDERS-063, ARCH-PROTOCOL-063, PI-AGENT-010.
++
++## Postel Boundary Discipline
++
++Liberal external boundaries, strict internal state, historical recovery, and durable user state: ARCH-BOUNDARIES-001, ARCH-BOUNDARIES-002, ARCH-BOUNDARIES-004, ARCH-BOUNDARIES-005, ARCH-BOUNDARIES-006, ARCH-SUBSTRATE-013, ARCH-SUBSTRATE-014, ARCH-SUBSTRATE-027, ARCH-SUBSTRATE-030, ARCH-SUBSTRATE-031, ARCH-DIRECTORIES-007, ARCH-PROVIDERS-039, UPD-003, UPD-023, PI-CAP-011.
++
++## Secret Handling
++
++Redaction, the one serialization crossing, and external logins: ARCH-BOUNDARIES-009, ARCH-BOUNDARIES-012, ARCH-BOUNDARIES-013, ARCH-PROVIDERS-066, PI-MODEL-027.
++
++## Retry and Idempotency
++
++The conversation as the retry ledger, the one provider fallback owner, and unattended recovery: ARCH-SUBSTRATE-038, ARCH-SUBSTRATE-037, ARCH-PROVIDERS-032, ARCH-RUNTIME-003, ARCH-CONTEXT-010, PI-MODEL-031.
++
++## Reactive Architecture
++
++| Primitive | Role | Rule |
++|---|---|---|
++| `createStore` / `createSignal` | TUI source of truth | Written by the local TUI owner from typed snapshots, patches, or input. One canonical client location per datum. |
++| `createMemo` | Derived state | Pure function of reactive inputs. Never manually sync derived state. |
++| `createEffect` | I/O boundary | Persistence, external services, subscriptions, DOM/OpenTUI side effects. No business logic. |
++| `batch()` | Coalesced writes | Use around bursts of related writes so Solid publishes one coherent update. |
++| `createRoot` | TUI ownership scope | Required for TUI reactive ownership outside component trees. Dispose it with its TUI owner. |
++
++Only the TUI uses Solid. Infra, workflows, orchestration, and CLI composition remain plain TypeScript except for their owned Effect lifecycle boundaries.
++
++Avoid reactive diamonds: if a memo reads both an original signal and a store that an effect derives from that signal, it can observe stale intermediate states. Derive directly from the original source or collapse the dependency path.
++
++## Event Bus vs Store
++
++Bus notifications versus readable store state, and event naming: ARCH-STRUCTURE-007, ARCH-NAMING-007.
++
++## Session Lifecycle
++
++The two persisted lifecycle states and their one owner: ARCH-SESSIONS-003.
++
++## Definition and Registration
++
++Behavior arrives by registration, and workflows carry no registry: ARCH-STRUCTURE-017, ARCH-WORKFLOWS-009.
++
++## Skill Packages
++
++The instruction stack, progressive disclosure of packages, registry revisions, slash invocation, and external package trust: ARCH-CONTEXT-016, ARCH-LEARNING-005, ARCH-LEARNING-010, ARCH-BOUNDARIES-008, ARCH-TOOLS-038, PI-AGENT-028, PI-AGENT-037, PI-AGENT-038.
++
++## Harness Minimalism
++
++Agent-facing features use existing observable primitives: ARCH-AGENCY-006.
++
++## TypeScript Discipline
++
++Use inference over annotation. Exported functions and module boundaries get explicit return types; interior variables should usually infer.
++
++Prefer discriminated unions over optional fields. Narrow on `kind`, `type`, or another required discriminator.
++
++Use `effect/Schema` for validation (part of core `effect` in v4; there is no Zod in the codebase). At external boundaries (user config, LLM output, provider streams, network responses), prefer `safeParse` as part of a normalization contract: accept recoverable variation, publish a canonical typed shape, or surface a clear typed rejection. At internal boundaries (anything we ourselves write and read back), prefer `parse` so a producer bug throws instead of degrading silently. Schemas should not carry `.default()` on fields the producer always writes -- the default rewrites the producer contract.
++
++Use `satisfies` when validating object shape without widening.
++
++No `any`, no `Function`, no `// @ts-ignore`. Use `unknown` and narrow.
++
++The strict compiler flags are on and load-bearing: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noFallthroughCasesInSwitch`. Under `noUncheckedIndexedAccess` an indexed access is `T | undefined` -- branch or guard it. `exactOptionalPropertyTypes` is deliberately off: it surfaces ~300 low-signal `{ x?: T }`-vs-`{ x: T | undefined }` errors for negligible bug-catching; revisit only with a specific motivating bug.
++
++Casts and non-null assertions are the exception, not a tool. No `as Type` (other than `as const`) and no `!` without a `// SAFETY:` comment naming the invariant that makes it sound. Branch, parse, or restructure first; a cast is the last resort for an invariant TypeScript genuinely cannot express (a registry-erasure or branding seam).
++
++## Interface Design
++
++Use factory functions with explicit dependency injection:
++
++- `createSessionManager(deps)`
++- `createWorkflowRunner(opts)`
++- `createAgentRuntime(deps)`
++- `createWorkflowVmHost(deps)`
++High-level modules depend on narrow abstractions. A wrapper is justified when it enables polymorphism, lifecycle ownership, or test injection. A wrapper that only repeats a Bun or SDK interface is ceremony.
++
++Deep modules should expose simple interfaces. If a consumer needs internal knowledge to use a module correctly, the interface is too shallow.
++
++## Bun as Runtime
++
++Bun is the framework:
++
++- `Bun.spawn()` over `child_process`, and only inside a process-launch authority: ordinary production code starts an external process through `spawnOwned`, `runOwnedCommand`, or `openExternalUrl` (ARCH-TOOLS-022), while explicitly authorized survival uses only `src/infra/persistent-subprocess.ts`; no caller uses a raw launch primitive of its own
++- `Bun.file()` where it fits
++- Bun test runner through `bun run test`
++- Bun bundler/build scripts
++
++Before adding a dependency, check whether Bun, Solid core, Effect, or the standard library already owns the capability.
++
++## Effect Integration
++
++Effect owns async lifecycle only and is colocated with its domain owner: ARCH-STRUCTURE-005.
++
++## Disposal and Lifecycle
++
++Ordered, awaited disposal and attribution that follows publication: ARCH-RUNTIME-029, ARCH-TOOLS-019.
++
++## TUI Rendering Boundary
++
++Clients render derived state and send actions: ARCH-PROTOCOL-002.
++
++## Code Quality
++
++### SOLID
++
++We follow SOLID, resolved through this project's constraints.
++
++**Single Responsibility.** Extract when the unit owns non-trivial cohesive logic. Inline trivial forwarding.
++
++**Dependency Inversion.** Use DI when it creates a useful seam for tests, runtime selection, or lifecycle ownership. Do not wrap Bun APIs just to rename them.
++
++**Interface Segregation.** Pass the smallest interface that satisfies the caller.
++
++**Open/Closed.** Prefer extension through registration and discriminated unions. When adding a union member, update exhaustive consumers.
++
++### Conciseness
++
++- No abstraction for a single use unless SRP genuinely applies.
++- No callback chains that just forward.
++- No backward-compatibility shims.
++- Delete dead code immediately.
++- No speculative code -- add a capability when a phase needs it, not before.
++- Built means wired: every export has a non-test consumer in `src/`, and code that compiles but is never reached from the production entry point does not exist. Verify in the live TUI, not only in tests.
++- No mocks or fakes in production code -- wire new code into the real system; mocks live only in tests.
++- Cohesion over line count: split a file when it carries more than one reason to change or forces a reader to hold unrelated concepts (AGENTS.md sets the operational 600-code-line backstop; blank and comment lines do not count).
++- Sparse syntax, dense behavior.
++
++### Comments
++
++Comments explain why a primitive or boundary exists, not what the next line does.
++
++JSDoc the public surface of deep/domain modules and boundary APIs -- the symbols a caller drives through types and hover and should not have to read the body to use. Do not JSDoc-restate a well-named, well-typed signature: this is an application, not a published library, so the test for any comment is "does it add what the signature can't" -- a why, an invariant, a contract, or a safety note.
++
++## Testing
++
++Use project scripts:
++
++- `bun run test` after changes
++- `bun run lint` after changes
++- `bun run check:boundaries` after file additions or moves
++
++Unit tests should not call external APIs or spawn heavyweight UI flows. Integration and E2E tests own real subprocesses, I/O, and TUI behavior. New TUI behavior needs live TUI verification.
++
++Tests should cover observable behavior, not implementation details. Each contract has one owner test at the strongest boundary that can observe it; another layer tests the same contract only for a distinct risk that owner cannot reach.
++
++## Anti-Patterns
++
++| Pattern | Why it is wrong | Instead |
++|---|---|---|
++| Signal inside an effect that reads another signal | Manual derived-state sync | `createMemo` |
++| `{ current: T }` shared ref-bag | Hidden mutable architecture | Named object with methods or store field |
++| Callback chain A -> B -> C where B forwards | Indirection without ownership | A writes store, C reads store |
++| Optional fields representing a union | Compiler cannot enforce variants | Discriminated union |
++| Business logic inside `createEffect` | Effects are I/O boundaries | Pure function or memo plus effect for I/O |
++| Wrapper that re-exports a Bun API | No depth | Call Bun directly |
++| Interior type annotations the compiler infers | Noise | Delete annotation |
++| Pre-filtering events before emitting | Couples producer to consumers | Emit raw, subscriber filters |
++| A view that rereads or refolds durable history, or reads each member, on every change | Quadratic cost that grows with members and history and starves commits | Read the owner's live state; advance a held fold from its last position |
++| `dispose()` without `await` | Data loss | Await disposal |
++| Store value duplicated in signal/ref/adapter field | Two sources of truth | Read from the authority |
++| `src/effect/` technology namespace | Hides domain ownership | Colocate with owner |
++| `catch(unknown)` at Effect boundary | Loses typed error information | Tagged errors and boundary mapping |
++| Class-level `AbortController` for runtime lifecycle | Unstructured cancellation | `Fiber`; bridge to AbortController only at signal APIs |
++| Memo reads both source and effect-derived store | Reactive diamond/stale intermediate state | Derive from one dependency path |
++| `safeParse` on data we wrote | Tolerance where loudness is required | `parse`; let `InvariantViolation` surface |
++| `?? defaultValue` on a field the writer always sets | Silent corruption past a producer bug | Remove the default; throw on missing |
++| `flatMap(x => x ? [x] : [])` over a projection | Drops malformed rows without notice | Throw on the malformed row |
++| `.default(...)` on a Schema field the writer always sets | Schema lies about the producer contract | Remove the default; require the field |
++| `safeParse` / `?? undefined` on an owned fact in a reader | Softens an owned-data invariant into silent degradation | Decode once via the typed primitive (`parseProjectionFact`); throw on mismatch |
++| Hand-extracting fields from a known fact with `asString`/`asNumber` | Validate-and-discard: the schema exists, the reader re-derives it | Parse the fact into its typed shape once; read typed fields |
++| Parallel idempotency key / dedup record / attempt "resumed" marker | Second source of truth for what already ran | The event-sourced conversation is the ledger; retry replays it |
++| Repair/normalize/legacy branches on internal data | Hides writer drift | Fix the writer; delete the branch |
++| Optional options field guarded by a runtime `X requires Y` throw | The requirement is invisible at every construction site, so the untested path crashes on its first live request | Require the field on the type the constructor accepts; a completion seam produces that type (`RunnableAgentOptions`) |
++| `try { ... } catch { return [] }` reading our own SQLite or session disk | Silent empty state on real corruption | Throw; the substrate is broken |
++| "Backward compatibility" framing for internal schemas | Treats an internal storage shape as a public API | Migrate or invalidate stored state; preserve only user data that would otherwise be materially lost |
++| Provider/model quirks handled after canonicalization | Leaks external mess into internal code | Normalize once at the external boundary |
++| Rejecting recoverable LLM/provider syntax damage before normalization | Treats nondeterministic external systems as if they owed us internal invariants | Repair or retry when semantics are clear; reject when meaning is missing |
++| Package body copied into `AGENTS.md`, a brief, or a persona | Second source of truth for one procedure | Declare `requiredSkills`, or let the model load the package |
++| Dependency package that dispatches, routes findings, or synthesizes for its host | Couples one method to one orchestration, so a second host cannot compose it | The dependency states the method and its own report; the composing definition owns orchestration |
++| New always-loaded instruction block for a case-by-case need | Unbounded prompt growth for context most turns do not use | A skill package advertised by its trigger |
+diff --git a/docs/product-intent/README.md b/docs/product-intent/README.md
+index fd9d592..2a24bac 100644
+--- a/docs/product-intent/README.md
++++ b/docs/product-intent/README.md
+@@ -7,7 +7,7 @@ A product-intent statement can describe behavior that the implementation does no
+ ## Authority boundaries
+ 
+ - Product intent states what experience the product must provide.
+-- Architecture decision records state how durable architecture is organized.
++- Architecture intent (`docs/architecture-intent/`) states how Flywheel's internals are organized.
+ - Designs and plans state what change is approved for delivery.
+ - Code and tests provide implementation and evidence. They do not define product intent by themselves.
+ 
+@@ -22,7 +22,7 @@ A product-intent statement can describe behavior that the implementation does no
+ 
+ - [Agent methods](agent-methods.md): built-in methods and repository-specific extensions.
+ - [Capabilities](capabilities.md): optional modules, what turning one off removes, and the development module.
+-- [Interaction](interaction.md): text entry, keyboard controls, and surface-specific input behavior.
++- [Interaction](interaction.md): text entry, keyboard controls, surface-specific input behavior, launch and project selection, and command-line conventions.
+ - [Local access](local-access.md): opening a project's sessions in a browser on the machine that runs the runtime.
+ - [Model access](model-access.md): authentication, authorization, provider configuration, model eligibility, selection, routing, and failover.
+ - [Remote access](remote-access.md): pairing, the relay, sealed channels, and the phone client.
+diff --git b/docs/terminology.md b/docs/terminology.md
+new file mode 100644
+index 0000000..a467757
+--- /dev/null
++++ b/docs/terminology.md
+@@ -0,0 +1,244 @@
++# Terminology
++
++This glossary is the lexicon of Flywheel: each concept's canonical name, its definition, its spelling on each surface, and the synonyms it retires. Architecture intent states the naming rules that it serves: one concept has one name (ARCH-NAMING-001), the glossary owns names (ARCH-NAMING-002), a new concept is named here before its first identifier lands (ARCH-NAMING-003), retired terms do not return (ARCH-NAMING-004), and stored names are immutable data (ARCH-NAMING-005). The grammars for fact types, protocol requests, surface spelling, and identifier composition are ARCH-NAMING-007 through ARCH-NAMING-011. `bun run lint:terminology` rejects retired terms.
++
++## Lexicon
++
++Each entry: the canonical term, its definition, and the synonyms it retires. Retired terms do not appear in new code, docs, or UI strings.
++
++### Substrate
++
++- **event**: an ephemeral in-process bus message (`defineEvent`). Retires nothing; the word is banned for durable rows.
++- **fact**: a durable typed row in the event store (`defineFact`). The durable row type, writer interfaces, and fact-defining file names carry the fact stem. Qualifiers `control fact` and `companion fact` are the only sanctioned adjectives. Retires: stored event (as a type name), ledger fact, audit fact (neither semantic-audit evidence nor provider request diagnostics is a durable row).
++- **session.auth.profile.selected**: the session metadata fact that captures one persisted auth profile ID without credentials.
++- **event store**: the SQLite store holding facts. The industry term for the storage layer is retained deliberately even though its rows are facts.
++- **aggregate**: the replay partition key (`session:`, `conversation:`, `workflow:`). Docs list only keys that code produces.
++- **projection**: a deterministic fold over facts, and nothing else. Config policies and rendering transforms do not use the word.
++- **view**: a protocol-facing read shape sent to the TUI.
++- **snapshot**: a point-in-time full-state protocol payload, as opposed to an incremental patch. Banned from durable fact names.
++- **fold / replay**: fold applies one batch; replay folds a whole history. Executable workflow replay begins at the newest recognized control root; earlier control is render-only. Retires: rehydrate, catch up.
++- **registry**: a mutable runtime lookup that things register into. Files named for registration export the registry they create.
++- **catalog**: a published read-only list projected for display. Retires as collective nouns: roster, specs, descriptors.
++- **migration**: a versioned rewrite of historical facts or files that isolates failure per session and never rewrites or deletes bytes it cannot parse.
++- **content row**: one row of the session-scoped `tool_content` table, holding the canonical bytes of one distinct large tool text, keyed by session id and sha256. It commits in the same atomic append as the first fact that references it and is deleted with its session.
++- **tool-content reference**: the `{ sha256, bytes, preview }` shape a durable fact or chat entry stores in place of large inline tool text. Resolving a reference to its sha256-verified exact text at a durable read seam is **hydration**; the word is distinct from fold and replay and does not revive the retired rehydrate.
++
++### Workflow
++
++- **workflow**: a file that lists phases that run in order. One execution of the file is a **workflow run**; its `sessionId` identifies it, and `workflowDefinitionId` records provenance. The file lists its phases under `phases`. Retires from prose: ad hoc workflow, ad-hoc workflow, registered workflow, pipeline, epic, program (program remains a code-mode term). Retires as a module id: `adhoc-workflows` (the module is `workflows`). Retires as file keys and nouns: flow, flow entry, step record, `steps`, `after`.
++- **workflow view**: the flattened read model of a workflow's phases, agents, and attempts, on every surface including facts, config, protocol, and clients. Retires: queue, except for true first-in-first-out structures such as the injection queue. The stored `queue.*` fact types keep their spelling.
++- **workflow card**: the block in the parent chat's transcript that shows one workflow run: its phases, its agents, and its bar. The bar counts one unit for each agent.
++- **phase**: one section of a workflow. The phases of a workflow, and the phases of a repeat, run in order. A phase has one agent, the named agents of `agents`, or one agent for each item of the list that `over` names. `over: <phase>` gives a phase one agent for each agent of the phase directly before it, and each such agent starts when the agent that it follows finishes; such phases form a **stream**. `if: <phase>` runs a phase only when that phase completed, and `if: <phase>.<field>` runs it only when that field of its output is not empty. File key `phase`, TypeScript stem `Phase`, label Phase. Clients, message addresses, and model seats name a phase by its id. Retires: step as the unit of a workflow, stage, map, group, lane, chain, concurrent span, concurrent phase, overlapping run, outline entry, entry and row as display nouns, VM phase, and phase as the name of a part of an implementation plan or of chat delivery. Sanctioned other uses: a qualified compound that names a stage of another lifecycle, such as `StreamPhase`, `RuntimeShutdownPhase`, `RetirementPhase`, `ToolLifecyclePhase`, `ToolRenderPhase`, `PasteBurstPhase`, `StreamTimeoutPhase`, `ChatGptAdapterTransportPhase`, `WriterPhase`, `AcquisitionPhase`, and `RuntimeStartupPhase`, and a module-local `Phase` type outside workflow code. Stored spellings that stay frozen and readable: the node kinds and ownership tags `step`, `phase`, `group`, `branch`, `rounds`, `while`, and `for`, and the provenance tags `while`, `for`, `then`, and `branch`, of workflow control before version 11; the tree kinds `step`, `phase`, `group`, `branch`, `chain`, and `rounds` and the fields `stages`, `stageIds`, `mapId`, and `currentLeafId` of tree facts; the id segments `:branch:` and `:stage:` of nodes that control before version 11 created; and the fact types `group.expanded`, `group.settled`, `for.*`, and `step.*`.
++- **agent record**: the declaration of one agent in a workflow file: a phase of one agent, a named agent, or a phase over a list. Its key is the phase id or the named agent's id; stored nodes and attempts name it `definitionId`. Every agent of a phase over a list runs the one record of its phase. It holds the agent's brief, the persona that runs it (`persona`), and its policy (`writes`, `reads`, `name`, `model`, `effort`, `retry`). Retires: position as a noun, step record.
++- **brief**: what an agent runs: its instructions and its output contract. A workflow states each brief inline with `brief:`, with `output`, `dependencies`, and `subagents` beside it. Another agent record reuses it with `runs: <name>`, where the name identifies the phase or agent that states it. `runs` defaults to the record's id. The brief id is `<workflowId>.<name>` and names the model seat `brief.<briefId>`. A subagent's brief is the assignment that its parent dispatches. A brief is not a skill and never enters the skill catalog: it composes skills through `dependencies`. The text of a person's request is the request, never a brief. Retires: step content, step file, step instructions, content id as a seat key, dispatch brief (it is a brief), task as the name of the turn that carries an agent's own work, and Assignment as a label. Stored entry ids such as `subagent-task:<conversationId>` and `workflow-step-task:` keep their spelling.
++- **item**: one element of the list that a phase runs `over` or that a repeat runs `each`. Each agent of a phase over a list works on one item, or on one vote on one item. Its key is its `unique` field, or its 1-based padded position. Its label is its `label` field. `targets`, Interrupt, and Resume name such an agent by its item key. Retires: lane, and branch in prose. The `branch` field that `dedupe` and `top` add to kept and dropped entries is stored join output that agents read; it keeps its key and holds the item key or the agent id of the agent that reported the entry.
++- **join**: the fold of the outputs of the agents of one phase into one output by a registered reducer, written `join: { reducer, with, write }` on a phase of named agents or on the last phase of a stream. Every phase with several agents defaults to `collect`, whether it has named agents or runs over a list. A later phase that reads a join, such as `over: reviews.kept`, waits for it. A join is the only barrier. A failed agent of a list is a disposition in the join, never a failure of the phase or the workflow. Retires: fan-in and fan-out as nouns, and group as a prose name for what a join folds.
++- **repeat**: the one block of a workflow file, with its own `phases`. `repeat: { while: <phase>.<field>, max: <n>, stuck: <bool> }` runs rounds while that field is not empty. `repeat: { each: <source>.<field>, reassess: <phase> }` runs one round for each item, one after another. A repeat is not a phase: it has no agent, no attempt, and no card section of its own. `over` always means at the same time, and `each` always means one after another. Retires as file keys: `while`, `for`, `do`, `then`, `maxIterations`, `detectStuck`. Retires from prose: loop node, body step, and follow-up as a step concept; follow-up names only the conversation after a workflow completes.
++- **round**: one pass of a repeat's phases. Round has no other sense: the turn entry already retires it as a turn word, the frontier's settling count is depth, and execution preparation repeats in sweeps.
++- **output contract**: the closed declaration of the fields that a brief's handoff carries beside the summary. A launched workflow declares it inline beside `brief:` with `output`; no registry or name joins a brief to it. File verification also reads JSON contract paths relative to the workflow file.
++- **attempt**: one try of an agent at its brief. A retry and a reassessment replacement start a new attempt. An interrupt and its Resume continue the same attempt. A subagent's run is its attempt, and `childRunId` stays its stored id. A chat has no attempts. Provider request retries use the retry stem, never attempt.
++- **workflow agent**: the model-selection role of every agent that a workflow runs. Role id `workflow-agent`, label `Workflow Agent`. It is the parent seat of each brief seat `brief.<briefId>`, of each record seat `brief.<briefId>.at.<definitionId>`, and of each persona seat `brief.<briefId>.persona.<role>`. Prose names one such agent "an agent of a workflow", never "a workflow agent". Retires: step agent, `step-agent`, Step Agent, `step.<contentId>` as a seat, step seat, position seat, worker in this sense, step-worker, orchestrator as this role's label, and executable node as the executor. A config file or a stored role snapshot that names a retired seat reads as its current seat.
++- **control status**: the committed workflow control state `ready | executing | paused | follow_up | completed | failed`. It is internal and never publishes. Retires: VM phase.
++- **workflow state**: the published lifecycle is `idle | running | paused | completed | failed`; `idle` is the pre-launch rendering of a session whose workflow has not started. `paused` is the saved name of an interrupted or aborted workflow, never a person-facing word; interruption and abort are recorded reasons on the paused or failed state, not states, and the UI derives its labels from the reason. Internal control states carry a distinct name (control status) and never publish.
++- **recovered history**: the canonical strict-first historical projection shared by transcript display and provider API context. Reviewed salvage repairs recognized shapes; a **degraded gap** represents unreadable immutable bytes without inventing executable state.
++- **handoff**: the typed payload that an agent's completed attempt, or a chat turn, writes for its successors.
++- **artifact contract**: the file outputs that an agent record declares in `writes`, with lifetime and supersession.
++- **context bundle**: the material that an agent inherits into its context window: the request and its addenda, the launch input, the output of the phase before it, the outputs that it `reads`, live durable artifacts, and its item. A handoff is deliberate typed compaction at an agent boundary. The stored `context.*` and `step_context.*` types keep their spelling, and a new version keeps its type string. Code that assembles it lives in `src/workflows/context-bundle/`. Retires: step context, accumulated context as a bare name.
++- **request addendum**: a message that an agent of a workflow read from its parent session, which every later agent reads after the original request. The commit that settles the reading attempt records it as a `step_context.input.added` fact; the seed stays verbatim. An addendum is direction unless it holds the literal heading Design intent. A person's direct message to an agent is never a request addendum. Revision names a version identity and follow-up names input after a workflow completes, so neither word names an addendum.
++- **milestone**: one part of an implementation plan: its id, goal, files, changes, and a command that proves it alone. Retires phase in this sense. The reassessment contract of a repeat names the remaining items `item_id` and `item`.
++- **skill**: an authored instruction package (`SKILL.md`). Skill package may appear in prose for the on-disk bundle. Retires: canonical practice package, instruction package, practice package.
++- **agent skill**: a reusable skill under `src/agent-skills/` whose method or principle is independently useful to an agent outside workflow transport. Production agent skills form the production core corpus; the corpus derives from the admitted registry revision and is not a handwritten roster.
++- **workflow skill**: a skill under `src/workflows/skills/` whose method depends on workflow semantics, transport, or control. A brief may also compose an agent skill through `dependencies`; source location does not affect brief identity. Workflow skills belong to the complete bundled corpus but are excluded from historical core cleanup.
++- **dependency**: a skill reached only through another skill's dependency list. Retires: ingredient.
++- **persona**: a Markdown-authored subagent definition with a role and required skills. The model-facing subagent parameter uses this word. A brief lists the personas that its agent may dispatch as subagents under `subagents`. An agent record's `persona` runs that agent as the persona: the persona's instructions, required skills, tool limits, turn limit, and model seat apply to it, as they do to a dispatched subagent of the persona, and the brief still supplies the task and the output contract.
++- **designer**: the model-selection role for personas that judge rendered-interface intent. Role id `designer`, label `Designer`. The plan and code design reviewers share this role; it is not an implementation role or builder.
++- **learned skill**: a skill Flywheel wrote for itself (`managed: flywheel`), surfaced as `/learned.<id>`. Retires from prose: managed skill, curator-managed.
++
++### Experiments
++
++- **experiment**: an autonomous optimization loop that changes one candidate at a time and measures it under one approved charter.
++- **run**: one measured candidate in an experiment, including its measurement and keep, discard, crash, or checks-failed outcome. It is neither a workflow run nor an attempt.
++- **charter**: the user-owned repository definition that fixes an experiment's objective, metrics, gates, file access, commands, baseline procedure, and search strategy before the loop starts.
++- **protected path**: a path that an experiment can read but cannot write.
++- **sealed path**: a path that an experiment can neither read nor write.
++- **experiment view**: the protocol-facing read shape for an experiment's current segment, runs, metrics, best kept result, and confidence.
++
++### Agent runtime
++
++- **agent**: one execution loop instance, created by the agent runtime. It is a chat's agent, a subagent, or an agent of a workflow phase. A subagent, and an agent of a workflow, runs one brief on at most one item, and each try is an attempt. A chat's agent runs the person's conversation turn by turn, with no brief and no attempts. The agents of one phase can run different briefs on different models, efforts, and personas. The loop handle carries the agent stem without a product prefix. Retires: step agent as a separate noun, roster agent, and leaf as a prose name for an agent.
++- **divider**: the rule in a transcript before a message that a person sends mid-turn, before narration that resumes after finished tool work, before an implementer dispatch that follows a completed implementer and further work by the parent, and before a skill invocation in chat. Retires: step divider, `stepBoundary`.
++- **runner**: a session-level driver that owns an agent across turns (chat runner, workflow runner). Reserved for this layer alone.
++- **agent host**: the turn-lease owner wrapped around one agent. The host word is reserved for components that own an execution environment for a named occupant (workflow VM host, agent host, guardian host), never for port bundles.
++- **turn**: the two tiers are the logical turn (one user input to settlement, fact domain `logical_turn` under the agent namespace) and the provider turn (one model request, `model.turn`). Retires: exchange, round; generation as a turn word (generation names only the Bun Worker incarnation).
++- **activity**: the single runtime answer to what a session's agent is doing: `absent | idle | waiting | thinking | generating | executing_tools | awaiting_user`; `absent` renders a session with no live runner so the axis is total over the catalog. Retires as parallel axes: runner activity plus model phase as separate enums, agent state.
++- **lifecycle**: the durable session axis, `active | inactive`.
++- **interrupt**: the one resumable cut of a chat turn, a subagent attempt, or an agent of a workflow. Its actor is a person, the parent agent of a child, or the runtime. It cuts the running turn and any tool call the turn waits on in the foreground, keeps everything committed, and leaves the session idle. Subagents, workflows, and background commands that the interrupted session started keep running; only Stop ends them. Requests are `chat.interrupt`, `subagent.interrupt`, and `workflow.interrupt`; a parent agent interrupts its own child with `process` (`action: "interrupt"`). A child that its parent or the runtime interrupted is not active work: no wait parks on it, and it never blocks its parent's handoff. A child that a person interrupted stays its parent's active work. Labels are Interrupted for a person's interrupt, Interrupted by the parent, Interrupted by the runtime, and Interrupted by an unexpected exit. The saved spellings `paused`, `pausedBy` (`person`, `agent`, or `runtime`), `subagent.paused`, and the workflow control status `paused` name an interrupt in stored data and internal control; pause is never a person-facing control or label. Retires: pause as a control or label.
++- **resume**: the continuation of interrupted work from exactly where it stopped, with no new message. Requests are `chat.resume`, `subagent.resume`, and `workflow.resume`; a parent agent resumes its own child with `process` (`action: "resume"`), which also starts a new attempt of a child whose run failed. A parent agent never continues a child whose latest interrupt or stop a person made: only a person continues that work. The label is Resumed. Retires: the `resume` and `retry` kinds of the subagent tool.
++- **stop**: the terminal end of a child (a subagent or a workflow a parent launched) or a background command, always `background.terminate` on the parent's tool call; a parent agent stops its own child with `process` (`action: "stop"`). A chat has no stop. Labels are Stopped for a person's stop and Canceled for an agent's.
++- **process**: the kernel tool for the work that an agent started: its background commands, its services, and the children that it launched. Its actions are `list`, `status`, `wait`, `stop`, `interrupt`, `resume`, and `read_output`. A child's process id is its session id, and its row comes from the durable parent binding. `status` gives a child's progress, which the runtime reads from the child's own records on every call and never copies. `interrupt` and `resume` act only on the caller's own children. The Luna `process` registration gives the same rows and actions.
++- **list_sessions**: the kernel tool that lists the sessions of the project that an agent did not start: its parent, its siblings, and the other sessions that run now. The children that an agent started are in `process`, never in `list_sessions`.
++- **message**: input that one session delivers to another session of the same project through the kernel tool `message_session`, whose `to` takes an id from `process` or from `list_sessions`. The runtime records the sender, its name and relation to the recipient, the wake hop, and the words of the person that the sender read since its last exchange with the recipient. The recipient's transcript shows it as a message row that names its sender. A message never carries a reply: a reply is a separate message in the other direction. A parent's message to its own interrupted child continues the child when the parent may continue it, as its Resume does. A person's message to any session is the one request `session.send`, and a child row's input mode is `message`. Retires: steer as the name of a message from an agent or from the person; the `steer` kind of the subagent tool; and the requests `chat.send`, `subagent.steer`, and `workflow.steer`.
++- **reply wait**: the state of a session that sent a message with `wait: true` to its parent or to its own child and waits for the reply without ending its turn. `message_session` refuses a wait on any other session with `not_parent_or_child`. The session status names each session that it waits on in `replyWaits`, and clients show "Waiting on parent" or "Waiting on <name>".
++- **peer**: for one session, another session that is neither its parent nor its own child, such as another root chat. A message from a peer carries the relation `sibling` or `other`, carries no authority, and cannot open a reply wait.
++- **background index**: the one list of a chat's background work: the background commands the chat ran and every child it started, in start order, each child nested under the child that started it. It reads durable facts, so it is complete after a restart. It shows Active work (running, or waiting on the parent) or All work, and the prompt-bar count counts its top-level Active rows. `/bg` opens it on every client.
++- **session**: the runtime container for user-visible work, keyed by `sessionId`. Chats alone occupy navigation catalog rows and tabs; workflow and subagent sessions remain child runtime containers.
++- **live ownership**: the current parent binding that authorizes child control, completion, and deletion. Adoption changes this binding without rewriting the original launch.
++- **ancestry**: immutable creation, link, and adoption relationships used for inspection and request accounting, never deletion authority.
++- **runtime-origin invocation**: a tool invocation recorded by Flywheel for a person's launch or a migration reference, without fabricated provider identity. Stored invocations with a `headless` initiator remain readable.
++- **account service**: the resident `flywheel serve` process that owns the account socket, opens isolated project compositions on demand, and serves terminal, editor, browser, and paired-phone clients. It is the only interactive serving owner.
++- **Process initiation**: the explicit `on`, `off`, or `unavailable` state of the login-session installation that starts the account service. The user-facing spelling is title case. Retires: host installed, remote startup service.
++- **auth profile**: a named account credential scope identified by an immutable profile ID. Session metadata persists the selected ID; the environment selector is a non-mutating effective override.
++- **conversation**: the durable append-only message tree, keyed by `conversation:<conversationId>`. One stem for its classes, writers, and projections. `conversationId` means this key and nothing else; the provider continuation token is named for the provider at the adapter boundary. Retires: session tree, chat tree, thread history (branch history describes a resolved path).
++- **conversation entry**: one node of the conversation tree. The runtime session record keeps the session entry name; the collision is resolved by this split.
++- **transcript**: the rendered display derivation of a conversation or workflow, end to end: protocol queries, windows, stores, and docs all use the transcript stem. Retires: output history, scrollback, rendered history.
++- **block**: the unit within a transcript (text, thinking, tool, system, question). Provider content units keep the content block name at the adapter boundary. Part means only a tool-output part; chunk belongs to TUI text layout; delta is the increment across stream and display.
++- **composer**: the TUI text input. Frees prompt for the model sense; composer history replaces prompt history.
++- **subagent**: a delegated child agent. It runs one brief, and each try is an attempt, which stored data names a run (`childRunId`). Dispatch is only the verb for starting one; facts consolidate under the `subagent` domain. Retires: task as the unit noun, subagent run as a separate concept name.
++- **model family**: the API dialect (`anthropic | openai | google`). One type; duplicates retire.
++- **access provider**: the credentialed route to models (billing identity). Its id is a branded type.
++- **provider account**: one canonical credential account identity. A singleton account is the provider identity; a subscription account is provider identity plus its stable internal instance identity. Protocol views represent a subscription account with an opaque profile-bound account correlation ID and never expose the instance identity.
++- **external login**: an access provider's login that another program owns, such as the Claude CLI's login for the Anthropic Subscription provider. The program runs the sign-in, stores the token, and refreshes it. Flywheel stores no token: it finds each account from the program's token-free account record, and that account's stable id is its instance identity. A separate home of the same OS account can hold a token-free reference to a profile login in the account's normal Flywheel home. Login and logout run the program's own commands for owned logins; Disconnect of a reference removes only the reference.
++- **provider-model preference**: one profile-local explicit enable or explicit disable delta for a model under one exact provider account. Version-2 persistence keys these deltas by canonical account identity. Retires: provider-wide preference.
++- **provider-model eligibility**: the effective decision that a model is eligible through one exact provider account and one auth profile. It derives from that account's provider curation, settled catalog evidence, and current explicit preference.
++- **curated default**: the product-authored baseline eligibility for one provider-model pair when the account has no explicit choice. It is an input to account-specific provider-model eligibility, not user intent.
++- **explicit enable**: the user's choice to make one account-model pair eligible, overriding its curated default. It is mutually exclusive with explicit disable for that pair.
++- **explicit disable**: the user's choice to make one account-model pair ineligible, overriding its curated default. It is mutually exclusive with explicit enable for that pair.
++- **eligibility state**: an immutable runtime-owned value keyed by auth profile ID, containing exact provider-model eligibility sets for every canonical account, their derived provider union, and one eligibility revision. Ordinary live state is not a projection because it does not fold durable facts.
++- **effective provider catalog**: the published read-only picker list derived as the union of the current eligibility state's exact account sets. It is not an authority for curated defaults, explicit choices, account admission, or routing.
++- **eligibility revision**: the identity of one eligibility state version, changed whenever that state's effective provider-model eligibility changes.
++- **provider-model view**: the protocol-facing read shape for one canonical account. Its target is a discriminated singleton provider or subscription `{ providerId, accountCorrelationId }`, and it carries profile identity and eligibility revision without exposing an internal instance or serving-candidate identity.
++- **Usage authority**: the protocol-v6 profile-scoped SQLite authority containing separate provider-observation and immutable Flywheel request-ledger families. Protocol requests use `usage.open`, `usage.accounts`, `usage.spend`, `usage.history`, `usage.refresh`, and `usage.apply_reset`. Retires: subscription usage as the whole authority, profile-wide spend ledger.
++- **usage metric**: one provider-native allowance measurement identified by a stable provider-local metric key, an account or feature scope, a deterministic rank, and exact-or-unavailable timing. Its label is presentation, not identity. Retires: metric name as identity.
++- **quota window**: one exact half-open provider usage interval, derived from canonical account identity, metric scope, metric key, `startMs`, and `endMs`. A reset hint without both bounds is not a quota window.
++- **quota accounting**: the source-local request-ledger totals for the selected current quota window. It is `window-unavailable` or `ledger-unavailable` when exact accounting cannot be established, never an inferred zero.
++- **provider observation**: provider-reported allowance, balance, reset, or billing-capacity evidence retained by the Usage authority. It is evidence for inspection, routing, and consent admission, not local request accounting.
++- **request ledger**: the immutable Usage-authority family that records each served provider attempt with exact candidate attribution, opaque credential lineage, tokens, and price classification. It is the sole profile accounting evidence and commits before the atomic session usage and budget fact mirror; it is not provider observation, consent, or invoice authority.
++- **credential lineage**: opaque auth-owned provenance for the credential capture that served a request. It is distinct from provider account identity and contains no credential value. An external login has no stored capture, so its lineage is the account's stable id, and each account of one provider has its own.
++- **adapter**: the per-provider transport layer. Retires: backend.
++- **failover**: the provider-switch behavior, named in identifiers rather than only comments.
++- **compaction**: the operation that starts a fresh model context after the agent saves a session-notes checkpoint. It records an explicit reset and carries no prior conversation messages or generated summary into the new context. Retires: summarize as the operation name; compact meaning terse.
++- **context window**: the model's token capacity; occupancy is measured in prompt tokens. One name for the limit. Retires: context limit and context window tokens as parallel names.
++- **memory**: durable preferences, facts, and lessons under the learning umbrella.
++- **learning**: the umbrella for durable memory and skills, including the background review (role id `learning-review`, label `Learning Review`) and the user verb `/learn`. Retires: learning, reflect, skill-review (as the role id).
++- **scope**: where learning lands, `project | global`. Retires: reach, target. The stored fact payload keys (`reach` on skill facts, `target` on memory facts) keep their historical spellings; types and prose say scope.
++
++### Remote access
++
++- **web client**: the one out-of-tree client, the SolidJS bundle in `webview/` that every host mounts. Retires: webview client, phone app (as a separate implementation).
++- **host**: the thin file that mounts the web client with a `Socket` layer, a capability object, and a theme; the extension host and the phone host are the two. The word keeps its other reserved sense, a component that owns an execution environment for a named occupant.
++- **capability**: one optional entry in the object a host hands the web client, such as opening a file or scanning a code. The client degrades by a capability's absence and never branches on host identity.
++- **relay**: the hosted or self-hosted Worker that joins a paired device to a runtime placement and pumps sealed frames it cannot read. It holds presence, allowlists, and pairing windows, and no user, session, transcript, or subscription.
++- **remote client**: a client attached to a runtime through the relay: the web client a paired phone or browser loads, or a terminal on another machine.
++- **pairing**: the exchange, under a one-time secret shown as a QR code, in which a runtime records a device's identity key and the device records the runtime's. Pairing is the only remote credential; there are no accounts.
++- **device key**: a device's Ed25519 identity. A browser holds it in browser storage as a key the page cannot export; a terminal holds it in an owner-only file beside its account's auth. Its digest is the device id.
++- **device store**: what a paired device remembers, kept by its host: the device key, the name it pairs under, the machines it paired with, and the project it last chose. The relay client reads and writes it through one contract and holds no storage itself.
++- **runtime identity**: an account's Ed25519 key in the pairing store; its digest is the runtime id the relay and every device know the account by.
++- **placement**: one runtime process serving one project for an account, named to the relay by the project's digest. A phone chooses a placement.
++- **machine placement**: the one placement an account service announces for itself, named to the relay by the runtime id. A paired device attaches to it to create a project from a repository, and a picker never lists it as a project.
++- **control channel**: the outbound WebSocket a placement holds to the relay while paired, carrying admission and `open` frames and never protocol frames.
++- **sealed channel**: a relay data channel after both ends completed the signed ephemeral key agreement; every frame on it is AES-GCM ciphertext under a per-direction key and counter.
++
++### Learning evidence
++
++- **semantic audit**: the independent model judgment that compares one complete writer-prepared skill candidate with the complete bundled corpus from one pinned registry revision. Its closed judgment is bound deterministically into **semantic-audit evidence**, the request-local, content-bound admission evidence for that exact candidate, revision, outcome, and any selected canonical bundled package identity. The store checks it under lock and discards it after settlement. ARCH-LEARNING-013 owns its behavior.
++- **complete bundled corpus**: every immutable bundled skill package in one pinned registry revision. Ordinary content-admission semantic audit compares against this corpus, including workflow skills and same-id packages hidden by installed precedence.
++- **production core corpus**: the exact revision-derived set of production agent skills, represented by one aggregate identity and an exact sorted package manifest. Historical core cleanup compares project learned skills with this corpus and excludes workflow skills.
++- **learning journal**: the consent and mutation outbox of the learning stores. It records mutation intent and consent before publication; it is not semantic-audit evidence or provider request diagnostics.
++
++- **core cleanup campaign**: one durable project-scoped cleanup of learned skills against one exact production-core identity and manifest. Missing completion audits every current core package; added or changed core packages reopen their classifications; force audits all current core packages. Its completion authority is the newest `skill.cleanup.completed` fact; the campaign lease and its deferral cooldowns are in-flight state in the companion table, guarded by compare-and-swap rather than recorded as facts.
++- **core cleanup classification**: one of `independent | specialization | conflict | uncertain` for one exact learned candidate against one exact production core package. It is campaign evidence, not content-admission semantic-audit evidence or learning-journal state; any resulting skill mutation still enters the learning journal before publication.
++- **skills cleanup**: the user-facing and operational label for running a core cleanup campaign. Retires: skill migration and registry cleanup for this operation.
++
++### Tools and modules
++
++- **tool**: a model-callable runtime function. Per-layer type names mark their layer explicitly rather than inventing new nouns.
++- **tool call**: one invocation of a tool. The canonical id is `toolUseId`: durable fact payload schemas and session launch metadata store that key, so it is the spelling the substrate already speaks, and a different in-memory name would split the codebase into two vocabularies. Provider wire spellings (`tool_call_id`, `tool_use_id`) map at the adapters. Session metadata replay normalizes the previous v3 launch spelling once at its historical boundary. Retires internally: toolCallId.
++- **tool action**: the permission category a tool exercises (`file_write`, `shell_exec`). Scoping keys use the action names.
++- **tool registration**: one executable form of a tool, identified by the registration id that conversation history and the request audit record. A tool states its policy (action, category, persona grant, clone inheritance, and order) once, and the serving-model interaction profile selects one of its registrations for each request. Settings, persona grants, allowlists, and gates name the tool, never a registration. Example: the `bash` tool has the `bash` and `exec` registrations.
++- **file edit**: the logical model-facing source-file editing capability. Capability action `file_edit`, one tool `edit`. **file edit presentation**: the registration of that tool that one request uses, selected by the serving-model profile before request assembly and declaring its own wire shape. Retires: file-edit protocol, file edit contract.
++- **string edit**: the file edit that uniquely replaces supplied text in one strict UTF-8 file. Tool name `edit`, TypeScript stem `StringEdit`. Retires: replacement tool and replace tool for source files; `replace` remains valid for memory CRUD and unrelated ordinary prose.
++- **apply patch**: the file edit that applies one bounded peerAgent2 V4A patch across admitted files. Tool name `apply_patch`, TypeScript stem `ApplyPatch`.
++- **retained file authority**: the TypeScript-owned physical parent handle plus canonical target and admitted byte/access snapshot held from admission through publication or release. TypeScript stem `RetainedFileEditAuthority`. Retires: file edit cache and `FileReadCache`.
++- **file mutation**: one logical direct-tool change that can publish one or more ordered file results and records terminal facts under `file.mutation.*`. TypeScript stem `FileMutation`.
++- **file mutation operation**: the recoverable ordered publication checkpoint for one file mutation. In-flight kind `file.mutation`; TypeScript stem `FileMutationOperation`; each cell stores proof metadata and one cursor, never file bytes.
++- **module**: a selectable feature bundle (skills module, bash module). Config key and protocol domain use the module stem; the Settings section is Modules. Retires: capability module, capability (in this sense), plugin (reserved for the peerAgent1 marketplace product), features, core-tools, runtime-tools, harness capability.
++- **capability**: an admission grant that scopes what a context may do (capability access, capability grant). This is the word's only meaning. The guardian's byte token is the guardian token; service ports are ports.
++- **gate**: a seam that can refuse or replace an operation, always qualified (module gate, concurrency gate). Locks are not gates.
++- **hook**: an owner-typed module seam callback (observer, transformer, gate are the three hook kinds). Solid reactive helpers are not hooks in type names; `use-*` files export reactive accessors and `create-*` files export factories.
++- **MCP server**: an external tool provider. The manager's port types are ports, not capabilities.
++
++### Observability
++
++- **provider request audit**: the session-lifetime fact set for one model request, including prompt assembly, tool-surface selection, request and response evidence, usage, and the aggregate stream summary. Reconstruction and diagnostic projections replay it. Raw stream events remain debug-log telemetry.
++- **telemetry**: provider stream timing only. The aggregate summary is durable when a session projection reads it; raw provider, watchdog, and normalized stream observations are diagnostics. UI performance measurements are diagnostics, and diagnostic keys never take the dotted shape of fact types.
++- **debug log**: the retention-bounded JSONL diagnostics stream under `.flywheel/log/` (`*.jsonl`), written by `infra/debug-log.ts`; `Log.*` calls land there as `log.<level>` records. No projection, replay, resume, recovery, or product behavior reads it. Retires: text log, verbose log.
++
++### Config, CLI, UI, directories
++
++- **config**: the TOML file, its schema, and everything persisted (`flywheel.toml`, the config writer). Retires: preferences, options (for this concept).
++- **setting**: one user-adjustable row as presented in the Settings modal. Each setting has one id (ARCH-NAMING-009). Retires: the parallel row id, store key, and key fields.
++- **CLI grammar**: space-separated `noun verb` subcommands (`flywheel events search`, `flywheel skills list`, `flywheel mcp add`, `flywheel auth login`, `flywheel events maintain`). The directory flag is `--project-root` everywhere. Retires: colon-delimited subcommands, bare `maintain`, `--base-dir`.
++- **modal**: any overlay the TUI stacks (modal stack, open-modal verbs). Retires: dialog.
++- **toast**: a transient auto-dismissing message. **notice**: a persistent message until resolved, which is also the name of the presentation channel. Retires: banner, and card as a name for a notice.
++- **pane**: a split region; **viewport**: the scrolling region of the output window; **tab**: a session slot in the tab bar.
++- **directory authorities**: `userDataRoot`, `projectRoot`, `executionCwd` (ARCH-DIRECTORIES-001, ARCH-NAMING-013). No aliases: base dir, workspace root, project dir, and root dir retire.
++- **workspace**: the project-scoped durable state and its protocol scope literal. The handoff validation directory is the handoff staging directory; the per-session disposable directory is scratch.
++
++### Evaluation
++
++- **verify**: to check that a definition is sound (a workflow compiles, an anchor resolves).
++- **validate**: to check that a payload matches its schema. OAuth's code verifier is boundary vocabulary and exempt.
++- **benchmark**: the persona evaluation harness; its nouns (variant, judge, scoring) are already singular.
++- **design intent**: the approved design the user accepts in chat: purpose, feature set, key decisions, non-goals, constraints with rejected alternatives, verification expectations, and recorded product intent. Approval fixes it; only the user changes it (ARCH-AGENCY-015). It appears under the literal heading `Design intent` on every surface that carries it: the design result, session notes, workflow launch description, subagent briefs, and reviewer prompts. Retires in this sense: high-level intent, user intent as the tier name.
++- **implementation design**: every choice an implementation route makes beneath the approved design: milestones and their order, file lists, decomposition, directives, and local shapes. The specification artifact records it, and the implementer revises it with a recorded deviation. Retires: low-level design.
++- **first draft**: the result an implementation route returns to the agent that holds the design intent. It is evidence, never completion; the intent holder revises it from its recorded deviations and the review's findings until it realizes the design intent.
++- **deviation**: one recorded difference between implementation design and what was implemented, with its reason and evidence. The brief's output contract or the subagent completion summary carries it. Drift remains prose for the aggregate of deviations.
++
++## Reserved words
++
++Each word below carries exactly one meaning in Flywheel-owned naming. Boundary vocabulary (Bun `Worker`, SolidJS context, OAuth verifier, Effect runner types) is exempt where the external API owns the word.
++
++| Word | Sole meaning |
++|---|---|
++| agent | an execution loop instance; a subagent or an agent of a workflow runs one brief |
++| runner | a session-level driver |
++| worker | a Bun Worker thread placement |
++| host | owner of an execution environment for a named occupant |
++| capability | an admission grant |
++| module | a selectable feature bundle |
++| command | a slash command |
++| tool call | one tool invocation (id: toolUseId) |
++| attempt | one try of an agent at its brief |
++| phase | one section of a workflow; a qualified compound such as `StreamPhase` names a stage of another lifecycle (refer to the phase entry) |
++| brief | an agent's instructions and output contract |
++| join | the fold of the outputs of a phase's agents; the JavaScript `Array.join` and `path.join` are boundary vocabulary |
++| round | one pass of a repeat |
++| queue | a true first-in-first-out structure |
++| context | the model context window; context bundle for what an agent inherits |
++| compaction | session-notes checkpoint followed by a context reset |
++| conversation | the durable message tree |
++| session | the runtime container |
++| transcript | the rendered display derivation |
++| block | a transcript unit |
++| part | a tool-output part |
++| chunk | TUI text layout |
++| delta | a stream or display increment |
++| event | an ephemeral bus message |
++| fact | a durable row |
++| projection | a fold over facts |
++| view | a protocol-facing read shape |
++| snapshot | a full-state protocol payload |
++| registry | a mutable runtime lookup |
++| catalog | a published read-only list |
++| gate | a refusing or replacing seam |
++| hook | an owner-typed module seam callback |
++| audit | an evidence-producing inspection, always qualified as semantic audit or provider request audit; never the learning journal |
++| telemetry | provider stream timing |
++| scope | where learning lands |
++| history | the composer's input history |
++| shell | the TUI root component |
++| workspace | project-scoped durable state |
++| generation | a Bun Worker incarnation |
++| daemon | the detached IDE runtime process |
++| verify | definition soundness checking |
++| validate | schema conformance checking |
+diff --git a/package.json b/package.json
+index e670807..f84fc20 100644
+--- a/package.json
++++ b/package.json
+@@ -81,6 +81,7 @@
+     "lint:doc-coherence": "bun run scripts/check-doc-coherence.ts",
+     "lint:doc-src-paths": "bun run scripts/check-doc-src-paths.ts",
+     "lint:terminology": "bun run scripts/check-terminology.ts",
++    "lint:intent": "bun run scripts/check-intent-corpora.ts",
+     "lint:diagnostics": "bun run scripts/check-diagnostics-registry.ts",
+     "lint:fact-retention": "bun run scripts/check-fact-retention.ts",
+     "lint:module-containment": "bun run scripts/check-module-containment.ts",
+diff --git a/scripts/check-doc-coherence.ts b/scripts/check-doc-coherence.ts
+index b414bd5..52f561a 100644
+--- a/scripts/check-doc-coherence.ts
++++ b/scripts/check-doc-coherence.ts
+@@ -21,48 +21,48 @@ const PATH_REF = /`([A-Za-z0-9_./-]+\.(?:ts|tsx|js|jsx|md|toml|yaml|yml|json))(?
+ const DOCS_TO_CHECK = ["AGENTS.md"];
+ const REQUIRED_STATEMENTS: readonly RequiredStatement[] = [
+   {
+-    doc: "docs/adrs/adr-005-flywheel-design-principles.md",
+-    statement: "Rendered output history is derived from the owning domain facts at read time.",
++    doc: "docs/architecture-intent/substrate.md",
++    statement: "Every agent transcript is derived at read time from its session's conversation and execution facts",
+   },
+   {
+-    doc: "docs/adrs/adr-005-flywheel-design-principles.md",
+-    statement: "The session directory contains the ephemeral `owner.pid` process lock and the disposable `scratch/` workspace; neither is persisted state.",
++    doc: "docs/architecture-intent/sessions.md",
++    statement: "The session directory holds only an ephemeral process lock and disposable scratch",
+   },
+   {
+-    doc: "docs/adrs/adr-005-flywheel-design-principles.md",
+-    statement: "`Schema.TaggedErrorClass` inside runtime boundaries",
++    doc: "docs/guides/elegance.md",
++    statement: "Tagged errors and boundary mapping",
+   },
+   {
+-    doc: "docs/adrs/adr-005-flywheel-design-principles.md",
++    doc: "docs/guides/elegance.md",
+     statement: "600-code-line backstop",
+   },
+   {
+-    doc: "docs/adrs/adr-005-flywheel-design-principles.md",
+-    statement: "Provider fallback has one owner: the admitted request's ordered walk.",
++    doc: "docs/architecture-intent/providers.md",
++    statement: "One admitted request owns the ordered walk over its candidates and every retry and failover inside the request",
+   },
+   {
+-    doc: "docs/adrs/adr-014-binary-distribution-and-updates.md",
+-    statement: "The model catalog, not the access provider, owns tokenizer identity.",
++    doc: "docs/architecture-intent/providers.md",
++    statement: "Tokenizer identity belongs to the model catalog, not to the access provider",
+   },
+   {
+-    doc: "docs/adrs/adr-015-internal-modules.md",
++    doc: "docs/architecture-intent/providers.md",
+     statement: "Provider affordability is an optional contribution",
+   },
+   {
+-    doc: "docs/adrs/adr-015-internal-modules.md",
+-    statement: "Unknown affordability remains eligible",
++    doc: "docs/product-intent/model-access.md",
++    statement: "Unknown affordability remains the provider's decision",
+   },
+   {
+-    doc: "docs/adrs/adr-015-internal-modules.md",
+-    statement: "Only a named failover failure advances the walk after provider work begins.",
++    doc: "docs/architecture-intent/providers.md",
++    statement: "After work starts, only the named failover class advances the walk",
+   },
+   {
+-    doc: "docs/adrs/adr-017-subscription-usage.md",
++    doc: "docs/terminology.md",
+     statement: "protocol-v6",
+   },
+   {
+-    doc: "docs/adrs/adr-019-durable-project-notifications.md",
+-    statement: "Auth storage conditions route through the runtime auth-condition owner",
++    doc: "docs/architecture-intent/providers.md",
++    statement: "A notification presents a condition that another owner decides, such as auth attention, unsafe auth storage",
+   },
+   {
+     doc: "docs/architecture.md",
+diff --git b/scripts/check-intent-corpora.ts b/scripts/check-intent-corpora.ts
+new file mode 100644
+index 0000000..d06263a
+--- /dev/null
++++ b/scripts/check-intent-corpora.ts
+@@ -0,0 +1,204 @@
++import * as fs from "node:fs";
++import * as path from "node:path";
++
++// Intent corpora gate. The architecture-intent and product-intent corpora are
++// the living authorities that code, tests, and documents cite by statement id,
++// so a malformed or duplicated id, an unlinked domain file, a statement that
++// names implementation detail, or a citation that resolves to nothing is a
++// build failure. The retired architecture decision records are no authority,
++// so a citation of them fails too; the plugin keeps its own record set.
++//
++// The citing scope is the repository's tracked and unignored text, listed by
++// Git rather than a directory crawl, because ignored worktrees under the
++// repository hold whole copies of the tree.
++
++type IntentRule = "statement-format" | "duplicate-id" | "domain-link" | "grain" | "dangling-id" | "adr-reference";
++
++interface IntentViolation {
++  file: string;
++  line: number;
++  rule: IntentRule;
++  detail: string;
++}
++
++const ARCHITECTURE_DIR = "docs/architecture-intent";
++const PRODUCT_DIR = "docs/product-intent";
++const UPDATES_FILE = `${PRODUCT_DIR}/updates.md`;
++const README = "README.md";
++
++const ARCHITECTURE_HEADING = /^## ARCH-[A-Z]+-\d{3}: \S/;
++const PRODUCT_HEADING = /^## PI-[A-Z]+-\d{3}: \S/;
++const UPDATE_BULLET = /^- `UPD-\d{3}`: \S/;
++const UPDATE_LIKE = /^-\s+`?UPD-/;
++const STATEMENT_ID = /^(?:## |- `)((?:ARCH|PI)-[A-Z]+-\d{3}|UPD-\d{3})/;
++const CITED_ID = /\b(?:(?:ARCH|PI)-[A-Z]+-\d{3}|UPD-\d{3})\b/g;
++// The plugin's own record set is a different authority, so a path into it is
++// not a citation of Flywheel's retired records.
++const ADR_REFERENCE = /(?<!plugin\/)docs\/adrs|\bADR-\d+/gi;
++// The plugin package keeps its own record set under its own docs/adrs, so its
++// references to that directory are not citations of Flywheel's retired records.
++const PLUGIN_ROOT = "plugin/";
++// The stale-tool-result masker never masks reads of any repository's ADRs, so
++// it and its test name the conventional directory as generic behavior.
++const GENERIC_ADR_PATH_FILES = new Set([
++  "src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts",
++  "tests/unit/orchestration/agent-runtime/context/stale-tool-result-masker.test.ts",
++]);
++
++const DOMAIN_LINK = /\]\(([^)/#\s]+\.md)\)/g;
++const INLINE_CODE = /`[^`]+`/;
++const FILE_EXTENSION = /\.(?:ts|tsx|js|jsx|mjs|cjs|json|jsonl|md|toml|ya?ml|sqlite|db|sh|ps1|exe|lock|txt|pid|log|plist)$/i;
++const TOKEN_EDGE = /^[("'[]+|[)"'\],.;:!?]+$/g;
++
++const CITING_ROOTS = ["src/", "scripts/", "tests/", "webview/", "vscode/", "relay/", "bench/", "plugin/", "docs/"];
++const CITING_FILES = new Set(["AGENTS.md", "CLAUDE.md", "README.md", "CONTRIBUTING.md"]);
++// Historical records and frozen benchmark inputs keep the wording they were
++// written or measured with.
++const UNCITING_ROOTS = [
++  "docs/plans/archive/",
++  "docs/research/",
++  "docs/benchmarks/",
++  "bench/ab-persona/fixtures/",
++  "bench/chat-ab/tasks/",
++  "bench/chat-ab/workflow-authorship/patches/",
++  "tests/fixtures/output-seam-corpus/",
++];
++
++interface Statement {
++  file: string;
++  line: number;
++}
++
++function readLines(repoRoot: string, file: string): string[] {
++  return fs.readFileSync(path.join(repoRoot, file), "utf8").split("\n");
++}
++
++function corpusFiles(files: readonly string[], dir: string): string[] {
++  return files.filter((file) => path.posix.dirname(file) === dir && file.endsWith(".md"));
++}
++
++/** The format rule for one line of a corpus domain file, or null when the line
++ *  is not statement-shaped. */
++function formatProblem(file: string, line: string): string | null {
++  if (file === UPDATES_FILE) {
++    if (UPDATE_LIKE.test(line) && !UPDATE_BULLET.test(line)) return "expected - `UPD-<NNN>`: <statement>";
++    return null;
++  }
++  if (!line.startsWith("## ")) return null;
++  if (file.startsWith(`${ARCHITECTURE_DIR}/`)) {
++    return ARCHITECTURE_HEADING.test(line) ? null : "expected ## ARCH-<DOMAIN>-<NNN>: <title>";
++  }
++  return PRODUCT_HEADING.test(line) ? null : "expected ## PI-<DOMAIN>-<NNN>: <title>";
++}
++
++function pathLike(token: string): boolean {
++  if (FILE_EXTENSION.test(token) && /\w\.\w/.test(token)) return true;
++  if (!token.includes("/")) return false;
++  return /^(?:\.{1,2}|~)?\//.test(token) || token.endsWith("/") || token.split("/").length > 2;
++}
++
++function grainProblem(line: string): string | null {
++  if (INLINE_CODE.test(line)) return "inline code span";
++  for (const raw of line.split(/\s+/)) {
++    const token = raw.replace(TOKEN_EDGE, "");
++    if (token.length > 0 && pathLike(token)) return `path-like token '${token}'`;
++  }
++  return null;
++}
++
++function checkCorpus(repoRoot: string, files: readonly string[], dir: string, statements: Map<string, Statement>): IntentViolation[] {
++  const out: IntentViolation[] = [];
++  const domainFiles = corpusFiles(files, dir).filter((file) => path.posix.basename(file) !== README);
++  const readme = `${dir}/${README}`;
++  const linked = new Set<string>();
++  if (files.includes(readme)) {
++    for (const [index, text] of readLines(repoRoot, readme).entries()) {
++      for (const match of text.matchAll(DOMAIN_LINK)) {
++        const target = `${dir}/${match[1] ?? ""}`;
++        linked.add(target);
++        if (!domainFiles.includes(target)) {
++          out.push({ file: readme, line: index + 1, rule: "domain-link", detail: `linked domain file ${target} does not exist` });
++        }
++      }
++    }
++  } else {
++    out.push({ file: readme, line: 1, rule: "domain-link", detail: "corpus README is missing" });
++  }
++  const architecture = dir === ARCHITECTURE_DIR;
++  for (const file of domainFiles) {
++    if (!linked.has(file)) out.push({ file, line: 1, rule: "domain-link", detail: `domain file is not linked from ${readme}` });
++    for (const [index, text] of readLines(repoRoot, file).entries()) {
++      const line = index + 1;
++      const format = formatProblem(file, text);
++      if (format !== null) out.push({ file, line, rule: "statement-format", detail: format });
++      const id = format === null ? STATEMENT_ID.exec(text)?.[1] : undefined;
++      if (id !== undefined) {
++        const first = statements.get(id);
++        if (first === undefined) statements.set(id, { file, line });
++        else out.push({ file, line, rule: "duplicate-id", detail: `${id} is already stated at ${first.file}:${first.line}` });
++      }
++      const grain = architecture ? grainProblem(text) : null;
++      if (grain !== null) out.push({ file, line, rule: "grain", detail: grain });
++    }
++  }
++  return out;
++}
++
++function inCitingScope(file: string): boolean {
++  if (CITING_FILES.has(file)) return true;
++  if (UNCITING_ROOTS.some((root) => file.startsWith(root))) return false;
++  return CITING_ROOTS.some((root) => file.startsWith(root));
++}
++
++function checkCitations(repoRoot: string, files: readonly string[], statements: ReadonlyMap<string, Statement>): IntentViolation[] {
++  const out: IntentViolation[] = [];
++  for (const file of files.filter(inCitingScope)) {
++    const bytes = fs.readFileSync(path.join(repoRoot, file));
++    if (bytes.includes(0)) continue;
++    const checkAdr = !file.startsWith(PLUGIN_ROOT) && !GENERIC_ADR_PATH_FILES.has(file);
++    for (const [index, text] of bytes.toString("utf8").split("\n").entries()) {
++      for (const [id] of text.matchAll(CITED_ID)) {
++        if (!statements.has(id)) out.push({ file, line: index + 1, rule: "dangling-id", detail: `${id} resolves to no statement` });
++      }
++      if (!checkAdr) continue;
++      for (const [reference] of text.matchAll(ADR_REFERENCE)) {
++        out.push({ file, line: index + 1, rule: "adr-reference", detail: `cites retired record '${reference}'` });
++      }
++    }
++  }
++  return out;
++}
++
++/** Checks both intent corpora and every citation of them.
++ *
++ *  `files` is the repository's file list as repository-relative POSIX paths;
++ *  each must exist under `repoRoot`. Returns every violation, corpus rules
++ *  first, in file and line order; an empty list means the corpora and their
++ *  citations are coherent. Reads files only. */
++export function checkIntentCorpora(repoRoot: string, files: readonly string[]): IntentViolation[] {
++  const statements = new Map<string, Statement>();
++  return [
++    ...checkCorpus(repoRoot, files, ARCHITECTURE_DIR, statements),
++    ...checkCorpus(repoRoot, files, PRODUCT_DIR, statements),
++    ...checkCitations(repoRoot, files, statements),
++  ];
++}
++
++function repositoryFiles(repoRoot: string): string[] {
++  const proc = Bun.spawnSync(["git", "ls-files", "--cached", "--others", "--exclude-standard"], {
++    cwd: repoRoot,
++    stdout: "pipe",
++    stderr: "pipe",
++    windowsHide: true,
++  });
++  if (proc.exitCode !== 0) throw new Error(`intent: git ls-files failed: ${proc.stderr.toString()}`);
++  // A tracked file deleted in the working tree is still listed until the deletion is staged.
++  return proc.stdout.toString().split("\n").filter((file) => file.length > 0 && fs.existsSync(path.join(repoRoot, file)));
++}
++
++if (import.meta.main) {
++  const repoRoot = path.resolve(import.meta.dir, "..");
++  const violations = checkIntentCorpora(repoRoot, repositoryFiles(repoRoot));
++  for (const v of violations) process.stderr.write(`intent: ${v.file}:${v.line} ${v.rule}: ${v.detail}\n`);
++  if (violations.length > 0) process.exit(1);
++}
+diff --git a/scripts/check-terminology.ts b/scripts/check-terminology.ts
+index 2e40451..ed9c433 100644
+--- a/scripts/check-terminology.ts
++++ b/scripts/check-terminology.ts
+@@ -1,8 +1,8 @@
+ import * as fs from "node:fs";
+ import * as path from "node:path";
+ 
+-// ADR-016 terminology gate. Each entry retires one synonym in favor of the
+-// canonical lexicon term. A new retirement starts inactive and flips active
++// Terminology gate (docs/terminology.md). Each entry retires one synonym in
++// favor of the canonical lexicon term. A new retirement starts inactive and flips active
+ // once its rename lands, so the gate ratchets without failing on debt the
+ // rename has not yet reached. Slice numbers are stable identifiers from the
+ // completed 2026-08 remediation program (evidence:
+@@ -12,9 +12,9 @@ import * as path from "node:path";
+ // with one mechanism.
+ //
+ // Scope: src/ code, skill and workflow definition bodies, the editor host and
+-// the web client, docs/adrs/, docs/product-intent/, docs/guides/,
+-// docs/architecture.md, AGENTS.md, and README.md. The lexicon itself (adr-016)
+-// names retired terms by design and is excluded.
++// the web client, docs/architecture-intent/, docs/product-intent/,
++// docs/guides/, docs/architecture.md, AGENTS.md, and README.md. The lexicon
++// itself (docs/terminology.md) names retired terms by design and is excluded.
+ //
+ // Census mode (`--census`) reports hit counts for every term including
+ // inactive ones, for slice planning. It always exits 0.
+@@ -24,7 +24,7 @@ type Scope = "all" | "docs";
+ interface RetiredTerm {
+   /** Matched against each line. Word-bound for identifiers, loose for paths. */
+   pattern: RegExp;
+-  /** The canonical replacement per ADR-016, shown in the failure. */
++  /** The canonical replacement per docs/terminology.md, shown in the failure. */
+   replacement: string;
+   /** Stable grouping id from the 2026-08 remediation program; new entries
+    *  continue the numbering. */
+@@ -44,8 +44,8 @@ interface RetiredTerm {
+ }
+ 
+ /** Where a workflow-sense word is the only sense: the workflow layers, the
+- *  workflow surfaces of each client, the authoring guide, the workflow ADR,
+- *  and the product intent. */
++ *  workflow surfaces of each client, the authoring guide, and the product
++ *  intent. */
+ const WORKFLOW_PATHS: readonly RegExp[] = [
+   /^src\/workflows\//,
+   /^src\/orchestration\/workflow-host\//,
+@@ -55,7 +55,6 @@ const WORKFLOW_PATHS: readonly RegExp[] = [
+   /^src\/tui\/(.*\/)?workflow-/,
+   /^webview\/src\/(.*\/)?workflow-/,
+   /^src\/agent-skills\/workflow-authoring\//,
+-  /^docs\/adrs\/adr-006-/,
+   /^docs\/product-intent\//,
+ ];
+ 
+@@ -100,7 +99,7 @@ const STORED_LINES: readonly RegExp[] = [
+   /aria-current/,
+ ];
+ 
+-/** Ordinary prose for one action of a procedure, which keeps step (ADR-016). */
++/** Ordinary prose for one action of a procedure, which keeps step (docs/terminology.md). */
+ const ORDINAL_LINES: readonly RegExp[] = [/\b(next|first|one) step\b|step[- ]by[- ]step/i];
+ 
+ /** Kernel senses of the prose words that a workflow path still names: the
+@@ -178,14 +177,13 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+   // Active from day one: verified clean, the gate holds the line.
+   {
+     pattern: /\bplugin\b/i,
+-    replacement: "module (ADR-016; plugin is the peerAgent1 marketplace product)",
++    replacement: "module (docs/terminology.md; plugin is the peerAgent1 marketplace product)",
+     slice: 1,
+     active: true,
+     allowPaths: [
+       "src/vendor.d.ts",
+       "src/tui/launcher.ts",
+       "src/orchestration/modules/provider-github-copilot/auth-types.ts",
+-      "docs/adrs/adr-015-internal-modules.md",
+       // The ce.* skill bodies are portable, harness-agnostic instructions that
+       // reference external plugin ecosystems (peerAgent1, Slack, EveryInc).
+       "src/workflows/skills/ce.",
+@@ -195,22 +193,22 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+       "README.md",
+       // A Babel plugin package is named by its published package name.
+       "webview/src/test-support/solid-transform.ts",
++      // Rejection prose: these statements name plugin to reject it as the module noun.
++      "docs/architecture-intent/naming.md",
++      "docs/architecture-intent/structure.md",
+     ],
+   },
+   {
+     pattern: /\bdaemon\b/i,
+-    replacement: "IDE runtime daemon only (ADR-016)",
++    replacement: "IDE runtime daemon only (docs/terminology.md)",
+     slice: 1,
+     active: true,
+     // systemd's own command, as an argv or inside a shell script.
+     allowLines: [/(?:["']systemctl daemon-reload["']|["']systemctl["'].*["']daemon-reload["']|systemctl --user daemon-reload)/],
+     allowPaths: [
+-      // Rejection prose: these ADRs name the daemon topology to reject it.
+-      "docs/adrs/adr-007-agent-runtime-process-placements.md",
+-      "docs/adrs/adr-014-binary-distribution-and-updates.md",
+-      "docs/adrs/adr-010-runtime-ui-protocol.md",
+-      "docs/adrs/adr-016-terminology.md",
+-      // The IDE runtime is the one process placement ADR-016 names a daemon.
++      // Rejection prose: this statement names a detached daemon to reject it.
++      "docs/architecture-intent/runtime.md",
++      // The IDE runtime is the one process placement the glossary names a daemon.
+       "vscode/src/runtime/runtime-resolver.ts",
+       "vscode/src/runtime/supervisor.ts",
+       "vscode/src/runtime/supervisor.test.ts",
+@@ -297,7 +295,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+ 
+   // Slice 9: tools. toolUseId stayed canonical: ~50 durable fact payload
+   // schemas store the key, so toolCallId would have split the codebase into
+-  // two vocabularies. ADR-016 records the correction; toolCallId retired.
++  // two vocabularies. The glossary records the correction; toolCallId retired.
+   { pattern: /\btoolCallId\b/, replacement: "toolUseId (stored payload key is canonical)", slice: 9, active: true, allowLines: [/stored spelling/i, /toolCallId: toolUseId/, /toolCallId\?: string/, /tool_call_id/, /LaunchedFrom/, /launchedFrom/] },
+   { pattern: /\bToolInvocation\w*/, replacement: "tool call vocabulary", slice: 9, active: true },
+ 
+@@ -331,7 +329,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+   // Slice 13: config, settings, CLI.
+   { pattern: /\bstoreKey\b/, replacement: "id (one id per setting)", slice: 13, active: true },
+   // "preferences" is banned only as a config-drawer synonym; the word legitimately
+-  // names remembered user preferences (ADR-011 memory), so review polices the
++  // names remembered user preferences (learning memory), so review polices the
+   // config sense instead of this gate.
+   { pattern: /\bpreferences\b/i, replacement: "settings (config sense only)", slice: 13, active: false },
+   { pattern: /\b(events|trace|skills|memory|workflow):(search|list|why|restore|prune|show|verify|maintain)\b/, replacement: "space subcommand grammar (flywheel events search)", slice: 13, active: true, scope: "docs", allowLines: [/bun run/] },
+@@ -346,7 +344,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+   { pattern: /\bDialog(Stack|Provider|Handle)\b/, replacement: "Modal*", slice: 14, active: true },
+   { pattern: /\bopen\w+Dialog\b/, replacement: "open*Modal", slice: 14, active: true },
+   { pattern: /(lineage|status)-dialog/, replacement: "*-modal", slice: 14, active: true },
+-  { pattern: /\bbanner\b/i, replacement: "notice (toast is transient, notice is pinned; ADR-016)", slice: 14, active: true, allowPaths: ["src/workflows/skills/ce."] },
++  { pattern: /\bbanner\b/i, replacement: "notice (toast is transient, notice is pinned; docs/terminology.md)", slice: 14, active: true, allowPaths: ["src/workflows/skills/ce."] },
+ 
+   // Slice 17: protocol requests are mutations (Grammar 2); command belongs to slash commands.
+   { pattern: /\bFrontendCommand\b/, replacement: "FrontendMutation", slice: 17, active: true },
+@@ -372,7 +370,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+     scope: "docs",
+   },
+ 
+-  // Slice 18: one workflow lexicon (ADR-016): a workflow lists phases, a phase
++  // Slice 18: one workflow lexicon (docs/terminology.md): a workflow lists phases, a phase
+   // has agents, an agent runs a brief on at most one item, and each try is an
+   // attempt. Identifiers retire everywhere; the workflow-sense prose words
+   // retire only under WORKFLOW_PATHS, where they have no kernel sense.
+@@ -395,7 +393,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+       // build before 2026-10-16 wrote under `leafId`, and its test feeds one.
+       "webview/src/client/workflow-agent.ts",
+       "webview/src/client/workflow-agent.test.ts",
+-      // The conversation tree names the newest entry of a branch its leaf (ADR-008).
++      // The conversation tree names the newest entry of a branch its leaf (ARCH-SESSIONS-047).
+       "src/orchestration/session/",
+       // Request startup selects the conversation tree's recorded masking epoch.
+       "src/orchestration/agent-runtime/active-request-context.ts",
+@@ -409,7 +407,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+       "src/workflows/definition-provenance-facts.ts",
+       PROTOCOL_VERSION_NOTES,
+     ]],
+-    [/\bfan-?out\b/i, "parallel dispatch, or a phase over a list; fan-out is not a noun (ADR-016 join)"],
++    [/\bfan-?out\b/i, "parallel dispatch, or a phase over a list; fan-out is not a noun (glossary join)"],
+   ]),
+   ...workflowProseTerms([
+     [/\bsteps?\b/i, "phase, agent, attempt, or brief (pick the word by the value)"],
+@@ -447,7 +445,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
+ const DOC_EXTENSIONS = new Set([".md", ".yaml", ".yml"]);
+ const CODE_EXTENSIONS = new Set([".ts", ".tsx"]);
+ 
+-const EXCLUDED_FILES = new Set(["docs/adrs/adr-016-terminology.md"]);
++const EXCLUDED_FILES = new Set(["docs/terminology.md"]);
+ 
+ interface Violation {
+   file: string;
+@@ -482,10 +480,11 @@ function scanTargets(repoRoot: string): string[] {
+   walk(path.join(repoRoot, "src"), files);
+   walk(path.join(repoRoot, "vscode", "src"), files);
+   walk(path.join(repoRoot, "webview", "src"), files);
+-  walk(path.join(repoRoot, "docs", "adrs"), files);
++  walk(path.join(repoRoot, "docs", "architecture-intent"), files);
+   walk(path.join(repoRoot, "docs", "product-intent"), files);
+   walk(path.join(repoRoot, "docs", "guides"), files);
+   files.push(path.join(repoRoot, "docs", "architecture.md"));
++  files.push(path.join(repoRoot, "docs", "terminology.md"));
+   files.push(path.join(repoRoot, "AGENTS.md"));
+   files.push(path.join(repoRoot, "README.md"));
+   return files.filter((f) => !EXCLUDED_FILES.has(repoRelative(repoRoot, f)));
+diff --git a/scripts/lint-parallel.ts b/scripts/lint-parallel.ts
+index c847d41..be8086f 100644
+--- a/scripts/lint-parallel.ts
++++ b/scripts/lint-parallel.ts
+@@ -12,7 +12,7 @@ mkdirSync(join(repoRoot, "node_modules/.cache"), { recursive: true });
+ 
+ // Each step is declared as a `lint:*` script in package.json so its commands
+ // and dependencies stay visible to knip's dependency analysis.
+-const stepNames = ["tsc", "test-types", "bench", "model-catalog", "provider-model-literals", "oxlint", "knip", "knip-production", "files", "filenames", "terminal-io", "safety", "owned-processes", "worker-ownership", "config-docs", "doc-coherence", "doc-src-paths", "terminology", "diagnostics", "fact-retention", "module-containment", "projections", "skills", "vscode", "webview", "relay", "licenses"] as const;
++const stepNames = ["tsc", "test-types", "bench", "model-catalog", "provider-model-literals", "oxlint", "knip", "knip-production", "files", "filenames", "terminal-io", "safety", "owned-processes", "worker-ownership", "config-docs", "doc-coherence", "doc-src-paths", "terminology", "intent", "diagnostics", "fact-retention", "module-containment", "projections", "skills", "vscode", "webview", "relay", "licenses"] as const;
+ 
+ const leaveLane = await enterValidationLane("lint");
+ const start = performance.now();
+diff --git a/src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts b/src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+index 3d40d08..3c85016 100644
+--- a/src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
++++ b/src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+@@ -17,7 +17,7 @@
+  *
+  * This is a pure transform applied at the provider-call boundary. The durable
+  * conversation tree and the loop's in-memory history keep full tool-result
+- * content (ADR-008: persisted-as-is); only the outbound request sees
++ * content (ARCH-CONTEXT-011); only the outbound request sees
+  * placeholders. Placeholder bytes are a pure function of the tool result and
+  * its tool_use block, so the same mask can be replayed deterministically for
+  * provider-request-audit reconstruction (see maskToolResultsById).
+@@ -45,7 +45,7 @@ const ZONE_COVERAGE: readonly number[] = [0.6, 0.8, 0.95];
+ /** Minimum text size worth masking; below this the placeholder saves nothing. */
+ const MIN_MASK_TEXT_LENGTH = 120;
+ 
+-/** First-class project knowledge is never masked (ADR-002 Principle 6): the
++/** First-class project knowledge is never masked (ARCH-CONTEXT-011): the
+  *  model must not lose standing instructions to staleness. */
+ const REFERENCE_BASENAMES: ReadonlySet<string> = new Set([
+   "AGENTS.md",
+@@ -60,6 +60,7 @@ const REFERENCE_BASENAMES: ReadonlySet<string> = new Set([
+ 
+ const REFERENCE_PATH_SUBSTRINGS: readonly string[] = [
+   "docs/adrs/",
++  "docs/product-intent/",
+   "docs/architecture",
+ ];
+ 
+diff --git a/src/orchestration/modules/development/definitions/skills/flywheel-design/SKILL.md b/src/orchestration/modules/development/definitions/skills/flywheel-design/SKILL.md
+index 1b6170c..e45a29d 100644
+--- a/src/orchestration/modules/development/definitions/skills/flywheel-design/SKILL.md
++++ b/src/orchestration/modules/development/definitions/skills/flywheel-design/SKILL.md
+@@ -7,21 +7,23 @@ user-invocable: false
+ 
+ # Flywheel Design
+ 
+-Extend the composed design method with Flywheel's living product-intent authority.
++Extend the composed design method with Flywheel's two living intent authorities: product intent (`docs/product-intent/`) for what users experience, and architecture intent (`docs/architecture-intent/`) for how Flywheel's internals are organized.
+ 
+-## Product intent
++## Intent
+ 
+-1. Read `docs/product-intent/README.md` and every domain file relevant to the proposed user-visible behavior.
+-2. Compare the proposal with recorded intent. Classify its effect as exactly one of `unchanged`, `clarified`, `changed`, `new`, or `not applicable`.
++Apply these steps to each corpus. A proposal can touch both.
++
++1. Read the corpus `README.md` and every domain file relevant to the proposal: product intent for user-visible behavior, architecture intent for internal organization.
++2. Compare the proposal with recorded intent. Classify its effect on each corpus as exactly one of `unchanged`, `clarified`, `changed`, `new`, or `not applicable`.
+ 3. When the proposal conflicts with recorded intent, show the current statement and ask whether the user is approving an intent change. Do not silently reinterpret or replace it.
+-4. For `clarified`, `changed`, or `new`, include the smallest present-tense user-observable statement in the design. Preserve stable statement identifiers.
++4. For `clarified`, `changed`, or `new`, include the smallest present-tense statement in the design, in that corpus's format. Preserve stable statement identifiers.
+ 5. Treat approval of the complete design as approval of its stated intent update. Persist the approved wording before inline implementation, subagent dispatch, workflow launch, or design-only completion.
+-6. Apply the corpus lifecycle contract when deciding whether approved work changes a statement. Do not create a second lifecycle rule in the design.
++6. Apply each corpus's lifecycle contract when deciding whether approved work changes a statement. Do not create a second lifecycle rule in the design.
+ 
+ ## Design result extension
+ 
+-Add **Product intent** inside the Design intent part, after **Approach and key decisions**; a recorded product-intent statement is fixed intent, never illustration. State the disposition, relevant statement identifiers, and exact proposed wording for `clarified`, `changed`, or `new`.
++Add **Product intent** and **Architecture intent** inside the Design intent part, after **Approach and key decisions**; a recorded statement is fixed intent, never illustration. For each, state the disposition, relevant statement identifiers, and exact proposed wording for `clarified`, `changed`, or `new`.
+ 
+ ## Stop condition
+ 
+-Do not start a delivery route while its approved behavior conflicts with the persisted corpus. The approving design agent writes the intent update; downstream agents do not reinterpret or replace product intent.
++Do not start a delivery route while its approved design conflicts with either persisted corpus. The approving design agent writes the intent update; downstream agents do not reinterpret or replace recorded intent.
+diff --git b/tests/unit/scripts/check-intent-corpora.test.ts b/tests/unit/scripts/check-intent-corpora.test.ts
+new file mode 100644
+index 0000000..551889f
+--- /dev/null
++++ b/tests/unit/scripts/check-intent-corpora.test.ts
+@@ -0,0 +1,117 @@
++import { describe, expect, it } from "bun:test";
++import { mkdirSync, writeFileSync } from "node:fs";
++import { dirname, join } from "node:path";
++import { checkIntentCorpora } from "../../../scripts/check-intent-corpora.js";
++import { temporaryDirectories } from "../../helpers/directories.js";
++
++const temporaryDirectory = temporaryDirectories();
++
++// Identifiers and record citations are assembled at run time so that this file
++// does not itself cite a statement or a retired record when the gate scans it.
++const arch = (rest: string): string => ["ARCH", rest].join("-");
++const peerAgent31 = (rest: string): string => ["PI", rest].join("-");
++const upd = (rest: string): string => ["UPD", rest].join("-");
++const adr = (rest: string): string => ["ADR", rest].join("-");
++const records = ["docs", "adrs"].join("/");
++
++const ARCHITECTURE_README = [
++  "# Architecture Intent",
++  "",
++  "Product intent (`docs/product-intent/`) states the experience.",
++  "",
++  "- [Alpha](alpha.md): the alpha domain.",
++  "",
++].join("\n");
++const ALPHA = [
++  "# Alpha",
++  "",
++  `## ${arch("ALPHA-001")}: One owner per value`,
++  "",
++  "Each value has one owner.",
++  "",
++].join("\n");
++const PRODUCT_README = ["# Product Intent", "", "- [Beta](beta.md): beta.", "- [Updates](updates.md): updates.", ""].join("\n");
++const BETA = ["# Beta", "", `## ${peerAgent31("BETA-001")}: People see their work`, "", "Work stays visible.", ""].join("\n");
++const UPDATES = ["# Updates", "", `- \`${upd("001")}\`: Updates keep logins.`, ""].join("\n");
++const CITING = `// Owned by ${arch("ALPHA-001")}, ${peerAgent31("BETA-001")}, and ${upd("001")}.\n`;
++
++const CLEAN = {
++  "docs/architecture-intent/README.md": ARCHITECTURE_README,
++  "docs/architecture-intent/alpha.md": ALPHA,
++  "docs/product-intent/README.md": PRODUCT_README,
++  "docs/product-intent/beta.md": BETA,
++  "docs/product-intent/updates.md": UPDATES,
++  "src/owner.ts": CITING,
++  [`plugin/${records}/${adr("001").toLowerCase()}-scope.md`]: `# ${adr("001")}: Plugin scope\n`,
++  "docs/research/old-audit.md": `See ${records} and ${arch("GONE-001")}.\n`,
++};
++
++function check(tree: { readonly [file: string]: string }): { file: string; line: number; rule: string }[] {
++  const root = temporaryDirectory("flywheel-intent-corpora-");
++  for (const [file, text] of Object.entries(tree)) {
++    mkdirSync(join(root, dirname(file)), { recursive: true });
++    writeFileSync(join(root, file), text);
++  }
++  return checkIntentCorpora(root, Object.keys(tree)).map(({ file, line, rule }) => ({ file, line, rule }));
++}
++
++describe("check-intent-corpora", () => {
++  it("accepts coherent corpora, resolved citations, the plugin's own records, and excluded research", () => {
++    expect(check(CLEAN)).toEqual([]);
++  });
++
++  it("rejects statements that do not follow their corpus format", () => {
++    expect(check({
++      ...CLEAN,
++      "docs/architecture-intent/alpha.md": `${ALPHA}## ${arch("ALPHA-12")}: Short number\n`,
++      "docs/product-intent/beta.md": `${BETA}## Grouping heading\n`,
++      "docs/product-intent/updates.md": `${UPDATES}- \`${upd("02")}\`: Short number.\n`,
++    })).toEqual([
++      { file: "docs/architecture-intent/alpha.md", line: 6, rule: "statement-format" },
++      { file: "docs/product-intent/beta.md", line: 6, rule: "statement-format" },
++      { file: "docs/product-intent/updates.md", line: 4, rule: "statement-format" },
++    ]);
++  });
++
++  it("rejects a statement id stated twice", () => {
++    expect(check({
++      ...CLEAN,
++      "docs/architecture-intent/alpha.md": `${ALPHA}## ${arch("ALPHA-001")}: Restated\n`,
++    })).toEqual([{ file: "docs/architecture-intent/alpha.md", line: 6, rule: "duplicate-id" }]);
++  });
++
++  it("rejects a linked domain file that does not exist and a domain file that is not linked", () => {
++    expect(check({
++      ...CLEAN,
++      "docs/architecture-intent/README.md": `${ARCHITECTURE_README}- [Gamma](gamma.md): missing.\n`,
++      "docs/product-intent/delta.md": `# Delta\n\n## ${peerAgent31("DELTA-001")}: Unlinked\n`,
++    })).toEqual([
++      { file: "docs/architecture-intent/README.md", line: 6, rule: "domain-link" },
++      { file: "docs/product-intent/delta.md", line: 1, rule: "domain-link" },
++    ]);
++  });
++
++  it("rejects code spans, paths, and file names in architecture statements", () => {
++    expect(check({
++      ...CLEAN,
++      "docs/architecture-intent/alpha.md": `${ALPHA}The \`owner\` decides.\nIt lives in src/owner/.\nIt reads owner.ts first.\nThe reader and/or writer decides.\n`,
++    })).toEqual([
++      { file: "docs/architecture-intent/alpha.md", line: 6, rule: "grain" },
++      { file: "docs/architecture-intent/alpha.md", line: 7, rule: "grain" },
++      { file: "docs/architecture-intent/alpha.md", line: 8, rule: "grain" },
++    ]);
++  });
++
++  it("rejects citations of missing statements and of retired records in the citing scope", () => {
++    expect(check({
++      ...CLEAN,
++      "src/owner.ts": `${CITING}// Also ${arch("ALPHA-002")}.\n// See ${records}/x.md and ${adr("005").toLowerCase()}.\n`,
++      "AGENTS.md": `Follow ${upd("009")}.\n`,
++    })).toEqual([
++      { file: "src/owner.ts", line: 2, rule: "dangling-id" },
++      { file: "src/owner.ts", line: 3, rule: "adr-reference" },
++      { file: "src/owner.ts", line: 3, rule: "adr-reference" },
++      { file: "AGENTS.md", line: 1, rule: "dangling-id" },
++    ]);
++  });
++});

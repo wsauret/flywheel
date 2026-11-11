@@ -1,0 +1,190 @@
+diff --git a/bench/harbor/METHODOLOGY.md b/bench/harbor/METHODOLOGY.md
+index 92f03b5..9e0c8bd 100644
+--- a/bench/harbor/METHODOLOGY.md
++++ b/bench/harbor/METHODOLOGY.md
+@@ -9,7 +9,7 @@ A hill-climb measures one arm, a Flywheel config, on fixed task splits of one be
+ 1. The board's data is fetched to a local cache, and the port of the board's scoring must reproduce every published cell of the benchmark before any score uses it.
+ 2. Splits are chosen once per benchmark from the board's per-task results. The `subset` split projects to the full benchmark; holdout splits check that a change that helps the subset also helps tasks that it did not select. The analysis proposes splits, and the person picks them. A run can also take the whole benchmark: every task of the pinned dataset except the descriptor's exclusions, which is the reserved split `all`.
+ 3. A round runs each split, or the whole benchmark, at the board's job settings, reruns the trials that infrastructure or a lost grader left unscored, reviews the passing trials that reached a published copy of the benchmark, and scores every scored attempt with the board's rules.
+-4. The subset score projects to the full benchmark through a fit over the board's own units. A round of the whole benchmark needs no projection. The round is compared with the board's field, and task by task with the board's leader, at the same model and effort.
++4. The subset score projects to the full benchmark through a fit over the board's own units. A round of the whole benchmark needs no projection. The round is compared task by task with each harness of the board's field at the same model and effort.
+ 
+ ## Effective configuration and grades
+ 
+@@ -149,11 +149,11 @@ yhat +/- t90 * s * sqrt(1 + 1/n + (x - mean subset)^2 / Sxx)
+ 
+ where s is the residual standard deviation of the fit (the structural SD), n is the unit count, and t90 is the one-sided 0.95 quantile of Student's t with n - 2 degrees of freedom. The board's units carry the same attempt-sampling noise in their subset scores as a round does, so the residual SD already holds that noise. A leave-one-out check fits the line without each unit, projects that unit, and reports how many units fall inside their 90% interval and the RMSE of those projections. The fit needs at least 3 units. The projection does not depend on the model, so a round of a model that the board does not rank still gets one.
+ 
+-## Comparison with the board's leader
++## Comparison with the board
+ 
+-`hill.ts score --board` reads the round's model and chat effort from the round's identity, or from `--model` and `--effort`. The board model is the model id whose last path segment equals the round's model, ignoring case. The leader is the harness that the published board ranks first for that model, the full stage, and that effort. The command also prints the board's field at that model and effort on the full stage: each harness with its rate and interval, best rate first. It prints the projection only when the round measured `subset`.
++`hill.ts score --board` reads the round's model and chat effort from the round's identity, or from `--model` and `--effort`. The board model is the model id whose last path segment equals the round's model, ignoring case. The command prints the board's field at that model and effort on the full stage: each harness with its rate and interval, best rate first, and the round's paired difference with that harness. It marks the published leader, the harness that the published board ranks first for that model, the full stage, and that effort. The board ranks over every benchmark it holds and puts complete harnesses first, so the leader need not have the best rate on the round's benchmark; the harness with the best rate is the first row. It prints the projection only when the round measured `subset`.
+ 
+-The paired comparison uses the board's own method. It takes the tasks that both the round and the leader's cell scored, over every task that the round measured, so a round of the whole Terminal-Bench 2.1 compares on all 87 tasks, and computes the round's pass rate minus the leader's for each task. The difference is the mean over those tasks. Its 95% interval comes from the board's paired bootstrap: 2000 resamples of the tasks with replacement, seeded with the board's seed, the board key, and the task count, as the board seeds them. The two are tied when the interval contains 0.
++The paired comparison uses the board's own method. For each harness of the field, it takes the tasks that both the round and that harness's cell scored, over every task that the round measured, so a round of the whole Terminal-Bench 2.1 compares on all 87 tasks, and computes the round's pass rate minus the harness's for each task. The difference is the mean over those tasks. Its 95% interval comes from the board's paired bootstrap: 2000 resamples of the tasks with replacement, seeded with the board's seed, the board key, and the task count, as the board seeds them. The two are tied when the interval contains 0.
+ 
+ ## Subset selection
+ 
+@@ -214,7 +214,7 @@ Descriptor `deep-swe-1.1`, board key `deep-swe`. The descriptor excludes two tas
+ - The grader writes a reward of -1 when it crashes. The ledger records that trial as `verifier_infra`, and the round counts it as grader-lost: not scored, and rerun.
+ - Only committed work is graded. The verifier grades the patch of `git diff` from the task's base commit to `HEAD` in the workspace, so a change that the agent does not commit is not graded.
+ - Each trial home carries no answer-key rule file. Nothing that the rule forbids is reachable from an agent phase without network.
+-- Most of the board's DeepSWE trials ran with network access. An offline Flywheel arm is therefore compared with a mostly online field, and a comparison with the board's leader must state that difference.
++- Most of the board's DeepSWE trials ran with network access. An offline Flywheel arm is therefore compared with a mostly online field, and a comparison with the board's field must state that difference.
+ 
+ ## Removed capabilities
+ 
+diff --git a/bench/harbor/README.md b/bench/harbor/README.md
+index b78f221..84b8e83 100644
+--- a/bench/harbor/README.md
++++ b/bench/harbor/README.md
+@@ -174,7 +174,7 @@ ROUND="$JOBS/rounds/r3.json"
+    bun bench/harbor/hill.ts score --round "$ROUND" --board
+    ```
+ 
+-   The command prints the pass count of each task, the score of each split that the round measured (over all tasks, over scored tasks, and without hub-broken tasks), the grader-lost, infrastructure, and answer-key fail counts, and the cost. It reads the measured splits from the manifests of the round's measure runs, so it reports no split that the round did not run. With `--board` it also prints the projected full score with its 90% interval and the fit when the round measured `subset`, the board's field at the round's model and effort on the full stage (each harness with its rate and interval, best rate first), and the board's leader with the paired difference over every task that both the round and the leader scored. It reads the model and the chat effort from the round's identity; `--model <name> --effort <effort>` sets them, and a round recorded before rounds had an identity needs both. A model that the board does not rank still gets the projection.
++   The command prints the pass count of each task, the score of each split that the round measured (over all tasks, over scored tasks, and without hub-broken tasks), the grader-lost, infrastructure, and answer-key fail counts, and the cost. It reads the measured splits from the manifests of the round's measure runs, so it reports no split that the round did not run. With `--board` it also prints the projected full score with its 90% interval and the fit when the round measured `subset`, and the board's field at the round's model and effort on the full stage: each harness with its rate and interval, best rate first, and the round's paired difference over every task that both the round and that harness scored, with the board's published leader marked. It reads the model and the chat effort from the round's identity; `--model <name> --effort <effort>` sets them, and a round recorded before rounds had an identity needs both. A model that the board does not rank still gets the projection.
+ 
+ ### Whole-benchmark run
+ 
+@@ -187,7 +187,7 @@ bash bench/harbor/run-harbor.sh --benchmark terminal-bench-2.1 --arm bench/harbo
+ bun bench/harbor/hill.ts score --round <jobs dir>/rounds/<name>.json --board
+ ```
+ 
+-A round of all tasks prints no projection, because it measured the full benchmark itself. Its comparison with the board's leader uses all 87 tasks.
++A round of all tasks prints no projection, because it measured the full benchmark itself. Its paired comparison with each harness of the board uses all 87 tasks.
+ 
+ ## Bring-up with one task
+ 
+diff --git a/bench/harbor/analysis/board-scoring.ts b/bench/harbor/analysis/board-scoring.ts
+index e79dc49..db02584 100644
+--- a/bench/harbor/analysis/board-scoring.ts
++++ b/bench/harbor/analysis/board-scoring.ts
+@@ -94,7 +94,7 @@ function onPublicBoard(config: BoardConfig, run: BoardRun, harness: string, benc
+ }
+ 
+ /** One setup of the board: model, stage, effort, and harness. */
+-export interface BoardSetup { readonly model: string; readonly stage: string; readonly effort: string; readonly harness: string }
++interface BoardSetup { readonly model: string; readonly stage: string; readonly effort: string; readonly harness: string }
+ 
+ interface ScoredFact { readonly fact: BoardFact; readonly outcome: Outcome; readonly order: readonly [string, string] }
+ 
+@@ -198,7 +198,7 @@ function publicBoardFacts(inputs: BoardInputs): Map<string, { setup: BoardSetup;
+   return result;
+ }
+ 
+-export function setupKey(setup: BoardSetup): string {
++function setupKey(setup: BoardSetup): string {
+   return [setup.model, setup.stage, setup.effort, setup.harness].join("|");
+ }
+ 
+diff --git a/bench/harbor/analysis/round-score.ts b/bench/harbor/analysis/round-score.ts
+index e2fdbdd..4abab91 100644
+--- a/bench/harbor/analysis/round-score.ts
++++ b/bench/harbor/analysis/round-score.ts
+@@ -1,6 +1,6 @@
+ import type { HarborBenchmark } from "../benchmarks.js";
+ import type { BoardInputs } from "./board-data.js";
+-import { pairedDiff, publicCells, publishedLeader, setupKey, type BoardCell } from "./board-scoring.js";
++import { pairedDiff, publicCells, publishedLeader, type BoardCell } from "./board-scoring.js";
+ import { fitProjection, leaveOneOut, project, type CalibrationUnit, type Projection, type ProjectionFit } from "./projection.js";
+ import type { RoundTrial } from "./round-trials.js";
+ 
+@@ -81,10 +81,12 @@ export interface BoardComparison {
+   /** The projection of the round's subset score, when the round measured the subset split. */
+   readonly projection?: { readonly fit: ProjectionFit; readonly looCovered: number; readonly looRmse: number; readonly projected: Projection };
+   readonly setup: BoardSetupChoice;
+-  /** Every harness that the board scores at the round's model and effort on the full stage, best rate first. */
+-  readonly field: readonly { readonly harness: string; readonly rate: number | null; readonly ci: readonly [number, number] | null }[];
+-  /** The board's leader of that setup and the paired difference on the tasks both scored, when the board ranks the setup. */
+-  readonly leader?: { readonly harness: string; readonly rate: number | null; readonly diff: ReturnType<typeof pairedDiff> };
++  /** Every harness that the board scores at the round's model and effort on the full stage, best rate first, each with
++   *  the round's paired difference on the tasks that both scored. */
++  readonly field: readonly { readonly harness: string; readonly rate: number | null; readonly ci: readonly [number, number] | null; readonly diff: ReturnType<typeof pairedDiff> }[];
++  /** The harness that the published board ranks first for that setup. The board ranks over every benchmark it holds and
++   *  puts complete harnesses first, so its leader need not have the best rate on this benchmark. */
++  readonly leader?: string;
+ }
+ 
+ /** The calibration units of a benchmark's projection: every public full-stage
+@@ -104,18 +106,17 @@ export function calibrationUnits(cells: Iterable<BoardCell>, subset: readonly st
+ }
+ 
+ /** Compares a round with the board at the round's model and effort: the
+- *  board's field of harnesses, the paired per-task difference with its
+- *  leader, and, when the round measured the subset split, the projection of
++ *  board's field of harnesses, each with the paired per-task difference, its
++ *  published leader, and, when the round measured the subset split, the projection of
+  *  that score to the full benchmark with a fit over the board's units. */
+ export function compareWithBoard(benchmark: HarborBenchmark, score: RoundScore, board: BoardInputs, setup: BoardSetupChoice): BoardComparison {
+   const cells = publicCells(board);
+   const subset = benchmark.splits[PROJECTED_SPLIT];
+   const subsetScore = score.splits.find((split) => split.split === PROJECTED_SPLIT);
+   const leader = publishedLeader(board, setup.model, setup.effort);
+-  const leaderCell = leader === undefined ? undefined : cells.get(setupKey({ model: setup.model, stage: "full", effort: setup.effort, harness: leader }));
+   const field = [...cells.values()]
+     .filter((cell) => cell.setup.model === setup.model && cell.setup.effort === setup.effort && cell.setup.stage === "full")
+-    .map((cell) => ({ harness: cell.setup.harness, rate: cell.rate, ci: cell.ci }))
++    .map((cell) => ({ harness: cell.setup.harness, rate: cell.rate, ci: cell.ci, diff: pairedDiff(board.benchmark, score.tasks, cell.tally) }))
+     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
+   let projection: BoardComparison["projection"];
+   if (subset !== undefined && subsetScore !== undefined) {
+@@ -128,7 +129,7 @@ export function compareWithBoard(benchmark: HarborBenchmark, score: RoundScore,
+     ...(projection === undefined ? {} : { projection }),
+     setup,
+     field,
+-    ...(leader === undefined || leaderCell === undefined ? {} : { leader: { harness: leader, rate: leaderCell.rate, diff: pairedDiff(board.benchmark, score.tasks, leaderCell.tally) } }),
++    ...(leader === undefined ? {} : { leader }),
+   };
+ }
+ 
+diff --git a/bench/harbor/hill.ts b/bench/harbor/hill.ts
+index 2ccdede..42e6835 100644
+--- a/bench/harbor/hill.ts
++++ b/bench/harbor/hill.ts
+@@ -125,16 +125,15 @@ async function scoreCommand(values: ReadonlyMap<string, string>, switches: Reado
+     const { fit, looCovered, projected } = comparison.projection;
+     console.log(`projected full ${fixed(projected.full)} [${fixed(projected.low)}, ${fixed(projected.high)}] (90%; fit over ${fit.n} board units: full = ${fit.a.toFixed(5)} + ${fit.b.toFixed(5)} * ${PROJECTED_SPLIT}, residual SD ${fit.s.toFixed(5)}, leave-one-out coverage ${looCovered}/${fit.n})`);
+   }
+-  if (comparison.field.length > 0) {
+-    console.log(`board at ${comparison.setup.model} ${comparison.setup.effort} (full stage):`);
+-    for (const { harness, rate, ci } of comparison.field) console.log(`  ${harness.padEnd(20)} ${fixed(rate)}${ci === null ? "" : ` [${fixed(ci[0])}, ${fixed(ci[1])}]`}`);
+-  }
+   if (model === undefined) console.log(`the board ranks no setup for ${modelName}`);
+-  else if (comparison.leader === undefined) console.log(`the board ranks no ${model} at effort ${comparison.setup.effort}`);
++  else if (comparison.field.length === 0) console.log(`the board ranks no ${model} at effort ${comparison.setup.effort}`);
+   else {
+-    const { harness, rate, diff } = comparison.leader;
+-    console.log(`board leader at ${model} ${comparison.setup.effort}: ${harness} ${fixed(rate)}`);
+-    console.log(diff === null ? "no task scored by both" : `paired difference on ${diff.nTasks} shared tasks: ${diff.diff >= 0 ? "+" : ""}${diff.diff.toFixed(3)} [${diff.ci[0].toFixed(3)}, ${diff.ci[1].toFixed(3)}] (95% paired bootstrap)${diff.tied ? ", tied" : ""}`);
++    console.log(`board at ${comparison.setup.model} ${comparison.setup.effort} (full stage), with this round's paired difference on the tasks both scored (95% paired bootstrap):`);
++    for (const { harness, rate, ci, diff } of comparison.field) {
++      const paired = diff === null ? "no task scored by both" : `${diff.diff >= 0 ? "+" : ""}${diff.diff.toFixed(3)} [${diff.ci[0].toFixed(3)}, ${diff.ci[1].toFixed(3)}] on ${diff.nTasks}${diff.tied ? ", tied" : ""}`;
++      console.log(`  ${harness.padEnd(20)} ${fixed(rate)}${ci === null ? "" : ` [${fixed(ci[0])}, ${fixed(ci[1])}]`}   ${paired}${harness === comparison.leader ? "   (published leader)" : ""}`);
++    }
++    if (comparison.leader !== undefined) console.log("the published leader is the board's rank over every benchmark, complete harnesses first");
+   }
+   return 0;
+ }
+diff --git a/tests/unit/bench/harbor-board-scoring.test.ts b/tests/unit/bench/harbor-board-scoring.test.ts
+index 22bfdad..2c02269 100644
+--- a/tests/unit/bench/harbor-board-scoring.test.ts
++++ b/tests/unit/bench/harbor-board-scoring.test.ts
+@@ -82,7 +82,7 @@ describe("paired bootstrap", () => {
+ });
+ 
+ describe("board comparison", () => {
+-  it("places a round that measured only the full split in the board's field, with no projection", () => {
++  it("places a round that measured only the full split in the board's field, each harness with its paired difference, with no projection", () => {
+     const facts = [
+       fact({ id: "a1", task: "a" }), fact({ id: "b1", task: "b", reward: 0 }),
+       fact({ id: "a2", task: "a", harness: "h2" }), fact({ id: "b2", task: "b", harness: "h2" }),
+@@ -91,6 +91,6 @@ describe("board comparison", () => {
+     const score: RoundScore = { tasks: new Map([["a", [1, 1]], ["b", [0, 1]]]), splits: [full], costUsd: 0, infra: 0, graderLost: 0, answerKeyFails: 0 };
+     const comparison = compareWithBoard(harborBenchmark("terminal-bench-2.1"), score, inputs(facts), { model: "org/Model-1", effort: "high" });
+     expect(comparison.projection).toBeUndefined();
+-    expect(comparison.field.map(({ harness, rate }) => [harness, rate])).toEqual([["h2", 1], ["h1", 0.5]]);
++    expect(comparison.field.map(({ harness, rate, diff }) => [harness, rate, diff?.diff, diff?.nTasks])).toEqual([["h2", 1, -0.5, 2], ["h1", 0.5, 0, 2]]);
+   });
+ });

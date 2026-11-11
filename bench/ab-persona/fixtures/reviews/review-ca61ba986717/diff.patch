@@ -1,0 +1,81 @@
+diff --git a/docs/product-intent/remote-access.md b/docs/product-intent/remote-access.md
+index 9ab8421..abe4b3d 100644
+--- a/docs/product-intent/remote-access.md
++++ b/docs/product-intent/remote-access.md
+@@ -22,6 +22,8 @@ On every surface, the user can see whether the machine is attached to the relay,
+ 
+ The phone renders the same web client the VS Code extension renders. A feature added to that client appears on both, and the phone differs only by what its host cannot do: open files in an editor, or show a camera for pairing. Connecting a provider, reviewing paid use, managing auth profiles, choosing a model for every role, curating a provider's model list, and reading usage are the client's own sheets, so each of them works on the phone exactly as it does in the editor. Every setting a person can change in the TUI, every action they can take, and every reading the TUI shows is available in the client, except settings that describe the terminal itself, which the client's host owns. On the phone the client owns the screen: a chat sits one screen above the session list, reached and left by a back control, a sideways swipe from anywhere on the screen, and the browser's own back and forward, and the chat's header names the chat and the project the list shows. Every session row and the chat header show whether the session is closed, open and idle, or open and running, with the same rule the terminal's tab spinner uses. Each session row names the session by its short title, shows its longer description under that, and shows the lines the session added, changed, and removed. On a touch screen a row's rename, close, and delete controls stay out of sight until the user swipes the row to the left, and one row shows them at a time; with a pointer they appear on hover.
+ 
++While text is selected, native selection takes priority over swipe navigation, so users can extend it with selection handles.
++
+ Back navigation on the phone follows the session hierarchy: a child session returns to its immediate parent, and a top-level session returns to the session list, regardless of visit order.
+ 
+ ## PI-REMOTE-006: A user can host their own relay
+diff --git a/webview/src/app/screen-stack.ts b/webview/src/app/screen-stack.ts
+index 8b1e791..17ec25e 100644
+--- a/webview/src/app/screen-stack.ts
++++ b/webview/src/app/screen-stack.ts
+@@ -171,13 +171,22 @@ export function createScreenStack(
+   const bindSwipe = (root: HTMLElement) => {
+     let gesture: Gesture | undefined
+     const width = () => root.clientWidth
++    const selectionOwnsTouch = () => root.ownerDocument.getSelection()?.isCollapsed === false
++    const touchCancel = () => {
++      gesture = undefined
++      setDragX(undefined)
++    }
++    const selectionChanged = () => {
++      if (selectionOwnsTouch()) touchCancel()
++    }
+     const touchStart = (event: TouchEvent) => {
+-      if (event.touches.length !== 1 || gesture !== undefined) return
++      if (event.touches.length !== 1 || gesture !== undefined || selectionOwnsTouch()) return
+       const touch = event.touches[0]!
+       gesture = { startX: touch.clientX, startY: touch.clientY, target: event.target, direction: undefined, lastX: touch.clientX, lastTime: event.timeStamp, velocity: 0 }
+     }
+     const touchMove = (event: TouchEvent) => {
+       if (gesture === undefined) return
++      if (selectionOwnsTouch()) { touchCancel(); return }
+       const touch = event.touches[0]!
+       const dx = touch.clientX - gesture.startX
+       const dy = touch.clientY - gesture.startY
+@@ -202,6 +211,7 @@ export function createScreenStack(
+     }
+     const touchEnd = () => {
+       if (gesture === undefined) return
++      if (selectionOwnsTouch()) { touchCancel(); return }
+       const done = gesture
+       gesture = undefined
+       if (done.direction === undefined) return
+@@ -211,26 +221,23 @@ export function createScreenStack(
+       if (done.direction === "back") back()
+       else forward()
+     }
+-    const touchCancel = () => {
+-      // The browser took the touch: its own swipe, or a scroll it claimed.
+-      gesture = undefined
+-      setDragX(undefined)
+-    }
+     // Passive throughout. A touchmove listener that may cancel makes the
+     // browser wait for the main thread before it can move the transcript on
+     // every frame of every scroll, and while a turn streams the main thread
+-    // is often busy, so the finger stalls. Nothing here needs to cancel: a
+-    // sideways drag has no native gesture to compete with, so the swipe
+-    // reads the moves and drives the screen without taking them from anyone.
++    // is often busy, so the finger stalls. Native text selection keeps its
++    // touches; otherwise the swipe reads
++    // the moves and drives the screen without taking them from the browser.
+     root.addEventListener("touchstart", touchStart, { passive: true })
+     root.addEventListener("touchmove", touchMove, { passive: true })
+     root.addEventListener("touchend", touchEnd)
+     root.addEventListener("touchcancel", touchCancel)
++    root.ownerDocument.addEventListener("selectionchange", selectionChanged)
+     return () => {
+       root.removeEventListener("touchstart", touchStart)
+       root.removeEventListener("touchmove", touchMove)
+       root.removeEventListener("touchend", touchEnd)
+       root.removeEventListener("touchcancel", touchCancel)
++      root.ownerDocument.removeEventListener("selectionchange", selectionChanged)
+     }
+   }
+ 

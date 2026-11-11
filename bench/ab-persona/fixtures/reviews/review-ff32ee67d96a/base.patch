@@ -1,0 +1,1759 @@
+diff --git a/docs/product-intent/remote-access.md b/docs/product-intent/remote-access.md
+index fd8e4f0..2f71c44 100644
+--- a/docs/product-intent/remote-access.md
++++ b/docs/product-intent/remote-access.md
+@@ -12,7 +12,7 @@ Remote access adds no remotely reachable listener or tunnel to the machine. Flyw
+ 
+ ## PI-REMOTE-003: The relay cannot read a conversation
+ 
+-Every frame between a phone and a runtime is sealed end to end. The relay, hosted or self-hosted, learns only that a machine is online, that a paired device is attached, and the names under which a device lists the machine and its projects. A device that was never paired, or whose pairing was revoked, cannot attach even with the relay's cooperation.
++Every frame between a phone and a runtime is sealed end to end. The relay, hosted or self-hosted, learns only that a machine is online and that a paired device is attached. A device that was never paired, or whose pairing was revoked, cannot attach even with the relay's cooperation.
+ 
+ ## PI-REMOTE-004: Remote reachability is always visible
+ 
+@@ -40,7 +40,7 @@ Switching away from the phone app and back keeps the chat as it was: its scroll
+ 
+ ## PI-REMOTE-009: A paired phone can open an asleep known project
+ 
+-When the machine's account service is installed and the machine is awake, a paired phone lists every project this machine has opened from any local or remote surface, shows each as open or asleep, and opens an asleep project with one tap. The row says Flywheel is starting until the project reports open, and says when Flywheel could not open it. A paired device can also create a project on the machine by naming a repository to clone; the machine clones it and then offers it like any project it has opened. It clones only over https or ssh, with the machine's own git credentials and never a prompt, into a new folder named for the repository and numbered when that name is taken, and the clone finishes even if the device leaves. Apart from such a clone, only projects the machine has already opened are offered, and a device never names a path on the machine. A dormant project is forgotten from the flywheel remote projects command, from the phone while it is attached to that machine, from the machine's Remote view, or from the machine's fixed local page, and a project whose directory is gone is forgotten on its own. Opening a forgotten project again on the machine offers it again. The machine stays awake while a phone is using a project it opened, and while that project stays open after the phone leaves, so the phone that comes back finds the machine and its sessions ready, unless the user turns off Keep Awake For Phone. On installed surfaces, the account service's login startup is an explicit action named Process initiation. It reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service; a failed repair says to run `flywheel serve install` on the machine and report a bug if that command also fails. A source build omits Process initiation. A remotely opened project closes after the same idle grace as any other project.
++When the machine's account service is installed and the machine is awake, a paired phone lists every project this machine has opened from any local or remote surface, shows each as open or asleep, and opens an asleep project with one tap. The row says Flywheel is starting until the project reports open, and says when Flywheel could not open it. A paired device can also create a project on the machine by naming a repository to clone; the machine clones it and then offers it like any project it has opened. Apart from such a clone, only projects the machine has already opened are offered, and a device never names a path on the machine. A dormant project is forgotten from the flywheel remote projects command, from the phone while it is attached to that machine, from the machine's Remote view, or from the machine's fixed local page, and a project whose directory is gone is forgotten on its own. Opening a forgotten project again on the machine offers it again. The machine stays awake while a phone is using a project it opened, and while that project stays open after the phone leaves, so the phone that comes back finds the machine and its sessions ready, unless the user turns off Keep Awake For Phone. On installed surfaces, the account service's login startup is an explicit action named Process initiation. It reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service; a failed repair says to run `flywheel serve install` on the machine and report a bug if that command also fails. A source build omits Process initiation. A remotely opened project closes after the same idle grace as any other project.
+ 
+ ## PI-REMOTE-010: A paired phone opens straight into its session
+ 
+@@ -64,16 +64,8 @@ The phone shows the client that belongs to the runtime serving the chosen projec
+ 
+ ## PI-REMOTE-015: A phone is told when a chat needs it
+ 
+-While notifications are on, a chat that starts waiting on a question shows a notification on each paired phone, on the lock screen too, whatever any phone has open. That is the only moment a phone is notified: a turn that ends, a workflow that pauses, and a run that fails send nothing. A question answered before the notification goes out sends none, and each new question alerts again, also in the same chat. A phone receives notifications from one machine at a time. The installed Flywheel and a source run of Flywheel on the same machine count as that one machine: a phone that gets notifications from one gets them from the other too. Flywheel has no notification setting of its own: allowing notifications on the phone is the only step. While a phone cannot receive notifications, the phone app says why and offers the one next step: adding the app to the Home Screen, a button that asks the phone for permission, the system setting to change when the phone blocks notifications, or moving notifications from another machine to this one. The person can dismiss that offer. The phone remembers the dismissal through relaunches and project switches, and the offer returns only when a chat starts waiting on them while notifications are still off.
++While notifications are on, a chat that starts waiting on a question shows a notification on each paired phone, on the lock screen too, whatever any phone has open. That is the only moment a phone is notified: a turn that ends, a workflow that pauses, and a run that fails send nothing. A question answered before the notification goes out sends none, and each new question alerts again, also in the same chat. A phone receives notifications from one machine at a time. Flywheel has no notification setting of its own: allowing notifications on the phone is the only step. While a phone cannot receive notifications, the phone app says why and offers the one next step: adding the app to the Home Screen, a button that asks the phone for permission, the system setting to change when the phone blocks notifications, or moving notifications from another machine to this one. The person can dismiss that offer, and it returns when a chat starts waiting on them while notifications are still off.
+ 
+ ## PI-REMOTE-016: A terminal on another machine reaches the runtime through the relay
+ 
+-A person pairs a terminal on another machine with the same code or link that pairs a phone. The paired terminal lists each paired machine's projects as open or asleep, opens or wakes one as a phone does, and shows the same live sessions as every other surface. A terminal opens a project on a paired machine with `--remote`, as an added answer when it asks which directory to open, or from the account home, where a local launch is refused; opening one creates nothing in any local project directory. A terminal on the runtime's own machine attaches locally and never depends on the relay. When the terminal runs an older release than the machine, it updates itself to the machine's release and continues; when it runs a newer release, it says that the machine has not updated yet and attaches once the machine has. A terminal never stops, replaces, or retires a remote machine's runtime.
+-
+-## PI-REMOTE-017: A version mismatch is explained, not hidden
+-
+-A machine whose Flywheel is too old or too new for the relay is refused, and the person is told to update Flywheel, or to deploy the newest relay when they host their own. A phone whose app page is too old for the machine's client says so instead of opening the client.
+-
+-## PI-REMOTE-018: A source run pairs devices on its own
+-
+-The installed Flywheel and a source run of Flywheel on the same machine pair devices separately, and both can be attached to the relay at once. A paired device lists the installed Flywheel under the machine's name, and the source run as its own machine named dev followed by the machine's name in parentheses, as in `dev (Studio)`. Neither is named after a project. A paired device shows each machine's current name, which it learns whenever that machine is awake, without pairing again.
++A person pairs a terminal on another machine with the same code or link that pairs a phone. The paired terminal lists each paired machine's projects as open or asleep, opens or wakes one as a phone does, and shows the same live sessions as every other surface. A terminal on the runtime's own machine attaches locally and never depends on the relay. When the terminal runs an older release than the machine, it updates itself to the machine's release and continues; when it runs a newer release, it says that the machine has not updated yet and attaches once the machine has. A terminal never stops, replaces, or retires a remote machine's runtime.
+diff --git a/webview/src/app/budget-render-fixture.tsx b/webview/src/app/budget-render-fixture.tsx
+index 02f571f..4d24c74 100644
+--- a/webview/src/app/budget-render-fixture.tsx
++++ b/webview/src/app/budget-render-fixture.tsx
+@@ -1,33 +1,25 @@
+ import { createComponent, createRoot, createSignal, type JSX } from "solid-js"
+ 
+ import type { RuntimeHealth } from "../../../src/protocol/app-service-types.js"
++import { PROTOCOL_MODULE_SESSION_DOMAINS, PROTOCOL_MODULE_WORKSPACE_DOMAINS } from "../../../src/protocol/modules.js"
+ import type { BudgetSummary } from "../../../src/protocol/client/host-contract.js"
+ import type { UpdateStatus } from "../../../src/protocol/update-protocol-types.js"
+ import type { ClientViewState, SessionSummary } from "../client/view-state.js"
+-import { createModuleDomainMonitors, type ModuleDomainViews } from "../client/module-domain-views.js"
+-import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"
+-import { fakeRuntimeConnection, type FakeConnectionScript } from "../client/runtime-connection-fixture.js"
+-import { statusView } from "../../../tests/helpers/runtime-views.js"
++import type { ModuleDomainViews } from "../client/module-domain-views.js"
++import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
++import { createClientActions } from "../client/actions.js"
++import type { RuntimeSession } from "../client/session.js"
+ import type { ClientContextValue } from "./client-context.js"
+ import { ClientContext } from "./client-context.js"
+-import { fakeClient, fakeClientActions, fakeRuntimeSession } from "./client-context-fixture.js"
+-import type { PlacementLabels, ScreenStack } from "./screen-stack.js"
+ import { createCommandPanel } from "./command-panel.js"
+ import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
+ import { SessionList } from "./session-list.js"
+ import { StatusSheet } from "./sheets/status-sheet.js"
+ import { Toolbar } from "./toolbar.js"
+ 
+-/** Every module domain with no view landed, as the real monitors read
+- *  before their lane opens. */
+-function emptyModules(): ModuleDomainViews {
+-  const monitors = createModuleDomainMonitors({ connection: fakeRuntimeConnection({}, fakeLanes({ open: false }).client), onChange: () => {} })
+-  const views = monitors.views(undefined)
+-  monitors.dispose()
+-  return views
+-}
+-
+-const EMPTY_MODULES = emptyModules()
++// SAFETY: the registry lists cover every view key, and null is valid for every domain.
++// oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the closed registry determines every view key
++const EMPTY_MODULES = Object.fromEntries([...PROTOCOL_MODULE_WORKSPACE_DOMAINS, ...PROTOCOL_MODULE_SESSION_DOMAINS].map((domain) => [domain, null])) as ModuleDomainViews
+ 
+ const LOADING_BUDGET: BudgetSummary = { totalsLoading: true, compactionThreshold: 100_000 }
+ const READY_BUDGET: BudgetSummary = {
+@@ -46,7 +38,7 @@ function state(budget: BudgetSummary = LOADING_BUDGET, health: RuntimeHealth = {
+     stage: "ready",
+     desktopPermission: "unsupported",
+     providers: [],
+-    builtInCommands: [],
++    commands: [],
+     offCommands: [],
+     budget,
+     notices: [],
+@@ -56,7 +48,6 @@ function state(budget: BudgetSummary = LOADING_BUDGET, health: RuntimeHealth = {
+     sessionId: "session-a",
+     executionCwd: "/tmp/project",
+     sessions: [summary()],
+-    newestQuestionOpenedAt: undefined,
+     children: [],
+     roleAssignments: () => undefined,
+     subscribeRoleAssignments: () => () => {},
+@@ -101,22 +92,37 @@ function summary(overrides: Partial<SessionSummary> = {}): SessionSummary {
+   }
+ }
+ 
+-function client(current: () => ClientViewState, script: FakeConnectionScript = {}, reconnect: () => void = () => {}): ClientContextValue {
+-  return fakeClient({
+-    connection: fakeRuntimeConnection(script),
+-    actions: fakeClientActions({ reconnect }),
++function actions(reconnect: () => void) {
++  return new Proxy({}, { get: (_target, key) => key === "hasHostCommand" ? () => false : key === "reconnect" ? reconnect : () => {} })
++}
++
++function client(current: () => ClientViewState, query: (request: { readonly type: string }) => Promise<object> = async () => ({}), reconnect: () => void = () => {}): ClientContextValue {
++  const noop = () => {}
++  const value = {
++    signal: new AbortController().signal,
++    changes: () => undefined,
++    host: { capabilities: {} },
++    connection: { query },
++    actions: actions(reconnect),
+     state: current,
++    report: noop,
++    openSheet: noop,
++    closeSheet: noop,
++    sheetFocus: () => undefined,
+     confirm: async () => false,
+     prompt: async () => undefined,
+-  })
+-}
+-
+-/** The phone's screen stack showing the open chat under `placement`. */
+-function chatStack(placement: PlacementLabels | undefined): ScreenStack {
+-  return {
+-    screen: () => "chat", canForward: () => false, dragX: () => undefined, placement: () => placement,
+-    openChat() {}, showSessions() {}, back() {}, forward() {}, bindSwipe: () => () => {},
++    focusComposer: noop,
++    insertText: noop,
++    recallLocal: noop,
++    openFind: noop,
++    openMentions: noop,
++    pickFiles: noop,
++    openSurface: noop,
++    markedBlock: () => undefined,
++    markBlock: noop,
+   }
++  // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the render fixture supplies only component dependencies used by these mounted states
++  return value as unknown as ClientContextValue
+ }
+ 
+ function withClass(root: ReturnType<typeof createElement>, className: string) {
+@@ -142,11 +148,18 @@ export function mountToolbarBudget(layout: "wide" | "folded" | "phone" | "narrow
+     const root = createElement("root")
+     let compactions = 0
+     let answerCompaction = () => {}
+-    const owner = fakeClientActions({}, fakeRuntimeSession({ get sessionId() { return current().sessionId }, compact: () => { compactions += 1; return new Promise<void>((resolve) => { answerCompaction = resolve }) } }))
++    const owner = createClientActions({
++      // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the toolbar exercises only the compaction action
++      session: { get sessionId() { return current().sessionId }, compact: () => { compactions += 1; return new Promise<void>((resolve) => { answerCompaction = resolve }) } } as RuntimeSession,
++      // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: compaction reads no connection member
++      connection: {} as RuntimeConnection,
++      capabilities: {}, report() {}, captureSurfaceOpener: () => () => {},
++    })
+     const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document")
+     Object.defineProperty(globalThis, "document", { configurable: true, value: root.ownerDocument })
+     insert(root, createComponent(ClientContext.Provider, {
+-      value: { ...client(current), actions: owner, ...(layout === "phone" ? { stack: chatStack({ project: "Phone project", machine: "Phone machine" }) } : {}) },
++      // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the stack fixture supplies the toolbar's placement and navigation
++      value: { ...client(current), actions: owner, ...(layout === "phone" ? { stack: { back() {}, placement: () => ({ project: "Phone project" }) } } : {}) } as unknown as ClientContextValue,
+       get children() {
+         return createComponent(Toolbar, { wide: layout === "wide", rail: { collapsed: layout === "folded", toggle() {} }, modules: [] })
+       },
+@@ -211,8 +224,18 @@ export function mountToolbarActing(layout: "wide" | "phone") {
+   return createRoot((dispose) => {
+     const held: (() => void)[] = []
+     const hold = () => new Promise<void>((resolve) => { held.push(resolve) })
+-    const owner = fakeClientActions({}, fakeRuntimeSession({ sessionId: "session-a", close: hold, remove: hold, rename: hold }))
+-    const value: ClientContextValue = { ...client(() => state()), actions: owner, ...(layout === "phone" ? { stack: chatStack(undefined) } : {}) }
++    const owner = createClientActions({
++      // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the session implements only the session actions the panel starts
++      session: { sessionId: "session-a", close: hold, remove: hold, rename: hold } as unknown as RuntimeSession,
++      // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: these actions read no connection member
++      connection: {} as RuntimeConnection,
++      capabilities: {},
++      report() {},
++      captureSurfaceOpener: () => () => {},
++    })
++    const stack = { back() {}, placement: () => undefined }
++    // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the phone's stack supplies only the members the toolbar reads
++    const value = { ...client(() => state()), actions: owner, ...(layout === "phone" ? { stack } : {}) } as unknown as ClientContextValue
+     const root = createElement("root")
+     insert(root, createComponent(ClientContext.Provider, {
+       value,
+@@ -232,12 +255,12 @@ export function mountToolbarActing(layout: "wide" | "phone") {
+ }
+ 
+ /** Mounts a sheet in the shared client context with controllable queries and session selection. */
+-export function mountClientSheet(sheet: () => JSX.Element, script: FakeConnectionScript) {
++export function mountClientSheet(sheet: () => JSX.Element, query: (request: { readonly type: string; readonly sessionId?: string }) => Promise<object>) {
+   return createRoot((dispose) => {
+     const [current, setCurrent] = createSignal(state())
+     const root = createElement("root")
+     insert(root, createComponent(ClientContext.Provider, {
+-      value: client(current, script),
++      value: client(current, query),
+       get children() { return sheet() },
+     }))
+     return {
+@@ -261,26 +284,24 @@ export function mountClientSheet(sheet: () => JSX.Element, script: FakeConnectio
+   })
+ }
+ 
+-/** The command menu with the catalog's Compact conversation entry, whose value reads the budget. */
+ export function mountCommandPanelBudget() {
+   return createRoot((dispose) => {
+-    const compact = { id: "compact", title: "Compact conversation", description: "Compact", aliases: [], menu: { group: "chat", rank: 200 }, reading: "context-window" } as const
+-    const withCompact = (budget?: BudgetSummary): ClientViewState => ({ ...state(budget), builtInCommands: [compact] })
+-    const [current, setCurrent] = createSignal(withCompact())
++    const [current, setCurrent] = createSignal(state())
+     const root = createElement("root")
+-    const panel = createCommandPanel({ client: client(current), query: () => "", close() {} })
++    const panel = createCommandPanel({ client: client(current), query: () => "", insertCommand() {}, close() {} })
+     insert(root, panel.view)
+     const panelRow = (label: string) => nodes(root).find((node) => node.properties.class === "panel-row" && textContent(node).includes(label))
+     return {
+       dispose,
+-      setReady() { setCurrent(withCompact(READY_BUDGET)) },
++      setReady() { setCurrent(state(READY_BUDGET)) },
++      text: () => textContent(root),
+       spendRow: () => panelRow("Spend"),
+-      compactRow: () => panelRow("Compact conversation"),
+-      compactValue: () => withClass(panelRow("Compact conversation") ?? root, "panel-value"),
++      compactValue: () => withClass(panelRow("Compact now") ?? root, "panel-value"),
+       compactValueText: () => {
+-        const value = withClass(panelRow("Compact conversation") ?? root, "panel-value")
++        const value = withClass(panelRow("Compact now") ?? root, "panel-value")
+         return value === undefined ? "" : textContent(value)
+       },
++      stableControl: () => panelRow("Switch chat model"),
+     }
+   })
+ }
+@@ -325,20 +346,22 @@ export function mountStatusBudget(nullableDetailBudget = false, source: "durable
+   return createRoot((dispose) => {
+     const [current, setCurrent] = createSignal(state())
+     const reconnects: number[] = []
+-    const detailRow = { id: "session-a", kind: "chat", title: "Session A", lifecycleState: "inactive", notices: [], inputMode: { kind: "chat" }, lastUpdated: "2026-09-18T12:00:00.000Z", executionCwd: "/tmp/project", totalsLoading: true } as const
+-    const query: FakeConnectionScript = {
+-      queries: {
+-        sessionDetail: () => {
+-          const detail = { id: detailRow.id, kind: detailRow.kind, row: detailRow, conversationId: "conversation-a", status: statusView() }
+-          const budget = { totalsLoading: true } as const
+-          // A live view always carries its budget; only a durable one may lack it.
+-          return { view: source === "live" ? { ...detail, source, streamingToolText: {}, budget } : { ...detail, source, budget: nullableDetailBudget ? null : budget } }
+-        },
+-        roleSnapshot: () => ({
+-          views: [{ sessionId: detailRow.id, view: { assignments: { chat: { model: "chat-model", effort: "high" } }, serving: { slot: { kind: "role", roleId: "chat" }, selection: { model: "chat-model", effort: "high" } } } }],
+-          snapshotPosition: 0,
+-        }),
+-      },
++    const query = async (request: { readonly type: string }): Promise<object> => {
++      if (request.type === "sessionDetail") {
++        return {
++          view: {
++            id: "session-a",
++            source,
++            kind: "chat",
++            conversationId: "conversation-a",
++            row: {},
++            status: {},
++            budget: nullableDetailBudget ? null : { totalsLoading: true },
++          },
++        }
++      }
++      if (request.type === "roleSnapshot") return { views: [], snapshotPosition: 0 }
++      return {}
+     }
+     const root = createElement("root")
+     insert(root, createComponent(ClientContext.Provider, {
+@@ -364,10 +387,6 @@ export function mountStatusBudget(nullableDetailBudget = false, source: "durable
+         return tone?.slice("tone-".length)
+       },
+       reconnects: () => reconnects.length,
+-      rolesText: () => {
+-        const row = rowLabelled(root, "Roles")
+-        return row === undefined ? "" : textContent(row)
+-      },
+       settle: async () => { for (let index = 0; index < 12; index += 1) await Promise.resolve() },
+       text: () => textContent(root),
+       sessionDetail: () => withClass(rowNamed(root, "Session") ?? root, "sheet-row-detail"),
+diff --git a/webview/src/client/session-readings.ts b/webview/src/client/session-readings.ts
+index 7957872..3a9a442 100644
+--- a/webview/src/client/session-readings.ts
++++ b/webview/src/client/session-readings.ts
+@@ -5,19 +5,17 @@ import type { RuntimeConnection } from "../../../src/protocol/client/connection.
+ import { mergeBudgetView } from "../../../src/protocol/client/known-totals.js"
+ import { createSessionReadingFamily, type SessionViewStore } from "../../../src/protocol/client/session-reading-family.js"
+ import { isStatusPayload, statusCursor, type StatusView } from "../../../src/protocol/status-protocol-types.js"
+-import { isQuestionPayload, questionCursor, type PendingQuestionView } from "../../../src/protocol/question-protocol-types.js"
++import { createReadRetry } from "../../../src/protocol/client/background-reads.js"
+ 
+-/** Status, budget, and question readings follow every live catalog row,
+- *  every held child, the selection, which no list may name yet, and every
+- *  child whose card watches its status. They reach every client whichever
+- *  session it shows, so a return to a session shows its known budget in the
+- *  tap and reads nothing for it. The shared reading family decides every
+- *  read: it reads each followed session once on each lane, reads what it
+- *  follows in one batch per domain, orders each read against its live
+- *  patches, and keeps the visible readings across a reconnect without
+- *  depending on catalog changes. The question reading is the durable question
+- *  projection, which every settlement path advances, so the dock never waits
+- *  on a transcript patch that may never come (ARCH-PROTOCOL-068). */
++/** Status and budget readings follow every live catalog row, every held
++ *  child, the selection, which no list may name yet, and every child whose
++ *  card watches its status. Both reach every client whichever session it
++ *  shows, so a return to a session shows its known budget in the tap and
++ *  reads nothing for it. The shared reading family decides every read: it
++ *  reads each followed session once on each lane, reads what it follows in
++ *  one batch per domain, and keeps the visible readings across a reconnect
++ *  without depending on catalog changes. The question presence is read in
++ *  one batch per list change and kept current by its own patches. */
+ export function createSessionReadings(options: {
+   readonly connection: RuntimeConnection
+   readonly changed: () => void
+@@ -26,7 +24,7 @@ export function createSessionReadings(options: {
+   let statuses: ReadonlyMap<string, StatusView> = new Map()
+   let budgets: ReadonlyMap<string, BudgetView> = new Map()
+   let selected: string | undefined
+-  let pendingQuestions: ReadonlyMap<string, PendingQuestionView> = new Map()
++  let awaitingAnswer: ReadonlySet<string> = new Set()
+   /** The sessions the last reconcile admitted: listed rows and held children. */
+   let admitted: ReadonlySet<string> = new Set()
+   /** The status listeners of the cards on screen, by the child each watches. */
+@@ -60,12 +58,8 @@ export function createSessionReadings(options: {
+     delete: (sessionId) => { budgets = put(budgets, sessionId, undefined) },
+     keys: () => budgets.keys(),
+   }
+-  const questionViews: SessionViewStore<PendingQuestionView> = {
+-    get: (sessionId) => pendingQuestions.get(sessionId),
+-    set: (sessionId, view) => { pendingQuestions = put(pendingQuestions, sessionId, view) },
+-    delete: (sessionId) => { pendingQuestions = put(pendingQuestions, sessionId, undefined) },
+-    keys: () => pendingQuestions.keys(),
+-  }
++  let detailRows: readonly SessionRow[] = []
++  const questionRetry = createReadRetry(connection, "session detail", () => { void refreshRowDetail(detailRows) })
+ 
+   const status = createSessionReadingFamily({
+     domain: "status",
+@@ -90,18 +84,7 @@ export function createSessionReadings(options: {
+     views: budgetViews,
+     changed,
+   })
+-  const question = createSessionReadingFamily({
+-    domain: "question",
+-    cursor: questionCursor,
+-    client: connection,
+-    query: (sessionIds) => disposed || !sessionIds.some(follows) ? Promise.resolve({ snapshotPosition: 0, views: [] }) : connection.query({ type: "questionSnapshot", sessionIds: sessionIds.filter(follows) }),
+-    isPayload: isQuestionPayload,
+-    payloadView: (payload) => (payload.kind === "question.updated" ? payload.question : null),
+-    admits: follows,
+-    views: questionViews,
+-    changed,
+-  })
+-  const families = [status, budget, question]
++  const families = [status, budget]
+ 
+   function follow(sessionIds: readonly string[]): void {
+     for (const family of families) family.ensure(sessionIds)
+@@ -111,12 +94,45 @@ export function createSessionReadings(options: {
+     for (const family of families) family.retire(sessionId)
+   }
+ 
++  // A question raised or answered is one patch on its own cursor, and the
++  // list only needs to know whether one is waiting.
++  const unsubscribe = connection.subscribe((event) => {
++    if (disposed || event.type !== "patch") return
++    const { patch } = event
++    if (patch.cursor.scope !== "session" || patch.cursor.domain !== "question") return
++    const waiting = new Set(awaitingAnswer)
++    if (patch.payload.kind === "question.updated") waiting.add(patch.cursor.sessionId)
++    else if (patch.payload.kind === "question.removed") waiting.delete(patch.cursor.sessionId)
++    else return
++    if (waiting.size === awaitingAnswer.size && [...waiting].every((id) => awaitingAnswer.has(id))) return
++    awaitingAnswer = waiting
++    changed()
++  })
++
++  /** Reads question presence for the live rows in one batch. */
++  async function refreshRowDetail(rows: readonly SessionRow[]): Promise<void> {
++    if (disposed) return
++    detailRows = rows
++    try {
++      // One question read over the rows that are actually live: a durable
++      // session with no runtime cannot be waiting on anyone.
++      const live = rows.filter((row) => row.lifecycleState === "active").map((row) => row.id)
++      const questions = live.length > 0 ? await questionRetry.read(() => connection.query({ type: "questionSnapshot", sessionIds: live })) : undefined
++      if (disposed || detailRows !== rows) return
++      questionRetry.succeeded()
++      awaitingAnswer = new Set(questions?.views.flatMap((entry) => entry.view ? [entry.sessionId] : []))
++      changed()
++    } catch (cause) {
++      if (detailRows === rows) questionRetry.failed(cause)
++    }
++  }
++
+   return {
+     get statuses() { return statuses },
+     /** The known budget of every followed session, by id. */
+     get budgets() { return budgets },
+-    /** The question each session waits on, by id. */
+-    get pendingQuestions() { return pendingQuestions },
++    get awaitingAnswer() { return awaitingAnswer },
++    refreshRowDetail,
+     /** Admit live rows without re-reading unchanged rows; retire removed owners. */
+     reconcile(rows: readonly SessionRow[]): void {
+       if (disposed) return
+@@ -166,6 +182,8 @@ export function createSessionReadings(options: {
+     },
+     dispose(): void {
+       disposed = true
++      questionRetry.dispose()
++      unsubscribe()
+       for (const family of families) family.dispose()
+       watchers.clear()
+     },
+diff --git a/webview/src/client/session.test.ts b/webview/src/client/session.test.ts
+index 1b63e43..d02ac85 100644
+--- a/webview/src/client/session.test.ts
++++ b/webview/src/client/session.test.ts
+@@ -5,127 +5,42 @@ import { createRuntimeSession } from "./session.js"
+ import { createViewProjection } from "./view-state.js"
+ import { changesLabel } from "./changes-label.js"
+ import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+-import type { FrontendEvent, SessionCatalogRow } from "../../../src/protocol/app-service-types.js"
++import type { FrontendEvent, RuntimeQuery, RuntimeQueryResult } from "../../../src/protocol/app-service-types.js"
+ import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
+ import type { SessionChangesResult } from "../../../src/protocol/session-changes-protocol-types.js"
+-import type { RuntimeQuestionSnapshotResult } from "../../../src/protocol/question-protocol-types.js"
+ import { fakeConnection, settle } from "./session-connection-fixture.js"
+ import { mountActivityStatus } from "../app/render-ownership-loader-fixture.js"
+ import { selectionConnection } from "./session-selection-fixture.js"
+-import { detailView, statusView } from "../../../tests/helpers/runtime-views.js"
++import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"
+ import { spyOn } from "bun:test"
+ import type { RuntimeClientDiagnostic } from "../../../src/protocol/runtime-client-diagnostics.js"
+ import { backgroundReads } from "../../../src/protocol/client/background-reads.js"
+-import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
+-import { fakeLanes, LANE_BREAK } from "../../../tests/helpers/fake-lanes.js"
+-
+-test("the open session's pending question and the newest open time follow the question projection's snapshots and patches, across a lane break", async () => {
+-  const base = selectionConnection()
+-  const snapshot = await base.query({ type: "snapshot" })
+-  const row = { ...snapshot.rows[0]!, lifecycleState: "active" as const }
+-  let rows = [row, { ...row, id: "other" }]
+-  const first = Promise.withResolvers<RuntimeQuestionSnapshotResult>()
+-  let current = first.promise
+-  let questionReads = 0
+-  const listeners = new Set<(event: FrontendEvent) => void>()
+-  const lanes = fakeLanes()
+-  const query = runtimeQuery({
+-    snapshot: async () => ({ ...snapshot, rows, projectRoot: "/scratch/project" }),
+-    questionSnapshot: async () => { questionReads++; return current },
+-  }, base.query)
+-  const session = createRuntimeSession({ connection: {
+-    ...base, ...lanes.client, query,
+-    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
+-  } })
+-  const publish = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
+-  const project = createViewProjection()
+-  try {
+-    await settle()
+-    assert.equal(session.projectRoot, "/scratch/project")
+-    assert.equal(project(session).newestQuestionOpenedAt, undefined)
+-    first.resolve({ snapshotPosition: 0, views: [
+-      { sessionId: row.id, view: { kind: "question", toolUseId: "q", questions: [], timestamp: 100 } },
+-      { sessionId: "other", view: { kind: "question", toolUseId: "other-q", questions: [], timestamp: 200 } },
+-    ] })
+-    await settle()
+-    assert.equal(project(session).newestQuestionOpenedAt, 200)
+-    assert.equal(session.sessionId, row.id)
+-    assert.equal(project(session).pendingQuestion?.toolUseId, "q")
+-    assert.equal(project(session).sessions[0]?.awaitingAnswer, true)
+-    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "other" }, position: 1, prevPosition: 0, payload: { kind: "question.removed" } } })
+-    assert.equal(project(session).newestQuestionOpenedAt, 100)
+-    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 1, prevPosition: 0, payload: { kind: "question.removed" } } })
+-    assert.equal(project(session).pendingQuestion, undefined)
+-    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 2, prevPosition: 1, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "new", questions: [], timestamp: 300 } } } })
+-    assert.equal(project(session).newestQuestionOpenedAt, 300)
+-    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 3, prevPosition: 2, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "newer", questions: [], timestamp: 400 } } } })
+-    assert.equal(project(session).newestQuestionOpenedAt, 400)
+-    assert.equal(project(session).pendingQuestion?.toolUseId, "newer")
+-    // The question is settled while the lane is down: no patch reports it,
+-    // so the next lane reads it again, and the dock keeps its question
+-    // until that read answers.
+-    const reread = Promise.withResolvers<RuntimeQuestionSnapshotResult>()
+-    current = reread.promise
+-    lanes.end()
+-    publish(LANE_BREAK)
+-    lanes.open()
+-    await settle()
+-    assert.equal(project(session).pendingQuestion?.toolUseId, "newer")
+-    reread.resolve({ snapshotPosition: 5, views: [{ sessionId: row.id, view: null }, { sessionId: "other", view: null }] })
+-    await settle()
+-    assert.equal(project(session).newestQuestionOpenedAt, undefined)
+-    assert.equal(project(session).sessions[0]?.awaitingAnswer, undefined)
+-    assert.equal(project(session).pendingQuestion, undefined)
+-    // A read that answers at an older position than a removal that arrived
+-    // while it was in flight does not bring the question back.
+-    const stale = Promise.withResolvers<RuntimeQuestionSnapshotResult>()
+-    current = stale.promise
+-    lanes.end()
+-    publish(LANE_BREAK)
+-    lanes.open()
+-    await settle()
+-    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 6, prevPosition: 5, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "late", questions: [], timestamp: 500 } } } })
+-    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 7, prevPosition: 6, payload: { kind: "question.removed" } } })
+-    stale.resolve({ snapshotPosition: 5, views: [{ sessionId: row.id, view: { kind: "question", toolUseId: "newer", questions: [], timestamp: 400 } }, { sessionId: "other", view: null }] })
+-    await settle()
+-    assert.equal(project(session).pendingQuestion, undefined)
+-  } finally { session.dispose() }
+-  rows = []
+-  const readsBeforeEmpty = questionReads
+-  const sessionWithoutRows = createRuntimeSession({ connection: { ...base, query } })
+-  try {
+-    await settle()
+-    assert.equal(project(sessionWithoutRows).newestQuestionOpenedAt, undefined)
+-    assert.equal(questionReads, readsBeforeEmpty)
+-  } finally { sessionWithoutRows.dispose() }
+-})
+ 
++// oxlint-disable typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the scripted connection fakes implement only the members these tests read
+ test("a failed resident detail retries once without rereading healthy residents", async () => {
+   const base = selectionConnection()
+   const reads: string[] = []
+   const phases: string[] = []
+   let fails = true
+   let failingId = "failed"
+-  const query = runtimeQuery({
+-    modelAssignments: async () => [],
+-    statusSnapshot: async () => ({ snapshotPosition: 0, views: [] }),
+-    sessionDetailSnapshot: async (request) => {
++  const connection = {
++    ...base,
++    reportDiagnostic(record: RuntimeClientDiagnostic) {
++      if (record.kind === "background_read" && record.reader === "session detail") phases.push(record.phase)
++    },
++    async query(request: RuntimeQuery) {
++      if (request.type === "modelAssignments") return []
++      if (request.type === "statusSnapshot") return { snapshotPosition: 0, views: [] }
++      if (request.type !== "sessionDetailSnapshot") return base.query(request)
+       reads.push(...request.sessionIds)
+       if (fails && request.sessionIds.includes(failingId)) throw new Error("unavailable")
+       const snapshot = await base.query({ type: "sessionDetailSnapshot", sessionIds: ["cold-chat"] })
+       return { ...snapshot, views: request.sessionIds.map(sessionId => {
+         const view = snapshot.views[0]?.view
+-        return { sessionId, view: view ? detailView({ ...view.row, id: sessionId }, view.conversationId) : null }
++        return { sessionId, view: view ? { ...view, id: sessionId, row: { ...view.row, id: sessionId } } : null }
+       }) }
+     },
+-  }, base.query)
+-  const connection: RuntimeConnection = {
+-    ...base,
+-    reportDiagnostic(record: RuntimeClientDiagnostic) {
+-      if (record.kind === "background_read" && record.reader === "session detail") phases.push(record.phase)
+-    },
+-    query,
+-  }
++  } as unknown as RuntimeConnection
+   const session = createRuntimeSession({ connection })
+   const timers: (() => void)[] = []
+   let clock: ReturnType<typeof spyOn<typeof globalThis, "setTimeout">> | undefined
+@@ -133,12 +48,7 @@ test("a failed resident detail retries once without rereading healthy residents"
+   try {
+     await settle()
+     for (let index = 0; index < 6; index++) { await session.select(`healthy-${index}`); await settle() }
+-    // A real handle, already cleared, stands in for each manually delivered timer.
+-    const inert = setTimeout(() => {}, 0)
+-    clearTimeout(inert)
+-    clock = spyOn(globalThis, "setTimeout").mockImplementation(new Proxy(globalThis.setTimeout, {
+-      apply(_target, _receiver, [callback]: Parameters<typeof setTimeout>) { timers.push(() => callback()); return inert },
+-    }))
++    clock = spyOn(globalThis, "setTimeout").mockImplementation(((callback: () => void) => { timers.push(callback); return timers.length }) as unknown as typeof setTimeout)
+     clear = spyOn(globalThis, "clearTimeout").mockImplementation(() => {})
+     await session.select("failed")
+     await settle()
+@@ -168,18 +78,20 @@ test("selected session recovers an opaque settlement barrier before its view all
+   const gate = Promise.withResolvers<void>()
+   const entered = Promise.withResolvers<void>()
+   let recovering = false
+-  const status: StatusView = { activity: "generating", activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, waitingOnBackgroundWork: false, activeBackgroundCommands: [], activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [] }
+-  const query = runtimeQuery({
+-    statusSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map(sessionId => ({ sessionId, view: status })) }),
+-    outputWindow: async () => {
+-      if (recovering) { entered.resolve(); await gate.promise }
+-      return { snapshotPosition: 0, totalBlocks: 1, visibleMessageCount: 1, range: {
+-        kind: "ok", consistencyToken: "fixture", anchor: { kind: "tail" }, streamingToolText: {}, streamingOutputChars: 0,
+-        blocks: [{ kind: "text", id: "answer", content: recovering ? "Final answer" : "Old answer", timestamp: 0 }],
+-        window: { startBlockIndex: 0, endBlockIndex: 0, hasBefore: false, hasAfter: false, contentBytes: 0 },
+-      } }
+-    },
+-  }, base.query)
++  const status: StatusView = { activity: "generating", activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, waitingOnBackgroundWork: false, activeBackgroundCommands: [], activeForegroundBashToolCallIds: [], streamingOutputChars: 0, startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [] }
++  function query<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
++  async function query(request: RuntimeQuery): Promise<RuntimeQueryResult<RuntimeQuery>> {
++      if (request.type === "statusSnapshot") return { snapshotPosition: 0, views: request.sessionIds.map(sessionId => ({ sessionId, view: status })) }
++      if (request.type === "outputWindow") {
++        if (recovering) { entered.resolve(); await gate.promise }
++        return { snapshotPosition: 0, totalBlocks: 1, visibleMessageCount: 1, range: {
++          kind: "ok", consistencyToken: "fixture", anchor: { kind: "tail" }, streamingToolText: {},
++          blocks: [{ kind: "text", id: "answer", content: recovering ? "Final answer" : "Old answer", timestamp: 0 }],
++          window: { startBlockIndex: 0, endBlockIndex: 0, hasBefore: false, hasAfter: false, contentBytes: 0 },
++        } }
++      }
++      return base.query(request)
++  }
+   const connection: RuntimeConnection = {
+     ...base, query,
+     subscribe(listener) { listeners.add(listener); const stop = base.subscribe(listener); return () => { listeners.delete(listener); stop() } },
+@@ -211,23 +123,25 @@ test("only the client missing final public output recovers a numeric idle barrie
+     sessionId: "cold-chat", activity: "generating", transcriptAvailable: true, atTail: true,
+     settledOutputPosition: null, appliedOutputPosition: 0, transcriptText: "Old answer",
+   })
+-  const status: StatusView = { activity: "generating", activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, waitingOnBackgroundWork: false, activeBackgroundCommands: [], activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [] }
++  const status: StatusView = { activity: "generating", activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, waitingOnBackgroundWork: false, activeBackgroundCommands: [], activeForegroundBashToolCallIds: [], streamingOutputChars: 0, startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [] }
+   const clients = [false, true].map((losesOutput) => {
+     const base = selectionConnection()
+     const listeners = new Set<(event: FrontendEvent) => void>()
+     let reads = 0
+-    const query = runtimeQuery({
+-      statusSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map(sessionId => ({ sessionId, view: status })) }),
+-      outputWindow: async () => {
++    function query<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
++    async function query(request: RuntimeQuery): Promise<RuntimeQueryResult<RuntimeQuery>> {
++      if (request.type === "statusSnapshot") return { snapshotPosition: 0, views: request.sessionIds.map(sessionId => ({ sessionId, view: status })) }
++      if (request.type === "outputWindow") {
+         const recovering = ++reads > 1
+         if (recovering) await gate.promise
+         return { snapshotPosition: recovering ? 1 : 0, totalBlocks: 1, visibleMessageCount: 1, range: {
+-          kind: "ok", consistencyToken: "fixture", anchor: { kind: "tail" }, streamingToolText: {}, streamingOutputChars: 0,
++          kind: "ok", consistencyToken: "fixture", anchor: { kind: "tail" }, streamingToolText: {},
+           blocks: [{ kind: "text", id: "answer", content: recovering ? "Final answer" : "Old answer", timestamp: 0 }],
+           window: { startBlockIndex: 0, endBlockIndex: 0, hasBefore: false, hasAfter: false, contentBytes: 0 },
+         } }
+-      },
+-    }, base.query)
++      }
++      return base.query(request)
++    }
+     const session = createRuntimeSession({ connection: {
+       ...base, query,
+       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
+@@ -303,14 +217,17 @@ test("each resident session keeps its own Changes across a switch, a return read
+     status: "ready", cursor: "0".repeat(64), offset: 0, nextOffset: null, totalFiles: 0,
+     revision: 0, unknownFileMutationGaps: 0, executionCwd: "/work", files: [], excludedFileCount: 0,
+   } satisfies SessionChangesResult
+-  const query = runtimeQuery({
+-    sessionChangeSummary: async (request) => {
+-      reads.push(request.sessionId)
+-      return { fileCount: 71, unknownFileMutationGaps: 0, snapshotPosition: 0 }
++  const connection = {
++    ...base,
++    async query(request: { readonly type: string; readonly sessionId?: string }) {
++      if (request.type === "sessionChangeSummary") {
++        reads.push(request.sessionId!)
++        return { fileCount: 71, unknownFileMutationGaps: 0, snapshotPosition: 0 }
++      }
++      if (request.type === "sessionChanges") return changes
++      return base.query(request as Parameters<RuntimeConnection["query"]>[0])
+     },
+-    sessionChanges: async () => changes,
+-  }, base.query)
+-  const connection: RuntimeConnection = { ...base, query }
++  } as unknown as RuntimeConnection
+   const session = createRuntimeSession({ connection })
+   await settle()
+   await session.select("cold-chat")
+@@ -342,25 +259,21 @@ test("each resident session keeps its own Changes across a switch, a return read
+ test("status invalidation refreshes the exact unselected session", async () => {
+   const listeners = new Set<(event: FrontendEvent) => void>()
+   const reads: string[] = []
+-  const base = fakeConnection([])
+-  const query = runtimeQuery({
+-    statusSnapshot: async (request) => {
+-      reads.push(...request.sessionIds)
+-      return { snapshotPosition: 3, views: request.sessionIds.map((sessionId) => ({ sessionId, view: statusView("idle") })) }
++  const connection = {
++    ...fakeConnection([]),
++    async query(request: { readonly type: string; readonly sessionIds?: readonly string[] }) {
++      if (request.type === "statusSnapshot") {
++        reads.push(...request.sessionIds ?? [])
++        return { snapshotPosition: 3, views: (request.sessionIds ?? []).map((sessionId) => ({ sessionId, view: { activity: "idle" } })) }
++      }
++      // The page lists the session idle and opens another one, so only the
++      // invalidation reads its status.
++      if (request.type === "snapshot") return { rows: ["open", "unselected"].map((id) => ({ id, kind: "chat", title: id, lifecycleState: "inactive", inputMode: { kind: "chat" }, notices: [], lastUpdated: "2026-01-01T00:00:00.000Z" })), errors: [], snapshotPosition: 0, executor: { kind: "serving" }, service: { kind: "serving" } }
++      return {}
+     },
+-    // The page lists the session idle and opens another one, so only the
+-    // invalidation reads its status.
+-    snapshot: async () => ({
+-      rows: ["open", "unselected"].map((id): SessionCatalogRow => ({ id, kind: "chat", title: id, lifecycleState: "inactive", inputMode: { kind: "chat" }, notices: [], lastUpdated: "2026-01-01T00:00:00.000Z", executionCwd: "/workspace", totalsLoading: true })),
+-      activeRuntimeCount: 0, errors: [], snapshotPosition: 0, projectRoot: "/workspace", runtimeVersion: "test", runtimeBuildId: null,
+-      chatDefault: { kind: "pending" }, executor: { kind: "serving" }, service: { kind: "serving" },
+-    }),
+-  }, base.query)
+-  const connection: RuntimeConnection = {
+-    ...base,
+-    query,
+-    subscribe(next) { listeners.add(next); return () => { listeners.delete(next) } },
+-  }
++    onLane: fakeLanes().onLane,
++    subscribe(next: (event: FrontendEvent) => void) { listeners.add(next); return () => { listeners.delete(next) } },
++  } as unknown as RuntimeConnection
+   const session = createRuntimeSession({ connection })
+   await settle()
+   const event: FrontendEvent = {
+@@ -390,11 +303,7 @@ test("catalog metadata errors remain separate from healthy sessions", async () =
+ 
+ test("a session control the runtime refuses says why instead of doing nothing", async () => {
+   const commands: unknown[] = []
+-  const refuse = async () => ({ ok: false as const, error: "the runtime refused" })
+-  const dispatch = recordedDispatch((command) => { commands.push(command) }, runtimeDispatch({
+-    "session.rename": refuse, "session.close": refuse, "session.reorder": refuse, "session.dismiss_notice": refuse,
+-  }))
+-  const connection: RuntimeConnection = { ...fakeConnection([]), dispatch }
++  const connection = { ...fakeConnection([]), dispatch: async (command: unknown) => { commands.push(command); return { ok: false, error: "the runtime refused" } } } as unknown as RuntimeConnection
+   const session = createRuntimeSession({ connection })
+   try {
+     await settle()
+diff --git a/webview/src/client/session.ts b/webview/src/client/session.ts
+index f62d0aa..7bfa929 100644
+--- a/webview/src/client/session.ts
++++ b/webview/src/client/session.ts
+@@ -2,7 +2,7 @@ import type { ProjectFilesRequest, ProjectFilesResult, TranscriptSearchRequest,
+ import type { CommandUse } from "../../../src/protocol/command-usage-protocol-types.js"
+ import type { CommandOutcome } from "../../../src/protocol/command-catalog-protocol-types.js"
+ import { isActiveActivity, type ChildSessionRow, type FrontendActivity, type FrontendEvent, type FrontendMutation, type ProtocolChatAttachment, type RuntimeHealth, type RuntimeTransportHealth, type SessionCatalogError, type SessionCatalogRow, type SessionRow, type SessionTitlePatch } from "../../../src/protocol/app-service-types.js"
+-import type { AgentInputAnswer, PendingQuestionView } from "../../../src/protocol/question-protocol-types.js"
++import type { AgentInputAnswer } from "../../../src/protocol/question-protocol-types.js"
+ import type { RoleAssignmentView } from "../../../src/protocol/role-protocol-types.js"
+ import type { RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth-status-protocol-types.js"
+ import type { UpdateStatusView } from "../../../src/protocol/update-protocol-types.js"
+@@ -15,7 +15,6 @@ import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
+ import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
+ import { isLaneBreak } from "../../../src/protocol/client/cursor-intake.js"
+ import { runtimeHealth } from "../../../src/protocol/client/runtime-health.js"
+-import { UNKNOWN_COMMAND_NOTICE } from "../../../src/protocol/client/slash-route.js"
+ import { isGlobalRuntimeInvalidation } from "../../../src/protocol/runtime-ui-protocol-types.js"
+ import { createCommandRoster, type CommandRoster } from "./command-choices.js"
+ import { readWorkspaceSettings, type PanelSettings, type WorkspaceSettings } from "./session-settings.js"
+@@ -55,7 +54,7 @@ import { backgroundReads, createReadRetry } from "../../../src/protocol/client/b
+  *  The page keeps its eight most recently shown sessions resident
+  *  (`session-residents.ts`), so a return shows what it kept at once and reads
+  *  nothing (PI-REMOTE-008). The page's tabs are the root chats of those
+- *  sessions: it holds their runners (ARCH-RUNTIME-023) and releases a root only when no
++ *  sessions: it holds their runners (ADR-008) and releases a root only when no
+  *  resident session descends from it. */
+ /** One thing the runtime wants the user to know about the current session. */
+ export interface SessionNoticeSummary {
+@@ -77,8 +76,8 @@ export interface RuntimeSession {
+   settleReturned(submissionIds: readonly string[]): void
+   onTranscriptChange?(listener: (sessionId: string, change: import("../../../src/protocol/client/transcript-store.js").TranscriptChange) => void): () => void
+   readonly changes: SessionChangesController | undefined
+-  /** The browser's notification surface, which pages the person when a
+-   *  session asks a question while the desktop notifications setting is on. */
++  /** The browser's notification surface, which pages the person about
++   *  workflow runs while the desktop notifications setting is on. */
+   readonly desktopNotifier: DesktopNotifier
+   readonly sessionId: string | undefined
+   /** Counts pane moves, including a return to the same session after navigation. */
+@@ -106,15 +105,16 @@ export interface RuntimeSession {
+   readonly providerSetup: ProviderSetup
+   /** The runtime's command catalog as this client reads it. */
+   readonly commands: CommandRoster
+-  /** Runs the built-in command `name` names, by id or alias, in `sessionId`.
+-   *  It executes in the runtime and answers an outcome for the caller to
+-   *  present; a session the outcome asks to focus is opened here, and a
+-   *  refused revision re-reads the roster. A name no published command owns
+-   *  answers the unknown-command notice and reaches no runtime. */
+-  invokeCommand(sessionId: string, name: string, args?: string): Promise<CommandOutcome>
++  /** Runs a roster entry in `sessionId`. A built-in command executes in the
++   *  runtime and answers an outcome for the caller to present; a session the
++   *  outcome asks to focus is opened here, and a refused revision re-reads the
++   *  roster. An installed skill resolves to its canonical context and lands as
++   *  the session's next turn, which is why this is not just sending the text,
++   *  and answers nothing. */
++  invokeCommand(sessionId: string, name: string, args?: string): Promise<CommandOutcome | undefined>
+   readonly sessions: readonly SessionCatalogRow[]
+   /** Children this client has opened. A child is never a catalog row
+-   *  (ARCH-PROTOCOL-048): its row is read through `sessionDetail` when it is selected,
++   *  (ADR-022): its row is read through `sessionDetail` when it is selected,
+    *  and then follows its ordered `session_detail` patches. */
+   readonly children: readonly ChildSessionRow[]
+   /** Holds a visible card's detail without opening its runner. Releases at the last listener. */
+@@ -160,7 +160,7 @@ export interface RuntimeSession {
+    *  when the pane moved without the person, such as off a session that
+    *  another client deleted. */
+   readonly notices: readonly SessionNoticeSummary[]
+-  /** The directory that owns this workspace's durable state (ARCH-DIRECTORIES-001). Project
++  /** The directory that owns this workspace's durable state (ADR-013). Project
+    *  identity only; where a session's tools execute is `executionCwd`. */
+   readonly projectRoot: string | undefined
+   /** The runtime's own build version, from the session snapshot. */
+@@ -176,13 +176,10 @@ export interface RuntimeSession {
+   readonly commandUsage: readonly CommandUse[]
+   /** Reports one dispatch of a slash command, so every client ranks by it. */
+   recordCommandUse(name: string): Promise<void>
+-  /** The question each session waits on, by session id, from the durable
+-   *  question projection: the dock shows it, and a chat blocked on the user
+-   *  says so from the list rather than only from inside its own transcript. */
+-  readonly pendingQuestions: ReadonlyMap<string, PendingQuestionView>
+-  /** The row this page holds for a session: its catalog row, or the detail
+-   *  of a held child. Undefined for a session the page holds no row for. */
+-  row(sessionId: string): SessionRow | undefined
++  /** Session ids with a question waiting on an answer, so a chat that is
++   *  blocked on the user can say so from the list rather than only from inside
++   *  its own transcript. */
++  readonly awaitingAnswer: ReadonlySet<string>
+   /** What the page's surfaces left in a resident session, or undefined for a
+    *  session the page does not keep. */
+   memory(sessionId: string): SessionMemory | undefined
+@@ -508,17 +505,24 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+   }
+ 
+ 
+-  /** The catalog's rows before its latest change, so a change can tell
+-   *  that it dropped the selected session. */
+-  let catalogBefore: readonly SessionCatalogRow[] = []
+   /** What follows the catalog changing, whether a snapshot or a patch moved
+    *  it. A selection that no longer names a live session is a selection of
+    *  nothing, not a stale pointer to keep rendering; with nothing selected the
+    *  address the page opened on, else the first open session, else the first
+-   *  row, is opened. Per-row readings follow the catalog rather than riding
+-   *  with it: the list paints from the rows at once, and each row's status,
+-   *  budget, and question fill in behind it, read once on each lane and kept
+-   *  current by their own patches. */
++   *  row, is opened. Detail follows the catalog rather than riding with it:
++   *  the list paints from the rows at once, and per-row facts fill in behind
++   *  it.
++   *
++   *  Detail is read again only when the sessions it is about changed: a
++   *  session opened or closed. A chat that streams
++   *  republishes its row as its readings move, and re-reading every live
++   *  session's status and question on each of those, over a sealed channel
++   *  from a phone, was a burst of round trips and frames for nothing the list
++   *  did not already learn from the status and question patches. */
++  let detailKey = ""
++  /** The catalog's rows before its latest change, so a change can tell
++   *  that it dropped the selected session. */
++  let catalogBefore: readonly SessionCatalogRow[] = []
+   const unsubscribeCatalog = catalog.onChange(() => {
+     if (disposed) return
+     const unlisted = catalogBefore.find((row) => row.id === sessionId)
+@@ -540,6 +544,13 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+     }
+     initialSessionId = undefined
+     emit()
++    const key = catalog.rows
++      .filter((row) => row.lifecycleState === "active")
++      .map((row) => `${row.id}:${row.lifecycleState}`)
++      .join(",")
++    if (key === detailKey) return
++    detailKey = key
++    void readings.refreshRowDetail(catalog.rows)
+   })
+ 
+   const refreshCatalog = (): Promise<void> => catalog.resnapshot()
+@@ -700,8 +711,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+     get update() { return statusViews.update },
+     get gitAiAttribution() { return statusViews.gitAiAttribution },
+     refreshSettings,
+-    get pendingQuestions() { return readings.pendingQuestions },
+-    row: rowOf,
++    get awaitingAnswer() { return readings.awaitingAnswer },
+     get modules() { return modules.views(visible()?.modules) },
+     memory: (target) => residents.get(target)?.memory,
+     onLeave(listener) {
+@@ -761,14 +771,17 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+     async invokeCommand(target, name, args) {
+       const argument = args === undefined || args.length === 0 ? undefined : args
+       const builtIn = commands.builtIn(name)
+-      if (!builtIn) return { kind: "unavailable", message: UNKNOWN_COMMAND_NOTICE }
+-      const outcome = await connection.dispatch({
+-        type: "command.invoke", id: builtIn.id, revision: builtIn.revision, sessionId: target,
+-        ...(argument === undefined ? {} : { argument }),
+-      })
+-      if (outcome.kind === "focus-session") { openTranscript(outcome.sessionId); await refreshCatalog() }
+-      else if (outcome.kind === "stale") await refreshCommands()
+-      return outcome
++      if (builtIn) {
++        const outcome = await connection.dispatch({
++          type: "command.invoke", id: builtIn.id, revision: builtIn.revision, sessionId: target,
++          ...(argument === undefined ? {} : { argument }),
++        })
++        if (outcome.kind === "focus-session") { openTranscript(outcome.sessionId); await refreshCatalog() }
++        else if (outcome.kind === "stale") await refreshCommands()
++        return outcome
++      }
++      await connection.dispatch({ type: "inline.invoke", sessionId: target, name, ...(argument === undefined ? {} : { args: argument }) })
++      return undefined
+     },
+     rename: (target, patch) => settleCatalog({ type: "session.rename", sessionId: target, ...patch }),
+     async remove(target) {
+diff --git a/webview/src/client/view-state.test.ts b/webview/src/client/view-state.test.ts
+index bcaf060..cee0010 100644
+--- a/webview/src/client/view-state.test.ts
++++ b/webview/src/client/view-state.test.ts
+@@ -1,66 +1,54 @@
+ import assert from "node:assert/strict"
+-import { afterEach, describe, test } from "node:test"
++import { describe, test } from "node:test"
+ 
+ import type { ChildSessionRow, FrontendOutputBlock, SessionCatalogRow } from "../../../src/protocol/app-service-types.js"
+-import { createMutationEvidenceReader } from "../../../src/protocol/client/mutation-evidence.js"
+-import type { TranscriptStore, TranscriptView } from "../../../src/protocol/client/transcript-store.js"
+-import { EMPTY_TRANSCRIPT_VIEW } from "../../../src/protocol/client/transcript-store-paging.js"
+-import { fakeRuntimeSession } from "../app/client-context-fixture.js"
+ import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
+-import { statusView as idleStatus } from "../../../tests/helpers/runtime-views.js"
+ import type { RuntimeSession } from "./session.js"
++import { browserDesktopNotifier } from "./desktop-notifier.js"
+ import { createViewProjection, summaryOf } from "./view-state.js"
+ 
+-/** Stands in for every transcript member the view projection does not call. */
+-const unused = (): never => { throw new Error("the view projection does not call this member") }
+-
+-const created: RuntimeSession[] = []
+-afterEach(() => { for (const held of created.splice(0)) held.dispose() })
+-
+-/** The real idle session with `members` in place of its own; disposed after each test. */
+-function session(members: Partial<RuntimeSession>): RuntimeSession {
+-  const held = fakeRuntimeSession(members)
+-  created.push(held)
+-  return held
+-}
+-
+-/** A ready transcript showing `view` over the empty window. */
+-function transcript(view: Partial<TranscriptView>): TranscriptStore {
++// oxlint-disable typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the reconciler fake carries only the members the projection reads
++function session(overrides: Partial<RuntimeSession>): RuntimeSession {
+   return {
+-    mutationEvidence: createMutationEvidenceReader({ connection: { query: unused }, sessionId: "selected" }),
+-    view: { ...EMPTY_TRANSCRIPT_VIEW, ...view },
+-    windowGeneration: 0,
+-    settledOutputRecovery: undefined,
+-    recoverSettlement: unused,
+-    status: "ready",
+-    windowCurrent: false,
+-    unavailable: undefined,
+-    hydrateBody: unused,
+-    releaseBodies: unused,
+-    hydrateGroup: unused,
+-    jumpToLatest: unused,
+-    refresh: unused,
+-    openAround: unused,
+-    loadOlder: unused,
+-    loadNewer: unused,
+-    dropBefore: unused,
+-    onChange: unused,
+-    dispose: unused,
+-  }
+-}
+-
+-function statusView(overrides: Partial<StatusView>): StatusView {
+-  return { ...idleStatus(), ...overrides }
++    transcript: undefined,
++    health: { kind: "healthy" },
++    providerSetup: "usable",
++    providers: [],
++    authStatus: undefined,
++    commands: [],
++    notices: [],
++    budget: undefined,
++    settings: undefined,
++    sessionId: undefined,
++    executionCwd: undefined,
++    sessions: [],
++    children: [],
++    sessionErrors: [],
++    workflow: undefined,
++    awaitingAnswer: new Set<string>(),
++    statuses: new Map(),
++    busy: false,
++    activity: undefined,
++    projectRoot: "/project",
++    runtimeVersion: undefined,
++    git: { directories: {} },
++    commandUsage: [],
++    destination: {},
++    opening: undefined,
++    localSubmissions: [],
++    desktopNotifier: browserDesktopNotifier({}),
++    ...overrides,
++  } as unknown as RuntimeSession
+ }
+ 
+ const buildViewState = createViewProjection()
+ 
+ test("the intro branch follows the open session's directory and falls back only when no directory is known", () => {
+   const git = { directories: { "/project": { branch: "main" }, "/linked/package": { branch: "feature", worktreeRoot: "/linked" } } }
+-  assert.equal(buildViewState(session({ projectRoot: "/project", git, executionCwd: "/linked/package" })).branch, "feature")
+-  assert.equal(buildViewState(session({ projectRoot: "/project", git, executionCwd: "/plain" })).branch, undefined)
+-  assert.equal(buildViewState(session({ projectRoot: "/project", git, executionCwd: undefined })).branch, "main")
+-  assert.equal(buildViewState(session({ projectRoot: "/project", git: { directories: { ...git.directories, "/linked/package": { branch: "switched" } } }, executionCwd: "/linked/package" })).branch, "switched")
++  assert.equal(buildViewState(session({ git, executionCwd: "/linked/package" })).branch, "feature")
++  assert.equal(buildViewState(session({ git, executionCwd: "/plain" })).branch, undefined)
++  assert.equal(buildViewState(session({ git, executionCwd: undefined })).branch, "main")
++  assert.equal(buildViewState(session({ git: { directories: { ...git.directories, "/linked/package": { branch: "switched" } } }, executionCwd: "/linked/package" })).branch, "switched")
+ })
+ 
+ test("view summaries treat totals loading as replacement state", () => {
+@@ -88,35 +76,35 @@ describe("view state stage", () => {
+   })
+ 
+   test("stays ready through a lost runtime once a snapshot has landed, and carries the fault", () => {
+-    const frame = buildViewState(session({ projectRoot: "/project", health: { kind: "faulted", since: 1, cause: "gone" } }))
++    const frame = buildViewState(session({ health: { kind: "faulted", since: 1, cause: "gone" } }))
+     assert.equal(frame.stage, "ready")
+     assert.deepEqual(frame.health, { kind: "faulted", since: 1, cause: "gone" })
+   })
+ })
+ 
+-// One notices array for every row, because a summary keeps its identity only while its notices are the same reference.
+-const NO_NOTICES: SessionCatalogRow["notices"] = []
+-const row = (id: string): Extract<SessionCatalogRow, { readonly totalsLoading: false }> => ({
+-  id, title: id, kind: "chat", lifecycleState: "active", lastUpdated: "2026-09-06T00:00:00Z", notices: NO_NOTICES, inputMode: { kind: "chat" },
+-  executionCwd: "/project", totalsLoading: false, totalCost: 0, totalBilledCost: 0, priceUnavailable: false, totalTokens: 0, contextPercent: 0, contextPromptTokens: 0, durationMs: 0,
+-})
++const row = (id: string): SessionCatalogRow => ({ id, title: id, kind: "chat", lifecycleState: "active", lastUpdated: "2026-09-06T00:00:00Z" } as unknown as SessionCatalogRow)
+ 
+ describe("view state sessions", () => {
+   test("replaces only the row whose reading changed", () => {
+     const rows = [row("a"), row("b")]
+     const project = createViewProjection()
+     const first = project(session({ sessions: rows }))
+-    const working = new Map<string, StatusView>([["b", statusView({ activity: "generating" })]])
++    const working = new Map<string, StatusView>([["b", { activity: "generating" } as unknown as StatusView]])
+     const second = project(session({ sessions: rows, statuses: working }))
+     assert.notEqual(second.sessions, first.sessions)
+     assert.equal(second.sessions[0], first.sessions[0])
+     assert.notEqual(second.sessions[1], first.sessions[1])
+     assert.equal(second.sessions[1]?.working, true)
+   })
++
+   test("keeps a parent session working while it waits on background work", () => {
+     const statuses = new Map<string, StatusView>([[
+       "a",
+-      statusView({ waitingOnBackgroundWork: true }),
++      {
++        activity: "idle",
++        activeSubagentCount: 0,
++        waitingOnBackgroundWork: true,
++      } as unknown as StatusView,
+     ]])
+ 
+     for (const lifecycleState of ["active", "inactive"] as const) {
+@@ -126,8 +114,8 @@ describe("view state sessions", () => {
+   })
+ 
+   test("a selected session waiting on background work is interruptible though not busy", () => {
+-    const waiting = statusView({ activeSubagentCount: 1, waitingOnBackgroundWork: true })
+-    const settled = statusView({ activeSubagentCount: 1 })
++    const waiting = { activity: "idle", activeSubagentCount: 1, waitingOnBackgroundWork: true, replyWaits: [] } as unknown as StatusView
++    const settled = { activity: "idle", activeSubagentCount: 1, waitingOnBackgroundWork: false } as unknown as StatusView
+ 
+     const frame = createViewProjection()(session({ sessionId: "a", sessions: [row("a")], statuses: new Map([["a", waiting]]) }))
+     assert.equal(frame.busy, false)
+@@ -139,7 +127,7 @@ describe("view state sessions", () => {
+ })
+ 
+ describe("view state session titles", () => {
+-  const titled = (titles: { readonly title: string; readonly shortTitle?: string }): SessionCatalogRow => ({ ...row("a"), ...titles })
++  const titled = (overrides: Partial<SessionCatalogRow>): SessionCatalogRow => ({ ...row("a"), ...overrides } as SessionCatalogRow)
+   test("leads with the short title and keeps the longer description under it", () => {
+     const [summary] = createViewProjection()(session({ sessions: [titled({ title: "Fix the session list on the phone", shortTitle: "Phone session list" })] })).sessions
+     assert.equal(summary?.title, "Phone session list")
+@@ -169,21 +157,21 @@ describe("view state session titles", () => {
+ describe("view state summary identity", () => {
+   test("keeps a summary while the catalog row changes only in what the list does not draw", () => {
+     const project = createViewProjection()
+-    const first = project(session({ sessions: [{ ...row("a"), totalTokens: 10 }] }))
+-    const second = project(session({ sessions: [{ ...row("a"), totalTokens: 20 }] }))
++    const first = project(session({ sessions: [{ ...row("a"), totalTokens: 10 } as SessionCatalogRow] }))
++    const second = project(session({ sessions: [{ ...row("a"), totalTokens: 20 } as SessionCatalogRow] }))
+     assert.equal(second.sessions, first.sessions)
+     assert.equal(second.sessions[0], first.sessions[0])
+   })
+   test("replaces a summary whose drawn fields changed", () => {
+     const project = createViewProjection()
+     const first = project(session({ sessions: [row("a")] }))
+-    const second = project(session({ sessions: [{ ...row("a"), diffStats: { added: 1, modified: 0, removed: 0 } }] }))
++    const second = project(session({ sessions: [{ ...row("a"), diffStats: { added: 1, modified: 0, removed: 0 } } as SessionCatalogRow] }))
+     assert.notEqual(second.sessions[0], first.sessions[0])
+     assert.deepEqual(second.sessions[0]?.diffStats, { added: 1, modified: 0, removed: 0 })
+     const notices: SessionCatalogRow["notices"] = [{ id: "error", scope: "session", presentation: "transcript.unavailable", severity: "error", title: "Unavailable", message: "Unavailable", startedAt: 1, updatedAt: 1 }]
+     const updated = project(session({
+       sessions: [{ ...row("a"), notices, admittedActions: ["chat.resume"] }],
+-      pendingQuestions: new Map([["a", { kind: "question", toolUseId: "q", questions: [], timestamp: 100 }]]),
++      awaitingAnswer: new Set(["a"]),
+     })).sessions[0]
+     assert.notEqual(updated, second.sessions[0])
+     assert.equal(updated?.notices, notices)
+@@ -193,14 +181,44 @@ describe("view state summary identity", () => {
+ })
+ 
+ describe("view state activity anchors", () => {
+-  const status = (settledOutputPosition: number | null) => statusView({ settledOutputPosition })
++  const status = (settledOutputPosition: number | null): StatusView => ({
++    activity: "idle",
++    activityStartedAt: 0,
++    settledOutputPosition,
++    connectionState: "connected",
++    activeSubagentCount: 0,
++    waitingOnBackgroundWork: false,
++    activeBackgroundCommands: [],
++    activeForegroundBashToolCallIds: [],
++    streamingOutputChars: 0,
++    startedAt: 0,
++    streamingStartedAt: null,
++    accumulatedActiveMs: 0,
++    compactionStartedAt: null,
++    replyWaits: [],
++  })
+ 
+   test("projects causal anchors only from the selected status and transcript owners", () => {
+     const statuses = new Map([["selected", status(12)], ["other", status(99)]])
+     const selected = session({
+       sessionId: "selected",
+       statuses,
+-      transcript: transcript({ appliedOutputPosition: 10 }),
++      transcript: {
++        view: {
++          appliedOutputPosition: 10,
++          blocks: [],
++          streamingToolText: {},
++          bodies: {},
++          groups: {},
++          startBlockIndex: null,
++          totalBlocks: 0,
++          hasBefore: false,
++          atTail: true,
++          hasNewer: false,
++        },
++        status: "ready",
++        unavailable: undefined,
++      } as unknown as RuntimeSession["transcript"],
+     })
+ 
+     const frame = buildViewState(selected)
+@@ -228,14 +246,46 @@ describe("view state transcript count", () => {
+     const blocks: FrontendOutputBlock[] = []
+     const frame = buildViewState(session({
+       sessionId: "selected",
+-      transcript: transcript({ appliedOutputPosition: 10, blocks, visibleMessageCount: 7 }),
++      transcript: {
++        view: {
++          appliedOutputPosition: 10,
++          blocks,
++          streamingToolText: {},
++          bodies: {},
++          groups: {},
++          startBlockIndex: null,
++          totalBlocks: 0,
++          visibleMessageCount: 7,
++          hasBefore: false,
++          atTail: true,
++          hasNewer: false,
++        },
++        status: "ready",
++        unavailable: undefined,
++      } as unknown as RuntimeSession["transcript"],
+     }))
+ 
+     assert.equal(frame.visibleMessageCount, 7)
+     assert.equal(frame.blocks, blocks)
+     const next = buildViewState(session({
+       sessionId: "selected",
+-      transcript: transcript({ appliedOutputPosition: 10, blocks, visibleMessageCount: 8 }),
++      transcript: {
++        view: {
++          appliedOutputPosition: 10,
++          blocks,
++          streamingToolText: {},
++          bodies: {},
++          groups: {},
++          startBlockIndex: null,
++          totalBlocks: 0,
++          visibleMessageCount: 8,
++          hasBefore: false,
++          atTail: true,
++          hasNewer: false,
++        },
++        status: "ready",
++        unavailable: undefined,
++      } as unknown as RuntimeSession["transcript"],
+     }))
+     assert.equal(next.visibleMessageCount, 8)
+     assert.equal(next.blocks, frame.blocks)
+@@ -276,7 +326,7 @@ describe("view state children", () => {
+   })
+ 
+   test("a child parked on a reply names the reply, other background work reads Waiting, and running work has no wait label", () => {
+-    const parked = statusView({ waitingOnBackgroundWork: true, replyWaits: [{ sessionId: "parent", name: "Parent" }] })
++    const parked = { activity: "idle", waitingOnBackgroundWork: true, replyWaits: [{ sessionId: "parent", name: "Parent" }] } as unknown as StatusView
+     const waiting = (status: StatusView) => buildViewState(session({ sessions: [listed], children: [child], sessionId: "child", statuses: new Map([["child", status]]) })).waitingOn
+     assert.equal(waiting(parked), "Waiting on parent")
+     assert.equal(waiting({ ...parked, replyWaits: [{ sessionId: "sibling", name: "Spec review" }] }), "Waiting for message response")
+diff --git a/webview/src/client/view-state.ts b/webview/src/client/view-state.ts
+index b016d2e..d817635 100644
+--- a/webview/src/client/view-state.ts
++++ b/webview/src/client/view-state.ts
+@@ -1,6 +1,5 @@
+ import type { CommandUse } from "../../../src/protocol/command-usage-protocol-types.js"
+-import type { PendingQuestionView } from "../../../src/protocol/question-protocol-types.js"
+-import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../../src/protocol/command-catalog-protocol-types.js"
++import type { OffCommandDescriptor } from "../../../src/protocol/command-catalog-protocol-types.js"
+ import { effectiveSessionShortTitle, type FrontendActivity, type FrontendOutputBlock, type FrontendToolEntry, type FrontendToolStreamingText, type RuntimeHealth, type SessionCatalogError, type SessionRow } from "../../../src/protocol/app-service-types.js"
+ import type { TranscriptStatus, TranscriptStore } from "../../../src/protocol/client/transcript-store.js"
+ import { undeliveredNotice, type LocalChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
+@@ -12,6 +11,7 @@ import type { GitAiAttributionStatus } from "../../../src/protocol/git-ai-attrib
+ import type { GitView } from "../../../src/protocol/git-protocol-types.js"
+ import type { UpdateStatusView } from "../../../src/protocol/update-protocol-types.js"
+ import { isWorkingStatus, type StatusView } from "../../../src/protocol/status-protocol-types.js"
++import type { CommandChoice } from "./command-choices.js"
+ import type { SessionChangesSnapshot } from "../../../src/protocol/client/session-changes.js"
+ import type { PanelSettings } from "./session-settings.js"
+ import type { DesktopPermission } from "./desktop-notifier.js"
+@@ -36,15 +36,14 @@ export interface ClientViewState {
+   readonly providers: readonly ProviderSummary[]
+   /** The auth snapshot behind the providers summary, absent until the first read. */
+   readonly authStatus?: RuntimeAuthStatusSnapshotResult
+-  /** The built-in commands the runtime publishes, in publication order. */
+-  readonly builtInCommands: readonly BuiltInCommandDescriptor[]
++  readonly commands: readonly CommandChoice[]
+   readonly offCommands: readonly OffCommandDescriptor[]
+   readonly budget?: BudgetSummary
+   /** The command panel's settings rows, absent until the first read lands. */
+   readonly settings?: PanelSettings
+   /** Whether this browser lets the page show desktop notifications. */
+   readonly desktopPermission: DesktopPermission
+-  /** The runtime's update view (ARCH-PROTOCOL-043): its status, including a waiting
++  /** The runtime's update view (ADR-014): its status, including a waiting
+    *  replacement, and the auto-install policy. Absent until the first read. */
+   readonly update?: UpdateStatusView
+   /** Whether Git AI attribution can record in this runtime. */
+@@ -72,11 +71,6 @@ export interface ClientViewState {
+   readonly executionCwd?: string
+   /** The catalog: every session the lists draw. */
+   readonly sessions: readonly SessionSummary[]
+-  /** The newest known open time among waiting questions, absent when none are known. */
+-  readonly newestQuestionOpenedAt: number | undefined
+-  /** The question the open session waits on, from the durable question
+-   *  projection, absent when none waits. The dock shows it. */
+-  readonly pendingQuestion?: PendingQuestionView
+   /** Children this client has opened, never listed; `summaryOf` reads them
+    *  after the catalog. */
+   readonly children: readonly SessionSummary[]
+@@ -134,7 +128,7 @@ export interface ClientViewState {
+    *  such as "Waiting on parent"; the status row shows it. */
+   readonly waitingOn?: string
+   /** Live process membership for transcript markers and process controls. */
+-  readonly processStatus?: Pick<StatusView, "activeBackgroundCommands" | "activeForegroundBashToolCallIds" | "processorHeldToolCallIds">
++  readonly processStatus?: Pick<StatusView, "activeBackgroundCommands" | "activeForegroundBashToolCallIds">
+   /** The selected session's active time, which a workflow's card header
+    *  reads through `sessionActiveMs`, as the terminal does. */
+   readonly activeTime?: Pick<StatusView, "accumulatedActiveMs" | "streamingStartedAt">
+@@ -259,7 +253,7 @@ export function createViewProjection(): (session: RuntimeSession) => ClientViewS
+     const next = rows.map((row) => {
+       seen.add(row.id)
+       const reading: SessionReading = {
+-        awaitingAnswer: session.pendingQuestions.has(row.id),
++        awaitingAnswer: session.awaitingAnswer.has(row.id),
+         working: isWorkingStatus(session.statuses.get(row.id)),
+       }
+       const current = held.get(row.id)
+@@ -303,14 +297,13 @@ function buildViewState(session: RuntimeSession, lists: SessionSummaryLists): Cl
+       ? "needs_provider" as const
+       : "ready" as const
+   const blocks = transcript?.view.blocks ?? []
+-  const pendingQuestion = session.sessionId === undefined ? undefined : session.pendingQuestions.get(session.sessionId)
+   const opening = paneOpening(session)
+   const branch = sessionLocationOf(session).branch
+   return {
+     stage,
+     providers: session.providers,
+     ...(session.authStatus === undefined ? {} : { authStatus: session.authStatus }),
+-    builtInCommands: session.commands.builtInCommands,
++    commands: session.commands.choices,
+     offCommands: session.commands.offCommands,
+     notices: session.notices,
+     groups: transcript?.view.groups ?? {},
+@@ -328,8 +321,6 @@ function buildViewState(session: RuntimeSession, lists: SessionSummaryLists): Cl
+     ...(session.rootSessionId === undefined ? {} : { rootSessionId: session.rootSessionId }),
+     ...(session.executionCwd === undefined ? {} : { executionCwd: session.executionCwd }),
+     sessions: lists.sessions,
+-    newestQuestionOpenedAt: session.pendingQuestions.size > 0 ? Math.max(...[...session.pendingQuestions.values()].map((question) => question.timestamp)) : undefined,
+-    ...(pendingQuestion === undefined ? {} : { pendingQuestion }),
+     children: lists.children,
+     roleAssignments: session.roleAssignments,
+     subscribeRoleAssignments: session.subscribeRoleAssignments,
+diff --git a/webview/src/modules/remote/menu.test.ts b/webview/src/modules/remote/menu.test.ts
+index 326553a..d65243a 100644
+--- a/webview/src/modules/remote/menu.test.ts
++++ b/webview/src/modules/remote/menu.test.ts
+@@ -1,20 +1,19 @@
+ import { describe, expect, it } from "bun:test"
+-import { createEffect, createRoot, createSignal, on } from "solid-js"
++import { createRoot, createSignal } from "solid-js"
+ 
+ import { EMPTY_REMOTE_VIEW } from "../../../../src/protocol/modules/remote.js"
+-import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
+-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
++import type { ClientContextValue } from "../../app/client-context.js"
+ import type { ClientViewState } from "../../client/view-state.js"
+ import type { HostCapabilities, PushSubscriptionRecord, RemoteHostSnapshot } from "../../host.js"
+ import { remoteMenu } from "./menu.js"
+ import { createPushRegistration } from "./push-registration.js"
+-import { mountPerPlacement } from "../../../phone/placement-client.js"
+ 
+ const tick = async () => { for (let n = 0; n < 8; n += 1) await Promise.resolve() }
+ const subscription: PushSubscriptionRecord = { endpoint: "https://push.example/device", expirationTime: null, keys: { auth: "auth", p256dh: "key" } }
+ 
+ describe("remote menu action lifetime", () => {
+   for (const boundary of ["disabled", "disposed", "selection"] as const) it(`does not dispatch a late browser permission after ${boundary}`, async () => {
++    const lifetime = new AbortController()
+     const permission = Promise.withResolvers<PushSubscriptionRecord | undefined>()
+     const reports: string[] = []
+     let dispatches = 0
+@@ -29,50 +28,32 @@ describe("remote menu action lifetime", () => {
+       },
+       push: { state: () => "default", current: async () => undefined, subscribe: () => { requests += 1; return permission.promise }, unsubscribe: async () => {} },
+     }
+-    const idle = fakeViewState()
+-    const frame = (enabled: boolean): ClientViewState => ({
+-      ...idle, projectRoot: "/workspace", modules: { ...idle.modules, remote: { ...EMPTY_REMOTE_VIEW, pushPublicKey: "public-key" } }, settings: fakePanelSettings({ moduleIds: enabled ? ["remote"] : [] }),
+-    })
+-    const mountApp = () => createRoot((dispose) => {
++    const frame = (enabled: boolean): ClientViewState => {
++      // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the action fixture supplies only the client fields this module reads
++      return { projectRoot: "/workspace", sessions: [], modules: { remote: { ...EMPTY_REMOTE_VIEW, pushPublicKey: "public-key" } }, settings: { moduleIds: enabled ? ["remote"] : [] } } as unknown as ClientViewState
++    }
++    const h = createRoot((dispose) => {
+       const [state, setState] = createSignal(frame(true))
+-      const client = fakeClient({
+-        state, host: fakeClientHost({ capabilities }),
+-        connection: fakeRuntimeConnection({ onDispatch: () => { dispatches += 1 }, mutations: { "remote.push.subscribe": () => ({ kind: "committed" }) } }),
+-        report: (_severity, message) => { reports.push(message) },
+-      })
+-      let registration!: ReturnType<typeof createPushRegistration>
+-      // The app's module notice unmounts when its published selection turns off.
+-      createEffect(on(() => state().settings?.moduleIds.includes("remote"), (enabled) => {
+-        if (enabled) registration = createPushRegistration(client)
+-      }))
+-      return { dispose, setState, client, registration: () => registration }
+-    })
+-    let choose = (_changed: boolean) => {}
+-    const mounts: ReturnType<typeof mountApp>[] = []
+-    const placement = mountPerPlacement({
+-      capability: { select: () => choose(true) },
+-      onSelectionChange(listener) { choose = listener; return () => {} },
+-    }, () => {
+-      const app = mountApp()
+-      mounts.push(app)
+-      return { dispose: app.dispose, command: () => {} }
++      // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: no rendering or other client commands run in this action fixture
++      const client = { signal: lifetime.signal, state, host: { capabilities }, connection: { dispatch: async () => { dispatches += 1; return { kind: "committed" } }, subscribe: () => () => {} }, report: (_severity: string, message: string) => { reports.push(message) }, openSurface: () => {} } as unknown as ClientContextValue
++      const registration = createPushRegistration(client)
++      return { dispose, setState, client, registration }
+     })
+-    const h = mounts[0]!
+     try {
+       const pushRow = remoteMenu(h.client, "panel").find((row) => row.id === "push")
+-      expect(pushRow?.value).toBe(h.registration().state().kind)
++      expect(pushRow?.value).toBe(h.registration.state().kind)
+       pushRow?.run()
+       await tick()
+       expect(requests).toBe(1)
+       expect(remoteMenu(h.client, "panel").find((row) => row.id === "push")?.working).toBe(true)
+       if (boundary === "disabled") { h.setState(frame(false)); h.setState(frame(true)) }
+-      else if (boundary === "disposed") placement.handle.dispose()
+-      else choose(true)
++      else if (boundary === "disposed") lifetime.abort()
++      else for (const listener of listeners) listener({ ...initial, selected: { runtimeId: "other", placementId: "project" } })
+       permission.resolve(subscription)
+       await tick()
+       expect(dispatches).toBe(0)
+       expect(reports).toEqual([])
+-      expect(listeners.size).toBe(boundary === "disposed" ? 0 : 1)
+-    } finally { for (const app of mounts) app.dispose() }
++      expect(listeners.size).toBe(0)
++    } finally { lifetime.abort(); h.dispose() }
+   })
+ })
+diff --git a/webview/src/modules/remote/push-registration.test.ts b/webview/src/modules/remote/push-registration.test.ts
+index 370862a..afd4941 100644
+--- a/webview/src/modules/remote/push-registration.test.ts
++++ b/webview/src/modules/remote/push-registration.test.ts
+@@ -1,32 +1,16 @@
+-import { afterEach, beforeEach, expect, spyOn, test } from "bun:test"
++import { expect, test } from "bun:test"
+ import { createRoot, createSignal } from "solid-js"
+-import { fakeClient, fakeClientHost, fakePanelSettings, fakeViewState } from "../../app/client-context-fixture.js"
+-import { fakeRuntimeConnection } from "../../client/runtime-connection-fixture.js"
+-import type { SessionSummary } from "../../client/view-state.js"
++import type { ClientContextValue } from "../../app/client-context.js"
++import type { ClientViewState } from "../../client/view-state.js"
+ import type { HostCapabilities, RemoteHostSnapshot } from "../../host.js"
+ import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+ import { EMPTY_REMOTE_VIEW } from "../../../../src/protocol/modules/remote.js"
+ import { createPushRegistration } from "./push-registration.js"
+-import { mountPerPlacement } from "../../../phone/placement-client.js"
+ 
+ const settle = async () => { for (let i = 0; i < 16; i++) await Promise.resolve() }
+ const subscription = { endpoint: "https://push.test/one", expirationTime: null, keys: { p256dh: "key", auth: "auth" }, applicationServerKey: "ours" }
+-const waitingSessions = (ids: readonly string[]): SessionSummary[] => ids.map((id) => ({ id, awaitingAnswer: true, title: id, kind: "chat", lifecycleState: "active", active: true, working: false, lastUpdated: "", totalsLoading: false }))
+-const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
+-let clock: ReturnType<typeof spyOn<typeof Date, "now">>
+-beforeEach(() => {
+-  clock = spyOn(Date, "now").mockReturnValue(1000)
+-  const values = new Map<string, string>()
+-  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) } })
+-})
+-afterEach(() => {
+-  clock.mockRestore()
+-  if (storageDescriptor) Object.defineProperty(globalThis, "localStorage", storageDescriptor)
+-  else Reflect.deleteProperty(globalThis, "localStorage")
+-})
+ 
+-function mount(initialPermission: NotificationPermission | "unavailable", input: { install?: boolean; other?: boolean; unknownOwner?: boolean; recorded?: boolean; fail?: boolean; missing?: boolean; forward?: "throw" | "reject"; selectionKnown?: boolean; cold?: boolean; unselected?: boolean; waiting?: string[]; openedAt?: number; placementId?: string } = {}) {
+-  let permission = initialPermission
++function mount(permission: NotificationPermission | "unavailable", input: { install?: boolean; other?: boolean; unknownOwner?: boolean; recorded?: boolean; fail?: boolean; missing?: boolean; forward?: "throw" | "reject"; selectionKnown?: boolean } = {}) {
+   let current = input.missing ? undefined : { ...subscription, ...(input.other ? { applicationServerKey: "theirs", ...(input.unknownOwner ? {} : { runtimeId: "other" }) } : {}) }
+   let changed = () => {}
+   let event = (_event: FrontendEvent) => {}
+@@ -34,47 +18,22 @@ function mount(initialPermission: NotificationPermission | "unavailable", input:
+   let prompts = 0
+   const diagnostics: unknown[] = []
+   const h = createRoot((dispose) => {
+-    let snapshot: RemoteHostSnapshot = { deviceLabel: "Phone", runtimes: [{ runtimeId: "other", label: "Studio", relay: "relay", placements: [], presence: "online" }, { runtimeId: "ours", label: "Laptop", relay: "relay", placements: [], presence: "online" }], selected: input.unselected ? undefined : { runtimeId: "ours", placementId: input.placementId ?? "project" }, pairing: { status: "idle" }, ...(input.install ? { install: { browser: "Safari", steps: [], canPrompt: false } } : {}) }
+-    const listeners = new Set<(snapshot: RemoteHostSnapshot) => void>()
++    const snapshot: RemoteHostSnapshot = { deviceLabel: "Phone", runtimes: [{ runtimeId: "other", label: "Studio", relay: "relay", placements: [], presence: "online" }, { runtimeId: "ours", label: "Laptop", relay: "relay", placements: [], presence: "online" }], selected: { runtimeId: "ours", placementId: "project" }, pairing: { status: "idle" }, ...(input.install ? { install: { browser: "Safari", steps: [], canPrompt: false } } : {}) }
+     const capabilities: HostCapabilities = {
+-      remote: { deviceId: "phone", snapshot: () => snapshot, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, pair: async () => {}, setLabel: async () => {}, select: () => {}, forget: async () => {}, createProject: async (runtimeId) => ({ runtimeId, placementId: "created" }) },
++      remote: { deviceId: "phone", snapshot: () => snapshot, onChange: () => () => {}, pair: async () => {}, setLabel: async () => {}, select: () => {}, forget: async () => {}, createProject: async (runtimeId) => ({ runtimeId, placementId: "created" }) },
+       push: {
+         state: () => permission, current: async () => current,
+         subscribe: async () => { prompts++; if (input.fail) throw new DOMException("raw browser detail", "AbortError"); return subscription },
+         unsubscribe: async () => {}, onChange: (listener) => { changed = listener; return () => { changed = () => {} } },
+       },
+     }
+-    const idle = fakeViewState()
+-    const [state, setState] = createSignal(fakeViewState({ projectRoot: input.cold ? undefined : "/workspace", newestQuestionOpenedAt: input.openedAt, settings: input.selectionKnown === false ? undefined : fakePanelSettings({ moduleIds: ["remote"] }), sessions: waitingSessions(input.waiting ?? []), modules: { ...idle.modules, remote: input.cold ? null : { ...EMPTY_REMOTE_VIEW, pushPublicKey: "ours", devices: [{ id: "phone", label: "Phone", pairedAt: 0, attached: true, notifies: input.recorded ?? false }] } } }))
+-    const client = fakeClient({
+-      state,
+-      host: fakeClientHost({ capabilities, onDiagnostic: (_name, detail) => { diagnostics.push(detail) } }),
+-      connection: fakeRuntimeConnection({
+-        onDispatch: () => { dispatches++ },
+-        mutations: { "remote.push.subscribe": () => {
+-          if (input.forward === "throw") throw new Error("transport detail")
+-          return input.forward === "reject" ? { kind: "rejected", message: "This phone is no longer paired. Pair it again." } : { kind: "committed" }
+-        } },
+-      }, { subscribe: (listener) => { event = listener; return () => {} } }),
+-    })
+-    return {
+-      ...createPushRegistration(client), dispose, setState,
+-      catalog: () => setState((previous) => ({ ...previous, projectRoot: "/workspace", settings: fakePanelSettings({ ...previous.settings, moduleIds: ["remote"] }) })),
+-      remote: () => setState((previous) => ({ ...previous, modules: { ...previous.modules, remote: { ...EMPTY_REMOTE_VIEW, pushPublicKey: "ours" } } })),
+-      choose: (placementId = "project") => { snapshot = { ...snapshot, selected: { runtimeId: "ours", placementId } }; for (const listener of listeners) listener(snapshot) },
+-      waiting: (ids: string[], openedAt?: number) => setState((previous) => ({ ...previous, newestQuestionOpenedAt: openedAt, sessions: waitingSessions(ids) })),
+-    }
++    // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the controller needs only module selection, the remote view, and catalog rows
++    const [state, setState] = createSignal({ projectRoot: "/workspace", settings: input.selectionKnown === false ? undefined : { moduleIds: ["remote"] }, sessions: [], modules: { remote: { ...EMPTY_REMOTE_VIEW, pushPublicKey: "ours", devices: [{ id: "phone", label: "Phone", pairedAt: 0, attached: true, notifies: input.recorded ?? false }] } } } as unknown as ClientViewState)
++    // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: no rendering or unrelated client commands run in this fixture
++    const client = { state, signal: new AbortController().signal, host: { capabilities, onDiagnostic: (_name: string, detail: unknown) => diagnostics.push(detail) }, connection: { dispatch: async () => { dispatches++; if (input.forward === "throw") throw new Error("transport detail"); return input.forward === "reject" ? { kind: "rejected", message: "This phone is no longer paired. Pair it again." } : { kind: "committed" } }, subscribe: (listener: typeof event) => { event = listener; return () => {} } } } as unknown as ClientContextValue
++    return { ...createPushRegistration(client), dispose, setState }
+   })
+-  return {
+-    ...h, dispatches: () => dispatches, prompts: () => prompts, diagnostics,
+-    renewed: () => { current = { ...subscription, endpoint: "https://push.test/renewed" }; changed() },
+-    deny: () => { permission = "denied"; changed() },
+-    question: (timestamp = 1100, paint = true) => {
+-      event({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "chat" }, position: 1, prevPosition: 0, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "q", questions: [], timestamp } } } })
+-      if (paint) h.waiting(["chat"], timestamp)
+-    },
+-    answered: () => event({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "chat" }, position: 2, prevPosition: 1, payload: { kind: "question.removed" } } }),
+-  }
++  return { ...h, dispatches: () => dispatches, prompts: () => prompts, diagnostics, renewed: () => { current = { ...subscription, endpoint: "https://push.test/renewed" }; changed() }, question: () => event({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "chat" }, position: 1, prevPosition: 0, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "q", questions: [], timestamp: 0 } } } }) }
+ }
+ 
+ test("the card offers install, permission, blocked settings, or a named move without a background prompt", async () => {
+@@ -140,135 +99,3 @@ test("a failed registration records only error name and permission, not browser
+     expect(h.diagnostics).toEqual([{ errorName: "AbortError", permission: "default" }])
+   } finally { h.dispose() }
+ })
+-
+-test("the move button stays live through either first-snapshot order and the first project choice", async () => {
+-  for (const first of ["remote", "catalog", "selection"] as const) {
+-    const h = mount("granted", { other: true, cold: first !== "selection", unselected: first === "selection" })
+-    try {
+-      await settle()
+-      if (first === "selection") h.choose()
+-      else {
+-        h[first]()
+-        await settle()
+-        h[first === "remote" ? "catalog" : "remote"]()
+-      }
+-      await settle()
+-      expect(h.state().kind).toBe("move")
+-      await h.enable()
+-      expect(h.prompts()).toBe(1)
+-      expect(h.dispatches()).toBe(1)
+-      expect(h.state().kind).toBe("on")
+-    } finally { h.dispose() }
+-  }
+-})
+-
+-test("Later survives remounts and a selection published before the placement remount", async () => {
+-  const key = (placementId: string) => `flywheel.push-guide.dismissed:${JSON.stringify(["ours", placementId])}`
+-  const first = mount("denied", { waiting: ["chat"], openedAt: 900 })
+-  await settle()
+-  clock.mockReturnValue(2000)
+-  first.dismiss()
+-  first.dispose()
+-  const other = mount("denied", { placementId: "other", waiting: ["other-chat"], openedAt: 900 })
+-  await settle()
+-  expect(other.dismissed()).toBe(false)
+-  clock.mockReturnValue(1000)
+-  other.dismiss()
+-  other.dispose()
+-  clock.mockReturnValue(2000)
+-  let selected = "project"
+-  let selectionChanged = (_changed: boolean) => {}
+-  const mounts: ReturnType<typeof mount>[] = []
+-  const placement = mountPerPlacement({
+-    capability: { select: () => {} },
+-    onSelectionChange(listener) { selectionChanged = listener; return () => {} },
+-  }, () => {
+-    const guide = mount("denied", { placementId: selected, waiting: selected === "project" ? ["chat"] : ["other-chat"], openedAt: selected === "project" ? 1500 : 900 })
+-    mounts.push(guide)
+-    return { dispose: guide.dispose, command: () => {} }
+-  })
+-  try {
+-    await settle()
+-    selected = "other"
+-    mounts[0]!.choose(selected)
+-    selectionChanged(true)
+-    await settle()
+-    expect(localStorage.getItem(key("other"))).toBe("1000")
+-    expect(mounts[1]!.dismissed()).toBe(true)
+-  } finally { placement.handle.dispose() }
+-  for (const loaded of [false, true]) {
+-    const next = mount("denied", { cold: !loaded, unselected: !loaded, waiting: loaded ? ["chat"] : [], openedAt: loaded ? 900 : undefined })
+-    try {
+-      await settle()
+-      if (!loaded) { expect(next.dismissed()).toBe(false); next.choose(); await settle() }
+-      expect(next.dismissed()).toBe(true)
+-      next.catalog()
+-      next.remote()
+-      next.waiting(["chat"], 900)
+-      await settle()
+-      expect(next.dismissed()).toBe(true)
+-      expect(localStorage.getItem(key("project"))).toBe("2000")
+-      next.answered()
+-      next.question(2100, false)
+-      expect(next.dismissed()).toBe(true)
+-      next.waiting(["chat"], 2100)
+-      await settle()
+-      expect(next.dismissed()).toBe(false)
+-      expect(localStorage.getItem(key("project"))).toBeNull()
+-      next.dismiss()
+-    } finally { next.dispose() }
+-  }
+-})
+-
+-test("Later tapped before question presence loads stays dismissed when only older questions arrive", async () => {
+-  const first = mount("denied", { cold: true })
+-  try {
+-    await settle()
+-    first.dismiss()
+-    first.catalog()
+-    first.remote()
+-    first.question(900, false)
+-    expect(first.dismissed()).toBe(true)
+-    first.waiting(["chat"], 900)
+-    await settle()
+-    expect(first.dismissed()).toBe(true)
+-  } finally { first.dispose() }
+-  const next = mount("denied", { waiting: ["chat"], openedAt: 900 })
+-  try {
+-    await settle()
+-    expect(next.dismissed()).toBe(true)
+-    next.question()
+-    await settle()
+-    expect(next.dismissed()).toBe(false)
+-  } finally { next.dispose() }
+-})
+-
+-test("a question this phone was notified of keeps Later after notifications turn off", async () => {
+-  localStorage.setItem(`flywheel.push-guide.dismissed:${JSON.stringify(["ours", "project"])}`, "1000")
+-  const h = mount("granted", { recorded: true })
+-  try {
+-    await settle()
+-    expect(h.state().kind).toBe("on")
+-    h.question(2100)
+-    await settle()
+-    expect(h.dismissed()).toBe(true)
+-    h.deny()
+-    await settle()
+-    expect(h.state().kind).toBe("denied")
+-    expect(h.dismissed()).toBe(true)
+-    h.question(3100)
+-    await settle()
+-    expect(h.dismissed()).toBe(false)
+-  } finally { h.dispose() }
+-})
+-
+-test("an unreadable or unshipped array dismissal does not hide the card", async () => {
+-  for (const value of ["not-json", '["chat"]', "null", '"1000"']) {
+-    localStorage.setItem(`flywheel.push-guide.dismissed:${JSON.stringify(["ours", "project"])}`, value)
+-    const h = mount("denied")
+-    try {
+-      await settle()
+-      expect(h.dismissed()).toBe(false)
+-    } finally { h.dispose() }
+-  }
+-})
+diff --git a/webview/src/modules/remote/push-registration.ts b/webview/src/modules/remote/push-registration.ts
+index 8d18cb0..92a7c35 100644
+--- a/webview/src/modules/remote/push-registration.ts
++++ b/webview/src/modules/remote/push-registration.ts
+@@ -1,4 +1,4 @@
+-import { createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
++import { createComputed, createEffect, createRoot, createSignal, on, onCleanup } from "solid-js"
+ import type { ClientContextValue } from "../../app/client-context.js"
+ import { enablePush } from "./push-actions.js"
+ 
+@@ -7,25 +7,6 @@ const registrations = new WeakMap<ClientContextValue, ReturnType<typeof createPu
+ /** The notice owns registration for this client mount; menus only read it. */
+ export const pushRegistration = (client: ClientContextValue) => registrations.get(client)
+ 
+-function readDismissed(key: string | undefined): number | undefined {
+-  try {
+-    const value: unknown = JSON.parse(key ? localStorage.getItem(key) ?? "null" : "null")
+-    return typeof value === "number" && Number.isFinite(value) ? value : undefined
+-  } catch {
+-    return undefined
+-  }
+-}
+-
+-function writeDismissed(key: string | undefined, timestamp: number | undefined): void {
+-  if (!key) return
+-  try {
+-    if (timestamp !== undefined) localStorage.setItem(key, JSON.stringify(timestamp))
+-    else localStorage.removeItem(key)
+-  } catch {
+-    // A browser that refuses storage shows the offer again after a relaunch.
+-  }
+-}
+-
+ export type PushGuideState =
+   | { readonly kind: "loading" | "install" | "permission" | "denied" | "on" | "unavailable" }
+   | { readonly kind: "failed"; readonly message?: string }
+@@ -36,26 +17,17 @@ export type PushGuideState =
+ export function createPushRegistration(client: ClientContextValue) {
+   const [state, setState] = createSignal<PushGuideState>({ kind: "loading" })
+   const [busy, setBusy] = createSignal(false)
++  const [dismissed, setDismissed] = createSignal(false)
+   const push = client.host.capabilities.push
+   const remoteHost = client.host.capabilities.remote
+   const [snapshot, setSnapshot] = createSignal(remoteHost?.snapshot())
+-  // A permission prompt can outlive a menu, but not the guide's app mount.
+-  const operation = new AbortController()
+-  onCleanup(() => operation.abort())
+-  if (remoteHost) onCleanup(remoteHost.onChange(setSnapshot))
+-  // Selection publishes before the old placement unmounts. Its saved state
+-  // must stay with this mount, including when the first choice arrives late.
+-  const dismissalKey = createMemo<string | undefined>((bound) => {
+-    if (bound !== undefined) return bound
+-    const selected = snapshot()?.selected
+-    return selected ? `flywheel.push-guide.dismissed:${JSON.stringify([selected.runtimeId, selected.placementId])}` : undefined
+-  })
+-  const [dismissedAt, setDismissedAt] = createSignal(readDismissed(dismissalKey()))
+-  const remember = (timestamp: number | undefined) => {
+-    setDismissedAt(timestamp)
+-    writeDismissed(dismissalKey(), timestamp)
++  const operation = pushOperation(client)
++  onCleanup(operation.dispose)
++  if (remoteHost) {
++    const stop = remoteHost.onChange(setSnapshot)
++    operation.signal.addEventListener("abort", stop, { once: true })
++    onCleanup(() => { operation.signal.removeEventListener("abort", stop); stop() })
+   }
+-  createEffect(on(dismissalKey, (key) => setDismissedAt(readDismissed(key))))
+   let version = 0
+   let forwarded = false
+   const failed = (error: unknown) => {
+@@ -112,27 +84,46 @@ export function createPushRegistration(client: ClientContextValue) {
+   if (push?.onChange) onCleanup(push.onChange(() => { void refresh(true) }))
+   onCleanup(client.connection.subscribe((event) => {
+     if (event.type === "patch" && event.patch.payload.kind === "question.updated") {
++      setDismissed(false)
+       void refresh()
+     }
+   }))
+-  createEffect(on(() => [dismissalKey(), client.state().newestQuestionOpenedAt, state().kind] as const, ([, openedAt, kind]) => {
+-    const remembered = dismissedAt()
+-    // Phone and machine clock skew can shift when a question counts as newer.
+-    if (remembered === undefined || openedAt === undefined || openedAt <= remembered || kind === "loading") return
+-    // A question this phone was notified of does not reopen the offer later.
+-    if (kind === "on") remember(openedAt)
+-    else {
+-      remember(undefined)
++  // Catalog state covers questions in chats other than the one on screen.
++  let waiting = new Set<string>()
++  createEffect(on(() => client.state().sessions, (sessions) => {
++    const next = new Set(sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))
++    if ([...next].some((id) => !waiting.has(id))) {
++      setDismissed(false)
+       void refresh()
+     }
++    waiting = next
+   }))
+-  const registration = {
+-    state, busy, dismissed: () => dismissedAt() !== undefined,
+-    dismiss: () => remember(Date.now()),
+-    enable, snapshot,
+-  }
++  const registration = { state, busy, dismissed, dismiss: () => setDismissed(true), enable, snapshot }
+   registrations.set(client, registration)
+   onCleanup(() => registrations.delete(client))
+   return registration
+ }
+ 
++/** A permission prompt can outlive a menu, but not its app or selected runtime. */
++function pushOperation(client: ClientContextValue) {
++  const controller = new AbortController()
++  const projectRoot = client.state().projectRoot
++  const cancel = () => controller.abort()
++  const dispose = createRoot((release) => {
++    client.signal.addEventListener("abort", cancel, { once: true })
++    onCleanup(() => client.signal.removeEventListener("abort", cancel))
++    const remote = client.host.capabilities.remote
++    const selected = remote?.snapshot().selected
++    if (remote) onCleanup(remote.onChange((snapshot) => {
++      if (snapshot.selected?.runtimeId !== selected?.runtimeId || snapshot.selected?.placementId !== selected?.placementId) cancel()
++    }))
++    createComputed(() => {
++      const state = client.state()
++      if (client.signal.aborted || state.projectRoot !== projectRoot || state.settings?.moduleIds.includes("remote") === false) cancel()
++    })
++    return release
++  })
++  controller.signal.addEventListener("abort", dispose, { once: true })
++  if (controller.signal.aborted) dispose()
++  return { signal: controller.signal, dispose: () => { cancel(); dispose() } }
++}

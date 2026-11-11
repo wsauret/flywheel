@@ -1,0 +1,55 @@
+{
+  "base": "09db9d3f6a054d4e9b1b8b3a3a357066f904537b",
+  "files": [
+    {
+      "anchor": "db04c7c21b84f9fca128d561ccc31526ad8f8a80",
+      "path": "src/orchestration/agent-runtime/runtime-event-mapper.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "db04c7c21b84f9fca128d561ccc31526ad8f8a80",
+      "path": "src/orchestration/agent-runtime/types.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "db04c7c21b84f9fca128d561ccc31526ad8f8a80",
+      "path": "src/orchestration/workflow-host/agent-callback.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "db04c7c21b84f9fca128d561ccc31526ad8f8a80",
+      "path": "tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "db04c7c21b84f9fca128d561ccc31526ad8f8a80",
+      "path": "tests/unit/orchestration/chat/module-observers.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "db04c7c21b84f9fca128d561ccc31526ad8f8a80",
+      "path": "tests/unit/orchestration/workflow-host/worker-callback.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "tests/unit/orchestration/app-service/runtime-ui-bus.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792935886271,
+      "findings": [],
+      "model": "gpt-6-astra",
+      "parent": "818744915ad1",
+      "persona": "reviewer-code-quality",
+      "run": "c6edb985e72a",
+      "session": "e51a2a539c17",
+      "start": 1792935554507
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

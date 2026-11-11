@@ -1,0 +1,86 @@
+{
+  "base": "062ea19752668447599130cd736386f54745ecbd",
+  "files": [
+    {
+      "anchor": "f68c9136814ea78045cf28c3887ccd1ce4000d15",
+      "path": "docs/architecture-intent/README.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "402b814af4878b776cdaf51c177592fd07300bfa",
+      "path": "docs/elegance.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c7a9217dfc7aa1fa0493ac694cd6c62950be8342",
+      "path": "docs/product-intent/README.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c7a9217dfc7aa1fa0493ac694cd6c62950be8342",
+      "path": "scripts/check-intent-corpora.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c7a9217dfc7aa1fa0493ac694cd6c62950be8342",
+      "path": "tests/unit/scripts/check-intent-corpora.test.ts",
+      "reversedMutations": 3
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "bench/chat-ab/workflow-authorship/patches/handcrafted-forced.patch",
+    "bench/chat-ab/workflow-authorship/patches/handcrafted.patch",
+    "docs/architecture-intent/agency.md",
+    "docs/architecture-intent/boundaries.md",
+    "docs/architecture-intent/context.md",
+    "docs/architecture-intent/directories.md",
+    "docs/architecture-intent/distribution.md",
+    "docs/architecture-intent/learning.md",
+    "docs/architecture-intent/naming.md",
+    "docs/architecture-intent/protocol.md",
+    "docs/architecture-intent/providers.md",
+    "docs/architecture-intent/runtime.md",
+    "docs/architecture-intent/sessions.md",
+    "docs/architecture-intent/structure.md",
+    "docs/architecture-intent/substrate.md",
+    "docs/architecture-intent/tools.md",
+    "docs/architecture-intent/workflows.md",
+    "docs/product-intent/agent-methods.md",
+    "docs/product-intent/capabilities.md",
+    "docs/product-intent/interaction.md",
+    "docs/product-intent/local-access.md",
+    "docs/product-intent/model-access.md",
+    "docs/product-intent/remote-access.md"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793916750115,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -47,9 +47,10 @@\n const FILE_EXTENSION = /\\.(?:ts|tsx|js|jsx|mjs|cjs|json|jsonl|md|toml|ya?ml|sqlite|db|sh|ps1|exe|lock|txt|pid|log|plist)$/i;\n const RATIONALE_LINE = /^(Because|Not):/;\n const CODE_SPAN = /`[^`]*`/g;\n-// A terminator ends a sentence only before the end of the text or before a\n-// word that can open one, so \"e.g. the\" stays inside its sentence.\n-const SENTENCE_END = /[.?!](?=\\s+[A-Z`\"'\\u201C([]|\\s*$)/g;\n+// A terminator, with any closing quote or bracket after it, ends a sentence only\n+// before the end of the text or before a word that can open one, so \"e.g. the\"\n+// stays inside its sentence and `says \"Stop.\" Then` ends one.\n+const SENTENCE_END = /[.?!][\"'\\u201D)\\]]*(?=\\s+[A-Z`\"'\\u201C([]|\\s*$)/g;\n const MAX_SENTENCES = 4;\n const TOKEN_EDGE = /^[(\"'[]+|[)\"'\\],.;:!?]+$/g;",
+              "mutation": "39266f0a-4a87-498f-87b5-a54c3dd1d9cd",
+              "path": "scripts/check-intent-corpora.ts"
+            }
+          ],
+          "label": "count-sentence-endings-inside-closing-quotation-marks",
+          "location": "scripts/check-intent-corpora.ts:52,116-117",
+          "severity": "P1",
+          "title": "Count sentence endings inside closing quotation marks"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "7a1dc14381c4",
+      "persona": "reviewer-code-elegance",
+      "run": "5504731a9bea",
+      "session": "3af45c30b01a",
+      "start": 1793916656353
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "recorded"
+}

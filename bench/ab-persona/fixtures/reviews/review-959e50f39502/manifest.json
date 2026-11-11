@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In tests/unit/tui/output-window.test.tsx, the new landing-highlight test holds the 3000 ms timer callbacks apart from their timer handles and runs only the second one, and it never observes clearTimeout, so it passes unchanged when either production clearTimeout in src/tui/output-window/output-window.tsx (the one in highlightLanding that restarts the time, or the onCleanup one) is removed. A catch must say that the test does not prove that a replacement landing cancels the earlier timer, or that unmount cancels the timer, because the first held callback is never fired and cancellation is not observed.",
+      "category": "quality",
+      "files": [
+        "tests/unit/tui/output-window.test.tsx"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "the-timer-mock-does-not-protect-restart-or-cleanup",
+      "title": "The timer mock does not protect restart or cleanup"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Quality review landing highlight"
+}

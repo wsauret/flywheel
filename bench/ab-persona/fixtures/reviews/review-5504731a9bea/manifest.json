@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In scripts/check-intent-corpora.ts, SENTENCE_END counts a terminator only when whitespace plus a sentence opener or the end of the text follows it directly, so a sentence that ends inside a closing quotation mark or bracket (for example `The client says \"Stopped.\"`) is not counted by sentenceCount. A catch must say that sentence endings followed by a closing quote or bracket are missed, so the length rule miscounts: a valid one-sentence statement reads as zero sentences, or a body over four sentences passes.",
+      "category": "elegance",
+      "files": [
+        "scripts/check-intent-corpora.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "count-sentence-endings-inside-closing-quotation-marks",
+      "title": "Count sentence endings inside closing quotation marks"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Elegance review of length lint"
+}

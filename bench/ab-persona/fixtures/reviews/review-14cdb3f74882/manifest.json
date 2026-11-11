@@ -1,0 +1,28 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In tests/helpers/real-process-fixture.ts, harnessProcesses accepts a process on Windows when its command line names the root even if its environment lacks the release-harness marker (`marked || (process.platform === \"win32\" && namesDirectory(command, root))`), and stopHarnessProcesses kills everything harnessProcesses returns. A catch must say that on Windows an unmarked process whose command line names the sandbox root is found and killed, which breaks the stated rule that a process without the marker is never killed.",
+      "category": "quality",
+      "files": [
+        "tests/helpers/real-process-fixture.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "require-the-harness-marker-on-windows",
+      "title": "Require the harness marker on Windows"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In tests/helpers/real-process-fixture.ts, namesDirectory accepts whitespace as the boundary after the directory (`(?=$|[/\\s\"'])`), so a sibling directory whose name continues with a space, such as `<dir>/gate other`, matches root `<dir>/gate` in a command line or an environment value. A catch must say that a path whose next character after the root is a space inside a directory name is matched as the root, so a process of a different directory can be found and killed.",
+      "category": "quality",
+      "files": [
+        "tests/helpers/real-process-fixture.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "do-not-treat-spaces-inside-directory-names-as-path-boundarie",
+      "title": "Do not treat spaces inside directory names as path boundaries"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Review B2 with Windows check"
+}

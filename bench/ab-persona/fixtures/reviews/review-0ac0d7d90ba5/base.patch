@@ -1,0 +1,211 @@
+diff --git a/docs/elegance.md b/docs/elegance.md
+index f59b023..c2ae383 100644
+--- a/docs/elegance.md
++++ b/docs/elegance.md
+@@ -101,7 +101,7 @@ Behavior arrives by registration, and workflows carry no registry: ARCH-STRUCTUR
+ 
+ ## Skill Packages
+ 
+-The instruction stack, progressive disclosure of packages, registry revisions, commands that start an agent method, and external package trust: ARCH-CONTEXT-016, ARCH-LEARNING-005, ARCH-LEARNING-010, ARCH-BOUNDARIES-008, ARCH-TOOLS-038, PI-AGENT-028, PI-AGENT-037, PI-AGENT-038.
++The instruction stack, progressive disclosure of packages, registry revisions, slash invocation, and external package trust: ARCH-CONTEXT-016, ARCH-LEARNING-005, ARCH-LEARNING-010, ARCH-BOUNDARIES-008, ARCH-TOOLS-038, PI-AGENT-028, PI-AGENT-037, PI-AGENT-038.
+ 
+ ## Harness Minimalism
+ 
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index e7d7f3c..a7e4ab3 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -110,7 +110,7 @@ Each file offers Undo, which asks for confirmation and then restores the file to
+ 
+ ## PI-INTERACTION-009: A pending question docks at the prompt
+ 
+-While a chat waits on a question, the question and its choices appear at the prompt as the next thing to do, in the same frame the command menu uses, and leave once answered or skipped. The transcript then records the question as an Ask User entry with one row per question, titled by its header and carrying the answer, with a skipped question marked as cancelled. Subagents and workflows never ask the person (PI-AGENT-024), so their viewers, cards, and agent views show no question. On every client, Escape skips the question at the prompt, and an answer or skip that no longer applies says why.
++While a chat waits on a question, the question and its choices appear at the prompt as the next thing to do, in the same frame the command menu uses, and leave once answered or skipped. The transcript then records the question as an Ask User entry with one row per question, titled by its header and carrying the answer, with a skipped question marked as cancelled. Subagents and workflows never ask the person (PI-AGENT-024), so their viewers, cards, and agent views show no question.
+ 
+ A pending question stays pending when its session closes or Flywheel stops, including when the agent ran other tools beside it. Reopening the session shows it at the prompt again, unanswered, and answering it continues the turn.
+ 
+@@ -158,7 +158,7 @@ The card shows the currently connected backend's version, including at the top o
+ 
+ ## PI-INTERACTION-017: The web command menu opens on settings in expected-use order and shows commands to typing
+ 
+-On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, with the most-used settings first. Each setting that changes one value in place also appears in that menu with its control. It lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name and description. A line under the menu states how many commands are available. That line and the Commands row open a sheet of the whole catalog in menu order, with descriptions and use counts. Picking an entry puts it in the composer. Workflows have no slash command or catalog entry: the person asks the chat to write and launch one. An open menu keeps its place while the session works. State changes update rows without returning a scrolled reader to the top.
++On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, with the most-used settings first. Each setting that changes one value in place also appears in that menu with its control. It lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name, kind, and description. A line under the menu states how many commands and skills are available. That line and the Commands row open a sheet of the whole catalog by kind, with descriptions and use counts. Picking an entry puts it in the composer. Workflows have no slash command or catalog entry: the person asks the chat to write and launch one. An open menu keeps its place while the session works. State changes update rows without returning a scrolled reader to the top.
+ 
+ The terminal's command menu ranks commands by how often the person used each one. Command use counts are one account-global record the runtime keeps, and the web Commands sheet shows them.
+ 
+@@ -234,7 +234,7 @@ In the terminal and the web client, typing `@` in the composer opens a list of t
+ 
+ ## PI-INTERACTION-031: Files and photos attach to a message on every client
+ 
+-On the web client a `+` control beside `/` opens a short menu: add files or photos from this device, or mention a project file. Files or photos chosen there, pasted into the composer, or dropped onto it attach to the next message and show as removable chips until it is sent. In the terminal, pasting a clipboard image, dragging or pasting one or more local image paths at once, or choosing files through `/attach` attaches through the same message contract. Each dragged image path shows its own numbered image marker at once, not the path first. Enter waits for an image that is still loading and then sends the complete message once. If loading fails, a clear notice appears and the draft remains available without sending an empty image or its filename. The model sees an attached image as an image and an attached text file as its text with its name; a file of another kind or over the size limit is refused with a notice naming the file and what is accepted. A message can consist only of attachments. Queued and sent messages show one marker per attachment and preview attached images below their text, including when the session is reopened. Each preview preserves its proportions and stays within a bounded area smaller than the viewport. Activating a preview opens the retained full-resolution image in a viewer with fitting, zoom, and scrolling controls. Closing the viewer returns to the chat. Images behind an open modal do not show through its opaque background. On every client, `@` mentions a project file by path without attaching its bytes.
++On the web client a `+` control beside `/` opens a short menu: add files or photos from this device, or mention a project file. Files or photos chosen there, pasted into the composer, or dropped onto it attach to the next message and show as removable chips until it is sent. In the terminal, pasting a clipboard image, dragging or pasting one local image path, or choosing files through `/attach` attaches through the same message contract. A dragged image path shows its numbered image marker at once, not the path first. Enter waits for an image that is still loading and then sends the complete message once. If loading fails, a clear notice appears and the draft remains available without sending an empty image or its filename. The model sees an attached image as an image and an attached text file as its text with its name; a file of another kind or over the size limit is refused with a notice naming the file and what is accepted. A message can consist only of attachments. Queued and sent messages show one marker per attachment and preview attached images below their text, including when the session is reopened. Each preview preserves its proportions and stays within a bounded area smaller than the viewport. Activating a preview opens the retained full-resolution image in a viewer with fitting, zoom, and scrolling controls. Closing the viewer returns to the chat. Images behind an open modal do not show through its opaque background. On every client, `@` mentions a project file by path without attaching its bytes.
+ 
+ ## PI-INTERACTION-032: Thinking progress stays honest
+ 
+@@ -296,11 +296,11 @@ People can edit a session's tab title and longer description independently. Edit
+ 
+ ## PI-INTERACTION-042: An open session is always served
+ 
+-A session open in a tab is always served. After a runtime restart it comes back on its own, idle or still waiting for model capacity, with any interrupted work marked in the transcript, and the person never sees it as unserved or is asked to do anything to bring it back. If its runner cannot start, such as when its auth profile is gone, the tab stays open and its transcript shows one notice of the failure, which the next successful start removes; the next activation or message tries again, and a message sent meanwhile stays in the conversation. Escape on an idle chat with no question at the prompt does nothing.
++A session open in a tab is always served. After a runtime restart it comes back on its own, idle or still waiting for model capacity, with any interrupted work marked in the transcript, and the person never sees it as unserved or is asked to do anything to bring it back. If its runner cannot start, such as when its auth profile is gone, the tab stays open and its transcript shows one notice of the failure, which the next successful start removes; the next activation or message tries again, and a message sent meanwhile stays in the conversation. Escape on an idle chat does nothing.
+ 
+ ## PI-INTERACTION-043: A chat turn is interrupted, never stopped
+ 
+-A running chat turn has one way to stop: interrupt. Every surface's control interrupts it, and so does Escape while no question waits at the prompt; a chat offers no terminal stop. Interrupting cuts the turn at once, including a tool call the turn is waiting on in the foreground, keeps everything already committed, leaves the session idle, and shows in the session whether a person or the runtime interrupted it. Interrupted work reads Interrupted, Interrupted by the parent, Interrupted by the runtime, or Interrupted by an unexpected exit, and continued work reads Resumed; no surface calls it paused. Subagents, workflows, and background commands the turn started keep running, and each has its own Stop. A turn that waits on them is still running, so Escape and Interrupt cut that wait too. An interrupted session does not wake on its own: a notification from background work or a message from another session is recorded but starts no turn, and it lands when the person resumes or sends a message. A turn that a restart or an unexpected exit interrupted while it waited on background work or on model capacity is different: it still waits, and the completion or the stated time wakes it, as either wakes a turn that no restart interrupted. An interrupted turn is always resumable: Resume continues it from where it stopped without a new message, and the same control resumes a turn that an unexpected exit interrupted: the transcript shows that interruption where it happened, and Resume never runs a tool call that already finished again. A message typed while the turn ran is delivered as the continuation. Sending a new message instead starts a fresh turn. A new message sent after an interrupt withdraws any approval the person gave during the interrupted turn and that the turn did not use, such as approval of a workflow launch, so the agent must ask again; Resume keeps those approvals. The person's latest decision wins: an interrupt that arrives after Resume or a message interrupts the turn it opens, and an interrupt from before that never cuts it. In the terminal, Resume is offered as a key hint beside the other session keys, and the status area shows no session controls.
++A running chat turn has one way to stop: interrupt. Escape and every surface's control interrupt it, and a chat offers no terminal stop. Interrupting cuts the turn at once, including a tool call the turn is waiting on in the foreground, keeps everything already committed, leaves the session idle, and shows in the session whether a person or the runtime interrupted it. Interrupted work reads Interrupted, Interrupted by the parent, Interrupted by the runtime, or Interrupted by an unexpected exit, and continued work reads Resumed; no surface calls it paused. Subagents, workflows, and background commands the turn started keep running, and each has its own Stop. A turn that waits on them is still running, so Escape and Interrupt cut that wait too. An interrupted session does not wake on its own: a notification from background work or a message from another session is recorded but starts no turn, and it lands when the person resumes or sends a message. A turn that a restart or an unexpected exit interrupted while it waited on background work or on model capacity is different: it still waits, and the completion or the stated time wakes it, as either wakes a turn that no restart interrupted. An interrupted turn is always resumable: Resume continues it from where it stopped without a new message, and the same control resumes a turn that an unexpected exit interrupted: the transcript shows that interruption where it happened, and Resume never runs a tool call that already finished again. A message typed while the turn ran is delivered as the continuation. Sending a new message instead starts a fresh turn. A new message sent after an interrupt withdraws any approval the person gave during the interrupted turn and that the turn did not use, such as approval of a workflow launch, so the agent must ask again; Resume keeps those approvals. The person's latest decision wins: an interrupt that arrives after Resume or a message interrupts the turn it opens, and an interrupt from before that never cuts it. In the terminal, Resume is offered as a key hint beside the other session keys, and the status area shows no session controls.
+ 
+ ## PI-INTERACTION-044: A workflow can be interrupted and resumed without a message
+ 
+@@ -434,7 +434,7 @@ A launch with `--project-root`, or else with a nonempty `FLYWHEEL_PROJECT_ROOT`,
+ 
+ ## PI-INTERACTION-069: The account home opens as a project only when named
+ 
+-A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate, says that the account home holds the account's settings, and says that running Flywheel in any other directory starts a project there; a paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
++A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate and names `--project-root` as the way to open it; a paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
+ 
+ ## PI-INTERACTION-070: Status names the working directory apart from the project
+ 
+diff --git a/src/tui/hooks/composer-attachments.ts b/src/tui/hooks/composer-attachments.ts
+index 5517d11..a998fdf 100644
+--- a/src/tui/hooks/composer-attachments.ts
++++ b/src/tui/hooks/composer-attachments.ts
+@@ -1,4 +1,3 @@
+-import { existsSync } from "node:fs"
+ import { stat } from "node:fs/promises"
+ import { basename, isAbsolute, resolve } from "node:path"
+ import { RenderableEvents, type PasteEvent } from "@opentui/core"
+@@ -30,18 +29,6 @@ function pathText(text: string, cwd: string): { paths: readonly string[]; text:
+   return paths.size > 0 ? { paths: [...paths], text } : undefined
+ }
+ 
+-/** Splits the paste into separators at even and candidates at odd indexes. A
+- *  terminal drops several files as absolute paths separated by unescaped ASCII
+- *  whitespace; macOS screenshot names hold U+202F, so other spaces stay inside a
+- *  path. Any other paste, or one whose whole text names an existing entry, stays
+- *  one candidate, so a single path keeps a real space in its name. */
+-function pasteParts(text: string, cwd: string): readonly string[] {
+-  const parts = text.split(/((?:\\[\s\S]|[^ \t\r\n])+)/)
+-  const candidates = parts.filter((_, index) => index % 2 === 1)
+-  const list = candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate))
+-  return list && !pathText(text, cwd)?.paths.some((path) => existsSync(path)) ? parts : ["", text]
+-}
+-
+ async function findImagePath(paths: readonly string[]): Promise<string | undefined> {
+   for (const path of paths) {
+     try {
+@@ -361,32 +348,19 @@ export function createPromptAttachments(
+     return false
+   }
+ 
+-  /** Reserves an image marker synchronously for each syntactic absolute image
+-   *  path in the paste; other paths and separators stay as text. */
++  /** Reserves an image marker synchronously for one syntactic absolute image path. */
+   function claimPasteText(text: string): boolean {
+     const ownership = captureOwnership()
+     if (!ownership) return false
+-    const cwd = options.cwd ?? process.cwd()
+-    const parts = pasteParts(text, cwd).map((part, index) => {
+-      const paste = index % 2 === 1 ? pathText(part, cwd) : undefined
+-      return paste?.paths.some((path) => IMAGE_PATH.test(path)) ? paste : part
+-    })
+-    if (parts.every((part) => typeof part === "string")) return false
+-    let inserted = ""
+-    for (const part of parts) {
+-      if (typeof part === "string") {
+-        inserted += part
+-        continue
+-      }
+-      const marker = attachmentMarker("image", nextAttachmentOrdinal([...items().map((item) => item.marker), ...[...pending].filter((item) => item.token.owner === ownership.owner).map((item) => item.token.marker)]))
+-      const token = { owner: ownership.owner, marker, active: true }
+-      const entry = { token, done: attachPastedPath(part, token) }
+-      pending.add(entry)
+-      void entry.done.finally(() => untrack(() => { pending.delete(entry); syncExtmarks() }))
+-      inserted += marker
+-    }
+-    ownership.target.insertText(inserted)
++    const paste = pathText(text, options.cwd ?? process.cwd())
++    if (!paste || !paste.paths.some((path) => IMAGE_PATH.test(path))) return false
++    const marker = attachmentMarker("image", nextAttachmentOrdinal([...items().map((item) => item.marker), ...[...pending].filter((item) => item.token.owner === ownership.owner).map((item) => item.token.marker)]))
++    ownership.target.insertText(marker)
++    const token = { owner: ownership.owner, marker, active: true }
++    const entry = { token, done: attachPastedPath(paste, token) }
++    pending.add(entry)
+     options.onChange?.()
++    void entry.done.finally(() => untrack(() => { pending.delete(entry); syncExtmarks() }))
+     return true
+   }
+ 
+diff --git a/tests/unit/tui/hooks/prompt-attachments.test.ts b/tests/unit/tui/hooks/prompt-attachments.test.ts
+index 61607c9..830399b 100644
+--- a/tests/unit/tui/hooks/prompt-attachments.test.ts
++++ b/tests/unit/tui/hooks/prompt-attachments.test.ts
+@@ -162,69 +162,6 @@ describe("createPromptAttachments", () => {
+     expect(attachments.serialize(textarea.plainText)).toHaveLength(1)
+   })
+ 
+-  it("attaches each image of a multi-file terminal drop and keeps other paths as text", async () => {
+-    const screenshot = "Shot at 2.43.28\u202FPM.png"
+-    const images = new Set([path.resolve("/scratch/one.png"), path.resolve(`/scratch/${screenshot}`)])
+-    const { textarea } = createFakeTextarea("compare ")
+-    const attachments = createPromptAttachments(syntax, () => "chat-1", noClipboard, {
+-      findImagePath: async (paths) => paths.find((candidate) => images.has(candidate)),
+-      readPathAttachment: async (file) => ({ attachment: { mediaType: "image/png", data: "aW1n", name: path.basename(file) } }),
+-    })
+-    attachments.attach(textarea)
+-
+-    expect(attachments.claimPasteText("/scratch/one.png /scratch/notes.txt\n/scratch/Shot\\ at\\ 2.43.28\u202FPM.png ")).toBe(true)
+-    expect(textarea.plainText).toBe("compare [Image #1] /scratch/notes.txt\n[Image #2] ")
+-    const submission = await attachments.prepareSubmission(textarea.plainText, "chat-1")
+-
+-    expect(submission).toEqual({
+-      text: "compare [Image #1] /scratch/notes.txt\n[Image #2] ",
+-      attachments: [
+-        { marker: "[Image #1]", mediaType: "image/png", data: "aW1n", name: "one.png" },
+-        { marker: "[Image #2]", mediaType: "image/png", data: "aW1n", name: screenshot },
+-      ],
+-    })
+-  })
+-
+-  // Windows strips a trailing space from a directory name, so this path cannot exist there.
+-  it.skipIf(process.platform === "win32")("keeps an existing single path whose folder name ends in a space", async () => {
+-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "prompt-spaced-folder-"))
+-    temporaryDirectories.push(directory)
+-    fs.mkdirSync(path.join(directory, "album "))
+-    const file = path.join(directory, "album ", "photo.png")
+-    fs.writeFileSync(file, "png")
+-    const { textarea } = createFakeTextarea()
+-    const attachments = createPromptAttachments(syntax, () => "chat-1", noClipboard, {
+-      findImagePath: async (paths) => paths.find((candidate) => candidate === file),
+-      readPathAttachment: async () => ({ attachment: { mediaType: "image/png", data: "aW1n", name: "photo.png" } }),
+-    })
+-    attachments.attach(textarea)
+-
+-    expect(attachments.claimPasteText(file)).toBe(true)
+-    expect(textarea.plainText).toBe("[Image #1]")
+-    expect(await attachments.prepareSubmission(textarea.plainText, "chat-1")).toMatchObject({ attachments: [{ marker: "[Image #1]", name: "photo.png" }] })
+-  })
+-
+-  it("restores only the dropped path that fails to read", async () => {
+-    const warnings: string[] = []
+-    const { textarea } = createFakeTextarea()
+-    const attachments = createPromptAttachments(syntax, () => "chat-1", noClipboard, {
+-      findImagePath: async (paths) => paths[0],
+-      readPathAttachment: async (file) => {
+-        if (file.endsWith("gone.png")) throw new Error("gone")
+-        return { attachment: { mediaType: "image/png", data: "aW1n", name: path.basename(file) } }
+-      },
+-      report: (message) => { warnings.push(message) },
+-    })
+-    attachments.attach(textarea)
+-
+-    attachments.claimPasteText("/scratch/kept.png /scratch/gone\\ now/gone.png ")
+-    for (let index = 0; index < 8; index += 1) await Promise.resolve()
+-
+-    expect(textarea.plainText).toBe("[Image #1] /scratch/gone\\ now/gone.png ")
+-    expect(warnings).toEqual(["Could not attach gone.png. The file is no longer readable. The path remains in the draft."])
+-    expect(attachments.serialize(textarea.plainText)).toMatchObject([{ marker: "[Image #1]", name: "kept.png" }])
+-  })
+-
+   it("leaves a pasted text-file path as ordinary text", async () => {
+     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "prompt-text-path-"))
+     temporaryDirectories.push(directory)

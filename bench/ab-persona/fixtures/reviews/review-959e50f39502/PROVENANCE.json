@@ -1,0 +1,183 @@
+{
+  "base": "dd433f3db1653524a3c14de7df741c7b3c5723a8",
+  "files": [
+    {
+      "anchor": "46f29f99cfdaf4d657fd1cb7f4f5d5ca06e6da8d",
+      "path": "docs/adrs/adr-005-flywheel-design-principles.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "docs/product-intent/interaction.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "src/tui/context/landing-highlight.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "887422e4f87475d0bd184620983990227cd3139e",
+      "path": "src/tui/hooks/use-hover-highlight.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "src/tui/modules/workflows/activity-block.tsx",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "src/tui/output-blocks/agent-group-block.tsx",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "src/tui/output-blocks/question-history-block.tsx",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "src/tui/output-blocks/tool-entry.tsx",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "src/tui/output-blocks/tool-row.tsx",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": null,
+      "path": "src/tui/output-window/output-window-projection.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "src/tui/output-window/output-window.tsx",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "b83a5d37e04951364de67552436d4f7d5ffeb78c",
+      "path": "tests/unit/tui/output-window.test.tsx",
+      "reversedMutations": 6
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "src/tui/context/theme/readable-theme.ts",
+    "tests/unit/tui/context/theme/theme-contrast.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792899248766,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -265,42 +265,63 @@\n     const background = (text: string) => result.captureSpans().lines\n       .flatMap((line) => line.spans)\n       .find((span) => span.text.includes(text))?.bg\n-    // The renderer runs on real timers; only the three-second highlight timer\n-    // is held so the test can expire it without waiting.\n-    const highlightTimers: (() => void)[] = []\n+    // The renderer runs on real timers; only the three-second highlight timers\n+    // are held, by handle, so the test can expire them without waiting and see\n+    // which ones the window cancelled.\n+    const heldTimers = new Map<ReturnType<typeof setTimeout>, () => void>()\n     const realSetTimeout = globalThis.setTimeout\n+    const realClearTimeout = globalThis.clearTimeout\n     const timers = spyOn(globalThis, \"setTimeout\").mockImplementation(new Proxy(realSetTimeout, {\n       apply(target, _receiver, args: Parameters<typeof setTimeout>) {\n         if (args[1] !== 3000) return target(...args)\n         const [callback] = args\n-        highlightTimers.push(() => callback())\n-        return target(() => {}, 0)\n+        const handle = target(() => {}, 0)\n+        heldTimers.set(handle, () => callback())\n+        return handle\n       },\n     }))\n-    try {\n-      expect(result.captureCharFrame()).toMatch(/Ran[^]*bun run first[^]*bun run target/)\n-      setCommand({ id: 1, type: \"block\", entryId: \"target-process\" })\n+    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle) => {\n+      heldTimers.delete(handle as ReturnType<typeof setTimeout>)\n+      realClearTimeout(handle)\n+    })\n+    const land = async (id: number, entryId: string) => {\n+      setCommand({ id, type: \"block\", entryId })\n       await Promise.resolve()\n       await Promise.resolve()\n       await result.renderOnce()\n+    }\n+    const expireHeldTimers = () => {\n+      const due = [...heldTimers.values()]\n+      heldTimers.clear()\n+      for (const callback of due) callback()\n+    }\n+    let destroyed = false\n+    try {\n+      expect(result.captureCharFrame()).toMatch(/Ran[^]*bun run first[^]*bun run target/)\n+      await land(1, \"target-process\")\n       expect(background(\"target\")?.equals(theme.backgroundElement)).toBe(true)\n       expect(background(\"first\")?.equals(theme.backgroundElement)).toBe(false)\n-      expect(highlightTimers).toHaveLength(1)\n+      expect(heldTimers.size).toBe(1)\n \n-      setCommand({ id: 2, type: \"block\", entryId: \"first-process\" })\n-      await Promise.resolve()\n-      await Promise.resolve()\n-      await result.renderOnce()\n+      // The replacement cancels the first deadline, so passing it keeps the\n+      // new highlight; only the replacement's own deadline clears it.\n+      await land(2, \"first-process\")\n       expect(background(\"first\")?.equals(theme.backgroundElement)).toBe(true)\n       expect(background(\"target\")?.equals(theme.backgroundElement)).toBe(false)\n-      expect(highlightTimers).toHaveLength(2)\n-\n-      highlightTimers[1]!()\n+      expect(heldTimers.size).toBe(1)\n+      expireHeldTimers()\n       await result.renderOnce()\n       expect(background(\"first\")?.equals(theme.backgroundElement)).toBe(false)\n+\n+      await land(3, \"target-process\")\n+      expect(heldTimers.size).toBe(1)\n+      result.renderer.destroy()\n+      destroyed = true\n+      expect(heldTimers.size).toBe(0)\n     } finally {\n       timers.mockRestore()\n-      result.renderer.destroy()\n+      clears.mockRestore()\n+      if (!destroyed) result.renderer.destroy()\n     }\n   })",
+              "mutation": "359ccc75-5314-4436-953b-6fee1e8926b7",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -268,7 +268,7 @@\n     // The renderer runs on real timers; only the three-second highlight timers\n     // are held, by handle, so the test can expire them without waiting and see\n     // which ones the window cancelled.\n-    const heldTimers = new Map<ReturnType<typeof setTimeout>, () => void>()\n+    const heldTimers = new Map<Parameters<typeof clearTimeout>[0], () => void>()\n     const realSetTimeout = globalThis.setTimeout\n     const realClearTimeout = globalThis.clearTimeout\n     const timers = spyOn(globalThis, \"setTimeout\").mockImplementation(new Proxy(realSetTimeout, {",
+              "mutation": "97491e9b-898a-4bce-afbe-6b9299ea68af",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -280,8 +280,8 @@\n         return handle\n       },\n     }))\n-    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle) => {\n-      heldTimers.delete(handle as ReturnType<typeof setTimeout>)\n+    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle?: Parameters<typeof clearTimeout>[0]) => {\n+      heldTimers.delete(handle)\n       realClearTimeout(handle)\n     })\n     const land = async (id: number, entryId: string) => {",
+              "mutation": "4c70aeef-fb23-4cc4-adf5-126508fbece3",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -293,7 +293,7 @@\n     const expireHeldTimers = () => {\n       const due = [...heldTimers.values()]\n       heldTimers.clear()\n-      for (const callback of due) callback()\n+      for (const expire of due) expire()\n     }\n     let destroyed = false\n     try {",
+              "mutation": "6ba52c61-022f-4d93-a2c2-b917857025ea",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -280,10 +280,12 @@\n         return handle\n       },\n     }))\n-    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle?: Parameters<typeof clearTimeout>[0]) => {\n-      heldTimers.delete(handle)\n-      realClearTimeout(handle)\n-    })\n+    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation(new Proxy(realClearTimeout, {\n+      apply(target, _receiver, args: Parameters<typeof clearTimeout>) {\n+        heldTimers.delete(args[0])\n+        return target(...args)\n+      },\n+    }))\n     const land = async (id: number, entryId: string) => {\n       setCommand({ id, type: \"block\", entryId })\n       await Promise.resolve()",
+              "mutation": "b6e5ce07-858e-4c96-aa6c-435b41c0ebd0",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -268,7 +268,7 @@\n     // The renderer runs on real timers; only the three-second highlight timers\n     // are held, by handle, so the test can expire them without waiting and see\n     // which ones the window cancelled.\n-    const heldTimers = new Map<Parameters<typeof clearTimeout>[0], () => void>()\n+    const heldTimers = new Map<unknown, () => void>()\n     const realSetTimeout = globalThis.setTimeout\n     const realClearTimeout = globalThis.clearTimeout\n     const timers = spyOn(globalThis, \"setTimeout\").mockImplementation(new Proxy(realSetTimeout, {",
+              "mutation": "47db42a5-a521-44b2-a067-933a5211b7a1",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            }
+          ],
+          "label": "the-timer-mock-does-not-protect-restart-or-cleanup",
+          "location": "tests/unit/tui/output-window.test.tsx:270-303",
+          "severity": "P2",
+          "title": "The timer mock does not protect restart or cleanup"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "f3d86ed5d631",
+      "persona": "reviewer-code-quality",
+      "run": "959e50f39502",
+      "session": "19caf69de2f1",
+      "start": 1792899113261
+    },
+    {
+      "effort": "high",
+      "end": 1792899265959,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -265,42 +265,63 @@\n     const background = (text: string) => result.captureSpans().lines\n       .flatMap((line) => line.spans)\n       .find((span) => span.text.includes(text))?.bg\n-    // The renderer runs on real timers; only the three-second highlight timer\n-    // is held so the test can expire it without waiting.\n-    const highlightTimers: (() => void)[] = []\n+    // The renderer runs on real timers; only the three-second highlight timers\n+    // are held, by handle, so the test can expire them without waiting and see\n+    // which ones the window cancelled.\n+    const heldTimers = new Map<ReturnType<typeof setTimeout>, () => void>()\n     const realSetTimeout = globalThis.setTimeout\n+    const realClearTimeout = globalThis.clearTimeout\n     const timers = spyOn(globalThis, \"setTimeout\").mockImplementation(new Proxy(realSetTimeout, {\n       apply(target, _receiver, args: Parameters<typeof setTimeout>) {\n         if (args[1] !== 3000) return target(...args)\n         const [callback] = args\n-        highlightTimers.push(() => callback())\n-        return target(() => {}, 0)\n+        const handle = target(() => {}, 0)\n+        heldTimers.set(handle, () => callback())\n+        return handle\n       },\n     }))\n-    try {\n-      expect(result.captureCharFrame()).toMatch(/Ran[^]*bun run first[^]*bun run target/)\n-      setCommand({ id: 1, type: \"block\", entryId: \"target-process\" })\n+    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle) => {\n+      heldTimers.delete(handle as ReturnType<typeof setTimeout>)\n+      realClearTimeout(handle)\n+    })\n+    const land = async (id: number, entryId: string) => {\n+      setCommand({ id, type: \"block\", entryId })\n       await Promise.resolve()\n       await Promise.resolve()\n       await result.renderOnce()\n+    }\n+    const expireHeldTimers = () => {\n+      const due = [...heldTimers.values()]\n+      heldTimers.clear()\n+      for (const callback of due) callback()\n+    }\n+    let destroyed = false\n+    try {\n+      expect(result.captureCharFrame()).toMatch(/Ran[^]*bun run first[^]*bun run target/)\n+      await land(1, \"target-process\")\n       expect(background(\"target\")?.equals(theme.backgroundElement)).toBe(true)\n       expect(background(\"first\")?.equals(theme.backgroundElement)).toBe(false)\n-      expect(highlightTimers).toHaveLength(1)\n+      expect(heldTimers.size).toBe(1)\n \n-      setCommand({ id: 2, type: \"block\", entryId: \"first-process\" })\n-      await Promise.resolve()\n-      await Promise.resolve()\n-      await result.renderOnce()\n+      // The replacement cancels the first deadline, so passing it keeps the\n+      // new highlight; only the replacement's own deadline clears it.\n+      await land(2, \"first-process\")\n       expect(background(\"first\")?.equals(theme.backgroundElement)).toBe(true)\n       expect(background(\"target\")?.equals(theme.backgroundElement)).toBe(false)\n-      expect(highlightTimers).toHaveLength(2)\n-\n-      highlightTimers[1]!()\n+      expect(heldTimers.size).toBe(1)\n+      expireHeldTimers()\n       await result.renderOnce()\n       expect(background(\"first\")?.equals(theme.backgroundElement)).toBe(false)\n+\n+      await land(3, \"target-process\")\n+      expect(heldTimers.size).toBe(1)\n+      result.renderer.destroy()\n+      destroyed = true\n+      expect(heldTimers.size).toBe(0)\n     } finally {\n       timers.mockRestore()\n-      result.renderer.destroy()\n+      clears.mockRestore()\n+      if (!destroyed) result.renderer.destroy()\n     }\n   })",
+              "mutation": "359ccc75-5314-4436-953b-6fee1e8926b7",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -268,7 +268,7 @@\n     // The renderer runs on real timers; only the three-second highlight timers\n     // are held, by handle, so the test can expire them without waiting and see\n     // which ones the window cancelled.\n-    const heldTimers = new Map<ReturnType<typeof setTimeout>, () => void>()\n+    const heldTimers = new Map<Parameters<typeof clearTimeout>[0], () => void>()\n     const realSetTimeout = globalThis.setTimeout\n     const realClearTimeout = globalThis.clearTimeout\n     const timers = spyOn(globalThis, \"setTimeout\").mockImplementation(new Proxy(realSetTimeout, {",
+              "mutation": "97491e9b-898a-4bce-afbe-6b9299ea68af",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -280,8 +280,8 @@\n         return handle\n       },\n     }))\n-    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle) => {\n-      heldTimers.delete(handle as ReturnType<typeof setTimeout>)\n+    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle?: Parameters<typeof clearTimeout>[0]) => {\n+      heldTimers.delete(handle)\n       realClearTimeout(handle)\n     })\n     const land = async (id: number, entryId: string) => {",
+              "mutation": "4c70aeef-fb23-4cc4-adf5-126508fbece3",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -293,7 +293,7 @@\n     const expireHeldTimers = () => {\n       const due = [...heldTimers.values()]\n       heldTimers.clear()\n-      for (const callback of due) callback()\n+      for (const expire of due) expire()\n     }\n     let destroyed = false\n     try {",
+              "mutation": "6ba52c61-022f-4d93-a2c2-b917857025ea",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -280,10 +280,12 @@\n         return handle\n       },\n     }))\n-    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation((handle?: Parameters<typeof clearTimeout>[0]) => {\n-      heldTimers.delete(handle)\n-      realClearTimeout(handle)\n-    })\n+    const clears = spyOn(globalThis, \"clearTimeout\").mockImplementation(new Proxy(realClearTimeout, {\n+      apply(target, _receiver, args: Parameters<typeof clearTimeout>) {\n+        heldTimers.delete(args[0])\n+        return target(...args)\n+      },\n+    }))\n     const land = async (id: number, entryId: string) => {\n       setCommand({ id, type: \"block\", entryId })\n       await Promise.resolve()",
+              "mutation": "b6e5ce07-858e-4c96-aa6c-435b41c0ebd0",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            },
+            {
+              "hunk": "@@ -268,7 +268,7 @@\n     // The renderer runs on real timers; only the three-second highlight timers\n     // are held, by handle, so the test can expire them without waiting and see\n     // which ones the window cancelled.\n-    const heldTimers = new Map<Parameters<typeof clearTimeout>[0], () => void>()\n+    const heldTimers = new Map<unknown, () => void>()\n     const realSetTimeout = globalThis.setTimeout\n     const realClearTimeout = globalThis.clearTimeout\n     const timers = spyOn(globalThis, \"setTimeout\").mockImplementation(new Proxy(realSetTimeout, {",
+              "mutation": "47db42a5-a521-44b2-a067-933a5211b7a1",
+              "path": "tests/unit/tui/output-window.test.tsx"
+            }
+          ],
+          "label": "the-timer-test-does-not-protect-restart-or-cleanup",
+          "location": "tests/unit/tui/output-window.test.tsx:270-303",
+          "severity": "P2",
+          "title": "The timer test does not protect restart or cleanup"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "f3d86ed5d631",
+      "persona": "reviewer-code-elegance",
+      "run": "5e9b6a05b1b3",
+      "session": "b39a6b139cc2",
+      "start": 1792899126790
+    }
+  ],
+  "scrubbedLines": {
+    "docs/adrs/adr-005-flywheel-design-principles.md": 2
+  },
+  "unresolvedImports": [],
+  "variant": "restore",
+  "rejectedLabels": [
+    {
+      "id": "the-timer-test-does-not-protect-restart-or-cleanup",
+      "reason": "duplicate of the-timer-mock-does-not-protect-restart-or-cleanup"
+    }
+  ]
+}

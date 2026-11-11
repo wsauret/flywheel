@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/tui/output-blocks/diff-preview.tsx, the collapsed note `... +N lines (click to expand)` takes N from `collapsedOmitted()`, which counts diff lines beyond the preview's first 20 lines (`renderedLines - visibleLines`), not the lines that the 20-row clip hides after wrapping; when lines wrap and the file has more than 20 lines, the note understates the hidden lines (30 lines that each wrap to 2 rows show 10 lines and say +10). A review catches it only if it says that the count is wrong or understated when wrapping clips rows inside the previewed lines; a remark only about the wording of the wrap-only note `... more (click to expand)` does not count.",
+      "category": "design",
+      "files": [
+        "src/tui/output-blocks/diff-preview.tsx"
+      ],
+      "finder": "claude-opus-5.5",
+      "id": "the-collapsed-note-understates-hidden-lines-when-wrapping-cl",
+      "title": "The collapsed note understates hidden lines when wrapping clips the first 20 lines, and its wrap-only wording differs from the sibling preview note"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Interface review of diff wrapping"
+}

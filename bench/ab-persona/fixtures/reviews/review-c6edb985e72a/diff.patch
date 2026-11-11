@@ -1,0 +1,175 @@
+diff --git a/src/orchestration/agent-runtime/runtime-event-mapper.ts b/src/orchestration/agent-runtime/runtime-event-mapper.ts
+index 190c031..b77f52b 100644
+--- a/src/orchestration/agent-runtime/runtime-event-mapper.ts
++++ b/src/orchestration/agent-runtime/runtime-event-mapper.ts
+@@ -2,6 +2,9 @@ import type { RuntimeEvent } from "../../infra/runtime-event-types.js";
+ import { extractToolResultRecords } from "../../infra/runtime-tool-records.js";
+ import type { AgentStreamEvent } from "./types.js";
+ 
++/** The stream events that observers read from one runtime event. Most runtime
++ *  events, such as every streamed delta, map to none, so an observer chain
++ *  does no work for them. */
+ export function mapRuntimeEventToAgentStreamEvents(event: RuntimeEvent): AgentStreamEvent[] {
+   const toolResults = extractToolResultRecords(event);
+   if (toolResults.length > 0) {
+@@ -21,15 +24,12 @@ export function mapRuntimeEventToAgentStreamEvents(event: RuntimeEvent): AgentSt
+     // empty signature and false-positive the repetition guard on any run
+     // of same-tool calls with different arguments.
+     const content = event.data.message?.content;
+-    if (Array.isArray(content) && content.some((block) => block.type === "text")) {
+-      return [{ type: "text" }];
+-    }
+-    return [{ type: "other" }];
++    return Array.isArray(content) && content.some((block) => block.type === "text") ? [{ type: "text" }] : [];
+   }
+ 
+   if (event.type === "model.turn.completed") {
+     return [{ type: "result" }];
+   }
+ 
+-  return [{ type: "other" }];
++  return [];
+ }
+diff --git a/src/orchestration/agent-runtime/types.ts b/src/orchestration/agent-runtime/types.ts
+index cde177b..28df1df 100644
+--- a/src/orchestration/agent-runtime/types.ts
++++ b/src/orchestration/agent-runtime/types.ts
+@@ -450,5 +450,4 @@ export type AgentStreamEvent =
+   | { type: "tool_use"; toolUseId: string; toolName: string; toolInput: AgentToolInput }
+   | { type: "tool_result"; toolUseId: string; outcome: ToolOutcome }
+   | { type: "text" }
+-  | { type: "result" }
+-  | { type: "other" };
++  | { type: "result" };
+diff --git a/src/orchestration/workflow-host/agent-callback.ts b/src/orchestration/workflow-host/agent-callback.ts
+index d4fe4af..acd62ba 100644
+--- a/src/orchestration/workflow-host/agent-callback.ts
++++ b/src/orchestration/workflow-host/agent-callback.ts
+@@ -306,11 +306,14 @@ export function createWorkerCallback(
+     const countToolUses = createToolUseCounter(toolUseIds)
+     // The agent's live entry carries the same count, so the workflow's live
+     // view reads no durable tree while the agent runs.
+-    let toolUses = 0
+-    const reportToolUses = (event?: RuntimeEvent): void => { toolUses = countToolUses(event); onToolUses?.(toolUses); resources.projection?.updateOperations(toolUses) }
++    let toolUses = countToolUses()
++    const reportToolUses = (): void => { onToolUses?.(toolUses); resources.projection?.updateOperations(toolUses) }
+     reportToolUses()
+     const forward = (event: RuntimeEvent): void => {
+-      reportToolUses(event)
++      // An agent emits an event per streamed delta; only a new call restates
++      // the count, which every view of the agent's session reads.
++      const counted = countToolUses(event)
++      if (counted !== toolUses) { toolUses = counted; reportToolUses() }
+       emitAgent(event.type, { sessionId, data: event.data })
+       if ("parent_tool_use_id" in event.data && event.data.parent_tool_use_id != null) return
+       for (const streamEvent of mapRuntimeEventToAgentStreamEvents(event)) observerChain?.onEvent(streamEvent)
+diff --git a/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts b/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts
+index b95561a..ab5dfde 100644
+--- a/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts
++++ b/tests/unit/orchestration/agent-runtime/runtime-event-mapper.test.ts
+@@ -117,7 +117,7 @@ describe("mapRuntimeEventToAgentStreamEvents", () => {
+     // tool.input.completed.
+     const event = assistantWithToolUse([{ name: "Read", input: {}, id: "t1" }]);
+     const result = mapRuntimeEventToAgentStreamEvents(event);
+-    expect(result).toEqual([{ type: "other" }]);
++    expect(result).toEqual([]);
+   });
+ 
+   it("maps assistant event with mixed text + tool placeholders to text", () => {
+@@ -179,11 +179,14 @@ describe("mapRuntimeEventToAgentStreamEvents", () => {
+     expect(result[0]).toEqual({ type: "result" });
+   });
+ 
+-  it("maps assistant events with no content to other", () => {
++  it("maps assistant events with no content to nothing", () => {
+     const event = makeEvent("model.assistant_message.recorded", { message: {} });
+-    const result = mapRuntimeEventToAgentStreamEvents(event);
+-    expect(result).toHaveLength(1);
+-    expect(result[0]?.type).toBe("other");
++    expect(mapRuntimeEventToAgentStreamEvents(event)).toEqual([]);
++  });
++
++  it("maps streamed deltas to nothing", () => {
++    const event = makeEvent("model.content.delta", { delta: { type: "text_delta", text: "x" }, block_key: "answer" });
++    expect(mapRuntimeEventToAgentStreamEvents(event)).toEqual([]);
+   });
+ });
+ 
+diff --git a/tests/unit/orchestration/chat/module-observers.test.ts b/tests/unit/orchestration/chat/module-observers.test.ts
+index 7f13363..0e41294 100644
+--- a/tests/unit/orchestration/chat/module-observers.test.ts
++++ b/tests/unit/orchestration/chat/module-observers.test.ts
+@@ -34,8 +34,8 @@ test("the selection is read at construction and turn boundaries, never per strea
+   } }
+   const observers = createModuleChatObservers(() => selection, context())
+   observers.onEvent({ type: "text" })
+-  observers.onEvent({ type: "other" })
+-  expect(events).toEqual(["text", "other"])
++  observers.onEvent({ type: "result" })
++  expect(events).toEqual(["text", "result"])
+   expect(reads).toBe(1)
+   await observers.onTurnComplete("turn_end")
+   expect(reads).toBe(2)
+diff --git a/tests/unit/orchestration/workflow-host/worker-callback.test.ts b/tests/unit/orchestration/workflow-host/worker-callback.test.ts
+index fe0d6a9..f7c1a41 100644
+--- a/tests/unit/orchestration/workflow-host/worker-callback.test.ts
++++ b/tests/unit/orchestration/workflow-host/worker-callback.test.ts
+@@ -62,7 +62,7 @@ async function agentStore(dir: string) {
+ /** A member worker built with the executor's command handover. */
+ function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover: CommandHandoverAuthority, emit: EmitFn = createEmit(new EventBus()), inputs = workflowAgentInputs(commandHandover.projectionReader, WORKFLOW), resolvedAgents: ReadonlyMap<string, ResolvedAgent> = resolveWorkflowAgents(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+   id: "wf", name: "Workflow", phases: [{ phase: "work", brief: "Do the work.", name: "Work" }],
+-})), personas: ReadonlyMap<string, AgentDefinition> = new Map(), onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void, workflowId = WORKFLOW) {
++})), personas: ReadonlyMap<string, AgentDefinition> = new Map(), onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void, workflowId = WORKFLOW, overrides: Partial<Pick<Parameters<typeof createWorkerCallback>[0], "attachChildProjection" | "createObserverChain">> = {}) {
+   const { accountHome, userDataRoot } = testDirectories(dir)
+   return createWorkerCallback({
+     ...makeWorkflowDeps(),
+@@ -95,6 +95,7 @@ function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover:
+     recall: async () => ({ hits: [] }),
+     commandHandover,
+     resolvedAgents,
++    ...overrides,
+   }).worker
+ }
+ 
+@@ -376,6 +377,41 @@ describe("a step's loop notices", () => {
+     expect(retried.toolUses).toBe(2)
+     store.close()
+   })
++
++  it("restate operations and feed observers only for events that change them", async () => {
++    const dir = temporary("step-forward-work-")
++    const store = await agentStore(dir)
++    const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
++    const operations: number[] = []
++    const observed: string[] = []
++    const createAgent: AgentFactory = (options) => {
++      const done = Promise.withResolvers<Awaited<Agent["done"]>>()
++      return {
++        async send() {
++          for (let index = 0; index < 50; index++) {
++            options.onEvent?.(createRuntimeEvent("model.content.delta", { type: "model.content.delta", delta: index % 2 === 0 ? { type: "text_delta", text: "x" } : { type: "thinking_delta", thinking: "x" }, block_key: "answer" }))
++          }
++          options.onEvent?.(createRuntimeEvent("tool.input.completed", { type: "tool.input.completed", model_request_id: "request-1", tool_use: { id: "call-1", name: "read", provider_call_id: "call-1", provider_tool_name: "read", executable_tool_name: "read", input: {}, execution: { mode: "foreground", trace_kind: "tool" } } }))
++          done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } })
++        },
++        end() {},
++        abort() {},
++        get done() { return done.promise },
++      }
++    }
++    const worker = handoverWorker(dir, createAgent, authority, undefined, undefined, undefined, undefined, undefined, WORKFLOW, {
++      attachChildProjection: async () => ({
++        onEvent() {}, lifecycle: {}, queueUserMessage() {}, updateMetrics() {}, updateBackgroundCommands() {}, updateForegroundBash() {},
++        updateOperations: (count) => { operations.push(count) }, dispose: async () => {},
++      }),
++      createObserverChain: () => ({ onEvent: (event) => { observed.push(event.type) }, onTurnComplete: async () => [], reset() {} }),
++    })
++
++    await worker(STEP, "work", "", undefined, CONVERSATION)
++    expect(operations).toEqual([0, 1])
++    expect(observed).toEqual(["tool_use"])
++    store.close()
++  })
+ })
+ 
+ describe("a step's persona grant", () => {

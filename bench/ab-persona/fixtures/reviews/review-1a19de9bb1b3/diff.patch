@@ -1,0 +1,544 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 53488a6..e98f1e3 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -25,7 +25,7 @@
+ - Startup responsiveness is load-bearing. Keep first-frame rendering, prompt input, and chat runner readiness free of noncritical synchronous work and contention. Defer optional initialization, maintenance, preloading, and views through owned background or lazy execution with contained failures. A change that can affect startup must pass `bun run test:perf`; a measured startup regression greater than 20% is never acceptable.
+ - Interactive clients attach through the one resident `flywheel serve` account service. It is the only production serving owner, opens isolated project compositions on demand, and owns dormant remote wake. Do not add per-project server rendezvous, serving processes, launch aliases, or a second remote coordinator.
+ - Local token counting uses the one committed universal tokenizer asset. Release and readiness rebuild it once from source, verify it, and reuse it in every archive. Each archive places it in the native directory of the immutable build, and the runtime loads it lazily from there. Ordinary development, startup, and token counting require neither Rust nor a tokenizer network request.
+-- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file.
++- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file. A derived database that rebuilds from the store, such as the session-summary index, the conversation search index, or the projection fold cache, is not durable user state: it keys what it keeps by the code identity or version that wrote it, and an entry it cannot prove current is a miss that rebuilds, with no conversion, dated comment, or warning.
+ - Flywheel supports macOS, Linux, and Windows as first-class platforms. Preserve platform-specific workarounds unless the user explicitly authorizes changing that compatibility contract. Every repository-owned Bun process launch in production code, tests, scripts, and benchmarks must state `windowsHide: true`; Windows job-object, console-hiding, ACL, path, and process-tree behavior is load-bearing. Platform compatibility tests and guards are locked acceptance contracts: when one fails after a change, fix the implementation. Never delete, skip, weaken, or rewrite the expected behavior to make it pass. If the implementation cannot satisfy the contract, stop and report a blocker.
+ 
+ ---
+diff --git a/docs/architecture-intent/substrate.md b/docs/architecture-intent/substrate.md
+index 4e90d29..9debb2c 100644
+--- a/docs/architecture-intent/substrate.md
++++ b/docs/architecture-intent/substrate.md
+@@ -18,7 +18,7 @@ Not: A status field, shadow record, or per-session file that is written independ
+ 
+ ## ARCH-SUBSTRATE-003: Projections and caches are rebuildable views
+ 
+-Workflow state, session summaries, accumulated context, budgets, metrics, and inspection surfaces are projections over their owning facts. Snapshots, indexes, materialized views, and caches may accelerate reads, but each identifies the fact prefix or content identity it was built from and stays rebuildable and non-authoritative. A stored representation that cannot be rebuilt from its declared inputs is an authority and is governed as one. Inspection surfaces read projections and keep links to their source facts.
++Workflow state, session summaries, accumulated context, budgets, metrics, and inspection surfaces are projections over their owning facts. Snapshots, indexes, materialized views, persisted folds, and caches may accelerate reads, but each records the fact prefix or content identity and the code identity it was built from, stays rebuildable and non-authoritative, and is a miss, never a conversion or a warning, when it cannot prove those inputs current. A stored representation that cannot be rebuilt from its declared inputs is an authority and is governed as one. Inspection surfaces read projections and keep links to their source facts.
+ 
+ Not: Treating rendered output, indexes, snapshots, or runtime caches as authority because they are recorded.
+ 
+@@ -96,7 +96,7 @@ Not: A durable rendered-output index or a separate durable transcript for workfl
+ 
+ ## ARCH-SUBSTRATE-016: Projections are registered, held, and advanced
+ 
+-Every projection registers its lifetime with the projection registry and is held under a key that names its family and every id it closes over; it is never built per call, because rebuilding one discards its cursor and repeats history. A reader that does not feed a projection reads it by replay, which folds only new facts and sees other processes' commits. Only the owner that feeds a projection reads its current state directly.
++Every projection registers its lifetime with the projection registry and is held under a key that names its family and every id it closes over; it is never built per call, because rebuilding one discards its cursor and repeats history. A held projection may begin from a persisted fold of its own key and placement that proves itself current (ARCH-SUBSTRATE-003, ARCH-SUBSTRATE-046) and advances from there. A reader that does not feed a projection reads it by replay, which folds only new facts and sees other processes' commits. Only the owner that feeds a projection reads its current state directly.
+ 
+ Not: Constructing a projection inside a request or change handler.
+ 
+@@ -120,9 +120,9 @@ Not: A second writer connection for maintenance or for the executor.
+ 
+ A read that the executor answers from its local window of committed facts is never older than a read of the store at the time of the call. A foreign commit, a notification gap, or a detached transport re-anchors the window, a read that the window cannot answer exactly goes to the state Worker, and a closed transport ends the window.
+ 
+-## ARCH-SUBSTRATE-020: Search and summary indexes are separate derived databases
++## ARCH-SUBSTRATE-020: Search and summary indexes and the fold cache are separate derived databases
+ 
+-The session-summary index and the conversation full-text index are separate rebuildable databases derived from primary facts, which remain the only authority. Neither adds an index to the primary store or work to the primary append path. Their replay is bounded, yields between pages, and never blocks the reads that their Worker serves, and malformed history degrades only its own session's scope.
++The session-summary index, the conversation full-text index, and the projection fold cache are separate rebuildable databases derived from primary facts, which remain the only authority, and each belongs to its store's state generation. None adds an index to the primary store or work to the primary append path. Index replay is bounded, yields between pages, and never blocks the reads that their Worker serves, and malformed history degrades only its own session's scope.
+ 
+ ## ARCH-SUBSTRATE-021: An oversized durable request is a local persistence refusal
+ 
+@@ -235,3 +235,11 @@ Because: Claiming that a call without a recorded result ran would steer the resu
+ ## ARCH-SUBSTRATE-045: The kernel orders migrations and modules transform
+ 
+ The kernel owns the order in which historical migrations run and the exclusion of the workspace while they run. Each module owns only the transformation of its own facts and never schedules or locks history itself.
++
++## ARCH-SUBSTRATE-046: Every rewrite of stored facts advances its scope's rewrite generation
++
++The primary store itself advances a rewrite generation for the aggregate and family of every fact that any connection updates or deletes, in the same transaction, so no maintenance, migration, or recovery path can skip it. Deleting an aggregate always advances its generation. A derived database that reuses state folded from facts proves that the generation of its scope is unchanged since its first folded fact, and ignores a deletion of rows of a replace-only family inside a living aggregate, which removes only rows that no fold keeps: superseded rows and versions that the current code cannot fold.
++
++Because: A rewrite path that must remember to announce itself is one forgotten line from a silently stale cache.
++
++Not: An appended statement fact per rewrite, which representation-only passes and history discards do not write.
+diff --git b/src/infra/prefix-view.ts b/src/infra/prefix-view.ts
+new file mode 100644
+index 0000000..527173d
+--- /dev/null
++++ b/src/infra/prefix-view.ts
+@@ -0,0 +1,47 @@
++/** One entry of a `PrefixView`'s shared index. */
++interface PrefixEntry<V> {
++  readonly key: string
++  readonly value: V
++}
++
++/** The first `size` entries of an append-only index of values by key. Every
++ *  view taken from one fold shares the index, so a fold state that holds a
++ *  view keeps its meaning while later folds append, and an append costs one
++ *  entry instead of a copy of the whole index. A view is immutable: an append
++ *  returns a new view. Plain (objects, arrays, Maps, and primitives only), so
++ *  a persisted fold can hold it. */
++export interface PrefixView<V> {
++  readonly index: {
++    readonly ordinals: Map<string, number>
++    readonly entries: PrefixEntry<V>[]
++  }
++  readonly size: number
++}
++
++export function emptyPrefixView<V>(): PrefixView<V> {
++  return { index: { ordinals: new Map(), entries: [] }, size: 0 }
++}
++
++/** The value that `view` holds for `key`, or undefined when `key` was
++ *  appended after the view was taken or never. */
++export function prefixGet<V>(view: PrefixView<V>, key: string): V | undefined {
++  const ordinal = view.index.ordinals.get(key)
++  return ordinal !== undefined && ordinal < view.size ? view.index.entries[ordinal]?.value : undefined
++}
++
++/** `view` with `key` appended. Requires that `view` does not hold `key`.
++ *
++ *  Only the newest state of a fold folds on, so the entries past `view.size`
++ *  belong to no live state: a copy of an earlier state taken after a later
++ *  fold appended, such as a persisted fold, carries them. They are dropped
++ *  first, and since a key is appended only when the view does not hold it,
++ *  no dropped key has an entry inside the view. */
++export function prefixAppend<V>(view: PrefixView<V>, key: string, value: V): PrefixView<V> {
++  const { index, size } = view
++  for (const dropped of index.entries.splice(size)) {
++    index.ordinals.delete(dropped.key)
++  }
++  index.ordinals.set(key, size)
++  index.entries.push({ key, value })
++  return { index, size: size + 1 }
++}
+diff --git a/src/infra/projection-registry.ts b/src/infra/projection-registry.ts
+index a49d0a7..13453b1 100644
+--- a/src/infra/projection-registry.ts
++++ b/src/infra/projection-registry.ts
+@@ -1,3 +1,4 @@
++import { bindHeldKey } from "./event-projection.js"
+ import type { AsyncEventReadSurface } from "./event-store-types.js"
+ 
+ /** The one owner of a projection's lifetime.
+@@ -47,6 +48,9 @@ const HELD_PER_FAMILY: ReadonlyMap<string, number> = new Map([
+   // switches between" working set, sized against the same kind of state.
+   ["conversation-tree", 8],
+   ["tool-execution", 8],
++  // The children whose cards one large chat shows, each a small fold. A child
++  // evicted past this bound starts again from its persisted fold, if any.
++  ["subagent-measure", 256],
+ ])
+ const DEFAULT_HELD_PER_FAMILY = 64
+ 
+@@ -109,6 +113,7 @@ export function heldProjection<P extends object>(
+   }
+ 
+   const projection = create()
++  bindHeldKey(projection, key)
+   held.set(key, { projection })
+   if (held.size > (HELD_PER_FAMILY.get(family) ?? DEFAULT_HELD_PER_FAMILY)) {
+     // The least recently used key that no owner pins. A family whose keys are
+diff --git a/src/orchestration/modules/subagents/history/child-measures.ts b/src/orchestration/modules/subagents/history/child-measures.ts
+index deff785..0cf2abc 100644
+--- a/src/orchestration/modules/subagents/history/child-measures.ts
++++ b/src/orchestration/modules/subagents/history/child-measures.ts
+@@ -1,7 +1,9 @@
+-import { CorruptEventRowError, type AsyncEventReadSurface, type FactQuery, type StoredFact } from "../../../../infra/event-store-types.js"
++import { createEventProjection } from "../../../../infra/event-projection.js"
++import type { AsyncEventReadSurface, CorruptEventRowError, StoredFact } from "../../../../infra/event-store-types.js"
+ import { InvariantViolation } from "../../../../infra/invariant.js"
+-import { createMicrotaskBatch } from "../../../../infra/microtask-batch.js"
+-import { createOrderedLane } from "../../../../infra/ordered-lane.js"
++import { emptyPrefixView, prefixAppend, prefixGet, type PrefixView } from "../../../../infra/prefix-view.js"
++import { heldProjection } from "../../../../infra/projection-registry.js"
++import { fromCorruptRow, type CorruptRowSchema } from "../../../app-service/project-state-errors.js"
+ import { BUDGET_FACT_TYPES, initialBudgetProjectionState, reduceBudgetEvent, type BudgetProjectionState } from "../../../session/budget-projection.js"
+ import { countToolCall, initialToolCallCount, TOOL_EXECUTION_FACT_TYPES, type ToolCallCount } from "../../../session/tool-execution-projection.js"
+ 
+@@ -17,113 +19,90 @@ export interface ChildMeasure {
+ export interface ChildMeasureReader {
+   /** The measure of `childSessionId` before the fact `completionEventId`, or
+    *  through its newest committed fact when its history holds no such fact.
+-   *  The reads of one synchronous pass share one catch-up. Rejects with the
++   *  Reads of different children catch up concurrently. Rejects with the
+    *  row's error when the child's history holds a row this build cannot decode. */
+   read(childSessionId: string, completionEventId: string | undefined): Promise<ChildMeasure>
+ }
+ 
++/** One child's measured history, folded. Plain (objects, arrays, Maps, and
++ *  primitives only), so a persisted fold can hold it. A draft is a shallow
++ *  copy, and its prefix views keep each published state's figures while the
++ *  fold folds on. */
+ interface ChildFold {
+   budget: BudgetProjectionState
+   usage: boolean
+-  readonly tools: ToolCallCount
+   toolFacts: boolean
+   toolFailure: boolean
++  tools: ToolCallCount
+   /** The measure before each completion fact, by the completion's event id. */
+-  readonly completions: Map<string, ChildMeasure>
+-  corrupt?: CorruptEventRowError
++  completions: PrefixView<ChildMeasure>
++  /** The first row this build cannot decode. The fold stops there. */
++  corrupt?: typeof CorruptRowSchema.Type
++}
++
++/** The fold of one child's measured facts, for a projection of the child's
++ *  session aggregate. */
++export const CHILD_MEASURE_FOLD = {
++  factTypes: [...BUDGET_FACT_TYPES, ...TOOL_EXECUTION_FACT_TYPES, "subagent.completed"],
++  initialState(): ChildFold {
++    return {
++      budget: initialBudgetProjectionState(), usage: false, toolFacts: false, toolFailure: false,
++      tools: initialToolCallCount({ identityParity: true }), completions: emptyPrefixView(),
++    }
++  },
++  draft: (fold: ChildFold): ChildFold => ({ ...fold, tools: { ...fold.tools } }),
++  reduce: foldFact,
++  reduceCorruptRow(fold: ChildFold, corrupt: CorruptEventRowError): ChildFold {
++    fold.corrupt ??= { row: corrupt.row, message: corrupt.message }
++    return fold
++  },
+ }
+ 
+-const MEASURED_FACT_TYPES = [...BUDGET_FACT_TYPES, ...TOOL_EXECUTION_FACT_TYPES, "subagent.completed"]
+ const BUDGET_FACT_TYPE_NAMES: readonly string[] = BUDGET_FACT_TYPES
+ 
+-/** One advancing fold of the child sessions a parent's cards measure. A child
+- *  is read from its start once, the first time a card asks for it; each later
+- *  catch-up reads only the measured facts committed after the last one, by
+- *  type alone, and routes each to its child by aggregate id. A change costs
+- *  what it committed whatever the child count or history length. */
++/** The measures of the child sessions a parent's cards ask about. Each child
++ *  is one held fold of its own measured facts: the first ask reads its history
++ *  once, and each later ask, from this reader or any other over the same
++ *  store, reads only the facts that child committed since. A change costs what
++ *  it committed whatever the child count or history length. */
+ export function createChildMeasureReader(reader: AsyncEventReadSurface): ChildMeasureReader {
+-  /** Folds by the child's session aggregate id. */
+-  const children = new Map<string, ChildFold>()
+-  let cursor = 0
+-  // Catch-ups run one at a time, because overlapping ones would fold the same facts twice.
+-  const lane = createOrderedLane()
+-  const load = createMicrotaskBatch((childSessionIds: readonly string[]) => lane.run(() => advance(childSessionIds)))
+-
+   return {
+     async read(childSessionId, completionEventId) {
+-      const fold = await load(childSessionId)
+-      if (fold.corrupt) throw fold.corrupt
+-      return (completionEventId === undefined ? undefined : fold.completions.get(completionEventId)) ?? measureOf(fold)
++      const key = `subagent-measure:${childSessionId}`
++      const projection = heldProjection(reader, key, () => createEventProjection(reader, { name: key, aggregateId: `session:${childSessionId}`, ...CHILD_MEASURE_FOLD }))
++      return measureBefore(await projection.replay(), completionEventId)
+     },
+   }
+-
+-  async function advance(childSessionIds: readonly string[]): Promise<ReadonlyMap<string, ChildFold>> {
+-    const head = await reader.capturePosition()
+-    const fresh = [...new Set(childSessionIds.map(sessionAggregateId))].filter((aggregateId) => !children.has(aggregateId))
+-    const [advanced, seeded] = await Promise.all([
+-      children.size > 0 && head > cursor ? readMeasuredFacts(reader, { aggregatePrefix: "session:", types: MEASURED_FACT_TYPES }, cursor, head) : [],
+-      fresh.length > 0 ? readMeasuredFacts(reader, { aggregateIds: fresh, types: MEASURED_FACT_TYPES }, 0, head) : [],
+-    ])
+-    // A fresh child joins after the advance, because its seed already holds
+-    // the facts that the advance read for it.
+-    route(advanced)
+-    for (const aggregateId of fresh) children.set(aggregateId, initialFold())
+-    route(seeded)
+-    cursor = head
+-    return new Map(childSessionIds.flatMap((childSessionId) => {
+-      const fold = children.get(sessionAggregateId(childSessionId))
+-      return fold ? [[childSessionId, fold]] : []
+-    }))
+-  }
+-
+-  function route(facts: readonly (StoredFact | CorruptEventRowError)[]): void {
+-    for (const fact of facts) {
+-      const fold = children.get(fact instanceof CorruptEventRowError ? fact.row.aggregateId : fact.aggregateId)
+-      if (!fold || fold.corrupt) continue
+-      if (fact instanceof CorruptEventRowError) fold.corrupt = fact
+-      else foldFact(fold, fact)
+-    }
+-  }
+-}
+-
+-function sessionAggregateId(childSessionId: string): string {
+-  return `session:${childSessionId}`
+-}
+-
+-/** The facts of `query` after `afterPosition`, through `upperPosition`. */
+-async function readMeasuredFacts(reader: AsyncEventReadSurface, query: FactQuery, afterPosition: number, upperPosition: number): Promise<(StoredFact | CorruptEventRowError)[]> {
+-  const facts: (StoredFact | CorruptEventRowError)[] = []
+-  let after = afterPosition
+-  for (;;) {
+-    const page = await reader.readPage(query, upperPosition, after, true, "deferred")
+-    facts.push(...page.facts)
+-    if (page.continuationPosition === null) return facts
+-    after = page.continuationPosition
+-  }
+ }
+ 
+-function initialFold(): ChildFold {
+-  return { budget: initialBudgetProjectionState(), usage: false, tools: initialToolCallCount({ identityParity: true }), toolFacts: false, toolFailure: false, completions: new Map() }
++/** The measure that `fold` states before the completion `completionEventId`,
++ *  or through its last folded fact when it holds no such completion. Throws
++ *  the row's error when the fold stopped at a row this build cannot decode. */
++export function measureBefore(fold: ChildFold, completionEventId: string | undefined): ChildMeasure {
++  if (fold.corrupt) throw fromCorruptRow(fold.corrupt)
++  return (completionEventId === undefined ? undefined : prefixGet(fold.completions, completionEventId)) ?? measureOf(fold)
+ }
+ 
+-function foldFact(fold: ChildFold, fact: StoredFact): void {
++function foldFact(fold: ChildFold, fact: StoredFact): ChildFold {
++  if (fold.corrupt) return fold
+   if (fact.type === "subagent.completed") {
+-    fold.completions.set(fact.id, measureOf(fold))
+-    return
++    fold.completions = prefixAppend(fold.completions, fact.id, measureOf(fold))
++    return fold
+   }
+   if (BUDGET_FACT_TYPE_NAMES.includes(fact.type)) {
+     fold.budget = reduceBudgetEvent(fold.budget, fact)
+     fold.usage = true
+-    return
++    return fold
+   }
+   fold.toolFacts = true
+-  if (fold.toolFailure) return
++  if (fold.toolFailure) return fold
+   try {
+     countToolCall(fold.tools, fact)
+   } catch (error) {
+     if (!(error instanceof InvariantViolation)) throw error
+     fold.toolFailure = true
+   }
++  return fold
+ }
+ 
+ function measureOf(fold: ChildFold): ChildMeasure {
+diff --git a/src/orchestration/modules/subagents/history/tool-summary.ts b/src/orchestration/modules/subagents/history/tool-summary.ts
+index 983f07c..4130d4a 100644
+--- a/src/orchestration/modules/subagents/history/tool-summary.ts
++++ b/src/orchestration/modules/subagents/history/tool-summary.ts
+@@ -17,7 +17,7 @@ const log = Log.create({ service: "subagent-tool-summary" })
+  * owns incremental folding; summaries retain identity until their source changes.
+  * A replay reads only the run facts and the conversation entries committed
+  * since the last one, and summarizes only the calls they change; `measure`
+- * advances one fold of the histories of the children whose cards a reader
++ * advances the held fold of the history of each child whose card a reader
+  * asks about. */
+ export function createSubagentToolSummaryReader(reader: AsyncEventStateReadSurface, sessionId: string): SessionToolSummaryReader {
+   const runs = createSubagentRunsByToolUseIdCursorReader(reader, sessionId)
+diff --git a/src/orchestration/session/tool-execution-projection.ts b/src/orchestration/session/tool-execution-projection.ts
+index 04aa960..14f7338 100644
+--- a/src/orchestration/session/tool-execution-projection.ts
++++ b/src/orchestration/session/tool-execution-projection.ts
+@@ -2,6 +2,7 @@ import { createEventProjection, parseProjectionFact, type EventProjection, reduc
+ import { heldProjection } from "../../infra/projection-registry.js"
+ import type { AsyncEventReadSurface, AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js"
+ import { InvariantViolation } from "../../infra/invariant.js"
++import { emptyPrefixView, prefixAppend, prefixGet, type PrefixView } from "../../infra/prefix-view.js"
+ import { installedRuntimeInvocationTool } from "../module-catalog.js"
+ import { storedToolCallIdentity } from "../../infra/tool-content-hydration.js"
+ import { workflowCallLaunched } from "../../infra/tools/workflow-call-source.js"
+@@ -47,10 +48,12 @@ export function createToolExecutionProjection(
+  *  fact names, since identity parity refuses a later fact that names another.
+  *  So a call counts once, at its first fact. With `identityParity`, the count
+  *  applies that same refusal to a call's later follow-ups; the session's
+- *  tool-execution projection owns every other check of the same history. */
++ *  tool-execution projection owns every other check of the same history.
++ *  A copy of a count shares its calls' index, so a fold can publish each
++ *  state as a shallow copy that keeps its count while the fold counts on. */
+ export interface ToolCallCount {
+   /** The identity that each call's first fact names, by call id. */
+-  readonly calls: Map<string, ToolCallIdentity>
++  calls: PrefixView<ToolCallIdentity>
+   topLevel: number
+   readonly identityParity: boolean
+ }
+@@ -68,7 +71,7 @@ interface ToolCallFact extends ToolCallIdentity {
+ }
+ 
+ export function initialToolCallCount(options: { readonly identityParity?: boolean } = {}): ToolCallCount {
+-  return { calls: new Map(), topLevel: 0, identityParity: options.identityParity ?? false }
++  return { calls: emptyPrefixView(), topLevel: 0, identityParity: options.identityParity ?? false }
+ }
+ 
+ /** Folds one tool-execution fact into `count`. The fact is read before the
+@@ -79,9 +82,9 @@ export function initialToolCallCount(options: { readonly identityParity?: boolea
+ export function countToolCall(count: ToolCallCount, stored: StoredFact): void {
+   const call = toolCallOf(stored)
+   if (call === undefined) return
+-  const first = count.calls.get(call.toolUseId)
++  const first = prefixGet(count.calls, call.toolUseId)
+   if (first === undefined) {
+-    count.calls.set(call.toolUseId, {
++    count.calls = prefixAppend(count.calls, call.toolUseId, {
+       ...(call.parentToolUseId ? { parentToolUseId: call.parentToolUseId } : {}),
+       ...(call.modelRequestId ? { modelRequestId: call.modelRequestId } : {}),
+     })
+@@ -90,7 +93,7 @@ export function countToolCall(count: ToolCallCount, stored: StoredFact): void {
+     return
+   }
+   if (!count.identityParity || call.opens) return
+-  const asserted = stored.type === "tool.execution_output.recorded" ? withoutForeignDispatchParent((toolUseId) => count.calls.has(toolUseId), first, call) : call
++  const asserted = stored.type === "tool.execution_output.recorded" ? withoutForeignDispatchParent((toolUseId) => prefixGet(count.calls, toolUseId) !== undefined, first, call) : call
+   requireIdentityParity(first, asserted, stored)
+ }
+ 
+diff --git b/tests/unit/orchestration/modules/subagents/child-measures.test.ts b/tests/unit/orchestration/modules/subagents/child-measures.test.ts
+new file mode 100644
+index 0000000..9eca9f7
+--- /dev/null
++++ b/tests/unit/orchestration/modules/subagents/child-measures.test.ts
+@@ -0,0 +1,63 @@
++import { afterEach, beforeEach, expect, test } from "bun:test"
++import { mkdtempSync, rmSync } from "node:fs"
++import { tmpdir } from "node:os"
++import { join } from "node:path"
++import { createEventProjection } from "../../../../../src/infra/event-projection.js"
++import { asAsyncEventReadSurface, type EventStore } from "../../../../../src/infra/event-store-types.js"
++import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
++import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
++import { CHILD_MEASURE_FOLD, measureBefore } from "../../../../../src/orchestration/modules/subagents/history/child-measures.js"
++
++let directory: string
++let store: EventStore
++const childSessionId = "child"
++
++beforeEach(() => {
++  directory = mkdtempSync(join(tmpdir(), "child-measures-"))
++  store = createSqliteEventStore(resolveEventStoreDbFile(directory))
++})
++afterEach(() => {
++  store.close()
++  rmSync(directory, { recursive: true, force: true })
++})
++
++function call(toolUseId: string, modelRequestId: string): void {
++  store.append({
++    aggregateId: `session:${childSessionId}`, sessionId: childSessionId, type: "tool.input.completed", version: 1, actor: "agent", timestamp: 10,
++    payload: { toolUseId, toolName: "read", modelRequestId, input: { path: "a" }, inputBytes: 2, inputSha256: "sha", inputPreview: "{}", executionMode: "foreground", traceKind: "tool", childHasOwnViewport: false },
++  })
++}
++function output(toolUseId: string, modelRequestId: string): void {
++  store.append({
++    aggregateId: `session:${childSessionId}`, sessionId: childSessionId, type: "tool.execution_output.recorded", version: 1, actor: "flywheel", timestamp: 11,
++    payload: { toolUseId, output: "tail", modelRequestId },
++  })
++}
++
++test("an earlier state keeps its count after a later catch-up adds calls, and a copy of it folds on to the same count", async () => {
++  const reader = asAsyncEventReadSurface(store)
++  const projection = createEventProjection(reader, { aggregateId: `session:${childSessionId}`, ...CHILD_MEASURE_FOLD })
++  call("first", "request-1")
++  const earlier = await projection.replay()
++  const earlierPosition = projection.getPosition()
++  expect(measureBefore(earlier, undefined)).toEqual({ toolCount: 1 })
++
++  call("second", "request-2")
++  call("third", "request-3")
++  const later = await projection.replay()
++  expect(measureBefore(later, undefined)).toEqual({ toolCount: 3 })
++  expect(measureBefore(earlier, undefined)).toEqual({ toolCount: 1 })
++
++  // A persisted fold can copy the earlier state after the later catch-up
++  // appended to the index it shares. Folding on from that copy refolds the
++  // later calls, counts each once, and reads each call's own identity when
++  // its follow-up arrives.
++  const restored = createEventProjection(reader, {
++    aggregateId: `session:${childSessionId}`, ...CHILD_MEASURE_FOLD,
++    seed: () => ({ state: structuredClone(earlier), position: earlierPosition }),
++  })
++  expect(measureBefore(await restored.replay(), undefined)).toEqual({ toolCount: 3 })
++  call("fourth", "request-4")
++  output("fourth", "request-4")
++  expect(measureBefore(await restored.replay(), undefined)).toEqual({ toolCount: 4 })
++})
+diff --git a/tests/unit/orchestration/modules/subagents/tool-summary.test.ts b/tests/unit/orchestration/modules/subagents/tool-summary.test.ts
+index fd76016..28fc928 100644
+--- a/tests/unit/orchestration/modules/subagents/tool-summary.test.ts
++++ b/tests/unit/orchestration/modules/subagents/tool-summary.test.ts
+@@ -139,10 +139,11 @@ test("a replay after nothing was appended reads no facts, and the next append is
+   expect((await reader.replay()).summaries.get("child")).toMatchObject({ status: "completed" })
+ })
+ 
+-test("a replay reads no child's history, and the runs measured together share one read", async () => {
++test("a replay reads no child's history, and each measured child's history is read once per reader", async () => {
+   // A chat with hundreds of subagents asks for its cards on every transcript
+   // read. With the store behind the state Worker, each read is a round trip,
+-  // so only the cards a reader states are measured.
++  // so only the cards a reader states are measured, and a child's measure is
++  // a held fold that a later reader advances instead of reading again.
+   const parent = "parent"
+   const children = 12
+   for (let index = 0; index < children; index += 1) {
+@@ -161,27 +162,41 @@ test("a replay reads no child's history, and the runs measured together share on
+       payload: { childRunId: `run-${index}`, status: "completed", isError: false, durationMs: 10, totalTokens: 20, toolUses: 2, result: "r", resultBytes: 1, resultSha256: "sha", resultPreview: "r" },
+     })
+   }
+-  const local = asAsyncEventReadSurface(store)
+-  const historyReads: string[][] = []
+-  const counted = {
+-    ...local,
+-    readPage: (...args: Parameters<typeof local.readPage>) => {
+-      if (args[0].aggregateIds && args[0].types?.includes("tool.input.completed")) historyReads.push([...args[0].aggregateIds])
+-      return local.readPage(...args)
+-    },
+-  }
+-  const snapshot = await createSessionToolSummaryReader(counted, parent, [subagentsModule]).replay()
++  const counter = countStateRequests(asAsyncEventReadSurface(store))
++  /** The facts each child's history reads returned, by child aggregate id. */
++  const historyFacts = () => counter.take()
++    .filter((request) => request.method === "readPage" && request.query?.types?.includes("tool.input.completed"))
++    .map((request) => [request.aggregateId ?? request.query?.aggregateIds?.join(",") ?? "", request.facts] as const)
++    .filter(([aggregateIds]) => aggregateIds.includes(`${parent}-child-`))
++    .sort(([left], [right]) => left.localeCompare(right))
++  const snapshot = await createSessionToolSummaryReader(counter.reader, parent, [subagentsModule]).replay()
+   expect(snapshot.summaries.size).toBe(children)
+   expect(snapshot.summaries.get("toolu_0")).toMatchObject({ status: "completed", totalToolCount: 2, totalTokens: 20 })
+-  expect(historyReads).toEqual([])
++  expect(historyFacts()).toEqual([])
+ 
+-  const asked = ["toolu_3", "toolu_7"].map((id) => snapshot.summaries.get(id)).filter((summary) => summary !== undefined)
++  const askedIds = ["toolu_3", "toolu_7"]
++  const asked = askedIds.map((id) => snapshot.summaries.get(id)).filter((summary) => summary !== undefined)
+   const measured = await Promise.all(asked.map((summary) => snapshot.measure(summary)))
+   expect(measured).toEqual(asked.map((summary) => ({ ...summary, totalToolCount: 1 })))
+-  expect(historyReads).toEqual([[`session:${parent}-child-3`, `session:${parent}-child-7`]])
++  // Each child reads its own measured history, a tool input and a completion.
++  expect(historyFacts()).toEqual([[`session:${parent}-child-3`, 2], [`session:${parent}-child-7`, 2]])
+   // A summary measured again is the same measured summary, read once.
+   for (const summary of asked) expect(measured).toContain(await snapshot.measure(summary))
+-  expect(historyReads).toHaveLength(1)
++  expect(historyFacts()).toEqual([])
++
++  // Another reader of the same store, such as the next transcript of the
++  // parent, advances the held folds: an unchanged child reads no fact, and a
++  // child that worked reads only its new fact.
++  store.append({
++    aggregateId: `session:${parent}-child-3`, sessionId: `${parent}-child-3`, type: "tool.input.completed", version: 1, actor: "agent", timestamp: 12,
++    payload: { toolUseId: `${parent}-child-3-late`, toolName: "read", input: { path: "a" }, inputBytes: 2, inputSha256: "sha", inputPreview: "{}", executionMode: "foreground", traceKind: "tool", childHasOwnViewport: false },
++  })
++  const next = await createSessionToolSummaryReader(counter.reader, parent, [subagentsModule]).replay()
++  counter.take()
++  const remeasured = await Promise.all(askedIds.flatMap((id) => next.summaries.get(id) ?? []).map((summary) => next.measure(summary)))
++  // The late call follows the completion, so the card still states the work before it.
++  expect(remeasured.map((summary) => summary.totalToolCount)).toEqual([1, 1])
++  expect(historyFacts()).toEqual([[`session:${parent}-child-3`, 1], [`session:${parent}-child-7`, 0]])
+ })
+ 
+ test("a change costs the same requests, facts, aggregate ids, and members whatever the child count and history length", async () => {
+diff --git a/tests/unit/orchestration/session/tool-execution-identity-projection.test.ts b/tests/unit/orchestration/session/tool-execution-identity-projection.test.ts
+index 0745bb3..4fbc8c1 100644
+--- a/tests/unit/orchestration/session/tool-execution-identity-projection.test.ts
++++ b/tests/unit/orchestration/session/tool-execution-identity-projection.test.ts
+@@ -250,7 +250,7 @@ describe("tool execution identity projection", () => {
+         const state = await createToolExecutionProjection(store, sessionId).replay();
+         for (const count of [initialToolCallCount(), initialToolCallCount({ identityParity: true })]) {
+           for (const fact of store.read({ aggregateId: `session:${sessionId}`, types: TOOL_EXECUTION_FACT_TYPES })) countToolCall(count, fact);
+-          expect({ sessionId, calls: [...count.calls.keys()].toSorted(), topLevel: count.topLevel }).toEqual({
++          expect({ sessionId, calls: count.calls.index.entries.slice(0, count.calls.size).map(({ key }) => key).toSorted(), topLevel: count.topLevel }).toEqual({
+             sessionId,
+             calls: Object.keys(state.tools).toSorted(),
+             topLevel: Object.values(state.tools).filter((tool) => !tool.parentToolUseId).length,

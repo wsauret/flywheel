@@ -1,0 +1,97 @@
+{
+  "base": "e73add2b0c913475902ce47c8a3d6c981d4b475e",
+  "files": [
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "src/infra/event-store-types.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "src/orchestration/app-service/project-state-commit-window.ts",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/integration/local/executor-commit-stream-order.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/integration/local/project-lane-failure-recovery.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/unit/orchestration/app-service/event-read-surface-contract.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/unit/orchestration/app-service/project-execution-state.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/unit/orchestration/app-service/project-state-channel.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/unit/orchestration/app-service/project-state-client.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/unit/orchestration/app-service/project-state-commit-window.test.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "1a5a06930d7372d81f7d7be803747a5f0e0c0183",
+      "path": "tests/unit/orchestration/app-service/project-state-worker.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792951665217,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -138,10 +143,11 @@\n       // The store holds the payload's JSON form, which can differ from the\n       // appender's object: a key set to `undefined` survives the broadcast\n       // but not the store. A local read answers with the stored form.\n-      const json = JSON.stringify(fact.payload)\n-      if (json.length + FACT_OVERHEAD_BYTES <= MAX_HELD_FACT_BYTES) {\n-        held = { json, fields: storedFields(fact) }\n-        bytes += json.length\n+      const json = JSON.stringify({ ...storedFields(fact), payload: fact.payload })\n+      const jsonBytes = heapBytes(json)\n+      if (jsonBytes + FACT_OVERHEAD_BYTES <= MAX_HELD_FACT_BYTES) {\n+        held = json\n+        bytes += jsonBytes\n       }\n     }\n     const entry: Entry = { position: fact.position, aggregateId: fact.aggregateId, type: fact.type, sessionId: fact.sessionId, family, bytes, held }",
+              "mutation": "3d0d36da-e488-4cfd-8190-a67530ef2537",
+              "path": "src/orchestration/app-service/project-state-commit-window.ts"
+            },
+            {
+              "hunk": "@@ -333,15 +338,11 @@\n   }\n }\n \n-/** The held fact, decoded on its first read and shared by every later one,\n- *  as one broadcast is shared by every listener. */\n-function materialize(entry: Entry): StoredFact | undefined {\n-  const held = entry.held\n-  if (!held) return undefined\n-  if (\"fact\" in held) return held.fact\n-  const fact = { ...held.fields, payload: JSON.parse(held.json) }\n-  entry.held = { fact }\n-  return fact\n+/** The heap bytes of a string's characters. The engine stores a string with\n+ *  only Latin-1 characters in one byte per character and any other string\n+ *  in two. */\n+function heapBytes(text: string): number {\n+  return /[^\\u0000-\\u00ff]/.test(text) ? text.length * 2 : text.length\n }\n \n function append(map: Map<string, EntryList>, key: string, entry: Entry): void {",
+              "mutation": "3d0d36da-e488-4cfd-8190-a67530ef2537",
+              "path": "src/orchestration/app-service/project-state-commit-window.ts"
+            },
+            {
+              "hunk": "@@ -343,7 +346,7 @@\n  *  only Latin-1 characters in one byte per character and any other string\n  *  in two. */\n function heapBytes(text: string): number {\n-  return /[^\\u0000-\\u00ff]/.test(text) ? text.length * 2 : text.length\n+  return /[\\u0100-\\uffff]/.test(text) ? text.length * 2 : text.length\n }\n \n function append(map: Map<string, EntryList>, key: string, entry: Entry): void {",
+              "mutation": "30e17396-630f-43f2-a0d6-104f2d5f3134",
+              "path": "src/orchestration/app-service/project-state-commit-window.ts"
+            }
+          ],
+          "label": "the-encoded-byte-counter-does-not-enforce-the-approved-memor",
+          "location": "src/orchestration/app-service/project-state-commit-window.ts:133-158,338-344",
+          "severity": "P1",
+          "title": "The encoded-byte counter does not enforce the approved memory budget"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "818744915ad1",
+      "persona": "reviewer-code-quality",
+      "run": "d9cfc3be3403",
+      "session": "97b2d49ea629",
+      "start": 1792951210873
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

@@ -1,0 +1,2012 @@
+diff --git a/src/infra/event-store-types.ts b/src/infra/event-store-types.ts
+index 86326e2..c90ae40 100644
+--- a/src/infra/event-store-types.ts
++++ b/src/infra/event-store-types.ts
+@@ -256,40 +256,6 @@ export interface EventStoreReadSurface extends EventReader {
+   readonly toolContent: ContentResolver
+   // oxlint-disable-next-line anti-slop/no-unknown-returns -- boundary: shared content readers validate raw immutable storage against referenced hashes and lengths.
+   readSessionContentNode?(sessionId: string, sha256: string): unknown | null
+-  /** What a persisted fold of `scope` must match to be current
+-   *  (ARCH-SUBSTRATE-046). Reads only the scope's aggregates and types. */
+-  foldEvidence(scope: FoldScope, anchorAt: number): FoldEvidence
+-}
+-
+-/** A scope whose fold may be persisted: named aggregates, families, or both.
+- *  A prefix scope has no cheap evidence, so no fold of one is persisted. */
+-export type FoldScope = Pick<FactQuery, "aggregateId" | "aggregateIds" | "types">
+-
+-/** One fact that names the history a fold has read: a different id at its
+- *  position means a different or rewound store. */
+-export interface FoldAnchor {
+-  readonly position: number
+-  readonly id: string
+-}
+-
+-/** Where the store stands for one projection scope. A persisted fold is
+- *  current only when all three still match what it recorded. */
+-export interface FoldEvidence {
+-  /** The store's newest position. */
+-  readonly head: number
+-  /** The count of updates and deletes of the scope's facts, without the
+-   *  deletes of superseded rows of a replace-only family, which never change
+-   *  a fold. Any other rewrite advances it. */
+-  readonly generation: number
+-  /** The newest fact of the scope at or below the requested position whose
+-   *  family keeps its history, or null when there is none. A typed scope
+-   *  never anchors on a replace-only family, whose rows a prune deletes. */
+-  readonly anchor: FoldAnchor | null
+-}
+-
+-/** Asks a page for the fold evidence of its query, anchored at `anchorAt`. */
+-export interface FoldEvidenceRequest {
+-  readonly anchorAt: number
+ }
+ 
+ interface AsyncEventReadSlice {
+@@ -300,10 +266,6 @@ interface AsyncEventReadSlice {
+ interface AsyncEventReadPage extends AsyncEventReadSlice {
+   readonly upperPosition: number
+   readonly continuationPosition: number | null
+-  /** Present when the request asked for it and the reader can read it. The
+-   *  reader reads it before the page's facts, so a rewrite between the two
+-   *  shows as a changed generation at the next evidence read. */
+-  readonly foldEvidence?: FoldEvidence
+ }
+ 
+ /** Ordered durable read boundary used by projections. One captured position
+@@ -323,16 +285,13 @@ export interface AsyncEventReadSurface {
+    * caps the rows of this page, not of the whole read; `pageReadQuery` owns
+    * these bounds. A strict page decodes every row it reads, its lookahead
+    * row included, and never reads a row past `upperPosition`. An absent
+-   * ceiling is captured in this first page and returned for continuations.
+-   * With `evidence`, the page also carries the fold evidence of `query`; a
+-   * reader that cannot read it returns the page without it. */
++   * ceiling is captured in this first page and returned for continuations. */
+   readPage(
+     query: FactQuery,
+     upperPosition: number | undefined,
+     afterPosition: number,
+     tolerant?: boolean,
+     content?: "eager" | "deferred",
+-    evidence?: FoldEvidenceRequest,
+   ): Promise<AsyncEventReadPage>
+ }
+ 
+@@ -410,7 +369,7 @@ export interface AsyncEventStateReadSurface extends AsyncEventReadSurface {
+ export interface EventReader {
+   read(query?: FactQuery): StoredFact[]
+   /** Tolerant variant for the sanctioned per-session-isolation consumers --
+-   *  the workspace session catalog and session repair (ARCH-BOUNDARIES-001 and ARCH-SUBSTRATE-013 permit
++   *  the workspace session catalog and session repair (ADR-005 permits
+    *  tolerant parsing only inside such contracts). Corrupt rows come back as
+    *  `CorruptEventRowError` values in sequence position instead of aborting
+    *  the whole read. */
+@@ -492,8 +451,7 @@ export function asAsyncEventReadSurface(store: EventReader | EventStoreReadSurfa
+       facts: tolerant ? store.readTolerant(query) : store.read(query),
+       toolContent: "toolContent" in store ? store.toolContent : NO_CONTENT,
+     }),
+-    readPage: async (query, upperPosition, afterPosition, tolerant, content, evidence) => {
+-      const foldEvidence = evidence && "foldEvidence" in store ? store.foldEvidence(query, evidence.anchorAt) : undefined
++    readPage: async (query, upperPosition, afterPosition, tolerant = false, content = "eager") => {
+       const ceiling = upperPosition ?? store.currentPosition()
+       const page = pageReadQuery(query, ceiling, afterPosition, LOCAL_READ_PAGE_ROWS)
+       // An idle page captures only the position, without querying fact rows.
+@@ -504,8 +462,7 @@ export function asAsyncEventReadSurface(store: EventReader | EventStoreReadSurfa
+         facts,
+         upperPosition: ceiling,
+         continuationPosition,
+-        toolContent: content !== "deferred" && "toolContent" in store ? store.toolContent : NO_CONTENT,
+-        ...(foldEvidence ? { foldEvidence } : {}),
++        toolContent: content === "eager" && "toolContent" in store ? store.toolContent : NO_CONTENT,
+       }
+     },
+   }
+@@ -528,7 +485,7 @@ interface EventWriter {
+ }
+ 
+ /** The fact-append surface every recorder targets. Aggregates that are
+- *  append-only by design (the chat tree, ARCH-SESSIONS-047) take exactly this, so
++ *  append-only by design (the chat tree, ADR-008) take exactly this, so
+  *  delete and prune are unrepresentable for them at the type level. */
+ export interface AsyncEventAppender {
+   append(event: EventStoreAppend): Promise<StoredFact>
+@@ -555,9 +512,10 @@ function isAsyncGuardedEventAppender(writer: AsyncEventAppender): writer is Asyn
+   )
+ }
+ 
+-/** Out-of-band maintenance for replace-only projections: superseded-row
+- *  pruning. Never part of the event-sourcing append path. */
++/** Out-of-band maintenance for replace-only projections: row deletion and
++ *  superseded-row pruning. Never part of the event-sourcing append path. */
+ interface AsyncEventMaintenance {
++  deleteByAggregateTypeAndRequestId(aggregateId: string, eventType: string, requestId: string, maxRows?: number): Promise<number>
+   pruneSupersededEvents(aggregateId: string, eventType: string): Promise<number>
+   /** Keyed sibling of `pruneSupersededEvents`: keep the newest row of
+    *  `eventType` per distinct `payloadKey` JSON-path value, delete the rest.
+@@ -613,6 +571,7 @@ export interface LocalSqliteEventStore extends EventStoreReadSurface, EventWrite
+    *  history disposable. Deletes the sequence authority so the next append
+    *  starts at seq 0, and returns the number of fact rows removed. */
+   deleteAggregate(aggregateId: string): number
++  deleteByAggregateTypeAndRequestId(aggregateId: string, eventType: string, requestId: string, maxRows?: number): number
+   /** Out-of-band maintenance: delete every row of `type` on `aggregateId`
+    *  except the latest, returning the number pruned. For replace-only
+    *  projections (where each event supersedes the prior) the older rows are
+@@ -654,6 +613,7 @@ type LocalEventWrites = {
+   appendBatch(events: readonly EventStoreAppend[]): StoredFact[] | Promise<StoredFact[]>
+   appendGuarded(event: GuardedEventStoreAppend): GuardedAppendResult | Promise<GuardedAppendResult>
+   appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): GuardedAppendResult | Promise<GuardedAppendResult>
++  deleteByAggregateTypeAndRequestId(aggregateId: string, eventType: string, requestId: string, maxRows?: number): number | Promise<number>
+   pruneSupersededEvents(aggregateId: string, eventType: string): number | Promise<number>
+   pruneSupersededKeyedEvents?(aggregateId: string, eventType: string, payloadKey: string): number | Promise<number>
+   putInFlight?(sessionId: string, kind: string, key: string, payload: unknown): void | Promise<void>
+@@ -684,6 +644,8 @@ export function asAsyncEventWriter(store: LocalEventWrites): AsyncGuardedEventWr
+       stageSessionContentNodes: async (sessionId: string, nodes: readonly SessionContentNodeRow[]) => { await stageNodes(sessionId, nodes) },
+     } : {}),
+     ...asAsyncEventAppender(store),
++    deleteByAggregateTypeAndRequestId: async (aggregateId, eventType, requestId, maxRows) =>
++      store.deleteByAggregateTypeAndRequestId(aggregateId, eventType, requestId, maxRows),
+     pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
+     ...(store.pruneSupersededKeyedEvents
+       ? { pruneSupersededKeyedEvents: async (aggregateId: string, eventType: string, payloadKey: string) => store.pruneSupersededKeyedEvents?.(aggregateId, eventType, payloadKey) ?? 0 }
+@@ -719,6 +681,7 @@ function isLocalEventWrites(store: EventReader): store is EventReader & LocalEve
+     "appendBatch" in store && typeof store.appendBatch === "function" &&
+     "appendGuarded" in store && typeof store.appendGuarded === "function" &&
+     "appendBatchGuarded" in store && typeof store.appendBatchGuarded === "function" &&
++    "deleteByAggregateTypeAndRequestId" in store && typeof store.deleteByAggregateTypeAndRequestId === "function" &&
+     "pruneSupersededEvents" in store && typeof store.pruneSupersededEvents === "function"
+   )
+ }
+diff --git a/src/orchestration/app-service/project-state-commit-window.ts a/src/orchestration/app-service/project-state-commit-window.ts
+deleted file mode 100644
+index ee2edc3..0000000
+--- a/src/orchestration/app-service/project-state-commit-window.ts
++++ /dev/null
+@@ -1,472 +0,0 @@
+-import { pageReadQuery, type FactQuery, type StoredFact } from "../../infra/event-store-types.js"
+-import { factRetention } from "../../infra/fact-retention-registry.js"
+-import { Log } from "../../infra/log.js"
+-import { coalesceRepeats } from "../../infra/repeat-coalescer.js"
+-import type { ToolContentRow } from "../../infra/tool-content.js"
+-import { boundedProjectStateSlice, isDegradedStoredFact, PROJECT_STATE_MAX_BYTES, PROJECT_STATE_MAX_PAGE_ROWS } from "./project-state-protocol.js"
+-
+-/** The heap the held facts retain (user decision). */
+-const RETAINED_BYTES = 8 * 1024 * 1024
+-/** A fact larger than this is indexed but not held, so one large fact cannot
+- *  push the rest of the window out. A read that matches it goes remote. */
+-const MAX_HELD_FACT_BYTES = 512 * 1024
+-/** The heap of one entry beside its JSON characters: the entry object, its
+- *  aggregate, type, session, and family strings, its held record, the five
+- *  index slots that hold it with their array growth slack, and the string
+- *  header of its JSON. Measured in Bun at about 345 bytes per fact, with
+- *  distinct strings for every fact, over 10,000 facts of 160 sessions and
+- *  20 types; the constant adds a margin. */
+-const FACT_OVERHEAD_BYTES = 384
+-/** The heap of one held content row beside its content characters: its
+- *  SHA-256 key and the JSON syntax around it. */
+-const CONTENT_ROW_OVERHEAD_BYTES = 96
+-/** Keys of the recency index. Each committed aggregate, type, family, and
+- *  session above the floor is one key; past this the window re-anchors. */
+-const MAX_RECENCY_KEYS = 65_536
+-const REANCHOR_REPORT_MS = 60_000
+-
+-/** The query fields a local read can answer. Any other field goes remote. */
+-const LOCAL_QUERY_FIELDS = new Set(["aggregateId", "aggregateIds", "aggregatePrefix", "sessionId", "types", "afterPosition", "beforePosition", "order", "limit"])
+-
+-interface Entry {
+-  readonly position: number
+-  readonly aggregateId: string
+-  readonly type: string
+-  readonly sessionId: string
+-  readonly family: string | undefined
+-  bytes: number
+-  /** The stored fact's JSON. Absent for a fact the window indexes but does
+-   *  not hold. */
+-  held: string | undefined
+-  /** The JSON of the tool content rows this executor appended with the
+-   *  fact, keyed by SHA-256. Absent for a fact another appender wrote. */
+-  content: string | undefined
+-}
+-
+-/** One index key's entries in position order. Eviction removes the oldest
+- *  entry of the window, which is the first entry of each list that holds it. */
+-interface EntryList {
+-  entries: Entry[]
+-  head: number
+-}
+-
+-/** Fills the slot of an evicted entry, so an index list holds no entry the
+- *  window dropped while it waits for compaction. */
+-const VACATED: Entry = { position: 0, aggregateId: "", type: "", sessionId: "", family: undefined, bytes: 0, held: undefined, content: undefined }
+-/** An index list compacts once this many of its slots are vacated and they
+- *  are at least half of the list, in amortized constant time per eviction. */
+-const COMPACTION_FLOOR = 32
+-
+-type ReanchorReason = "gap" | "unannounced" | "recency-bound"
+-
+-/** Committed facts the executor heard in the `state.stored` broadcast, so a
+- *  read of recent history can be answered without a state request.
+- *
+- *  The window is exact above its floor F: every fact committed at a position
+- *  in (F, C] arrived, where C is the position it is complete through. The
+- *  state Worker sends every commit notification before the response of any
+- *  request that runs after the commit, stamps each response with the head it
+- *  read after those notifications, and the account relays notifications and
+- *  responses in order. A head H that the window has reached (C >= H)
+- *  therefore proves that no committed fact at or below H is missing. A fact
+- *  above C + 1 is a gap and a head above C is a commit that was never
+- *  broadcast, such as a write by another process on the same store: both
+- *  re-anchor the window at that position and clear it. The client serves a
+- *  reader's barrier with the head of a response to a request sent after the
+- *  reader's call, so a read through that head is never older than a read of
+- *  the store at the call (ARCH-SUBSTRATE-019).
+- *
+- *  The window holds the newest facts within its byte budget. Older facts
+- *  above the floor are dropped from the held suffix but stay in the recency
+- *  index, which proves that a key did not move after a position. A degraded
+- *  substitute and a fact over the size cap are indexed but not held, so a
+- *  read whose range meets one goes to the state Worker.
+- *
+- *  A broadcast carries no tool content. The window also holds the content
+- *  rows of the facts this executor appended, so a read of its own recent
+- *  appends hydrates them without a content request. Content of any other
+- *  fact hydrates from the store.
+- *
+- *  The store deletes superseded facts of replace-latest families
+- *  (`factRetention`) out of band, and a prune sends no notification. Facts
+- *  of those families are therefore indexed but never held either: a read
+- *  that meets one goes to the store, and a read that only proves one moved
+- *  stays exact, because a prune never deletes the newest fact of a key. */
+-export interface ProjectStateCommitWindow {
+-  /** A `state.stored` broadcast, in arrival order. */
+-  receive(events: readonly StoredFact[]): void
+-  /** The tool content rows this executor appended with the fact at
+-   *  `position`. The append acknowledgement follows the fact's broadcast, so
+-   *  the fact is in the window when its appender calls this, unless the
+-   *  window does not hold it. The rows count against the same byte budget. */
+-  holdContent(position: number, rows: readonly ToolContentRow[]): void
+-  /** The content rows held with the fact at `position`, keyed by SHA-256. */
+-  contentOf(position: number): { readonly [sha256: string]: string } | undefined
+-  /** A committed position the state Worker read, such as a response head:
+-   *  anchors the window, or re-anchors it when commits at or below it never
+-   *  arrived. */
+-  observe(position: number): void
+-  /** The broadcast stream was interrupted. Until the next observation, every
+-   *  read goes remote. */
+-  unanchor(): void
+-  /** True when the window answers a page of `query` after `afterPosition`
+-   *  through what it heard now, so a read that pays for a capture first
+-   *  almost always reads no page from the store. */
+-  mayAnswerPage(query: FactQuery, afterPosition: number): boolean
+-  /** One page as the state Worker would answer it, or undefined when the
+-   *  window cannot prove it complete. */
+-  page(query: FactQuery, upperPosition: number, afterPosition: number): { facts: StoredFact[]; continuationPosition: number | null } | undefined
+-  /** True when the window answers a bounded slice of `query` through what
+-   *  it heard now. */
+-  maySlice(query: FactQuery): boolean
+-  /** The bounded slice of `query` through `upperPosition`, as SQL would order
+-   *  and limit it, or undefined when the window cannot prove it complete. */
+-  slice(query: FactQuery, upperPosition: number): StoredFact[] | undefined
+-  /** The store's sequence of `aggregateId` through what the window heard,
+-   *  or undefined when no fact of it arrived above the floor. The store
+-   *  answers a sequence from its per-aggregate counter, which no fact
+-   *  deletion lowers, so the newest fact heard carries the store's sequence. */
+-  sequence(aggregateId: string): number | undefined
+-  /** Ends the window: it answers nothing more and no later capture anchors
+-   *  it again. Idempotent. */
+-  close(): void
+-}
+-
+-export function createProjectStateCommitWindow(): ProjectStateCommitWindow {
+-  const log = Log.create({ service: "project-state-commit-window" })
+-  const reanchors = coalesceRepeats<{ readonly floor: number }>({
+-    windowMs: REANCHOR_REPORT_MS,
+-    first: (reason, { floor }) => log.info("commit window re-anchored", { reason, floor }),
+-    repeated: (reason, repeats) => log.info("commit window re-anchored repeatedly", { reason, count: repeats.count, windowMs: repeats.windowMs }),
+-  })
+-  let anchored = false
+-  let closed = false
+-  let floor = 0
+-  let complete = 0
+-  let retainedFloor = 0
+-  let retainedBytes = 0
+-  let all: EntryList = { entries: [], head: 0 }
+-  const lists = { aggregate: new Map<string, EntryList>(), type: new Map<string, EntryList>(), family: new Map<string, EntryList>(), session: new Map<string, EntryList>() }
+-  const newest = { aggregate: new Map<string, number>(), type: new Map<string, number>(), family: new Map<string, number>(), session: new Map<string, number>() }
+-  /** The newest sequence of each aggregate in `newest.aggregate`. */
+-  const sequences = new Map<string, number>()
+-
+-  function anchorAt(position: number): void {
+-    anchored = true
+-    floor = position
+-    complete = position
+-    retainedFloor = position
+-    retainedBytes = 0
+-    all = { entries: [], head: 0 }
+-    for (const map of Object.values(lists)) map.clear()
+-    for (const map of Object.values(newest)) map.clear()
+-    sequences.clear()
+-  }
+-
+-  function reanchor(position: number, reason: ReanchorReason): void {
+-    anchorAt(position)
+-    reanchors.observe(reason, { floor: position })
+-  }
+-
+-  function add(fact: StoredFact): void {
+-    const family = familyOf(fact.aggregateId)
+-    let held: Entry["held"]
+-    let bytes = FACT_OVERHEAD_BYTES
+-    if (!isDegradedStoredFact(fact) && !prunable(fact.type)) {
+-      // The store holds the payload's JSON form, which can differ from the
+-      // appender's object: a key set to `undefined` survives the broadcast
+-      // but not the store. A local read answers with the stored form.
+-      const json = JSON.stringify({ ...storedFields(fact), payload: fact.payload })
+-      const jsonBytes = heapBytes(json)
+-      if (jsonBytes + FACT_OVERHEAD_BYTES <= MAX_HELD_FACT_BYTES) {
+-        held = json
+-        bytes += jsonBytes
+-      }
+-    }
+-    const entry: Entry = { position: fact.position, aggregateId: fact.aggregateId, type: fact.type, sessionId: fact.sessionId, family, bytes, held, content: undefined }
+-    all.entries.push(entry)
+-    append(lists.aggregate, entry.aggregateId, entry)
+-    append(lists.type, entry.type, entry)
+-    append(lists.session, entry.sessionId, entry)
+-    if (family !== undefined) append(lists.family, family, entry)
+-    newest.aggregate.set(entry.aggregateId, entry.position)
+-    sequences.set(entry.aggregateId, fact.seq)
+-    newest.type.set(entry.type, entry.position)
+-    newest.session.set(entry.sessionId, entry.position)
+-    if (family !== undefined) newest.family.set(family, entry.position)
+-    retainedBytes += bytes
+-    while (retainedBytes > RETAINED_BYTES) evictOldest()
+-  }
+-
+-  function evictOldest(): void {
+-    // SAFETY: retainedBytes is positive only while an entry remains.
+-    const entry = all.entries[all.head]!
+-    advance(all)
+-    entry.held = undefined
+-    entry.content = undefined
+-    retainedBytes -= entry.bytes
+-    retainedFloor = entry.position
+-    shift(lists.aggregate, entry.aggregateId)
+-    shift(lists.type, entry.type)
+-    shift(lists.session, entry.sessionId)
+-    if (entry.family !== undefined) shift(lists.family, entry.family)
+-  }
+-
+-  /** The held entry of the fact at `position`, if the window holds it. */
+-  function heldAt(position: number): Entry | undefined {
+-    if (!anchored) return undefined
+-    const entry = all.entries[firstAbove(all, position - 1)]
+-    return entry?.position === position && entry.held !== undefined ? entry : undefined
+-  }
+-
+-  function recencyKeys(): number {
+-    return newest.aggregate.size + newest.type.size + newest.family.size + newest.session.size
+-  }
+-
+-  /** True when no fact matching `query` was committed in (after, C]. Valid
+-   *  only for `after >= floor`. */
+-  function provesNoneAfter(query: FactQuery, after: number): boolean {
+-    const unmoved = (map: Map<string, number>, key: string) => (map.get(key) ?? 0) <= after
+-    if (complete <= after) return true
+-    if (query.aggregateId !== undefined && unmoved(newest.aggregate, query.aggregateId)) return true
+-    if (query.aggregateIds?.every((id) => unmoved(newest.aggregate, id))) return true
+-    if (query.types?.every((type) => unmoved(newest.type, type))) return true
+-    if (query.sessionId !== undefined && unmoved(newest.session, query.sessionId)) return true
+-    return query.aggregatePrefix !== undefined && unmoved(newest.family, query.aggregatePrefix)
+-  }
+-
+-  /** The entry lists of the most selective field of `query` in (after, upper]. */
+-  function candidates(query: FactQuery, after: number, upper: number): EntryList[] {
+-    const keyed = (map: Map<string, EntryList>, keys: Iterable<string>) => [...new Set(keys)].flatMap((key) => map.get(key) ?? [])
+-    const options: EntryList[][] = []
+-    if (query.aggregateId !== undefined) options.push(keyed(lists.aggregate, [query.aggregateId]))
+-    if (query.aggregateIds !== undefined) options.push(keyed(lists.aggregate, query.aggregateIds))
+-    if (query.types !== undefined) options.push(keyed(lists.type, query.types))
+-    if (query.sessionId !== undefined) options.push(keyed(lists.session, [query.sessionId]))
+-    if (query.aggregatePrefix !== undefined) options.push(keyed(lists.family, [query.aggregatePrefix]))
+-    if (options.length === 0) return [all]
+-    let best: EntryList[] = []
+-    let bestCount = Number.POSITIVE_INFINITY
+-    for (const option of options) {
+-      const count = option.reduce((total, list) => total + countWithin(list, after, upper), 0)
+-      if (count < bestCount) {
+-        best = option
+-        bestCount = count
+-      }
+-    }
+-    return best
+-  }
+-
+-  /** The matches of `query` in (after, upper], in `order`, up to `limit`, or
+-   *  undefined when one of them is indexed but not held. */
+-  function collect(query: FactQuery, after: number, upper: number, order: "asc" | "desc", limit: number): StoredFact[] | undefined {
+-    const facts: StoredFact[] = []
+-    if (limit <= 0) return facts
+-    const aggregateIds = query.aggregateIds && new Set(query.aggregateIds)
+-    const types = query.types && new Set(query.types)
+-    for (const entry of merged(candidates(query, after, upper), after, upper, order)) {
+-      if (query.aggregateId !== undefined && entry.aggregateId !== query.aggregateId) continue
+-      if (aggregateIds && !aggregateIds.has(entry.aggregateId)) continue
+-      if (types && !types.has(entry.type)) continue
+-      if (query.sessionId !== undefined && entry.sessionId !== query.sessionId) continue
+-      if (query.aggregatePrefix !== undefined && entry.family !== query.aggregatePrefix) continue
+-      if (entry.held === undefined) return undefined
+-      // Each read parses its own copy, so no decoded object graph outlives
+-      // the read and the heap the window retains is its JSON alone.
+-      const fact: StoredFact = JSON.parse(entry.held)
+-      facts.push(fact)
+-      if (facts.length === limit) break
+-    }
+-    return facts
+-  }
+-
+-  return {
+-    receive(events) {
+-      if (!anchored) return
+-      for (const fact of events) {
+-        if (fact.position <= complete) continue
+-        if (fact.position > complete + 1) reanchor(fact.position - 1, "gap")
+-        complete = fact.position
+-        add(fact)
+-      }
+-      if (recencyKeys() > MAX_RECENCY_KEYS) reanchor(complete, "recency-bound")
+-    },
+-    holdContent(position, rows) {
+-      const entry = heldAt(position)
+-      // The request codec's UTF-8 encoding replaces an unpaired surrogate, so
+-      // only well-formed text is held exactly as the store keeps it.
+-      if (!entry || !rows.every((row) => row.content.isWellFormed())) return
+-      // A fresh JSON copy, so the window retains no string of the appender.
+-      const json = JSON.stringify(Object.fromEntries(rows.map((row) => [row.sha256, row.content])))
+-      const bytes = heapBytes(json) + rows.length * CONTENT_ROW_OVERHEAD_BYTES
+-      // Content that would pass the size cap hydrates from the store.
+-      if (entry.bytes + bytes > MAX_HELD_FACT_BYTES) return
+-      entry.content = json
+-      entry.bytes += bytes
+-      retainedBytes += bytes
+-      while (retainedBytes > RETAINED_BYTES) evictOldest()
+-    },
+-    contentOf(position) {
+-      const content = heldAt(position)?.content
+-      return content === undefined ? undefined : JSON.parse(content)
+-    },
+-    observe(position) {
+-      if (closed) return
+-      if (!anchored) anchorAt(position)
+-      else if (complete < position) reanchor(position, "unannounced")
+-    },
+-    unanchor() {
+-      anchored = false
+-    },
+-    mayAnswerPage(query, afterPosition) {
+-      return page(query, complete, afterPosition) !== undefined
+-    },
+-    page,
+-    maySlice(query) {
+-      return boundedProjectStateSlice(query, PROJECT_STATE_MAX_PAGE_ROWS, PROJECT_STATE_MAX_BYTES) && slice(query, complete) !== undefined
+-    },
+-    slice,
+-    sequence(aggregateId) {
+-      return anchored ? sequences.get(aggregateId) : undefined
+-    },
+-    close() {
+-      if (closed) return
+-      closed = true
+-      anchored = false
+-      reanchors.end()
+-    },
+-  }
+-
+-  function page(query: FactQuery, upperPosition: number, afterPosition: number): { facts: StoredFact[]; continuationPosition: number | null } | undefined {
+-    if (!anchored || !locallyAnswerable(query) || upperPosition > complete) return undefined
+-    const bounds = pageReadQuery(query, upperPosition, afterPosition, PROJECT_STATE_MAX_PAGE_ROWS)
+-    // SAFETY: pageReadQuery always sets the composed upper bound.
+-    const upper = Math.min(upperPosition, bounds.query.beforePosition! - 1)
+-    if (upper <= bounds.after) return { facts: [], continuationPosition: null }
+-    if (bounds.after < floor) return undefined
+-    if (provesNoneAfter(bounds.query, bounds.after)) return { facts: [], continuationPosition: null }
+-    if (bounds.after < retainedFloor) return undefined
+-    // The lookahead fact shows whether a next page exists, as in the store's page.
+-    const facts = collect(bounds.query, bounds.after, upper, "asc", bounds.rows + 1)
+-    if (!facts) return undefined
+-    const answered = facts.slice(0, bounds.rows)
+-    // SAFETY: a lookahead fact past the page means the page holds bounds.rows >= 1 facts.
+-    return { facts: answered, continuationPosition: facts.length > answered.length ? answered.at(-1)!.position : null }
+-  }
+-
+-  function slice(query: FactQuery, upperPosition: number): StoredFact[] | undefined {
+-    if (!anchored || !locallyAnswerable(query) || query.limit === undefined || upperPosition > complete) return undefined
+-    const after = query.afterPosition ?? 0
+-    const upper = Math.min(upperPosition, (query.beforePosition ?? Number.POSITIVE_INFINITY) - 1)
+-    if (query.limit === 0 || upper <= after) return []
+-    if (after >= floor && provesNoneAfter(query, after)) return []
+-    const order = query.order ?? "asc"
+-    if (order === "asc" && after < retainedFloor) return undefined
+-    const facts = collect(query, Math.max(after, retainedFloor), upper, order, query.limit)
+-    // A newest-first read below the held suffix is complete only when it
+-    // found its limit inside it.
+-    if (!facts || (after < retainedFloor && facts.length < query.limit)) return undefined
+-    return facts
+-  }
+-}
+-
+-/** A fact of a family whose superseded facts the store prunes. */
+-function prunable(type: string): boolean {
+-  const policy = factRetention(type)?.policy
+-  return policy === "replace-latest" || policy === "replace-latest-keyed"
+-}
+-
+-function locallyAnswerable(query: FactQuery): boolean {
+-  for (const [field, value] of Object.entries(query)) {
+-    if (value !== undefined && !LOCAL_QUERY_FIELDS.has(field)) return false
+-  }
+-  // The store refuses these shapes as producer bugs; the remote read keeps
+-  // that refusal. A prefix deeper than one family has no family index.
+-  if (query.aggregateId !== undefined && (query.aggregateIds !== undefined || query.aggregatePrefix !== undefined)) return false
+-  return query.aggregatePrefix === undefined || familyOf(query.aggregatePrefix) === query.aggregatePrefix
+-}
+-
+-/** The aggregate family of an id, `workflow:` for `workflow:abc`, as a
+- *  `FactQuery.aggregatePrefix` names it. */
+-function familyOf(aggregateId: string): string | undefined {
+-  const separator = aggregateId.indexOf(":")
+-  return separator === -1 ? undefined : aggregateId.slice(0, separator + 1)
+-}
+-
+-/** The fields of a fact as the store returns them: optional references that
+- *  are absent or empty are omitted, as the row mapping omits them. */
+-function storedFields(fact: StoredFact): Omit<StoredFact, "payload"> {
+-  return {
+-    position: fact.position, id: fact.id, aggregateId: fact.aggregateId, seq: fact.seq, type: fact.type,
+-    version: fact.version, timestamp: fact.timestamp, actor: fact.actor, sessionId: fact.sessionId,
+-    ...(fact.runId ? { runId: fact.runId } : {}),
+-    ...(fact.parentEventId ? { parentEventId: fact.parentEventId } : {}),
+-    ...(fact.causedByEventId ? { causedByEventId: fact.causedByEventId } : {}),
+-  }
+-}
+-
+-/** The heap bytes of a string's characters. The engine stores a string with
+- *  only Latin-1 characters in one byte per character and any other string
+- *  in two. */
+-function heapBytes(text: string): number {
+-  return /[\u0100-\uffff]/.test(text) ? text.length * 2 : text.length
+-}
+-
+-function append(map: Map<string, EntryList>, key: string, entry: Entry): void {
+-  const list = map.get(key)
+-  if (list) list.entries.push(entry)
+-  else map.set(key, { entries: [entry], head: 0 })
+-}
+-
+-function advance(list: EntryList): void {
+-  list.entries[list.head] = VACATED
+-  list.head += 1
+-  if (list.head >= COMPACTION_FLOOR && list.head * 2 >= list.entries.length) {
+-    list.entries = list.entries.slice(list.head)
+-    list.head = 0
+-  }
+-}
+-
+-function shift(map: Map<string, EntryList>, key: string): void {
+-  // SAFETY: every evicted entry was appended to its key's list.
+-  const list = map.get(key)!
+-  advance(list)
+-  if (list.head >= list.entries.length) map.delete(key)
+-}
+-
+-/** The index of the first entry of `list` above `position`. */
+-function firstAbove(list: EntryList, position: number): number {
+-  let low = list.head
+-  let high = list.entries.length
+-  while (low < high) {
+-    const middle = (low + high) >>> 1
+-    // SAFETY: middle lies in [head, length).
+-    if (list.entries[middle]!.position <= position) low = middle + 1
+-    else high = middle
+-  }
+-  return low
+-}
+-
+-function countWithin(list: EntryList, after: number, upper: number): number {
+-  return firstAbove(list, upper) - firstAbove(list, after)
+-}
+-
+-/** The entries of `lists` in (after, upper], merged in position order. Each
+- *  step costs the number of lists, so a read costs its matches, never the
+- *  size of the window.
+- *  @yields {Entry} Each entry in (after, upper], in `order`. */
+-function* merged(lists: readonly EntryList[], after: number, upper: number, order: "asc" | "desc"): Generator<Entry> {
+-  const cursors = lists.map((list) => ({ list, index: order === "asc" ? firstAbove(list, after) : firstAbove(list, upper) - 1, end: order === "asc" ? firstAbove(list, upper) : firstAbove(list, after) - 1 }))
+-  for (;;) {
+-    let next: { readonly cursor: (typeof cursors)[number]; readonly entry: Entry } | undefined
+-    for (const cursor of cursors) {
+-      if (cursor.index === cursor.end) continue
+-      // SAFETY: the index lies strictly between the cursor's bounds.
+-      const entry = cursor.list.entries[cursor.index]!
+-      if (!next || (order === "asc" ? entry.position < next.entry.position : entry.position > next.entry.position)) next = { cursor, entry }
+-    }
+-    if (!next) return
+-    yield next.entry
+-    next.cursor.index += order === "asc" ? 1 : -1
+-  }
+-}
+diff --git a/tests/integration/local/executor-commit-stream-order.test.ts a/tests/integration/local/executor-commit-stream-order.test.ts
+deleted file mode 100644
+index b21c6ac..0000000
+--- a/tests/integration/local/executor-commit-stream-order.test.ts
++++ /dev/null
+@@ -1,120 +0,0 @@
+-/**
+- * The executor's commit window rests on one ordering promise of the real
+- * stack: the state Worker sends the commit notification of every commit made
+- * on its store connection before the response of any request that runs after
+- * it, and the account relays both to the executor in that order. A captured
+- * position that the executor has heard through therefore proves that it heard
+- * every such commit at or below it.
+- *
+- * The account side here is real: the project state Worker on its own thread,
+- * served over the internal process channel by `serveProjectStateChannel`. The
+- * executor side is a second process that composes the state port as the
+- * executor does and writes and reads concurrently. The account writes on its
+- * own lane, and a second SQLite connection on the same file writes as a
+- * headless run would; no broadcast carries its commits, which is why the
+- * window keeps a capture barrier.
+- */
+-
+-import { expect, test } from "bun:test"
+-import { mkdir } from "node:fs/promises"
+-import { join } from "node:path"
+-import { fileURLToPath } from "node:url"
+-import { runtimeWorkerUrl } from "../../../src/cli/runtime-launch.js"
+-import type { EventStoreAppend } from "../../../src/infra/event-store-types.js"
+-import { listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../src/infra/internal-process-channel.js"
+-import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
+-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
+-import { projectExecutorChannelLimits } from "../../../src/orchestration/app-service/project-executor-protocol.js"
+-import { serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state-channel.js"
+-import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state-worker-spawner.js"
+-import { temporaryDirectories } from "../../helpers/directories.js"
+-
+-const temporaryDirectory = temporaryDirectories()
+-
+-const PROBE_ENTRY = fileURLToPath(new URL("_executor-commit-stream-probe.ts", import.meta.url))
+-const WRITE_MS = 2_000
+-
+-interface ProbeResult {
+-  readonly anchor: number
+-  readonly outOfOrder: number
+-  readonly late: number
+-  readonly responses: number
+-  readonly broadcast: readonly number[]
+-}
+-
+-function fact(aggregateId: string, n: number): EventStoreAppend {
+-  return { aggregateId, sessionId: aggregateId, type: "probe.fact", version: 1, timestamp: n, actor: "probe", payload: { n } }
+-}
+-
+-test("every commit of the account's store connection reaches the executor in position order and before any response that covers it", async () => {
+-  const root = temporaryDirectory("executor-commit-stream-")
+-  const cwd = process.cwd()
+-  const directories = { projectRoot: root, executionCwd: root, accountHome: join(root, "account"), userDataRoot: join(root, "account", ".flywheel") }
+-  await mkdir(join(root, ".git"))
+-  await mkdir(directories.userDataRoot, { recursive: true })
+-  const state = spawnProjectStateWorker(directories, root, runtimeWorkerUrl()).acquire()
+-  const served: (() => Promise<void>)[] = []
+-  let server: InternalProcessChannelServer | undefined
+-  let probe: Bun.Subprocess<"pipe", "pipe", "pipe"> | undefined
+-  let foreign: ReturnType<typeof createSqliteEventStore> | undefined
+-  try {
+-    await state.capturePosition()
+-    expect(await state.execution({ kind: "generation.admit", projectId: "probe", generation: 1 })).toEqual({ kind: "ok" })
+-    // A Unix socket path has a limit of about 104 bytes, so the server
+-    // listens by a relative name with the root as the cwd.
+-    process.chdir(root)
+-    server = listenInternalProcessChannel<unknown, unknown>({
+-      path: "state.sock", decode: (value) => value, ...projectExecutorChannelLimits("state"),
+-      onConnection(endpoint) {
+-        served.push(serveProjectStateChannel(state, endpoint, { kind: "executor", projectId: "probe", generation: 1 }))
+-      },
+-    })
+-    await server.ready
+-    probe = Bun.spawn([process.execPath, PROBE_ENTRY, "state.sock"], { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "pipe", windowsHide: true })
+-    const output = Promise.all([new Response(probe.stdout).text(), new Response(probe.stderr).text(), probe.exited])
+-    foreign = createSqliteEventStore(resolveEventStoreDbFile(root))
+-    const foreignStore = foreign
+-    const foreignPositions: number[] = []
+-    const deadline = performance.now() + WRITE_MS
+-    await Promise.all([
+-      (async () => {
+-        for (let n = 0; performance.now() < deadline; n++) {
+-          await state.writer.append(fact("account", n))
+-          await Bun.sleep(2)
+-        }
+-      })(),
+-      (async () => {
+-        for (let n = 0; performance.now() < deadline; n++) {
+-          foreignPositions.push(foreignStore.append(fact("foreign", n)).position)
+-          await Bun.sleep(37)
+-        }
+-      })(),
+-    ])
+-    probe.stdin.write("done\n")
+-    await probe.stdin.flush()
+-    const [stdout, stderr, exitCode] = await output
+-    if (exitCode !== 0) throw new Error(`the executor-side probe exited ${exitCode}: ${stderr}`)
+-    const result: ProbeResult = JSON.parse(stdout.trim().split("\n").at(-1)!)
+-    const committed = (await state.readSlice({ types: ["probe.fact"], afterPosition: result.anchor })).facts.map((event) => event.position)
+-
+-    expect(result.responses).toBeGreaterThan(100)
+-    expect(result.outOfOrder).toBe(0)
+-    expect(result.late).toBe(0)
+-    const foreignSet = new Set(foreignPositions)
+-    expect(foreignPositions.length).toBeGreaterThan(0)
+-    expect(result.broadcast.filter((position) => position > result.anchor)).toEqual(committed.filter((position) => !foreignSet.has(position)))
+-  } finally {
+-    // The server removes its socket by the relative name when it closes, so
+-    // the cwd changes back after that, also when a close step throws.
+-    try {
+-      probe?.kill()
+-      await probe?.exited
+-      foreign?.close()
+-      for (const stop of served) await stop()
+-      await server?.dispose()
+-      await state.close()
+-    } finally {
+-      process.chdir(cwd)
+-    }
+-  }
+-}, 60_000)
+diff --git a/tests/integration/local/project-lane-failure-recovery.test.ts b/tests/integration/local/project-lane-failure-recovery.test.ts
+index bcab67c..9aa4963 100644
+--- a/tests/integration/local/project-lane-failure-recovery.test.ts
++++ b/tests/integration/local/project-lane-failure-recovery.test.ts
+@@ -1,10 +1,10 @@
+ import { expect, test } from "bun:test"
+-import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises"
++import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
+ import { tmpdir } from "node:os"
+ import { basename, join } from "node:path"
+ import { createCliLauncher, runtimeWorkerUrl } from "../../../src/cli/runtime-launch.js"
+ import { createMessagePortProcessEndpoint, listenInternalProcessChannel } from "../../../src/infra/internal-process-channel.js"
+-import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state-worker-spawner.js"
++import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state-client.js"
+ import { connectProjectStateChannel, serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state-channel.js"
+ import { createProjectExecutionState } from "../../../src/orchestration/app-service/project-execution-state.js"
+ import { createSessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js"
+@@ -13,7 +13,6 @@ import { checkpointFinalizedToolResult } from "../../../src/orchestration/sessio
+ import { createProjectControlRuntime, type ProjectControlRuntime, type ProjectControlRuntimeOptions } from "../../../src/orchestration/app-service/project-control-runtime.js"
+ import { createMaintenanceQueue } from "../../../src/orchestration/app-service/runtime-maintenance-owner.js"
+ import { createLoginShellPath } from "../../../src/infra/login-shell-path.js"
+-import { createProcessorGovernor } from "../../../src/orchestration/app-service/processor-governor.js"
+ import { servingAccountService } from "../../helpers/account-service-state.js"
+ import { idleAccountUpdates } from "../../helpers/account-updates.js"
+ import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
+@@ -29,9 +28,7 @@ import { loadAgentInputProjection } from "../../../src/orchestration/session/age
+ import { dropFrames, frameKind, recordAccountLog, silenceHeartbeatsAfter, TEST_EXECUTOR_HEARTBEAT_INTERVAL_MS } from "./_executor-heartbeats.js"
+ 
+ test("the real state Worker fences every executor state producer while account writes remain admitted", async () => {
+-  // Recovery reads project files without following links, so a root below the
+-  // macOS /var link would make recovery fail instead of proving its outcome.
+-  const root = await realpath(await mkdtemp(join(process.env.FLYWHEEL_TEST_SCRATCH_ROOT ?? tmpdir(), "lane-fence-")))
++  const root = await mkdtemp(join(process.env.FLYWHEEL_TEST_SCRATCH_ROOT ?? tmpdir(), "lane-fence-"))
+   const directories = { projectRoot: root, executionCwd: root, accountHome: join(root, "account"), userDataRoot: join(root, "account", ".flywheel") }
+   await mkdir(join(root, ".git"))
+   const worker = spawnProjectStateWorker(directories, root, runtimeWorkerUrl())
+@@ -65,7 +62,7 @@ test("the real state Worker fences every executor state producer while account w
+       { type: "tool_use", id: "interrupted", name: "read", input: {} },
+     ] })
+     await checkpointFinalizedToolResult(facts, { conversationId: "conversation", toolUseId: "finished", toolName: "read",
+-      budgetExempt: true, turnBudgetChars: 200_000, registrationOrdinal: 0, content: [{ type: "text", text: "durable result" }], outcome: "ok" })
++      budgetExempt: true, registrationOrdinal: 0, content: [{ type: "text", text: "durable result" }], outcome: "ok" })
+     await facts.putInFlight!("usage.settlement", "pending", {
+       state: "pending", attemptId: "pending", requestId: "request", profileId: "default", budgetStreamId: "session",
+       identity: { providerSessionKey: "session", conversationId: "conversation" }, turn: 1,
+@@ -81,6 +78,7 @@ test("the real state Worker fences every executor state producer while account w
+       { kind: "append", item },
+       { kind: "append.batch", items: [item] },
+       { kind: "append", item: { sessionId: "session", events: [], inFlight: [{ op: "put", kind: "tool", key: "old", payload: {} }] } },
++      { kind: "maintenance.delete", aggregateId: "session:session", eventType: "test.fenced", requestId: "old", maxRows: 1 },
+       { kind: "maintenance.prune", aggregateId: "session:session", eventType: "test.fenced" },
+       { kind: "maintenance.prune-keyed", aggregateId: "session:session", eventType: "test.fenced", payloadKey: "id" },
+       { kind: "session.control", command: { kind: "session.update-label", id: "session", labels: { label: "Old", shortLabel: "Old" }, source: "generated" } },
+@@ -115,15 +113,12 @@ test("the real state Worker fences every executor state producer while account w
+         const cells = await recovered.eventReader.readInFlight("session", "file.mutation")
+         expect(cells).toHaveLength(1)
+         expect(await state.execution({ kind: "generation.close", projectId: "project", generation: 2 })).toEqual({ kind: "ok" })
+-        // A write that recovery cannot prove settles once as indeterminate:
+-        // the cell retires, no change is attributed to the session, and the
+-        // project still admits the next generation.
++        // An indeterminate file cell degrades its own session: the cell stays
++        // exactly as it is, nothing is settled on its behalf, and the project
++        // still admits the next generation for every other session.
+         expect(await state.execution({ kind: "generation.recover", projectId: "project", generation: 2 })).toEqual({ kind: "ok" })
+-        expect(await recovered.eventReader.readInFlight("session", "file.mutation")).toEqual([])
+-        expect((await recovered.eventReader.readSlice({ sessionId: "session", types: ["file.mutation.settled", "file.changed"] })).facts.map((event) => {
+-          if (event instanceof Error) throw new Error("Unexpected corrupt file fact", { cause: event })
+-          return [event.type, event.payload.outcome]
+-        })).toEqual([["file.mutation.settled", "indeterminate"]])
++        expect(await recovered.eventReader.readInFlight("session", "file.mutation")).toEqual(cells)
++        expect((await recovered.eventReader.readSlice({ sessionId: "session", types: ["file.mutation.settled"] })).facts).toEqual([])
+         expect(await state.execution({ kind: "generation.admit", projectId: "project", generation: 3 })).toEqual({ kind: "ok" })
+       } finally { fileFacts.dispose() }
+     } finally { await recovered.eventStoreRuntime.dispose() }
+@@ -176,7 +171,7 @@ async function withLaneRuntime(
+         executorHeartbeatIntervalMs: TEST_EXECUTOR_HEARTBEAT_INTERVAL_MS,
+         updates: idleAccountUpdates(),
+         service: servingAccountService(),
+-        loginShellPath: createLoginShellPath(), processorAdmission: createProcessorGovernor(),
++        loginShellPath: createLoginShellPath(),
+         maintenance: createMaintenanceQueue({ workerUrl: runtimeWorkerUrl(), guardian: launcher.guardian }),
+         clientsHold: () => false,
+         sessionHolds: { holdProject: () => undefined, projectIdleGraceMs: undefined },
+diff --git a/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts b/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts
+index 93b9fe0..bb5d620 100644
+--- a/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts
++++ b/tests/unit/orchestration/app-service/event-read-surface-contract.test.ts
+@@ -271,10 +271,10 @@ describe.each(surfaces)("event read surface contract: %s", (_surface, open) => {
+   test("the aggregate count follows surviving rows and the sequence keeps the last assigned value", async () => {
+     const { reader, store } = await open()
+     expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([0, -1])
+-    store.appendBatch([fact("queue.state.changed"), fact("queue.state.changed"), fact("queue.state.changed")])
++    store.appendBatch([fact("one", { requestId: "a" }), fact("one", { requestId: "b" }), fact("one", { requestId: "c" })])
+     expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([3, 2])
+-    expect(store.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(2)
+-    expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([1, 2])
++    for (const requestId of ["a", "b", "c"]) store.deleteByAggregateTypeAndRequestId("session:s", "one", requestId)
++    expect([await reader.countByAggregate("session:s"), await reader.aggregateSeq("session:s")]).toEqual([0, 2])
+   })
+ 
+   test("eager reads and contentFor resolve every reference site and no other field, deferred pages resolve none, and integrity gaps fail at the hydration seam", async () => {
+diff --git a/tests/unit/orchestration/app-service/project-execution-state.test.ts b/tests/unit/orchestration/app-service/project-execution-state.test.ts
+index 90cbaff..66bf6b2 100644
+--- a/tests/unit/orchestration/app-service/project-execution-state.test.ts
++++ b/tests/unit/orchestration/app-service/project-execution-state.test.ts
+@@ -9,7 +9,7 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
+ import { createRuntimeEventStore } from "../../../../src/infra/sqlite-event-store.js"
+ import { createProjectExecutionState } from "../../../../src/orchestration/app-service/project-execution-state.js"
+ import { createProjectStateClient, ProjectStateRefusedError } from "../../../../src/orchestration/app-service/project-state-client.js"
+-import { decodeProjectStateRequest, decodeProjectStateStored, encodeProjectStateResponseFrame, encodeProjectStateStored, operationUnits, type ProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import { decodeProjectStateRequest, decodeProjectStateResponse, decodeProjectStateStored, encodeProjectStateResponse, encodeProjectStateStored, operationUnits, type ProjectStateResponse } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import { createProjectStateSessionsService } from "../../../../src/orchestration/app-service/project-state-sessions.js"
+ import { createProjectStateService } from "../../../../src/orchestration/app-service/project-state-worker.js"
+ import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
+@@ -25,7 +25,7 @@ function fixture() {
+   const projectRoot = mkdtempSync(join(tmpdir(), "execution-state-"))
+   const store = createRuntimeEventStore(resolveEventStoreDbFile(projectRoot))
+   const ready = Promise.withResolvers<void>()
+-  let receive: ((frame: ProjectStateResponseFrame) => boolean) | undefined
++  let receive: ((response: ProjectStateResponse) => void) | undefined
+   let receiveStored: ((events: readonly StoredFact[]) => void) | undefined
+   let receiveChange: ((change: SessionMetadataChange) => void) | undefined
+   let refuse = false
+@@ -36,6 +36,7 @@ function fixture() {
+     owedRecoveries: () => [],
+     settleRecovery: async () => {},
+     appendWriteItem: store.writerLane.appendWriteItem,
++    deleteByAggregateTypeAndRequestId: store.deleteByAggregateTypeAndRequestId,
+     pruneSupersededEvents: store.pruneSupersededEvents,
+     pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents!(aggregate, type, key),
+     pruneRetiredFamilyChunk: () => { throw new Error("unexpected retired-family prune") },
+@@ -56,8 +57,10 @@ function fixture() {
+       const decoded = decodeProjectStateRequest(structuredClone(encoded), request.lane)
+       if (!decoded) throw new Error("invalid request")
+       void ready.promise.then(async () => {
+-        const served = refuse ? { result: { kind: "refused" as const, reason: "pressure" as const } } : await service.enqueue(decoded.lane, decoded.operation, { bytes: encoded.byteLength, units: operationUnits(decoded.operation) })
+-        if (receive?.(encodeProjectStateResponseFrame({ id: decoded.id, ...served })) === false) throw new Error("invalid response")
++        const result = refuse ? { kind: "refused" as const, reason: "pressure" as const } : await service.enqueue(decoded.lane, decoded.operation, { bytes: encoded.byteLength, units: operationUnits(decoded.operation) })
++        const response = decodeProjectStateResponse(structuredClone(encodeProjectStateResponse({ id: decoded.id, result })))
++        if (!response) throw new Error("invalid response")
++        receive?.(response)
+       })
+     },
+     onResponse(listener) { receive = listener },
+@@ -177,6 +180,7 @@ describe("project execution state", () => {
+       expect(stoppedCalls).toBe(0)
+       expect(await store.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(0)
+       expect(await store.pruneSupersededKeyedEvents!("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
++      expect(await store.deleteByAggregateTypeAndRequestId("session:s", "test.fact", "absent")).toBe(0)
+ 
+       const pending = store.append(fact({ draining: true }))
+       await runtime.dispose()
+diff --git a/tests/unit/orchestration/app-service/project-state-channel.test.ts b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+index 8de9874..a75394c 100644
+--- a/tests/unit/orchestration/app-service/project-state-channel.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+@@ -8,12 +8,12 @@ import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "
+ import { createReattachableProcessEndpoint } from "../../../../src/infra/reattachable-process-endpoint.js"
+ import { asAsyncEventWriter, CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused, type AsyncGuardedEventWriter, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+ import { connectProjectStateChannel, serveProjectStateChannel } from "../../../../src/orchestration/app-service/project-state-channel.js"
+-import { createProjectStateClient, type ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
++import type { ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
+ import { createProjectStateSessionManager } from "../../../../src/orchestration/app-service/project-state-sessions.js"
+-import type { ProjectStateControlOperation, ProjectStateExecutionOperation, ProjectStateRequest, ProjectStateResponseFrame, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import type { ProjectStateControlOperation, ProjectStateExecutionOperation, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
+ import { pack } from "msgpackr"
+-import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, encodeProjectStateResponseFrame, decodeProjectStateResponse, decodeProjectStateRequest, readProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, decodeProjectStateResponse, decodeProjectStateRequest } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import { ParentPublicationContendedError } from "../../../../src/orchestration/session/manager.js"
+ import { WorkflowParentRefusal } from "../../../../src/orchestration/session/child-session-publication.js"
+ import { buildSessionContent, buildSessionContentManifest, readSessionContentRecords } from "../../../../src/infra/session-content.js"
+@@ -103,7 +103,7 @@ function stateHarness() {
+   }
+   const sessions = createProjectStateSessionManager({
+     async request(command) {
+-      if (command.kind === "session.read-batch") return { kind: "session.read-batch.result", outcomes: command.reads.map(() => ({ kind: "read" as const, result: { kind: "session.read.result" as const, value: null } })) }
++      if (command.kind === "session.read") return { kind: "session.read.result", value: null }
+       throw new Error("unsupported session command")
+     },
+     subscribe(listener) {
+@@ -129,6 +129,7 @@ function stateHarness() {
+     appendBatch: async () => [],
+     appendGuarded: async () => ({ kind: "stored", events: [storedFact] }),
+     appendBatchGuarded: async () => ({ kind: "stored", events: [] }),
++    deleteByAggregateTypeAndRequestId: async () => 0,
+     pruneSupersededEvents: async () => 0,
+     pruneSupersededKeyedEvents: async () => 0,
+   }
+@@ -147,11 +148,6 @@ function stateHarness() {
+     },
+     control,
+     execution,
+-    // The account's own state client answers the frame the Worker served, with its head.
+-    // Every execution operation names its project and no control operation does.
+-    relay: async (_lane, operation, id) => encodeProjectStateResponse({
+-      id, result: "projectId" in operation ? await execution(operation) : await control(operation), head: 1,
+-    }),
+     capturePosition: async () => 0,
+     latestPosition: async () => 0,
+     readLatestPayloadByAggregateAndType: async () => null,
+@@ -396,119 +392,6 @@ describe("project state channel", () => {
+     expect(account.subscriptions).toBe(0)
+   })
+ 
+-  test("relays the state Worker's head, and an answer the account makes itself carries none", async () => {
+-    const [ownerEndpoint, executorEndpoint] = endpointPair()
+-    const account = stateHarness()
+-    const dispose = serveProjectStateChannel(account.state, ownerEndpoint, { kind: "executor", projectId: "p", generation: 1 })
+-    const requests = [
+-      { id: 1, lane: "control", operation: { kind: "position.capture" } },
+-      // Refused by the account: a peer cannot admit a generation.
+-      { id: 2, lane: "execution", operation: { kind: "generation.admit", projectId: "p", generation: 1 } },
+-      // Failed in the account: its state client threw.
+-      { id: 3, lane: "control", operation: { kind: "aggregate.count", aggregateId: "a" } },
+-    ] as const
+-    const responses: { id: number; head?: number }[] = []
+-    const answered = Promise.withResolvers<void>()
+-    executorEndpoint.onMessage((value) => {
+-      const response = value instanceof Uint8Array ? decodeProjectStateResponse(value) : undefined
+-      if (!response) return
+-      responses.push({ id: response.id, ...(response.head === undefined ? {} : { head: response.head }) })
+-      if (responses.length === requests.length) answered.resolve()
+-    })
+-    for (const request of requests) await executorEndpoint.send(encodeProjectStateRequest(request))
+-    await answered.promise
+-    expect(responses.sort((left, right) => left.id - right.id)).toEqual([{ id: 1, head: 1 }, { id: 2 }, { id: 3 }])
+-    await dispose()
+-    executorEndpoint.close()
+-  })
+-
+-  test("relays the Worker's response unread: its body byte for byte under the executor's request id, read only by the executor", async () => {
+-    const [ownerEndpoint, executorEndpoint] = endpointPair()
+-    const workerRequests: ProjectStateRequest[] = []
+-    let workerAnswers: ((frame: ProjectStateResponseFrame) => boolean) | undefined
+-    let loseWorker: ((reason: string) => void) | undefined
+-    let requested = Promise.withResolvers<void>()
+-    const account = createProjectStateClient({
+-      send(request) { workerRequests.push(request); requested.resolve() },
+-      onResponse(listener) { workerAnswers = listener },
+-      onClose(listener) { loseWorker = listener },
+-      onSessionChange() { return () => {} },
+-      onStored() { return () => {} },
+-      close() {},
+-    })
+-    const dispose = serveProjectStateChannel(account, ownerEndpoint, { kind: "executor", projectId: "p", generation: 1 })
+-    const received: Uint8Array[] = []
+-    let arrived = Promise.withResolvers<void>()
+-    executorEndpoint.onMessage((value) => {
+-      if (!(value instanceof Uint8Array)) return
+-      received.push(value)
+-      arrived.resolve()
+-    })
+-    /** Sends the executor's request `id` and answers the Worker request it causes with `body`. */
+-    async function relayed(id: number, workerFrame: (workerId: number) => Uint8Array, evidence?: { readonly anchorAt: number }): Promise<Uint8Array> {
+-      requested = Promise.withResolvers()
+-      arrived = Promise.withResolvers()
+-      await executorEndpoint.send(encodeProjectStateRequest({ id, lane: "control", operation: { kind: "facts.page", query: { aggregateId: "a" }, maxRows: 1, maxBytes: 1024, ...(evidence ? { evidence } : {}) } }))
+-      await requested.promise
+-      // The account read nothing of the body, so it never refuses the frame.
+-      expect(workerAnswers?.(readProjectStateResponseFrame(workerFrame(workerRequests.at(-1)!.id))!)).toBe(true)
+-      await arrived.promise
+-      return received.at(-1)!
+-    }
+-
+-    const result = { kind: "facts", facts: [stateHarness().storedFact], contentRows: [], upperPosition: 5, continuationPosition: null, encodedBytes: 1 } as const
+-    let served: ProjectStateResponseFrame | undefined
+-    const page = await relayed(7, (workerId) => (served = encodeProjectStateResponseFrame({ id: workerId, head: 5, result })).bytes)
+-    const frame = readProjectStateResponseFrame(page)
+-    expect(frame?.id).toBe(7)
+-    expect(page.subarray(frame?.bodyOffset)).toEqual(served!.bytes.subarray(served!.bodyOffset))
+-    expect(decodeProjectStateResponse(page)).toEqual({ id: 7, head: 5, result })
+-
+-    // A page that asks for fold evidence: the account admits the request with
+-    // it, and the evidence in the answer's body reaches the executor.
+-    const proven = { ...result, foldEvidence: { head: 5, generation: 2, anchor: { position: 5, id: "evt_5" } } } as const
+-    const provenPage = await relayed(12, (workerId) => encodeProjectStateResponseFrame({ id: workerId, head: 5, result: proven }).bytes, { anchorAt: 5 })
+-    expect(workerRequests.at(-1)?.operation).toMatchObject({ kind: "facts.page", evidence: { anchorAt: 5 } })
+-    expect(decodeProjectStateResponse(provenPage)).toEqual({ id: 12, head: 5, result: proven })
+-
+-    // The body's exact bytes arrive even where msgpackr would encode them
+-    // differently: a map32 header in place of the map16 header it chooses.
+-    const canonical = served!.bytes.subarray(served!.bodyOffset)
+-    expect([...canonical.subarray(0, 3)]).toEqual([0xde, 0x00, 0x02])
+-    const wide = new Uint8Array([0xdf, 0x00, 0x00, 0x00, 0x02, ...canonical.subarray(3)])
+-    const widePage = await relayed(10, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), wide])))
+-    expect(widePage.subarray(readProjectStateResponseFrame(widePage)?.bodyOffset)).toEqual(wide)
+-    expect(decodeProjectStateResponse(widePage)).toEqual({ id: 10, head: 5, result })
+-
+-    // Bytes that are not MessagePack at all (0xc1 is never used) still reach
+-    // the executor unchanged, and the executor refuses them.
+-    const garbage = new Uint8Array([0xc1, 0xff, 0x00])
+-    const garbled = await relayed(11, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), garbage])))
+-    expect(garbled.subarray(readProjectStateResponseFrame(garbled)?.bodyOffset)).toEqual(garbage)
+-    expect(decodeProjectStateResponse(garbled)).toBeUndefined()
+-
+-    // A body no reader accepts still reaches the executor, whose decode is the
+-    // boundary that refuses it; a body the account consumes itself is read there.
+-    const unreadable = (workerId: number) => new Uint8Array(Buffer.concat([pack(workerId), pack({ result: { kind: "unknown" } })]))
+-    const invalid = await relayed(8, unreadable)
+-    expect(readProjectStateResponseFrame(invalid)?.id).toBe(8)
+-    expect(decodeProjectStateResponse(invalid)).toBeUndefined()
+-    const own = account.countByAggregate("a")
+-    expect(workerAnswers?.(readProjectStateResponseFrame(unreadable(workerRequests.at(-1)!.id))!)).toBe(false)
+-
+-    // A Worker that goes away fails the relayed request in its own words.
+-    arrived = Promise.withResolvers()
+-    requested = Promise.withResolvers()
+-    await executorEndpoint.send(encodeProjectStateRequest({ id: 9, lane: "control", operation: { kind: "position.capture" } }))
+-    await requested.promise
+-    loseWorker?.("worker closed")
+-    await expect(own).rejects.toMatchObject({ name: "ProjectStateUnavailableError" })
+-    await arrived.promise
+-    expect(decodeProjectStateResponse(received.at(-1))).toMatchObject({ id: 9, result: { kind: "failed", error: { message: "project state is unavailable: worker closed" } } })
+-    await dispose()
+-    executorEndpoint.close()
+-  })
+-
+   test("invalid request closes the channel without invoking account state", async () => {
+     const [ownerEndpoint, executorEndpoint] = endpointPair()
+     const account = stateHarness()
+diff --git a/tests/unit/orchestration/app-service/project-state-client.test.ts b/tests/unit/orchestration/app-service/project-state-client.test.ts
+index 3da7ebc..64559e0 100644
+--- a/tests/unit/orchestration/app-service/project-state-client.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-client.test.ts
+@@ -6,10 +6,10 @@ import {
+   createProjectStateClient,
+   ProjectStateUnavailableError,
+   ProjectStateRefusedError,
++  spawnProjectStateWorker,
+   type ProjectStateClientTransport,
+ } from "../../../../src/orchestration/app-service/project-state-client.js"
+-import { spawnProjectStateWorker } from "../../../../src/orchestration/app-service/project-state-worker-spawner.js"
+-import { decodeProjectStateRequest, encodeProjectStateClosed, encodeProjectStateRequest, encodeProjectStateResponseFrame, type ProjectStateRequest, type ProjectStateResponse, type ProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import { decodeProjectStateRequest, encodeProjectStateClosed, encodeProjectStateRequest, type ProjectStateRequest, type ProjectStateResponse } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import { CorruptEventRowError, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+ import { contentEvidence } from "../../../../src/infra/content-evidence.js"
+ import { WorkerGenerationBudgetExhausted, WorkerRoleAlreadyLive } from "../../../../src/infra/bounded-worker-spawner.js"
+@@ -22,7 +22,7 @@ import { buildSessionContent, type SessionContentNodeRow } from "../../../../src
+ afterEach(closeFixtures)
+ 
+ function transportHarness() {
+-  let receive: ((frame: ProjectStateResponseFrame) => boolean) | undefined
++  let receive: ((response: ProjectStateResponse) => void) | undefined
+   let close: ((reason: string) => void) | undefined
+   const sent: ProjectStateRequest[] = []
+   const transport: ProjectStateClientTransport = {
+@@ -36,7 +36,7 @@ function transportHarness() {
+   return {
+     transport,
+     sent,
+-    respond(response: ProjectStateResponse) { return receive?.(encodeProjectStateResponseFrame(response)) },
++    respond(response: ProjectStateResponse) { receive?.(response) },
+     lose(reason = "worker closed") { close?.(reason) },
+   }
+ }
+@@ -294,13 +294,13 @@ describe("project state client", () => {
+   })
+ 
+   test("session proxy forwards commands and releases change subscription on close", async () => {
+-    let receive: ((frame: ProjectStateResponseFrame) => boolean) | undefined
++    let receive: ((response: ProjectStateResponse) => void) | undefined
+     let change: ((change: SessionMetadataChange) => void) | undefined
+     let unsubscribed = 0
+     const client = createProjectStateClient({
+       send(request) {
+-        expect(request.operation).toEqual({ kind: "session.control", command: { kind: "session.read-batch", reads: [{ kind: "session.read", id: "s" }] } })
+-        receive?.(encodeProjectStateResponseFrame({ id: request.id, result: { kind: "session-result", result: { kind: "session.read-batch.result", outcomes: [{ kind: "read", result: { kind: "session.read.result", value: null } }] } } }))
++        expect(request.operation).toEqual({ kind: "session.control", command: { kind: "session.read", id: "s" } })
++        receive?.({ id: request.id, result: { kind: "session-result", result: { kind: "session.read.result", value: null } } })
+       },
+       onResponse(listener) { receive = listener },
+       onClose() {},
+@@ -372,15 +372,17 @@ describe("project state client", () => {
+     await expect(batch).resolves.toEqual([{ ...first, id: "2", position: 2, seq: 1 }, { ...second, id: "3", position: 3, seq: 0 }])
+ 
+     const operations = [
++      client.writer.deleteByAggregateTypeAndRequestId("a", "t", "r"),
+       client.writer.pruneSupersededEvents("a", "t"),
+       client.writer.pruneSupersededKeyedEvents!("a", "t", "$.key"),
+     ]
+     expect(harness.sent.slice(2).map(({ operation }) => operation)).toEqual([
++      { kind: "maintenance.delete", aggregateId: "a", eventType: "t", requestId: "r", maxRows: Number.MAX_SAFE_INTEGER },
+       { kind: "maintenance.prune", aggregateId: "a", eventType: "t" },
+       { kind: "maintenance.prune-keyed", aggregateId: "a", eventType: "t", payloadKey: "$.key" },
+     ])
+     for (const request of harness.sent.slice(2)) harness.respond({ id: request.id, result: { kind: "maintenance", affected: request.id } })
+-    await expect(Promise.all(operations)).resolves.toEqual([3, 4])
++    await expect(Promise.all(operations)).resolves.toEqual([3, 4, 5])
+   })
+ 
+   test("writer exposes refusal and typed settlement failures without retrying", async () => {
+@@ -453,31 +455,6 @@ describe("project state client", () => {
+     }
+   })
+ 
+-  test("a deferred page that asks for fold evidence carries the evidence of its scope and no content", async () => {
+-    // The commit window holds facts but no evidence, so the page must come from the state Worker.
+-    const { client, store, service } = await fixture(undefined, undefined, false, [], { commitWindow: true })
+-    const extracted = extractContent("child result ".repeat(256))
+-    if (extracted.kind !== "reference") throw new Error("missing reference")
+-    const result = store.append({
+-      aggregateId: "session:s", type: "tool.result.recorded", sessionId: "s", version: 2, timestamp: 1, actor: "flywheel",
+-      payload: { toolUseId: "t", outcome: "ok", parentToolUseId: "p", content: extracted.reference }, contentRows: [extracted.row],
+-    })
+-    const enqueue = service.enqueue.bind(service)
+-    const served: unknown[] = []
+-    spyOn(service, "enqueue").mockImplementation(async (...args) => {
+-      const answer = await enqueue(...args)
+-      served.push(answer.result)
+-      return answer
+-    })
+-
+-    const page = await client.readPage({ aggregateId: "session:s" }, undefined, 0, false, "deferred", { anchorAt: result.position })
+-
+-    expect(page.foldEvidence).toEqual({ head: store.currentPosition(), generation: 0, anchor: { position: result.position, id: result.id } })
+-    expect(page.facts).toMatchObject([{ position: result.position }])
+-    expect(page.toolContent.resolve("s", extracted.reference.sha256)).toBeNull()
+-    expect(served).toMatchObject([{ kind: "facts", contentRows: [] }])
+-  })
+-
+ })
+ 
+ /** Installs a recording Worker constructor for one test; the caller restores it. */
+diff --git a/tests/unit/orchestration/app-service/project-state-commit-window.test.ts a/tests/unit/orchestration/app-service/project-state-commit-window.test.ts
+deleted file mode 100644
+index 1d86e56..0000000
+--- a/tests/unit/orchestration/app-service/project-state-commit-window.test.ts
++++ /dev/null
+@@ -1,591 +0,0 @@
+-import { afterEach, describe, expect, spyOn, test } from "bun:test"
+-import type { HeapSnapshot } from "bun"
+-import { heapStats } from "bun:jsc"
+-import { Schema } from "effect"
+-import { closeFixtures, fixture } from "./_project-state-worker-fixture.js"
+-import { createProjectStateClient, ProjectStateUnavailableError, type ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
+-import { encodeProjectStateResponseFrame, type ProjectStateRequest, type ProjectStateResponseFrame, type ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+-import { createWorkflowToolSummaryReader } from "../../../../src/orchestration/modules/workflows/history/tool-summary.js"
+-import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+-import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
+-import { WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-facts.js"
+-import { terminalWorkflowFacts } from "../session/_child-session-reconciliation-fixtures.js"
+-import { createProjectStateCommitWindow } from "../../../../src/orchestration/app-service/project-state-commit-window.js"
+-import { createEventProjection } from "../../../../src/infra/event-projection.js"
+-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStoreAppend, type FactQuery, type StoredFact } from "../../../../src/infra/event-store-types.js"
+-import { storedToolContentReferences } from "../../../../src/infra/tool-content-hydration.js"
+-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage.js"
+-
+-afterEach(closeFixtures)
+-
+-function fact(payload: { [key: string]: unknown } = {}): EventStoreAppend {
+-  return { aggregateId: "session:s", type: "test.fact", version: 1, timestamp: 1, actor: "test", sessionId: "s", payload }
+-}
+-
+-describe("commit window", () => {
+-  function appendOf(aggregateId: string, type = "test.fact", payload: { [key: string]: unknown } = {}): EventStoreAppend {
+-    return { aggregateId, type, sessionId: aggregateId.split(":").at(-1)!, version: 1, timestamp: 1, actor: "test", payload }
+-  }
+-
+-  /** A client with its window, anchored as the executor's startup capture
+-   *  anchors it, after `history` facts it never heard. */
+-  async function windowed(history: readonly EventStoreAppend[] = []) {
+-    const state = await fixture(undefined, undefined, false, [], { commitWindow: true })
+-    if (history.length > 0) state.store.appendBatch(history)
+-    await state.client.capturePosition()
+-    const enqueue = spyOn(state.service, "enqueue")
+-    /** The state requests made since the last call to either. */
+-    const operations = () => {
+-      const sent = enqueue.mock.calls.map(([, operation]) => operation)
+-      enqueue.mockClear()
+-      return sent
+-    }
+-    return { ...state, operations, requests: () => operations().map((operation) => operation.kind) }
+-  }
+-
+-  /** The aggregates of the sequence reads among `operations`. */
+-  function sequenceReads(operations: ReturnType<Awaited<ReturnType<typeof windowed>>["operations"]>) {
+-    return operations.flatMap((operation) => operation.kind === "aggregate.sequence" ? [operation.aggregateId] : [])
+-  }
+-
+-  /** Every page of `query` in (after, ceiling]. */
+-  async function readAll(surface: AsyncEventStateReadSurface, query: FactQuery, ceiling: number, after: number) {
+-    const facts: unknown[] = []
+-    for (let cursor: number | null = after; cursor !== null;) {
+-      const page: Awaited<ReturnType<AsyncEventStateReadSurface["readPage"]>> = await surface.readPage(query, ceiling, cursor)
+-      facts.push(...page.facts)
+-      cursor = page.continuationPosition
+-    }
+-    return facts
+-  }
+-
+-  /** The positions of one aggregate's facts, as a held reader folds them. */
+-  interface Folded { readonly positions: readonly number[] }
+-
+-  function counter(client: ProjectStateClient, aggregateId: string) {
+-    return createEventProjection<Folded>(client, {
+-      aggregateId, factTypes: ["test.fact"],
+-      initialState: () => ({ positions: [] }),
+-      reduce: (state, event) => ({ positions: [...state.positions, event.position] }),
+-    })
+-  }
+-
+-  test("a commit costs every held reader one shared capture and no page, whatever the member count or history", async () => {
+-    for (const [members, history] of [[3, 0], [30, 0], [3, 2_000]] as const) {
+-      const { client, requests } = await windowed(Array.from({ length: history }, (_, index) => appendOf(`session:m${index % members}`)))
+-      const projections = Array.from({ length: members }, (_, index) => counter(client, `session:m${index}`))
+-      await Promise.all(projections.map((projection) => projection.replay()))
+-      requests()
+-      const stored = await client.writer.append(appendOf("session:m0"))
+-      requests()
+-      await Promise.all(projections.map((projection) => projection.replay()))
+-      expect(requests()).toEqual(["position.capture"])
+-      expect(projections[0]!.getState().positions.at(-1)).toBe(stored.position)
+-      const tail = await client.readSlice({ aggregateId: "session:m0", order: "desc", limit: 1 })
+-      expect(tail.facts).toEqual([stored])
+-      expect(requests()).toEqual(["position.capture"])
+-      await closeFixtures()
+-    }
+-  })
+-
+-  test("local pages and tail slices equal the store's answer", async () => {
+-    const { client, store, requests } = await windowed([appendOf("session:old")])
+-    const floor = store.currentPosition()
+-    let seed = 7
+-    const random = (bound: number) => {
+-      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648
+-      return seed % bound
+-    }
+-    const aggregates = ["session:a", "session:b", "workflow:a", "conversation:x", "plain"]
+-    const types = ["t.one", "t.two", "t.three"]
+-    for (let batch = 0; batch < 40; batch += 1) {
+-      await client.writer.appendBatch(Array.from({ length: 1 + random(4) }, () => appendOf(
+-        aggregates[random(aggregates.length)]!, types[random(types.length)], { value: random(100), absent: undefined, list: [undefined, 1] },
+-      )))
+-    }
+-    const sql = asAsyncEventReadSurface(store)
+-    const ceiling = store.currentPosition()
+-    requests()
+-    let compared = 0
+-    for (let read = 0; read < 300; read += 1) {
+-      const pick = <T>(values: readonly T[]) => random(2) === 0 ? undefined : [...new Set(Array.from({ length: 1 + random(2) }, () => values[random(values.length)]!))]
+-      const aggregateIds = random(3) === 0 ? pick(aggregates) : undefined
+-      const query: FactQuery = {
+-        ...(aggregateIds ? { aggregateIds } : random(3) === 0 ? { aggregateId: aggregates[random(aggregates.length)] } : random(3) === 0 ? { aggregatePrefix: ["session:", "workflow:", "conversation:"][random(3)] } : {}),
+-        ...(random(4) === 0 ? { sessionId: ["a", "b", "x"][random(3)] } : {}),
+-        ...(pick(types) ? { types: pick(types) } : {}),
+-        ...(random(4) === 0 ? { afterPosition: floor + random(ceiling - floor) } : {}),
+-        ...(random(4) === 0 ? { beforePosition: floor + random(ceiling - floor + 2) } : {}),
+-        ...(random(3) === 0 ? { limit: 1 + random(5) } : {}),
+-      }
+-      const after = floor + random(ceiling - floor + 1)
+-      const page = await readAll(client, query, ceiling, after)
+-      expect(page).toStrictEqual(await readAll(sql, query, ceiling, after))
+-      const tail = { ...query, afterPosition: query.afterPosition ?? floor, order: "desc" as const, limit: 1 + random(5) }
+-      const slice = (await client.readSlice(tail)).facts
+-      expect(slice).toStrictEqual((await sql.readSlice(tail)).facts)
+-      compared += page.length + slice.length
+-    }
+-    expect(compared).toBeGreaterThan(300)
+-    expect(requests().filter((kind) => kind !== "position.capture")).toEqual([])
+-  })
+-
+-  test("history past the byte budget and a fact past the size cap are read from the store", async () => {
+-    const { client, store, requests } = await windowed()
+-    const floor = store.currentPosition()
+-    const text = "x".repeat(100_000)
+-    for (let index = 0; index < 90; index += 1) await client.writer.append(appendOf(`session:s${index % 3}`, "test.fact", { text, index }))
+-    const large = await client.writer.append(appendOf("session:s0", "test.fact", { text: "y".repeat(600_000) }))
+-    const tail = await client.writer.append(appendOf("session:s1"))
+-    const sql = asAsyncEventReadSurface(store)
+-    const ceiling = store.currentPosition()
+-    requests()
+-    expect((await client.readPage({ aggregateId: "session:s1" }, ceiling, large.position)).facts).toEqual([tail])
+-    expect(requests()).toEqual([])
+-    for (const [query, after] of [[{ aggregateId: "session:s0" }, large.position - 1], [{ types: ["test.fact"] }, floor]] as const) {
+-      expect(await readAll(client, query, ceiling, after)).toStrictEqual(await readAll(sql, query, ceiling, after))
+-      expect([...new Set(requests())]).toEqual(["facts.page"])
+-    }
+-  })
+-
+-  test("a commit that no broadcast announced re-anchors the window, and the next read finds it", async () => {
+-    const { client, path, requests } = await windowed()
+-    const projection = counter(client, "session:s")
+-    await client.writer.append(appendOf("session:s"))
+-    await projection.replay()
+-    const foreign = createSqliteEventStore(path)
+-    try {
+-      const unannounced = foreign.append(appendOf("session:s"))
+-      requests()
+-      await projection.replay()
+-      expect(projection.getState().positions.at(-1)).toBe(unannounced.position)
+-      expect(requests()).toEqual(["position.capture", "facts.page"])
+-      const announced = await client.writer.append(appendOf("session:s"))
+-      requests()
+-      await projection.replay()
+-      expect(projection.getState().positions.at(-1)).toBe(announced.position)
+-      expect(requests()).toEqual(["position.capture"])
+-      // The head of any response shows an unannounced commit too.
+-      const shown = foreign.append(appendOf("session:s"))
+-      await client.countByAggregate("session:other")
+-      requests()
+-      await projection.replay()
+-      expect(projection.getState().positions.at(-1)).toBe(shown.position)
+-      // The window re-anchored above the projection, so its read pays for no barrier.
+-      expect(requests()).toEqual(["facts.page"])
+-    } finally {
+-      foreign.close()
+-    }
+-  })
+-
+-  test("a lost broadcast or a detached transport never hides a fact from a read", async () => {
+-    const { client, requests, dropNextStored, detach } = await windowed()
+-    const projection = counter(client, "session:s")
+-    await projection.replay()
+-    const expected: number[] = []
+-    // A lost broadcast at the top of history: the capture shows it.
+-    dropNextStored()
+-    expected.push((await client.writer.append(appendOf("session:s"))).position)
+-    await projection.replay()
+-    expect(projection.getState().positions).toEqual(expected)
+-    // A lost broadcast below a later one: the later one shows the gap.
+-    dropNextStored()
+-    expected.push((await client.writer.append(appendOf("session:s"))).position)
+-    expected.push((await client.writer.append(appendOf("session:s"))).position)
+-    requests()
+-    await projection.replay()
+-    expect(projection.getState().positions).toEqual(expected)
+-    expect(requests()).toEqual(["facts.page"])
+-    // A detached transport can lose any broadcast until a read anchors again.
+-    detach()
+-    expected.push((await client.writer.append(appendOf("session:s"))).position)
+-    requests()
+-    await projection.replay()
+-    expect(projection.getState().positions).toEqual(expected)
+-    expect(requests()).toEqual(["facts.page"])
+-  })
+-
+-  test("a fact whose broadcast is a degraded substitute is read from the store", async () => {
+-    const { client, store, requests, failContentStaging } = await windowed()
+-    const after = store.currentPosition()
+-    failContentStaging(new Error("disk full"))
+-    store.append({ ...appendOf("session:s", "tool.result.recorded", {
+-      toolUseId: "old", outcome: "ok",
+-      details: { mutation: { version: 1, files: [{ path: "a", change: "modified", unifiedDiff: "-old\n+new\n" }], omissions: [] } },
+-    }), actor: "flywheel" })
+-    requests()
+-    // The read starts before the substitute arrives, so it pays for a capture.
+-    await expect(client.readPage({ aggregateId: "session:s" }, undefined, after)).rejects.toThrow("disk full")
+-    expect(requests()).toEqual(["position.capture", "facts.page"])
+-  })
+-
+-  test("a read hydrates the tool content of the executor's own well-formed append locally and other content from the store", async () => {
+-    const { client, store, requests } = await windowed()
+-    const toolResult = (conversationId: string, text: string) => ConversationTreeStorage.prepareAppend({
+-      conversationId, sessionId: "s", committed: {}, expectedSeq: 0,
+-      entries: [{ kind: "message", id: "r", parentId: null, timestamp: "2026-10-25T00:00:00.000Z", message: { kind: "toolResult", toolUseId: "t", content: [{ type: "text", text }] } }],
+-    })[0]!
+-    const own = await client.writer.append(toolResult("own", "own ".repeat(1_000)))
+-    // MCP JSON can escape an unpaired surrogate; the request codec stores a replacement character.
+-    const unpaired = await client.writer.append(toolResult("unpaired", `${"own ".repeat(1_000)}${JSON.parse('"\\ud800"')}tail`))
+-    const foreign = store.append(toolResult("foreign", "foreign ".repeat(1_000)))
+-    const sql = asAsyncEventReadSurface(store)
+-    requests()
+-    const kinds: string[][] = []
+-    for (const appended of [own, unpaired, foreign]) {
+-      const tail = { aggregateId: appended.aggregateId, order: "desc" as const, limit: 1 }
+-      const local = await client.readSlice(tail)
+-      kinds.push(requests())
+-      const [reference] = storedToolContentReferences(appended)
+-      expect(local.toolContent.resolve("s", reference!.sha256)).toBe((await sql.readSlice(tail)).toolContent.resolve("s", reference!.sha256)!)
+-    }
+-    expect(kinds).toEqual([["position.capture"], ["position.capture", "content.page"], ["position.capture", "content.page"]])
+-  })
+-
+-  test("a page that asks for fold evidence is read from the store, which proves it in the same request", async () => {
+-    const { client, store, requests } = await windowed()
+-    const floor = store.currentPosition()
+-    await client.writer.append(appendOf("session:s"))
+-    const ceiling = store.currentPosition()
+-    requests()
+-    const page = await client.readPage({ aggregateId: "session:s" }, ceiling, floor, false, "deferred", { anchorAt: ceiling })
+-    expect(page.facts.map((stored) => stored.position)).toEqual([ceiling])
+-    expect(page.foldEvidence).toEqual(store.foldEvidence({ aggregateId: "session:s" }, ceiling))
+-    expect(page.foldEvidence?.anchor?.position).toBe(ceiling)
+-    expect(requests()).toEqual(["facts.page"])
+-  })
+-
+-  test("a cold read below the window costs one request", async () => {
+-    const { client, requests } = await windowed([appendOf("session:s"), appendOf("session:s")])
+-    const page = await client.readPage({ aggregateId: "session:s" }, undefined, 0)
+-    expect(page.facts).toHaveLength(2)
+-    expect(requests()).toEqual(["facts.page"])
+-    const tail = await client.readSlice({ aggregateId: "session:s", order: "desc", limit: 1 })
+-    expect(tail.facts.map((stored) => stored.position)).toEqual([page.facts[1]!.position])
+-    expect(requests()).toEqual(["facts.slice"])
+-  })
+-
+-  test("a read after a prune of superseded facts equals the store's answer", async () => {
+-    const { client, store, requests } = await windowed()
+-    const floor = store.currentPosition()
+-    for (let index = 0; index < 2; index += 1) await client.writer.append(appendOf("session:s", "queue.state.changed", { index }))
+-    expect(await client.writer.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(1)
+-    const sql = asAsyncEventReadSurface(store)
+-    const ceiling = store.currentPosition()
+-    const query = { aggregateId: "session:s", types: ["queue.state.changed"] }
+-    requests()
+-    expect(await readAll(client, query, ceiling, floor)).toStrictEqual(await readAll(sql, query, ceiling, floor))
+-    const tail = { ...query, order: "desc" as const, limit: 2 }
+-    expect((await client.readSlice(tail)).facts).toStrictEqual((await sql.readSlice(tail)).facts)
+-    expect(requests()).toEqual(["facts.page", "facts.slice"])
+-  })
+-
+-  test("a closed transport ends every local read, and no capture that settles later anchors the window again", async () => {
+-    const { client, store, closeTransport } = await windowed()
+-    const floor = store.currentPosition()
+-    await client.writer.append(appendOf("session:s"))
+-    const ceiling = store.currentPosition()
+-    closeTransport("worker exited")
+-    expect(client.available).toBe(false)
+-    await expect(client.readPage({ aggregateId: "session:s" }, ceiling, floor)).rejects.toBeInstanceOf(ProjectStateUnavailableError)
+-    await expect(client.readSlice({ aggregateId: "session:s", order: "desc", limit: 1 })).rejects.toBeInstanceOf(ProjectStateUnavailableError)
+-
+-    // A close drains the reads already sent; the ceiling one of them
+-    // captured must not anchor the closed window.
+-    const closing = await windowed([appendOf("session:cold")])
+-    const remote = closing.client.readPage({ aggregateId: "session:cold" }, undefined, 0)
+-    const closed = closing.client.close()
+-    const { upperPosition } = await remote
+-    await closed
+-    await expect(closing.client.readPage({ aggregateId: "session:cold" }, upperPosition, upperPosition)).rejects.toBeInstanceOf(ProjectStateUnavailableError)
+-  })
+-
+-  test("a conversation's sequence comes from the window, and a session's, a workflow's, or one below the floor from the store", async () => {
+-    const { client, store, operations } = await windowed([appendOf("conversation:cold"), appendOf("conversation:old")])
+-    for (const aggregateId of ["conversation:x", "conversation:x", "conversation:old", "session:s", "workflow:w"]) await client.writer.append(appendOf(aggregateId))
+-    operations()
+-    const aggregates = ["conversation:x", "conversation:old", "conversation:cold", "conversation:none", "session:s", "workflow:w"]
+-    for (const aggregateId of aggregates) expect(await client.aggregateSeq(aggregateId)).toBe(store.aggregateSeq(aggregateId))
+-    expect(sequenceReads(operations())).toEqual(["conversation:cold", "conversation:none", "session:s", "workflow:w"])
+-  })
+-
+-  test("a tool-summary replay reads no conversation sequence from the store, whatever the child count", async () => {
+-    for (const children of [2, 8]) {
+-      const { client, store, manager, operations } = await windowed()
+-      const parent = await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent" })
+-      const local = asAsyncEventReadSurface(store)
+-      const trees = []
+-      for (let index = 0; index < children; index += 1) {
+-        const workflowId = `workflow-${index}`
+-        await manager.publishWorkflow({
+-          id: workflowId, description: "Review", workflowDefinitionId: "workflow", initialRoles: {},
+-          launchedFrom: { parentSessionId: parent, conversationId: "parent-conversation", workflowDefinitionId: "workflow", toolUseId: `tool-${index}`, description: "Review" },
+-          facts: terminalWorkflowFacts("Review", "paused").map((terminal) => Schema.decodeUnknownSync(WorkflowSessionFactSchema)(terminal)),
+-        })
+-        store.append({ aggregateId: `workflow:${workflowId}`, sessionId: workflowId, type: "queue.state.changed", version: 1, timestamp: 1, actor: "flywheel", payload: { status: "running", cursor: 0 } })
+-        const stepId = (await loadQueueSnapshotFromReader(local, workflowId))?.attempts[0]?.id
+-        if (stepId === undefined) throw new Error("expected a current step")
+-        store.append({ aggregateId: `workflow:${workflowId}`, sessionId: workflowId, type: "step.resume_state.recorded", version: 1, timestamp: 1, actor: "flywheel", payload: { stepId, conversationId: `step-${index}` } })
+-        const tree = await createConversationTree({ conversationId: `step-${index}`, sessionId: workflowId, store: local, writer: asAsyncEventWriter(store) })
+-        await tree.appendMessage({ kind: "user", content: "Review the change.", origin: "human" })
+-        trees.push(tree)
+-      }
+-      const summaries = createWorkflowToolSummaryReader(client, parent)
+-      operations()
+-      const first = await summaries.replay()
+-      expect([...first.summaries.values()].map((summary) => summary.status)).toEqual(Array.from({ length: children }, () => "active"))
+-      // A step's conversation moves, and the next replay reads it again.
+-      await trees[0]!.appendMessage({ kind: "user", content: "Again.", origin: "human" })
+-      await summaries.replay()
+-      const reads = sequenceReads(operations())
+-      expect(reads.filter((aggregateId) => aggregateId.startsWith("conversation:"))).toEqual([])
+-      expect(reads.length).toBeGreaterThan(0)
+-      for (const tree of trees) tree.getStorage().dispose()
+-      await closeFixtures()
+-    }
+-  })
+-})
+-
+-describe("commit window barrier", () => {
+-  /** A windowed client whose requests the test answers by hand. */
+-  function manual() {
+-    const sent: ProjectStateRequest[] = []
+-    let respond: ((frame: ProjectStateResponseFrame) => boolean) | undefined
+-    const client = createProjectStateClient({
+-      send(request) { sent.push(request) },
+-      onResponse(listener) { respond = listener },
+-      onClose() {},
+-      onSessionChange() { return () => {} },
+-      onStored() { return () => {} },
+-      close() {},
+-    }, { commitWindow: true })
+-    return {
+-      client,
+-      /** Answers the newest sent request of `kind`. */
+-      answer(kind: string, result: ProjectStateResult, head?: number) {
+-        const request = sent.findLast((candidate) => candidate.operation.kind === kind)
+-        if (!request) throw new Error(`no ${kind} request`)
+-        respond?.(encodeProjectStateResponseFrame({ id: request.id, result, ...(head === undefined ? {} : { head }) }))
+-      },
+-      captures: () => sent.filter((request) => request.operation.kind === "position.capture").length,
+-    }
+-  }
+-
+-  /** Readers that record the position each barrier resolved to. */
+-  function readers(client: ProjectStateClient, count: number) {
+-    const resolved: number[] = []
+-    const all = Promise.all(Array.from({ length: count }, () => client.capturePosition().then((position) => { resolved.push(position) })))
+-    return { resolved, all }
+-  }
+-
+-  const nextTask = () => new Promise<void>((resolve) => { setImmediate(resolve) })
+-  const count = (value: number): ProjectStateResult => ({ kind: "count", count: value })
+-
+-  test("idle readers share one capture at the next task, which answers them without a head", async () => {
+-    const { client, answer, captures } = manual()
+-    const timers = spyOn(globalThis, "setTimeout")
+-    try {
+-      const { resolved, all } = readers(client, 5)
+-      await nextTask()
+-      expect(captures()).toBe(1)
+-      expect(timers).toHaveBeenCalledTimes(0)
+-      answer("position.capture", { kind: "position", position: 4 })
+-      await all
+-      expect(resolved).toEqual([4, 4, 4, 4, 4])
+-    } finally {
+-      timers.mockRestore()
+-    }
+-  })
+-
+-  test("readers that a control request sent after their calls answers cost no capture", async () => {
+-    const { client, answer, captures } = manual()
+-    const { resolved, all } = readers(client, 5)
+-    void client.control({ kind: "aggregate.count", aggregateId: "session:s" })
+-    await Bun.sleep(5)
+-    expect(captures()).toBe(0)
+-    answer("aggregate.count", count(1), 3)
+-    await all
+-    expect(resolved).toEqual([3, 3, 3, 3, 3])
+-  })
+-
+-  test("a burst while busy costs one capture after the deferral, and no answer to a request sent before the call serves it", async () => {
+-    const { client, answer, captures } = manual()
+-    void client.control({ kind: "aggregate.count", aggregateId: "session:s" })
+-    const { resolved, all } = readers(client, 5)
+-    await nextTask()
+-    expect(captures()).toBe(0)
+-    answer("aggregate.count", count(1), 2)
+-    await Bun.sleep(5)
+-    expect(resolved).toEqual([])
+-    expect(captures()).toBe(1)
+-    answer("position.capture", { kind: "position", position: 3 }, 3)
+-    await all
+-    expect(resolved).toEqual([3, 3, 3, 3, 3])
+-  })
+-
+-  test("a covering answer without a head leaves the readers waiting, and the capture follows", async () => {
+-    const { client, answer, captures } = manual()
+-    const { resolved, all } = readers(client, 2)
+-    void client.control({ kind: "aggregate.count", aggregateId: "session:s" })
+-    await Bun.sleep(5)
+-    expect(captures()).toBe(0)
+-    // An answer the account made itself, such as a refusal for pressure.
+-    answer("aggregate.count", { kind: "refused", reason: "pressure" })
+-    await nextTask()
+-    expect(resolved).toEqual([])
+-    expect(captures()).toBe(1)
+-    answer("position.capture", { kind: "position", position: 1 }, 1)
+-    await all
+-    expect(resolved).toEqual([1, 1])
+-  })
+-
+-  test("an execution request does not hold back the capture, but its head serves readers when it answers first", async () => {
+-    const { client, answer, captures } = manual()
+-    const { resolved, all } = readers(client, 2)
+-    void client.execution({ kind: "generation.admit", projectId: "p", generation: 1 })
+-    await nextTask()
+-    expect(captures()).toBe(1)
+-    answer("generation.admit", { kind: "ok" }, 6)
+-    await all
+-    expect(resolved).toEqual([6, 6])
+-  })
+-})
+-
+-describe("commit window memory", () => {
+-  function storedOf(position: number, aggregateId: string, payload: { [key: string]: unknown }): StoredFact {
+-    return { position, id: String(position), aggregateId, seq: position, type: "test.fact", version: 1, timestamp: 1, actor: "test", sessionId: "s", payload }
+-  }
+-
+-  /** A weak reference to the newest fact of `aggregateId` that a reader got
+-   *  from `window`. The read's result gives the fact up, so a stale copy of
+-   *  the result on the stack cannot refer to it. */
+-  function newestRead(window: ReturnType<typeof createProjectStateCommitWindow>, aggregateId: string, position: number): WeakRef<StoredFact> {
+-    return new WeakRef(window.slice({ aggregateId, order: "desc", limit: 1 }, position)!.pop()!)
+-  }
+-
+-  /** Weak references to the facts a reader got from the window, which the
+-   *  window then evicts behind a newer fact of the same key. Each payload
+-   *  holds an `evictedRead` key, which names it in a heap snapshot. */
+-  function evictedReads(window: ReturnType<typeof createProjectStateCommitWindow>): WeakRef<StoredFact>[] {
+-    window.observe(0)
+-    const text = "x".repeat(100_000)
+-    const refs: WeakRef<StoredFact>[] = []
+-    let position = 0
+-    for (let index = 0; index < 40; index += 1) {
+-      window.receive([storedOf(++position, `session:k${index % 4}`, { evictedRead: { index } })])
+-      refs.push(newestRead(window, `session:k${index % 4}`, position))
+-    }
+-    for (let index = 0; index < 90; index += 1) window.receive([storedOf(++position, `session:k${index % 4}`, { text })])
+-    // The oldest facts left the held suffix, so an oldest-first read goes remote.
+-    expect(window.slice({ aggregateId: "session:k0", order: "asc", limit: 1 }, position)).toBeUndefined()
+-    return refs
+-  }
+-
+-  /** For each fact with an `evictedRead` payload that a WeakRef refers to,
+-   *  the sorted class names of the heap objects that refer to the fact or to
+-   *  its payload, other than the fact itself. A fact that only the stack
+-   *  keeps alive, such as an input to `receive`, has no WeakRef referrer and
+-   *  is not listed. */
+-  function evictedReadReferrers({ nodes, nodeClassNames, edges, edgeTypes, edgeNames }: HeapSnapshot): string[][] {
+-    const classOf = new Map<number, string>()
+-    // A node is [id, size, class name index, flags].
+-    for (let node = 0; node < nodes.length; node += 4) classOf.set(nodes[node]!, nodeClassNames[nodes[node + 2]!]!)
+-    // An edge is [from, to, type index, data], and the data of a property edge is its name index.
+-    const property = (edge: number, name: string) => edgeTypes[edges[edge + 2]!] === "Property" && edgeNames[edges[edge + 3]!] === name
+-    const marked = new Set<number>()
+-    for (let edge = 0; edge < edges.length; edge += 4) if (property(edge, "evictedRead")) marked.add(edges[edge]!)
+-    /** The read of each marked payload. */
+-    const readOf = new Map<number, number>()
+-    for (let edge = 0; edge < edges.length; edge += 4) if (property(edge, "payload") && marked.has(edges[edge + 1]!)) readOf.set(edges[edge + 1]!, edges[edge]!)
+-    const referrers = new Map<number, string[]>(Array.from(readOf.values(), (read) => [read, []]))
+-    for (let edge = 0; edge < edges.length; edge += 4) {
+-      const [from, to] = [edges[edge]!, edges[edge + 1]!]
+-      const read = referrers.has(to) ? to : readOf.get(to)
+-      if (read !== undefined && from !== read) referrers.get(read)!.push(classOf.get(from)!)
+-    }
+-    return [...referrers.values()].map((classes) => classes.sort()).filter((classes) => classes.includes("WeakRef"))
+-  }
+-
+-  test("an evicted fact releases its payload", async () => {
+-    const window = createProjectStateCommitWindow()
+-    const refs = evictedReads(window)
+-    // A WeakRef keeps its fact until the job that made it ends.
+-    await Bun.sleep(0)
+-    Bun.gc(true)
+-    const alive = refs.filter((ref) => ref.deref() !== undefined)
+-    // JSC scans the stack conservatively, so a stale stack slot can keep a fact
+-    // alive that no heap object refers to, and liveness alone cannot show what
+-    // keeps it. A heap snapshot records each reference that a heap object
+-    // holds, and none for a stack slot. The deref above makes each WeakRef keep
+-    // its live fact through this job, so the snapshot holds every live read.
+-    expect(alive.length === 0 ? [] : evictedReadReferrers(Bun.generateHeapSnapshot())).toEqual(alive.map(() => ["WeakRef"]))
+-    window.close()
+-  })
+-
+-  /** The heap the window retains after it heard `count` facts and served
+-   *  newest-first reads of every session, in MiB. */
+-  function retainedMiB(count: number, sessions: number, payload: (position: number) => { [key: string]: unknown }, content?: (position: number) => string): number {
+-    Bun.gc(true)
+-    const before = heapStats().heapSize
+-    const window = createProjectStateCommitWindow()
+-    window.observe(0)
+-    for (let position = 1; position <= count; position += 1) {
+-      const session = `s${position % sessions}-${"x".repeat(16)}`
+-      window.receive([{ ...storedOf(position, `conversation:${session}`, payload(position)), id: `id-${position}-${"x".repeat(16)}`, type: `t${position % 20}`, sessionId: session }])
+-      const text = content?.(position)
+-      if (text !== undefined) window.holdContent(position, [{ sha256: position.toString(16).padStart(64, "0"), content: text, bytes: text.length }])
+-    }
+-    let read = 0
+-    for (let index = 0; index < sessions; index += 1) read += window.slice({ sessionId: `s${index}-${"x".repeat(16)}`, order: "desc", limit: 5 }, count)?.length ?? 0
+-    expect(read).toBe(sessions * 5)
+-    Bun.gc(true)
+-    const retained = (heapStats().heapSize - before) / 1024 / 1024
+-    window.close()
+-    return retained
+-  }
+-
+-  // The budget is 8 MiB of retained heap; the margin absorbs heap noise.
+-  test("many small facts retain at most the byte budget", () => {
+-    expect(retainedMiB(30_000, 160, (position) => ({ kind: "k", text: `${"x".repeat(100)}${position}` }))).toBeLessThan(10)
+-  })
+-
+-  test("large structured facts retain at most the byte budget after reads", () => {
+-    const values = Array.from({ length: 200_000 }, (_, index) => index % 10)
+-    expect(retainedMiB(40, 1, () => ({ input: { values } }))).toBeLessThan(10)
+-  })
+-
+-  test("facts of two-byte text retain at most the byte budget", () => {
+-    expect(retainedMiB(400, 4, (position) => ({ text: `${"日本".repeat(20_000)}${position}` }))).toBeLessThan(10)
+-  })
+-
+-  test("facts with held tool content retain at most the byte budget", () => {
+-    expect(retainedMiB(4_000, 160, (position) => ({ kind: "k", position }), (position) => `${"c".repeat(4_000)}${position}`)).toBeLessThan(10)
+-  })
+-})
+-
+-describe("commit notification order", () => {
+-  test("answers a request only after the commit notifications of the commits before it", async () => {
+-    const { store, client, storedNotifications, holdContentStaging } = await fixture()
+-    const staging = Promise.withResolvers<void>()
+-    holdContentStaging(staging.promise)
+-    // Its notification stages historical evidence, so it waits on the gate.
+-    const committed = store.append({ ...fact({
+-      toolUseId: "old", outcome: "ok",
+-      details: { mutation: { version: 1, files: [{ path: "a", change: "modified", unifiedDiff: "-old\n+new\n" }], omissions: [] } },
+-    }), type: "tool.result.recorded", actor: "flywheel" })
+-    const notifiedAtResponse = client.capturePosition().then((position) => ({
+-      position, notified: storedNotifications.flat().some((event) => event.position === committed.position),
+-    }))
+-    await Bun.sleep(1)
+-    staging.resolve()
+-    expect(await notifiedAtResponse).toEqual({ position: committed.position, notified: true })
+-  })
+-
+-  test("a failed commit notification fails no response", async () => {
+-    const { client, failNextStored } = await fixture()
+-    failNextStored()
+-    const stored = await client.writer.append(fact())
+-    expect(await client.capturePosition()).toBe(stored.position)
+-  })
+-})
+diff --git a/tests/unit/orchestration/app-service/project-state-worker.test.ts b/tests/unit/orchestration/app-service/project-state-worker.test.ts
+index 0e25ebf..b206ecc 100644
+--- a/tests/unit/orchestration/app-service/project-state-worker.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-worker.test.ts
+@@ -1,8 +1,9 @@
+ import { describe, expect, test, afterEach, spyOn } from "bun:test"
+-import { cleanup, closeFixtures, enqueue, fixture, served } from "./_project-state-worker-fixture.js"
++import { cleanup, closeFixtures, fixture } from "./_project-state-worker-fixture.js"
+ import { Database } from "bun:sqlite"
+ import { pack } from "msgpackr"
+-import { encodeProjectStateRequest, encodeProjectStateResponse, PROJECT_STATE_MAX_BYTES, type ProjectStateContentReference, type ProjectStateControlOperation } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import { createProjectStateScheduler } from "../../../../src/orchestration/app-service/project-state-worker.js"
++import { encodeProjectStateRequest, encodeProjectStateResponse, operationUnits, PROJECT_STATE_MAX_BYTES, type ProjectStateContentReference, type ProjectStateControlOperation, type ProjectStateOperation, type ProjectStateResult, type ProjectStateLane } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import { asAsyncEventReadSurface, asAsyncEventWriter, InFlightSwapConflictError, type EventStoreAppend } from "../../../../src/infra/event-store-types.js"
+ import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+ import { extractContent } from "../../../../src/infra/tool-content.js"
+@@ -24,6 +25,10 @@ function fact(payload: { [key: string]: unknown } = {}): EventStoreAppend {
+   return { aggregateId: "session:s", type: "test.fact", sessionId: "s", version: 1, timestamp: 1, actor: "test", payload }
+ }
+ 
++function enqueue(target: Pick<ReturnType<typeof createProjectStateScheduler>, "enqueue">, lane: ProjectStateLane, operation: ProjectStateOperation) {
++  return target.enqueue(lane, operation, { bytes: encodeProjectStateRequest({ id: 1, lane, operation }).byteLength, units: operationUnits(operation) })
++}
++
+ describe("project state worker scheduler", () => {
+   test("exclusive startup recovers the previous image before execution is admitted", async () => {
+     let previousImage = ""
+@@ -70,35 +75,6 @@ describe("project state worker scheduler", () => {
+       expect(JSON.parse(record.raw)).toEqual(record.payload)
+     }
+   })
+-  test("serves the session reads of one tick as one request with each reader's own result", async () => {
+-    const { client, manager, service } = await fixture()
+-    const first = await manager.createChat({ name: "first", initialState: "inactive" })
+-    const second = await manager.createChat({ name: "second", initialState: "inactive" })
+-    const reads = [
+-      () => client.sessions.listForIds([first]),
+-      () => client.sessions.listForIds([second, "missing"]),
+-      () => client.sessions.read(first),
+-      () => client.sessions.listActive(),
+-    ]
+-    const commands = [
+-      { kind: "session.list-for-ids", ids: [first] },
+-      { kind: "session.list-for-ids", ids: [second, "missing"] },
+-      { kind: "session.read", id: first },
+-      { kind: "session.list-active" },
+-    ] as const
+-    const enqueued = spyOn(service, "enqueue")
+-    const sent = () => enqueued.mock.calls.map(([, operation]) => operation)
+-    const alone = []
+-    for (const read of reads) alone.push(await read())
+-    expect(sent()).toEqual(commands.map((command) => ({ kind: "session.control", command: { kind: "session.read-batch", reads: [command] } })))
+-    enqueued.mockClear()
+-
+-    const batched = await Promise.all(reads.map((read) => read()))
+-
+-    expect(sent()).toEqual([{ kind: "session.control", command: { kind: "session.read-batch", reads: commands } }])
+-    expect(batched).toEqual(alone)
+-  })
+-
+   test("committed retained admission changes notify before acknowledgement, conflicts do not", async () => {
+     const { client } = await fixture()
+     const changes: SessionMetadataChange[] = []
+@@ -169,6 +145,108 @@ describe("project state worker scheduler", () => {
+     expect(second.kind === "failed" ? second.error.message : second.kind).toContain("database is locked")
+     expect(await recover()).toEqual({ kind: "refused", reason: "unsafe-recovery", message: "Corrupt event row 7" })
+   })
++
++  test("runs control after the complete current execution item", async () => {
++    const order: string[] = []
++    let release!: () => void
++    const blocked = new Promise<void>((resolve) => { release = resolve })
++    const scheduler = createProjectStateScheduler(async (operation: ProjectStateOperation): Promise<ProjectStateResult> => {
++      order.push(`start:${operation.kind}`)
++      if (operation.kind === "execution.operation") await blocked
++      order.push(`end:${operation.kind}`)
++      return { kind: "ok" }
++    })
++
++    const first = enqueue(scheduler, "execution", {
++      kind: "execution.operation",
++      projectId: "p",
++      generation: 1,
++      operation: { kind: "append", item: { sessionId: "s", events: [], inFlight: [{ op: "put", kind: "tool", key: "k", payload: {} }] } },
++    })
++    await Promise.resolve()
++    const second = enqueue(scheduler, "execution", { kind: "generation.close", projectId: "p", generation: 1 })
++    const control = enqueue(scheduler, "control", { kind: "position.capture" })
++    release()
++    await Promise.all([first, second, control])
++
++    expect(order).toEqual([
++      "start:execution.operation",
++      "end:execution.operation",
++      "start:position.capture",
++      "end:position.capture",
++      "start:generation.close",
++      "end:generation.close",
++    ])
++  })
++
++  test("serves requests without a timer, alone or behind a backlog", async () => {
++    // A zero timer costs about one millisecond in Bun, so a timer per queued
++    // request capped the worker near a thousand requests per second while idle.
++    const timers = spyOn(globalThis, "setTimeout")
++    const served: string[] = []
++    const scheduler = createProjectStateScheduler(async (operation) => { served.push(operation.kind); return { kind: "ok" } })
++    try {
++      await enqueue(scheduler, "control", { kind: "position.capture" })
++      const second = enqueue(scheduler, "control", { kind: "position.capture" })
++      // An idle scheduler starts the request in the same task.
++      expect(served).toEqual(["position.capture", "position.capture"])
++      await second
++      await Promise.all(Array.from({ length: 100 }, () => enqueue(scheduler, "execution", { kind: "generation.admit", projectId: "p", generation: 1 })))
++      expect(served).toHaveLength(102)
++      expect(timers).toHaveBeenCalledTimes(0)
++    } finally {
++      timers.mockRestore()
++      await scheduler.close()
++    }
++  })
++
++  test("bounds each lane before insertion", async () => {
++    const scheduler = createProjectStateScheduler(async () => ({ kind: "ok" }), { maxQueuedItems: 0 })
++    await expect(enqueue(scheduler, "execution", { kind: "generation.admit", projectId: "p", generation: 1 }))
++      .resolves.toEqual({ kind: "refused", reason: "pressure" })
++  })
++
++  test("yields to incoming control messages while execution remains queued", async () => {
++    const order: string[] = []
++    const scheduler = createProjectStateScheduler(async (operation) => {
++      order.push(operation.kind)
++      return { kind: "ok" }
++    })
++    // A port message is a task that arrives while the backlog drains.
++    const control = new Promise<ProjectStateResult>((resolve) => {
++      setImmediate(() => resolve(enqueue(scheduler, "control", { kind: "position.capture" })))
++    })
++    const execution = Array.from({ length: 8 }, () =>
++      enqueue(scheduler, "execution", { kind: "generation.admit", projectId: "p", generation: 1 }))
++    await Promise.all([...execution, control])
++    expect(order.slice(0, 3)).toEqual(["generation.admit", "position.capture", "generation.admit"])
++    await scheduler.close()
++  })
++
++  test("counts in-flight work, isolates lane bounds, joins work, and contains operation failure", async () => {
++    const release = Promise.withResolvers<void>()
++    const failure = new Error("operation failed")
++    const scheduler = createProjectStateScheduler(async (operation) => {
++      if (operation.kind === "generation.admit") {
++        await release.promise
++        throw failure
++      }
++      return { kind: "ok" }
++    }, { maxQueuedItems: 1 })
++    const execution = enqueue(scheduler, "execution", { kind: "generation.admit", projectId: "p", generation: 1 })
++    await expect(enqueue(scheduler, "execution", { kind: "generation.close", projectId: "p", generation: 1 })).resolves.toMatchObject({ kind: "refused", reason: "pressure" })
++    const control = enqueue(scheduler, "control", { kind: "position.capture" })
++    let joined = false
++    const close = scheduler.close().then(() => { joined = true })
++    await Promise.resolve()
++    expect(joined).toBe(false)
++    await expect(enqueue(scheduler, "control", { kind: "position.capture" })).resolves.toMatchObject({ kind: "failed" })
++    release.resolve()
++    await expect(execution).resolves.toEqual({ kind: "failed", error: failure })
++    await expect(control).resolves.toEqual({ kind: "ok" })
++    await close
++    expect(joined).toBe(true)
++  })
+ })
+ 
+ describe("project state read and write boundary", () => {
+@@ -361,7 +439,7 @@ describe("project state read and write boundary", () => {
+     const changes: string[] = []
+     projection.subscribe((batch) => { for (const change of batch) changes.push(change.kind === "removed" ? change.sessionId : change.row.id) })
+     try {
+-      // A child is never a catalog row (ARCH-PROTOCOL-048): its row is read through
++      // A child is never a catalog row (ADR-022): its row is read through
+       // session detail, where the metadata the state worker settles is authority.
+       // What the row admits comes from the run evidence the detail read adds;
+       // projected from metadata alone, a child admits deletion only.
+@@ -393,7 +471,7 @@ describe("project state read and write boundary", () => {
+ 
+   test("writer preserves batch atomicity, typed rejection, and maintenance behavior through the service", async () => {
+     const { store, client } = await fixture()
+-    const first = await client.writer.append(fact({ requestId: "first" }))
++    const first = await client.writer.append(fact({ requestId: "remove" }))
+     expect(first.position).toBe(1)
+ 
+     const batch = [
+@@ -403,6 +481,7 @@ describe("project state read and write boundary", () => {
+     await expect(client.writer.appendBatchGuarded(batch)).resolves.toMatchObject({ kind: "conflict" })
+     expect(store.currentPosition()).toBe(1)
+ 
++    expect(await client.writer.deleteByAggregateTypeAndRequestId("session:s", "test.fact", "remove")).toBe(1)
+     expect(await client.writer.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(0)
+     expect(await client.writer.pruneSupersededKeyedEvents?.("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
+   })
+@@ -543,30 +622,6 @@ describe("project state read and write boundary", () => {
+     expect(closes).toBe(1)
+   })
+ 
+-  test("every response carries a head that its commit notifications reached first", async () => {
+-    const { store, service, storedNotifications, holdContentStaging } = await fixture()
+-    const notified = () => Math.max(0, ...storedNotifications.flat().map((event) => event.position))
+-    const appended = await served(service, "control", { kind: "append", item: { sessionId: "s", events: [fact()] } })
+-    expect(appended.head).toBe(store.currentPosition())
+-    expect(notified()).toBe(store.currentPosition())
+-    const staging = Promise.withResolvers<void>()
+-    holdContentStaging(staging.promise)
+-    // Its notification stages historical evidence, so it waits on the gate.
+-    const committed = store.append({ ...fact({
+-      toolUseId: "old", outcome: "ok",
+-      details: { mutation: { version: 1, files: [{ path: "a", change: "modified", unifiedDiff: "-old\n+new\n" }], omissions: [] } },
+-    }), type: "tool.result.recorded", actor: "flywheel" })
+-    let answered = false
+-    const answer = served(service, "control", { kind: "aggregate.count", aggregateId: "session:s" }).then((response) => {
+-      answered = true
+-      return { ...response, notified: notified() }
+-    })
+-    await Bun.sleep(1)
+-    expect(answered).toBe(false)
+-    staging.resolve()
+-    expect(await answer).toEqual({ result: { kind: "count", count: 2 }, head: committed.position, notified: committed.position })
+-  })
+-
+   test("database disposal failure remains observable without retrying close", async () => {
+     const { store, service, client } = await fixture()
+     const close = store.close

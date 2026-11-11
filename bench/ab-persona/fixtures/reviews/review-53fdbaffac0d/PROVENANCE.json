@@ -1,0 +1,353 @@
+{
+  "base": "ed4e0f005171f93a614b141fb0552d749274257b",
+  "files": [
+    {
+      "anchor": "701d50e449d5fed9987b8a08f2eb730bc3077c97",
+      "path": "docs/adrs/adr-010-runtime-ui-protocol.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/adrs/adr-020-subscription-spend-consent.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "fc3a1d3a02fcaa64c34c3ef80e48a44c0d27b703",
+      "path": "docs/guides/webview-render-continuity.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/product-intent/interaction.md",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/product-intent/model-access.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/orchestration/subscription-spend-consent/subscription-spend-consent-service.ts",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/tui/components/modal-copy.ts",
+      "reversedMutations": 5
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/tui/hooks/create-modals.tsx",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/tui/hooks/use-subscription-spend-consent-control.ts",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/tui/hooks/use-subscription-spend-consent-modal.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/tui/modals/auth-modal.tsx",
+      "reversedMutations": 9
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/tui/modals/subscription-spend-consent-modal.tsx",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "tests/unit/tui/hooks/use-subscription-spend-consent-control.test.ts",
+      "reversedMutations": 6
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "tests/unit/tui/modals/auth-modal-capability-render.test.tsx",
+      "reversedMutations": 7
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "tests/unit/tui/modals/auth-modal-paid-use-question.test.ts",
+      "reversedMutations": 6
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "tests/unit/tui/modals/subscription-spend-consent-modal.test.tsx",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "webview/src/app/providers-sheet-interaction-fixture.ts",
+      "reversedMutations": 6
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "webview/src/app/providers-sheet-interaction.test.ts",
+      "reversedMutations": 10
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "webview/src/app/sheets/providers-sheet.tsx",
+      "reversedMutations": 10
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "webview/src/client/provider-view-model.test.ts",
+      "reversedMutations": 6
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "webview/src/client/provider-view-model.ts",
+      "reversedMutations": 4
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "bench/shared/runtime.ts",
+    "docs/adrs/adr-005-flywheel-design-principles.md",
+    "docs/adrs/adr-015-internal-modules.md",
+    "docs/adrs/adr-017-subscription-usage.md",
+    "src/infra/llm/access-provider.ts",
+    "src/orchestration/agent-runtime/factory.ts",
+    "src/orchestration/agent-runtime/llm/client-factory.ts",
+    "src/orchestration/agent-runtime/llm/failover-client.ts",
+    "src/orchestration/agent-runtime/llm/provider-availability-types.ts",
+    "src/orchestration/agent-runtime/llm/provider-availability.ts",
+    "src/orchestration/app-service/auth-runtime.ts",
+    "src/orchestration/app-service/project-execution-ownership.ts",
+    "src/orchestration/auth/profile-request-service.ts",
+    "src/orchestration/headless/headless-profile-runtime.ts",
+    "src/orchestration/headless/run-headless-task.ts",
+    "src/orchestration/modules/provider-chatgpt/module.ts",
+    "src/orchestration/modules/provider-claude-agent-sdk/module.ts",
+    "src/orchestration/modules/provider-github-copilot/affordability.ts",
+    "src/orchestration/modules/provider-github-copilot/allowance-admission.ts",
+    "src/orchestration/modules/provider-github-copilot/module.ts",
+    "src/orchestration/modules/provider-opencode-go/module.ts",
+    "src/orchestration/modules/provider-supergrok/module.ts",
+    "src/orchestration/subscription-spend-consent/admission-capture.ts",
+    "src/orchestration/subscription-spend-consent/capture-cache.ts",
+    "src/orchestration/subscription-spend-consent/notification-materializer.ts",
+    "src/orchestration/subscription-spend-consent/runtime-composition.ts",
+    "src/orchestration/workflow-host/deps.ts",
+    "src/protocol/auth-status-protocol-schemas.ts",
+    "src/protocol/client/provider-account-copy.ts",
+    "src/protocol/runtime-liveness.ts",
+    "src/protocol/subscription-spend-consent-protocol-types.ts",
+    "src/tui/components/modal-frame.tsx",
+    "src/tui/context/theme.tsx",
+    "src/tui/hooks/auth-modal-account-actions.ts",
+    "src/tui/hooks/auth-modal-input.ts",
+    "src/tui/hooks/auth-modal-login-input.ts",
+    "src/tui/hooks/auth-modal-options.ts",
+    "src/tui/hooks/auth-modal-profile-controls.ts",
+    "src/tui/hooks/auth-modal-provider-settings.ts",
+    "src/tui/hooks/auth-modal-setting-edits.ts",
+    "src/tui/hooks/auth-modal-types.ts",
+    "src/tui/hooks/auth-profile-edits.ts",
+    "src/tui/hooks/settings-capability-rows.ts",
+    "src/tui/hooks/settings-modal-controller.ts",
+    "src/tui/hooks/settings-modal-types.ts",
+    "src/tui/hooks/settings-provider-setting-row.ts",
+    "src/tui/hooks/settings-row-tree.ts",
+    "src/tui/hooks/terminal-setting-edit.ts",
+    "src/tui/hooks/use-auth-modal.ts",
+    "src/tui/hooks/use-settings-modal.ts",
+    "src/tui/hooks/use-theme-modal.ts",
+    "src/tui/modals/settings-modal.tsx",
+    "src/tui/modals/theme-modal.tsx",
+    "src/tui/modules/remote/modal.tsx",
+    "src/tui/modules/remote/surface.tsx",
+    "src/tui/modules/remote/use-remote-modal.ts",
+    "tests/integration/providers/_live-client.ts",
+    "tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts",
+    "tests/unit/orchestration/agent-runtime/assistant-turn-stream-request.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/_provider-chain-harness.ts",
+    "tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/copilot-affordability.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/failover-client-outage.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/failover-client-records.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/failover-client.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/openrouter-affordability.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts",
+    "tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts",
+    "tests/unit/orchestration/app-service/auth-profile-selection-service.test.ts",
+    "tests/unit/orchestration/app-service/subscription-spend-consent-protocol.test.ts",
+    "tests/unit/orchestration/auth/profile-request-service.test.ts",
+    "tests/unit/orchestration/auth/provider-observations/_service-fixtures.ts",
+    "tests/unit/orchestration/headless/auth-profile.test.ts",
+    "tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts",
+    "tests/unit/orchestration/modules/provider-claude-agent-sdk/profile-conversions.test.ts",
+    "tests/unit/orchestration/modules/provider-github-copilot/allowance-admission.test.ts",
+    "tests/unit/orchestration/subscription-spend-consent/capture-cache-freshness.test.ts",
+    "tests/unit/orchestration/subscription-spend-consent/capture-cache.test.ts",
+    "tests/unit/orchestration/subscription-spend-consent/notification-materializer.test.ts",
+    "tests/unit/orchestration/subscription-spend-consent/subscription-spend-consent-service.test.ts",
+    "tests/unit/protocol/client/auth-login.test.ts",
+    "tests/unit/tui/components/syntax-code.test.tsx",
+    "tests/unit/tui/context/theme-base-background.test.ts",
+    "tests/unit/tui/hooks/create-modals-startup-consent.test.ts",
+    "tests/unit/tui/hooks/create-module-slots.test.tsx",
+    "tests/unit/tui/hooks/settings-modal-controller-harness.ts",
+    "tests/unit/tui/hooks/settings-modal-controller.test.ts",
+    "tests/unit/tui/hooks/terminal-background.test.ts",
+    "tests/unit/tui/modals/auth-modal-model-selection.test.ts",
+    "tests/unit/tui/modals/auth-modal-renames.test.ts",
+    "tests/unit/tui/modals/auth-modal.test.ts",
+    "tests/unit/tui/modals/settings-modal-auth.test.ts",
+    "tests/unit/tui/modals/settings-modal-controls.test.ts",
+    "tests/unit/tui/modals/settings-modal-render.test.tsx",
+    "tests/unit/tui/modals/settings-modal-updates.test.ts",
+    "tests/unit/tui/modals/theme-modal-layout.test.tsx",
+    "tests/unit/tui/modals/theme-modal.test.ts",
+    "tests/unit/tui/modules/remote/use-remote-modal.test.ts",
+    "tests/unit/tui/modules/subscription-usage/settings.test.ts",
+    "tests/unit/tui/output-blocks/markdown-body.test.tsx",
+    "vscode/src/providers/auth-notification-coordinator.test.ts",
+    "webview/src/app/capability-preset-interaction-fixture.ts",
+    "webview/src/app/capability-preset-interaction.test.ts",
+    "webview/src/app/command-panel-controls-fixture.tsx",
+    "webview/src/app/command-panel-controls.test.ts",
+    "webview/src/app/command-panel.tsx",
+    "webview/src/app/composer-submission.test.ts",
+    "webview/src/app/models-sheet-interaction-fixture.ts",
+    "webview/src/app/semantic-rows-fixture.tsx",
+    "webview/src/app/sheets/controls.tsx",
+    "webview/src/app/sheets/profiles-sheet.tsx",
+    "webview/src/app/sheets/settings-sheet.tsx",
+    "webview/src/app/stability.test.ts",
+    "webview/src/client/session-auth.test.ts",
+    "webview/src/client/settings-actions.test.ts",
+    "webview/src/client/settings-actions.ts",
+    "webview/src/modules/remote/mutation.ts",
+    "webview/src/modules/remote/runtimes.tsx",
+    "webview/src/modules/remote/semantic-rows-fixture.tsx",
+    "webview/src/modules/remote/sheet.test.ts",
+    "webview/src/modules/remote/sheet.tsx",
+    "webview/src/modules/subscription-usage/usage-format.test.ts",
+    "webview/src/modules/workflows/stability-fixture.tsx",
+    "webview/src/styles/providers.css",
+    "webview/src/styles/sheets.css"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792819150824,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -202,12 +230,10 @@\n    *  at the next boundary. */\n   async function decline(): Promise<void> {\n     const current = state()\n-    if (current.kind !== \"detail\" || current.savingEnvelopeIds.length > 0) return\n+    if (current.kind !== \"detail\" || current.surface !== \"question\") return\n+    if (current.savingEnvelopeIds.length > 0) { closeRequested = true; return }\n     const reviewed = modes(current).filter(modeAwaitsAnswer).map((mode) => mode.envelopeId)\n-    await commit(current, reviewed, [], (pending, consent) => {\n-      close()\n-      deps.onAnswered(consent, pending.snapshotPosition)\n-    }, () => { close(); deps.onAnswerFailed() })\n+    await commit(current, reviewed, [], true)\n   }\n \n   const handleKey = createSubscriptionSpendConsentInput({ state, toggle, moveCursor, decline, openBrowser: deps.openBrowser })",
+              "mutation": "18e54b33-15f4-43c8-bcc9-360acd02b536",
+              "path": "src/tui/hooks/use-subscription-spend-consent-control.ts"
+            },
+            {
+              "hunk": "@@ -22,30 +22,29 @@\n     if (current.kind === \"closed\") return false\n     const key = event.name.toLowerCase()\n     const question = current.surface === \"question\"\n-    if (question && (key === \"escape\" || key === \"q\")) {\n+    const activate = key === \"enter\" || key === \"return\"\n+    if (question && (activate || key === \"escape\" || key === \"q\")) {\n       event.preventDefault?.()\n       void deps.decline()\n       return true\n     }\n-    if (current.savingEnvelopeIds.length > 0) return question\n+    if (current.savingEnvelopeIds.length > 0) {\n+      const rowKey = current.cursor !== CONSENT_ACTION_CURSOR && (key === \"up\" || key === \"down\" || activate || key === \"space\" || event.sequence === \" \")\n+      if (question || rowKey) event.preventDefault?.()\n+      return question || rowKey\n+    }\n     const modes = current.consent.accounts.flatMap((account) => account.modes)\n     if (key === \"up\" || key === \"down\") {\n       event.preventDefault?.()\n       deps.moveCursor(key === \"up\" ? -1 : 1)\n       return true\n     }\n-    const activate = key === \"enter\" || key === \"return\"\n     if ((activate || key === \"space\" || event.sequence === \" \") && current.cursor !== CONSENT_ACTION_CURSOR) {\n       event.preventDefault?.()\n       const mode = modes[current.cursor]\n       if (mode !== undefined) deps.toggle(mode.envelopeId)\n       return true\n     }\n-    if (question && activate) {\n-      event.preventDefault?.()\n-      void deps.decline()\n-      return true\n-    }\n     if (key === \"b\") {\n       const billingUrl = current.consent.accounts[0]?.billingUrl\n       if (billingUrl !== undefined) {",
+              "mutation": "8538f86e-134b-449b-b0d8-24cfbdd92ad9",
+              "path": "src/tui/hooks/use-subscription-spend-consent-modal.ts"
+            }
+          ],
+          "label": "honor-question-close-while-an-immediate-checkbox-write-is-pe",
+          "location": "src/tui/hooks/use-subscription-spend-consent-control.ts:203-210; src/tui/hooks/use-subscription-spend-consent-modal.ts:25-30",
+          "severity": "P1",
+          "title": "Honor question close while an immediate checkbox write is pending"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -166,19 +181,32 @@\n \n   /** Writes one decision set. `reviewed` names the envelopes this write decides;\n    *  every reviewed envelope not in `accepted` becomes declined. */\n-  async function commit(current: DetailState, reviewed: readonly string[], accepted: readonly string[], onCommitted: (pending: DetailState, consent: SubscriptionSpendConsentView) => void, onFailed: (pending: DetailState, feedback: string) => void): Promise<void> {\n-    if (reviewed.length === 0) { onCommitted(current, current.canonicalConsent); return }\n+  async function commit(current: DetailState, reviewed: readonly string[], accepted: readonly string[], closing = false): Promise<void> {\n     const pending = { ...current, savingEnvelopeIds: reviewed, feedback: undefined }\n     const pendingOwner = owner\n     setState(pending)\n+    const failed = (feedback: string): void => {\n+      if (!mutationIsCurrent(pending, pendingOwner)) {\n+        if (!closing) deps.onDismissedTickFailed(feedback)\n+        return\n+      }\n+      if (closing) { close(); deps.onAnswerFailed() }\n+      else setState({ ...pending, savingEnvelopeIds: [], feedback })\n+    }\n     try {\n-      const result = await deps.dispatch({ type: \"subscription_spend_consent.save\", ...mutationBase(current), reviewedEnvelopeIds: reviewed, acceptedEnvelopeIds: accepted })\n-      if (!mutationIsCurrent(pending, pendingOwner)) return\n-      if (result.kind === \"committed\") { onCommitted(pending, result.consent); return }\n-      if (result.kind === \"stale\") { await refreshStale(pending, pendingOwner); return }\n-      onFailed(pending, feedbackFor(result))\n+      const result = reviewed.length === 0\n+        ? { kind: \"committed\" as const, consent: current.canonicalConsent }\n+        : await deps.dispatch({ type: \"subscription_spend_consent.save\", ...mutationBase(current), reviewedEnvelopeIds: reviewed, acceptedEnvelopeIds: accepted })\n+      if (result.kind === \"committed\") {\n+        if (!mutationIsCurrent(pending, pendingOwner)) return\n+        if (closing) { close(); deps.onAnswered(result.consent, pending.snapshotPosition) }\n+        else settle(pending, result.consent)\n+        return\n+      }\n+      if (!closing && result.kind === \"stale\" && mutationIsCurrent(pending, pendingOwner)) { await refreshStale(pending, pendingOwner); return }\n+      failed(feedbackFor(result))\n     } catch {\n-      if (mutationIsCurrent(pending, pendingOwner)) onFailed(pending, SUBSCRIPTION_SPEND_CONSENT_COPY.mutationFeedback.dispatchFailure)\n+      failed(SUBSCRIPTION_SPEND_CONSENT_COPY.mutationFeedback.dispatchFailure)\n     }\n   }",
+              "mutation": "18e54b33-15f4-43c8-bcc9-360acd02b536",
+              "path": "src/tui/hooks/use-subscription-spend-consent-control.ts"
+            }
+          ],
+          "label": "report-an-immediate-save-failure-even-after-provider-setting",
+          "location": "src/tui/hooks/use-subscription-spend-consent-control.ts:169-181",
+          "severity": "P1",
+          "title": "Report an immediate-save failure even after Provider Settings closes"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "ce0cccefbd7e",
+      "persona": "reviewer-code-quality",
+      "run": "53fdbaffac0d",
+      "session": "6499166832f7",
+      "start": 1792818859235
+    },
+    {
+      "effort": "high",
+      "end": 1792819080753,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -202,12 +230,10 @@\n    *  at the next boundary. */\n   async function decline(): Promise<void> {\n     const current = state()\n-    if (current.kind !== \"detail\" || current.savingEnvelopeIds.length > 0) return\n+    if (current.kind !== \"detail\" || current.surface !== \"question\") return\n+    if (current.savingEnvelopeIds.length > 0) { closeRequested = true; return }\n     const reviewed = modes(current).filter(modeAwaitsAnswer).map((mode) => mode.envelopeId)\n-    await commit(current, reviewed, [], (pending, consent) => {\n-      close()\n-      deps.onAnswered(consent, pending.snapshotPosition)\n-    }, () => { close(); deps.onAnswerFailed() })\n+    await commit(current, reviewed, [], true)\n   }\n \n   const handleKey = createSubscriptionSpendConsentInput({ state, toggle, moveCursor, decline, openBrowser: deps.openBrowser })",
+              "mutation": "18e54b33-15f4-43c8-bcc9-360acd02b536",
+              "path": "src/tui/hooks/use-subscription-spend-consent-control.ts"
+            },
+            {
+              "hunk": "@@ -22,30 +22,29 @@\n     if (current.kind === \"closed\") return false\n     const key = event.name.toLowerCase()\n     const question = current.surface === \"question\"\n-    if (question && (key === \"escape\" || key === \"q\")) {\n+    const activate = key === \"enter\" || key === \"return\"\n+    if (question && (activate || key === \"escape\" || key === \"q\")) {\n       event.preventDefault?.()\n       void deps.decline()\n       return true\n     }\n-    if (current.savingEnvelopeIds.length > 0) return question\n+    if (current.savingEnvelopeIds.length > 0) {\n+      const rowKey = current.cursor !== CONSENT_ACTION_CURSOR && (key === \"up\" || key === \"down\" || activate || key === \"space\" || event.sequence === \" \")\n+      if (question || rowKey) event.preventDefault?.()\n+      return question || rowKey\n+    }\n     const modes = current.consent.accounts.flatMap((account) => account.modes)\n     if (key === \"up\" || key === \"down\") {\n       event.preventDefault?.()\n       deps.moveCursor(key === \"up\" ? -1 : 1)\n       return true\n     }\n-    const activate = key === \"enter\" || key === \"return\"\n     if ((activate || key === \"space\" || event.sequence === \" \") && current.cursor !== CONSENT_ACTION_CURSOR) {\n       event.preventDefault?.()\n       const mode = modes[current.cursor]\n       if (mode !== undefined) deps.toggle(mode.envelopeId)\n       return true\n     }\n-    if (question && activate) {\n-      event.preventDefault?.()\n-      void deps.decline()\n-      return true\n-    }\n     if (key === \"b\") {\n       const billingUrl = current.consent.accounts[0]?.billingUrl\n       if (billingUrl !== undefined) {",
+              "mutation": "8538f86e-134b-449b-b0d8-24cfbdd92ad9",
+              "path": "src/tui/hooks/use-subscription-spend-consent-modal.ts"
+            }
+          ],
+          "label": "honor-every-paid-use-question-close-request",
+          "location": "src/tui/hooks/use-subscription-spend-consent-control.ts:178,203-210; src/tui/hooks/use-subscription-spend-consent-modal.ts:25-30",
+          "severity": "P1",
+          "title": "Honor every paid-use question close request"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -120,7 +125,12 @@\n     if (!mode) return\n     const checked = mode.decision === \"accepted\"\n     if (!checked && !mode.canEnable) return\n-    await commit(current, [envelopeId], checked ? [] : [envelopeId], settle, (pending, feedback) => setState({ ...pending, savingEnvelopeIds: [], feedback }))\n+    const tickOwner = owner\n+    await commit(current, [envelopeId], checked ? [] : [envelopeId])\n+    if (closeRequested && owner === tickOwner && tickOwner?.isOpen()) {\n+      closeRequested = false\n+      await decline()\n+    }\n   }\n \n   function mutationBase(current: ReviewContext) {",
+              "mutation": "18e54b33-15f4-43c8-bcc9-360acd02b536",
+              "path": "src/tui/hooks/use-subscription-spend-consent-control.ts"
+            },
+            {
+              "hunk": "@@ -124,7 +120,6 @@\n     const mode = modes(current).find((candidate) => candidate.envelopeId === envelopeId)\n     if (!mode) return\n     const checked = mode.decision === \"accepted\"\n-    if (!checked && !mode.canEnable) return\n     const tickOwner = owner\n     await commit(current, [envelopeId], checked ? [] : [envelopeId])\n     if (closeRequested && owner === tickOwner && tickOwner?.isOpen()) {",
+              "mutation": "e48899d9-f938-422f-a422-b81d785d281d",
+              "path": "src/tui/hooks/use-subscription-spend-consent-control.ts"
+            }
+          ],
+          "label": "keep-automatic-save-failure-feedback-after-provider-settings",
+          "location": "src/tui/hooks/use-subscription-spend-consent-control.ts:123,130-132,175-181",
+          "severity": "P1",
+          "title": "Keep automatic-save failure feedback after Provider Settings closes"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "ce0cccefbd7e",
+      "persona": "reviewer-code-elegance",
+      "run": "5009b2f6f2aa",
+      "session": "16e29996d99f",
+      "start": 1792818871439
+    }
+  ],
+  "scrubbedLines": {
+    "docs/product-intent/model-access.md": 10,
+    "tests/unit/tui/modals/auth-modal-capability-render.test.tsx": 6,
+    "webview/src/app/providers-sheet-interaction.test.ts": 4,
+    "webview/src/client/provider-view-model.test.ts": 8
+  },
+  "unresolvedImports": [],
+  "variant": "restore",
+  "rejectedLabels": [
+    {
+      "id": "honor-every-paid-use-question-close-request",
+      "reason": "duplicate of honor-question-close-while-an-immediate-checkbox-write-is-pe"
+    },
+    {
+      "id": "keep-automatic-save-failure-feedback-after-provider-settings",
+      "reason": "duplicate of report-an-immediate-save-failure-even-after-provider-setting"
+    }
+  ]
+}

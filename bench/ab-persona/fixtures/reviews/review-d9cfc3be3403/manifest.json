@@ -1,0 +1,17 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In src/orchestration/app-service/project-state-commit-window.ts, `add` charges each held fact only the length of its payload JSON string plus a fixed overhead, but `materialize` replaces that string with the decoded fact object on the first read and leaves the entry's byte count unchanged, and `json.length` counts UTF-16 units rather than bytes; eviction against RETAINED_BYTES therefore does not bound the memory the window retains. A catch must say that retained memory can exceed the 8 MiB budget and name at least one of these mechanisms: the decoded fact cached by materialize is not counted, or the string length undercounts the bytes of the held JSON.",
+      "category": "quality",
+      "files": [
+        "src/orchestration/app-service/project-state-commit-window.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "the-encoded-byte-counter-does-not-enforce-the-approved-memor",
+      "title": "The encoded-byte counter does not enforce the approved memory budget"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Re-review A commit window revision"
+}

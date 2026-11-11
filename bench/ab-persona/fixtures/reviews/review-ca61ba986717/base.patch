@@ -1,0 +1,248 @@
+diff --git a/docs/product-intent/remote-access.md b/docs/product-intent/remote-access.md
+index fd8e4f0..9ab8421 100644
+--- a/docs/product-intent/remote-access.md
++++ b/docs/product-intent/remote-access.md
+@@ -4,7 +4,7 @@ This document states the current intended experience for reaching a Flywheel run
+ 
+ ## PI-REMOTE-001: Pairing is the only credential
+ 
+-A user pairs a device, which is a phone, a browser, or a terminal on another machine, by scanning a code that Flywheel shows on the machine, or by opening or pasting the link the code carries. No account, password, or login exists for remote access. A paired device lists the machine's open projects, reads their transcripts as they stream, and sends messages that appear as the next turn.
++A user pairs a phone by scanning a code that Flywheel shows on the machine, or by opening the link the code carries. No account, password, or login exists for remote access. A paired phone lists the machine's open projects, reads their transcripts as they stream, and sends messages that appear as the next turn.
+ 
+ ## PI-REMOTE-002: Nothing on the machine listens
+ 
+@@ -12,18 +12,16 @@ Remote access adds no remotely reachable listener or tunnel to the machine. Flyw
+ 
+ ## PI-REMOTE-003: The relay cannot read a conversation
+ 
+-Every frame between a phone and a runtime is sealed end to end. The relay, hosted or self-hosted, learns only that a machine is online, that a paired device is attached, and the names under which a device lists the machine and its projects. A device that was never paired, or whose pairing was revoked, cannot attach even with the relay's cooperation.
++Every frame between a phone and a runtime is sealed end to end. The relay, hosted or self-hosted, learns only that a machine is online and that a paired device is attached. A device that was never paired, or whose pairing was revoked, cannot attach even with the relay's cooperation.
+ 
+ ## PI-REMOTE-004: Remote reachability is always visible
+ 
+-On every surface, the user can inspect whether the machine is attached to the relay, how many devices are paired, and whether a remote device is attached right now. The terminal keeps its remote indicator; the web header shows no remote badge, and remote readings remain available through Status and Remote access. An attachment the relay no longer holds shows as not attached, with the reason, within 75 seconds, and a machine that lost its network leaves the phone's machine list within the same window. A relay refusing the machine raises a project notification. A device attaching raises none: the attached-device reading remains available, and the device reading a notification would be the one attached. When the machine cannot offer its asleep projects to a phone, the Remote view says so with the reason, and every local surface keeps working.
++On every surface, the user can see whether the machine is attached to the relay, how many devices are paired, and whether a remote device is attached right now. An attachment the relay no longer holds shows as not attached, with the reason, within 75 seconds, and a machine that lost its network leaves the phone's machine list within the same window. A relay refusing the machine raises a project notification. A device attaching raises none: the attached-device reading on every surface already says so, and the device reading a notification would be the one attached. When the machine cannot offer its asleep projects to a phone, the Remote view says so with the reason, and every local surface keeps working.
+ 
+ ## PI-REMOTE-005: The phone shows the same client the editor shows
+ 
+ The phone renders the same web client the VS Code extension renders. A feature added to that client appears on both, and the phone differs only by what its host cannot do: open files in an editor, or show a camera for pairing. Connecting a provider, reviewing paid use, managing auth profiles, choosing a model for every role, curating a provider's model list, and reading usage are the client's own sheets, so each of them works on the phone exactly as it does in the editor. Every setting a person can change in the TUI, every action they can take, and every reading the TUI shows is available in the client, except settings that describe the terminal itself, which the client's host owns. On the phone the client owns the screen: a chat sits one screen above the session list, reached and left by a back control, a sideways swipe from anywhere on the screen, and the browser's own back and forward, and the chat's header names the chat and the project the list shows. Every session row and the chat header show whether the session is closed, open and idle, or open and running, with the same rule the terminal's tab spinner uses. Each session row names the session by its short title, shows its longer description under that, and shows the lines the session added, changed, and removed. On a touch screen a row's rename, close, and delete controls stay out of sight until the user swipes the row to the left, and one row shows them at a time; with a pointer they appear on hover.
+ 
+-Phone text selection has generous grab targets. Selection takes priority over swipe navigation and transcript touch scrolling; clearing it restores both.
+-
+ Back navigation on the phone follows the session hierarchy: a child session returns to its immediate parent, and a top-level session returns to the session list, regardless of visit order.
+ 
+ ## PI-REMOTE-006: A user can host their own relay
+@@ -40,15 +38,15 @@ Switching away from the phone app and back keeps the chat as it was: its scroll
+ 
+ ## PI-REMOTE-009: A paired phone can open an asleep known project
+ 
+-When the machine's account service is installed and the machine is awake, a paired phone lists every project this machine has opened from any local or remote surface, shows each as open or asleep, and opens an asleep project with one tap. The row says Flywheel is starting until the project reports open, and says when Flywheel could not open it. A paired device can also create a project on the machine by naming a repository to clone; the machine clones it and then offers it like any project it has opened. It clones only over https or ssh, with the machine's own git credentials and never a prompt, into a new folder named for the repository and numbered when that name is taken, and the clone finishes even if the device leaves. Apart from such a clone, only projects the machine has already opened are offered, and a device never names a path on the machine. A dormant project is forgotten from the flywheel remote projects command, from the phone while it is attached to that machine, from the machine's Remote view, or from the machine's fixed local page, and a project whose directory is gone is forgotten on its own. Opening a forgotten project again on the machine offers it again. The machine stays awake while a phone is using a project it opened, and while that project stays open after the phone leaves, so the phone that comes back finds the machine and its sessions ready, unless the user turns off Keep Awake For Phone. On installed surfaces, the account service's login startup is an explicit action named Process initiation. It reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service; a failed repair says to run `flywheel serve install` on the machine and report a bug if that command also fails. A source build omits Process initiation. A remotely opened project closes after the same idle grace as any other project.
++When the machine's account service is installed and the machine is awake, a paired phone lists every project this machine has opened from any local or remote surface, shows each as open or asleep, and opens an asleep project with one tap. The row says Flywheel is starting until the project reports open, and says when Flywheel could not open it. Only projects the machine has already opened are offered; the phone never names a path. A dormant project is forgotten from the flywheel remote projects command, from the phone while it is attached to that machine, from the machine's Remote view, or from the machine's fixed local page, and a project whose directory is gone is forgotten on its own. Opening a forgotten project again on the machine offers it again. The machine stays awake while a phone is using a project it opened, and while that project stays open after the phone leaves, so the phone that comes back finds the machine and its sessions ready, unless the user turns off Keep Awake For Phone. On installed surfaces, the account service's login startup is an explicit action named Process initiation. It reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service; a failed repair says to run `flywheel serve install` on the machine and report a bug if that command also fails. A source build omits Process initiation. A remotely opened project closes after the same idle grace as any other project.
+ 
+ ## PI-REMOTE-010: A paired phone opens straight into its session
+ 
+-Opening the app on a phone that has paired and chosen a project shows a Flywheel loading screen, built on the app's own icon with its mark in motion and naming the project and machine it is opening, and then the session itself. Pairing instructions appear only when the phone has no paired machine, or when the relay has reported that the remembered machine is offline or no longer offers the project. Tapping a notification opens the app on the chat or workflow it is about: a chat opens as the chat, and a workflow opens as its full-size card over its chat. Back follows ordinary navigation, so Back from a workflow returns to its chat. Tapping a notification about a question opens its machine and project, shows the chat at its newest output, and shows the question open at the prompt.
++Opening the app on a phone that has paired and chosen a project shows a Flywheel loading screen, built on the app's own icon with its mark in motion and naming the project and machine it is opening, and then the session itself. Pairing instructions appear only when the phone has no paired machine, or when the relay has reported that the remembered machine is offline or no longer offers the project.
+ 
+ ## PI-REMOTE-011: The machine's Remote view shows a code or the remote state, never both
+ 
+-While a pairing code is showing, the machine's Remote view carries only the code, its link, and how long it lasts, and returns to the remote state on its own when a phone pairs or the code expires. On installed surfaces, the remote state says whether Process initiation is on or off and how to change it. A status failure reads unavailable and offers to repair the service. A source build omits Process initiation. On starts Flywheel at login, so the fixed local page and a paired phone can wake a project until the person logs out. On Linux, turning Process initiation on also keeps Flywheel running after the person logs out. Where the machine does not allow that, the remote state says that Flywheel stops when the person logs out and names the command that keeps it running. Off does not start Flywheel at login, though a terminal or editor can start it for the current login session. The remote state lists each paired phone under the name the person gave it on the phone before pairing or on the machine afterwards, with whether it is attached right now and when it paired, and lists each known project a phone can open, with paths under the account home shortened to ~. The view repeats no relay reachability reading the prompt frame already shows.
++While a pairing code is showing, the machine's Remote view carries only the code, its link, and how long it lasts, and returns to the remote state on its own when a phone pairs or the code expires. On installed surfaces, the remote state says whether Process initiation is on or off and how to change it. A status failure reads unavailable and offers to repair the service. A source build omits Process initiation. On starts Flywheel at login, so the fixed local page and a paired phone can wake a project until the person logs out. On a Linux machine where lingering is off for the account, the remote state also says that Flywheel stops when the person logs out, and names the command that keeps it running after logout. Off does not start Flywheel at login, though a terminal or editor can start it for the current login session. The remote state lists each paired phone under the name the person gave it on the phone before pairing or on the machine afterwards, with whether it is attached right now and when it paired, and lists each known project a phone can open, with paths under the account home shortened to ~. The view repeats no relay reachability reading the prompt frame already shows.
+ 
+ ## PI-REMOTE-012: Every surface reaches the same live session
+ 
+@@ -61,19 +59,3 @@ While a person is logged in, a machine with Flywheel installed keeps one lightwe
+ ## PI-REMOTE-014: The phone shows the client of the machine it reaches
+ 
+ The phone shows the client that belongs to the runtime serving the chosen project, loaded from that machine through the relay; nothing publishes a client to the phone app. A newer release on the machine replaces the phone's client without an update of the phone app and without the person doing anything: the page draws again in the same place, with the same session, reading position, and opened rows, and says nothing about the change. A phone that has loaded a machine's client before, or whose relay has served it, still opens while that machine or its projects sleep, and offers wake as PI-REMOTE-009 describes. Pairing a phone for the first time needs the machine awake.
+-
+-## PI-REMOTE-015: A phone is told when a chat needs it
+-
+-While notifications are on, a chat that starts waiting on a question shows a notification on each paired phone, on the lock screen too, whatever any phone has open. That is the only moment a phone is notified: a turn that ends, a workflow that pauses, and a run that fails send nothing. A question answered before the notification goes out sends none, and each new question alerts again, also in the same chat. A phone receives notifications from one machine at a time. The installed Flywheel and a source run of Flywheel on the same machine count as that one machine: a phone that gets notifications from one gets them from the other too. Flywheel has no notification setting of its own: allowing notifications on the phone is the only step. While a phone cannot receive notifications, the phone app says why and offers the one next step: adding the app to the Home Screen, a button that asks the phone for permission, the system setting to change when the phone blocks notifications, or moving notifications from another machine to this one. The person can dismiss that offer. The phone remembers the dismissal through relaunches and project switches, and the offer returns only when a chat starts waiting on them while notifications are still off.
+-
+-## PI-REMOTE-016: A terminal on another machine reaches the runtime through the relay
+-
+-A person pairs a terminal on another machine with the same code or link that pairs a phone. The paired terminal lists each paired machine's projects as open or asleep, opens or wakes one as a phone does, and shows the same live sessions as every other surface. A terminal opens a project on a paired machine with `--remote`, as an added answer when it asks which directory to open, or from the account home, where a local launch is refused; opening one creates nothing in any local project directory. A terminal on the runtime's own machine attaches locally and never depends on the relay. When the terminal runs an older release than the machine, it updates itself to the machine's release and continues; when it runs a newer release, it says that the machine has not updated yet and attaches once the machine has. A terminal never stops, replaces, or retires a remote machine's runtime.
+-
+-## PI-REMOTE-017: A version mismatch is explained, not hidden
+-
+-A machine whose Flywheel is too old or too new for the relay is refused, and the person is told to update Flywheel, or to deploy the newest relay when they host their own. A phone whose app page is too old for the machine's client says so instead of opening the client.
+-
+-## PI-REMOTE-018: A source run pairs devices on its own
+-
+-The installed Flywheel and a source run of Flywheel on the same machine pair devices separately, and both can be attached to the relay at once. A paired device lists the installed Flywheel under the machine's name, and the source run as its own machine named dev followed by the machine's name in parentheses, as in `dev (Studio)`. Neither is named after a project. A paired device shows each machine's current name, which it learns whenever that machine is awake, without pairing again.
+diff --git a/webview/src/app/screen-stack.ts b/webview/src/app/screen-stack.ts
+index 53eeca4..8b1e791 100644
+--- a/webview/src/app/screen-stack.ts
++++ b/webview/src/app/screen-stack.ts
+@@ -38,27 +38,13 @@ export interface ScreenStack {
+   forward(): void
+   /** Binds the swipe gesture to the element the screens fill. Returns the
+    *  unbind, which the caller runs on cleanup. */
+-  bindSwipe(root: SwipeRoot): () => void
+-}
+-
+-/** The members of the element the screens fill that the swipe gesture reads. */
+-export interface SwipeRoot extends Pick<HTMLElement, "clientWidth" | "addEventListener" | "removeEventListener"> {
+-  readonly ownerDocument: Pick<Document, "addEventListener" | "removeEventListener"> & {
+-    getSelection(): Pick<Selection, "isCollapsed"> | null
+-  }
++  bindSwipe(root: HTMLElement): () => void
+ }
+ 
+ const STATE_KEY = "flywheelScreen"
+-/** The session a history entry shows. Every writer of an entry states it,
+- *  so a host that follows the selection with the page address can tell an
+- *  entry the client wrote for the new selection from one it must push. */
+-export const SESSION_KEY = "flywheelSession"
++const SESSION_KEY = "flywheelSession"
+ 
+ export interface ScreenStackSelection {
+-  /** The session the address the page loaded on names, such as a tapped
+-   *  notification's. The session owner opens it; a fresh page shows it on
+-   *  the chat screen over the list. */
+-  readonly addressed?: string | undefined
+   readonly selectedSessionId: Accessor<string | undefined>
+   /** Moves the selection in the tap. The owner decides what a repeat means:
+    *  nothing for an open chat, another try for one whose open failed. */
+@@ -92,7 +78,7 @@ function screenOf(state: unknown): Screen {
+   return state instanceof Object && STATE_KEY in state && state[STATE_KEY] === "chat" ? "chat" : "sessions"
+ }
+ 
+-export function sessionOf(state: unknown): string | undefined {
++function sessionOf(state: unknown): string | undefined {
+   if (!(state instanceof Object) || !(SESSION_KEY in state)) return undefined
+   return typeof state[SESSION_KEY] === "string" ? state[SESSION_KEY] : undefined
+ }
+@@ -102,14 +88,9 @@ export function createScreenStack(
+   selection?: ScreenStackSelection,
+   navigation: ScreenStackNavigation = browserNavigation(),
+ ): ScreenStack {
+-  // The base entry is the list. A fresh load claims the current entry for it,
+-  // and a load on an address pushes that session's entry over it, so Back
+-  // leaves it as it leaves any chat. A reload mid-stack finds the chat entry
+-  // it pushed earlier and keeps it.
+-  if (screenOf(navigation.state) === "sessions") {
+-    navigation.replaceState({ [STATE_KEY]: "sessions" })
+-    if (selection?.addressed !== undefined) navigation.pushState({ [STATE_KEY]: "chat", [SESSION_KEY]: selection.addressed })
+-  }
++  // The base entry is the list. A fresh load claims the current entry for it;
++  // a reload mid-stack finds the chat entry it pushed earlier and keeps it.
++  if (screenOf(navigation.state) === "sessions") navigation.replaceState({ [STATE_KEY]: "sessions" })
+   const [screen, setScreen] = createSignal<Screen>(screenOf(navigation.state))
+   const [canForward, setCanForward] = createSignal(false)
+   const [dragX, setDragX] = createSignal<number | undefined>(undefined)
+@@ -118,17 +99,6 @@ export function createScreenStack(
+   const onPop = (event: { readonly state: unknown }) => batch(() => {
+     if (screen() === "chat") {
+       const current = selection?.selectedSessionId()
+-      // History holds one chat entry, so a pop from the chat screen that
+-      // lands on a chat entry comes from a level inside the shown chat, such
+-      // as a workflow's agent view. That entry stays, unless the person asked
+-      // for the list, which is one entry further. The level's own listener
+-      // may already have moved the selection, as an agent that the chat's
+-      // inline card opened returns to that chat, so the selection does not
+-      // decide this.
+-      if (screenOf(event.state) === "chat") {
+-        if (requestedList) navigation.back()
+-        return
+-      }
+       const parent = !requestedList && current !== undefined ? selection?.parentSessionId(current) : undefined
+       requestedList = false
+       navigation.replaceState({ [STATE_KEY]: "sessions" })
+@@ -158,7 +128,7 @@ export function createScreenStack(
+       [STATE_KEY]: "chat",
+       ...(sessionId === undefined ? {} : { [SESSION_KEY]: sessionId }),
+     }
+-    if (screen() === "chat" && !(link !== undefined && link.parentSessionId === selection?.selectedSessionId())) navigation.replaceState(entry)
++    if (screen() === "chat") navigation.replaceState(entry)
+     else navigation.pushState(entry)
+     setCanForward(false)
+     setScreen("chat")
+@@ -167,8 +137,7 @@ export function createScreenStack(
+   if (selection !== undefined) {
+     createEffect(on(selection.selectedSessionId, (sessionId) => {
+       if (screen() !== "chat" || sessionId === undefined || sessionOf(navigation.state) === sessionId) return
+-      const current = navigation.state
+-      navigation.replaceState({ ...(typeof current === "object" && current !== null ? current : {}), [STATE_KEY]: "chat", [SESSION_KEY]: sessionId })
++      navigation.replaceState({ [STATE_KEY]: "chat", [SESSION_KEY]: sessionId })
+       setCanForward(false)
+     }))
+   }
+@@ -190,7 +159,7 @@ export function createScreenStack(
+   }
+ 
+   /** The closest ancestor that scrolls sideways, or nothing. */
+-  const scrollerUnder = (target: EventTarget | null, root: SwipeRoot): ScrollerState | undefined => {
++  const scrollerUnder = (target: EventTarget | null, root: HTMLElement): ScrollerState | undefined => {
+     for (let element = target instanceof Element ? target : null; element !== null && element !== root; element = element.parentElement) {
+       if (element.scrollWidth <= element.clientWidth) continue
+       const overflow = getComputedStyle(element).overflowX
+@@ -199,25 +168,16 @@ export function createScreenStack(
+     return undefined
+   }
+ 
+-  const bindSwipe = (root: SwipeRoot) => {
++  const bindSwipe = (root: HTMLElement) => {
+     let gesture: Gesture | undefined
+     const width = () => root.clientWidth
+-    const selectionOwnsTouch = () => root.ownerDocument.getSelection()?.isCollapsed === false
+-    const touchCancel = () => {
+-      gesture = undefined
+-      setDragX(undefined)
+-    }
+-    const selectionChanged = () => {
+-      if (selectionOwnsTouch()) touchCancel()
+-    }
+     const touchStart = (event: TouchEvent) => {
+-      if (event.touches.length !== 1 || gesture !== undefined || selectionOwnsTouch()) return
++      if (event.touches.length !== 1 || gesture !== undefined) return
+       const touch = event.touches[0]!
+       gesture = { startX: touch.clientX, startY: touch.clientY, target: event.target, direction: undefined, lastX: touch.clientX, lastTime: event.timeStamp, velocity: 0 }
+     }
+     const touchMove = (event: TouchEvent) => {
+       if (gesture === undefined) return
+-      if (selectionOwnsTouch()) { touchCancel(); return }
+       const touch = event.touches[0]!
+       const dx = touch.clientX - gesture.startX
+       const dy = touch.clientY - gesture.startY
+@@ -242,7 +202,6 @@ export function createScreenStack(
+     }
+     const touchEnd = () => {
+       if (gesture === undefined) return
+-      if (selectionOwnsTouch()) { touchCancel(); return }
+       const done = gesture
+       gesture = undefined
+       if (done.direction === undefined) return
+@@ -252,23 +211,26 @@ export function createScreenStack(
+       if (done.direction === "back") back()
+       else forward()
+     }
++    const touchCancel = () => {
++      // The browser took the touch: its own swipe, or a scroll it claimed.
++      gesture = undefined
++      setDragX(undefined)
++    }
+     // Passive throughout. A touchmove listener that may cancel makes the
+     // browser wait for the main thread before it can move the transcript on
+     // every frame of every scroll, and while a turn streams the main thread
+-    // is often busy, so the finger stalls. Native text selection keeps its
+-    // touches; otherwise the swipe reads
+-    // the moves and drives the screen without taking them from the browser.
++    // is often busy, so the finger stalls. Nothing here needs to cancel: a
++    // sideways drag has no native gesture to compete with, so the swipe
++    // reads the moves and drives the screen without taking them from anyone.
+     root.addEventListener("touchstart", touchStart, { passive: true })
+     root.addEventListener("touchmove", touchMove, { passive: true })
+     root.addEventListener("touchend", touchEnd)
+     root.addEventListener("touchcancel", touchCancel)
+-    root.ownerDocument.addEventListener("selectionchange", selectionChanged)
+     return () => {
+       root.removeEventListener("touchstart", touchStart)
+       root.removeEventListener("touchmove", touchMove)
+       root.removeEventListener("touchend", touchEnd)
+       root.removeEventListener("touchcancel", touchCancel)
+-      root.ownerDocument.removeEventListener("selectionchange", selectionChanged)
+     }
+   }
+ 

@@ -1,0 +1,77 @@
+{
+  "base": "ed4e0f005171f93a614b141fb0552d749274257b",
+  "files": [
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/adrs/adr-009-tool-execution-safety.md",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/product-intent/agent-methods.md",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/infra/diagnostics-registry.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/orchestration/agent-runtime/tools/bash-mutation-guard.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/orchestration/agent-runtime/tools/bash-project-mutation.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "tests/unit/orchestration/agent-runtime/tools/bash-mutation-guard.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "09db9d3f6a054d4e9b1b8b3a3a357066f904537b",
+      "path": "tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-uncaptured.test.ts",
+      "reversedMutations": 2
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "tests/integration/local/_replacement-harness.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792823084596,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -115,26 +114,19 @@\n   }\n   const runCommand = ownedCommandRunner({ spawnOwned });\n   const guard = await hostMutationGuard(runCommand);\n-  if (guard === \"none\" && process.platform !== \"win32\") {\n-    return await runUncaptured(input, guard, new Error(\"the host's mutation guard is unavailable\"), env);\n-  }\n   let copy: PrivateProjectCopy;\n   let executionCwd: string;\n   let guarded: (argv: readonly string[]) => string[];\n   try {\n+    if (guard === \"none\" && process.platform !== \"win32\") throw new Error(\"the host's mutation guard is unavailable\");\n     // A model-supplied cwd can name the tree through a link or another letter case; the project root is already physical.\n     executionCwd = realpathSync.native(context.executionCwd);\n     copy = await takePrivateProjectCopy({ projectRoot: context.projectRoot, executionCwd, home: input.home, scratchDir: context.scratchDir, runGit: runCommand, guard });\n     guarded = guardedArgv(guard, copy);\n   } catch (error) {\n     discardPrivateCopy({ home: input.home });\n-    DebugLog.record({\n-      type: \"agent.bash.mutation.refused\",\n-      ...(context.sessionId ? { sessionId: context.sessionId } : {}),\n-      payload: { ...(context.toolUseId ? { toolUseId: context.toolUseId } : {}), guard, error: errorMessage(error) },\n-    });\n     if (error instanceof NoContainingWorkTreeError) return { content: `Error: ${error.message}`, outcome: \"error\" };\n-    return { content: `Error: Flywheel could not take a private copy of the project (${errorMessage(error)}). This mutating command was not launched. Retry, or rerun without \\`mutates\\` to run it in place without capture.`, outcome: \"error\" };\n+    return await runUncaptured(input, guard, error, env);\n   }\n   let landing: Promise<ProjectMutationLanding> | undefined;\n   const land: PrivateCopy[\"land\"] = (settlement) => {",
+              "mutation": "fd59aa15-29c5-4880-a65c-81167a55145d",
+              "path": "src/orchestration/agent-runtime/tools/bash-project-mutation.ts"
+            }
+          ],
+          "label": "keep-external-stderr-out-of-the-refusal-diagnostic",
+          "location": "src/orchestration/agent-runtime/tools/bash-project-mutation.ts:131-135",
+          "severity": "P2",
+          "title": "Keep external stderr out of the refusal diagnostic"
+        }
+      ],
+      "model": "gpt-6.1-sol",
+      "parent": "1a1cfb68b58f",
+      "persona": "reviewer-code-security",
+      "run": "b7003657d8b2",
+      "session": "5447699baf58",
+      "start": 1792822636885
+    }
+  ],
+  "scrubbedLines": {
+    "docs/adrs/adr-009-tool-execution-safety.md": 8,
+    "docs/product-intent/agent-methods.md": 2
+  },
+  "unresolvedImports": [],
+  "variant": "restore"
+}

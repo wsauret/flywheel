@@ -1,0 +1,25 @@
+diff --git a/src/infra/owned-subprocess-backend.ts b/src/infra/owned-subprocess-backend.ts
+index 4993d9a..6c612a2 100644
+--- a/src/infra/owned-subprocess-backend.ts
++++ b/src/infra/owned-subprocess-backend.ts
+@@ -372,7 +372,7 @@ const bunProcessHost: ProcessHost = bunHost()
+  *  because admission can be decided before the supervisor has finished
+  *  starting. */
+ function bunControlChannel(name: string): ControlChannel {
+-  let peer: { write(bytes: string): void } | undefined
++  let peer: { write(bytes: string): void; end(): void } | undefined
+   let pending = ""
+   // Held apart from `closed` on purpose. A word spoken before the supervisor
+   // connects is worth holding, because the supervisor is still arriving. A word
+@@ -429,9 +429,9 @@ function bunControlChannel(name: string): ControlChannel {
+     close() {
+       if (stopped) return
+       stopped = true
++      // A Windows pipe's peer stays open when only its listener stops.
++      peer?.end()
+       settled()
+-      // Stopping the listener closes the connection with it, and that end of
+-      // channel is what tells the supervisor its launcher is gone.
+       server.stop(true)
+     },
+   }

@@ -1,0 +1,163 @@
+{
+  "base": "ed4e0f005171f93a614b141fb0552d749274257b",
+  "files": [
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/adrs/adr-005-flywheel-design-principles.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/adrs/adr-009-tool-execution-safety.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "docs/product-intent/agent-methods.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/infra/code-mode/codemode.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/infra/code-mode/interpreter/execute.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/infra/code-mode/tool-runtime.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/orchestration/agent-runtime/tools/tool-paths.ts",
+      "reversedMutations": 9
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/orchestration/modules/code-mode/invocation-guest.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "src/orchestration/modules/code-mode/invocation-runner.ts",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "tests/unit/orchestration/agent-runtime/tools/tool-paths.test.ts",
+      "reversedMutations": 6
+    },
+    {
+      "anchor": "c5939488d657d051972ceaaa89a5d6d2accf1802",
+      "path": "tests/unit/orchestration/modules/code-mode/code.test.ts",
+      "reversedMutations": 1
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "THIRD-PARTY-LICENSES.txt",
+    "crates/ripgrep/Cargo.toml",
+    "crates/ripgrep/src/grep.rs",
+    "scripts/test-types-baseline.txt",
+    "src/infra/file-edit/patch-parser.ts",
+    "src/orchestration/agent-runtime/tools/apply-patch.ts",
+    "src/orchestration/agent-runtime/tools/list.ts",
+    "src/orchestration/agent-runtime/tools/luna-exec.ts",
+    "src/orchestration/agent-runtime/tools/search-paths.ts",
+    "src/orchestration/agent-runtime/tools/search.ts",
+    "src/orchestration/agent-runtime/tools/shell-contract.ts",
+    "tests/preload.ts",
+    "tests/unit/infra/file-edit/patch-parser.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/luna-shell-contract.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/nested-tool-dispatch.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/ripgrep-native.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/search-paths.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/tool-name-repair.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/tools-apply-patch.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/tools-bash.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/tools-list.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/tools-read.test.ts",
+    "tests/unit/orchestration/agent-runtime/tools/tools-search.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1792828624928,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -335,7 +354,7 @@\n     multiple = true;\n   } else {\n     const raw = input.path;\n-    const parts = existingPathList(raw, context, kind, split);\n+    const parts = await existingPathList(raw, context, kind, split);\n     multiple = parts !== undefined;\n     paths = parts ? [...parts] : [raw];\n   }",
+              "mutation": "23332d11-d519-4bd5-9403-6af748769164",
+              "path": "src/orchestration/agent-runtime/tools/tool-paths.ts"
+            },
+            {
+              "hunk": "@@ -354,7 +368,7 @@\n     multiple = true;\n   } else {\n     const raw = input.path;\n-    const parts = await existingPathList(raw, context, kind, split);\n+    const parts = existingPathList(raw, context, kind, split);\n     multiple = parts !== undefined;\n     paths = parts ? [...parts] : [raw];\n   }",
+              "mutation": "294ca401-036a-4cb4-8e9b-98fec3ba7032",
+              "path": "src/orchestration/agent-runtime/tools/tool-paths.ts"
+            }
+          ],
+          "label": "compare-the-unsplit-project-root-path-before-accepting-a-bat",
+          "location": "src/orchestration/agent-runtime/tools/tool-paths.ts:338-348; src/orchestration/agent-runtime/tools/search-paths.ts:131-135",
+          "severity": "P1",
+          "title": "Compare the unsplit project-root path before accepting a batch"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -215,10 +228,10 @@\n   const allowedSiblings = new Set(siblings.entries.map((entry) => join(parent, entry.replace(/\\/$/, \"\"))));\n   const localFits = otherExtensions.filter((path) => allowedSiblings.has(path) && hasKind(path, kind) && admissible(scope, path));\n   const fits = [...new Set([...localFits, ...sameName.entries.filter((path) => hasKind(path, kind) && admissible(scope, path)), ...(projectCandidate ? [projectCandidate] : [])])];\n-  const complete = [sameName, siblings, frontier].every((found) => found.complete) && frontier.entries.length === 0;\n+  const complete = sameName.complete && siblings.complete;\n \n   const [only] = fits;\n-  if (only !== undefined && fits.length === 1 && (complete || (siblings.complete && localFits.includes(only)))) return { kind: \"healed\", path: only };\n+  if (only !== undefined && fits.length === 1 && complete) return { kind: \"healed\", path: only };\n \n   const words = nameWords(name);\n   const similar = siblings.entries",
+              "mutation": "23332d11-d519-4bd5-9403-6af748769164",
+              "path": "src/orchestration/agent-runtime/tools/tool-paths.ts"
+            }
+          ],
+          "label": "do-not-treat-an-incomplete-basename-search-as-proof-of-uniqu",
+          "location": "src/orchestration/agent-runtime/tools/tool-paths.ts:218-221",
+          "severity": "P1",
+          "title": "Do not treat an incomplete basename search as proof of uniqueness"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -133,8 +133,7 @@\n     const baseline = baselineHeapBytes\n     const execution = CodeMode.execute({\n       code: start.source, tools, limits: { maxToolCalls, maxLogBytes }, onLog: logs.onLog,\n-      onUnknownTool: (name, input) => call(name, input).pipe(Effect.flatMap((result) =>\n-        result.outcome === \"error\" ? Effect.fail(toolError(String(result.content))) : Effect.succeed(result))),\n+      onUnknownTool: call,\n     })\n       .pipe(Effect.map((result) => ({ result, ending: \"returned\" as const })))\n     const heapWatchdog = Effect.gen(function* () {",
+              "mutation": "7ce1db12-ad3c-4c9f-94dd-edcd717ffa69",
+              "path": "src/orchestration/modules/code-mode/invocation-guest.ts"
+            }
+          ],
+          "label": "preserve-the-result-contract-after-repairing-a-nested-tool-n",
+          "location": "src/orchestration/modules/code-mode/invocation-guest.ts:136-137",
+          "severity": "P2",
+          "title": "Preserve the result contract after repairing a nested tool name"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "81b8cb23e459",
+      "persona": "reviewer-code-quality",
+      "run": "d3b56fe648a6",
+      "session": "4032eda6d354",
+      "start": 1792828322687
+    }
+  ],
+  "scrubbedLines": {
+    "docs/adrs/adr-005-flywheel-design-principles.md": 2,
+    "docs/adrs/adr-009-tool-execution-safety.md": 8,
+    "docs/product-intent/agent-methods.md": 2,
+    "src/orchestration/agent-runtime/tools/tool-paths.ts": 2
+  },
+  "unresolvedImports": [],
+  "variant": "restore",
+  "rejectedLabels": [
+    {
+      "id": "compare-the-unsplit-project-root-path-before-accepting-a-bat",
+      "reason": "The pinned tree outside the fixture files holds tests that name the defect: search-paths.test.ts and tools-read.test.ts expect a refusal for path 'a.txt b.txt' with a project-root file of that name."
+    }
+  ]
+}

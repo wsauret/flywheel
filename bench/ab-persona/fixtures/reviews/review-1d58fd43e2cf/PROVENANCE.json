@@ -1,0 +1,115 @@
+{
+  "base": "3d94ffee7a530ef04b9f891af51cc7aa8bc5be93",
+  "files": [
+    {
+      "anchor": "fc3a1d3a02fcaa64c34c3ef80e48a44c0d27b703",
+      "path": "docs/guides/webview-render-continuity.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "docs/product-intent/interaction.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "src/protocol/client/file-change-body.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "src/tui/adapters/color-diff.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "src/tui/output-blocks/diff-preview.tsx",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "src/tui/output-blocks/tool-entry.tsx",
+      "reversedMutations": 2
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "tests/unit/tui/output-blocks/diff-preview.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "tests/unit/tui/output-blocks/tool-entry-evidence-publications.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "tests/unit/tui/output-blocks/tool-preview-displayed-rows.test.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "35798e0e9a1fe27b1529b5771969aa74920b05de",
+      "path": "webview/src/app/file-diff.tsx",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "tests/unit/tui/output-blocks/tool-entry-mutation-rendering.test.ts",
+    "tests/unit/tui/output-blocks/tool-entry-proposed-diff.test.ts",
+    "tests/unit/tui/output-window-budgeted-mount.test.tsx"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793095732178,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -252,7 +264,7 @@\n       ? sourceOmitted() > 0\n         ? `  ... +${sourceOmitted()} lines (truncated, click to collapse)`\n         : \"  (click to collapse)\"\n-      : collapsedOmitted() > 0 ? `  ... +${collapsedOmitted()} lines (click to expand)` : \"  ... more (click to expand)\"\n+      : overflow() ? \"  ... more content (click to expand)\" : `  ... +${collapsedOmitted()} lines (click to expand)`\n     const heading = () => {\n       if (fileProps.file.hideHeading || fileProps.file.evidenceStatus === \"omitted\") return undefined\n       const label = fileProps.file.action === undefined",
+              "mutation": "5872fb62-62e1-42e5-b082-e990ac1f0c1c",
+              "path": "src/tui/output-blocks/diff-preview.tsx"
+            }
+          ],
+          "label": "the-collapsed-note-understates-hidden-lines-when-wrapping-cl",
+          "location": "src/tui/output-blocks/diff-preview.tsx:255 (note), :314 (note shown when collapsedOmitted() > 0 || overflow())",
+          "severity": "P2",
+          "title": "The collapsed note understates hidden lines when wrapping clips the first 20 lines, and its wrap-only wording differs from the sibling preview note"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -197,11 +199,14 @@\n   const DiffFilePreview = (fileProps: { file: DiffFile; index: number }) => {\n     // Collapsed rows wrap and clip at the preview budget; rows past it offer the toggle.\n     const [overflow, setOverflow] = createSignal(false)\n-    const reportOverflow = (next: boolean) => {\n-      if (next === overflow()) return\n+    // Wrap overflow is known only after layout, so the row records no height before the\n+    // first frame laid out with the truncation note it decides.\n+    const [measured, setMeasured] = createSignal(false)\n+    useRowGeometry().hold(measured)\n+    const measureOverflow = (next: boolean) => batch(() => {\n       setOverflow(next)\n-      props.onOverflow?.(fileProps.index, next)\n-    }\n+      setMeasured(true)\n+    })\n     const syntaxColors = () => fileProps.file.presentation === \"write\" ? themeCtx.writeSyntaxColors : undefined\n     const highlighter = createMemo(() => {\n       const palette = syntaxColors()",
+              "mutation": "5872fb62-62e1-42e5-b082-e990ac1f0c1c",
+              "path": "src/tui/output-blocks/diff-preview.tsx"
+            },
+            {
+              "hunk": "@@ -202,6 +202,7 @@\n     // Wrap overflow is known only after layout, so the row records no height before the\n     // first frame laid out with the truncation note it decides.\n     const [measured, setMeasured] = createSignal(false)\n+    // eslint-disable-next-line solid/reactivity -- the row reads the hold in its own geometry memo\n     useRowGeometry().hold(measured)\n     const measureOverflow = (next: boolean) => batch(() => {\n       setOverflow(next)",
+              "mutation": "03b8b2c5-e783-403f-a075-3692d6bd39fb",
+              "path": "src/tui/output-blocks/diff-preview.tsx"
+            }
+          ],
+          "label": "intent-drift-the-wrap-only-overflow-note-adds-a-row-one-fram",
+          "location": "src/tui/output-blocks/preview-viewport.tsx:24 (onSizeChange sets overflow during layout); src/tui/output-blocks/diff-preview.tsx:200, :288, :314; src/tui/output-window/output-window-viewport.tsx:131-157, :480-486 (the record is taken on the first frame laid out after the hold ends)",
+          "severity": "P2",
+          "title": "Intent Drift: the wrap-only overflow note adds a row one frame after the first layout, so the collapsed height changes after it was first measured"
+        }
+      ],
+      "model": "claude-opus-5.5",
+      "parent": "8f7b60a89f3f",
+      "persona": "reviewer-code-design",
+      "run": "1d58fd43e2cf",
+      "session": "7c644444407f",
+      "start": 1793095438172
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore",
+  "rejectedLabels": [
+    {
+      "id": "intent-drift-the-wrap-only-overflow-note-adds-a-row-one-fram",
+      "reason": "The fixture prompt tells the reviewer where the defect is: it lists recorded deviation 6, the overflow note appears after first layout."
+    }
+  ]
+}

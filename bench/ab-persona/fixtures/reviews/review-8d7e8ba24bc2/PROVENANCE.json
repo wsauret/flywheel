@@ -1,0 +1,153 @@
+{
+  "base": "ddd28772eedcd04f9f0ca2c6902bb1893f1ad998",
+  "files": [
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "AGENTS.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "fc3a1d3a02fcaa64c34c3ef80e48a44c0d27b703",
+      "path": "docs/architecture-intent/README.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "6fdbf188b354a0a6b5c94632d5b8891cee3ac999",
+      "path": "src/orchestration/app-service/project-state-channel.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "6fdbf188b354a0a6b5c94632d5b8891cee3ac999",
+      "path": "src/orchestration/app-service/project-state-client.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "6fdbf188b354a0a6b5c94632d5b8891cee3ac999",
+      "path": "src/orchestration/app-service/project-state-protocol.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "6fdbf188b354a0a6b5c94632d5b8891cee3ac999",
+      "path": "tests/unit/infra/event-loop-lag.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "6fdbf188b354a0a6b5c94632d5b8891cee3ac999",
+      "path": "tests/unit/orchestration/app-service/project-state-channel.test.ts",
+      "reversedMutations": 3
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "docs/architecture-intent/substrate.md",
+    "scripts/check-worker-ownership.ts",
+    "scripts/regenerate-output-seam-corpus.ts",
+    "src/infra/event-projection.ts",
+    "src/infra/event-store-types.ts",
+    "src/infra/ordered-lane.ts",
+    "src/infra/prefix-view.ts",
+    "src/infra/projection-fold-cache.ts",
+    "src/infra/projection-registry.ts",
+    "src/infra/read-queue.ts",
+    "src/infra/sqlite-event-read-surface.ts",
+    "src/infra/sqlite-event-store-core.ts",
+    "src/orchestration/app-service/project-control-runtime.ts",
+    "src/orchestration/app-service/project-execution-composition.ts",
+    "src/orchestration/app-service/project-state-worker-spawner.ts",
+    "src/orchestration/app-service/project-state-worker.ts",
+    "src/orchestration/app-service/transcript-projection-cache.ts",
+    "src/orchestration/module-seams.ts",
+    "src/orchestration/modules.ts",
+    "src/orchestration/modules/subagents/history/child-measures.ts",
+    "src/orchestration/modules/subagents/history/tool-summary.ts",
+    "src/orchestration/modules/workflows.ts",
+    "src/orchestration/session/child-workflow-candidate.ts",
+    "src/orchestration/session/conversation/transcript-projection.ts",
+    "src/orchestration/session/module-tool-history.ts",
+    "src/orchestration/session/tool-execution-projection.ts",
+    "src/orchestration/session/workflow-membership.ts",
+    "src/workflows/output-contract/workflow-completion.ts",
+    "tests/helpers/in-memory-event-reader.ts",
+    "tests/helpers/workspace-retirement.ts",
+    "tests/integration/local/executor-commit-stream-order.test.ts",
+    "tests/integration/local/executor-state-read-responsiveness.test.ts",
+    "tests/integration/local/project-executor-runtime.test.ts",
+    "tests/integration/local/project-lane-failure-recovery.test.ts",
+    "tests/unit/infra/event-projection.test.ts",
+    "tests/unit/infra/projection-fold-cache-families.test.ts",
+    "tests/unit/infra/projection-fold-cache.test.ts",
+    "tests/unit/orchestration/app-service/project-state-client.test.ts",
+    "tests/unit/orchestration/app-service/project-state-commit-window.test.ts",
+    "tests/unit/orchestration/app-service/project-state-protocol.test.ts",
+    "tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts",
+    "tests/unit/orchestration/modules/subagents/tool-summary.test.ts",
+    "tests/unit/orchestration/session-store/child-session-projection.test.ts",
+    "tests/unit/orchestration/session/_session-change-fixtures.ts",
+    "tests/unit/orchestration/session/chat-workflow-completion-recovery.test.ts",
+    "tests/unit/orchestration/session/child-reconciliation-work-count.test.ts",
+    "tests/unit/orchestration/session/child-session-reconciliation.test.ts",
+    "tests/unit/orchestration/session/tool-execution-identity-projection.test.ts",
+    "tests/unit/orchestration/workflow-host/started-agent-states.test.ts",
+    "tests/unit/orchestration/workspace-state-retirement.test.ts",
+    "tests/unit/scripts/check-worker-ownership.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793047546142,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -322,16 +322,14 @@\n     : undefined\n }\n \n-/** Reads and validates a whole response from its frame bytes, or from the\n- *  envelope object `{ id, head?, result }` that a frame carries. */\n+/** Reads and validates a whole response from the frame bytes that\n+ *  `encodeProjectStateResponse` made, or undefined for any other message. */\n export function decodeProjectStateResponse(value: unknown): ProjectStateResponse | undefined {\n+  if (!(value instanceof Uint8Array)) return undefined\n+  const frame = readProjectStateResponseFrame(value)\n+  if (!frame) return undefined\n   try {\n-    let envelope = value\n-    if (value instanceof Uint8Array) {\n-      const frame = readProjectStateResponseFrame(value)\n-      envelope = frame && { ...unpack(value.subarray(frame.bodyOffset)), id: frame.id }\n-    }\n-    const { id, head, result } = Schema.decodeUnknownSync(ResponseSchema, { onExcessProperty: \"error\" })(envelope)\n+    const { id, head, result } = Schema.decodeUnknownSync(ResponseSchema, { onExcessProperty: \"error\" })({ ...unpack(value.subarray(frame.bodyOffset)), id: frame.id })\n     return { id, result: decodedResult(result), ...(head === undefined ? {} : { head }) }\n   } catch {\n     return undefined",
+              "mutation": "5db86c96-0798-470f-87f9-fc496cf9af4c",
+              "path": "src/orchestration/app-service/project-state-protocol.ts"
+            }
+          ],
+          "label": "the-live-checkout-fallback-permits-incompatible-state-peers",
+          "location": "src/orchestration/app-service/project-state-protocol.ts:308-322,407-409",
+          "severity": "P2",
+          "title": "The live-checkout fallback permits incompatible state peers"
+        },
+        {
+          "fix": [
+            {
+              "hunk": "@@ -464,6 +464,21 @@\n     expect(page.subarray(frame?.bodyOffset)).toEqual(served!.bytes.subarray(served!.bodyOffset))\n     expect(decodeProjectStateResponse(page)).toEqual({ id: 7, head: 5, result })\n \n+    // The body's exact bytes arrive even where msgpackr would encode them\n+    // differently: a map16 header in place of the fixmap it chooses.\n+    const canonical = served!.bytes.subarray(served!.bodyOffset)\n+    const wide = new Uint8Array([0xde, 0x00, canonical[0]! & 0x0f, ...canonical.subarray(1)])\n+    const widePage = await relayed(10, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), wide])))\n+    expect(widePage.subarray(readProjectStateResponseFrame(widePage)?.bodyOffset)).toEqual(wide)\n+    expect(decodeProjectStateResponse(widePage)).toEqual({ id: 10, head: 5, result })\n+\n+    // Bytes that are not MessagePack at all (0xc1 is never used) still reach\n+    // the executor unchanged, and the executor refuses them.\n+    const garbage = new Uint8Array([0xc1, 0xff, 0x00])\n+    const garbled = await relayed(11, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), garbage])))\n+    expect(garbled.subarray(readProjectStateResponseFrame(garbled)?.bodyOffset)).toEqual(garbage)\n+    expect(decodeProjectStateResponse(garbled)).toBeUndefined()\n+\n     // A body no reader accepts still reaches the executor, whose decode is the\n     // boundary that refuses it; a body the account consumes itself is read there.\n     const unreadable = (workerId: number) => new Uint8Array(Buffer.concat([pack(workerId), pack({ result: { kind: \"unknown\" } })]))",
+              "mutation": "f7ba1caf-a662-464d-aa66-c6d75b40af96",
+              "path": "tests/unit/orchestration/app-service/project-state-channel.test.ts"
+            },
+            {
+              "hunk": "@@ -467,7 +467,8 @@\n     // The body's exact bytes arrive even where msgpackr would encode them\n     // differently: a map16 header in place of the fixmap it chooses.\n     const canonical = served!.bytes.subarray(served!.bodyOffset)\n-    const wide = new Uint8Array([0xde, 0x00, canonical[0]! & 0x0f, ...canonical.subarray(1)])\n+    expect(canonical[0]).toBe(0x82)\n+    const wide = new Uint8Array([0xde, 0x00, 0x02, ...canonical.subarray(1)])\n     const widePage = await relayed(10, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), wide])))\n     expect(widePage.subarray(readProjectStateResponseFrame(widePage)?.bodyOffset)).toEqual(wide)\n     expect(decodeProjectStateResponse(widePage)).toEqual({ id: 10, head: 5, result })",
+              "mutation": "5f689bf3-6b10-4512-bc7e-52a27c82cbf7",
+              "path": "tests/unit/orchestration/app-service/project-state-channel.test.ts"
+            },
+            {
+              "hunk": "@@ -465,10 +465,10 @@\n     expect(decodeProjectStateResponse(page)).toEqual({ id: 7, head: 5, result })\n \n     // The body's exact bytes arrive even where msgpackr would encode them\n-    // differently: a map16 header in place of the fixmap it chooses.\n+    // differently: a map32 header in place of the map16 header it chooses.\n     const canonical = served!.bytes.subarray(served!.bodyOffset)\n-    expect(canonical[0]).toBe(0x82)\n-    const wide = new Uint8Array([0xde, 0x00, 0x02, ...canonical.subarray(1)])\n+    expect([...canonical.subarray(0, 3)]).toEqual([0xde, 0x00, 0x02])\n+    const wide = new Uint8Array([0xdf, 0x00, 0x00, 0x00, 0x02, ...canonical.subarray(3)])\n     const widePage = await relayed(10, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), wide])))\n     expect(widePage.subarray(readProjectStateResponseFrame(widePage)?.bodyOffset)).toEqual(wide)\n     expect(decodeProjectStateResponse(widePage)).toEqual({ id: 10, head: 5, result })",
+              "mutation": "8fa5a96f-9bff-4f22-b152-3b6e5d3ce09c",
+              "path": "tests/unit/orchestration/app-service/project-state-channel.test.ts"
+            }
+          ],
+          "label": "the-unread-relay-test-passes-with-body-decode-and-re-encode",
+          "location": "tests/unit/orchestration/app-service/project-state-channel.test.ts:459-474",
+          "severity": "P2",
+          "title": "The unread-relay test passes with body decode and re-encode restored"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "a187df3b1b3a",
+      "persona": "reviewer-code-quality",
+      "run": "8d7e8ba24bc2",
+      "session": "d5db78ad914a",
+      "start": 1793047290115
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore",
+  "rejectedLabels": [
+    {
+      "id": "the-live-checkout-fallback-permits-incompatible-state-peers",
+      "reason": "reachability was not verified by its finder and rests on a development-only fallback (a failed source snapshot that runs the live checkout), and the recorded fix addresses a different issue (the unused envelope-object branch of decodeProjectStateResponse), so it is not a confirmed P2 defect of this fixture"
+    }
+  ]
+}

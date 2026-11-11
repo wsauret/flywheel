@@ -1,0 +1,60 @@
+{
+  "base": "a5022e278da1fd6252e9f3c0628d955bbee4e617",
+  "files": [
+    {
+      "anchor": "434739c0c9865390740044b17ec08201526e96f4",
+      "path": "docs/product-intent/interaction.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "8449a5b14c95959c1a25845a043c5f4b4e6b2084",
+      "path": "src/tui/output-blocks/user-message-block.tsx",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "8449a5b14c95959c1a25845a043c5f4b4e6b2084",
+      "path": "tests/unit/tui/output-blocks/user-message-block.test.tsx",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "medium",
+      "end": 1791690027422,
+      "findings": [],
+      "model": "gpt-6-astra",
+      "parent": "248e7d681c64",
+      "persona": "reviewer-code-elegance",
+      "run": "e900aa45096b",
+      "session": "4dbc5c3cb005",
+      "start": 1791689997377
+    },
+    {
+      "effort": "xhigh",
+      "end": 1791690137283,
+      "findings": [],
+      "model": "gpt-6.1-sol",
+      "parent": "248e7d681c64",
+      "persona": "reviewer-code-quality",
+      "run": "cba0fab73b9a",
+      "session": "624afaba1a00",
+      "start": 1791690015089
+    },
+    {
+      "effort": "medium",
+      "end": 1791690045931,
+      "findings": [],
+      "model": "claude-opus-5.5",
+      "parent": "248e7d681c64",
+      "persona": "reviewer-code-design",
+      "run": "d9d50841d8f4",
+      "session": "ee2eebc99a07",
+      "start": 1791690015270
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

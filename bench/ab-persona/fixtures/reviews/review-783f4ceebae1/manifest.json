@@ -1,0 +1,39 @@
+{
+  "defects": [
+    {
+      "accepted": true,
+      "catch_criteria": "In scripts/check-intent-corpora.ts, inCitingScope scans only files under the CITING_ROOTS prefixes or named in CITING_FILES, so every other tracked file (for example SECURITY.md, the install scripts, root configuration files, website/) is never checked for retired record references or unresolved statement ids, although the gate is specified to cover everything except its listed exemptions. A catch must say that the citation scope is a positive allowlist that silently leaves out tracked files which are not exempt, and name the allowlist or at least one omitted file.",
+      "category": "quality",
+      "files": [
+        "scripts/check-intent-corpora.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "the-citation-gate-silently-excludes-nonexempt-repository-fil",
+      "title": "The citation gate silently excludes nonexempt repository files"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "In scripts/check-intent-corpora.ts, pathLike treats a relative token with exactly one slash and no recognized file extension as not a path, so an architecture statement can name a file such as `bin/flywheel` or a two-segment directory path without a grain violation. A catch must say that relative two-segment paths without an extension pass the architecture grain rule that forbids file paths.",
+      "category": "quality",
+      "files": [
+        "scripts/check-intent-corpora.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "extensionless-relative-file-paths-bypass-the-architecture-gr",
+      "title": "Extensionless relative file paths bypass the architecture grain check"
+    },
+    {
+      "accepted": true,
+      "catch_criteria": "scripts/check-intent-corpora.ts fails on itself: the comment above PLUGIN_ROOT (line 38) contains the text `docs/adrs`, the file is under the scanned scripts/ root and is not in GENERIC_ADR_PATH_FILES, so running the script reports an adr-reference violation at scripts/check-intent-corpora.ts:38 and exits 1. A catch must say that the gate reports a violation in its own source (its own comment or text matches ADR_REFERENCE), so the lint cannot pass as written.",
+      "category": "quality",
+      "files": [
+        "scripts/check-intent-corpora.ts"
+      ],
+      "finder": "gpt-6-astra",
+      "id": "the-new-lint-fails-on-its-own-explanatory-comment",
+      "title": "The new lint fails on its own explanatory comment"
+    }
+  ],
+  "review_prompt_hint": "",
+  "title": "Quality review of ADR retirement"
+}

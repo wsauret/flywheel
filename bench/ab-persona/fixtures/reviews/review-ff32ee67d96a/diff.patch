@@ -1,0 +1,632 @@
+diff --git a/docs/product-intent/remote-access.md b/docs/product-intent/remote-access.md
+index 2f71c44..a1a3ab4 100644
+--- a/docs/product-intent/remote-access.md
++++ b/docs/product-intent/remote-access.md
+@@ -64,7 +64,7 @@ The phone shows the client that belongs to the runtime serving the chosen projec
+ 
+ ## PI-REMOTE-015: A phone is told when a chat needs it
+ 
+-While notifications are on, a chat that starts waiting on a question shows a notification on each paired phone, on the lock screen too, whatever any phone has open. That is the only moment a phone is notified: a turn that ends, a workflow that pauses, and a run that fails send nothing. A question answered before the notification goes out sends none, and each new question alerts again, also in the same chat. A phone receives notifications from one machine at a time. Flywheel has no notification setting of its own: allowing notifications on the phone is the only step. While a phone cannot receive notifications, the phone app says why and offers the one next step: adding the app to the Home Screen, a button that asks the phone for permission, the system setting to change when the phone blocks notifications, or moving notifications from another machine to this one. The person can dismiss that offer, and it returns when a chat starts waiting on them while notifications are still off.
++While notifications are on, a chat that starts waiting on a question shows a notification on each paired phone, on the lock screen too, whatever any phone has open. That is the only moment a phone is notified: a turn that ends, a workflow that pauses, and a run that fails send nothing. A question answered before the notification goes out sends none, and each new question alerts again, also in the same chat. A phone receives notifications from one machine at a time. The installed Flywheel and a source run of Flywheel on the same machine count as that one machine: a phone that gets notifications from one gets them from the other too. Flywheel has no notification setting of its own: allowing notifications on the phone is the only step. While a phone cannot receive notifications, the phone app says why and offers the one next step: adding the app to the Home Screen, a button that asks the phone for permission, the system setting to change when the phone blocks notifications, or moving notifications from another machine to this one. The person can dismiss that offer. The phone remembers the dismissal through relaunches and project switches, and the offer returns only when a chat starts waiting on them while notifications are still off.
+ 
+ ## PI-REMOTE-016: A terminal on another machine reaches the runtime through the relay
+ 
+diff --git a/webview/src/app/budget-render-fixture.tsx b/webview/src/app/budget-render-fixture.tsx
+index 4d24c74..0ae69d1 100644
+--- a/webview/src/app/budget-render-fixture.tsx
++++ b/webview/src/app/budget-render-fixture.tsx
+@@ -48,6 +48,7 @@ function state(budget: BudgetSummary = LOADING_BUDGET, health: RuntimeHealth = {
+     sessionId: "session-a",
+     executionCwd: "/tmp/project",
+     sessions: [summary()],
++    questionPresenceLoaded: true,
+     children: [],
+     roleAssignments: () => undefined,
+     subscribeRoleAssignments: () => () => {},
+diff --git a/webview/src/client/session-readings.ts b/webview/src/client/session-readings.ts
+index 3a9a442..7b620ea 100644
+--- a/webview/src/client/session-readings.ts
++++ b/webview/src/client/session-readings.ts
+@@ -25,6 +25,7 @@ export function createSessionReadings(options: {
+   let budgets: ReadonlyMap<string, BudgetView> = new Map()
+   let selected: string | undefined
+   let awaitingAnswer: ReadonlySet<string> = new Set()
++  let questionPresenceLoaded = false
+   /** The sessions the last reconcile admitted: listed rows and held children. */
+   let admitted: ReadonlySet<string> = new Set()
+   /** The status listeners of the cards on screen, by the child each watches. */
+@@ -113,6 +114,10 @@ export function createSessionReadings(options: {
+   async function refreshRowDetail(rows: readonly SessionRow[]): Promise<void> {
+     if (disposed) return
+     detailRows = rows
++    if (questionPresenceLoaded) {
++      questionPresenceLoaded = false
++      changed()
++    }
+     try {
+       // One question read over the rows that are actually live: a durable
+       // session with no runtime cannot be waiting on anyone.
+@@ -121,6 +126,7 @@ export function createSessionReadings(options: {
+       if (disposed || detailRows !== rows) return
+       questionRetry.succeeded()
+       awaitingAnswer = new Set(questions?.views.flatMap((entry) => entry.view ? [entry.sessionId] : []))
++      questionPresenceLoaded = true
+       changed()
+     } catch (cause) {
+       if (detailRows === rows) questionRetry.failed(cause)
+@@ -132,6 +138,8 @@ export function createSessionReadings(options: {
+     /** The known budget of every followed session, by id. */
+     get budgets() { return budgets },
+     get awaitingAnswer() { return awaitingAnswer },
++    /** Whether question presence covers the current catalog's live rows. */
++    get questionPresenceLoaded() { return questionPresenceLoaded },
+     refreshRowDetail,
+     /** Admit live rows without re-reading unchanged rows; retire removed owners. */
+     reconcile(rows: readonly SessionRow[]): void {
+diff --git a/webview/src/client/session.test.ts b/webview/src/client/session.test.ts
+index d02ac85..bb61d07 100644
+--- a/webview/src/client/session.test.ts
++++ b/webview/src/client/session.test.ts
+@@ -8,6 +8,7 @@ import type { RuntimeConnection } from "../../../src/protocol/client/connection.
+ import type { FrontendEvent, RuntimeQuery, RuntimeQueryResult } from "../../../src/protocol/app-service-types.js"
+ import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
+ import type { SessionChangesResult } from "../../../src/protocol/session-changes-protocol-types.js"
++import type { RuntimeQuestionSnapshotResult } from "../../../src/protocol/question-protocol-types.js"
+ import { fakeConnection, settle } from "./session-connection-fixture.js"
+ import { mountActivityStatus } from "../app/render-ownership-loader-fixture.js"
+ import { selectionConnection } from "./session-selection-fixture.js"
+@@ -17,6 +18,66 @@ import type { RuntimeClientDiagnostic } from "../../../src/protocol/runtime-clie
+ import { backgroundReads } from "../../../src/protocol/client/background-reads.js"
+ 
+ // oxlint-disable typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the scripted connection fakes implement only the members these tests read
++test("question presence stays unknown until the current catalog's reading succeeds, then follows patches", async () => {
++  const base = selectionConnection()
++  const snapshot = await base.query({ type: "snapshot" })
++  const row = { ...snapshot.rows[0]!, lifecycleState: "active" as const }
++  let rows = [row]
++  const first = Promise.withResolvers<RuntimeQuestionSnapshotResult>()
++  let current = first.promise
++  let questionReads = 0
++  const listeners = new Set<(event: FrontendEvent) => void>()
++  function query<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
++  async function query(request: RuntimeQuery): Promise<RuntimeQueryResult<RuntimeQuery>> {
++    if (request.type === "snapshot") return { ...snapshot, rows, projectRoot: "/scratch/project" }
++    if (request.type === "questionSnapshot") { questionReads++; return current }
++    return base.query(request)
++  }
++  const session = createRuntimeSession({ connection: {
++    ...base, query,
++    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
++  } })
++  const publish = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
++  const frames: boolean[] = []
++  session.onChange(() => { if (session.projectRoot !== undefined) frames.push(session.questionPresenceLoaded) })
++  try {
++    await settle()
++    assert.equal(session.projectRoot, "/scratch/project")
++    assert.equal(session.questionPresenceLoaded, false)
++    assert.ok(frames.length > 0)
++    assert.ok(frames.every((loaded) => !loaded))
++    first.resolve({ snapshotPosition: 0, views: [{ sessionId: row.id, view: { kind: "question", toolUseId: "q", questions: [], timestamp: 0 } }] })
++    await settle()
++    assert.equal(session.questionPresenceLoaded, true)
++    assert.deepEqual([...session.awaitingAnswer], [row.id])
++    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 1, prevPosition: 0, payload: { kind: "question.removed" } } })
++    assert.equal(session.questionPresenceLoaded, true)
++    assert.deepEqual([...session.awaitingAnswer], [])
++    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: row.id }, position: 2, prevPosition: 1, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "new", questions: [], timestamp: 0 } } } })
++    assert.deepEqual([...session.awaitingAnswer], [row.id])
++    const next = Promise.withResolvers<RuntimeQuestionSnapshotResult>()
++    current = next.promise
++    frames.length = 0
++    publish({ type: "patch", patch: { cursor: { scope: "session", domain: "session", sessionId: "new" }, position: 1, prevPosition: 0, payload: { kind: "session.added", row: { ...row, id: "new" } } } })
++    await settle()
++    assert.equal(session.questionPresenceLoaded, false)
++    assert.ok(frames.length > 0)
++    assert.ok(frames.every((loaded) => !loaded))
++    next.resolve({ snapshotPosition: 1, views: [] })
++    await settle()
++    assert.equal(session.questionPresenceLoaded, true)
++    assert.deepEqual([...session.awaitingAnswer], [])
++  } finally { session.dispose() }
++  rows = []
++  const readsBeforeEmpty = questionReads
++  const sessionWithoutRows = createRuntimeSession({ connection: { ...base, query } })
++  try {
++    await settle()
++    assert.equal(sessionWithoutRows.questionPresenceLoaded, true)
++    assert.equal(questionReads, readsBeforeEmpty)
++  } finally { sessionWithoutRows.dispose() }
++})
++
+ test("a failed resident detail retries once without rereading healthy residents", async () => {
+   const base = selectionConnection()
+   const reads: string[] = []
+diff --git a/webview/src/client/session.ts b/webview/src/client/session.ts
+index 7bfa929..a999c18 100644
+--- a/webview/src/client/session.ts
++++ b/webview/src/client/session.ts
+@@ -180,6 +180,8 @@ export interface RuntimeSession {
+    *  blocked on the user can say so from the list rather than only from inside
+    *  its own transcript. */
+   readonly awaitingAnswer: ReadonlySet<string>
++  /** Whether question presence has loaded for the current catalog's live rows. */
++  readonly questionPresenceLoaded: boolean
+   /** What the page's surfaces left in a resident session, or undefined for a
+    *  session the page does not keep. */
+   memory(sessionId: string): SessionMemory | undefined
+@@ -519,7 +521,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+    *  session's status and question on each of those, over a sealed channel
+    *  from a phone, was a burst of round trips and frames for nothing the list
+    *  did not already learn from the status and question patches. */
+-  let detailKey = ""
++  let detailKey: string | undefined
+   /** The catalog's rows before its latest change, so a change can tell
+    *  that it dropped the selected session. */
+   let catalogBefore: readonly SessionCatalogRow[] = []
+@@ -527,6 +529,14 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+     if (disposed) return
+     const unlisted = catalogBefore.find((row) => row.id === sessionId)
+     catalogBefore = catalog.rows
++    const key = catalog.rows
++      .filter((row) => row.lifecycleState === "active")
++      .map((row) => `${row.id}:${row.lifecycleState}`)
++      .join(",")
++    if (key !== detailKey) {
++      detailKey = key
++      void readings.refreshRowDetail(catalog.rows)
++    }
+     readings.reconcile([...catalog.rows, ...children.rows])
+     leaveGone(unlisted)
+     if (sessionId !== undefined && !knows(sessionId)) openTranscript(undefined)
+@@ -544,13 +554,6 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+     }
+     initialSessionId = undefined
+     emit()
+-    const key = catalog.rows
+-      .filter((row) => row.lifecycleState === "active")
+-      .map((row) => `${row.id}:${row.lifecycleState}`)
+-      .join(",")
+-    if (key === detailKey) return
+-    detailKey = key
+-    void readings.refreshRowDetail(catalog.rows)
+   })
+ 
+   const refreshCatalog = (): Promise<void> => catalog.resnapshot()
+@@ -712,6 +715,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
+     get gitAiAttribution() { return statusViews.gitAiAttribution },
+     refreshSettings,
+     get awaitingAnswer() { return readings.awaitingAnswer },
++    get questionPresenceLoaded() { return readings.questionPresenceLoaded },
+     get modules() { return modules.views(visible()?.modules) },
+     memory: (target) => residents.get(target)?.memory,
+     onLeave(listener) {
+diff --git a/webview/src/client/view-state.test.ts b/webview/src/client/view-state.test.ts
+index cee0010..9eb0d6c 100644
+--- a/webview/src/client/view-state.test.ts
++++ b/webview/src/client/view-state.test.ts
+@@ -26,6 +26,7 @@ function session(overrides: Partial<RuntimeSession>): RuntimeSession {
+     sessionErrors: [],
+     workflow: undefined,
+     awaitingAnswer: new Set<string>(),
++    questionPresenceLoaded: true,
+     statuses: new Map(),
+     busy: false,
+     activity: undefined,
+@@ -96,6 +97,15 @@ describe("view state sessions", () => {
+     assert.notEqual(second.sessions[1], first.sessions[1])
+     assert.equal(second.sessions[1]?.working, true)
+   })
++  test("carries unknown and loaded question presence without replacing unchanged summaries", () => {
++    const rows = [row("a")]
++    const project = createViewProjection()
++    const unknown = project(session({ sessions: rows, questionPresenceLoaded: false }))
++    const loaded = project(session({ sessions: rows, questionPresenceLoaded: true }))
++    assert.equal(unknown.questionPresenceLoaded, false)
++    assert.equal(loaded.questionPresenceLoaded, true)
++    assert.equal(loaded.sessions, unknown.sessions)
++  })
+ 
+   test("keeps a parent session working while it waits on background work", () => {
+     const statuses = new Map<string, StatusView>([[
+diff --git a/webview/src/client/view-state.ts b/webview/src/client/view-state.ts
+index d817635..8ea1b74 100644
+--- a/webview/src/client/view-state.ts
++++ b/webview/src/client/view-state.ts
+@@ -71,6 +71,8 @@ export interface ClientViewState {
+   readonly executionCwd?: string
+   /** The catalog: every session the lists draw. */
+   readonly sessions: readonly SessionSummary[]
++  /** Whether waiting-chat presence is loaded for the current catalog. */
++  readonly questionPresenceLoaded: boolean
+   /** Children this client has opened, never listed; `summaryOf` reads them
+    *  after the catalog. */
+   readonly children: readonly SessionSummary[]
+@@ -321,6 +323,7 @@ function buildViewState(session: RuntimeSession, lists: SessionSummaryLists): Cl
+     ...(session.rootSessionId === undefined ? {} : { rootSessionId: session.rootSessionId }),
+     ...(session.executionCwd === undefined ? {} : { executionCwd: session.executionCwd }),
+     sessions: lists.sessions,
++    questionPresenceLoaded: session.questionPresenceLoaded,
+     children: lists.children,
+     roleAssignments: session.roleAssignments,
+     subscribeRoleAssignments: session.subscribeRoleAssignments,
+diff --git a/webview/src/modules/remote/menu.test.ts b/webview/src/modules/remote/menu.test.ts
+index d65243a..a83fe1c 100644
+--- a/webview/src/modules/remote/menu.test.ts
++++ b/webview/src/modules/remote/menu.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from "bun:test"
+-import { createRoot, createSignal } from "solid-js"
++import { createEffect, createRoot, createSignal, on } from "solid-js"
+ 
+ import { EMPTY_REMOTE_VIEW } from "../../../../src/protocol/modules/remote.js"
+ import type { ClientContextValue } from "../../app/client-context.js"
+@@ -7,13 +7,13 @@ import type { ClientViewState } from "../../client/view-state.js"
+ import type { HostCapabilities, PushSubscriptionRecord, RemoteHostSnapshot } from "../../host.js"
+ import { remoteMenu } from "./menu.js"
+ import { createPushRegistration } from "./push-registration.js"
++import { mountPerPlacement } from "../../../phone/placement-client.js"
+ 
+ const tick = async () => { for (let n = 0; n < 8; n += 1) await Promise.resolve() }
+ const subscription: PushSubscriptionRecord = { endpoint: "https://push.example/device", expirationTime: null, keys: { auth: "auth", p256dh: "key" } }
+ 
+ describe("remote menu action lifetime", () => {
+   for (const boundary of ["disabled", "disposed", "selection"] as const) it(`does not dispatch a late browser permission after ${boundary}`, async () => {
+-    const lifetime = new AbortController()
+     const permission = Promise.withResolvers<PushSubscriptionRecord | undefined>()
+     const reports: string[] = []
+     let dispatches = 0
+@@ -32,28 +32,43 @@ describe("remote menu action lifetime", () => {
+       // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the action fixture supplies only the client fields this module reads
+       return { projectRoot: "/workspace", sessions: [], modules: { remote: { ...EMPTY_REMOTE_VIEW, pushPublicKey: "public-key" } }, settings: { moduleIds: enabled ? ["remote"] : [] } } as unknown as ClientViewState
+     }
+-    const h = createRoot((dispose) => {
++    const mountApp = () => createRoot((dispose) => {
+       const [state, setState] = createSignal(frame(true))
+       // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: no rendering or other client commands run in this action fixture
+-      const client = { signal: lifetime.signal, state, host: { capabilities }, connection: { dispatch: async () => { dispatches += 1; return { kind: "committed" } }, subscribe: () => () => {} }, report: (_severity: string, message: string) => { reports.push(message) }, openSurface: () => {} } as unknown as ClientContextValue
+-      const registration = createPushRegistration(client)
+-      return { dispose, setState, client, registration }
++      const client = { signal: new AbortController().signal, state, host: { capabilities }, connection: { dispatch: async () => { dispatches += 1; return { kind: "committed" } }, subscribe: () => () => {} }, report: (_severity: string, message: string) => { reports.push(message) }, openSurface: () => {} } as unknown as ClientContextValue
++      let registration!: ReturnType<typeof createPushRegistration>
++      // The app's module notice unmounts when its published selection turns off.
++      createEffect(on(() => state().settings?.moduleIds.includes("remote"), (enabled) => {
++        if (enabled) registration = createPushRegistration(client)
++      }))
++      return { dispose, setState, client, registration: () => registration }
+     })
++    let choose = (_changed: boolean) => {}
++    const mounts: ReturnType<typeof mountApp>[] = []
++    const placement = mountPerPlacement({
++      capability: { select: () => choose(true) },
++      onSelectionChange(listener) { choose = listener; return () => {} },
++    }, () => {
++      const app = mountApp()
++      mounts.push(app)
++      return { dispose: app.dispose, command: () => {} }
++    })
++    const h = mounts[0]!
+     try {
+       const pushRow = remoteMenu(h.client, "panel").find((row) => row.id === "push")
+-      expect(pushRow?.value).toBe(h.registration.state().kind)
++      expect(pushRow?.value).toBe(h.registration().state().kind)
+       pushRow?.run()
+       await tick()
+       expect(requests).toBe(1)
+       expect(remoteMenu(h.client, "panel").find((row) => row.id === "push")?.working).toBe(true)
+       if (boundary === "disabled") { h.setState(frame(false)); h.setState(frame(true)) }
+-      else if (boundary === "disposed") lifetime.abort()
+-      else for (const listener of listeners) listener({ ...initial, selected: { runtimeId: "other", placementId: "project" } })
++      else if (boundary === "disposed") placement.handle.dispose()
++      else choose(true)
+       permission.resolve(subscription)
+       await tick()
+       expect(dispatches).toBe(0)
+       expect(reports).toEqual([])
+-      expect(listeners.size).toBe(0)
+-    } finally { lifetime.abort(); h.dispose() }
++      expect(listeners.size).toBe(boundary === "disposed" ? 0 : 1)
++    } finally { for (const app of mounts) app.dispose() }
+   })
+ })
+diff --git a/webview/src/modules/remote/push-registration.test.ts b/webview/src/modules/remote/push-registration.test.ts
+index afd4941..eeb3391 100644
+--- a/webview/src/modules/remote/push-registration.test.ts
++++ b/webview/src/modules/remote/push-registration.test.ts
+@@ -1,16 +1,27 @@
+-import { expect, test } from "bun:test"
++import { afterEach, beforeEach, expect, test } from "bun:test"
+ import { createRoot, createSignal } from "solid-js"
+ import type { ClientContextValue } from "../../app/client-context.js"
+-import type { ClientViewState } from "../../client/view-state.js"
++import type { ClientViewState, SessionSummary } from "../../client/view-state.js"
+ import type { HostCapabilities, RemoteHostSnapshot } from "../../host.js"
+ import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
+ import { EMPTY_REMOTE_VIEW } from "../../../../src/protocol/modules/remote.js"
+ import { createPushRegistration } from "./push-registration.js"
++import { mountPerPlacement } from "../../../phone/placement-client.js"
+ 
+ const settle = async () => { for (let i = 0; i < 16; i++) await Promise.resolve() }
+ const subscription = { endpoint: "https://push.test/one", expirationTime: null, keys: { p256dh: "key", auth: "auth" }, applicationServerKey: "ours" }
++const waitingSessions = (ids: readonly string[]): SessionSummary[] => ids.map((id) => ({ id, awaitingAnswer: true, title: id, kind: "chat", lifecycleState: "active", active: true, working: false, lastUpdated: "", totalsLoading: false }))
++const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
++beforeEach(() => {
++  const values = new Map<string, string>()
++  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) } })
++})
++afterEach(() => {
++  if (storageDescriptor) Object.defineProperty(globalThis, "localStorage", storageDescriptor)
++  else Reflect.deleteProperty(globalThis, "localStorage")
++})
+ 
+-function mount(permission: NotificationPermission | "unavailable", input: { install?: boolean; other?: boolean; unknownOwner?: boolean; recorded?: boolean; fail?: boolean; missing?: boolean; forward?: "throw" | "reject"; selectionKnown?: boolean } = {}) {
++function mount(permission: NotificationPermission | "unavailable", input: { install?: boolean; other?: boolean; unknownOwner?: boolean; recorded?: boolean; fail?: boolean; missing?: boolean; forward?: "throw" | "reject"; selectionKnown?: boolean; cold?: boolean; unselected?: boolean; waiting?: string[]; placementId?: string } = {}) {
+   let current = input.missing ? undefined : { ...subscription, ...(input.other ? { applicationServerKey: "theirs", ...(input.unknownOwner ? {} : { runtimeId: "other" }) } : {}) }
+   let changed = () => {}
+   let event = (_event: FrontendEvent) => {}
+@@ -18,9 +29,10 @@ function mount(permission: NotificationPermission | "unavailable", input: { inst
+   let prompts = 0
+   const diagnostics: unknown[] = []
+   const h = createRoot((dispose) => {
+-    const snapshot: RemoteHostSnapshot = { deviceLabel: "Phone", runtimes: [{ runtimeId: "other", label: "Studio", relay: "relay", placements: [], presence: "online" }, { runtimeId: "ours", label: "Laptop", relay: "relay", placements: [], presence: "online" }], selected: { runtimeId: "ours", placementId: "project" }, pairing: { status: "idle" }, ...(input.install ? { install: { browser: "Safari", steps: [], canPrompt: false } } : {}) }
++    let snapshot: RemoteHostSnapshot = { deviceLabel: "Phone", runtimes: [{ runtimeId: "other", label: "Studio", relay: "relay", placements: [], presence: "online" }, { runtimeId: "ours", label: "Laptop", relay: "relay", placements: [], presence: "online" }], selected: input.unselected ? undefined : { runtimeId: "ours", placementId: input.placementId ?? "project" }, pairing: { status: "idle" }, ...(input.install ? { install: { browser: "Safari", steps: [], canPrompt: false } } : {}) }
++    const listeners = new Set<(snapshot: RemoteHostSnapshot) => void>()
+     const capabilities: HostCapabilities = {
+-      remote: { deviceId: "phone", snapshot: () => snapshot, onChange: () => () => {}, pair: async () => {}, setLabel: async () => {}, select: () => {}, forget: async () => {}, createProject: async (runtimeId) => ({ runtimeId, placementId: "created" }) },
++      remote: { deviceId: "phone", snapshot: () => snapshot, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } }, pair: async () => {}, setLabel: async () => {}, select: () => {}, forget: async () => {}, createProject: async (runtimeId) => ({ runtimeId, placementId: "created" }) },
+       push: {
+         state: () => permission, current: async () => current,
+         subscribe: async () => { prompts++; if (input.fail) throw new DOMException("raw browser detail", "AbortError"); return subscription },
+@@ -28,12 +40,25 @@ function mount(permission: NotificationPermission | "unavailable", input: { inst
+       },
+     }
+     // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: the controller needs only module selection, the remote view, and catalog rows
+-    const [state, setState] = createSignal({ projectRoot: "/workspace", settings: input.selectionKnown === false ? undefined : { moduleIds: ["remote"] }, sessions: [], modules: { remote: { ...EMPTY_REMOTE_VIEW, pushPublicKey: "ours", devices: [{ id: "phone", label: "Phone", pairedAt: 0, attached: true, notifies: input.recorded ?? false }] } } } as unknown as ClientViewState)
++    const [state, setState] = createSignal({ projectRoot: input.cold ? undefined : "/workspace", questionPresenceLoaded: !input.cold, settings: input.selectionKnown === false ? undefined : { moduleIds: ["remote"] }, sessions: waitingSessions(input.waiting ?? []), modules: { remote: input.cold ? null : { ...EMPTY_REMOTE_VIEW, pushPublicKey: "ours", devices: [{ id: "phone", label: "Phone", pairedAt: 0, attached: true, notifies: input.recorded ?? false }] } } } as unknown as ClientViewState)
+     // oxlint-disable-next-line typescript/consistent-type-assertions, anti-slop/no-chained-type-assertions -- boundary: no rendering or unrelated client commands run in this fixture
+     const client = { state, signal: new AbortController().signal, host: { capabilities, onDiagnostic: (_name: string, detail: unknown) => diagnostics.push(detail) }, connection: { dispatch: async () => { dispatches++; if (input.forward === "throw") throw new Error("transport detail"); return input.forward === "reject" ? { kind: "rejected", message: "This phone is no longer paired. Pair it again." } : { kind: "committed" } }, subscribe: (listener: typeof event) => { event = listener; return () => {} } } } as unknown as ClientContextValue
+-    return { ...createPushRegistration(client), dispose, setState }
++    return {
++      ...createPushRegistration(client), dispose, setState,
++      catalog: () => setState((previous) => ({ ...previous, projectRoot: "/workspace", settings: { ...previous.settings!, moduleIds: ["remote"] } })),
++      remote: () => setState((previous) => ({ ...previous, modules: { ...previous.modules, remote: { ...EMPTY_REMOTE_VIEW, pushPublicKey: "ours" } } })),
++      choose: (placementId = "project") => { snapshot = { ...snapshot, selected: { runtimeId: "ours", placementId } }; for (const listener of listeners) listener(snapshot) },
++      waiting: (ids: string[]) => setState((previous) => ({ ...previous, questionPresenceLoaded: true, sessions: waitingSessions(ids) })),
++    }
+   })
+-  return { ...h, dispatches: () => dispatches, prompts: () => prompts, diagnostics, renewed: () => { current = { ...subscription, endpoint: "https://push.test/renewed" }; changed() }, question: () => event({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "chat" }, position: 1, prevPosition: 0, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "q", questions: [], timestamp: 0 } } } }) }
++  return {
++    ...h, dispatches: () => dispatches, prompts: () => prompts, diagnostics,
++    renewed: () => { current = { ...subscription, endpoint: "https://push.test/renewed" }; changed() },
++    question: () => {
++      h.setState((previous) => ({ ...previous, sessions: [...previous.sessions.filter((session) => session.id !== "chat"), ...waitingSessions(["chat"])] }))
++      event({ type: "patch", patch: { cursor: { scope: "session", domain: "question", sessionId: "chat" }, position: 1, prevPosition: 0, payload: { kind: "question.updated", question: { kind: "question", toolUseId: "q", questions: [], timestamp: 0 } } } })
++    },
++  }
+ }
+ 
+ test("the card offers install, permission, blocked settings, or a named move without a background prompt", async () => {
+@@ -99,3 +124,94 @@ test("a failed registration records only error name and permission, not browser
+     expect(h.diagnostics).toEqual([{ errorName: "AbortError", permission: "default" }])
+   } finally { h.dispose() }
+ })
++
++test("the move button stays live through either first-snapshot order and the first project choice", async () => {
++  for (const first of ["remote", "catalog", "selection"] as const) {
++    const h = mount("granted", { other: true, cold: first !== "selection", unselected: first === "selection" })
++    try {
++      await settle()
++      if (first === "selection") h.choose()
++      else {
++        h[first]()
++        await settle()
++        h[first === "remote" ? "catalog" : "remote"]()
++      }
++      await settle()
++      expect(h.state().kind).toBe("move")
++      await h.enable()
++      expect(h.prompts()).toBe(1)
++      expect(h.dispatches()).toBe(1)
++      expect(h.state().kind).toBe("on")
++    } finally { h.dispose() }
++  }
++})
++
++test("Later survives remounts and project switches until another chat starts waiting", async () => {
++  const key = (placementId: string) => `flywheel.push-guide.dismissed:${JSON.stringify(["ours", placementId])}`
++  const first = mount("denied", { waiting: ["chat", "answered"] })
++  await settle()
++  first.dismiss()
++  first.dispose()
++  const other = mount("denied", { placementId: "other", waiting: ["other-chat"] })
++  await settle()
++  expect(other.dismissed()).toBe(false)
++  other.dismiss()
++  other.dispose()
++  let selected = "project"
++  let selectionChanged = (_changed: boolean) => {}
++  const mounts: ReturnType<typeof mount>[] = []
++  const placement = mountPerPlacement({
++    capability: { select: () => {} },
++    onSelectionChange(listener) { selectionChanged = listener; return () => {} },
++  }, () => {
++    const guide = mount("denied", { placementId: selected, waiting: selected === "project" ? ["chat", "answered"] : ["other-chat"] })
++    mounts.push(guide)
++    return { dispose: guide.dispose, command: () => {} }
++  })
++  try {
++    await settle()
++    selected = "other"
++    mounts[0]!.choose(selected)
++    selectionChanged(true)
++    await settle()
++    expect(localStorage.getItem(key("other"))).toBe(JSON.stringify(["other-chat"]))
++    expect(mounts[1]!.dismissed()).toBe(true)
++  } finally { placement.handle.dispose() }
++  const next = mount("denied", { cold: true, unselected: true })
++  try {
++    await settle()
++    expect(next.dismissed()).toBe(false)
++    next.choose()
++    await settle()
++    expect(next.dismissed()).toBe(true)
++    next.catalog()
++    next.remote()
++    await settle()
++    expect(next.dismissed()).toBe(true)
++    expect(localStorage.getItem(key("project"))).toBe(JSON.stringify(["chat", "answered"]))
++    next.question()
++    await settle()
++    expect(next.dismissed()).toBe(true)
++    expect(localStorage.getItem(key("project"))).toBe(JSON.stringify(["chat", "answered"]))
++    const questions = Promise.withResolvers<string[]>()
++    const reading = questions.promise.then(next.waiting)
++    questions.resolve(["chat"])
++    await reading
++    await settle()
++    expect(next.dismissed()).toBe(true)
++    expect(localStorage.getItem(key("project"))).toBe(JSON.stringify(["chat"]))
++    next.question()
++    await settle()
++    expect(next.dismissed()).toBe(true)
++    next.waiting(["chat", "new"])
++    await settle()
++    expect(next.dismissed()).toBe(false)
++    next.dismiss()
++    next.waiting(["new"])
++    await settle()
++    expect(next.dismissed()).toBe(true)
++    next.waiting(["chat", "new"])
++    await settle()
++    expect(next.dismissed()).toBe(false)
++  } finally { next.dispose() }
++})
+diff --git a/webview/src/modules/remote/push-registration.ts b/webview/src/modules/remote/push-registration.ts
+index 92a7c35..d0a4460 100644
+--- a/webview/src/modules/remote/push-registration.ts
++++ b/webview/src/modules/remote/push-registration.ts
+@@ -1,4 +1,4 @@
+-import { createComputed, createEffect, createRoot, createSignal, on, onCleanup } from "solid-js"
++import { createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
+ import type { ClientContextValue } from "../../app/client-context.js"
+ import { enablePush } from "./push-actions.js"
+ 
+@@ -7,6 +7,25 @@ const registrations = new WeakMap<ClientContextValue, ReturnType<typeof createPu
+ /** The notice owns registration for this client mount; menus only read it. */
+ export const pushRegistration = (client: ClientContextValue) => registrations.get(client)
+ 
++function readDismissed(key: string | undefined): Set<string> | undefined {
++  try {
++    const value: unknown = JSON.parse(key ? localStorage.getItem(key) ?? "null" : "null")
++    return Array.isArray(value) && value.every((id): id is string => typeof id === "string") ? new Set(value) : undefined
++  } catch {
++    return undefined
++  }
++}
++
++function writeDismissed(key: string | undefined, waiting: Set<string> | undefined): void {
++  if (!key) return
++  try {
++    if (waiting) localStorage.setItem(key, JSON.stringify([...waiting]))
++    else localStorage.removeItem(key)
++  } catch {
++    // A browser that refuses storage shows the offer again after a relaunch.
++  }
++}
++
+ export type PushGuideState =
+   | { readonly kind: "loading" | "install" | "permission" | "denied" | "on" | "unavailable" }
+   | { readonly kind: "failed"; readonly message?: string }
+@@ -17,17 +36,26 @@ export type PushGuideState =
+ export function createPushRegistration(client: ClientContextValue) {
+   const [state, setState] = createSignal<PushGuideState>({ kind: "loading" })
+   const [busy, setBusy] = createSignal(false)
+-  const [dismissed, setDismissed] = createSignal(false)
+   const push = client.host.capabilities.push
+   const remoteHost = client.host.capabilities.remote
+   const [snapshot, setSnapshot] = createSignal(remoteHost?.snapshot())
+-  const operation = pushOperation(client)
+-  onCleanup(operation.dispose)
+-  if (remoteHost) {
+-    const stop = remoteHost.onChange(setSnapshot)
+-    operation.signal.addEventListener("abort", stop, { once: true })
+-    onCleanup(() => { operation.signal.removeEventListener("abort", stop); stop() })
++  // A permission prompt can outlive a menu, but not the guide's app mount.
++  const operation = new AbortController()
++  onCleanup(() => operation.abort())
++  if (remoteHost) onCleanup(remoteHost.onChange(setSnapshot))
++  // Selection publishes before the old placement unmounts. Its saved state
++  // must stay with this mount, including when the first choice arrives late.
++  const dismissalKey = createMemo<string | undefined>((bound) => {
++    if (bound !== undefined) return bound
++    const selected = snapshot()?.selected
++    return selected ? `flywheel.push-guide.dismissed:${JSON.stringify([selected.runtimeId, selected.placementId])}` : undefined
++  })
++  const [dismissedWaiting, setDismissedWaiting] = createSignal(readDismissed(dismissalKey()))
++  const remember = (waiting: Set<string> | undefined) => {
++    setDismissedWaiting(waiting)
++    writeDismissed(dismissalKey(), waiting)
+   }
++  createEffect(on(dismissalKey, (key) => setDismissedWaiting(readDismissed(key))))
+   let version = 0
+   let forwarded = false
+   const failed = (error: unknown) => {
+@@ -84,46 +112,27 @@ export function createPushRegistration(client: ClientContextValue) {
+   if (push?.onChange) onCleanup(push.onChange(() => { void refresh(true) }))
+   onCleanup(client.connection.subscribe((event) => {
+     if (event.type === "patch" && event.patch.payload.kind === "question.updated") {
+-      setDismissed(false)
+       void refresh()
+     }
+   }))
+   // Catalog state covers questions in chats other than the one on screen.
+-  let waiting = new Set<string>()
+-  createEffect(on(() => client.state().sessions, (sessions) => {
++  createEffect(on(() => [dismissalKey(), client.state().questionPresenceLoaded, client.state().sessions] as const, ([, loaded, sessions]) => {
++    if (!loaded) return
+     const next = new Set(sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))
+-    if ([...next].some((id) => !waiting.has(id))) {
+-      setDismissed(false)
++    const remembered = dismissedWaiting()
++    if (!remembered) return
++    if ([...next].some((id) => !remembered.has(id))) {
++      remember(undefined)
+       void refresh()
+-    }
+-    waiting = next
++    } else if (next.size !== remembered.size) remember(next)
+   }))
+-  const registration = { state, busy, dismissed, dismiss: () => setDismissed(true), enable, snapshot }
++  const registration = {
++    state, busy, dismissed: () => dismissedWaiting() !== undefined,
++    dismiss: () => remember(new Set(client.state().sessions.filter((session) => session.awaitingAnswer).map((session) => session.id))),
++    enable, snapshot,
++  }
+   registrations.set(client, registration)
+   onCleanup(() => registrations.delete(client))
+   return registration
+ }
+ 
+-/** A permission prompt can outlive a menu, but not its app or selected runtime. */
+-function pushOperation(client: ClientContextValue) {
+-  const controller = new AbortController()
+-  const projectRoot = client.state().projectRoot
+-  const cancel = () => controller.abort()
+-  const dispose = createRoot((release) => {
+-    client.signal.addEventListener("abort", cancel, { once: true })
+-    onCleanup(() => client.signal.removeEventListener("abort", cancel))
+-    const remote = client.host.capabilities.remote
+-    const selected = remote?.snapshot().selected
+-    if (remote) onCleanup(remote.onChange((snapshot) => {
+-      if (snapshot.selected?.runtimeId !== selected?.runtimeId || snapshot.selected?.placementId !== selected?.placementId) cancel()
+-    }))
+-    createComputed(() => {
+-      const state = client.state()
+-      if (client.signal.aborted || state.projectRoot !== projectRoot || state.settings?.moduleIds.includes("remote") === false) cancel()
+-    })
+-    return release
+-  })
+-  controller.signal.addEventListener("abort", dispose, { once: true })
+-  if (controller.signal.aborted) dispose()
+-  return { signal: controller.signal, dispose: () => { cancel(); dispose() } }
+-}

@@ -1,0 +1,162 @@
+diff --git a/docs/product-intent/agent-methods.md b/docs/product-intent/agent-methods.md
+index 12d50a8..e295065 100644
+--- a/docs/product-intent/agent-methods.md
++++ b/docs/product-intent/agent-methods.md
+@@ -22,13 +22,13 @@ During implementation, Flywheel follows the original user intent rather than tre
+ 
+ Flywheel agents work incrementally on one coherent change at a time. They use concrete actions and fresh observations to decide each next step while preserving the full requested outcome and required verification.
+ 
+-Flywheel treats diagnoses and technical designs as hypotheses and implements only approaches supported by evidence. Before it shows the user a design, Flywheel spikes it: it tests whether the request is feasible and whether its proposed mechanism works by running disposable prototypes or probes against the real code and systems, and when several viable approaches remain that inspection cannot tell apart, it prototypes and compares them. It says what it is testing while the tests run. Reading code settles what that code does, and the design cites the code for such a claim. Every other claim that the design depends on, such as end-to-end feasibility, runtime behavior, or performance, rests on what a spike observed; the agent's confidence after it reads the code is never that proof. A spike that disproves the approach changes the approach before the user sees a design, and a spike that shows the request is not feasible returns that finding with its evidence instead of a design. The design labels each claim that no spike or code citation supports as untested theory. A claim about an external service, a dependency, or runtime behavior is settled by a cheap throwaway probe against the real system when one is possible, before design and after implementation. User goals, constraints, and explicit decisions remain binding. Evidence can narrow or remove implementation work without weakening those commitments. Additional work must be necessary to satisfy the approved outcome; an independently useful improvement does not expand the task.
++Flywheel treats diagnoses and technical designs as hypotheses, tests material uncertainties with the smallest deciding experiment, and implements only approaches supported by that evidence. Reading code settles what that code does. A claim about an external service, a dependency, or runtime behavior is settled by a cheap throwaway probe against the real system when one is possible, before design and after implementation. User goals, constraints, and explicit decisions remain binding. Evidence can narrow or remove implementation work without weakening those commitments. Additional work must be necessary to satisfy the approved outcome; an independently useful improvement does not expand the task.
+ 
+ An evidence-backed finding that the requested behavior is already satisfied or a reported defect is disproved is a successful no-change outcome, not a demand to invent a fix or run an unrelated test. An investigation that ends without decisive evidence remains unresolved, and Flywheel reports it as unresolved, never as a successful no-change outcome. Flywheel records the rejected premise and fresh decisive evidence. Past observations guide hypotheses but are assumed stale and never substitute for observing the current state. After implementation, it verifies the intended benefit and preserved behavior with the smallest complete fresh proof and stops.
+ 
+ A delegated implementation returns to chat as a first draft of the approved design, not as a finished change. The chat agent that designed the change reads the reported deviations, has the review check the draft against the design so drift is reported beside defects, and then revises the draft against the design it holds until it realizes that design, adding nothing beyond it, and verifies the revised work before it reports completion. Expected drift never returns to the user as a question; only a conflict with the approved design itself returns to the user as a design revision.
+ 
+-When existing user approval does not cover the work, Flywheel presents a complete design and recommended implementation route and lets the user approve, revise, or request an Advisor review first. An Advisor review conditionally approves the unchanged design when the Advisor recommends no material change. A material concern or unavailable review returns the design to the user for a decision. An answer that rejects the approach returns the work to spiking with the user's guidance before Flywheel presents a new design. The design labels its fixed part Design intent, and that label travels with the work into the session checkpoint, specifications, subagent briefs, and reviews, so every agent that touches the work reads the same line between what the user fixed and what an implementer may revise. Revisions require fresh approval only when they exceed the approved scope or introduce a user-owned decision. Before an implementation route starts, chat settles every open question through evidence or the user's exact decision; no open question passes into implementation.
++When existing user approval does not cover the work, Flywheel presents a complete design and recommended implementation route and lets the user approve, revise, or request an Advisor review first. An Advisor review conditionally approves the unchanged design when the Advisor recommends no material change. A material concern or unavailable review returns the design to the user for a decision. The design labels its fixed part Design intent, and that label travels with the work into the session checkpoint, specifications, subagent briefs, and reviews, so every agent that touches the work reads the same line between what the user fixed and what an implementer may revise. Revisions require fresh approval only when they exceed the approved scope or introduce a user-owned decision. Before an implementation route starts, chat settles every open question through evidence or the user's exact decision; no open question passes into implementation.
+ 
+ Broad approval covers independent fixes and newly discovered causes within the user's stated scope, including a request to fix all broken lint and tests. Flywheel explains findings and proceeds without per-fix approval prompts. Ordinary bug investigations still require fix-design approval when no such authorization exists. Broad approval does not authorize weaker checks, changed product requirements, or actions with separate consent requirements.
+ 
+@@ -38,14 +38,6 @@ Flywheel uses the smallest complete fresh verification of each change. Tests alo
+ 
+ An exhaustive QA campaign requires fresh observations of every surface in every pass, including follow-up passes. Past observations may guide investigation but never count as current QA verification. A fully exercised clean pass may finish with zero fixes.
+ 
+-## PI-AGENT-054: Published code review is a conversation
+-
+-After Flywheel publishes a change, the user can review its shape by asking the agent about what they see. The chat reply that reports a publication gives a shape guide: the new parts and how data moves between them, the densest parts with their locations, each departure from the approved design with its reason, and the proof that the change works. When Flywheel opens a pull request, its description gives the same guide. The agent answers each review question by explaining the code first. A local objection gets a fix that is verified and published to the same change. An objection to the structure starts a reshape: the agent spikes new structures under the user's guidance, and the reshaped code must pass the proof that the existing change established. Flywheel does not stop before publication to ask for this review.
+-
+-## PI-AGENT-055: Agents explain their work in conversation
+-
+-Flywheel agents explain designs, results, and other artifacts in the conversation in plain terms, so the user never has to open an artifact to understand it. When the user challenges a claim, often by saying they are confused and offering a simpler model, the agent restates the user's model, names the exact premise where they differ, and settles that premise with evidence; it neither defends its claim nor concedes by reflex. The challenge ends when the agent shows why its approach is better or gives a justification that the user accepts.
+-
+ ## PI-AGENT-004: Paper-cut campaigns resolve verified pain
+ 
+ When the user invokes `/papercuts`, Flywheel validates every live project paper cut against current evidence, closes records whose pain is resolved, no longer relevant, or not worth fixing, investigates and prioritizes the remaining work, and resolves one root-cause fix at a time until the captured backlog is resolved or the user defers it. Approval can cover the campaign's scope; separate fixes do not require separate approval when that consent already covers them.
+@@ -264,7 +256,7 @@ After a host crash or restart, each running agent of a workflow continues in its
+ 
+ ## PI-AGENT-044: Subagents nest at most three deep
+ 
+-An agent can dispatch subagents that dispatch their own. A chain of subagents is at most three deep below the chat or workflow agent that started it; a deeper dispatch is refused with the reason. A dispatch is never refused for its rate or count, but subagents beyond the running limit wait in a queue and start in dispatch order. Persona grants decide which child types an agent can dispatch. On trial since 2026-11-01, every agent of a workflow can also dispatch the advisor without a grant, except an agent that itself runs as the advisor.
++An agent can dispatch subagents that dispatch their own. A chain of subagents is at most three deep below the chat or workflow agent that started it; a deeper dispatch is refused with the reason. A dispatch is never refused for its rate or count, but subagents beyond the running limit wait in a queue and start in dispatch order. Persona grants still decide which child types an agent can dispatch.
+ 
+ ## PI-AGENT-045: Large unused session scratch is reclaimed
+ 
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index e7d7f3c..31b5637 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -434,7 +434,7 @@ A launch with `--project-root`, or else with a nonempty `FLYWHEEL_PROJECT_ROOT`,
+ 
+ ## PI-INTERACTION-069: The account home opens as a project only when named
+ 
+-A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate, says that the account home holds the account's settings, and says that running Flywheel in any other directory starts a project there; a paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
++A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate and names `--project-root` as the way to open it; a paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
+ 
+ ## PI-INTERACTION-070: Status names the working directory apart from the project
+ 
+diff --git a/src/orchestration/agent-runtime/tools/skill.ts b/src/orchestration/agent-runtime/tools/skill.ts
+index 4c67f29..46e75e6 100644
+--- a/src/orchestration/agent-runtime/tools/skill.ts
++++ b/src/orchestration/agent-runtime/tools/skill.ts
+@@ -26,7 +26,7 @@ const BASE_DESCRIPTION = `Read installed skill packages. A skill is an authored
+ 
+ Load and resource are read-only. Loading a skill does not activate it; you carry out its instructions yourself in this conversation.`;
+ 
+-const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work in front of you, call skill with action:"load" first and follow the loaded instructions, because the skill defines how that work is done here. A skill whose context already appears in this conversation (its `# Skill: <id>` block) needs no repeat load to follow it; load it again only when a tool refusal asks for that load. Read a file the instructions name with action:"resource".';
++const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work in front of you, call skill with action:"load" first and follow the loaded instructions, because the skill defines how that work is done here. Read a file the instructions name with action:"resource".';
+ 
+ const INPUT_SCHEMA = {
+   type: "object",
+diff --git a/src/orchestration/chat/session.ts b/src/orchestration/chat/session.ts
+index 85e10b4..1dce0e0 100644
+--- a/src/orchestration/chat/session.ts
++++ b/src/orchestration/chat/session.ts
+@@ -64,8 +64,6 @@ export interface ChatSessionDeps {
+   /** Persona map captured from the same project revision as the session roles. */
+   personas: ReadonlyMap<string, AgentDefinition>
+   createAgent: AgentFactory
+-  /** Prepares the next request of the session's chat and its hosts for their pre-starts (`SessionEngines`). */
+-  prepareRequest: import("../agent-runtime/request-preparation.js").RequestPreparer
+   createLLMClient: LLMClientFactory
+   captureProviderConnection: import("../agent-runtime/factory.js").CaptureProviderConnection
+   onNotification?: AgentOptions["onNotification"]
+@@ -74,10 +72,6 @@ export interface ChatSessionDeps {
+   idleCompaction?: ReturnType<typeof import("./idle-compaction.js").createIdleCompactionPolicy>
+   workflowMode: () => WorkflowsMode
+   resolveRoles: RoleResolver
+-  /** Calls `listener` after a change that can change this session's resolved roles: of its metadata, which holds its
+-   *  role assignments, or of the profiles, which hold the profile's assignments. Returns the removal, which
+-   *  waits for a call that runs. The session's engines plan again on it (`SessionEngines.rolesChanged`). */
+-  subscribeRoleChanges: (listener: () => void) => () => Promise<void>
+   /** Resolves the `<env>` block this session's idle compaction carries, shared
+    *  with every other assembly of the same directory pair. */
+   resolveEnvSnapshot: EnvCaptureResolver
+@@ -152,15 +146,6 @@ function handleChatContextOverflow(event: RuntimeEvent, state: ChatSessionState)
+   }
+ }
+ 
+-/** The words a chat title summarizes. A command's turn titles from what the
+- *  person typed, its label and arguments, because its text can be a whole
+- *  rendered skill method that the person never wrote. */
+-function titleText(input: ChatInputLike): string {
+-  if (typeof input === "string" || input.invocation === undefined) return chatInputText(input)
+-  const { label, args } = input.invocation
+-  return args === undefined ? label : `${label} ${args}`
+-}
+-
+ /** The single owner of one live chat session. Builds the output projection,
+  *  event wiring, ask-user controller, turn lifecycle, and controls as internal
+  *  collaborators, and returns the ChatRunner the session store pools. Every
+@@ -279,7 +264,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
+     const onSessionName = deps.onSessionName
+     if (!onSessionName) return
+     titleGeneration = generateSessionTitle(
+-      titleText(input),
++      chatInputText(input),
+       ({ full, short }) => { onSessionName({ label: full, shortLabel: short }) },
+       async () => {
+         const current = (await deps.resolveRoles()).get(TITLE_GENERATION_ROLE_ID)
+@@ -419,7 +404,6 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
+     chatModuleHosts: lifecycle.chatModuleHosts,
+     onModuleRuntimesChange: lifecycle.onModuleRuntimesChange,
+     hold: () => inSession(() => lifecycle.hold()),
+-    setShown: (shown) => inSession(() => { lifecycle.setShown(shown) }),
+     seedDisplayBlocks: (blocks: readonly AnyBlock[]) => inSession(() => session.seedBlocks(blocks)),
+     publishCommittedNotice: (notice) => inSession(() => { session.pushSystemMessage(notice.message, notice.timestamp, { id: notice.id }); session.flush() }),
+     answerQuestion: (toolUseId, answers) => inSession(() => askUser.answerQuestion(toolUseId, answers)),
+@@ -451,7 +435,6 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
+     compact: () => inSession(compact),
+     refreshDeps: () => inSession(async () => {
+       await deps.refreshEnvironment()
+-      lifecycle.servingChanged()
+       titleGeneration?.retry()
+     }),
+   }
+diff --git a/tests/unit/orchestration/chat/chat-session.test.ts b/tests/unit/orchestration/chat/chat-session.test.ts
+index 126367c..093b23a 100644
+--- a/tests/unit/orchestration/chat/chat-session.test.ts
++++ b/tests/unit/orchestration/chat/chat-session.test.ts
+@@ -182,7 +182,7 @@ describe("chat runner reflect contract", () => {
+ })
+ 
+ describe("chat title from a command's turn", () => {
+-  it("titles a chat that a slash command starts from the command, once", async () => {
++  it("titles a chat that a slash command starts, once", async () => {
+     const createAgent: AgentFactory = (): Agent => ({
+       done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
+       send() {},
+@@ -195,11 +195,10 @@ describe("chat title from a command's turn", () => {
+       createTestChatSessionDeps({ sessionId: "chat-command-title", createAgent, onSessionName: (title) => { titles.push(title) } }),
+     )
+ 
+-    const method = { text: "# Skill: experiment-charter\nBuild an approved charter.\n\nARGUMENTS: reduce test suite wall time", invocation: { label: "/experiment design", args: "reduce test suite wall time" } }
+-    expect(session.requestWithContext(method, "backlog")).toBe(true)
++    expect(session.requestWithContext({ text: "Run the project papercut campaign.", invocation: { label: "/papercuts" } }, "backlog")).toBe(true)
+     expect(session.deliverCommitted("a later message")).toBe(true)
+ 
+-    expect(titles.map((title) => title.label)).toEqual(["/experiment design reduce test suite wall time"])
++    expect(titles.map((title) => title.label)).toEqual(["Run the project papercut campaign."])
+     await session.dispose()
+   })
+ })

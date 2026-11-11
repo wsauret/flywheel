@@ -1,0 +1,69 @@
+diff --git a/src/orchestration/agent-runtime/tools/skill.ts b/src/orchestration/agent-runtime/tools/skill.ts
+index 46e75e6..b49ca47 100644
+--- a/src/orchestration/agent-runtime/tools/skill.ts
++++ b/src/orchestration/agent-runtime/tools/skill.ts
+@@ -26,7 +26,7 @@ const BASE_DESCRIPTION = `Read installed skill packages. A skill is an authored
+ 
+ Load and resource are read-only. Loading a skill does not activate it; you carry out its instructions yourself in this conversation.`;
+ 
+-const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work in front of you, call skill with action:"load" first and follow the loaded instructions, because the skill defines how that work is done here. Read a file the instructions name with action:"resource".';
++const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work in front of you, call skill with action:"load" first and follow the loaded instructions, because the skill defines how that work is done here. A skill whose context already appears in this conversation (its `# Skill: <id>` block) is loaded, so follow it without loading it again. Read a file the instructions name with action:"resource".';
+ 
+ const INPUT_SCHEMA = {
+   type: "object",
+diff --git a/src/orchestration/chat/session.ts b/src/orchestration/chat/session.ts
+index 1dce0e0..df68032 100644
+--- a/src/orchestration/chat/session.ts
++++ b/src/orchestration/chat/session.ts
+@@ -146,6 +146,15 @@ function handleChatContextOverflow(event: RuntimeEvent, state: ChatSessionState)
+   }
+ }
+ 
++/** The words a chat title summarizes. A command's turn titles from what the
++ *  person typed, its label and arguments, because its text can be a whole
++ *  rendered skill method that the person never wrote. */
++function titleText(input: ChatInputLike): string {
++  if (typeof input === "string" || input.invocation === undefined) return chatInputText(input)
++  const { label, args } = input.invocation
++  return args === undefined ? label : `${label} ${args}`
++}
++
+ /** The single owner of one live chat session. Builds the output projection,
+  *  event wiring, ask-user controller, turn lifecycle, and controls as internal
+  *  collaborators, and returns the ChatRunner the session store pools. Every
+@@ -264,7 +273,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
+     const onSessionName = deps.onSessionName
+     if (!onSessionName) return
+     titleGeneration = generateSessionTitle(
+-      chatInputText(input),
++      titleText(input),
+       ({ full, short }) => { onSessionName({ label: full, shortLabel: short }) },
+       async () => {
+         const current = (await deps.resolveRoles()).get(TITLE_GENERATION_ROLE_ID)
+diff --git a/tests/unit/orchestration/chat/chat-session.test.ts b/tests/unit/orchestration/chat/chat-session.test.ts
+index 093b23a..126367c 100644
+--- a/tests/unit/orchestration/chat/chat-session.test.ts
++++ b/tests/unit/orchestration/chat/chat-session.test.ts
+@@ -182,7 +182,7 @@ describe("chat runner reflect contract", () => {
+ })
+ 
+ describe("chat title from a command's turn", () => {
+-  it("titles a chat that a slash command starts, once", async () => {
++  it("titles a chat that a slash command starts from the command, once", async () => {
+     const createAgent: AgentFactory = (): Agent => ({
+       done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
+       send() {},
+@@ -195,10 +195,11 @@ describe("chat title from a command's turn", () => {
+       createTestChatSessionDeps({ sessionId: "chat-command-title", createAgent, onSessionName: (title) => { titles.push(title) } }),
+     )
+ 
+-    expect(session.requestWithContext({ text: "Run the project papercut campaign.", invocation: { label: "/papercuts" } }, "backlog")).toBe(true)
++    const method = { text: "# Skill: experiment-charter\nBuild an approved charter.\n\nARGUMENTS: reduce test suite wall time", invocation: { label: "/experiment design", args: "reduce test suite wall time" } }
++    expect(session.requestWithContext(method, "backlog")).toBe(true)
+     expect(session.deliverCommitted("a later message")).toBe(true)
+ 
+-    expect(titles.map((title) => title.label)).toEqual(["Run the project papercut campaign."])
++    expect(titles.map((title) => title.label)).toEqual(["/experiment design reduce test suite wall time"])
+     await session.dispose()
+   })
+ })

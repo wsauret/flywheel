@@ -1,0 +1,716 @@
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index e7d7f3c..4506401 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -36,9 +36,7 @@ An unavailable preview check or advice that arrives after final execution never
+ 
+ On the web client, every tool row arrives collapsed, edits and writes included, and shows no input, output, or diff until the user opens it. A streaming diff renders only inside a row the user has opened. A running command's Detach and Stop controls sit at the end of its own row, over the tail of a long command, so the row keeps its one-line height. A file-editing row names every file it changes beside the tool name, while its input arrives and once it has run, so a collapsed edit never reads as a bare tool name.
+ 
+-In the terminal, unexpanded output previews, diffs included, show at most their first 20 displayed rows after wrapping, with a separate limit for each file. A diff preview arrives with its file's details, so it has its final height when it appears and nothing below it moves as content loads. Wrapped diff lines continue under the code, beside the line number. A file with hidden rows or lines shows its expansion control, and expanding it shows every line in full, wrapped. Headings and expansion controls remain outside this limit. Further content streams out of sight until expanded, subject to displayed retention limits.
+-
+-When a command removes a directory, its row shows that directory once, with the number of files and their size, instead of each file; expanding it shows each file's change.
++In the terminal, unexpanded output previews show at most their first 20 displayed rows after wrapping, with a separate limit for each file. An unexpanded diff instead shows each of those lines in one row, cut at the right edge, so it has its final height before its content loads and nothing below it moves as the content arrives. A file with cut or hidden lines shows its expansion control, and expanding it shows every line in full, wrapped. Headings and expansion controls remain outside this limit. Further content streams out of sight until expanded, subject to displayed retention limits.
+ 
+ Session-note mutations are clearly labeled and fully collapsed by default; users can expand them to inspect the content or diff.
+ 
+@@ -78,7 +76,7 @@ Work still running is never dimmed. A running tool call, run, or subagent shows
+ 
+ ## PI-INTERACTION-006: Session statistics stay live and remain visible
+ 
+-Session statistics update as measured usage becomes available from each model request in the session, including running subagents, even while the parent waits. Final available statistics remain visible after work stops. Requests that a provider served without reporting usage are counted as unmeasured, and requests whose usage report ended early are counted as partially measured.
++Session statistics update as measured usage becomes available from each model request in the session, including running subagents, even while the parent waits. Final available statistics remain visible after work stops.
+ 
+ Parent session statistics include request usage from subagents and workflows, including nested descendants, once per request. Context-window readings remain local.
+ 
+@@ -102,15 +100,15 @@ A transcript with content never shows as empty. When Flywheel's view of a sessio
+ 
+ ## PI-INTERACTION-008: Session changes are reviewable in one place
+ 
+-Flywheel shows how many project files the current session has changed. A session's changes include the changes of every subagent and workflow agent it launched, at any depth, so after a workflow edits files, the chat that launched it counts and lists them. A subagent's or workflow agent's own review, where a client opens one, covers only that session and the sessions it launched. Flywheel-owned files inside the project's `.flywheel` directory are not listed or counted. One action opens a scrollable list of every changed project file. The review opens in path order. Incoming changes update that ordered review in place without flashing or changing the reader's viewport and expansion intent. Each file has a clearly marked header and one rendered diff from its content before the session touched it to its content now. Each diff has a short preview that expands in place. A Viewed checkbox collapses the whole file and records that its latest session edit was reviewed. Viewed state remains available across clients and restarts. Edits to other files leave it unchanged; a new edit to that file unchecks it and reveals the updated diff. This review works on every client surface, and a host with an editor also offers to open the same file there. In the terminal, the clickable Changes label sits in the prompt bar beside the remote-control display, not in the statistics header, and appears only when the last known count is greater than zero. It shows the last known count without loading, error, unknown, or stale labels. An incomplete count uses a plus sign. Request states and errors appear only inside the review, and /changes remains available when the prompt bar does not show the label. On the web client, the Changes control beside the prompt likewise appears only when the last known count is greater than zero. Each file header holds one line: the kind of change, the path shortened from its start so the file name stays, the launched agents that changed the file, by the titles their own views show and in the agent-name color, the lines added and removed, and the file's controls. The session's own changes name no agent. A diff marks each gap of unchanged lines between its changed sections.
++Flywheel shows how many project files the current session has changed. Flywheel-owned files inside the project's `.flywheel` directory are not listed or counted. One action opens a scrollable list of every changed project file. The review opens in path order. Incoming changes update that ordered review in place without flashing or changing the reader's viewport and expansion intent. Each file has a clearly marked header and one rendered diff from its content before the session touched it to its content now. Each diff has a short preview that expands in place. A Viewed checkbox collapses the whole file and records that its latest session edit was reviewed. Viewed state remains available across clients and restarts. Edits to other files leave it unchanged; a new edit to that file unchecks it and reveals the updated diff. This review works on every client surface, and a host with an editor also offers to open the same file there. In the terminal, the clickable Changes label sits in the prompt bar beside the remote-control display, not in the statistics header, and appears only when the last known count is greater than zero. It shows the last known count without loading, error, unknown, or stale labels. An incomplete count uses a plus sign. Request states and errors appear only inside the review, and /changes remains available when the prompt bar does not show the label. On the web client, the Changes control beside the prompt likewise appears only when the last known count is greater than zero. Each file header holds one line: the kind of change, the path shortened from its start so the file name stays, the lines added and removed, and the file's controls. A diff marks each gap of unchanged lines between its changed sections.
+ 
+-The review includes changes outside the loaded transcript. It shows only the work of this session and the sessions it launched: a file that something else changed after their last recorded write is neither listed nor counted. When the session and the sessions it launched changed the same file, the file's one diff runs from its content before the first of their changes to its content after the last. Viewed state belongs to the review that records it. A file whose diff was not retained says so and offers no Undo. Files the session deleted under a directory that no longer exists appear under one header for that directory, with the number of files; expanding it shows each file with its own diff and controls. A review that shows no files while files the session changed are left out says why they are left out.
++The review includes changes outside the loaded transcript. It shows only this session's work: a file that something else changed after the session's last recorded write is neither listed nor counted. A file whose diff was not retained says so and offers no Undo. A review that shows no files while files the session changed are left out says why they are left out.
+ 
+-Each file offers Undo, which asks for confirmation and then restores the file to its content before the session or a session it launched first touched it, including deleting a created file and restoring a deleted one, without starting agent work. Flywheel checks that the file still matches its last recorded state before it writes, and refuses restoration with a short reason when retained evidence cannot prove the result.
++Each file offers Undo, which asks for confirmation and then restores the file to its content before the session touched it, including deleting a created file and restoring a deleted one, without starting agent work. Flywheel checks that the file still matches its last recorded state before it writes, and refuses restoration with a short reason when retained evidence cannot prove the result.
+ 
+ ## PI-INTERACTION-009: A pending question docks at the prompt
+ 
+-While a chat waits on a question, the question and its choices appear at the prompt as the next thing to do, in the same frame the command menu uses, and leave once answered or skipped. The transcript then records the question as an Ask User entry with one row per question, titled by its header and carrying the answer, with a skipped question marked as cancelled. Subagents and workflows never ask the person (PI-AGENT-024), so their viewers, cards, and agent views show no question. On every client, Escape skips the question at the prompt, and an answer or skip that no longer applies says why.
++While a chat waits on a question, the question and its choices appear at the prompt as the next thing to do, in the same frame the command menu uses, and leave once answered or skipped. The transcript then records the question as an Ask User entry with one row per question, titled by its header and carrying the answer, with a skipped question marked as cancelled. Subagents and workflows never ask the person (PI-AGENT-024), so their viewers, cards, and agent views show no question.
+ 
+ A pending question stays pending when its session closes or Flywheel stops, including when the agent ran other tools beside it. Reopening the session shows it at the prompt again, unanswered, and answering it continues the turn.
+ 
+@@ -156,11 +154,11 @@ A blank chat opens on a card that states the model, the project, the branch of t
+ 
+ The card shows the currently connected backend's version, including at the top of an existing session after an in-place backend update. A per-project Show build setting defaults off. Turning it on adds the backend's eight-character build identifier beside the version, as in `(v0.0.10 build 3029f1ab)`. Installed runs identify their running build; source runs identify their running source snapshot. If the backend cannot identify its build, the enabled display says `build unavailable`. Version, build, and visibility update in existing cards without reopening the session.
+ 
+-## PI-INTERACTION-017: The web command menu opens on settings in expected-use order and shows commands to typing
++## PI-INTERACTION-017: The web slash menu opens on actions and shows commands to typing
+ 
+-On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, with the most-used settings first. Each setting that changes one value in place also appears in that menu with its control. It lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name and description. A line under the menu states how many commands are available. That line and the Commands row open a sheet of the whole catalog in menu order, with descriptions and use counts. Picking an entry puts it in the composer. Workflows have no slash command or catalog entry: the person asks the chat to write and launch one. An open menu keeps its place while the session works. State changes update rows without returning a scrolled reader to the top.
++On the web client a bare `/` opens a short menu of settings and frequent actions. Up to three of the person's most-used commands come first. It lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name, kind, and description. A line under the menu states how many commands and skills are available. That line and the Commands row open a sheet of the whole catalog by kind, with descriptions and use counts. Picking an entry puts it in the composer. Workflows have no slash command or catalog entry: the person asks the chat to write and launch one. An open menu keeps its place while the session works. State changes update rows without returning a scrolled reader to the top.
+ 
+-The terminal's command menu ranks commands by how often the person used each one. Command use counts are one account-global record the runtime keeps, and the web Commands sheet shows them.
++Command use counts are one account-global record the runtime keeps, so the terminal's slash popup and the web menu rank by the same history.
+ 
+ ## PI-INTERACTION-018: Links remain one interactive target
+ 
+@@ -168,7 +166,7 @@ All links act as one interactive target, no matter how long they are: hovering a
+ 
+ ## PI-INTERACTION-019: The model in use is always in view
+ 
+-Every client keeps the displayed conversation session's model and effort in view beside its prompt. The reading and its model controls name that session's serving choice. In an agent view, they name that agent, never its parent chat. The web command menu, model sheet, and prompt reading edit the same choice. Model and effort, in every client's command menu, edits that choice for the transcript in view, whether a chat, a subagent, or a workflow agent.
++Every client keeps the displayed conversation session's model and effort in view beside its prompt. The reading and its model controls name that session's serving choice. In an agent view, they name that agent, never its parent chat. The web slash menu, model sheet, and prompt reading edit the same choice.
+ 
+ A model edit in an agent view changes only that session. The session inherits current workflow choices until the person overrides them. Choosing inheritance removes only its local override. A workflow-wide change reaches sessions that still inherit it and later attempts. Interrupt, Resume, and recovery preserve a session's local choice. A fresh retry or round starts from the workflow's current choice. Fields fixed by the workflow file or launch remain fixed.
+ 
+@@ -194,7 +192,7 @@ Earlier workflows remain reachable from the parent chat with their history and s
+ 
+ ## PI-INTERACTION-023: A chat can fork without changing its source
+ 
+-Running `/fork` in a chat copies its committed active conversation branch and its current checkpoint into an independent paused chat, leaves the source unchanged, gives the copy a distinct derived title, and opens the copy as the current chat. In the terminal, the copy opens in a new tab.
++Running `/fork` in a chat copies its committed active conversation branch into an independent paused chat, leaves the source unchanged, gives the copy a distinct derived title, and opens the copy as the current chat. In the terminal, the copy opens in a new tab.
+ 
+ ## PI-INTERACTION-024: Submitted messages appear immediately
+ 
+@@ -234,7 +232,7 @@ In the terminal and the web client, typing `@` in the composer opens a list of t
+ 
+ ## PI-INTERACTION-031: Files and photos attach to a message on every client
+ 
+-On the web client a `+` control beside `/` opens a short menu: add files or photos from this device, or mention a project file. Files or photos chosen there, pasted into the composer, or dropped onto it attach to the next message and show as removable chips until it is sent. In the terminal, pasting a clipboard image, dragging or pasting one or more local image paths at once, or choosing files through `/attach` attaches through the same message contract. Each dragged image path shows its own numbered image marker at once, not the path first. Enter waits for an image that is still loading and then sends the complete message once. If loading fails, a clear notice appears and the draft remains available without sending an empty image or its filename. The model sees an attached image as an image and an attached text file as its text with its name; a file of another kind or over the size limit is refused with a notice naming the file and what is accepted. A message can consist only of attachments. Queued and sent messages show one marker per attachment and preview attached images below their text, including when the session is reopened. Each preview preserves its proportions and stays within a bounded area smaller than the viewport. Activating a preview opens the retained full-resolution image in a viewer with fitting, zoom, and scrolling controls. Closing the viewer returns to the chat. Images behind an open modal do not show through its opaque background. On every client, `@` mentions a project file by path without attaching its bytes.
++On the web client a `+` control beside `/` opens a short menu: add files or photos from this device, or mention a project file. Files or photos chosen there, pasted into the composer, or dropped onto it attach to the next message and show as removable chips until it is sent. In the terminal, pasting a clipboard image, dragging or pasting one local image path, or choosing files through `/attach` attaches through the same message contract. A dragged image path shows its numbered image marker at once, not the path first. Enter waits for an image that is still loading and then sends the complete message once. If loading fails, a clear notice appears and the draft remains available without sending an empty image or its filename. The model sees an attached image as an image and an attached text file as its text with its name; a file of another kind or over the size limit is refused with a notice naming the file and what is accepted. A message can consist only of attachments. Queued and sent messages show one marker per attachment and preview attached images below their text, including when the session is reopened. Each preview preserves its proportions and stays within a bounded area smaller than the viewport. Activating a preview opens the retained full-resolution image in a viewer with fitting, zoom, and scrolling controls. Closing the viewer returns to the chat. Images behind an open modal do not show through its opaque background. On every client, `@` mentions a project file by path without attaching its bytes.
+ 
+ ## PI-INTERACTION-032: Thinking progress stays honest
+ 
+@@ -268,7 +266,7 @@ The list opens on active work: commands that run, and subagents and workflows th
+ 
+ The list is complete. It shows work whose card is outside the loaded part of a long transcript, and work that finished before Flywheel restarted. A command whose end Flywheel did not record shows that it ended, without an exit status.
+ 
+-Clicking or tapping a row closes the list and shows the row's card at once in the middle of the transcript view, without scrolling through the rows between, and loads older transcript when necessary. A card taller than the view shows from its top. A row nested under another child shows the card of the child that contains it. In the terminal, the card's background stays highlighted for three seconds so the person can find it. Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate `x` control stops a row that is still active, and the `x` key does the same in the terminal. On the web client, Stop asks for confirmation first.
++Clicking or tapping a row closes the list and shows the row's card in the transcript, and loads older transcript when necessary. A row nested under another child shows the card of the child that contains it. In the terminal, the card's background stays highlighted for three seconds so the person can find it. Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate `x` control stops a row that is still active, and the `x` key does the same in the terminal. On the web client, Stop asks for confirmation first.
+ 
+ Background commands start with their output collapsed. In the terminal, a person selects a running command with the arrow keys and presses Space to show or hide its recent live output directly under it, independently of other commands.
+ 
+@@ -296,11 +294,11 @@ People can edit a session's tab title and longer description independently. Edit
+ 
+ ## PI-INTERACTION-042: An open session is always served
+ 
+-A session open in a tab is always served. After a runtime restart it comes back on its own, idle or still waiting for model capacity, with any interrupted work marked in the transcript, and the person never sees it as unserved or is asked to do anything to bring it back. If its runner cannot start, such as when its auth profile is gone, the tab stays open and its transcript shows one notice of the failure, which the next successful start removes; the next activation or message tries again, and a message sent meanwhile stays in the conversation. Escape on an idle chat with no question at the prompt does nothing.
++A session open in a tab is always served. After a runtime restart it comes back on its own, idle, with any interrupted work marked in the transcript, and the person never sees it as unserved or is asked to do anything to bring it back. If its runner cannot start, such as when its auth profile is gone, the tab stays open and its transcript shows one notice of the failure, which the next successful start removes; the next activation or message tries again, and a message sent meanwhile stays in the conversation. Escape on an idle chat does nothing.
+ 
+ ## PI-INTERACTION-043: A chat turn is interrupted, never stopped
+ 
+-A running chat turn has one way to stop: interrupt. Every surface's control interrupts it, and so does Escape while no question waits at the prompt; a chat offers no terminal stop. Interrupting cuts the turn at once, including a tool call the turn is waiting on in the foreground, keeps everything already committed, leaves the session idle, and shows in the session whether a person or the runtime interrupted it. Interrupted work reads Interrupted, Interrupted by the parent, Interrupted by the runtime, or Interrupted by an unexpected exit, and continued work reads Resumed; no surface calls it paused. Subagents, workflows, and background commands the turn started keep running, and each has its own Stop. A turn that waits on them is still running, so Escape and Interrupt cut that wait too. An interrupted session does not wake on its own: a notification from background work or a message from another session is recorded but starts no turn, and it lands when the person resumes or sends a message. A turn that a restart or an unexpected exit interrupted while it waited on background work or on model capacity is different: it still waits, and the completion or the stated time wakes it, as either wakes a turn that no restart interrupted. An interrupted turn is always resumable: Resume continues it from where it stopped without a new message, and the same control resumes a turn that an unexpected exit interrupted: the transcript shows that interruption where it happened, and Resume never runs a tool call that already finished again. A message typed while the turn ran is delivered as the continuation. Sending a new message instead starts a fresh turn. A new message sent after an interrupt withdraws any approval the person gave during the interrupted turn and that the turn did not use, such as approval of a workflow launch, so the agent must ask again; Resume keeps those approvals. The person's latest decision wins: an interrupt that arrives after Resume or a message interrupts the turn it opens, and an interrupt from before that never cuts it. In the terminal, Resume is offered as a key hint beside the other session keys, and the status area shows no session controls.
++A running chat turn has one way to stop: interrupt. Escape and every surface's control interrupt it, and a chat offers no terminal stop. Interrupting cuts the turn at once, including a tool call the turn is waiting on in the foreground, keeps everything already committed, leaves the session idle, and shows in the session whether a person or the runtime interrupted it. Interrupted work reads Interrupted, Interrupted by the parent, Interrupted by the runtime, or Interrupted by an unexpected exit, and continued work reads Resumed; no surface calls it paused. Subagents, workflows, and background commands the turn started keep running, and each has its own Stop. A turn that waits on them is still running, so Escape and Interrupt cut that wait too. An interrupted session does not wake on its own: a notification from background work or a message from another session is recorded but starts no turn, and it lands when the person resumes or sends a message. A turn that a restart or an unexpected exit interrupted while it waited on background work is different: it still waits on that work, and the completion wakes it, as the completion wakes a turn that no restart interrupted. An interrupted turn is always resumable: Resume continues it from where it stopped without a new message, and the same control resumes a turn that an unexpected exit interrupted: the transcript shows that interruption where it happened, and Resume never runs a tool call that already finished again. A message typed while the turn ran is delivered as the continuation. Sending a new message instead starts a fresh turn. A new message sent after an interrupt withdraws any approval the person gave during the interrupted turn and that the turn did not use, such as approval of a workflow launch, so the agent must ask again; Resume keeps those approvals. The person's latest decision wins: an interrupt that arrives after Resume or a message interrupts the turn it opens, and an interrupt from before that never cuts it. In the terminal, Resume is offered as a key hint beside the other session keys, and the status area shows no session controls.
+ 
+ ## PI-INTERACTION-044: A workflow can be interrupted and resumed without a message
+ 
+@@ -318,11 +316,11 @@ The card shows every phase that the workflow can reach, from launch. A phase tha
+ 
+ Progress reads as chits: a filled chit for each unit that finished well in green, failed in red, runs in blue, or an interrupt holds in yellow, then an empty chit for each unit not started, then the count. Each agent is one unit, so an item that moves through a stream of two phases counts two units. A phase over a list that is not known yet counts one unit until the list arrives, so the total can change then. A repeat that runs while a field is not empty counts the rounds that started, so each new round adds its units, and a repeat over items counts one round for each item. A phase over the launch input shows its agents from launch; a phase over a list that an earlier phase writes shows no chits and no count until that list arrives. The count counts the units that finished well, so a failed agent reads failed and never done, such as `20/21 done · 1 failed`. While the run goes on, an agent that its own interrupt holds counts as interrupted on the plan bar, as it does on its phase line and in the agent view's band, such as `1/22 done · 2 running · 1 interrupted`. The plan bar is the first line of the inline card, and the full-size card pins it at its foot. A phase shows one chit for each agent up to its slots; above that it fills its slots in proportion and the exact count follows, such as `13/30`. A state that holds any unit keeps at least one chit. In the terminal the inline card's plan bar has 30 slots and a phase 12, a card narrower than 80 columns 20 and 8, and a card below 46 columns 12 and 6; the full-size card has 40 and 12. The web client has 40 and 12, and a phone 20 and 8. The agent view's workflow band has 40 chits in the terminal and in the web client, and 12 on a phone, so they fit beside the word `workflow` and a count. A phase of one agent shows no chits: its glyph is its state.
+ 
+-A phase is one line: its glyph, its id, its chits right after the id, a quiet column, and its time at the right edge. While one of its agents runs or an interrupt holds it, its agents show under it as a tree, one line each: glyph, name, quiet column, and time. Every time on a workflow surface counts only active work: an agent's time is the time its session worked, as a chat's time is, and a phase's time and the run's time stop while the run is interrupted. Phase lines and agent lines share one quiet column, so what they say starts at the same place. The quiet column of a phase of several agents starts with its count, such as `0/2`, then a dot, then its agents' names while any of them has not settled, such as `0/2 · quality · elegance`. An agent's quiet column reads its newest call while it runs as one short sentence of a verb and its subject, such as `Read model-access.md`, `Searched workflowSeatPair in src/tui`, `Listed src/tui`, `Edited workflow-card.tsx`, `Dispatched explorer`, `Asked you`, or `Ran bun run test`; a shell command reads as what it does, such as `Searched rows in models; Read parsed.sql`, `Tested test_parser.py`, `Ran q2.sql in Snowflake`, `Committed fix: keep rows`, or `Viewed PR 4475`: what it changes or runs comes first, then what it reads, searches, or lists, and its directory changes, environment wrappers, and output filters are left out. A command that Flywheel does not recognize reads as the command it ran, without those wrappers. A command declared to change project files reads as `Edited` or `Wrote`, and once its changes land it names the files that it changed. A call to a tool that Flywheel does not know reads as `Called` with the tool's name and its subject. Once the agent finished, the column reads the first sentence of its handoff summary, without its final period; its reason once it failed or was skipped; `interrupted` while an interrupt holds it; and what it waits for before it starts. A phase of one agent shows that agent's sentence on its own line. When every agent of a phase settled, the phase folds to one line that says what it did after its count: its agent's summary sentence, its settled join or coverage, why it failed or was skipped, how far it got before a Stop, or, when there is nothing else to say, its agents' names again. Every agent opens its handoff summary with one short sentence that states its result. A settled phase with failed agents keeps them under its line, so a failure never hides.
++A phase is one line: its glyph, its id, its chits right after the id, a quiet column, and its time at the right edge. While one of its agents runs or an interrupt holds it, its agents show under it as a tree, one line each: glyph, name, quiet column, and time. Phase lines and agent lines share one quiet column, so what they say starts at the same place. The quiet column of a phase of several agents starts with its count, such as `0/2`, then a dot, then its agents' names while any of them has not settled, such as `0/2 · quality · elegance`. An agent's quiet column reads its newest call while it runs as one short sentence of a verb and its subject, such as `Read model-access.md`, `Searched workflowSeatPair in src/tui`, `Listed src/tui`, `Edited workflow-card.tsx`, `Dispatched explorer`, `Asked you`, or `Ran bun run test`; a shell command reads as what it does, such as `Searched rows in models; Read parsed.sql`, `Tested test_parser.py`, `Ran q2.sql in Snowflake`, `Committed fix: keep rows`, or `Viewed PR 4475`: what it changes or runs comes first, then what it reads, searches, or lists, and its directory changes, environment wrappers, and output filters are left out. A command that Flywheel does not recognize reads as the command it ran, without those wrappers. A command declared to change project files reads as `Edited` or `Wrote`, and once its changes land it names the files that it changed. A call to a tool that Flywheel does not know reads as `Called` with the tool's name and its subject. Once the agent finished, the column reads the first sentence of its handoff summary, without its final period; its reason once it failed or was skipped; `interrupted` while an interrupt holds it; and what it waits for before it starts. A phase of one agent shows that agent's sentence on its own line. When every agent of a phase settled, the phase folds to one line that says what it did after its count: its agent's summary sentence, its settled join or coverage, why it failed or was skipped, how far it got before a Stop, or, when there is nothing else to say, its agents' names again. Every agent opens its handoff summary with one short sentence that states its result. A settled phase with failed agents keeps them under its line, so a failure never hides.
+ 
+ The inline card shows at most 8 phase lines: finished phases before the one that needs attention fold into one line, such as `✓ 9 done`, and phases after the shown ones into another, such as `○ 6 more`. It shows at most 6 agents for each phase and 10 in all: failed agents first, then interrupted ones, then the longest running, then one line that counts the rest by state, such as `+24 more · 18 done · 2 running`. When two phases need more than 10 lines, the phase with the most lines gives one up first, and no phase shows fewer than 2. A terminal narrower than 46 columns draws no box: it shows the plan bar with a short count, such as `7/21 · 11 running`, one line that folds the plan around the phase that needs attention, such as `✓ 2 done › ● reviews › 2 more`, that phase's chits and count, and its agents. Selecting a phase expands or folds its agents, and the person's choice holds until the person changes it. Selecting the counting line lists every agent of that phase in place. The full-size card shows every phase and every agent of an expanded phase in item order, and scrolls. It shows a phase's model and effort only when every agent of the phase shares them, and otherwise each agent's own. When the agents of a phase run different briefs or personas, it names each agent's persona and its brief in the words of the agent view's line, such as `reviewer-code-security · brief review`. It adds each agent's operations. Its lines take the whole width of its frame, so a summary is cut only once the line is full. Its plan bar stays at its foot. Width never changes how many lines the card has: the card has its final height from its first frame, and only the run's progress and the person's choices change it.
+ 
+-Coverage reads in the same words everywhere it shows: on a settled phase's line, such as `Coverage: required 7 of 9, 2 unsurveyed`, and on the plan bar's label. It names how many required targets the survey reached out of all of them and how many it did not reach. A survey with no targets reads zero targets, a survey of supporting targets alone reads `no required targets`, and coverage never reads as full or as a percentage while a required target is unsurveyed; it reads as done only when the survey holds a required target and surveyed every one. A workflow that completed with incomplete coverage keeps its completed status, and its card names the coverage beside it. A join that selects reports what it dropped as well as what it kept, on its settled line: a deduplicating join reads such as `Removed duplicates: kept 7, dropped 3`, a ranking join such as `Ranked: kept 3, dropped 5`, and a quorum join such as `Voted: passed 2 of 3`. A settled join adds how many agents failed. Each round's settled line names its round and, when the repeats stopped there, why, such as `Round 2 · Removed duplicates: kept 0, dropped 4 · dry` or `Round 3 · Removed duplicates: kept 2, dropped 0 · max 3 rounds`. `flywheel workflow verify --session` lists each kept and dropped result with its agent and the reason the join dropped it, as the run recorded it.
++Coverage reads in the same words everywhere it shows: on a settled phase's line, such as `Coverage: required 7 of 9, 2 unsurveyed`, on the plan bar's label, and in the notification when the workflow finishes. It names how many required targets the survey reached out of all of them and how many it did not reach. A survey with no targets reads zero targets, a survey of supporting targets alone reads `no required targets`, and coverage never reads as full or as a percentage while a required target is unsurveyed; it reads as done only when the survey holds a required target and surveyed every one. A workflow that completed with incomplete coverage keeps its completed status, and its card and notification name the coverage beside it. A join that selects reports what it dropped as well as what it kept, on its settled line: a deduplicating join reads such as `Removed duplicates: kept 7, dropped 3`, a ranking join such as `Ranked: kept 3, dropped 5`, and a quorum join such as `Voted: passed 2 of 3`. A settled join adds how many agents failed. Each round's settled line names its round and, when the repeats stopped there, why, such as `Round 2 · Removed duplicates: kept 0, dropped 4 · dry` or `Round 3 · Removed duplicates: kept 2, dropped 0 · max 3 rounds`. `flywheel workflow verify --session` lists each kept and dropped result with its agent and the reason the join dropped it, as the run recorded it.
+ 
+ The card's header names the run by the title its launch gave it, or by the workflow's name when the launch gave none, so a reused workflow file never lends the run an old name. The full-size card and the agent view name the run the same way, so the person finds the name of the card they selected on every surface of the run. It shows its state when it is not running, such as `Interrupted` or `Failed`, and its elapsed time; the full-size card adds its cost. It holds Open on the inline card, the workflow's Interrupt, Resume, or Restart as the run admits, and Stop while the parent's call can stop the run. A narrow header shortens the run's name first and its state after the name, never hides the time, and keeps every control reachable from its action menu (PI-INTERACTION-005). The card shows none of the tool calls inside the workflow, no launch line, and no warning from the launch of a workflow file: the agent that wrote the file reads each warning in its launch result and fixes the file. While a workflow's definition changed, or its saved progress is damaged, one notice line at the top of its box says so and what the person can do (PI-INTERACTION-044).
+ 
+@@ -364,9 +362,9 @@ A person's message in a subagent viewer addresses that session. In a workflow ag
+ 
+ A subagent or an agent of a workflow ends its session when an admitted handoff starts. From then on it reads no input of any kind, from the person, its parent, notifications, or commands, and it makes no further tool call or model request, except to correct a handoff that was not valid by writing it again. A refused send does not erase its draft. A recorded handoff ends the run without reading queued person's input. Those unread words stay visible in the parent chat transcript and return only to the sending window's parent composer while that window is open, after any existing draft with a blank line. If that window closes, the transcript notice is the only copy; no other client inserts the words. The finished subagent viewer hides its composer and states where returned words are kept. A still-owned unsent draft moves to the parent composer after its pending send settles.
+ 
+-## PI-INTERACTION-052: Desktop notifications page the person only when a session asks a question
++## PI-INTERACTION-052: Desktop notifications page the person from every client that can
+ 
+-While desktop notifications are on, the terminal and the web client page the person when a session, a chat or an agent of a workflow, starts waiting on a question, with the same words. That is the only moment they page: a turn that ends, and a workflow run that finishes, pauses, or fails, pages no one. Each new question pages again, also in the same session and in the session the person has open. In-app notifications are not pages and stay as PI-INTERACTION-073 states. A web page asks the browser for permission once, when the person turns the Desktop notifications switch on in its Settings. While the browser does not allow the page to notify, the switch shows off; when the browser blocks notifications, the switch says so and says how to allow them in the browser. A click on a web page's notification brings that page to the front and opens the session that asks. A click on a terminal notification opens no view in the terminal.
++While desktop notifications are on, the terminal and the web client page the person when a workflow run finishes, fails, or waits for input, with the same words. An item of a list that fails while the run continues is not a failed run and pages no one. A web page asks the browser for permission once, when the person turns the Desktop notifications switch on in its Settings. While the browser does not allow the page to notify, the switch shows off; when the browser blocks notifications, the switch says so and says how to allow them in the browser. A click on a web page's notification brings that page to the front and opens the workflow's full-size card over its chat, and Back returns to the chat. A click on a terminal notification opens no view in the terminal.
+ 
+ ## PI-INTERACTION-053: A finished turn on the web client folds to its answer
+ 
+@@ -378,7 +376,7 @@ While a stretch of calls runs on the web client, its heading shows how long the
+ 
+ ## PI-INTERACTION-055: A finished turn lists the files it changed
+ 
+-On the web client, under the answer of a finished turn, the project files that the turn's own calls changed are listed with the lines added and removed. Opening a file shows the changes the turn made to it, in the order it made them. Files changed inside a subagent belong to that subagent's session and its own turns, not to the parent's turn. The whole session's changes, with the changes of every session it launched, stay in the one review (PI-INTERACTION-008).
++On the web client, under the answer of a finished turn, the project files that the turn's own calls changed are listed with the lines added and removed. Opening a file shows the changes the turn made to it, in the order it made them. Files changed inside a subagent belong to that subagent's session and its own turns. The whole session's changes stay in the one review (PI-INTERACTION-008).
+ 
+ ## PI-INTERACTION-056: A wide web pane docks the workspace beside the transcript
+ 
+@@ -402,7 +400,7 @@ Every built-in terminal theme keeps text, controls, and diff content readable on
+ 
+ ## PI-INTERACTION-061: Side questions leave the main chat in place
+ 
+-`/btw` lets a person ask a temporary side question using the current chat's context without interrupting its work. Side questions cannot use tools and do not enter the main transcript or normal session list. The terminal opens them in a modal, and the web client opens them in a side-question surface. The person can ask follow-up questions, reopen temporary answers, copy an answer, clear the side history, stop a side request, or keep the side conversation as an independent chat that holds the main chat's current checkpoint. Closing a side-question surface stops its pending request and returns to the main chat without changing its draft or scroll position. Temporary side history is bounded and ends when its owning runtime session is released; kept chats remain available. Side requests retain normal request accounting and inspection.
++`/btw` lets a person ask a temporary side question using the current chat's context without interrupting its work. Side questions cannot use tools and do not enter the main transcript or normal session list. The terminal opens them in a modal, and the web client opens them in a side-question surface. The person can ask follow-up questions, reopen temporary answers, copy an answer, clear the side history, stop a side request, or keep the side conversation as an independent chat. Closing a side-question surface stops its pending request and returns to the main chat without changing its draft or scroll position. Temporary side history is bounded and ends when its owning runtime session is released; kept chats remain available. Side requests retain normal request accounting and inspection.
+ 
+ ## PI-INTERACTION-062: A surface on screen stays and updates in place
+ 
+@@ -414,7 +412,7 @@ When a client cannot read data for a surface in the background, the surface keep
+ 
+ ## PI-INTERACTION-064: Crashes report themselves
+ 
+-When a client of an official Flywheel release crashes or its runtime reports a fault, Flywheel sends a bug report to the Flywheel maintainers on its own. The crash screen or fault notice says that it sent the report automatically, shows a short report id the person can quote, and says to turn off Bug reports in Settings to stop automatic reports. Bug reports are on by default; when the person turns them off, Flywheel sends no report, automatic or manual. Only an official release build carries the maintainers' report endpoint. Any other build, such as a local install, a source run, or a release that a fork builds, sends no report: the screen says that no report was sent because the build is not an official Flywheel release and offers to copy the report. A run under Flywheel's test harness sends no automatic report. A report holds the error name, message, and stack, with secrets redacted and the home directory shown as `~`; the app version and build; the operating system and architecture; the surface; the session id; and the recent warning and failure records of the client, the account service, and the project executor, which carry only ids, counts, and timings. It holds no conversation, prompt, tool output, or file content. The person can also send a report with an optional note at any time with the report command, from an official release. When a report cannot be sent, the screen says so and offers to copy the report. `docs/privacy.md` states publicly what Flywheel sends, when, to whom, and how to turn it off.
++When a client of a release build crashes or its runtime reports a fault, Flywheel sends a bug report to the Flywheel maintainers on its own, and the crash screen or fault notice says that it sent one and shows a short report id the person can quote. A build that is not a release, such as a local install or a source run, and any run under Flywheel's test harness send no automatic report: the screen says that no report was sent because the build is not a release and offers to copy the report. A report holds the error, the app version and build, the platform, the surface, and the recent diagnostic records of the client, the account service, and the project executor; it holds no conversation or file content. The person can also send a report with an optional note at any time with the report command, from any build. When a report cannot be sent, the screen says so and offers to copy the report.
+ 
+ ## PI-INTERACTION-065: Unused chats can delete themselves
+ 
+@@ -422,7 +420,7 @@ Settings offers automatic deletion of unused chats, off by default. When a perso
+ 
+ ## PI-INTERACTION-066: An activity turns red only for a real stall
+ 
+-In the terminal, the status line shows how long the current activity has gone without progress from the model. Each activity starts in its neutral color when it appears and turns red only after time spent in it with no new output or activity change. A wait on subagents or a reply, compaction, a notice, or a lost connection is not a stall: while one shows, no stall time builds up, and the activity that follows starts neutral. A foreground tool call is not a stall: the status shows Executing in its neutral color until the call ends. A wait on background work shows Waiting, also neutral.
++In the terminal, the status line shows how long the current activity has gone without progress from the model. Each activity starts in its neutral color when it appears and turns red only after time spent in it with no new output or activity change. A wait on subagents or a reply, compaction, a notice, or a lost connection is not a stall: while one shows, no stall time builds up, and the activity that follows starts neutral.
+ 
+ ## PI-INTERACTION-067: Settings save as they change
+ 
+@@ -434,7 +432,7 @@ A launch with `--project-root`, or else with a nonempty `FLYWHEEL_PROJECT_ROOT`,
+ 
+ ## PI-INTERACTION-069: The account home opens as a project only when named
+ 
+-A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate, says that the account home holds the account's settings, and says that running Flywheel in any other directory starts a project there; a paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
++A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate and names `--project-root` as the way to open it; a paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
+ 
+ ## PI-INTERACTION-070: Status names the working directory apart from the project
+ 
+@@ -479,11 +477,3 @@ When the account service exits before it listens and wrote no failure record, th
+ ## PI-INTERACTION-079: Flywheel state is never offered for commit
+ 
+ In a project under Git, the project's `.flywheel` folder is not offered for commit. Flywheel never edits the project's tracked files to achieve this, the rule does not reach a clone, and a project where it cannot be applied still starts normally.
+-
+-## PI-INTERACTION-080: Terminal clicks land on a header's text and anywhere in a body
+-
+-In the terminal, a transcript item has two kinds of click target. A header, such as a transcript line, the line that names a tool and its command, a file heading in a diff, an entry listed in an expanded group, and every row of a workflow card, accepts a click or hover only on what it draws: each displayed line's text up to its last visible character, the card's box, and an image. Blank space after a short header line, between lines, and beside a card's box does nothing. A body, the text that an item shows under its header as a preview or expanded, such as tool output, the diff of an edit, the content of a write, thinking, or a long message, accepts a click or hover anywhere in its area, including blank lines, blank space after short lines, its padding, and its rail. When bodies nest, the innermost body under the pointer takes the click. List rows in dialogs and pickers accept the whole band that their highlight paints, and buttons accept their padding.
+-
+-## PI-INTERACTION-081: Each command and setting has one name and one way in
+-
+-Each command has one slash token and one name, and the terminal, desktop web, phone, and editor show that name in menus, palettes, and the heading of the surface it opens. Typing a command's token opens the same surface on every client that offers that surface. A typed token that names no command is refused with the same notice on every client and is never sent as a message. Settings shows the same sections, order, and row names on every client, apart from rows that describe the terminal or the browser itself.
+diff --git a/docs/product-intent/model-access.md b/docs/product-intent/model-access.md
+index 5335bac..7eb9cd4 100644
+--- a/docs/product-intent/model-access.md
++++ b/docs/product-intent/model-access.md
+@@ -4,7 +4,7 @@ This document states the current intended experience for authentication, authori
+ 
+ ## PI-MODEL-001: Invisible automatic provider failover
+ 
+-Automatic provider failover is invisible while an eligible, authorized fallback exists. Flywheel tries candidates in the defined resolution order within the same logical turn and tool call, without user action or a failure notice. The resolution order is by spend class: included subscription use first, then prepaid balance, automatic subscription spend, direct API spend, and aggregator spend; inside a class, by provider rank, then, for included subscription use of a provider whose accounts reset their usage windows at different times, such as Claude, by the soonest known reset of the window whose quota expires, and then account order. An account with no known future reset follows the accounts with one. This puts included quota that expires sooner to use first, even when a chat must leave the account it was using. A candidate is passed over only when it cannot serve the request for its own reasons: its quota or credits are spent, it is rate limiting, it is overloaded, it is unreachable, or its account does not grant the model or the model's extended context window. A free-plan account is never a candidate while its profile holds another account of the same provider. Those failures do not prevent trying authorized later spend classes. A failure the request itself caused, such as a rejected or malformed request, bad credentials, or an error the provider did not classify, would repeat on every candidate; Flywheel reports it at once under its own name and never describes it as spent quota or credits. Flywheel preserves completed work and attributes usage and cost to each provider attempt. It reports a terminal quota failure only after every candidate has failed on that class or is ineligible. When a candidate drops the connection, throttles, or reports overload, Flywheel retries that candidate in place with bounded backoff, shows the reconnect progress in the session status while it waits, and moves to the next candidate only when those retries are spent. A lost connection alone never marks a provider unreachable for other sessions; only a failure the provider stated does, and a first mark holds briefly and lengthens only while the outage persists. An agent that finds every candidate spent until a stated time, a chat included, waits for that time and continues on its own (PI-MODEL-039).
++Automatic provider failover is invisible while an eligible, authorized fallback exists. Flywheel tries candidates in the defined resolution order within the same logical turn and tool call, without user action or a failure notice. The resolution order is by spend class: included subscription use first, then prepaid balance, automatic subscription spend, direct API spend, and aggregator spend; inside a class, by provider rank and then account order. A candidate is passed over only when it cannot serve the request for its own reasons: its quota or credits are spent, it is rate limiting, it is overloaded, it is unreachable, or its account does not grant the model or the model's extended context window. Those failures do not prevent trying authorized later spend classes. A failure the request itself caused, such as a rejected or malformed request, bad credentials, or an error the provider did not classify, would repeat on every candidate; Flywheel reports it at once under its own name and never describes it as spent quota or credits. Flywheel preserves completed work and attributes usage and cost to each provider attempt. It reports a terminal quota failure only after every candidate has failed on that class or is ineligible. When a candidate drops the connection, throttles, or reports overload, Flywheel retries that candidate in place with bounded backoff, shows the reconnect progress in the session status while it waits, and moves to the next candidate only when those retries are spent. A lost connection alone never marks a provider unreachable for other sessions; only a failure the provider stated does, and a first mark holds briefly and lengthens only while the outage persists. An agent of a workflow that finds every candidate spent until a stated time waits for that time and continues on its own (PI-AGENT-029); a chat reports the failure, because its person is there to choose.
+ 
+ ## PI-MODEL-002: Background process model visibility
+ 
+@@ -20,7 +20,7 @@ Flywheel notifies once on an observed crossing from below each configured subscr
+ 
+ ## PI-MODEL-006: Banked subscription usage resets
+ 
+-Usage lists every available banked reset with its expiration, earliest first. A single reset is one line; multiple resets form a vertical bulleted list. One Apply action reviews the earliest-expiring reset. Whenever a banked reset is available, the user can review and confirm its application from the Usage view. The provider decides at redemption whether a limit resets, and Flywheel reports that outcome and refreshes usage after it. In an interactive client, when no provider can serve a request and an account refused for used-up included usage has a banked reset, the refusal says so and names Usage as the place to apply it.
++Usage lists every available banked reset with its expiration, earliest first. A single reset is one line; multiple resets form a vertical bulleted list. One Apply action reviews the earliest-expiring reset. Whenever a banked reset is available, the user can review and confirm its application from the Usage view. The provider decides at redemption whether a limit resets, and Flywheel reports that outcome and refreshes usage after it.
+ 
+ ## PI-MODEL-004: Consolidated model identity
+ 
+@@ -72,21 +72,21 @@ Anthropic subscription account headlines show the weekly usage window. The five-
+ 
+ Each account's Flywheel activity separately reports the current local calendar month and each current account-wide provider usage window, with explicit date ranges. All-tracked activity remains available in Spend. Missing or partial accounting is explicit. An unknown price is flagged on its account and model and adds no money. A period reads incomplete only while accounting is still settling. An unavailable ledger reads unavailable, never zero.
+ 
+-Spend shows reported cache reuse, token breakdowns, and measured model-request counts over the selected range, overall and by account and model, separately from billed spend and subscription-equivalent value. A request that a provider served without reporting its usage counts as unmeasured, and a request whose report ended early counts as partially measured. Both are shown beside the measured count. An unmeasured request adds no tokens or money; a partially measured request adds the lower bounds it reported.
++Spend shows reported cache reuse, token breakdowns, and measured model-request counts over the selected range, overall and by account and model, separately from billed spend and subscription-equivalent value.
+ 
+-Usage is one view with Accounts, Spend, and History a tap apart, and a line beside that switch says when the reading is from, that it is refreshing, or that it failed. Each account is one row: its name, one reading of what is left or the reason there is none, and beneath it the plan, the signed-in identity, and whether paid use is allowed; no internal account id appears. Every account starts closed; a tap opens one at a time, and a tap on the open one closes it, showing its provider allowance as one bar per window with its reading and when it resets, its banked reset with the action to apply it, and what Flywheel did in the window. ChatGPT per-model windows stay hidden until asked for. Spend reads over a chosen range as totals and then each source with its models; History offers every account, metered keys included. For a subscription it charts each window the provider still reports and that saw use in the range, use rising as the window fills and dropping where the provider reset it, each reset marked once while the marks can be told apart, with the latest and peak readings beside the window's name; billed spend beyond the plan charts beneath when there was any. For a metered key it charts spend climbing through the range to its total. A Claude usage-only enterprise account reads as a metered account: no provider allowance and no usage windows, only what Flywheel tracked and billed.
++Usage is one view with Accounts, Spend, and History a tap apart, and a line beside that switch says when the reading is from, that it is refreshing, or that it failed. Each account is one row: its name, one reading of what is left or the reason there is none, and beneath it the plan, the signed-in identity, and whether paid use is allowed; no internal account id appears. Every account starts closed; a tap opens one at a time, and a tap on the open one closes it, showing its provider allowance as one bar per window with its reading and when it resets, its banked reset with the action to apply it, and what Flywheel did in the window. peerAgent2 model windows stay hidden until asked for. Spend reads over a chosen range as totals and then each source with its models; History offers every account, metered keys included. For a subscription it charts each window the provider still reports and that saw use in the range, use rising as the window fills and dropping where the provider reset it, each reset marked once while the marks can be told apart, with the latest and peak readings beside the window's name; billed spend beyond the plan charts beneath when there was any. For a metered key it charts spend climbing through the range to its total. A Claude usage-only enterprise account reads as a metered account: no provider allowance and no usage windows, only what Flywheel tracked and billed.
+ 
+ ## PI-MODEL-015: Model picker shows effort and price in place
+ 
+-The model picker shows each eligible model with the reasoning effort levels it supports and the effort that will apply. The user can adjust that effort in place before confirming model and effort together. Effort belongs to the selected role, not to the model: changing one role never changes another role's effort. Each model option uses the selected role's effort, adjusted to the levels that model supports. The picker shows the highlighted model's input, cached input, and output prices per million tokens with its position on the price range of the listed models. A model offered through several providers shows one price and one effort set: each value comes from the first provider in selection order that states it, then from models.dev, so a provider that lists only model identifiers still shows the price and efforts another source states for the same model. When the person confirms a model that the profile cannot use at that moment, Flywheel keeps the choice, and the confirmation names the model and effort that serve until the chosen model is usable, or says that no model can serve now.
++The model picker shows each eligible model with the reasoning effort levels it supports and the effort that will apply. The user can adjust that effort in place before confirming model and effort together. Effort belongs to the selected role, not to the model: changing one role never changes another role's effort. Each model option uses the selected role's effort, adjusted to the levels that model supports. The picker shows the highlighted model's input, cached input, and output prices per million tokens with its position on the price range of the listed models. A model offered through several providers shows one price and one effort set: each value comes from the first provider in selection order that states it, then from models.dev, so a provider that lists only model identifiers still shows the price and efforts another source states for the same model.
+ 
+-The model picker names a model's eligible providers in first-appearance resolution order for the active authentication profile, each provider once regardless of how many accounts or billing routes it offers, joined by arrows. The provider that would serve the model at the moment the picker reads its models stands out from the others; when no provider can serve the model then, none does. The terminal shows the highlighted model's providers by their full names beneath its price details with the label "Providers:", such as `Providers: ChatGPT Subscription → OpenAI API Key`. The web client shows them in each model's row as one line under its name, by each provider's short name: the providers up to and including the one that would serve, then a count of the providers after it, such as `ChatGPT +1`; when none can serve, every provider. The picker never names a model's API format.
++The model picker shows the highlighted model's eligible providers beneath its price details with the label "Providers:". Each provider appears once, in first-appearance resolution order for the active authentication profile, regardless of how many accounts or billing routes it offers.
+ 
+ Opening model selection or provider model controls shows saved choices immediately and requests background discovery at most once per authentication profile every five minutes, including failed attempts. Concurrent openings share the same discovery, and no periodic polling is required. Fresh results update the open view in place without blinking, clearing usable rows, or remounting unchanged rows. The highlighted model, supported pending effort, search text, and scroll position stay stable. Ordinary background discovery shows no loading transition or success toast while usable choices remain.
+ 
+ ## PI-MODEL-016: Every agent role has an eligible default
+ 
+-For every request, Flywheel resolves the role against the active auth profile's reachable models. It uses the role's saved model and effort when reachable, then its coded OpenAI preference, then its coded Anthropic preference, then the newest reachable model in its price tier. An unreachable saved pair is skipped, and the agent's transcript shows one system message that names the saved model and the model and effort that serve instead. The transcript shows another such message only when the serving selection changes or the saved model serves again, and the model never reads these messages. An unsupported effort maps to the nearest supported effort. When the tier is empty, Flywheel uses the nearest populated tier, or a reachable unranked model when no ranked model is reachable. A request and its resulting tool calls keep one selection; the next request resolves again. A profile whose model access is still being checked waits on discovery before selection, and a profile with nothing reachable shows the existing authentication or no-provider guidance.
++For every request, Flywheel resolves the role against the active auth profile's reachable models. It uses the role's saved model and effort when reachable, then its coded OpenAI preference, then its coded Anthropic preference, then the newest reachable model in its price tier. An unreachable saved pair is skipped silently. An unsupported effort maps to the nearest supported effort. When the tier is empty, Flywheel uses the nearest populated tier, or a reachable unranked model when no ranked model is reachable. A request and its resulting tool calls keep one selection; the next request resolves again. A profile whose model access is still being checked waits on discovery before selection, and a profile with nothing reachable shows the existing authentication or no-provider guidance.
+ 
+ ## PI-MODEL-011: Paid-provider admission uses provider evidence
+ 
+@@ -108,7 +108,7 @@ Linked subagent cards and child viewers show the model and reasoning effort that
+ 
+ ## PI-MODEL-021: Model selection applies at each request
+ 
+-An agent uses the current effective model, reasoning effort, and provider options at each request boundary. That selection stays fixed for the request and its resulting tool calls, not for the runner's lifetime. A selection change applies to the next request without replacing the runner, losing conversation state, or interrupting background work. A change to a model of another provider, or between the Claude engine and another route, also while the agent waits on the results of its tool calls, continues the same conversation and shows no warning: the agent reads its earlier replies, progress updates, and tool work as its own, but never the earlier model's private reasoning, so that reasoning cannot appear as something the agent said. General agents inherit the selection of the parent request that starts them.
++An agent uses the current effective model, reasoning effort, and provider options at each request boundary. That selection stays fixed for the request and its resulting tool calls, not for the runner's lifetime. A selection change applies to the next request without replacing the runner, losing conversation state, or interrupting background work. General agents inherit the selection of the parent request that starts them.
+ 
+ ## PI-MODEL-022: Prefilled SuperGrok sign-in
+ 
+@@ -130,7 +130,7 @@ Flywheel has no provider that runs the Claude sign-in itself. Claude subscriptio
+ 
+ When a person installs a release, each Claude account that the earlier native Anthropic Subscription provider stored moves to the Anthropic Subscription provider in the same profile. Flywheel finds the same account by its Claude account id, or by its email address when the stored account has no id. The account's saved model choices and paid-use decisions move with it, so they apply again when the person logs in to that account. Flywheel then deletes the stored Claude sign-in tokens. It never uses them for anything else, and it never writes them to a log.
+ 
+-The person must log in to each moved account once from Authentication, because a profile never uses a Claude login that the person made outside Flywheel. This is the one approved exception to the rule that an update never asks for a new login. The person does not reselect a model. Until the login, the Anthropic Subscription row shows its Log in button, not an error. Flywheel shows one notice for each profile that names each account that needs a login and tells the person to log in to it from Authentication. The log gets one warning for each account, with its email address.
++The person must log in to each moved account once from Authentication, because a profile never uses the person's own peerAgent1 login. This is the one approved exception to the rule that an update never asks for a new login. The person does not reselect a model. Until the login, the Anthropic Subscription row shows its Log in button, not an error. Flywheel shows one notice for each profile that names each account that needs a login and tells the person to log in to it from Authentication. The log gets one warning for each account, with its email address.
+ 
+ A stored request to turn on the earlier opt-in provider modules needs no repair. Flywheel reads it as the default selection and removes it from the configuration file.
+ 
+@@ -140,13 +140,13 @@ When a person enters an API key at a terminal prompt, the terminal never shows t
+ 
+ ## PI-MODEL-027: Claude through a Claude login for each profile
+ 
+-The Anthropic Subscription provider serves Claude models through the Claude engine that ships with Flywheel: the engine program that the Claude Agent SDK pins, in every release for every platform. Every surface that names the provider, such as Authentication, Settings, Doctor, notices, and `flywheel auth`, calls it Anthropic Subscription. The engine runs and keeps the Claude sign-in. Flywheel never reads, stores, or sends the Claude sign-in token. To show and route each account, it reads only the account details that the engine records, such as the email address. The provider works in the same way whether or not the person has a separate install of the engine, and it never uses such an install. A request at reasoning effort off uses the model's own off mode, as on the Anthropic API-key provider.
++The Anthropic Subscription provider serves Claude models through the Claude engine that ships with Flywheel: the peerAgent1 program that the Claude Agent SDK pins, in every release for every platform. Every surface that names the provider, such as Authentication, Settings, Doctor, notices, and `flywheel auth`, calls it Anthropic Subscription. The engine runs and keeps the Claude sign-in. Flywheel never reads, stores, or sends the Claude sign-in token. To show and route each account, it reads only the account details that the engine records, such as the email address. The provider works in the same way whether or not the person installed peerAgent1, and it never uses a peerAgent1 that the person installed.
+ 
+-Each Claude login belongs to one Flywheel profile, as every other credential does. The login button of a profile runs the engine's own login into a folder of that profile. A new profile has no Claude account, even when the person is signed in to Claude elsewhere on the computer, and a login in one profile does not appear automatically in another. When the same Claude account is logged in to two profiles, each profile has its own login, and Disconnect in one profile leaves the other profile logged in. Disconnect logs the account out of that profile only: a separate install of the engine and every other app keep their own logins. Flywheel never reads, uses, or changes a Claude login that it did not create. A profile in a separate Flywheel home of the same computer account can use a Claude login of a profile in the account's own Flywheel home by reference; both use that one login, and Disconnect in the separate home removes only the reference.
++Each Claude login belongs to one Flywheel profile, as every other credential does. The login button of a profile runs the engine's own login into a folder of that profile. A new profile has no Claude account, even when the person is signed in to peerAgent1, and a login in one profile does not appear automatically in another. When the same Claude account is logged in to two profiles, each profile has its own login, and Disconnect in one profile leaves the other profile logged in. Disconnect logs the account out of that profile only: the person's own peerAgent1 and every other app keep their own logins. Flywheel never reads, uses, or changes the person's own peerAgent1 login. A profile in a separate Flywheel home of the same computer account can use a Claude login of a profile in the account's own Flywheel home by reference; both use that one login, and Disconnect in the separate home removes only the reference.
+ 
+ The provider is on by default. Its Settings row is an ordinary provider row with no risk confirmation, and turning it off and on again asks nothing. Nothing needs to be installed for it. The engine never updates itself and never downloads anything; a new engine comes only with a new Flywheel release.
+ 
+-The engine that Flywheel runs and a separate install of the engine that the person runs never interact. Flywheel's engine reads and writes no setting, login, hook, instruction file, cache, log, data folder, editor connection, temporary file, or socket that belongs to the person's install or to the project's Claude configuration. It keeps each of these for a login in a folder of that login, and the person's install finds nothing of Flywheel's engine. Neither one sees or signals the other's processes. The machine's Claude policy, which an administrator sets for every Claude install on the machine, applies to both.
++The engine that Flywheel runs and the person's own peerAgent1 never interact. The engine reads and writes no setting, login, hook, instruction file, cache, log, data folder, editor connection, temporary file, or socket that belongs to the person's peerAgent1 or to the project's peerAgent1 configuration. It keeps each of these for a login in a folder of that login, and peerAgent1 finds nothing of the engine's. Neither one sees or signals the other's processes. The machine's peerAgent1 policy, which an administrator sets for every peerAgent1 on the machine, applies to both.
+ 
+ Each account row shows the account's email address and, when the engine names it, its plan. When the engine cannot read an account's login and sends no request, Flywheel starts a fresh engine and sends the same request once more, and the person sees nothing. When Claude refuses an account's login, or a fresh engine also cannot read it, the row says so and one notice says the same.
+ 
+@@ -164,7 +164,7 @@ Claude usage-only enterprise accounts use their account's normal metered billing
+ 
+ This provider preserves Flywheel's tool capabilities, tool execution, and the user's message text. Provider-specific tool names remain a transport presentation.
+ 
+-This provider and the Anthropic API-key provider give the model reminders with the same facts. At the start of each conversation context, the reminders state the working directory, git state, platform, shell, operating-system version, the model's name and knowledge cutoff, and today's local date. After later user input, a reminder states a change in the working directory, git state, model, or local date, and the request after a tool round states a change in the model or the local date. On every route, the environment block of the system prompt states the local date on which the turn started, so the prompt changes at most once a day, at a turn boundary. The local date is the same on every route and agrees with the date that the Claude engine states. On macOS and Linux it is the date in Flywheel's time zone, which `TZ` sets, and the engine gets that zone. On Windows it is the date in the Windows system zone, whatever `TZ` names, because the engine on Windows dates in the system zone and ignores `TZ`; Flywheel gives the engine no `TZ` there. Reminders are ordinary system-origin conversation entries: they are saved in model history but hidden from the visible transcript, survive resume and forks, reset with the active context, and remain in history when the user switches providers. On a Claude login the engine also gives the model the account's email address. That text is not in Flywheel's history, and the Anthropic API-key provider never sends it. An agent that runs in a shared Claude engine also receives text that the engine writes: an identity line, fixed agent instructions, the environment, model, and date, and a coordinator line each time it resumes. Flywheel records each of these as a system-origin entry in that agent's history, hidden from the visible transcript. On Windows with Git for Windows installed, the engine states the shell as bash, where the shared reminders state PowerShell. The person accepts that line. Each request that the engine sends states the environment once, also after a rotation and at each dispatch of a hosted agent, so the model never reads two shell lines. The description of Flywheel's shell tool states that commands run in PowerShell on Windows, and that description is the authority.
++This provider and the Anthropic API-key provider give the model the same compatibility reminders. At the start of each conversation context, the reminders state the working directory, git state, platform, shell, operating-system version, the model's name and knowledge cutoff, and today's local date. After later user input, a reminder states a change in the working directory, git state, model, or local date, and the request after a tool round states a change in the model or the local date. On every route, the environment block of the system prompt states the local date on which the turn started, so the prompt changes at most once a day, at a turn boundary. The local date is the same on every route and agrees with the date that the Claude engine states. On macOS and Linux it is the date in Flywheel's time zone, which `TZ` sets, and the engine gets that zone. On Windows it is the date in the Windows system zone, whatever `TZ` names, because the engine on Windows dates in the system zone and ignores `TZ`; Flywheel gives the engine no `TZ` there. Reminders are ordinary system-origin conversation entries: they are saved in model history but hidden from the visible transcript, survive resume and forks, reset with the active context, and remain in history when the user switches providers. On a Claude login the engine also gives the model the account's email address. That text is not in Flywheel's history, and the Anthropic API-key provider never sends it. An agent that runs in a shared Claude engine also receives text that the engine writes: an identity line, fixed agent instructions, the environment, model, and date, and a coordinator line each time it resumes. Flywheel records each of these as a system-origin entry in that agent's history, hidden from the visible transcript. On Windows with Git for Windows installed, a new engine query states the shell as bash, where the shared reminders state PowerShell. The person accepts that line. The description of Flywheel's shell tool states that commands run in PowerShell on Windows, and that description is the authority.
+ 
+ ## PI-MODEL-028: A workflow file can set each agent's model
+ 
+@@ -207,15 +207,3 @@ A person can declare a custom OpenAI-compatible chat-completions provider in fly
+ ## PI-MODEL-037: The automatic sign-in dialog never interrupts another dialog
+ 
+ When no provider is set up, the terminal opens Authentication on its own once each time it starts, and only when no other dialog is open. It checks again first and does not open when a provider was set up meanwhile. A message sent while no provider is set up is not sent: the terminal says why and opens Authentication. Authentication opened by hand always shows a fresh view.
+-
+-## PI-MODEL-038: Free-plan accounts never rotate
+-
+-Only paid subscription accounts rotate. A profile holds at most one free-plan account of a provider, and a free-plan account serves only while it is the only account of its provider in the profile. Flywheel reads each account's plan from its provider: a ChatGPT account on the Free plan and a GitHub Copilot account on Copilot Free are free-plan accounts. An account whose provider reports no plan counts as paid. SuperGrok accounts and Claude subscriptions always count as paid.
+-
+-When a person signs in to a free-plan account and the profile already holds an account of that provider, Flywheel refuses the account, stores nothing, and says why. When Flywheel cannot read the new account's plan and the profile already holds an account of that provider, it refuses the account the same way and says to try again later. When a person signs in to a paid account and the profile holds a free-plan account of that provider, Flywheel asks before it stores anything: "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions." Confirming stores the paid account and disconnects every free-plan account of that provider. Declining stores nothing. Every client and the `flywheel auth login` command follow these rules.
+-
+-A free-plan account that sits beside another account of its provider, because its paid plan lapsed or because it was connected before this rule, stays connected and does not serve. Its account row says why and offers to disconnect it, and Flywheel tells the person once. It serves again as soon as it is the only account of its provider or its plan becomes paid again.
+-
+-## PI-MODEL-039: Every agent waits out spent capacity and continues
+-
+-When no candidate can serve an agent until a stated time, such as a usage-limit reset, the agent waits until that time and then continues its turn on its own, with no action from the person. This holds for every agent: a chat, a workflow agent, a subagent, and a headless task. A spent candidate that states no time is checked again after a short interval, so a wait never turns into a failure while every candidate can still clear. When the time comes, the agent's next request decides: if a candidate serves it, the turn continues from where it stopped; if every candidate is still spent, the agent waits again for the next stated time. The wait of an agent that the runtime serves continues across a runtime restart, an unexpected exit, and a reboot, and whether or not a client shows the session. A headless task waits while its own process runs, and ends with that process. A project that closed during the wait opens again when the agent continues. A machine that sleeps through the time continues when it wakes. While it waits, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, a message from the person starts a turn at once, and a headless task's own deadline ends its wait. A wait never admits a paid candidate that the person did not allow, never applies a banked reset, and pages no one.
+diff --git a/src/infra/llm/provider-error-copy.ts b/src/infra/llm/provider-error-copy.ts
+index 41708f6..3b617ab 100644
+--- a/src/infra/llm/provider-error-copy.ts
++++ b/src/infra/llm/provider-error-copy.ts
+@@ -52,22 +52,13 @@ export interface ProviderErrorCopy {
+   action?: ProviderErrorAction;
+ }
+ 
+-const BANKED_RESET_HINT = "This account has a banked reset that you can apply in Usage (/usage).";
+ const SWITCH_MODELS_ACTION: ProviderErrorAction = { label: "Switch models", command: "/model" };
+ const MANAGE_AUTH_ACTION: ProviderErrorAction = { label: "Manage credentials", command: "/auth" };
+ 
+-export type ProviderUnavailableCause = "quota" | "rate_limit" | "server_error" | "overload" | "connection" | "stall" | "unavailable" | "route_unavailable" | "ineligible" | "model_access" | "extended_context";
++export type ProviderUnavailableCause = "quota" | "rate_limit" | "server_error" | "overload" | "connection" | "stall" | "unavailable" | "ineligible" | "model_access" | "extended_context";
+ 
+-/** Causes that only a person clears: what an account grants, and a route whose program is missing or unusable on
+- *  this machine. Waiting does not change them, so they carry no reset bound. */
+-const PERSON_CAUSES: ReadonlySet<ProviderUnavailableCause> = new Set(["route_unavailable", "ineligible", "model_access", "extended_context"]);
+-
+-/** Whether waiting can clear `cause`, so that it has a time at which a request can check it again. */
+-export function waitingClears(cause: ProviderUnavailableCause): boolean {
+-  return !PERSON_CAUSES.has(cause);
+-}
+-
+-const UNAVAILABLE_COPY = { presentation: "provider.unavailable", title: "Provider unavailable", message: "No configured provider can serve this model right now." } as const;
++/** Causes that state what an account grants. Waiting does not change them, so they carry no reset bound. */
++const GRANT_CAUSES: ReadonlySet<ProviderUnavailableCause> = new Set(["ineligible", "model_access", "extended_context"]);
+ 
+ const EXHAUSTED_COPY = {
+   quota: { presentation: "provider.out_of_credits", title: "Out of credits", message: "The eligible provider accounts for this model are out of quota or credits." },
+@@ -76,8 +67,7 @@ const EXHAUSTED_COPY = {
+   overload: { presentation: "provider.overloaded", title: "Provider overloaded", message: "The model providers reported overload." },
+   connection: { presentation: "provider.connection_lost", title: "Connection lost", message: "The connections to the model providers failed. This does not establish a provider outage." },
+   stall: { presentation: "provider.connection_lost", title: "Model response stalled", message: "The models stopped sending progress while composing their responses." },
+-  unavailable: UNAVAILABLE_COPY,
+-  route_unavailable: UNAVAILABLE_COPY,
++  unavailable: { presentation: "provider.unavailable", title: "Provider unavailable", message: "No configured provider can serve this model right now." },
+   ineligible: { presentation: "provider.unavailable", title: "No eligible provider", message: "None of the configured providers was eligible for this request." },
+   model_access: { presentation: "provider.unavailable", title: "Model not available", message: "The provider accounts for this model do not grant it." },
+   extended_context: { presentation: "provider.unavailable", title: "Extended context not available", message: "The provider accounts for this model do not grant its extended context window. Flywheel uses the standard window for the next request." },
+@@ -85,8 +75,8 @@ const EXHAUSTED_COPY = {
+ 
+ /** What a later request can do after no candidate served one: run once
+  *  `atMs` passes, when every candidate that waiting can help states when it
+- *  can serve again; run again with no known time; or nothing, when only
+- *  causes that a person clears refused it. */
++ *  can serve again; run again with no known time; or nothing, when only what
++ *  the accounts grant refused it. */
+ export type ProviderRecovery =
+   | { readonly kind: "at"; readonly atMs: number }
+   | { readonly kind: "retry" }
+@@ -97,7 +87,7 @@ export type ProviderRecovery =
+  *  the bound the copy states. An extended context refusal is retryable,
+  *  because the next request uses the standard window. */
+ export function exhaustedProvidersRecovery(candidates: readonly { readonly cause: ProviderUnavailableCause; readonly resetsAtMs: number | undefined }[]): ProviderRecovery {
+-  const retryable = candidates.filter((candidate) => waitingClears(candidate.cause));
++  const retryable = candidates.filter((candidate) => !GRANT_CAUSES.has(candidate.cause));
+   const bounds = retryable.flatMap((candidate) => candidate.resetsAtMs === undefined ? [] : [candidate.resetsAtMs]);
+   if (bounds.length > 0 && bounds.length === retryable.length) return { kind: "at", atMs: Math.min(...bounds) };
+   if (retryable.length > 0 || candidates.some((candidate) => candidate.cause === "extended_context")) return { kind: "retry" };
+@@ -106,16 +96,12 @@ export function exhaustedProvidersRecovery(candidates: readonly { readonly cause
+ 
+ /** Renders request-local evidence after routing ends. Causes and hold bounds
+  * come from routing owners, never from parsing the aggregate's prose.
+- * Admission skips retain their detail without becoming dispatched failures.
+- * `bankedReset` marks a candidate whose account holds a banked reset. Only a
+- * quota refusal names it, in that candidate's own line, which every register
+- * renders, and the line never predicts whether the reset lets the request run. */
++ * Admission skips retain their detail without becoming dispatched failures. */
+ export function exhaustedProvidersCopy(candidates: readonly {
+   readonly provider: string;
+   readonly cause: ProviderUnavailableCause;
+   readonly detail: string;
+   readonly resetsAtMs: number | undefined;
+-  readonly bankedReset?: boolean;
+ }[]): ProviderErrorCopy {
+   const causes = new Set(candidates.map((candidate) => candidate.cause).filter((cause) => cause !== "ineligible"));
+   const [firstCause] = causes;
+@@ -137,7 +123,7 @@ export function exhaustedProvidersCopy(candidates: readonly {
+       : bound === undefined ? "" : ` Some candidates have a reset or recheck bound at ${bound}.`}`,
+     guidance: exhaustedGuidance(cause, waitBound !== undefined),
+     detail: [...new Set(candidates.map((candidate) =>
+-      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${candidate.cause === "quota" && candidate.bankedReset === true ? `${BANKED_RESET_HINT} ` : ""}${extractProviderErrorDetail(redactSecrets(candidate.detail))}`
++      `${redactSecrets(candidate.provider)}: ${EXHAUSTED_COPY[candidate.cause].title}. ${extractProviderErrorDetail(redactSecrets(candidate.detail))}`
+     ))].join(" "),
+     action: SWITCH_MODELS_ACTION,
+   };
+diff --git a/src/protocol/modules/subscription-usage.ts b/src/protocol/modules/subscription-usage.ts
+index 0795da4..9bc6817 100644
+--- a/src/protocol/modules/subscription-usage.ts
++++ b/src/protocol/modules/subscription-usage.ts
+@@ -29,27 +29,17 @@ export interface UsageTokens {
+   readonly total: number
+ }
+ 
+-/** How complete the usage evidence of a set of requests is. `attempts` counts measured requests, whose tokens the
+- *  totals hold. `unmeasuredAttempts` were served without a usage report and add no tokens or money.
+- *  `partialAttempts` are measured requests whose report ended early, so their tokens are lower bounds.
+- *  `cacheComplete` is false when some measured request did not report its cache reads, so the cache totals and any
+- *  hit rate are unknown. */
+-export interface UsageCoverageCounts {
+-  readonly attempts: number
+-  readonly unmeasuredAttempts: number
+-  readonly partialAttempts: number
+-  readonly cacheComplete: boolean
+-}
+-
+-export interface UsageModelSummary extends UsageCoverageCounts {
++export interface UsageModelSummary {
+   readonly model: string
++  readonly attempts: number
+   readonly tokens: UsageTokens
+   readonly estimatedBilledUsd: number
+   readonly includedValueUsd: number
+   readonly priceUnavailable: boolean
+ }
+ 
+-interface UsageAccountWindowSummary extends UsageCoverageCounts {
++interface UsageAccountWindowSummary {
++  readonly attempts: number
+   readonly tokens: UsageTokens
+   readonly includedValueUsd: number
+   readonly priceUnavailable: boolean
+@@ -121,11 +111,12 @@ export interface UsageAccountsResult extends UsageProtocolMetadata {
+   readonly sources: readonly UsageAccountSource[]
+ }
+ 
+-interface UsageSpendSourceBase extends UsageCoverageCounts {
++interface UsageSpendSourceBase {
+   readonly sourceId: string
+   readonly label: string
+   readonly active: boolean
+   readonly spendModes: readonly ("included" | "prepaid" | "automatic" | "direct_api" | "aggregator")[]
++  readonly attempts: number
+   readonly tokens: UsageTokens
+   readonly estimatedBilledUsd: number
+   readonly includedValueUsd: number
+@@ -162,6 +153,7 @@ export interface UsageSessionStats {
+   readonly sessionId: string
+   readonly asOf: number
+   readonly partial: boolean
++  readonly cacheComplete: boolean
+   readonly descendantCount: number
+   readonly direct: UsageStatsSummary
+   readonly descendants: UsageStatsSummary
+@@ -185,30 +177,6 @@ export function usageTokenBreakdown(tokens: Pick<UsageTokens, "input" | "output"
+   }
+ }
+ 
+-/** Why cache detail reads as unavailable: history from before per-request accounting, or a provider that did not
+- *  report cache reads for some request. */
+-export const USAGE_CACHE_UNAVAILABLE_REASON = "not reported for every request"
+-
+-/** Request coverage beside a token reading, such as `12 measured requests (1 partial) · 2 unmeasured`. A partial
+- *  request is a measured one, so it appears inside the measured count. Each qualifier appears only when it is not 0. */
+-export function usageCoverageText(counts: UsageCoverageCounts): string {
+-  const partial = counts.partialAttempts > 0 ? ` (${counts.partialAttempts.toLocaleString("en-US")} partial)` : ""
+-  return [
+-    `${counts.attempts.toLocaleString("en-US")} measured requests${partial}`,
+-    ...(counts.unmeasuredAttempts > 0 ? [`${counts.unmeasuredAttempts.toLocaleString("en-US")} unmeasured`] : []),
+-  ].join(" · ")
+-}
+-
+-/** Adds the coverage of several readings. */
+-export function sumUsageCoverage(values: readonly UsageCoverageCounts[]): UsageCoverageCounts {
+-  return values.reduce((sum, value) => ({
+-    attempts: sum.attempts + value.attempts,
+-    unmeasuredAttempts: sum.unmeasuredAttempts + value.unmeasuredAttempts,
+-    partialAttempts: sum.partialAttempts + value.partialAttempts,
+-    cacheComplete: sum.cacheComplete && value.cacheComplete,
+-  }), { attempts: 0, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true })
+-}
+-
+ /** Shared comparison readings and coverage copy for descendant-scoped Stats. */
+ export function generationSpeedLines(generation: GenerationStatistics) {
+   const { totals } = generation
+@@ -248,9 +216,9 @@ export function usageStatsStatusRow(stats: UsageSessionStats | undefined): Modul
+   let value = "Unavailable"
+   if (stats) {
+     const rate = usageTokenBreakdown(stats.totals.tokens).cacheHitRate
+-    value = stats.totals.cacheComplete
++    value = stats.cacheComplete
+       ? `${rate === null ? "No usage yet" : `${(rate * 100).toFixed(1)}% of reported input`}${stats.partial ? " · partial" : ""}`
+-      : `Unavailable · ${USAGE_CACHE_UNAVAILABLE_REASON}`
++      : "Unavailable · partial history"
+   }
+   return { id: USAGE_STATS_SURFACE, label: "Cache", value, action: { kind: "surface", id: USAGE_STATS_SURFACE } }
+ }
+@@ -331,17 +299,16 @@ const UsageProtocolMetadataSchema = Schema.Struct({
+ })
+ 
+ const UsageTokensSchema = Schema.Struct({ input: NonNegativeInt, output: NonNegativeInt, cacheRead: NonNegativeInt, cacheWrite: NonNegativeInt, reasoning: NonNegativeInt, total: NonNegativeInt })
+-const UsageCoverageCountsFields = { attempts: NonNegativeInt, unmeasuredAttempts: NonNegativeInt, partialAttempts: NonNegativeInt, cacheComplete: Schema.Boolean }
+-const UsageModelSummarySchema = Schema.Struct({ model: Schema.NonEmptyString, ...UsageCoverageCountsFields, tokens: UsageTokensSchema, estimatedBilledUsd: NonNegativeFinite, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean })
+-const UsageStatsSummarySchema = Schema.Struct({ ...UsageCoverageCountsFields, tokens: UsageTokensSchema, estimatedBilledUsd: NonNegativeFinite, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean })
++const UsageModelSummarySchema = Schema.Struct({ model: Schema.NonEmptyString, attempts: NonNegativeInt, tokens: UsageTokensSchema, estimatedBilledUsd: NonNegativeFinite, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean })
++const UsageStatsSummarySchema = Schema.Struct({ attempts: NonNegativeInt, tokens: UsageTokensSchema, estimatedBilledUsd: NonNegativeFinite, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean })
+ const UsageToolStatsSchema = Schema.Struct({ name: Schema.NonEmptyString, calls: NonNegativeInt, errors: NonNegativeInt, blocked: NonNegativeInt, cancelled: NonNegativeInt, interrupted: NonNegativeInt, stopped: NonNegativeInt })
+ const UsageSessionStatsSchema: Schema.Codec<UsageSessionStats> = Schema.Struct({
+-  sessionId: Schema.NonEmptyString, asOf: NonNegativeInt, partial: Schema.Boolean, descendantCount: NonNegativeInt,
++  sessionId: Schema.NonEmptyString, asOf: NonNegativeInt, partial: Schema.Boolean, cacheComplete: Schema.Boolean, descendantCount: NonNegativeInt,
+   direct: UsageStatsSummarySchema, descendants: UsageStatsSummarySchema, totals: UsageStatsSummarySchema,
+   models: Schema.Array(UsageModelSummarySchema), tools: Schema.Array(UsageToolStatsSchema),
+   generation: GenerationStatisticsSchema,
+ })
+-const UsageAccountWindowSummarySchema = Schema.Struct({ ...UsageCoverageCountsFields, tokens: UsageTokensSchema, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean })
++const UsageAccountWindowSummarySchema = Schema.Struct({ attempts: NonNegativeInt, tokens: UsageTokensSchema, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean })
+ const UsagePeriodMetadataSchema = Schema.Struct({ startMs: NonNegativeInt, endMs: NonNegativeInt, trackingStartMs: NonNegativeInt, partial: Schema.Boolean, incomplete: Schema.Boolean })
+ const AvailableUsageAccountActivitySchema = UsageAccountWindowSummarySchema
+   .pipe(Schema.fieldsAssign(UsagePeriodMetadataSchema.fields), Schema.fieldsAssign({ state: Schema.Literal("available"), estimatedBilledUsd: NonNegativeFinite }))
+@@ -384,7 +351,7 @@ const UsageAccountSourceSchema = Schema.Union([
+ ])
+ export const UsageAccountsResultSchema: Schema.Codec<UsageAccountsResult> = UsageProtocolMetadataSchema.pipe(Schema.fieldsAssign({ kind: Schema.Literal("usage.accounts"), sources: Schema.Array(UsageAccountSourceSchema) }))
+ 
+-const UsageSpendSourceBaseSchema = Schema.Struct({ sourceId: Schema.NonEmptyString, label: Schema.NonEmptyString, active: Schema.Boolean, spendModes: Schema.Array(SpendModeSchema), ...UsageCoverageCountsFields, tokens: UsageTokensSchema, estimatedBilledUsd: NonNegativeFinite, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean, models: Schema.Array(UsageModelSummarySchema) })
++const UsageSpendSourceBaseSchema = Schema.Struct({ sourceId: Schema.NonEmptyString, label: Schema.NonEmptyString, active: Schema.Boolean, spendModes: Schema.Array(SpendModeSchema), attempts: NonNegativeInt, tokens: UsageTokensSchema, estimatedBilledUsd: NonNegativeFinite, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean, models: Schema.Array(UsageModelSummarySchema) })
+ const UsageSpendSourceSchema = Schema.Union([
+   UsageSpendSourceBaseSchema.pipe(Schema.fieldsAssign({ kind: Schema.Literal("subscription"), providerId: Schema.NonEmptyString })),
+   UsageSpendSourceBaseSchema.pipe(Schema.fieldsAssign({ kind: Schema.Literal("metered"), providerId: Schema.NonEmptyString })),
+@@ -414,11 +381,8 @@ const UsageMutationResultSchema: Schema.Codec<UsageMutationResult> = Schema.Unio
+ /** The surface both clients open for profile-scoped accounting and provider observations. */
+ export const USAGE_SURFACE = "usage"
+ export const USAGE_COMMAND = "usage"
+-/** The command's one name, which its surface also heads with. */
+-export const USAGE_COMMAND_NAME = "Usage"
+ export const USAGE_STATS_SURFACE = "usage-stats"
+ export const USAGE_STATS_COMMAND = "stats"
+-export const USAGE_STATS_COMMAND_NAME = "Stats"
+ export const USAGE_SPEND_SURFACE = "usage-spend"
+ 
+ /** Usage reads are parameterized and have no live cursor. The module owns
+diff --git a/tests/unit/infra/llm/provider-error-copy.test.ts b/tests/unit/infra/llm/provider-error-copy.test.ts
+index ec130f8..a1f7d11 100644
+--- a/tests/unit/infra/llm/provider-error-copy.test.ts
++++ b/tests/unit/infra/llm/provider-error-copy.test.ts
+@@ -152,25 +152,6 @@ describe("extractProviderErrorDetail", () => {
+   });
+ });
+ 
+-describe("exhaustedProvidersCopy", () => {
+-  it("names a banked reset in the line of each quota-refused account that holds one, without predicting that it helps", () => {
+-    const hint = "This account has a banked reset that you can apply in Usage (/usage).";
+-    const banked = exhaustedProvidersCopy([
+-      { provider: "ChatGPT", cause: "quota", detail: "out of quota", resetsAtMs: undefined, bankedReset: true },
+-      { provider: "OpenAI", cause: "quota", detail: "insufficient_quota", resetsAtMs: undefined },
+-    ]);
+-    expect(banked.title).toBe("Out of credits");
+-    expect(banked.detail).toBe(`ChatGPT: Out of credits. ${hint} out of quota OpenAI: Out of credits. insufficient_quota`);
+-    expect(banked.message).not.toContain("banked reset");
+-    // Embedded registers, such as a workflow step failure, render the lines.
+-    expect(providerErrorProse(banked)).toContain(`ChatGPT: Out of credits. ${hint}`);
+-
+-    // A reset restores used-up included usage only, so another refusal names none.
+-    const throttled = exhaustedProvidersCopy([{ provider: "ChatGPT", cause: "rate_limit", detail: "slow down", resetsAtMs: undefined, bankedReset: true }]);
+-    expect(throttled.detail).not.toContain("banked reset");
+-  });
+-});
+-
+ describe("exhaustedProvidersRecovery", () => {
+   const at = Date.parse("2026-10-10T12:00:00.000Z");
+ 
+diff --git a/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts b/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+index 0f62edc..ed305c9 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+@@ -1,8 +1,8 @@
+ import { describe, expect, test } from "bun:test";
+ import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+-import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
++import { describeAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
+ import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
+-import type { ProviderAvailability, RequestAdmission, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
++import type { ProviderAvailability, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
+ import { AllCandidatesExhaustedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
+ import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
+ import {
+@@ -10,9 +10,9 @@ import {
+   failoverFailure,
+   requestEvents,
+   executeStream,
+-  expectSafeRecheck,
+   fakeAvailability,
+   fakeClient,
++  noticeCollector,
+   run,
+   SAFE_RECHECK_MS,
+   streamOptions,
+@@ -126,7 +126,7 @@ describe("streamed failover", () => {
+       providerOptions: undefined,
+       ...streamOptions,
+       interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
+-      reasoningEffort: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined,
++      reasoningEffort: undefined, cacheRetention: undefined, providerSessionKey: undefined,
+       requestAudit: undefined, staleMasking: undefined, requestContext: undefined,
+       turn: 1, messageCount: 0, estimatedContextTokens: 200, onEvent: () => {},
+       estimatedInputTokenClasses: (attempt) => attempt.accessProvider === "openai_api"
+@@ -337,6 +337,7 @@ describe("expired-suppression probes", () => {
+ 
+ 
+   test("a quota probe the request could not conclude is handed back at once", async () => {
++    const sink = noticeCollector();
+     const availability = fakeAvailability({});
+     const client = chain({
+       candidates: [singletonCandidate("openai_api")],
+@@ -346,7 +347,7 @@ describe("expired-suppression probes", () => {
+     availability.availability.markQuotaExhausted(singletonCandidate("openai_api"));
+     availability.advance(SAFE_RECHECK_MS + 1);
+ 
+-    await expect(run(client)).rejects.toThrow(AllCandidatesExhaustedError);
++    await expect(run(client, sink)).rejects.toThrow(AllCandidatesExhaustedError);
+ 
+     // The failure said nothing about quota, so the quota probe concluded
+     // nothing: the lease went back and the next request rechecks immediately.
+@@ -394,13 +395,15 @@ describe("expired-suppression probes", () => {
+   });
+ 
+   test("a rejected live publication hands the probe back", async () => {
++    const sink = noticeCollector();
+     const base = fakeAvailability({});
+     base.availability.markQuotaExhausted(singletonCandidate("openai_api"));
+     base.advance(SAFE_RECHECK_MS + 1);
+     const client = probeChain({ ...base.availability, markQuotaLive: () => false }, () => true);
+ 
+-    expect(await run(client)).toEqual([textDelta("openai_api")]);
++    expect(await run(client, sink)).toEqual([textDelta("openai_api")]);
+     expect(base.probeReleases).toEqual(["openai_api"]);
++    expect(sink.operations).toEqual([]);
+   });
+ 
+   test("a planning read predicts the probe without claiming it", async () => {
+@@ -425,8 +428,8 @@ describe("expired-suppression probes", () => {
+ describe("all candidates exhausted", () => {
+   /** Aggregate rejection of one request over a chain no candidate can serve.
+    *  Holding the client is fine; the request is what cannot be served. */
+-  async function exhaustedChain(availability: ProviderAvailability, requestAdmission?: RequestAdmission): Promise<AllCandidatesExhaustedError> {
+-    const error = await requestEvents(chain({ availability, ...(requestAdmission === undefined ? {} : { requestAdmission }) })).then(
++  async function exhaustedChain(availability: ProviderAvailability): Promise<AllCandidatesExhaustedError> {
++    const error = await requestEvents(chain({ availability })).then(
+       () => { throw new Error("expected the request to reject") },
+       (thrown) => thrown,
+     );
+@@ -454,39 +457,20 @@ describe("all candidates exhausted", () => {
+     expect(copy.guidance).toContain("Wait until then");
+   });
+ 
+-  test("names a quota-refused account's banked reset from the request admission", async () => {
+-    const availability = fakeAvailability({ chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + 7_200_000 } });
+-    availability.availability.markQuotaExhausted(singletonCandidate("openai_api"), Date.now() + 3_600_000);
+-    const hint = "This account has a banked reset that you can apply in Usage (/usage).";
+-    const admission = (banked: boolean): RequestAdmission => ({
+-      subscriptionSpendAuthorizationFor: () => undefined,
+-      bankedResetFor: (candidate) => banked && candidate.providerId === "chatgpt",
+-    });
+-
+-    const banked = toFailureReason(await exhaustedChain(availability.availability, admission(true)));
+-    expect(describeAgentFailure(banked).title).toBe("Out of credits");
+-    // The transcript and headless record, and a workflow or subagent failure, all carry it.
+-    expect(blockedFailureRecord(describeAgentFailure(banked))).toContain(hint);
+-    expect(formatAgentFailure(banked)).toContain(hint);
+-    const none = toFailureReason(await exhaustedChain(availability.availability, admission(false)));
+-    expect(blockedFailureRecord(describeAgentFailure(none))).not.toContain("banked reset");
+-  });
+-
+   test("a failed quota recheck claim reports unavailability without inventing quota exhaustion or a reset", async () => {
+     // Every suppression now states its bound, so the one genuinely reset-less
+-    // rejection left is a due recheck whose probe claim could not land. The
+-    // request states no reset, but its recovery rechecks after the safe interval.
++    // rejection left is a due recheck whose probe claim could not land: the
++    // request holds back with no stated moment.
+     const availability = fakeAvailability({ probeClaimFails: true });
+     availability.availability.markQuotaExhausted(singletonCandidate("openai_api"));
+     availability.advance(SAFE_RECHECK_MS + 1);
+-    const before = Date.now();
+     const error = await requestEvents(chain({ availability: availability.availability, candidates: [singletonCandidate("openai_api")] })).then(
+       () => { throw new Error("expected the request to reject") },
+       (thrown) => thrown,
+     );
+-    expectSafeRecheck(error, before);
+     if (!(error instanceof AllCandidatesExhaustedError)) throw new Error("expected AllCandidatesExhaustedError");
+     expect(error.message).not.toContain("Capacity returns at");
++    expect(toFailureReason(error)).toMatchObject({ kind: "api_error", recovery: { kind: "retry" } });
+ 
+     const copy = describeAgentFailure(toFailureReason(error));
+     expect(copy.title).toBe("Provider unavailable");
+@@ -567,8 +551,6 @@ describe("spend-mode admission", () => {
+ 
+     const unreviewed = await refusal();
+     expect(unreviewed.detail).toBe("Subscription paid capacity requires review. Open Auth and select the account.");
+-    // Waiting does not change what the person allowed, so no bound is stated.
+-    expect(unreviewed.recovery).toEqual({ kind: "none" });
+     const skippedCopy = describeAgentFailure(toFailureReason(unreviewed));
+     expect(skippedCopy.title).toBe("No eligible provider");
+     expect(skippedCopy.detail).toContain(unreviewed.detail!);
+diff --git a/webview/src/modules/subscription-usage/sheet.tsx b/webview/src/modules/subscription-usage/sheet.tsx
+index b088a6f..25c51cc 100644
+--- a/webview/src/modules/subscription-usage/sheet.tsx
++++ b/webview/src/modules/subscription-usage/sheet.tsx
+@@ -2,7 +2,7 @@ import "./sheet.css"
+ import { createResource, createSignal, For, onMount, Show } from "solid-js"
+ import { Key } from "@solid-primitives/keyed"
+ 
+-import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageHistoryRange, historySeries, spendSeries, type HistorySeries, USAGE_COMMAND_NAME } from "../../../../src/protocol/modules/subscription-usage.js"
++import { USAGE_HISTORY_RANGES, type UsageAccountSource, type UsageHistoryRange, historySeries, spendSeries, type HistorySeries } from "../../../../src/protocol/modules/subscription-usage.js"
+ import { actionKey } from "../../client/action-key.js"
+ import { describeFailure } from "../../client/failure-message.js"
+ 
+@@ -113,7 +113,7 @@ export function UsageSheet(props: { readonly initialView?: "accounts" | "spend"
+   const historySource = () => historySources().find((source) => source.sourceId === historySourceId()) ?? historySources()[0]
+ 
+   return (
+-    <Sheet title={USAGE_COMMAND_NAME} onClose={client.closeSheet} tools={<button class="ghost-text" aria-busy={client.actions.working(refreshKey) || undefined} onClick={refresh}>Refresh</button>}>
++    <Sheet title="Usage" onClose={client.closeSheet} tools={<button class="ghost-text" aria-busy={client.actions.working(refreshKey) || undefined} onClick={refresh}>Refresh</button>}>
+       <div class="usage-bar">
+         <SheetSegment value={view()} options={VIEWS} label="Usage view" onChange={setView} />
+         <span class="usage-status" classList={{ warn: status().warn }} aria-live="polite">{status().text}</span>

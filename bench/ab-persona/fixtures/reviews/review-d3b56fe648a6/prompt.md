@@ -1,0 +1,19 @@
+Review this completed change for defects and drift. Do not change files.
+
+CHANGE (uncommitted in the working tree; other chats also edit this tree, so review only these files):
+- src/orchestration/agent-runtime/tools/tool-paths.ts, search-paths.ts, read.ts, list.ts and tests/unit/orchestration/agent-runtime/tools/tool-paths.test.ts, tools-read.test.ts, search-paths.test.ts, tools-list.test.ts: one bounded existing-path-list interpreter (existingPathList) for read, list, and search; selector-preserving batch reads; project-root candidates that compete with local candidates; local same-stem recovery separated from repository-wide basename completeness; no parent widening after an incomplete lookup; cancellation of batch preparation.
+- src/infra/code-mode/tool-runtime.ts, src/infra/code-mode/codemode.ts, src/infra/code-mode/interpreter/execute.ts, src/orchestration/modules/code-mode/invocation-guest.ts, src/orchestration/modules/code-mode/invocation-runner.ts, src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts, tests/unit/orchestration/modules/code-mode/code.test.ts: an optional host-owned unresolved-call hook so that a misspelled nested tool name in real code-mode source reaches the dispatcher's bounded name repair; JSON-text nested input read as an object.
+Read the diffs with git diff on those paths.
+
+DESIGN CONTEXT:
+- Design intent (fixed, carried in your request context): permissive tool-call handling per PI-AGENT-032 in docs/product-intent/agent-methods.md. A call whose meaning is clear runs with a leading note; a valid value is never changed; no missing content is invented; the code never chooses between two meanings (it refuses with candidates); no safety, permission, policy, or containment check is relaxed.
+- Parent decisions: project-root recovery is allowed only inside projectRoot, symlink-safe, outside protected roots, and only for a path that would pass the admission of the same path written explicitly; repository basename discovery stays inside executionCwd. Mutation tools never retarget to another file. Nested name recovery stays bounded by the invocation's exact callable map.
+- Recorded deviations (classify each as consistent with the intent or as drift): a comma inside a search brace glob is encoded as [,] after a native probe; an unrecoverable nested name now gets the host's callable-map refusal instead of the interpreter's own discovery suggestion; the generic code-mode runtime without the hook keeps exact lookup.
+
+PROJECT CONTEXT PATHS: docs/product-intent/agent-methods.md (PI-AGENT-032), docs/adrs/adr-009-tool-execution-safety.md, docs/adrs/adr-005-flywheel-design-principles.md.
+
+Look hardest for: a path interpretation that silently picks one of two existing meanings; an exponential or unbounded interpretation search; a heal that reaches a path explicit admission would refuse; a sealed-path or protected-root bypass; the code-mode hook letting a script call something outside its callable map, escaping execution accounting, or changing behavior for runtimes without the hook; a repair without its note.
+
+Verification you may run: bun --env-file=.env.test test on the listed test files (set FLYWHEEL_NATIVE_DIR="$PWD/crates/ripgrep"), and throwaway probes in your scratchpad against the real functions.
+
+Use code-scope locations: <repo-relative-path>:<line>. Investigate ambiguous evidence with targeted commands before reporting it. Return prose findings, one block each with Title, Severity (P1, P2, P3), Location, Failure (principle, intent, observation, consequence), and Fix, or state No findings. Mark runtime claims you could not verify as UNVERIFIED.

@@ -1,0 +1,139 @@
+diff --git a/docs/product-intent/interaction.md b/docs/product-intent/interaction.md
+index a7e4ab3..bab346d 100644
+--- a/docs/product-intent/interaction.md
++++ b/docs/product-intent/interaction.md
+@@ -158,7 +158,7 @@ The card shows the currently connected backend's version, including at the top o
+ 
+ ## PI-INTERACTION-017: The web command menu opens on settings in expected-use order and shows commands to typing
+ 
+-On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, with the most-used settings first. Each setting that changes one value in place also appears in that menu with its control. It lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name, kind, and description. A line under the menu states how many commands and skills are available. That line and the Commands row open a sheet of the whole catalog by kind, with descriptions and use counts. Picking an entry puts it in the composer. Workflows have no slash command or catalog entry: the person asks the chat to write and launch one. An open menu keeps its place while the session works. State changes update rows without returning a scrolled reader to the top.
++On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, with the most-used settings first. Each setting that changes one value in place also appears in that menu with its control. It lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name and description. A line under the menu states how many commands are available. That line and the Commands row open a sheet of the whole catalog in menu order, with descriptions and use counts. Picking an entry puts it in the composer. Workflows have no slash command or catalog entry: the person asks the chat to write and launch one. An open menu keeps its place while the session works. State changes update rows without returning a scrolled reader to the top.
+ 
+ The terminal's command menu ranks commands by how often the person used each one. Command use counts are one account-global record the runtime keeps, and the web Commands sheet shows them.
+ 
+@@ -234,7 +234,7 @@ In the terminal and the web client, typing `@` in the composer opens a list of t
+ 
+ ## PI-INTERACTION-031: Files and photos attach to a message on every client
+ 
+-On the web client a `+` control beside `/` opens a short menu: add files or photos from this device, or mention a project file. Files or photos chosen there, pasted into the composer, or dropped onto it attach to the next message and show as removable chips until it is sent. In the terminal, pasting a clipboard image, dragging or pasting one local image path, or choosing files through `/attach` attaches through the same message contract. A dragged image path shows its numbered image marker at once, not the path first. Enter waits for an image that is still loading and then sends the complete message once. If loading fails, a clear notice appears and the draft remains available without sending an empty image or its filename. The model sees an attached image as an image and an attached text file as its text with its name; a file of another kind or over the size limit is refused with a notice naming the file and what is accepted. A message can consist only of attachments. Queued and sent messages show one marker per attachment and preview attached images below their text, including when the session is reopened. Each preview preserves its proportions and stays within a bounded area smaller than the viewport. Activating a preview opens the retained full-resolution image in a viewer with fitting, zoom, and scrolling controls. Closing the viewer returns to the chat. Images behind an open modal do not show through its opaque background. On every client, `@` mentions a project file by path without attaching its bytes.
++On the web client a `+` control beside `/` opens a short menu: add files or photos from this device, or mention a project file. Files or photos chosen there, pasted into the composer, or dropped onto it attach to the next message and show as removable chips until it is sent. In the terminal, pasting a clipboard image, dragging or pasting one or more local image paths at once, or choosing files through `/attach` attaches through the same message contract. Each dragged image path shows its own numbered image marker at once, not the path first. Enter waits for an image that is still loading and then sends the complete message once. If loading fails, a clear notice appears and the draft remains available without sending an empty image or its filename. The model sees an attached image as an image and an attached text file as its text with its name; a file of another kind or over the size limit is refused with a notice naming the file and what is accepted. A message can consist only of attachments. Queued and sent messages show one marker per attachment and preview attached images below their text, including when the session is reopened. Each preview preserves its proportions and stays within a bounded area smaller than the viewport. Activating a preview opens the retained full-resolution image in a viewer with fitting, zoom, and scrolling controls. Closing the viewer returns to the chat. Images behind an open modal do not show through its opaque background. On every client, `@` mentions a project file by path without attaching its bytes.
+ 
+ ## PI-INTERACTION-032: Thinking progress stays honest
+ 
+diff --git a/src/tui/hooks/composer-attachments.ts b/src/tui/hooks/composer-attachments.ts
+index a998fdf..e93e080 100644
+--- a/src/tui/hooks/composer-attachments.ts
++++ b/src/tui/hooks/composer-attachments.ts
+@@ -29,6 +29,16 @@ function pathText(text: string, cwd: string): { paths: readonly string[]; text:
+   return paths.size > 0 ? { paths: [...paths], text } : undefined
+ }
+ 
++/** Splits the paste into separators at even and candidates at odd indexes. A
++ *  terminal drops several files as absolute paths separated by unescaped
++ *  whitespace; any other paste stays one candidate, so a single path keeps a
++ *  real space in its name. */
++function pasteParts(text: string): readonly string[] {
++  const parts = text.split(/((?:\\[\s\S]|\S)+)/)
++  const candidates = parts.filter((_, index) => index % 2 === 1)
++  return candidates.length > 1 && candidates.every((candidate) => isAbsolute(candidate)) ? parts : ["", text]
++}
++
+ async function findImagePath(paths: readonly string[]): Promise<string | undefined> {
+   for (const path of paths) {
+     try {
+@@ -348,19 +358,32 @@ export function createPromptAttachments(
+     return false
+   }
+ 
+-  /** Reserves an image marker synchronously for one syntactic absolute image path. */
++  /** Reserves an image marker synchronously for each syntactic absolute image
++   *  path in the paste; other paths and separators stay as text. */
+   function claimPasteText(text: string): boolean {
+     const ownership = captureOwnership()
+     if (!ownership) return false
+-    const paste = pathText(text, options.cwd ?? process.cwd())
+-    if (!paste || !paste.paths.some((path) => IMAGE_PATH.test(path))) return false
+-    const marker = attachmentMarker("image", nextAttachmentOrdinal([...items().map((item) => item.marker), ...[...pending].filter((item) => item.token.owner === ownership.owner).map((item) => item.token.marker)]))
+-    ownership.target.insertText(marker)
+-    const token = { owner: ownership.owner, marker, active: true }
+-    const entry = { token, done: attachPastedPath(paste, token) }
+-    pending.add(entry)
++    const cwd = options.cwd ?? process.cwd()
++    const parts = pasteParts(text).map((part, index) => {
++      const paste = index % 2 === 1 ? pathText(part, cwd) : undefined
++      return paste?.paths.some((path) => IMAGE_PATH.test(path)) ? paste : part
++    })
++    if (parts.every((part) => typeof part === "string")) return false
++    let inserted = ""
++    for (const part of parts) {
++      if (typeof part === "string") {
++        inserted += part
++        continue
++      }
++      const marker = attachmentMarker("image", nextAttachmentOrdinal([...items().map((item) => item.marker), ...[...pending].filter((item) => item.token.owner === ownership.owner).map((item) => item.token.marker)]))
++      const token = { owner: ownership.owner, marker, active: true }
++      const entry = { token, done: attachPastedPath(part, token) }
++      pending.add(entry)
++      void entry.done.finally(() => untrack(() => { pending.delete(entry); syncExtmarks() }))
++      inserted += marker
++    }
++    ownership.target.insertText(inserted)
+     options.onChange?.()
+-    void entry.done.finally(() => untrack(() => { pending.delete(entry); syncExtmarks() }))
+     return true
+   }
+ 
+diff --git a/tests/unit/tui/hooks/prompt-attachments.test.ts b/tests/unit/tui/hooks/prompt-attachments.test.ts
+index 830399b..420e94f 100644
+--- a/tests/unit/tui/hooks/prompt-attachments.test.ts
++++ b/tests/unit/tui/hooks/prompt-attachments.test.ts
+@@ -162,6 +162,49 @@ describe("createPromptAttachments", () => {
+     expect(attachments.serialize(textarea.plainText)).toHaveLength(1)
+   })
+ 
++  it("attaches each image of a multi-file terminal drop and keeps other paths as text", async () => {
++    const images = new Set(["/scratch/one.png", "/scratch/My Shot.png"])
++    const { textarea } = createFakeTextarea("compare ")
++    const attachments = createPromptAttachments(syntax, () => "chat-1", noClipboard, {
++      findImagePath: async (paths) => paths.find((candidate) => images.has(candidate)),
++      readPathAttachment: async (file) => ({ attachment: { mediaType: "image/png", data: "aW1n", name: path.basename(file) } }),
++    })
++    attachments.attach(textarea)
++
++    expect(attachments.claimPasteText("/scratch/one.png /scratch/notes.txt\n/scratch/My\\ Shot.png ")).toBe(true)
++    expect(textarea.plainText).toBe("compare [Image #1] /scratch/notes.txt\n[Image #2] ")
++    const submission = await attachments.prepareSubmission(textarea.plainText, "chat-1")
++
++    expect(submission).toEqual({
++      text: "compare [Image #1] /scratch/notes.txt\n[Image #2] ",
++      attachments: [
++        { marker: "[Image #1]", mediaType: "image/png", data: "aW1n", name: "one.png" },
++        { marker: "[Image #2]", mediaType: "image/png", data: "aW1n", name: "My Shot.png" },
++      ],
++    })
++  })
++
++  it("restores only the dropped path that fails to read", async () => {
++    const warnings: string[] = []
++    const { textarea } = createFakeTextarea()
++    const attachments = createPromptAttachments(syntax, () => "chat-1", noClipboard, {
++      findImagePath: async (paths) => paths[0],
++      readPathAttachment: async (file) => {
++        if (file.endsWith("gone.png")) throw new Error("gone")
++        return { attachment: { mediaType: "image/png", data: "aW1n", name: path.basename(file) } }
++      },
++      report: (message) => { warnings.push(message) },
++    })
++    attachments.attach(textarea)
++
++    attachments.claimPasteText("/scratch/kept.png /scratch/gone\\ now/gone.png ")
++    for (let index = 0; index < 8; index += 1) await Promise.resolve()
++
++    expect(textarea.plainText).toBe("[Image #1] /scratch/gone\\ now/gone.png ")
++    expect(warnings).toEqual(["Could not attach gone.png. The file is no longer readable. The path remains in the draft."])
++    expect(attachments.serialize(textarea.plainText)).toMatchObject([{ marker: "[Image #1]", name: "kept.png" }])
++  })
++
+   it("leaves a pasted text-file path as ordinary text", async () => {
+     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "prompt-text-path-"))
+     temporaryDirectories.push(directory)

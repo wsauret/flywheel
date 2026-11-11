@@ -1,0 +1,891 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 566a183..53488a6 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -5,28 +5,27 @@
+ **Runtime:** Bun (not Node) | **TUI:** OpenTUI + SolidJS | **Config:** TOML
+ **SolidJS requires the `"browser"` export condition.** `bin/flywheel` handles this via `bun --conditions=browser`.
+ 
+-This file is the complete guide for contributors. The maintainer also checks out a small private companion repository at the gitignored `private/` folder of the clone. Its @private/AGENTS.maintainer.md adds the rules for the maintainer's shared working tree, publication, and release readiness. That import is optional: a contributor's checkout has no `private/` folder, the import then loads nothing, and every rule a contributor needs is in this file.
+-
+ ## 1. Hard Rules
+ 
+ - MAXIMIZE *ELEGANCE*, NOT MINIMIZE CHURN! THIS IS THE MOST IMPORTANT PRINCIPLE FOR EVERY DESIGN! Always pick the design that maximizes elegance no matter how big the refactor. Better now than months down the line when there are even more dependencies in place.
+ 
+-- `docs/elegance.md` is Flywheel's canonical project-specific definition of elegance and the rubric for architecture audits. Read it in full when judging whether the project is maximally elegant. This file operationalizes much of that standard for coding agents, but not in full.
++- `docs/guides/elegance.md` is Flywheel's canonical project-specific definition of elegance and the rubric for architecture audits. Read it in full when judging whether the project is maximally elegant. This file operationalizes much of that standard for coding agents, but not in full.
+ 
++- Completed and superseded plans are permanent implementation records. Never delete them. Move them to `docs/plans/archive/` and remove their entries from `docs/plans/README.md`.
+ - Handle only reachable states. A state is reachable when a person or an external producer can cause it through a supported entry point: a client surface, the CLI, the published protocol as shipped clients use it, or an external boundary such as a provider stream, a subprocess, or the file system. A state that only a direct internal call or a test fixture can create is hypothetical: add no code for it, and do not treat a test that asserts it as a product requirement. Before you call a failure a regression, trace how a person reaches it. When a test fails on a state that no person can reach, rewrite the test around the reachable flow instead of changing the product.
+ - This repository opts into the living product-intent authority indexed by `docs/product-intent/README.md`. Before changing or judging user-observable Flywheel behavior, read the index and the relevant domain file. A conflict with the persisted corpus is a bug or blocker, unless the person states a different intent; then the corpus changes to match it.
+-- Before judging whether a subscription route follows its provider's terms, read `docs/provider-terms.md`. This covers the Claude engine route, the sign-in client IDs, the request headers that identify a client, and the use of several accounts of one provider. Flywheel follows precedent: a practice that widely used open-source agents ship publicly is acceptable. The page's section "How a review uses this page" lists the practices that the maintainer settled on that basis. A review or an audit never reports one of them as a finding, a blocker, or a risk, also when it finds provider terms that the page does not quote. Only the reopen events that the page names reopen a question.
+-- Repository code, comments, and documents name no other coding-agent harness. `docs/provider-terms.md` is the one place that names such projects as precedent. Credit for borrowed work goes in `THIRD-PARTY-NOTICES.md` and the license bundles, and a file or directory that a notice cites by path keeps its upstream references. The only other names allowed are external identifiers that Flywheel must spell exactly to interoperate, such as an environment variable, a header, or a model id, and benchmark arms that run another harness as the comparison treatment.
+ - This repository opts into the living architecture-intent authority indexed by `docs/architecture-intent/README.md`. Before changing or judging Flywheel's internal organization, read the index and the relevant domain file. A conflict with the persisted corpus is a bug or blocker, unless the person states a different intent; then the corpus changes to match it. `docs/terminology.md` is the lexicon for Flywheel's terms.
+ 
+ - Chat captures design intent (PI-AGENT-003, ARCH-AGENCY-015), every implementation route returns a first draft (ARCH-AGENCY-020), and the agent that holds the intent revises the draft from its recorded deviations and the review's findings until it realizes the design, adding nothing beyond it (ARCH-AGENCY-021, ARCH-AGENCY-023, ARCH-AGENCY-024). Read `docs/architecture-intent/agency.md` before changing any implementer prompt, dispatch prompt, or result contract (ARCH-AGENCY-026).
+ 
+ - Every commit message follows this repository's changelog contract. Use `<type>(<scope>)?: <subject>`, with type `feat`, `fix`, `perf`, `docs`, `refactor`, `test`, `chore`, or `release`. The optional scope is lowercase. Write an imperative lowercase subject with no trailing period. About 72 characters is a readability target, not a validated limit or a reason to rewrite a commit. Reserve `feat`, `fix`, and `perf` for observable shipped-product outcomes, with subjects that stand alone as release notes. Use `chore` for CI, release-process, and repository-tooling work, including speed improvements. Add a `Changelog:` trailer when the engineering subject differs from the user-facing sentence. Pair `!` after the type with a `BREAKING CHANGE:` body paragraph stating what breaks and what the user must do. Group one complete user-visible unit per commit, including its supporting tests and refactors. Validate a draft message before committing by piping it to `bun run scripts/commit-contract.ts check-message`; `check --base <sha> --head <sha>` validates existing commits. Public release notes are generated from commit history: `bun run release` reads every commit whose header parses and drops the rest, so a header that does not parse is a release note lost.
+ 
++- There are other agents working on this tree. NEVER discard changes not related to your work! It is not because your subagent went rogue, it is because another independent agent working at my direction made changes and I do not want them lost! Never stash those changes, including through `--autostash`, and never remove them. Run the standard validation when it can produce a meaningful signal; if unrelated concurrent work blocks a global gate, run the narrowest relevant validation for your touched files. Do not "fix" any other agent's files unless asked. When a gate fails in another chat's file, tell that chat once (file, gate, exact error), then ignore failures in that file and publish your own work. Do not wait for its fix, coordinate its commits, or take over its publication. When the installed build fails on another chat's uncommitted work, build and verify from a worktree at your own commit. Knowing your own changes never requires git: track the files you touch yourself, and do not survey git status or diffs to protect concurrent work; simply avoid files outside your task. When publishing in a concurrent worktree, stage and commit each whole file your unit touched, including concurrent changes already present in that file. Never partial-stage, split, or omit another agent's changes within a touched file. Other agents can revise their work in later commits. Commits are the remote log of work completed, not rollback boundaries.
++- Keep local `main` at `origin/main`. Every committing agent brings in newer remote work itself; it is never a separate catch-up task. Before final verification, run `git merge --ff-only origin/main`. When Git refuses because of uncommitted overlap, continue: Ship integrates at publication by committing first and then merging, and names the selected files that the merge changed, which the caller checks again. After a push from a worktree, Ship also fast-forwards the local checkout of `main`. Never clone this repository on this machine: a clone's push leaves `main` and its tags behind origin. Use a worktree for a clean or isolated tree; `bun run release` fast-forwards `main` after its push.
+ - Startup responsiveness is load-bearing. Keep first-frame rendering, prompt input, and chat runner readiness free of noncritical synchronous work and contention. Defer optional initialization, maintenance, preloading, and views through owned background or lazy execution with contained failures. A change that can affect startup must pass `bun run test:perf`; a measured startup regression greater than 20% is never acceptable.
+ - Interactive clients attach through the one resident `flywheel serve` account service. It is the only production serving owner, opens isolated project compositions on demand, and owns dormant remote wake. Do not add per-project server rendezvous, serving processes, launch aliases, or a second remote coordinator.
+ - Local token counting uses the one committed universal tokenizer asset. Release and readiness rebuild it once from source, verify it, and reuse it in every archive. Each archive places it in the native directory of the immutable build, and the runtime loads it lazily from there. Ordinary development, startup, and token counting require neither Rust nor a tokenizer network request.
+-- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file. A derived database that rebuilds from the store, such as the session-summary index, the conversation search index, or the projection fold cache, is not durable user state: it keys what it keeps by the code identity or version that wrote it, and an entry it cannot prove current is a miss that rebuilds, with no conversion, dated comment, or warning.
++- Durable user state outlives the binary. Every change to an on-disk format, a config key, a model or provider identifier, or an auth credential shape ships in the same unit with a conversion from the previous shape, a comment stating the date after which the conversion is removed, and a test that feeds the previous shape. A reader that meets a shape it does not know says so in a warning and never silently discards or empties the user's state. Installing a newer release must never require a user to log in again, reselect a model, or repair a file.
+ - Flywheel supports macOS, Linux, and Windows as first-class platforms. Preserve platform-specific workarounds unless the user explicitly authorizes changing that compatibility contract. Every repository-owned Bun process launch in production code, tests, scripts, and benchmarks must state `windowsHide: true`; Windows job-object, console-hiding, ACL, path, and process-tree behavior is load-bearing. Platform compatibility tests and guards are locked acceptance contracts: when one fails after a change, fix the implementation. Never delete, skip, weaken, or rewrite the expected behavior to make it pass. If the implementation cannot satisfy the contract, stop and report a blocker.
+ 
+ ---
+@@ -53,19 +52,17 @@ When adopting prompts from other sources, copy the source verbatim and then make
+ | TUI state: stores, signals, memos, effects | `solid-reactivity` |
+ | Async lifecycle: Effect services, typed errors, fibers, disposal | `effect-lifecycle` |
+ | Rendering TUI output: text, layout, selection | `tui-rendering` |
+-| Writing or reviewing a web client surface so it never flickers or moves the reader | `webview-rendering` |
+ | Planning or reviewing a rendered user-facing surface: layout, styles, theming, interaction states | `interface-design` |
+ | Verifying the installed binary against real input | `flywheel-uat` |
+ | Verifying the packaged VS Code extension in a live editor | `vscode-uat` |
+ | Verifying the web client in a browser, on the preview page or over the relay | `webview-uat` |
+ | Verifying the phone app in the iOS Simulator, in Safari or installed | `ios-uat` |
+-| Debugging a session from its facts and diagnostic records | `session-debugging` |
+-| A refactor that must keep behavior unchanged across a seam | `refactor-safety-net` |
+-| Auditing a skill package or workflow brief prompt | `skill-prompt-audit` |
+ 
+ Authored workflows follow the conditional references in `workflow-authoring` for specification, implementation, and review briefs. Each brief composes its reusable method owners.
+ 
+-Reaching a skill: `action:"load"` returns one skill's instructions and names the files it declares, and `action:"resource"` returns one of those files. Some briefs and personas declare the skills they need as `dependencies`, so that text already sits in your prompt; loading is still your job for anything the prompt did not compose. Its owning skill, workflow, or persona composes a dependency. A dependency states one method and the shape of its own report only, so every dispatch, routing, or synthesis decision stays with the definition that composes it. Skills are for agents: a person never types a skill. Everything a person runs is a built-in slash command, and a command that needs an agent method, such as `/experiment design`, starts that skill's method as the chat's next turn. Reusable Flywheel agent methods and the references their bodies include ship under `src/agent-skills/`; a workflow states its own method in the inline briefs of its workflow file; Flywheel's own development methods (`flywheel-design`, `typescript-bun`, `effect-lifecycle`, `solid-reactivity`, `tui-rendering`, `webview-rendering`, `session-debugging`, `refactor-safety-net`, `skill-prompt-audit`, `flywheel-uat`, `vscode-uat`, `webview-uat`, and `ios-uat`) ship in the development module's bundle under `src/orchestration/modules/development/definitions/skills/` and exist only in a source run. External packages install from `~/.flywheel/skills` or the shared `~/.agents/skills`, and a skill added mid-session becomes available without a restart.
++Repository publication is delegated work, not a skill-loading task. After implementation, review, and verification are complete, parent chat agents send `ship` the files they changed and a short summary of user intent and implemented design. Use the tracked file list, not preparatory Git analysis. Do not send verification evidence or a prepared commit message. Ship owns Git inspection, integration, commit-message writing, whole-file staging including concurrent edits, commit, and push. Follow the local-main rule above when integration changes verified files. Do not ask it to separate authorship, select hunks, or create isolation worktrees. Parent chat agents never load the `ship` skill themselves.
++
++Reaching a skill: `action:"load"` returns one skill's instructions and names the files it declares, and `action:"resource"` returns one of those files. Some briefs and personas declare the skills they need as `dependencies`, so that text already sits in your prompt; loading is still your job for anything the prompt did not compose. A dependency is not user-invocable; its owning skill, workflow, or persona composes it. A dependency states one method and the shape of its own report only, so every dispatch, routing, or synthesis decision stays with the definition that composes it. A user invokes any other skill that is not Flywheel-managed with `/<id>`, such as `/typescript-bun`. A skill marked `managed: flywheel` uses `/learned.<id>` and a `[Learned Skill]` description label. Reusable Flywheel agent methods ship under `src/agent-skills/`; workflow-owned methods ship under `src/workflows/skills/`; Flywheel's own development methods (`flywheel-design`, `typescript-bun`, `effect-lifecycle`, `solid-reactivity`, `tui-rendering`, `flywheel-uat`, `vscode-uat`, `webview-uat`, and `ios-uat`) ship in the development module's bundle under `src/orchestration/modules/development/definitions/skills/` and exist only in a source run. External packages install from `~/.flywheel/skills` or the shared `~/.agents/skills`, and a skill added mid-session becomes available without a restart.
+ 
+ ---
+ 
+@@ -103,6 +100,10 @@ Reaching a skill: `action:"load"` returns one skill's instructions and names the
+ 
+ ## 5. Validation
+ 
++### Release readiness ownership
++
++The current agent owns full release readiness across macOS, Linux, and Windows. Run the complete macOS readiness pass and its declared Linux containers, then run the complete native Windows pass through the `windows-ssh` skill. Do not stop at local success or hand Windows testing to another agent by default. Follow `docs/guides/deployment-readiness-playbook.md` and `docs/guides/windows-deployment-readiness-playbook.md` for the same candidate revision. Preserve remote isolation and the user's installation. Report unavailable access or required desktop-only evidence as blockers, not passes. Cross-compilation does not prove runtime behavior. This requirement applies to chat agents, development-mode agents, and release skills.
++
+ **Always use `bun run` scripts - avoid invoking tools directly.**
+ 
+ **A dependency change ships whole.** A unit that adds, removes, or upgrades a package commits `package.json` and `bun.lock` together, and `bun install --frozen-lockfile` must pass on the result. Its handoff to the user states that checkouts need `bun install`. `bun run install:local` runs `bun install --frozen-lockfile` before it builds, so a pull that changes dependencies never breaks the local install.
+@@ -119,14 +120,18 @@ Launch a scratch script that imports `src/` with `bun --env-file=.env.test`, or
+ |---|---|---|
+ | `bun run test` | Before committing a unit | Fast unit suite |
+ | `bun run test:integration:no-api` | Release readiness; rarely for an explicit request or an evidence gap that focused checks cannot close | Every file under `tests/integration/` except `providers/`; needs no credentials and costs nothing |
++| `bun run test:integration:api` | Release readiness; rarely for an explicit request or a provider evidence gap that a focused live script cannot close | `tests/integration/providers/`, which serves `gpt-6-luna` on the hardcoded `Personal` auth profile through production routing, so a subscription or an API key can serve it and each run spends quota or money; it fails when that profile cannot serve the model. Its Claude engine tier runs on the Claude login of the same `Personal` profile and fails without one |
++| `bun run test:integration:claude-engine` | Release readiness on a bump of the pinned Claude Agent SDK, which runs it on the release login of each host; rarely for an explicit request | `tests/integration/providers/claude-sdk-subscription-real.test.ts` alone: the Claude engine live tier, on the Claude login of the `Personal` auth profile. It needs no other credential, spends included usage only, and fails without that login |
++| `bun run test:integration:all` | Before a release, or to run every integration test | The `no-api` and `api` modes, in that order |
+ | `bun run lint` | Before committing a unit | TypeScript for `src` and separately for `tests` and `scripts`, oxlint including SolidJS reactivity, unused exports, file and naming limits, safety comments, terminal I/O, owned-process launches, and doc coherence |
+ | `bun run check:boundaries` | After adding/moving files | Source-layer and client-host dependency enforcement |
+ | `bun run lint:module-containment` | After changing a module, registry, module home, protocol domain, or fact family | Fails registry/home drift, foreign imports into module homes, and module-owned vocabulary outside its owner; `scripts/module-containment-allowlist.ts` is permanently empty |
+ | `bun run test:perf` | After a change that can affect startup | Builds the host archive and measures startup (empty store, large store, and a remote first attach through a loopback relay) against absolute budgets and the published baseline in one run; startup regressions above 20% fail. Run it alone on the machine; a concurrent gate inflates both |
++| `bun run test:perf:release` | Before a release (`bun run release` runs it) | The full performance set: startup plus session modal, runner reconciliation, scroll, and account-service memory against their absolute ceilings |
+ 
+-`tsconfig.json` covers `src` only, so `tests` and `scripts` are type-checked by their own project (`tsconfig.tests.json`) through `lint:test-types`. Both must stay free of type errors.
++`tsconfig.json` covers `src` only, so `tests` and `scripts` are type-checked by their own project (`tsconfig.tests.json`) through `lint:test-types`. That check is a ratchet over `scripts/test-types-baseline.txt`, which states how many errors each file is known to carry: a file that gains one fails, a file that loses one fails until its ledger row is lowered with `bun run lint:test-types -- --update <path>` (or every improved row with `--update-all`), and a file absent from the ledger must be clean. Never raise a count to make the gate pass; the ledger only shrinks. A file you touch is a good place to pay some of it down.
+ 
+-Run these commands bare. Do not pipe them through `head`, `tail`, `grep`, or any other output filter. They already pre-filter their output to failures, so read the complete output directly.
++Run these commands bare. Do not pipe them through `head`, `tail`, `grep`, or any other output filter. They already pre-filter their output to failures, so read the complete output directly. If unrelated concurrent work blocks a global gate, keep the worktree intact, run the narrowest relevant validation for your touched files instead.
+ 
+ These gates bind the session that owns the change. A delegated subagent runs only the verification its brief names, at most once before handoff; the dispatching session owns the suite-level gates above.
+ 
+@@ -188,9 +193,9 @@ src/
+ 
+ **Dependency direction (one-way):** infra <- protocol <- workflows <- orchestration <- tui.
+ 
+-- Import nothing from `src/` except `src/protocol/` in the three workspace members outside it (ARCH-STRUCTURE-001, ARCH-STRUCTURE-043, ARCH-PROTOCOL-003, ARCH-PROTOCOL-031): `webview/` (the web client, with host shells in `webview/local/` and `webview/editor/`), `vscode/` (the editor host, which takes the host contract from `src/protocol/client/`), and `relay/` (the phone host and the relay Worker).
++- Import nothing from `src/` except `src/protocol/` in the three workspace members outside it (ARCH-STRUCTURE-001, ARCH-PROTOCOL-003, ARCH-PROTOCOL-031): `webview/` (the web client, with host shells in `webview/local/` and `webview/editor/`), `vscode/` (the editor host, which takes the host contract from `src/protocol/client/`), and `relay/` (the phone host and the relay Worker).
+ - `bun run check:boundaries` enforces all three, and `bun run lint:relay` type-checks both relay deployables against their own runtimes. `bun run lint:webview` adds the client's stylesheet gate: colours, font sizes, z-indexes, and container widths come only from `webview/src/styles/tokens.css` and its width ladder (ARCH-PROTOCOL-064).
+-- Keep every client surface (terminal, desktop web, phone web, and editor) mounted while the thing it shows exists. UI state belongs to the surface and stays local, and network updates patch it in place (PI-INTERACTION-062, ARCH-PROTOCOL-062). Stability takes precedence over showing new data sooner. For the web method and guard tests, load the `webview-rendering` package before you change a web client surface.
++- Keep every client surface (terminal, desktop web, phone web, and editor) mounted while the thing it shows exists. UI state belongs to the surface and stays local, and network updates patch it in place (PI-INTERACTION-062, ARCH-PROTOCOL-062). Stability takes precedence over showing new data sooner. For the web method and guard tests, read `docs/guides/webview-render-continuity.md` before you change a web client surface.
+ - Run `bun run check:boundaries` after any file addition or move.
+ - Render ordinary TUI action buttons with `src/tui/components/button.tsx`, never a copy of its styling in a new clickable box; callers own actions, keyboard routing, and progress text. Tabs, selectable rows, header chrome, and transcript-inline Stop/Detach keep their specialized rendering (ARCH-PROTOCOL-065).
+ 
+@@ -262,12 +267,12 @@ Durable per-session state, including each conversation's typed checkpoint and ev
+ 
+ Instrument every decision so that a person can tell what happened, when, and why, and keep the logs storage-neutral. Every diagnostic record you add or touch follows these rules:
+ 
+-- One INFO record per decision, state change, or finished unit of work, with the evidence it rested on. Every kill, restart, refusal, replacement or update step, registration change, and exit is recorded once (ARCH-RUNTIME-076).
+-- Per-call, per-request, and per-iteration paths log at DEBUG. `loggedOperation` in `src/infra/operation-log.ts` writes a start and done pair as one done record with its duration, above DEBUG only past `slowMs` or on failure (ARCH-RUNTIME-076).
+-- No content in a record: ids, byte counts, hashes, and kinds only. Conversation text, tool output, prompts, and file content live in `.flywheel/flywheel.sqlite`, which `flywheel events search` reads (ARCH-RUNTIME-075).
+-- Repeats coalesce: the first occurrence of a condition records, and later repeats become one count reported when the condition ends or changes. `coalesceRepeats` in `src/infra/repeat-coalescer.ts` does this, and an owner whose failures repeat routes them to it through the `onFailure` option of `loggedOperation` (ARCH-RUNTIME-077).
+-- `src/infra/diagnostics-registry.ts` decides every record family's tier: `info`, `debug`, or `notable`, which reaches the default level only for a record its producer marks failed or slow. An unregistered type is DEBUG, `bun run lint:diagnostics` enforces the registry, and `tests/integration/local/diagnostics-volume-budget.test.ts` fails when steady-state log volume grows (ARCH-RUNTIME-078).
++- One INFO record per decision, state change, or finished unit of work, with the evidence it rested on. Every kill, restart, refusal, replacement or update step, registration change, and exit is recorded once.
++- Per-call, per-request, and per-iteration paths log at DEBUG. `loggedOperation` in `src/infra/operation-log.ts` writes a start and done pair as one done record with its duration, above DEBUG only past `slowMs` or on failure.
++- No content in a record: ids, byte counts, hashes, and kinds only. Conversation text, tool output, prompts, and file content live in `.flywheel/flywheel.sqlite`, which `flywheel events search` reads.
++- Repeats coalesce: the first occurrence of a condition records, and later repeats become one count reported when the condition ends or changes. `coalesceRepeats` in `src/infra/repeat-coalescer.ts` does this, and an owner whose failures repeat routes them to it through the `onFailure` option of `loggedOperation`.
++- `src/infra/diagnostics-registry.ts` decides every record family's tier: `info`, `debug`, or `notable`, which reaches the default level only for a record its producer marks failed or slow. An unregistered type is DEBUG, `bun run lint:diagnostics` enforces the registry, and `tests/integration/local/diagnostics-volume-budget.test.ts` fails when steady-state log volume grows.
+ 
+-The folder layout, the fact and debug-log split, content-addressed tool text, the in-flight-state rule, the store maintenance commands, and the diagnostics mechanics are in `docs/architecture.md`, "Session Artifacts" and its "Diagnostics" part. Read them when adding per-session state, a fact family, or a diagnostic record. When debugging a session, load the `session-debugging` package.
++The folder layout, the fact and debug-log split, content-addressed tool text, the in-flight-state rule, the `events search` recipes, and the diagnostics volume tiers are in `docs/guides/session-debugging.md`. Read it when adding per-session state, a fact family, or a diagnostic record, and when debugging a session.
+ 
+ </coding_guidelines>
+diff --git a/docs/architecture-intent/README.md b/docs/architecture-intent/README.md
+index 12e67ab..8611c2d 100644
+--- a/docs/architecture-intent/README.md
++++ b/docs/architecture-intent/README.md
+@@ -8,7 +8,7 @@ An architecture-intent statement can describe an organization that the implement
+ 
+ - Product intent (`docs/product-intent/`) states what experience the product must provide.
+ - Architecture intent states how Flywheel's internals must be organized to provide it.
+-- `docs/elegance.md` states the elegance rubric that judges both.
++- `docs/guides/elegance.md` states the elegance rubric that judges both.
+ - Designs and plans state what change is approved for delivery.
+ - Code and tests provide implementation and evidence. They do not define architecture intent by themselves.
+ 
+diff --git a/src/orchestration/app-service/project-state-channel.ts b/src/orchestration/app-service/project-state-channel.ts
+index 35ac7ef..2a151d7 100644
+--- a/src/orchestration/app-service/project-state-channel.ts
++++ b/src/orchestration/app-service/project-state-channel.ts
+@@ -9,12 +9,11 @@ import {
+   decodeProjectStateMessage,
+   decodeProjectStateRequest,
+   encodeProjectStateResponse,
+-  encodeProjectStateResponseFrame,
+   encodeProjectStateSessionChange,
+   encodeProjectStateStored,
+   type ProjectStateRequest,
+   type ProjectStateResponse,
+-  type ProjectStateResponseFrame,
++  type ProjectStateServed,
+ } from "./project-state-protocol.js"
+ 
+ /** Who a served state channel answers. An executor generation's writes are
+@@ -101,13 +100,12 @@ export function connectProjectStateChannel(
+   endpoint: InternalProcessEndpoint<unknown, unknown> & Partial<Pick<ReattachableProcessEndpoint<unknown, unknown>, "onDetach">>,
+   peer: ProjectStatePeer,
+ ): ProjectStateClient {
+-  const responses = new Set<(frame: ProjectStateResponseFrame) => boolean>()
++  const responses = new Set<(response: ProjectStateResponse) => void>()
+   const inFlight = new Set<number>()
+-  const answer = (frame: ProjectStateResponseFrame): void => {
+-    inFlight.delete(frame.id)
+-    for (const listener of responses) if (!listener(frame)) endpoint.close("invalid project state response")
++  const answer = (response: ProjectStateResponse): void => {
++    inFlight.delete(response.id)
++    for (const listener of responses) listener(response)
+   }
+-  const fail = (response: ProjectStateResponse): void => answer(encodeProjectStateResponseFrame(response))
+   // A request in flight when the transport was lost has an unknown outcome:
+   // its bytes may or may not have reached the account. It fails with that
+   // truth instead of waiting forever or being replayed as a second write.
+@@ -116,7 +114,7 @@ export function connectProjectStateChannel(
+     for (const listener of detached) listener()
+     const ids = [...inFlight]
+     inFlight.clear()
+-    for (const id of ids) fail({ id, result: { kind: "failed", error: new Error(`project state channel detached before the reply arrived; the outcome is unknown: ${cause.message}`) } })
++    for (const id of ids) answer({ id, result: { kind: "failed", error: new Error(`project state channel detached before the reply arrived; the outcome is unknown: ${cause.message}`) } })
+   })
+   const stored = new Set<(events: readonly StoredFact[]) => void>()
+   const sessions = new Set<(change: SessionMetadataChange) => void>()
+@@ -132,7 +130,7 @@ export function connectProjectStateChannel(
+   endpoint.onClose((error) => lose(error.message))
+   endpoint.onMessage((value) => {
+     const message = decodeProjectStateMessage(value)
+-    if (message?.kind === "response") answer(message.frame)
++    if (message?.kind === "response") answer(message.response)
+     else if (message?.kind === "stored") for (const listener of stored) listener(message.events)
+     else if (message?.kind === "session-change") for (const listener of sessions) listener(message.change)
+     else endpoint.close("invalid project state response")
+@@ -161,7 +159,7 @@ export function connectProjectStateChannel(
+       void endpoint.send(encoded).catch((cause: unknown) => {
+         if (lost || !inFlight.has(request.id)) return
+         const error = cause instanceof Error ? cause : new Error(String(cause))
+-        fail({ id: request.id, result: { kind: "failed", error } })
++        answer({ id: request.id, result: { kind: "failed", error } })
+       })
+     },
+     onResponse(listener) {
+@@ -198,23 +196,21 @@ async function serveRequest(
+   peer: ProjectStatePeer,
+   send: (message: unknown) => void,
+ ): Promise<void> {
+-  // A relayed answer is the Worker's frame, head included, which the peer
+-  // reads; an answer the account makes itself has no head, because the
+-  // Worker read nothing for it.
+-  const refuse = (message: string): Uint8Array => encodeProjectStateResponse({ id: request.id, result: { kind: "refused", reason: "invalid", message } })
+   try {
+     const operation = request.operation
+-    let response: Uint8Array
++    // A relayed answer keeps the Worker's head; an answer the account makes
++    // itself has none, because the Worker read nothing for it.
++    let served: ProjectStateServed
+     switch (operation.kind) {
+       case "generation.admit":
+       case "generation.close":
+       case "generation.recover":
+-        response = refuse("Peer connections cannot control generation admission")
++        served = { result: { kind: "refused", reason: "invalid", message: "Peer connections cannot control generation admission" } }
+         break
+       case "execution.operation":
+-        response = peer.kind === "executor" && operation.projectId === peer.projectId && operation.generation === peer.generation
+-          ? await state.relay("execution", operation, request.id)
+-          : refuse("Peer generation does not match its channel")
++        served = peer.kind === "executor" && operation.projectId === peer.projectId && operation.generation === peer.generation
++          ? await state.relay("execution", operation)
++          : { result: { kind: "refused", reason: "invalid", message: "Peer generation does not match its channel" } }
+         break
+       case "position.capture":
+       case "facts.latest-position":
+@@ -229,14 +225,14 @@ async function serveRequest(
+       case "content.page":
+       case "content.node":
+       case "content.range":
+-        response = await state.relay("control", operation, request.id)
++        served = await state.relay("control", operation)
+         break
+       default:
+-        response = peer.kind === "executor"
+-          ? refuse("Executor writes require their generation wrapper")
+-          : await state.relay("control", operation, request.id)
++        served = peer.kind === "executor"
++          ? { result: { kind: "refused", reason: "invalid", message: "Executor writes require their generation wrapper" } }
++          : await state.relay("control", operation)
+     }
+-    send(response)
++    send(encodeProjectStateResponse({ id: request.id, ...served }))
+   } catch (cause) {
+     const error = cause instanceof Error ? cause : new Error(String(cause))
+     send(encodeProjectStateResponse({ id: request.id, result: { kind: "failed", error } }))
+diff --git a/src/orchestration/app-service/project-state-client.ts b/src/orchestration/app-service/project-state-client.ts
+index dde3a02..43532c3 100644
+--- a/src/orchestration/app-service/project-state-client.ts
++++ b/src/orchestration/app-service/project-state-client.ts
+@@ -1,4 +1,6 @@
++import { createBoundedWorkerSpawner, WorkerRoleAlreadyLive } from "../../infra/bounded-worker-spawner.js"
+ import { trackLoopSpan } from "../../infra/event-loop-lag.js"
++import type { StartupReached } from "../../protocol/startup-steps.js"
+ import {
+   CorruptEventRowError,
+   StateRequestNotServedError,
+@@ -18,31 +20,35 @@ import { Log } from "../../infra/log.js"
+ import { errorMessage } from "../../infra/error-message.js"
+ import type { ContentResolver } from "../../infra/tool-content.js"
+ import { storedToolContentReferences } from "../../infra/tool-content-hydration.js"
++import { terminateWorker } from "../../infra/worker-termination.js"
++import type { ProjectDirectories } from "../../infra/directory-authorities.js"
++import type { ProjectStateStandby } from "./project-state-standby.js"
+ import type { SessionMetadataChange } from "../session/manager.js"
+ import { createProjectStateSessionManager, type ProjectStateSessionManager } from "./project-state-sessions.js"
+ import { createProjectStateCommitWindow } from "./project-state-commit-window.js"
+ import { createProjectStateFreshness } from "./project-state-freshness.js"
+ import { recoveryOwnersOf } from "./session-recovery-gate.js"
+ import {
+-  decodeProjectStateResponse,
++  decodeProjectStateMessage,
++  decodeProjectStateStartupStep,
+   validateProjectStateRequest,
++  decodeProjectStateClosed,
+   PROJECT_STATE_MAX_BYTES,
+   PROJECT_STATE_MAX_QUEUED_ITEMS,
+   PROJECT_STATE_MAX_PAGE_ROWS,
+   operationUnits,
+   encodeProjectStateRequest,
+-  encodeProjectStateResponse,
+-  readdressProjectStateResponse,
+   type ProjectStateContentReference,
+   type ProjectStateContentRow,
+   type ProjectStateControlOperation,
+   type ProjectStateExecutionOperation,
+   type ProjectStateLane,
+   type ProjectStateRequest,
+-  type ProjectStateResponseFrame,
++  type ProjectStateResponse,
+   type ProjectStateResult,
+   type ProjectStateServed,
+   type ProjectStateSettlement,
++  type ProjectStateWorkerInit,
+ } from "./project-state-protocol.js"
+ 
+ /** The state Worker is gone or broke its protocol, so no request reaches it.
+@@ -57,10 +63,7 @@ export class ProjectStateUnavailableError extends StateRequestNotServedError {
+ export interface ProjectStateClientTransport {
+   prepare?(request: ProjectStateRequest): ProjectStateRequest
+   send(request: ProjectStateRequest, encoded: Uint8Array): void
+-  /** Delivers each response with its body unread. The listener answers
+-   *  false for a response it cannot read, and the transport then closes as it
+-   *  does for any other invalid message. */
+-  onResponse(listener: (frame: ProjectStateResponseFrame) => boolean): void
++  onResponse(listener: (response: ProjectStateResponse) => void): void
+   onClose(listener: (reason: string, cause?: Error) => void): void
+   onSessionChange(listener: (change: SessionMetadataChange) => void): () => void
+   onStored(listener: (events: readonly StoredFact[]) => void): () => void
+@@ -89,12 +92,10 @@ export interface ProjectStateClient extends AsyncEventStateReadSurface {
+   onStored(listener: (events: readonly StoredFact[]) => void): () => void
+   control(operation: ProjectStateControlOperation): Promise<ProjectStateResult>
+   execution(operation: ProjectStateExecutionOperation): Promise<ProjectStateResult>
+-  /** Sends one request on `lane` and answers the response frame for the
+-   *  peer's request `id`: the state Worker's frame, head included, readdressed
+-   *  with its body unread, or a frame of the answer this client gave itself,
+-   *  such as a refusal for pressure. The peer reads and validates the body.
+-   *  Fails as `control` and `execution` do. */
+-  relay(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation, id: number): Promise<Uint8Array>
++  /** Sends one request on `lane` and answers what the state Worker served,
++   *  with its head, so a channel that relays the answer to a peer relays
++   *  the head too. Fails as `control` and `execution` do. */
++  relay(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation): Promise<ProjectStateServed>
+   close(): Promise<void>
+ }
+ 
+@@ -104,8 +105,6 @@ interface PendingRequest {
+   readonly units: number
+   readonly capture: boolean
+   readonly resolve: (served: ProjectStateServed) => void
+-  /** Set for a relay, which takes the state Worker's frame unread. */
+-  readonly relay: ((frame: ProjectStateResponseFrame) => void) | undefined
+   readonly reject: (error: ProjectStateUnavailableError) => void
+ }
+ 
+@@ -214,39 +213,24 @@ export function createProjectStateClient(
+     return result.affected
+   }
+ 
+-  transport.onResponse((frame) => {
+-    const pendingRequest = pending.get(frame.id)
+-    if (!pendingRequest) return true
+-    if (pendingRequest.relay) {
+-      settle(frame.id, pendingRequest, undefined)
+-      pendingRequest.relay(frame)
+-    } else {
+-      const response = decodeProjectStateResponse(frame.bytes)
+-      if (!response) return false
+-      settle(frame.id, pendingRequest, response)
+-      pendingRequest.resolve(response)
+-    }
+-    if (pending.size === 0) idle?.()
+-    return true
+-  })
+-
+-  /** Releases an answered request's admission. A relayed answer is unread,
+-   *  so it gives the window no head, as an answer without one does. */
+-  function settle(id: number, pendingRequest: PendingRequest, served: ProjectStateServed | undefined): void {
+-    pending.delete(id)
++  transport.onResponse((response) => {
++    const pendingRequest = pending.get(response.id)
++    if (!pendingRequest) return
++    pending.delete(response.id)
+     totals[pendingRequest.lane].items -= pendingRequest.units
+     totals[pendingRequest.lane].bytes -= pendingRequest.bytes
+     // Before the requester resumes, so a read it starts next sees the window
+     // anchored at the head.
+     if (commitWindow && freshness) {
+-      const head = served?.head
+-      const result = served?.result
++      const { head, result } = response
+       if (head !== undefined) commitWindow.observe(head)
+-      if (pendingRequest.capture && result?.kind === "position") commitWindow.observe(result.position)
+-      const capture = !pendingRequest.capture || !result ? undefined : result.kind === "position" ? result.position : stateReadError(result)
+-      freshness.answered(id, head, capture)
++      if (pendingRequest.capture && result.kind === "position") commitWindow.observe(result.position)
++      const capture = !pendingRequest.capture ? undefined : result.kind === "position" ? result.position : stateReadError(result)
++      freshness.answered(response.id, head, capture)
+     }
+-  }
++    pendingRequest.resolve(response)
++    if (pending.size === 0) idle?.()
++  })
+   transport.onClose((reason, cause) => {
+     available = false
+     // A closed transport never comes back, so the window answers nothing more.
+@@ -262,16 +246,14 @@ export function createProjectStateClient(
+     return dispatch(lane, operation, (served) => served.result)
+   }
+ 
++  function exchange(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation): Promise<ProjectStateServed> {
++    // A relay sends the head under its own request id, so the answer drops this one.
++    return dispatch(lane, operation, ({ result, head }) => head === undefined ? { result } : { result, head })
++  }
++
+   /** Sends one request and answers `answer` of what was served, in the one
+-   *  promise the caller holds. With `unread`, the state Worker's response
+-   *  reaches it unread instead; answers this client gives itself still go
+-   *  through `answer`. */
+-  function dispatch<T>(
+-    lane: ProjectStateLane,
+-    operation: ProjectStateControlOperation | ProjectStateExecutionOperation,
+-    answer: (served: ProjectStateServed) => T,
+-    unread?: (frame: ProjectStateResponseFrame) => T,
+-  ): Promise<T> {
++   *  promise the caller holds. */
++  function dispatch<T>(lane: ProjectStateLane, operation: ProjectStateControlOperation | ProjectStateExecutionOperation, answer: (served: ProjectStateServed) => T): Promise<T> {
+     if (!available) return Promise.reject(new ProjectStateUnavailableError("worker closed"))
+     const outbound = transport.prepare?.({ id: nextId, lane, operation }) ?? { id: nextId, lane, operation }
+     try {
+@@ -297,7 +279,6 @@ export function createProjectStateClient(
+       pending.set(id, {
+         ...admission, lane: outbound.lane, capture: operation === CAPTURE,
+         resolve: (served) => { end(); holdAppendedContent(operation, served.result); resolve(answer(served)) },
+-        relay: unread && ((frame) => { end(); resolve(unread(frame)) }),
+         reject: (error) => { end(); reject(error) },
+       })
+       total.items += admission.units
+@@ -346,26 +327,21 @@ export function createProjectStateClient(
+     ? () => available ? freshness.barrier() : Promise.reject(new ProjectStateUnavailableError("worker closed"))
+     : requestCapture
+ 
+-  const readPage: ProjectStateClient["readPage"] = async (query, upperPosition, afterPosition, tolerant, requestedContent, evidence) => {
+-    const content = requestedContent ?? "eager"
++  const readPage: ProjectStateClient["readPage"] = async (query, upperPosition, afterPosition, tolerant = false, content = "eager") => {
+     let upper = upperPosition
+-    // Only the store holds fold evidence, so a page that asks for it never
+-    // comes from the window. Only a read the window could answer pays for
+-    // the barrier; any other read lets the state Worker capture its ceiling
+-    // in the same request.
+-    const windowed = evidence === undefined ? commitWindow : undefined
+-    if (upper === undefined && windowed?.mayAnswerPage(query, afterPosition)) upper = await capturePosition()
+-    const local = upper === undefined ? undefined : windowed?.page(query, upper, afterPosition)
++    // Only a read the window could answer pays for the barrier; any other
++    // read lets the state Worker capture its ceiling in the same request.
++    if (upper === undefined && commitWindow?.mayAnswerPage(query, afterPosition)) upper = await capturePosition()
++    const local = upper === undefined ? undefined : commitWindow?.page(query, upper, afterPosition)
+     if (upper !== undefined && local) {
+       return { ...local, upperPosition: upper, toolContent: await hydrateFacts(content === "eager" ? local.facts : []) }
+     }
+-    const result = await request("control", { kind: "facts.page", query, upperPosition: upper, afterPosition, tolerant: tolerant ?? false, content,
+-      maxRows: PROJECT_STATE_MAX_PAGE_ROWS, maxBytes: PROJECT_STATE_MAX_BYTES, ...(evidence ? { evidence } : {}) })
++    const result = await request("control", { kind: "facts.page", query, upperPosition: upper, afterPosition, tolerant, content,
++      maxRows: PROJECT_STATE_MAX_PAGE_ROWS, maxBytes: PROJECT_STATE_MAX_BYTES })
+     if (result.kind !== "facts") throw stateReadError(result)
+     return {
+       facts: result.facts, upperPosition: result.upperPosition, continuationPosition: result.continuationPosition,
+       toolContent: await hydrateFacts(content === "eager" ? result.facts : [], result.contentRows),
+-      ...(result.foldEvidence ? { foldEvidence: result.foldEvidence } : {}),
+     }
+   }
+ 
+@@ -451,9 +427,7 @@ export function createProjectStateClient(
+     },
+     control: (operation) => request("control", operation),
+     execution: (operation) => request("execution", operation),
+-    relay: (lane, operation, id) => dispatch(lane, operation,
+-      (served) => encodeProjectStateResponse({ id, ...served }),
+-      (frame) => readdressProjectStateResponse(frame, id)),
++    relay: exchange,
+     capturePosition,
+     async latestPosition(type) {
+       const result = await request("control", { kind: "facts.latest-position", type })
+@@ -599,3 +573,109 @@ function guardedResult(settlement: EventStoreItemSettlement): GuardedAppendResul
+   if (settlement.kind === "rejected") throw settlement.error
+   return settlement
+ }
++
++/** One acquisition owns this budget. Close and join its client before acquiring a replacement.
++ *  An acquisition first takes the account service's pre-started Worker, which
++ *  spends none of this budget because the standby's own budget counted it. */
++export interface ProjectStateWorkerSpawner {
++  acquire(): ProjectStateClient
++}
++
++export function spawnProjectStateWorker(directories: ProjectDirectories, executionCwd: string, workerUrl: string | URL, onStartupStep?: (reached: StartupReached) => void, standby?: Pick<ProjectStateStandby, "take">, predecessorPids?: readonly number[]): ProjectStateWorkerSpawner {
++  const spawn = createBoundedWorkerSpawner("project-state")
++  let active = false
++  const acquire = (): ProjectStateClient => {
++    if (active) throw new WorkerRoleAlreadyLive("project-state")
++    const worker = standby?.take() ?? spawn(workerUrl, { type: "module" })
++    active = true
++    const control = new MessageChannel()
++    const execution = new MessageChannel()
++    const listeners = new Set<(response: ProjectStateResponse) => void>()
++    const closeListeners = new Set<(reason: string, cause?: Error) => void>()
++    const sessionListeners = new Set<(change: SessionMetadataChange) => void>()
++    const storedListeners = new Set<(events: readonly StoredFact[]) => void>()
++    const shutdown = Promise.withResolvers<Error | null>()
++    let lost = false
++    let closeRequested = false
++    const listen = (event: MessageEvent) => {
++      const reached = decodeProjectStateStartupStep(event.data)
++      if (reached) {
++        onStartupStep?.(reached)
++        return
++      }
++      const message = decodeProjectStateMessage(event.data)
++      if (message?.kind === "response") for (const listener of listeners) listener(message.response)
++      else if (message?.kind === "stored") for (const listener of storedListeners) listener(message.events)
++      else if (message?.kind === "session-change") for (const listener of sessionListeners) listener(message.change)
++      else notifyClose("invalid worker response")
++    }
++    control.port1.addEventListener("message", listen)
++    execution.port1.addEventListener("message", listen)
++    control.port1.start()
++    execution.port1.start()
++    worker.addEventListener("error", (event) => notifyClose(event.message ? `worker error: ${event.message}` : "worker error"), { once: true })
++    worker.addEventListener("close", () => notifyClose("worker closed"), { once: true })
++    worker.addEventListener("message", (event) => {
++      const closed = decodeProjectStateClosed(event.data)
++      if (!closed) notifyClose("invalid worker shutdown response")
++      else if (closeRequested) shutdown.resolve(closed.error)
++      // A close nobody asked for is a start that failed, in its own words.
++      else if (closed.error === null) notifyClose("worker closed")
++      else notifyClose(closed.error.message, closed.error)
++    })
++    function notifyClose(reason: string, cause?: Error): void {
++      lost = true
++      shutdown.resolve(new ProjectStateUnavailableError(reason, cause))
++      for (const listener of closeListeners) listener(reason, cause)
++      closeListeners.clear()
++    }
++    const init: ProjectStateWorkerInit = {
++      flywheel: "state.init",
++      directories,
++      executionCwd,
++      predecessorPids,
++      controlPort: control.port2,
++      executionPort: execution.port2,
++    }
++    worker.postMessage(init, [control.port2, execution.port2])
++    return createProjectStateClient({
++      send(request, encoded) {
++        // oxlint-disable-next-line unicorn/require-post-message-target-origin -- boundary: MessagePort.postMessage has no target origin
++        (request.lane === "control" ? control.port1 : execution.port1).postMessage(encoded, [encoded.buffer])
++      },
++      onResponse(listener) {
++        listeners.add(listener)
++      },
++      onClose(listener) {
++        closeListeners.add(listener)
++      },
++      onSessionChange(listener) {
++        sessionListeners.add(listener)
++        return () => sessionListeners.delete(listener)
++      },
++      onStored(listener) {
++        storedListeners.add(listener)
++        return () => { storedListeners.delete(listener) }
++      },
++      async close() {
++        try {
++          if (!lost) {
++            closeRequested = true
++            // oxlint-disable-next-line unicorn/require-post-message-target-origin -- boundary: Bun Worker.postMessage has no target origin
++            worker.postMessage({ flywheel: "state.close" })
++            const failure = await shutdown.promise
++            if (failure) throw failure
++          }
++        } finally {
++          control.port1.close()
++          execution.port1.close()
++          sessionListeners.clear()
++          storedListeners.clear()
++          await terminateWorker(worker)
++          active = false
++        }
++      },
++    })
++  }
++  return { acquire }
++}
+diff --git a/src/orchestration/app-service/project-state-protocol.ts b/src/orchestration/app-service/project-state-protocol.ts
+index 20df0fb..c4f6127 100644
+--- a/src/orchestration/app-service/project-state-protocol.ts
++++ b/src/orchestration/app-service/project-state-protocol.ts
+@@ -1,4 +1,4 @@
+-import { pack, unpack, unpackMultiple } from "msgpackr"
++import { pack, unpack } from "msgpackr"
+ import { isStartupStep, type StartupReached } from "../../protocol/startup-steps.js"
+ import { Schema } from "effect"
+ import {
+@@ -7,8 +7,6 @@ import {
+   type EventStoreItemSettlement,
+   type EventStoreWriteItem,
+   type FactQuery,
+-  type FoldEvidence,
+-  type FoldEvidenceRequest,
+   type InFlightRecord,
+   type StoreAssignment,
+   type StoredFact,
+@@ -73,8 +71,6 @@ interface ProjectStateFactPageRequest {
+   readonly maxRows: number
+   readonly maxBytes: number
+   readonly tolerant?: boolean
+-  /** Asks for the fold evidence of `query` with the page (ARCH-SUBSTRATE-046). */
+-  readonly evidence?: FoldEvidenceRequest
+ }
+ 
+ export interface ProjectStateContentReference {
+@@ -142,7 +138,7 @@ export type ProjectStateResult =
+   | { readonly kind: "count"; readonly count: number }
+   | { readonly kind: "sequence"; readonly sequence: number }
+   | { readonly kind: "fact-slice"; readonly facts: readonly (StoredFact | CorruptEventRowError)[]; readonly contentRows: readonly ProjectStateContentRow[]; readonly encodedBytes: number }
+-  | { readonly kind: "facts"; readonly facts: readonly (StoredFact | CorruptEventRowError)[]; readonly contentRows: readonly ProjectStateContentRow[]; readonly upperPosition: number; readonly continuationPosition: number | null; readonly encodedBytes: number; readonly foldEvidence?: FoldEvidence }
++  | { readonly kind: "facts"; readonly facts: readonly (StoredFact | CorruptEventRowError)[]; readonly contentRows: readonly ProjectStateContentRow[]; readonly upperPosition: number; readonly continuationPosition: number | null; readonly encodedBytes: number }
+   | { readonly kind: "content"; readonly rows: readonly ProjectStateContentRow[]; readonly continuationOffset: number | null; readonly encodedBytes: number }
+   | { readonly kind: "content.node"; readonly sessionId: string; readonly sha256: string; readonly value: SessionContentUnavailable | { readonly kind: "available"; readonly node: SessionContentNode } }
+   | { readonly kind: "content.range"; readonly sessionId: string; readonly reference: SessionContentReference; readonly requestedOffset: number; readonly requestedLength: number; readonly range: SessionContentRange }
+@@ -297,43 +293,9 @@ function checkRequestRoute(request: ProjectStateRequest, lane: ProjectStateLane
+   }
+ }
+ 
+-/** A response whose request id was read and whose body was not. The frame
+- *  is two MessagePack values: the request id, then the body `{ head?, result }`
+- *  from `bodyOffset` on. A relay readdresses the frame to its peer's request
+- *  without reading the body, so only the peer that consumes it decodes it. */
+-export interface ProjectStateResponseFrame {
+-  readonly id: number
+-  readonly bytes: Uint8Array
+-  readonly bodyOffset: number
+-}
+-
+-/** Reads only the request id of a response frame, or undefined for bytes
+- *  that do not start with a request id and continue with a body. */
+-export function readProjectStateResponseFrame(bytes: Uint8Array): ProjectStateResponseFrame | undefined {
+-  let id: unknown
+-  let bodyOffset: number | undefined
+-  try {
+-    unpackMultiple(bytes, (value, _start, end) => {
+-      id = value
+-      bodyOffset = end
+-      return false
+-    })
+-  } catch {
+-    return undefined
+-  }
+-  return typeof id === "number" && Number.isSafeInteger(id) && id > 0 && bodyOffset !== undefined && bodyOffset < bytes.byteLength
+-    ? { id, bytes, bodyOffset }
+-    : undefined
+-}
+-
+-/** Reads and validates a whole response from the frame bytes that
+- *  `encodeProjectStateResponse` made, or undefined for any other message. */
+ export function decodeProjectStateResponse(value: unknown): ProjectStateResponse | undefined {
+-  if (!(value instanceof Uint8Array)) return undefined
+-  const frame = readProjectStateResponseFrame(value)
+-  if (!frame) return undefined
+   try {
+-    const { id, head, result } = Schema.decodeUnknownSync(ResponseSchema, { onExcessProperty: "error" })({ ...unpack(value.subarray(frame.bodyOffset)), id: frame.id })
++    const { id, head, result } = Schema.decodeUnknownSync(ResponseSchema, { onExcessProperty: "error" })(value instanceof Uint8Array ? unpack(value) : value)
+     return { id, result: decodedResult(result), ...(head === undefined ? {} : { head }) }
+   } catch {
+     return undefined
+@@ -375,19 +337,18 @@ function decodeProjectStateSessionChange(value: unknown): ProjectStateSessionCha
+ }
+ 
+ type ProjectStateMessage =
+-  | { readonly kind: "response"; readonly frame: ProjectStateResponseFrame }
++  | { readonly kind: "response"; readonly response: ProjectStateResponse }
+   | { readonly kind: "stored"; readonly events: readonly StoredFact[] }
+   | { readonly kind: "session-change"; readonly change: SessionMetadataChange }
+ 
+ /** One message a state client receives, or undefined for a message of no
+  *  kind it knows. A response is always the bytes `encodeProjectStateResponse`
+  *  made and a broadcast is always a tagged object, so each message meets only
+- *  the decoder of its own kind. A response arrives with its body unread: the
+- *  client reads the body of a request it consumes and relays the rest. */
++ *  the decoder of its own kind. */
+ export function decodeProjectStateMessage(value: unknown): ProjectStateMessage | undefined {
+   if (value instanceof Uint8Array) {
+-    const frame = readProjectStateResponseFrame(value)
+-    return frame && { kind: "response", frame }
++    const response = decodeProjectStateResponse(value)
++    return response && { kind: "response", response }
+   }
+   if (typeof value !== "object" || value === null || !("flywheel" in value)) return undefined
+   if (value.flywheel === "state.stored") {
+@@ -403,26 +364,7 @@ export function decodeProjectStateMessage(value: unknown): ProjectStateMessage |
+ 
+ /** Converts class-based errors to validated data in an owned, exact-size transferable buffer. */
+ export function encodeProjectStateResponse(response: ProjectStateResponse): Uint8Array {
+-  return encodeProjectStateResponseFrame(response).bytes
+-}
+-
+-export function encodeProjectStateResponseFrame(response: ProjectStateResponse): ProjectStateResponseFrame {
+-  const { id, ...body } = projectStateResponseData(response)
+-  return addressedFrame(id, pack(body))
+-}
+-
+-/** The same response addressed to request `id`, in an owned, exact-size
+- *  transferable buffer. The body is copied, not read. */
+-export function readdressProjectStateResponse(frame: ProjectStateResponseFrame, id: number): Uint8Array {
+-  return addressedFrame(id, frame.bytes.subarray(frame.bodyOffset)).bytes
+-}
+-
+-function addressedFrame(id: number, body: Uint8Array): ProjectStateResponseFrame {
+-  const address = pack(id)
+-  const bytes = new Uint8Array(address.byteLength + body.byteLength)
+-  bytes.set(address)
+-  bytes.set(body, address.byteLength)
+-  return { id, bytes, bodyOffset: address.byteLength }
++  return new Uint8Array(pack(projectStateResponseData(response)))
+ }
+ 
+ /** Typed code built the response, and the receiver decodes it, so encoding
+@@ -519,7 +461,7 @@ const WireControlOperationSchema = Schema.Union([
+   Schema.Struct({ kind: Schema.Literal("in-flight.profile"), inFlightKind: Schema.String, profileId: Schema.String }),
+   Schema.Struct({ kind: Schema.Literal("aggregate.count"), aggregateId: Schema.String }),
+   Schema.Struct({ kind: Schema.Literal("aggregate.sequence"), aggregateId: Schema.String }),
+-  Schema.Struct({ kind: Schema.Literal("facts.page"), query: QuerySchema, upperPosition: Schema.optional(Natural), content: Schema.optional(Schema.Literals(["eager", "deferred"])), afterPosition: Schema.optional(Natural), tolerant: Schema.optional(Schema.Boolean), evidence: Schema.optional(Schema.Struct({ anchorAt: Natural })), ...PageFields }),
++  Schema.Struct({ kind: Schema.Literal("facts.page"), query: QuerySchema, upperPosition: Schema.optional(Natural), content: Schema.optional(Schema.Literals(["eager", "deferred"])), afterPosition: Schema.optional(Natural), tolerant: Schema.optional(Schema.Boolean), ...PageFields }),
+   Schema.Struct({ kind: Schema.Literal("content.page"), references: Schema.Array(ReferenceSchema), offset: Schema.optional(Natural), ...PageFields }),
+   Schema.Struct({ kind: Schema.Literal("content.stage"), sessionId: Schema.String, nodes: Schema.Array(SessionContentNodeRowSchema) }),
+   Schema.Struct({ kind: Schema.Literal("content.node"), sessionId: Schema.String, sha256: ContentHash, maxBytes: ContentBudget }),
+@@ -563,8 +505,7 @@ const ResponseSchema = Schema.Struct({
+     Schema.Struct({ kind: Schema.Literal("count"), count: Natural }),
+     Schema.Struct({ kind: Schema.Literal("sequence"), sequence: Schema.Int.check(Schema.isGreaterThanOrEqualTo(-1)) }),
+     Schema.Struct({ kind: Schema.Literal("fact-slice"), facts: Schema.Array(Schema.Union([StoredFactRow, Schema.Struct({ error: CorruptRowSchema })])), contentRows: Schema.Array(ContentRowSchema), encodedBytes: Natural }),
+-    Schema.Struct({ kind: Schema.Literal("facts"), facts: Schema.Array(Schema.Union([StoredFactRow, Schema.Struct({ error: CorruptRowSchema })])), contentRows: Schema.Array(ContentRowSchema), upperPosition: Natural, continuationPosition: Schema.NullOr(Natural), encodedBytes: Natural,
+-      foldEvidence: Schema.optional(Schema.Struct({ head: Natural, generation: Natural, anchor: Schema.NullOr(Schema.Struct({ position: Positive, id: Schema.String })) })) }),
++    Schema.Struct({ kind: Schema.Literal("facts"), facts: Schema.Array(Schema.Union([StoredFactRow, Schema.Struct({ error: CorruptRowSchema })])), contentRows: Schema.Array(ContentRowSchema), upperPosition: Natural, continuationPosition: Schema.NullOr(Natural), encodedBytes: Natural }),
+     Schema.Struct({ kind: Schema.Literal("content"), rows: Schema.Array(ContentRowSchema), continuationOffset: Schema.NullOr(Natural), encodedBytes: Natural }),
+     Schema.Struct({ kind: Schema.Literal("content.node"), sessionId: Schema.String, sha256: ContentHash, value: Schema.Union([
+       ContentUnavailableSchema, Schema.Struct({ kind: Schema.Literal("available"), node: SessionContentNodeSchema }),
+diff --git a/tests/unit/infra/event-loop-lag.test.ts b/tests/unit/infra/event-loop-lag.test.ts
+index 34fcc56..1c3d5ef 100644
+--- a/tests/unit/infra/event-loop-lag.test.ts
++++ b/tests/unit/infra/event-loop-lag.test.ts
+@@ -5,7 +5,7 @@ import { createEventProjection } from "../../../src/infra/event-projection"
+ import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types"
+ import { inMemoryEventReader } from "../../helpers/in-memory-event-reader"
+ import { createProjectStateClient } from "../../../src/orchestration/app-service/project-state-client"
+-import { encodeProjectStateResponseFrame, type ProjectStateResponseFrame } from "../../../src/orchestration/app-service/project-state-protocol"
++import type { ProjectStateResponse } from "../../../src/orchestration/app-service/project-state-protocol"
+ 
+ describe("loop probes", () => {
+   test("late samples name the units that ran across the gap, summed per unit, and coalesce repeats", async () => {
+@@ -60,7 +60,7 @@ describe("loop probes", () => {
+       const repeatWindow = callbacks.shift()!
+       expect(repeatWindow.delay).toBe(60_000)
+       now = 260
+-      let respond: ((frame: ProjectStateResponseFrame) => boolean) | undefined
++      let respond: ((response: ProjectStateResponse) => void) | undefined
+       const state = createProjectStateClient({
+         send() {},
+         onResponse(listener) { respond = listener },
+@@ -79,7 +79,7 @@ describe("loop probes", () => {
+         reduce: (value) => { now = 450; return value },
+       })
+       await projection.replay()
+-      respond!(encodeProjectStateResponseFrame({ id: 1, result: { kind: "position", position: 1 } }))
++      respond!({ id: 1, result: { kind: "position", position: 1 } })
+       await position
+       await state.close()
+       now = 460
+diff --git a/tests/unit/orchestration/app-service/project-state-channel.test.ts b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+index 8de9874..8df9aa9 100644
+--- a/tests/unit/orchestration/app-service/project-state-channel.test.ts
++++ b/tests/unit/orchestration/app-service/project-state-channel.test.ts
+@@ -8,12 +8,12 @@ import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "
+ import { createReattachableProcessEndpoint } from "../../../../src/infra/reattachable-process-endpoint.js"
+ import { asAsyncEventWriter, CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused, type AsyncGuardedEventWriter, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+ import { connectProjectStateChannel, serveProjectStateChannel } from "../../../../src/orchestration/app-service/project-state-channel.js"
+-import { createProjectStateClient, type ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
++import type { ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
+ import { createProjectStateSessionManager } from "../../../../src/orchestration/app-service/project-state-sessions.js"
+-import type { ProjectStateControlOperation, ProjectStateExecutionOperation, ProjectStateRequest, ProjectStateResponseFrame, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import type { ProjectStateControlOperation, ProjectStateExecutionOperation, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
+ import { pack } from "msgpackr"
+-import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, encodeProjectStateResponseFrame, decodeProjectStateResponse, decodeProjectStateRequest, readProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
++import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, decodeProjectStateResponse, decodeProjectStateRequest } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+ import { ParentPublicationContendedError } from "../../../../src/orchestration/session/manager.js"
+ import { WorkflowParentRefusal } from "../../../../src/orchestration/session/child-session-publication.js"
+ import { buildSessionContent, buildSessionContentManifest, readSessionContentRecords } from "../../../../src/infra/session-content.js"
+@@ -147,10 +147,11 @@ function stateHarness() {
+     },
+     control,
+     execution,
+-    // The account's own state client answers the frame the Worker served, with its head.
++    // The account's own state client answers what the Worker served, with its head.
+     // Every execution operation names its project and no control operation does.
+-    relay: async (_lane, operation, id) => encodeProjectStateResponse({
+-      id, result: "projectId" in operation ? await execution(operation) : await control(operation), head: 1,
++    relay: async (_lane, operation) => ({
++      result: "projectId" in operation ? await execution(operation) : await control(operation),
++      head: 1,
+     }),
+     capturePosition: async () => 0,
+     latestPosition: async () => 0,
+@@ -422,93 +423,6 @@ describe("project state channel", () => {
+     executorEndpoint.close()
+   })
+ 
+-  test("relays the Worker's response unread: its body byte for byte under the executor's request id, read only by the executor", async () => {
+-    const [ownerEndpoint, executorEndpoint] = endpointPair()
+-    const workerRequests: ProjectStateRequest[] = []
+-    let workerAnswers: ((frame: ProjectStateResponseFrame) => boolean) | undefined
+-    let loseWorker: ((reason: string) => void) | undefined
+-    let requested = Promise.withResolvers<void>()
+-    const account = createProjectStateClient({
+-      send(request) { workerRequests.push(request); requested.resolve() },
+-      onResponse(listener) { workerAnswers = listener },
+-      onClose(listener) { loseWorker = listener },
+-      onSessionChange() { return () => {} },
+-      onStored() { return () => {} },
+-      close() {},
+-    })
+-    const dispose = serveProjectStateChannel(account, ownerEndpoint, { kind: "executor", projectId: "p", generation: 1 })
+-    const received: Uint8Array[] = []
+-    let arrived = Promise.withResolvers<void>()
+-    executorEndpoint.onMessage((value) => {
+-      if (!(value instanceof Uint8Array)) return
+-      received.push(value)
+-      arrived.resolve()
+-    })
+-    /** Sends the executor's request `id` and answers the Worker request it causes with `body`. */
+-    async function relayed(id: number, workerFrame: (workerId: number) => Uint8Array, evidence?: { readonly anchorAt: number }): Promise<Uint8Array> {
+-      requested = Promise.withResolvers()
+-      arrived = Promise.withResolvers()
+-      await executorEndpoint.send(encodeProjectStateRequest({ id, lane: "control", operation: { kind: "facts.page", query: { aggregateId: "a" }, maxRows: 1, maxBytes: 1024, ...(evidence ? { evidence } : {}) } }))
+-      await requested.promise
+-      // The account read nothing of the body, so it never refuses the frame.
+-      expect(workerAnswers?.(readProjectStateResponseFrame(workerFrame(workerRequests.at(-1)!.id))!)).toBe(true)
+-      await arrived.promise
+-      return received.at(-1)!
+-    }
+-
+-    const result = { kind: "facts", facts: [stateHarness().storedFact], contentRows: [], upperPosition: 5, continuationPosition: null, encodedBytes: 1 } as const
+-    let served: ProjectStateResponseFrame | undefined
+-    const page = await relayed(7, (workerId) => (served = encodeProjectStateResponseFrame({ id: workerId, head: 5, result })).bytes)
+-    const frame = readProjectStateResponseFrame(page)
+-    expect(frame?.id).toBe(7)
+-    expect(page.subarray(frame?.bodyOffset)).toEqual(served!.bytes.subarray(served!.bodyOffset))
+-    expect(decodeProjectStateResponse(page)).toEqual({ id: 7, head: 5, result })
+-
+-    // A page that asks for fold evidence: the account admits the request with
+-    // it, and the evidence in the answer's body reaches the executor.
+-    const proven = { ...result, foldEvidence: { head: 5, generation: 2, anchor: { position: 5, id: "evt_5" } } } as const
+-    const provenPage = await relayed(12, (workerId) => encodeProjectStateResponseFrame({ id: workerId, head: 5, result: proven }).bytes, { anchorAt: 5 })
+-    expect(workerRequests.at(-1)?.operation).toMatchObject({ kind: "facts.page", evidence: { anchorAt: 5 } })
+-    expect(decodeProjectStateResponse(provenPage)).toEqual({ id: 12, head: 5, result: proven })
+-
+-    // The body's exact bytes arrive even where msgpackr would encode them
+-    // differently: a map32 header in place of the map16 header it chooses.
+-    const canonical = served!.bytes.subarray(served!.bodyOffset)
+-    expect([...canonical.subarray(0, 3)]).toEqual([0xde, 0x00, 0x02])
+-    const wide = new Uint8Array([0xdf, 0x00, 0x00, 0x00, 0x02, ...canonical.subarray(3)])
+-    const widePage = await relayed(10, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), wide])))
+-    expect(widePage.subarray(readProjectStateResponseFrame(widePage)?.bodyOffset)).toEqual(wide)
+-    expect(decodeProjectStateResponse(widePage)).toEqual({ id: 10, head: 5, result })
+-
+-    // Bytes that are not MessagePack at all (0xc1 is never used) still reach
+-    // the executor unchanged, and the executor refuses them.
+-    const garbage = new Uint8Array([0xc1, 0xff, 0x00])
+-    const garbled = await relayed(11, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), garbage])))
+-    expect(garbled.subarray(readProjectStateResponseFrame(garbled)?.bodyOffset)).toEqual(garbage)
+-    expect(decodeProjectStateResponse(garbled)).toBeUndefined()
+-
+-    // A body no reader accepts still reaches the executor, whose decode is the
+-    // boundary that refuses it; a body the account consumes itself is read there.
+-    const unreadable = (workerId: number) => new Uint8Array(Buffer.concat([pack(workerId), pack({ result: { kind: "unknown" } })]))
+-    const invalid = await relayed(8, unreadable)
+-    expect(readProjectStateResponseFrame(invalid)?.id).toBe(8)
+-    expect(decodeProjectStateResponse(invalid)).toBeUndefined()
+-    const own = account.countByAggregate("a")
+-    expect(workerAnswers?.(readProjectStateResponseFrame(unreadable(workerRequests.at(-1)!.id))!)).toBe(false)
+-
+-    // A Worker that goes away fails the relayed request in its own words.
+-    arrived = Promise.withResolvers()
+-    requested = Promise.withResolvers()
+-    await executorEndpoint.send(encodeProjectStateRequest({ id: 9, lane: "control", operation: { kind: "position.capture" } }))
+-    await requested.promise
+-    loseWorker?.("worker closed")
+-    await expect(own).rejects.toMatchObject({ name: "ProjectStateUnavailableError" })
+-    await arrived.promise
+-    expect(decodeProjectStateResponse(received.at(-1))).toMatchObject({ id: 9, result: { kind: "failed", error: { message: "project state is unavailable: worker closed" } } })
+-    await dispose()
+-    executorEndpoint.close()
+-  })
+-
+   test("invalid request closes the channel without invoking account state", async () => {
+     const [ownerEndpoint, executorEndpoint] = endpointPair()
+     const account = stateHarness()

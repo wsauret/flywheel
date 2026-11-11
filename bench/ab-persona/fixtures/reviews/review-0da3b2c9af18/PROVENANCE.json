@@ -1,0 +1,72 @@
+{
+  "base": "a7a0d35d2500a66396ffe5fe5bbb6b41ba18af86",
+  "files": [
+    {
+      "anchor": null,
+      "path": "AGENTS.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "f986543a9804bebb3e8e040e036562b47450e196",
+      "path": "docs/product-intent/agent-methods.md",
+      "reversedMutations": 3
+    },
+    {
+      "anchor": "f3f571d7236068970c481578e0016efe4057cc0a",
+      "path": "docs/product-intent/interaction.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "d091690c23df05905c495fab22c371d40d07bdec",
+      "path": "src/orchestration/agent-runtime/tools/skill.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": null,
+      "path": "src/orchestration/app-service/command-invoke-service.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "d091690c23df05905c495fab22c371d40d07bdec",
+      "path": "src/orchestration/chat/session.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "d091690c23df05905c495fab22c371d40d07bdec",
+      "path": "tests/unit/orchestration/chat/chat-session.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793410470481,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -26,7 +26,7 @@\n \n Load and resource are read-only. Loading a skill does not activate it; you carry out its instructions yourself in this conversation.`;\n \n-const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work in front of you, call skill with action:\"load\" first and follow the loaded instructions, because the skill defines how that work is done here. A skill whose context already appears in this conversation (its `# Skill: <id>` block) is loaded, so follow it without loading it again. Read a file the instructions name with action:\"resource\".';\n+const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work in front of you, call skill with action:\"load\" first and follow the loaded instructions, because the skill defines how that work is done here. A skill whose context already appears in this conversation (its `# Skill: <id>` block) needs no repeat load to follow it; load it again only when a tool refusal asks for that load. Read a file the instructions name with action:\"resource\".';\n \n const INPUT_SCHEMA = {\n   type: \"object\",",
+              "mutation": "fff8cdb6-ddad-4347-a40f-b82cfb2ef5ad",
+              "path": "src/orchestration/agent-runtime/tools/skill.ts"
+            }
+          ],
+          "label": "distinguish-visible-skill-context-from-a-current-run-load",
+          "location": "src/orchestration/agent-runtime/tools/skill.ts:29",
+          "severity": "P2",
+          "title": "Distinguish visible skill context from a current-run load"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "c1eeb939b755",
+      "persona": "reviewer-code-elegance",
+      "run": "0da3b2c9af18",
+      "session": "7ba41f6b5194",
+      "start": 1793410253136
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}

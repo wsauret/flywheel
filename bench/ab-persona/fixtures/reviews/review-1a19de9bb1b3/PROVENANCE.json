@@ -1,0 +1,110 @@
+{
+  "base": "4c3f51fc7cb76a6e322d78eca4472000376a220c",
+  "files": [
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "AGENTS.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "docs/architecture-intent/substrate.md",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "fc3a1d3a02fcaa64c34c3ef80e48a44c0d27b703",
+      "path": "docs/guides/elegance.md",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "src/infra/prefix-view.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "src/infra/projection-registry.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "src/orchestration/modules/subagents/history/child-measures.ts",
+      "reversedMutations": 4
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "src/orchestration/modules/subagents/history/tool-summary.ts",
+      "reversedMutations": 1
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "src/orchestration/session/tool-execution-projection.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "tests/unit/orchestration/modules/subagents/child-measures.test.ts",
+      "reversedMutations": 0
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "tests/unit/orchestration/modules/subagents/tool-summary.test.ts",
+      "reversedMutations": 10
+    },
+    {
+      "anchor": "741205a2e2e9054a1636186efd6ff90e625e8fef",
+      "path": "tests/unit/orchestration/session/tool-execution-identity-projection.test.ts",
+      "reversedMutations": 0
+    }
+  ],
+  "otherWaves": [],
+  "possibleFixResidue": [
+    "src/infra/event-projection.ts",
+    "src/infra/ordered-lane.ts",
+    "src/infra/projection-fold-cache.ts",
+    "src/infra/read-queue.ts",
+    "src/orchestration/app-service/transcript-projection-cache.ts",
+    "src/orchestration/module-seams.ts",
+    "src/orchestration/modules.ts",
+    "src/orchestration/session/conversation/transcript-projection.ts",
+    "src/orchestration/session/module-tool-history.ts",
+    "src/orchestration/session/workflow-membership.ts",
+    "tests/unit/infra/projection-fold-cache-families.test.ts",
+    "tests/unit/infra/projection-fold-cache.test.ts"
+  ],
+  "runs": [
+    {
+      "effort": "high",
+      "end": 1793051308993,
+      "findings": [
+        {
+          "fix": [
+            {
+              "hunk": "@@ -67,14 +67,27 @@\n  *  is one held fold of its own measured facts: the first ask reads its history\n  *  once, and each later ask, from this reader or any other over the same\n  *  store, reads only the facts that child committed since. A change costs what\n- *  it committed whatever the child count or history length. */\n+ *  it committed whatever the child count or history length.\n+ *\n+ *  The reader pins each child it measures until it is disposed, so a parent\n+ *  with more children than the registry holds per family never has its first\n+ *  children's folds dropped and rebuilt from their start. A released fold\n+ *  stays held until the family's bound drops it: the next reader of the same\n+ *  parent, such as its reopened transcript, then advances it rather than\n+ *  folding it again. */\n export function createChildMeasureReader(reader: AsyncEventReadSurface): ChildMeasureReader {\n+  const releases = new Map<string, () => void>()\n+  let disposed = false\n   return {\n     async read(childSessionId, completionEventId) {\n       const key = `subagent-measure:${childSessionId}`\n+      if (!disposed && !releases.has(key)) releases.set(key, pinHeldProjection(reader, key))\n       const projection = heldProjection(reader, key, () => createEventProjection(reader, { name: key, aggregateId: `session:${childSessionId}`, ...CHILD_MEASURE_FOLD }))\n       return measureBefore(await projection.replay(), completionEventId)\n     },\n+    dispose() {\n+      disposed = true\n+    },\n   }\n }",
+              "mutation": "fd73a7a6-a6ef-4a8e-bc64-27d9cb24d6a9",
+              "path": "src/orchestration/modules/subagents/history/child-measures.ts"
+            },
+            {
+              "hunk": "@@ -87,6 +87,8 @@\n     },\n     dispose() {\n       disposed = true\n+      for (const release of releases.values()) release()\n+      releases.clear()\n     },\n   }\n }",
+              "mutation": "b472374f-5cbe-4857-a5cf-2039f917674a",
+              "path": "src/orchestration/modules/subagents/history/child-measures.ts"
+            }
+          ],
+          "label": "registry-eviction-makes-an-existing-card-reread-its-complete",
+          "location": "src/orchestration/modules/subagents/history/child-measures.ts:71-74; src/infra/projection-registry.ts:53",
+          "severity": "P2",
+          "title": "Registry eviction makes an existing card reread its complete child history"
+        }
+      ],
+      "model": "gpt-6-astra",
+      "parent": "a187df3b1b3a",
+      "persona": "reviewer-code-quality",
+      "run": "1a19de9bb1b3",
+      "session": "cb9084961c79",
+      "start": 1793051013567
+    }
+  ],
+  "scrubbedLines": {},
+  "unresolvedImports": [],
+  "variant": "restore"
+}
