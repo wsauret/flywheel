@@ -210,7 +210,7 @@ Deleting a profile first moves its saved sessions and workflows to a destination
 
 ## PI-MODEL-024: Provider-scoped prompt-cache retention
 
-People can set prompt-cache retention for each API provider that supports a retention control, and omitting it keeps the current default. A policy applies from the next request to that provider, including a fallback request, and never changes subscription policies or an explicitly uncached request. A provider refusal identifies a selected model that cannot serve the requested policy. A provider-managed policy does not promise a fixed cache lifetime.
+People can set prompt-cache retention for each API provider that supports a retention control. Without a setting, a provider that offers a choice of lifetime keeps a chat's cache for one hour and every other agent's for five minutes, and any other provider keeps its default. A policy applies from the next request to that provider, including a fallback request, and never changes subscription policies or an explicitly uncached request. A provider refusal identifies a selected model that cannot serve the requested policy. A provider-managed policy does not promise a fixed cache lifetime.
 
 ## PI-MODEL-025: Accounts of the earlier native Anthropic Subscription provider move to the Anthropic Subscription provider
 

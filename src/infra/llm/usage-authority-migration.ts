@@ -13,8 +13,9 @@ export function canonicalUsageEntry(entry: UsageEntry): string {
   const price = entry.price.kind === "priced"
     ? { kind: entry.price.kind, estimatedUsd: entry.price.estimatedUsd, rateCard: Object.fromEntries(Object.entries(entry.price.rateCard).sort(([left], [right]) => left.localeCompare(right))), provenance: entry.price.provenance }
     : { kind: entry.price.kind, reason: entry.price.reason };
-  const { input, output, cacheRead, cacheWrite, reasoning } = entry.tokens;
-  return JSON.stringify({ ...identity, currency: entry.currency, ...serving, tokens: { input, output, cacheRead, cacheWrite, reasoning }, classification: entry.classification, price, coverage: entry.coverage });
+  const { input, output, cacheRead, cacheWrite, cacheWrite1h, reasoning } = entry.tokens;
+  const tokens = { input, output, cacheRead, cacheWrite, ...(cacheWrite1h === undefined ? {} : { cacheWrite1h }), reasoning };
+  return JSON.stringify({ ...identity, currency: entry.currency, ...serving, tokens, classification: entry.classification, price, coverage: entry.coverage });
 }
 
 /** The bindings of one `usage_ledger` row, in its column order. An unmeasured entry and an unreported cache read

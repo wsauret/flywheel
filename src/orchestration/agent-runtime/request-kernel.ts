@@ -42,6 +42,33 @@ export function sharesTreeHost(purpose: AgentOptions["purpose"]): boolean {
   }
 }
 
+/** The prompt-cache lifetime that a session's requests ask for where Flywheel sets one (ARCH-PROVIDERS-078): one hour
+ *  for a root conversation, which waits on its children and on the person, and five minutes for every other purpose.
+ *  Replayed on 30 days of requests (2026-11-10), five minutes priced a chat's input at 1.40 times one hour, a workflow
+ *  agent's at 0.79 times, and a subagent's at 0.90 times. A person's `cache_retention` policy for the provider
+ *  replaces it (`resolveCacheRetention`). */
+export function defaultCacheRetention(purpose: AgentOptions["purpose"]): "5m" | "1h" {
+  switch (purpose.kind) {
+    case "interactive-chat":
+    case "unattended-chat":
+    case "headless-task":
+      return "1h";
+    case "workflow-agent":
+    case "workflow-follow-up":
+    case "subagent":
+    case "session-title":
+    case "chat-learning-review":
+    case "learning-review-audit":
+    case "chat-side-call":
+    case "subagent-failure-summary":
+    case "chat-routing-benchmark":
+    case "persona-benchmark":
+      return "5m";
+    default:
+      return assertNever(purpose);
+  }
+}
+
 /** What every request of one run gives its kernel: the run's options and surfaces and the owners that the run holds. */
 export interface KernelRunFacts {
   readonly options: Pick<RunnableAgentOptions, "userDataRoot" | "purpose" | "readOnly" | "allowedSubagentTypes" | "capabilityAccess">;

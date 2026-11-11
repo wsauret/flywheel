@@ -277,6 +277,7 @@ export interface AgentLoopOptions {
   lifecycle?: AgentLoopLifecycle;
   /** Used for fixed-selection calls without a request role. */
   reasoningEffort?: () => Promise<ReasoningEffort | undefined>;
+  /** The run's own prompt-cache lifetime (`defaultCacheRetention`), before a provider policy replaces it. */
   cacheRetention?: CacheRetention;
   providerOptions?: ProviderRequestOptions;
   maxLLMCalls?: number;

@@ -131,7 +131,7 @@ test.each([
 });
 
 describe("OpenRouter anthropic cache_control", () => {
-  test("marks the system prompt, last tool, and last message for anthropic/ models", async () => {
+  test.each([["1h", 3], ["5m", 0]] as const)("marks the system prompt, last tool, and last message for anthropic/ models with lifetime %s", async (cacheRetention, oneHourMarks) => {
     const capture: Capture = {};
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
@@ -142,12 +142,12 @@ describe("OpenRouter anthropic cache_control", () => {
 
     await drain(adapter, {
       tools: [{ name: "read", description: "read a file", input_schema: { type: "object" } }],
-      cacheRetention: "1h",
+      cacheRetention,
     });
 
     const markers = JSON.stringify(capture.params).match(/"cache_control"/g) ?? [];
     expect(markers).toHaveLength(3);
-    expect(JSON.stringify(capture.params)).toContain("\"ttl\":\"1h\"");
+    expect(JSON.stringify(capture.params).match(/"ttl":"1h"/g) ?? []).toHaveLength(oneHourMarks);
   });
 
   test("sends no markers for a non-anthropic OpenRouter model", async () => {

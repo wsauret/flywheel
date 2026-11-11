@@ -25,12 +25,17 @@ const UsagePriceSchema = Schema.Union([
 ]);
 
 /** A measured attempt. `complete` holds the provider's final report; `partial` holds lower bounds from an attempt
- *  that ended before it. A null `cacheRead` means the provider did not report cache reads. */
+ *  that ended before it. A null `cacheRead` means the provider did not report cache reads. `cacheWrite1h` is the part
+ *  of `cacheWrite` that the provider reports it kept for one hour; the rest of `cacheWrite` was kept for five minutes
+ *  (ARCH-PROVIDERS-079). An entry from before 2026-11-10, or of a provider that reports no split, has none. */
 export const MeasuredUsageEntrySchema = Schema.Struct({
   ...UsageAttemptFields,
   coverage: Schema.Literals(["complete", "partial"]),
   currency: Schema.Literal("USD"),
-  tokens: Schema.Struct({ input: NonNegativeInteger, output: NonNegativeInteger, cacheRead: Schema.NullOr(NonNegativeInteger), cacheWrite: NonNegativeInteger, reasoning: NonNegativeInteger }),
+  tokens: Schema.Struct({
+    input: NonNegativeInteger, output: NonNegativeInteger, cacheRead: Schema.NullOr(NonNegativeInteger), cacheWrite: NonNegativeInteger,
+    cacheWrite1h: Schema.optionalKey(NonNegativeInteger), reasoning: NonNegativeInteger,
+  }),
   price: UsagePriceSchema,
 });
 

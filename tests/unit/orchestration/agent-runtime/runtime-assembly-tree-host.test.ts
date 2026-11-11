@@ -59,7 +59,7 @@ describe("side calls of a chat tree", () => {
   })
 })
 
-describe("prompt-cache key of a run", () => {
+describe("prompt cache of a run", () => {
   const ROOT = "root-chat"
   /** An agent with a durable conversation of its own, in the session tree rooted at ROOT. */
   const treeAgent = (purpose: AgentOptions["purpose"]): Partial<AgentOptions> => ({
@@ -83,6 +83,14 @@ describe("prompt-cache key of a run", () => {
     // The identity stays the run's own key; only the cache group is the tree's.
     for (const run of [subagent, workflowAgent, sideCall]) expect({ providerSessionKey: run.providerSessionKey, promptCacheKey: run.promptCacheKey }).toEqual({ providerSessionKey: "conversation-1", promptCacheKey: ROOT })
     expect(outside.promptCacheKey).toBe("conversation-1")
+  })
+
+  it("asks for five minutes for every agent and side call of a chat tree, and one hour for a root conversation", async () => {
+    const subagent = await assembledRuntime("chat", treeAgent({ kind: "subagent", renderAs: "subagent", parentToolUseId: "call" }))
+    const sideCall = await assembledRuntime("chat", { purpose: { kind: "chat-side-call" }, treeRootSessionId: ROOT })
+    const chat = await assembledRuntime("chat")
+    const headless = await assembledRuntime("headless")
+    expect([subagent, sideCall, chat, headless].map((run) => run.cacheRetention)).toEqual(["5m", "5m", "1h", "1h"])
   })
 })
 

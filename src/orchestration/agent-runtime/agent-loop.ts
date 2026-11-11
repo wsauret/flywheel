@@ -443,7 +443,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           requestAudit: options.requestAudit, turnOrdinal: state.turn + 1,
           usageSettlement: options.usageSettlement,
           waitForEventCapacity: options.waitForEventCapacity,
-          cacheRetention: options.cacheRetention ?? "1h",
+          cacheRetention: options.cacheRetention,
           providerSessionKey: options.providerSessionKey, promptCacheKey: options.promptCacheKey, artifactScopeId: options.artifactScopeId,
           maxLLMCalls, handoffConfigured: handoff !== undefined, toolContext,
           background: options.background, afterToolCall: options.afterToolCall, turn: ownedTurn,
@@ -493,7 +493,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     startPrefixHold = undefined;
     const prepareTurnInput = preparation.attemptInput({
         interactionProfile, reasoningEffort: turnEffort, signal: requestSignal,
-        cacheRetention: options.cacheRetention ?? "1h", providerSessionKey: options.providerSessionKey, promptCacheKey: options.promptCacheKey,
+        cacheRetention: options.cacheRetention, providerSessionKey: options.providerSessionKey, promptCacheKey: options.promptCacheKey,
         cacheRetentionPolicies: requestSurface.runtimeConfig.cacheRetentionPolicies,
         providerOptions: requestRoute.providerOptions,
         requestAudit: options.requestAudit, usageSettlement: options.usageSettlement,

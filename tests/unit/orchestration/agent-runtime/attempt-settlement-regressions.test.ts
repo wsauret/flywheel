@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import { candidateProviderId, type AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js";
 import { computeUsagePrice } from "../../../../src/infra/llm/llm-helpers.js";
+import { ANTHROPIC_CACHE_RATES } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js";
+import type { ModelCost } from "../../../../src/infra/llm/models.js";
 import { decodeUsageEntry, type UsageEntry } from "../../../../src/infra/llm/usage-entry.js";
 import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector.js";
 import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
@@ -47,9 +49,14 @@ const usage: ProviderStreamEvent = {
   cacheCreateTokens: 0, reasoningTokens: 0,
 };
 
-/** Settles one attempt whose stream reports `report`, and returns the price of each entry the settlement checkpointed,
- *  decoded strictly as a stored entry. */
-async function settledPrices(report: Extract<ProviderStreamEvent, { kind: "usage" }>, candidate: AccessProviderCandidate) {
+/** Settles one attempt whose stream reports `report`, and returns the price and the tokens of each entry the
+ *  settlement checkpointed, decoded strictly as a stored entry. */
+async function settledPrices(
+  report: Extract<ProviderStreamEvent, { kind: "usage" }>,
+  candidate: AccessProviderCandidate,
+  rateCard: ModelCost = { input: 2, output: 10, highContext: { threshold: 272_000, input: 4, output: 15 } },
+  cacheRates?: Parameters<typeof computeUsagePrice>[2],
+) {
   const entries: UsageEntry[] = [];
   const client = fakeClient(candidateProviderId(candidate), async function* () {
     yield report;
@@ -57,9 +64,9 @@ async function settledPrices(report: Extract<ProviderStreamEvent, { kind: "usage
   });
   client.priceFor = (tokens) => computeUsagePrice(tokens, {
     status: "available",
-    rateCard: { input: 2, output: 10, highContext: { threshold: 272_000, input: 4, output: 15 } },
+    rateCard,
     provenance: { source: "provider-docs", provider: "openai", model: client.model },
-  });
+  }, cacheRates);
   const { usageSettlement } = accounting([]);
   usageSettlement.settlement.checkpoint = async (draft) => { entries.push(decodeUsageEntry(draft.entry)); };
   const input = attemptInput({ usageSettlement });
@@ -70,8 +77,33 @@ async function settledPrices(report: Extract<ProviderStreamEvent, { kind: "usage
   }, input, undefined);
   await attempt.stream();
   await attempt.close();
-  return { model: client.model, prices: entries.map((entry) => "price" in entry ? entry.price : undefined) };
+  return {
+    model: client.model,
+    prices: entries.map((entry) => "price" in entry ? entry.price : undefined),
+    tokens: entries.map((entry) => "tokens" in entry ? entry.tokens : undefined),
+  };
 }
+
+// The rate card of Claude Opus 5.5 that models.dev states: input 4, output 20, cache read 0.2, five-minute write 5 per
+// million. Anthropic's cache rates add the one-hour write at two times input, 8 per million.
+const OPUS: ModelCost = { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 };
+
+test("usage settlement records the one-hour part of the cache writes and prices it at the one-hour rate", async () => {
+  const report = { ...usage, inputTokens: 0, outputTokens: 0, cacheCreateTokens: 30_000, cacheCreate1hTokens: 10_000 };
+  const { prices, tokens } = await settledPrices(report, subscriptionCandidate("claude_agent_sdk"), OPUS, ANTHROPIC_CACHE_RATES);
+
+  expect(tokens).toEqual([{ input: 0, output: 0, cacheRead: 0, cacheWrite: 30_000, cacheWrite1h: 10_000, reasoning: 0 }]);
+  // 20,000 five-minute tokens at 5 and 10,000 one-hour tokens at 8 per million.
+  expect(prices[0]).toMatchObject({ kind: "priced", estimatedUsd: 0.18 });
+});
+
+test("usage settlement prices cache writes without a reported split at the five-minute rate", async () => {
+  const report = { ...usage, inputTokens: 0, outputTokens: 0, cacheCreateTokens: 30_000, cacheCreate1hTokens: 0 };
+  const { prices, tokens } = await settledPrices(report, subscriptionCandidate("claude_agent_sdk"), OPUS, ANTHROPIC_CACHE_RATES);
+
+  expect(tokens).toEqual([{ input: 0, output: 0, cacheRead: 0, cacheWrite: 30_000, reasoning: 0 }]);
+  expect(prices[0]).toMatchObject({ kind: "priced", estimatedUsd: 0.15 });
+});
 
 // A reported charge of zero is a charge, not a missing one: the rate card must not price it.
 test.each([0.00042, 0])("usage settlement records the charge the provider reports (%p) in place of the rate-card estimate", async (reportedChargeUsd) => {
@@ -93,9 +125,9 @@ test("usage settlement preserves standard and high-context rate cards", async ()
     estimatedUsd: 1.200105,
     rateCard: {
       "standard.input": 2, "standard.output": 10, "standard.cacheRead": 0,
-      "standard.cacheWrite": 0, "standard.cacheWrite1h": 4, "standard.reasoning": 10,
+      "standard.cacheWrite": 0, "standard.cacheWrite1h": 0, "standard.reasoning": 10,
       "highContext.input": 4, "highContext.output": 15, "highContext.cacheRead": 0,
-      "highContext.cacheWrite": 0, "highContext.cacheWrite1h": 8, "highContext.reasoning": 15,
+      "highContext.cacheWrite": 0, "highContext.cacheWrite1h": 0, "highContext.reasoning": 15,
     },
     provenance: JSON.stringify({ source: "provider-docs", provider: "openai", model }),
   });

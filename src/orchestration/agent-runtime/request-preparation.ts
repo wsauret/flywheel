@@ -199,7 +199,7 @@ async function prepareRequest(inputs: RequestInputs, preparation: RequestPrepara
   });
   const prepareInput = draft.attemptInput({
     interactionProfile: cycle.interactionProfile, reasoningEffort: cycle.turnEffort, signal,
-    cacheRetention: inputs.cacheRetention ?? "1h", providerSessionKey: inputs.providerSessionKey, promptCacheKey: inputs.promptCacheKey,
+    cacheRetention: inputs.cacheRetention, providerSessionKey: inputs.providerSessionKey, promptCacheKey: inputs.promptCacheKey,
     cacheRetentionPolicies: surface.runtimeConfig.cacheRetentionPolicies, providerOptions: cycle.requestRoute.providerOptions,
     requestAudit: undefined, onEvent: () => {}, turn: 1,
   });

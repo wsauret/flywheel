@@ -31,7 +31,7 @@ import { callerToolGrant, planToolExposure, type ToolGrant } from "./tools/tool-
 import { deriveChildRuntimeSurfaces, learningReviewToolNames, toolRegistryFromComposition } from "./tools/tool-registry.js";
 import type { RecallPort } from "../../protocol/conversation-recall.js";
 import type { KernelToolDeps, ServingModel } from "./tools/kernel-tool-deps.js";
-import { requestKernel, sharesTreeHost, type KernelRequestFacts, type KernelRunFacts } from "./request-kernel.js";
+import { defaultCacheRetention, requestKernel, sharesTreeHost, type KernelRequestFacts, type KernelRunFacts } from "./request-kernel.js";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { createModuleRuntimeServices, type ChildCapabilityRun } from "./module-runtime-services.js";
 import { createRequestToolSurface, requestCapabilities, requestModelSelectionKey, type PlannedRequest, type RequestModelSelection, type RequestProviderRuntime } from "./request-tool-surface.js";
@@ -652,6 +652,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           persistence,
           reasoningEffort: async () => mapEffort(typeof options.effort === "function" ? await options.effort() : options.effort),
           providerOptions: options.providerOptions,
+          cacheRetention: defaultCacheRetention(options.purpose),
           providerSessionKey: conversation.providerSessionKey,
           // A run outside any chat tree is a tree of its own.
           promptCacheKey: treeRoot ?? conversation.providerSessionKey,

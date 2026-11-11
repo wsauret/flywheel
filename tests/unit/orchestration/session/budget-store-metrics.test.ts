@@ -77,6 +77,16 @@ describe("SessionBudgetStore metrics", () => {
     budgetStore.dispose();
   });
 
+  it("counts an entry from before the cache-write split and an entry with it at their recorded costs", async () => {
+    const budgetStore = makeSessionBudgetStore(makeTmpDir(), newSessionId());
+    const price = (estimatedUsd: number) => ({ kind: "priced" as const, estimatedUsd, rateCard: { "standard.cacheWrite": 5, "standard.cacheWrite1h": 8 }, provenance: "live" as const });
+    await budgetStore.recordRuntimeEvent(committedUsageEvent({ attemptId: "00000000-0000-4000-8000-000000000013", classification: "real_spend", price: price(0.5), inputTokens: 20, outputTokens: 8 }));
+    await budgetStore.recordRuntimeEvent(committedUsageEvent({ attemptId: "00000000-0000-4000-8000-000000000014", classification: "real_spend", price: price(0.25), inputTokens: 30, outputTokens: 9, cacheWrite1h: 10_000 }));
+
+    expect(await budgetStore.metrics()).toEqual({ ...zero, cost: 0.75, billedCost: 0.75, tokens: 67 });
+    budgetStore.dispose();
+  });
+
   it("accumulates correctly across recordProcessStarted resets", async () => {
     const budgetStore = makeSessionBudgetStore(makeTmpDir(), newSessionId());
 

@@ -12,7 +12,8 @@ export const ANTHROPIC_PROMPT_NOTES = {
   modelNotes: "- Use extended thinking for complex multi-step reasoning.",
 } satisfies ProviderPromptNotes;
 
-export const ANTHROPIC_CACHE_RATES = { cacheReadRatio: 0.1, cacheWriteRatio: 1.25 } as const;
+// Anthropic prices a one-hour cache write at two times the base input rate. models.dev states no one-hour rate.
+export const ANTHROPIC_CACHE_RATES = { cacheReadRatio: 0.1, cacheWriteRatio: 1.25, cacheWrite1hRatio: 2 } as const;
 
 export function supportsAnthropicReasoning(model: string, info: ModelInfo | null): boolean {
   return info?.reasoning ?? /^claude-(opus|sonnet|haiku)-4/.test(model);

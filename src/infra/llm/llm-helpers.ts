@@ -8,9 +8,12 @@
 
 import type { ModelCost, ModelInfo, ModelPricing, ModelPricingProvenance, NormalizedModelCostTier, NormalizedModelRateCard } from "./models.js";
 
+/** The cache rates that a provider states as ratios of the input rate, for a rate card that omits them. Without a
+ *  one-hour ratio, one-hour cache writes price at the card's cache-write rate. */
 interface CacheRateFallbacks {
   cacheReadRatio: number;
   cacheWriteRatio: number;
+  cacheWrite1hRatio?: number;
 }
 
 export type UsagePriceResult =
@@ -18,12 +21,13 @@ export type UsagePriceResult =
   | { readonly status: "unavailable"; readonly reason: "missing-rate-card" };
 
 function normalizeTier(tier: ModelCost, fallbacks: CacheRateFallbacks): NormalizedModelCostTier {
+  const cacheWrite = tier.cacheWrite ?? tier.input * fallbacks.cacheWriteRatio;
   return Object.freeze({
     input: tier.input,
     output: tier.output,
     cacheRead: tier.cacheRead ?? tier.input * fallbacks.cacheReadRatio,
-    cacheWrite: tier.cacheWrite ?? tier.input * fallbacks.cacheWriteRatio,
-    cacheWrite1h: tier.input * 2,
+    cacheWrite,
+    cacheWrite1h: fallbacks.cacheWrite1hRatio === undefined ? cacheWrite : tier.input * fallbacks.cacheWrite1hRatio,
     reasoning: tier.reasoning ?? tier.output,
   });
 }

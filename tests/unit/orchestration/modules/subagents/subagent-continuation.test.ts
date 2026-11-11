@@ -287,8 +287,9 @@ describe("explicit child Resume", () => {
       expect(new Set(requested)).toEqual(new Set([expect.stringMatching(/^gpt-/)]))
       const requests = harness.store.read({ aggregateId: `session:${child}`, types: ["model.requested"] })
       expect(requests).toHaveLength(1)
-      // A side call, not a turn of the child's conversation: it keeps the child's provider session and ordinary caching.
-      expect(requests[0]?.payload).toMatchObject({ identity: { providerSessionKey: childRun.conversationId }, cacheRetention: "1h" })
+      // A side call, not a turn of the child's conversation: it keeps the child's provider session and caches for five
+      // minutes, as every agent below a root conversation does.
+      expect(requests[0]?.payload).toMatchObject({ identity: { providerSessionKey: childRun.conversationId }, cacheRetention: "5m" })
       const measured = harness.store.read({ aggregateId: `session:${child}`, types: ["model.usage.measured"] })
       expect(measured).toHaveLength(1)
       expect(measured[0]?.payload).toMatchObject({ profileId: "default", budgetStreamId: child, tokens: { input: 10, output: 7 } })

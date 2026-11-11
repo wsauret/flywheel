@@ -389,3 +389,16 @@ Request usage and cost persist only in the session or workflow auxiliary aggrega
 ## ARCH-PROVIDERS-064: Session statistics derive from session records and owning projections
 
 Session statistics cover the selected session and its immutable descendant ancestry across every profile that served them. They derive from session records and the owning tool-execution projection, copy no tool content, create no second accounting ledger, count each measured attempt and descendant once, and never backfill history.
+
+## ARCH-PROVIDERS-078: The agent's purpose decides the default cache lifetime
+
+The agent's purpose decides the default cache lifetime at one owner in the agent runtime: one hour for a root conversation, five minutes for every other purpose. A provider adapter maps that lifetime to its wire form, and a person's retention policy for the provider replaces it. A subscription engine that decides its own lifetime receives none.
+Because: A root chat waits on children for longer than five minutes, and other agents rarely pause that long, so each pays for the lifetime that its requests read.
+Not: One lifetime for every request, or a lifetime that adapts to each conversation.
+
+## ARCH-PROVIDERS-079: A cache write is priced at the lifetime that the provider reports
+
+Usage records how many cache-write tokens the provider created at each lifetime, and cost prices each count at that lifetime's rate. A response that reports no split is priced at the five-minute rate.
+Because: A one-hour write costs more than a five-minute write, and one rate for both understates the cost of a chat.
+Not: One cache-write rate for every lifetime.
+

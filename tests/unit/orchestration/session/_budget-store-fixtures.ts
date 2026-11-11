@@ -108,7 +108,7 @@ export function usageEvent(
   };
 }
 
-export function committedUsageEvent(options: { attemptId: string; classification: "real_spend" | "subscription_equivalent"; price: { kind: "priced"; estimatedUsd: number; rateCard: { [key: string]: number }; provenance: "live" } | { kind: "unavailable"; reason: string }; inputTokens?: number; outputTokens?: number }): RuntimeEvent {
+export function committedUsageEvent(options: { attemptId: string; classification: "real_spend" | "subscription_equivalent"; price: { kind: "priced"; estimatedUsd: number; rateCard: { [key: string]: number }; provenance: "live" } | { kind: "unavailable"; reason: string }; inputTokens?: number; outputTokens?: number; cacheWrite1h?: number }): RuntimeEvent {
   return {
     type: "model.usage.measured",
     data: {
@@ -121,7 +121,10 @@ export function committedUsageEvent(options: { attemptId: string; classification
         credentialLineage: "00000000-0000-4000-8000-000000000099",
         model: "test-model",
         classification: options.classification,
-        tokens: { input: options.inputTokens ?? 10, output: options.outputTokens ?? 5, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
+        tokens: {
+          input: options.inputTokens ?? 10, output: options.outputTokens ?? 5, cacheRead: 0, cacheWrite: options.cacheWrite1h ?? 0,
+          ...(options.cacheWrite1h === undefined ? {} : { cacheWrite1h: options.cacheWrite1h }), reasoning: 0,
+        },
         price: options.price,
         currency: "USD", coverage: "complete",
       },

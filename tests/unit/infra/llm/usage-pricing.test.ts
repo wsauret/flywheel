@@ -13,10 +13,12 @@ const PRICING: ModelPricing = {
 
 // Output includes the reasoning tokens: 5,000 of the 10,000 output tokens are reasoning.
 const TOKENS = { input: 100_000, output: 10_000, cacheRead: 20_000, cacheWrite: 30_000, cacheWrite1h: 10_000, reasoning: 5_000 };
+// A provider that prices a one-hour cache write at two times the input rate.
+const ONE_HOUR_RATIO = { cacheReadRatio: 0, cacheWriteRatio: 0, cacheWrite1hRatio: 2 };
 
 describe("usage pricing", () => {
   it("returns the amount with an immutable normalized rate-card snapshot and provenance", () => {
-    const result = computeUsagePrice(TOKENS, PRICING);
+    const result = computeUsagePrice(TOKENS, PRICING, ONE_HOUR_RATIO);
 
     expect(result).toEqual({
       status: "priced",
@@ -43,11 +45,16 @@ describe("usage pricing", () => {
   });
 
   it("preserves high-context, cache, 1h, output, and reasoning rates", () => {
-    expect(computeUsagePrice({ ...TOKENS, promptTokens: 272_000 }, PRICING)).toMatchObject({ status: "priced", amountUsd: 2.12 });
-    const result = computeUsagePrice({ ...TOKENS, promptTokens: 272_001 }, PRICING);
+    expect(computeUsagePrice({ ...TOKENS, promptTokens: 272_000 }, PRICING, ONE_HOUR_RATIO)).toMatchObject({ status: "priced", amountUsd: 2.12 });
+    const result = computeUsagePrice({ ...TOKENS, promptTokens: 272_001 }, PRICING, ONE_HOUR_RATIO);
 
     expect(result.status).toBe("priced");
     if (result.status === "priced") expect(result.amountUsd).toBeCloseTo(3.79);
+  });
+
+  it("prices one-hour cache writes at the cache-write rate when the provider states no one-hour rate", () => {
+    // 2.12 less 10,000 one-hour tokens at 20 - 12.5 per million.
+    expect(computeUsagePrice(TOKENS, PRICING)).toMatchObject({ status: "priced", amountUsd: 2.045, rateCard: { standard: { cacheWrite: 12.5, cacheWrite1h: 12.5 } } });
   });
 
   it("returns an explicit unavailable result without inventing a zero price", () => {
