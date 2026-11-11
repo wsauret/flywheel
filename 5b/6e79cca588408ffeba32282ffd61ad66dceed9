@@ -1,0 +1,16 @@
+src/agent-skills/references/research-protocol.md
+  h_4b47e9e4a8b456 41,44
+src/workflows/agents/personas/explorer.md
+  h_4b47e9e4a8b456 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5b6e79cca588408ffeba32282ffd61ad66dceed9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
