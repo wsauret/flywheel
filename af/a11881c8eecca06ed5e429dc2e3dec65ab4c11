@@ -1,0 +1,84 @@
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 155,157
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 267,275,363,369-372,375
+src/orchestration/agent-runtime/agent-loop-closure.ts
+  h_4b47e9e4a8b456 30-32
+src/orchestration/agent-runtime/agent-loop-handoff.ts
+  h_4b47e9e4a8b456 114
+src/orchestration/agent-runtime/agent-loop-input-consumer.ts
+  h_4b47e9e4a8b456 124,146,194
+src/orchestration/agent-runtime/agent-loop-wait.ts
+  h_4b47e9e4a8b456 59,62
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 199,205,225,234,236,238,277
+src/orchestration/agent-runtime/background-work-progress.ts
+  h_4b47e9e4a8b456 15-16
+src/orchestration/agent-runtime/background-work-readiness.ts
+  h_4b47e9e4a8b456 4,16-19,26-29
+src/orchestration/agent-runtime/background-work.ts
+  h_4b47e9e4a8b456 31,289-290
+src/orchestration/agent-runtime/execution-notes.ts
+  h_4b47e9e4a8b456 65
+src/orchestration/agent-runtime/run-end-process-notice.ts
+  h_4b47e9e4a8b456 2-6
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 6,22-23,38
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 214-215
+src/orchestration/agent-runtime/tools/shell-environment.ts
+  h_4b47e9e4a8b456 120
+src/orchestration/agent-runtime/tools/shell-execution.ts
+  h_4b47e9e4a8b456 386-389
+src/orchestration/app-service/runtime-work-settlement.ts
+  h_4b47e9e4a8b456 142-144
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 13,203,362
+src/orchestration/workflow-host/loop-observers.ts
+  h_4b47e9e4a8b456 21,112-113
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 36,38,1243
+tests/unit/orchestration/agent-runtime/agent-loop-handoff.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/orchestration/agent-runtime/agent-loop-input-consumer.test.ts
+  h_4b47e9e4a8b456 137,164,381
+tests/unit/orchestration/agent-runtime/background-task-registry-workflow-interruption.test.ts
+  h_4b47e9e4a8b456 19,23,30,33,40
+tests/unit/orchestration/agent-runtime/background-task-registry.test.ts
+  h_4b47e9e4a8b456 480,517,522,539,542,546,587,600-601,606-607
+tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+  h_4b47e9e4a8b456 78-80,84,123-124,131-136,211,218,336-337,353,413-422,437-439,499,502-505,508,512-515,533
+tests/unit/orchestration/agent-runtime/context/loop-wait-placeholder.test.ts
+  h_4b47e9e4a8b456 475,477-479,483,486,506,543-544,547,549,559-560,563,581-582
+tests/unit/orchestration/agent-runtime/context/run-end-process-notice.test.ts
+  h_4b47e9e4a8b456 14-17,26-27,36
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 12,278-281,292,301,304,311,530,544-559
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 511,513,649
+tests/unit/orchestration/agent-runtime/tools/tools-bash-auto-yield.test.ts
+  h_4b47e9e4a8b456 98,115,121
+tests/unit/orchestration/agent-runtime/tools/tools-bash-background.test.ts
+  h_4b47e9e4a8b456 342,348,351
+tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
+  h_4b47e9e4a8b456 504,528,565,567,570-573,576,640-642,644-645
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 99-102,106,381,406,410-423
+tests/unit/orchestration/session/subagent-completion-single-delivery.test.ts
+  h_4b47e9e4a8b456 285
+tests/unit/orchestration/workflow-host/workflow-loop-observers.test.ts
+  h_4b47e9e4a8b456 77,79-80,96-98
+tests/unit/orchestration/workflow-host/workflow-parent-restoration.test.ts
+  h_4b47e9e4a8b456 85,97,103,108,115,121,127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "afa11881c8eecca06ed5e429dc2e3dec65ab4c11",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
