@@ -1,0 +1,30 @@
+scripts/build-review-fixtures.ts
+  h_4b47e9e4a8b456 3,5-6,8,14,19-32,207-219,271-272,275,283-296,300,312,348-350,352,396,404,428-429,435,442,444,446-447,452,500-518,520-525,531-538,549,564,572-730,738-740,743,746-751,755-764,769-770,776-779,782,802-821,823-858,868,870-876,879-880,888-889,895-926
+scripts/review-fixture-publication.ts
+  h_4b47e9e4a8b456 1-134
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 56-64,68,127-128,131,142-148,206-207,212,214,216-224,287-288
+src/orchestration/modules/development/benchmark/reports.ts
+  h_4b47e9e4a8b456 272-279,316-317
+src/orchestration/modules/development/benchmark/review-sandbox.ts
+  h_4b47e9e4a8b456 10-13,23-24,26
+tests/integration/bench/review-sandbox.test.ts
+  h_4b47e9e4a8b456 30-43,54,56-57,59,68-69,78-87,89-95
+tests/unit/bench/catalog.test.ts
+  h_4b47e9e4a8b456 7,182-215
+tests/unit/bench/persona-benchmark-stored-records.test.ts
+  h_4b47e9e4a8b456 256,259-260,280
+tests/unit/scripts/review-fixture-publication.test.ts
+  h_4b47e9e4a8b456 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c26de1c956674cd41a1c7c461c9523575dfb9ff8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
