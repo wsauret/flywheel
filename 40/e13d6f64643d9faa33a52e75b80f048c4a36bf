@@ -1,0 +1,32 @@
+bench/ab-persona/strategy-bench.ts
+  h_4b47e9e4a8b456 25,285,303
+src/orchestration/modules/development/benchmark-tool.ts
+  h_4b47e9e4a8b456 33,264
+src/orchestration/modules/development/benchmark/accounting.ts
+  h_4b47e9e4a8b456 9-14,16-18,32,34-38,74-78,83-87,89-94,99-101
+src/orchestration/modules/development/benchmark/evidence.ts
+  h_4b47e9e4a8b456 8-14,16-18
+src/orchestration/modules/development/benchmark/report-accounting.ts
+  h_4b47e9e4a8b456 7-8,10,18-22,24-26,30-60,67-71
+src/orchestration/modules/development/benchmark/reports.ts
+  h_4b47e9e4a8b456 6,28-29,31-32,99,102-112,116-123,130
+tests/unit/bench/benchmark-invocation.test.ts
+  h_4b47e9e4a8b456 80-103
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 102,104,175-178
+tests/unit/bench/report-accounting.test.ts
+  h_4b47e9e4a8b456 7,25-50,95-96
+tests/unit/bench/strategy.test.ts
+  h_4b47e9e4a8b456 604-623
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "40e13d6f64643d9faa33a52e75b80f048c4a36bf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
