@@ -1,0 +1,42 @@
+src/cli/auth.ts
+  h_4b47e9e4a8b456 23,137
+src/cli/headless-snapshot-auth.ts
+  h_4b47e9e4a8b456 7-10,23-34
+src/cli/subcommands.ts
+  h_4b47e9e4a8b456 63-64
+src/infra/llm/custom-provider-registry.ts
+  h_4b47e9e4a8b456 1,27,41,139
+src/infra/llm/model-id.ts
+  h_4b47e9e4a8b456 48-54
+src/infra/llm/model-listing-rows.ts
+  h_4b47e9e4a8b456 5,8-9,186-200,203,207-208,221-230
+src/infra/llm/model-listing.ts
+  h_4b47e9e4a8b456 14,604-606
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 38,252,483
+src/orchestration/config/custom-providers.ts
+  h_4b47e9e4a8b456 60-61,81,87-91,93-94
+src/orchestration/headless/headless-bootstrap.ts
+  h_4b47e9e4a8b456 20,105
+tests/unit/cli/headless-snapshot-auth.test.ts
+  h_4b47e9e4a8b456 3,5,7,25,90-111
+tests/unit/infra/llm/model-listing-custom-provider.test.ts
+  h_4b47e9e4a8b456 1-100
+tests/unit/infra/llm/model-listing.test.ts
+  h_4b47e9e4a8b456 1
+tests/unit/orchestration/config/custom-providers-config.test.ts
+  h_4b47e9e4a8b456 4,8,27-28,40-50
+tests/unit/orchestration/config/runtime-config-owner.test.ts
+  h_4b47e9e4a8b456 7,551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "767de80c84fda3dda2e6743fc023337717c4636e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
