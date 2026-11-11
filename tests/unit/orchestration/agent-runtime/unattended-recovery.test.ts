@@ -57,7 +57,7 @@ function policy(clock: ReturnType<typeof fakeClock>, overrides: Partial<Deps> = 
 
 const signal = new AbortController().signal
 const result = (terminal: AgentRunResult["terminal"], servedRequests = 0): AgentRunResult => ({ durationMs: 1, servedRequests, terminal })
-const exhausted = (atMs: number, servedRequests = 0) => result({ kind: "api_error", message: "No access provider can run the model", recovery: { kind: "at", atMs } }, servedRequests)
+const exhausted = (atMs: number, servedRequests = 0) => result({ kind: "api_error", message: "No access provider can run the model", recovery: { kind: "at", atMs, hold: { kind: "usage_limit", stated: true } } }, servedRequests)
 const disconnect: AgentFailureReason = { kind: "transient_disconnect", message: "socket closed" }
 const completed = result({ kind: "completed" })
 
@@ -75,6 +75,8 @@ interface RecoveryDecision {
   readonly failure: AgentFailureReason["kind"]
   readonly streak: number
   readonly delayMs?: number
+  readonly hold?: string
+  readonly resetsAtMs?: number
   readonly served: number
 }
 const record = (fields: RecoveryDecision) => ({ caller: "workflow-agent", runId: "attempt", ...fields })
@@ -99,7 +101,7 @@ describe("unattended recovery", () => {
     expect(notices[0]?.type === "upsert" ? notices[0].notice.retry : "absent").toBeUndefined()
     expect(notices[0]?.type === "upsert" ? notices[0].notice.action : "absent").toBeUndefined()
     expect(notices).toContainEqual({ type: "resolve", id: "capacity-wait:workflow" })
-    expect(recoveryRecords()).toEqual([record({ decision: "wait", failure: "api_error", streak: 0, delayMs: 90 * 60_000, served: 0 })])
+    expect(recoveryRecords()).toEqual([record({ decision: "wait", failure: "api_error", streak: 0, delayMs: 90 * 60_000, hold: "usage_limit", resetsAtMs: NOW + 90 * 60_000, served: 0 })])
   })
 
   it("keeps an agent's wait notice while the other agents of the run stream, settle, and end their own waits", async () => {
@@ -109,11 +111,11 @@ describe("unattended recovery", () => {
     const first = policy(waiting, { onNotice: fold })
     const second = policy(fakeClock(), { sessionId: "sibling", runId: "sibling", agentName: "Review", onNotice: fold })
     waiting.holdNextSleep()
-    const wait = first.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR } }, 0, signal)
+    const wait = first.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR, hold: { kind: "usage_limit", stated: true } } }, 0, signal)
     // A sibling agent's stream event and its settled run resolve the provider
     // scope, and its own wait starts and ends.
     fold(resolveProviderNotices())
-    await second.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 60_000 } }, 0, signal)
+    await second.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 60_000, hold: { kind: "usage_limit", stated: true } } }, 0, signal)
     expect(notices.map(({ id, message }) => [id, message])).toEqual([["capacity-wait:workflow", expect.stringContaining('"Work"')]])
     waiting.release()
     await wait
@@ -140,7 +142,7 @@ describe("unattended recovery", () => {
     const slept: number[] = []
     // The machine sleeps for three hours during the first timer.
     const recovery = policy(fakeClock(), { now: () => now, sleep: async (ms) => { slept.push(ms); now += 3 * HOUR } })
-    await recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR } }, 0, signal)
+    await recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR, hold: { kind: "usage_limit", stated: true } } }, 0, signal)
     expect(slept).toEqual([WALL_CLOCK_CHECK_MS])
   })
 
@@ -151,7 +153,7 @@ describe("unattended recovery", () => {
       withdraw: async (reason) => { steps.push(`withdraw ${reason}`) },
       settle: async (reason) => { steps.push(`settle ${reason}`) },
     }
-    const usageLimit = { kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 60_000 } } satisfies AgentFailureReason
+    const usageLimit = { kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 60_000, hold: { kind: "usage_limit", stated: true } } } satisfies AgentFailureReason
     const clock = fakeClock()
     const recovery = policy(clock, { capacity, sleep: async (ms, sleepSignal) => { steps.push("sleep"); await clock.sleep(ms, sleepSignal) } })
     const runs = [result(usageLimit), completed]
@@ -213,7 +215,7 @@ describe("unattended recovery", () => {
     const recovery = policy(clock, { capacity: { arm: async () => {}, withdraw: async (reason) => { withdrawn.push(reason) }, settle: async () => {} } })
     const held: DeliveryOutcome = { status: "held", reason: "no_reader" }
     const deliver = endingCapacityWaitOnPersonMessage(recovery, async (_message: { readonly producer?: { readonly kind: string } }, _decide: undefined) => held)
-    const waiting = recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR } }, 0, signal)
+    const waiting = recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR, hold: { kind: "usage_limit", stated: true } } }, 0, signal)
     await Bun.sleep(0)
     expect(await deliver({ producer: { kind: "session" } }, undefined)).toEqual(held)
     expect(withdrawn).toEqual([])
@@ -236,9 +238,36 @@ describe("unattended recovery", () => {
     }
     expect(clock.slept).toEqual([])
     expect(recoveryRecords()).toEqual([])
-    expect(await chat.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 60_000 } }, 0, signal)).toEqual({})
+    expect(await chat.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 60_000, hold: { kind: "usage_limit", stated: true } } }, 0, signal)).toEqual({})
     expect(clock.slept).toEqual([60_000])
   })
+
+  for (const caller of ["chat", "subagent", "workflow-agent"] as const) {
+    it(`lets a spent usage limit stand at once for a ${caller} of an unattended run, with or without a stated reset, and waits out a rate limit or an outage recheck, also one at a later time than a spent limit (PI-AGENT-128)`, async () => {
+      captureRecords()
+      const clock = fakeClock()
+      const notices: SessionNoticeOperation[] = []
+      const agent = createUnattendedRecovery({ sessionId: "agent", runId: "run", caller, unattendedRun: true, agentName: "Agent", onNotice: (operation) => { notices.push(operation) }, now: clock.now, sleep: clock.sleep })
+      expect(await agent.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR, hold: { kind: "usage_limit", stated: true } } }, 0, signal)).toBeNull()
+      expect(await agent.recover({ kind: "api_error", message: "out of credit", recovery: { kind: "at", atMs: NOW + 60_000, hold: { kind: "usage_limit", stated: false } } }, 0, signal)).toBeNull()
+      expect(clock.slept).toEqual([])
+      expect(notices).toEqual([])
+      expect(await agent.recover({ kind: "api_error", message: "rate limited", recovery: { kind: "at", atMs: NOW + 30_000, hold: { kind: "rate_limit" } } }, 0, signal)).toEqual({})
+      expect(await agent.recover({ kind: "api_error", message: "connection lost", recovery: { kind: "at", atMs: NOW + 30_000 + 60_000, hold: { kind: "recheck" } } }, 0, signal)).toEqual({})
+      // Another candidate's rate limit resets after the spent limit's reset: the agent waits for the rate limit.
+      const later = NOW + 90_000
+      expect(await agent.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: later + 10_000, hold: { kind: "usage_limit", stated: true }, selfClearing: { atMs: later + 45_000, hold: { kind: "rate_limit" } } } }, 0, signal)).toEqual({})
+      expect(clock.slept).toEqual([30_000, 60_000, 45_000])
+      const fields = { caller, runId: "run", failure: "api_error", streak: 0, served: 0 }
+      expect(recoveryRecords()).toEqual([
+        { ...fields, decision: "fail", hold: "usage_limit", resetsAtMs: NOW + HOUR },
+        { ...fields, decision: "fail", hold: "usage_limit" },
+        { ...fields, decision: "wait", delayMs: 30_000, hold: "rate_limit", resetsAtMs: NOW + 30_000 },
+        { ...fields, decision: "wait", delayMs: 60_000, hold: "recheck" },
+        { ...fields, decision: "wait", delayMs: 45_000, hold: "rate_limit", resetsAtMs: later + 45_000 },
+      ])
+    })
+  }
 
   it("runs again after pauses of 5, 10, 20, 40, 80, and 160 seconds while no request is served, then lets the seventh failure stand", async () => {
     captureRecords()
@@ -272,7 +301,7 @@ describe("unattended recovery", () => {
     const clock = fakeClock()
     const recovery = policy(clock)
     for (let failures = 0; failures < 5; failures += 1) await recovery.recover(disconnect, 0, signal)
-    await recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: clock.now() + 60_000 } }, 2, signal)
+    await recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: clock.now() + 60_000, hold: { kind: "usage_limit", stated: true } } }, 2, signal)
     clock.slept.length = 0
     await recovery.recover(disconnect, 0, signal)
     expect(clock.slept).toEqual([5_000])
@@ -284,7 +313,7 @@ describe("unattended recovery", () => {
     })
     for (const failure of [
       disconnect,
-      { kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR } },
+      { kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR, hold: { kind: "usage_limit", stated: true } } },
       { kind: "model_unavailable", message: "access pending", missing: "access" },
     ] satisfies AgentFailureReason[]) {
       const clock = fakeClock()
@@ -376,7 +405,7 @@ describe("unattended recovery", () => {
       sleep: async (ms, sleepSignal) => { holds.push("sleep"); await clock.sleep(ms, sleepSignal) },
     })
     await recovery.recover(disconnect, 0, signal)
-    await recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: clock.now() + 60_000 } }, 0, signal)
+    await recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: clock.now() + 60_000, hold: { kind: "usage_limit", stated: true } } }, 0, signal)
     await recovery.recover({ kind: "model_unavailable", message: "access pending", missing: "access" }, 0, signal)
     // Every timer of a wait runs inside its hold.
     expect(holds.filter((step) => step !== "sleep")).toEqual([

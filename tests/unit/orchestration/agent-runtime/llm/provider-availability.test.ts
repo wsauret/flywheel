@@ -22,18 +22,18 @@ describe("generic quota exhaustion entries", () => {
 
     h.availability.markQuotaExhausted(OPENAI_API, 1_000_000 + 3_600_000);
     expect(h.availability.quotaExhaustion(OPENAI_API))
-      .toEqual({ exhaustedAtMs: 1_000_000, resetsAtMs: 1_000_000 + 3_600_000 });
+      .toEqual({ exhaustedAtMs: 1_000_000, resetsAtMs: 1_000_000 + 3_600_000, hold: { kind: "usage_limit", stated: true } });
 
     h.advance(3_600_000);
     expect(h.availability.quotaExhaustion(OPENAI_API)).toBeUndefined();
   });
 
-  test("an exhaustion the provider gave no reset for holds only to its bounded safe recheck", () => {
+  test("an exhaustion the provider gave no reset for holds only to its bounded safe recheck, as a spent limit with no stated reset", () => {
     const h = harness([]);
 
     h.availability.markQuotaExhausted(OPENROUTER);
     expect(h.availability.quotaExhaustion(OPENROUTER))
-      .toEqual({ exhaustedAtMs: 1_000_000, resetsAtMs: 1_000_000 + SAFE_RECHECK_MS });
+      .toEqual({ exhaustedAtMs: 1_000_000, resetsAtMs: 1_000_000 + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } });
 
     h.advance(SAFE_RECHECK_MS);
     expect(h.availability.quotaExhaustion(OPENROUTER)).toBeUndefined();
@@ -50,7 +50,7 @@ describe("generic quota exhaustion entries", () => {
 
     h.availability.markQuotaExhausted(OPENAI_API);
     expect(h.availability.quotaExhaustion(OPENAI_API))
-      .toEqual({ exhaustedAtMs: 1_002_000, resetsAtMs: 1_002_000 + SAFE_RECHECK_MS });
+      .toEqual({ exhaustedAtMs: 1_002_000, resetsAtMs: 1_002_000 + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } });
   });
 
 });
@@ -71,7 +71,7 @@ describe("Anthropic API rate limits", () => {
 
     expect(availability.genericQuotaStanding(ANTHROPIC_API)).toEqual({
       kind: "suppressed",
-      exhaustion: { exhaustedAtMs: 1_000_000, resetsAtMs: 1_000_000 + 45_000 },
+      exhaustion: { exhaustedAtMs: 1_000_000, resetsAtMs: 1_000_000 + 45_000, hold: { kind: "rate_limit" } },
     });
   });
 
@@ -175,14 +175,14 @@ describe("ChatGPT quota windows", () => {
     });
   });
 
-  test("an error frame carrying a terminal quota code without a reset holds to the safe recheck", () => {
+  test("an error frame carrying a terminal quota code without a reset holds to the safe recheck, as a spent limit with no stated reset", () => {
     const h = harness([]);
 
     observeChatGptQuotaFrame({ type: "error", code: "insufficient_quota", message: "out of credit" }, CHATGPT, h.availability);
 
     expect(h.availability.chatGptStanding(CHATGPT)).toMatchObject({
       kind: "suppressed",
-      exhaustion: { resetsAtMs: 1_000_000 + SAFE_RECHECK_MS },
+      exhaustion: { resetsAtMs: 1_000_000 + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } },
     });
   });
 

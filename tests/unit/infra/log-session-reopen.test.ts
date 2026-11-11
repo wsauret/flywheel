@@ -60,6 +60,18 @@ describe("Log global sink", () => {
     }
   })
 
+  it("returns to the default level and writes no verbose family once the global log closes", async () => {
+    await Log.init({ dir: makeTmpDir(), level: "DEBUG" })
+    await Log.closeGlobal()
+    // A sink opened without Log.init keeps the level that the realm has.
+    const baseDir = makeTmpDir()
+    await DebugLog.init({ dir: baseDir })
+    expect(Log.delivers("DEBUG")).toBe(false)
+    DebugLog.record({ type: "model.stream.event_observed", payload: { requestId: "r1", sequence: 1 } })
+    await DebugLog.close()
+    expect(listDebugLogFiles(resolveDebugLogDirectory(baseDir))).toEqual([])
+  })
+
   it("awaits pending global log writes when closing", async () => {
     const baseDir = makeTmpDir()
     await Log.init({ dir: baseDir })
