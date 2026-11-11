@@ -7,6 +7,8 @@ import type { OutputProjector } from "./output-projector.js"
 
 export class AssistantDraftProjector {
   private readonly text = new Map<string, string>()
+  /** Each thought draft's text by the key of its row: the text the row holds.
+   *  A thought streams under the key of the part that settles it. */
   private readonly thinking = new Map<string, string>()
   private readonly publishedToolParts = new Set<string>()
 
@@ -35,25 +37,32 @@ export class AssistantDraftProjector {
     this.text.set(blockKey, (this.text.get(blockKey) ?? "") + text)
   }
 
-  reconcileTerminalText(blockKey: string | undefined, content: string, timestamp: number, provisionalBlockKey = blockKey): void {
+  /** Brings text run `blockKey` to `content`. `reclassifiedThoughtKey` names
+   *  the thought draft that the text replaces, when signed narration that
+   *  streamed as a thought settles as text. */
+  reconcileTerminalText(blockKey: string | undefined, content: string, timestamp: number, reclassifiedThoughtKey: string | undefined): void {
     if (blockKey === undefined) return
-    for (const step of this.textReconciliation(blockKey, content, timestamp, provisionalBlockKey)) this.projector.apply(step)
+    for (const step of this.textReconciliation(blockKey, content, timestamp, reclassifiedThoughtKey)) this.projector.apply(step)
   }
 
   streamThinking(blockKey: string | undefined, thinking: string, timestamp: number, estimatedTokens: number | undefined): void {
     if (blockKey === undefined) return
     this.projector.apply({ type: "push-thinking", text: thinking, timestamp, blockKey, estimatedTokens })
-    if (thinking.length > 0) this.thinking.set(blockKey, (this.thinking.get(blockKey) ?? "") + thinking)
+    // The same rule as the row: blank text joins a thought that has a row.
+    const draft = this.thinking.get(blockKey)
+    if (draft !== undefined || thinking.trim()) this.thinking.set(blockKey, (draft ?? "") + thinking)
   }
 
-  finalizeThinking(blockKey: string | undefined, content: string, timestamp: number, provisionalBlockKey: string | undefined): void {
+  /** Settles the thought whose draft streamed under `draftBlockKey` as the
+   *  recorded part `blockKey` with text `content`, in place. Only a recorded
+   *  fact from before thoughts streamed under their settled key names another
+   *  draft key; that draft leaves. */
+  finalizeThinking(blockKey: string | undefined, content: string, timestamp: number, draftBlockKey: string | undefined): void {
     if (blockKey === undefined) return
-    if (provisionalBlockKey !== undefined) {
-      const draft = this.thinking.get(provisionalBlockKey)
-      if (draft !== undefined) this.projector.apply({ type: "retract-draft", blockKeys: [provisionalBlockKey], timestamp, reclassifiedChars: draft.length })
-      this.thinking.delete(provisionalBlockKey)
-    }
-    this.streamThinking(blockKey, content, timestamp, undefined)
+    const steps = draftBlockKey === undefined || draftBlockKey === blockKey ? [] : this.draftRetraction(draftBlockKey, timestamp)
+    // A settling thought is live thinking output, whatever its row needs.
+    this.projector.apply({ type: "set-model-phase", phase: "thinking", timestamp })
+    for (const step of [...steps, ...this.thoughtReconciliation(blockKey, content, timestamp)]) this.projector.apply(step)
   }
 
   completeText(blockKey: string | undefined, timestamp: number): void {
@@ -79,6 +88,7 @@ export class AssistantDraftProjector {
    *  moves the live stream phase. */
   settle(content: readonly ContentBlock[], parentToolUseId: string | undefined, timestamp: number, entryId: string): void {
     const settled: SettledAssistantContent[] = []
+    const claimedText = new Set<string>()
     for (const { part, index, text } of assistantContentRuns(content)) {
       const key = `${entryId}:${index}`
       if (part.type === "tool_use") {
@@ -88,41 +98,64 @@ export class AssistantDraftProjector {
       } else if (parentToolUseId !== undefined) {
         continue
       } else if (part.type === "text" && text !== undefined) {
-        settled.push(...this.textReconciliation(key, text, timestamp, key))
+        claimedText.add(key)
+        settled.push(...this.textReconciliation(key, text, timestamp, undefined))
       } else if (part.type === "thinking" && isProgressUpdate(part)) {
+        claimedText.add(key)
         settled.push(...this.textReconciliation(key, redactSecrets(part.thinking), timestamp, key))
       } else if (part.type === "thinking" || part.type === "reasoning") {
-        const thought = part.type === "thinking" ? part.thinking : reasoningSummaryText(part)
-        const draft = this.thinking.get(key) ?? ""
-        if (thought.startsWith(draft)) settled.push({ type: "push-thinking", text: thought.slice(draft.length), timestamp, blockKey: key })
+        settled.push(...this.thoughtReconciliation(key, part.type === "thinking" ? part.thinking : reasoningSummaryText(part), timestamp))
         this.thinking.delete(key)
       }
     }
-    // A draft no part claimed, such as unsigned thinking or reasoning without
-    // encrypted content, is not in the conversation.
+    // A draft no part claimed, such as unsigned thinking, reasoning without
+    // encrypted content, or text whose coordinate moved because a looping
+    // thought was dropped before recording, is not in the conversation.
     if (parentToolUseId === undefined) settled.push(...this.unclaimedThoughtRetraction(timestamp))
+    if (parentToolUseId === undefined && content.some((part) => part.type !== "tool_use")) settled.push(...this.unclaimedTextRetraction(claimedText, timestamp))
     this.projector.apply({ type: "settle-assistant-message", content: settled, timestamp })
-    if (parentToolUseId === undefined && content.some((part) => part.type !== "tool_use")) this.text.clear()
   }
 
   private unclaimedThoughtRetraction(timestamp: number): SettledAssistantContent[] {
     if (this.thinking.size === 0) return []
     const blockKeys = [...this.thinking.keys()]
     this.thinking.clear()
-    return [{ type: "retract-draft", blockKeys, timestamp }]
+    return [{ type: "retract-draft", kind: "thinking", blockKeys, timestamp }]
+  }
+
+  /** Ends the text drafts of the settled message: a run that no recorded part
+   *  claimed leaves with its streamed characters. */
+  private unclaimedTextRetraction(claimed: ReadonlySet<string>, timestamp: number): SettledAssistantContent[] {
+    const unclaimed = [...this.text].filter(([blockKey]) => !claimed.has(blockKey))
+    this.text.clear()
+    if (unclaimed.length === 0) return []
+    const retractedChars = unclaimed.reduce((total, [, draft]) => total + draft.length, 0)
+    return [{ type: "retract-draft", kind: "text", blockKeys: unclaimed.map(([blockKey]) => blockKey), timestamp, retractedChars }]
+  }
+
+  /** Retracts the thought draft `blockKey` and its streamed characters. */
+  private draftRetraction(blockKey: string, timestamp: number): SettledAssistantContent[] {
+    const draft = this.thinking.get(blockKey)
+    if (draft === undefined) return []
+    this.thinking.delete(blockKey)
+    return [{ type: "retract-draft", kind: "thinking", blockKeys: [blockKey], timestamp, retractedChars: draft.length }]
+  }
+
+  /** The content steps that bring the thought row `blockKey` to `thought` in
+   *  place. A thought with no text has no row, as in a reopened transcript. */
+  private thoughtReconciliation(blockKey: string, thought: string, timestamp: number): SettledAssistantContent[] {
+    if (!thought.trim()) return this.draftRetraction(blockKey, timestamp)
+    const draft = this.thinking.get(blockKey)
+    this.thinking.set(blockKey, thought)
+    if (draft === thought) return []
+    if (draft === undefined || thought.startsWith(draft)) return [{ type: "push-thinking", text: thought.slice(draft?.length ?? 0), timestamp, blockKey }]
+    return [{ type: "replace-thinking", text: thought, blockKey }]
   }
 
   /** The content steps that bring text run `blockKey` to `content`, retracting
-   *  the provisional thinking draft that the text replaces. */
-  private textReconciliation(blockKey: string, content: string, timestamp: number, provisionalBlockKey: string | undefined): SettledAssistantContent[] {
-    const steps: SettledAssistantContent[] = []
-    if (provisionalBlockKey !== undefined) {
-      const thought = this.thinking.get(provisionalBlockKey)
-      if (thought !== undefined) {
-        steps.push({ type: "retract-draft", blockKeys: [provisionalBlockKey], timestamp, reclassifiedChars: thought.length })
-        this.thinking.delete(provisionalBlockKey)
-      }
-    }
+   *  the thought draft `reclassifiedThoughtKey` that the text replaces. */
+  private textReconciliation(blockKey: string, content: string, timestamp: number, reclassifiedThoughtKey: string | undefined): SettledAssistantContent[] {
+    const steps: SettledAssistantContent[] = reclassifiedThoughtKey === undefined ? [] : this.draftRetraction(reclassifiedThoughtKey, timestamp)
     const draft = this.text.get(blockKey)
     if (draft === content) return steps
     this.text.set(blockKey, content)

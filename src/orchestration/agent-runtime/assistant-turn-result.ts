@@ -120,8 +120,12 @@ export function handleStreamEvent(event: ProviderStreamEvent, result: AssistantT
       return publication(event, result, block);
     }
     case "thinking_delta":
-      // Private previews are not canonical parts until the provider classifies them.
-      return event;
+      // Private previews are not canonical parts until the provider classifies
+      // them, and a progress preview never renders before its completion. A
+      // thought streams under the coordinate it takes when it lands as the
+      // next part, so it keeps its row from the first delta to settlement.
+      if (result.entryId === undefined || event.presentation === "progress") return event;
+      return { ...event, outputIdentity: { entryId: result.entryId, blockKey: `${result.entryId}:${result.assistantContent.length}` } };
     case "thinking_complete": {
       if (!event.signature && event.presentation !== "progress") return event;
       const block: Extract<ContentBlock, { type: "thinking" }> = {

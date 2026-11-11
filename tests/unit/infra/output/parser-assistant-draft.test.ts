@@ -5,6 +5,11 @@ import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-even
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
 import { makeAssistantEvent as assistantEvent } from "./_parser-fixtures";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result";
+import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner-stream-events";
+import { createThinkingAccumulator, emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit";
+import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker";
+import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types";
+import { RequestToolMap } from "../../../helpers/request-tool-surface";
 
 describe("RuntimeEventProjector — assistant draft reconciliation", () => {
   let projector: OutputProjector;
@@ -48,6 +53,92 @@ describe("RuntimeEventProjector — assistant draft reconciliation", () => {
       data: { type: "model.turn.completed" },
     };
   }
+
+  /** Runs one provider response through the runner's reduction and emission,
+   *  then records its assistant message, and returns the identities of the
+   *  thought rows after each event and whether any change batch was a full
+   *  resync, which is how a retraction reaches clients. */
+  function respond(events: readonly ProviderStreamEvent[], recorded = (content: AssistantTurnResult["assistantContent"]) => content) {
+    projector.onChange = () => {};
+    projector.drainChanges();
+    const context = {
+      options: { onEvent: (event: RuntimeEvent) => parser.dispatch(event, 1000) },
+      contextWindow: 200_000,
+      costTracker: createTurnUsageTracker({ emit: () => {}, budgetStreamId: "draft" }),
+      providerSessionKey: "draft",
+      parentToolUseId: undefined,
+      thinking: createThinkingAccumulator(),
+      tools: new RequestToolMap(),
+    };
+    const thoughtIds: string[][] = [];
+    let resynced = false;
+    const observe = () => {
+      thoughtIds.push(projector.getBlocks().flatMap((block) => block.kind === "thinking" ? [block.id] : []));
+      resynced ||= projector.drainChanges().fullResync;
+    };
+    for (const event of events) {
+      const published = handleStreamEvent(event, turn);
+      if (published.kind === "done" || published.kind === "stream_retry" || published.kind === "stream_resample" || published.kind === "stream_attempt_start" || published.kind === "provider_status") continue;
+      emitAgentStreamEvent(published, context);
+      observe();
+    }
+    emitTurnAssistant(context.options.onEvent, recorded(turn.assistantContent), context.costTracker, undefined, "entry");
+    observe();
+    return { thoughtIds, resynced };
+  }
+
+  it("keeps one thought row from its first delta through settlement", () => {
+    const { thoughtIds, resynced } = respond([
+      { kind: "thinking_delta", text: "", blockKey: "run:0" },
+      { kind: "thinking_delta", text: "Weigh the ", blockKey: "run:0" },
+      { kind: "thinking_delta", text: "options.", blockKey: "run:0" },
+      { kind: "thinking_complete", thinking: "Weigh the options.", signature: "c2lnbmVk", blockKey: "run:0" },
+      { kind: "text_delta", text: "Done.", blockKey: "run:1" },
+    ]);
+    expect(thoughtIds).toEqual([[], ["entry:0"], ["entry:0"], ["entry:0"], ["entry:0"], ["entry:0"]]);
+    expect(resynced).toBe(false);
+    expect(projector.getBlocks()).toMatchObject([
+      { kind: "thinking", id: "entry:0", content: "Weigh the options.", status: "completed" },
+      { kind: "text", id: "entry:1", content: "Done." },
+    ]);
+  });
+
+  it("corrects a reasoning summary that differs from its streamed draft in place", () => {
+    const { thoughtIds, resynced } = respond([
+      { kind: "thinking_delta", text: "Inspecting ", blockKey: "run:0" },
+      { kind: "thinking_delta", text: "events\n\n", blockKey: "run:0" },
+      { kind: "thinking_complete", thinking: "Inspecting events\n\n", blockKey: "run:0" },
+      { kind: "reasoning", id: "rs_1", encryptedContent: "ENC", summary: [{ type: "summary_text", text: "Inspecting events" }], blockKey: "run:0" },
+    ]);
+    expect(new Set(thoughtIds.flat())).toEqual(new Set(["entry:0"]));
+    expect(resynced).toBe(false);
+    expect(projector.getBlocks()).toMatchObject([{ kind: "thinking", id: "entry:0", content: "Inspecting events" }]);
+  });
+
+  it("keeps a thought that no part claims beside the text that takes its coordinate until settlement", () => {
+    const { thoughtIds } = respond([
+      { kind: "thinking_delta", text: "Unsigned thought", blockKey: "run:thinking:0" },
+      { kind: "thinking_complete", thinking: "Unsigned thought", blockKey: "run:thinking:0" },
+      { kind: "text_delta", text: "Answer", blockKey: "run:1" },
+    ]);
+    expect(thoughtIds.slice(0, -1)).toEqual([["entry:0"], ["entry:0"], ["entry:0"]]);
+    expect(thoughtIds.at(-1)).toEqual([]);
+    expect(projector.getBlocks()).toMatchObject([{ kind: "text", id: "entry:0", content: "Answer" }]);
+  });
+
+  it("retracts streamed text whose coordinate moved when a dropped thought left the recorded message", () => {
+    // A repetition trip records the partial without its looping thought, so
+    // the text that streamed at the second coordinate settles at the first.
+    respond([
+      { kind: "thinking_delta", text: "loop loop", blockKey: "run:0" },
+      { kind: "thinking_complete", thinking: "loop loop", signature: "c2lnbmVk", blockKey: "run:0" },
+      { kind: "text_delta", text: "partial answer", blockKey: "run:1" },
+    ], (content) => content.filter((part) => part.type !== "thinking"));
+    expect(projector.getBlocks()).toEqual([expect.objectContaining({ kind: "text", id: "entry:0", content: "partial answer" })]);
+    // The retracted run takes its characters with it; the dropped thought's
+    // stay, as for any thought that no part claims.
+    expect(projector.snapshot().streamingOutputChars).toBe("loop loop".length + "partial answer".length);
+  });
 
   it("corrects terminal narration in place under its canonical public identity", () => {
     projector.onChange = () => {};

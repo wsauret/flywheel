@@ -31,7 +31,7 @@ describe("live/derived output equivalence", () => {
       const delta = (blockKey: string, data: { type: string, thinking?: string, text?: string, presentation?: "progress", provisional_block_key?: string }) =>
         live.dispatchRuntimeEvent({ type: "model.content.delta", data: { delta: data, block_key: blockKey } })
       const firstStep = [
-        { type: "thinking" as const, thinking: "Weigh the options.", signature: "c2lnLTE=" },
+        { type: "thinking" as const, thinking: "\nWeigh the options.\n\nThen read.", signature: "c2lnLTE=" },
         { type: "thinking" as const, thinking: "Reading the config first.", signature: "c2lnLTI=", presentation: "progress" as const },
         { type: "text" as const, text: "Checking the file." },
         { type: "tool_use" as const, id: "read-1", name: "read", input: { path: "src/example.ts" } },
@@ -42,13 +42,17 @@ describe("live/derived output equivalence", () => {
         { type: "text" as const, text: "Done." },
       ]
       // The events the runner emits for one provider stream: a thought streams
-      // under its provisional key and settles under its canonical one, a
-      // progress update streams as text, and public text streams canonically.
+      // under the coordinate it reserves and settles there, a progress update
+      // streams as text, and public text streams canonically. Blank deltas,
+      // leading or between paragraphs, are part of the thought.
       live.pushUserMessage("check it", 1_000, { entryId: userId })
       live.dispatchRuntimeEvent({ type: "agent.provider_response.started", data: {} })
-      delta("run-1:0", { type: "thinking_delta", thinking: "Weigh the " })
-      delta("run-1:0", { type: "thinking_delta", thinking: "options." })
-      delta(`${firstId}:0`, { type: "thinking_complete", thinking: "Weigh the options.", provisional_block_key: "run-1:0" })
+      delta(`${firstId}:0`, { type: "thinking_delta", thinking: "\n" })
+      delta(`${firstId}:0`, { type: "thinking_delta", thinking: "Weigh the " })
+      delta(`${firstId}:0`, { type: "thinking_delta", thinking: "options." })
+      delta(`${firstId}:0`, { type: "thinking_delta", thinking: "\n\n" })
+      delta(`${firstId}:0`, { type: "thinking_delta", thinking: "Then read." })
+      delta(`${firstId}:0`, { type: "thinking_complete", thinking: "\nWeigh the options.\n\nThen read.", provisional_block_key: `${firstId}:0` })
       delta(`${firstId}:1`, { type: "thinking_delta", thinking: "Reading the config first.", presentation: "progress" })
       live.dispatchRuntimeEvent({ type: "model.text.completed", data: { block_key: `${firstId}:1` } })
       delta(`${firstId}:2`, { type: "text_delta", text: "Checking the file." })
@@ -58,8 +62,8 @@ describe("live/derived output equivalence", () => {
       live.dispatchRuntimeEvent({ type: "tool.result.recorded", data: { tool_use_id: "read-1", content: [{ type: "text", text: "export const value = 1" }] } })
       live.dispatchRuntimeEvent({ type: "tool.result.recorded", data: { tool_use_id: "bash-1", content: [{ type: "text", text: "1 pass" }] } })
       live.dispatchRuntimeEvent({ type: "agent.provider_response.started", data: {} })
-      delta("run-2:0", { type: "thinking_delta", thinking: "The tests pass." })
-      delta(`${secondId}:0`, { type: "thinking_complete", thinking: "The tests pass.", provisional_block_key: "run-2:0" })
+      delta(`${secondId}:0`, { type: "thinking_delta", thinking: "The tests pass." })
+      delta(`${secondId}:0`, { type: "thinking_complete", thinking: "The tests pass.", provisional_block_key: `${secondId}:0` })
       delta(`${secondId}:1`, { type: "text_delta", text: "Done." })
       live.dispatchRuntimeEvent({ type: "model.assistant_message.recorded", data: { entry_id: secondId, message: { content: secondStep } } })
       live.endTurn("completed")
@@ -91,6 +95,8 @@ describe("live/derived output equivalence", () => {
       ])
       expect(durable.blocks.map(blockIdentity)).toEqual(liveIdentities)
       expect(durable.blocks.filter((block) => block.kind === "thinking").map((block) => block.status)).toEqual(["completed", "completed"])
+      const thoughts = (blocks: readonly { kind: string }[]) => blocks.flatMap((block) => "content" in block && block.kind === "thinking" ? [block.content] : [])
+      expect(thoughts(live.getBlocks())).toEqual(thoughts(durable.blocks))
     } finally {
       live.dispose()
       store.close()

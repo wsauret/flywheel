@@ -54,6 +54,8 @@ export function emitAgentStreamEvent(
   context: StreamEventEmitContext,
 ): void {
   const { options, parentToolUseId } = context;
+  // A thought streams under the row key of the part that settles it, so a
+  // settling thought names that key as the draft it reconciles.
   const blockKey = streamEvent.outputIdentity?.blockKey ?? ("blockKey" in streamEvent ? streamEvent.blockKey : undefined);
   switch (streamEvent.kind) {
     case "stream_abandoned":
@@ -94,7 +96,7 @@ export function emitAgentStreamEvent(
         options.onEvent(createRuntimeEvent("model.text.reconciled", {
           content: redactSecrets(streamEvent.thinking),
           block_key: blockKey ?? streamEvent.blockKey,
-          provisional_block_key: streamEvent.blockKey,
+          provisional_block_key: blockKey,
           ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
         }));
         emitTextComplete(options.onEvent, parentToolUseId, blockKey);
@@ -112,7 +114,7 @@ export function emitAgentStreamEvent(
       }
       if (streamEvent.outputIdentity) {
         options.onEvent(createRuntimeEvent("model.content.delta", {
-          delta: { type: "thinking_complete", thinking: streamEvent.thinking, provisional_block_key: streamEvent.blockKey },
+          delta: { type: "thinking_complete", thinking: streamEvent.thinking, provisional_block_key: blockKey },
           block_key: blockKey,
           ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
         }));
@@ -127,7 +129,7 @@ export function emitAgentStreamEvent(
       // The streamed summary or raw reasoning text settles to the persisted
       // part, with the text a reopened transcript shows for it.
       options.onEvent(createRuntimeEvent("model.content.delta", {
-        delta: { type: "thinking_complete", thinking: reasoningSummaryText(streamEvent), provisional_block_key: streamEvent.blockKey },
+        delta: { type: "thinking_complete", thinking: reasoningSummaryText(streamEvent), provisional_block_key: blockKey },
         block_key: blockKey,
         ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
       }));

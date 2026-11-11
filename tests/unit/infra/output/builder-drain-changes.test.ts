@@ -66,9 +66,9 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
   });
 
   it("retraction degrades to a full resync and drops any changes queued this batch", () => {
-    builder.pushThinking("thinking...", 1, "think-1");
-    builder.pushText("partial", 2, "text-1");
-    builder.retractBlocks(["text-1"]);
+    builder.pushText("partial", 1, "text-1");
+    builder.pushThinking("thinking...", 2, "think-1");
+    builder.retractDrafts("thinking", ["think-1"]);
 
     const batch = builder.drainChanges();
     expect(batch.fullResync).toBe(true);
@@ -214,7 +214,7 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
     capped.pushText("first", 1, "first");
     expect(capped.visibleMessageCountSuffix).toBe(2);
 
-    capped.retractBlocks(["first"]);
+    capped.retractDrafts("text", ["first"]);
     expect(capped.visibleMessageCountSuffix).toBe(1);
 
     capped.pushText("second", 2, "second");

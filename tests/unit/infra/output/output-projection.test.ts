@@ -394,10 +394,10 @@ describe("OutputProjector", () => {
 
   it("lands late execution output on the settled bash row after a retraction shifts block indices", () => {
     const projector = new OutputProjector({ executionCwd: "/workspace" });
-    projector.apply({ type: "push-text", text: "draft", timestamp: 1, blockKey: "draft-1" });
+    projector.apply({ type: "push-thinking", text: "draft", timestamp: 1, blockKey: "draft-1" });
     projector.apply({ type: "tool-use", toolUseId: "bash-1", name: "bash", input: { command: "one" }, timestamp: 2 });
     projector.apply({ type: "tool-result", toolUseId: "bash-1", outcome: "ok", content: [{ type: "text", text: "compressed" }], timestamp: 3 });
-    projector.apply({ type: "retract-draft", blockKeys: ["draft-1"], timestamp: 4 });
+    projector.apply({ type: "retract-draft", kind: "thinking", blockKeys: ["draft-1"], timestamp: 4 });
     new RuntimeEventProjector(projector).dispatch({
       type: "tool.execution_output.recorded",
       data: { tool_use_id: "bash-1", output: "tail one" },

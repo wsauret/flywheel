@@ -18,7 +18,7 @@ import { Log } from "../log.js";
 import { EMPTY_OUTPUT_CHANGE_BATCH, NO_CHANGED_TOOLS, type OutputBlockChange, type OutputChangeBatch } from "./output-block-delta.js";
 import { StreamingToolTextStore } from "./streaming-tool-text.js";
 import { appendKeyedDelta } from "./structured-output-grouping.js";
-import { definedProps, rebuildBlockIndexes } from "./structured-output-helpers.js";
+import { contentKey, definedProps, rebuildBlockIndexes } from "./structured-output-helpers.js";
 import { resetFailedFileChange } from "./file-change-settlement.js";
 import { resolveToolRowPresentation } from "../tools/tool-display-registry.js";
 import {
@@ -224,13 +224,17 @@ export class StructuredOutputBuilder {
   completeThinking(timestamp = Date.now()): void {
     this.completeStreamingThinkingBlocks(timestamp);
   }
+  /** Appends `text` to thought row `blockKey`. Blank text never creates a
+   *  row, but it is part of the thought once the row exists, so the row
+   *  holds the text that its settled part records. */
   pushThinking(text: string, timestamp: number, blockKey: string): void {
-    if (!text.trim()) { this.notifyChange(); return; }
+    if (!text.trim() && !this.contentIndexById.has(contentKey("thinking", blockKey))) { this.notifyChange(); return; }
     const blockTimestamp = anchorOf(this.phase) ?? timestamp;
     this.phase = nextResponsePhase(this.phase, { kind: "claimed" });
     const result = appendKeyedDelta(
       this.blocks,
       this.contentIndexById,
+      "thinking",
       blockKey,
       text,
       (id, content) => ({ kind: "thinking", id, content, status: "streaming", timestamp: blockTimestamp }),
@@ -286,6 +290,7 @@ export class StructuredOutputBuilder {
     const result = appendKeyedDelta(
       this.blocks,
       this.contentIndexById,
+      "text",
       blockKey,
       text,
       (id, content) => ({ kind: "text", id, content, timestamp }),
@@ -296,7 +301,7 @@ export class StructuredOutputBuilder {
     this.notifyChange();
   }
   insertTextBeforeTool(toolUseId: string, text: string, timestamp: number, blockKey: string): void {
-    if (this.contentIndexById.has(blockKey)) {
+    if (this.contentIndexById.has(contentKey("text", blockKey))) {
       this.replaceText(blockKey, text);
       return;
     }
@@ -314,9 +319,17 @@ export class StructuredOutputBuilder {
   }
   /** Corrects one public run without changing its identity or position. */
   replaceText(blockKey: string, content: string): void {
-    const index = this.contentIndexById.get(blockKey);
+    this.replaceContent("text", blockKey, content);
+  }
+  /** Corrects one thought without changing its identity or position, so the
+   *  row a client shows for it stays mounted. */
+  replaceThinking(blockKey: string, content: string): void {
+    this.replaceContent("thinking", blockKey, content);
+  }
+  private replaceContent(kind: "text" | "thinking", blockKey: string, content: string): void {
+    const index = this.contentIndexById.get(contentKey(kind, blockKey));
     const block = index === undefined ? undefined : this.blocks[index];
-    if (index === undefined || block?.kind !== "text" || block.content === content) return;
+    if (index === undefined || block?.kind !== kind || block.content === content) return;
     this._streamingOutputChars += content.length - block.content.length;
     this.blocks[index] = { ...block, content };
     this.recordUpsert(index);
@@ -564,13 +577,12 @@ export class StructuredOutputBuilder {
     this._streamingOutputChars = 0;
     this.notifyChange();
   }
-  /** Remove streamed draft blocks by blockKey (text/thinking block ids). Used
-   *  by stream-retry retraction so a failed attempt's partial output does not
-   *  survive beside the retry's regeneration. */
-  retractBlocks(blockKeys: readonly string[]): void {
+  /** Removes streamed drafts of one kind by row key: a draft that no recorded
+   *  part claimed, or a thought that a correction reclassified as text. */
+  retractDrafts(kind: "text" | "thinking", blockKeys: readonly string[]): void {
     const indices = new Set<number>();
     for (const key of blockKeys) {
-      const idx = this.contentIndexById.get(key);
+      const idx = this.contentIndexById.get(contentKey(kind, key));
       if (idx !== undefined) indices.add(idx);
     }
     if (indices.size === 0) return;
@@ -579,18 +591,6 @@ export class StructuredOutputBuilder {
       if (block !== undefined && isVisibleMessageBlock(block)) this._visibleMessageCountSuffix--;
     }
     this.blocks = this.blocks.filter((_, i) => !indices.has(i));
-    rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
-    this.rebuildToolIndex();
-    this.recordStructuralChange();
-    this.notifyChange();
-  }
-  removeStreamingThinkingBlocks(blockKeys: readonly string[]): void {
-    const keys = new Set(blockKeys);
-    const retained = this.blocks.filter((block) => (
-      block.kind !== "thinking" || block.status !== "streaming" || !keys.has(block.id)
-    ));
-    if (retained.length === this.blocks.length) return;
-    this.blocks = retained;
     rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
     this.rebuildToolIndex();
     this.recordStructuralChange();

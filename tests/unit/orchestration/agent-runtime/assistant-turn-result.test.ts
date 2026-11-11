@@ -43,7 +43,7 @@ describe("assistant turn terminal reconciliation", () => {
 
   test("publishes original run coordinates across adjacent text, hidden parts, progress, narration, and tools", () => {
     const turn = result();
-    handleStreamEvent({ kind: "thinking_delta", text: "unfinished private preview", blockKey: "preview" }, turn);
+    const preview = handleStreamEvent({ kind: "thinking_delta", text: "unfinished private preview", blockKey: "preview" }, turn);
     const first = handleStreamEvent({ kind: "text_delta", blockKey: "one", text: "same" }, turn);
     const adjacent = handleStreamEvent({ kind: "text_delta", blockKey: "two", text: " words" }, turn);
     const reasoning = handleStreamEvent({ kind: "reasoning", id: "opaque", encryptedContent: "encrypted", blockKey: "summary" }, turn);
@@ -53,8 +53,10 @@ describe("assistant turn terminal reconciliation", () => {
     const narration = handleStreamEvent({ kind: "thinking_complete", blockKey: "narration", thinking: "Done.", signature: "Eg0KC0IJbmFycmF0aW9u" }, turn);
     const tool = handleStreamEvent({ kind: "tool_use", toolCall: { id: "read", name: "read", input: {} } }, turn);
     const afterTool = handleStreamEvent({ kind: "text_delta", blockKey: "four", text: "same" }, turn);
-    expect([first, adjacent, reasoning, afterHidden, progress, privateDraft, narration, tool, afterTool].map(event => event.outputIdentity?.blockKey))
-      .toEqual(["entry:0", "entry:0", "entry:2", "entry:3", "entry:4", undefined, "entry:5", "entry:6", "entry:7"]);
+    // A thought streams under the coordinate it takes when it lands as the
+    // next part, so the narration settles where its draft streamed.
+    expect([preview, first, adjacent, reasoning, afterHidden, progress, privateDraft, narration, tool, afterTool].map(event => event.outputIdentity?.blockKey))
+      .toEqual(["entry:0", "entry:0", "entry:0", "entry:2", "entry:3", "entry:4", "entry:5", "entry:5", "entry:6", "entry:7"]);
     expect(turn.assistantContent.map(part => part.type)).toEqual(["text", "text", "reasoning", "text", "thinking", "thinking", "tool_use", "text"]);
     const next = result();
     next.entryId = "next";

@@ -43,6 +43,13 @@ export function definedProps<T extends object>(props: T): Partial<T> {
   return Object.fromEntries(Object.entries(props).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
 
+/** The key of a text or thinking row in the content index: the row's kind and
+ *  id, the identity every client keys it by. A thought that streamed under a
+ *  coordinate that a text run later took is a different row from that run. */
+export function contentKey(kind: "text" | "thinking", id: string): string {
+  return `${kind}:${id}`;
+}
+
 export function rebuildBlockIndexes(
   blocks: AnyBlock[],
   agentIndexById: Map<string, number>,
@@ -52,7 +59,7 @@ export function rebuildBlockIndexes(
   contentIndexById.clear();
   for (const [i, block] of blocks.entries()) {
     if (block.kind === "agentGroup") agentIndexById.set(block.id, i);
-    if (block.kind === "text" || block.kind === "thinking") contentIndexById.set(block.id, i);
+    if (block.kind === "text" || block.kind === "thinking") contentIndexById.set(contentKey(block.kind, block.id), i);
   }
 }
 

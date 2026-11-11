@@ -2,11 +2,70 @@
 import { describe, expect, it } from "bun:test"
 
 const { testRender } = await import("@opentui/solid")
-const { createSignal } = await import("solid-js")
+const { createSignal, Show } = await import("solid-js")
 const { ThinkingBlock } = await import("../../../../src/tui/output-blocks/thinking-block.js")
 const { ThemeProvider, useTheme } = await import("../../../../src/tui/context/theme.js")
 const { BlockDisclosureProvider, createBlockDisclosureChannel } = await import("../../../../src/tui/context/block-disclosure.js")
 const { TickPoolProvider } = await import("../../../../src/tui/context/tick-pool-context.js")
+const { OutputProjector } = await import("../../../../src/infra/output/output-projector.js")
+const { RuntimeEventProjector } = await import("../../../../src/infra/output/runtime-event-projector.js")
+const { handleStreamEvent } = await import("../../../../src/orchestration/agent-runtime/assistant-turn-result.js")
+const { emitAgentStreamEvent } = await import("../../../../src/orchestration/agent-runtime/runner-stream-events.js")
+const { createThinkingAccumulator, emitTurnAssistant } = await import("../../../../src/orchestration/agent-runtime/emit.js")
+const { createTurnUsageTracker } = await import("../../../../src/orchestration/agent-runtime/turn-usage-tracker.js")
+const { RequestToolMap } = await import("../../../helpers/request-tool-surface.js")
+import type { ThinkingBlock as ThinkingBlockType } from "../../../../src/infra/output-blocks.js"
+import type { AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js"
+import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+
+describe("thinking disclosure", () => {
+  it("keeps a thought the person opened open when the thought completes", async () => {
+    const projector = new OutputProjector({ executionCwd: "/workspace" })
+    const runtime = new RuntimeEventProjector(projector)
+    const turn: AssistantTurnResult = {
+      entryId: "entry", outcome: { kind: "ok", stopReason: "unknown" }, assistantContent: [], toolCalls: [],
+      assistantMetadata: undefined, lastAssistantMetadata: undefined, usageAnchor: undefined, terminalEvent: undefined, transportContext: undefined,
+    }
+    const context = {
+      options: { onEvent: (event: Parameters<typeof runtime.dispatch>[0]) => runtime.dispatch(event) },
+      contextWindow: 200_000,
+      costTracker: createTurnUsageTracker({ emit: () => {}, budgetStreamId: "thinking-disclosure" }),
+      providerSessionKey: "thinking-disclosure",
+      parentToolUseId: undefined,
+      thinking: createThinkingAccumulator(),
+      tools: new RequestToolMap(),
+    }
+    // The runtime's own projection of one provider stream feeds the row, as
+    // the client's patched transcript does.
+    const [block, setBlock] = createSignal<ThinkingBlockType | undefined>()
+    const publish = () => setBlock(projector.getBlocks().find((candidate): candidate is ThinkingBlockType => candidate.kind === "thinking"))
+    const stream = (event: Extract<ProviderStreamEvent, { kind: "thinking_delta" | "thinking_complete" }>) => {
+      const published = handleStreamEvent(event, turn)
+      if (published.kind === "thinking_delta" || published.kind === "thinking_complete") emitAgentStreamEvent(published, context)
+      publish()
+    }
+    stream({ kind: "thinking_delta", text: "one\ntwo\nthree\n", blockKey: "run:0" })
+    const result = await testRender(() => <BlockDisclosureProvider value={createBlockDisclosureChannel()}><ThemeProvider mode="dark"><TickPoolProvider>
+      <Show when={block()}>{(shown) => <ThinkingBlock block={shown()} />}</Show>
+    </TickPoolProvider></ThemeProvider></BlockDisclosureProvider>, { width: 60, height: 12 })
+    const header = () => result.captureCharFrame().split("\n")[0] ?? ""
+    try {
+      stream({ kind: "thinking_delta", text: "four\nfive", blockKey: "run:0" })
+      await result.renderOnce()
+      expect(header()).toContain("▸")
+      await result.mockMouse.click(header().indexOf("▸"), 0)
+      await result.renderOnce()
+      expect(header()).toContain("▾")
+
+      stream({ kind: "thinking_complete", thinking: "one\ntwo\nthree\nfour\nfive", signature: "c2lnbmVk", blockKey: "run:0" })
+      emitTurnAssistant(context.options.onEvent, turn.assistantContent, context.costTracker, undefined, "entry")
+      publish()
+      await result.renderOnce()
+      expect(block()?.status).toBe("completed")
+      expect(header()).toContain("▾")
+    } finally { result.renderer.destroy() }
+  })
+})
 
 describe("thinking body hitbox", () => {
   it("toggles and highlights from the rail and padding beside its shown body, while the space beside its header does nothing", async () => {

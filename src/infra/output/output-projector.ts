@@ -98,6 +98,9 @@ export class OutputProjector {
       case "replace-text":
         this.builder.replaceText(event.blockKey, event.text);
         return;
+      case "replace-thinking":
+        this.builder.replaceThinking(event.blockKey, event.text);
+        return;
       case "settle-assistant-message":
         for (const content of event.content) this.applySettledContent(content);
         this.builder.completeThinking(event.timestamp);
@@ -226,9 +229,6 @@ export class OutputProjector {
       case "retract-draft":
         this.retractDraft(event);
         return;
-      case "retract-thinking-drafts":
-        this.builder.removeStreamingThinkingBlocks(event.blockKeys);
-        return;
       case "end-turn":
         this.endTurn(event.timestamp, event.finalStatus);
         return;
@@ -262,6 +262,9 @@ export class OutputProjector {
       case "push-thinking":
         this.pushThinkingContent(content);
         return;
+      case "replace-thinking":
+        this.builder.replaceThinking(content.blockKey, content.text);
+        return;
       case "retract-draft":
         this.retractDraft(content);
         return;
@@ -283,8 +286,8 @@ export class OutputProjector {
   }
 
   private retractDraft(event: Extract<OutputProjectionEvent, { type: "retract-draft" }>): void {
-    this.builder.retractBlocks(event.blockKeys);
-    if (event.reclassifiedChars !== undefined) this.builder.addStreamingChars(-event.reclassifiedChars);
+    this.builder.retractDrafts(event.kind, event.blockKeys);
+    if (event.retractedChars !== undefined) this.builder.addStreamingChars(-event.retractedChars);
   }
 
   /** True when the event's parent tool use does not resolve to an agent

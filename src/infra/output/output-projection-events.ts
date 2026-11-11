@@ -11,7 +11,7 @@ type QuestionAnswers = { [questionId in string]: string };
 
 /** The content steps that settlement of a recorded assistant message
  *  reconciles into the transcript, applied without their live phase writes. */
-export type SettledAssistantContent = Extract<OutputProjectionEvent, { type: "push-text" | "replace-text" | "push-thinking" | "retract-draft" | "tool-use" }>;
+export type SettledAssistantContent = Extract<OutputProjectionEvent, { type: "push-text" | "replace-text" | "push-thinking" | "replace-thinking" | "retract-draft" | "tool-use" }>;
 
 export type OutputProjectionEvent =
   | { type: "push-text"; text: string; timestamp: number; blockKey: string }
@@ -19,6 +19,9 @@ export type OutputProjectionEvent =
   // `estimatedTokens` is the provider's live thinking-token estimate for
   // redacted thinking, where `text` is empty; counted as tokens*4 chars.
   | { type: "push-thinking"; text: string; timestamp: number; parentToolUseId?: string; blockKey: string; estimatedTokens?: number }
+  // Corrects a thought in place when its settled text is not a continuation
+  // of its streamed draft, so the row keeps its identity.
+  | { type: "replace-thinking"; text: string; blockKey: string }
   // Settlement arrives after the message streamed, possibly while one of its
   // foreground tools still runs, so it renders content and completes the
   // thinking blocks but never moves the live stream phase.
@@ -56,11 +59,10 @@ export type OutputProjectionEvent =
   | { type: "set-agent-link"; toolUseId: string; linkUri: string }
   | { type: "agent-dispatched"; toolUseId: string; timestamp: number }
   | { type: "agent-queued"; toolUseId: string; timestamp: number }
-  // Drops the draft blocks a failed stream attempt pushed; the retry attempt
-  // regenerates them under fresh blockKeys, so without retraction the partial
-  // text survives beside the regeneration.
-  | { type: "retract-draft"; blockKeys: readonly string[]; timestamp: number; reclassifiedChars?: number }
-  | { type: "retract-thinking-drafts"; blockKeys: readonly string[]; timestamp: number }
+  // Drops streamed drafts of one kind by row key: a draft that no recorded
+  // part claimed, or a thought that a correction reclassified as text.
+  // `retractedChars` leaves the live output count with the draft.
+  | { type: "retract-draft"; kind: "text" | "thinking"; blockKeys: readonly string[]; timestamp: number; retractedChars?: number }
   // "completed"/"paused" are turn boundaries (dispatched subagents keep their
   // blocks; their own settle path finishes them). "teardown" means the
   // session's runners are dying: every in-flight agent block is interrupted.
