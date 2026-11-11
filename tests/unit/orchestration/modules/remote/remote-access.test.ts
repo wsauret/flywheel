@@ -156,10 +156,11 @@ describe("remote access against a relay", () => {
   test.each(["installed", "dev"] as const)("pairs a device in %s through the sealed pairing channel and keeps its subscription when paired again", async (lane) => {
     const remote = createRemote({ lane })
     const label = "Private phone label for encrypted pairing regression"
-    const { device, result, runtimeId } = await pairDevice(remote, label)
-    // The device lists the machine by its host name, not by a project's.
+    const { device, result, runtimeId, code } = await pairDevice(remote, label)
+    // The code and the answer name the machine by its host name, not by a project's.
     const host = hostname().replace(/\.local$/, "")
     const machine = lane === "dev" ? `dev (${host})` : host
+    expect(code.label).toBe(machine)
     expect(result).toEqual({ type: "pair.accepted", runtimeLabel: machine })
     const view = await viewWhere(remote, (current) => current.devices.length === 1 && current.pairing === null)
     expect(view.devices[0]!.id).toBe(device.id)

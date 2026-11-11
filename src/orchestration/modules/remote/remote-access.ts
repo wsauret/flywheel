@@ -540,7 +540,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
       const runtimeIdentity = await requireIdentity()
       assertActive()
       if (pairing) return { windowId: pairing.windowId, code: pairing.code, expiresAt: pairing.expiresAt }
-      const created = createPairingWindow({ appOrigin, relayUrl, identity: runtimeIdentity, label: placement.projectLabel, expiresAt: now() + (options.pairingWindowMs ?? PAIRING_WINDOW_MS) })
+      const created = createPairingWindow({ appOrigin, relayUrl, identity: runtimeIdentity, label: machineName(options.lane), expiresAt: now() + (options.pairingWindowMs ?? PAIRING_WINDOW_MS) })
       const { windowId, code, expiresAt } = created
       const window: OpenPairingWindow = { ...created, timer: setTimeout(() => endPairingWindow(window), expiresAt - now()) }
       window.timer.unref?.()
