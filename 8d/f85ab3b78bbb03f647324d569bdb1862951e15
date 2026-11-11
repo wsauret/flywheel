@@ -1,0 +1,18 @@
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 25-28
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 389-392
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8df85ab3b78bbb03f647324d569bdb1862951e15",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
