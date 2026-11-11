@@ -260,28 +260,30 @@ describe("bounded output history protocol", () => {
     } finally { await projection.dispose() }
   })
 
-  it("projects the live blocks of a body read together, not one after another", async () => {
+  it("projects only the requested live block for a body read, however long the live tail", async () => {
     const images = [{ mediaType: "image/png", data: "aGk=" }]
-    const entry = chatEntry({ outputBlocks: () => [textBlock(0), { kind: "userMessage", id: "live-image", timestamp: 1, pending: false, injected: false, content: "[Image #1]", images }] })
-    const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
-    const deps = { projectRoot: FIXTURE_EXECUTION_CWD, sessionStore: { get: () => entry }, manager: { read: async () => durableSession() }, reader, projectionReader: reader }
-    const cache = createTranscriptProjectionCache(deps)
-    let started = 0
-    const bothStarted = Promise.withResolvers<void>()
-    const startedBeforeSettling: number[] = []
-    const projection = createSessionDetailProjection({ ...deps, transcriptCache: { ...cache, projectBlock: async (_sessionId, block) => {
-      if (++started === 2) bothStarted.resolve()
-      await Promise.race([bothStarted.promise, Bun.sleep(5)])
-      startedBeforeSettling.push(started)
-      return block
-    } } })
-    try {
-      expect(await projection.outputBlockBody("live-chat", { blockId: "userMessage:live-image" })).toEqual({ blockId: "userMessage:live-image", images })
-      expect(startedBeforeSettling).toEqual([2, 2])
-    } finally {
-      await projection.dispose()
-      await cache.dispose()
+    const projectedPerBody = async (blockCount: number): Promise<number> => {
+      const ids = Array.from({ length: blockCount }, (_, index) => `live-image-${index}`)
+      const blocks: AnyBlock[] = ids.map((id, index) => ({ kind: "userMessage", id, timestamp: index, pending: false, injected: false, content: "[Image #1]", images }))
+      const entry = chatEntry({ outputBlocks: () => blocks })
+      const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
+      const deps = { projectRoot: FIXTURE_EXECUTION_CWD, sessionStore: { get: () => entry }, manager: { read: async () => durableSession() }, reader, projectionReader: reader }
+      const cache = createTranscriptProjectionCache(deps)
+      let projected = 0
+      const projection = createSessionDetailProjection({ ...deps, transcriptCache: { ...cache, projectBlock: (sessionId, block) => { projected += 1; return cache.projectBlock(sessionId, block) } } })
+      try {
+        for (const id of ids) {
+          const blockId = `userMessage:${id}`
+          expect(await projection.outputBlockBody("live-chat", { blockId })).toEqual({ blockId, images })
+        }
+        return projected / blockCount
+      } finally {
+        await projection.dispose()
+        await cache.dispose()
+      }
     }
+    expect(await projectedPerBody(4)).toBe(1)
+    expect(await projectedPerBody(64)).toBe(1)
   })
 
   it("hydrates historical chat ranges from chat tree facts", async () => {

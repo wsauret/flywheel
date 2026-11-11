@@ -14,6 +14,7 @@ import { hydrateDerivedOutputGroupChildren, hydrateDerivedOutputRange, hydrateDe
 import { readOutputSequence, type OutputSequence } from "./output-sequence.js"
 import type { ShippedOutput } from "./shipped-output.js"
 import { indexOutputBlocks } from "../session/conversation/branch-history-builder.js"
+import { blockIdentity } from "../../protocol/block-identity.js"
 import type { CommandKeeper } from "./command-keeper.js"
 import { createTranscriptProjectionCache, type TranscriptProjectionCache } from "./transcript-projection-cache.js"
 import type {
@@ -172,14 +173,13 @@ export function createSessionDetailProjection(deps: SessionDetailProjectionDeps)
 
   async function outputBlockBody(sessionId: string, request: OutputBlockBodyRequest): Promise<HydratedOutputBlockBody> {
     // A pre-runner row can be replaced while durable history is read.
-    const entry = deps.sessionStore.get(sessionId)
-    if (entry) {
-      // Projected together, so the subagent cards share one snapshot replay,
-      // as in `readOutputSequence`.
-      const live = indexOutputBlocks(await Promise.all(entry.outputBlocks().map((block) => transcriptCache.projectBlock(sessionId, block))))
-      const index = live.indexOf(request.blockId)
-      if (index >= 0) return hydrateDerivedOutputBlockBody(live, request)
-    }
+    // Only the requested block is projected: a client reads each omitted
+    // result once, and projecting the whole tail for each would grow with the
+    // square of its length. The search runs from the tail, where the block a
+    // live client asks for sits, and the last occurrence wins, as it does in
+    // `indexOutputBlocks`.
+    const live = deps.sessionStore.get(sessionId)?.outputBlocks().findLast((block) => blockIdentity(block) === request.blockId)
+    if (live) return hydrateDerivedOutputBlockBody(indexOutputBlocks([await transcriptCache.projectBlock(sessionId, live)]), request)
     const sequence = await readOutputSequence(sessionId, await deps.manager.read(sessionId), outputSequenceDeps)
     if (!sequence) throw new Error(`Session ${sessionId} has no readable history: it is not in the workspace session catalog.`)
     return hydrateDerivedOutputBlockBody(sequence, request)
