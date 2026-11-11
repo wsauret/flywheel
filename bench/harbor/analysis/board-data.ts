@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import type { HarborBenchmark } from "../benchmarks.js";
-import { finite, jsonMap, readOptionalJson, stringMap, strings, text, type JsonMap } from "./json.js";
+import { finite, isJsonMap, jsonMap, readOptionalJson, stringMap, strings, text, type JsonMap } from "./json.js";
 
 /** The harness leaderboard's public data: its Hugging Face bucket of run
  *  records and trial facts, and the registries of its Space, whose scoring
@@ -30,10 +30,13 @@ export interface BoardFact {
   readonly exception: string | null;
   readonly featurebenchVerifierException: string | null;
   readonly bridgeRejection: string | null;
+  /** The sandbox's command stream sent a cut event line (`sandbox_stream_broke`). */
+  readonly sandboxStreamBroke: boolean;
   readonly answerKeyReceived: boolean;
   readonly agentStarted: boolean;
   readonly agentSeconds: number | null;
-  readonly meter: { readonly nCalls: number; readonly lastStatus: number | null; readonly input: number; readonly cached: number; readonly output: number } | null;
+  /** `lastUnfinished`: the provider ended the last model call's stream without its answer. */
+  readonly meter: { readonly nCalls: number; readonly lastStatus: number | null; readonly lastUnfinished: boolean; readonly input: number; readonly cached: number; readonly output: number } | null;
   /** The router provider that served the trial's unit, recorded since provider pools. */
   readonly provider?: string;
 }
@@ -47,6 +50,10 @@ export interface BoardRun {
   readonly effort: string;
   readonly harnessVersions: Readonly<Record<string, string>>;
   readonly harnessAdapters: Readonly<Record<string, string | null>>;
+  /** The lock record each harness installed from (`harness_locks`), null for none. */
+  readonly harnessLocks: Readonly<Record<string, JsonMap | null>>;
+  /** The staged release that the run's own trials wait for on the public board (`from_release`). */
+  readonly fromRelease?: string;
   readonly benchmarkSetups: Readonly<Record<string, { readonly commit?: string; readonly reference_isolation?: string } | null>>;
   readonly price: { readonly input: number; readonly cached_input: number; readonly output: number };
 }
@@ -57,6 +64,8 @@ export interface InvalidRule {
   readonly tasks?: readonly string[];
   readonly trials?: readonly string[];
   readonly outcome?: string;
+  /** The staged release from which the public board applies the rule (`from_release`). */
+  readonly fromRelease?: string;
 }
 
 /** The board's registry entry of one benchmark (Space `hlb/data/benchmarks.json`). */
@@ -77,6 +86,10 @@ interface BoardHarness {
   readonly adapter?: string;
   /** Adapter id of the trials the public board shows, as runs recorded it. */
   readonly publicAdapter?: string;
+  /** Lock name, identified through `BoardConfig.lockRecords`. */
+  readonly lock?: string;
+  /** Lock name of the trials the public board shows; null for trials that ran without one. */
+  readonly publicLock?: string | null;
   readonly released: boolean;
 }
 interface BoardModel { readonly defaultProvider: string; readonly released: boolean; readonly admittedProviders: readonly string[] }
@@ -87,6 +100,12 @@ export interface BoardConfig {
   readonly models: Readonly<Record<string, BoardModel>>;
   /** Adapter name to the id that a run records: `<name>@<first 12 hex of the SHA-256 of the bundle's first line>`. */
   readonly adapterIds: Readonly<Record<string, string>>;
+  /** Lock name to the record that a run records (`config.lock_record`). */
+  readonly lockRecords: Readonly<Record<string, JsonMap>>;
+  /** Staged release name to the board version that publishes it, null while none is chosen (Space `hlb/data/staged_releases.json`). */
+  readonly stagedReleases: Readonly<Record<string, string | null>>;
+  /** The version of the board that wrote `public.json`, against which staged releases are pending. */
+  readonly boardVersion: string;
 }
 
 /** Everything that scoring the board for one benchmark reads. */
@@ -115,11 +134,15 @@ interface BoardSnapshot {
   /** Space registry name (benchmarks, harnesses, models) to object id. */
   readonly space: { readonly [name: string]: string };
   readonly adapterIds: { readonly [name: string]: string };
+  /** Lock name to its record (`config.lock_record`). */
+  readonly lockRecords: JsonMap;
   /** Bucket path to object id: index/public.json, each run's run.json and invalid.json, and the benchmark's trial shards. */
   readonly files: { readonly [path: string]: string };
 }
 
-const SPACE_REGISTRIES = ["benchmarks", "harnesses", "models"];
+const SPACE_REGISTRIES = ["benchmarks", "harnesses", "models", "staged_releases"];
+/** A dependency range that names one exact version (`config._EXACT`). */
+const EXACT_VERSION = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 const RUN_RECORD = /^runs\/([^/]+)\/run\.json$/;
 const TRIAL_SHARD = /\/trials-[^/]+\.jsonl$/;
 
@@ -224,6 +247,14 @@ export async function fetchBoard(benchmark: HarborBenchmark, cache: string = BOA
     adapterIds[name] = `${name}@${createHash("sha256").update(head.slice(0, newline + 1)).digest("hex").slice(0, 12)}`;
   }
 
+  const lockNames = new Set(Object.values(harnesses).flatMap((spec) => [jsonMap(spec, "harness").lock, jsonMap(spec, "harness").public_lock]).filter((name): name is string => typeof name === "string"));
+  const lockRecords: { [name: string]: JsonMap } = {};
+  for (const name of [...lockNames].sort()) {
+    const lockBody = new Uint8Array(await (await request(`${HUB}/spaces/${SPACE}/resolve/${revision}/hlb/data/locks/${name}/package-lock.json`)).arrayBuffer());
+    const manifest = jsonMap(await (await request(`${HUB}/spaces/${SPACE}/resolve/${revision}/hlb/data/locks/${name}/package.json`)).json(), `lock ${name} package.json`);
+    lockRecords[name] = lockRecord(name, manifest, jsonMap(JSON.parse(new TextDecoder().decode(lockBody)), `lock ${name} package-lock.json`), lockBody);
+  }
+
   const wanted: BucketEntry[] = [];
   const index = await listBucket("index");
   wanted.push(...index.filter((entry) => entry.path === "index/public.json"));
@@ -250,10 +281,27 @@ export async function fetchBoard(benchmark: HarborBenchmark, cache: string = BOA
     downloaded += 1;
   });
   const sortedFiles = Object.fromEntries(Object.entries(files).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)));
-  const snapshot: BoardSnapshot = { fetchedAt: new Date().toISOString(), spaceRevision: revision, space, adapterIds, files: sortedFiles };
+  const snapshot: BoardSnapshot = { fetchedAt: new Date().toISOString(), spaceRevision: revision, space, adapterIds, lockRecords, files: sortedFiles };
   await writeAtomic(snapshotPath(cache, boardKey), `${JSON.stringify(snapshot)}\n`);
   const paths = Object.keys(files);
   return { runs: paths.filter((path) => RUN_RECORD.test(path)).length, shards: paths.filter((path) => TRIAL_SHARD.test(path)).length, downloaded };
+}
+
+/** `config.lock_record`: a lock as runs record it, the first 12 hex of the
+ *  SHA-256 of its package-lock.json and the versions that it gives the
+ *  dependencies that the pinned package declares with a range. */
+function lockRecord(name: string, manifest: JsonMap, lock: JsonMap, lockBody: Uint8Array): JsonMap {
+  const pinned = Object.keys(jsonMap(manifest.dependencies, `lock ${name} dependencies`));
+  if (pinned.length !== 1) throw new Error(`lock ${name} pins ${pinned.length} packages, expected 1`);
+  const entries = jsonMap(lock.packages, `lock ${name} packages`);
+  const version = (path: string): string | undefined => (isJsonMap(entries[path]) ? optionalText(entries[path].version) ?? undefined : undefined);
+  const declared = stringMap(jsonMap(entries[`node_modules/${pinned[0]}`], `lock ${name} pinned package`).dependencies ?? {}, `lock ${name} declared dependencies`);
+  const packages = Object.entries(declared).filter(([, range]) => !EXACT_VERSION.test(range)).map(([dependency]) => {
+    const resolved = version(`node_modules/${pinned[0]}/node_modules/${dependency}`) ?? version(`node_modules/${dependency}`);
+    if (resolved === undefined) throw new Error(`lock ${name} resolves no ${dependency}`);
+    return [dependency, resolved] as const;
+  });
+  return { sha256: createHash("sha256").update(lockBody).digest("hex").slice(0, 12), packages: Object.fromEntries(packages) };
 }
 
 function requireBoardKey(benchmark: HarborBenchmark): string {
@@ -282,18 +330,20 @@ function decodeFact(raw: unknown, where: string): BoardFact {
     exception: optionalText(fact.exception),
     featurebenchVerifierException: optionalText(fact.featurebench_verifier_exception),
     bridgeRejection: optionalText(fact.bridge_rejection),
+    sandboxStreamBroke: fact.sandbox_stream_broke === true,
     // `received` lists the answer-key material that reached the model; the board tests it for truth.
     answerKeyReceived: Array.isArray(answerKey.received) ? answerKey.received.length > 0 : Boolean(answerKey.received),
     agentStarted: fact.agent_started === true,
     agentSeconds: finite(timing.agent_execution),
-    meter: meter === null ? null : { nCalls: finite(meter.n_calls) ?? 0, lastStatus: finite(meter.last_status), input: finite(meter.input) ?? 0, cached: finite(meter.cached) ?? 0, output: finite(meter.output) ?? 0 },
+    meter: meter === null ? null : { nCalls: finite(meter.n_calls) ?? 0, lastStatus: finite(meter.last_status), lastUnfinished: meter.last_unfinished === true, input: finite(meter.input) ?? 0, cached: finite(meter.cached) ?? 0, output: finite(meter.output) ?? 0 },
     ...(typeof fact.provider === "string" ? { provider: fact.provider } : {}),
   };
 }
 
 function decodeRule(rule: JsonMap, what: string): InvalidRule {
   const list = (key: string): { [key: string]: readonly string[] } => (rule[key] === undefined ? {} : { [key]: strings(rule[key], `${what} ${key}`) });
-  return { ...list("harnesses"), ...list("benchmarks"), ...list("tasks"), ...list("trials"), ...(rule.outcome === undefined ? {} : { outcome: text(rule.outcome, `${what} outcome`) }) };
+  return { ...list("harnesses"), ...list("benchmarks"), ...list("tasks"), ...list("trials"), ...(rule.outcome === undefined ? {} : { outcome: text(rule.outcome, `${what} outcome`) }),
+    ...(rule.from_release === undefined ? {} : { fromRelease: text(rule.from_release, `${what} from_release`) }) };
 }
 
 function decodeRun(raw: unknown, runId: string): BoardRun {
@@ -308,6 +358,8 @@ function decodeRun(raw: unknown, runId: string): BoardRun {
     effort: text(run.reasoning_effort, `run ${runId} reasoning_effort`),
     harnessVersions: stringMap(run.harness_versions ?? {}, `run ${runId} harness_versions`),
     harnessAdapters: Object.fromEntries(Object.entries(jsonMap(run.harness_adapters ?? {}, `run ${runId} harness_adapters`)).map(([harness, adapter]) => [harness, typeof adapter === "string" ? adapter : null])),
+    harnessLocks: Object.fromEntries(Object.entries(jsonMap(run.harness_locks ?? {}, `run ${runId} harness_locks`)).map(([harness, lock]) => [harness, lock === null ? null : jsonMap(lock, `run ${runId} harness lock ${harness}`)])),
+    ...(run.from_release === undefined ? {} : { fromRelease: text(run.from_release, `run ${runId} from_release`) }),
     benchmarkSetups: Object.fromEntries(Object.entries(jsonMap(run.benchmark_setups ?? {}, `run ${runId} benchmark_setups`)).map(([benchmark, setup]) => {
       const fields = setup === null ? {} : jsonMap(setup, `run ${runId} benchmark setup ${benchmark}`);
       return [benchmark, { ...(typeof fields.commit === "string" ? { commit: fields.commit } : {}), ...(typeof fields.reference_isolation === "string" ? { reference_isolation: fields.reference_isolation } : {}) }];
@@ -316,7 +368,7 @@ function decodeRun(raw: unknown, runId: string): BoardRun {
   };
 }
 
-function decodeConfig(benchmarks: unknown, harnesses: unknown, models: unknown, adapterIds: unknown): BoardConfig {
+function decodeConfig(benchmarks: unknown, harnesses: unknown, models: unknown, stagedReleases: unknown, adapterIds: unknown, lockRecords: unknown, boardVersion: string): BoardConfig {
   const decodedBenchmarks: Record<string, BoardBenchmark> = {};
   for (const [key, raw] of Object.entries(jsonMap(jsonMap(benchmarks, "benchmarks.json").benchmarks, "benchmarks"))) {
     const spec = jsonMap(raw, `benchmark ${key}`);
@@ -340,6 +392,8 @@ function decodeConfig(benchmarks: unknown, harnesses: unknown, models: unknown, 
       ...(typeof spec.public_version === "string" ? { publicVersion: spec.public_version } : {}),
       ...(typeof spec.adapter === "string" ? { adapter: spec.adapter } : {}),
       ...(typeof spec.public_adapter === "string" ? { publicAdapter: spec.public_adapter } : {}),
+      ...(typeof spec.lock === "string" ? { lock: spec.lock } : {}),
+      ...("public_lock" in spec ? { publicLock: optionalText(spec.public_lock) } : {}),
       released: spec.released !== false,
     };
   }
@@ -354,17 +408,27 @@ function decodeConfig(benchmarks: unknown, harnesses: unknown, models: unknown, 
       admittedProviders: [reference, ...Object.entries(equivalence).filter(([provider, entry]) => provider !== reference && jsonMap(entry, `model ${key} equivalence ${provider}`).admitted === true).map(([provider]) => provider)],
     };
   }
-  return { benchmarks: decodedBenchmarks, harnesses: decodedHarnesses, models: decodedModels, adapterIds: stringMap(adapterIds, "adapters.json") };
+  // Keys that start with "_" document the registry (`config.staged_releases`).
+  const releases = Object.entries(jsonMap(stagedReleases, "staged_releases.json")).filter(([name]) => !name.startsWith("_"))
+    .map(([name, raw]) => [name, optionalText(jsonMap(raw, `staged release ${name}`).version)] as const);
+  return {
+    benchmarks: decodedBenchmarks, harnesses: decodedHarnesses, models: decodedModels, adapterIds: stringMap(adapterIds, "adapters.json"),
+    lockRecords: Object.fromEntries(Object.entries(jsonMap(lockRecords, "lock records")).map(([name, record]) => [name, jsonMap(record, `lock record ${name}`)])),
+    stagedReleases: Object.fromEntries(releases), boardVersion,
+  };
 }
 
 /** Reads the board data of the benchmark's last complete `fetchBoard`.
  *  Throws, naming the fetch command, when nothing was fetched. */
 export async function loadBoard(benchmark: HarborBenchmark, cache: string = BOARD_CACHE): Promise<BoardInputs> {
   const boardKey = requireBoardKey(benchmark);
+  const fetchCommand = `bun bench/harbor/hill.ts board fetch --benchmark ${benchmark.id}${cache === BOARD_CACHE ? "" : ` --cache ${JSON.stringify(cache)}`}`;
   const stored = await readOptionalJson(snapshotPath(cache, boardKey));
-  if (stored === undefined) throw new Error(`no board data for ${benchmark.id}; run: bun bench/harbor/hill.ts board fetch --benchmark ${benchmark.id}`);
+  if (stored === undefined) throw new Error(`no board data for ${benchmark.id}; run: ${fetchCommand}`);
   const record = jsonMap(stored, "board snapshot");
-  const snapshot: BoardSnapshot = { fetchedAt: text(record.fetchedAt, "snapshot fetchedAt"), spaceRevision: text(record.spaceRevision, "snapshot spaceRevision"), space: stringMap(record.space, "snapshot space"), adapterIds: stringMap(record.adapterIds, "snapshot adapterIds"), files: stringMap(record.files, "snapshot files") };
+  // A snapshot from before the port read locks and staged releases cannot score the board as it scores now.
+  if (record.lockRecords === undefined) throw new Error(`the board data of ${benchmark.id} predates the current scoring; run: ${fetchCommand}`);
+  const snapshot: BoardSnapshot = { fetchedAt: text(record.fetchedAt, "snapshot fetchedAt"), spaceRevision: text(record.spaceRevision, "snapshot spaceRevision"), space: stringMap(record.space, "snapshot space"), adapterIds: stringMap(record.adapterIds, "snapshot adapterIds"), lockRecords: jsonMap(record.lockRecords, "snapshot lockRecords"), files: stringMap(record.files, "snapshot files") };
   const readObject = (id: string): Promise<string> => readFile(objectPath(cache, id), "utf8");
   const objectJson = async (id: string | undefined, what: string): Promise<unknown> => {
     if (id === undefined) throw new Error(`the ${boardKey} board snapshot holds no ${what}`);
@@ -390,7 +454,11 @@ export async function loadBoard(benchmark: HarborBenchmark, cache: string = BOAR
       });
     }
   }
-  const config = decodeConfig(await objectJson(snapshot.space.benchmarks, "benchmarks.json"), await objectJson(snapshot.space.harnesses, "harnesses.json"), await objectJson(snapshot.space.models, "models.json"), snapshot.adapterIds);
+  const published = jsonMap(await objectJson(snapshot.files["index/public.json"], "index/public.json"), "public.json");
+  const config = decodeConfig(
+    await objectJson(snapshot.space.benchmarks, "benchmarks.json"), await objectJson(snapshot.space.harnesses, "harnesses.json"), await objectJson(snapshot.space.models, "models.json"),
+    await objectJson(snapshot.space.staged_releases, "staged_releases.json"), snapshot.adapterIds, snapshot.lockRecords, text(published.version, "public.json version"),
+  );
   if (config.benchmarks[boardKey] === undefined) throw new Error(`the board registers no benchmark ${boardKey}`);
-  return { benchmark: boardKey, facts, runs, invalid, config, published: jsonMap(await objectJson(snapshot.files["index/public.json"], "index/public.json"), "public.json"), fetchedAt: snapshot.fetchedAt };
+  return { benchmark: boardKey, facts, runs, invalid, config, published, fetchedAt: snapshot.fetchedAt };
 }

@@ -7,7 +7,8 @@ import { inclusiveQuantiles, PythonRandom, pythonRound, pythonSum } from "./pyth
  *  each trial's outcome, the invalid-rule verdicts, which trials the public
  *  board scores, the attempt cap, the cells, and the paired bootstrap. Each
  *  rule cites the function it ports so that a change of the board's code can
- *  be followed. */
+ *  be followed. The port matches Space revision 0fe6aa73e301 (board version
+ *  0.1.5, 2026-11-11). */
 
 /** The board's outcome of one trial (`outcome`). */
 export type Outcome = "pass" | "fail" | "infra" | "cancelled";
@@ -30,8 +31,8 @@ const RULE_ORDER: readonly Judged[] = ["left out", "fail", "infra"];
 /** `outcome(fact)`: a received answer key fails the trial whatever else
  *  happened; a cancel is neither scored nor an error; a trial whose agent
  *  never worked, whose last model call failed at the provider, whose sandbox
- *  broke, or whose grader reported a negative reward is infrastructure;
- *  otherwise a reward of at least 1 passes. */
+ *  or its command stream broke, or whose grader reported a negative reward
+ *  is infrastructure; otherwise a reward of at least 1 passes. */
 export function outcome(fact: BoardFact): Outcome {
   if (fact.answerKeyReceived) return "fail";
   if (fact.exception === "CancelledError") return "cancelled";
@@ -39,27 +40,61 @@ export function outcome(fact: BoardFact): Outcome {
   if (!fact.agentStarted) return "infra";
   const calls = fact.meter?.nCalls ?? 0;
   const diedBeforeFirstCall = fact.exception !== null && fact.exception !== "AgentTimeoutError" && calls === 0;
-  if (diedBeforeFirstCall || PROVIDER_FAILURE.has(fact.meter?.lastStatus ?? -1)) return "infra";
-  if ((fact.exception !== null && SANDBOX_FAILURE.has(fact.exception)) || (fact.reward !== null && fact.reward < 0)) return "infra";
+  if (diedBeforeFirstCall || providerFailed(fact.meter)) return "infra";
+  if ((fact.exception !== null && SANDBOX_FAILURE.has(fact.exception)) || fact.sandboxStreamBroke || (fact.reward !== null && fact.reward < 0)) return "infra";
   return (fact.reward ?? 0) >= 1 ? "pass" : "fail";
 }
 
-function ruleVerdict(fact: BoardFact, rules: readonly InvalidRule[] | undefined): Judged | undefined {
+/** `provider_failed`: the last model call ended on a 429 or 5xx, or the
+ *  provider ended its stream without the answer. */
+function providerFailed(meter: BoardFact["meter"]): boolean {
+  return (meter?.nCalls ?? 0) > 0 && (PROVIDER_FAILURE.has(meter?.lastStatus ?? -1) || meter?.lastUnfinished === true);
+}
+
+/** `version_key`: a board version as numbers, so that 0.1.10 follows 0.1.3. */
+function versionKey(version: string): number[] {
+  if (!/^\d+(\.\d+)*$/.test(version)) throw new Error(`${JSON.stringify(version)} is no board version (numbers and dots, like 0.1.3)`);
+  return version.split(".").map(Number);
+}
+
+/** `config.release_pending`: the staged release is not out on the board
+ *  that wrote `public.json`, because it has no version yet or a later one. */
+function releasePending(config: BoardConfig, name: string): boolean {
+  if (!(name in config.stagedReleases)) throw new Error(`${JSON.stringify(name)} is no staged release of the board`);
+  const target = config.stagedReleases[name];
+  if (target === null || target === undefined) return true;
+  const [left, right] = [versionKey(target), versionKey(config.boardVersion)];
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    // Python compares tuples element by element, and a shorter prefix sorts first.
+    if (index >= left.length || index >= right.length) return left.length > right.length;
+    if (left[index] !== right[index]) return left[index]! > right[index]!;
+  }
+  return false;
+}
+
+/** `held`: the public board waits with the run's own trials until its staged release is out. */
+function heldRun(config: BoardConfig, run: BoardRun): boolean {
+  return run.fromRelease !== undefined && releasePending(config, run.fromRelease);
+}
+
+/** `rule_verdict(..., public=True)`: a rule staged for a release that is not out yet does not count. */
+function ruleVerdict(fact: BoardFact, rules: readonly InvalidRule[] | undefined, config: BoardConfig): Judged | undefined {
   const found = new Set<Judged>();
   for (const rule of rules ?? []) {
     const matches = (list: readonly string[] | undefined, value: string): boolean => list === undefined || list.includes(value);
     if (!matches(rule.harnesses, fact.harness) || !matches(rule.benchmarks, fact.benchmark) || !matches(rule.tasks, fact.task) || !matches(rule.trials, fact.trial)) continue;
     if (rule.outcome !== undefined && rule.outcome !== "fail" && rule.outcome !== "infra") throw new Error(`invalid.json rule outcome ${rule.outcome}: expected fail, infra, or none`);
+    if (rule.fromRelease !== undefined && releasePending(config, rule.fromRelease)) continue;
     found.add(rule.outcome ?? "left out");
   }
   return RULE_ORDER.find((verdict) => found.has(verdict));
 }
 
 /** `rule_verdicts`: what the invalid rules of every run that holds a trial make of it. */
-function ruleVerdicts(facts: readonly BoardFact[], invalid: BoardInputs["invalid"]): Map<string, Judged> {
+function ruleVerdicts(facts: readonly BoardFact[], invalid: BoardInputs["invalid"], config: BoardConfig): Map<string, Judged> {
   const verdicts = new Map<string, Judged>();
   for (const fact of facts) {
-    const verdict = ruleVerdict(fact, invalid[fact.runId]);
+    const verdict = ruleVerdict(fact, invalid[fact.runId], config);
     const held = verdicts.get(fact.id);
     if (verdict !== undefined && (held === undefined || RULE_ORDER.indexOf(verdict) < RULE_ORDER.indexOf(held))) verdicts.set(fact.id, verdict);
   }
@@ -67,7 +102,7 @@ function ruleVerdicts(facts: readonly BoardFact[], invalid: BoardInputs["invalid
 }
 
 function endedOnProvider(fact: BoardFact, verdicts: ReadonlyMap<string, Judged>): boolean {
-  return !verdicts.has(fact.id) && outcome(fact) === "infra" && (fact.meter?.nCalls ?? 0) > 0 && PROVIDER_FAILURE.has(fact.meter?.lastStatus ?? -1);
+  return !verdicts.has(fact.id) && outcome(fact) === "infra" && providerFailed(fact.meter);
 }
 
 function setupProvider(config: BoardConfig, model: string, provider: string): string {
@@ -75,20 +110,30 @@ function setupProvider(config: BoardConfig, model: string, provider: string): st
   return spec !== undefined && spec.admittedProviders.includes(provider) ? spec.defaultProvider : provider;
 }
 
+function lockRecord(config: BoardConfig, name: string | null): JsonMap | null {
+  if (name === null) return null;
+  const record = config.lockRecords[name];
+  if (record === undefined) throw new Error(`the board data holds no record of lock ${name}`);
+  return record;
+}
+
 /** `on_board(..., public=True)`: the public board shows one setup per model,
- *  each harness's released version and adapter, and each benchmark's current
- *  task commit and reference isolation; it leaves out a model until its
- *  release (`config.released`). */
+ *  each harness's released identity (`config.harness_identity`: version,
+ *  adapter, and lock), and each benchmark's current task commit and
+ *  reference isolation; it leaves out a model until its release
+ *  (`config.released`). */
 function onPublicBoard(config: BoardConfig, run: BoardRun, harness: string, benchmark: string): boolean {
   const model = config.models[run.model];
   const spec = config.harnesses[harness];
   if (model === undefined || !model.released || spec === undefined || !spec.released) return false;
   const adapter = spec.publicAdapter ?? (spec.adapter === undefined ? null : config.adapterIds[spec.adapter] ?? null);
+  const lock = lockRecord(config, spec.publicLock !== undefined ? spec.publicLock : spec.lock ?? null);
   const setup = run.benchmarkSetups[benchmark] ?? {};
   const pinned = config.benchmarks[benchmark]!;
   return setupProvider(config, run.model, run.provider) === model.defaultProvider
     && run.harnessVersions[harness] === (spec.publicVersion ?? spec.version)
     && (run.harnessAdapters[harness] ?? null) === adapter
+    && Bun.deepEquals(run.harnessLocks[harness] ?? null, lock)
     && setup.commit === pinned.commit && setup.reference_isolation === pinned.referenceIsolation;
 }
 
@@ -134,8 +179,9 @@ function costUsd(fact: BoardFact, price: BoardRun["price"]): number {
 
 /** `_cap_attempts` with `exhausted`: the earliest `n` scored attempts of each
  *  task count, infra trials stay for the error rate, and when the provider
- *  failed a task at least PROVIDER_FAILURE_LIMIT times its earliest provider
- *  failures fill the open attempts as fails. */
+ *  failed a task at least PROVIDER_FAILURE_LIMIT times, counted over every
+ *  stage of the model, effort, and harness, its earliest provider failures
+ *  in this setup fill the open attempts as fails. */
 function capAttempts(facts: readonly ScoredFact[], n: number, providerFailures: ReadonlyMap<string, ReadonlySet<string>>, verdicts: ReadonlyMap<string, Judged>): ScoredFact[] {
   const byTask = new Map<string, ScoredFact[]>();
   for (const scored of [...facts].sort((left, right) => compareOrder(left.order, right.order))) {
@@ -163,24 +209,32 @@ function capAttempts(facts: readonly ScoredFact[], n: number, providerFailures: 
 
 /** `board_facts(public=True)` for one benchmark: the trials the public board
  *  scores per setup, deduplicated by trial id, with each trial's outcome, and
- *  the run price of the setup. */
+ *  the run price of the setup. The trials of a run held for a staged release
+ *  that is not out, and their copies in later runs, wait. */
 function publicBoardFacts(inputs: BoardInputs): Map<string, { setup: BoardSetup; facts: ScoredFact[]; price: BoardRun["price"] }> {
   const { config, runs, invalid, benchmark } = inputs;
   const pinned = config.benchmarks[benchmark];
   if (pinned === undefined || pinned.unscored) throw new Error(`the board does not score ${benchmark}`);
-  const verdicts = ruleVerdicts(inputs.facts, invalid);
-  const groups = new Map<string, { setup: BoardSetup; byId: Map<string, ScoredFact & { runId: string }>; price: BoardRun["price"]; failures: Map<string, Set<string>> }>();
+  const verdicts = ruleVerdicts(inputs.facts, invalid, config);
+  const groups = new Map<string, { setup: BoardSetup; byId: Map<string, ScoredFact & { runId: string }>; price: BoardRun["price"] }>();
+  // The evidence that the provider kept failing a task spans the stages of one model, effort, and harness.
+  const failures = new Map<string, Map<string, Set<string>>>();
+  const failureKey = (setup: BoardSetup): string => [setup.model, setup.effort, setup.harness].join("|");
   for (const fact of inputs.facts) {
     const run = runs[fact.runId];
     if (fact.benchmark !== benchmark || run === undefined || !(pinned.subsets[run.stage] ?? []).includes(fact.task) || !onPublicBoard(config, run, fact.harness, benchmark)) continue;
     if (setupProvider(config, run.model, fact.provider ?? run.provider) !== config.models[run.model]!.defaultProvider) continue;
+    if (heldRun(config, runs[fact.reusedFrom ?? ""] ?? run)) continue;
     const judged = verdicts.get(fact.id) ?? outcome(fact);
     if (judged === "left out" || judged === "cancelled") continue;
     const setup: BoardSetup = { model: run.model, stage: run.stage, effort: run.effort, harness: fact.harness };
     const key = setupKey(setup);
-    const group = groups.get(key) ?? { setup, byId: new Map(), price: run.price, failures: new Map() };
+    const group = groups.get(key) ?? { setup, byId: new Map(), price: run.price };
     groups.set(key, group);
-    if (endedOnProvider(fact, verdicts)) group.failures.set(fact.task, (group.failures.get(fact.task) ?? new Set()).add(fact.id));
+    if (endedOnProvider(fact, verdicts)) {
+      const byTask = failures.get(failureKey(setup)) ?? new Map<string, Set<string>>();
+      failures.set(failureKey(setup), byTask.set(fact.task, (byTask.get(fact.task) ?? new Set()).add(fact.id)));
+    }
     const source = runs[fact.reusedFrom ?? ""] ?? run;
     const order: [string, string] = [source.createdAt, fact.id];
     const held = group.byId.get(fact.id);
@@ -192,7 +246,7 @@ function publicBoardFacts(inputs: BoardInputs): Map<string, { setup: BoardSetup;
   for (const [key, group] of groups) {
     const attempts = BOARD_ATTEMPTS[group.setup.stage];
     if (attempts === undefined) throw new Error(`the board has no attempt count for stage ${group.setup.stage}`);
-    result.set(key, { setup: group.setup, facts: capAttempts([...group.byId.values()], attempts, group.failures, verdicts), price: group.price });
+    result.set(key, { setup: group.setup, facts: capAttempts([...group.byId.values()], attempts, failures.get(failureKey(group.setup)) ?? new Map(), verdicts), price: group.price });
   }
   return result;
 }
