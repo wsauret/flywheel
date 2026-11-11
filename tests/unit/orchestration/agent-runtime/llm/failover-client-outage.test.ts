@@ -565,7 +565,7 @@ describe("sole-source availability", () => {
       expect(copy.message).toContain(new Date(held.exhaustion.resetsAtMs).toLocaleString());
       expect(copy.message).not.toMatch(/before dispatch|automatic/i);
       // The unheld candidate rechecks after the safe interval, so the held one's shorter bound is the earliest.
-      expect(error.recovery).toEqual({ kind: "at", atMs: held.exhaustion.resetsAtMs });
+      expect(error.recovery).toEqual({ kind: "at", atMs: held.exhaustion.resetsAtMs, hold: { kind: "recheck" } });
     } finally {
       await owner.dispose();
     }
