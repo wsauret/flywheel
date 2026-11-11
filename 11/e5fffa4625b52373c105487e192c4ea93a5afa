@@ -1,0 +1,20 @@
+bench/harbor/analysis/board-data.ts
+  h_4b47e9e4a8b456 73-81,216-217
+bench/harbor/analysis/board-scoring.ts
+  h_4b47e9e4a8b456 86
+tests/unit/bench/harbor-board-data.test.ts
+  h_4b47e9e4a8b456 1-57
+tests/unit/bench/harbor-board-scoring.test.ts
+  h_4b47e9e4a8b456 60-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "11e5fffa4625b52373c105487e192c4ea93a5afa",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
