@@ -93,6 +93,14 @@ export interface BashSurfaceOptions {
 
 const EVERY_CAPABILITY: CapabilityCheck = () => true;
 
+/** Flywheel's file-work policy: the shell and the file tools are equal routes, and the file tools are the safer one
+ *  for an edit that the shell does badly. Undefined when the request has neither file-changing tool. */
+function fileWorkGuidance(fileEditTool: FileEditToolName, has: CapabilityCheck): string | undefined {
+  const tools = [...(has("edit") ? [fileEditTool] : []), ...(has("write") ? ["write"] : [])].map((tool) => `\`${tool}\``);
+  if (tools.length === 0) return undefined;
+  return `For reading, searching, and changing files, the shell and the file tools are equal routes. Use the simpler one. Use ${tools.join(" or ")} when a shell edit is fragile: an exact or multi-line replacement, text that needs heavy quoting, or \`sed\` options that behave differently on macOS and Linux.`;
+}
+
 /** The shell tool's description carries the mechanics of running a command
  *  that no single field owns. `mutates` leads the schema so a call that
  *  mutates declares it before its command streams, and its row shows as an
@@ -107,7 +115,7 @@ export function bashToolSurface({ fileEditTool = "edit", mutatingDeclaration = t
   const windowsSearch = has("search") && (!unattendedChat || platform === "win32");
   return {
     description: [head(mutatingDeclaration, background, unattendedChat), background ? backgroundGuidance(unattendedChat) : foregroundOnly(unattendedChat), VENV, SCRATCH, ...(writeGuard ? [WRITE_ROOTS] : []), SEARCH, ...(windowsSearch ? [WINDOWS_SEARCH] : [])].join(" "),
-    promptGuidelines: [SHELL_OUTPUT_GUIDANCE],
+    promptGuidelines: [SHELL_OUTPUT_GUIDANCE, ...[fileWorkGuidance(fileEditTool, has)].filter((line) => line !== undefined)],
     inputSchema: {
       type: "object",
       properties: mutatingDeclaration

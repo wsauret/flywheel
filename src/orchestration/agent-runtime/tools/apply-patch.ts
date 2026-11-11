@@ -80,7 +80,7 @@ export function createApplyPatchDefinition(resolveTargets?: (patch: PreparedPatc
     action: "file_edit",
     description: "The `apply_patch` tool can be used to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON. The result carries the diff hunks that landed; do not re-read a file after a successful patch.",
     promptGuidelines: [
-      "Edit files only through apply_patch; never `applypatch` or `apply-patch`.",
+      "Apply a patch through this tool; never run `applypatch` or `apply-patch` in the shell.",
       "Do not re-read files after a successful apply_patch; the call fails loudly when it did not apply.",
     ],
     promptExamples: APPLY_PATCH_PROMPT_EXAMPLES,

@@ -109,6 +109,15 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(bashPrompt).toContain("stdout is the requested file artifact");
   });
 
+  test("bash states the file-work policy for the edit tool that the request offers", () => {
+    const has = (names: readonly string[]) => (name: string) => names.includes(name);
+    const policy = (fileEditTool: "edit" | "apply_patch", tools: readonly string[]) =>
+      bashToolSurface({ fileEditTool, has: has(tools) }).promptGuidelines?.find((line) => line.includes("equal routes"));
+    expect(policy("edit", ["edit", "write"])).toContain("Use `edit` or `write` when a shell edit is fragile");
+    expect(policy("apply_patch", ["edit", "write"])).toContain("Use `apply_patch` or `write` when a shell edit is fragile");
+    expect(policy("edit", [])).toBeUndefined();
+  });
+
   test("bash mechanics live in the tool description and schema, and the mutation rule only on its field", () => {
     const bash = BASE.get("bash")!;
     const prompt = buildSystemPrompt(promptOptions({
@@ -224,7 +233,7 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     // per-tool guideline list keeps only behavior contracts the description
     // cannot state.
     for (const name of ["read", "search", "list", "edit", "write"]) expect(BASE.get(name)!.promptGuidelines).toBeUndefined();
-    expect(BASE.get("bash")!.promptGuidelines).toEqual([SHELL_OUTPUT_GUIDANCE]);
+    expect(BASE.get("bash")!.promptGuidelines).toEqual([SHELL_OUTPUT_GUIDANCE, expect.stringContaining("equal routes")]);
     const searchSchema = JSON.stringify(BASE.get("search")!.inputSchema);
     expect(searchSchema).toContain("recency as tiebreaker");
     expect(searchSchema).toContain("no match cap; sorted by count");

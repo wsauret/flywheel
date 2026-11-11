@@ -167,35 +167,21 @@ function orList(items: readonly string[]): string {
   return items.length < 3 ? items.join(" or ") : `${items.slice(0, -1).join(", ")}, or ${items.at(-1)}`;
 }
 
-/** The tools of `names` that `has` holds, backticked, as one "or" list; undefined when it holds none. */
-function fileTools(has: CapabilityCheck, names: readonly string[]): string | undefined {
-  const tools = names.filter((name) => has(name)).map((name) => `\`${name}\``);
-  return tools.length === 0 ? undefined : orList(tools);
-}
-
-function shellOptional(has: CapabilityCheck): string | undefined {
-  if (!has("bash")) return undefined;
-  const tools = fileTools(has, ["edit", "write"]);
-  return `The \`bash\` tool is a good route for much of the work when it is simpler: \`cat\`, \`head\`, or \`sed -n\` to read, \`grep\` and \`find\` to search, and \`sed\`, heredocs, or short scripts for small mechanical edits. Choose freely.${tools ? ` Use ${tools} when a shell edit is fragile, such as an exact or multi-line replacement, or \`sed\` options that behave differently on macOS and Linux.` : ""}`;
-}
-
-/** The chat blocks, by id. Each renders its text for the capabilities `has` of the request, or nothing when the
- *  request lacks what the block is about. */
+/** The chat blocks, by id. */
 const CHAT_BLOCKS = {
-  progress: () => PROGRESS,
-  scope: () => SCOPE,
-  "final-message": () => FINAL_MESSAGE,
-  finishing: () => finishing("chat"),
-  initiative: () => INITIATIVE,
-  ambiguity: () => AMBIGUITY,
-  authorization: () => authorization(true),
-  "authorization-without-continue": () => authorization(false),
-  "plain-writing": () => PLAIN_WRITING,
-  corrections: () => CORRECTIONS,
-  "quiet-caveats": () => QUIET_CAVEATS,
-  "model-limits": () => MODEL_LIMITS,
-  "shell-optional": shellOptional,
-} as const satisfies { readonly [id: string]: (has: CapabilityCheck) => string | undefined };
+  progress: PROGRESS,
+  scope: SCOPE,
+  "final-message": FINAL_MESSAGE,
+  finishing: finishing("chat"),
+  initiative: INITIATIVE,
+  ambiguity: AMBIGUITY,
+  authorization: authorization(true),
+  "authorization-without-continue": authorization(false),
+  "plain-writing": PLAIN_WRITING,
+  corrections: CORRECTIONS,
+  "quiet-caveats": QUIET_CAVEATS,
+  "model-limits": MODEL_LIMITS,
+} as const satisfies { readonly [id: string]: string };
 
 /** The agent blocks, by id: the blocks about the work itself, in their rendering for a subagent or a workflow agent. */
 const AGENT_BLOCKS = {
@@ -230,7 +216,7 @@ const GPT_6_LUNA_GUIDANCE: ModelGuidance = {
  *  Claude entries follow their vendor's tuning, which applies model guidance to the main chat only, so they have no
  *  agent blocks. */
 export const MODEL_GUIDANCE: readonly (readonly [model: string, guidance: ModelGuidance])[] = [
-  ["claude-opus-5.5", { chat: ["shell-optional"], agent: [] }],
+  ["claude-opus-5.5", { chat: [], agent: [] }],
   ["claude-sonnet-5.5", { chat: [], agent: [] }],
   ["claude-fable-5.1", { chat: ["progress", "scope", "ambiguity", "final-message", "finishing", "initiative"], agent: [] }],
   ["claude-fable-5.2", { chat: ["finishing", "model-limits"], agent: [] }],
@@ -295,7 +281,7 @@ export function renderModelChatBody(blocks: ModelGuidance["chat"], has: Capabili
     INTRO,
     host.session(has),
     ACTING,
-    ...blocks.flatMap((id) => CHAT_BLOCKS[id](has) ?? []),
+    ...blocks.map((id) => CHAT_BLOCKS[id]),
     commitments(has, host),
   ].join("\n\n");
 }

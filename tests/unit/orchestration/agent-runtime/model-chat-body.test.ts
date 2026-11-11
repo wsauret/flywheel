@@ -53,7 +53,6 @@ const BLOCK_MARKERS = {
   corrections: "# Corrections",
   "quiet-caveats": "# Caveats",
   "model-limits": "speed up AI development",
-  "shell-optional": "The `bash` tool is a good route",
 } as const;
 
 /** One phrase that marks each base rule, which the model chat body and the general chat prompt both state once. */
@@ -148,7 +147,7 @@ describe("model chat body", () => {
   it("adds each model's guidance blocks in its order, a later family version inheriting the newest earlier entry", () => {
     const withFileTools = [...TOOLS, spec("edit"), spec("write")];
     const expected: readonly (readonly [model: string, blocks: readonly string[]])[] = [
-      ["claude-opus-5.5", ["shell-optional"]],
+      ["claude-opus-5.5", []],
       ["claude-sonnet-5.5", []],
       ["claude-fable-5.1", ["progress", "scope", "ambiguity", "final-message", "finishing", "initiative"]],
       ["claude-fable-5.2", ["finishing", "model-limits"]],
@@ -178,13 +177,6 @@ describe("model chat body", () => {
     // Moving the blocked-part rule from scope to finishing keeps it once in a body that has both.
     expect(build("claude-fable-5.1").split("If one part is truly blocked").length).toBe(2);
     expect(build("claude-opus-5.5", { tools: [...TOOLS, spec("recall")] })).toContain("session notes and the recorded history");
-  });
-
-  it("renders a shell note only with a shell, naming only the file tools that the request has", () => {
-    const shellNote = (body: string): string | undefined => body.split("\n\n").find((paragraph) => paragraph.startsWith("The `bash` tool"));
-    expect(shellNote(build("claude-opus-5.5"))).not.toContain("when a shell edit is fragile");
-    expect(shellNote(build("claude-opus-5.5", { tools: [...TOOLS, spec("edit"), spec("write")] }))).toContain("Use `edit` or `write` when a shell edit is fragile");
-    expect(shellNote(build("claude-opus-5.5", { tools: TOOLS.filter((tool) => tool.name !== "bash") }))).toBeUndefined();
   });
 
   it("states each consolidated rule once in every assembled request, tool descriptions included", async () => {

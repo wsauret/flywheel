@@ -43,7 +43,6 @@ describe("Claude plugin export", () => {
     expect(body).toStartWith("You are Flywheel's chat agent.");
     expect(body).toContain("The host compacts the earlier conversation into a summary");
     expect(body).toContain("# Working method");
-    expect(body).toContain("The `Bash` tool is a good route");
     expect(body).toContain("Use `AskUserQuestion` only after the discussion has settled");
     expect(body).toContain("load the `flywheel:design` skill");
     expect(body).toContain("load the `flywheel:code-review` skill");
