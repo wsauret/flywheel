@@ -1,0 +1,28 @@
+src/orchestration/agent-runtime/agent-loop-closure.ts
+  h_4b47e9e4a8b456 6,22-28
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 271-273
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 18,186,223-229
+src/orchestration/agent-runtime/continuation-messages.ts
+  h_4b47e9e4a8b456 8-9
+src/orchestration/agent-runtime/runtime-assembly.ts
+  h_4b47e9e4a8b456 151
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 198-199
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 262
+tests/unit/orchestration/agent-runtime/context/loop-handoff-invariant.test.ts
+  h_4b47e9e4a8b456 19,111,114,130-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5026e7e36aca4886dffd3f7b9c9d89d9ea945350",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
