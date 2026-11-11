@@ -1,0 +1,110 @@
+docs/architecture-intent/agency.md
+  h_4b47e9e4a8b456 88
+docs/architecture-intent/workflows.md
+  h_4b47e9e4a8b456 54
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 19,23,347-351,359
+src/infra/handoff-normalize.ts
+  h_4b47e9e4a8b456 72,92,103-119
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 10,250-251
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 74
+src/orchestration/agent-runtime/tools/handoff-tool.ts
+  h_4b47e9e4a8b456 5-6,23-24,140-141,145,147-153,190-201,224-227,229-235,238-240,253-266,268-280
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 14,371-372
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 19,204-205
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 22-23,25,163-164,395,564-572,627-628
+src/orchestration/modules/subagents/execution/result-resolver.ts
+  h_4b47e9e4a8b456 23-24,231-241
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 42,331,356-358,492,636,668-676,678-680
+src/orchestration/workflow-host/handoff-tool-schema.ts
+  h_4b47e9e4a8b456 1-2,4,6-8,31-92,96-99
+src/protocol/client/workflow-outline.ts
+  h_4b47e9e4a8b456 344-356,369
+src/protocol/modules/workflows.ts
+  h_4b47e9e4a8b456 44
+src/protocol/workflow-view-protocol-types.ts
+  h_4b47e9e4a8b456 116-126
+src/workflows/agent-resolution.ts
+  h_4b47e9e4a8b456 34-43,94-95
+src/workflows/brief.ts
+  h_4b47e9e4a8b456 64-66,68-83,191-194,196-198,201,226-227,256,287-292,295,297-299,301,303,306,308,310-312,320-324,338-340,365-366,374
+src/workflows/output-contract/accept.ts
+  h_4b47e9e4a8b456 9,32-37,39-50,150-155,160,162,165-167,172-176,194,197-200
+src/workflows/output-contract/compile.ts
+  h_4b47e9e4a8b456 49-51,239-240,351-352,363
+src/workflows/output-contract/leniency.ts
+  h_4b47e9e4a8b456 1-90
+src/workflows/output-contract/salvage.ts
+  h_4b47e9e4a8b456 1-91
+src/workflows/output-contract/workflow-completion.ts
+  h_4b47e9e4a8b456 18-19,285-287,323-326,445-454
+src/workflows/reducers/coverage.ts
+  h_4b47e9e4a8b456 267
+src/workflows/reducers/reducer.ts
+  h_4b47e9e4a8b456 190-193,229,252
+src/workflows/reducers/registry.ts
+  h_4b47e9e4a8b456 3,39-42,45
+src/workflows/view/schemas.ts
+  h_4b47e9e4a8b456 264-267
+src/workflows/vm/agent-outcome.ts
+  h_4b47e9e4a8b456 1-2,37-41
+src/workflows/vm/attempt-continuation.ts
+  h_4b47e9e4a8b456 26,28
+src/workflows/vm/attempt-runner.ts
+  h_4b47e9e4a8b456 6-8,12-16,33-34,173-242,339-350,352-354,359-361,365-374,380,382
+src/workflows/vm/attempt-transitions.ts
+  h_4b47e9e4a8b456 319
+src/workflows/vm/committed-control.ts
+  h_4b47e9e4a8b456 86-89,93
+src/workflows/vm/companions.ts
+  h_4b47e9e4a8b456 102-103,118-120
+src/workflows/vm/events.ts
+  h_4b47e9e4a8b456 10,64-73,79-82,97-98,108,184,198
+src/workflows/vm/graph-types.ts
+  h_4b47e9e4a8b456 355-361,377-381
+src/workflows/vm/host.ts
+  h_4b47e9e4a8b456 267
+src/workflows/vm/view-tree.ts
+  h_4b47e9e4a8b456 83-86,88-95
+tests/helpers/skill-fixtures.ts
+  h_4b47e9e4a8b456 96-100,111,124-125
+tests/unit/infra/handoff-normalize.test.ts
+  h_4b47e9e4a8b456 45-57
+tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
+  h_4b47e9e4a8b456 8,88-89,341-368
+tests/unit/orchestration/agent-runtime/subagent/result-resolver.test.ts
+  h_4b47e9e4a8b456 4,129-139
+tests/unit/orchestration/agent-runtime/tools/tools-handoff-refusal.test.ts
+  h_4b47e9e4a8b456 1-101
+tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
+  h_4b47e9e4a8b456 460
+tests/unit/orchestration/workflow-host/handoff-revision-pinning.test.ts
+  h_4b47e9e4a8b456 48
+tests/unit/protocol/client/workflow-outline.test.ts
+  h_4b47e9e4a8b456 107-122
+tests/unit/workflows/output-contract/check.test.ts
+  h_4b47e9e4a8b456 177
+tests/unit/workflows/output-contract/workflow-completion.test.ts
+  h_4b47e9e4a8b456 14-16,334-451
+tests/unit/workflows/vm/_tree-fixtures.ts
+  h_4b47e9e4a8b456 13,78-80,94
+tests/unit/workflows/vm/attempt-runner.test.ts
+  h_4b47e9e4a8b456 234-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c712ee9e2d9bae9c478a9d08d9515e53422a3e57",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
