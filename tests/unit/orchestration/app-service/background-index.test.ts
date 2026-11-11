@@ -29,6 +29,7 @@ import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact } from "../.
 import type { BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types"
 import { countStateRequests } from "../../../helpers/state-requests"
+import { boundedProjectStateSlice, PROJECT_STATE_MAX_BYTES, PROJECT_STATE_MAX_PAGE_ROWS } from "../../../../src/orchestration/app-service/project-state-protocol"
 import { chatEntry } from "./app-service-doubles"
 
 const temporaryDirectory = temporaryDirectories()
@@ -369,6 +370,27 @@ describe("the background index of a chat", () => {
     // The workflow's agent is a child of another kind: its creation fact rules it out.
     expect(fixture.sessionReads).toEqual(["chat"])
     expect(counter.take().filter((request) => request.query?.toolUseIds !== undefined).map((request) => [...request.query?.toolUseIds ?? []].sort())).toEqual([["toolu_second", "toolu_workflow"]])
+  })
+
+  test("reads the kinds of more children than one state page holds in slices the state Worker serves", async () => {
+    const fixture = project()
+    closing.push(fixture.close)
+    const children = Array.from({ length: PROJECT_STATE_MAX_PAGE_ROWS + 1 }, (_, index) => `child-${index}`)
+    const [first, ...rest] = children
+    await fixture.manager.createChat({ id: first, conversationId: "conversation-child", name: "Child" })
+    const [created] = fixture.store.read({ aggregateId: `session:${first}`, types: ["session.created"] })
+    if (!created) throw new Error("expected the creation fact of the first child")
+    const { type, version, actor, payload, timestamp } = created
+    fixture.store.appendBatch(rest.map((id) => ({ aggregateId: `session:${id}`, sessionId: id, type, version, actor, payload, timestamp })))
+    fixture.sessions.set("chat", { kind: "chat", createdAtMs: 0, label: "Chat", children })
+    const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))
+
+    expect(await fixture.indexOn(counter.reader).rows("chat")).toEqual([])
+
+    const slices = counter.take().flatMap((request) => request.method === "readSlice" && request.query ? [request.query] : [])
+    expect(slices.filter((query) => !boundedProjectStateSlice(query, PROJECT_STATE_MAX_PAGE_ROWS, PROJECT_STATE_MAX_BYTES))).toEqual([])
+    // Every child's creation fact was read, so none is read in full.
+    expect(fixture.sessionReads).toEqual(["chat"])
   })
 })
 

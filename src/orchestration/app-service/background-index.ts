@@ -36,6 +36,7 @@ import { readToolExecutions } from "../session/tool-execution-projection.js"
 import type { SessionLifecycleState } from "../session/types.js"
 import type { WorkflowRunRecord } from "../workflow-host/run-record.js"
 import { workflowRunReader } from "../module-catalog.js"
+import { PROJECT_STATE_MAX_PAGE_ROWS } from "./project-state-protocol.js"
 
 const log = Log.create({ service: "background-index" })
 
@@ -178,17 +179,23 @@ export function createBackgroundIndex(deps: BackgroundIndexDeps): BackgroundInde
     }, {})
   }
 
-  /** The children that can be subagents. One read of the creation facts of
-   *  every child spares a full read of each child of another kind; a child
-   *  whose creation fact is missing or unreadable is read in full. */
+  /** The children that can be subagents. Reading the creation facts of the
+   *  children spares a full read of each child of another kind; a child
+   *  whose creation fact is missing or unreadable is read in full. The state
+   *  Worker refuses a slice of more rows than one page, and a long chat can
+   *  have thousands of children, so the reads go one page of children at a
+   *  time. */
   async function subagentCandidates(childIds: readonly string[]): Promise<string[]> {
-    if (childIds.length === 0) return []
-    const { facts } = await deps.reader.readSlice({ aggregateIds: childIds.map((id) => `session:${id}`), types: ["session.created"], limit: childIds.length }, true)
-    const kinds = new Map(facts.flatMap((fact) => {
-      if (fact instanceof CorruptEventRowError) return []
-      const created = decodeSessionMetadataFactForReplay(fact, fact.timestamp)
-      return created?.type === "session.created" ? [[fact.sessionId, created.payload.kind] as const] : []
-    }))
+    const kinds = new Map<string, string>()
+    for (let start = 0; start < childIds.length; start += PROJECT_STATE_MAX_PAGE_ROWS) {
+      const chunk = childIds.slice(start, start + PROJECT_STATE_MAX_PAGE_ROWS)
+      const { facts } = await deps.reader.readSlice({ aggregateIds: chunk.map((id) => `session:${id}`), types: ["session.created"], limit: chunk.length }, true)
+      for (const fact of facts) {
+        if (fact instanceof CorruptEventRowError) continue
+        const created = decodeSessionMetadataFactForReplay(fact, fact.timestamp)
+        if (created?.type === "session.created") kinds.set(fact.sessionId, created.payload.kind)
+      }
+    }
     return childIds.filter((id) => (kinds.get(id) ?? "subagent") === "subagent")
   }
 
