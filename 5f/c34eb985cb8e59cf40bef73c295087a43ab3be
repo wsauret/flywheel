@@ -1,0 +1,32 @@
+scripts/build-claude-plugin.ts
+  h_4b47e9e4a8b456 30-31,62-63,203-204
+scripts/claude-plugin-host.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 2,5-9,52,64-70,73-81,95-96,101-102,107-133,180-184,189
+src/orchestration/agent-runtime/model-interaction-profile.ts
+  h_4b47e9e4a8b456 2-3,13-16,22-25,29-30
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 91
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 23,273-275,341-342
+src/orchestration/modules/learning/tools/memory.ts
+  h_4b47e9e4a8b456 60-63
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 8,18,24-28,30-53,55-56,73,83,87,92-107,109-111,114-121,124-131
+tests/unit/orchestration/agent-runtime/model-interaction-profile.test.ts
+  h_4b47e9e4a8b456 23-24,26,30-31,33-37
+tests/unit/orchestration/modules/learning/tools/memory-tool.test.ts
+  h_4b47e9e4a8b456 167-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5fc34eb985cb8e59cf40bef73c295087a43ab3be",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
