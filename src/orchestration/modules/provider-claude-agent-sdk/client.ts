@@ -5,7 +5,7 @@ import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
 import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/claude-reminders.js";
 import { credentialForCandidate, stagedProviderClient, type AccessProviderBuild } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type StagedProviderClient, type ToolPresentation } from "../../agent-runtime/llm/types.js";
 import { processUsageReadings } from "./account-usage.js";
 import { makeBridge } from "./bridge.js";
@@ -70,14 +70,13 @@ function canonicalName(wireName: string): string {
 export async function createClaudeAgentSdkClient(build: AccessProviderBuild, seams: ClaudeAgentSdkSeams = {}): Promise<StagedProviderClient> {
   const candidate = build.candidate;
   if (candidate.kind !== "subscription") throw new ApiError({ message: `The ${CLAUDE_AGENT_SDK_LABEL} provider requires a Claude login`, recovery: { kind: "none" } });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
   const described = await describeProvider(build.model, {
-    accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, protocol: "anthropic", providerHint: "anthropic",
-    resolvedModelMetadata: build.attribution.resolvedModelMetadata,
+    accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, protocol: "anthropic", providerHint: "anthropic", resolvedModelMetadata: info,
   });
   const contextLimit = described.totalContextLimit ?? described.contextLimit;
   const sharedHost = build.providerSessionLifetime.sharedHost;
   let hosted: HostedAgent | undefined;
-  const info = build.attribution.resolvedModelMetadata ?? null;
   return stagedProviderClient(build, {
     ...described, toolPresentation: bridgePresentation,
     // The bridge starts the engine of an anticipated request, and a hosted agent leases its host.
@@ -88,13 +87,13 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
     // the stable and session tiers, and its conversation tier is an entry of
     // its first message, so hosted siblings share both tiers.
     ...(sharedHost === undefined ? { sharedPromptPrefix: "stable" as const } : {}),
-    messagesToAppend: createClaudeReminders(build.wireModelId, contextLimit, build.attribution.resolvedModelMetadata),
+    messagesToAppend: createClaudeReminders(build.wireModelId, contextLimit, info),
     ...(sharedHost === undefined ? {} : {
       // The request as the adapter prepares it for the bridge (`createAnthropicAdapter`). A request that no host
       // serves is no dispatch. Before the client connected no agent runs, so a request that a host serves starts one.
       requestEntries: createHostedAgentEntries((request) => {
         const prepared = prepareAnthropicRequest({
-          accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, model: build.wireModelId, wireModel: build.wireModelId, info, contextLimit: info?.contextLimit,
+          accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, model: build.wireModelId, wireModel: build.wireModelId, info, contextLimit: info.contextLimit,
           options: request, presentation: bridgePresentation, hosted: true,
         });
         if (!prepared.historyTarget.sharedHost) return false;
@@ -154,9 +153,8 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
       Effect.runSync(Scope.addFinalizerExit(lifetime.scope, (exit) => Effect.promise(() => agent.close(Exit.hasInterrupts(exit) ? "abort" : "lifetime-end"))));
       operations = agent.operations;
     }
-    return createAnthropicAdapter(Redacted.make(""), build.wireModelId, build.modelsClient, {
+    return createAnthropicAdapter(Redacted.make(""), build.wireModelId, info, {
       accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, catalogId: "anthropic", candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
       operations, toolPresentation: bridgePresentation,
       ...(sharedHost === undefined ? {} : { hosted: true }),
     });

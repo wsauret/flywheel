@@ -11,13 +11,13 @@
 
 import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
-import type { ModelInfo, ModelsClient } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { openRouterReportedChargeUsd } from "../../../../../src/orchestration/modules/provider-openrouter/usage-charge.js";
 
 /** The provider module passes the wire id it resolved from its catalog; the
  *  adapter never folds one itself. */
-const OPENROUTER_BASE = { accessProvider: "openrouter", providerHint: "openrouter", wireModelId: "anthropic/claude-opus-4.8", reportedChargeUsd: openRouterReportedChargeUsd } as const;
+const OPENROUTER = { accessProvider: "openrouter", providerHint: "openrouter", wireModelId: "anthropic/claude-opus-4.8", reportedChargeUsd: openRouterReportedChargeUsd } as const;
 import type { ConversationMessage, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
@@ -41,20 +41,6 @@ const REASONING_INFO: ModelInfo = {
   contextLimit: 200_000,
   outputLimit: 64_000,
 };
-const OPENROUTER = { ...OPENROUTER_BASE, resolvedModelMetadata: REASONING_INFO } as const;
-
-function stubModelsClient(info: ModelInfo | null = REASONING_INFO): ModelsClient {
-  return {
-    async refresh() {},
-    getProviderCatalog(providerIds) {
-      return info && providerIds.includes(info.provider) ? [{
-        providerId: info.provider, providerName: info.provider, wireModelId: info.id, metadata: info,
-        provenance: "bundled", canonical: { providerId: info.provider, modelId: info.id }, transport: null,
-      }] : [];
-    },
-    getTokenizerIdentity() { return undefined; },
-  };
-}
 
 interface Capture { params?: UnknownRecord; invocationOrder?: string[]; iteratorError?: Error }
 
@@ -93,7 +79,7 @@ async function drain(
 
 test("OpenAI Completions settles dispatch before SDK invocation and rejection prevents invocation", async () => {
   const capture: Capture = { invocationOrder: [] };
-  const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", stubModelsClient(), OPENROUTER);
+  const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", REASONING_INFO, OPENROUTER);
 
   await drain(adapter, { onDispatch: async () => { capture.invocationOrder?.push("settled"); } });
   expect(capture.invocationOrder).toEqual(["settled", "sdk"]);
@@ -112,7 +98,7 @@ test.each([
   const adapter = await createOpenAIChatCompletionsAdapter(
     capturingClient(capture, [FINISH_CHUNK]),
     "claude-opus-4-8",
-    stubModelsClient(),
+    REASONING_INFO,
     { accessProvider, providerHint },
   );
   const applyPatch = {
@@ -136,7 +122,7 @@ describe("OpenRouter anthropic cache_control", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -155,7 +141,7 @@ describe("OpenRouter anthropic cache_control", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "gemini-3.5-flash",
-      stubModelsClient({ ...REASONING_INFO, id: "gemini-3.5-flash" }),
+      { ...REASONING_INFO, id: "gemini-3.5-flash" },
       { ...OPENROUTER, wireModelId: "google/gemini-3.5-flash" },
     );
 
@@ -169,7 +155,7 @@ describe("OpenRouter anthropic cache_control", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -185,7 +171,7 @@ describe("OpenRouter reasoning params", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -200,7 +186,7 @@ describe("OpenRouter reasoning params", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -214,7 +200,7 @@ describe("OpenRouter reasoning params", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-fable-5",
-      stubModelsClient({ ...REASONING_INFO, id: "claude-fable-5" }),
+      { ...REASONING_INFO, id: "claude-fable-5" },
       OPENROUTER,
     );
 
@@ -228,8 +214,8 @@ describe("OpenRouter reasoning params", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "gpt-5.5",
-      stubModelsClient({ ...REASONING_INFO, provider: "openai", id: "gpt-5.5" }),
-      { accessProvider: "openai_api", resolvedModelMetadata: { ...REASONING_INFO, provider: "openai", id: "gpt-5.5" } },
+      { ...REASONING_INFO, provider: "openai", id: "gpt-5.5" },
+      { accessProvider: "openai_api" },
     );
 
     await drain(adapter, { reasoningEffort: "high" });
@@ -242,7 +228,7 @@ describe("OpenRouter reasoning params", () => {
     const deepseek = { ...REASONING_INFO, provider: "opencode-go", id: "deepseek-v4.1-flash", reasoningEfforts: ["low", "high", "max"] } as const;
     const sent = async (reasoningEffort: "max" | "ultra" | "xhigh") => {
       const capture: Capture = {};
-      const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4.1-flash", stubModelsClient(deepseek), { accessProvider: "opencode_go", resolvedModelMetadata: deepseek });
+      const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4.1-flash", deepseek, { accessProvider: "opencode_go" });
       await drain(adapter, { reasoningEffort });
       return capture.params?.reasoning_effort;
     };
@@ -258,7 +244,7 @@ describe("DeepSeek thinking params", () => {
   const deepseek = { ...REASONING_INFO, provider: "deepseek", id: "deepseek-v4-pro", reasoningEfforts: ["low", "high", "max"] } as const;
   const sent = async (overrides: Partial<StreamOptions>) => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4-pro", stubModelsClient(deepseek), { accessProvider: "deepseek", resolvedModelMetadata: deepseek });
+    const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4-pro", deepseek, { accessProvider: "deepseek" });
     await drain(adapter, overrides);
     return capture.params;
   };
@@ -312,7 +298,7 @@ describe("OpenRouter provider routing", () => {
   test("maps the routing shape unchanged to the top-level provider field", async () => {
     const capture: Capture = {};
     const adapter = await createOpenAIChatCompletionsAdapter(
-      capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", stubModelsClient(),
+      capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", REASONING_INFO,
       OPENROUTER,
     );
 
@@ -325,7 +311,7 @@ describe("OpenRouter provider routing", () => {
     const capture: Capture = {};
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]), "gpt-5.5",
-      stubModelsClient({ ...REASONING_INFO, provider: "openai", id: "gpt-5.5" }),
+      { ...REASONING_INFO, provider: "openai", id: "gpt-5.5" },
       { accessProvider: "openai_api" },
     );
 
@@ -337,7 +323,7 @@ describe("OpenRouter provider routing", () => {
   test("transmits the provider-owned output cap used by admission", async () => {
     const capture: Capture = {};
     const adapter = await createOpenAIChatCompletionsAdapter(
-      capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", stubModelsClient(),
+      capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", REASONING_INFO,
       { ...OPENROUTER, providerOutputCap: 12_345 },
     );
 
@@ -353,7 +339,7 @@ describe("chat-completions request invariants", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
     const messages: ConversationMessage[] = [
@@ -372,7 +358,7 @@ describe("chat-completions request invariants", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -388,7 +374,7 @@ describe("chat-completions usage and finish reasons", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, []),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -414,7 +400,7 @@ describe("chat-completions usage and finish reasons", () => {
         },
       }]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -439,7 +425,7 @@ describe("chat-completions usage and finish reasons", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       capturingClient(capture, [{ ...FINISH_CHUNK, usage: { ...FINISH_CHUNK.usage, ...usage } }]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -460,7 +446,7 @@ describe("chat-completions usage and finish reasons", () => {
         { id: "c", choices: [{ index: 0, delta: {}, finish_reason: "length" }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
       ]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -486,7 +472,7 @@ describe("chat-completions usage and finish reasons", () => {
         usage: { prompt_tokens: 1, completion_tokens: 0 },
       }]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -510,7 +496,7 @@ describe("chat-completions tool-call delta assembly", () => {
         { id: "c", choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
       ]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 
@@ -529,7 +515,7 @@ describe("chat-completions tool-call delta assembly", () => {
         { id: "c", choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
       ]),
       "claude-opus-4-8",
-      stubModelsClient(),
+      REASONING_INFO,
       OPENROUTER,
     );
 

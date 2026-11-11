@@ -7,7 +7,7 @@ import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
 /** The listing pages by `pageToken`, the way the Gemini Developer API's model list does. */
@@ -80,12 +80,13 @@ function positiveInteger(value: unknown): number | undefined {
 }
 
 const createClient: AccessProviderFactory = async (build) => {
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: info });
   return stagedProviderClient(build, described, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Google API key in the active auth profile. Run: flywheel auth login --google", recovery: { kind: "none" } });
     const { createGoogleAdapter } = await import("../../agent-runtime/llm/google.js");
-    return createGoogleAdapter(key, build.wireModelId, build.modelsClient, { resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null });
+    return createGoogleAdapter(key, build.wireModelId, info);
   });
 };
 

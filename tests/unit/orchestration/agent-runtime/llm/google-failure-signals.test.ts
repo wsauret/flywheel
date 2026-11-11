@@ -15,7 +15,7 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import { Redacted } from "effect";
 import { GenerateContentResponse } from "@google/genai";
-import type { ModelInfo, ModelsClient } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
 import { createGoogleAdapter } from "../../../../../src/orchestration/agent-runtime/llm/google.js";
 import type { ConversationMessage, LLMClient, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -43,18 +43,6 @@ const MODEL_INFO: ModelInfo = {
   outputLimit: 64_000,
 };
 
-function stubModelsClient(): ModelsClient {
-  return {
-    async refresh() {},
-    getProviderCatalog(providerIds) {
-      return providerIds.includes(MODEL_INFO.provider) ? [{
-        providerId: MODEL_INFO.provider, providerName: MODEL_INFO.provider, wireModelId: MODEL_INFO.id, metadata: MODEL_INFO,
-        provenance: "bundled", canonical: { providerId: MODEL_INFO.provider, modelId: MODEL_INFO.id }, transport: null,
-      }] : [];
-    },
-    getTokenizerIdentity() { return undefined; },
-  };
-}
 
 let streamChunks: Array<UnknownRecord> = [];
 let streamError: Error | undefined;
@@ -84,7 +72,7 @@ class TestApiError extends Error {
 }
 
 function createTestGoogleAdapter(): Promise<LLMClient> {
-  return createGoogleAdapter(Redacted.make("test-key"), "gemini-3-pro", stubModelsClient(), { client: fakeGoogleClient, resolvedModelMetadata: MODEL_INFO });
+  return createGoogleAdapter(Redacted.make("test-key"), "gemini-3-pro", MODEL_INFO, { client: fakeGoogleClient });
 }
 
 async function collectWithError(client: LLMClient): Promise<{ events: ProviderStreamEvent[]; error: Error | undefined }> {
@@ -350,37 +338,55 @@ describe("Google failure signals", () => {
       failure: "OverloadedFailure",
     },
   ])("uses the real SDK transport once for $name", async ({ accessProvider, status, message, code, failure }) => {
-    const originalFetch = globalThis.fetch;
-    let fetchCalls = 0;
-    globalThis.fetch = Object.assign(async () => {
-      fetchCalls += 1;
-      return new Response(
-        JSON.stringify({ error: { code: status, message, status: code } }),
-        { status, headers: { "content-type": "application/json" } },
-      );
-    }, { preconnect: originalFetch.preconnect });
+    const { error, fetchCalls } = await failureThroughSdk(accessProvider, status, { error: { code: status, message, status: code } });
 
-    try {
-      const client = await createGoogleAdapter(
-        Redacted.make("test-key"),
-        "gemini-3-pro",
-        stubModelsClient(),
-        { accessProvider, resolvedModelMetadata: MODEL_INFO },
-      );
-      const { error } = await collectWithError(client);
-
-      expect(fetchCalls).toBe(1);
-      expect(error).toBeInstanceOf(ProviderAttemptFailure);
-      expect(error).toMatchObject({ failure: { _tag: failure } });
-      expect(error?.message).toContain(message);
-      if (failure === "ModelAccessFailure") {
-        expect(error?.cause).toMatchObject({ name: "ModelAccessRefusedError", refusal: { kind: "model" } });
-      }
-    } finally {
-      globalThis.fetch = originalFetch;
+    expect(fetchCalls).toBe(1);
+    expect(error).toBeInstanceOf(ProviderAttemptFailure);
+    expect(error).toMatchObject({ failure: { _tag: failure } });
+    expect(error?.message).toContain(message);
+    if (failure === "ModelAccessFailure") {
+      expect(error?.cause).toMatchObject({ name: "ModelAccessRefusedError", refusal: { kind: "model" } });
     }
   });
+
+  // Gemini states a per-minute and a per-day limit in the same words; only the quota id and the retry delay differ.
+  it("classifies a Gemini per-minute quota as a rate limit with its retry delay, and a per-day quota as spent", async () => {
+    const geminiQuota = (quotaId: string, retryIn: string, retryDelay: string) => ({
+      error: {
+        code: 429,
+        message: `You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits.\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash\nPlease retry in ${retryIn}.`,
+        status: "RESOURCE_EXHAUSTED",
+        details: [
+          { "@type": "type.googleapis.com/google.rpc.Help", links: [{ description: "Learn more about Gemini API quotas", url: "https://ai.google.dev/gemini-api/docs/rate-limits" }] },
+          { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [{ quotaMetric: "generativelanguage.googleapis.com/generate_content_free_tier_requests", quotaId, quotaDimensions: { location: "global", model: "gemini-2.5-flash" }, quotaValue: "10" }] },
+          { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay },
+        ],
+      },
+    });
+
+    const perMinute = await failureThroughSdk("google_api", 429, geminiQuota("GenerateRequestsPerMinutePerProjectPerModel-FreeTier", "52.719223156s", "52s"));
+    expect(perMinute.error).toMatchObject({ failure: { _tag: "RateLimitFailure", retryAfterMs: 52_000 } });
+    const perDay = await failureThroughSdk("google_api", 429, geminiQuota("GenerateRequestsPerDayPerProjectPerModel-FreeTier", "9.5s", "9s"));
+    expect(perDay.error).toMatchObject({ failure: { _tag: "QuotaExhaustedFailure" } });
+  });
 });
+
+/** Runs one request through the real Google SDK transport against a fetch that answers `body` with `status`. */
+async function failureThroughSdk(accessProvider: "google_api" | "google_vertex", status: number, body: UnknownRecord): Promise<{ error: Error | undefined; fetchCalls: number }> {
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = Object.assign(async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  }, { preconnect: originalFetch.preconnect });
+  try {
+    const client = await createGoogleAdapter(Redacted.make("test-key"), "gemini-3-pro", MODEL_INFO, { accessProvider });
+    const { error } = await collectWithError(client);
+    return { error, fetchCalls };
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
 
 const PNG = { type: "image" as const, mediaType: "image/png", data: "AAA" };
 

@@ -13,6 +13,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
 import { checkpointTestPersistences } from "../../../helpers/checkpoint-store.js"
+import { providerModelInfo } from "../../../../src/infra/llm/provider-model-info.js"
 
 const temporaryDirectory = temporaryDirectories()
 const checkpointTestPersistence = checkpointTestPersistences()
@@ -79,7 +80,7 @@ async function siblingRequest(sessionDir: string, attemptId: string, conversatio
   return {
     tools: [...surface.tools.keys()],
     request: prepareAnthropicRequest({
-      accessProvider: "anthropic_api", model: "claude-test", wireModel: "claude-test", info: null,
+      accessProvider: "anthropic_api", model: "claude-test", wireModel: "claude-test", info: providerModelInfo({ provider: "anthropic", id: "claude-test" }),
       options: { messages: [{ kind: "user", content: `## For Item Context\n\n${item}` }], tools: prepared.tools, systemPrompt: prepared.systemPrompt, cacheRetention: "1h" },
     }),
   }

@@ -1515,7 +1515,7 @@ effort = "low"
 - Default: unset
 - Application: `next-request`. Applies when the next provider request captures configuration.
 
-Select the model id for this role.
+Select the model for this role: a model id, a tier (powerful, mid, or cheap), or a tier alias (opus, sonnet, haiku, pro, flash, or flash-lite).
 
 ```toml
 [profiles.work]

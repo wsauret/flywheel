@@ -11,7 +11,7 @@ import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { applyXaiSubscriptionHeaders, XAI_SUBSCRIPTION_BASE_URL } from "./auth-types.js";
 import { loginXai } from "./oauth.js";
@@ -173,15 +173,16 @@ function tokenAccessor(build: Parameters<AccessProviderFactory>[0], seed: Stored
 
 const createClient: AccessProviderFactory = async (build) => {
   if (build.candidate.kind !== "subscription") throw new ApiError({ message: "SuperGrok requires a subscription candidate", recovery: { kind: "none" } });
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: definition.catalogId, resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: definition.catalogId, resolvedModelMetadata: info });
   return stagedProviderClient(build, described, async () => {
     const cred = credentialForCandidate(build.connection, build.candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No SuperGrok tokens found. Run: flywheel auth login --supergrok", recovery: { kind: "none" } });
     const seed = storedTokens(cred);
     const [{ createOpenAIAdapter }, { createXaiOpenAIClient }] = await Promise.all([import("../../agent-runtime/llm/openai.js"), import("./client.js")]);
-    return createOpenAIAdapter({ kind: "apiKey", apiKey: seed.accessToken }, build.wireModelId, build.modelsClient, {
+    return createOpenAIAdapter({ kind: "apiKey", apiKey: seed.accessToken }, build.wireModelId, info, {
       client: createXaiOpenAIClient(tokenAccessor(build, seed)),
-      accessProvider: definition.id, catalogId: definition.catalogId, candidate: build.candidate, resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
+      accessProvider: definition.id, catalogId: definition.catalogId, candidate: build.candidate,
     });
   });
 };

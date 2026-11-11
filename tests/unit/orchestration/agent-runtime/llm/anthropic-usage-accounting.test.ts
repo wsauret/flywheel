@@ -13,7 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { wireResponse } from "./_wire-fixtures.js";
 import { Redacted } from "effect";
-import type { ModelsClient, ModelInfo } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { join } from "node:path";
 import { createModelsClient } from "../../../../../src/infra/llm/models.js";
 import { createAnthropicAdapter, HOSTED_MAX_TOKENS, operationsFromAnthropicClient, prepareAnthropicRequest, type AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
@@ -44,18 +44,6 @@ const MODEL_INFO: ModelInfo = {
   outputLimit: 64_000,
 };
 
-function stubModelsClient(info: ModelInfo = MODEL_INFO): ModelsClient {
-  return {
-    async refresh() {},
-    getProviderCatalog(providerIds) {
-      return providerIds.includes(info.provider) ? [{
-        providerId: info.provider, providerName: info.provider, wireModelId: info.id, metadata: info,
-        provenance: "bundled", canonical: { providerId: info.provider, modelId: info.id }, transport: null,
-      }] : [];
-    },
-    getTokenizerIdentity() { return undefined; },
-  };
-}
 
 let streamEvents: Array<UnknownRecord> = [];
 /** Set by a test to make the fake stream die after its events. */
@@ -85,8 +73,8 @@ const fakeAnthropicOperations: AnthropicOperations = {
   },
 };
 
-function createTestAnthropicAdapter(_apiKey: string, _model: string, modelsClient: ModelsClient): Promise<LLMClient> {
-  return createAnthropicAdapter(Redacted.make("[redacted secret]"), "claude-opus-4-8", modelsClient, { operations: fakeAnthropicOperations, resolvedModelMetadata: MODEL_INFO });
+function createTestAnthropicAdapter(_apiKey: string, _model: string, info: ModelInfo): Promise<LLMClient> {
+  return createAnthropicAdapter(Redacted.make("[redacted secret]"), "claude-opus-4-8", info, { operations: fakeAnthropicOperations });
 }
 
 async function collectWithError(
@@ -167,7 +155,7 @@ describe("Anthropic usage accounting", () => {
       },
       { type: "message_stop" },
     ];
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -191,7 +179,7 @@ describe("Anthropic usage accounting", () => {
       MESSAGE_START,
       { type: "message_delta", delta: { stop_reason: "max_tokens" }, usage: { output_tokens: 64_000 } },
     ];
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -204,7 +192,7 @@ describe("Anthropic usage accounting", () => {
   it("reports usage for an attempt that dies on a non-retryable stream error", async () => {
     streamEvents = [MESSAGE_START];
     failStream = () => { throw new Anthropic.BadRequestError(400, { error: { message: "prompt is too long" } }, "prompt is too long", new Headers()); };
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -217,7 +205,7 @@ describe("Anthropic usage accounting", () => {
 
   it("emits no usage when a failed attempt reports no provider usage", async () => {
     failStream = () => { throw new Anthropic.BadRequestError(400, { error: { message: "prompt is too long" } }, "prompt is too long", new Headers()); };
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -234,7 +222,7 @@ describe("Anthropic usage accounting", () => {
       new Headers(),
     );
     createStreamError = new Error("Anthropic SDK request failed", { cause: quota });
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -248,7 +236,7 @@ describe("Anthropic usage accounting", () => {
       MESSAGE_START,
       { type: "error", error: { type: "overloaded_error", message: "Anthropic is overloaded" } },
     ];
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -275,7 +263,7 @@ describe("Anthropic usage accounting", () => {
         return { ...sent, data: Object.assign(withContext(), { controller: events.controller }) };
       },
     };
-    const client = await createAnthropicAdapter(Redacted.make("[redacted secret]"), "claude-opus-4-8", stubModelsClient(), { operations, resolvedModelMetadata: MODEL_INFO });
+    const client = await createAnthropicAdapter(Redacted.make("[redacted secret]"), "claude-opus-4-8", MODEL_INFO, { operations });
 
     const { events, error } = await collectWithError(client);
 
@@ -286,7 +274,7 @@ describe("Anthropic usage accounting", () => {
   it("lets local telemetry conversion failures escape untouched", async () => {
     streamEvents = [MESSAGE_START];
     const localFailure = new Error("local telemetry failed");
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { error } = await collectWithError(client, {
       telemetry: { observe() { throw localFailure; } },
@@ -300,7 +288,7 @@ describe("Anthropic usage accounting", () => {
       MESSAGE_START,
       { type: "message_delta", delta: { stop_reason: "model_context_window_exceeded" }, usage: { output_tokens: 10 } },
     ];
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { error } = await collectWithError(client);
 
@@ -313,7 +301,7 @@ describe("Anthropic usage accounting", () => {
       { type: "message_delta", delta: { stop_reason: "some_future_reason" }, usage: { output_tokens: 5 } },
       { type: "message_stop" },
     ];
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -332,7 +320,7 @@ describe("Anthropic usage accounting", () => {
       },
       { type: "message_stop" },
     ];
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -347,7 +335,7 @@ describe("Anthropic usage accounting", () => {
   it("does not report an empty stream as successful after caller cancellation", async () => {
     const caller = new AbortController();
     failStream = () => { caller.abort(new Error("caller cancelled")); };
-    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-8", MODEL_INFO);
 
     const { events, error } = await collectWithError(client, { signal: caller.signal });
 
@@ -369,7 +357,7 @@ describe("Anthropic max_tokens context clamp", () => {
   });
 
   it("keeps the throughput cap when the context window has room", async () => {
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     await collectWithError(client, { estimatedContextTokens: 10_000 });
 
@@ -377,7 +365,7 @@ describe("Anthropic max_tokens context clamp", () => {
   });
 
   it("clamps max_tokens to the remaining context window near the limit", async () => {
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     await collectWithError(client, { estimatedContextTokens: 190_000 });
 
@@ -403,7 +391,7 @@ describe("Anthropic max_tokens context clamp", () => {
   });
 
   it("keeps the cap when no context estimate is provided", async () => {
-    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", stubModelsClient());
+    const client = await createTestAnthropicAdapter("sk-test", "claude-opus-4-8", MODEL_INFO);
 
     await collectWithError(client);
 

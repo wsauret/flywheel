@@ -8,7 +8,7 @@ import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { createClaudeReminders } from "../../agent-runtime/llm/claude-reminders.js";
 import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
 /** The listing pages by `after_id`, the way the Messages API's model list does. */
@@ -93,15 +93,16 @@ const definition = {
 } as const satisfies AccessProviderDefinition;
 
 const createClient: AccessProviderFactory = async (build) => {
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "anthropic", providerHint: "anthropic", resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "anthropic", providerHint: "anthropic", resolvedModelMetadata: info });
   return stagedProviderClient(build, {
     ...described,
-    messagesToAppend: createClaudeReminders(build.wireModelId, described.totalContextLimit ?? described.contextLimit, build.attribution.resolvedModelMetadata),
+    messagesToAppend: createClaudeReminders(build.wireModelId, described.totalContextLimit ?? described.contextLimit, info),
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Anthropic API key in the active auth profile. Run: flywheel auth login --anthropic", recovery: { kind: "none" } });
     const { createAnthropicAdapter } = await import("../../agent-runtime/llm/anthropic.js");
-    return createAnthropicAdapter(key, build.wireModelId, build.modelsClient, { candidate: build.candidate, availability: build.availability, resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null });
+    return createAnthropicAdapter(key, build.wireModelId, info, { candidate: build.candidate, availability: build.availability });
   });
 };
 

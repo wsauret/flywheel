@@ -3,8 +3,8 @@ import { Redacted } from "effect";
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.js";
 import type { OpenAIAuth } from "../../../infra/auth/openai-auth-types.js";
 import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
-import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-helpers.js";
-import type { ModelInfo, ModelsClient } from "../../../infra/llm/models.js";
+import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
+import type { ModelInfo } from "../../../infra/llm/models.js";
 import { Log } from "../../../infra/log.js";
 import { LlmStreamError } from "./errors.js";
 import { parseToolArguments } from "../../../infra/llm/json-parse.js";
@@ -13,7 +13,7 @@ import { isHeartbeatStreamEvent } from "./stream-watchdog.js";
 import { mapChatGptAdapterEvents } from "./chatgpt-adapter/sse.js";
 import { tryChatGptAdapterTransport } from "./chatgpt-adapter/transport.js";
 import { createServiceTierTracker, openAIResponsesTarget } from "./openai-adapter-helpers.js";
-import { OPENAI_CACHE_RATES, OPENAI_RESPONSES_TOOL_PRESENTATION, openAIOutputLimit, supportsOpenAIReasoning } from "./provider-description.js";
+import { OPENAI_CACHE_RATES, OPENAI_RESPONSES_TOOL_PRESENTATION } from "./provider-description.js";
 import { createChatGPTClient } from "./chatgpt-client.js";
 import { createChatGPTTokenAccessor, logRejectedChatGptRequest, type ChatGPTTokenAccessor } from "./openai-chatgpt.js";
 import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream, handleOpenAICompleted, handleOpenAIUsage, openAISessionAffinityHeaders } from "./openai-helpers.js";
@@ -38,13 +38,12 @@ interface StringFields { [key: string]: string }
 export async function createOpenAIAdapter(
   auth: OpenAIAuth,
   defaultModel: string,
-  modelsClient: ModelsClient,
+  info: ModelInfo,
   overrides: {
     oauthPersistence?: import("../../../infra/auth/auth-context.js").OAuthPersistencePolicy;
     tokenAccessor?: ChatGPTTokenAccessor;
     client?: OpenAI; accessProvider?: AccessProviderId;
     candidate?: AccessProviderCandidate;
-    resolvedModelMetadata?: ModelInfo | null;
     /** models.dev namespace selected by the provider contribution. */ catalogId?: string;
     /** Captured ChatGPT compatibility. Null states that admission found no listed models. */
     availableModels?: ReadonlySet<string> | null;
@@ -72,13 +71,6 @@ export async function createOpenAIAdapter(
     : new OpenAI({ apiKey: Redacted.value(auth.apiKey), fetch: transport.fetch, maxRetries: 0 }));
   const accessProvider = overrides.accessProvider ?? (isChatGPT ? "chatgpt" : "openai_api");
   const extraHeaders = overrides.extraHeaders;
-
-  // A proxy (Copilot, OpenCode Go) serves these models with its own context
-  // windows; the provider's models.dev entry carries the proxy limits and
-  // API-equivalent pricing (same rationale as the Anthropic adapter).
-  const modelCache = createModelInfoCache(
-    { model: defaultModel, info: overrides.resolvedModelMetadata ?? null },
-  );
   const serviceTier = createServiceTierTracker(isChatGPT);
 
   const availableModels = isChatGPT ? overrides.availableModels ?? undefined : undefined;
@@ -92,19 +84,13 @@ export async function createOpenAIAdapter(
     get availableModels() {
       return availableModels;
     },
-    get contextLimit() {
-      return modelCache.contextLimit();
-    },
-    get outputLimit() {
-      return openAIOutputLimit(modelCache.getCached()?.info ?? null);
-    },
-    get supportsReasoning() {
-      return supportsOpenAIReasoning(modelCache.getCached()?.model ?? defaultModel, modelCache.getCached()?.info ?? null);
-    },
+    contextLimit: info.contextLimit,
+    outputLimit: info.outputLimit,
+    supportsReasoning: info.reasoning,
 
     priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; promptTokens?: number }) {
-      const result = computeUsagePrice(tokens, modelCache.getCached()?.info?.pricing ?? { status: "unavailable", reason: "missing-rate-card" }, OPENAI_CACHE_RATES);
-      const multiplier = serviceTier.multiplier(modelCache.getCached()?.model ?? defaultModel);
+      const result = computeUsagePrice(tokens, info.pricing, OPENAI_CACHE_RATES);
+      const multiplier = serviceTier.multiplier(defaultModel);
       if (result.status === "unavailable" || multiplier === 1) return result;
       const scale = (tier: typeof result.rateCard.standard) => Object.freeze({
         input: tier.input * multiplier,
@@ -128,14 +114,12 @@ export async function createOpenAIAdapter(
 
     async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       const model = options.model ?? defaultModel;
-      const info = await modelCache.resolveModelInfo(model);
       const requestedReasoning = options.reasoningEffort ?? "medium";
       // Track the tier the caller asked for, so cost accounting can fall
       // back to it when the server's response.service_tier is "default".
       serviceTier.setRequested(resolveOpenAIServiceTier(options.providerOptions));
 
-      const modelSupportsReasoning = supportsOpenAIReasoning(model, info);
-      if (requestedReasoning !== "off" && !modelSupportsReasoning) {
+      if (requestedReasoning !== "off" && !info.reasoning) {
         log.warn(`Model ${model} does not support reasoning - proceeding without reasoning`);
       }
 
@@ -508,6 +492,5 @@ export async function createOpenAIAdapter(
 
   } satisfies LLMClient;
 
-  await modelCache.resolveModelInfo(defaultModel);
   return adapter;
 }

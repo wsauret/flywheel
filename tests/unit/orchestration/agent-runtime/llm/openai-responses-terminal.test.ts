@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { Redacted } from "effect";
 import type { OpenAIAuth } from "../../../../../src/infra/auth/openai-auth-types.js";
 import type { LLMClient, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { collectStreamEvents, installChatGptAdapterModuleMocks, state, stubModelsClient } from "./_openai-chatgpt-adapter-fixtures.js";
+import { collectStreamEvents, installChatGptAdapterModuleMocks, state, REASONING_INFO } from "./_openai-chatgpt-adapter-fixtures.js";
 
 installChatGptAdapterModuleMocks();
 
@@ -88,7 +88,7 @@ describe("OpenAI Responses terminal frames", () => {
       type: "response.completed",
       response: { id: "retention", status: "completed", usage: USAGE, output: [], ...fields },
     }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
     const events = await collectStreamEvents(client);
     const usage = events.find((event) => event.kind === "usage");
     expect(usage?.kind === "usage" ? usage.cacheRetentionMs : undefined).toBe(retentionMs);
@@ -98,14 +98,14 @@ describe("OpenAI Responses terminal frames", () => {
   it("reports cache reads that a gateway omitted as null inside the input count, never as zero", async () => {
     const { input_tokens_details: _details, ...unreported } = USAGE;
     state.streamEvents = [{ type: "response.completed", response: { id: "unreported", status: "completed", usage: unreported, output: [] } }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
     const events = await collectStreamEvents(client);
     expect(events.filter((event) => event.kind === "usage")).toEqual([expect.objectContaining({ final: true, inputTokens: 900, cacheReadTokens: null })]);
   });
 
   it("settles dispatch before OpenAI Responses SSE invocation and rejects before invocation", async () => {
     state.streamEvents = [{ type: "response.completed", response: { id: "resp", status: "completed", usage: USAGE, output: [] } }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     await collectStreamEvents(client, { onDispatch: async () => { state.invocationOrder.push("settled"); } });
     expect(state.invocationOrder).toEqual(["settled", "sse"]);
@@ -117,7 +117,7 @@ describe("OpenAI Responses terminal frames", () => {
 
   it("settles dispatch before OpenAI Responses WebSocket invocation and rejects before invocation", async () => {
     state.webSocketStreamEvents = [{ type: "response.completed", response: { id: "resp", status: "completed", usage: USAGE, output: [] } }];
-    const client = await createOpenAIAdapter(CHATGPT_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(CHATGPT_AUTH, "gpt-5.4", REASONING_INFO);
 
     await collectStreamEvents(client, { onDispatch: async () => { state.invocationOrder.push("settled"); } });
     expect(state.invocationOrder).toEqual(["settled", "websocket"]);
@@ -134,7 +134,7 @@ describe("OpenAI Responses terminal frames", () => {
       { type: "response.output_text.delta", delta: "partial", output_index: 0 },
       { type: "response.incomplete", response: incompleteResponse("max_output_tokens") },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -158,7 +158,7 @@ describe("OpenAI Responses terminal frames", () => {
         error: { code: "server_error", message: "failed after billing" },
       },
     }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -171,7 +171,7 @@ describe("OpenAI Responses terminal frames", () => {
       type: "response.failed",
       response: { id: "resp_failed", status: "failed", output: [], error: { code: "server_error", message: "failed" } },
     }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const { events } = await collectWithError(client);
 
@@ -183,7 +183,7 @@ describe("OpenAI Responses terminal frames", () => {
       { type: "response.created", response: { id: "resp_incomplete" } },
       { type: "response.incomplete", response: incompleteResponse("content_filter") },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -202,7 +202,7 @@ describe("OpenAI Responses terminal frames", () => {
         response: { id: "resp_done", status: "completed", usage: USAGE, output: [] },
       },
     ];
-    const client = await createOpenAIAdapter(CHATGPT_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(CHATGPT_AUTH, "gpt-5.4", REASONING_INFO);
 
     const { events, error } = await collectWithError(client);
 
@@ -218,7 +218,7 @@ describe("OpenAI Responses terminal frames", () => {
       { type: "response.output_text.delta", delta: "partial", output_index: 0 },
       // No terminal frame: the abort tore the stream down mid-response.
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const controller = new AbortController();
     const events: StreamEvent[] = [];

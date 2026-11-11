@@ -24,12 +24,12 @@ import {
   type ToolConfig,
 } from "@google/genai";
 import { Redacted } from "effect";
-import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-helpers.js";
+import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import type { ModelInfo, ModelsClient, ReasoningEffort } from "../../../infra/llm/models.js";
+import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { classifyQuotaError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, OutputLengthExceededError, QuotaExhaustedError } from "./errors.js";
-import { GOOGLE_CACHE_RATES, GOOGLE_PROMPT_NOTES, googleOutputLimit, supportsGoogleReasoning } from "./provider-description.js";
+import { GOOGLE_CACHE_RATES, GOOGLE_PROMPT_NOTES } from "./provider-description.js";
 import { geminiThinkingConfigMode } from "./model-compat.js";
 import { isTransientNetworkError, normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { withStreamAttempt } from "./stream-attempt.js";
@@ -74,14 +74,11 @@ export type GoogleAccessProvider = "google_api" | "google_vertex";
 export async function createGoogleAdapter(
   apiKey: Redacted.Redacted<string>,
   defaultModel: string,
-  modelsClient: ModelsClient,
-  overrides?: { client?: GoogleClientOverrides; accessProvider?: GoogleAccessProvider; resolvedModelMetadata?: ModelInfo | null },
+  info: ModelInfo,
+  overrides?: { client?: GoogleClientOverrides; accessProvider?: GoogleAccessProvider },
 ): Promise<LLMClient> {
   const accessProvider = overrides?.accessProvider ?? "google_api";
   const client = overrides?.client ?? await createGoogleClientOverrides(apiKey, accessProvider === "google_vertex");
-  const modelCache = createModelInfoCache(
-    { model: defaultModel, info: overrides?.resolvedModelMetadata ?? null },
-  );
   // Counter for synthesizing tool_call IDs when Gemini doesn't supply one.
   // Factory-scoped so each adapter instance has its own monotonic source
   // and no module-level singleton exists.
@@ -93,21 +90,18 @@ export async function createGoogleAdapter(
     model: defaultModel,
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
     promptNotes: GOOGLE_PROMPT_NOTES,
-    get contextLimit() { return modelCache.contextLimit(); },
-    get outputLimit() { return googleOutputLimit(modelCache.getCached()?.info ?? null); },
-    get supportsReasoning() {
-      return supportsGoogleReasoning(modelCache.getCached()?.model ?? defaultModel, modelCache.getCached()?.info ?? null);
-    },
+    contextLimit: info.contextLimit,
+    outputLimit: info.outputLimit,
+    supportsReasoning: info.reasoning,
 
     priceFor(tokens) {
-      return computeUsagePrice(tokens, modelCache.getCached()?.info?.pricing ?? { status: "unavailable", reason: "missing-rate-card" }, GOOGLE_CACHE_RATES);
+      return computeUsagePrice(tokens, info.pricing, GOOGLE_CACHE_RATES);
     },
 
     historyTarget: (options: StreamOptions) => googleHistoryTarget({ accessProvider, model: options.model ?? defaultModel }),
 
     async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       const modelId = options.model ?? defaultModel;
-      const info = await modelCache.resolveModelInfo(modelId);
       const requestedReasoning = options.reasoningEffort;
 
       const contents = toGoogleGenerativeAiRequest({
@@ -125,7 +119,7 @@ export async function createGoogleAdapter(
 
       // `abortSignal` is added inside the attempt so its lifetime is explicit.
       const baseConfig: GenerateContentConfig = {
-        maxOutputTokens: googleOutputLimit(info),
+        maxOutputTokens: info.outputLimit,
         ...(systemPrompt && { systemInstruction: sanitizeSurrogates(systemPrompt) }),
         ...(options.tools.length > 0 && { tools: convertTools(options.tools, adapter.toolPresentation) }),
         ...(typeof googleOpts?.temperature === "number" ? { temperature: googleOpts.temperature } : {}),
@@ -135,7 +129,7 @@ export async function createGoogleAdapter(
         const runId = crypto.randomUUID();
         const effort = clampEffort(requestedReasoning);
         const config: GenerateContentConfig = { ...baseConfig, abortSignal: attempt.signal };
-        if (supportsGoogleReasoning(modelId, info)) {
+        if (info.reasoning) {
           const thinkingConfig = getThinkingConfig(modelId, effort, googleOpts?.thinking_budgets);
           if (thinkingConfig) config.thinkingConfig = thinkingConfig;
         }
@@ -320,7 +314,7 @@ export async function createGoogleAdapter(
               // size mid-stream, matching Anthropic's `message_start` signal.
               if (!contextUpdateEmitted && promptTotal > 0) {
                 contextUpdateEmitted = true;
-                yield { kind: "context_update", promptTokens: promptTotal, contextWindow: modelCache.contextLimit(info) } as const;
+                yield { kind: "context_update", promptTokens: promptTotal, contextWindow: info.contextLimit } as const;
               }
               usage = {
                 input: promptTotal - cached,
@@ -370,7 +364,6 @@ export async function createGoogleAdapter(
 
   } satisfies LLMClient;
 
-  await modelCache.resolveModelInfo(defaultModel);
   return adapter;
 }
 
@@ -415,6 +408,8 @@ function classifyGoogleError(error: unknown, apiErrorStatus: (error: Error) => n
   const quotaStatus = status ?? (/402/.test(message) ? 402
     : /429/.test(message) ? 429
       : undefined);
+  const throttle = quotaStatus === 429 ? googleRateLimit(message, cause) : undefined;
+  if (throttle) return throttle;
   const quota = classifyQuotaError(quotaStatus, message, cause);
   if (quota) return quota;
   if (/quota.?exceeded|billing (?:account|quota)|credit (?:balance|quota)/i.test(message)) return new QuotaExhaustedError(message, { cause });
@@ -430,6 +425,23 @@ function classifyGoogleError(error: unknown, apiErrorStatus: (error: Error) => n
   // SDK doesn't classify. Without this, the retry policy can't recover them.
   if (isTransientNetworkError(error)) return new LlmStreamError(message, "transient", undefined, { cause });
   return error instanceof Error ? error : new Error(String(error));
+}
+
+/** A Google quota that a wait of moments cannot clear: a per-day limit, a
+ *  limit of zero, which the plan does not grant, or a billing or credit limit. */
+const GOOGLE_SPENT_QUOTA_TEXT = /PerDay|per.?day|limit: 0\b|"quotaValue":\s*"0"|billing (?:account|quota)|credit (?:balance|quota)/i;
+
+/** Google states every 429 as RESOURCE_EXHAUSTED and "Quota exceeded for
+ *  metric", also a per-minute request or token limit that clears in seconds.
+ *  Such a limit names a per-minute quota id or states when to retry, in a
+ *  RetryInfo detail or as "Please retry in 52.7s". It is a rate limit with
+ *  that delay, never a spent quota, unless it also names a spent quota. */
+function googleRateLimit(message: string, cause: unknown): LlmStreamError | undefined {
+  if (GOOGLE_SPENT_QUOTA_TEXT.test(message)) return undefined;
+  const delay = /"retryDelay":\s*"(\d+(?:\.\d+)?)s"/.exec(message) ?? /Please retry in (\d+(?:\.\d+)?)s\b/i.exec(message);
+  if (delay === null && !/PerMinute|per.?minute/i.test(message)) return undefined;
+  const retryDelayMs = delay === null ? undefined : Math.ceil(Number(delay[1]) * 1_000);
+  return new LlmStreamError(message, "rate_limit", retryDelayMs, { cause });
 }
 
 interface GoogleTerminalState {
@@ -512,8 +524,8 @@ function convertTools(tools: StreamOptions["tools"], presentation: ToolPresentat
   ];
 }
 
-function supportsGoogleImages(info: ModelInfo | null): boolean {
-  return info?.modalities?.input?.includes("image") ?? false;
+function supportsGoogleImages(info: ModelInfo): boolean {
+  return info.modalities.input.includes("image");
 }
 
 function isThinkingPart(part: Pick<Part, "thought">): boolean {

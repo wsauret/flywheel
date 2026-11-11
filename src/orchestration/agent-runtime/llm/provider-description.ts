@@ -15,30 +15,12 @@ export const ANTHROPIC_PROMPT_NOTES = {
 // Anthropic prices a one-hour cache write at two times the base input rate. models.dev states no one-hour rate.
 export const ANTHROPIC_CACHE_RATES = { cacheReadRatio: 0.1, cacheWriteRatio: 1.25, cacheWrite1hRatio: 2 } as const;
 
-export function supportsAnthropicReasoning(model: string, info: ModelInfo | null): boolean {
-  return info?.reasoning ?? /^claude-(opus|sonnet|haiku)-4/.test(model);
-}
-
-export function anthropicOutputLimit(info: ModelInfo | null): number {
-  return info?.outputLimit ?? 16_384;
-}
-
 export const GOOGLE_CACHE_RATES = { cacheReadRatio: 0.25, cacheWriteRatio: 1.0 } as const;
 
 export const GOOGLE_PROMPT_NOTES = {
   progress: "",
   modelNotes: "- Gemini supports extended thinking via `thinkingBudget`/`thinkingLevel`.",
 } satisfies ProviderPromptNotes;
-
-export function supportsGoogleReasoning(model: string, info: ModelInfo | null): boolean {
-  // The `-latest` aliases carry no version digit but track current reasoning
-  // models (pi `providers/google.ts:420-423`).
-  return info?.reasoning ?? /^gemini-(2|3)|^gemini-flash(-lite)?-latest|^gemma-?4/i.test(model);
-}
-
-export function googleOutputLimit(info: ModelInfo | null): number {
-  return info?.outputLimit ?? 16_384;
-}
 
 export const OPENAI_CACHE_RATES = { cacheReadRatio: 0.5, cacheWriteRatio: 1.0 } as const;
 
@@ -49,14 +31,6 @@ export const OPENAI_RESPONSES_TOOL_PRESENTATION: ToolPresentation = Object.freez
     : FUNCTION_TOOL_PRESENTATION.present(tool),
 });
 
-export function supportsOpenAIReasoning(model: string, info: ModelInfo | null): boolean {
-  return info?.reasoning ?? /^(o\d|gpt-5)/.test(model);
-}
-
-export function openAIOutputLimit(info: ModelInfo | null): number {
-  return info?.outputLimit ?? 16_384;
-}
-
 type Protocol = "anthropic" | "openai-responses" | "openai-completions" | "google";
 
 export interface ProviderDescriptionOptions {
@@ -65,13 +39,19 @@ export interface ProviderDescriptionOptions {
   readonly providerHint: string;
   readonly providerOutputCap?: number;
   readonly availableModels?: ReadonlySet<string>;
-  readonly resolvedModelMetadata?: ModelInfo;
+  readonly resolvedModelMetadata: ModelInfo;
+}
+
+/** The metadata that admission resolved for `model`. A provider reads it before it describes the model or builds its
+ *  adapter. Throws when admission resolved none, because no limit, price, or capability of the model is known. */
+export function requireModelMetadata(model: string, info: ModelInfo | undefined): ModelInfo {
+  if (info === undefined) throw new Error(`Model info unavailable for ${model}`);
+  return info;
 }
 
 /** Resolves static provider and model facts without constructing an SDK client. */
 export async function describeProvider(model: string, options: ProviderDescriptionOptions): Promise<ServingAttempt> {
   const info = options.resolvedModelMetadata;
-  if (info === undefined) throw new Error(`Model info unavailable for ${model}`);
   const protocol = options.protocol;
   return Object.freeze({
     accessProvider: options.accessProvider,
@@ -86,25 +66,12 @@ export async function describeProvider(model: string, options: ProviderDescripti
     ...(options.availableModels === undefined ? {} : { availableModels: options.availableModels }),
     contextLimit: info.contextLimit,
     ...(info.totalContextLimit === undefined ? {} : { totalContextLimit: info.totalContextLimit }),
-    outputLimit: Math.min(outputLimitFor(protocol, info), options.providerOutputCap ?? Number.POSITIVE_INFINITY),
-    supportsReasoning: reasoningFor(protocol, model, info),
+    outputLimit: Math.min(info.outputLimit, options.providerOutputCap ?? Number.POSITIVE_INFINITY),
+    supportsReasoning: info.reasoning,
     priceFor: (tokens: Parameters<ServingAttempt["priceFor"]>[0]) => computeUsagePrice(
       tokens,
       info.pricing,
       protocol === "anthropic" ? ANTHROPIC_CACHE_RATES : protocol === "google" ? GOOGLE_CACHE_RATES : OPENAI_CACHE_RATES,
     ),
   });
-}
-
-function outputLimitFor(protocol: Protocol, info: ModelInfo): number {
-  if (protocol === "anthropic") return anthropicOutputLimit(info);
-  if (protocol === "google") return googleOutputLimit(info);
-  return openAIOutputLimit(info);
-}
-
-function reasoningFor(protocol: Protocol, model: string, info: ModelInfo): boolean {
-  if (protocol === "anthropic") return supportsAnthropicReasoning(model, info);
-  if (protocol === "google") return supportsGoogleReasoning(model, info);
-  if (protocol === "openai-responses") return supportsOpenAIReasoning(model, info);
-  return info.reasoning;
 }

@@ -17,9 +17,9 @@
 import OpenAI from "openai";
 import type { ChatCompletionCreateParamsStreaming, ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions.js";
 import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
-import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-helpers.js";
+import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import type { ModelInfo, ModelsClient, ReasoningEffort } from "../../../infra/llm/models.js";
+import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
 import { Log } from "../../../infra/log.js";
 import { asRecord } from "../../../infra/record.js";
 import { classifyQuotaError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
@@ -28,7 +28,7 @@ import { parseToolArguments } from "../../../infra/llm/json-parse.js";
 import { httpStatusOf, normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { invokeProviderAttempt, normalizeProviderAttemptIterator } from "./provider-attempt-boundary.js";
 import { withStreamAttempt } from "./stream-attempt.js";
-import { OPENAI_CACHE_RATES, openAIOutputLimit } from "./provider-description.js";
+import { OPENAI_CACHE_RATES } from "./provider-description.js";
 import { CHAT_COMPLETIONS_REASONING_FIELDS, applyAnthropicCacheControl, mapChatCompletionsToolChoice, toChatCompletionsMessages } from "./openai-completions-messages.js";
 import { isOpenAIContextLengthMessage } from "./openai-helpers.js";
 import { cacheWriteTokens } from "./openai-usage-normalization.js";
@@ -101,7 +101,7 @@ function captureEncryptedReasoningDetails(
  *  `max` and `ultra` fold into `xhigh`, the strongest tier the OpenAI wire knows. */
 function chatCompletionsReasoningEffort(
   effort: ReasoningEffort | undefined,
-  info: ModelInfo | null,
+  info: ModelInfo,
 ): ChatCompletionCreateParamsStreaming["reasoning_effort"] {
   if (effort === undefined || effort === "off") return undefined;
   const declared = openAIReasoningEffort(effort, info);
@@ -207,11 +207,11 @@ function mapChatCompletionsStopReason(finishReason: string): CompletedStopReason
 function chatCompletionsReasoningParams(
   accessProvider: AccessProviderId,
   modelId: string,
-  info: ModelInfo | null,
+  info: ModelInfo,
   effort: ReasoningEffort | undefined,
   toolChoice: ChatCompletionCreateParamsStreaming["tool_choice"] | undefined,
 ): UnknownFields {
-  if (!(info?.reasoning ?? false) || accessProvider === "github_copilot") return {};
+  if (!info.reasoning || accessProvider === "github_copilot") return {};
   const wireEffort = chatCompletionsReasoningEffort(effort, info);
   if (accessProvider === "deepseek") {
     const forcedTool = toolChoice !== undefined && toolChoice !== "auto" && toolChoice !== "none";
@@ -242,15 +242,15 @@ export function prepareOpenAICompletionsRequest(input: {
   accessProvider: AccessProviderId;
   model: string;
   wireModel: string;
-  info: ModelInfo | null;
+  info: ModelInfo;
   options: StreamOptions;
   providerOutputCap?: number;
 }): PreparedOpenAICompletionsRequest {
   const { accessProvider, model, wireModel, info, options, providerOutputCap } = input;
-  const messages = toChatCompletionsMessages(options.messages, info?.modalities?.input?.includes("image") ?? false, chatCompletionsTarget(accessProvider, model), info?.interleavedReasoningField);
+  const messages = toChatCompletionsMessages(options.messages, info.modalities.input.includes("image"), chatCompletionsTarget(accessProvider, model), info.interleavedReasoningField);
   const systemPrompt = renderSystemPrompt(options.systemPrompt);
   if (systemPrompt) {
-    const role = accessProvider === "openrouter" && wireModel.startsWith("openai/") && info?.reasoning ? "developer" : "system"; // provider-model-literal-allow: payload -- OpenRouter system-role wire compatibility
+    const role = accessProvider === "openrouter" && wireModel.startsWith("openai/") && info.reasoning ? "developer" : "system"; // provider-model-literal-allow: payload -- OpenRouter system-role wire compatibility
     messages.unshift({ role, content: systemPrompt });
   }
   const tools: ChatCompletionTool[] = options.tools.map((tool) => {
@@ -261,7 +261,7 @@ export function prepareOpenAICompletionsRequest(input: {
     applyAnthropicCacheControl(messages, tools, cacheControlFor(options.cacheRetention));
   }
   const outputCap = options.outputTokenLimit
-    ?? (accessProvider === "github_copilot" ? undefined : providerOutputCap ?? info?.outputLimit);
+    ?? (accessProvider === "github_copilot" ? undefined : providerOutputCap ?? info.outputLimit);
   const toolChoice = mapChatCompletionsToolChoice(options.toolChoice);
   const params: ChatCompletionCreateParamsStreaming = {
     model: wireModel,
@@ -339,7 +339,7 @@ function* handleToolCallDelta(
 export async function createOpenAIChatCompletionsAdapter(
   client: OpenAI,
   defaultModel: string,
-  modelsClient: ModelsClient,
+  info: ModelInfo,
   overrides?: {
     accessProvider?: AccessProviderId; extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>; resetIdleConnections?: () => void | Promise<void>;
     candidate?: AccessProviderCandidate;
@@ -349,7 +349,6 @@ export async function createOpenAIChatCompletionsAdapter(
     providerHint?: string;
     /** Provider-owned cap already used for pre-dispatch admission. */
     providerOutputCap?: number;
-    resolvedModelMetadata?: ModelInfo | null;
     /** The availability owner bound to the account this adapter spends from.
      *  Copilot's billed totals are folded into it, so they meter the same
      *  account selection reads. An adapter built outside the composition root
@@ -360,9 +359,6 @@ export async function createOpenAIChatCompletionsAdapter(
     reportedChargeUsd?: (usage: unknown) => number | undefined;
   },
 ): Promise<LLMClient> {
-  const modelCache = createModelInfoCache(
-    { model: defaultModel, info: overrides?.resolvedModelMetadata ?? null },
-  );
   const accessProvider = overrides?.accessProvider ?? "openai_api";
   const extraHeaders = overrides?.extraHeaders;
 
@@ -374,14 +370,12 @@ export async function createOpenAIChatCompletionsAdapter(
     model: defaultModel,
     toolPresentation: FUNCTION_TOOL_PRESENTATION,
     promptNotes: SHARED_PROMPT_NOTES,
-    get contextLimit() { return modelCache.contextLimit(); },
-    get outputLimit() { return openAIOutputLimit(modelCache.getCached()?.info ?? null); },
-    get supportsReasoning() {
-      return modelCache.getCached()?.info?.reasoning ?? false;
-    },
+    contextLimit: info.contextLimit,
+    outputLimit: info.outputLimit,
+    supportsReasoning: info.reasoning,
 
     priceFor(tokens) {
-      return computeUsagePrice(tokens, modelCache.getCached()?.info?.pricing ?? { status: "unavailable", reason: "missing-rate-card" }, OPENAI_CACHE_RATES);
+      return computeUsagePrice(tokens, info.pricing, OPENAI_CACHE_RATES);
     },
 
     historyTarget: (options: StreamOptions) => chatCompletionsTarget(accessProvider, options.model ?? defaultModel),
@@ -392,7 +386,6 @@ export async function createOpenAIChatCompletionsAdapter(
       // in (the same pattern as Copilot's dotted-Claude fold in anthropic.ts),
       // so adapter identity and metadata stay canonical.
       const wireModel = overrides?.wireModelId ?? modelId;
-      const info = await modelCache.resolveModelInfo(modelId);
 
       const descriptor = prepareOpenAICompletionsRequest({
         accessProvider, model: modelId, wireModel, info, options,
@@ -599,6 +592,5 @@ export async function createOpenAIChatCompletionsAdapter(
 
   } satisfies LLMClient;
 
-  await modelCache.resolveModelInfo(defaultModel);
   return adapter;
 }

@@ -320,7 +320,7 @@ function pin(
       }
       const promptNotes = attempt.promptNotes ?? { progress: "", modelNotes: "" };
       const noteText = [promptNotes.progress, promptNotes.modelNotes].filter(Boolean).join("\n\n");
-      // Provider notes vary by serving model, so they join the session tier.
+      // Provider notes vary by the serving attempt's wire protocol, so they join the session tier.
       const systemPrompt: SystemPromptTiers = stablePrompt.literalOverride || noteText.length === 0
         ? stablePrompt.systemPrompt
         : { ...stablePrompt.systemPrompt, session: [stablePrompt.systemPrompt.session, `# Provider Interaction Notes\n\n${noteText}`].filter(Boolean).join(SYSTEM_PROMPT_SEPARATOR) };

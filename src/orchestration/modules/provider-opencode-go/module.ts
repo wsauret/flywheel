@@ -5,7 +5,7 @@ import { openCodeGoRequestHeaders, providerRequestHeaders } from "../../../infra
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createOpenCodeGoUsageReader } from "./usage-reader.js";
 import { OPENCODE_GO_API_BASE, OPENCODE_GO_BILLING_URL, OPENCODE_GO_METADATA_PROVIDER, OPENCODE_GO_V1_BASE } from "./wire.js";
@@ -51,19 +51,19 @@ const createClient: AccessProviderFactory = async (build) => {
   const endpoint = build.attribution.transport;
   if (endpoint === undefined || endpoint === "google") throw new ApiError({ message: `OpenCode Go has no supported transport for "${build.model}".`, recovery: { kind: "none" } });
   const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "openai-responses" ? "openai-responses" : "openai-completions";
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: info });
   return stagedProviderClient(build, described, async () => {
     const credential = credentialForCandidate(build.connection, build.candidate);
     if (credential?.type !== "api_key") throw new ApiError({ message: "No OpenCode Go API key in the active auth profile. Run: flywheel auth login --opencode-go", recovery: { kind: "none" } });
     const key = credential.key;
     if (endpoint === "anthropic-messages") {
       const { createAnthropicAdapter } = await import("../../agent-runtime/llm/anthropic.js");
-      return createAnthropicAdapter(key, build.wireModelId, build.modelsClient, {
+      return createAnthropicAdapter(key, build.wireModelId, info, {
         baseURL: OPENCODE_GO_API_BASE,
         accessProvider: definition.id,
         catalogId: definition.catalogId,
         candidate: build.candidate,
-        resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
         extraHeaders: (options) => openCodeGoRequestHeaders(options.providerSessionKey),
       });
     }
@@ -71,19 +71,17 @@ const createClient: AccessProviderFactory = async (build) => {
       import("openai"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/openai-completions.js"),
     ]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENCODE_GO_V1_BASE, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
-    if (endpoint === "openai-responses") return createOpenAIAdapter({ kind: "apiKey", apiKey: key }, build.wireModelId, build.modelsClient, {
+    if (endpoint === "openai-responses") return createOpenAIAdapter({ kind: "apiKey", apiKey: key }, build.wireModelId, info, {
       client,
       accessProvider: definition.id,
       catalogId: definition.catalogId,
       candidate: build.candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
       extraHeaders: (options) => openCodeGoRequestHeaders(options.providerSessionKey),
     });
-    return createOpenAIChatCompletionsAdapter(client, build.wireModelId, build.modelsClient, {
+    return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
       accessProvider: definition.id,
       providerHint: definition.catalogId,
       candidate: build.candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
       extraHeaders: (options) => openCodeGoRequestHeaders(options.providerSessionKey),
     });
   });

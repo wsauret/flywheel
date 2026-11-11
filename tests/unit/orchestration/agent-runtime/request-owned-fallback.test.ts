@@ -35,6 +35,7 @@ import { fakeModelsClient, modelInfo } from "../../../helpers/model-tier-fixture
 import { fakeAvailability } from "./llm/_provider-chain-harness.js"
 import { authProviders } from "../../../helpers/auth-context.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
+import { requireModelMetadata } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js"
 
 const MODEL = "claude-sonnet-4.6"
 const auth: AuthContext = {
@@ -154,9 +155,8 @@ async function fixture(scenario: Scenario) {
       const { candidate, model: candidateModel, availability: boundAvailability } = build
       const failureIndex = candidate.kind === "subscription" ? accounts.indexOf(candidate.instanceId) : -1
       const account = failureIndex >= 0 ? `account-${failureIndex}` : candidate.providerId
-      const client = await createAnthropicAdapter(Redacted.make("sdk-fixture"), candidateModel, modelsClient, {
+      const client = await createAnthropicAdapter(Redacted.make("sdk-fixture"), candidateModel, requireModelMetadata(candidateModel, build.attribution.resolvedModelMetadata ?? modelsClient.modelInfos.get(candidateModel)), {
         accessProvider: provider, candidate, availability: boundAvailability,
-        resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? modelsClient.modelInfos.get(candidateModel) ?? null,
         operations: {
           isBadRequestError: () => false,
           createStream: async (params, { signal }) => {

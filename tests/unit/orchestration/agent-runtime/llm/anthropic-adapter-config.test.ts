@@ -3,7 +3,7 @@ import { Redacted } from "effect";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { wireResponse } from "./_wire-fixtures.js";
-import type { ModelsClient, ModelInfo, ReasoningEffort } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo, ReasoningEffort } from "../../../../../src/infra/llm/models.js";
 import { createAnthropicAdapter, operationsFromAnthropicClient, prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import type { ConversationMessage, LLMClient } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
@@ -28,22 +28,7 @@ const MODEL_INFO: ModelInfo = {
   contextLimit: 200_000,
   outputLimit: 16_384,
 };
-const fixtureModelInfos = new WeakMap<ModelsClient, ModelInfo>();
 
-function stubModelsClient(info: ModelInfo = MODEL_INFO): ModelsClient {
-  const client: ModelsClient = {
-    async refresh() {},
-    getProviderCatalog(providerIds) {
-      return providerIds.includes(info.provider) ? [{
-        providerId: info.provider, providerName: info.provider, wireModelId: info.id, metadata: info,
-        provenance: "bundled", canonical: { providerId: info.provider, modelId: info.id }, transport: null,
-      }] : [];
-    },
-    getTokenizerIdentity() { return undefined; },
-  };
-  fixtureModelInfos.set(client, info);
-  return client;
-}
 
 let lastCreateParams: UnknownRecord | undefined;
 let lastCreateOptions: { headers: Headers } | undefined;
@@ -68,11 +53,10 @@ const fakeAnthropicOperations = operationsFromAnthropicClient(new Anthropic({
 function createTestAnthropicAdapter(
   apiKey: string,
   model: string,
-  modelsClient: ModelsClient,
+  info: ModelInfo,
   overrides: NonNullable<Parameters<typeof createAnthropicAdapter>[3]> = {},
 ): Promise<LLMClient> {
-  return createAnthropicAdapter(Redacted.make(apiKey), model, modelsClient, {
-    resolvedModelMetadata: fixtureModelInfos.get(modelsClient) ?? MODEL_INFO,
+  return createAnthropicAdapter(Redacted.make(apiKey), model, info, {
     ...overrides,
     operations: fakeAnthropicOperations,
   });
@@ -93,7 +77,7 @@ async function collect(
 
   it("settles dispatch before SDK invocation and rejection prevents invocation", async () => {
     invocationOrder = [];
-    const client = await createTestAnthropicAdapter("key", "claude-haiku-4-5", stubModelsClient());
+    const client = await createTestAnthropicAdapter("key", "claude-haiku-4-5", MODEL_INFO);
 
     await collect(client, { onDispatch: async () => { invocationOrder.push("settled"); } });
     expect(invocationOrder).toEqual(["settled", "sdk"]);
@@ -249,24 +233,24 @@ describe("Anthropic adapter request configuration", () => {
   it("requests progress updates by default for supported first-party models", async () => {
     // claude-fable-5-3 has no entry of its own and inherits the default of its family.
     for (const model of ["claude-fable-5-1", "claude-fable-5-3"]) {
-      const client = await createTestAnthropicAdapter("test-key", model, stubModelsClient({
+      const client = await createTestAnthropicAdapter("test-key", model, {
         ...MODEL_INFO, id: model, reasoning: true,
-      }));
+      });
       await collect(client, { reasoningEffort: "medium" });
       expect(lastCreateParams?.thinking, model).toEqual({ type: "adaptive", display: "updates" });
       const beta = lastCreateOptions?.headers.get("anthropic-beta");
       expect(beta).toContain("thinking-display-updates-2026-08-18");
       expect(beta).not.toContain("redact-thinking-2026-02-12");
     }
-    const mythos = await createTestAnthropicAdapter("test-key", "claude-mythos-5", stubModelsClient({ ...MODEL_INFO, id: "claude-mythos-5", reasoning: true }));
+    const mythos = await createTestAnthropicAdapter("test-key", "claude-mythos-5", { ...MODEL_INFO, id: "claude-mythos-5", reasoning: true });
     await collect(mythos, { reasoningEffort: "medium" });
     expect(lastCreateParams?.thinking).toEqual({ type: "adaptive", display: "summarized" });
   });
 
   it("honors explicit omitted and summarized display on supported models", async () => {
-    const client = await createTestAnthropicAdapter("test-key", "claude-fable-5-1", stubModelsClient({
+    const client = await createTestAnthropicAdapter("test-key", "claude-fable-5-1", {
       ...MODEL_INFO, id: "claude-fable-5-1", reasoning: true,
-    }));
+    });
     for (const display of ["omitted", "summarized"] as const) {
       await collect(client, { reasoningEffort: "medium", providerOptions: { anthropic: { thinking_display: display } } });
       expect(lastCreateParams?.thinking).toEqual({ type: "adaptive", display });
@@ -275,7 +259,7 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("keeps proxy defaults unchanged and sends no updates beta when thinking is off", async () => {
-    const info = stubModelsClient({ ...MODEL_INFO, id: "claude-fable-5-1", reasoning: true });
+    const info = { ...MODEL_INFO, id: "claude-fable-5-1", reasoning: true };
     const proxy = await createTestAnthropicAdapter("test-key", "claude-fable-5-1", info, { accessProvider: "github_copilot" });
     await collect(proxy, { reasoningEffort: "medium" });
     expect(lastCreateParams?.thinking).toEqual({ type: "adaptive", display: "summarized" });
@@ -286,7 +270,7 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("sends eager tool input streaming and no thinking param on a non-reasoning model (anthropic API)", async () => {
-    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-haiku-4-5", stubModelsClient());
+    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-haiku-4-5", MODEL_INFO);
 
     await collect(client);
 
@@ -302,6 +286,21 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it.each([
+    ["claude-haiku-4.5", false],
+    ["claude-haiku-4-5", false],
+    ["claude-haiku-4-5-20251001", false],
+    ["claude-opus-4.6", true],
+  ] as const)("selects the Copilot tool streaming mode for %s from its compat row", async (model, eager) => {
+    const client = await createTestAnthropicAdapter("test-key", model, { ...MODEL_INFO, id: model }, { accessProvider: "github_copilot" });
+
+    await collect(client);
+
+    const beta = new Headers(lastCreateOptions?.headers).get("anthropic-beta") ?? "";
+    expect(beta.includes("fine-grained-tool-streaming-2025-05-14"), model).toBe(!eager);
+    expect(JSON.stringify(lastCreateParams?.tools).includes("eager_input_streaming"), model).toBe(eager);
+  });
+
+  it.each([
     ["claude-haiku-4-5", "disabled"],
     ["claude-haiku-5.5", "disabled"],
     ["claude-opus-5", "disabled"],
@@ -310,11 +309,11 @@ describe("Anthropic adapter request configuration", () => {
     ["claude-sonnet-5-5", "adaptive"],
     ["claude-sonnet-5.5", "adaptive"],
   ] as const)("sends accepted off thinking for %s with no temperature or effort", async (model, thinking) => {
-    const client = await createTestAnthropicAdapter("sk-test", model, stubModelsClient({
+    const client = await createTestAnthropicAdapter("sk-test", model, {
       ...MODEL_INFO,
       id: model,
       reasoning: true,
-    }));
+    });
 
     await collect(client, { reasoningEffort: "off" });
 
@@ -326,11 +325,11 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("omits the thinking param for always-thinking models that reject disabled", async () => {
-    const client = await createTestAnthropicAdapter("sk-test", "claude-fable-5", stubModelsClient({
+    const client = await createTestAnthropicAdapter("sk-test", "claude-fable-5", {
       ...MODEL_INFO,
       id: "claude-fable-5",
       reasoning: true,
-    }));
+    });
 
     await collect(client, { reasoningEffort: "off" });
 
@@ -341,7 +340,7 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("maps adaptive thinking effort by model and applies display", async () => {
-    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-6", stubModelsClient({
+    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-6", {
       ...MODEL_INFO,
       id: "claude-opus-4-6",
       reasoning: true,
@@ -349,7 +348,7 @@ describe("Anthropic adapter request configuration", () => {
       // requested xhigh rounds up to max.
       reasoningEfforts: ["low", "medium", "high", "max"],
       outputLimit: 64_000,
-    }));
+    });
 
     await collect(client, {
       reasoningEffort: "xhigh",
@@ -367,14 +366,14 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("defaults supported Fable models to adaptive thinking with progress updates", async () => {
-    const client = await createTestAnthropicAdapter("sk-test", "claude-fable-5", stubModelsClient({
+    const client = await createTestAnthropicAdapter("sk-test", "claude-fable-5", {
       ...MODEL_INFO,
       id: "claude-fable-5",
       name: "Claude Fable 5",
       reasoning: true,
       releaseDate: "2026-02-01",
       outputLimit: 128_000,
-    }));
+    });
 
     await collect(client, { reasoningEffort: "xhigh" });
 
@@ -383,14 +382,14 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("keeps legacy dated Claude snapshots on budget-based thinking", async () => {
-    const client = await createTestAnthropicAdapter("sk-test", "claude-sonnet-4-20250514", stubModelsClient({
+    const client = await createTestAnthropicAdapter("sk-test", "claude-sonnet-4-20250514", {
       ...MODEL_INFO,
       id: "claude-sonnet-4-20250514",
       name: "Claude Sonnet 4",
       reasoning: true,
       releaseDate: "2025-05-14",
       outputLimit: 64_000,
-    }));
+    });
 
     await collect(client, { reasoningEffort: "medium" });
 
@@ -403,12 +402,12 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("uses bounded budget-based thinking for non-adaptive Claude models", async () => {
-    const client = await createTestAnthropicAdapter("sk-test", "claude-sonnet-4-5", stubModelsClient({
+    const client = await createTestAnthropicAdapter("sk-test", "claude-sonnet-4-5", {
       ...MODEL_INFO,
       id: "claude-sonnet-4-5",
       reasoning: true,
       outputLimit: 64_000,
-    }));
+    });
 
     await collect(client, { reasoningEffort: "medium" });
 
@@ -420,36 +419,22 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("keeps Copilot's advertised Claude wire id unchanged", async () => {
-    const lookups: string[] = [];
-    const modelsClient: ModelsClient = {
-      async refresh() {},
-      getProviderCatalog(providerIds) {
-        lookups.push(...providerIds);
-        const info = { ...MODEL_INFO, id: "claude-sonnet-4-6" };
-        return providerIds.includes(info.provider) ? [{
-          providerId: info.provider, providerName: info.provider, wireModelId: info.id, metadata: info,
-          provenance: "bundled", canonical: { providerId: info.provider, modelId: info.id }, transport: null,
-        }] : [];
-      },
-      getTokenizerIdentity() { return undefined; },
-    };
-    const client = await createTestAnthropicAdapter("copilot", "claude-sonnet-4-6", modelsClient, {
+    const client = await createTestAnthropicAdapter("copilot", "claude-sonnet-4-6", { ...MODEL_INFO, id: "claude-sonnet-4-6" }, {
       accessProvider: "github_copilot",
     });
 
     await collect(client);
 
     expect(client.model).toBe("claude-sonnet-4-6");
-    expect(lookups.every((id) => id === "claude-sonnet-4-6")).toBe(true);
     expect(lastCreateParams?.model).toBe("claude-sonnet-4-6");
   });
 
   it("sends speed and the fast-mode beta when providerOptions request fast mode", async () => {
-    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-6", stubModelsClient({
+    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-6", {
       ...MODEL_INFO,
       id: "claude-opus-4-6",
       reasoning: true,
-    }));
+    });
 
     await collect(client, { providerOptions: { anthropic: { speed: "fast" } } });
 
@@ -459,10 +444,10 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("never sends fast mode on the Copilot path", async () => {
-    const client = await createTestAnthropicAdapter("copilot", "claude-sonnet-4-6", stubModelsClient({
+    const client = await createTestAnthropicAdapter("copilot", "claude-sonnet-4-6", {
       ...MODEL_INFO,
       id: "claude-sonnet-4-6",
-    }), { accessProvider: "github_copilot" });
+    }, { accessProvider: "github_copilot" });
 
     await collect(client, { providerOptions: { anthropic: { speed: "fast" } } });
 
@@ -472,11 +457,11 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("strips a reserved speed key from extra_body so it cannot bypass the typed option", async () => {
-    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-6", stubModelsClient({
+    const client = await createTestAnthropicAdapter("[redacted secret]", "claude-opus-4-6", {
       ...MODEL_INFO,
       id: "claude-opus-4-6",
       reasoning: true,
-    }));
+    });
 
     await collect(client, { providerOptions: { anthropic: { extra_body: { speed: "fast" } } } });
 
@@ -486,7 +471,7 @@ describe("Anthropic adapter request configuration", () => {
   });
 
   it("sends extra_body sampling parameters under the API version that accepts them", async () => {
-    const client = await createTestAnthropicAdapter("test-key", "claude-opus-4-6", stubModelsClient({ ...MODEL_INFO, id: "claude-opus-4-6" }));
+    const client = await createTestAnthropicAdapter("test-key", "claude-opus-4-6", { ...MODEL_INFO, id: "claude-opus-4-6" });
 
     await collect(client, { providerOptions: { anthropic: { extra_body: { top_p: 0.9, top_k: 5 } } } });
 
@@ -501,7 +486,7 @@ describe("Anthropic adapter request configuration", () => {
       return Response.json({ type: "error", error: { type: "invalid_request_error", message: "captured" } }, { status: 400 });
     } });
     try {
-      const client = await createAnthropicAdapter(Redacted.make("proxy-key"), "claude-opus-4-6", stubModelsClient(), { resolvedModelMetadata: MODEL_INFO, baseURL: `http://127.0.0.1:${server.port}` });
+      const client = await createAnthropicAdapter(Redacted.make("proxy-key"), "claude-opus-4-6", MODEL_INFO, { baseURL: `http://127.0.0.1:${server.port}` });
       await collect(client).catch(() => {});
     } finally {
       await server.stop(true);

@@ -3,7 +3,7 @@ import { Redacted } from "effect";
 import type { OpenAIAuth } from "../../../../../src/infra/auth/openai-auth-types.js";
 import { createOpenAITools } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { installChatGptAdapterModuleMocks, state, stubModelsClient } from "./_openai-chatgpt-adapter-fixtures.js";
+import { installChatGptAdapterModuleMocks, state, REASONING_INFO } from "./_openai-chatgpt-adapter-fixtures.js";
 
 installChatGptAdapterModuleMocks();
 
@@ -83,7 +83,7 @@ describe("OpenAI Responses custom tools", () => {
 
   it("keeps canonical input in function form when the current presentation is not custom", async () => {
     state.streamEvents = [{ type: "response.completed", response: { id: "resp_fn", status: "completed", output: [] } }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
     const messages = [
       { kind: "assistant" as const, provider: "openai" as const, api: "openai-responses" as const, model: "gpt-5.4", content: [{ type: "tool_use" as const, id: "call_echo", name: "echo", input: { text: "hello" } }] },
       { kind: "toolResult" as const, toolUseId: "call_echo", content: [{ type: "text" as const, text: "hello" }] },
@@ -113,7 +113,7 @@ describe("OpenAI Responses custom tools", () => {
       { type: "response.output_item.done", output_index: 0, item },
       { type: "response.completed", response: { id: "resp_1", status: "completed", output: [item] } },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const { events, error } = await collect(client);
 
@@ -138,7 +138,7 @@ describe("OpenAI Responses custom tools", () => {
       type: "response.completed",
       response: { id: "resp_2", status: "completed", output: [item] },
     }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const { events } = await collect(client);
 
@@ -148,7 +148,7 @@ describe("OpenAI Responses custom tools", () => {
 
   it("replays recorded native custom calls when the current request has no tools", async () => {
     state.streamEvents = [{ type: "response.completed", response: { id: "resp_empty", status: "completed", output: [] } }];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
     const messages = [
       { kind: "assistant" as const, provider: "openai" as const, api: "openai-responses" as const, model: "gpt-5.4", accessProvider: "openai_api" as const, content: [{ type: "tool_use" as const, id: "historical", providerCallId: "call_historical", providerItemId: "ctc_historical", name: "apply_patch", input: { input: PATCH } }] },
       { kind: "toolResult" as const, toolUseId: "historical", content: [{ type: "text" as const, text: "Done" }] },
@@ -168,7 +168,7 @@ describe("OpenAI Responses custom tools", () => {
       { type: "response.output_item.added", output_index: 0, item: { type: "custom_tool_call", id: "ctc_3", call_id: "call_3", name: "apply_patch", input: "" } },
       { type: "response.custom_tool_call_input.delta", output_index: 0, item_id: "ctc_3", delta: PATCH },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
     const events: StreamEvent[] = [];
     let error: unknown;
     try {

@@ -12,19 +12,12 @@
 import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
 import { wireClient } from "./_wire-fixtures.js";
-import type { ModelInfo, ModelsClient } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions-messages.js";
 
 interface UnknownRecord { [key: string]: unknown }
 
-function stubModelsClient(): ModelsClient {
-  return {
-    async refresh() {},
-    getProviderCatalog() { return [] },
-    getTokenizerIdentity() { return undefined },
-  };
-}
 
 const ENCRYPTED_DETAIL = { type: "reasoning.encrypted", id: "call_abc", data: "opaque-ciphertext" };
 const MODEL_INFO: ModelInfo = {
@@ -67,8 +60,8 @@ describe("OpenRouter reasoning_details capture", () => {
       const adapter = await createOpenAIChatCompletionsAdapter(
         clientWithChunks(toolCallChunks(position)),
         "claude-opus-4-8",
-        stubModelsClient(),
-        { accessProvider: "openrouter", providerHint: "openrouter", resolvedModelMetadata: MODEL_INFO },
+        MODEL_INFO,
+        { accessProvider: "openrouter", providerHint: "openrouter" },
       );
       const events = [];
       for await (const event of adapter.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("") })) {
@@ -94,8 +87,8 @@ describe("OpenRouter reasoning_details capture", () => {
     const adapter = await createOpenAIChatCompletionsAdapter(
       clientWithChunks(chunks),
       "claude-opus-4-8",
-      stubModelsClient(),
-      { accessProvider: "openrouter", providerHint: "openrouter", resolvedModelMetadata: MODEL_INFO },
+      MODEL_INFO,
+      { accessProvider: "openrouter", providerHint: "openrouter" },
     );
     const events = [];
     for await (const event of adapter.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("") })) {

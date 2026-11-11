@@ -11,7 +11,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { createGenerationMeasurement } from "../../../../../src/orchestration/agent-runtime/generation-measurement.js";
 import OpenAI from "openai";
-import type { ModelInfo, ModelsClient } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions-messages.js";
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -266,16 +266,6 @@ describe("chat-completions stream normalization", () => {
     modalities: { input: ["text"], output: ["text"] },
   };
   interface StreamChunk { [key: string]: unknown }
-  const modelsClient: ModelsClient = {
-    async refresh() {},
-    getProviderCatalog(providerIds) {
-      return providerIds.includes(info.provider) ? [{
-        providerId: info.provider, providerName: info.provider, wireModelId: info.id, metadata: info,
-        provenance: "bundled", canonical: { providerId: info.provider, modelId: info.id }, transport: null,
-      }] : [];
-    },
-    getTokenizerIdentity() { return undefined; },
-  };
 
   function clientWithStream(chunks: StreamChunk[], failure?: Error, beforeChunk?: (index: number) => void): OpenAI {
     async function* stream(): AsyncGenerator<StreamChunk> {
@@ -293,7 +283,7 @@ describe("chat-completions stream normalization", () => {
   }
 
   async function collect(client: OpenAI, observe?: (event: ProviderStreamEvent) => void): Promise<{ events: ProviderStreamEvent[]; error?: Error }> {
-    const adapter = await createOpenAIChatCompletionsAdapter(client, "gpt-5", modelsClient, { resolvedModelMetadata: info });
+    const adapter = await createOpenAIChatCompletionsAdapter(client, "gpt-5", info);
     const events: ProviderStreamEvent[] = [];
     try {
       for await (const event of adapter.streamWithTools({

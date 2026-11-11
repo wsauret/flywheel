@@ -1,7 +1,8 @@
 /**
  * Anthropic streaming adapter.
  *
- * Reasoning: maps ReasoningEffort to extended thinking budget_tokens.
+ * Reasoning: maps ReasoningEffort to `output_config.effort` for a model with adaptive
+ * thinking, and to extended thinking `budget_tokens` for every other reasoning model.
  * Caching: up to 4 ephemeral cache_control breakpoints, Anthropic's limit: the
  * last tool, the stable and session system tiers, and the last user message -
  * captures the stable prefix (tools + system) plus a rolling anchor (last
@@ -17,9 +18,9 @@ import { isAbortError } from "../../../infra/abort.js";
 import { errorDetail, errorMessage } from "../../../infra/error-message.js";
 import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { dashedModelId } from "../../../infra/llm/model-id.js";
-import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-helpers.js";
+import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
-import type { ModelInfo, ModelsClient, ReasoningEffort } from "../../../infra/llm/models.js";
+import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
 import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../infra/llm/provider-options.js";
 import { Log } from "../../../infra/log.js";
 import { ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
@@ -28,7 +29,7 @@ import { anthropicThinkingMode } from "./model-compat.js";
 import { withStreamAttempt, type StreamAttempt } from "./stream-attempt.js";
 import { invokeProviderAttempt } from "./provider-attempt-boundary.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
-import { ANTHROPIC_CACHE_RATES, ANTHROPIC_PROMPT_NOTES, anthropicOutputLimit, supportsAnthropicReasoning } from "./provider-description.js";
+import { ANTHROPIC_CACHE_RATES, ANTHROPIC_PROMPT_NOTES } from "./provider-description.js";
 import {
   ANTHROPIC_STALL_THRESHOLDS,
   buildBetaHeaders,
@@ -125,7 +126,7 @@ export const HOSTED_MAX_TOKENS = 64_000;
 interface AnthropicRequestInput {
   accessProvider: AccessProviderId;
   model: string;
-  info: ModelInfo | null;
+  info: ModelInfo;
   options: StreamOptions;
   /** The client runs its agent on a shared engine host: send `HOSTED_MAX_TOKENS`, bounded only by the model's output
    *  limit, instead of the cap that this request's context, throughput, and output limit set, and let the host serve
@@ -139,7 +140,7 @@ interface AnthropicRequestInput {
  *  leaves out the host's framing. */
 function anthropicRequestThinking({ accessProvider, model, info, options, hosted }: AnthropicRequestInput) {
   const reasoning = options.reasoningEffort ?? "medium";
-  const thinkingMode = anthropicThinkingMode(model, info, reasoning, supportsAnthropicReasoning(model, info));
+  const thinkingMode = anthropicThinkingMode(model, info, reasoning, info.reasoning);
   const sharedHost = hosted === true && (thinkingMode === "adaptive" || thinkingMode === "enabled") && (options.toolChoice === undefined || options.toolChoice === "auto");
   return { reasoning, thinkingMode, historyTarget: anthropicHistoryTarget(accessProvider, model, sharedHost) };
 }
@@ -170,7 +171,7 @@ export function prepareAnthropicRequest(input: AnthropicRequestInput & {
       ...(cachingEnabled && index === options.tools.length - 1 ? { cache_control: cacheControlFor(options.cacheRetention) } : {}),
     };
   });
-  const apiMax = anthropicOutputLimit(info);
+  const apiMax = info.outputLimit;
   const throughputCap = Math.min(apiMax, Math.max(apiMax >> 1, 32_000));
   const remainingContext = options.estimatedContextTokens === undefined || input.contextLimit === undefined
     ? Number.POSITIVE_INFINITY
@@ -220,8 +221,8 @@ export function prepareAnthropicRequest(input: AnthropicRequestInput & {
   });
 }
 
-function supportsImageInput(info: ModelInfo | null): boolean {
-  return info?.modalities?.input.includes("image") ?? true;
+function supportsImageInput(info: ModelInfo): boolean {
+  return info.modalities.input.includes("image");
 }
 
 export interface AnthropicOperations {
@@ -234,8 +235,10 @@ export interface AnthropicOperations {
      *  engine host serves the request (`PreparedAnthropicRequest.historyTarget`). A request whose `signal` is aborted
      *  at admission or after the transport's awaited preparation starts nothing. The adapter aborts `data.controller`
      *  after every request: before the response's terminal event the abort stops that request and nothing else, and
-     *  after it the abort only releases the request. */
-    options: { signal: AbortSignal; headers: StringHeaders; origins: BlockOrigins; requestContext?: string; runtimeNotices?: readonly string[]; sharedHost: boolean },
+     *  after it the abort only releases the request. `onProgress` hears each piece of the response that the transport
+     *  read but holds back from `data` for now, which the adapter counts as the stream's progress; a transport that
+     *  yields each piece as it reads it never calls it. */
+    options: { signal: AbortSignal; headers: StringHeaders; origins: BlockOrigins; requestContext?: string; runtimeNotices?: readonly string[]; sharedHost: boolean; onProgress?: () => void },
   ) => Promise<{
     data: AsyncIterable<Anthropic.RawMessageStreamEvent | AnthropicErrorFrame | TransportContextFrame> & { controller: AbortController };
     response: Response;
@@ -271,7 +274,7 @@ export function operationsFromAnthropicClient(client: Anthropic): AnthropicOpera
 export async function createAnthropicAdapter(
   apiKey: Redacted.Redacted<string>,
   defaultModel: string,
-  modelsClient: ModelsClient,
+  info: ModelInfo,
   overrides?: {
     /** Narrow provider operations for direct adapter dependency injection. */ operations?: AnthropicOperations;
     toolPresentation?: ToolPresentation;
@@ -282,7 +285,6 @@ export async function createAnthropicAdapter(
     /** Per-request additional headers (e.g. Copilot's `X-Initiator`). */ extraHeaders?: (options: StreamOptions) => StringHeaders | Promise<StringHeaders>;
     /** Transport hook used to reset idle sockets. */ resetIdleConnections?: () => void | Promise<void>;
     candidate?: AccessProviderCandidate;
-    resolvedModelMetadata?: ModelInfo | null;
     /** The availability owner bound to the account this adapter spends from.
      *  The Anthropic API's rate-limit headers fold into it, so a throttled
      *  account holds back every request until its stated reset. An adapter
@@ -306,23 +308,14 @@ export async function createAnthropicAdapter(
   let requestCount = 0;
   ensureEventLoopLagSampler();
 
-  // A proxy (Copilot, OpenCode Go) serves these models with its own context
-  // windows; resolving against a first-party catalog makes compaction fire
-  // past the proxy's real ceiling. The provider's models.dev entry carries
-  // both the proxy limits and API-equivalent pricing.
-  const modelCache = createModelInfoCache(
-    { model: defaultModel, info: overrides?.resolvedModelMetadata ?? null },
-  );
-
   /** The request that `options` describe, as this adapter sends it. */
   const describeRequest = async (options: StreamOptions) => {
     const model = options.model ?? defaultModel;
-    const info = await modelCache.resolveModelInfo(model);
     // Anthropic counts `max_tokens` against the org's TPM bucket as if the request
     // produced the full output. Halving the cap roughly doubles throughput under
     // TPM pressure; the 32k floor preserves full output budget on smaller models.
     const wireModel = accessProvider === "anthropic_api" ? dashedModelId(model) : model;
-    return { model, info, descriptor: prepareAnthropicRequest({ accessProvider, model, wireModel, info, contextLimit: info?.contextLimit, options, presentation: overrides?.toolPresentation, hosted: overrides?.hosted }) };
+    return { model, descriptor: prepareAnthropicRequest({ accessProvider, model, wireModel, info, contextLimit: info.contextLimit, options, presentation: overrides?.toolPresentation, hosted: overrides?.hosted }) };
   };
 
   const adapter = {
@@ -332,31 +325,24 @@ export async function createAnthropicAdapter(
     toolPresentation: overrides?.toolPresentation ?? FUNCTION_TOOL_PRESENTATION,
     promptNotes: ANTHROPIC_PROMPT_NOTES,
     // No availableModels constraint: any model the API key can call works.
-    get contextLimit() {
-      return modelCache.contextLimit();
-    },
-    get outputLimit() {
-      return anthropicOutputLimit(modelCache.getCached()?.info ?? null);
-    },
-    get supportsReasoning() {
-      return supportsAnthropicReasoning(modelCache.getCached()?.model ?? defaultModel, modelCache.getCached()?.info ?? null);
-    },
+    contextLimit: info.contextLimit,
+    outputLimit: info.outputLimit,
+    supportsReasoning: info.reasoning,
 
     priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number }) {
-      return computeUsagePrice(tokens, modelCache.getCached()?.info?.pricing ?? { status: "unavailable", reason: "missing-rate-card" }, ANTHROPIC_CACHE_RATES);
+      return computeUsagePrice(tokens, info.pricing, ANTHROPIC_CACHE_RATES);
     },
 
-    async historyTarget(options: StreamOptions) {
-      const model = options.model ?? defaultModel;
-      return anthropicRequestThinking({ accessProvider, model, info: await modelCache.resolveModelInfo(model), options, hosted: overrides?.hosted }).historyTarget;
+    historyTarget(options: StreamOptions) {
+      return anthropicRequestThinking({ accessProvider, model: options.model ?? defaultModel, info, options, hosted: overrides?.hosted }).historyTarget;
     },
 
     async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
       const turnStart = performance.now();
       const coldAdapter = requestCount === 0;
       requestCount += 1;
-      const { model, info, descriptor } = await describeRequest(options);
-      if ((options.reasoningEffort ?? "medium") !== "off" && !supportsAnthropicReasoning(model, info)) {
+      const { model, descriptor } = await describeRequest(options);
+      if ((options.reasoningEffort ?? "medium") !== "off" && !info.reasoning) {
         log.warn(`Model ${model} does not support reasoning - proceeding without extended thinking`);
       }
 
@@ -418,7 +404,7 @@ export async function createAnthropicAdapter(
           const sent = await sendStreamingRequest(
             async () => {
               try {
-                return await operations.createStream(params, { signal: attempt.signal, headers: requestHeaders, origins: descriptor.origins, sharedHost: descriptor.historyTarget.sharedHost, ...(options.requestContext === undefined ? {} : { requestContext: options.requestContext }), ...(runtimeNotices.length === 0 ? {} : { runtimeNotices }) });
+                return await operations.createStream(params, { signal: attempt.signal, headers: requestHeaders, origins: descriptor.origins, sharedHost: descriptor.historyTarget.sharedHost, onProgress: () => { streamLiveness.frame(); }, ...(options.requestContext === undefined ? {} : { requestContext: options.requestContext }), ...(runtimeNotices.length === 0 ? {} : { runtimeNotices }) });
               } catch (error) {
                 throw thrownFailure(error);
               }
@@ -502,7 +488,7 @@ export async function createAnthropicAdapter(
                 foldAnthropicMessageStartUsage(event.message.usage, usage);
                 const promptTokens = usage.input + usage.cacheRead + usage.cacheCreate;
                 if (promptTokens > 0) {
-                  yield { kind: "context_update", promptTokens, contextWindow: modelCache.contextLimit() } as const;
+                  yield { kind: "context_update", promptTokens, contextWindow: info.contextLimit } as const;
                 }
               }
             } else if (event.type === "content_block_delta") {
@@ -590,7 +576,6 @@ export async function createAnthropicAdapter(
     }),
   } satisfies LLMClient;
 
-  await modelCache.resolveModelInfo(defaultModel);
   return adapter;
 }
 
@@ -615,7 +600,7 @@ function toAnthropicToolChoice(choice: ToolChoice | undefined): Anthropic.Messag
 function buildAnthropicParams(
   wireModel: string,
   thinkingMode: ReturnType<typeof anthropicThinkingMode>,
-  info: ModelInfo | null,
+  info: ModelInfo,
   maxTokens: number,
   anthropicRequest: { system?: Anthropic.MessageCreateParams["system"]; messages: Anthropic.MessageParam[] },
   anthropicTools: Anthropic.Tool[],

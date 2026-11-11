@@ -217,34 +217,14 @@ describe("provider cap save point", () => {
             },
           }
           return createAnthropicAdapter(Redacted.make("test-fixture"), "claude-sonnet-4", {
-            refresh: async () => {},
-            getProviderCatalog: () => [{
-              providerId: "anthropic",
-              providerName: "Anthropic",
-              wireModelId: "claude-sonnet-4",
-              metadata: {
-              provider: "anthropic", family: "anthropic", id: "claude-sonnet-4", name: "Claude Sonnet 4",
-              reasoning: true, toolCall: true, attachment: false, temperature: true,
-              contextLimit: 200_000, outputLimit: 64_000,
-              openWeights: false, cost: { input: 0, output: 0 },
-              pricing: { status: "unavailable", reason: "missing-rate-card" },
-              modalities: { input: ["text"], output: ["text"] },
-              },
-              provenance: "bundled",
-              canonical: { providerId: "anthropic", modelId: "claude-sonnet-4" },
-              transport: null,
-            }],
-            getTokenizerIdentity: () => undefined,
-          }, {
-            accessProvider: provider,
-            operations,
-            resolvedModelMetadata: {
               provider: "anthropic", family: "anthropic", id: "claude-sonnet-4", name: "Claude Sonnet 4",
               reasoning: true, toolCall: true, attachment: false, temperature: true,
               contextLimit: 200_000, outputLimit: 64_000, openWeights: false, cost: { input: 0, output: 0 },
               pricing: { status: "unavailable", reason: "missing-rate-card" },
               modalities: { input: ["text"], output: ["text"] },
-            },
+            }, {
+            accessProvider: provider,
+            operations,
           })
         }
         return {

@@ -7,7 +7,7 @@ import { clampReasoningEffort, familySettings, type ReasoningEffortTier } from "
 const ANTHROPIC_EFFORT_FALLBACK = ["low", "medium", "high"] as const satisfies readonly ReasoningEffortTier[];
 
 export function mapAnthropicAdaptiveEffort(
-  info: ModelInfo | null,
+  info: ModelInfo,
   effort: ReasoningEffort,
 ): Exclude<ReasoningEffortTier, "ultra"> | null {
   if (effort === "off") return null;

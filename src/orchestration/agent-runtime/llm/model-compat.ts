@@ -1,5 +1,5 @@
 import { REASONING_EFFORTS, type ModelInfo, type ProviderReasoningEffort, type ReasoningEffort } from "../../../infra/llm/models.js";
-import { canonicalModelId, dashedModelId } from "../../../infra/llm/model-id.js";
+import { canonicalModelId } from "../../../infra/llm/model-id.js";
 
 /**
  * Per-model compat flags for wire-protocol quirks that models.dev's `ModelInfo`
@@ -7,8 +7,11 @@ import { canonicalModelId, dashedModelId } from "../../../infra/llm/model-id.js"
  * fine-grained tool streaming, OpenAI o-series rejection of parallel_tool_calls,
  * Gemini 3 thinking-level vs 2.5 thinking-budget, etc.
  *
- * Lookup table first, model metadata second, regex heuristic fallback for unknown
- * models without metadata. Keep this file as the single source of truth for these checks across all 5 providers.
+ * Lookup table first, model metadata second, regex heuristic fallback for models
+ * without a row. The table is keyed by canonical model id (`canonicalModelId`), and
+ * every lookup canonicalizes its input, so dashed, dotted, and date-stamped spellings
+ * of one model read the same row. Keep this file as the single source of truth for
+ * these checks across all 5 providers.
  *
  * Reasoning-effort tier support is data-driven instead: models.dev's
  * `reasoning_options` (ModelInfo.reasoningEfforts) declares each model's tiers,
@@ -54,20 +57,20 @@ const MODEL_COMPAT: ModelCompatById = {
   // Anthropic: always-thinking models reject thinking:{type:"disabled"}
   "claude-fable-5": { thinkingOff: "omit" },
   // Anthropic: the models with the Claude engine's per_turn_effort capability (CLI 2.1.296)
-  "claude-haiku-5-5": { perTurnEffort: true },
-  "claude-sonnet-5-5": { perTurnEffort: true, thinkingOff: "adaptive" },
-  "claude-opus-5-5": { perTurnEffort: true, thinkingOff: "adaptive" },
-  "claude-fable-5-1": { perTurnEffort: true },
-  "claude-fable-5-2": { perTurnEffort: true },
+  "claude-haiku-5.5": { perTurnEffort: true },
+  "claude-sonnet-5.5": { perTurnEffort: true, thinkingOff: "adaptive" },
+  "claude-opus-5.5": { perTurnEffort: true, thinkingOff: "adaptive" },
+  "claude-fable-5.1": { perTurnEffort: true },
+  "claude-fable-5.2": { perTurnEffort: true },
   // Anthropic: adaptive thinking
-  "claude-opus-4-6": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },
-  "claude-opus-4-7": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },
-  "claude-sonnet-4-6": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },
+  "claude-opus-4.6": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },
+  "claude-opus-4.7": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },
+  "claude-sonnet-4.6": { adaptiveThinking: true, eagerToolStreamingOnCopilot: true },
   // Anthropic 4.5, pre-adaptive; suppress eager-tool-streaming on Copilot
-  "claude-haiku-4-5": { adaptiveThinking: false, eagerToolStreamingOnCopilot: false },
-  "claude-sonnet-4-5": { adaptiveThinking: false, eagerToolStreamingOnCopilot: false },
+  "claude-haiku-4.5": { adaptiveThinking: false, eagerToolStreamingOnCopilot: false },
+  "claude-sonnet-4.5": { adaptiveThinking: false, eagerToolStreamingOnCopilot: false },
   // Claude Opus 4.5 is the first Claude model that keeps earlier-turn thinking.
-  "claude-opus-4-5": { adaptiveThinking: false, eagerToolStreamingOnCopilot: true, keepsEarlierTurnReasoning: true },
+  "claude-opus-4.5": { adaptiveThinking: false, eagerToolStreamingOnCopilot: true, keepsEarlierTurnReasoning: true },
   // Copilot's proxy also rejects eager streaming on plain sonnet-4 (pi
   // EAGER_TOOL_INPUT_STREAMING_UNSUPPORTED, `generate-models.ts:255-259`)
   "claude-sonnet-4": { adaptiveThinking: false, eagerToolStreamingOnCopilot: false },
@@ -105,15 +108,16 @@ const MODEL_COMPAT: ModelCompatById = {
   // deepinfra/fp8): a request with 30 images returns 200, and one with 31 or
   // more returns 404 because the image-support routing filter removes the
   // DeepInfra endpoints. The count is per request, over all messages.
-  "deepseek-v4-1-flash": { maxImagesPerRequest: 30 },
+  "deepseek-v4.1-flash": { maxImagesPerRequest: 30 },
 };
 
-function normalizeModelId(model: string): string {
-  return model.toLowerCase().replace(/_/g, "-");
+function lookup(model: string): ModelCompat | undefined {
+  return MODEL_COMPAT[canonicalModelId(model)];
 }
 
-function lookup(model: string): ModelCompat | undefined {
-  return MODEL_COMPAT[model] ?? MODEL_COMPAT[normalizeModelId(model)];
+/** The spelling that the legacy-Claude heuristics read for a model without a row. */
+function normalizeModelId(model: string): string {
+  return model.toLowerCase().replace(/_/g, "-");
 }
 
 /** A canonical model id that ends in its version: `claude-fable-5.2` is version 5.2 of the family `claude-fable`. */
@@ -169,12 +173,12 @@ const perTurnEffort = compatSetting("perTurnEffort");
 const thinkingOff = compatSetting("thinkingOff");
 
 /** Anthropic models that take the `{type: "adaptive"}` thinking shape. */
-export function supportsAdaptiveThinking(model: string, info: ModelInfo | null = null): boolean {
+export function supportsAdaptiveThinking(model: string, info: ModelInfo): boolean {
   const entry = lookup(model);
   if (entry?.adaptiveThinking !== undefined) return entry.adaptiveThinking;
   const normalizedModel = normalizeModelId(model);
   if (!normalizedModel.includes("claude-")) return false; // provider-model-literal-allow: payload -- Anthropic adaptive-thinking wire shape compatibility
-  const releaseDate = isoDate(info?.releaseDate);
+  const releaseDate = isoDate(info.releaseDate);
   if (releaseDate) return releaseDate >= FIRST_ADAPTIVE_ANTHROPIC_RELEASE_DATE;
   const legacyMajor = /claude-[1-3](?:[-.]|$)/.test(normalizedModel);
   const legacyFamilyFirst = /claude-(?:opus|sonnet|haiku)[-.]4(?:[-.](?:[0-5](?:[-.]|$)|\d{6,}(?:[-.]|$))|$)/.test(normalizedModel);
@@ -195,7 +199,6 @@ export function keepsEarlierTurnReasoning(model: string): boolean {
   if (entry?.keepsEarlierTurnReasoning !== undefined) return entry.keepsEarlierTurnReasoning;
   const normalizedModel = normalizeModelId(model);
   if (!normalizedModel.includes("claude-")) return false; // provider-model-literal-allow: payload -- Anthropic earlier-turn thinking retention
-  if (/claude-opus-4[-.]5(?:[-.]|$)/.test(normalizedModel)) return true;
   const legacyMajor = /claude-[1-3](?:[-.]|$)/.test(normalizedModel);
   const legacyFamilyFirst = /claude-(?:opus|sonnet|haiku)[-.]4(?:[-.](?:[0-5](?:[-.]|$)|\d{6,}(?:[-.]|$))|$)/.test(normalizedModel);
   return !(legacyMajor || legacyFamilyFirst);
@@ -214,9 +217,9 @@ export function inheritsPerTurnEffort(model: string): boolean {
 }
 
 /** The most images one request for `model` may carry (`ModelCompat.maxImagesPerRequest`), or undefined when the
- *  model has no limit. Accepts canonical and dashed model ids. */
+ *  model has no limit. */
 export function maxImagesPerRequest(model: string): number | undefined {
-  return lookup(dashedModelId(model))?.maxImagesPerRequest;
+  return lookup(model)?.maxImagesPerRequest;
 }
 
 /** The accepted Anthropic thinking shape for an off request. Omit means the
@@ -230,7 +233,7 @@ function thinkingOffMode(model: string): "disabled" | "adaptive" | "omit" {
  *  models that reject disabled thinking (pi `anthropic-messages.ts:1028,1053-1055`). */
 export function anthropicThinkingMode(
   model: string,
-  info: ModelInfo | null,
+  info: ModelInfo,
   effort: ReasoningEffort,
   reasoningSupported: boolean,
 ): "adaptive" | "enabled" | "disabled" | "omit" {
@@ -249,11 +252,7 @@ export function supportsThinkingDisable(model: string): boolean {
 /** Copilot-proxy support for the `fine-grained-tool-streaming-2025-05-14` beta
  *  and the `eager_input_streaming: true` field on tool definitions. */
 export function supportsEagerToolStreamingOnCopilot(model: string): boolean {
-  const entry = lookup(model);
-  if (entry?.eagerToolStreamingOnCopilot !== undefined) return entry.eagerToolStreamingOnCopilot;
-  // Fallback: claude-haiku-4.5, claude-sonnet-4.5, and plain claude-sonnet-4
-  // (including date-stamped variants) are known broken on Copilot.
-  return !/^claude-(haiku|sonnet)-4[-.]5|^claude-sonnet-4(?:[-.]\d{6,})?$/i.test(normalizeModelId(model));
+  return lookup(model)?.eagerToolStreamingOnCopilot ?? true;
 }
 
 /** OpenAI models that accept `parallel_tool_calls: true`. o-series reject it. */
@@ -275,8 +274,8 @@ export function geminiThinkingConfigMode(model: string): "level" | "budget" {
 }
 
 /** OpenAI Responses models that accept `reasoning: {effort: "none"}`. */
-export function supportsReasoningOff(info: ModelInfo | null): boolean {
-  return info?.reasoningEfforts?.includes("none") ?? false;
+export function supportsReasoningOff(info: ModelInfo): boolean {
+  return info.reasoningEfforts?.includes("none") ?? false;
 }
 
 export type ReasoningEffortTier = Exclude<ReasoningEffort, "off">;
@@ -317,8 +316,8 @@ export function clampReasoningEffort(
 
 /** Select the closest provider-declared Responses wire tier. A tie selects the
  * lower tier, so a low request uses minimal instead of increasing effort. */
-export function openAIReasoningEffort(effort: ReasoningEffortTier, info: ModelInfo | null): Exclude<ProviderReasoningEffort, "none"> | undefined {
-  const supported = info?.reasoningEfforts?.filter((tier): tier is Exclude<ProviderReasoningEffort, "none"> => tier !== "none");
+export function openAIReasoningEffort(effort: ReasoningEffortTier, info: ModelInfo): Exclude<ProviderReasoningEffort, "none"> | undefined {
+  const supported = info.reasoningEfforts?.filter((tier): tier is Exclude<ProviderReasoningEffort, "none"> => tier !== "none");
   if (!supported?.length) return undefined;
   if (supported.includes(effort)) return effort;
   const requested = PROVIDER_EFFORT_ORDER.indexOf(effort);

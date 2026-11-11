@@ -10,7 +10,7 @@ import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "..
 import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/openai-chatgpt.js";
 import { startBrowserFlow } from "../../auth/openai-oauth.js";
 import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { retainWebSocketSession } from "../../agent-runtime/llm/chatgpt-adapter/websocket-session.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { canonicalizeChatGptRow, CHATGPT_CATALOG, fetchChatGPTModels } from "./catalog.js";
@@ -86,7 +86,8 @@ const definition = {
 const createClient: AccessProviderFactory = async (build) => {
   if (build.candidate.kind !== "subscription") throw new ApiError({ message: "ChatGPT requires a subscription candidate", recovery: { kind: "none" } });
   const candidate = build.candidate;
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: info });
   const { providerSessionKey, scope } = build.providerSessionLifetime;
   await Effect.runPromise(Scope.provide(scope)(Effect.acquireRelease(
     Effect.sync(() => retainWebSocketSession(providerSessionKey)),
@@ -96,7 +97,7 @@ const createClient: AccessProviderFactory = async (build) => {
     const cred = credentialForCandidate(build.connection, candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No ChatGPT tokens found. Run: flywheel auth login", recovery: { kind: "none" } });
     const { createOpenAIAdapter } = await import("../../agent-runtime/llm/openai.js");
-    return createOpenAIAdapter({ kind: "chatgpt", accessToken: cred.access, refreshToken: cred.refresh, expiresAtMs: cred.expires, ...(cred.accountId === undefined ? {} : { accountId: cred.accountId }) }, build.wireModelId, build.modelsClient, {
+    return createOpenAIAdapter({ kind: "chatgpt", accessToken: cred.access, refreshToken: cred.refresh, expiresAtMs: cred.expires, ...(cred.accountId === undefined ? {} : { accountId: cred.accountId }) }, build.wireModelId, info, {
       oauthPersistence: build.connection.oauthPersistence,
       tokenAccessor: getConnectionChatGPTTokenAccessor(
         build.connection,
@@ -113,7 +114,6 @@ const createClient: AccessProviderFactory = async (build) => {
       availableModels: null,
       availability: build.availability,
       candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
       projectRoot: build.projectRoot,
     });
   });

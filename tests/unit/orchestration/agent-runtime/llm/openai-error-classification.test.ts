@@ -10,6 +10,7 @@ import { ApiError, ContentRefused, fromStreamError, TransientDisconnect } from "
 import { repairContentRefusal } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
+import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { ChatGptAdapterTransportError } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/types.js";
@@ -74,7 +75,7 @@ describe("classifyOpenAIStreamError folds ChatGptAdapterApiError into the stream
       payload: { type: "error", error: { type: "usage_limit_reached", message: "The usage limit has been reached" } },
     });
     const quotaObservation = {
-      exhaustion: { exhaustedAtMs: 1_000, resetsAtMs: 2_000 },
+      exhaustion: { exhaustedAtMs: 1_000, resetsAtMs: 2_000, hold: { kind: "usage_limit", stated: true } as const },
       newlyExhausted: true,
       reportedResetAtMs: 2_000,
     };
@@ -317,7 +318,7 @@ async function namedErrorFrameFailure(data: UnknownRecord, retryAfterMs?: string
 
 /** The error the chat-completions adapter raises when the real SDK meets `error` as an HTTP response with
  *  `status`, or as an in-stream error frame when `status` is undefined. */
-async function chatCompletionsFailure(status: number | undefined, error: UnknownRecord, request: { messages: ConversationMessage[]; info: ModelInfo | null } = { messages: [{ kind: "user", content: "hi" }], info: null }): Promise<Error> {
+async function chatCompletionsFailure(status: number | undefined, error: UnknownRecord, request: { messages: ConversationMessage[]; info: ModelInfo } = { messages: [{ kind: "user", content: "hi" }], info: providerModelInfo({ provider: "openai", id: "gpt-4o" }) }): Promise<Error> {
   const sdk = new OpenAI({
     apiKey: "test-key",
     maxRetries: 0,
@@ -325,8 +326,7 @@ async function chatCompletionsFailure(status: number | undefined, error: Unknown
       ? new Response(`data: ${JSON.stringify({ error })}\n\n`, { headers: { "content-type": "text/event-stream" } })
       : Response.json({ error }, { status }),
   });
-  const models = { async refresh() {}, getProviderCatalog() { return []; }, getTokenizerIdentity() { return undefined; } };
-  const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", models, { resolvedModelMetadata: request.info });
+  const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", request.info);
   try {
     for await (const _event of client.streamWithTools({ messages: request.messages, tools: [], systemPrompt: stableSystemPrompt("system"), reasoningEffort: "off" })) {
       // exhaust

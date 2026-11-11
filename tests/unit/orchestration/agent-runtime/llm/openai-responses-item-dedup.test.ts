@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { Redacted } from "effect";
 import type { OpenAIAuth } from "../../../../../src/infra/auth/openai-auth-types.js";
 import type { LLMClient, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { installChatGptAdapterModuleMocks, state, stubModelsClient } from "./_openai-chatgpt-adapter-fixtures.js";
+import { installChatGptAdapterModuleMocks, state, REASONING_INFO } from "./_openai-chatgpt-adapter-fixtures.js";
 
 installChatGptAdapterModuleMocks();
 
@@ -81,7 +81,7 @@ describe("OpenAI Responses terminal item dedup", () => {
         response: { id: "resp_1", status: "completed", usage: USAGE, output: [FUNCTION_CALL, MESSAGE_ITEM] },
       },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const events = await collect(client);
 
@@ -113,7 +113,7 @@ describe("OpenAI Responses terminal item dedup", () => {
         response: { id: "resp_interleaved", status: "completed", usage: USAGE, output: [MESSAGE_ITEM, secondMessage, FUNCTION_CALL, secondCall] },
       },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const events = await collect(client);
 
@@ -145,7 +145,7 @@ describe("OpenAI Responses terminal item dedup", () => {
         response: { id: "resp_2", status: "completed", usage: USAGE, output: [FUNCTION_CALL, second] },
       },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const events = await collect(client);
 
@@ -171,7 +171,7 @@ describe("OpenAI Responses terminal item dedup", () => {
         response: { id: "resp_4", status: "completed", usage: USAGE, output: [noId, MESSAGE_ITEM] },
       },
     ];
-    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", REASONING_INFO);
 
     const events = await collect(client);
 

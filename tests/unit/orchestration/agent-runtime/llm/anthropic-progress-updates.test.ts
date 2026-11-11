@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
 import { tmpdir } from "node:os";
-import type { ModelInfo, ModelsClient } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import { createAnthropicAdapter, operationsFromAnthropicClient } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -16,11 +16,6 @@ const info: ModelInfo = {
   reasoning: true, toolCall: true, attachment: false, temperature: false, openWeights: false,
   cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" },
   modalities: { input: ["text"], output: ["text"] }, contextLimit: 200_000, outputLimit: 16_384,
-};
-const models: ModelsClient = {
-  async refresh() {},
-  getProviderCatalog() { return []; },
-  getTokenizerIdentity() { return undefined; },
 };
 const progress = "Found the cause. Checking the fix.";
 function thinking(index: number, text: string, signature: string) {
@@ -57,7 +52,7 @@ test("progress streams as presentation, tools run once, and the next request rep
       ]);
     },
   }));
-  const adapter = await createAnthropicAdapter(Redacted.make("test-key"), info.id, models, { resolvedModelMetadata: info, operations });
+  const adapter = await createAnthropicAdapter(Redacted.make("test-key"), info.id, info, { operations });
   let calls = 0;
   const probe: RuntimeTool = {
     name: "probe", action: "ui_meta", description: "Verify the fix", inputSchema: { type: "object" }, isConcurrencySafe: true,

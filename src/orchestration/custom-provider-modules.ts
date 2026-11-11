@@ -40,22 +40,22 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
   };
 
   const createClient: AccessProviderFactory = async (build) => {
+    const info = build.attribution.resolvedModelMetadata ?? customProviderModelInfo(entry, build.model);
     const described = await describeProvider(build.model, {
       accessProvider: entry.id,
       protocol: "openai-completions",
       providerHint: entry.catalogId ?? entry.id,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? customProviderModelInfo(entry, build.model),
+      resolvedModelMetadata: info,
     });
     return stagedProviderClient(build, described, async () => {
       const key = apiKey(build.connection.auth, entry.id);
       if (!key) throw new ApiError({ message: `No ${entry.displayName} API key in the active auth profile. Run: flywheel auth login --provider ${entry.id}`, recovery: { kind: "none" } });
       const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("./agent-runtime/llm/openai-completions.js")]);
       const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: entry.baseUrl, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
-      return createOpenAIChatCompletionsAdapter(client, build.wireModelId, build.modelsClient, {
+      return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
         accessProvider: entry.id,
         candidate: build.candidate,
         providerHint: entry.catalogId ?? "openai",
-        resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? customProviderModelInfo(entry, build.model),
       });
     });
   };

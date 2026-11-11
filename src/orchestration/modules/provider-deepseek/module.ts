@@ -6,7 +6,7 @@ import { providerRequestHeaders } from "../../../infra/llm/provider-request-iden
 import { apiKey } from "../../../infra/auth/auth-context.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createDeepSeekUsageReader } from "./usage-reader.js";
 
@@ -44,15 +44,15 @@ const definition = {
 } as const satisfies AccessProviderDefinition;
 
 const createClient: AccessProviderFactory = async (build) => {
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "deepseek", resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "deepseek", resolvedModelMetadata: info });
   return stagedProviderClient(build, described, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No DeepSeek API key in the active auth profile. Run: flywheel auth login --deepseek", recovery: { kind: "none" } });
     const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/openai-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: BASE_URL, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
-    return createOpenAIChatCompletionsAdapter(client, build.wireModelId, build.modelsClient, {
+    return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
       accessProvider: definition.id, providerHint: "deepseek", candidate: build.candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
     });
   });
 };

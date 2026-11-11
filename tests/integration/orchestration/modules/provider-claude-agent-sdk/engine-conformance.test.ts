@@ -92,8 +92,7 @@ function nativeBody(options: StreamOptions, model = MODEL) {
 
 /** Streams one request through the native Anthropic API adapter against the fake host, with a placeholder key. */
 async function nativeStream(host: FakeHost, options: StreamOptions): Promise<StreamResult> {
-  const modelsClient = { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined };
-  const client = await createAnthropicAdapter(Redacted.make("sk-ant-api03-qualification-placeholder"), MODEL, modelsClient, { baseURL: host.url, resolvedModelMetadata: INFO });
+  const client = await createAnthropicAdapter(Redacted.make("sk-ant-api03-qualification-placeholder"), MODEL, INFO, { baseURL: host.url });
   const events: ProviderStreamEvent[] = [];
   try {
     for await (const event of client.streamWithTools(options)) events.push(event);

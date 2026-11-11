@@ -39,7 +39,7 @@ const CanonicalModelIdSchema = Schema.String.pipe(Schema.decodeTo(
 ))
 
 export const TierConfigSchema = Schema.Struct({
-  model: Schema.optionalKey(CanonicalModelIdSchema.pipe(Schema.annotate({ description: "Select the model id for this role." }))),
+  model: Schema.optionalKey(CanonicalModelIdSchema.pipe(Schema.annotate({ description: "Select the model for this role: a model id, a tier (powerful, mid, or cheap), or a tier alias (opus, sonnet, haiku, pro, flash, or flash-lite)." }))),
   effort: Schema.optionalKey(EffortSchema.pipe(Schema.annotate({ description: "Select the reasoning effort for this role." }))),
   provider_options: Schema.optionalKey(ProviderRequestOptionsSchema.pipe(Schema.annotate({ description: "Set provider-specific request options for this role." }))),
 })

@@ -6,7 +6,7 @@ import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { openRouterRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createOpenRouterAffordability } from "./affordability.js";
@@ -49,15 +49,15 @@ const createClient: AccessProviderFactory = async (build) => {
   const outputCap = build.attribution.catalogProvenance === "live"
     ? openRouterModelOutputCap(build.attribution.catalogMetadata)
     : undefined;
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "openrouter", resolvedModelMetadata: build.attribution.resolvedModelMetadata, ...(outputCap === undefined ? {} : { providerOutputCap: outputCap }) });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "openrouter", resolvedModelMetadata: info, ...(outputCap === undefined ? {} : { providerOutputCap: outputCap }) });
   return stagedProviderClient(build, described, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenRouter API key in the active auth profile. Run: flywheel auth login --openrouter", recovery: { kind: "none" } });
     const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/openai-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENROUTER_API_BASE, defaultHeaders: await openRouterRequestHeaders(), maxRetries: 0 });
-    return createOpenAIChatCompletionsAdapter(client, build.model, build.modelsClient, {
+    return createOpenAIChatCompletionsAdapter(client, build.model, info, {
       accessProvider: definition.id, providerHint: "openrouter", candidate: build.candidate, wireModelId: build.wireModelId,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
       reportedChargeUsd: openRouterReportedChargeUsd,
       ...(outputCap === undefined ? {} : { providerOutputCap: outputCap }),
     });

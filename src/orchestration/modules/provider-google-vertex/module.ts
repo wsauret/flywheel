@@ -5,7 +5,7 @@ import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCa
 import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/llm/model-id.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
 /** Vertex AI in express mode: the Gemini wire on aiplatform.googleapis.com,
@@ -65,12 +65,13 @@ const definition = {
 } as const satisfies AccessProviderDefinition;
 
 const createClient: AccessProviderFactory = async (build) => {
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: info });
   return stagedProviderClient(build, described, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Google Vertex API key in the active auth profile. Run: flywheel auth login --google-vertex", recovery: { kind: "none" } });
     const { createGoogleAdapter } = await import("../../agent-runtime/llm/google.js");
-    return createGoogleAdapter(key, build.wireModelId, build.modelsClient, { accessProvider: definition.id, resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null });
+    return createGoogleAdapter(key, build.wireModelId, info, { accessProvider: definition.id });
   });
 };
 

@@ -20,6 +20,7 @@ import { createAdmittedClient, stagedProviderClient } from "../../../../src/orch
 import type { ProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js"
 import { testProviderEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../helpers/provider-authority.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
+import { requireModelMetadata } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js"
 import { authProviders } from "../../../helpers/auth-context.js"
 import { createSessionFactWriter } from "../chat/_chat-session-agent-runtime-fixtures.js"
 import { asModelClient } from "./_model-client.js"
@@ -97,9 +98,8 @@ describe("a pre-start's request preparation", () => {
     const registry = testProviderRegistry()
     const factories = new Map(registry.factories)
     factories.set("anthropic_api", async (build) => {
-      const client = await createAnthropicAdapter(Redacted.make("hermetic-api-key"), build.model, fakeModelsClient, {
+      const client = await createAnthropicAdapter(Redacted.make("hermetic-api-key"), build.model, requireModelMetadata(build.model, build.attribution.resolvedModelMetadata ?? fakeModelsClient.modelInfos.get(build.model)), {
         accessProvider: "anthropic_api", candidate: build.candidate, availability: build.availability,
-        resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? fakeModelsClient.modelInfos.get(build.model) ?? null,
         operations: { isBadRequestError: () => false, ...operations },
       })
       return stagedProviderClient(build, { ...client, anticipatesRequests: true }, async () => client)

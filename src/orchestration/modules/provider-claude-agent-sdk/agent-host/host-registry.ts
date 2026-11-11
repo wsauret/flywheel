@@ -4,7 +4,6 @@ import type { AccessProviderCandidateAttribution } from "../../../../infra/llm/a
 import type { ModelInfo } from "../../../../infra/llm/models.js";
 import { mapAnthropicAdaptiveEffort } from "../../../agent-runtime/llm/anthropic-options.js";
 import { supportsAdaptiveThinking } from "../../../agent-runtime/llm/model-compat.js";
-import { anthropicOutputLimit } from "../../../agent-runtime/llm/provider-description.js";
 import { orderedJson } from "../cli-view.js";
 import { registerHostDrain } from "../live-bridges.js";
 import type { ExtraUsage } from "../extra-usage-guard.js";
@@ -81,7 +80,7 @@ export function coordinatorCandidates(lineup: readonly Pick<AccessProviderCandid
 function acceptsValues(wireModelId: string, info: ModelInfo, values: HostValues): boolean {
   if (values.thinking?.type === "adaptive" && !supportsAdaptiveThinking(wireModelId, info)) return false;
   const { max_tokens: maxTokens } = values.extraBody;
-  if (maxTokens !== undefined && maxTokens > anthropicOutputLimit(info)) return false;
+  if (maxTokens !== undefined && maxTokens > info.outputLimit) return false;
   return !values.statesEffort || mapAnthropicAdaptiveEffort(info, COORDINATOR_EFFORT) === COORDINATOR_EFFORT;
 }
 

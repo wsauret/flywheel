@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { describeProvider } from "../../../../../src/orchestration/agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../../../../src/orchestration/agent-runtime/llm/provider-description.js";
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
 
@@ -17,12 +17,8 @@ describe("provider description", () => {
     expect(description.outputLimit).toBe(12_345);
   });
 
-  it("does not borrow metadata from another provider when the exact route has none", async () => {
-    await expect(describeProvider("shared-model", {
-      accessProvider: "provider-a",
-      protocol: "openai-responses",
-      providerHint: "provider-a",
-    })).rejects.toThrow("Model info unavailable for shared-model");
+  it("does not borrow metadata from another provider when the exact route has none", () => {
+    expect(() => requireModelMetadata("shared-model", undefined)).toThrow("Model info unavailable for shared-model");
   });
 
   it("constructs a runnable provider from an unmatched first-party row", async () => {

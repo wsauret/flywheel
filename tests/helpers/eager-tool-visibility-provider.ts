@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { asAsyncEventWriter } from "../../src/infra/event-store-types.js";
 import { createRuntimeEvent } from "../../src/infra/runtime-event-factory.js";
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js";
-import type { ModelsClient } from "../../src/infra/llm/models.js";
+import { providerModelInfo } from "../../src/infra/llm/provider-model-info.js";
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../src/infra/runtime-fact-mapper.js";
 import { createOpenAIChatCompletionsAdapter } from "../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import type { LLMClient } from "../../src/orchestration/agent-runtime/llm/types.js";
@@ -105,12 +105,7 @@ export function createEagerToolVisibilityProvider(): EagerToolVisibilityProvider
     releaseInput: () => release.resolve(),
     async createClient() {
       const client = new OpenAI({ apiKey: "fixture-key", baseURL: `http://127.0.0.1:${server.port}/v1`, maxRetries: 0 });
-      const modelsClient: ModelsClient = {
-        async refresh() {},
-        getProviderCatalog() { return []; },
-        getTokenizerIdentity() { return undefined; },
-      };
-      return createOpenAIChatCompletionsAdapter(client, EAGER_PROVIDER_MODEL, modelsClient);
+      return createOpenAIChatCompletionsAdapter(client, EAGER_PROVIDER_MODEL, providerModelInfo({ provider: "openai", id: EAGER_PROVIDER_MODEL }));
     },
     stop() {
       stopped = true;

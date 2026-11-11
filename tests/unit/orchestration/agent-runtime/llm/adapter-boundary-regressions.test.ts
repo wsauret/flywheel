@@ -15,15 +15,15 @@ import { createAvailabilityAuthority } from "../../../../../src/infra/llm/availa
 import { availabilityFixtures } from "./_provider-availability-harness.js";
 import type { ConversationMessage, LLMClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
+import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
 import { wireClient, wireResponse } from "./_wire-fixtures.js";
 
 const fixtures = availabilityFixtures();
 
-const models = {
-  async refresh() {},
-  getProviderCatalog() { return []; },
-  getTokenizerIdentity() { return undefined; },
-};
+const GPT_5 = providerModelInfo({ provider: "openai", id: "gpt-5", reasoning: true });
+const GPT_4O = providerModelInfo({ provider: "openai", id: "gpt-4o" });
+const OPUS = providerModelInfo({ provider: "anthropic", id: "claude-opus-4-8", reasoning: true });
+const GEMINI = providerModelInfo({ provider: "google", id: "gemini-3-pro", reasoning: true });
 const options: StreamOptions = { messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("system"), reasoningEffort: "off" };
 
 async function failureOf(client: LLMClient, overrides: Partial<StreamOptions> = {}): Promise<Error | undefined> {
@@ -37,16 +37,16 @@ async function failureOf(client: LLMClient, overrides: Partial<StreamOptions> = 
 }
 
 function openai(frames: Parameters<typeof wireClient>[0], onRequest?: Parameters<typeof wireClient>[1]) {
-  return createOpenAIAdapter({ kind: "apiKey", apiKey: Redacted.make("test-key") }, "gpt-5", models, { client: wireClient(frames, onRequest) });
+  return createOpenAIAdapter({ kind: "apiKey", apiKey: Redacted.make("test-key") }, "gpt-5", GPT_5, { client: wireClient(frames, onRequest) });
 }
 
 function anthropic(frames: Parameters<typeof wireResponse>[0]) {
   const sdk = new Anthropic({ apiKey: "test-key", maxRetries: 0, fetch: async () => wireResponse(frames) });
-  return createAnthropicAdapter(Redacted.make("test-key"), "claude-opus-4-8", models, { operations: operationsFromAnthropicClient(sdk), resolvedModelMetadata: null });
+  return createAnthropicAdapter(Redacted.make("test-key"), "claude-opus-4-8", OPUS, { operations: operationsFromAnthropicClient(sdk) });
 }
 
 function google(stream: AsyncGenerator<GenerateContentResponse>) {
-  return createGoogleAdapter(Redacted.make("test-key"), "gemini-3-pro", models, {
+  return createGoogleAdapter(Redacted.make("test-key"), "gemini-3-pro", GEMINI, {
     client: { async generateContentStream() { return stream; }, apiErrorStatus: () => undefined },
   });
 }
@@ -70,7 +70,7 @@ describe("adapter provider boundaries", () => {
         ? new Response(`data: ${JSON.stringify({ error: payload })}\n\n`, { headers: { "content-type": "text/event-stream" } })
         : Response.json({ error: payload }, { status }),
     });
-    const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", models, { resolvedModelMetadata: null });
+    const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", GPT_4O);
     const failure = await failureOf(client);
     expect(failure).toBeInstanceOf(ProviderAttemptFailure);
     if (!(failure instanceof ProviderAttemptFailure)) throw new Error("Missing provider outcome");
@@ -170,7 +170,7 @@ describe("adapter provider boundaries", () => {
       init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
       caller.abort(reason);
     }) });
-    const client = await createAnthropicAdapter(Redacted.make("test-key"), "claude-opus-4-8", models, { operations: operationsFromAnthropicClient(sdk), resolvedModelMetadata: null });
+    const client = await createAnthropicAdapter(Redacted.make("test-key"), "claude-opus-4-8", OPUS, { operations: operationsFromAnthropicClient(sdk) });
     expect(await failureOf(client, { signal: caller.signal })).toBe(reason);
   });
 
@@ -189,12 +189,12 @@ describe("adapter provider boundaries", () => {
         headers: { "retry-after": "20", "anthropic-ratelimit-requests-reset": reset(20_000), "anthropic-ratelimit-input-tokens-reset": reset(42_000) },
       })
       : wireResponse([{ type: "error", error: { type: "overloaded_error", message: "Overloaded" } }]) });
-    const client = await createAnthropicAdapter(Redacted.make("test-key"), "claude-opus-4-8", models, { operations: operationsFromAnthropicClient(sdk), resolvedModelMetadata: null, candidate, availability });
+    const client = await createAnthropicAdapter(Redacted.make("test-key"), "claude-opus-4-8", OPUS, { operations: operationsFromAnthropicClient(sdk), candidate, availability });
     try {
       const failure = await failureOf(client);
       if (!(failure instanceof ProviderAttemptFailure)) throw new Error("Missing provider outcome");
       expect(failure.failure._tag).toBe("RateLimitFailure");
-      expect(availability.genericQuotaStanding(candidate)).toEqual({ kind: "suppressed", exhaustion: { exhaustedAtMs: throttledAtMs, resetsAtMs: throttledAtMs + 42_000 } });
+      expect(availability.genericQuotaStanding(candidate)).toEqual({ kind: "suppressed", exhaustion: { exhaustedAtMs: throttledAtMs, resetsAtMs: throttledAtMs + 42_000, hold: { kind: "rate_limit" } } });
 
       // Past the reset, this request holds the fleet's one recheck. Its response headers arrive, then the stream
       // fails: only a successful settlement may reopen the account, so every other request stays held.
@@ -301,7 +301,7 @@ function refusing(entry: Entry, body: { type: string; message: string }, route: 
   };
   const operations = { ...(entry === "frame" ? frames : operationsFromAnthropicClient(sdk)), ...(route.preparedBlock ? { preparedBlock: route.preparedBlock } : {}) };
   const model = route.model ?? imageModel;
-  return createAnthropicAdapter(Redacted.make("test-key"), model.id, models, { operations, resolvedModelMetadata: model });
+  return createAnthropicAdapter(Redacted.make("test-key"), model.id, model, { operations });
 }
 
 async function refusalOf(entry: Entry, messages: ConversationMessage[], message: string, route: Parameters<typeof refusing>[2] = {}, overrides: Partial<StreamOptions> = {}) {
@@ -344,7 +344,7 @@ describe("Anthropic content refusals", () => {
       roles = body.messages.map((message) => message.role);
       return wireResponse([]);
     } });
-    await failureOf(await createAnthropicAdapter(Redacted.make("test-key"), imageModel.id, models, { operations: operationsFromAnthropicClient(sdk), resolvedModelMetadata: imageModel }), { messages: twoReads([imagePart]), reasoningEffort: "low" });
+    await failureOf(await createAnthropicAdapter(Redacted.make("test-key"), imageModel.id, imageModel, { operations: operationsFromAnthropicClient(sdk) }), { messages: twoReads([imagePart]), reasoningEffort: "low" });
     expect(roles).toEqual(["user", "system", "assistant", "user"]);
   });
 

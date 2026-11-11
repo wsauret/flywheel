@@ -12,7 +12,7 @@ import { afterAll, spyOn } from "bun:test";
 import { z } from "zod";
 import { Redacted } from "effect";
 import * as RealOpenAIModule from "openai";
-import type { ModelsClient, ModelInfo } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { mapChatGptAdapterEvents } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.js";
 import type { LLMClient, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { StoredTokens } from "../../../../../src/infra/auth/openai-auth-types.js";
@@ -31,34 +31,23 @@ const OpenAI = RealOpenAIModule.default;
 
 type EnsureFreshOptions = NonNullable<Parameters<typeof realOpenAiChatgpt.ensureFreshChatGPTTokens>[1]>;
 
-const stubModelInfos = new WeakMap<ModelsClient, ModelInfo | null>();
-
-export function stubModelsClient(info: ModelInfo | null = null): ModelsClient {
-  const client: ModelsClient = {
-    async refresh() {},
-    getProviderCatalog(providerIds) {
-      if (!info || !providerIds.includes(info.provider)) return [];
-      return [{
-        providerId: info.provider,
-        providerName: info.provider,
-        wireModelId: info.id,
-        metadata: info,
-        provenance: "bundled",
-        canonical: { providerId: info.provider, modelId: info.id },
-        transport: null,
-      }];
-    },
-    getTokenizerIdentity() {
-      return undefined;
-    },
-  };
-  stubModelInfos.set(client, info);
-  return client;
-}
-
-export function stubModelInfo(client: ModelsClient): ModelInfo | null {
-  return stubModelInfos.get(client) ?? null;
-}
+/** A reasoning model whose catalog row states no rate card. */
+export const REASONING_INFO: ModelInfo = {
+  provider: "openai",
+  family: "openai",
+  id: "gpt-5.4",
+  name: "GPT 5.4",
+  reasoning: true,
+  toolCall: true,
+  attachment: false,
+  temperature: true,
+  openWeights: false,
+  modalities: { input: ["text"], output: ["text"] },
+  contextLimit: 1_050_000,
+  outputLimit: 16_384,
+  cost: { input: 0, output: 0 },
+  pricing: { status: "unavailable", reason: "missing-rate-card" },
+};
 
 export const COST_INFO: ModelInfo = {
   provider: "openai",

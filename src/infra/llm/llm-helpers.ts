@@ -1,12 +1,9 @@
 /**
- * Shared helpers for LLM provider adapters.
- *
- * Consolidates the model-info caching and cost calculation logic that
- * is structurally identical across Anthropic and OpenAI adapters,
- * differing only in provider hint and default cache rate ratios.
+ * Shared cost calculation for LLM provider adapters, which differ only in their
+ * default cache rate ratios.
  */
 
-import type { ModelCost, ModelInfo, ModelPricing, ModelPricingProvenance, NormalizedModelCostTier, NormalizedModelRateCard } from "./models.js";
+import type { ModelCost, ModelPricing, ModelPricingProvenance, NormalizedModelCostTier, NormalizedModelRateCard } from "./models.js";
 
 /** The cache rates that a provider states as ratios of the input rate, for a rate card that omits them. Without a
  *  one-hour ratio, one-hour cache writes price at the card's cache-write rate. */
@@ -59,31 +56,4 @@ export function computeUsagePrice(
     + write1h * rates.cacheWrite1h
   ) / 1_000_000;
   return Object.freeze({ status: "priced", amountUsd, rateCard, provenance: Object.freeze({ ...pricing.provenance }) });
-}
-
-interface ModelInfoCache {
-  resolveModelInfo(model: string): Promise<ModelInfo | null>;
-  getCached(): { model: string; info: ModelInfo } | null;
-  contextLimit(info?: ModelInfo | null): number;
-}
-
-export function createModelInfoCache(
-  selected: { readonly model: string; readonly info: ModelInfo | null },
-): ModelInfoCache {
-  const cache = selected.info === null ? null : { model: selected.model, info: selected.info };
-
-  return {
-    async resolveModelInfo(model: string): Promise<ModelInfo | null> {
-      if (cache?.model === model) return cache.info;
-      return selected.info;
-    },
-    getCached() {
-      return cache;
-    },
-    contextLimit(info) {
-      const resolvedInfo = info === undefined ? cache?.info ?? null : info;
-      if (!resolvedInfo) throw new Error("Model info unavailable; call resolveModelInfo() before accessing contextLimit");
-      return resolvedInfo.contextLimit;
-    },
-  };
 }

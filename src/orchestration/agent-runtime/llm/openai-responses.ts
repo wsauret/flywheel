@@ -1,7 +1,7 @@
 import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 import type { ModelInfo } from "../../../infra/llm/models.js";
 import { buildOpenAIResponseInput, createOpenAITools, resolveOpenAISystemPrompt } from "./openai-adapter-helpers.js";
-import { OPENAI_RESPONSES_TOOL_PRESENTATION, supportsOpenAIReasoning } from "./provider-description.js";
+import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "./provider-description.js";
 import { buildOpenAIParams } from "./openai-helpers.js";
 import { immutablePreparedRequest, resolveCacheRetention, type PreparedProviderRequest, type StreamOptions } from "./types.js";
 
@@ -13,7 +13,7 @@ export type PreparedOpenAIResponsesRequest = PreparedProviderRequest<"openai-res
 export function prepareOpenAIResponsesRequest(input: {
   accessProvider: AccessProviderId;
   model: string;
-  info: ModelInfo | null;
+  info: ModelInfo;
   isChatGPT: boolean;
   options: StreamOptions;
 }): PreparedOpenAIResponsesRequest {
@@ -28,7 +28,7 @@ export function prepareOpenAIResponsesRequest(input: {
     messages: options.messages,
     accessProvider,
     model,
-    supportsImages: info?.modalities?.input?.includes("image") ?? false,
+    supportsImages: info.modalities.input.includes("image"),
     tools: options.tools,
   });
   const tools = createOpenAITools(options.tools, OPENAI_RESPONSES_TOOL_PRESENTATION);
@@ -38,7 +38,6 @@ export function prepareOpenAIResponsesRequest(input: {
     systemPrompt,
     tools,
     isChatGPT,
-    supportsOpenAIReasoning(model, info),
     options.reasoningEffort ?? "medium",
     info,
     options,

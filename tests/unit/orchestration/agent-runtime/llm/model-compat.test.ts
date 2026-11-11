@@ -35,22 +35,22 @@ describe("supportsAdaptiveThinking", () => {
     expect(supportsAdaptiveThinking("gpt-5", modelInfo("2026-02-01"))).toBe(false);
   });
 
-  it("keeps metadata-less legacy Claude models on budget-based thinking", () => {
-    expect(supportsAdaptiveThinking("claude-3-7-sonnet-20250219")).toBe(false);
-    expect(supportsAdaptiveThinking("claude-sonnet-4-20250514")).toBe(false);
-    expect(supportsAdaptiveThinking("claude-sonnet-4-5-20250929")).toBe(false);
+  it("keeps legacy Claude models without a release date on budget-based thinking", () => {
+    expect(supportsAdaptiveThinking("claude-3-7-sonnet-20250219", baseModelInfo)).toBe(false);
+    expect(supportsAdaptiveThinking("claude-sonnet-4-20250514", baseModelInfo)).toBe(false);
+    expect(supportsAdaptiveThinking("claude-sonnet-4-5-20250929", baseModelInfo)).toBe(false);
   });
 
-  it("defaults metadata-less future Claude models to adaptive thinking", () => {
-    expect(supportsAdaptiveThinking("claude-fable-5")).toBe(true);
-    expect(supportsAdaptiveThinking("claude-sonnet-5")).toBe(true);
-    expect(supportsAdaptiveThinking("gpt-5")).toBe(false);
+  it("defaults future Claude models without a release date to adaptive thinking", () => {
+    expect(supportsAdaptiveThinking("claude-fable-5", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("claude-sonnet-5", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("gpt-5", baseModelInfo)).toBe(false);
   });
 
   it("marks the OpenCode Go qwen family adaptive (the budget shape 400s on qwen3.8-max)", () => {
-    expect(supportsAdaptiveThinking("qwen3.7-max")).toBe(true);
-    expect(supportsAdaptiveThinking("qwen3.8-max")).toBe(true);
-    expect(supportsAdaptiveThinking("qwen3.5-plus")).toBe(true);
+    expect(supportsAdaptiveThinking("qwen3.7-max", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("qwen3.8-max", baseModelInfo)).toBe(true);
+    expect(supportsAdaptiveThinking("qwen3.5-plus", baseModelInfo)).toBe(true);
   });
 });
 
@@ -82,7 +82,7 @@ describe("per-model settings of an unknown Claude version", () => {
   it("inherit from the newest earlier version of the family", () => {
     expect(supportsPerTurnEffort("claude-fable-5-3")).toBe(true);
     expect(inheritsPerTurnEffort("claude-fable-5-3")).toBe(true);
-    expect(anthropicThinkingMode("claude-fable-5-3", null, "off", true)).toBe("omit");
+    expect(anthropicThinkingMode("claude-fable-5-3", baseModelInfo, "off", true)).toBe("omit");
     expect(supportsThinkingDisable("claude-fable-5.3")).toBe(false);
   });
 
@@ -91,9 +91,9 @@ describe("per-model settings of an unknown Claude version", () => {
     expect(inheritsPerTurnEffort("claude-fable-5-2")).toBe(false);
     expect(supportsPerTurnEffort("claude-fable-5-1")).toBe(true);
     expect(supportsPerTurnEffort("claude-fable-5")).toBe(false);
-    expect(anthropicThinkingMode("claude-fable-5-1", null, "off", true)).toBe("omit");
-    expect(anthropicThinkingMode("claude-opus-5-5", null, "off", true)).toBe("adaptive");
-    expect(anthropicThinkingMode("claude-mythos-5-1", null, "off", true)).toBe("disabled");
+    expect(anthropicThinkingMode("claude-fable-5-1", baseModelInfo, "off", true)).toBe("omit");
+    expect(anthropicThinkingMode("claude-opus-5-5", baseModelInfo, "off", true)).toBe("adaptive");
+    expect(anthropicThinkingMode("claude-mythos-5-1", baseModelInfo, "off", true)).toBe("disabled");
     expect(supportsPerTurnEffort("claude-opus-5")).toBe(false);
     expect(inheritsPerTurnEffort("gpt-5.6")).toBe(false);
   });
@@ -133,6 +133,5 @@ describe("supportsReasoningOff", () => {
     expect(supportsReasoningOff(withEfforts(["none", "low", "medium", "high"]))).toBe(true);
     expect(supportsReasoningOff(withEfforts(["low", "medium", "high"]))).toBe(false);
     expect(supportsReasoningOff(withEfforts(undefined))).toBe(false);
-    expect(supportsReasoningOff(null)).toBe(false);
   });
 });

@@ -15,6 +15,23 @@ function streamOptions(overrides?: Partial<StreamOptions>): StreamOptions {
   };
 }
 
+const GPT_INFO: ModelInfo = {
+  provider: "github-copilot",
+  family: "openai",
+  id: "gpt-5.5",
+  name: "GPT 5.5",
+  openWeights: false,
+  reasoning: true,
+  toolCall: true,
+  attachment: false,
+  temperature: true,
+  contextLimit: 200_000,
+  outputLimit: 16_384,
+  cost: { input: 1, output: 1 },
+  pricing: { status: "unavailable", reason: "missing-rate-card" },
+  modalities: { input: ["text"], output: ["text"] },
+};
+
 describe("OpenAI Responses Copilot compatibility", () => {
   test("replays encrypted reasoning while preserving tool output", () => {
     const history: ConversationMessage[] = [
@@ -63,25 +80,9 @@ describe("OpenAI Responses Copilot compatibility", () => {
   });
 
   test("gates Copilot reasoning-off on model metadata alone", () => {
-    const info: ModelInfo = {
-      provider: "github-copilot",
-      family: "openai",
-      id: "gpt-5.5",
-      name: "GPT 5.5",
-      openWeights: false,
-      reasoning: true,
-      toolCall: true,
-      attachment: false,
-      temperature: true,
-      contextLimit: 200_000,
-      outputLimit: 16_384,
-      cost: { input: 1, output: 1 },
-      pricing: { status: "unavailable", reason: "missing-rate-card" },
-      modalities: { input: ["text"], output: ["text"] },
-    };
-    const declaresNone = { ...info, reasoningEfforts: ["none", "low", "medium"] as const };
-    const offCapable = buildOpenAIParams("gpt-5.5", [], undefined, [], false, true, "off", declaresNone, streamOptions(), "github_copilot");
-    const offIncapable = buildOpenAIParams("gpt-5.5", [], undefined, [], false, true, "off", info, streamOptions(), "github_copilot");
+    const declaresNone = { ...GPT_INFO, reasoningEfforts: ["none", "low", "medium"] as const };
+    const offCapable = buildOpenAIParams("gpt-5.5", [], undefined, [], false, "off", declaresNone, streamOptions(), "github_copilot");
+    const offIncapable = buildOpenAIParams("gpt-5.5", [], undefined, [], false, "off", GPT_INFO, streamOptions(), "github_copilot");
     expect(offCapable.reasoning).toMatchObject({ effort: "none" });
     expect(offIncapable).not.toHaveProperty("reasoning");
   });
@@ -142,9 +143,8 @@ describe("OpenAI Responses Copilot compatibility", () => {
       undefined,
       [],
       false,
-      true,
       "low",
-      null,
+      GPT_INFO,
       streamOptions({ cacheRetention: "24h", promptCacheKey: "copilot-cache" }),
       "github_copilot",
     );
@@ -167,9 +167,8 @@ describe("OpenAI Responses Copilot compatibility", () => {
       undefined,
       [],
       false,
-      true,
       "low",
-      null,
+      GPT_INFO,
       streamOptions({ cacheRetention: "24h", promptCacheKey: "openai-cache" }),
       "openai_api",
     );

@@ -5,7 +5,7 @@ import { ApiError } from "../../agent-runtime/errors.js";
 import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
 import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/provider-availability-types.js";
-import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
+import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { copilotAffordability } from "./affordability.js";
 import { captureCopilotAllowanceAdmission } from "./allowance-admission.js";
@@ -59,13 +59,14 @@ const definition = {
 } as const satisfies AccessProviderDefinition;
 
 const createClient: AccessProviderFactory = async (build) => {
-  const { model, wireModelId, modelsClient, availability, connection, candidate } = build;
+  const { model, wireModelId, availability, connection, candidate } = build;
   if (candidate.kind !== "subscription") throw new ApiError({ message: "GitHub Copilot requires a subscription candidate", recovery: { kind: "none" } });
   const capturedEndpoint = build.attribution.transport;
   if (capturedEndpoint === undefined) throw new ApiError({ message: `Copilot did not advertise a supported endpoint for "${model}".`, recovery: { kind: "none" } });
   const endpoint = capturedEndpoint;
   const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "openai-completions" ? "openai-completions" : "openai-responses";
-  const described = await describeProvider(model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: build.attribution.resolvedModelMetadata });
+  const info = requireModelMetadata(model, build.attribution.resolvedModelMetadata);
+  const described = await describeProvider(model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: info });
   return stagedProviderClient(build, described, async () => {
     const cred = credentialForCandidate(connection, build.candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No GitHub Copilot tokens found. Run: flywheel auth login --copilot", recovery: { kind: "none" } });
@@ -83,20 +84,17 @@ const createClient: AccessProviderFactory = async (build) => {
         build.classifySlot,
       ),
     );
-    if (endpoint === "anthropic-messages") return createAnthropicAdapter(Redacted.make("copilot"), wireModelId, modelsClient, {
+    if (endpoint === "anthropic-messages") return createAnthropicAdapter(Redacted.make("copilot"), wireModelId, info, {
       operations: operationsFromAnthropicClient(anthropic), accessProvider: definition.id, catalogId: definition.catalogId, extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
       resetIdleConnections, availability, candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
     });
-    if (endpoint === "openai-completions") return createOpenAIChatCompletionsAdapter(openai, wireModelId, modelsClient, {
+    if (endpoint === "openai-completions") return createOpenAIChatCompletionsAdapter(openai, wireModelId, info, {
       accessProvider: definition.id, providerHint: "github-copilot", extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
       resetIdleConnections, availability, candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
     });
-    return createOpenAIAdapter({ kind: "apiKey", apiKey: Redacted.make("copilot") }, wireModelId, modelsClient, {
+    return createOpenAIAdapter({ kind: "apiKey", apiKey: Redacted.make("copilot") }, wireModelId, info, {
       client: openai, accessProvider: definition.id, catalogId: definition.catalogId, extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
       resetIdleConnections, availability, candidate,
-      resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,
     });
   });
 };

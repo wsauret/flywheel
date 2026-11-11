@@ -54,7 +54,7 @@ export function classifyAnthropicError(cause: unknown): Error {
 export interface AnthropicBetaRequest {
   readonly model: string;
   readonly accessProvider: AccessProviderId;
-  readonly info: ModelInfo | null;
+  readonly info: ModelInfo;
   readonly hasTools: boolean;
   /** The request's context window. Undefined when no catalog states one. */
   readonly contextLimit: number | undefined;

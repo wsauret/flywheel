@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
-import type { ModelInfo, ModelsClient } from "../../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { createAnthropicAdapter, operationsFromAnthropicClient } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type ToolCall, type ToolPresentation } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { wireResponse } from "./_wire-fixtures.js";
@@ -11,11 +11,6 @@ const info: ModelInfo = {
   reasoning: true, toolCall: true, attachment: false, temperature: false, openWeights: false,
   cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" },
   modalities: { input: ["text"], output: ["text"] }, contextLimit: 1_000_000, outputLimit: 128_000,
-};
-const models: ModelsClient = {
-  async refresh() {},
-  getProviderCatalog() { return []; },
-  getTokenizerIdentity() { return undefined; },
 };
 const handoff = {
   name: "handoff",
@@ -46,7 +41,7 @@ async function streamedToolCall(raw: string, blockName = "handoff", toolPresenta
       { type: "message_stop" },
     ]),
   }));
-  const adapter = await createAnthropicAdapter(Redacted.make("test-key"), info.id, models, { resolvedModelMetadata: info, operations, toolPresentation });
+  const adapter = await createAnthropicAdapter(Redacted.make("test-key"), info.id, info, { operations, toolPresentation });
   const events: ProviderStreamEvent[] = [];
   for await (const event of adapter.streamWithTools({ messages: [{ kind: "user", content: "Investigate." }], tools: [handoff], systemPrompt: { stable: "test", session: "", conversation: "" } })) events.push(event);
   const call = events.find((event) => event.kind === "tool_use");

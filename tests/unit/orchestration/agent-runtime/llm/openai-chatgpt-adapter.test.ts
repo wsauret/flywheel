@@ -14,8 +14,7 @@ import {
   installChatGptAdapterModuleMocks,
   setMockResponseUsage,
   state,
-  stubModelInfo,
-  stubModelsClient,
+  REASONING_INFO,
 } from "./_openai-chatgpt-adapter-fixtures.js";
 
 installChatGptAdapterModuleMocks();
@@ -35,10 +34,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
     state.ensureFreshCalls = [];
     state.ensureFreshImpl = undefined;
     const mod = await import("../../../../../src/orchestration/agent-runtime/llm/openai.js");
-    createOpenAIAdapter = (auth, model, modelsClient, overrides = {}) => mod.createOpenAIAdapter(auth, model, modelsClient, {
-      ...overrides,
-      resolvedModelMetadata: overrides.resolvedModelMetadata ?? stubModelInfo(modelsClient),
-    });
+    createOpenAIAdapter = mod.createOpenAIAdapter;
   });
 
   it("records value-free request fields for a provider rejection inside an HTTP 200 stream", async () => {
@@ -50,7 +46,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
         accessToken: Redacted.make("test-access"),
         refreshToken: Redacted.make("test-refresh"),
         expiresAtMs: Date.now() + 3_600_000,
-      }, "gpt-5.4", stubModelsClient());
+      }, "gpt-5.4", REASONING_INFO);
       const failure = await collectStreamEvents(client, {
         messages: [{ kind: "user", content: "private-prompt-marker" }],
       }).catch((error) => error);
@@ -73,7 +69,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       refreshToken: Redacted.make("test-refresh"),
       expiresAtMs: Date.now() + 3_600_000,
     };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", REASONING_INFO);
     expect(client.accessProvider).toBe("chatgpt");
     expect(client.modelFamily).toBe("openai");
     expect(client.model).toBe("gpt-5.4");
@@ -96,7 +92,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
     };
 
     try {
-      const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO), {
+      const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO, {
         oauthPersistence: "memory-only",
       });
       const failure = await collectStreamEvents(client, {
@@ -114,7 +110,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("priceFor charges reasoning_tokens once because output_tokens already include them", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     const events = await collectStreamEvents(client);
     const usageEvent = events.find((event) => event.kind === "usage");
@@ -153,7 +149,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       },
     ];
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient({ ...COST_INFO, reasoning: true }));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", { ...COST_INFO, reasoning: true });
 
     const events = await collectStreamEvents(client);
 
@@ -182,7 +178,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       },
     ];
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("[redacted secret]") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient({ ...COST_INFO, reasoning: true }));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", { ...COST_INFO, reasoning: true });
 
     const events = await collectStreamEvents(client);
 
@@ -212,7 +208,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       },
     ];
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("[redacted secret]") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     const events = await collectStreamEvents(client);
 
@@ -243,7 +239,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
     };
     // This test's own account binding: nothing it observes reaches another test.
     const availability = createProviderAvailability().forCandidates("default", [{ kind: "subscription", providerId: "chatgpt", instanceId: "chatgpt-account", spendMode: "included" }]);
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO), { availability, candidate: { kind: "subscription", providerId: "chatgpt", instanceId: "chatgpt-account", spendMode: "included" } });
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO, { availability, candidate: { kind: "subscription", providerId: "chatgpt", instanceId: "chatgpt-account", spendMode: "included" } });
 
     await expect(collectStreamEvents(client)).rejects.toThrow("You have hit your ChatGPT usage limit.");
     expect(availability.chatGptStanding({ kind: "subscription", providerId: "chatgpt", instanceId: "chatgpt-account", spendMode: "included" })).toMatchObject({ kind: "suppressed", exhaustion: { resetsAtMs: resetsAtSeconds * 1000 } });
@@ -257,7 +253,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
         const adapter = await createOpenAIAdapter(
           candidateProviderId(candidate) === "chatgpt" ? auth : { kind: "apiKey", apiKey: Redacted.make("[redacted secret]") },
           "gpt-5.4",
-          stubModelsClient(COST_INFO),
+          COST_INFO,
           { availability, candidate },
         );
         return { attempt: adapter, connect: async () => adapter };
@@ -295,7 +291,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
         const client = await createOpenAIAdapter(
           provider === "chatgpt" ? auth : { kind: "apiKey", apiKey: Redacted.make("[redacted secret]") },
           "gpt-5.4",
-          stubModelsClient(COST_INFO),
+          COST_INFO,
           { availability, candidate },
         );
         return { attempt: client, connect: async () => client };
@@ -336,7 +332,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       },
     ];
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient({ ...COST_INFO, reasoning: true }));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", { ...COST_INFO, reasoning: true });
 
     const events = await collectStreamEvents(client);
 
@@ -355,7 +351,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       refreshToken: Redacted.make("test-refresh"),
       expiresAtMs: Date.now() + 3_600_000,
     };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
     state.invocationOrder.length = 0;
     let dispatches = 0;
 
@@ -373,7 +369,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       refreshToken: Redacted.make("test-refresh"),
       expiresAtMs: Date.now() + 3_600_000,
     };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client);
 
@@ -396,7 +392,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       refreshToken: Redacted.make("test-refresh"),
       expiresAtMs: Date.now() + 3_600_000,
     };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, { systemPrompt: stableSystemPrompt("Follow Flywheel QA instructions.") });
 
@@ -430,7 +426,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
         return tokens;
       },
     };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO), { tokenAccessor });
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO, { tokenAccessor });
 
     const events = await collectStreamEvents(client, { signal });
 
@@ -446,7 +442,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       reasoningTokens: 50,
     });
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     const events = await collectStreamEvents(client);
     const usageEvent = events.find((event) => event.kind === "usage");
@@ -471,7 +467,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("sends top-level instructions for OpenAI API streaming requests", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, { systemPrompt: stableSystemPrompt("Follow Flywheel QA instructions.") });
 
@@ -486,7 +482,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("passes 24h prompt cache retention when requested", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, { cacheRetention: "24h" });
 
@@ -496,7 +492,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("applies agent runtime OpenAI Responses provider options", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient({ ...COST_INFO, reasoning: true }));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", { ...COST_INFO, reasoning: true });
 
     await collectStreamEvents(client, {
       reasoningEffort: "high",
@@ -525,7 +521,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("maps the uniform speed option to OpenAI's fast service tier", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, {
       providerOptions: { openai: { speed: "fast" } },
@@ -537,7 +533,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("lets an explicit service_tier win over the speed option", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, {
       providerOptions: { openai: { speed: "fast", service_tier: "flex" } },
@@ -549,7 +545,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("prices an observed fast service tier at the priority multiplier", async () => {
     setMockResponseUsage({ serviceTier: "fast" });
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, {
       providerOptions: { openai: { speed: "fast" } },
@@ -572,7 +568,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       refreshToken: Redacted.make("test-refresh"),
       expiresAtMs: Date.now() + 3_600_000,
     };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, {
       providerOptions: { openai: { speed: "fast" } },
@@ -586,7 +582,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("defaults GPT-5 Responses verbosity low and omits reasoning summary when disabled", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient({ ...COST_INFO, reasoning: true }));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", { ...COST_INFO, reasoning: true });
 
     await collectStreamEvents(client, {
       reasoningEffort: "medium",
@@ -602,13 +598,13 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
 
   it("contextLimit is available immediately after async construction", async () => {
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
     expect(client.contextLimit).toBe(1_050_000);
   });
 
   it("produces a client with provider 'openai' in apiKey mode (regression)", async () => {
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
-    const client = await createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient());
+    const client = await createOpenAIAdapter(auth, "gpt-5.4", REASONING_INFO);
     expect(client.accessProvider).toBe("openai_api");
     expect(client.modelFamily).toBe("openai");
     expect(client.model).toBe("gpt-5.4");

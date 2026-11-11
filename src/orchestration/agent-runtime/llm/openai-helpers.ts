@@ -39,9 +39,9 @@ type OpenAIResponseParamsWithCacheOptions = ResponseCreateParamsStreaming & {
 };
 
 /** Whether the route takes `prompt_cache_options`: the OpenAI API, for a model whose
- *  rate card prices cache writes (GPT-5.6 and later). */
-function openAIAcceptsPromptCacheOptions(accessProvider: AccessProviderId, info: ModelInfo | null): boolean {
-  return accessProvider === "openai_api" && (info?.cost.cacheWrite ?? 0) > 0;
+ *  rate card prices cache writes (`cost.cacheWrite` above zero). */
+function openAIAcceptsPromptCacheOptions(accessProvider: AccessProviderId, info: ModelInfo): boolean {
+  return accessProvider === "openai_api" && (info.cost.cacheWrite ?? 0) > 0;
 }
 
 /** The minimum lifetime that OpenAI states for the served request's cache entry, in
@@ -156,7 +156,7 @@ const OPENAI_EFFORT_FALLBACK = ["low", "medium", "high", "xhigh"] as const satis
 
 function buildReasoningParams(
   effort: ReasoningEffort,
-  info: ModelInfo | null,
+  info: ModelInfo,
   providerOptions: StreamOptions["providerOptions"],
 ): ReasoningParams {
   // K1: "off" means the user disabled reasoning. Models that declare "none" in
@@ -192,9 +192,8 @@ export function buildOpenAIParams(
   instructions: string | undefined,
   tools: ResponseCreateParamsStreaming["tools"],
   isChatGPT: boolean,
-  modelSupportsReasoning: boolean,
   effort: ReasoningEffort,
-  info: ModelInfo | null,
+  info: ModelInfo,
   options: StreamOptions,
   accessProvider: AccessProviderId,
 ): OpenAIResponseParamsWithCacheOptions {
@@ -209,11 +208,11 @@ export function buildOpenAIParams(
   const params: OpenAIResponseParamsWithCacheOptions & UnknownFields = {
     model, input, instructions, tools,
     store: false,
-    ...(sendMaxOutputTokens ? { max_output_tokens: options.outputTokenLimit ?? info?.outputLimit ?? 16_384 } : {}),
+    ...(sendMaxOutputTokens ? { max_output_tokens: options.outputTokenLimit ?? info.outputLimit } : {}),
     ...(toolChoice ? { tool_choice: toolChoice } : {}),
     stream: true,
   };
-  if (modelSupportsReasoning) {
+  if (info.reasoning) {
     const reasoning = buildReasoningParams(effort, info, options.providerOptions);
     if (reasoning.reasoning) params.reasoning = reasoning.reasoning;
     if (reasoning.include) params.include = reasoning.include;

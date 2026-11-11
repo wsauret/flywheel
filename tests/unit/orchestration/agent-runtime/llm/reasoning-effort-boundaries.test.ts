@@ -26,7 +26,7 @@ function options(cacheRetention?: StreamOptions["cacheRetention"]): StreamOption
 }
 
 function params(effort: StreamOptions["reasoningEffort"], info: ModelInfo, accessProvider: "chatgpt" | "openai_api") {
-  return buildOpenAIParams("gpt-test", [], undefined, [], accessProvider === "chatgpt", true, effort ?? "medium", info, options(), accessProvider);
+  return buildOpenAIParams("gpt-test", [], undefined, [], accessProvider === "chatgpt", effort ?? "medium", info, options(), accessProvider);
 }
 
 describe("provider reasoning effort boundaries", () => {
@@ -54,12 +54,12 @@ describe("provider reasoning effort boundaries", () => {
   });
 
   it("sends prompt-cache options only to direct OpenAI models with positive cache-write cost", () => {
-    const capable = { ...baseInfo, cost: { ...baseInfo.cost, cacheWrite: 1 } };
-    const incapable = { ...baseInfo, cost: { ...baseInfo.cost, cacheWrite: 0 } };
+    const capable = { ...baseInfo, reasoning: false, cost: { ...baseInfo.cost, cacheWrite: 1 } };
+    const incapable = { ...baseInfo, reasoning: false, cost: { ...baseInfo.cost, cacheWrite: 0 } };
     for (const cacheRetention of ["none", "1h", "in_memory"] as const) {
-      const direct = buildOpenAIParams("gpt-test", [], undefined, [], false, false, "off", capable, options(cacheRetention), "openai_api");
-      const chatgpt = buildOpenAIParams("gpt-test", [], undefined, [], true, false, "off", capable, options(cacheRetention), "chatgpt");
-      const noWrite = buildOpenAIParams("gpt-test", [], undefined, [], false, false, "off", incapable, options(cacheRetention), "openai_api");
+      const direct = buildOpenAIParams("gpt-test", [], undefined, [], false, "off", capable, options(cacheRetention), "openai_api");
+      const chatgpt = buildOpenAIParams("gpt-test", [], undefined, [], true, "off", capable, options(cacheRetention), "chatgpt");
+      const noWrite = buildOpenAIParams("gpt-test", [], undefined, [], false, "off", incapable, options(cacheRetention), "openai_api");
       // An uncached request opts out explicitly; a cached one asks for the provider default lifetime, so that the
       // response states it. A configured retention policy still goes out beside it.
       expect(direct.prompt_cache_options).toEqual(cacheRetention === "none" ? { mode: "explicit" } : { ttl: "30m" });
