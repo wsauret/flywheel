@@ -1,0 +1,24 @@
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 170,172-184,219,284
+src/orchestration/agent-runtime/tools/apply-patch.ts
+  h_4b47e9e4a8b456 83
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 96-103,118
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 38-39,113
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 112-120,236
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "361020c83d0077709c657619e911df9a1f8cb80c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
