@@ -1,0 +1,32 @@
+bench/harbor/METHODOLOGY.md
+  h_4b47e9e4a8b456 112
+bench/harbor/README.md
+  h_4b47e9e4a8b456 57,86,152,155,192-195
+bench/harbor/benchmarks.ts
+  h_4b47e9e4a8b456 47-50
+bench/harbor/harbor-config.ts
+  h_4b47e9e4a8b456 14,57-58,366
+bench/harbor/hill.ts
+  h_4b47e9e4a8b456 2,146
+bench/harbor/rounds.ts
+  h_4b47e9e4a8b456 3-4,8,46-71,167-173,180-181
+bench/harbor/run-harbor.ts
+  h_4b47e9e4a8b456 9,231,270,346-348
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 63,174-175
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 124,133-135
+tests/unit/bench/harbor-round-score.test.ts
+  h_4b47e9e4a8b456 82-83,92,100-101,116-117,177,198,201,211-212,221,229-255,271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "535a1b5fae4240ce3fb1d4ac6c13884ef54724da",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
