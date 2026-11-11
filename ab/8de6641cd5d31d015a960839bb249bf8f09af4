@@ -1,0 +1,382 @@
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/diff.patch
+  h_4b47e9e4a8b456 1-145
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/project/alerts.ts
+  h_4b47e9e4a8b456 1-27
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/project/channels.ts
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/project/delivery.ts
+  h_4b47e9e4a8b456 1-38
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/project/oncall-feed.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/project/preferences.ts
+  h_4b47e9e4a8b456 1-40
+bench/ab-persona/fixtures/reviews/elegance-alert-fallback/project/settings-page.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/elegance-api-session/WHY.md
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/elegance-api-session/diff.patch
+  h_4b47e9e4a8b456 1-141
+bench/ab-persona/fixtures/reviews/elegance-api-session/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/elegance-api-session/project/api-client.ts
+  h_4b47e9e4a8b456 1-76
+bench/ab-persona/fixtures/reviews/elegance-api-session/project/profile.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/elegance-api-session/project/session-store.ts
+  h_4b47e9e4a8b456 1-54
+bench/ab-persona/fixtures/reviews/elegance-api-session/project/tokens.ts
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/elegance-api-session/project/transport.ts
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/elegance-clearing-export/WHY.md
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/elegance-clearing-export/diff.patch
+  h_4b47e9e4a8b456 1-63
+bench/ab-persona/fixtures/reviews/elegance-clearing-export/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/elegance-clearing-export/project/export.ts
+  h_4b47e9e4a8b456 1-25
+bench/ab-persona/fixtures/reviews/elegance-clearing-export/project/format.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/elegance-clearing-export/project/summary.ts
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/elegance-clearing-export/project/types.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/elegance-directory-pagination/WHY.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/elegance-directory-pagination/diff.patch
+  h_4b47e9e4a8b456 1-70
+bench/ab-persona/fixtures/reviews/elegance-directory-pagination/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/elegance-directory-pagination/project/directory.ts
+  h_4b47e9e4a8b456 1-37
+bench/ab-persona/fixtures/reviews/elegance-directory-pagination/project/json-client.ts
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/elegance-directory-pagination/project/org-report.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/elegance-directory-pagination/project/pagination.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/elegance-flag-gate/WHY.md
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/elegance-flag-gate/diff.patch
+  h_4b47e9e4a8b456 1-51
+bench/ab-persona/fixtures/reviews/elegance-flag-gate/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/elegance-flag-gate/project/checkout-page.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/elegance-flag-gate/project/feature-gate.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/elegance-flag-gate/project/flags.ts
+  h_4b47e9e4a8b456 1-29
+bench/ab-persona/fixtures/reviews/elegance-flag-gate/project/search-page.ts
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/WHY.md
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/diff.patch
+  h_4b47e9e4a8b456 1-254
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/csv.ts
+  h_4b47e9e4a8b456 1-42
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/import/group.ts
+  h_4b47e9e4a8b456 1-38
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/import/importer.ts
+  h_4b47e9e4a8b456 1-34
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/import/invoice-rows.ts
+  h_4b47e9e4a8b456 1-96
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/import/pipeline.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/import/report.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/invoice.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/ledger.ts
+  h_4b47e9e4a8b456 1-24
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/totals.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/elegance-invoice-import/project/src/types.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/elegance-order-payment-status/WHY.md
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/elegance-order-payment-status/diff.patch
+  h_4b47e9e4a8b456 1-103
+bench/ab-persona/fixtures/reviews/elegance-order-payment-status/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/elegance-order-payment-status/project/account-page.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/elegance-order-payment-status/project/fulfillment.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/elegance-order-payment-status/project/orders.ts
+  h_4b47e9e4a8b456 1-55
+bench/ab-persona/fixtures/reviews/elegance-order-payment-status/project/types.ts
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/WHY.md
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/diff.patch
+  h_4b47e9e4a8b456 1-224
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/project/ingest-client.ts
+  h_4b47e9e4a8b456 1-55
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/project/main.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/project/retrying-transport.test.ts
+  h_4b47e9e4a8b456 1-117
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/project/retrying-transport.ts
+  h_4b47e9e4a8b456 1-81
+bench/ab-persona/fixtures/reviews/elegance-retry-transport/project/transport.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/diff.patch
+  h_4b47e9e4a8b456 1-89
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/project/carriers.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/project/checkout-shipping.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/project/money.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/project/quotes.ts
+  h_4b47e9e4a8b456 1-47
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/project/receipt.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/project/shipping-options.ts
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/elegance-shipping-quotes/project/types.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/elegance-task-board/WHY.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/elegance-task-board/diff.patch
+  h_4b47e9e4a8b456 1-273
+bench/ab-persona/fixtures/reviews/elegance-task-board/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/elegance-task-board/project/ARCHITECTURE.md
+  h_4b47e9e4a8b456 1-7
+bench/ab-persona/fixtures/reviews/elegance-task-board/project/src/domain/board.ts
+  h_4b47e9e4a8b456 1-100
+bench/ab-persona/fixtures/reviews/elegance-task-board/project/src/domain/types.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/elegance-task-board/project/src/storage/board-repository.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/elegance-task-board/project/src/ui/board-view.ts
+  h_4b47e9e4a8b456 1-27
+bench/ab-persona/fixtures/reviews/elegance-task-board/project/src/ui/card-view.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/elegance-task-board/project/src/ui/commands.ts
+  h_4b47e9e4a8b456 1-83
+bench/ab-persona/fixtures/reviews/elegance-tracking-protocol/WHY.md
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/elegance-tracking-protocol/diff.patch
+  h_4b47e9e4a8b456 1-80
+bench/ab-persona/fixtures/reviews/elegance-tracking-protocol/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/elegance-tracking-protocol/project/api/to-wire.ts
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/elegance-tracking-protocol/project/domain/shipment.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/elegance-tracking-protocol/project/protocol/v1.ts
+  h_4b47e9e4a8b456 1-26
+bench/ab-persona/fixtures/reviews/elegance-user-settings/WHY.md
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/elegance-user-settings/diff.patch
+  h_4b47e9e4a8b456 1-77
+bench/ab-persona/fixtures/reviews/elegance-user-settings/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/elegance-user-settings/project/calendar.ts
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/elegance-user-settings/project/main.ts
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/elegance-user-settings/project/settings-file.ts
+  h_4b47e9e4a8b456 1-40
+bench/ab-persona/fixtures/reviews/elegance-user-settings/project/settings.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/WHY.md
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/diff.patch
+  h_4b47e9e4a8b456 1-143
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/project/api.ts
+  h_4b47e9e4a8b456 1-34
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/project/http.ts
+  h_4b47e9e4a8b456 1-37
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/project/limiter.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/project/retry.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/project/uploader.ts
+  h_4b47e9e4a8b456 1-45
+bench/ab-persona/fixtures/reviews/mechanism-chunked-upload/prompt.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/WHY.md
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/plan.md
+  h_4b47e9e4a8b456 1-30
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/project/config.ts
+  h_4b47e9e4a8b456 1-71
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/project/handler.ts
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/project/limiter.ts
+  h_4b47e9e4a8b456 1-38
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/project/server.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/mechanism-config-reload/prompt.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/WHY.md
+  h_4b47e9e4a8b456 1-27
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/plan.md
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/project/downloads.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/project/server.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/project/sweeper.ts
+  h_4b47e9e4a8b456 1-59
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/project/writer.ts
+  h_4b47e9e4a8b456 1-29
+bench/ab-persona/fixtures/reviews/mechanism-export-sweep/prompt.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/WHY.md
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/diff.patch
+  h_4b47e9e4a8b456 1-80
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/project/flags.ts
+  h_4b47e9e4a8b456 1-40
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/project/hash.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/project/http-flags.ts
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/project/types.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/mechanism-flag-rollout/prompt.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/WHY.md
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/diff.patch
+  h_4b47e9e4a8b456 1-162
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/project/reaper.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/project/store.ts
+  h_4b47e9e4a8b456 1-79
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/project/types.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/project/worker.ts
+  h_4b47e9e4a8b456 1-44
+bench/ab-persona/fixtures/reviews/mechanism-job-lease/prompt.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/mechanism-member-events/WHY.md
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/mechanism-member-events/diff.patch
+  h_4b47e9e4a8b456 1-103
+bench/ab-persona/fixtures/reviews/mechanism-member-events/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/mechanism-member-events/project/audit.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/mechanism-member-events/project/bus.ts
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/mechanism-member-events/project/db.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/mechanism-member-events/project/membership.ts
+  h_4b47e9e4a8b456 1-34
+bench/ab-persona/fixtures/reviews/mechanism-member-events/project/notifier.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/mechanism-member-events/prompt.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/WHY.md
+  h_4b47e9e4a8b456 1-27
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/diff.patch
+  h_4b47e9e4a8b456 1-171
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/project/file-journal.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/project/journal.ts
+  h_4b47e9e4a8b456 1-45
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/project/orders.ts
+  h_4b47e9e4a8b456 1-45
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/project/server.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/project/types.ts
+  h_4b47e9e4a8b456 1-25
+bench/ab-persona/fixtures/reviews/mechanism-order-journal/prompt.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/mechanism-rate-window/WHY.md
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/mechanism-rate-window/diff.patch
+  h_4b47e9e4a8b456 1-92
+bench/ab-persona/fixtures/reviews/mechanism-rate-window/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/mechanism-rate-window/project/kv-window-store.ts
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/mechanism-rate-window/project/limiter.ts
+  h_4b47e9e4a8b456 1-42
+bench/ab-persona/fixtures/reviews/mechanism-rate-window/project/types.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/mechanism-rate-window/prompt.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/WHY.md
+  h_4b47e9e4a8b456 1-24
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/diff.patch
+  h_4b47e9e4a8b456 1-100
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/project/cache.ts
+  h_4b47e9e4a8b456 1-50
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/project/sessions.ts
+  h_4b47e9e4a8b456 1-38
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/project/sql-store.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/project/types.ts
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/mechanism-session-cache/prompt.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/WHY.md
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/plan.md
+  h_4b47e9e4a8b456 1-29
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/project/accounts.ts
+  h_4b47e9e4a8b456 1-53
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/project/ledger.ts
+  h_4b47e9e4a8b456 1-39
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/project/persistence.ts
+  h_4b47e9e4a8b456 1-52
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/project/service.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/mechanism-wallet-transfer/prompt.md
+  h_4b47e9e4a8b456 1-16
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 81-83,244-262,287-289,304,339-341,376
+src/orchestration/modules/development/benchmark/persona-benchmark.ts
+  h_4b47e9e4a8b456 182-183
+tests/unit/bench/catalog.test.ts
+  h_4b47e9e4a8b456 2,7,46,110,120,138,144,149,172,188,213,221-250,259,261
+tests/unit/bench/review-fixtures.test.ts
+  h_4b47e9e4a8b456 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ab8de6641cd5d31d015a960839bb249bf8f09af4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
