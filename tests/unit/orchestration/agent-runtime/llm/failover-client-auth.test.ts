@@ -296,6 +296,6 @@ describe("provider authentication stops the request", () => {
     });
     const error = await requestEvents(client).then(() => undefined, (thrown: unknown) => thrown);
     if (!(error instanceof AllCandidatesExhaustedError)) throw new Error("expected AllCandidatesExhaustedError");
-    expect(error.recovery).toEqual({ kind: "at", atMs: resetsAtMs });
+    expect(error.recovery).toEqual({ kind: "at", atMs: resetsAtMs, hold: { kind: "usage_limit", stated: true } });
   });
 });
