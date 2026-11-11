@@ -200,12 +200,17 @@ function toSearchQuery(options: EventSearchOptions): EventSearchQuery {
 }
 
 // Resolves the durable request audit reference, then folds the conversation tree
-// back to the recorded leaf to recover the bytes the model saw.
+// back to the recorded leaf to recover the bytes the model saw. A workflow
+// member records its audit facts on `workflow:<id>`, so both aggregates feed
+// the fold in position order.
 export async function reconstructPromptForRequest(
   request: { projectRoot: string; sessionId: string; requestId: string },
 ): Promise<ProviderRequestPromptReconstruction> {
   return withEventStore(request.projectRoot, (store) => {
-    const sessionEvents = store.read({ aggregateId: `session:${request.sessionId}` })
+    const sessionEvents = [
+      ...store.read({ aggregateId: `session:${request.sessionId}` }),
+      ...store.read({ aggregateId: `workflow:${request.sessionId}` }),
+    ].sort((left, right) => left.position - right.position)
     const entries = loadProviderRequestAuditFromEvents(sessionEvents)
     const entry = entries.find((candidate) => candidate.requestId === request.requestId)
     if (!entry) {

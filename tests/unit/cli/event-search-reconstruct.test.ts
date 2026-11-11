@@ -9,7 +9,6 @@ import { resolveEventStoreDbFile } from "../../../src/infra/paths"
 import { resolveDebugLogDirectory } from "../../../src/infra/debug-log"
 import { buildProviderRequestFacts } from "../../../src/orchestration/session/provider-request-audit-recorder"
 import { appendProviderRequestFacts } from "../orchestration/session/_provider-request-audit-fixtures"
-import { loadProviderRequestAuditFromEvents } from "../../../src/orchestration/session/provider-request-audit-projection"
 import { buildSessionContext } from "../../../src/orchestration/session/conversation/conversation-tree-context"
 import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle"
 
@@ -25,7 +24,13 @@ afterEach(() => {
 
 const tools = [{ name: "read", registrationId: "read", executableId: "read", description: "Read", input_schema: { type: "object" } }]
 
-async function recordFirstOfTurnRequest(sessionId: string, conversationId: string): Promise<string> {
+// A workflow member's audit facts live on `workflow:<sessionId>`, not on its
+// session aggregate.
+async function recordFirstOfTurnRequest(
+  sessionId: string,
+  conversationId: string,
+  auditAggregate: "session" | "workflow" = "session",
+): Promise<string> {
   const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
   const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
   await tree.appendMessage({ kind: "user", content: "first question" })
@@ -33,7 +38,10 @@ async function recordFirstOfTurnRequest(sessionId: string, conversationId: strin
   const context = buildSessionContext(await tree.getBranch())
   await tree.getStorage().dispose()
 
-  appendProviderRequestFacts(store, sessionId, {
+  const auditStore: Pick<typeof store, "append"> = {
+    append: (fact) => store.append({ ...fact, aggregateId: `${auditAggregate}:${sessionId}` }),
+  }
+  const requestId = appendProviderRequestFacts(auditStore, sessionId, {
     requestId: crypto.randomUUID(),
     identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
     systemPrompt: "be helpful",
@@ -45,10 +53,8 @@ async function recordFirstOfTurnRequest(sessionId: string, conversationId: strin
     model: "m", accessProvider: "anthropic_api", modelFamily: "anthropic",
     treeLeafEntryId: leafEntryId,
   })
-
-  const entry = loadProviderRequestAuditFromEvents(store.read({ aggregateId: `session:${sessionId}` }))[0]
   store.close()
-  return entry!.requestId
+  return requestId
 }
 
 // Mirrors the live recorder: audit facts land in the debug log as JSONL
@@ -106,6 +112,18 @@ describe("events:search --reconstruct", () => {
     expect(text).toContain("verified=true")
     expect(text).toContain("be helpful")
     expect(text).not.toContain("mid-turn")
+  })
+
+  test("reconstructs a workflow member's request from its workflow aggregate", async () => {
+    const sessionId = "cli-recon-workflow"
+    const requestId = await recordFirstOfTurnRequest(sessionId, "conv-cli-recon-workflow", "workflow")
+
+    const result = await reconstructPromptForRequest({ projectRoot: tmpDir, sessionId, requestId })
+    if (result.kind !== "reconstructed") throw new Error(`expected a reconstruction, got ${result.kind}`)
+
+    expect(result.verified).toBe(true)
+    expect(result.systemPrompt).toBe("be helpful")
+    expect(result.tools).toEqual(tools)
   })
 
   test("does not use debug logs as reconstruction state", async () => {
