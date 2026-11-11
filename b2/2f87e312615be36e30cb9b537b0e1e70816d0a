@@ -1,0 +1,318 @@
+bench/ab-persona/fixtures/reviews/review-0ac0d7d90ba5/PROVENANCE.json
+  h_4b47e9e4a8b456 1-130
+bench/ab-persona/fixtures/reviews/review-0ac0d7d90ba5/base.patch
+  h_4b47e9e4a8b456 1-211
+bench/ab-persona/fixtures/reviews/review-0ac0d7d90ba5/diff.patch
+  h_4b47e9e4a8b456 1-139
+bench/ab-persona/fixtures/reviews/review-0ac0d7d90ba5/manifest.json
+  h_4b47e9e4a8b456 1-39
+bench/ab-persona/fixtures/reviews/review-0ac0d7d90ba5/prompt.md
+  h_4b47e9e4a8b456 1-41
+bench/ab-persona/fixtures/reviews/review-0ac0d7d90ba5/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-0da3b2c9af18/PROVENANCE.json
+  h_4b47e9e4a8b456 1-72
+bench/ab-persona/fixtures/reviews/review-0da3b2c9af18/base.patch
+  h_4b47e9e4a8b456 1-162
+bench/ab-persona/fixtures/reviews/review-0da3b2c9af18/diff.patch
+  h_4b47e9e4a8b456 1-69
+bench/ab-persona/fixtures/reviews/review-0da3b2c9af18/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-0da3b2c9af18/prompt.md
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/review-0da3b2c9af18/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-0e5bb852bd7e/PROVENANCE.json
+  h_4b47e9e4a8b456 1-166
+bench/ab-persona/fixtures/reviews/review-0e5bb852bd7e/base.patch
+  h_4b47e9e4a8b456 1-2963
+bench/ab-persona/fixtures/reviews/review-0e5bb852bd7e/diff.patch
+  h_4b47e9e4a8b456 1-464
+bench/ab-persona/fixtures/reviews/review-0e5bb852bd7e/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-0e5bb852bd7e/prompt.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/review-0e5bb852bd7e/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-14cdb3f74882/PROVENANCE.json
+  h_4b47e9e4a8b456 1-117
+bench/ab-persona/fixtures/reviews/review-14cdb3f74882/base.patch
+  h_4b47e9e4a8b456 1-1379
+bench/ab-persona/fixtures/reviews/review-14cdb3f74882/diff.patch
+  h_4b47e9e4a8b456 1-615
+bench/ab-persona/fixtures/reviews/review-14cdb3f74882/manifest.json
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/review-14cdb3f74882/prompt.md
+  h_4b47e9e4a8b456 1-44
+bench/ab-persona/fixtures/reviews/review-14cdb3f74882/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-1a19de9bb1b3/PROVENANCE.json
+  h_4b47e9e4a8b456 1-110
+bench/ab-persona/fixtures/reviews/review-1a19de9bb1b3/base.patch
+  h_4b47e9e4a8b456 1-1073
+bench/ab-persona/fixtures/reviews/review-1a19de9bb1b3/diff.patch
+  h_4b47e9e4a8b456 1-544
+bench/ab-persona/fixtures/reviews/review-1a19de9bb1b3/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-1a19de9bb1b3/prompt.md
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/review-1a19de9bb1b3/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-1d58fd43e2cf/PROVENANCE.json
+  h_4b47e9e4a8b456 1-115
+bench/ab-persona/fixtures/reviews/review-1d58fd43e2cf/base.patch
+  h_4b47e9e4a8b456 1-2535
+bench/ab-persona/fixtures/reviews/review-1d58fd43e2cf/diff.patch
+  h_4b47e9e4a8b456 1-949
+bench/ab-persona/fixtures/reviews/review-1d58fd43e2cf/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-1d58fd43e2cf/prompt.md
+  h_4b47e9e4a8b456 1-30
+bench/ab-persona/fixtures/reviews/review-1d58fd43e2cf/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-1ff708943813/PROVENANCE.json
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/review-1ff708943813/base.patch
+  h_4b47e9e4a8b456 1-397
+bench/ab-persona/fixtures/reviews/review-1ff708943813/diff.patch
+  h_4b47e9e4a8b456 1-25
+bench/ab-persona/fixtures/reviews/review-1ff708943813/manifest.json
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-1ff708943813/prompt.md
+  h_4b47e9e4a8b456 1
+bench/ab-persona/fixtures/reviews/review-1ff708943813/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-53fdbaffac0d/PROVENANCE.json
+  h_4b47e9e4a8b456 1-353
+bench/ab-persona/fixtures/reviews/review-53fdbaffac0d/base.patch
+  h_4b47e9e4a8b456 1-4234
+bench/ab-persona/fixtures/reviews/review-53fdbaffac0d/diff.patch
+  h_4b47e9e4a8b456 1-1060
+bench/ab-persona/fixtures/reviews/review-53fdbaffac0d/manifest.json
+  h_4b47e9e4a8b456 1-29
+bench/ab-persona/fixtures/reviews/review-53fdbaffac0d/prompt.md
+  h_4b47e9e4a8b456 1-60
+bench/ab-persona/fixtures/reviews/review-53fdbaffac0d/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-5504731a9bea/PROVENANCE.json
+  h_4b47e9e4a8b456 1-86
+bench/ab-persona/fixtures/reviews/review-5504731a9bea/diff.patch
+  h_4b47e9e4a8b456 1-162
+bench/ab-persona/fixtures/reviews/review-5504731a9bea/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-5504731a9bea/prompt.md
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/review-5504731a9bea/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-6072ce4e155e/PROVENANCE.json
+  h_4b47e9e4a8b456 1-128
+bench/ab-persona/fixtures/reviews/review-6072ce4e155e/base.patch
+  h_4b47e9e4a8b456 1-2093
+bench/ab-persona/fixtures/reviews/review-6072ce4e155e/diff.patch
+  h_4b47e9e4a8b456 1-406
+bench/ab-persona/fixtures/reviews/review-6072ce4e155e/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-6072ce4e155e/prompt.md
+  h_4b47e9e4a8b456 1-43
+bench/ab-persona/fixtures/reviews/review-6072ce4e155e/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-6d052e62ac32/PROVENANCE.json
+  h_4b47e9e4a8b456 1-98
+bench/ab-persona/fixtures/reviews/review-6d052e62ac32/diff.patch
+  h_4b47e9e4a8b456 1-203
+bench/ab-persona/fixtures/reviews/review-6d052e62ac32/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-6d052e62ac32/prompt.md
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/review-6d052e62ac32/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-783f4ceebae1/PROVENANCE.json
+  h_4b47e9e4a8b456 1-218
+bench/ab-persona/fixtures/reviews/review-783f4ceebae1/base.patch
+  h_4b47e9e4a8b456 1-2141
+bench/ab-persona/fixtures/reviews/review-783f4ceebae1/diff.patch
+  h_4b47e9e4a8b456 1-1591
+bench/ab-persona/fixtures/reviews/review-783f4ceebae1/manifest.json
+  h_4b47e9e4a8b456 1-39
+bench/ab-persona/fixtures/reviews/review-783f4ceebae1/prompt.md
+  h_4b47e9e4a8b456 1-44
+bench/ab-persona/fixtures/reviews/review-783f4ceebae1/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-81e9ecba8a26/PROVENANCE.json
+  h_4b47e9e4a8b456 1-55
+bench/ab-persona/fixtures/reviews/review-81e9ecba8a26/diff.patch
+  h_4b47e9e4a8b456 1-190
+bench/ab-persona/fixtures/reviews/review-81e9ecba8a26/manifest.json
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-81e9ecba8a26/prompt.md
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-81e9ecba8a26/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-8ce5ee0b193c/PROVENANCE.json
+  h_4b47e9e4a8b456 1-77
+bench/ab-persona/fixtures/reviews/review-8ce5ee0b193c/base.patch
+  h_4b47e9e4a8b456 1-716
+bench/ab-persona/fixtures/reviews/review-8ce5ee0b193c/diff.patch
+  h_4b47e9e4a8b456 1-130
+bench/ab-persona/fixtures/reviews/review-8ce5ee0b193c/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-8ce5ee0b193c/prompt.md
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/review-8ce5ee0b193c/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-8d7e8ba24bc2/PROVENANCE.json
+  h_4b47e9e4a8b456 1-153
+bench/ab-persona/fixtures/reviews/review-8d7e8ba24bc2/base.patch
+  h_4b47e9e4a8b456 1-891
+bench/ab-persona/fixtures/reviews/review-8d7e8ba24bc2/diff.patch
+  h_4b47e9e4a8b456 1-555
+bench/ab-persona/fixtures/reviews/review-8d7e8ba24bc2/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-8d7e8ba24bc2/prompt.md
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-8d7e8ba24bc2/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-9224c8d4b7f1/PROVENANCE.json
+  h_4b47e9e4a8b456 1-67
+bench/ab-persona/fixtures/reviews/review-9224c8d4b7f1/base.patch
+  h_4b47e9e4a8b456 1-749
+bench/ab-persona/fixtures/reviews/review-9224c8d4b7f1/diff.patch
+  h_4b47e9e4a8b456 1-102
+bench/ab-persona/fixtures/reviews/review-9224c8d4b7f1/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-9224c8d4b7f1/prompt.md
+  h_4b47e9e4a8b456 1-41
+bench/ab-persona/fixtures/reviews/review-9224c8d4b7f1/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-959e50f39502/PROVENANCE.json
+  h_4b47e9e4a8b456 1-183
+bench/ab-persona/fixtures/reviews/review-959e50f39502/base.patch
+  h_4b47e9e4a8b456 1-1958
+bench/ab-persona/fixtures/reviews/review-959e50f39502/diff.patch
+  h_4b47e9e4a8b456 1-325
+bench/ab-persona/fixtures/reviews/review-959e50f39502/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-959e50f39502/prompt.md
+  h_4b47e9e4a8b456 1-38
+bench/ab-persona/fixtures/reviews/review-959e50f39502/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-aee2f3110fcb/PROVENANCE.json
+  h_4b47e9e4a8b456 1-58
+bench/ab-persona/fixtures/reviews/review-aee2f3110fcb/base.patch
+  h_4b47e9e4a8b456 1-646
+bench/ab-persona/fixtures/reviews/review-aee2f3110fcb/diff.patch
+  h_4b47e9e4a8b456 1-116
+bench/ab-persona/fixtures/reviews/review-aee2f3110fcb/manifest.json
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-aee2f3110fcb/prompt.md
+  h_4b47e9e4a8b456 1
+bench/ab-persona/fixtures/reviews/review-aee2f3110fcb/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-b7003657d8b2/PROVENANCE.json
+  h_4b47e9e4a8b456 1-77
+bench/ab-persona/fixtures/reviews/review-b7003657d8b2/base.patch
+  h_4b47e9e4a8b456 1-1480
+bench/ab-persona/fixtures/reviews/review-b7003657d8b2/diff.patch
+  h_4b47e9e4a8b456 1-409
+bench/ab-persona/fixtures/reviews/review-b7003657d8b2/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-b7003657d8b2/prompt.md
+  h_4b47e9e4a8b456 1-45
+bench/ab-persona/fixtures/reviews/review-b7003657d8b2/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-c6edb985e72a/PROVENANCE.json
+  h_4b47e9e4a8b456 1-55
+bench/ab-persona/fixtures/reviews/review-c6edb985e72a/base.patch
+  h_4b47e9e4a8b456 1-651
+bench/ab-persona/fixtures/reviews/review-c6edb985e72a/diff.patch
+  h_4b47e9e4a8b456 1-175
+bench/ab-persona/fixtures/reviews/review-c6edb985e72a/manifest.json
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-c6edb985e72a/prompt.md
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-c6edb985e72a/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-ca61ba986717/PROVENANCE.json
+  h_4b47e9e4a8b456 1-35
+bench/ab-persona/fixtures/reviews/review-ca61ba986717/base.patch
+  h_4b47e9e4a8b456 1-248
+bench/ab-persona/fixtures/reviews/review-ca61ba986717/diff.patch
+  h_4b47e9e4a8b456 1-81
+bench/ab-persona/fixtures/reviews/review-ca61ba986717/manifest.json
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-ca61ba986717/prompt.md
+  h_4b47e9e4a8b456 1
+bench/ab-persona/fixtures/reviews/review-ca61ba986717/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-d063757f80a8/PROVENANCE.json
+  h_4b47e9e4a8b456 1-134
+bench/ab-persona/fixtures/reviews/review-d063757f80a8/base.patch
+  h_4b47e9e4a8b456 1-338
+bench/ab-persona/fixtures/reviews/review-d063757f80a8/diff.patch
+  h_4b47e9e4a8b456 1-245
+bench/ab-persona/fixtures/reviews/review-d063757f80a8/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-d063757f80a8/prompt.md
+  h_4b47e9e4a8b456 1-45
+bench/ab-persona/fixtures/reviews/review-d063757f80a8/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-d3b56fe648a6/PROVENANCE.json
+  h_4b47e9e4a8b456 1-163
+bench/ab-persona/fixtures/reviews/review-d3b56fe648a6/base.patch
+  h_4b47e9e4a8b456 1-2421
+bench/ab-persona/fixtures/reviews/review-d3b56fe648a6/diff.patch
+  h_4b47e9e4a8b456 1-893
+bench/ab-persona/fixtures/reviews/review-d3b56fe648a6/manifest.json
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/review-d3b56fe648a6/prompt.md
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/review-d3b56fe648a6/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-d9cfc3be3403/PROVENANCE.json
+  h_4b47e9e4a8b456 1-97
+bench/ab-persona/fixtures/reviews/review-d9cfc3be3403/base.patch
+  h_4b47e9e4a8b456 1-2012
+bench/ab-persona/fixtures/reviews/review-d9cfc3be3403/diff.patch
+  h_4b47e9e4a8b456 1-1002
+bench/ab-persona/fixtures/reviews/review-d9cfc3be3403/manifest.json
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/review-d9cfc3be3403/prompt.md
+  h_4b47e9e4a8b456 1-27
+bench/ab-persona/fixtures/reviews/review-d9cfc3be3403/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-e900aa45096b/PROVENANCE.json
+  h_4b47e9e4a8b456 1-60
+bench/ab-persona/fixtures/reviews/review-e900aa45096b/base.patch
+  h_4b47e9e4a8b456 1-835
+bench/ab-persona/fixtures/reviews/review-e900aa45096b/diff.patch
+  h_4b47e9e4a8b456 1-97
+bench/ab-persona/fixtures/reviews/review-e900aa45096b/manifest.json
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/review-e900aa45096b/prompt.md
+  h_4b47e9e4a8b456 1
+bench/ab-persona/fixtures/reviews/review-e900aa45096b/source.json
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/review-ff32ee67d96a/PROVENANCE.json
+  h_4b47e9e4a8b456 1-162
+bench/ab-persona/fixtures/reviews/review-ff32ee67d96a/base.patch
+  h_4b47e9e4a8b456 1-1759
+bench/ab-persona/fixtures/reviews/review-ff32ee67d96a/diff.patch
+  h_4b47e9e4a8b456 1-632
+bench/ab-persona/fixtures/reviews/review-ff32ee67d96a/manifest.json
+  h_4b47e9e4a8b456 1-52
+bench/ab-persona/fixtures/reviews/review-ff32ee67d96a/prompt.md
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/fixtures/reviews/review-ff32ee67d96a/source.json
+  h_4b47e9e4a8b456 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b22f87e312615be36e30cb9b537b0e1e70816d0a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
