@@ -1,0 +1,18 @@
+src/cli/headless-args.ts
+  h_4b47e9e4a8b456 18
+src/cli/root-help.ts
+  h_4b47e9e4a8b456 56
+src/workflows/docs/cli.md
+  h_4b47e9e4a8b456 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "22039b2f4cc5fc5bb7c55737171e5840c2848fdf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
