@@ -53,10 +53,19 @@ type ReviewStratum = "S1" | "S2" | "S3" | "S4" | "plan";
 /** The upper bound of changed lines for each diff stratum; above the last is S4. */
 const STRATUM_BOUNDS: readonly (readonly [Exclude<ReviewStratum, "S4" | "plan">, number])[] = [["S1", 50], ["S2", 200], ["S3", 600]];
 
+/** How a commit-source fixture relates to the review it was built from. A
+ *  `recorded` fixture pins the commit the recorded reviewer worked on. A
+ *  `restore` fixture rebuilds a change reviewed before the public history: it
+ *  pins a public commit, and its `base.patch` turns that tree into the review's
+ *  base for the changed files, so the rest of the tree is newer than the one
+ *  the recorded reviewer saw. */
+type ReviewVariant = "recorded" | "restore";
+const REVIEW_VARIANTS: readonly ReviewVariant[] = ["recorded", "restore"];
+
 /** Where a review sandbox's files come from: the fixture's vendored `project/`
  *  directory, or a commit of this repository with the reviewed diff applied to
  *  its working tree. */
-export type ReviewSource = { readonly kind: "project" } | { readonly kind: "commit"; readonly commit: string };
+export type ReviewSource = { readonly kind: "project" } | { readonly kind: "commit"; readonly commit: string; readonly variant: ReviewVariant };
 
 /** A review task reviews one change in a sandbox that holds every file the
  *  reviewer reads, so a clone of the repository that holds the fixture can run it. */
@@ -115,10 +124,11 @@ const TASKS_BY_PERSONA: TasksByPersona = {
 };
 
 /** The fixture members one review cell reads into its sandbox. A commit source
- *  has no project directory. */
+ *  has no project directory, and has a base patch only when the fixture holds
+ *  `base.patch`. */
 type ReviewFixturePaths =
   | { readonly kind: "project"; readonly artifactPath: string; readonly projectDir: string }
-  | { readonly kind: "commit"; readonly artifactPath: string; readonly commit: string };
+  | { readonly kind: "commit"; readonly artifactPath: string; readonly commit: string; readonly basePatchPath?: string };
 
 type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact" | "source">;
 
@@ -129,7 +139,13 @@ type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact"
  *  first checked it and the copy that uses it, so both moments call this. */
 export async function resolveReviewFixture(fixturesRoot: string, task: ReviewFixtureDescriptor): Promise<ReviewFixturePaths> {
   const artifactPath = await realFileUnder(fixturesRoot, join(task.fixtureDir, task.artifact), `${task.id}/${task.artifact}`);
-  if (task.source.kind === "commit") return { kind: "commit", artifactPath, commit: task.source.commit };
+  if (task.source.kind === "commit") {
+    const basePatch = join(task.fixtureDir, "base.patch");
+    return {
+      kind: "commit", artifactPath, commit: task.source.commit,
+      ...(await isPresent(basePatch) ? { basePatchPath: await realFileUnder(fixturesRoot, basePatch, `${task.id}/base.patch`) } : {}),
+    };
+  }
   return {
     kind: "project",
     artifactPath,
@@ -187,16 +203,25 @@ function parseDefect(value: ReturnType<typeof objectValue>, fixtureId: string): 
 }
 
 /** A commit source names one full commit ID of this repository; the reviewed
- *  diff applies to that commit's tree. */
+ *  diff applies to that commit's tree, after `base.patch` when the fixture has
+ *  one. A source without a variant is `recorded`. */
 async function readCommitSource(fixturesRoot: string, fixtureDir: string, fixtureId: string): Promise<ReviewSource | undefined> {
   const path = join(fixtureDir, "source.json");
   if (!await isPresent(path)) return undefined;
   const value = objectValue(JSON.parse(await Bun.file(await realFileUnder(fixturesRoot, path, `${fixtureId}/source.json`)).text()), `${fixtureId}/source.json`);
-  const unknown = Object.keys(value).find((key) => key !== "commit");
+  const unknown = Object.keys(value).find((key) => key !== "commit" && key !== "variant");
   if (unknown !== undefined) throw new Error(`${fixtureId}/source.json.${unknown} is not a source field`);
-  const commit = value.commit;
+  const { commit, variant = "recorded" } = value;
   if (typeof commit !== "string" || !/^[0-9a-f]{40}$/.test(commit)) throw new Error(`${fixtureId}/source.json commit must be a full 40-character lowercase commit ID`);
-  return { kind: "commit", commit };
+  const known = REVIEW_VARIANTS.find((candidate) => candidate === variant);
+  if (known === undefined) throw new Error(`${fixtureId}/source.json variant must be one of ${REVIEW_VARIANTS.join(", ")}`);
+  return { kind: "commit", commit, variant: known };
+}
+
+/** The identity of a commit source. A recorded source keeps the form it had
+ *  before variants existed, so earlier campaigns over it keep their identity. */
+function commitSourceIdentity(source: ReviewSource): ReviewSource | { kind: "commit"; commit: string } {
+  return source.kind === "commit" && source.variant === "recorded" ? { kind: source.kind, commit: source.commit } : source;
 }
 
 function parseManifest(value: ReturnType<typeof objectValue>, fixtureId: string): ReviewManifest {
@@ -259,7 +284,8 @@ async function loadReviewFixtures(fixturesRoot: string): Promise<ReviewTask[]> {
         artifact: { name: artifact, identity: bytesIdentity(artifactBytes) },
         // A project source keeps the serialized form it had before commit
         // sources returned, so the identities of earlier review campaigns do not change.
-        source: fixture.kind === "commit" ? source : { kind: "project", contentIdentity: await directoryIdentity(fixture.projectDir) },
+        source: fixture.kind === "project" ? { kind: "project", contentIdentity: await directoryIdentity(fixture.projectDir) } : commitSourceIdentity(source),
+        ...(fixture.kind === "commit" && fixture.basePatchPath !== undefined ? { basePatch: bytesIdentity(new Uint8Array(await Bun.file(fixture.basePatchPath).arrayBuffer())) } : {}),
         ...(recordedPrompt === undefined ? {} : { prompt: recordedPrompt }),
       }),
     });

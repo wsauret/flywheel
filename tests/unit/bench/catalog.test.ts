@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { createBenchmarkCatalog, DEFAULT_IMPLEMENTER_TIMEOUT_MS, resolveReviewFixture } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
+import { bytesIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { PLAN_FILE } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
 
 const catalog = createBenchmarkCatalog(process.cwd());
@@ -176,6 +177,40 @@ describe("real-review fixtures", () => {
       manifest: { defects: [] },
     });
     expect(await resolveReviewFixture(fixturesDir, task!)).toEqual({ kind: "commit", artifactPath: join(task!.fixtureDir, "diff.patch"), commit });
+  });
+
+  it("reads a restored source and its base patch, whose bytes join the identity, and keeps a recorded source's identity", async () => {
+    const { fixturesDir, fixtureDir } = await syntheticReviewFixture();
+    await rm(join(fixtureDir, "project"), { recursive: true, force: true });
+    const commit = "a".repeat(40);
+    const reviewCatalog = createBenchmarkCatalog(syntheticRoot ?? "");
+    const load = async () => {
+      const [task] = await reviewCatalog.reviewTasks();
+      if (!task) throw new Error("expected one review task");
+      return task;
+    };
+    await Bun.write(join(fixtureDir, "source.json"), JSON.stringify({ commit }));
+    const recorded = await load();
+    expect(recorded.source).toEqual({ kind: "commit", commit, variant: "recorded" });
+    // The serialized form a commit source had before variants and base patches.
+    expect(recorded.contentIdentity).toBe(structuredIdentity({
+      manifest: recorded.manifest,
+      artifact: { name: "diff.patch", identity: bytesIdentity(await Bun.file(join(fixtureDir, "diff.patch")).bytes()) },
+      source: { kind: "commit", commit },
+    }));
+    await Bun.write(join(fixtureDir, "source.json"), JSON.stringify({ commit, variant: "recorded" }));
+    expect((await load()).contentIdentity).toBe(recorded.contentIdentity);
+
+    await Bun.write(join(fixtureDir, "source.json"), JSON.stringify({ commit, variant: "restore" }));
+    await Bun.write(join(fixtureDir, "base.patch"), "diff --git a/ledger.ts b/ledger.ts\n");
+    const restored = await load();
+    expect(restored.source).toEqual({ kind: "commit", commit, variant: "restore" });
+    expect(await resolveReviewFixture(fixturesDir, restored)).toEqual({ kind: "commit", artifactPath: join(restored.fixtureDir, "diff.patch"), commit, basePatchPath: join(restored.fixtureDir, "base.patch") });
+    await Bun.write(join(fixtureDir, "base.patch"), "diff --git a/ledger.ts b/ledger.ts\n+changed\n");
+    expect((await load()).contentIdentity).not.toBe(restored.contentIdentity);
+
+    await Bun.write(join(fixtureDir, "source.json"), JSON.stringify({ commit, variant: "rebuilt" }));
+    await expect(reviewCatalog.reviewTasks()).rejects.toThrow(/variant must be one of recorded, restore/);
   });
 
   it("places a diff in the stratum of its changed lines", async () => {

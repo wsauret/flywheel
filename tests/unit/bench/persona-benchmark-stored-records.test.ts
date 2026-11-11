@@ -253,10 +253,11 @@ describe("benchmark stored-record validation", () => {
       .rejects.toThrow(/names defect ghost-defect, which billing-ledger does not seed/);
   });
 
-  it("reports control alarms and unsupported P1/P2 findings by diff stratum, and marks a candidate on the judge's model", async () => {
+  it("reports control alarms and unsupported P1/P2 findings by diff stratum, the fixture origins, and marks a candidate on the judge's model", async () => {
     const root = await reviewerProject();
     const control = join(root, "bench", "ab-persona", "fixtures", "reviews", "clean-change");
-    await mkdir(join(control, "project"), { recursive: true });
+    await mkdir(control, { recursive: true });
+    await Bun.write(join(control, "source.json"), JSON.stringify({ commit: "a".repeat(40), variant: "restore" }));
     await Bun.write(join(control, "diff.patch"), `diff --git a/a.ts b/a.ts\n--- a/a.ts\n+++ b/a.ts\n@@ -1 +1,60 @@\n${Array.from({ length: 60 }, (_, line) => `+${line}`).join("\n")}\n`);
     await Bun.write(join(control, "manifest.json"), JSON.stringify({ title: "Clean change", review_prompt_hint: "", defects: [] }));
     const catalog = createBenchmarkCatalog(root);
@@ -276,6 +277,7 @@ describe("benchmark stored-record validation", () => {
     if (outcome.status !== "completed") throw new Error(`expected completion, got ${outcome.status}`);
     const rows = outcome.report.split("\n");
     expect(rows).toContain("Judge: model-a:high. Candidates that share its model, marked [judge model], may be scored in their favor: model-a@medium.");
+    expect(rows.find((row) => row.startsWith("Fixtures: "))).toStartWith("Fixtures: 0 recorded, 1 restored, 1 hand-authored.");
     expect(rows.find((row) => row.startsWith("| S1 |"))).toStartWith("| S1 | 1 | 0 | model-a@medium [judge model] | 1 | 1/1 (100.0%) | 3 (1) | n/a |");
     expect(rows.find((row) => row.startsWith("| S2 |"))).toStartWith("| S2 | 0 | 1 | model-a@medium [judge model] | 1 | n/a | 0 (0) | 1/1 (100.0%), mean 2.00 |");
     expect(rows.find((row) => row.startsWith("| model-a@medium [judge model] | 2 |"))).toStartWith("| model-a@medium [judge model] | 2 | 1/1 (100.0%) | 0 | 3 (1) | 1/1 (100.0%), mean 2.00 |");

@@ -269,6 +269,14 @@ function judgeLine(args: ReportArgs): string {
     : `Candidates that share its model, marked [judge model], may be scored in their favor: ${shared.join(", ")}.`}`;
 }
 
+/** How many fixtures of each origin the run covers. Recall on a restored
+ *  change is measured on a rebuilt base, not on the tree its recorded review
+ *  saw, so a reader must know the mix. */
+function fixtureOriginLine(tasks: readonly ReviewTask[]): string {
+  const count = (variant: string) => tasks.filter((task) => (task.source.kind === "commit" ? task.source.variant : "authored") === variant).length;
+  return `Fixtures: ${count("recorded")} recorded, ${count("restore")} restored, ${count("authored")} hand-authored. A restored fixture rebuilds a change reviewed before the public history on a public commit, so the files around the change are newer than the ones its recorded reviewer saw.`;
+}
+
 function reviewMetricRows(args: ReportArgs, tasks: readonly ReviewTask[], results: readonly RunResult[], scores: readonly ReviewScore[]): string[] {
   return tasks.flatMap((task) => args.variants.map((variant) => {
     const tally = reviewTally([task], variant.id, results, scores);
@@ -304,6 +312,8 @@ export function renderReviewReport(args: ReportArgs, tasks: readonly ReviewTask[
     `Run: ${stamp}`,
     "",
     judgeLine(args),
+    "",
+    fixtureOriginLine(tasks),
     "",
     "| Variant | Model | Effort |",
     "|---|---|---|",

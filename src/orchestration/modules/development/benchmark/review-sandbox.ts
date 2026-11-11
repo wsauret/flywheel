@@ -7,9 +7,10 @@ import { materializeCommitSnapshot } from "./snapshot-workspace.js";
 
 /** Fill a review sandbox with what the recorded reviewer saw. A project source
  *  copies the vendored tree and the artifact. A commit source is a Git
- *  repository whose one commit is the base tree and whose working tree holds
- *  the reviewed diff uncommitted, because recorded review prompts read the
- *  change through git diff. No manifest, provenance, or fix enters either. */
+ *  repository whose one commit is the base tree, with the fixture's base patch
+ *  applied when it has one, and whose working tree holds the reviewed diff
+ *  uncommitted, because recorded review prompts read the change through git
+ *  diff. No manifest, provenance, or fix enters either. */
 export async function materializeReviewSandbox(catalog: BenchmarkCatalog, task: ReviewTask, sandbox: string, run: OwnedCommandRunner): Promise<void> {
   const fixture = await resolveReviewFixture(catalog.reviewFixturesDir, task);
   if (fixture.kind === "project") {
@@ -19,7 +20,10 @@ export async function materializeReviewSandbox(catalog: BenchmarkCatalog, task: 
   }
   const options = { cwd: sandbox, sandboxDir: sandbox };
   await materializeCommitSnapshot(catalog.projectRoot, { commit: fixture.commit, paths: [] }, sandbox, run);
+  // The sandbox is its own repository before any patch applies, so git apply
+  // resolves every path from the sandbox root and never from an enclosing one.
   await runCheckedSandboxCommand(run, ["git", "init", "-q"], options);
+  if (fixture.basePatchPath !== undefined) await runCheckedSandboxCommand(run, ["git", "apply", "--whitespace=nowarn", fixture.basePatchPath], options);
   // The archive holds tracked files only, so every one is staged, including a
   // tracked file that a .gitignore pattern matches. The sandbox commands' home
   // is removed before the trial starts and never enters the base commit.
