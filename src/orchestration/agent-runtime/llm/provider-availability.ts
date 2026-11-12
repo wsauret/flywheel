@@ -12,6 +12,7 @@ import { abortableSleep, awaitWithAbortSignal } from "../../../infra/abort.js";
 import { CHATGPT_RATE_LIMIT_HEADER_PREFIX } from "../../../infra/auth/openai-auth-types.js";
 import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { errorMessage } from "../../../infra/error-message.js";
+import type { CapacityHold } from "../../../infra/llm/provider-error-copy.js";
 import { Log } from "../../../infra/log.js";
 import { isRecord } from "../../../infra/record.js";
 import {
@@ -58,6 +59,10 @@ const CHATGPT_WINDOWS = ["primary", "secondary"] as const;
  *  each one is fully replenished (`anthropic-ratelimit-<limit>-reset`). They
  *  all meter the one account, so they fold into its one row. */
 const ANTHROPIC_RATE_LIMITS = ["requests", "tokens", "input-tokens", "output-tokens"] as const;
+
+/** The source of a row that the Anthropic rate-limit headers wrote. Every
+ *  other exhausted account row is a spent usage limit, quota, or credit. */
+const ANTHROPIC_RATE_LIMIT_SOURCE = "anthropic-rate-headers";
 
 /** How long a suppression the provider stated no reset for holds. It is a
  *  safe recheck bound, not a capacity claim: after it, one request finds out
@@ -180,6 +185,16 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
     return until !== undefined && until > now() ? until : undefined;
   }
 
+  /** The exhaustion that an exhausted row states until `untilMs`, and what holds it. A service row holds an outage
+   *  until its recheck. An account row holds a rate limit when the rate-limit headers wrote it, and otherwise a spent
+   *  limit, whose reset the provider stated or not. */
+  function exhaustionOf(row: AvailabilityRow, untilMs: number): QuotaExhaustion {
+    const hold: CapacityHold = row.scope === "provider" ? { kind: "recheck" }
+      : row.source === ANTHROPIC_RATE_LIMIT_SOURCE ? { kind: "rate_limit" }
+      : { kind: "usage_limit", stated: row.resetsAtMs !== undefined };
+    return { exhaustedAtMs: row.observedAtMs, resetsAtMs: untilMs, hold };
+  }
+
   /** How long a new outage mark holds, given the service row it lands on. A
    *  mark inside a standing hold restates the outage at the same length: two
    *  sessions spending their retries at once is one outage, not a longer one.
@@ -224,7 +239,7 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
     const row = rows.get(rowKey(key));
     if (!row) return undefined;
     const until = suppressedUntilMs(row);
-    return until === undefined ? undefined : { exhaustedAtMs: row.observedAtMs, resetsAtMs: until };
+    return until === undefined ? undefined : exhaustionOf(row, until);
   }
 
 
@@ -315,7 +330,7 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
     const resetsAtMs = current?.resetsAtMs ?? current?.nextProbeAtMs;
     if (current?.state === "exhausted" && resetsAtMs !== undefined) {
       return {
-        exhaustion: { exhaustedAtMs: current.observedAtMs, resetsAtMs },
+        exhaustion: exhaustionOf(current, resetsAtMs),
         newlyExhausted: result.committed && !wasExhausted,
         reportedResetAtMs: current.resetsAtMs,
       };
@@ -404,15 +419,13 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
       });
       const suppressed = exhausted.flatMap((row) => {
         const until = suppressedUntilMs(row);
-        return until === undefined ? [] : [{ exhaustedAtMs: row.observedAtMs, resetsAtMs: until }];
+        return until === undefined ? [] : [exhaustionOf(row, until)];
       });
       if (suppressed.length > 0) {
+        const latest = suppressed.reduce((held, entry) => entry.resetsAtMs > held.resetsAtMs ? entry : held);
         return {
           kind: "suppressed",
-          exhaustion: {
-            exhaustedAtMs: Math.max(...suppressed.map((entry) => entry.exhaustedAtMs)),
-            resetsAtMs: Math.max(...suppressed.map((entry) => entry.resetsAtMs)),
-          },
+          exhaustion: { ...latest, exhaustedAtMs: Math.max(...suppressed.map((entry) => entry.exhaustedAtMs)) },
         };
       }
       if (exhausted.length === 0) return { kind: "live" };
@@ -521,7 +534,7 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
           const resetsAtMs = Date.parse(headers.get(`anthropic-ratelimit-${limit}-reset`) ?? "");
           return Number.isFinite(resetsAtMs) && resetsAtMs > observedAtMs ? [resetsAtMs] : [];
         });
-        if (resets.length > 0) observeBestEffort(accountKey(candidate, GENERIC_QUOTA_WINDOW), { observedAtMs, source: "anthropic-rate-headers", state: "exhausted", resetsAtMs: Math.max(...resets) });
+        if (resets.length > 0) observeBestEffort(accountKey(candidate, GENERIC_QUOTA_WINDOW), { observedAtMs, source: ANTHROPIC_RATE_LIMIT_SOURCE, state: "exhausted", resetsAtMs: Math.max(...resets) });
       },
 
       chatGptStanding: standingFor,

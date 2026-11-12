@@ -83,12 +83,34 @@ const EXHAUSTED_COPY = {
   extended_context: { presentation: "provider.unavailable", title: "Extended context not available", message: "The provider accounts for this model do not grant its extended context window. Flywheel uses the standard window for the next request." },
 } as const satisfies { [Cause in ProviderUnavailableCause]: ProviderErrorCopy };
 
+/** What holds a refused candidate until a time: a usage limit, quota, or
+ *  credit balance that is spent, such as a subscription's weekly limit,
+ *  which only its reset or a person restores, with `stated` false when the
+ *  provider stated no reset and the time is Flywheel's safe recheck moment;
+ *  a rate limit whose reset its provider stated, which clears by itself
+ *  within moments; or Flywheel's own recheck of an outage, a lost connection,
+ *  or a refusal that no gate holds, which can clear by itself. */
+export type CapacityHold =
+  | { readonly kind: "usage_limit"; readonly stated: boolean }
+  | { readonly kind: "rate_limit" }
+  | { readonly kind: "recheck" };
+
+/** When a refused candidate can be tried again, and what holds it until then. */
+export interface CapacityReset {
+  readonly atMs: number;
+  readonly hold: CapacityHold;
+}
+
 /** What a later request can do after no candidate served one: run once
  *  `atMs` passes, when every candidate that waiting can help states when it
- *  can serve again; run again with no known time; or nothing, when only
- *  causes that a person clears refused it. */
+ *  can serve again, with `hold` naming what holds that earliest time; run
+ *  again with no known time; or nothing, when only causes that a person
+ *  clears refused it. When `hold` is a spent limit and a hold of another
+ *  candidate clears by itself at a later time, `selfClearing` is the earliest
+ *  such time and its hold: a run that does not wait for a spent limit waits
+ *  for it instead (PI-AGENT-128). */
 export type ProviderRecovery =
-  | { readonly kind: "at"; readonly atMs: number }
+  | ({ readonly kind: "at"; readonly selfClearing?: CapacityReset } & CapacityReset)
   | { readonly kind: "retry" }
   | { readonly kind: "none" };
 
@@ -96,10 +118,22 @@ export type ProviderRecovery =
  *  bound is the moment at which a request can recheck a candidate, which is
  *  the bound the copy states. An extended context refusal is retryable,
  *  because the next request uses the standard window. */
-export function exhaustedProvidersRecovery(candidates: readonly { readonly cause: ProviderUnavailableCause; readonly resetsAtMs: number | undefined }[]): ProviderRecovery {
+export function exhaustedProvidersRecovery(candidates: readonly { readonly cause: ProviderUnavailableCause; readonly reset: CapacityReset | undefined }[]): ProviderRecovery {
   const retryable = candidates.filter((candidate) => waitingClears(candidate.cause));
-  const bounds = retryable.flatMap((candidate) => candidate.resetsAtMs === undefined ? [] : [candidate.resetsAtMs]);
-  if (bounds.length > 0 && bounds.length === retryable.length) return { kind: "at", atMs: Math.min(...bounds) };
+  const resets = retryable.flatMap((candidate) => candidate.reset === undefined ? [] : [candidate.reset]);
+  if (resets.length > 0 && resets.length === retryable.length) {
+    const atMs = Math.min(...resets.map((reset) => reset.atMs));
+    // A hold that clears by itself at the earliest time can find a candidate that serves, so it decides a tie. When
+    // every hold there is a spent limit, a stated reset names the time best.
+    const earliest = resets.filter((reset) => reset.atMs === atMs).map((reset) => reset.hold);
+    const hold = earliest.find((held) => held.kind !== "usage_limit")
+      ?? earliest.find((held) => held.kind === "usage_limit" && held.stated)
+      ?? { kind: "usage_limit", stated: false };
+    const selfClearing = hold.kind === "usage_limit"
+      ? resets.filter((reset) => reset.hold.kind !== "usage_limit").reduce<CapacityReset | undefined>((held, reset) => held === undefined || reset.atMs < held.atMs ? reset : held, undefined)
+      : undefined;
+    return { kind: "at", atMs, hold, ...(selfClearing === undefined ? {} : { selfClearing }) };
+  }
   if (retryable.length > 0 || candidates.some((candidate) => candidate.cause === "extended_context")) return { kind: "retry" };
   return { kind: "none" };
 }
@@ -114,7 +148,7 @@ export function exhaustedProvidersCopy(candidates: readonly {
   readonly provider: string;
   readonly cause: ProviderUnavailableCause;
   readonly detail: string;
-  readonly resetsAtMs: number | undefined;
+  readonly reset: CapacityReset | undefined;
   readonly bankedReset?: boolean;
 }[]): ProviderErrorCopy {
   const causes = new Set(candidates.map((candidate) => candidate.cause).filter((cause) => cause !== "ineligible"));
@@ -123,7 +157,7 @@ export function exhaustedProvidersCopy(candidates: readonly {
   const base: ProviderErrorCopy = cause === undefined
     ? { presentation: "provider.unavailable", title: "Providers unavailable", message: "The configured providers cannot serve this model for different reasons." }
     : EXHAUSTED_COPY[cause];
-  const bounds = candidates.flatMap((candidate) => candidate.resetsAtMs === undefined ? [] : [candidate.resetsAtMs]);
+  const bounds = candidates.flatMap((candidate) => candidate.reset === undefined ? [] : [candidate.reset.atMs]);
   const bound = bounds.length === 0 ? undefined : new Date(Math.min(...bounds)).toLocaleString();
   const recovery = exhaustedProvidersRecovery(candidates);
   const waitBound = recovery.kind === "at" ? new Date(recovery.atMs).toLocaleString() : undefined;
@@ -133,7 +167,7 @@ export function exhaustedProvidersCopy(candidates: readonly {
   return {
     ...base,
     message: `${base.message}${skipped}${waitBound !== undefined
-      ? ` A request after ${waitBound} can recheck provider availability.`
+      ? `${recovery.kind === "at" && recovery.hold.kind === "usage_limit" && !recovery.hold.stated ? " No reset time is known." : ""} A request after ${waitBound} can recheck provider availability.`
       : bound === undefined ? "" : ` Some candidates have a reset or recheck bound at ${bound}.`}`,
     guidance: exhaustedGuidance(cause, waitBound !== undefined),
     detail: [...new Set(candidates.map((candidate) =>

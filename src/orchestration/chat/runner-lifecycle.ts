@@ -99,7 +99,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     host, sessionId,
     readLastTurnWaitsForPerson: async () => waitsForPerson((await readChatTurnEndEvidence(deps.infra.projectionReader, deps.conversationId, { restoreWait: true }))?.turnEnd),
   })
-  const capacity = createChatCapacityWait({ sessionId, conversationId: deps.conversationId, eventStore: deps.infra.eventStore, onNotice: (operation) => { emit("agent.notice.changed", { sessionId, data: { operation } }) } })
+  const capacity = createChatCapacityWait({ sessionId, conversationId: deps.conversationId, unattended: deps.rootChatCompletion?.unattended === true, eventStore: deps.infra.eventStore, onNotice: (operation) => { emit("agent.notice.changed", { sessionId, data: { operation } }) } })
   const durability = createChatTurnDurability(() => deps.treeWriter.endTurn(), (error) => deps.onTreeFailure(error))
   const { background, notifications, onBackgroundEvent } = createChatBackground({
     deps, emit, mailbox, awaitDurableFacts, admitsInput: () => !state.ended && !deps.rootChatCompletion?.sealed,
