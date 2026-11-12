@@ -164,7 +164,7 @@ describe("chat runner lifecycle queued input recall", () => {
   })
 
   it.each(["during", "after"] as const)("a recall %s an idle landing's commit takes the held send out of the conversation", async (when) => {
-    const { lifecycle, deps, retirement, cleanup } = makeRecallLifecycle("flywheel-recall-idle-commit-")
+    const { lifecycle, deps, retirement, runnerStarted, cleanup } = makeRecallLifecycle("flywheel-recall-idle-commit-")
     const commitEntered = Promise.withResolvers<void>()
     const commitRelease = Promise.withResolvers<void>()
     const committed = Promise.withResolvers<void>()
@@ -192,6 +192,9 @@ describe("chat runner lifecycle queued input recall", () => {
 
       await expect(recall).resolves.toEqual({ text: "words I take back" })
       await delivering
+      // The landing wakes the notification's own turn. Its runner starts
+      // after context building, so the cleanup can end it only once it started.
+      await runnerStarted
       const { messages } = await deps.treeWriter.buildContext()
       expect(messages.filter((message) => message.kind === "user" && JSON.stringify(message.content).includes("words I take back"))).toEqual([])
     } finally {

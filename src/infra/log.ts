@@ -30,7 +30,8 @@ export namespace Log {
 
   const VALID_LEVELS: ReadonlySet<string> = new Set<Level>(["DEBUG", "INFO", "WARN", "ERROR"])
 
-  let level: Level = "INFO"
+  const DEFAULT_LEVEL: Level = "INFO"
+  let level: Level = DEFAULT_LEVEL
 
   const shouldLog = (input: Level): boolean => {
     return levelPriority[input] >= levelPriority[level]
@@ -243,7 +244,12 @@ export namespace Log {
     return value && isLevel(value) ? value : undefined
   }
 
+  /** Close this realm's sink and reset its level to the default and its
+   *  verbose families to none, so a later process or test in this realm does
+   *  not inherit a debug level. The fallback destination is not reset. */
   export const closeGlobal = async (): Promise<void> => {
+    level = DEFAULT_LEVEL
+    DebugLog.setVerbose(false)
     await DebugLog.close()
   }
 
