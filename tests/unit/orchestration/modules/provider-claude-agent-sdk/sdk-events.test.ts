@@ -92,6 +92,8 @@ describe("the SDK message classification", () => {
     expect(billing({ status: "allowed", isUsingOverage: false })).toBe("unconfirmed");
     // The engine's report of a 429 without those headers (CLI 2.1.296): the service refused the request, which spent nothing.
     expect(billing({ status: "rejected", isUsingOverage: false })).toBe("refused");
+    // A rejection on a limit that is no usage window, such as too many concurrent requests (CLI 2.1.321), served nothing.
+    expect(billing({ status: "rejected", rateLimitType: "concurrents" as SDKRateLimitInfo["rateLimitType"], isUsingOverage: false })).toBe("refused");
   });
 });
 

@@ -61,15 +61,16 @@ type RateLimitReport = Pick<SDKRateLimitInfo, "status" | "rateLimitType" | "util
  * process (CLI 2.1.295). `extra-usage`: the account served the response from Claude extra usage. The CLI sets
  * `isUsingOverage` when a spent window's overflow goes to extra usage, `overageInUse` copies the service's own
  * overage-in-use header, and an `overage` window is extra usage itself. `included`: the event names a usage window
- * and no extra usage. `refused`: the event names no window and states `rejected`, as for a 429 without the service's
- * usage headers (CLI 2.1.296). The service refused the request, so the response spent no usage. `unconfirmed`: the
- * event names no window, as for a response without the service's usage headers, so nothing shows which usage served it.
+ * and no extra usage. `refused`: the event names no usage window and states `rejected`, as for a 429 without the
+ * service's usage headers (CLI 2.1.296) or for too many concurrent requests (`concurrents`, CLI 2.1.321). The service
+ * refused the request, so the response spent no usage. `unconfirmed`: the event names no usage window, as for a
+ * response without the service's usage headers, so nothing shows which usage served it.
  */
 type ResponseBilling = "included" | "extra-usage" | "refused" | "unconfirmed";
 
 function responseBilling(info: RateLimitReport): ResponseBilling {
   if (info.isUsingOverage === true || info.overageInUse === true || info.rateLimitType === "overage") return "extra-usage";
-  if (info.rateLimitType !== undefined) return "included";
+  if (info.rateLimitType !== undefined && USAGE_WINDOWS.has(info.rateLimitType)) return "included";
   return info.status === "rejected" ? "refused" : "unconfirmed";
 }
 
