@@ -164,7 +164,7 @@ Each file offers Undo, which asks for confirmation and then restores the file to
 
 ## PI-INTERACTION-009: A pending question docks at the prompt
 
-While a chat waits on a question, the question and its choices appear at the prompt in the command menu's frame, and leave once answered or skipped. On every client, Escape skips the question, and an answer or skip that no longer applies says why. The transcript then records an Ask User entry with one row per question, titled by its header and showing the answer, and marks a skipped question cancelled. A pending question survives a closed session or a stopped Flywheel, and reopening the session shows it at the prompt again, where an answer continues the turn.
+While a chat waits on a question, the question and its choices appear at the prompt in the command menu's frame, and leave once answered or skipped. There, Escape skips it on every client, and an answer or skip that no longer applies says why. The transcript then records an Ask User entry with one row per question, titled by its header and showing the answer, and marks a skipped question cancelled. A pending question survives a closed session or a stopped Flywheel, and reopening the session shows it at the prompt again, where an answer continues the turn.
 
 ## PI-INTERACTION-085: Ask User entries read in full in the transcript
 

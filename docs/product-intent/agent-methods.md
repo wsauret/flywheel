@@ -120,7 +120,7 @@ Each conversation has one checkpoint with named sections for the design intent, 
 
 ## PI-AGENT-088: Agents keep intent, decisions, and skills current
 
-Agents record the user's design intent in the checkpoint from the moment a request arrives, update it as discussion and experiments change it, and mark it when the user approves it. Each user decision records its date, the user's words, and the decision it replaces. Agents record which loaded skills stay relevant to ongoing work and reload them when they recover context.
+Agents record the user's design intent in the checkpoint from the moment a request arrives, update it as discussion and experiments change it, and mark it when the user approves it. Each user decision records its date, the user's words, and the decision it replaces. Agents record which loaded skills stay relevant to ongoing work and reload them when they recover context. The lead keeps no design intent and records which chat received each request.
 
 ## PI-AGENT-089: Executions meet the context limit by how they can recover
 
@@ -232,7 +232,7 @@ When a model response reaches its output limit, Flywheel makes only bounded auto
 
 ## PI-AGENT-024: Only the root chat asks the person
 
-Only a chat that no other session started asks the person. A subagent or workflow agent asks its parent with the evidence and waits for the reply only when the design and evidence cannot settle a choice or a missing prerequisite blocks every next action. The parent answers from what it knows, or asks its own parent or its person in its own words, then replies. When no parent can answer now, as in an unattended run with no connected parent chat, the child learns this at once, continues on its own judgment, and states its assumptions in its result.
+Only a chat asks the person, including one the lead started. A subagent or workflow agent asks its parent with the evidence and waits for the reply only when the design and evidence cannot settle a choice or a missing prerequisite blocks every next action. The parent answers from what it knows, or asks its own parent or its person in its own words, then replies. When no parent can answer now, as in an unattended run with no connected parent chat, the child learns this at once, continues on its own judgment, and states its assumptions in its result.
 
 ## PI-AGENT-123: An open choice follows the request, then established practice
 

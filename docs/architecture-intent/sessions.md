@@ -213,3 +213,18 @@ Because: An append to a stale leaf drops another writer's entry off the active b
 
 A user turn commits before its provider request begins. Assistant output and tool plumbing accumulate in the writing process and commit as one validated batch at a save point (ARCH-SESSIONS-034). The store append is the durability boundary, and the in-memory projection advances only after it succeeds. Unflushed output is visible only to the writing process, forks and compaction operate on committed history, and ordered disposal performs a final flush.
 Not: Fire-and-forget disposal of the conversation, which loses data.
+
+## ARCH-SESSIONS-050: A chat that the lead started has no parent
+
+A chat that the lead started is a root chat with no parent binding, and no session metadata names the lead. The lead module records the lead chat, the chats it started, and each read mark in its own facts.
+Because: Owned-child rules, such as reply waits, cascade deletion, and questions that go to the parent, do not fit a chat that the person works with directly.
+Not: A launch binding or a new session kind for a chat that the lead started.
+
+## ARCH-SESSIONS-051: A forward copies the person's entries
+
+The runtime routes a request by copying the person's own conversation entries from the lead to the target chat with human provenance. The model names the target and never supplies request text. The lead module records each forward in its own fact. A person's message that the lead forwards is that person's message.
+Not: A brief that the lead writes, or a session-provenance message that carries the request.
+
+## ARCH-SESSIONS-052: Chat events reach the lead as notices
+
+When a chat that the lead started asks the person a question, ends a turn, fails, or is cut, the runtime records one system-origin notice for the lead. Notices derive from live state, coalesce while the lead works, and never count as a person's turn.
