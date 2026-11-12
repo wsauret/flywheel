@@ -1,0 +1,26 @@
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 216-230
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 224-227
+docs/product-intent/README.md
+  h_4b47e9e4a8b456 33
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 119,231
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 167
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 1-35
+docs/terminology.md
+  h_4b47e9e4a8b456 86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "766650162548e148c2a22afa8eaea88cc949c704",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
