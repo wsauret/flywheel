@@ -32,7 +32,7 @@ Explicit requirements and confirmed correctness, behavioral, security, data-inte
 
 ## Catalog
 
-Lead a structural finding's Failure with one of these names. A finding that leads with a catalog name is routed to a reshape of the affected code or plan milestone rather than a local patch, so the name is the first token.
+Lead a structural finding's Failure with one of these names. A finding that leads with a catalog name is routed to a reshape of the affected code or plan milestone rather than a local patch, so the name is the first token. Use a name only when the remedy changes structure. State a behavioral, test, performance, or documentation defect by the failure it causes, with no catalog name, so that it is routed to a local fix.
 
 | Name | Signal | Elegant alternative |
 |---|---|---|
