@@ -1,0 +1,64 @@
+src/tui/components/composer-types.ts
+  h_4b47e9e4a8b456 26-28,78-79,91-93
+src/tui/components/composer.tsx
+  h_4b47e9e4a8b456 117,300,584,659,681,683-684
+src/tui/context/keymap.tsx
+  h_4b47e9e4a8b456 22
+src/tui/hooks/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 24-26,87
+src/tui/hooks/create-composer-focus.ts
+  h_4b47e9e4a8b456 18-21,23,47,52
+src/tui/hooks/create-keyboard-handler.ts
+  h_4b47e9e4a8b456 9,56,201-202,204-210
+src/tui/hooks/create-module-slots.tsx
+  h_4b47e9e4a8b456 10,16-18,40-47,50-51,66-72,210-273,275-277,282,285,291
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 106-108,624
+src/tui/hooks/use-chat-mode.ts
+  h_4b47e9e4a8b456 18-20,39,50
+src/tui/keymap/keymap.ts
+  h_4b47e9e4a8b456 56-57,204
+src/tui/question-dock-form.ts
+  h_4b47e9e4a8b456 19-21,363-364,374,386
+src/tui/question-dock.tsx
+  h_4b47e9e4a8b456 6,14,24,27-32,44-48,77-78,81-82,89-90,263
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 181,220,314,468,508,598,627-628,638
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 12-13,29-34
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 27-56,62-65
+tests/unit/tui/components/prompt-area-draft.test.ts
+  h_4b47e9e4a8b456 166,222
+tests/unit/tui/components/prompt-area-fixture.ts
+  h_4b47e9e4a8b456 1,44-46,82,119-120
+tests/unit/tui/hooks/create-composer-border-layout.test.ts
+  h_4b47e9e4a8b456 51-73
+tests/unit/tui/hooks/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 5,19-23,190-288
+tests/unit/tui/hooks/prompt-focus.test.ts
+  h_4b47e9e4a8b456 26
+tests/unit/tui/hooks/use-chat-mode.test.ts
+  h_4b47e9e4a8b456 8,12,14-15,27-29
+tests/unit/tui/keyboard-handler.test.ts
+  h_4b47e9e4a8b456 57,433-484
+tests/unit/tui/modules/experiments.test.tsx
+  h_4b47e9e4a8b456 115
+tests/unit/tui/modules/side-question/modal.test.tsx
+  h_4b47e9e4a8b456 166
+tests/unit/tui/question-dock-form-keys.test.ts
+  h_4b47e9e4a8b456 6,63-101
+tests/unit/tui/question-dock.test.tsx
+  h_4b47e9e4a8b456 4,9,66,76-81,132,141-142,144-152,158-192,549
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "44131ca427360ad6e9de2da7352efda39e7cfa1a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
