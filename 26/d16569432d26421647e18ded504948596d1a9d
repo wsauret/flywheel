@@ -1,0 +1,60 @@
+docs/terminology.md
+  h_4b47e9e4a8b456 88
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 291-295
+src/infra/diagnostics-registry.ts
+  h_4b47e9e4a8b456 173-175
+src/orchestration/app-service/chat-runner-deps.ts
+  h_4b47e9e4a8b456 61
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 31,45-47
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 67,277,325,328,350,552
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 12,171-172
+src/orchestration/app-service/session-event-notices.ts
+  h_4b47e9e4a8b456 1-153
+src/orchestration/chat/host-ports.ts
+  h_4b47e9e4a8b456 6,32-33
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 19,53-54,285-289,307,340,393-394,453,465,623-624,669,692
+src/orchestration/chat/runner-message-delivery.ts
+  h_4b47e9e4a8b456 8,18-19,22,27,29-32,86,92-110
+src/orchestration/chat/runner-types.ts
+  h_4b47e9e4a8b456 19-26,47-51
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 109,275
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 17,147-148,215,413
+src/orchestration/runner/ask-user-controller.ts
+  h_4b47e9e4a8b456 41-42,94-97
+tests/fixtures/runtime-supervisor-fixtures.ts
+  h_4b47e9e4a8b456 230
+tests/unit/orchestration/app-service/_frontend-projection-fixtures.ts
+  h_4b47e9e4a8b456 121
+tests/unit/orchestration/app-service/session-event-notices.test.ts
+  h_4b47e9e4a8b456 1-187
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 57
+tests/unit/orchestration/chat/chat-runner-lifecycle-session-events.test.ts
+  h_4b47e9e4a8b456 1-251
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 170
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 252
+tests/unit/orchestration/session-store/session-store.test.ts
+  h_4b47e9e4a8b456 47
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "26d16569432d26421647e18ded504948596d1a9d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
