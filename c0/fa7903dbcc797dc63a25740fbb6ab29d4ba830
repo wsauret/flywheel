@@ -1,0 +1,26 @@
+src/orchestration/app-service/project-state-sessions.ts
+  h_4b47e9e4a8b456 169
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 134-135
+src/orchestration/app-service/session-chat-durability.ts
+  h_4b47e9e4a8b456 65-68,83
+src/orchestration/session/manager.ts
+  h_4b47e9e4a8b456 92-93,327,338
+src/orchestration/session/schemas.ts
+  h_4b47e9e4a8b456 151
+tests/unit/orchestration/app-service/runtime-supervisor-tombstone.test.ts
+  h_4b47e9e4a8b456 152-168
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 99,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c0fa7903dbcc797dc63a25740fbb6ab29d4ba830",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
