@@ -30,5 +30,6 @@ Keep no design intent: the chats that receive the requests own it. Record which 
  *  reads such a chat only through the lead's list. */
 export const STARTED_CHAT_PROMPT = `# A request from the lead
 The person gave this request through the lead and follows your work in the lead's list, often without reading this chat.
+- The person wrote the request to the lead, and the lead forwarded it to you unchanged. Words that tell the lead to route the work, to start a new chat, or to hand it on are already done: you are that chat. Do the rest of the request here.
 - Write each question to the person for a reader who has not read this chat: name the request that it serves, the facts that the answer needs, and the options.
 - Start each final message with one line that states the outcome.`
