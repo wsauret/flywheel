@@ -114,7 +114,7 @@ export function Composer(props: ComposerProps) {
   let programmaticEdit = false
   // A pending question owns the keys. The prompt stays on screen until the
   // dock has measured itself, but it must not take a key in that frame.
-  const attachComposerFocus = createComposerFocus(() => props.captureFocus() && !pendingQuestionOwner(), () => props.foregroundId())
+  const composerFocus = createComposerFocus(() => props.captureFocus() && !pendingQuestionOwner(), () => props.foregroundId())
 
   const rankedNames = createMemo(() => {
     const names = props.completableNames()
@@ -297,7 +297,7 @@ export function Composer(props: ComposerProps) {
   }
 
   onMount(() => props.ref?.({
-    persistDraft: persistCurrentDraft,
+    persistDraft: persistCurrentDraft, syncFocus: composerFocus.sync,
     appendInput: (sessionId, input) => mergeIntoDraft(input, sessionId),
     adoptDraft(pendingKey, sessionId) {
       if (promptRef.current() && (bufferOwnerId === pendingKey || bufferOwnerId === sessionId)) {
@@ -581,7 +581,7 @@ export function Composer(props: ComposerProps) {
             theme={theme}
             width={props.lineWidth()}
             bodyHeight={promptBodyHeight()}
-            onMouseDown={() => promptRef.current()?.focus?.()}
+            onMouseDown={() => { props.onPromptPress(); composerFocus.sync() }}
             topRightChunks={borderChunks.topRightChunks}
             bottomLeftChunks={borderChunks.bottomLeftChunks}
             bottomRightChunks={borderChunks.bottomRightChunks}
@@ -656,7 +656,7 @@ export function Composer(props: ComposerProps) {
                     setCursorCol(ev.visualColumn)
                   }
                   loadDraftIntoPrompt(draftOwnerId())
-                  attachComposerFocus(r)
+                  composerFocus.attach(r)
                 }}
               >
               <Show when={ghostContent()}>
@@ -678,10 +678,10 @@ export function Composer(props: ComposerProps) {
           <QuestionDock
             sessionId={pq().sessionId}
             question={pq().question}
-            draftCache={props.draftCache}
+            drafts={props.draftCache.questions}
             width={props.lineWidth()}
-            onAnswer={(answers) => props.onAnswerQuestion(pq().question.toolUseId, answers)}
-            onCancel={() => props.onCancelQuestion(pq().question.toolUseId)}
+            onAnswer={(answers) => props.onAnswerQuestion(pq().sessionId, pq().question.toolUseId, answers)}
+            onCancel={() => props.onCancelQuestion(pq().sessionId, pq().question.toolUseId)}
             captureFocus={props.captureFocus} onMeasured={setDockMeasured}
           />
         )}

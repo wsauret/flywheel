@@ -3,7 +3,7 @@
 import type { QuestionBlock, QuestionChoice } from "@infra/output-blocks"
 import { MouseButton, StyledText, bg as stBg, bold as stBold, fg as stFg, type BoxRenderable, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
-import { useQuestionInput } from "@tui/components/question-input"
+import { useQuestionInput, type QuestionInputContext } from "@tui/components/question-input"
 import { OpaqueBox } from "@tui/components/opaque-box"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/utils/border"
@@ -11,7 +11,7 @@ import { createMeasuredWidth } from "@tui/hooks/create-measured-width"
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import type { AgentInputAnswer } from "../protocol/question-protocol-types.js"
-import type { DraftCache } from "./hooks/create-draft-cache.js"
+import type { QuestionDraftNamespace } from "./hooks/create-draft-cache.js"
 import { MarkdownBody } from "./output-blocks/markdown/markdown-body.js"
 import { createQuestionForm } from "./question-dock-form.js"
 import { layoutQuestionDockEditor } from "./question-dock-editor-layout.js"
@@ -21,14 +21,18 @@ interface QuestionAnswers {
   [question: string]: AgentInputAnswer
 }
 
-interface QuestionDockProps {
+interface QuestionDockBaseProps {
   sessionId: string
   question: QuestionBlock
-  draftCache: DraftCache
+  /** Where the form keeps the input the person has not sent yet. Two docks
+   *  for one question with one namespace show the same input. */
+  drafts: QuestionDraftNamespace
+  /** The key registry the dock takes keys from. Absent, it is the shell's
+   *  one question slot, which the foreground chat's dock uses. */
+  input?: QuestionInputContext
   width: number
   /** False while an overlay covers the dock, so the dock leaves the terminal cursor alone. */
   captureFocus: () => boolean
-  escapeHint?: string
   onAnswer: (answers: QuestionAnswers) => Promise<boolean>
   onCancel: () => Promise<boolean>
   /** Reports whether the dock has measured its content. Until it has, it
@@ -36,6 +40,11 @@ interface QuestionDockProps {
    *  dock replaces. */
   onMeasured?: (measured: boolean) => void
 }
+
+/** `skip`, the default: Escape skips the question. `leave`: Escape calls
+ *  `onLeave` and the question stays pending with its draft, and `ctrl+x`
+ *  skips it, for a dock that shows another chat's question. */
+type QuestionDockProps = QuestionDockBaseProps & ({ escape?: "skip" } | { escape: "leave"; onLeave: () => void })
 
 const NUMBER_SHORTCUT_CEILING = 9
 const QUESTION_DOCK_CHROME_WIDTH = 5
@@ -65,17 +74,20 @@ export function QuestionDock(props: QuestionDockProps) {
   const form = createQuestionForm({
     question: () => props.question,
     ownerId: () => props.sessionId,
-    // eslint-disable-next-line solid/reactivity -- the draft cache is one object for the dock's lifetime
-    drafts: props.draftCache.questions,
+    // eslint-disable-next-line solid/reactivity -- the draft namespace is one object for the dock's lifetime
+    drafts: props.drafts,
     onAnswer: (answers) => props.onAnswer(answers),
     onCancel: () => props.onCancel(),
+    // eslint-disable-next-line solid/reactivity -- the escape mode is fixed for the dock's lifetime
+    onLeave: props.escape === "leave" ? props.onLeave : undefined,
   })
 
   // Registers with the single question-input authority instead of an
   // independent global listener, so a real modal opened over a pending
   // question (e.g. the auth modal) is dispatched to first - see
   // question-input.tsx.
-  const questionInput = useQuestionInput()
+  // eslint-disable-next-line solid/reactivity -- the registry is fixed for the dock's lifetime
+  const questionInput = props.input ?? useQuestionInput()
   onMount(() => { questionInput.register({ onKey: form.handleKey, onPaste: form.handlePaste }) })
   onCleanup(() => { questionInput.clear() })
 
@@ -248,7 +260,7 @@ export function QuestionDock(props: QuestionDockProps) {
     }
     push(" · ↑↓ navigate")
     if (form.total() > 1 && !form.isOnEditable()) push(" \u00B7 \u2190\u2192 question")
-    push(` \u00B7 esc ${props.escapeHint ?? "cancel"}`)
+    push(props.escape === "leave" ? " \u00B7 esc back \u00B7 ctrl+x skip" : " \u00B7 esc cancel")
     return new StyledText(chunks)
   }
 

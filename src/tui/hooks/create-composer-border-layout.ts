@@ -21,6 +21,9 @@ export interface ComposerBorderLayoutDeps {
   resumeOffered: Accessor<boolean>
   activeSessionCount: Accessor<number>
   sessionCount: Accessor<number>
+  /** While a module strip holds key focus, Escape returns to the prompt, so
+   *  the border names no Escape action. */
+  stripFocused?: Accessor<boolean>
 }
 
 export interface UpdateBorderStatus extends ComposerBorderUpdate {
@@ -81,7 +84,7 @@ export function createComposerBorderLayout(deps: ComposerBorderLayoutDeps): Comp
     update: updateStatus.current(),
     composerStatus: deps.composerStatus?.() ?? [],
     changesLabel: signals.foregroundId() ? sessionChangesPromptLabel(signals.sessionChanges()?.snapshot().summary) : undefined,
-    primaryHints: primaryKeyHints({
+    primaryHints: deps.stripFocused?.() ? [] : primaryKeyHints({
       hasPendingQuestion: signals.pendingQuestion() !== undefined,
       agentState: signals.agentState(),
       sessionState: signals.sessionState(),

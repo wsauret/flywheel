@@ -103,6 +103,9 @@ export interface ShellSignals {
    *  server's own filter. This cache never evicts, so background indicators survive
    *  transcript eviction. */
   questionView: (sessionId: string) => PendingQuestionView | undefined
+  /** The question view of any session, also one that is not active: the first
+   *  read starts following its question, once for each lane. */
+  followQuestion: (sessionId: string) => PendingQuestionView | undefined
   /** Session role assignments from the ordered roles cache. */
   roleView: (sessionId: string) => RoleAssignmentView | undefined
   /** Starts following ordered role cursors in one batched snapshot. */
@@ -618,6 +621,7 @@ export function createShellState(deps: {
     budgetView: budgetCache.view,
     modules: moduleIntakes,
     questionView: questionCache.view,
+    followQuestion: (sessionId: string) => { questionCache.ensure(sessionId); return questionCache.view(sessionId) },
     roleView: roleCache.view,
     ensureRoleViews: roleCache.ensureMany,
     ensureChildViews: (sessionIds: readonly string[]) => {

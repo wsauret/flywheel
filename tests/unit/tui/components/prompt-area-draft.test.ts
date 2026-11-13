@@ -163,7 +163,7 @@ describe("Composer draft loading", () => {
   it("adopts a reused foreground session into its live edited buffer and preserves both drafts on the next edit and focus switch", async () => {
     const request = Promise.withResolvers<{ ok: true; sessionId: string }>()
     const draftCache = createDraftCache()
-    let handle: ComposerHandle = { adoptDraft: draftCache.adopt, persistDraft: () => {}, appendInput: () => {} }
+    let handle: ComposerHandle = { adoptDraft: draftCache.adopt, persistDraft: () => {}, syncFocus: () => {}, appendInput: () => {} }
     const h = createRoot((dispose) => {
       const [foregroundTarget, setForegroundTarget] = createSignal<ForegroundTarget>({ kind: "session", sessionId: "reuse" })
       const foregroundId = createMemo(() => { const target = foregroundTarget(); return target.kind === "session" ? target.sessionId : undefined })
@@ -219,7 +219,7 @@ describe("Composer draft loading", () => {
     const request = Promise.withResolvers<{ ok: false; error: string }>()
     const entered = Promise.withResolvers<void>()
     const draftCache = createDraftCache()
-    let handle: ComposerHandle = { adoptDraft: draftCache.adopt, persistDraft: () => {}, appendInput: () => {} }
+    let handle: ComposerHandle = { adoptDraft: draftCache.adopt, persistDraft: () => {}, syncFocus: () => {}, appendInput: () => {} }
     const h = createRoot((dispose) => {
       const [foregroundTarget, setForegroundTarget] = createSignal<ForegroundTarget>()
       const foregroundId = createMemo(() => { const target = foregroundTarget(); return target?.kind === "session" ? target.sessionId : undefined })

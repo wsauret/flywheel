@@ -24,11 +24,45 @@ interface TuiSlotProps {
   readonly read: DomainReader
 }
 
+/** A key event as the shell's keyboard handler passes it on, after it made
+ *  terminal quirks canonical (a raw 0x0F byte arrives as `ctrl+o`). */
+export interface TuiStripKeyEvent {
+  readonly name: string
+  readonly ctrl?: boolean
+  readonly meta?: boolean
+  readonly shift?: boolean
+  readonly sequence?: string
+  readonly raw?: string
+}
+
+/** The key focus a strip holds. While it holds focus the composer has no
+ *  focus, the strip receives every key that the keymap and the surfaces above
+ *  it leave, and a printable key it does not take ends its focus and goes to
+ *  the composer draft. Focus also ends when the foreground session changes
+ *  and when the foreground's own question shows. */
+export interface TuiStripKeyClaim {
+  readonly focused: Accessor<boolean>
+  setFocused(next: boolean): void
+}
+
+export interface TuiStripKeys {
+  /** Claims keys for the strip's lifetime. `chords` are the canonical chords
+   *  the handler takes; a chord the effective keymap binds stays with the
+   *  keymap and is reported as a config issue. `onKey` answers whether it
+   *  took the key; the kernel then prevents the key's default. The handler is
+   *  asked also while the strip holds no focus. */
+  claim(input: { readonly chords: readonly string[]; readonly onKey: (event: TuiStripKeyEvent) => boolean }): TuiStripKeyClaim
+}
+
 export interface TuiStripProps extends TuiSlotProps {
   /** Composer line width: a strip shares the composer's horizontal extent. */
   readonly width: Accessor<number>
   /** Opens a registered surface by id. */
   readonly openSurface: (id: string) => void
+  readonly keys: TuiStripKeys
+  /** Whether the session's prompt holds no draft. Read it when a key
+   *  arrives: it does not track edits. */
+  readonly composer: { readonly empty: Accessor<boolean> }
 }
 
 /** The kernel destinations a surface may send the person to. */

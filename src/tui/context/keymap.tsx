@@ -19,6 +19,7 @@ export function KeymapProvider(props: { config?: () => RuntimeConfigView | undef
   const keymap: Keymap = {
     resolve: (event) => current().keymap.resolve(event),
     chordFor: (commandId) => current().keymap.chordFor(commandId),
+    commandAt: (chord) => current().keymap.commandAt(chord),
   }
   const value: KeymapContextValue = {
     keymap,

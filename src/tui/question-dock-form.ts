@@ -16,6 +16,9 @@ interface QuestionFormOptions {
   drafts?: QuestionDraftNamespace
   onAnswer: (answers: QuestionAnswers) => boolean | void | Promise<boolean | void>
   onCancel: () => boolean | void | Promise<boolean | void>
+  /** Given, Escape leaves the question pending with its draft and calls this,
+   *  and `ctrl+x` skips it. Absent, Escape skips. */
+  onLeave?: () => void
 }
 interface Answer {
   picked: ReadonlySet<number>
@@ -357,6 +360,8 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
 
   function handleKey(evt: KeyEvent): boolean {
     if (settlement() !== "idle") { evt.preventDefault?.(); return true }
+    if (opts.onLeave && evt.ctrl && !evt.meta && evt.name === "x") { evt.preventDefault?.(); cancel(); return true }
+    const escape = opts.onLeave ?? cancel
     if ((evt.name === "up" || evt.name === "down") && handleNavigation(evt)) return true
     const choice = currentChoices()[cursor()]
     // A digit that names another choice selects it while the focused field is
@@ -366,7 +371,7 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
     if (isEditableChoice(choice) && !selectsAnotherChoice) {
       const editor = editors[tab()]?.[cursor()]
       const result = editor?.handleKey(evt) ?? "unhandled"
-      if (result === "cancel") { cancel(); return true }
+      if (result === "cancel") { escape(); return true }
       if (result === "submit") {
         const text = textAt(tab(), cursor())
         if (!text.trim()) setEditorError({ message: "Enter a response", choiceIndex: cursor() })
@@ -378,7 +383,7 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
       }
       if (result === "handled") return true
     }
-    if (evt.name === "escape") { evt.preventDefault?.(); cancel(); return true }
+    if (evt.name === "escape") { evt.preventDefault?.(); escape(); return true }
     if (handleNavigation(evt)) return true
     return handleSelection(evt)
   }

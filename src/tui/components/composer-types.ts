@@ -23,6 +23,9 @@ export interface ComposerHandle {
   adoptDraft: DraftCache["adopt"]
   /** Write the live buffer, with its caret, into the foreground's draft. */
   persistDraft(): void
+  /** Apply the prompt's focus rule now, so a key or paste that just gave the
+   *  prompt back its focus reaches the prompt in the same dispatch. */
+  syncFocus(): void
   appendInput(sessionId: string, input: ChatInputLike): void
 }
 
@@ -72,8 +75,8 @@ export interface ComposerProps {
    *  through comes back for editing, and a message that waits for the
    *  connection stays, with the caller saying why. Either way Up ends here. */
   onRecallLocal?: () => LocalRecall | null
-  onAnswerQuestion: (toolUseId: string, answers: QuestionAnswers) => Promise<boolean>
-  onCancelQuestion: (toolUseId: string) => Promise<boolean>
+  onAnswerQuestion: (sessionId: string, toolUseId: string, answers: QuestionAnswers) => Promise<boolean>
+  onCancelQuestion: (sessionId: string, toolUseId: string) => Promise<boolean>
   draftCache: DraftCache
   onOpenSessions: () => void
   onModuleAction: (action: ModuleRowAction) => void
@@ -85,4 +88,7 @@ export interface ComposerProps {
   /** The border's `ctrl+r resume` hint, shown while the session admits Resume and no turn runs. */
   onResume: () => void
   captureFocus: Accessor<boolean>
+  /** The person pressed the prompt to type in it; the prompt then takes focus
+   *  by `captureFocus`, so the caller gives the keys back to it first. */
+  onPromptPress: () => void
 }

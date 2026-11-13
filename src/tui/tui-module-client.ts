@@ -9,6 +9,8 @@ import type { ShellSignals } from "./hooks/shell-state.js"
 import type { AgentGroupBlockProps } from "./output-blocks/agent-group-block.js"
 import type { ChildPlaces } from "./hooks/create-child-viewer-opener.js"
 import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
+import type { ChatModeHook } from "./hooks/use-chat-mode.js"
+import type { QuestionDraftNamespace } from "./hooks/create-draft-cache.js"
 /** The shell lends modules its ordinary child-body and navigation capabilities. */
 export interface TuiModuleClientHost {
   readonly domains: ModuleDomainIntakes
@@ -24,6 +26,12 @@ export interface TuiModuleClientHost {
   readonly showToast: ChildSessionViewerProps["showToast"]
   /** Routes slash text typed in an agent view, as the chat composer does. */
   readonly dispatchCommand: (text: string) => Promise<boolean>
+  /** The pending question of any chat, followed from the first read. */
+  readonly question: ShellSignals["followQuestion"]
+  readonly answerQuestion: ChatModeHook["answerQuestion"]
+  readonly cancelQuestion: ChatModeHook["cancelQuestion"]
+  /** The shell's question drafts, so a question keeps its input wherever it shows. */
+  readonly questionDrafts: QuestionDraftNamespace
 }
 export interface TuiModuleClient {
   readonly provide: (children: () => JSX.Element) => JSX.Element

@@ -178,7 +178,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     answering: () => signals.runtimeHealth().kind !== "faulted",
     projectRoot: signals.projectRoot,
     clipboard,
-    appVersion,
+    appVersion, keymap, reportIssue: (message) => configToasts.present("config.invalid", { message, variant: "error", duration: 10000 }), composer: { hasDraft: draftCache.hasDraft, syncFocus: () => composer.syncFocus() }, foregroundQuestion: () => signals.pendingQuestion() !== undefined,
     navigate: { openSettings: (destination) => openSettingsDestination(destination), openSurface: (id) => slots.surfaces.get(id)?.(), navigateSession: (sessionId) => focusSession(sessionId) },
   })
   const ModuleStrips = slots.Strips
@@ -217,7 +217,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     keeper: createOpenSessionKeeper({ client: appService, focusReady, onDiagnostic: (message, detail) => keeperLog.warn(message, { detail }) }),
   })
   const retireTransientSession = (sessionId: string): void => { void discardIfTransientForeground({ draftCache, appService, showToast: services.showToast, closeSessionTab, isTransientSessionTab }, sessionId) }
-  let composer: ComposerHandle = { adoptDraft: draftCache.adopt, persistDraft: () => {}, appendInput: (sessionId, input) => mergeInputIntoDraft(draftCache, sessionId, input) }
+  let composer: ComposerHandle = { adoptDraft: draftCache.adopt, persistDraft: () => {}, syncFocus: () => {}, appendInput: (sessionId, input) => mergeInputIntoDraft(draftCache, sessionId, input) }
   const { startChat, focusSession, recallFailedChat } = createSessionCreator({
     signals,
     appService,
@@ -311,7 +311,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     roleView: signals.roleView, ensureRoleViews: signals.ensureRoleViews,
     viewerLayer: overlay.viewer, viewer: viewerProps, openChild: childPlaces.openChild,
     title: sessionTitle, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
-  })
+    question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions })
   const commandDefinitions = createMemo(() => buildCommandDefinitions(keymap.chordFor, signals.builtInCommands()))
   const commandCatalog = createMemo(() => commandSpecs(commandDefinitions()))
   function dispatchPaletteCommand(text: string): void {
@@ -465,7 +465,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     sessionControls: sessionControlsHook,
     overlay,
     questionInput,
-    promptPopup: promptPopupKeySlot,
+    promptPopup: promptPopupKeySlot, strips: slots,
     openCommandPalette: commandPalette.openCommandPalette,
     switchForeground,
     dispatchOutputCommand,
@@ -505,7 +505,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     chordFor: keymap.chordFor,
     resumeOffered: () => sessionControlsHook.offered().primary === "resume",
     activeSessionCount,
-    sessionCount,
+    sessionCount, stripFocused: slots.stripFocused,
   })
 
   return (
@@ -595,7 +595,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
           ref={(handle) => { composer = handle }}
           foregroundId={composerDraftKey}
           agentState={signals.agentState}
-          interruptible={signals.interruptible}
+          interruptible={() => signals.interruptible() && !slots.stripFocused()}
           pendingQuestion={signals.pendingQuestion}
           inChat={inChat}
           lineWidth={lineWidth}
@@ -624,8 +624,8 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
             const sessionId = signals.foregroundId()
             return sessionId ? submissions.recallQueued(sessionId, () => appService.query({ type: "recallQueuedMessage", sessionId })) : null
           }}
-          onAnswerQuestion={(toolUseId, answers) => chat.answerQuestion(toolUseId, answers)}
-          onCancelQuestion={(toolUseId) => chat.cancelQuestion(toolUseId)}
+          onAnswerQuestion={chat.answerQuestion}
+          onCancelQuestion={chat.cancelQuestion}
           draftCache={draftCache}
           onOpenSessions={sessionModal.openSessionsModal}
           onModuleAction={activateModuleRow}
@@ -635,7 +635,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
           onNextTab={promptBarActions.nextTab}
           onOpenBackground={backgroundModal.openBackgroundModal}
           onResume={sessionControlsHook.resume}
-          captureFocus={showPrompt}
+          captureFocus={() => showPrompt() && !slots.stripFocused()} onPromptPress={slots.releaseStripFocus}
         />
       </box>
       <ToastDisplay headerHeight={showPrompt() ? 3 : 0} />

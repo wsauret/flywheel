@@ -1,12 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 
 import { describe, expect, it, mock } from "bun:test"
-import { createSignal, For, Show } from "solid-js"
+import { createSignal, For, Show, type ComponentProps } from "solid-js"
 import { testRender } from "@opentui/solid"
 import { createTextAttributes, TextRenderable, type Renderable } from "@opentui/core"
 
 import type { QuestionBlock } from "../../../src/infra/output-blocks.js"
-import { QuestionInputProvider, type QuestionInputContext, useQuestionInput } from "../../../src/tui/components/question-input.js"
+import { createQuestionInputRegistry, QuestionInputProvider, type QuestionInputContext, useQuestionInput } from "../../../src/tui/components/question-input.js"
 import { ThemeProvider } from "../../../src/tui/context/theme.js"
 import { createDraftCache } from "../../../src/tui/hooks/create-draft-cache.js"
 import { QuestionDock } from "../../../src/tui/question-dock.js"
@@ -63,6 +63,7 @@ describe("QuestionDock", () => {
     question?: QuestionBlock
     draftCache?: ReturnType<typeof createDraftCache>
     captureFocus?: () => boolean
+    onLeave?: () => void
   } = {}) {
     const [current, setCurrent] = createSignal(options.question ?? question)
     let questionInput: QuestionInputContext | undefined
@@ -72,17 +73,12 @@ describe("QuestionDock", () => {
 
     function Harness() {
       questionInput = useQuestionInput()
-      return (
-        <QuestionDock
-          sessionId="session-a"
-          question={current()}
-          draftCache={draftCache}
-          width={width}
-          captureFocus={options.captureFocus ?? (() => true)}
-          onAnswer={async (answers) => (await onAnswer(answers)) !== false}
-          onCancel={async () => true}
-        />
-      )
+      const shared = {
+        sessionId: "session-a", get question() { return current() }, drafts: draftCache.questions, width, captureFocus: options.captureFocus ?? (() => true),
+        onAnswer: async (answers: Parameters<ComponentProps<typeof QuestionDock>["onAnswer"]>[0]) => (await onAnswer(answers)) !== false, onCancel: async () => true,
+      }
+      const onLeave = options.onLeave
+      return onLeave ? <QuestionDock {...shared} escape="leave" onLeave={onLeave} /> : <QuestionDock {...shared} />
     }
 
     const result = await testRender(() => (
@@ -133,7 +129,7 @@ describe("QuestionDock", () => {
     }
   })
 
-  it("restores an Other draft after the question dock remounts", async () => {
+  it("restores an Other draft in a second dock with the same drafts, which in leave mode goes back on Escape and names Skip", async () => {
     const draftCache = createDraftCache()
     const first = await renderQuestionDock({ draftCache })
 
@@ -142,11 +138,55 @@ describe("QuestionDock", () => {
     await first.result.renderOnce()
     first.result.renderer.destroy()
 
-    const second = await renderQuestionDock({ draftCache })
+    const onLeave = mock(() => {})
+    const second = await renderQuestionDock({ draftCache, onLeave })
     try {
-      expect(second.result.captureCharFrame()).toContain("Other - Amber")
+      const frame = second.result.captureCharFrame()
+      expect(frame).toContain("● 2. Other - Amber")
+      expect(frame).toContain("esc back · ctrl+x skip")
+      expect(frame).not.toContain("esc cancel")
+      const hint = second.result.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.includes("esc back"))
+      expect(hint?.fg).toEqual(theme.textMuted)
+      second.input.input({ name: "escape" })
+      expect(onLeave).toHaveBeenCalledTimes(1)
+      expect(draftCache.questions.get("session-a", question.toolUseId)?.editorText[0]?.[1]).toBe("Amber")
     } finally {
       second.result.renderer.destroy()
+    }
+  })
+
+  it("gives a dock with an injected registry only its own keys beside the foreground dock, and closing it leaves the foreground dock registered", async () => {
+    const injected = createQuestionInputRegistry()
+    const [moduleDockShown, setModuleDockShown] = createSignal(true)
+    const foregroundAnswer = mock(async () => true)
+    const moduleAnswer = mock(async () => true)
+    let foreground: QuestionInputContext | undefined
+    const dock = (sessionId: string, onAnswer: () => Promise<boolean>, input?: QuestionInputContext) => (
+      <QuestionDock sessionId={sessionId} question={question} drafts={createDraftCache().questions} input={input} width={80} captureFocus={() => false} onAnswer={onAnswer} onCancel={async () => true} />
+    )
+    function Foreground() { foreground = useQuestionInput(); return dock("chat-1", foregroundAnswer) }
+    const result = await testRender(() => (
+      <ThemeProvider mode="dark">
+        <QuestionInputProvider>
+          <box flexDirection="column">
+            <Foreground />
+            <Show when={moduleDockShown()}>{dock("chat-2", moduleAnswer, injected)}</Show>
+          </box>
+        </QuestionInputProvider>
+      </ThemeProvider>
+    ), { width: 80, height: 30 })
+    try {
+      await result.renderOnce()
+      injected.input({ name: "1" })
+      expect(moduleAnswer).toHaveBeenCalledTimes(1)
+      expect(foregroundAnswer).not.toHaveBeenCalled()
+      setModuleDockShown(false)
+      expect(injected.input({ name: "1" })).toBe(false)
+      foreground?.input({ name: "1" })
+      expect(foregroundAnswer).toHaveBeenCalledTimes(1)
+      expect(moduleAnswer).toHaveBeenCalledTimes(1)
+    } finally {
+      result.renderer.destroy()
     }
   })
 
@@ -506,7 +546,7 @@ describe("QuestionDock", () => {
             </box>
             <box flexShrink={1} minHeight={0}>
               <Show when={docked()}>
-                <QuestionDock sessionId="session-a" question={question} draftCache={createDraftCache()} width={100} captureFocus={() => true} onAnswer={async () => true} onCancel={async () => true} />
+                <QuestionDock sessionId="session-a" question={question} drafts={createDraftCache().questions} width={100} captureFocus={() => true} onAnswer={async () => true} onCancel={async () => true} />
               </Show>
             </box>
           </box>

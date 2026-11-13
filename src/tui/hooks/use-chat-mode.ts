@@ -15,8 +15,9 @@ interface ChatModeDeps {
 
 export interface ChatModeHook {
   interruptChat(): void
-  answerQuestion(toolUseId: string, answers: QuestionAnswers): Promise<boolean>
-  cancelQuestion(toolUseId: string): Promise<boolean>
+  /** Settle the pending question of any chat, not only the foreground's. */
+  answerQuestion(sessionId: string, toolUseId: string, answers: QuestionAnswers): Promise<boolean>
+  cancelQuestion(sessionId: string, toolUseId: string): Promise<boolean>
   compactConversation(): Promise<boolean>
 }
 
@@ -35,9 +36,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     })
   }
 
-  async function answerQuestion(toolUseId: string, answers: QuestionAnswers): Promise<boolean> {
-    const sessionId = signals.foregroundId()
-    if (!sessionId) return false
+  async function answerQuestion(sessionId: string, toolUseId: string, answers: QuestionAnswers): Promise<boolean> {
     try {
       const result = await appService.dispatch({ type: "question.answer", sessionId, toolUseId, answers })
       reportFailure(result)
@@ -48,9 +47,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     }
   }
 
-  async function cancelQuestion(toolUseId: string): Promise<boolean> {
-    const sessionId = signals.foregroundId()
-    if (!sessionId) return false
+  async function cancelQuestion(sessionId: string, toolUseId: string): Promise<boolean> {
     try {
       const result = await appService.dispatch({ type: "question.cancel", sessionId, toolUseId })
       reportFailure(result)

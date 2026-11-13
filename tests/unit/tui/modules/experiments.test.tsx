@@ -112,7 +112,7 @@ async function renderStrip(current: () => FrontendExperimentView | undefined, wi
   const rendered = await testRender(() => (
     <ThemeProvider mode="dark">
       <TickPoolProvider>
-        <ExperimentStrip sessionId="chat-1" read={readerOf(current)} width={() => width} openSurface={openSurface} />
+        <ExperimentStrip sessionId="chat-1" read={readerOf(current)} width={() => width} openSurface={openSurface} keys={{ claim: () => ({ focused: () => false, setFocused: () => {} }) }} composer={{ empty: () => true }} />
       </TickPoolProvider>
     </ThemeProvider>
   ), { width, height: 20 })

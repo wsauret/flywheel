@@ -53,6 +53,8 @@ export interface Keymap {
   resolve(evt: KeymapKeyEvent): KeymapCommandId | null
   /** Effective chord for display. Total: overrides replace, never remove. */
   chordFor(commandId: KeymapCommandId): string
+  /** The command the effective keymap binds to a canonical chord, or null. */
+  commandAt(chord: string): KeymapCommandId | null
 }
 
 export type ChordParseResult =
@@ -199,6 +201,7 @@ export function createKeymap(overrides: KeybindingOverrides = {}) {
       if (!chord) throw new Error(`No chord for keymap command "${commandId}"`)
       return chord
     },
+    commandAt: (chord) => commandByChord.get(chord) ?? null,
   }
   return { keymap, issues }
 }

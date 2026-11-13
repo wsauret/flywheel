@@ -1,3 +1,4 @@
+import type { JSX } from "solid-js"
 import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
 import type { LocalRecall } from "../../../../src/protocol/client/chat-submissions.js"
@@ -40,6 +41,9 @@ interface MountOptions {
   readonly spinnerSource?: SpinnerStatusSource
   /** False while the shell shows an overlay over the composer. */
   readonly captureFocus?: () => boolean
+  readonly onPromptPress?: () => void
+  /** Rendered above the prompt, as the shell renders module strips. */
+  readonly above?: () => JSX.Element
 }
 
 /** A foreground session at rest: no turn, no park, no notice. */
@@ -75,7 +79,7 @@ export async function mountPrompt(options: MountOptions) {
           get children() {
             return createComponent(QuestionInputProvider, {
               get children() {
-                return createComponent(Composer, {
+                return [options.above?.(), createComponent(Composer, {
                   ref: options.ref,
                   foregroundId: options.foregroundId,
                   clipboard,
@@ -112,7 +116,8 @@ export async function mountPrompt(options: MountOptions) {
                   onOpenBackground: () => {},
                   onResume: () => {},
                   captureFocus: options.captureFocus ?? (() => true),
-                })
+                  onPromptPress: options.onPromptPress ?? (() => {}),
+                })]
               },
             })
           },

@@ -5,12 +5,14 @@ import { useChatMode } from "../../../../src/tui/hooks/use-chat-mode.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 
 describe("useChatMode", () => {
-  it("reports failed and rejected question mutations and returns failure for retry", async () => {
+  it("settles the question of the named chat, not the foreground's, and reports failed and rejected mutations for retry", async () => {
     const messages: string[] = []
     const showToast = ({ message }: { message: string }) => { messages.push(message) }
     let attempts = 0
+    const settled: string[] = []
     // The runtime refuses the first question request and is offline for the next.
-    const answer = async () => {
+    const answer = async (mutation: { readonly type: string; readonly sessionId: string }) => {
+      settled.push(`${mutation.type}:${mutation.sessionId}`)
       if (attempts++ === 0) return { ok: false as const, error: "Not accepted" }
       throw new Error("offline")
     }
@@ -22,8 +24,9 @@ describe("useChatMode", () => {
       appService: { dispatch },
       showToast,
     })
-    expect(await hook.answerQuestion("tool-a", {})).toBe(false)
-    expect(await hook.cancelQuestion("tool-a")).toBe(false)
+    expect(await hook.answerQuestion("chat-b", "tool-a", {})).toBe(false)
+    expect(await hook.cancelQuestion("chat-b", "tool-a")).toBe(false)
+    expect(settled).toEqual(["question.answer:chat-b", "question.cancel:chat-b"])
     expect(messages).toEqual(["Not accepted", "Question cancel failed: Error: offline"])
   })
 

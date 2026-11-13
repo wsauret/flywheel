@@ -48,6 +48,29 @@ describe("update border status", () => {
 })
 
 describe("composer border hints", () => {
+  it("names no Escape action while a module strip holds key focus, and dismiss for an inactive chat without it", () => {
+    createRoot((dispose) => {
+      const [stripFocused, setStripFocused] = createSignal(true)
+      const signals = { ...createSignals(), agentState: () => "idle" as const, sessionState: () => "inactive" as const }
+      const { layout } = createComposerBorderLayout({
+        signals,
+        terminalWidth: () => 200,
+        activeModelLabel: () => undefined,
+        chordFor: createKeymap().keymap.chordFor,
+        resumeOffered: () => false,
+        activeSessionCount: () => 1,
+        sessionCount: () => 2,
+        stripFocused,
+      })
+      const escapeHints = () => layout().hints.filter((hint) => hint.key === "esc").map((hint) => `${hint.key} ${hint.label}`)
+
+      expect(escapeHints()).toEqual([])
+      setStripFocused(false)
+      expect(escapeHints()).toEqual(["esc dismiss"])
+      dispose()
+    })
+  })
+
   it("names the chord a later [keybindings] publication sets", () => {
     createRoot((dispose) => {
       const [overrides, setOverrides] = createSignal<{ readonly [command: string]: string }>({})

@@ -163,7 +163,7 @@ test("surface owns typing, close, session-switch cleanup and stale request ident
   let parentScroll: ScrollBox | undefined
   function Harness() {
     const { theme } = useTheme()
-    const attachFocus = createComposerFocus(() => modal.stack.length === 0, sessionId)
+    const attachFocus = createComposerFocus(() => modal.stack.length === 0, sessionId).attach
     return <box flexDirection="column">
       <scrollbox ref={(scroll: ScrollBox) => { parentScroll = scroll }} height={3} scrollY>
         <text>{"parent line\n".repeat(30)}</text>

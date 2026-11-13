@@ -15,8 +15,12 @@ import { type Accessor, createEffect, on } from "solid-js"
  * `shouldHold` is true when the modal stack is empty. `refocusKey` does not
  * change ownership; it only retries that ownership after mouse-driven actions
  * such as opening a new tab can move the terminal cursor away from the textarea.
+ *
+ * `sync` applies the rule at once. A caller that just made `shouldHold` true
+ * in a key or paste handler calls it, so the same input, and the rest of its
+ * stdin chunk, reaches the prompt instead of the next microtask.
  */
-export function createComposerFocus(shouldHold: Accessor<boolean>, refocusKey: Accessor<unknown>): (prompt: TextareaRenderable) => void {
+export function createComposerFocus(shouldHold: Accessor<boolean>, refocusKey: Accessor<unknown>) {
   let prompt: TextareaRenderable | null = null
 
   // Blurring matters as much as focusing: a focused textarea independently
@@ -40,9 +44,10 @@ export function createComposerFocus(shouldHold: Accessor<boolean>, refocusKey: A
   // click routed through the renderer's autoFocus walk silently detaches the
   // textarea's key handler); when we blur it ourselves for a modal, the resync
   // is a no-op because shouldHold is already false.
-  return (r: TextareaRenderable) => {
+  const attach = (r: TextareaRenderable): void => {
     prompt = r
     r.on("blurred", () => queueMicrotask(sync))
     queueMicrotask(sync)
   }
+  return { attach, sync }
 }

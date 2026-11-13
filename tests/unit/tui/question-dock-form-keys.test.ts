@@ -3,6 +3,7 @@ import { createRoot } from "solid-js"
 
 import type { QuestionBlock } from "../../../src/infra/output-blocks.js"
 import { createQuestionForm } from "../../../src/tui/question-dock-form.js"
+import { createDraftCache } from "../../../src/tui/hooks/create-draft-cache.js"
 
 function singleQuestion(prompt: string, labels: string[], multi = false): QuestionBlock["questions"][number] {
   return {
@@ -55,6 +56,45 @@ describe("question dock Escape and number keys", () => {
 
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(onAnswer).not.toHaveBeenCalled()
+      dispose()
+    })
+  })
+
+  it("leaves the question pending with its draft on Escape in leave mode, and skips it only with ctrl+x", () => {
+    createRoot((dispose) => {
+      const onAnswer = mock(() => {})
+      const onCancel = mock(() => {})
+      const onLeave = mock(() => {})
+      const drafts = createDraftCache().questions
+      const block: QuestionBlock = { kind: "question", toolUseId: "tool-question", questions: [singleQuestion("Port?", ["Default"])], timestamp: 1 }
+      const form = createQuestionForm({ question: () => block, ownerId: () => "chat-2", drafts, onAnswer, onCancel, onLeave })
+
+      form.handleKey({ name: "escape" })
+      form.handleKey({ name: "down" })
+      for (const char of "80") form.handleKey({ name: char, sequence: char, raw: char })
+      form.handleKey({ name: "escape" })
+
+      expect(onLeave).toHaveBeenCalledTimes(2)
+      expect(onCancel).not.toHaveBeenCalled()
+      expect(drafts.get("chat-2", "tool-question")?.editorText[0]?.[1]).toBe("80")
+
+      form.handleKey({ name: "x", ctrl: true })
+      expect(onCancel).toHaveBeenCalledTimes(1)
+      expect(onAnswer).not.toHaveBeenCalled()
+      dispose()
+    })
+  })
+
+  it("cancels on Escape and leaves ctrl+x unhandled in the default mode", () => {
+    createRoot((dispose) => {
+      const onCancel = mock(() => {})
+      const block: QuestionBlock = { kind: "question", toolUseId: "tool-question", questions: [singleQuestion("Option?", ["A"])], timestamp: 1 }
+      const form = createQuestionForm({ question: () => block, onAnswer: mock(() => {}), onCancel })
+
+      expect(form.handleKey({ name: "x", ctrl: true })).toBe(false)
+      expect(onCancel).not.toHaveBeenCalled()
+      form.handleKey({ name: "escape" })
+      expect(onCancel).toHaveBeenCalledTimes(1)
       dispose()
     })
   })

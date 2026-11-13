@@ -2,6 +2,7 @@
 
 import { describe, expect, it, mock } from "bun:test"
 import { testRender } from "@opentui/solid"
+import { TextareaRenderable } from "@opentui/core"
 import { createRoot, createSignal, onCleanup } from "solid-js"
 import type { AttachedRuntimeClient, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
 import { moduleDomainReader } from "../../../../src/protocol/client/module-domain.js"
@@ -15,7 +16,11 @@ import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 import { createModuleDomainIntakes } from "../../../../src/tui/hooks/create-module-domain-intakes.js"
 import { createModuleSlots, surfaceKeys } from "../../../../src/tui/hooks/create-module-slots.js"
-import type { TuiModule, TuiNavigation, TuiComponentSurface } from "../../../../src/tui/tui-module.js"
+import type { TuiModule, TuiNavigation, TuiComponentSurface, TuiStripKeyClaim } from "../../../../src/tui/tui-module.js"
+import { createKeymap } from "../../../../src/tui/keymap/keymap.js"
+import { createDraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
+import type { ComposerHandle } from "../../../../src/tui/components/composer-types.js"
+import { mountPrompt } from "../components/prompt-area-fixture.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
@@ -178,6 +183,105 @@ describe("createModuleSlots", () => {
     } finally {
       rendered.renderer.destroy()
       h.dispose()
+    }
+  })
+})
+
+describe("module strip keys", () => {
+  it("takes the prompt's focus for a claiming strip, gives it back on a key it does not take, a paste, or a press on the prompt, and ends it on a question or a foreground change", async () => {
+    const [foregroundId, setForegroundId] = createSignal<string | undefined>("chat-1")
+    const [question, setQuestion] = createSignal(false)
+    const [overrides, setOverrides] = createSignal<{ readonly [command: string]: string }>({})
+    const issues: string[] = []
+    const taken: string[] = []
+    let claim: TuiStripKeyClaim | undefined
+    let empty: (() => boolean) | undefined
+    const strip: TuiModule["strip"] = (props) => {
+      empty = props.composer.empty
+      claim = props.keys.claim({ chords: ["down", "escape", "ctrl+g", "ctrl+n"], onKey: (event) => {
+        const own = event.name === "down" || event.name === "escape"
+        if (own) taken.push(event.name)
+        return own
+      } })
+      return <text>strip</text>
+    }
+    const service = fakeAppService()
+    const draftCache = createDraftCache()
+    let composer: ComposerHandle | undefined
+    const built = createRoot((dispose) => ({ dispose, slots: createModuleSlots({
+      answering: () => true, modules: [syntheticModule(strip)], intakes: createModuleDomainIntakes({ appService: service, hydration: service }), foregroundId, modal: createModalStack(), client: CLIENT, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: () => {},
+      keymap: { commandAt: (chord) => createKeymap(overrides()).keymap.commandAt(chord) }, reportIssue: (message) => { issues.push(message) },
+      composer: { hasDraft: draftCache.hasDraft, syncFocus: () => composer?.syncFocus() },
+      foregroundQuestion: question,
+    }) }))
+    const { slots } = built
+    const Strips = slots.Strips
+    const rendered = await mountPrompt({
+      draftCache, foregroundId, ref: (handle) => { composer = handle },
+      captureFocus: () => !slots.stripFocused(), onPromptPress: slots.releaseStripFocus,
+      above: () => <Strips sessionId="chat-1" width={() => 80} />,
+    })
+    // The shell's keyboard handler is a global listener that offers keys to the strips.
+    rendered.renderer.keyInput.on("keypress", (event) => { slots.stripInput(event) })
+    const promptFocused = () => rendered.renderer.currentFocusedRenderable instanceof TextareaRenderable
+    const focusStrip = async () => { claim?.setFocused(true); await Bun.sleep(0) }
+    try {
+      await rendered.renderOnce()
+      await Bun.sleep(0)
+      if (!claim || !empty) throw new Error("the strip did not claim")
+      expect(empty()).toBe(true)
+      expect(promptFocused()).toBe(true)
+      const ctrlN = "The development module's key \"ctrl+n\" is bound to the command \"new\", which keeps it. Bind \"new\" to another key in [keybindings] to free \"ctrl+n\"."
+      expect(issues).toEqual([ctrlN])
+      // A later [keybindings] publication that binds another declared chord is reported once, with no remount.
+      setOverrides({ new: "ctrl+g" })
+      setOverrides({ new: "ctrl+g", help: "ctrl+y" })
+      expect(issues).toEqual([ctrlN, "The development module's key \"ctrl+g\" is bound to the command \"new\", which keeps it. Bind \"new\" to another key in [keybindings] to free \"ctrl+g\"."])
+
+      expect(slots.stripInput({ name: "x" })).toBe(false)
+      await focusStrip()
+      expect(slots.stripFocused()).toBe(true)
+      expect(promptFocused()).toBe(false)
+      rendered.mockInput.pressArrow("down")
+      expect(slots.stripInput({ name: "escape" })).toBe(true)
+      expect(slots.stripInput({ name: "left" })).toBe(true)
+      expect(slots.stripFocused()).toBe(true)
+      expect(taken).toEqual(["down", "escape"])
+
+      // Two keys the strip does not take, in one stdin chunk, both land in the prompt once.
+      rendered.mockInput.pressKey("ab")
+      expect(slots.stripFocused()).toBe(false)
+      expect(promptFocused()).toBe(true)
+      await Bun.sleep(50)
+      await rendered.renderOnce()
+      expect(rendered.captureCharFrame()).toContain("ab")
+      expect(rendered.captureCharFrame()).not.toContain("aab")
+      expect(empty()).toBe(false)
+
+      await focusStrip()
+      await rendered.mockInput.pasteBracketedText("cd")
+      expect(slots.stripFocused()).toBe(false)
+      await rendered.renderOnce()
+      expect(rendered.captureCharFrame()).toContain("abcd")
+
+      await focusStrip()
+      const promptRow = rendered.captureCharFrame().split("\n").findIndex((line) => line.includes("abcd"))
+      await rendered.mockMouse.click(10, promptRow)
+      expect(slots.stripFocused()).toBe(false)
+      expect(promptFocused()).toBe(true)
+
+      claim.setFocused(true)
+      setQuestion(true)
+      expect(claim.focused()).toBe(false)
+      claim.setFocused(true)
+      expect(claim.focused()).toBe(false)
+      setQuestion(false)
+      claim.setFocused(true)
+      setForegroundId("chat-2")
+      expect(slots.stripFocused()).toBe(false)
+    } finally {
+      rendered.renderer.destroy()
+      built.dispose()
     }
   })
 })

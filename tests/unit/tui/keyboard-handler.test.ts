@@ -54,6 +54,7 @@ function createDeps(overrides: KeyboardDepsOverrides = {}): KeyboardDeps {
     overlay: overrides.overlay ?? createOverlayLayers(),
     questionInput: overrides.questionInput ?? createQuestionInputRegistry(),
     promptPopup: overrides.promptPopup ?? { input: () => false },
+    strips: overrides.strips ?? { stripInput: () => false },
     openCommandPalette: overrides.openCommandPalette ?? mock(() => {}),
     switchForeground: overrides.switchForeground ?? mock(() => {}),
     dispatchOutputCommand: overrides.dispatchOutputCommand ?? mock(() => {}),
@@ -427,6 +428,58 @@ describe("createKeyboardHandler", () => {
       expect(handleQuestionKey).not.toHaveBeenCalled()
       dispose()
     })
+  })
+
+  it("asks a module strip after the keymap: an unbound Down and an Escape it takes reach it, and no interrupt is sent", () => {
+    const stripInput = mock((event: { name: string }) => event.name === "down" || event.name === "escape")
+    const interruptChat = mock(() => {})
+    const { handleKey } = createKeyboardHandler(createDeps({ strips: { stripInput }, signals: { interruptible: () => true }, chat: { interruptChat } }))
+
+    handleKey({ name: "down" })
+    handleKey({ name: "escape" })
+
+    expect(stripInput.mock.calls.map(([event]) => event.name)).toEqual(["down", "escape"])
+    expect(interruptChat).not.toHaveBeenCalled()
+  })
+
+  it("gives the strip ctrl+o for the raw 0x0F byte while the question form and the prompt popups, asked first, get the raw event", () => {
+    const raw = { name: "", sequence: "\u000f", raw: "\u000f" }
+    const seen: unknown[] = []
+    const questionInput = createQuestionInputRegistry()
+    questionInput.register({ onKey: (event) => { seen.push(event); return false }, onPaste: () => {} })
+    const stripInput = mock((event: { name: string; ctrl?: boolean }) => event.name === "o" && event.ctrl === true)
+    const { handleKey } = createKeyboardHandler(createDeps({ questionInput, promptPopup: { input: (event) => { seen.push(event); return false } }, strips: { stripInput } }))
+
+    handleKey(raw)
+
+    expect(seen).toEqual([raw, raw])
+    expect(seen.every((event) => event === raw)).toBe(true)
+    expect(stripInput).toHaveBeenCalledTimes(1)
+    expect(stripInput.mock.calls[0]?.[0]).toMatchObject({ name: "o", ctrl: true })
+  })
+
+  it("gives an open overlay a key a strip claims, unchanged", () => {
+    createRoot((dispose) => {
+      const overlay = createOverlayLayers()
+      const modalKey = mock((_event: unknown) => {})
+      overlay.dialog.replace("modal", { onKey: modalKey })
+      const stripInput = mock(() => true)
+      const raw = { name: "", sequence: "\u000f" }
+      createKeyboardHandler(createDeps({ overlay, strips: { stripInput } })).handleKey(raw)
+
+      expect(modalKey.mock.calls[0]?.[0]).toBe(raw)
+      expect(stripInput).not.toHaveBeenCalled()
+      dispose()
+    })
+  })
+
+  it("runs a keymap binding over a chord a strip declares, without asking the strip", () => {
+    const startNewChat = mock(async () => {})
+    const stripInput = mock(() => true)
+    createKeyboardHandler(createDeps({ keymap: createKeymap({ new: "ctrl+g" }).keymap, startNewChat, strips: { stripInput } })).handleKey({ name: "g", ctrl: true })
+
+    expect(startNewChat).toHaveBeenCalledTimes(1)
+    expect(stripInput).not.toHaveBeenCalled()
   })
 
   it("routes dialog, viewer, then shell Ctrl+C ownership", () => {

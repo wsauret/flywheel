@@ -23,7 +23,7 @@ async function withPrompt(
   let dispose = () => {}
   createRoot((rootDispose) => {
     dispose = rootDispose
-    createComposerFocus(shouldHold, refocusKey)(prompt)
+    createComposerFocus(shouldHold, refocusKey).attach(prompt)
   })
   try {
     await run(prompt, { focus: () => focus.mock.calls.length, blur: () => blur.mock.calls.length })

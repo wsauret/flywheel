@@ -6,6 +6,7 @@ import type { OverlayLayers } from "../components/modal-stack.js"
 import { shouldShowGlobalHints } from "../components/key-hint-row-state.js"
 import type { QuestionInputContext } from "../components/question-input.js"
 import type { ComposerPopupKeySlot } from "./create-composer-popup-key-slot.js"
+import type { ModuleSlots } from "./create-module-slots.js"
 import { createAsyncReporter } from "./report-async.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
@@ -52,6 +53,7 @@ interface KeyboardHandlerDeps {
   overlay: OverlayLayers
   questionInput: QuestionInputContext
   promptPopup: Pick<ComposerPopupKeySlot, "input">
+  strips: Pick<ModuleSlots, "stripInput">
   openCommandPalette: () => void
   switchForeground: (tabKey: string) => void
   dispatchOutputCommand: (command: OutputWindowCommandType) => void
@@ -196,12 +198,16 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     // navigation keys while open; the popups act on them in the prompt
     // textarea's own key handler.
     if (deps.promptPopup.input(evt)) return
-    // Escape is interrupt/mode semantics owned by the escape-mode stack above,
-    // not a remappable app command.
-    if (evt.name === "escape") { handleEscape(); return }
+    // Only the consumers below see the normalized event; those above keep
+    // the raw one they have always received.
     const normalized = normalizeTerminalQuirks(evt)
-    const commandId = deps.keymap.resolve(normalized)
-    if (commandId) bindingActions[commandId](normalized)
+    // Escape is interrupt/mode semantics owned by the escape-mode stack,
+    // not a remappable app command.
+    const commandId = evt.name === "escape" ? null : deps.keymap.resolve(normalized)
+    if (commandId) { bindingActions[commandId](normalized); return }
+    // A keymap binding wins over a chord a module strip declares.
+    if (deps.strips.stripInput(normalized)) return
+    if (evt.name === "escape") handleEscape()
   }
 
   return { handleKey, activeEscapeMode, promptBarActions }

@@ -7,12 +7,15 @@ import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import { readModuleStatusRows, sameModuleStatusScope, type ModuleStatusScope } from "../../protocol/client/module-status.js"
 import { moduleComposerStatus, moduleRows } from "../../protocol/modules.js"
 import type { ModuleComposerStatus, ModuleRow } from "../../protocol/protocol-module.js"
+import { usePaste } from "@opentui/solid"
 import { createLazyTuiView } from "../components/lazy-tui-view.js"
 import type { ListModalKeyEvent } from "../components/modal-list-keys.js"
 import { createModalScrollController } from "../components/modal-scroll-controller.js"
 import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
 import type { ToastInput } from "../context/toast.js"
-import type { TuiComponentSurface, TuiControllerHost, TuiModule, TuiNavigation, TuiSurface, TuiSurfaceHost } from "../tui-module.js"
+import type { TuiComponentSurface, TuiControllerHost, TuiModule, TuiNavigation, TuiStripKeyClaim, TuiStripKeyEvent, TuiStripKeys, TuiSurface, TuiSurfaceHost } from "../tui-module.js"
+import type { Keymap } from "../keymap/keymap.js"
+import { normalizedPrintableText } from "../keymap/text-entry.js"
 import { createDomainReader, type ModuleDomainIntakes } from "./create-module-domain-intakes.js"
 import type { SurfaceRequest } from "../commands/command-surfaces.js"
 
@@ -34,7 +37,17 @@ interface ModuleSlotDeps {
   readonly navigate: TuiNavigation
   readonly clipboard: TuiControllerHost["clipboard"]
   readonly appVersion?: string
+  /** The effective keymap, whose bindings win over the chords a strip declares. */
+  readonly keymap?: Pick<Keymap, "commandAt">
+  /** Reports a config mistake, such as a strip chord the keymap binds. */
+  readonly reportIssue?: (message: string) => void
+  /** The prompt a strip gives its focus back to. */
+  readonly composer?: { readonly hasDraft: (sessionId: string) => boolean; readonly syncFocus: () => void }
+  /** Whether the foreground's own question shows; its dock then owns the keys. */
+  readonly foregroundQuestion?: Accessor<boolean>
 }
+
+interface StripKeyEventLike extends TuiStripKeyEvent { readonly preventDefault?: () => void }
 
 export interface ModuleSlots {
   /** The rows every module contributes to the welcome card, the status
@@ -50,6 +63,13 @@ export interface ModuleSlots {
    *  intent after loading and receive the opening command's argument. Each
    *  opener answers whether the surface accepted the opening. */
   readonly surfaces: ReadonlyMap<string, (request?: SurfaceRequest) => boolean | Promise<boolean>>
+  /** True while a strip holds key focus, so the composer has none. */
+  readonly stripFocused: Accessor<boolean>
+  /** Offers a normalized key to the strips; true when a strip owned it. */
+  readonly stripInput: (event: StripKeyEventLike) => boolean
+  /** Ends strip focus and gives the prompt its focus now: a printable key the
+   *  strip did not take, a paste, and a press on the prompt call it. */
+  readonly releaseStripFocus: () => void
 }
 
 /** The terminal's one slot host (ARCH-PROTOCOL-034). It renders every registered
@@ -187,20 +207,88 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
     return () => { open(); return true }
   }
 
+  interface StripClaim { readonly onKey: (event: TuiStripKeyEvent) => boolean }
+  // Claims in mount order, which is registry order; read only when a key arrives.
+  const claims: StripClaim[] = []
+  const [focusedClaim, setFocusedClaim] = createSignal<StripClaim>()
+  const stripFocused = (): boolean => focusedClaim() !== undefined
+  const reportedConflicts = new Set<string>()
+  createEffect(on(deps.foregroundId, () => setFocusedClaim(undefined), { defer: true }))
+  createEffect(on(() => deps.foregroundQuestion?.() ?? false, (shows) => { if (shows) setFocusedClaim(undefined) }))
+
+  function stripKeys(module: TuiModule): TuiStripKeys {
+    return {
+      claim(input) {
+        const claim: StripClaim = { onKey: input.onKey }
+        claims.push(claim)
+        onCleanup(() => {
+          claims.splice(claims.indexOf(claim), 1)
+          if (untrack(focusedClaim) === claim) setFocusedClaim(undefined)
+        })
+        // Reruns when a [keybindings] publication changes the effective keymap.
+        createEffect(() => {
+          for (const chord of input.chords) {
+            const command = deps.keymap?.commandAt(chord)
+            const conflict = `${module.id}:${chord}:${command}`
+            if (!command || reportedConflicts.has(conflict)) continue
+            reportedConflicts.add(conflict)
+            deps.reportIssue?.(`The ${module.id} module's key "${chord}" is bound to the command "${command}", which keeps it. Bind "${command}" to another key in [keybindings] to free "${chord}".`)
+          }
+        })
+        const handle: TuiStripKeyClaim = {
+          focused: () => focusedClaim() === claim,
+          setFocused: (next) => {
+            if (next && !(untrack(() => deps.foregroundQuestion?.()) ?? false)) setFocusedClaim(() => claim)
+            else if (!next && untrack(focusedClaim) === claim) setFocusedClaim(undefined)
+          },
+        }
+        return handle
+      },
+    }
+  }
+
+  // The one way strip focus goes back to the prompt. The prompt takes focus
+  // in this dispatch, and the renderer offers the current key or paste to the
+  // focused prompt after every global listener, so the input that ended strip
+  // focus, and the rest of its stdin chunk, lands in the prompt itself.
+  function releaseStripFocus(): void {
+    setFocusedClaim(undefined)
+    deps.composer?.syncFocus()
+  }
+
+  // A strip with focus owns every key that reaches it, so Escape never
+  // interrupts from the list; only a printable key leaves it for the prompt.
+  function stripInput(event: StripKeyEventLike): boolean {
+    const holder = untrack(focusedClaim)
+    if (holder) {
+      if (holder.onKey(event)) { event.preventDefault?.(); return true }
+      if (normalizedPrintableText(event) !== null) releaseStripFocus()
+      return true
+    }
+    for (const claim of claims) {
+      if (claim.onKey(event)) { event.preventDefault?.(); return true }
+    }
+    return false
+  }
+
   function Strips(props: { readonly sessionId: string; readonly width: Accessor<number> }): JSX.Element {
+    // A paste that no overlay or question took goes to the prompt, which has
+    // no focus while a strip holds it.
+    usePaste((event) => { if (!event.defaultPrevented && untrack(focusedClaim)) releaseStripFocus() })
     return deps.modules.flatMap((module) => {
       const strip = module.strip
       if (!strip) return []
       const read = createDomainReader(deps.intakes, () => props.sessionId, deps.answering)
+      const composer = { empty: () => !(deps.composer?.hasDraft(props.sessionId) ?? false) }
       return [(
         <ErrorBoundary fallback={(error: unknown) => { contain(module, "strip", error); return null }}>
-          {createComponent(strip, { sessionId: props.sessionId, read, width: props.width, openSurface })}
+          {createComponent(strip, { sessionId: props.sessionId, read, width: props.width, openSurface, keys: stripKeys(module), composer })}
         </ErrorBoundary>
       )]
     })
   }
 
-  return { composerStatus, introRows, statusRows, settingsRows, refreshStatus, Strips, surfaces }
+  return { composerStatus, introRows, statusRows, settingsRows, refreshStatus, Strips, surfaces, stripFocused, stripInput, releaseStripFocus }
 }
 
 /** The keys every surface answers: the surface's own handler first, then
