@@ -1,0 +1,22 @@
+bench/chat-ab/workflow-authorship/patches/root-workflow-only.patch
+  h_4b47e9e4a8b456 4
+src/orchestration/app-service/person-entry-forward.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/workflows.ts
+  h_4b47e9e4a8b456 61
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 61
+tests/unit/orchestration/agent-runtime/tools/_planner-fixtures.ts
+  h_4b47e9e4a8b456 12,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a4afbf3c37c469906d4227a078ee62221a17523b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
