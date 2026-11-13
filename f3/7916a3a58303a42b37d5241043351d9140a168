@@ -1,0 +1,18 @@
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 3,268-269,795-800,806-807
+src/orchestration/agent-runtime/tools/coerce-input.ts
+  h_4b47e9e4a8b456 107-108,285-289,301-324
+tests/unit/orchestration/agent-runtime/tools/coerce-input.test.ts
+  h_4b47e9e4a8b456 176-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f37916a3a58303a42b37d5241043351d9140a168",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
