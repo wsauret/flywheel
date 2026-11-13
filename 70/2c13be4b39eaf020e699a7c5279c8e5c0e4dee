@@ -1,0 +1,21 @@
+src/orchestration/modules/lead/protocol.ts
+  s_b93f84f51b2c5a::t_9ba30fe5eb6733 6-8,21
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  s_b93f84f51b2c5a::t_a9c2d40410bab9 95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "702c13be4b39eaf020e699a7c5279c8e5c0e4dee",
+  "prompts": {},
+  "sessions": {
+    "s_b93f84f51b2c5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5446e171-6e92-4da4-98f8-fdc46ea9b1ad",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
