@@ -1,0 +1,16 @@
+src/orchestration/app-service/project-execution-ownership.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/app-service/session-event-notices.ts
+  h_4b47e9e4a8b456 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1c345b3deb477cf88f188e6c5b46724910daf9f7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
