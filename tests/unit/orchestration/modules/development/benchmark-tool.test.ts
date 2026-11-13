@@ -259,7 +259,7 @@ describe("benchmark tool admission", () => {
     expect(report.dryRun).toBe(true);
     expect(report.mode).toBe("research");
     expect(report.variants).toEqual(["gpt-6-astra@medium", "gpt-6-luna@xhigh"]);
-    expect(report.cells).toBe(12);
+    expect(report.cells).toBe((await createBenchmarkCatalog(process.cwd()).researchTasks("explorer")).length * SEATS.length * 2);
     expect(report.providerPlans).toEqual(launch.providerPlans);
     expect(String(report.resultsDir)).toContain(join("bench", "ab-persona", "results"));
     expect(tasks.activeTaskCount()).toBe(0);
@@ -268,7 +268,7 @@ describe("benchmark tool admission", () => {
   it("plans only the named tasks under a pinned judge, and names the candidates that share the judge's model", async () => {
     const { deps } = toolDeps();
     const { tasks, notifications, settled } = registry();
-    const [first] = createBenchmarkCatalog(process.cwd()).researchTasks("explorer");
+    const [first] = await createBenchmarkCatalog(process.cwd()).researchTasks("explorer");
     const result = await createBenchmarkTool(deps).execute(
       { action: "run", persona: "explorer", variants: SEATS, repeats: 1, dryRun: true, tasks: [first!.id], judge: { model: "gpt-6.1-sol", effort: "low" } },
       context(process.cwd(), tasks),

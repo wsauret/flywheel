@@ -1,0 +1,42 @@
+{
+  "facts": [
+    {
+      "id": "one-slot-cut-state",
+      "claim": "An agent input slot keeps its cut and its opening action in one state value, unread until it reads the attempt's durable turn end, and one transition function produces every next value.",
+      "catch_criteria": "Names a single cut state per input slot with an unread phase before the durable turn end is read.",
+      "files": [
+        "src/orchestration/workflow-host/agent-inputs.ts"
+      ]
+    },
+    {
+      "id": "unread-keeps-address",
+      "claim": "A Resume or message that lands while the slot is unread keeps its address instead of being dropped.",
+      "catch_criteria": "States that the person's input during opening is kept (recorded) for the agent.",
+      "files": [
+        "src/orchestration/workflow-host/agent-inputs.ts"
+      ]
+    },
+    {
+      "id": "initialize-drops-durable-cut",
+      "claim": "When the slot initializes, it restores the durable interrupt only when no kept address reaches the agent, so a person's input during opening clears it.",
+      "catch_criteria": "States that the durable interrupt is restored only if no kept person input reaches the agent.",
+      "files": [
+        "src/orchestration/workflow-host/agent-inputs.ts"
+      ]
+    },
+    {
+      "id": "resume-reads-same-cut",
+      "claim": "The runner's Resume reads the same cut a person's message meets, including the durable one, so a Resume during opening continues the agent instead of answering that it is not parked.",
+      "catch_criteria": "States that the Resume path reads the durable cut too and resumes the agent; the person's input wins and the agent runs.",
+      "files": [
+        "src/orchestration/workflow-host/runner.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "durable-interrupt-wins",
+      "wrong_answer": "The durable interrupt overrides the person's input during opening: the agent opens interrupted and the Resume answers that it is already running."
+    }
+  ]
+}

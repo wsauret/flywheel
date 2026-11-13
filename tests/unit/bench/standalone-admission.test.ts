@@ -220,7 +220,7 @@ describe("standalone benchmark admission", () => {
       scoringVersion: "persona-v2",
     };
     await mkdir(catalog.resultsRoot, { recursive: true });
-    await createPersonaStore({ resultsRoot: catalog.resultsRoot, directory: resultsDir }, config, catalog.researchTasks("explorer").map(({ id }) => id));
+    await createPersonaStore({ resultsRoot: catalog.resultsRoot, directory: resultsDir }, config, (await catalog.researchTasks("explorer")).map(({ id }) => id));
     const { create } = fakeRuntime(identity);
     let requestedGeneration: UsageAuthorityGeneration | undefined;
     const log = spyOn(console, "log").mockImplementation(() => {});

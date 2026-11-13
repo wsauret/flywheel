@@ -13,6 +13,7 @@ import {
   type BenchmarkEvent,
 } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
 import { runGroups } from "../../../src/orchestration/modules/development/benchmark/matrix-runner.js";
+import { checkCitations } from "../../../src/orchestration/modules/development/benchmark/research-scoring.js";
 import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
 import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
@@ -140,7 +141,7 @@ describe("persona benchmark service", () => {
   it("persists a completed candidate before a role record failure", async () => {
     const root = await syntheticProject();
     const catalog = createBenchmarkCatalog(root);
-    const tasks = catalog.researchTasks("explorer");
+    const tasks = await catalog.researchTasks("explorer");
     const plan = await planPersonaBenchmark({ operation: "run", variants: [VARIANTS[0]!], repeats: 1, taskIds: [tasks[0]!.id] }, catalog);
     const runtime = fakeRuntime(async () => {
       const cell = join(plan.resultsDir, "cells", VARIANTS[0]!.id, tasks[0]!.id, "0");
@@ -438,7 +439,7 @@ describe("persona benchmark service", () => {
     const root = await syntheticProject();
     const catalog = createBenchmarkCatalog(root);
     // A research task archives its pinned snapshot with a sandbox command, so each cell starts one.
-    const task = catalog.researchTasks("explorer")[0]!;
+    const task = (await catalog.researchTasks("explorer"))[0]!;
 
     const controller = new AbortController();
     const allStarted = Promise.withResolvers<void>();
@@ -473,7 +474,7 @@ describe("persona benchmark service", () => {
   it("runs a selected research task with the default solo seat without a judge call", async () => {
     const root = await syntheticProject();
     const catalog = createBenchmarkCatalog(root);
-    const task = catalog.researchTasks("explorer")[0]!;
+    const task = (await catalog.researchTasks("explorer"))[0]!;
     const plan = await planPersonaBenchmark({ variants: [], operation: "run", taskIds: [task.id] }, catalog);
     expect(plan.variants).toEqual([{ id: "profile" }]);
     expect(plan.tasks.map(({ id }) => id)).toEqual([task.id]);
@@ -511,6 +512,84 @@ describe("persona benchmark service", () => {
     const runs = await store.loadRuns();
     expect(runs).toMatchObject([{ variant: "profile", task: task.id }]);
     expect(runs[0]).not.toHaveProperty("model");
+  });
+});
+
+describe("research answer keys", () => {
+  const answerKey = {
+    facts: [
+      { id: "start", claim: "The bound starts at the stop item.", catch_criteria: "Names the stop item", files: ["src/a.ts"] },
+      { id: "replay", claim: "Buffered events replay in order.", catch_criteria: "Names the replay", files: ["src/a.ts"] },
+    ],
+    traps: [{ id: "thinking-end", wrong_answer: "The bound starts when thinking ends." }],
+  };
+
+  it("checks each distinct citation against exactly one file and line of the pin", () => {
+    const lines = new Map([["src/a.ts", 3], ["src/x/index.ts", 9], ["src/y/index.ts", 9]]);
+    expect(checkCitations("`/tmp/flywheel-bench-trial-1/src/a.ts:3`, a.ts:2-3, src/a.ts:4, index.ts:1, src/x/index.ts:9, src/a.ts:4", lines)).toEqual({
+      total: 5, invalid: ["src/a.ts:4", "index.ts:1"],
+    });
+    // Only an absolute path loses its leading parts; a relative path keeps every part it states, and a range runs forward from line 1.
+    expect(checkCitations("nonexistent/src/a.ts:1, x/index.ts:2, src/a.ts:0, src/a.ts:3-0, src/a.ts:3-2, C:\\trial\\src\\a.ts:1", lines)).toEqual({
+      total: 6, invalid: ["nonexistent/src/a.ts:1", "src/a.ts:0", "src/a.ts:3-0", "src/a.ts:3-2"],
+    });
+  });
+
+  it("reads the complete path of a citation, with filename punctuation and spaces", () => {
+    const lines = new Map([["src/a.ts", 3], ["docs/my notes.md", 2]]);
+    const text = [
+      "invented$/src/a.ts:1, invented+/src/a.ts:1",
+      "C:\\Users\\Jane Doe\\AppData\\Local\\Temp\\flywheel-bench-trial-X\\src\\a.ts:1",
+      "`docs/my notes.md`:2 and \"docs/my notes.md:3\"",
+    ].join("\n");
+    expect(checkCitations(text, lines)).toEqual({
+      total: 5, invalid: ["invented$/src/a.ts:1", "invented+/src/a.ts:1", "docs/my notes.md:3"],
+    });
+  });
+
+  it("judges a solo seat against the answer key, checks its citations at the pin, and reports both", async () => {
+    const root = await syntheticProject();
+    const catalog = createBenchmarkCatalog(root);
+    const taskDir = join(catalog.researchTasksDir, "bound");
+    await Bun.write(join(taskDir, "task.json"), JSON.stringify({ id: "bound", sandbox: { commit: "b5833f6a4e4458a80e02612cfb5c0729aaaaf267", paths: ["src"] } }));
+    await Bun.write(join(taskDir, "prompt.md"), "Where does the bound start?");
+    await Bun.write(join(taskDir, "manifest.json"), JSON.stringify(answerKey));
+    const runtime: BenchmarkRuntime = {
+      ...fakeRuntime(() => ({ terminal: { kind: "completed" } })),
+      // The extraction step of each snapshot writes the pinned file the answer cites.
+      runOwnedCommand: async (command, options) => {
+        if (command[0] === "tar") await Bun.write(join(command[4]!, "src", "a.ts"), "one\ntwo\nthree\n");
+        return succeedingCommands(command, options);
+      },
+      createAgent: (options: AgentOptions) => ({
+        send: () => { options.runtimeSurfaces?.handoff?.onContent({ summary: "It starts at the stop item:\nC:\\trial\\src\\a.ts:2\nsrc/a.ts:1\nsrc/a.ts:40" }); },
+        abort: () => {},
+        end: () => {},
+        done: Promise.resolve({ durationMs: 1, servedRequests: 0, terminal: { kind: "completed" as const } }),
+      }),
+    };
+    const prompts: string[] = [];
+    const plan = await planPersonaBenchmark({ variants: [VARIANTS[0]!], operation: "run", taskIds: ["bound"] }, catalog);
+    const outcome = await runPersonaBenchmark(plan, {
+      ...deps(runtime, root, []),
+      createJudge: async () => ({
+        complete: async (prompt) => {
+          prompts.push(prompt);
+          return { ...await verdictJudge.complete(prompt, new AbortController().signal), text: `{"caught":["start"],"uncertain":[],"traps_asserted":["thinking-end"]}` };
+        },
+      }),
+    });
+
+    if (outcome.status !== "completed") throw new Error(`expected completion, got ${outcome.status}`);
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain("The bound starts when thinking ends.");
+    expect(prompts[0]).not.toContain("src/a.ts\"");
+    const scores = (await createRunStore({ resultsRoot: catalog.resultsRoot, directory: plan.resultsDir }).then((store) => store.loadScores()));
+    expect(scores).toEqual([{
+      kind: "research-score", mode: "research", persona: "explorer", error: null,
+      score: { variant: VARIANTS[0]!.id, task: "bound", repeat: 0, caught: ["start"], uncertain: [], trapsAsserted: ["thinking-end"], citations: { total: 3, invalid: ["src/a.ts:40"] } },
+    }]);
+    expect(outcome.report).toContain(`| bound | ${VARIANTS[0]!.id} | 1 | 1/2 (50.0%) | 0 | 1/1 (100.0%) | 2/3 (66.7%) |`);
   });
 });
 

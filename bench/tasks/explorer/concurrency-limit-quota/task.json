@@ -1,0 +1,14 @@
+{
+  "id": "concurrency-limit-quota",
+  "sandbox": {
+    "commit": "b5833f6a4e4458a80e02612cfb5c0729aaaaf267",
+    "paths": [
+      "src",
+      "AGENTS.md",
+      "docs/architecture.md",
+      "docs/architecture-intent",
+      "docs/product-intent",
+      "docs/terminology.md"
+    ]
+  }
+}

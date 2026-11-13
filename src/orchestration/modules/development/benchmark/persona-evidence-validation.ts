@@ -1,10 +1,11 @@
 import type { ReviewManifest } from "./catalog.js";
+import type { ResearchAnswerKey } from "./research-task.js";
 import type { JudgeVerdict } from "./judge.js";
 import { runKey, type AgentRunRecord, type AttemptRecord, type BenchmarkVariant, type JudgeAttemptRecord, type ScoreRecord } from "./run-store.js";
 import type { BenchmarkPlan } from "./persona-benchmark.js";
 
 type EvidenceTask =
-  | { readonly id: string }
+  | { readonly id: string; readonly answerKey?: ResearchAnswerKey }
   | { readonly id: string; readonly fixtureDir: string; readonly manifest: ReviewManifest };
 
 type EvidencePlan = Pick<BenchmarkPlan, "persona" | "mode" | "repeats"> & {
@@ -57,7 +58,7 @@ export function validateJudgeAttempts(plan: EvidencePlan, taskIds: ReadonlySet<s
   const variantIds = new Set(plan.variants.map((variant) => variant.id));
   const ids = new Set<string>();
   const permittedKinds = plan.mode === "research"
-    ? new Set(["pair-score"])
+    ? new Set(["pair-score", "research-score"])
     : plan.mode === "reviewer"
       ? new Set(["review-score"])
       : new Set(["pair-score", "trap-score"]);
@@ -108,7 +109,18 @@ function validatePairScore(plan: EvidencePlan, taskIds: ReadonlySet<string>, var
 export function validateScores(plan: EvidencePlan, taskIds: ReadonlySet<string>, scores: readonly ScoreRecord[]): void {
   validateScoreCells(plan, taskIds, scores);
   const seededDefects = new Map(plan.tasks.filter(isReviewTask).map((task) => [task.id, new Set(task.manifest.defects.map((defect) => defect.id))]));
+  const answerKeys = new Map(plan.tasks.flatMap((task) => "answerKey" in task && task.answerKey ? [[task.id, task.answerKey] as const] : []));
   for (const record of scores) {
+    if (record.kind === "research-score") {
+      const { variant, task, repeat, caught, uncertain, trapsAsserted } = record.score;
+      const key = answerKeys.get(task);
+      if (!key) throw new Error(`research-score ${variant}/${task}/${repeat} scores ${task}, which has no answer key`);
+      const facts = new Set(key.facts.map(({ id }) => id));
+      const traps = new Set(key.traps.map(({ id }) => id));
+      const unknown = [...caught, ...uncertain].find((id) => !facts.has(id)) ?? trapsAsserted.find((id) => !traps.has(id));
+      if (unknown !== undefined) throw new Error(`research-score ${variant}/${task}/${repeat} names ${unknown}, which the answer key of ${task} does not hold`);
+      continue;
+    }
     if (record.kind !== "review-score") continue;
     const { variant, task, repeat, caught, uncertain } = record.score;
     const seeded = seededDefects.get(task) ?? new Set<string>();
