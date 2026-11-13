@@ -54,7 +54,7 @@ describe("automatic provider chain resolution", () => {
   });
   test("creating a client reads no availability, polls no quota, and builds no adapter", () => {
     const availability = fakeAvailability({
-      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS },
+      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } },
     });
     const built: AccessProviderId[] = [];
 
@@ -176,7 +176,7 @@ describe("automatic provider chain resolution", () => {
     const client = chain({
       candidates: [subscriptionCandidate("chatgpt")],
       availability: fakeAvailability({
-        chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS },
+        chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } },
       }).availability,
     });
 
@@ -231,7 +231,7 @@ describe("automatic provider chain resolution", () => {
     // ChatGPT sits at probe_due (suppression expired); a fast-mode request
     // must skip it before any quota read, so no probe lease is ever claimed.
     const availability = fakeAvailability({
-      chatGpt: { exhaustedAtMs: Date.now() - SAFE_RECHECK_MS - 1, resetsAtMs: Date.now() - 1 },
+      chatGpt: { exhaustedAtMs: Date.now() - SAFE_RECHECK_MS - 1, resetsAtMs: Date.now() - 1, hold: { kind: "usage_limit", stated: true } },
     });
     const client = chain({ availability: availability.availability });
 
@@ -317,7 +317,7 @@ describe("automatic provider chain resolution", () => {
     const client = chain({
       candidates: [subscriptionCandidate("chatgpt")],
       availability: fakeAvailability({
-        chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS },
+        chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } },
       }).availability,
     });
 
@@ -335,7 +335,7 @@ describe("automatic provider chain resolution", () => {
     const prepared: string[] = [];
     const client = chain({
       availability: fakeAvailability({
-        chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS },
+        chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } },
       }).availability,
     });
 
@@ -358,7 +358,7 @@ describe("automatic provider chain resolution", () => {
         { candidate: subscriptionCandidate("chatgpt", "account-a"), wireModelId: "gpt-5.5", dataUse: "standard", catalogProvenance: "live" },
         { candidate: singletonCandidate("openai_api"), wireModelId: "gpt-5.5", dataUse: "standard", catalogProvenance: "last-known-good" },
       ],
-      availability: fakeAvailability({ chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS } }).availability,
+      availability: fakeAvailability({ chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } } }).availability,
     });
 
     await (await client.admitRequest()).run({
@@ -473,7 +473,7 @@ describe("availability between requests", () => {
     });
 
     expect(await run(client)).toEqual([textDelta("chatgpt")]);
-    script.chatGpt = { exhaustedAtMs: Date.now(), resetsAtMs: resetsAtSeconds * 1000 };
+    script.chatGpt = { exhaustedAtMs: Date.now(), resetsAtMs: resetsAtSeconds * 1000, hold: { kind: "usage_limit", stated: true } };
 
     expect(await run(client)).toEqual([textDelta("openai_api")]);
     expect(built).toEqual(["chatgpt", "openai_api"]);
@@ -481,7 +481,7 @@ describe("availability between requests", () => {
 
   test("prefers a recovered subscription without publishing a routing notice", async () => {
     const script: AvailabilityScript = {
-      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS },
+      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "usage_limit", stated: false } },
     };
     const { availability } = fakeAvailability(script);
     const client = chain({ availability });

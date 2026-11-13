@@ -1,9 +1,13 @@
 import type { AuthContext, ProviderConnection } from "../../infra/auth/auth-context.js";
-import type { AccessProviderCandidate, AccessProviderModelEligibility, FailoverPlan } from "../../infra/llm/access-provider.js";
+import { accessProviderAccountKey, type AccessProviderCandidate, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan } from "../../infra/llm/access-provider.js";
+import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
+import type { RequestAdmission } from "./llm/provider-availability-types.js";
 import type { ModelClient, ProviderSessionLifetime } from "./llm/types.js";
 import type { ModelsClient } from "../../infra/llm/models.js";
 import { getSharedModelsClient } from "../config/llm-clients.js";
-import { captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "./llm/client-factory.js";
+import { candidateCredentialLineage, captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "./llm/client-factory.js";
+import { modelStanding, type ModelStanding } from "./llm/model-standing.js";
+import { getSharedProviderAvailability } from "./llm/shared-provider-availability.js";
 import { LiveAgent } from "./runner.js";
 import { planCapabilitiesOfRun, prepareRunRequest, type CapabilityPlanner, type RequestPreparer } from "./request-preparation.js";
 import type { AgentFactory, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
@@ -58,6 +62,13 @@ export interface ProviderConnectionCapture {
   readonly runtimeConfig: RuntimeConfigRequestCapture;
   /** Plans keyed by the model id their caller will ask for. */
   admit(plans: ReadonlyMap<string, FailoverPlan>): AdmittedRuntime;
+  /** This request's spend admission of `candidates`: allowance and consent, captured once per candidate list for the
+   *  life of this capture, so the role's standing and the selected client's admission read the same evidence. */
+  requestAdmission(candidates: readonly AccessProviderCandidate[]): Promise<RequestAdmission>;
+  /** Whether `plan`'s model can serve an agent's request now under `providerOptions`, read from the shared
+   *  availability and this capture's spend admission by the walk's readiness rule. It claims no probe and builds no
+   *  adapter (ARCH-PROVIDERS-080). */
+  standing(plan: AdmittedFailoverPlan, providerOptions: ProviderRequestOptions | undefined): Promise<ModelStanding>;
 }
 
 export type CaptureProviderConnection = (runtimeConfig?: RuntimeConfigRequestCapture, moduleSnapshot?: FirstPartyModuleComposition) => Promise<ProviderConnectionCapture>;
@@ -283,11 +294,36 @@ export function createAgentRuntime(deps: {
     const providers = accessProviderRegistry(moduleSnapshot);
     const connection = deps.connection ?? captureAccountConnection(access?.auth ?? accountAuth(), deps.authDirectory(), providers, deps.profileId);
     const eligibility = access?.worker ?? deps.getProviderModelEligibility?.();
+    const admissions = new Map<string, Promise<RequestAdmission>>();
+    const capturedAdmission = (candidates: readonly AccessProviderCandidate[]): Promise<RequestAdmission> => {
+      const key = JSON.stringify(candidates.map((candidate) => [accessProviderAccountKey(candidate), candidate.spendMode]));
+      let admission = admissions.get(key);
+      if (admission === undefined) {
+        admission = requestAdmission(connection, runtimeConfig)(candidates);
+        admissions.set(key, admission);
+      }
+      return admission;
+    };
     return {
       connection,
       providers,
       eligibility,
       runtimeConfig,
+      requestAdmission: capturedAdmission,
+      async standing(plan, providerOptions) {
+        const candidates = plan.candidateAttributions.map(({ candidate }) => candidate);
+        const admission = await capturedAdmission(candidates);
+        const availability = getSharedProviderAvailability().forCandidates(connection.profileId, candidates);
+        availability.refreshProjection();
+        return modelStanding(plan, {
+          availability,
+          ...(providerOptions === undefined ? {} : { providerOptions }),
+          conditions: connection.auth.conditions ?? [],
+          credentialLineage: (candidate) => candidateCredentialLineage(connection, candidate),
+          subscriptionSpendAuthorizationFor: admission.subscriptionSpendAuthorizationFor,
+          ...(admission.subscriptionAllowanceFor === undefined ? {} : { subscriptionAllowanceFor: admission.subscriptionAllowanceFor }),
+        }, providers.selection.shortName);
+      },
       admit(plans) {
         const createAdmittedLLMClient: LLMClientFactory = (model, _moduleSnapshot, requestConfig, providerSessionLifetime) => {
           const requestRuntimeConfig = requestConfig ?? runtimeConfig;

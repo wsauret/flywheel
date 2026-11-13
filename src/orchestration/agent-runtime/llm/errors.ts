@@ -138,11 +138,15 @@ export class AllCandidatesExhaustedError extends Schema.TaggedError<AllCandidate
   /** What a later request can do, from the same evidence as the copy. An
    *  unattended caller, such as an agent of a workflow, waits or retries by it. */
   readonly recovery: ProviderRecovery;
+  /** Set when an agent's request boundary found that no preference of its role can serve, so `recovery` states the
+   *  earliest moment that one serves again (PI-MODEL-039). */
+  readonly noPreferenceServes?: true;
 
-  constructor(input: { message: string; detail?: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery }) {
+  constructor(input: { message: string; detail?: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; noPreferenceServes?: true }) {
     super({ message: input.message, ...(input.detail === undefined ? {} : { detail: input.detail }) });
     this.copy = input.copy;
     this.recovery = input.recovery;
+    if (input.noPreferenceServes) this.noPreferenceServes = true;
   }
 }
 

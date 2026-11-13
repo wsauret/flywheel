@@ -133,6 +133,7 @@ export function toFailureReason(error: AgentRuntimeError): AgentFailureReason {
       ...(error.copy === undefined ? {} : { copy: error.copy }),
       recovery: error.recovery,
       candidatesExhausted: true,
+      ...(error.noPreferenceServes ? { noPreferenceServes: true } : {}),
     }
     case "TransientDisconnect": return { kind: "transient_disconnect", message: error.message }
     case "StreamStalled": return { kind: "stream_stalled", message: error.message, attribution: error.attribution }

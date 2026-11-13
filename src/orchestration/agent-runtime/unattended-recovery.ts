@@ -7,7 +7,15 @@
  * run continues from its recorded conversation. The provider walk owns every
  * retry and failover inside one request; this policy owns only that decision.
  * A chat lets every other failure stand, as before: a person decides there
- * whether to send again.
+ * whether to send again. Every agent of an unattended Agent Client Protocol
+ * run, its chat and every agent that the chat starts, has no person who can
+ * end a wait and no deadline of its own. It lets a spent usage limit, quota,
+ * or credit stand as its failure, whether the provider stated its reset or
+ * not, and waits only for a hold that clears by itself: a rate limit or
+ * Flywheel's own recheck of an outage. When one candidate's limit is spent
+ * and another's hold clears by itself, it waits for that hold, and only when
+ * every candidate's limit is spent does its failure stand (PI-AGENT-128,
+ * PI-AGENT-118).
  *
  * - A fault that needs a person ends the run: a request the provider
  *   rejected, a refused credential or grant, a model that the profile does
@@ -16,6 +24,13 @@
  * - A failure that a limit of the run ended stands: an output overflow ends
  *   only after the agent loop spent its continuation limit, and a run again
  *   would grant that limit again (PI-AGENT-023).
+ * - A model whose quota is spent until a stated time is not an attempt. An
+ *   agent continues at once, uncounted and with no wait, so its next request
+ *   resolves its role against the availability of that moment and passes over
+ *   every spent preference (ARCH-RUNTIME-082). Only a failure of that request
+ *   boundary itself, which found that no preference serves
+ *   (`noPreferenceServes`), takes the wait below, until the earliest moment
+ *   that one serves again.
  * - A wait that a known event ends is not an attempt. When the walk found no
  *   candidate and every candidate that waiting can help states when it serves
  *   again, the run waits until then, judged by the wall clock, so a machine
@@ -45,6 +60,7 @@ import { abortableSleep, mergeAbortSignals } from "../../infra/abort.js"
 import type { TurnParkState } from "../../infra/agent-loop-events.js"
 import { DebugLog } from "../../infra/debug-log.js"
 import { errorMessage } from "../../infra/error-message.js"
+import type { CapacityReset, ProviderRecovery } from "../../infra/llm/provider-error-copy.js"
 import { Log } from "../../infra/log.js"
 import type { SessionNotice, SessionNoticeOperation } from "../../infra/session-notice.js"
 import { sleepUntil } from "../../infra/wall-clock-sleep.js"
@@ -73,6 +89,9 @@ interface UnattendedRecoveryDeps {
    *  the headless conversation id. */
   readonly runId: string
   readonly caller: "workflow-agent" | "subagent" | "headless" | "chat"
+  /** Set for every agent of an unattended Agent Client Protocol run, which
+   *  the run's capability boundary marks (`CapabilityAccess.unattended`). */
+  readonly unattendedRun?: boolean
   /** The agent's name, which the wait notice states. */
   readonly agentName: string
   readonly onNotice: (operation: SessionNoticeOperation) => void
@@ -131,6 +150,8 @@ interface WaitPlan {
   /** Reads the wall clock, so a machine that slept through the time
    *  continues when it wakes; a pause runs one timer. */
   readonly wallClock?: boolean
+  /** The capacity that a capacity wait waits for, which its records name. */
+  readonly reset?: CapacityReset
 }
 
 /** The withdrawal that an end of a capacity wait records, or undefined
@@ -156,6 +177,8 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
   const scope = `unattended:wait:${deps.runId}`
   let streak = 0
   let served = 0
+  // The agents whose requests pass over role preferences whose quota is spent (PI-MODEL-087).
+  const passesSpentModels = (deps.caller === "workflow-agent" || deps.caller === "subagent") && deps.unattendedRun !== true
   interface Wait { readonly controller: AbortController; cutBy: TurnInterruption | undefined; message: boolean }
   let waiting: Wait | null = null
   let capacityWaiting = false
@@ -169,12 +192,20 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
     if (armsOutstanding === 0) await withdrawn
   }
 
-  // One INFO record per decision, with ids, kinds, and counts only.
-  const record = (decision: "wait" | "interrupted" | "restart" | "fail", failure: AgentFailureReason, delayMs?: number): void => {
+  // One INFO record per decision, with ids, kinds, and counts only. A
+  // decision on capacity that returns at a known time adds what holds it,
+  // and the reset when a provider stated it.
+  const record = (decision: "wait" | "interrupted" | "restart" | "fail" | "continue", failure: AgentFailureReason, delayMs?: number, reset?: CapacityReset): void => {
+    const stated = reset?.hold.kind === "rate_limit" || (reset?.hold.kind === "usage_limit" && reset.hold.stated)
     DebugLog.record({
       type: "agent.unattended.recovery",
       sessionId: deps.sessionId,
-      payload: { caller: deps.caller, runId: deps.runId, decision, failure: failure.kind, streak, ...(delayMs === undefined ? {} : { delayMs }), served },
+      payload: {
+        caller: deps.caller, runId: deps.runId, decision, failure: failure.kind, streak,
+        ...(delayMs === undefined ? {} : { delayMs }),
+        ...(reset === undefined ? {} : { hold: reset.hold.kind, ...(stated ? { resetsAtMs: reset.atMs } : {}) }),
+        served,
+      },
     })
   }
 
@@ -182,7 +213,7 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
    *  settles first. The caller reads the clock once for both, so a pause
    *  lasts exactly its span. */
   async function wait(failure: AgentFailureReason, signal: AbortSignal, startedAt: number, atMs: number, plan: WaitPlan = {}): Promise<WaitEnd> {
-    const { notice, until, wallClock = false } = plan
+    const { notice, until, wallClock = false, reset } = plan
     const nextAttemptAt = Math.max(startedAt, atMs)
     const delayMs = nextAttemptAt - startedAt
     const current: Wait = { controller: new AbortController(), cutBy: undefined, message: false }
@@ -209,7 +240,7 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
     // the wait and then cancels the turn, and the turn end names the cut.
     if (current.cutBy !== undefined) {
       cutInterrupt = current.cutBy
-      record("interrupted", failure)
+      record("interrupted", failure, undefined, reset)
       return "cut"
     }
     if (signal.aborted) return "cancelled"
@@ -246,9 +277,17 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
   /** Waits for the capacity the walk stated while its durable authority is
    *  armed, so the wait reaches its time also while the account's answer to
    *  the arm is outstanding. A row that cannot be written leaves the wait in
-   *  memory: continuing wins over a refused write. */
-  async function capacityWait(failure: AgentFailureReason, atMs: number, signal: AbortSignal): Promise<NextRun> {
-    record("wait", failure, Math.max(0, atMs - now()))
+   *  memory: continuing wins over a refused write. An agent of an unattended
+   *  run waits only for a hold that clears by itself, and lets the failure
+   *  stand when every candidate's limit is spent. */
+  async function capacityWait(failure: AgentFailureReason, recovery: Extract<ProviderRecovery, { kind: "at" }>, signal: AbortSignal): Promise<NextRun | null> {
+    const reset = deps.unattendedRun === true && recovery.hold.kind === "usage_limit" ? recovery.selfClearing : recovery
+    if (reset === undefined) {
+      record("fail", failure, undefined, recovery)
+      return null
+    }
+    const { atMs } = reset
+    record("wait", failure, Math.max(0, atMs - now()), reset)
     let end: WaitEnd = "cancelled"
     if (deps.capacity) {
       armsOutstanding += 1
@@ -261,6 +300,7 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
       end = await wait(failure, signal, now(), atMs, {
         notice: (nextAttemptAt) => capacityWaitNotice({ sessionId: deps.sessionId, agentName: deps.agentName, atMs: nextAttemptAt, now: now() }),
         wallClock: true,
+        reset,
       })
     } finally {
       capacityWaiting = false
@@ -283,15 +323,16 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
     async recover(failure, servedRequests, signal) {
       served = servedRequests
       if (servedRequests > 0) streak = 0
-      if (deps.caller === "chat") {
-        return failure.kind === "api_error" && failure.recovery.kind === "at"
-          ? await capacityWait(failure, failure.recovery.atMs, signal)
-          : null
-      }
+      if (deps.caller === "chat") return failure.kind === "api_error" && failure.recovery.kind === "at" ? await capacityWait(failure, failure.recovery, signal) : null
       switch (failure.kind) {
         case "api_error":
           switch (failure.recovery.kind) {
-            case "at": return await capacityWait(failure, failure.recovery.atMs, signal)
+            case "at":
+              if (passesSpentModels && failure.noPreferenceServes !== true && failure.recovery.hold.kind === "usage_limit" && failure.recovery.hold.stated) {
+                record("continue", failure, undefined, failure.recovery)
+                return {}
+              }
+              return await capacityWait(failure, failure.recovery, signal)
             case "retry": return await freshAttempt(failure, signal)
             case "none": break
           }

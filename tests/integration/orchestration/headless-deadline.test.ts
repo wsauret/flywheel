@@ -32,7 +32,7 @@ function workflowDeps(createAgent: AgentFactory): WorkflowDeps {
     prepareRequest: () => { throw new Error("A headless run prepares no pre-start") },
     planCapabilities: planEveryCapability,
     createLLMClient: async () => { throw new Error("unexpected LLM client creation"); },
-    captureProviderConnection: async () => ({ connection, providers: testProviderRegistry(), runtimeConfig: testRuntimeConfigCapture(), eligibility: testProviderEligibility(), admit: () => { throw new Error("unexpected provider admission"); } }),
+    captureProviderConnection: async () => ({ connection, providers: testProviderRegistry(), runtimeConfig: testRuntimeConfigCapture(), eligibility: testProviderEligibility(), requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: () => { throw new Error("unexpected provider admission"); } }),
     runOwnedCommand: async () => { throw new Error("unexpected command"); },
     resolveEnvSnapshot: async (scope) => ({ envBlock: scope.executionCwd }),
     captureRuntimeConfig: testRuntimeConfigCapture,

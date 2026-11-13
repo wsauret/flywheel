@@ -372,7 +372,7 @@ An Agent Client Protocol client can request an unattended one-shot run. That run
 
 ## PI-AGENT-128: An unattended Agent Client Protocol run does not wait for model capacity
 
-No person can end a wait of an unattended one-shot Agent Client Protocol run, and the run has no deadline of its own. When no candidate can serve any agent of the run because each usage limit, quota, or credit is spent, that agent fails at once. The failure names the reset time that a provider stated, or says that no reset time is known. The agent waits out a rate limit or an outage, which clear by themselves (PI-AGENT-118). The prompt is answered with that failure, and the run publishes its evidence and ends.
+No person can end a wait of an unattended one-shot Agent Client Protocol run, and the run has no deadline of its own. When no candidate can serve any agent of the run because each usage limit, quota, or credit is spent, that agent fails at once and never moves to another model. The failure names the provider's stated reset time, or says that none is known. The agent waits out a rate limit or an outage, which clear by themselves (PI-AGENT-118). The prompt is answered with that failure, and the run publishes its evidence and ends.
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 

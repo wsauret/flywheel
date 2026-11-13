@@ -171,7 +171,7 @@ function harness(cells: CellBehavior = "blocks") {
             return eligibility.candidateOffering?.(candidate, model, allowTrainingRoutes);
           },
         },
-        admit: (plans) => {
+        requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: (plans) => {
           state.admittedModels = [...plans.keys()];
           return {
             createAgent: (options) => {

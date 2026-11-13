@@ -67,7 +67,7 @@ function fakeRuntime(usageAuthority: UsageAuthorityGeneration = { profileId: "de
         connection: captureProviderConnection({ profileId: usageAuthority.profileId, authDir: join(userDataRoot, "auth"), auth: AUTH }),
         runtimeConfig: testRuntimeConfigCapture(),
         eligibility,
-        admit: (plans: ReadonlyMap<string, FailoverPlan>) => {
+        requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: (plans: ReadonlyMap<string, FailoverPlan>) => {
           spy.admitted = plans;
           return {
             createAgent: () => { throw new Error("no benchmark cell may run in this test"); },

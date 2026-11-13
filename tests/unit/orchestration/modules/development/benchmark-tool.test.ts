@@ -73,7 +73,7 @@ function toolDeps(auth: AuthContext | (() => AuthContext) = AUTH) {
         }),
         runtimeConfig: testRuntimeConfigCapture(),
         eligibility: roleCapture(["gpt-6-astra", "gpt-6-luna", "gpt-6.1-sol"]).eligibility,
-        admit: (plans) => {
+        requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: (plans) => {
           spy.admitted = plans;
           return {
             createAgent: () => { throw new Error("no benchmark cell may run in this test"); },
