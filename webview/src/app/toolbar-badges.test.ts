@@ -21,7 +21,7 @@ const javascript = build.outputs.find((output) => output.kind === "entry-point")
 if (javascript === undefined) throw new Error("SSR build produced no JavaScript entry point")
 const { renderToolbarBadges, syntheticBadges }: typeof import("./toolbar-badges-fixture.js") = await importBuiltModule(javascript)
 
-const EMPTY = { papercuts: null, definitionStaleness: null, experiment_view: null, lead: null, mcp: null, project_notifications: null, remote: null, "side-question": null, "side-question-request": null, workflow_detail: null, workflow_view: null, workflow_live: null }
+const EMPTY = { papercuts: null, definitionStaleness: null, experiment_view: null, lead: null, leadChats: null, mcp: null, project_notifications: null, remote: null, "side-question": null, "side-question-request": null, workflow_detail: null, workflow_view: null, workflow_live: null }
 
 describe("toolbar badges", () => {
   test("a synthetic module's badge renders after the kernel controls with its count, noun, tone, and action, with no host edit", () => {

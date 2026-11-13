@@ -5,7 +5,7 @@ import type { QuestionBlock } from "../../../../../src/infra/output-blocks.js"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
 import { createChatSubmissions } from "../../../../../src/protocol/client/chat-submissions.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
-import { leadCountLabel, type LeadRow, type LeadRowState, type LeadView } from "../../../../../src/protocol/modules/lead.js"
+import { leadCountLabel, type LeadRow, type LeadChatsView, type LeadRowState } from "../../../../../src/protocol/modules/lead.js"
 import type { SessionChangesResult } from "../../../../../src/protocol/session-changes-protocol-types.js"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import { TickPoolProvider } from "../../../../../src/tui/context/tick-pool-context.js"
@@ -42,7 +42,7 @@ export function choiceQuestion(toolUseId: string): QuestionBlock {
 
 /** The host capabilities the reader uses beyond the client and the toasts,
  *  each recording what it was asked. */
-export function readerHost(input: { readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }; readonly view?: Accessor<LeadView>; readonly overlay?: OverlayLayers } = {}) {
+export function readerHost(input: { readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }; readonly view?: Accessor<LeadChatsView>; readonly overlay?: OverlayLayers } = {}) {
   const overlay = input.overlay ?? createOverlayLayers()
   const [questions, setQuestions] = createSignal<{ readonly [sessionId: string]: QuestionBlock }>({})
   const sent: string[] = []
@@ -90,17 +90,17 @@ export function readerHost(input: { readonly transcripts?: { readonly [sessionId
   return { host, overlay, setQuestions, sent, loadedAround, holdSends }
 }
 
-/** The lead client over a scripted lead view, with every mutation the list
- *  and the reader send recorded in `sent`. */
+/** The lead client over a scripted designation of `LEAD_ID` and scripted rows
+ *  (`view`), with every mutation the list and the reader send recorded in `sent`. */
 export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [sessionId: string]: readonly FrontendOutputBlock[] } = {}, changes: { readonly [sessionId: string]: readonly string[] } = {}, overlay?: OverlayLayers) {
-  const [view, setView] = createSignal<LeadView>({ leadSessionId: LEAD_ID, dismissed: false, rows })
+  const [view, setView] = createSignal<LeadChatsView>({ rows })
   const reader = readerHost({ transcripts, view, ...(overlay ? { overlay } : {}) })
   const dispatch = runtimeDispatch({
     "lead.result.mark_read": async (command) => { reader.sent.push(`lead.result.mark_read ${command.sessionId} ${command.entryId}`); return { ok: true } },
   })
   const built = createRoot((dispose) => ({
     dispose,
-    client: createLeadClient({ ...reader.host, domains: { lead: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({ sessionChanges: (query) => changedFiles(changes[query.sessionId] ?? [], query.maxFiles) }) }, dialog: reader.overlay.dialog, showToast: () => {} }),
+    client: createLeadClient({ ...reader.host, domains: { lead: { scope: "workspace", view: () => ({ leadSessionId: LEAD_ID, dismissed: false }) }, leadChats: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({ sessionChanges: (query) => changedFiles(changes[query.sessionId] ?? [], query.maxFiles) }) }, dialog: reader.overlay.dialog, showToast: () => {} }),
   }))
   /** The open viewers, as the shell's overlay renders them. */
   const Viewers = (): JSX.Element => <For each={reader.overlay.viewer.stack}>{(entry) => typeof entry.element === "function" ? entry.element() : entry.element}</For>

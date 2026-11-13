@@ -224,4 +224,4 @@ A runtime or workflow hook is a typed callback that its owning boundary declares
 
 ## ARCH-STRUCTURE-045: The lead is one module on general kernel seams
 
-The lead's tool, prompt, facts, protocol domain, and client surfaces live in the lead module's homes. The kernel supplies four seams that name no module. They start a chat with forwarded entries, give a chat one prompt and one list of tool names, record session event notices, and show any chat's question or conversation outside its tab.
+The lead's tool, prompt, facts, protocol domain, and client surfaces live in the lead module's homes. The kernel supplies four seams that name no module. They start a chat with forwarded entries, give a chat one prompt and one list of tool names, record session event notices, and show any chat's question or conversation outside its tab. The lead's designation and the opening of the lead chat run in the module's control part, so the first tab never waits for the executor.

@@ -27,7 +27,7 @@ import type { ModuleHealthCheck } from "./module-health.js"
 import type { CliNounContribution } from "./cli-contribution.js"
 import type { CommandHost } from "./app-service/command-host.js"
 import type { AccountModuleProtocolServices, ModuleProtocolContribution } from "./app-service/module-protocol-host.js"
-import type { AccountModuleService, AccountModuleServiceInputs, AccountModuleServiceOptions, AccountProjectModuleServices, ModuleProcessServices, ModuleServiceInstance, PortableModuleServices } from "./app-service/module-service-host.js"
+import type { AccountModuleService, AccountModuleServiceInputs, AccountModuleServiceOptions, AccountProjectModuleServices, ControlModuleServices, ModuleProcessServices, ModuleServiceInstance, PortableModuleServices } from "./app-service/module-service-host.js"
 import type { ModuleConfigSection } from "./config/config-section.js"
 import type { DefinitionBundle } from "../workflows/loader.js"
 import { installedDefinitionBundles, installedModules, publishShippedOtherModules, validateModuleFactPrefixes } from "./module-catalog.js"
@@ -273,6 +273,13 @@ export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, First
     readonly host?: "execution"
     readonly service?: ModuleServiceDeclaration<ModuleServiceInstance> | PortableServiceDeclaration<ModuleServiceInstance>
     readonly protocol?: ModuleProtocolContribution
+    /** The part that answers in the control placement without waiting for the executor: the account composition
+     *  when one serves the project, otherwise the one composition that holds everything (ARCH-RUNTIME-050). Its
+     *  service handle names the `control` part. */
+    readonly control?: {
+      readonly service?: ModuleServiceDeclaration<ModuleServiceInstance, ControlModuleServices>
+      readonly protocol?: ModuleProtocolContribution<AccountModuleProtocolServices>
+    }
   }
   | {
     readonly host: "account"
@@ -281,7 +288,7 @@ export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, First
   }
   | {
     readonly host: "control"
-    readonly service?: ModuleServiceDeclaration<ModuleServiceInstance, import("./app-service/module-service-host.js").ControlModuleServices>
+    readonly service?: ModuleServiceDeclaration<ModuleServiceInstance, ControlModuleServices>
     readonly protocol?: ModuleProtocolContribution<AccountModuleProtocolServices>
   }
 )

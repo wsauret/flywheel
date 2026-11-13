@@ -1,6 +1,6 @@
 import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../src/infra/event-store-types.js"
 import { NO_MODULE_SERVICES } from "../../src/infra/module-service.js"
-import type { ModuleProcessServices } from "../../src/orchestration/app-service/module-service-host.js"
+import type { ControlSessionPorts, ModuleProcessServices } from "../../src/orchestration/app-service/module-service-host.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
 import type { SessionManager } from "../../src/orchestration/session/manager.js"
 import type { SessionStore } from "../../src/orchestration/session-store/types.js"
@@ -8,9 +8,9 @@ import { testDirectories } from "./directories.js"
 import { inMemoryEventReader } from "./in-memory-event-reader.js"
 import { refusingLauncher } from "./launcher-fake.js"
 
-/** The kernel authorities a module's process-scoped service receives, without
+/** The kernel authorities a module's process-scoped service and a control part receive, without
  *  the two that composition adds itself. */
-type KernelPorts = Omit<ModuleProcessServices, "modules" | "enabled">
+type KernelPorts = Omit<ModuleProcessServices, "modules" | "enabled"> & ControlSessionPorts
 
 const refuse = (port: string) => (): never => {
   throw new Error(`this test provides no ${port}`)
@@ -118,6 +118,8 @@ export function kernelPorts(provided: Partial<KernelPorts> = {}): KernelPorts {
     sessionStore: refusingSessionStore,
     config: { snapshot: refuse("config.snapshot"), subscribe: refuse("config.subscribe"), mutateSection: refuse("config.mutateSection") },
     launcher: refusingLauncher,
+    openChat: refuse("openChat"),
+    chatRow: refuse("chatRow"),
     ...provided,
   }
 }

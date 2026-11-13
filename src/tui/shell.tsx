@@ -351,7 +351,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const place = createLaunchState({ projectRoot: stateRoot, handed: launchState, catalogReady: signals.catalogReady, signals, tabs, openSessionTab, draftCache, outbox: submissions, composer: () => composer, transcripts: services.transcripts, layout: transcriptLayout, overlay, activateSessionById,
     restoreModule: async (route) => { for (const client of moduleClients) if (await client.restore(route)) return true; return false },
     resolveSessionRoute: (id) => readSessionRoute(appService, signals.sessionCatalogRows(), id),
-    reopen: { sessions: sessionModal.openSessionsModal, theme: themeModal.openThemeModal }, startChat: async () => (await startChat()).kind !== "failed", openFirstTab: () => firstTab().open(), lanes: appService })
+    reopen: { sessions: sessionModal.openSessionsModal, theme: themeModal.openThemeModal }, startChat: async () => (await startChat()).kind !== "failed", openFirstTab: () => firstTab().open(), seedSessionCatalogRow: services.seedSessionCatalogRow, startKnownEmptyTranscript: services.startKnownEmptyTranscript, lanes: appService })
   const setup = createMemo(() => providerSetup(signals.auth()))
   useAutomaticAuth({ auth: signals.auth, overlayOpen: () => overlay.isOpen(), open: authModal.openAuthModal })
   usePaidUseQuestion({ signals, overlayOpen: () => overlay.isOpen(), review: reviewCachedActiveProfile })

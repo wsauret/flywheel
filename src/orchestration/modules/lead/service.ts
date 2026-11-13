@@ -2,7 +2,7 @@ import { errorMessage } from "../../../infra/error-message.js"
 import { requireGuardedEventAppender } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
-import { EMPTY_LEAD_VIEW, LEAD_COMMAND_NAME, leadCursor, type LeadView } from "../../../protocol/modules/lead.js"
+import { EMPTY_LEAD_CHATS, leadChatsCursor, type LeadChatsView } from "../../../protocol/modules/lead.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import { sessionDisplayName } from "../../session/schemas.js"
 import { readChatDetail, readChatRoster, type ChatProgress } from "./chat-progress.js"
@@ -16,19 +16,16 @@ const log = Log.create({ service: "lead" })
 /** What a chat is to the lead: the lead chat itself, a chat that the lead started, or neither. */
 export type LeadRole = "lead" | "started"
 
-/** The lead module's one process-scoped service: the journal of the `lead`
- *  aggregate, the designation of the lead chat, the routes of the person's
- *  requests, and the watches of the chats that the lead started. The
+/** The lead module's execution service: its fold of the `lead` aggregate, the
+ *  routes of the person's requests, and the watches and rows of the chats that
+ *  the lead started. The control part (`control.ts`) owns the designation of
+ *  the lead chat; this service follows it through the store's broadcast. The
  *  instance lives for the process, also while the module is off; then it
  *  opens no chat, appends no fact, and watches no chat (ARCH-STRUCTURE-026,
  *  PI-LEAD-008). */
 export interface LeadService extends ModuleServiceInstance {
-  /** Answers the lead chat. `launch` answers null while the lead is dismissed; `command` ends the dismissal. Null while the module is off. */
-  open(reason: "launch" | "command"): Promise<string | null>
-  /** Dismisses the designated lead chat. Answers the dismissed chat, or null when `sessionId` is not the shown lead or the module is off. */
-  dismiss(sessionId: string): Promise<string | null>
-  /** The view that the protocol domain serves: the empty view while the module is off. */
-  view(): Promise<LeadView>
+  /** The rows that the `leadChats` domain serves: none while the module is off. */
+  view(): Promise<LeadChatsView>
   /** What `sessionId` is to the lead: the designated chat while it is not dismissed, a chat that the lead started, or
    *  undefined. The request's module selection decides whether the module acts on it. */
   role(sessionId: string): LeadRole | undefined
@@ -63,26 +60,17 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     writer: requireGuardedEventAppender(services.eventWriter, "The lead requires guarded append authority"),
   })
   let started = false
-  // Opens run one at a time, so two opens of an empty project create one chat and each open keeps its own reason.
-  let opens: Promise<unknown> = Promise.resolve()
   // The startup replay and every stored-batch fold, in order; dispose settles them (ModuleServiceInstance).
   let background = Promise.resolve()
   let watched: { readonly lead: string; readonly chats: Set<string> } | undefined
-  let published: string | undefined
   let disposed = false
   // The rows of the started chats, while the module is on.
   let rows: LeadRows | undefined
   // The disposals of the rows owners that a turn-off ended; dispose settles them.
   let endings: Promise<unknown> = Promise.resolve()
 
-  const currentView = (): LeadView => {
-    if (!services.enabled()) return EMPTY_LEAD_VIEW
-    const state = journal.state()
-    return { leadSessionId: state.designated, dismissed: state.dismissed, rows: rows?.rows() ?? [] }
-  }
-
   const publishRow = (change: LeadRowChange): void => {
-    services.publish({ cursor: leadCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
+    services.publish({ cursor: leadChatsCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
   }
 
   /** Follows the started chats while the module is on. Turning it off releases every fold and removes each row that a
@@ -138,21 +126,10 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     }
   }
 
-  /** Publishes the view's lead fields when they changed since the last publication. It reads only those fields, so a
-   *  lead fact costs no walk of the rows. */
-  const publishView = (): void => {
-    const { designated, dismissed } = services.enabled() ? journal.state() : { designated: EMPTY_LEAD_VIEW.leadSessionId, dismissed: EMPTY_LEAD_VIEW.dismissed }
-    const key = `${designated ?? ""}:${dismissed}`
-    if (key === published) return
-    published = key
-    services.publish({ cursor: leadCursor(), payload: { kind: "lead.changed", leadSessionId: designated, dismissed } })
-  }
-
   const follow = (added: readonly string[] = []): void => {
     if (!started || disposed) return
     applyWatches(added)
     applyRows(added)
-    publishView()
   }
 
   function own(task: () => Promise<void>, failure: (error: string) => void): void {
@@ -183,19 +160,6 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     return session?.kind === "chat" ? sessionDisplayName({ id: sessionId, session }) : undefined
   }
 
-  const openOnce = async (reason: "launch" | "command"): Promise<string | null> => {
-    await reconcileJournal()
-    const state = journal.state()
-    if (reason === "launch" && state.dismissed) return null
-    const existing = state.designated !== null && await chatTitle(state.designated) !== undefined ? state.designated : null
-    const sessionId = existing ?? await services.executionEnvironment().openChat({ name: LEAD_COMMAND_NAME })
-    if (await journal.append({ type: "lead.chat.designated", payload: { sessionId } })) {
-      log.info("lead chat designated", { sessionId, reason, created: existing === null })
-    }
-    follow()
-    return sessionId
-  }
-
   /** The target of a route: the chat that the person's entries already started, or a new chat that this call
    *  records and watches before anything reaches it, so its first request and its first event find both. */
   const routeTarget = async (input: RouteInput, sourceEntryIds: NonEmptyIds): Promise<{ readonly sessionId: string; readonly started?: "now" | "earlier" } | { readonly refused: string }> => {
@@ -222,23 +186,9 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         follow()
       }, (error) => { log.error("the lead journal could not replay", { error }) })
     },
-    async open(reason) {
-      if (!services.enabled()) return null
-      const run = opens.then(() => openOnce(reason))
-      opens = run.catch(() => undefined)
-      return run
-    },
-    async dismiss(sessionId) {
-      if (!services.enabled()) return null
-      // The journal skips a dismissal of a chat that is not the shown lead.
-      if (!await journal.append({ type: "lead.chat.dismissed", payload: { sessionId } })) return null
-      log.info("lead chat dismissed", { sessionId })
-      follow()
-      return sessionId
-    },
     async view() {
       await reconcileJournal()
-      return currentView()
+      return services.enabled() ? { rows: rows?.rows() ?? [] } : EMPTY_LEAD_CHATS
     },
     role(sessionId) {
       const state = journal.state()

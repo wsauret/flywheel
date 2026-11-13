@@ -1,15 +1,12 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { AsyncLocalStorage } from "node:async_hooks"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
-import { composeModuleServices } from "../../../../../src/infra/module-service.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
-import { leadModule } from "../../../../../src/orchestration/modules/lead/module.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
-import type { LeadService } from "../../../../../src/orchestration/modules/lead/service.js"
+import { leadChatsCursor } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
-import { testDirectories } from "../../../../helpers/directories.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
-import { leadHarness } from "./_lead-harness.js"
+import { accountOpenChat, leadHarness } from "./_lead-harness.js"
 
 let ctx: SupervisorTestContext
 let supervisor: RuntimeSupervisor
@@ -30,45 +27,6 @@ function harness(projectionReader = asAsyncEventReadSurface(ctx.store)) {
   return lead
 }
 
-function leadFacts() {
-  return ctx.store.read({ aggregateId: "lead" }).map((fact) => ({ type: fact.type, sessionId: fact.sessionId, payload: fact.payload }))
-}
-
-async function chatsNamedLead(): Promise<number> {
-  return (await ctx.manager.listMetadata()).sessions.filter((row) => row.kind === "chat" && row.name === "Lead").length
-}
-
-test("a launch on an empty store opens one chat named Lead and designates it once", async () => {
-  const { service } = harness()
-  const sessionId = await service.open("launch")
-  expect(sessionId).not.toBeNull()
-  expect(await chatsNamedLead()).toBe(1)
-  expect(leadFacts()).toEqual([{ type: "lead.chat.designated", sessionId: "lead", payload: { sessionId } }])
-
-  expect(await service.open("launch")).toBe(sessionId)
-  expect(leadFacts()).toHaveLength(1)
-})
-
-test("two launches at the same time leave one chat named Lead, and both answer it", async () => {
-  const { service } = harness()
-  const [first, second] = await Promise.all([service.open("launch"), service.open("launch")])
-  expect(first).not.toBeNull()
-  expect(second).toBe(first)
-  expect(await chatsNamedLead()).toBe(1)
-  expect(leadFacts()).toHaveLength(1)
-})
-
-test("a launch and the lead command at the same time on a dismissed lead: the command ends the dismissal", async () => {
-  const { service } = harness()
-  const sessionId = await service.open("launch")
-  if (sessionId === null) throw new Error("expected the lead to open")
-  await service.dismiss(sessionId)
-
-  expect(await Promise.all([service.open("launch"), service.open("command")])).toEqual([null, sessionId])
-  expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated", "lead.chat.dismissed", "lead.chat.designated"])
-  expect(await service.view()).toEqual({ leadSessionId: sessionId, dismissed: false, rows: [] })
-})
-
 test("dispose settles the startup replay, and nothing is published after it resolves", async () => {
   const reader = asAsyncEventReadSurface(ctx.store)
   const gate = Promise.withResolvers<void>()
@@ -80,41 +38,12 @@ test("dispose settles the startup replay, and nothing is published after it reso
   gate.resolve()
   await disposing
   await Bun.sleep(1)
-  expect(patches).toEqual([])
-})
-
-test("a dismissed lead does not open on launch, and the lead command designates it again", async () => {
-  const { service } = harness()
-  const sessionId = await service.open("launch")
-  expect(sessionId).not.toBeNull()
-  expect(await service.dismiss(sessionId!)).toBe(sessionId)
-  expect((await service.view()).dismissed).toBe(true)
-
-  expect(await service.open("launch")).toBeNull()
-  expect(await service.open("command")).toBe(sessionId)
-  expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated", "lead.chat.dismissed", "lead.chat.designated"])
-  expect(await service.view()).toEqual({ leadSessionId: sessionId, dismissed: false, rows: [] })
-})
-
-test("a launch after the person deleted the lead chat opens and designates a new chat", async () => {
-  const { service } = harness()
-  const removed = await service.open("launch")
-  expect(removed).not.toBeNull()
-  await supervisor.deleteSession(removed!)
-  expect(await ctx.manager.read(removed!)).toBeNull()
-
-  const opened = await service.open("launch")
-  expect(opened).not.toBeNull()
-  expect(opened).not.toBe(removed)
-  expect(leadFacts()).toEqual([
-    { type: "lead.chat.designated", sessionId: "lead", payload: { sessionId: removed } },
-    { type: "lead.chat.designated", sessionId: "lead", payload: { sessionId: opened } },
-  ])
+  expect(patches.filter((patch) => patch.cursor.domain === leadChatsCursor().domain)).toEqual([])
 })
 
 test("while the module is off a started chat's report gives no notice, and after it turns on a report gives one", async () => {
-  const { service, sessionEvents, notices, setEnabled } = harness()
-  const lead = await service.open("launch")
+  const { service, openLead, sessionEvents, notices, setEnabled } = harness()
+  const lead = await openLead()
   expect(lead).not.toBeNull()
   await service.journal.append({ type: "lead.chat.started", payload: { sessionId: "c", sourceEntryIds: ["entry-1"] } })
   await supervisor.ensureChatRunner(lead!)
@@ -131,8 +60,8 @@ test("while the module is off a started chat's report gives no notice, and after
 })
 
 test("a chat that the lead started reports its first turn end to the lead", async () => {
-  const { service, sessionEvents, notices } = harness()
-  const lead = await service.open("launch")
+  const { service, openLead, sessionEvents, notices } = harness()
+  const lead = await openLead()
   if (lead === null) throw new Error("expected the lead to open")
   await conversation.appendConversation(lead, [
     { kind: "user", content: "Fix the login page", origin: "human" },
@@ -202,12 +131,12 @@ test("each applied lead fact costs work that grows with neither the started chat
    *  chats that another writer starts and forwards to, and checks again, after `existing` ones. */
   async function costs(existing: number, facts: number) {
     const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
-    const { service, trace, dispose } = harness(counter.reader)
+    const { service, openLead, trace, dispose } = harness(counter.reader)
     // Only this run's service observes its facts.
     disposeAll = disposeAll.filter((other) => other !== dispose)
     await using _service = { [Symbol.asyncDispose]: dispose }
     const writer = createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store })
-    const lead = await service.open("launch")
+    const lead = await openLead()
     if (lead === null) throw new Error("expected the lead to open")
     for (let index = 0; index < existing; index += 1) {
       // A real chat, so the rows owner follows it and a walk of the rows would show in the collection work.
@@ -246,19 +175,34 @@ test("each applied lead fact costs work that grows with neither the started chat
   for (const cost of many) expect(cost).toMatchObject({ requests: 0, factsRead: 0, watches: 1 })
 })
 
-test("the lead command focuses the lead chat", async () => {
-  const { service } = harness()
-  const command = leadModule.contributions.find((contribution) => contribution.domain === "commands")
-  if (command?.domain !== "commands" || !("execute" in command.value)) throw new Error("expected the lead command")
-  const outcome = await command.value.execute({
-    session: undefined,
-    directories: testDirectories(ctx.baseDir),
-    authDirectory: () => ctx.baseDir,
-    projectionReader: asAsyncEventReadSurface(ctx.store),
-    runOwnedCommand: undefined,
-    modules: composeModuleServices([[leadModule.id, service satisfies LeadService]]),
-  })
-  const { leadSessionId } = await service.view()
-  if (leadSessionId === null) throw new Error("expected the command to designate the lead")
-  expect(outcome).toEqual({ kind: "focus-session", sessionId: leadSessionId })
+test("the service follows the designation that the control part appended, before the lead chat opens here", async () => {
+  // The account's open writes a durable chat and opens no shell here. Its designation reaches this service through
+  // the store's broadcast, which the state channel forwards to the executor when an account serves the project.
+  const { service, openLead, dispose } = leadHarness(ctx, { control: { projectionReader: asAsyncEventReadSurface(ctx.store), eventWriter: ctx.store, onStored: ctx.store.onStored, openChat: accountOpenChat(ctx) } })
+  disposeAll.push(dispose)
+  const changes: unknown[] = []
+  const unsubscribe = ctx.sessionStore.onChange((changed) => { changes.push(changed) })
+  try {
+    const lead = await openLead()
+    if (lead === null) throw new Error("expected the lead to open")
+    await nextTurn()
+    // No read of the service's own: the chat profile reads the role synchronously at the lead's first request.
+    expect(service.role(lead)).toBe("lead")
+    expect(changes).toEqual([])
+  } finally { unsubscribe() }
+})
+
+test("appends from the control part and the service to the one lead aggregate at the same time all land", async () => {
+  const { service, control, openLead } = harness()
+  const lead = await openLead()
+  if (lead === null) throw new Error("expected the lead to open")
+  await Promise.all([
+    control.dismiss(lead),
+    service.journal.append({ type: "lead.chat.started", payload: { sessionId: "c1", sourceEntryIds: ["entry-1"] } }),
+    service.journal.append({ type: "lead.chat.started", payload: { sessionId: "c2", sourceEntryIds: ["entry-2"] } }),
+  ])
+  expect(ctx.store.read({ aggregateId: "lead" }).map((fact) => fact.type).toSorted()).toEqual(["lead.chat.designated", "lead.chat.dismissed", "lead.chat.started", "lead.chat.started"])
+  await service.view()
+  expect([...service.journal.state().started.keys()].toSorted()).toEqual(["c1", "c2"])
+  expect(service.role(lead)).toBeUndefined()
 })

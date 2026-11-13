@@ -1,12 +1,13 @@
 import { expect, test } from "bun:test"
 import { moduleDomainReader } from "../../../../src/protocol/client/module-domain.js"
-import { EMPTY_LEAD_VIEW, leadLongestWaiting, leadNeedsPerson, leadProtocol, leadRowOrder, type LeadRow, type LeadRowState, type LeadView } from "../../../../src/protocol/modules/lead.js"
+import { leadLongestWaiting, leadNeedsPerson, leadProtocol, leadRowOrder, type LeadChatsView, type LeadRow, type LeadRowState } from "../../../../src/protocol/modules/lead.js"
 
 const row = (sessionId: string, state: LeadRowState, since: number, waitingSince?: number): LeadRow => ({
   sessionId, state, update: null, since, request: null, updates: [], ...(waitingSince === undefined ? {} : { waitingSince }),
 })
-const view = (rows: readonly LeadRow[]): LeadView => ({ ...EMPTY_LEAD_VIEW, rows })
-const status = (current: LeadView | undefined) => leadProtocol.composer.status(moduleDomainReader((domain) => domain.domain === "lead" ? current : undefined))
+const view = (rows: readonly LeadRow[]): LeadChatsView => ({ rows })
+// The count reads the rows domain that the executor serves, never the designation that the control part serves.
+const status = (current: LeadChatsView | undefined) => leadProtocol.composer.status(moduleDomainReader((domain) => domain.domain === "leadChats" ? current : undefined))
 
 const rows = [
   row("result-old", "result", 10),

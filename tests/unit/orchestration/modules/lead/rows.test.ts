@@ -57,7 +57,7 @@ function rowsHarness(reader: AsyncEventStateReadSurface = asAsyncEventReadSurfac
   }
   /** Routes the person's message from the lead to a new chat, whose runner then starts. */
   const routeToNewChat = async (text: string): Promise<string> => {
-    const leadSessionId = await lead.service.open("launch")
+    const leadSessionId = await lead.openLead()
     if (leadSessionId === null) throw new Error("expected the lead to open")
     await conversation.appendConversation(leadSessionId, [
       { kind: "user", content: text, origin: "human" },

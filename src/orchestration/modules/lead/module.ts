@@ -1,9 +1,10 @@
-import { LEAD_COMMAND, LEAD_COMMAND_NAME, leadProtocol } from "../../../protocol/modules/lead.js"
+import { LEAD_COMMAND, LEAD_COMMAND_NAME, LEAD_SURFACE, leadChatsProtocol, leadDesignationProtocol } from "../../../protocol/modules/lead.js"
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
 import type { FirstPartyModule } from "../../modules.js"
 import { CHAT_PROGRESS_TOOL_NAME } from "./chat-progress.js"
 import { LEAD_PROMPT, STARTED_CHAT_PROMPT } from "./prompt.js"
-import { createLeadProtocol } from "./protocol.js"
+import { createLeadControl, leadControl } from "./control.js"
+import { createLeadChatsProtocol, createLeadControlProtocol } from "./protocol.js"
 import { ROUTE_REQUEST_TOOL_NAME } from "./route-request.js"
 import { createLeadRuntime, leadRuntime } from "./runtime.js"
 import { createLeadService, leadService } from "./service.js"
@@ -11,7 +12,8 @@ import { chatProgressDeclaration, LEAD_TOOLS, routeRequestDeclaration } from "./
 
 /** The lead (PI-LEAD-001 to PI-LEAD-008): one always-on chat for each project
  *  that routes the person's requests to other chats. Its facts, the
- *  designation of the lead chat, its workspace domain, the `/lead` command,
+ *  designation of the lead chat in its control part (ARCH-STRUCTURE-045),
+ *  its two workspace domains, the `/lead` command,
  *  the lead chat's prompt and tool list, its two tools, and the prompt
  *  addition of a chat that it started. */
 export const leadModule = {
@@ -21,7 +23,11 @@ export const leadModule = {
   attended: true,
   service: { handle: leadService, create: createLeadService },
   runtime: { handle: leadRuntime, create: createLeadRuntime },
-  protocol: moduleProtocol({ contract: leadProtocol, create: createLeadProtocol }),
+  protocol: moduleProtocol({ contract: leadChatsProtocol, create: createLeadChatsProtocol }),
+  control: {
+    service: { handle: leadControl, create: createLeadControl },
+    protocol: moduleProtocol({ contract: leadDesignationProtocol, create: createLeadControlProtocol }),
+  },
   facts: { prefixes: ["lead."] },
   contributions: [
     { domain: "chatProfiles", id: "lead", value: {
@@ -38,10 +44,8 @@ export const leadModule = {
       title: LEAD_COMMAND_NAME,
       description: "Open the lead chat that routes your requests to other chats",
       aliases: [],
-      execute: async (host) => {
-        const sessionId = await host.modules.get(leadService)?.open("command")
-        return sessionId ? { kind: "focus-session", sessionId } : { kind: "unavailable", message: "The lead is off" }
-      },
+      // The client's surface sends `lead.open`, so the control part stays the one writer of the designation.
+      opens: LEAD_SURFACE,
     } },
     { domain: "settings", id: "lead", value: { control: "binary", group: "Interface", label: "Lead", description: "Open one lead chat that routes your requests to other chats" } },
   ],

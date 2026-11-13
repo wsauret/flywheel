@@ -37,7 +37,7 @@ export function useLeadScreen(): LeadScreen {
   return screen
 }
 
-type LeadClientHost = LeadReaderHost & LeadPeekHost & LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "title"> & { readonly domains: Pick<ModuleDomainIntakes, "lead"> }
+type LeadClientHost = LeadReaderHost & LeadPeekHost & LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "title"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
 
 /** The lead's terminal client: the lead chat is the first tab while the
  *  capability is on and the person has not dismissed it, and closing it asks
@@ -49,11 +49,11 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
   })
   const report = (message: string): void => { host.showToast({ message, variant: "error" }) }
   const title = (sessionId: string): string => host.title(sessionId) ?? ""
-  const count = (): string | undefined => leadCountLabel(host.domains.lead.view())
+  const count = (): string | undefined => leadCountLabel(host.domains.leadChats.view())
   const openReader = (row: LeadRow): void => {
     openLeadReader(host, { row, title: () => title(row.sessionId), count })
   }
-  const rows = createMemo(() => leadRowOrder(host.domains.lead.view()?.rows ?? []))
+  const rows = createMemo(() => leadRowOrder(host.domains.leadChats.view()?.rows ?? []))
   const order = createMemo(() => rows().map((row) => row.sessionId))
   const rowOf = (sessionId: string): LeadRow | undefined => rows().find((candidate) => candidate.sessionId === sessionId)
   const screen: LeadScreen = {
@@ -62,7 +62,7 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
     title,
     openReader,
     openLongestWaiting: () => {
-      const view = host.domains.lead.view()
+      const view = host.domains.leadChats.view()
       const row = view && leadLongestWaiting(view)
       if (row) openReader(row)
       return row !== undefined
@@ -108,7 +108,7 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
       async open() {
         const result = await host.client.dispatch({ type: "lead.open", reason: "launch" })
         if (!result.ok) throw new Error(result.error)
-        return result.sessionId ?? undefined
+        return result.sessionId === null ? undefined : { sessionId: result.sessionId, row: result.row, created: result.created }
       },
       current,
     },

@@ -36,7 +36,7 @@ describe("web row hosts", () => {
     const { html } = renderIntroCard({
       papercuts: { undisposedCount: 12 },
       definitionStaleness: { overrides: [], diagnostics: [], reviewCount: 1 },
-      experiment_view: null, lead: null, mcp: null,
+      experiment_view: null, lead: null, leadChats: null, mcp: null,
       project_notifications: [], remote: null, "side-question": null, "side-question-request": null,
       workflow_detail: null, workflow_live: null, workflow_view: null,
     })
@@ -50,7 +50,7 @@ describe("web row hosts", () => {
   })
 
   test("the intro card names the connected backend, and its build only when Show build is on", () => {
-    const empty = { papercuts: null, definitionStaleness: null, experiment_view: null, lead: null, mcp: null, project_notifications: null, remote: null, "side-question": null, "side-question-request": null, workflow_detail: null, workflow_live: null, workflow_view: null }
+    const empty = { papercuts: null, definitionStaleness: null, experiment_view: null, lead: null, leadChats: null, mcp: null, project_notifications: null, remote: null, "side-question": null, "side-question-request": null, workflow_detail: null, workflow_live: null, workflow_view: null }
     assert.doesNotMatch(renderIntroCard(empty).html, /1\.0\.0|\(v/)
     assert.match(renderIntroCard(empty, { runtimeVersion: "0.0.10", runtimeBuildId: "3029f1abdeadbeef" }).html, /\(v0\.0\.10\)/)
     assert.match(renderIntroCard(empty, { runtimeVersion: "0.0.10", runtimeBuildId: "3029f1abdeadbeef", showBuild: true }).html, /\(v0\.0\.10 build 3029f1ab\)/)
@@ -58,7 +58,7 @@ describe("web row hosts", () => {
   })
 
   test("a view that has not landed contributes no row", () => {
-    const { html } = renderIntroCard({ papercuts: null, definitionStaleness: null, experiment_view: null, lead: null, mcp: null, project_notifications: null, remote: null, "side-question": null, "side-question-request": null, workflow_detail: null, workflow_live: null, workflow_view: null })
+    const { html } = renderIntroCard({ papercuts: null, definitionStaleness: null, experiment_view: null, lead: null, leadChats: null, mcp: null, project_notifications: null, remote: null, "side-question": null, "side-question-request": null, workflow_detail: null, workflow_live: null, workflow_view: null })
     assert.doesNotMatch(html, /papercuts/)
     assert.doesNotMatch(html, /overrides/)
   })

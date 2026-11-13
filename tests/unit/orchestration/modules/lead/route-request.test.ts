@@ -34,7 +34,7 @@ async function routingLead() {
   const runnerStartup = Promise.withResolvers<void>()
   const lead = leadHarness(ctx, { runnerStartup: runnerStartup.promise })
   disposeAll.push(async () => { runnerStartup.resolve(); await lead.dispose() })
-  const leadSessionId = await lead.service.open("launch")
+  const leadSessionId = await lead.openLead()
   if (leadSessionId === null) throw new Error("expected the lead to open")
   // The registry of live sessions is keyed by the reader that the supervisor holds.
   const sessions = createSessionMessaging({ manager: ctx.manager, projectionReader: ctx.runtime.runSync(EventReaderService), eventWriter: asAsyncEventWriter(ctx.store) }, unusedChildSessionControl())

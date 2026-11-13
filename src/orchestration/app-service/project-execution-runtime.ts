@@ -79,7 +79,7 @@ import { createDefinitionOverrideService } from "../definition-overrides/overrid
 import { createDefinitionOverrideBaselineOwner } from "../../workflows/definitions/override-baselines.js"
 import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../agent-runtime/llm/shared-provider-availability.js"
 import { composeSubscriptionNotifications } from "../auth/subscription-notification-composition.js"
-import { composeModuleProcessServices, createNotifySeam, type ModuleExecutionEnvironment } from "./module-service-host.js"
+import { composeModuleProcessServices, createNotifySeam, type ControlSessionPorts, type ModuleExecutionEnvironment } from "./module-service-host.js"
 import { containNotifyFailures } from "./contained-notify.js"
 import { createGitAiAttributionService } from "../agent-runtime/git-ai-attribution-service.js"
 import { createGitAiAttributionProjection } from "./git-ai-attribution-projection.js"
@@ -341,6 +341,14 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     }),
     profileAccounting: () => authRuntime, configView: () => configProjection.view(), moduleSelection, notify: (episode) => notify(episode), interactive: options.interactive === true,
     executionEnvironment: (): ModuleExecutionEnvironment => moduleExecutionEnvironment({ authAdmission: authRuntime.sessionAuthAdmission, recall: backgroundLane.recall, sessionEvents, sessionStore, supervisor: runtimeSupervisor }),
+    // A control part answers here only while no account serves this project, where this runtime opens every chat.
+    openChat: async ({ name }): ReturnType<ControlSessionPorts["openChat"]> => {
+      const sessionId: string = await runtimeSupervisor.openSessionRuntime({ name })
+      const row = await projections.projection.catalogRow(sessionId)
+      if (!row) throw new Error(`Session not found after creation: ${sessionId}`)
+      return { sessionId, row }
+    },
+    chatRow: async (sessionId): ReturnType<ControlSessionPorts["chatRow"]> => await projections.projection.catalogRow(sessionId) ?? undefined,
   }, options.notify !== undefined), (services) => services.dispose())
   moduleServices.reconcile()
   // The parent agent's controls of its own children (`process`). The

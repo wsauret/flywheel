@@ -8,7 +8,16 @@ import { projectSessionCatalogRow } from "../../../../src/orchestration/session/
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
 import { sessionCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { durableRow } from "./_frontend-projection-fixtures.js"
-import { fixture, privateExecutor } from "./_project-control-client-fixture.js"
+import { fixture, never, privateExecutor } from "./_project-control-client-fixture.js"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { composeModuleServices, moduleServiceKey } from "../../../../src/infra/module-service.js"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { composeAccountModuleProtocolRuntimes } from "../../../../src/orchestration/app-service/module-protocol-host.js"
+import { createLeadControl } from "../../../../src/orchestration/modules/lead/control.js"
+import { leadModule } from "../../../../src/orchestration/modules/lead/module.js"
 
 function listedRow(metadata: DurableSessionCatalogRow): SessionCatalogRow {
   const row = projectSessionCatalogRow(metadata)
@@ -257,6 +266,46 @@ test("a failed history baseline keeps the changes heard meanwhile and is read ag
     expect(f.metadata.size).toBe(1)
     await executor.bus.clear()
   })
+
+  // The first tab of a launch is the lead, which the account answers from its own state and the chat open that
+  // `chat.open` runs, so the launch never waits for a busy executor (ARCH-STRUCTURE-045).
+  for (const executorDispatch of ["throws", "never resolves"] as const) {
+    test(`lead.open on launch answers the lead chat with its row and designates it while the executor's dispatch ${executorDispatch}`, async () => {
+      const dispatched: string[] = []
+      const f = fixture({ ...privateExecutor().client, dispatch: (command) => {
+        dispatched.push(command.type)
+        return executorDispatch === "throws" ? Promise.reject(new Error("executor busy")) : never()
+      } })
+      const directory = mkdtempSync(join(tmpdir(), "lead-control-"))
+      const store = createSqliteEventStore(join(directory, "events.sqlite"))
+      try {
+        // The production wiring of project-control-runtime.ts: the control part's chat ports are the facade's own.
+        const ports = { openChat: (chat: { readonly name: string }) => client.openChat(chat), chatRow: (sessionId: string) => client.chatRow(sessionId) }
+        const control = createLeadControl({
+          projectionReader: asAsyncEventReadSurface(store), eventWriter: asAsyncEventWriter(store), onStored: store.onStored,
+          publish: () => undefined, onSelectionChanged: () => () => {}, modules: composeModuleServices([]), enabled: () => true, ...ports,
+        })
+        const accountModules = composeAccountModuleProtocolRuntimes([leadModule], {
+          modules: composeModuleServices([[moduleServiceKey("lead", "control"), control]]), publish: () => undefined, snapshotPosition: () => 0,
+        }, () => ["lead"])
+        const client = createProjectControlClient({ ...f.options, accountModules })
+
+        const opened = await client.dispatch({ type: "lead.open", reason: "launch" })
+        if (!opened.ok || opened.sessionId === null) throw new Error("expected the lead to open")
+        expect(opened).toMatchObject({ created: true, row: { id: opened.sessionId, kind: "chat", title: "Lead" } })
+        // A chat opened with a name is born with that name as the person's choice, so no generated title replaces it.
+        expect(f.creates).toEqual([expect.objectContaining({ id: opened.sessionId, name: "Lead", userNamed: true })])
+        expect(store.read({ aggregateId: "lead" }).map((fact) => [fact.type, fact.payload])).toEqual([["lead.chat.designated", { sessionId: opened.sessionId }]])
+        expect(await client.dispatch({ type: "lead.open", reason: "launch" })).toMatchObject({ ok: true, sessionId: opened.sessionId, created: false })
+        expect(dispatched).toEqual([])
+        await control.dispose()
+        await client.close()
+      } finally {
+        store.close()
+        rmSync(directory, { recursive: true, force: true })
+      }
+    })
+  }
 
   // A client whose open was lost with its connection sends the same open
   // again on the next lane. The copy can arrive while the first one still

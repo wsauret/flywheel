@@ -2,7 +2,7 @@ import type { Schema } from "effect"
 import type { ChatInputLike } from "../../infra/chat-input.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter, EventReader, StoredFact } from "../../infra/event-store-types.js"
 import type { ModuleServices } from "../../infra/module-service.js"
-import type { ProtocolBackgroundDomain, ProtocolBackgroundSnapshot, ProtocolModuleMutation, ProtocolModuleMutationResult, ProtocolModuleMutationType, ProtocolModuleQuery, ProtocolModuleQueryResult, ProtocolModuleQueryType, ProtocolRegistryModule } from "../../protocol/modules.js"
+import type { ProtocolBackgroundDomain, ProtocolBackgroundSnapshot, ProtocolModuleMutation, ProtocolModuleMutationResult, ProtocolModuleMutationType, ProtocolModuleQuery, ProtocolModuleQueryResult, ProtocolModuleQueryType, ProtocolRegistryPart } from "../../protocol/modules.js"
 import type { BackgroundSnapshotOf, ProtocolDomainQuery, ProtocolDomainSnapshot, ProtocolModule, ProtocolMutationOf, ProtocolMutationRequest, ProtocolMutationResult, ProtocolQueryOf, ProtocolQueryRequest, ProtocolQueryResult } from "../../protocol/protocol-module.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
 import type { RuntimeUiPatchSequencer } from "./runtime-ui-patch-sequencer.js"
@@ -105,7 +105,7 @@ export type ModuleBackgroundReaders<M extends ProtocolModule> = {
   readonly [Name in BackgroundDomainsOf<M>["domain"]]: (sessionId: string) => Promise<BackgroundSnapshotOf<ProtocolDomainSnapshot<Extract<BackgroundDomainsOf<M>, { readonly domain: Name }>>>>
 }
 
-type ModuleProtocolDeclaration<M extends ProtocolRegistryModule, Services> =
+type ModuleProtocolDeclaration<M extends ProtocolRegistryPart, Services> =
   & {
     readonly contract: M
     readonly create: (services: Services) => ModuleProtocolRuntime<M>
@@ -133,11 +133,11 @@ export interface ModuleProtocolContribution<Services = ModuleProtocolServices> {
   readonly background?: (reader: EventReader, context: { readonly projectRoot: string }) => { readonly [domain: string]: (ownerId: string) => Promise<ModuleBackgroundAnswer> }
 }
 
-/** Types a module's protocol declaration against its own contract, which must
- *  be in the registry, so the servers, handlers, and readers it writes are
+/** Types a module's protocol declaration against its own contract, whose
+ *  every read and mutation must be in the registry, so the servers, handlers, and readers it writes are
  *  checked read by read, mutation by mutation, and domain by domain, and
  *  hands composition the erased contribution. */
-export function moduleProtocol<M extends ProtocolRegistryModule, Services = ModuleProtocolServices>(declaration: ModuleProtocolDeclaration<M, Services>): ModuleProtocolContribution<Services> {
+export function moduleProtocol<M extends ProtocolRegistryPart, Services = ModuleProtocolServices>(declaration: ModuleProtocolDeclaration<M, Services>): ModuleProtocolContribution<Services> {
   return declaration
 }
 
@@ -160,17 +160,24 @@ export interface AccountModuleProtocolRoutes extends ModuleProtocolRoutes {
  *  under its discriminant. Installed, not enabled: a disabled module keeps its
  *  durable history readable (ARCH-STRUCTURE-029), so its domains stay served. */
 export function composeModuleProtocolRuntimes(modules: readonly FirstPartyModule[], services: Omit<ModuleProtocolServices, "enabled">, enabledModuleIds: () => readonly string[], accountAttached = false): ModuleProtocolRoutes {
-  const runtimes = modules.flatMap((module) => module.host !== "account" && !(accountAttached && module.host === "control") && module.protocol && module.availability.kind === "available"
-    ? [module.protocol.create({ ...services, enabled: () => enabledModuleIds().includes(module.id) })]
-    : [])
-  return protocolRoutes(runtimes)
+  return protocolRoutes(modules.flatMap((module) => {
+    if (module.availability.kind !== "available" || module.host === "account") return []
+    const enabled = () => enabledModuleIds().includes(module.id)
+    if (module.host === "control") return !accountAttached && module.protocol ? [module.protocol.create({ ...services, enabled })] : []
+    // An execution module's control part answers here only where no account answers it (ARCH-RUNTIME-050).
+    const control = !accountAttached && module.control?.protocol ? [module.control.protocol.create({ ...services, enabled })] : []
+    return [...(module.protocol ? [module.protocol.create({ ...services, enabled })] : []), ...control]
+  }))
 }
 
-/** Account queries and mutations share the same account-side service instance. */
+/** Account queries and mutations share the same account-side service instance. Each execution module's control part
+ *  answers here, so its requests never wait for the executor (ARCH-RUNTIME-050). */
 export function composeAccountModuleProtocolRuntimes(modules: readonly FirstPartyModule[], services: Omit<AccountModuleProtocolServices, "enabled">, enabledModuleIds: () => readonly string[]): AccountModuleProtocolRoutes {
-  return protocolRoutes(modules.flatMap((module) => (module.host === "account" || module.host === "control") && module.protocol && module.availability.kind === "available"
-    ? [module.protocol.create({ ...services, enabled: () => enabledModuleIds().includes(module.id) })]
-    : []))
+  return protocolRoutes(modules.flatMap((module) => {
+    if (module.availability.kind !== "available") return []
+    const protocol = module.host === "account" || module.host === "control" ? module.protocol : module.control?.protocol
+    return protocol ? [protocol.create({ ...services, enabled: () => enabledModuleIds().includes(module.id) })] : []
+  }))
 }
 
 function protocolRoutes(runtimes: readonly ReturnType<ModuleProtocolContribution["create"]>[]): AccountModuleProtocolRoutes {

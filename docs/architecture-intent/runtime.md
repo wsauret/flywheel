@@ -259,7 +259,7 @@ Because: Headless runs, their workflow agents, and their subagents must reach th
 
 ## ARCH-RUNTIME-050: Service placement comes from the one catalog
 
-One installed catalog declares each module service's operational host as account, control, or execution. Each host gives a service only the ports of that host, and a disabled factory is never called.
+One installed catalog declares each module service's operational host as account, control, or execution. A module whose service runs in execution may also declare a control part, which answers its requests in the control placement without waiting for the executor. Each host gives a service only the ports of that host, and a disabled factory is never called.
 
 Not: A separate module registry for each host placement.
 

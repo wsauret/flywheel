@@ -49,7 +49,7 @@ const probeModule = {
 
 const catalog: readonly FirstPartyModule[] = [probeModule]
 
-function kernelOver(config: FlywheelConfig): Omit<ModuleProcessServices, "modules" | "enabled"> {
+function kernelOver(config: FlywheelConfig): ReturnType<typeof kernelPorts> {
   const owner: ModuleProcessServices["config"] = {
     snapshot: () => ({ revision: 0, config, warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" } }),
     subscribe: () => async () => {},

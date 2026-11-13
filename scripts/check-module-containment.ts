@@ -54,9 +54,21 @@ export interface ModuleVocabularyReport {
   readonly stale: readonly ModuleContainmentAllowance[];
 }
 
+/** A protocol contract as the registry sees it: its id and its declarations. */
+interface ContainmentContract {
+  readonly id: string;
+  readonly domains?: readonly unknown[];
+  readonly queries?: readonly unknown[];
+  readonly mutations?: readonly unknown[];
+}
+
 export interface ModuleContainmentRegistry {
-  readonly catalog: readonly { readonly id: string; readonly protocol?: { readonly contract: { readonly id: string } } }[];
-  readonly protocol: readonly { readonly id: string }[];
+  readonly catalog: readonly {
+    readonly id: string;
+    readonly protocol?: { readonly contract: ContainmentContract };
+    readonly control?: { readonly protocol?: { readonly contract: ContainmentContract } };
+  }[];
+  readonly protocol: readonly ContainmentContract[];
   readonly tui: readonly { readonly id: string }[];
   readonly web: readonly { readonly id: string }[];
   readonly homes: {
@@ -79,6 +91,20 @@ function duplicateIds(layer: RegistryLayer, entries: readonly { readonly id: str
   return [...duplicates].map((id) => `${layer} registry declares duplicate module id "${id}"`);
 }
 
+/** The contracts that a module binds: its execution protocol and its control part's protocol (ARCH-RUNTIME-050). */
+function boundContracts(module: ModuleContainmentRegistry["catalog"][number]): readonly ContainmentContract[] {
+  return [module.protocol?.contract, module.control?.protocol?.contract].filter((contract) => contract !== undefined);
+}
+
+/** Whether the parts are the registered contract, or split its declarations between them with nothing left over. */
+function bindsRegistered(parts: readonly ContainmentContract[], registered: ContainmentContract): boolean {
+  if (parts.length === 1) return parts[0] === registered;
+  const declarations = (contract: ContainmentContract) => [...contract.domains ?? [], ...contract.queries ?? [], ...contract.mutations ?? []];
+  const bound = parts.flatMap(declarations);
+  const expected = declarations(registered);
+  return bound.length === expected.length && expected.every((declaration) => bound.includes(declaration));
+}
+
 export function findModuleRegistryViolations(registry: ModuleContainmentRegistry): readonly string[] {
   const failures = ([
     ...duplicateIds("catalog", registry.catalog),
@@ -95,20 +121,26 @@ export function findModuleRegistryViolations(registry: ModuleContainmentRegistry
     }
   }
 
+  const owns = (module: ModuleContainmentRegistry["catalog"][number], registered: ContainmentContract) => {
+    const parts = boundContracts(module);
+    return parts.length > 0 && parts.every((contract) => contract.id === registered.id) && bindsRegistered(parts, registered);
+  };
   for (const module of registry.catalog) {
-    const contract = module.protocol?.contract;
-    if (!contract) continue;
-    if (contract.id !== module.id) failures.push(`orchestration module "${module.id}" binds protocol contract "${contract.id}"`);
-    const registered = protocolById.get(contract.id);
+    const parts = boundContracts(module);
+    if (parts.length === 0) continue;
+    for (const contract of parts) {
+      if (contract.id !== module.id) failures.push(`orchestration module "${module.id}" binds protocol contract "${contract.id}"`);
+    }
+    const registered = protocolById.get(module.id);
     if (!registered) {
       failures.push(`orchestration module "${module.id}" binds a protocol contract absent from the protocol registry`);
-    } else if (registered !== contract) {
-      failures.push(`orchestration module "${module.id}" does not bind the registered "${contract.id}" protocol contract`);
+    } else if (!owns(module, registered)) {
+      failures.push(`orchestration module "${module.id}" does not bind the registered "${registered.id}" protocol contract`);
     }
   }
 
   for (const protocol of registry.protocol) {
-    const owners = registry.catalog.filter((module) => module.protocol?.contract === protocol);
+    const owners = registry.catalog.filter((module) => owns(module, protocol));
     if (owners.length === 0) failures.push(`protocol module "${protocol.id}" has no orchestration binding`);
     if (owners.length > 1) failures.push(`protocol module "${protocol.id}" has ${owners.length} orchestration bindings`);
   }

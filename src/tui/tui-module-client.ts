@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js"
 import type { LaunchModalRoute } from "../infra/launch-state.js"
 import type { AgentGroupBlock } from "../infra/output-blocks.js"
-import type { RuntimeClient, SessionRow } from "../protocol/app-service-types.js"
+import type { RuntimeClient, SessionCatalogRow, SessionRow } from "../protocol/app-service-types.js"
 import type { ChildSessionViewerProps } from "./components/child-session-viewer.js"
 import type { ModalContext, ViewerContext } from "./components/modal-stack.js"
 import type { ModuleDomainIntakes } from "./hooks/create-module-domain-intakes.js"
@@ -37,9 +37,11 @@ export interface TuiModuleClientHost {
 }
 /** The session a module keeps as the first tab (ARCH-PROTOCOL-034). */
 export interface TuiFirstTab {
-  /** Answers the session that a launch with nothing to restore opens, or
-   *  undefined when the module names none. */
-  open(): Promise<string | undefined>
+  /** Answers the session that a launch with nothing to restore opens, with
+   *  its catalog row and whether this open created it, or undefined when the
+   *  module names none. The row lets the launch show the tab without a read
+   *  that waits for the executor. */
+  open(): Promise<{ readonly sessionId: string; readonly row: SessionCatalogRow; readonly created: boolean } | undefined>
   /** The session whose tab stays first; undefined when there is none. It
    *  notifies only when it names another session. */
   readonly current: Accessor<string | undefined>

@@ -156,6 +156,22 @@ describe("module registry containment", () => {
     }))).toContain('orchestration module "gizmo" does not bind the registered "gizmo" protocol contract');
   });
 
+  test("accepts a contract that a module splits between its execution protocol and its control part, with nothing left over", () => {
+    const view = { domain: "gizmo_view" }
+    const open = { type: "gizmo.open" }
+    const rows = { domain: "gizmo_rows" }
+    const registered = { id: "gizmo", domains: [view, rows], mutations: [open] }
+    const split = (control: { readonly id: string; readonly domains: readonly unknown[]; readonly mutations: readonly unknown[] }) => findModuleRegistryViolations(containmentRegistry({
+      catalog: [{ id: "gizmo", protocol: { contract: { id: "gizmo", domains: [rows] } }, control: { protocol: { contract: control } } }],
+      protocol: [registered],
+    }))
+    expect(split({ id: "gizmo", domains: [view], mutations: [open] })).toEqual([])
+    expect(split({ id: "gizmo", domains: [view], mutations: [] })).toEqual(expect.arrayContaining([
+      'orchestration module "gizmo" does not bind the registered "gizmo" protocol contract',
+      'protocol module "gizmo" has no orchestration binding',
+    ]))
+  });
+
   test("requires registry membership and canonical homes to agree", () => {
     expect(findModuleRegistryViolations(containmentRegistry({
       homes: { orchestration: ["gizmo"], protocol: ["gizmo"], tui: [], web: ["gizmo"] },

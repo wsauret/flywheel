@@ -28,7 +28,7 @@ import { createProjectExecutorGenerations, executionAskerOf, readAskerOf, type P
 import { spawnProjectStateWorker } from "./project-state-worker-spawner.js"
 import type { ProjectStateStandby } from "./project-state-standby.js"
 import { createModuleTransports } from "./module-transports.js"
-import { composeAccountProjectModuleServices, createNotifySeam, type AccountModuleFaults } from "./module-service-host.js"
+import { composeAccountProjectModuleServices, createNotifySeam, type AccountModuleFaults, type ControlSessionPorts } from "./module-service-host.js"
 import { composeAccountModuleProtocolRuntimes } from "./module-protocol-host.js"
 import { containNotifyFailures } from "./contained-notify.js"
 import { createRuntimeUiBus } from "./runtime-ui-bus.js"
@@ -345,6 +345,10 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       publish: bus.publish, snapshotPosition: bus.snapshotPosition, notify: accountNotify.notify,
       onFrontendEvent(listener) { bus.addListener(listener); return () => bus.removeListener(listener) },
       onSelectionChanged: (listener) => config.subscribe("moduleSelection", listener),
+      // The facade is composed below, over these services' routes. A control part opens a chat only while it answers
+      // a request, which reaches it through that facade, so the facade exists by then.
+      openChat: (chat): ReturnType<ControlSessionPorts["openChat"]> => client.openChat(chat),
+      chatRow: (sessionId): ReturnType<ControlSessionPorts["chatRow"]> => client.chatRow(sessionId),
     }), async (owner) => {
       await Promise.all(writes)
       await owner.dispose()

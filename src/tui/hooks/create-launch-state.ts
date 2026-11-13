@@ -12,6 +12,7 @@ import type { ShellServices, ShellSignals } from "./shell-state.js"
 import type { SessionRoute } from "../../protocol/client/held-session-details.js"
 import type { ChatSubmissions } from "../../protocol/client/chat-submissions.js"
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
+import type { TuiFirstTab } from "../tui-module-client.js"
 
 /** A diff file's disclosure key minted from its position in one process's
  *  rendering; another process mints its own, so the key does not travel. */
@@ -42,7 +43,9 @@ interface LaunchStateDeps {
   readonly startChat: () => Promise<boolean>
   /** The session that a launch shows first, which a module names; undefined
    *  when none, and then the launch starts a chat. */
-  readonly openFirstTab: () => Promise<string | undefined>
+  readonly openFirstTab: TuiFirstTab["open"]
+  readonly seedSessionCatalogRow: ShellServices["seedSessionCatalogRow"]
+  readonly startKnownEmptyTranscript: ShellServices["startKnownEmptyTranscript"]
   /** Lanes that open after a first chat failed, so it opens on the next. */
   readonly lanes: Pick<AttachedRuntimeClient, "onLane">
 }
@@ -85,17 +88,21 @@ export function createLaunchState(deps: LaunchStateDeps): TerminalPlace {
   /** A first tab that cannot be asked for, such as before the runtime
    *  answers, fails as a first chat does, so the next lane asks again. */
   async function openFirstTabOrChat(): Promise<boolean> {
-    let sessionId: string | undefined
+    let opened: Awaited<ReturnType<TuiFirstTab["open"]>>
     try {
-      sessionId = await deps.openFirstTab()
+      opened = await deps.openFirstTab()
     } catch (cause) {
       log.warn("first tab not opened", { error: errorMessage(cause) })
       return false
     }
     // A session the person opened during the ask, or a closed shell, ends the launch's claim on the foreground.
     if (disposed || deps.signals.foregroundId() !== undefined) return true
-    if (sessionId === undefined) return await deps.startChat()
-    await deps.activateSessionById(sessionId)
+    if (opened === undefined) return await deps.startChat()
+    // The answered row and, for a chat that this open created, its known-empty transcript let the tab show without a
+    // read that waits for the executor, as a new chat does.
+    deps.seedSessionCatalogRow(opened.row)
+    if (opened.created) deps.startKnownEmptyTranscript(opened.sessionId)
+    await deps.activateSessionById(opened.sessionId)
     return deps.signals.foregroundId() !== undefined
   }
 

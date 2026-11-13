@@ -8,7 +8,6 @@ import { withDetailEvidence } from "../../protocol/client/session-controls.js"
 import { sessionCursor, workspaceDomainCursor, type RuntimeSessionViewEntry, type RuntimeSessionViewsResult } from "../../protocol/runtime-ui-protocol-types.js"
 import { budgetCursor } from "../../protocol/budget-protocol-types.js"
 import type { AuthProfileManager } from "../auth/auth-profile-manager.js"
-import { resolveSessionAuthProfile } from "../session/session-auth-profile.js"
 import { projectSessionCatalogRow, replaceCatalogTotals } from "../session/session-catalog-row.js"
 import { editedSessionLabels } from "../session/session-label.js"
 import type { DurableSessionCatalogRow } from "../session/session-catalog-types.js"
@@ -18,6 +17,8 @@ import { executionAskerOf, readAskerOf } from "./project-executor-generations.js
 import { createRuntimeUiBus, type RuntimeUiBus } from "./runtime-ui-bus.js"
 import { runtimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
 import type { AccountModuleProtocolRoutes } from "./module-protocol-host.js"
+import type { ControlModuleServices } from "./module-service-host.js"
+import { createControlChatOpen } from "./control-chat-open.js"
 import { ProjectExecutionChannelDetached, type ProjectExecutionClient } from "./project-execution-channel.js"
 import { ExecutorGenerationChangedError } from "../../protocol/runtime-protocol-schemas.js"
 import { serveRuntimeBackgroundQuery, type RuntimeBackgroundLane } from "./runtime-background-lane.js"
@@ -119,6 +120,10 @@ export interface ProjectControlClient extends RuntimeClient {
   /** The connection ended. Its session holds wait out their grace, and its
    *  detail holds end at once. */
   disconnect(connection: SessionHolder): void
+  /** The open of `chat.open`, for a module's control part (`ControlModuleServices.openChat`). */
+  readonly openChat: ControlModuleServices["openChat"]
+  /** The row a mutation answers, for a module's control part (`ControlModuleServices.chatRow`). */
+  readonly chatRow: ControlModuleServices["chatRow"]
 }
 
 /** Errors the targeted metadata read states: a summary read owns the rest. */
@@ -511,6 +516,8 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
   const isSessionViews = (value: unknown): value is RuntimeSessionViewsResult<unknown> & { readonly views: readonly RuntimeSessionViewEntry<unknown>[] } =>
     typeof value === "object" && value !== null && "views" in value
 
+  const openChat = createControlChatOpen({ ...options, sessions: state.sessions, catalogRow })
+
   /** The targeted read, so a mutation answers with the row a listing shows:
    *  its degradation and workflow state included. */
   async function catalogRow(sessionId: string): Promise<SessionCatalogRow | undefined> {
@@ -641,23 +648,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     if (options.accountModules?.owns(command)) return options.accountModules.mutate(command)
     if (command.type === "settings.set_update_auto_install") return settingsWriteResult(await options.updates.setAutoInstall(command.expected, command.value))
     if (command.type === "chat.open" && command.initialMessage === undefined) {
-      // This inspection precedes every await: later default changes cannot
-      // change the profile chosen for this click. The chat records the profile
-      // that serves it, so an environment selector's choice outlives this
-      // process (PI-MODEL-033). Resolution refuses an unavailable profile.
-      const { effectiveId: authProfileId } = resolveSessionAuthProfile({}, options.authProfiles.inspect())
-      const sessionId = command.sessionId ?? state.sessions.allocateId()
-      // A client names its chat so that it can send the open again when the
-      // answer was lost with its connection. The chat is the record of the
-      // open: a copy finds it and creates nothing. A copy that arrives while
-      // the first open creates loses the guarded create, which writes only
-      // to a session that does not exist, and then finds that chat.
-      const exists = async (): Promise<boolean> => command.sessionId !== undefined && await state.sessions.read(sessionId) !== null
-      if (!await exists()) await state.sessions.createChat({ id: sessionId, conversationId: state.sessions.allocateId(), name: "New Chat", executionCwd: options.executionCwd, initialState: options.executionPaused?.() ? "inactive" : "active", authProfileId }).catch(async (cause: unknown) => { if (!await exists()) throw cause })
-      const row = await catalogRow(sessionId)
-      if (!row) return { ok: false, error: `Session not found after creation: ${sessionId}` }
-      // The client that shows the chat activates it under its own hold, so
-      // the open attaches no runner that no connection would release.
+      const { sessionId, row } = await openChat(command.sessionId === undefined ? {} : { sessionId: command.sessionId })
       return { ok: true, sessionId, sessionCatalogRow: row }
     }
     if (command.type === "session.rename") {
@@ -748,6 +739,11 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
   return {
     query,
     dispatch,
+    openChat: async ({ name }) => {
+      if (closing) throw new Error("Project control client is closed")
+      return openChat({ name })
+    },
+    chatRow: catalogRow,
     disconnect: (connection) => {
       holds.drop(connection)
       details.drop(connection)

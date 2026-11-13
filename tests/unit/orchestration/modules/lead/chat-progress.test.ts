@@ -62,7 +62,7 @@ test("a chat whose newest entry is the person's forwarded message reads as start
   const runnerStartup = Promise.withResolvers<void>()
   const lead = leadHarness(ctx, { runnerStartup: runnerStartup.promise })
   dispose = async () => { runnerStartup.resolve(); await lead.dispose() }
-  const leadSessionId = await lead.service.open("launch")
+  const leadSessionId = await lead.openLead()
   if (leadSessionId === null) throw new Error("expected the lead to open")
   await conversation.appendConversation(leadSessionId, [
     { kind: "user", content: "Fix the login page", origin: "human" },

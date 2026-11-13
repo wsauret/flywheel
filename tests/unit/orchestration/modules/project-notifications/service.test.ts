@@ -28,7 +28,7 @@ test("the sink takes a producer's episode after shutdown begins and refuses one 
   try {
     const modules: readonly FirstPartyModule[] = [projectNotificationsModule]
     const composition = composeModules(modules)
-    const control: ControlModuleServices = {
+    const control: Pick<ControlModuleServices, "projectionReader" | "eventWriter" | "onStored" | "publish"> = {
       projectionReader: asAsyncEventReadSurface(store),
       eventWriter: asAsyncEventWriter(store),
       onStored: store.onStored,

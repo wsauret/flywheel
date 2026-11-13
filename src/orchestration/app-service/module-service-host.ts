@@ -1,11 +1,11 @@
 import type { Schema } from "effect"
 import type { ModuleTransports } from "./module-transports.js"
-import type { FrontendEvent, SessionRuntimeView } from "../../protocol/app-service-types.js"
+import type { FrontendEvent, SessionCatalogRow, SessionRuntimeView } from "../../protocol/app-service-types.js"
 import type { AuthRuntime } from "./auth-runtime.js"
 import type { RuntimeConfigProjection } from "./runtime-config-projection.js"
 import type { StartupDirectories } from "../../infra/directory-authorities.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter, StoredFact } from "../../infra/event-store-types.js"
-import { composeModuleServices, type ModuleServices } from "../../infra/module-service.js"
+import { composeModuleServices, moduleServiceKey, type ModuleServices } from "../../infra/module-service.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import { Log } from "../../infra/log.js"
 import { errorMessage } from "../../infra/error-message.js"
@@ -229,7 +229,17 @@ export function createAccountModuleServiceOwner<Runtime extends { dispose(): Pro
 }
 
 /** State-backed control services run in the account when attached, or in the standalone host. */
-export type ControlModuleServices = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish">
+export type ControlModuleServices = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "modules" | "enabled"> & ControlSessionPorts
+
+/** The chat authorities of the control placement, which answer without waiting for the executor. */
+export interface ControlSessionPorts {
+  /** Opens a new chat with no tab and no runner, born with the given name as a name the person chose, and answers
+   *  its catalog row. The client that shows the chat activates it under its own hold, as after `chat.open`. Rejects
+   *  when the chat cannot be created. */
+  readonly openChat: (options: { readonly name: string }) => Promise<{ readonly sessionId: string; readonly row: SessionCatalogRow }>
+  /** The catalog row of a chat, or undefined when no such chat exists, as after its deletion. */
+  readonly chatRow: (sessionId: string) => Promise<SessionCatalogRow | undefined>
+}
 
 /** What every module service instance owes composition: one disposal that
  *  settles admitted work and releases what the service holds. Composition runs
@@ -258,17 +268,22 @@ export interface ComposedModuleServices {
   settleStartup(): Promise<readonly string[]>
   closeAdmission(): void
   dispose(): Promise<void>
-  /** The constructed instances in construction order, including later activations. */
-  readonly instances: readonly (readonly [moduleId: string, instance: ModuleServiceInstance])[]
+  /** The constructed instances in construction order, including later activations, each under its part's key. */
+  readonly instances: readonly (readonly [key: string, instance: ModuleServiceInstance])[]
 }
 
 /** Owns service activation for the process. The composition root registers this
  *  owner before its first reconcile, so a constructor failure still disposes
  *  every dependency already built. Disabled factories never run; a later valid
  *  selection activates them through the same dependency walk. */
-export function composeModuleProcessServices(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], kernel: Omit<ModuleProcessServices, "modules" | "enabled">, accountAttached = false): ComposedModuleServices {
-  return composeServiceInstances(modules, enabledModuleIds, (module, services, enabled) =>
-    module.host !== "account" && !(accountAttached && module.host === "control") ? module.service?.create({ ...kernel, modules: services, enabled }) : undefined)
+export function composeModuleProcessServices(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], kernel: Omit<ModuleProcessServices, "modules" | "enabled"> & ControlSessionPorts, accountAttached = false): ComposedModuleServices {
+  return composeServiceInstances(modules, enabledModuleIds, (module, services, enabled) => {
+    if (module.host === "account" || (accountAttached && module.host === "control")) return []
+    const service = module.service?.create({ ...kernel, modules: services, enabled })
+    // An execution module's control part runs here only where no account composition runs it (ARCH-RUNTIME-050).
+    const control = module.host === "control" || accountAttached ? undefined : module.control?.service?.create({ ...kernel, modules: services, enabled })
+    return [...part(module.id, service), ...part(module.id, control, "control")]
+  })
 }
 
 /** Constructs only the portable execution services, over the portable
@@ -277,19 +292,27 @@ export function composeModuleProcessServices(modules: readonly FirstPartyModule[
  *  absent there. */
 export function composePortableModuleServices(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], kernel: Omit<PortableModuleServices, "modules" | "enabled">): ComposedModuleServices {
   return composeServiceInstances(modules, enabledModuleIds, (module, services, enabled) =>
-    module.host !== "account" && module.host !== "control" && module.service && "portable" in module.service ? module.service.create({ ...kernel, modules: services, enabled }) : undefined)
+    part(module.id, module.host !== "account" && module.host !== "control" && module.service && "portable" in module.service ? module.service.create({ ...kernel, modules: services, enabled }) : undefined))
 }
 
-/** Constructs only account-placed services from the installed module catalog. */
-export function composeAccountProjectModuleServices(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], kernel: Omit<AccountProjectModuleServices, "modules" | "enabled">): ComposedModuleServices {
-  return composeServiceInstances(modules, enabledModuleIds, (module, services, enabled) =>
-    module.host === "account" || module.host === "control" ? module.service?.create({ ...kernel, modules: services, enabled }) : undefined)
+/** Constructs only account-placed services from the installed module catalog, and the control part of each module
+ *  whose service runs in execution (ARCH-RUNTIME-050). */
+export function composeAccountProjectModuleServices(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], kernel: Omit<AccountProjectModuleServices, "modules" | "enabled"> & ControlSessionPorts): ComposedModuleServices {
+  return composeServiceInstances(modules, enabledModuleIds, (module, services, enabled) => {
+    if (module.host === "account" || module.host === "control") return part(module.id, module.service?.create({ ...kernel, modules: services, enabled }))
+    return part(module.id, module.control?.service?.create({ ...kernel, modules: services, enabled }), "control")
+  })
 }
 
-function composeServiceInstances(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], create: (module: FirstPartyModule, services: ModuleServices, enabled: () => boolean) => ModuleServiceInstance | undefined): ComposedModuleServices {
+type BuiltPart = readonly [key: string, instance: ModuleServiceInstance]
+
+const part = (moduleId: string, instance: ModuleServiceInstance | undefined, name?: "control"): readonly BuiltPart[] =>
+  instance === undefined ? [] : [[moduleServiceKey(moduleId, name), instance]]
+
+function composeServiceInstances(modules: readonly FirstPartyModule[], enabledModuleIds: () => readonly string[], create: (module: FirstPartyModule, services: ModuleServices, enabled: () => boolean) => readonly BuiltPart[]): ComposedModuleServices {
   const byId = new Map(modules.map((module) => [module.id, module]))
-  const built: (readonly [string, ModuleServiceInstance])[] = []
-  const byInstanceId = new Map<string, ModuleServiceInstance>()
+  const built: BuiltPart[] = []
+  const byModuleId = new Map<string, readonly BuiltPart[]>()
   let bindings = composeModuleServices(built)
   const services: ModuleServices = { get: (handle) => bindings.get(handle) }
   const started = new Set<ModuleServiceInstance>()
@@ -307,16 +330,17 @@ function composeServiceInstances(modules: readonly FirstPartyModule[], enabledMo
       if (!module || visited.has(id) || !enabled.has(id)) return
       visited.add(id)
       for (const dependency of module.dependencies) visit(dependency)
-      if (!module.service) return
-      let instance = byInstanceId.get(id)
-      if (!instance) {
-        instance = create(module, services, () => enabledModuleIds().includes(id))
-        if (!instance) return
-        built.push([id, instance])
-        byInstanceId.set(id, instance)
+      let parts = byModuleId.get(id)
+      if (!parts) {
+        parts = create(module, services, () => enabledModuleIds().includes(id))
+        if (parts.length === 0) return
+        built.push(...parts)
+        byModuleId.set(id, parts)
         bindings = composeModuleServices(built)
       }
-      if (ready && !started.has(instance)) {
+      if (!ready) return
+      for (const [, instance] of parts) {
+        if (started.has(instance)) continue
         instance.start?.()
         started.add(instance)
       }

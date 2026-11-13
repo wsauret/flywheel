@@ -8,11 +8,17 @@ import { createDraftCache } from "../../../../src/tui/hooks/create-draft-cache.j
 import { createLaunchState } from "../../../../src/tui/hooks/create-launch-state.js"
 import type { TabInfo } from "../../../../src/tui/hooks/create-tabs.js"
 import type { TranscriptLayoutSlot } from "../../../../src/tui/output-window/output-window-scroll.js"
+import type { TuiFirstTab } from "../../../../src/tui/tui-module-client.js"
 import { catalogRow } from "../../../helpers/session-catalog.js"
 
 function tab(id: string, kind: "session" | "pending" = "session"): TabInfo {
   return { kind, id, title: id, isForeground: false, isBusy: false, isBlocked: false }
 }
+
+type FirstTab = Awaited<ReturnType<TuiFirstTab["open"]>>
+
+/** A first tab's answer for `sessionId`, as the lead's control part answers it. */
+const firstTab = (sessionId: string, created = false): FirstTab => ({ sessionId, row: catalogRow(sessionId, sessionId), created })
 
 function fixture(handed: LaunchState | undefined) {
   const events: string[] = []
@@ -61,7 +67,9 @@ function fixture(handed: LaunchState | undefined) {
       events.push("start chat")
       return true
     },
-    openFirstTab: async (): Promise<string | undefined> => undefined,
+    openFirstTab: async (): Promise<FirstTab> => undefined,
+    seedSessionCatalogRow: (row: { readonly id: string }) => { events.push(`seed ${row.id}`) },
+    startKnownEmptyTranscript: (sessionId: string) => { events.push(`known empty ${sessionId}`) },
     // Like the connection, a new listener hears the lane already open at once.
     lanes: { onLane: (listener: (lane: number) => void) => {
       laneListeners.add(listener)
@@ -195,20 +203,30 @@ describe("the terminal's place", () => {
     })
   })
 
-  it("opens the first-tab session in front instead of a new chat when it was handed nothing", async () => {
+  it("opens the first-tab session in front instead of a new chat when it was handed nothing, from the row it answered", async () => {
     await createRoot(async (dispose) => {
       const { deps, events } = fixture(undefined)
-      await createLaunchState({ ...deps, openFirstTab: async () => { events.push("first tab"); return "lead-1" } }).restore()
-      expect(events).toEqual(["first tab", "activate lead-1"])
+      await createLaunchState({ ...deps, openFirstTab: async () => { events.push("first tab"); return firstTab("lead-1", true) } }).restore()
+      // A created first tab has no history, so its transcript is known empty and its tab reads nothing from the executor.
+      expect(events).toEqual(["first tab", "seed lead-1", "known empty lead-1", "activate lead-1"])
       dispose()
     })
   })
 
-  for (const answer of ["lead-1", undefined]) {
-    it(`keeps the foreground the person chose while the first tab was asked for, when it answers ${answer ?? "none"}`, async () => {
+  it("seeds the row of a first tab that exists already and loads its history as a restored tab does", async () => {
+    await createRoot(async (dispose) => {
+      const { deps, events } = fixture(undefined)
+      await createLaunchState({ ...deps, openFirstTab: async () => firstTab("lead-1") }).restore()
+      expect(events).toEqual(["seed lead-1", "activate lead-1"])
+      dispose()
+    })
+  })
+
+  for (const answer of [firstTab("lead-1"), undefined]) {
+    it(`keeps the foreground the person chose while the first tab was asked for, when it answers ${answer?.sessionId ?? "none"}`, async () => {
       await createRoot(async (dispose) => {
         const { deps, events, setForeground } = fixture(undefined)
-        const asked = Promise.withResolvers<string | undefined>()
+        const asked = Promise.withResolvers<FirstTab>()
         // The person opens a session while the ask is in flight.
         const restoring = createLaunchState({ ...deps, openFirstTab: () => { setForeground("chosen"); return asked.promise } }).restore()
         asked.resolve(answer)
@@ -223,14 +241,14 @@ describe("the terminal's place", () => {
   it("opens nothing when its shell closes while the first tab is asked for", async () => {
     let events!: string[]
     let dispose!: () => void
-    const asked = Promise.withResolvers<string | undefined>()
+    const asked = Promise.withResolvers<FirstTab>()
     const restoring = createRoot((stop) => {
       dispose = stop
       const setup = fixture(undefined)
       events = setup.events
       return createLaunchState({ ...setup.deps, openFirstTab: () => { dispose(); return asked.promise } }).restore()
     })
-    asked.resolve("lead-1")
+    asked.resolve(firstTab("lead-1"))
     await restoring
     expect(events).toEqual([])
   })
@@ -245,14 +263,14 @@ describe("the terminal's place", () => {
           asks += 1
           events.push(`first tab ${asks}`)
           if (asks === 1) throw new Error("runtime not ready")
-          return "lead-1"
+          return firstTab("lead-1")
         },
       }).restore()
       for (let turn = 0; turn < 20 && laneListeners.size === 0; turn++) await Promise.resolve()
       expect(events).toEqual(["first tab 1"])
       openLane(1)
       await restoring
-      expect(events).toEqual(["first tab 1", "first tab 2", "activate lead-1"])
+      expect(events).toEqual(["first tab 1", "first tab 2", "seed lead-1", "activate lead-1"])
       dispose()
     })
   })
@@ -260,10 +278,10 @@ describe("the terminal's place", () => {
   it("asks for the first tab without waiting for it when it restores a handed foreground", async () => {
     await createRoot(async (dispose) => {
       const { deps, events } = fixture({ ...HANDED, modal: { kind: "none" } })
-      const asked = Promise.withResolvers<string | undefined>()
+      const asked = Promise.withResolvers<FirstTab>()
       await createLaunchState({ ...deps, openFirstTab: () => { events.push("first tab"); return asked.promise } }).restore()
       expect(events).toEqual(["open a", "open b", "first tab", "activate b"])
-      asked.resolve("lead-1")
+      asked.resolve(firstTab("lead-1"))
       dispose()
     })
   })

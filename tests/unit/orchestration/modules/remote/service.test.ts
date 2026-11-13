@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
-import type { AccountModuleFaults, AccountProjectModuleServices } from "../../../../../src/orchestration/app-service/module-service-host.js"
+import type { AccountModuleFaults, AccountProjectModuleServices, ControlSessionPorts } from "../../../../../src/orchestration/app-service/module-service-host.js"
 import { composeAccountProjectModuleServices, composeModuleProcessServices } from "../../../../../src/orchestration/app-service/module-service-host.js"
 import { composeAccountModuleProtocolRuntimes } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { remoteModule } from "../../../../../src/orchestration/modules/remote/module.js"
@@ -60,7 +60,7 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
   }
   // Only the ports the tested service consumes are supplied; the process owner
   // forwards the remaining kernel authorities without reading them.
-  const kernel: Omit<AccountProjectModuleServices, "modules" | "enabled"> = {
+  const kernel: Omit<AccountProjectModuleServices, "modules" | "enabled"> & ControlSessionPorts = {
     projectRegistry: { list: async () => [], record: async () => { throw new Error("not used") }, forget: async () => {}, watch: () => () => {} },
     directories: testDirectories("/scratch/remote-service"), launcher: createLauncherScope({ spawnOwned: () => { throw new Error("No process starts in this service fixture") }, adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
     eventStore: asAsyncEventReadSurface(inMemoryEventReader([])),
@@ -71,6 +71,8 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
       pruneSupersededEvents: async () => 0,
     },
     onStored: () => () => {},
+    openChat: async () => { throw new Error("not used") },
+    chatRow: async () => { throw new Error("not used") },
     accountModuleFaults,
     snapshotPosition: () => 0,
     publish: (input) => ({ ...input, position: 1, prevPosition: 0 }), notify: async () => {}, onFrontendEvent: (listener) => { frontendListeners.add(listener); return () => { frontendListeners.delete(listener) } },

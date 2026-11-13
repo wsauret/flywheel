@@ -52,8 +52,6 @@ import {
  *  editor extension and a browser hold the whole contract (ARCH-PROTOCOL-033). */
 export const PROTOCOL_MODULES = [bugReportsProtocol, definitionOverridesProtocol, experimentsProtocol, leadProtocol, mcpProtocol, papercutsProtocol, projectNotificationsProtocol, remoteProtocol, sideQuestionProtocol, subagentsProtocol, subscriptionUsageProtocol, workflowsProtocol] as const satisfies readonly ProtocolModule[]
 
-/** A contract the registry holds; the runtime serves no other. */
-export type ProtocolRegistryModule = (typeof PROTOCOL_MODULES)[number]
 export type ProtocolModuleDomain = ProtocolDomainOf<typeof PROTOCOL_MODULES>
 export type ProtocolModuleDomainName = ProtocolModuleDomain["domain"]
 export type ProtocolModuleEntry<Name extends ProtocolModuleDomainName> = Extract<ProtocolModuleDomain, { readonly domain: Name }>
@@ -62,6 +60,13 @@ export type ProtocolModuleWorkspaceDomain = Extract<ProtocolModuleDomain, { read
 export type ProtocolModuleWorkflowDomain = Extract<ProtocolModuleDomain, { readonly scope: "workflow" }>["domain"]
 type ProtocolModuleQueryDeclaration = ProtocolQueryOf<typeof PROTOCOL_MODULES>
 type ProtocolModuleMutationDeclaration = ProtocolMutationOf<typeof PROTOCOL_MODULES>
+/** A contract whose every domain, query, and mutation the registry holds: a registry module, or the part of one that
+ *  one placement of the module serves. */
+export type ProtocolRegistryPart = ProtocolModule & {
+  readonly domains: readonly ProtocolModuleDomain[]
+  readonly queries?: readonly ProtocolModuleQueryDeclaration[]
+  readonly mutations?: readonly ProtocolModuleMutationDeclaration[]
+}
 /** Every read a module answers: each domain's snapshot and each module query. */
 export type ProtocolModuleQuery = ProtocolDomainQuery<ProtocolModuleDomain> | ProtocolQueryRequest<ProtocolModuleQueryDeclaration>
 export type ProtocolModuleQueryType = ProtocolModuleQuery["type"]

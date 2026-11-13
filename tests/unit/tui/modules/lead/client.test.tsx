@@ -1,16 +1,18 @@
 /** @jsxImportSource @opentui/solid */
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { EMPTY_LEAD_VIEW, type LeadView } from "../../../../../src/protocol/modules/lead.js"
+import { EMPTY_LEAD_CHATS, EMPTY_LEAD_VIEW, type LeadView } from "../../../../../src/protocol/modules/lead.js"
 import type { MutationResult } from "../../../../../src/protocol/app-service-types.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
 import { createTabCloser } from "../../../../../src/tui/hooks/create-tab-closer.js"
 import type { TabInfo } from "../../../../../src/tui/hooks/create-tabs.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
+import { catalogRow } from "../../../../helpers/session-catalog.js"
 import { readerHost } from "./_lead-fixtures.js"
 
-const LEAD: LeadView = { leadSessionId: "lead-1", dismissed: false, rows: [] }
+const LEAD: LeadView = { leadSessionId: "lead-1", dismissed: false }
+const LEAD_ROW = catalogRow("lead-1", "Lead")
 
 function tab(id: string, isForeground = false): TabInfo {
   return { kind: "session", id, title: id, isForeground, isBusy: false, isBlocked: false }
@@ -22,7 +24,7 @@ async function settle(): Promise<void> {
 
 /** The lead client over a scripted lead view, with the shell's own tab closer
  *  asking its close guard and following its first tab. */
-function harness(openAnswer: () => Promise<MutationResult<{ readonly type: "lead.open"; readonly reason: "launch" | "command" }>> = async () => ({ ok: true, sessionId: "lead-1" })) {
+function harness(openAnswer: () => Promise<MutationResult<{ readonly type: "lead.open"; readonly reason: "launch" | "command" }>> = async () => ({ ok: true, sessionId: "lead-1", row: LEAD_ROW, created: false })) {
   const [view, setView] = createSignal<LeadView | undefined>(LEAD)
   const [tabs, setTabs] = createSignal<readonly TabInfo[]>([tab("lead-1", true), tab("chat-2")])
   const dialog = createModalStack()
@@ -34,7 +36,7 @@ function harness(openAnswer: () => Promise<MutationResult<{ readonly type: "lead
     "session.close": async (command) => { sent.push(`session.close ${command.sessionId}${command.atRest ? " at rest" : ""}`); return { ok: true } },
   })
   const { client, closer, dispose } = createRoot((release) => {
-    const lead = createLeadClient({ domains: { lead: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({}) }, dialog, showToast: (toast) => { toasts.push(toast.message) },
+    const lead = createLeadClient({ domains: { lead: { scope: "workspace", view }, leadChats: { scope: "workspace", view: () => EMPTY_LEAD_CHATS } }, client: { dispatch, query: runtimeQuery({}) }, dialog, showToast: (toast) => { toasts.push(toast.message) },
       ...readerHost().host })
     const tabCloser = createTabCloser({
       tabs, appService: { dispatch },
@@ -65,11 +67,11 @@ describe("the lead's terminal client", () => {
     } finally { h.dispose() }
   })
 
-  it("asks the runtime for the lead at launch and answers the chat it names", async () => {
-    let answer: MutationResult<{ readonly type: "lead.open"; readonly reason: "launch" | "command" }> = { ok: true, sessionId: "lead-1" }
+  it("asks the runtime for the lead at launch and answers the chat it names with its row", async () => {
+    let answer: MutationResult<{ readonly type: "lead.open"; readonly reason: "launch" | "command" }> = { ok: true, sessionId: "lead-1", row: LEAD_ROW, created: true }
     const h = harness(async () => answer)
     try {
-      expect(await h.client.firstTab?.open()).toBe("lead-1")
+      expect(await h.client.firstTab?.open()).toEqual({ sessionId: "lead-1", row: LEAD_ROW, created: true })
       answer = { ok: true, sessionId: null }
       expect(await h.client.firstTab?.open()).toBeUndefined()
       answer = { ok: false, error: "runtime stopping" }
