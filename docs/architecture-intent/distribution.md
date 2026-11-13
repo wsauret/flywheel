@@ -4,7 +4,7 @@ This file states how Flywheel builds and publishes releases, installs builds, an
 
 ## ARCH-DISTRIBUTION-001: One build moves as one unit
 
-A build is one inseparable unit of the executable, its native payload, the universal tokenizer asset, the platform's Claude engine, fonts, and the complete built web client, and each target's archive carries all of it. Nothing replaces part of a build, and nothing replaces a build's directory in place.
+A build is one inseparable unit of the executable, its native payload, the universal tokenizer asset, the platform's Claude engine, fonts, the complete built web client, and the desktop app where its target supports one. Each target's archive carries all of it. Nothing replaces part of a build, and nothing replaces a build's directory in place.
 
 Because: A running process loads native, tokenizer, and browser assets lazily, so a partial or in-place replacement makes it read another build's files.
 Not: Replacing the executable, or a version directory, in place.
@@ -169,3 +169,9 @@ The relay Worker and the phone's hosted bootstrap deploy manually from the same 
 Publisher inputs, the update repository and the bug report endpoint, are supplied at build time or by the environment of a source run, and no runtime check infers them. A release build compiles in the repository that the release environment names, or else the official repository, and the report endpoint that the release machine's environment names. Every other build compiles in neither, so it sends no report and installs no release unless the repository override of ARCH-DISTRIBUTION-007 names one. A release to the official repository refuses to start without the maintainers' endpoint, which only the official release machine names.
 Because: A fork keeps the whole source and can share an official build's version and build id, so only the build command and its environment can tell the builds apart.
 Not: A hard-coded repository and endpoint gated by a release mark, which every fork's release build would carry.
+
+## ARCH-DISTRIBUTION-035: The desktop app is assembled from a pinned shell and runs on the build's binary
+
+The release host assembles the desktop app for every supported target from hash-pinned Electrobun core archives and its verified patches. The app runs on the build's own binary, and Electrobun's builder and updater take no part in a release.
+Because: A build already carries a runtime of the same version and updates as one unit, and the stock Windows shell turns off web security.
+Not: A second bundled runtime, or a release that ships an unpatched shell.

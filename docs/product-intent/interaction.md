@@ -552,11 +552,15 @@ A subagent or workflow agent ends its session when an admitted handoff starts. A
 
 ## PI-INTERACTION-052: Desktop notifications page the person only when a session asks a question
 
-While desktop notifications are on, the terminal and the web client page the person with the same words when any session starts waiting on a question. A turn that ends, and a workflow run that finishes, pauses, or fails, pages no one. Each new question pages again, also in the same session and in the session the person has open. A click on a terminal notification opens no view in the terminal.
+While desktop notifications are on, the terminal, the web client, and the desktop app page the person with the same words when any session starts waiting on a question. A turn that ends, and a workflow run that finishes, pauses, or fails, pages no one. Each new question pages again, also in the same session and in the session the person has open. A click on a terminal notification opens no view in the terminal.
 
 ## PI-INTERACTION-090: A web page notifies only with browser permission and opens the asking session on click
 
-A web page asks the browser for permission once, when the person turns the Desktop notifications switch on in its Settings. While the browser does not allow the page to notify, the switch shows off. When the browser blocks notifications, the switch says so and says how to allow them in the browser. A click on a web page's notification brings that page to the front and opens the session that asks.
+A web page in a browser asks the browser for permission once, when the person turns the Desktop notifications switch on in its Settings. While the browser does not allow the page to notify, the switch shows off. When the browser blocks notifications, the switch says so and says how to allow them in the browser. A click on a web page's notification brings that page to the front and opens the session that asks.
+
+## PI-INTERACTION-177: The desktop app pages every open project natively
+
+The desktop app pages through the system's notifications for every open project, also with its window closed, once per question; the web client in its window pages nothing of its own. A click brings the window to the front and opens the asking session. While the system does not allow the app to notify, the switch shows off and says how to allow it in the system settings.
 
 ## PI-INTERACTION-053: A finished turn on the web client folds to its answer
 

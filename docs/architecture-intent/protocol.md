@@ -169,7 +169,7 @@ Not: A second reading-state format for reloads, or replacing the client on ordin
 
 ## ARCH-PROTOCOL-031: The web client is one hosted bundle, and hosts relay its bytes
 
-The editor, the machine-local browser host, and the phone's bootstrap mount the one bundle that the serving runtime built. The web client imports no host module. A host supplies only a socket layer, a capability object, and a theme, and never reconciles session or transcript state. The client branches on capability and container width, never on host identity. The editor host supervises the account service, relays protocol bytes undecoded, and answers capability requests. It keeps one connection only for editor commands and for editor notifications while the client is hidden. That connection never reconciles chat state.
+The editor, the machine-local browser host, the desktop app, and the phone's bootstrap mount the one bundle that the serving runtime built. The web client imports no host module. A host supplies only a socket layer, a capability object, and a theme, and never reconciles session or transcript state. The client branches on capability and container width, never on host identity. The editor host supervises the account service, relays protocol bytes undecoded, and answers capability requests. Its one extra connection carries only editor commands, and notifications while the client is hidden. A host notifier replaces the browser's.
 Not: Porting the client per host, or letting a host keep its own session state.
 
 ## ARCH-PROTOCOL-032: One relay device client serves every relay-reached client
@@ -367,3 +367,9 @@ The web app manifest fields and the home-screen head tags that a phone records w
 
 Because: iOS records these fields once, at Add to Home Screen, and never reads them again, so a change reaches only new installs and strands every existing one.
 Not: A change to a manifest field or a home-screen head tag that asks people to add the app to the Home Screen again.
+
+## ARCH-PROTOCOL-071: One account activity feed reports projects and questions
+
+The account socket offers one feed of known projects with their state, and of each question that starts or ends in an open project, read from the open compositions without holding them. Hosts that page across projects read this feed.
+Because: A session waiting on a question keeps its project open, so the open compositions already hold every question that can page.
+Not: A host that holds every project open to hear its questions.

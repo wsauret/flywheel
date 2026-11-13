@@ -33,3 +33,11 @@ When an open project's browser page cannot start, the list shows the cause and a
 ## PI-LOCAL-008: The local address looks like Flywheel
 
 While an asleep project starts, the page keeps Flywheel's visual theme and shows the animated Flywheel tile with the project name. The list page shows Flywheel's tile as its icon, so its bookmark carries the same icon as a project page.
+
+## PI-LOCAL-009: The desktop app shows projects in one window
+
+Each installed release on macOS, Windows, and Linux with the GNU C library includes a desktop app. It shows the same web client as a browser in one window, one project at a time, and the person switches projects without a browser. The app starts the account service when none is serving.
+
+## PI-LOCAL-010: The desktop app stays in the menu bar or tray
+
+While the desktop app runs, its icon stays in the menu bar or system tray, also with no window open. The icon's menu lists known projects with their state and the sessions waiting on a question, and opens any of them in the window. Closing the window releases its project, and the menu quits the app.

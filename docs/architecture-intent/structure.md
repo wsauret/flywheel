@@ -8,7 +8,7 @@ Source layers depend one way: infra, then protocol, then workflows, then orchest
 
 ## ARCH-STRUCTURE-043: The source tree holds the binary, and other hosts are workspace members
 
-The source tree holds the runtime and the terminal client, which compile into the Flywheel binary. A host that runs on another platform is its own workspace member beside the source tree, with its own runtime types, dependencies, and deploy. These hosts are the web client in a browser, the editor extension in the editor, and the relay service on its edge platform with its hosted phone page.
+The source tree holds the runtime and the terminal client, which compile into the Flywheel binary. A host that runs on another platform is its own workspace member beside the source tree, with its own runtime types, dependencies, and deploy. These hosts are the web client in a browser, the editor extension in the editor, the desktop app in its native window, and the relay service with its hosted phone page.
 Because: The source layers, their type checks, and the release archive assume one runtime, and a host for another platform or another deploy schedule would bring foreign types and dependencies into all three.
 Not: A source layer or a module for the relay or another separately deployed host.
 

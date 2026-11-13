@@ -28,7 +28,11 @@ An update never leaves the account with no account service: the new release serv
 
 ## PI-UPDATES-005: Clients replace themselves with the serving runtime's client
 
-The editor and a browser show the client that belongs to the serving runtime. Activating a newer release replaces that client without an extension update and without the person doing anything. The new client keeps every draft with its attached files, question picks, the focused field with its selection, the reading place, and opened rows, and the person can type until the moment of replacement. When the replacement fails, the current client stays as it was, with its input intact, and says that it could not update.
+The editor, a browser, and the desktop app show the client that belongs to the serving runtime. Activating a newer release replaces that client without an extension update and without the person doing anything. The new client keeps every draft with its attached files, question picks, the focused field with its selection, the reading place, and opened rows, and the person can type until the moment of replacement. When the replacement fails, the current client stays as it was, with its input intact, and says that it could not update.
+
+## PI-UPDATES-030: The desktop app moves with the release
+
+The desktop app belongs to the installed release and needs no update of its own. After a newer release activates, the app restarts into it the next time its window closes.
 
 ## PI-UPDATES-006: The editor extension installs and starts Flywheel
 
