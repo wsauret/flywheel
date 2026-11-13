@@ -1,0 +1,106 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 234
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 60,277,294,311-321,323-348,350-359,362-406,408,412-450,452-456,458-463,465-481,483-492,495-531,533-548,553-554,556-581,583
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 38,66-67,98,100-109,111-122,124-164,181-182,218-223,267-270,272,275,280,282,292-299,306-338,344-349,378-379,391-397,412-413,415-416,469-470,490
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 42,77,79,87-96,98-100,102,104-106,108-113,115-119,121-137,139-150,152-203,205-216,218-247,249-271,273-274,276-285,287-294,296,299-306,308-329,332-342,345-351,353-366,368-369,371
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 40,341,360,364-392,394-463,465-484,488-499,501-527,531-538,540-598
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 31,40,61,77-89,91-111,113,115-120,122-124,126-133,135-137,139,141-206,215,218-278,281-296,298-326,329-332,334-340,342-350,352-359,361-366,368-381,384-389,392-398,401-408,411-413,415-440,442-450,452-458,460-467,471-485,487-488,490-493,495-496,498
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 8,706,712-735,808-815,827-832,838-839
+src/orchestration/agent-runtime/provider-runtime-cache.ts
+  h_4b47e9e4a8b456 3-4,14,25-28,39-42,86,91,98,106,112,166-191
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 46,450-451,455-456,459-461
+src/orchestration/agent-runtime/turn-request-model-client.ts
+  h_4b47e9e4a8b456 2,7-8,26
+src/orchestration/custom-provider-modules.ts
+  h_4b47e9e4a8b456 6,8,43-45,49-50,60
+src/orchestration/modules/provider-anthropic-api/module.ts
+  h_4b47e9e4a8b456 10,97-100,106
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 12,95,118
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 14,66-68,84-90,98-105,124-125,157-160,176-179,220,224,235-236,267-269,277-278,282,350-351,355,362,423,429-430,448,464,473,476-477,479
+src/orchestration/modules/provider-claude-agent-sdk/bridge-requests.ts
+  h_4b47e9e4a8b456 11-27,30,34,38-41,43,50,66,72
+src/orchestration/modules/provider-claude-agent-sdk/bridge-reservation.ts
+  h_4b47e9e4a8b456 4,19-23,31,81,85,91,110-113,121,124
+src/orchestration/modules/provider-claude-agent-sdk/bridge-state.ts
+  h_4b47e9e4a8b456 7,85-86,114-116,178-179,219-224
+src/orchestration/modules/provider-claude-agent-sdk/bridge.ts
+  h_4b47e9e4a8b456 7,45-46,48,62-63,275-276,286,288,297,493-494,496-497,539,542,550,566,569,576,588,617
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 3,7,9,21,70,73-75,77,80-106,108,126,144-164,166
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 8,48,56
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 5,69,98
+src/orchestration/modules/provider-google-api/module.ts
+  h_4b47e9e4a8b456 9,84,89
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 7,69,74
+src/orchestration/modules/provider-openai-api/module.ts
+  h_4b47e9e4a8b456 10,74,81
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 7,55,86
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 3,8,50-51,53,57-61,72
+src/orchestration/modules/provider-supergrok/module.ts
+  h_4b47e9e4a8b456 13,177,186
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.ts
+  h_4b47e9e4a8b456 19,47,157-161
+tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+  h_4b47e9e4a8b456 12-14,37-56,343-349,352-353,355-365,367,370-412,415,454-457
+tests/unit/orchestration/agent-runtime/llm/client-factory-login.test.ts
+  h_4b47e9e4a8b456 7,60
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 11,19,216-217,289,335,338,344-345,366,396-397,400-401
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 27-32,536-576
+tests/unit/orchestration/agent-runtime/llm/provider-history.test.ts
+  h_4b47e9e4a8b456 94,96
+tests/unit/orchestration/agent-runtime/llm/request-admission-diagnostics.test.ts
+  h_4b47e9e4a8b456 45
+tests/unit/orchestration/agent-runtime/provider-runtime-cache.test.ts
+  h_4b47e9e4a8b456 5-7,22,31-34,38-102
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 23,197
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 19,105
+tests/unit/orchestration/agent-runtime/runtime-assembly-model-selection.test.ts
+  h_4b47e9e4a8b456 15,17-19,35-62,132,137-141,156-157
+tests/unit/orchestration/agent-runtime/tree-host-key.test.ts
+  h_4b47e9e4a8b456 95,101
+tests/unit/orchestration/chat/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 85,91
+tests/unit/orchestration/modules/provider-anthropic-api/module.test.ts
+  h_4b47e9e4a8b456 1,6,12,14,22,38-39,46-73
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 21,348,350-351,417,431-432,435
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts
+  h_4b47e9e4a8b456 9,11-12,48-50,89,98,151,163,199,253,322,351,420,430,475,483,533-534,547,581-652
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge-lifecycle.test.ts
+  h_4b47e9e4a8b456 14,40,135-153
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge-reservation.test.ts
+  h_4b47e9e4a8b456 143-158
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge.test.ts
+  h_4b47e9e4a8b456 506-522
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  h_4b47e9e4a8b456 13,33-37,94,110,128,141,167-189,200,219,231-232,249-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "dbe86c7391661e68e924636436cc1aa37a4a7d92",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
