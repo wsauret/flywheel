@@ -269,7 +269,7 @@ test("a workspace read lost with its lane shows no failure", async () => {
   const diagnostics: string[] = []
   const fake = laneConnection({ lose: [
     "snapshot", "authStatusSnapshot", "updateSnapshot", "commandCatalog", "configSnapshot", "gitSnapshot", "commandUsageSnapshot", "modelAssignments",
-    "moduleSnapshot", "gitAiAttributionSnapshot", "definitionStalenessSnapshot", "mcpStatusSnapshot", "papercutCountSnapshot", "projectNotificationSnapshot", "remoteSnapshot",
+    "moduleSnapshot", "gitAiAttributionSnapshot", "definitionStalenessSnapshot", "leadSnapshot", "mcpStatusSnapshot", "papercutCountSnapshot", "projectNotificationSnapshot", "remoteSnapshot",
   ] })
   const session = createRuntimeSession({ connection: fake.connection, onDiagnostic: (message) => { diagnostics.push(message) } })
   fake.lanes.open()

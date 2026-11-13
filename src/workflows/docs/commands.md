@@ -20,6 +20,7 @@ Type a command at the start of the prompt, or choose it in the command palette (
 | `/font` |  |  | Check or install the recommended terminal font: status, install, dismiss, or reset |
 | `/fork` |  |  | Fork the active conversation into a new chat |
 | `/help` |  | `ctrl+p` | List every command |
+| `/lead` |  |  | Open the lead chat that routes your requests to other chats |
 | `/learn` | `/reflect` |  | Run the learning review on this session now |
 | `/mcp` |  |  | View MCP server status and reauthenticate |
 | `/model` |  |  | Choose each role's model and effort |

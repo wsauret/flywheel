@@ -633,7 +633,7 @@ describe("realm capability transition", () => {
     const full = composeRealmModuleSnapshot({ moduleIds: SHIPPED_MODULES.map((module) => module.id) });
     const minimal = composeRealmModuleSnapshot({ moduleIds: [] });
 
-    expect(full.enabledModuleIds).toEqual(["ask-user", "background-commands", "bash", "bug-reports", "code-mode", "definition-overrides", "discovery", "experiments", "file-tools", "learning", "mcp", "papercuts", "project-notifications", "provider-anthropic-api", "provider-baseten", "provider-chatgpt", "provider-claude-agent-sdk", "provider-deepseek", "provider-github-copilot", "provider-google-api", "provider-google-vertex", "provider-openai-api", "provider-opencode-go", "provider-openrouter", "provider-supergrok", "recall", "remote", "side-question", "skills", "subagents", "subscription-usage", "web", "web-chatgpt", "web-exa", "workflows"]);
+    expect(full.enabledModuleIds).toEqual(["ask-user", "background-commands", "bash", "bug-reports", "code-mode", "definition-overrides", "discovery", "experiments", "file-tools", "lead", "learning", "mcp", "papercuts", "project-notifications", "provider-anthropic-api", "provider-baseten", "provider-chatgpt", "provider-claude-agent-sdk", "provider-deepseek", "provider-github-copilot", "provider-google-api", "provider-google-vertex", "provider-openai-api", "provider-opencode-go", "provider-openrouter", "provider-supergrok", "recall", "remote", "side-question", "skills", "subagents", "subscription-usage", "web", "web-chatgpt", "web-exa", "workflows"]);
     expect(minimal.enabledModuleIds).toEqual([]);
     expect(Object.isFrozen(full.enabledModuleIds)).toBe(true);
   });
