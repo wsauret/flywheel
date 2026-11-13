@@ -1,0 +1,238 @@
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/WHY.md
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/plan.md
+  h_4b47e9e4a8b456 1-116
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/README.md
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/src/admin/routes.ts
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/src/admin/users.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/src/config.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/src/lib/clock.ts
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/src/server.ts
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/tests/config.test.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-audit-sinks/project/tests/routes.test.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/plan.md
+  h_4b47e9e4a8b456 1-162
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/README.md
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/migrations/001_customers.sql
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/src/checkout.ts
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/src/customers.ts
+  h_4b47e9e4a8b456 1-38
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/src/db.ts
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/src/receipt.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/src/tiers.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/tests/receipt.test.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-elegance-loyalty-tier/project/tests/tiers.test.ts
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/WHY.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/plan.md
+  h_4b47e9e4a8b456 1-138
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/README.md
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/src/cart/summary.ts
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/src/emails/receipt.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/src/invoices/render.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/src/settings/choices.ts
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/src/settings/load.ts
+  h_4b47e9e4a8b456 1-42
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/src/settings/page.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/tests/receipt.test.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-money-format/project/tests/settings.test.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/plan.md
+  h_4b47e9e4a8b456 1-126
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/src/app.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/src/notify/scheduler.ts
+  h_4b47e9e4a8b456 1-49
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/src/preferences/parse.ts
+  h_4b47e9e4a8b456 1-41
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/src/preferences/store.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/src/ui/settings-form.ts
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/tests/parse.test.ts
+  h_4b47e9e4a8b456 1-7
+bench/ab-persona/fixtures/reviews/plan-elegance-quiet-hours/project/tests/scheduler.test.ts
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/manifest.json
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/plan.md
+  h_4b47e9e4a8b456 1-109
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/ARCHITECTURE.md
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/src/db/products.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/src/domain/stock.ts
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/src/http/admin-routes.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/src/http/stock-routes.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/src/jobs/valuation.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/src/server.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-elegance-reorder-report/project/tests/stock.test.ts
+  h_4b47e9e4a8b456 1-7
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/plan.md
+  h_4b47e9e4a8b456 1-101
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/src/format/csv.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/src/format/dates.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/src/http/report-routes.ts
+  h_4b47e9e4a8b456 1-26
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/src/reports/sales.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/src/reports/stock.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/src/settings.ts
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/tests/csv.test.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-sales-export/project/tests/sales.test.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/WHY.md
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/plan.md
+  h_4b47e9e4a8b456 1-109
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/migrations/001_sessions.sql
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/src/account/sessions-page.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/src/auth/login.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/src/auth/middleware.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/src/auth/sessions.ts
+  h_4b47e9e4a8b456 1-25
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/src/jobs/sweep-sessions.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-elegance-session-expiry/project/tests/sessions.test.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/WHY.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/plan.md
+  h_4b47e9e4a8b456 1-109
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/package.json
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/src/cli.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/src/notes/store.ts
+  h_4b47e9e4a8b456 1-24
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/src/search/build.ts
+  h_4b47e9e4a8b456 1-29
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/src/search/index-file.ts
+  h_4b47e9e4a8b456 1-22
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/src/search/query.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/tests/index-file.test.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-elegance-tag-search/project/tests/query.test.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/WHY.md
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/plan.md
+  h_4b47e9e4a8b456 1-80
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/project/src/email/sender.ts
+  h_4b47e9e4a8b456 1-24
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/project/src/lib/retry.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/project/src/webhooks/dispatcher.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/project/src/webhooks/fanout.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/project/tests/fanout.test.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-webhook-retry/project/tests/retry.test.ts
+  h_4b47e9e4a8b456 1-22
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/WHY.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/plan.md
+  h_4b47e9e4a8b456 1-86
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/project/src/http/quote-route.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/project/src/pricing/quote.ts
+  h_4b47e9e4a8b456 1-27
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/project/src/pricing/rates.ts
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/fixtures/reviews/plan-elegance-weekend-surcharge/project/tests/quote.test.ts
+  h_4b47e9e4a8b456 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "36525646c69c417e297c051aabf5c19d9dfe0060",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
