@@ -3,7 +3,7 @@ import type { CapacityReset } from "../../../infra/llm/provider-error-copy.js";
 import { candidateReadiness, type CandidateReadinessInputs } from "./failover-client.js";
 
 /** The quota that a model's routes spent until a stated time: the earliest such time, and the providers that state it. */
-export interface SpentQuota {
+interface SpentQuota {
   readonly reset: CapacityReset;
   readonly providers: readonly string[];
 }
