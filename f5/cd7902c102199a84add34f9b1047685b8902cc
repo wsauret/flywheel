@@ -1,0 +1,24 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 41-44
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 29
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 257
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1224
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 29-31
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f5cd7902c102199a84add34f9b1047685b8902cc",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
