@@ -62,7 +62,7 @@ describe("createTabs", () => {
       const [foregroundTarget, setForegroundTarget] = createSignal<ForegroundTarget>()
       const reads: string[] = []
       const signals = { ...makeSignals(undefined, (id) => { reads.push(id); return undefined }), foregroundTarget }
-      const state = createTabState({ sessions: () => [catalogRow({ id: "durable" })], signals })
+      const state = createTabState({ sessions: () => [catalogRow({ id: "durable" })], signals, firstTab: () => undefined })
       state.openSessionTab("durable")
       state.openPendingTab("private")
       setForegroundTarget({ kind: "pending", key: "private" })
@@ -190,6 +190,32 @@ describe("createTabs", () => {
     })
   })
 
+  it("keeps the first-tab session at index 0 beside the handed tabs, without the foreground, and lets no reorder move it", () => {
+    // The first tab follows its accessor through an effect, which runs once the root's own update is done.
+    const { dispose, signals, setFirstTab, state } = createRoot((release) => {
+      const shell = makeSignals()
+      const [firstTab, setFirst] = createSignal<string>()
+      return { dispose: release, signals: shell, setFirstTab: setFirst, state: createTabState({ sessions: () => [catalogRow({ id: "a" }), catalogRow({ id: "b" }), catalogRow({ id: "lead-1" })], signals: shell, firstTab }) }
+    })
+    try {
+      state.openSessionTab("a")
+      state.openSessionTab("b")
+      signals.setForegroundId("b")
+      setFirstTab("lead-1")
+      expect(state.tabs().map((tab) => [tab.id, tab.isForeground])).toEqual([["lead-1", false], ["a", false], ["b", true]])
+      state.reorderTab("b", "lead-1")
+      state.reorderTab("lead-1", null)
+      expect(state.tabs().map((tab) => tab.id)).toEqual(["lead-1", "a", "b"])
+      state.reorderTab("b", "a")
+      expect(state.tabs().map((tab) => tab.id)).toEqual(["lead-1", "b", "a"])
+      // The tab that the person closed comes back first when the session names it again.
+      state.closeSessionTab("lead-1")
+      setFirstTab(undefined)
+      setFirstTab("lead-1")
+      expect(state.tabs().map((tab) => [tab.id, tab.isForeground])).toEqual([["lead-1", false], ["b", true], ["a", false]])
+    } finally { dispose() }
+  })
+
   it("detects transient empty chat tabs from the live catalog and output cache", () => {
     createRoot((dispose) => {
       const outputView = (id: string): OutputView | undefined => ({
@@ -203,6 +229,7 @@ describe("createTabs", () => {
           catalogRow({ id: "renamed-chat", title: "Renamed" }),
         ],
         signals: makeSignals(undefined, undefined, outputView),
+        firstTab: () => undefined,
       })
 
       expect(tabState.isTransientSessionTab("empty-chat")).toBe(true)

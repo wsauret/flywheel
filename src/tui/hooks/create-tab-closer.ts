@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js"
-import { batch } from "solid-js"
+import { batch, createEffect, on } from "solid-js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { RuntimeClient, SessionCatalogRow } from "../../protocol/app-service-types.js"
 
@@ -17,14 +17,21 @@ interface TabCloserDeps {
   draftCache: Pick<DraftCache, "clear">
   seedSessionCatalogRow: (row: SessionCatalogRow) => void
   showToast: ShellServices["showToast"]
+  /** Asked in order before a session's tab or chat closes; the first refusal
+   *  closes nothing. A guard may ask the person first. */
+  closeGuards: readonly ((sessionId: string) => Promise<boolean>)[]
+  /** The session whose tab stays first. When it stops naming a session, that
+   *  session's tab goes as a closed tab does, and its chat stays open. */
+  firstTab: Accessor<string | undefined>
 }
 
 export interface TabCloser {
-  /** Closes a tab as the person asks: removes it, then closes its chat at rest. */
+  /** Closes a tab as the person asks: once the guards allow a session's tab,
+   *  removes it, then closes its chat at rest. */
   closeTab(tabId: string): void
   /** Close chat: ends the chat's work now (PI-INTERACTION-082), then removes
-   *  the tab that shows it, if one does. Rejects with the runtime's refusal,
-   *  and then keeps the tab. */
+   *  the tab that shows it, if one does. A guard's refusal closes nothing.
+   *  Rejects with the runtime's refusal, and then keeps the tab. */
   closeChat(sessionId: string): Promise<void>
 }
 
@@ -55,17 +62,29 @@ export function createTabCloser(deps: TabCloserDeps): TabCloser {
     return target
   }
 
+  createEffect(on(deps.firstTab, (_current, previous) => { if (previous !== undefined) remove(previous) }))
+
+  async function guarded(sessionId: string): Promise<boolean> {
+    for (const guard of deps.closeGuards) if (!await guard(sessionId)) return false
+    return true
+  }
+
   function closeTab(tabId: string): void {
     const list = deps.tabs()
     const only = list.length === 1 ? list[0] : undefined
-    if (only?.id === tabId && only.kind === "session" && only.title === "New Chat" && !only.isBusy && !only.isBlocked) return
-    const target = remove(tabId)
-    if (!target) return
-    if (target.kind === "pending") {
-      // Focus changes flush the old composer buffer; clear its retired key last.
-      deps.draftCache.clear(tabId)
+    // The first tab always reaches its guards, also when it looks like an empty chat.
+    if (only?.id === tabId && only.id !== deps.firstTab() && only.kind === "session" && only.title === "New Chat" && !only.isBusy && !only.isBlocked) return
+    if (list.find((tab) => tab.id === tabId)?.kind === "session") {
+      void guarded(tabId).then((allowed) => { if (allowed) removeAndClose(tabId) }).catch(toastError)
       return
     }
+    // Focus changes flush the old composer buffer; clear its retired key last.
+    if (remove(tabId)) deps.draftCache.clear(tabId)
+  }
+
+  function removeAndClose(tabId: string): void {
+    const target = remove(tabId)
+    if (!target) return
     const cleanup = async () => {
       const result = await deps.appService.dispatch({ type: "session.close", sessionId: tabId, atRest: true })
       if (!result.ok) throw new Error(result.error)
@@ -75,6 +94,7 @@ export function createTabCloser(deps: TabCloserDeps): TabCloser {
   }
 
   async function closeChat(sessionId: string): Promise<void> {
+    if (!await guarded(sessionId)) return
     const result = await deps.appService.dispatch({ type: "session.close", sessionId })
     if (!result.ok) throw new Error(result.error)
     if (result.sessionCatalogRow) deps.seedSessionCatalogRow(result.sessionCatalogRow)

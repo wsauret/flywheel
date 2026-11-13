@@ -43,7 +43,7 @@ function harness(dispatch: (command: ChatOpen) => Promise<CreationResult>) {
     outputView: () => undefined,
   }
   const [rows, setRows] = createSignal<readonly SessionCatalogRow[]>([])
-  const tabState = createTabState({ signals, sessions: rows })
+  const tabState = createTabState({ signals, sessions: rows, firstTab: () => undefined })
   const deps: Parameters<typeof createSessionCreator>[0] = {
     signals,
     appService: { dispatch },
@@ -264,7 +264,7 @@ describe("createSessionCreator", () => {
       appService: { dispatch: async () => { throw new Error("pending close must not dispatch") } },
       switchForeground: async () => {}, startChat: h.startChat,
       closeSessionTab: h.tabState.closeSessionTab, removePendingTab: h.tabState.removePendingTab,
-      draftCache: h.draftCache, seedSessionCatalogRow: () => {}, showToast: () => { throw new Error("unexpected close toast") },
+      draftCache: h.draftCache, seedSessionCatalogRow: () => {}, showToast: () => { throw new Error("unexpected close toast") }, closeGuards: [], firstTab: () => undefined,
     })
     closeTab(key)
     expect(h.draftCache.hasDraft(key)).toBe(false)

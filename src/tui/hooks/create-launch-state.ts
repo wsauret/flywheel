@@ -40,6 +40,9 @@ interface LaunchStateDeps {
   readonly reopen: { readonly sessions: () => void; readonly theme: () => void }
   /** Opens a new or reused empty chat, and answers whether it opened. */
   readonly startChat: () => Promise<boolean>
+  /** The session that a launch shows first, which a module names; undefined
+   *  when none, and then the launch starts a chat. */
+  readonly openFirstTab: () => Promise<string | undefined>
   /** Lanes that open after a first chat failed, so it opens on the next. */
   readonly lanes: Pick<AttachedRuntimeClient, "onLane">
 }
@@ -74,9 +77,26 @@ export function createLaunchState(deps: LaunchStateDeps): TerminalPlace {
    *  unless the person has opened a session by then. Without this the
    *  terminal stays on its load screen with nothing left to wait for. */
   async function openFirstChat(): Promise<void> {
-    if (disposed || deps.signals.foregroundId() !== undefined || await deps.startChat() || disposed) return
+    if (disposed || deps.signals.foregroundId() !== undefined || await openFirstTabOrChat() || disposed) return
     await nextLane()
     await openFirstChat()
+  }
+
+  /** A first tab that cannot be asked for, such as before the runtime
+   *  answers, fails as a first chat does, so the next lane asks again. */
+  async function openFirstTabOrChat(): Promise<boolean> {
+    let sessionId: string | undefined
+    try {
+      sessionId = await deps.openFirstTab()
+    } catch (cause) {
+      log.warn("first tab not opened", { error: errorMessage(cause) })
+      return false
+    }
+    // A session the person opened during the ask, or a closed shell, ends the launch's claim on the foreground.
+    if (disposed || deps.signals.foregroundId() !== undefined) return true
+    if (sessionId === undefined) return await deps.startChat()
+    await deps.activateSessionById(sessionId)
+    return deps.signals.foregroundId() !== undefined
   }
 
   /** Resolves when a lane opens after this call, or when the shell closes
@@ -166,6 +186,9 @@ export function createLaunchState(deps: LaunchStateDeps): TerminalPlace {
       await openFirstChat()
       return
     }
+    // The restored foreground stays in front: the first tab arrives through
+    // the tab state, so this does not wait for it.
+    void deps.openFirstTab().catch((cause: unknown) => { log.warn("first tab not opened", { error: errorMessage(cause) }) })
     let failure: { readonly cause: unknown } | undefined
     try {
       const { modal } = handed

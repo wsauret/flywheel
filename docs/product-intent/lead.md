@@ -4,7 +4,7 @@ This document states the current intended experience for the lead chat that star
 
 ## PI-LEAD-001: The lead receives the person's requests
 
-While the lead capability is on, each project has one lead chat. A terminal launch with no earlier tabs to restore opens the lead as its only tab. The person sends each request to the lead. The lead answers a short question itself, and for that it can read the project's files, the web, and the progress of the chats that it started. It gives every other request to a chat. The lead never changes files, runs commands, or starts subagents or workflows.
+While the lead capability is on, each project has one lead chat. A terminal launch with no earlier tabs to restore opens the lead as its only tab. A launch that restores earlier tabs keeps them and adds the lead as the first tab. The person sends each request to the lead. The lead answers a short question itself, and for that it can read the project's files, the web, and the progress of the chats that it started. It gives every other request to a chat. The lead never changes files, runs commands, or starts subagents or workflows.
 
 ## PI-LEAD-002: A routed request keeps the person's words
 

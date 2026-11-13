@@ -52,7 +52,7 @@ interface CloserMocks {
 function makeCloser(
   tabs: readonly TabInfo[],
   dispatchImpl: () => Promise<MutationResult>,
-  overrides: { switchForeground?: (id: string) => Promise<void> } = {},
+  overrides: { switchForeground?: (id: string) => Promise<void>; closeGuards?: readonly ((sessionId: string) => Promise<boolean>)[]; firstTab?: () => string | undefined } = {},
 ): CloserMocks {
   const calls: string[] = []
   const { dispatch, commands } = recordingDispatch(async () => {
@@ -60,7 +60,8 @@ function makeCloser(
     return await dispatchImpl()
   })
   const showToast = mock((toast: { message: string }) => { calls.push(`toast:${toast.message}`) })
-  const { closeTab, closeChat } = createTabCloser({
+  // The closer follows the first tab through an effect, which needs an owner.
+  const { closeTab, closeChat } = createRoot(() => createTabCloser({
     tabs: () => tabs,
     appService: { dispatch },
     switchForeground: overrides.switchForeground ?? mock(async (id: string) => { calls.push(`foreground:${id}`) }),
@@ -70,7 +71,9 @@ function makeCloser(
     draftCache: { clear: (key) => { calls.push(`clear:${key}`) } },
     seedSessionCatalogRow: mock((row: SessionCatalogRow) => { calls.push(`seed:${row.id}:${row.lifecycleState}`) }),
     showToast,
-  })
+    closeGuards: overrides.closeGuards ?? [],
+    firstTab: overrides.firstTab ?? (() => undefined),
+  }))
   return { closeTab, closeChat, calls, dispatch: commands, showToast }
 }
 
@@ -87,7 +90,7 @@ describe("createTabCloser", () => {
         tabs, appService: { dispatch }, switchForeground: async (key) => { setForeground(key) },
         startChat: async () => ({ kind: "foregrounded" }), closeSessionTab: () => {},
         removePendingTab: (key) => { setRows((list) => list.filter((row) => row.id !== key)) },
-        draftCache: { clear: () => {} }, seedSessionCatalogRow: () => {}, showToast: () => {},
+        draftCache: { clear: () => {} }, seedSessionCatalogRow: () => {}, showToast: () => {}, closeGuards: [], firstTab: () => undefined,
       })
       close("pending")
       expect(foreground()).toBe("durable")
@@ -198,6 +201,26 @@ describe("createTabCloser", () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it("asks the guard before the sole idle first tab closes, also when it is titled New Chat", async () => {
+    let allow = false
+    const asked: string[] = []
+    const { closeTab, calls } = makeCloser(
+      [tab("lead-1", { isForeground: true, title: "New Chat" })],
+      async () => ({ ok: true as const, sessionId: "lead-1" }),
+      { firstTab: () => "lead-1", closeGuards: [async (id) => { asked.push(id); return allow }] },
+    )
+
+    closeTab("lead-1")
+    await settle()
+    expect(asked).toEqual(["lead-1"])
+    expect(calls).toEqual([])
+
+    allow = true
+    closeTab("lead-1")
+    await settle()
+    expect(calls).toEqual(["close:lead-1", "startChat", "dispatch"])
+  })
+
   it("closes a sole New Chat tab that is busy", async () => {
     const { closeTab, calls } = makeCloser(
       [tab("chat-1", { isForeground: true, title: "New Chat", isBusy: true })],
@@ -223,6 +246,37 @@ describe("createTabCloser", () => {
 
     expect(dispatch.mock.calls[0]?.[0]).toEqual({ type: "session.close", sessionId: "chat-1" })
     expect(calls).toEqual(["dispatch", "seed:chat-1:inactive", "close:chat-1", "startChat"])
+  })
+
+  it("asks every guard before a tab or a chat closes, and closes nothing that a guard refuses", async () => {
+    const asked: string[] = []
+    const guard = async (sessionId: string) => { asked.push(sessionId); return sessionId !== "lead-1" }
+    const { closeTab, closeChat, calls, dispatch } = makeCloser([tab("lead-1", { isForeground: true }), tab("chat-2")], async () => ({ ok: true as const, sessionId: "chat-2" }), { closeGuards: [guard, guard] })
+
+    closeTab("lead-1")
+    await closeChat("lead-1")
+    await settle()
+    // A refusal ends the asking, so a second guard never shows a second dialog.
+    expect(asked).toEqual(["lead-1", "lead-1"])
+    expect(calls).toEqual([])
+    expect(dispatch).not.toHaveBeenCalled()
+
+    closeTab("chat-2")
+    await settle()
+    expect(asked).toEqual(["lead-1", "lead-1", "chat-2", "chat-2"])
+    expect(calls).toEqual(["close:chat-2", "dispatch"])
+  })
+
+  it("removes the first tab with the foreground fallback and closes nothing when its session stops being the first tab", async () => {
+    const [first, setFirst] = createSignal<string | undefined>("lead-1")
+    const { calls, dispatch } = makeCloser([tab("lead-1", { isForeground: true }), tab("chat-2")], async () => ({ ok: true as const }), { firstTab: first })
+    await settle()
+    expect(calls).toEqual([])
+
+    setFirst(undefined)
+    await settle()
+    expect(calls).toEqual(["close:lead-1", "foreground:chat-2"])
+    expect(dispatch).not.toHaveBeenCalled()
   })
 
   it("keeps the tab of a chat whose close the runtime refused", async () => {

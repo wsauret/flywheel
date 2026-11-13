@@ -1,5 +1,5 @@
 import type { Accessor } from "solid-js"
-import { createMemo, createSignal, mapArray } from "solid-js"
+import { createEffect, createMemo, createSignal, mapArray, on } from "solid-js"
 import { effectiveSessionShortTitle, type SessionCatalogRow } from "../../protocol/app-service-types.js"
 import { isWorkingStatus } from "../../protocol/status-protocol-types.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
@@ -26,6 +26,9 @@ interface TabsDeps {
 interface TabStateDeps {
   sessions: Accessor<readonly SessionCatalogRow[]>
   signals: TabsDeps["signals"] & Pick<ShellSignals, "outputView" | "foregroundTarget">
+  /** The session whose tab stays first. Each time it names a session, that
+   *  session's tab opens at index 0 without the foreground. */
+  firstTab: Accessor<string | undefined>
 }
 
 export interface TabState {
@@ -97,6 +100,12 @@ export function createTabState(deps: TabStateDeps): TabState {
   const [openTargets, setOpenTargets] = createSignal<readonly ForegroundTarget[]>([])
   const openSessionIds = createMemo(() => openTargets().flatMap((target) => target.kind === "session" ? [target.sessionId] : []))
   const sessionTabs = createTabs({ sessions: deps.sessions, openSessionIds, signals: deps.signals })
+  // An effect, not a memo over the accessor: a tab the person closed is gone
+  // at once, also while the accessor still names its session.
+  createEffect(on(deps.firstTab, (sessionId) => {
+    if (sessionId === undefined) return
+    setOpenTargets((targets) => [{ kind: "session", sessionId }, ...targets.filter((target) => target.kind !== "session" || target.sessionId !== sessionId)])
+  }))
   const tabs = createMemo<readonly TabInfo[]>(() => {
     const durable = new Map(sessionTabs().map((tab) => [tab.id, tab]))
     const foreground = deps.signals.foregroundTarget()
@@ -139,7 +148,8 @@ export function createTabState(deps: TabStateDeps): TabState {
     setOpenTargets((targets) => {
       const id = (target: ForegroundTarget) => target.kind === "session" ? target.sessionId : target.key
       const moved = targets.find((target) => id(target) === tabId)
-      if (!moved) return targets
+      const first = deps.firstTab()
+      if (!moved || (first !== undefined && (tabId === first || beforeTabId === first))) return targets
       const without = targets.filter((target) => target !== moved)
       const targetIndex = beforeTabId === null ? without.length : without.findIndex((target) => id(target) === beforeTabId)
       if (targetIndex === -1) return targets

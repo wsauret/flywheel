@@ -173,7 +173,7 @@ describe("Composer draft loading", () => {
         setForegroundId: (sessionId: string | undefined) => { if (sessionId) setForegroundTarget({ kind: "session", sessionId }) },
         sessionShortTitle: () => "", statusView: () => undefined, questionView: () => undefined, outputView: () => undefined,
       }
-      const tabs = createTabState({ signals, sessions: () => [] })
+      const tabs = createTabState({ signals, sessions: () => [], firstTab: () => undefined })
       tabs.openSessionTab("reuse")
       const creator = createSessionCreator({
         signals, ...tabs, draftCache, adoptDraft: (key, id) => handle.adoptDraft(key, id),
@@ -228,7 +228,7 @@ describe("Composer draft loading", () => {
         setForegroundId: (sessionId: string | undefined) => setForegroundTarget(sessionId ? { kind: "session", sessionId } : undefined),
         sessionShortTitle: () => "", statusView: () => undefined, questionView: () => undefined, outputView: () => undefined,
       }
-      const tabs = createTabState({ signals, sessions: () => [] })
+      const tabs = createTabState({ signals, sessions: () => [], firstTab: () => undefined })
       tabs.openSessionTab("other")
       draftCache.set("other", { text: "other draft", pastes: [], attachments: [] })
       const creator = createSessionCreator({

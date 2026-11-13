@@ -12,7 +12,7 @@ import { useKeymap } from "@tui/context/keymap"
 import { NavigationProvider } from "@tui/context/navigation.js"
 import { SubagentControlsProvider } from "@tui/context/subagent-controls.js"
 import { ClientExtensionProviders, ClientExtensionsProvider } from "@tui/context/client-extensions.js"
-import { createTuiModuleClients } from "@tui/modules.js"
+import { createTuiModuleClients, moduleCloseGuards, moduleFirstTab } from "@tui/modules.js"
 import { useTheme } from "@tui/context/theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { useToast } from "@tui/context/toast"
@@ -41,6 +41,7 @@ import { createComposerPopupKeySlot } from "./hooks/create-composer-popup-key-sl
 import { createComposerAttachSlot } from "./hooks/create-composer-attach-slot.js"
 import { createAttachFilesCommand } from "./hooks/create-attach-files-command.js"
 import { createSessionCreator } from "./hooks/create-session-creator.js"
+import { createNewChatActions } from "./hooks/create-new-chat-actions.js"
 import { discardIfTransientForeground } from "./hooks/background-foreground.js"
 import { createModalModals } from "./hooks/create-modals.js"
 import { createModuleSlots } from "./hooks/create-module-slots.js"
@@ -206,7 +207,9 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const processControls = createSessionProcessControls({ appService, signals, showToast: services.showToast })
   startupTrace("shell state created")
   const transcriptLayout = createTranscriptLayoutCache(() => signals.sessionCatalogRows().filter((row) => row.lifecycleState === "active").length)
-  const { tabs, openSessionTab, closeSessionTab, openPendingTab, removePendingTab, hasPendingTab, isTransientSessionTab, reorderTab } = createTabState({ sessions: signals.sessionCatalogRows, signals })
+  // The module clients exist once setup ends, before the tab state's first effect reads this.
+  const firstTab = () => moduleFirstTab(moduleClients)
+  const { tabs, openSessionTab, closeSessionTab, openPendingTab, removePendingTab, hasPendingTab, isTransientSessionTab, reorderTab } = createTabState({ sessions: signals.sessionCatalogRows, signals, firstTab: () => firstTab().current() })
   createEffect(() => { composerReturns.own(firstFrame() ? tabs().filter((tab) => tab.kind === "session").map((tab) => tab.id) : []) })
   const switchForeground = createForegroundSwitcher({ signals, sessions: signals.sessionCatalogRows, tabs })
   const focusReady = createFocusedSessionReadiness(() => { const id = signals.foregroundId(); return id === undefined || services.transcripts.isCurrent(id) })
@@ -309,7 +312,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const moduleClients = createTuiModuleClients({
     domains: signals.modules, client: appService,
     roleView: signals.roleView, ensureRoleViews: signals.ensureRoleViews,
-    viewerLayer: overlay.viewer, viewer: viewerProps, openChild: childPlaces.openChild,
+    viewerLayer: overlay.viewer, dialog: modal, viewer: viewerProps, openChild: childPlaces.openChild,
     title: sessionTitle, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
     question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions })
   const commandDefinitions = createMemo(() => buildCommandDefinitions(keymap.chordFor, signals.builtInCommands()))
@@ -323,7 +326,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   }
   const { closeTab, closeChat } = createTabCloser({
     tabs, appService, switchForeground, startChat, closeSessionTab, removePendingTab, draftCache, seedSessionCatalogRow: services.seedSessionCatalogRow,
-    showToast: services.showToast,
+    showToast: services.showToast, closeGuards: moduleCloseGuards(moduleClients), firstTab: firstTab().current,
   })
   const {
     commandPalette, themeModal, profileModal, sessionModal, authModal, openSettingsDestination, openSubscriptionSpendReview, reviewCachedActiveProfile,
@@ -348,7 +351,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const place = createLaunchState({ projectRoot: stateRoot, handed: launchState, catalogReady: signals.catalogReady, signals, tabs, openSessionTab, draftCache, outbox: submissions, composer: () => composer, transcripts: services.transcripts, layout: transcriptLayout, overlay, activateSessionById,
     restoreModule: async (route) => { for (const client of moduleClients) if (await client.restore(route)) return true; return false },
     resolveSessionRoute: (id) => readSessionRoute(appService, signals.sessionCatalogRows(), id),
-    reopen: { sessions: sessionModal.openSessionsModal, theme: themeModal.openThemeModal }, startChat: async () => (await startChat()).kind !== "failed", lanes: appService })
+    reopen: { sessions: sessionModal.openSessionsModal, theme: themeModal.openThemeModal }, startChat: async () => (await startChat()).kind !== "failed", openFirstTab: () => firstTab().open(), lanes: appService })
   const setup = createMemo(() => providerSetup(signals.auth()))
   useAutomaticAuth({ auth: signals.auth, overlayOpen: () => overlay.isOpen(), open: authModal.openAuthModal })
   usePaidUseQuestion({ signals, overlayOpen: () => overlay.isOpen(), review: reviewCachedActiveProfile })
@@ -356,25 +359,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const inChat = createMemo(() => signals.sessionKind() === "chat")
   // eslint-disable-next-line solid/reactivity -- onceWhen evaluates this condition inside its createEffect scope
   onceWhen(() => Boolean(signals.foregroundId()) && inChat(), () => startupTrace("chat input mode ready"))
-  async function startNewChat(): Promise<void> {
-    const settlement = await startChat()
-    if (settlement.kind === "foregrounded") {
-      services.showToast({ message: "New chat started", variant: "success" })
-    }
-  }
-  // /clear serves muscle memory from harnesses where it wipes the session in
-  // place. Flywheel sessions are tabs, so it opens a fresh tab like /new and
-  // teaches the model once, at the moment the user reached for a reset.
-  async function startClearedChat(): Promise<void> {
-    const settlement = await startChat()
-    if (settlement.kind === "foregrounded") {
-      services.showToast({
-        message: `Sessions are tabs: this is a fresh one. Chats with content keep their tabs; unused empty tabs are replaced. ${keymap.chordFor("new")} new, ${keymap.chordFor("tab.close")} close tab.`,
-        variant: "info",
-        duration: 8000,
-      })
-    }
-  }
+  const { startNewChat, startClearedChat } = createNewChatActions({ startChat, showToast: services.showToast, chordFor: keymap.chordFor })
   // Created ahead of the surface that hands files into it; the composer
   // registers its sink once its textarea mounts.
   const promptAttachSlot = createComposerAttachSlot()

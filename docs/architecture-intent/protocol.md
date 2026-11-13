@@ -185,7 +185,7 @@ Not: Constructing protocol runtimes only for enabled modules.
 
 ## ARCH-PROTOCOL-034: Modules reach a client only through its slot map
 
-A module reaches clients only through the slot map. Its slots are declarative intro and status rows from pure selectors in its protocol home, a strip above the composer, surfaces opened by id, a terminal presence hook, and a web toolbar badge. Its terminal and web homes each export one module object that the client's one module registry lists. The client's slot host names no module, renders every registered contribution through one reader over its intake, and contains a render failure to its slot.
+A module reaches clients only through the slot map. Its slots are declarative intro and status rows from pure selectors in its protocol home, a strip above the composer, surfaces opened by id, a terminal presence hook, and a web toolbar badge. A terminal module can also name a launch's first tab and guard a tab's close. Its terminal and web homes each export one module object that the client's one module registry lists. The client's slot host names no module, renders every registered contribution through one reader over its intake, and contains a render failure to its slot.
 Not: A client host that branches on a module id.
 
 ## ARCH-PROTOCOL-035: An unknown module selection admits module contributions

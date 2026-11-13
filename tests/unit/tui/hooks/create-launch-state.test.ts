@@ -61,6 +61,7 @@ function fixture(handed: LaunchState | undefined) {
       events.push("start chat")
       return true
     },
+    openFirstTab: async (): Promise<string | undefined> => undefined,
     // Like the connection, a new listener hears the lane already open at once.
     lanes: { onLane: (listener: (lane: number) => void) => {
       laneListeners.add(listener)
@@ -190,6 +191,79 @@ describe("the terminal's place", () => {
       setCatalogReady(false)
       await createLaunchState(deps).restore()
       expect(events).toEqual(["start chat"])
+      dispose()
+    })
+  })
+
+  it("opens the first-tab session in front instead of a new chat when it was handed nothing", async () => {
+    await createRoot(async (dispose) => {
+      const { deps, events } = fixture(undefined)
+      await createLaunchState({ ...deps, openFirstTab: async () => { events.push("first tab"); return "lead-1" } }).restore()
+      expect(events).toEqual(["first tab", "activate lead-1"])
+      dispose()
+    })
+  })
+
+  for (const answer of ["lead-1", undefined]) {
+    it(`keeps the foreground the person chose while the first tab was asked for, when it answers ${answer ?? "none"}`, async () => {
+      await createRoot(async (dispose) => {
+        const { deps, events, setForeground } = fixture(undefined)
+        const asked = Promise.withResolvers<string | undefined>()
+        // The person opens a session while the ask is in flight.
+        const restoring = createLaunchState({ ...deps, openFirstTab: () => { setForeground("chosen"); return asked.promise } }).restore()
+        asked.resolve(answer)
+        await restoring
+        expect(events).toEqual([])
+        expect(deps.signals.foregroundId()).toBe("chosen")
+        dispose()
+      })
+    })
+  }
+
+  it("opens nothing when its shell closes while the first tab is asked for", async () => {
+    let events!: string[]
+    let dispose!: () => void
+    const asked = Promise.withResolvers<string | undefined>()
+    const restoring = createRoot((stop) => {
+      dispose = stop
+      const setup = fixture(undefined)
+      events = setup.events
+      return createLaunchState({ ...setup.deps, openFirstTab: () => { dispose(); return asked.promise } }).restore()
+    })
+    asked.resolve("lead-1")
+    await restoring
+    expect(events).toEqual([])
+  })
+
+  it("asks for the first tab again on the next lane after the ask failed, and then opens it without a new chat", async () => {
+    await createRoot(async (dispose) => {
+      const { deps, events, openLane, laneListeners } = fixture(undefined)
+      let asks = 0
+      const restoring = createLaunchState({
+        ...deps,
+        openFirstTab: async () => {
+          asks += 1
+          events.push(`first tab ${asks}`)
+          if (asks === 1) throw new Error("runtime not ready")
+          return "lead-1"
+        },
+      }).restore()
+      for (let turn = 0; turn < 20 && laneListeners.size === 0; turn++) await Promise.resolve()
+      expect(events).toEqual(["first tab 1"])
+      openLane(1)
+      await restoring
+      expect(events).toEqual(["first tab 1", "first tab 2", "activate lead-1"])
+      dispose()
+    })
+  })
+
+  it("asks for the first tab without waiting for it when it restores a handed foreground", async () => {
+    await createRoot(async (dispose) => {
+      const { deps, events } = fixture({ ...HANDED, modal: { kind: "none" } })
+      const asked = Promise.withResolvers<string | undefined>()
+      await createLaunchState({ ...deps, openFirstTab: () => { events.push("first tab"); return asked.promise } }).restore()
+      expect(events).toEqual(["open a", "open b", "first tab", "activate b"])
+      asked.resolve("lead-1")
       dispose()
     })
   })

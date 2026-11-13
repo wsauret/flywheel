@@ -105,7 +105,7 @@ function createLandingHarness(id?: string, mode: "chat" | null = null) {
       outputView: () => undefined,
     }
     const draftCache = createDraftCache()
-    const tabs = createTabState({ signals, sessions: () => [] })
+    const tabs = createTabState({ signals, sessions: () => [], firstTab: () => undefined })
     const dispatch = mock((_command: Extract<FrontendMutation, { type: "chat.open" }>) => { entered.resolve(); return request.promise })
     let settlement: ReturnType<SessionCreator["startChat"]> | undefined
     const showToast = mock((_toast: { message: string; variant: string }) => {})
