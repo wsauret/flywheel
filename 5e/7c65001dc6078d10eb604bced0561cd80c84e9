@@ -1,0 +1,46 @@
+bench/tasks/implement/README.md
+  h_4b47e9e4a8b456 1-45
+bench/tasks/implement/hosted-thinking-row-wait/WHY.md
+  h_4b47e9e4a8b456 1-23
+bench/tasks/implement/hosted-thinking-row-wait/acceptance/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.test.ts
+  h_4b47e9e4a8b456 1-212
+bench/tasks/implement/hosted-thinking-row-wait/manifest.json
+  h_4b47e9e4a8b456 1-25
+bench/tasks/implement/hosted-thinking-row-wait/plan.json
+  h_4b47e9e4a8b456 1-79
+bench/tasks/implement/hosted-thinking-row-wait/qualification/reference.patch
+  h_4b47e9e4a8b456 1-128
+bench/tasks/implement/hosted-thinking-row-wait/qualification/trap.patch
+  h_4b47e9e4a8b456 1-59
+bench/tasks/implement/hosted-thinking-row-wait/task.json
+  h_4b47e9e4a8b456 1-30
+bench/tasks/implement/recall-punctuated-words/WHY.md
+  h_4b47e9e4a8b456 1-23
+bench/tasks/implement/recall-punctuated-words/acceptance/unit/infra/conversation-recall-search.test.ts
+  h_4b47e9e4a8b456 1-372
+bench/tasks/implement/recall-punctuated-words/acceptance/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 1-128
+bench/tasks/implement/recall-punctuated-words/manifest.json
+  h_4b47e9e4a8b456 1-15
+bench/tasks/implement/recall-punctuated-words/plan.json
+  h_4b47e9e4a8b456 1-60
+bench/tasks/implement/recall-punctuated-words/qualification/reference.patch
+  h_4b47e9e4a8b456 1-185
+bench/tasks/implement/recall-punctuated-words/qualification/trap.patch
+  h_4b47e9e4a8b456 1-12
+bench/tasks/implement/recall-punctuated-words/task.json
+  h_4b47e9e4a8b456 1-33
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5e7c65001dc6078d10eb604bced0561cd80c84e9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
