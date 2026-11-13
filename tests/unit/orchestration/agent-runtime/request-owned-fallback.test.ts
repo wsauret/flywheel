@@ -545,7 +545,7 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
           connection: f.connection, providers: f.providers,
           eligibility: testProviderEligibility(),
           runtimeConfig: testRuntimeConfigCapture(),
-          admit: () => ({ createAgent: f.createRunner, createLLMClient: async () => f.client }),
+          requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: () => ({ createAgent: f.createRunner, createLLMClient: async () => f.client }),
         }),
       })
       expect(await review.request({ systemPrompt: "Return the classification", instruction: "Audit the package", onAttempt: () => { attempts++ } })).toBe("{\"outcome\":\"independent\"}")

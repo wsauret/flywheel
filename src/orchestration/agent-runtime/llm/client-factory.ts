@@ -219,6 +219,7 @@ interface CapturedProviderModelEligibility extends AccessProviderModelEligibilit
 interface RequestCapture {
   readonly eligibility: CapturedProviderModelEligibility | undefined;
   readonly allowTrainingRoutes: boolean;
+  readonly requestAdmission: AdmittedClientOptions["requestAdmission"];
 }
 
 interface AdmittedRequestProfile {
@@ -377,7 +378,7 @@ function buildChainClient(
   };
   const admitRequest = async (capture: RequestCapture): Promise<ProviderRequestAdmission> => {
     const profile = captureProviderRequestProfile(plan.model, connection, options, capture);
-    const policy = await options.requestAdmission(profile.candidateAttributions.map((attribution) => attribution.candidate));
+    const policy = await capture.requestAdmission(profile.candidateAttributions.map((attribution) => attribution.candidate));
     const tokenizerIdentity = modelsClient.getTokenizerIdentity(plan.model);
     return Object.freeze({
       candidateAttributions: profile.candidateAttributions,
@@ -392,6 +393,7 @@ function buildChainClient(
     const capture: RequestCapture = {
       eligibility: requested?.eligibility ?? options.eligibility ?? options.getProviderModelEligibility?.(),
       allowTrainingRoutes: requested?.allowTrainingRoutes ?? options.allowTrainingRoutes,
+      requestAdmission: requested?.requestAdmission ?? options.requestAdmission,
     };
     const admission = await admitRequest(capture);
     const admitted = await chain(admission, capture).admitRequest();

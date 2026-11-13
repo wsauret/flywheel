@@ -24,6 +24,13 @@
  * - A failure that a limit of the run ended stands: an output overflow ends
  *   only after the agent loop spent its continuation limit, and a run again
  *   would grant that limit again (PI-AGENT-023).
+ * - A model whose quota is spent until a stated time is not an attempt. An
+ *   agent continues at once, uncounted and with no wait, so its next request
+ *   resolves its role against the availability of that moment and passes over
+ *   every spent preference (ARCH-RUNTIME-082). Only a failure of that request
+ *   boundary itself, which found that no preference serves
+ *   (`noPreferenceServes`), takes the wait below, until the earliest moment
+ *   that one serves again.
  * - A wait that a known event ends is not an attempt. When the walk found no
  *   candidate and every candidate that waiting can help states when it serves
  *   again, the run waits until then, judged by the wall clock, so a machine
@@ -170,6 +177,8 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
   const scope = `unattended:wait:${deps.runId}`
   let streak = 0
   let served = 0
+  // The agents whose requests pass over role preferences whose quota is spent (PI-MODEL-087).
+  const passesSpentModels = (deps.caller === "workflow-agent" || deps.caller === "subagent") && deps.unattendedRun !== true
   interface Wait { readonly controller: AbortController; cutBy: TurnInterruption | undefined; message: boolean }
   let waiting: Wait | null = null
   let capacityWaiting = false
@@ -186,7 +195,7 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
   // One INFO record per decision, with ids, kinds, and counts only. A
   // decision on capacity that returns at a known time adds what holds it,
   // and the reset when a provider stated it.
-  const record = (decision: "wait" | "interrupted" | "restart" | "fail", failure: AgentFailureReason, delayMs?: number, reset?: CapacityReset): void => {
+  const record = (decision: "wait" | "interrupted" | "restart" | "fail" | "continue", failure: AgentFailureReason, delayMs?: number, reset?: CapacityReset): void => {
     const stated = reset?.hold.kind === "rate_limit" || (reset?.hold.kind === "usage_limit" && reset.hold.stated)
     DebugLog.record({
       type: "agent.unattended.recovery",
@@ -318,7 +327,12 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
       switch (failure.kind) {
         case "api_error":
           switch (failure.recovery.kind) {
-            case "at": return await capacityWait(failure, failure.recovery, signal)
+            case "at":
+              if (passesSpentModels && failure.noPreferenceServes !== true && failure.recovery.hold.kind === "usage_limit" && failure.recovery.hold.stated) {
+                record("continue", failure, undefined, failure.recovery)
+                return {}
+              }
+              return await capacityWait(failure, failure.recovery, signal)
             case "retry": return await freshAttempt(failure, signal)
             case "none": break
           }

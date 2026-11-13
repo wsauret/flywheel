@@ -551,7 +551,7 @@ export function makeWorkflowDeps(): WorkflowDeps {
         }),
       },
       runtimeConfig: captureRuntimeConfig(),
-      admit: () => ({ createAgent, createLLMClient }),
+      requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: () => ({ createAgent, createLLMClient }),
     }),
     auth,
     availableModels: new Map([["openai", new Set(["gpt-5.5", "gpt-5.4"])]]),

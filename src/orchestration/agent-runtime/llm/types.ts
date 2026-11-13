@@ -811,6 +811,9 @@ export interface AdmittedModelRequest {
 export interface ModelRequestCapture {
   readonly eligibility?: AccessProviderModelEligibility;
   readonly allowTrainingRoutes: boolean;
+  /** The request's own spend admission, which its role selection already captured; without it, the client captures
+   *  the admission of its candidates itself. */
+  readonly requestAdmission?: (candidates: readonly AccessProviderCandidate[]) => Promise<RequestAdmission>;
 }
 
 /** What the agent runtime holds instead of a provider: a model plus the

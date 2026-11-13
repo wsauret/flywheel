@@ -129,18 +129,23 @@ export function selectRoleModelDefault(
   roleId: string,
   availableModels: ReadonlyMap<ModelFamily, ReadonlySet<string>> | undefined,
 ): RoleModelCandidate | undefined {
+  return reachableRoleModelDefaults(roleId, availableModels)[0];
+}
+
+/** The role's fixed candidates that the active profile's provider listing names, OpenAI first. */
+export function reachableRoleModelDefaults(
+  roleId: string,
+  availableModels: ReadonlyMap<ModelFamily, ReadonlySet<string>> | undefined,
+): RoleModelCandidate[] {
   const defaults = roleModelDefault(roleId);
-  if (!availableModels || availableModels.size === 0) return undefined;
-  for (const preference of ["openai", "anthropic"] as const) {
+  return (["openai", "anthropic"] as const).flatMap((preference) => {
     const candidate = defaults[preference];
     const normalized = normalizeSelectableModelId(candidate.model);
-    for (const [family, familyModels] of availableModels) {
+    for (const [family, familyModels] of availableModels ?? []) {
       for (const listed of familyModels) {
-        if (normalizeSelectableModelId(listed) === normalized) {
-          return { ...candidate, model: normalized, family };
-        }
+        if (normalizeSelectableModelId(listed) === normalized) return [{ ...candidate, model: normalized, family }];
       }
     }
-  }
-  return undefined;
+    return [];
+  });
 }

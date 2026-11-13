@@ -28,7 +28,7 @@ export function makeWorkflowDeps(createAgent: AgentFactory = () => { throw new E
     createLLMClient: () => { throw new Error("unexpected LLM client creation") },
     prepareRequest: () => { throw new Error("This fixture prepares no pre-start") },
     planCapabilities: planEveryCapability,
-    captureProviderConnection: async () => ({ connection, providers: testProviderRegistry(), eligibility: testProviderEligibility(), runtimeConfig: testRuntimeConfigCapture(), admit: () => { throw new Error("unexpected provider admission") } }),
+    captureProviderConnection: async () => ({ connection, providers: testProviderRegistry(), eligibility: testProviderEligibility(), runtimeConfig: testRuntimeConfigCapture(), requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: () => { throw new Error("unexpected provider admission") } }),
     runOwnedCommand: async () => { throw new Error("unexpected command") },
     resolveEnvSnapshot: async (scope) => ({
       envBlock: `<env>\nWorking directory: ${scope.executionCwd}\n</env>`,
