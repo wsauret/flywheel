@@ -1,0 +1,16 @@
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 29
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fae4d02510cc7965021cc7e9e4e1bd256e6d18b7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
