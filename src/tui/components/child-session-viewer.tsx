@@ -18,6 +18,7 @@ import { ChildSessionBody, type ChildMessaging, type ChildSessionBodyInput, type
 import { normalizeChatInput } from "../../infra/chat-input.js"
 import { recallOnUp } from "./composer-recall.js"
 import type { ChatSubmissions } from "../../protocol/client/chat-submissions.js"
+import { createQuestionInputRegistry } from "./question-input.js"
 
 type KeyEvent = TextEntryKeyEvent
 
@@ -49,8 +50,9 @@ export interface ChildSessionViewerInput extends ChildSessionBodyInput {
 const NO_MESSAGING: ChildMessaging = { admits: () => false, shown: () => false, send: async () => false }
 
 /** One viewer-local input owner, so mounting and popping nested viewers
- * preserves its identity and its draft. A child asks its parent, never the
- * person, so the viewer routes no question input (PI-AGENT-024). */
+ * preserves its identity and its draft. While the body shows a root chat's
+ * question dock, the dock takes each key first. A subagent asks its parent,
+ * never the person, so its viewer shows no dock (PI-AGENT-024). */
 export function createChildSessionViewerInput(deps: {
   onClose: () => void
   /** Routes slash text the way the chat composer does, and resolves true
@@ -66,6 +68,7 @@ export function createChildSessionViewerInput(deps: {
   let moveAgent: (direction: 1 | -1) => boolean = () => false
   let submitting = false
   let finished = false
+  const questionInput = createQuestionInputRegistry()
   function writeDraft(value: string): void {
     if (prompt) { prompt.clear(); prompt.insertText(value); sync() }
     else setText(value)
@@ -115,6 +118,7 @@ export function createChildSessionViewerInput(deps: {
     focus() { prompt?.focus() },
     onKey(event) {
       event.preventDefault?.()
+      if (questionInput.input(event)) return
       if (event.name === "escape") { deps.onClose(); return }
       if (event.name === "left" && (!messaging.shown() || untrack(text) === "") && back() === "close") {
         deps.onClose()
@@ -158,6 +162,7 @@ export function createChildSessionViewerInput(deps: {
       sync()
     },
     onPaste(pastedText) {
+      if (questionInput.paste(pastedText)) return
       if (!messaging.shown()) return
       prompt?.insertText(pastedText)
       sync()
@@ -167,11 +172,12 @@ export function createChildSessionViewerInput(deps: {
     bindMessaging(value) { messaging = value },
     bindBack(value) { back = value },
     bindAgentMove(value) { moveAgent = value },
+    questionInput,
   }
 }
 
 export interface ChildSessionViewerProps extends Omit<ChildSessionBodyProps,
-  "surface" | "width" | "height" | "header" | "navigation" | "messaging" | "placeholder" | "controls" | "input" | "agentKind"> {
+  "surface" | "width" | "height" | "header" | "navigation" | "messaging" | "placeholder" | "controls" | "input" | "agentKind" | "question"> {
   createSurface: (sessionId: () => string | undefined) => SessionSurface
   input: ChildSessionViewerInput
   appService: Pick<RuntimeClient, "dispatch" | "query">

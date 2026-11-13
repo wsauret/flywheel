@@ -21,9 +21,15 @@ import { Button } from "./button.js"
 import { ComposerBody, ComposerFrame, composerBodyGeometry } from "./composer-frame.js"
 import { createPromptBorderChunks } from "./composer-border-labels.js"
 import { InitialMessageProvider } from "../output-blocks/user-message-block.js"
-import type { UserMessageBlock } from "../../infra/output-blocks.js"
+import type { QuestionBlock, UserMessageBlock } from "../../infra/output-blocks.js"
 import type { ChatInputLike } from "../../infra/chat-input.js"
+import type { ModuleComposerStatus, ModuleRowAction } from "../../protocol/protocol-module.js"
 import { useWrappedLineCount } from "../utils/text.js"
+import { computeComposerBorderLayout } from "./composer-border-layout.js"
+import type { QuestionInputContext } from "./question-input.js"
+import { QuestionDock } from "../question-dock.js"
+import type { QuestionDraftNamespace } from "../hooks/create-draft-cache.js"
+import type { ChatModeHook } from "../hooks/use-chat-mode.js"
 
 /** A hidden composer keeps its draft. Sending resolves true only after runtime acceptance. */
 export interface ChildMessaging {
@@ -45,6 +51,19 @@ export interface ChildSessionBodyInput {
   submit(): void
   bindOutput(dispatch: (command: OutputWindowCommandType) => void): void
   bindMessaging(messaging: ChildMessaging): void
+  /** The key registry of the body's question dock, which takes the keys
+   *  first while it shows. */
+  readonly questionInput: QuestionInputContext
+}
+
+/** The pending question of a chat that shows outside its own tab. The person
+ *  answers it here; Escape calls `leave` and the question stays pending. */
+export interface ChildQuestion {
+  readonly view: Accessor<QuestionBlock | undefined>
+  readonly answer: ChatModeHook["answerQuestion"]
+  readonly cancel: ChatModeHook["cancelQuestion"]
+  readonly leave: () => void
+  readonly drafts: QuestionDraftNamespace
 }
 
 export interface ChildSessionBodyProps {
@@ -64,8 +83,15 @@ export interface ChildSessionBodyProps {
   /** Where this view registers as a transcript the person may see, so Model
    *  and effort reaches this agent while its view is in front. */
   readonly transcriptInView: Pick<TranscriptInView, "show">
-  /** The kind of agent this view shows, which a command refused here names. */
+  /** The kind of session this view shows, which a command refused here names. */
   readonly agentKind: AgentViewKind
+  /** A root chat's question. While it is pending, its dock takes the place
+   *  of the composer. An agent's view has none, because an agent asks its
+   *  parent (PI-AGENT-024). */
+  readonly question?: ChildQuestion
+  /** The module labels of the composer border, as the chat composer shows them. */
+  readonly composerStatus?: Accessor<readonly ModuleComposerStatus[]>
+  readonly onModuleAction?: (action: ModuleRowAction) => void
   readonly onOpenBackground: (target: BackgroundModalTarget) => void
   /** Follows the background index of the shown session while this view is
    *  open, so its background list opens on held rows. Returns the end. */
@@ -101,9 +127,11 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
   // The model control shows only once the session's row names its kind, so
   // the row that holds its title is there.
   const openModel = (): void => { const row = surface.summary(); if (row !== null) props.onOpenModel(row.title) }
+  const docked = () => props.question?.view() !== undefined
   untrack(() => {
     props.input.bindOutput((type) => { setOutputCommand({ id: ++outputCommandId, type }) })
-    props.input.bindMessaging(props.messaging)
+    // The input owner types into the composer only while no dock replaces it.
+    props.input.bindMessaging({ ...props.messaging, shown: () => props.messaging.shown() && !docked() })
     props.transcriptInView.show({ active: props.active, openModel, kind: props.agentKind })
     onCleanup(props.followBackground(props.sessionId))
   })
@@ -133,9 +161,21 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
     return range?.window.startBlockIndex === 0 && first?.kind === "userMessage" && !first.injected ? first.id : undefined
   }
   const border = createPromptBorderChunks({
-    theme, layout: () => ({ modelLabel: modelReading(), hints: [], update: undefined, sessionsClickHint: null }),
+    theme,
+    layout: () => computeComposerBorderLayout({
+      terminalWidth: props.width, modelLabel: modelReading(), update: undefined, composerStatus: props.composerStatus?.() ?? [],
+      primaryHints: [], showGlobalHints: false, activeSessionCount: 0, sessionCount: 0,
+      resumeHint: undefined, newHint: undefined, closeHint: undefined, sessionsHint: undefined,
+    }),
     lineWidth: () => props.width, status: () => props.active() ? spinnerStatus() : null, idle: () => surface.agentState() === "idle",
   })
+  // The composer input stays until the dock has measured itself, so the place
+  // swaps from the input to the dock in one frame and is never empty. The
+  // frame stays under the dock with no body, because its border carries the
+  // status labels that every view shows, such as the count of chats that
+  // need the person.
+  const [dockMeasured, setDockMeasured] = createSignal(false)
+  const composerShown = () => props.messaging.shown() && !(docked() && dockMeasured())
   return <box flexDirection="column" width={props.width} height={props.height} gap={1}>
     {props.header}
     <Show when={surface.loadResult()?.loadError}>{(message) => <text fg={theme.error}>{message()}</text>}</Show>
@@ -159,9 +199,18 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
           /></InitialMessageProvider>
         }</Show>
       </box>
-      <ComposerFrame theme={theme} width={props.width} bodyHeight={props.messaging.shown() ? composerBodyGeometry(props.width, props.input.lines()).height : finished() ? wrappedLineCount(finishedNotice, composerBodyGeometry(props.width, 1).width) : 0}
+      <Show when={props.question}>{(question) =>
+        <Show when={question().view()}>{(pending) =>
+          <QuestionDock sessionId={props.sessionId} question={pending()} drafts={question().drafts} input={props.input.questionInput}
+            width={props.width} captureFocus={props.focused} onMeasured={setDockMeasured}
+            onAnswer={(answers) => question().answer(props.sessionId, pending().toolUseId, answers)}
+            onCancel={() => question().cancel(props.sessionId, pending().toolUseId)}
+            escape="leave" onLeave={question().leave} />
+        }</Show>
+      }</Show>
+      <ComposerFrame theme={theme} width={props.width} bodyHeight={composerShown() ? composerBodyGeometry(props.width, props.input.lines()).height : finished() ? wrappedLineCount(finishedNotice, composerBodyGeometry(props.width, 1).width) : 0}
         topRightChunks={border.topRightChunks} bottomLeftChunks={border.bottomLeftChunks} bottomRightChunks={border.bottomRightChunks}
-        controls={border.controls} onMouseDown={() => { if (props.messaging.shown()) props.input.focus() }}
+        controls={border.controls} onMouseDown={() => { if (composerShown()) props.input.focus() }} onModuleAction={props.onModuleAction}
         actions={{
           model: openModel,
           background: () => props.onOpenBackground({
@@ -170,12 +219,12 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
             navigateToProcess: (entryId) => setOutputCommand({ id: ++outputCommandId, type: "block", entryId }),
           }),
         }}>
-        <Show when={props.messaging.shown()} fallback={<Show when={finished()}><text fg={theme.textMuted} wrapMode="word">{finishedNotice}</text></Show>}>
+        <Show when={composerShown()} fallback={<Show when={finished()}><text fg={theme.textMuted} wrapMode="word">{finishedNotice}</text></Show>}>
           <ComposerBody theme={theme} width={props.width} lines={props.input.lines()} text={props.input.text()}
             placeholder={props.placeholder} onSubmit={props.input.submit}
             attach={(prompt) => {
               props.input.attach(prompt)
-              createEffect(() => { if (props.focused()) prompt.focus(); else prompt.blur() })
+              createEffect(() => { if (props.focused() && !docked()) prompt.focus(); else prompt.blur() })
               onCleanup(() => prompt.blur())
             }} />
         </Show>

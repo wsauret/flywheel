@@ -20,14 +20,16 @@ const CATALOG_LOADING_NOTICE = "Commands are still loading; your command stays i
  *  client keeps the text and never sends it as a message (PI-INTERACTION-081). */
 export const UNKNOWN_COMMAND_NOTICE = "Unknown command. Try /help"
 
-/** The kind of agent whose transcript is in view. */
-export type AgentViewKind = "subagent" | "workflow-agent"
+/** The kind of session whose transcript is in view over the chat in front:
+ *  an agent, or another chat that shows outside its own tab. */
+export type AgentViewKind = "subagent" | "workflow-agent" | "chat"
 
 /** What every client says when a command that acts on a chat, such as one the
- *  runtime runs or a skill, is typed in an agent's view. It is refused before
- *  dispatch and never sent to the agent as a message (PI-INTERACTION-081). A
+ *  runtime runs or a skill, is typed in a view over the chat in front. It is
+ *  refused before dispatch and never sent as a message (PI-INTERACTION-081). A
  *  command that opens a surface opens it there, for the transcript in view. */
 export function chatOnlyCommandNotice(token: string, view: AgentViewKind): string {
+  if (view === "chat") return `/${token} works in a chat's own tab. Open this chat as a tab first`
   return `/${token} works in a chat, not in this ${view === "subagent" ? "subagent" : "workflow agent"}`
 }
 

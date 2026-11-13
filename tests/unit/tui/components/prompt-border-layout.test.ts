@@ -246,6 +246,18 @@ describe("computeComposerBorderLayout", () => {
     expect(computeComposerBorderLayout({ ...baseInput, terminalWidth: 36, composerStatus: [chip] }).composerStatus).toEqual([])
   })
 
+  it("keeps a warning label in place of the model label when only one of them fits", () => {
+    const warning: ModuleComposerStatus = { id: "synthetic", text: "2 need you", tone: "warning" }
+    // 5 margin + 13 model fits, and 5 margin + 10 label fits, but not both with their separator.
+    const narrow = computeComposerBorderLayout({ ...baseInput, terminalWidth: 20, composerStatus: [warning] })
+    expect(narrow.composerStatus).toEqual([warning])
+    expect(narrow.modelLabel).toBeUndefined()
+    const { tone: _tone, ...plain } = warning
+    const untoned = computeComposerBorderLayout({ ...baseInput, terminalWidth: 20, composerStatus: [plain] })
+    expect(untoned.composerStatus).toEqual([])
+    expect(untoned.modelLabel).toBe(baseInput.modelLabel)
+  })
+
   it("renders prompt-border status without footer parentheses or ellipses", async () => {
 
     const text = RGBA.fromInts(240, 240, 240)

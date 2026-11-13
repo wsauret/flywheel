@@ -17,10 +17,11 @@ describe("the Close chat surface", () => {
     expect(showToast).not.toHaveBeenCalled()
   })
 
-  it("is refused in an agent's view and with no chat in front, and closes nothing", async () => {
+  it("is refused in a view over the chat in front and with no chat in front, and closes nothing", async () => {
     for (const [view, message] of [
       [{ agent: "subagent", chat: "chat-1" }, "/close works in a chat, not in this subagent"],
       [{ agent: "workflow-agent" }, "/close works in a chat, not in this workflow agent"],
+      [{ agent: "chat", chat: "chat-1" }, "/close works in a chat's own tab. Open this chat as a tab first"],
       [{}, "No active chat session"],
     ] as const) {
       const { open, closeChat, showToast } = surface(view)

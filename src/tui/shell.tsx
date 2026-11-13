@@ -250,7 +250,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
         const slot = signals.roleView(sessionId)?.serving?.slot
         if (slot !== undefined) void modelModal.openActiveModelPicker({ sessionId, slot, label: agentName })
       },
-      transcriptInView,
+      transcriptInView, composerStatus: slots.composerStatus, onModuleAction: activateModuleRow,
       onOpenBackground: (target) => backgroundModal.openBackgroundModal(target),
       followBackground: signals.backgroundIndex.follow,
       compactionThreshold: () => signals.runtimeConfig()?.values.proactiveCompactionThreshold,

@@ -11,18 +11,19 @@ export const noWorkflowCards: WorkflowCards = {
 }
 
 
-export function viewerSurface(kind: "subagent" | "workflow-agent", overrides: Partial<SessionSurface> = {}): SessionSurface {
+export function viewerSurface(kind: "subagent" | "workflow-agent" | "chat", overrides: Partial<SessionSurface> = {}): SessionSurface {
+  const totals = { totalsLoading: false as const, totalCost: 0, totalBilledCost: 0, priceUnavailable: false, totalTokens: 0, contextPercent: 0, contextPromptTokens: 0, durationMs: 0 }
+  const base = { id: "child", title: "Child", lifecycleState: "active" as const, notices: [], lastUpdated: "", executionCwd: "/repo" }
   return {
     sessionId: () => "child",
-    summary: () => ({
-      id: "child", title: "Child", lifecycleState: "active", notices: [], lastUpdated: "", executionCwd: "/repo",
-      parentSessionId: "parent", parentToolUseId: "tool-7",
-      ...(kind === "subagent"
-        ? { kind: "subagent" as const, inputMode: { kind: "message" as const }, admittedActions: ["session.send" as const] }
-        : { kind: "workflow-agent" as const, workflowMembership: { kind: "attempt" as const, workflowId: "workflow", attemptId: "agent-1" }, inputMode: { kind: "message" as const }, admittedActions: ["session.send" as const] }),
-      totalsLoading: false, totalCost: 0, totalBilledCost: 0, priceUnavailable: false,
-      totalTokens: 0, contextPercent: 0, contextPromptTokens: 0, durationMs: 0,
-    }),
+    summary: () => kind === "chat"
+      ? { ...base, ...totals, kind: "chat", inputMode: { kind: "chat" } }
+      : {
+        ...base, ...totals, parentSessionId: "parent", parentToolUseId: "tool-7",
+        ...(kind === "subagent"
+          ? { kind: "subagent" as const, inputMode: { kind: "message" as const }, admittedActions: ["session.send" as const] }
+          : { kind: "workflow-agent" as const, workflowMembership: { kind: "attempt" as const, workflowId: "workflow", attemptId: "agent-1" }, inputMode: { kind: "message" as const }, admittedActions: ["session.send" as const] }),
+      },
     detail: () => null, loadResult: () => undefined, transcript: transcriptOf([]), outputView: () => undefined,
     status: () => undefined, budget: () => undefined,
     pendingQuestion: () => undefined, streamingToolText: () => ({}), streamingOutputChars: () => 0,

@@ -16,6 +16,11 @@ import { createPromptBorderChunks } from "../../../../src/tui/components/compose
 import { TickPoolProvider } from "../../../../src/tui/context/tick-pool-context.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
+import { ChildSessionBody, type ChildSessionBodyProps } from "../../../../src/tui/components/child-session-body.js"
+import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
+import { createDraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
+import { createTranscriptInView } from "../../../../src/tui/hooks/transcript-in-view.js"
+import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
 
 const renders: Awaited<ReturnType<typeof testRender>>[] = []
 afterEach(() => { for (const render of renders.splice(0)) render.renderer.destroy() })
@@ -39,6 +44,72 @@ async function createChildSessionViewerInput(deps: { onClose: () => void; onSubm
   await render.renderOnce()
   return input
 }
+
+const pending: QuestionBlock = { kind: "question", toolUseId: "question-1", timestamp: 1, questions: [{
+  question: "Which color should the page use?", multiSelect: false,
+  choices: [{ kind: "option", choiceId: "choice-0", label: "Red" }, { kind: "freeform", label: "Other" }],
+}] }
+
+/** A root chat's body over another chat, as a module's viewer composes it. */
+async function renderChatBody(input: ReturnType<typeof createInput>, props: Partial<ChildSessionBodyProps> = {}) {
+  const render = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
+    <ChildSessionBody {...childBodyProps()} agentKind="chat" sessionId="child" surface={viewerSurface("chat")} input={input}
+      active={() => true} focused={() => true} width={90} height={28} header={<text>Chat header</text>} navigation={<text>Back</text>}
+      messaging={{ admits: () => true, shown: () => true, send: async () => true }} placeholder="Message this chat" controls={() => ({})} {...props} />
+  </TickPoolProvider></ThemeProvider>, { width: 90, height: 30 })
+  renders.push(render)
+  await render.flush()
+  return render
+}
+
+describe("a root chat's body", () => {
+  it("shows the chat's question in place of its composer under the status border, answers it for that chat, and leaves it pending on Escape", async () => {
+    const [question, setQuestion] = createSignal<QuestionBlock | undefined>(pending)
+    const answered: unknown[][] = []
+    const left = mock(() => {})
+    const cancel = mock(async () => true)
+    const close = mock(() => {})
+    const input = createInput({ onClose: close, dispatchCommand: async () => false })
+    const render = await renderChatBody(input, { question: { view: question, drafts: createDraftCache().questions, leave: left, cancel,
+      answer: async (...call) => { answered.push(call); return true } }, composerStatus: () => [{ id: "count", text: "2 need you", tone: "warning" }] })
+    await render.flush()
+    expect(render.captureCharFrame()).toContain("Which color should the page use?")
+    expect(render.captureCharFrame()).toContain("esc back · ctrl+x skip")
+    expect(render.captureCharFrame()).not.toContain("Message this chat")
+    const count = render.captureSpans().lines.flatMap((line) => line.spans).filter((span) => span.text.includes("2 need you"))
+    expect(count.length).toBeGreaterThan(0)
+    expect(count.every((span) => span.fg.equals(resolveTheme(flywheelTheme, "dark").warning))).toBe(true)
+
+    input.onKey({ name: "escape" })
+    expect(left).toHaveBeenCalledTimes(1)
+    expect(close).not.toHaveBeenCalled()
+    expect(cancel).not.toHaveBeenCalled()
+    expect(answered).toEqual([])
+
+    input.onKey({ name: "1" })
+    await Bun.sleep(0)
+    expect(answered).toEqual([["child", "question-1", { "Which color should the page use?": expect.anything() }]])
+    setQuestion(undefined)
+    await render.flush()
+    expect(render.captureCharFrame()).not.toContain("Which color should the page use?")
+    expect(render.captureCharFrame()).toContain("Message this chat")
+  })
+
+  it("sends the person's text as one message to that chat, and puts a chat's view in front for commands", async () => {
+    const sent: unknown[] = []
+    const submissions = createChatSubmissions({ lanes: { onLane: () => () => {} }, dispatch: async (sessionId, message) => { sent.push({ type: "session.send", sessionId, input: message }); return { ok: true } } })
+    const transcriptInView = createTranscriptInView(() => {})
+    const input = createInput({ onClose: () => {}, dispatchCommand: async () => false })
+    await renderChatBody(input, { transcriptInView, messaging: { admits: () => true, shown: () => true,
+      send: async (text) => (await submissions.send("child", { text })).kind === "sent" } })
+    expect(transcriptInView.agentInView()).toBe("chat")
+    input.onPaste("look at the logs")
+    input.onKey({ name: "return" })
+    await Bun.sleep(0)
+    expect(sent).toEqual([{ type: "session.send", sessionId: "child", input: { text: "look at the logs", submissionIds: [expect.any(String)] } }])
+    expect(input.text()).toBe("")
+  })
+})
 
 describe("child session viewer input owner", () => {
   it("sends through the terminal owner and claims its unread return without a duplicate queued row", async () => {

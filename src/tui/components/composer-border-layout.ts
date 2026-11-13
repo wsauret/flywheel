@@ -54,26 +54,29 @@ export interface ComposerBorderUpdate {
  *  Resume outlives the tab verbs and sessions because it is the one control
  *  that matters while a session is interrupted; those teach navigation that
  *  stays reachable elsewhere.
- *  On the top-right border, the workspace update alert takes priority over the
- *  model label. */
+ *  On the top-right border, labels are admitted in this order while they fit:
+ *  the workspace update alert, module labels in the warning tone, the model
+ *  label, the other module labels, and Changes. */
 export function computeComposerBorderLayout(input: ComposerBorderLayoutInput): ComposerBorderLayout {
   const contentWidth = Math.max(0, input.terminalWidth - BORDER_LABEL_MARGIN)
-  const update = input.update && input.update.label.length <= contentWidth ? input.update : undefined
-  const modelFits = input.modelLabel && (input.update
-    ? update !== undefined && input.update.label.length + 3 + input.modelLabel.length <= contentWidth
-    : input.modelLabel.length <= contentWidth)
-  const modelLabel = modelFits ? input.modelLabel : undefined
-  // Module labels and Changes repeat surface information, so neither displaces the
-  // update alert or model. Changes also remains reachable through /changes.
-  const used = (update?.label.length ?? 0) + (modelLabel?.length ?? 0) + (update && modelLabel ? 3 : 0)
-  let usedWithModules = used
-  const composerStatus = (input.composerStatus ?? []).filter((label) => {
-    const width = (usedWithModules > 0 ? 3 : 0) + composerStatusText(label).length
-    if (usedWithModules + width > contentWidth) return false
-    usedWithModules += width
+  let used = 0
+  const admit = (width: number): boolean => {
+    const next = used + (used > 0 ? 3 : 0) + width
+    if (next > contentWidth) return false
+    used = next
     return true
-  })
-  const changesLabel = input.changesLabel && usedWithModules + (usedWithModules > 0 ? 3 : 0) + input.changesLabel.length <= contentWidth ? input.changesLabel : undefined
+  }
+  const update = input.update && admit(input.update.label.length) ? input.update : undefined
+  // A warning label asks the person to act, so a narrow border keeps it and
+  // drops the model label first.
+  const statuses = input.composerStatus ?? []
+  const warnings = new Set(statuses.filter((label) => label.tone === "warning" && admit(composerStatusText(label).length)))
+  // An update alert that does not fit takes the model label with it.
+  const modelLabel = input.modelLabel && (!input.update || update) && admit(input.modelLabel.length) ? input.modelLabel : undefined
+  // The other module labels and Changes repeat surface information, so neither
+  // displaces the update alert or model. Changes also remains reachable through /changes.
+  const composerStatus = statuses.filter((label) => warnings.has(label) || (label.tone !== "warning" && admit(composerStatusText(label).length)))
+  const changesLabel = input.changesLabel && admit(input.changesLabel.length) ? input.changesLabel : undefined
 
   const tabHint: KeyHintSpec | undefined =
     input.showGlobalHints && input.activeSessionCount >= 2 ? { key: "tab", label: "switch", separatorStyle: "border" } : undefined

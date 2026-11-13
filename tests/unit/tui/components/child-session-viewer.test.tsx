@@ -124,6 +124,20 @@ describe("child session viewer", () => {
     expect(render.captureCharFrame()).not.toContain("Stop")
     expect(render.captureCharFrame()).not.toContain("Message agent")
   })
+  it("shows the composer status labels beside the model label on its border", async () => {
+    const input = createInput({ onClose: () => {}, dispatchCommand: async () => false })
+    const render = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
+      <ChildSessionBody {...openerViewerProps()} agentKind="chat" sessionId="child" surface={viewerSurface("chat")} input={input} active={() => true} focused={() => true}
+        width={90} height={24} header={<text>Header</text>} navigation={<text>Back</text>} placeholder="Message this chat" controls={() => ({})}
+        messaging={{ admits: () => true, shown: () => true, send: async () => false }} composerStatus={() => [{ id: "count", text: "2 need you", tone: "warning" }]} />
+    </TickPoolProvider></ThemeProvider>, { width: 100, height: 30 })
+    renders.push(render)
+    await render.flush()
+    expect(render.captureCharFrame()).toContain("2 need you · Child model")
+    const spans = render.captureSpans().lines.flatMap((line) => line.spans).filter((span) => span.text.includes("2 need you"))
+    expect(spans.length).toBeGreaterThan(0)
+    expect(spans.every((span) => span.fg.equals(resolveTheme(flywheelTheme, "dark").warning))).toBe(true)
+  })
 
   it("sends Model and effort to the agent whose view is in front, and to the chat once no agent view is", async () => {
     const [active, setActive] = createSignal(true)

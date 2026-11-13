@@ -102,7 +102,11 @@ describe("slash dispatch", () => {
     for (const token of ["design", "learned.deploy-check", "plan"]) expect(completableNames()).not.toContain(token)
   })
 
-  it.each(["subagent", "workflow-agent"] as const)("in a %s view, refuses a chat command before dispatch, opens a surface, and calls a stray token unknown", async (view) => {
+  it.each([
+    ["subagent", "/bg works in a chat, not in this subagent"],
+    ["workflow-agent", "/bg works in a chat, not in this workflow agent"],
+    ["chat", "/bg works in a chat's own tab. Open this chat as a tab first"],
+  ] as const)("in a %s view, refuses a chat command before dispatch, opens a surface, and calls a stray token unknown", async (view, refusal) => {
     const invoked: FrontendMutation[] = []
     const answers: DispatchAnswers = {
       "command.invoke": async (command) => { invoked.push(command); return { kind: "open", surface: "background" } },
@@ -110,12 +114,11 @@ describe("slash dispatch", () => {
     const openSurface = mock(() => true)
     const showToast = mock((_toast: { message: string; variant: string }) => {})
     const { dispatchSlashCommand } = createHarness({ answers, openSurface, showToast, agentInView: () => view })
-    const named = view === "subagent" ? "subagent" : "workflow agent"
 
     for (const typed of ["/bg", "/new", "/xyzzy"]) dispatchSlashCommand(typed)
     await flush()
 
-    expect(showToast.mock.calls.map(([toast]) => toast.message)).toEqual([`/bg works in a chat, not in this ${named}`, UNKNOWN_COMMAND_NOTICE])
+    expect(showToast.mock.calls.map(([toast]) => toast.message)).toEqual([refusal, UNKNOWN_COMMAND_NOTICE])
     expect(openSurface).toHaveBeenCalledWith("new-chat", {})
     expect(invoked).toEqual([])
   })

@@ -37,7 +37,8 @@ export interface BuiltInCommandContext extends FontCommandContext {
   /** Brings a session the runtime created or named to the front. */
   focusSession: (sessionId: string) => void
   refreshCommandCatalog: () => Promise<void>
-  /** The kind of agent whose view is in front, or undefined in a chat. */
+  /** The kind of session whose view is in front of the foreground chat, or
+   *  undefined while that chat itself is in view. */
   agentInView: () => AgentViewKind | undefined
 }
 
