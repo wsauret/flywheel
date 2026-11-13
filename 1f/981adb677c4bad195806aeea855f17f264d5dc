@@ -1,0 +1,38 @@
+bench/ab-persona/compare.ts
+  h_4b47e9e4a8b456 25,28-30,345,364,371,395
+bench/ab-persona/strategy-bench.ts
+  h_4b47e9e4a8b456 16,42-45,186,188,367,391,488
+bench/chat-ab/judge-inputs.ts
+  h_4b47e9e4a8b456 10,16
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 155
+scripts/build-claude-plugin.ts
+  h_4b47e9e4a8b456 34,63,213
+src/infra/llm/models.ts
+  h_4b47e9e4a8b456 205-208,512,514
+src/orchestration/config/model-tiers.ts
+  h_4b47e9e4a8b456 7,158-171
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 15-18,21-27,29,31-102,106,112-121,126,129,131,134-135,138
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 11,13,196-198,206-207,211,213,215-217
+src/orchestration/config/roles.ts
+  h_4b47e9e4a8b456 65-83
+src/orchestration/modules/subagents/execution/tool.ts
+  h_4b47e9e4a8b456 9,99
+tests/unit/orchestration/config/config-models-roles.test.ts
+  h_4b47e9e4a8b456 9,52
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 3-5,7,10,30,47-54,102-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1f981adb677c4bad195806aeea855f17f264d5dc",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
