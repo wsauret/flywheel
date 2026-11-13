@@ -1,6 +1,7 @@
 import { Cause, Effect, Exit, Queue, Scope } from "effect";
 import { DebugLog } from "../../../infra/debug-log.js";
 import type { Claim } from "../../agent-runtime/llm/types.js";
+import type { AdmittedWindow } from "./bridge-requests.js";
 import type { BridgeConfig, BridgeState, EngineInput, Inbox, LiveQuery, Reservation, StartedEngine } from "./bridge-state.js";
 import { cliView, identityDifference, sameCliValue, type CliView, type QueryIdentity } from "./cli-view.js";
 import { onceClaim, reportEngineEnd } from "./engine-demand.js";
@@ -15,8 +16,11 @@ interface ReservationBridge {
   readonly hold: AccountHold;
   readonly offer: (input: Inbox) => boolean;
   readonly queryState: () => QueryState;
-  /** Starts the engine of the next query; `reserve` keeps the bridge's lifetime session id open until a query takes it. */
-  readonly startEngine: (identity: QueryIdentity, plan: StartPlan, use: { readonly reserve: boolean }) => Effect.Effect<StartedEngine, unknown>;
+  /** The window that an engine started for a request of the admitted `window` asks for. */
+  readonly windowOf: (window: AdmittedWindow) => number;
+  /** Starts the engine of the next query for a request of the admitted `window`; `reserve` keeps the bridge's lifetime
+   *  session id open until a query takes it. */
+  readonly startEngine: (identity: QueryIdentity, plan: StartPlan, use: { readonly reserve: boolean; readonly window: AdmittedWindow }) => Effect.Effect<StartedEngine, unknown>;
   readonly removeWritten: (written: WrittenTranscript | undefined) => void;
   readonly stopInBackground: (stop: Effect.Effect<void>) => Effect.Effect<unknown>;
 }
@@ -24,7 +28,7 @@ interface ReservationBridge {
 /** The bridge's one reserved engine (`BridgeState.reserved`): its start for an anticipated request, its take by a
  *  request, and its end. */
 export function createReservations(bridge: ReservationBridge) {
-  const { config, state, hold, offer, queryState, startEngine, removeWritten, stopInBackground } = bridge;
+  const { config, state, hold, offer, queryState, windowOf, startEngine, removeWritten, stopInBackground } = bridge;
 
   /** Records why an anticipation started no engine, and answers no claim: the request then starts its engine itself. */
   const skipped = (evidence: { readonly reason: "account-held" | "unreadable" | "not-started" | "start-failed"; readonly error?: string; readonly plan?: string; readonly issue?: string }): undefined => {
@@ -74,17 +78,17 @@ export function createReservations(bridge: ReservationBridge) {
     if (plan.kind !== "start") return skipped({ reason: "not-started", plan: plan.kind, ...(plan.kind === "refuse" ? { issue: plan.issue } : {}) });
     const earlier = state.reserved;
     if (earlier !== undefined) {
-      const replaced = reservationDifference(earlier, view, plan);
+      const replaced = reservationDifference(earlier, view, plan, input.window);
       if (replaced === undefined) return claim(earlier, "reserved");
       yield* end("replaced", { field: replaced });
     }
-    const exit = yield* Effect.exit(startEngine(view.identity, plan, { reserve: true }));
+    const exit = yield* Effect.exit(startEngine(view.identity, plan, { reserve: true, window: input.window }));
     if (Exit.isFailure(exit)) {
       const failure = Cause.squash(exit.cause);
       return skipped({ reason: "start-failed", error: failure instanceof Error ? failure.name : typeof failure });
     }
     const reserved: Reservation = {
-      ...exit.value, identity: view.identity, contextLimit: state.contextLimit, history: plan.history, reminders: plan.reminders, delivery: plan.delivery, reservedAt: Date.now(),
+      ...exit.value, identity: view.identity, history: plan.history, reminders: plan.reminders, delivery: plan.delivery, reservedAt: Date.now(),
       claims: 0, inputs: [],
     };
     state.reserved = reserved;
@@ -103,10 +107,10 @@ export function createReservations(bridge: ReservationBridge) {
     if (reserved.claims === 0) yield* end("released");
   });
 
-  /** The first field in which a request of `view` and `plan` differs from `reserved`: a launch value, the window, the
-   *  history, the reminders, or the delivery. Undefined when the request would start the reserved engine as it is. */
-  const reservationDifference = (reserved: Reservation, view: CliView, plan: StartPlan): string | undefined =>
-    reserved.contextLimit !== state.contextLimit ? "context-limit"
+  /** The first field in which a request of `view` and `plan` of the admitted `window` differs from `reserved`: a launch value, the window, the history, the reminders, or the delivery. Undefined when the
+   *  request would start the reserved engine as it is. */
+  const reservationDifference = (reserved: Reservation, view: CliView, plan: StartPlan, window: AdmittedWindow): string | undefined =>
+    reserved.contextLimit !== windowOf(window) ? "context-limit"
       : !sameCliValue(reserved.history, plan.history) ? "history"
       : !sameCliValue(reserved.reminders, plan.reminders) ? "reminders"
       : reserved.delivery !== plan.delivery ? "delivery"
@@ -114,10 +118,10 @@ export function createReservations(bridge: ReservationBridge) {
 
   /** The reservation that a request of `view` and `plan` takes, if any. A reservation that differs from the request
    *  (`reservationDifference`) ends, because the request starts its own engine. */
-  const take = (view: CliView, plan: StartPlan) => Effect.gen(function* () {
+  const take = (view: CliView, plan: StartPlan, window: AdmittedWindow) => Effect.gen(function* () {
     const reserved = state.reserved;
     if (reserved === undefined) return undefined;
-    const unmatched = reservationDifference(reserved, view, plan);
+    const unmatched = reservationDifference(reserved, view, plan, window);
     if (unmatched !== undefined) {
       yield* end("unmatched", { field: unmatched });
       return undefined;

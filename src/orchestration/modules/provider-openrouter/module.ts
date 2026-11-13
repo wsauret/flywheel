@@ -1,11 +1,11 @@
 import { Redacted } from "effect";
 import { apiKey } from "../../../infra/auth/auth-context.js";
-import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows } from "../../../infra/llm/model-catalog-resolution.js";
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { openRouterRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { createModelReminders } from "../../agent-runtime/llm/runtime-reminders.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
@@ -47,16 +47,18 @@ const definition = {
 } as const satisfies AccessProviderDefinition;
 
 const createClient: AccessProviderFactory = async (build) => {
-  const outputCap = build.attribution.catalogProvenance === "live"
-    ? openRouterModelOutputCap(build.attribution.catalogMetadata)
+  const outputCapOf = (attribution: AccessProviderCandidateAttribution) => attribution.catalogProvenance === "live"
+    ? openRouterModelOutputCap(attribution.catalogMetadata)
     : undefined;
+  const outputCap = outputCapOf(build.attribution);
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "openrouter", resolvedModelMetadata: info, ...(outputCap === undefined ? {} : { providerOutputCap: outputCap }) });
   // The adapter names the canonical model in its history target and sends the wire ID only on the wire, so the model
   // reminder names the canonical model too, and a request to this route reads it.
-  return stagedProviderClient(build, {
-    ...described,
-    messagesToAppend: createModelReminders(build.model, described.totalContextLimit ?? described.contextLimit, info),
+  return providerAdapter(build, async (attribution) => {
+    const requested = requireModelMetadata(build.model, attribution.resolvedModelMetadata);
+    const requestedCap = outputCapOf(attribution);
+    const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "openrouter", resolvedModelMetadata: requested, ...(requestedCap === undefined ? {} : { providerOutputCap: requestedCap }) });
+    return { ...described, messagesToAppend: createModelReminders(build.model, described.totalContextLimit ?? described.contextLimit, requested) };
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenRouter API key in the active auth profile. Run: flywheel auth login --openrouter", recovery: { kind: "none" } });
@@ -67,7 +69,7 @@ const createClient: AccessProviderFactory = async (build) => {
       reportedChargeUsd: openRouterReportedChargeUsd,
       ...(outputCap === undefined ? {} : { providerOutputCap: outputCap }),
     });
-  });
+  }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata), outputCapOf(attribution)));
 };
 
 const createAffordability: ProviderAffordabilityFactory = (connection) => {

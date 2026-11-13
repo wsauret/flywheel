@@ -10,6 +10,7 @@ import { createClaudeReminders } from "../../../../../src/orchestration/agent-ru
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
+import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import type { QueryLaunch, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js";
@@ -29,6 +30,11 @@ const noLaunch: LauncherScope = {
 
 /** A build whose login lives in `configDir`. A request takes a session lock there, so a test that sends one gives a real
  *  directory. Without `lifetime` the client's scope never closes, so a test that starts a bridge passes its own. */
+/** The adapter that `adapterBuild` builds, staged for a request on the build's own attribution. */
+async function stageClaudeClient(adapterBuild: AccessProviderBuild, seams?: ClaudeAgentSdkSeams) {
+  return (await createClaudeAgentSdkClient(adapterBuild, seams)).stage({ attribution: adapterBuild.attribution, accountOfferings: [] });
+}
+
 function build(options: { readonly launcher?: LauncherScope; readonly lifetime?: Scope.Scope; readonly spendMode?: "included" | "automatic"; readonly configDir?: string } = {}): AccessProviderBuild {
   const candidate = { kind: "subscription", providerId: "claude_agent_sdk", instanceId: "login", spendMode: options.spendMode ?? "included" } as const;
   const credential = { type: "external", configDir: options.configDir ?? "/scratch/claude-config" } as const;
@@ -46,7 +52,6 @@ function build(options: { readonly launcher?: LauncherScope; readonly lifetime?:
     classifySlot: () => "subscription", availability: fakeAvailability({}).availability, projectRoot: "/scratch/project",
     attribution: { candidate, wireModelId: metadata.id, dataUse: "standard", resolvedModelMetadata: metadata },
     recordModelRefusal: () => {},
-    accountOfferings: () => [],
     ...(options.launcher === undefined ? {} : { launcher: options.launcher }),
     providerSessionLifetime: { providerSessionKey: "conversation", scope: options.lifetime ?? Scope.makeUnsafe() },
   };
@@ -86,7 +91,7 @@ async function streamFailure(stream: AsyncIterable<unknown>): Promise<Error | un
 describe("the Agent SDK bridge client", () => {
   test("connecting without the generation's launcher fails with a typed error and builds no launcher", async () => {
     const recorded = recordingLaunches();
-    const staged = await createClaudeAgentSdkClient(build(), recorded.seams);
+    const staged = await stageClaudeClient(build(), recorded.seams);
 
     await expect(staged.connect()).rejects.toMatchObject({ _tag: "ApiError", message: expect.stringContaining("launch authority") });
     expect(recorded.configs).toEqual([]);
@@ -102,7 +107,7 @@ describe("the Agent SDK bridge client", () => {
     const lifetime = Effect.runSync(Scope.make());
     process.env.PATH = `${pathBin}:${previous ?? ""}`;
     try {
-      const staged = await createClaudeAgentSdkClient(build({ launcher: noLaunch, lifetime }), {
+      const staged = await stageClaudeClient(build({ launcher: noLaunch, lifetime }), {
         ...seams,
         createLauncher: (config) => { configs.push(config); return () => { throw new Error("no CLI in a unit test"); }; },
       });
@@ -120,7 +125,7 @@ describe("the Agent SDK bridge client", () => {
 
   test("connecting as an OS user that the account database does not name hands the request on, and names the cause", async () => {
     const recorded = recordingLaunches();
-    const staged = await createClaudeAgentSdkClient(build({ launcher: noLaunch }), {
+    const staged = await stageClaudeClient(build({ launcher: noLaunch }), {
       ...recorded.seams,
       account: () => { throw new Error("The account database has no entry for user id 1234"); },
     });
@@ -133,7 +138,7 @@ describe("the Agent SDK bridge client", () => {
     const lifetime = Effect.runSync(Scope.make());
     const recorded = recordingLaunches();
     const configDir = temporaryDirectory("claude-config-");
-    const staged = await createClaudeAgentSdkClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams);
+    const staged = await stageClaudeClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams);
     const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Read a." }];
     // Both sides read the local date, so a fixed clock keeps them on one day.
     setSystemTime(new Date("2026-10-07T12:00:00"));
@@ -159,6 +164,29 @@ describe("the Agent SDK bridge client", () => {
     expect(recorded.launches).toMatchObject([{ systemPrompt: ["Stable prompt.", "Session tail."], tools: [{ name: "read", description: "Reads a file." }], cwd: "/scratch/project", wireModelId: MODEL, contextLimit: 1_000_000 }]);
   });
 
+  test("each request on one adapter limits itself and starts its engine on the window of its own admission", async () => {
+    const lifetime = Effect.runSync(Scope.make());
+    const recorded = recordingLaunches();
+    const adapterBuild = build({ launcher: noLaunch, lifetime, configDir: temporaryDirectory("claude-config-") });
+    const adapter = await createClaudeAgentSdkClient(adapterBuild, recorded.seams);
+    const extended = adapterBuild.attribution;
+    const extendedMetadata = extended.resolvedModelMetadata;
+    if (extendedMetadata === undefined) throw new Error("the build states the model's metadata");
+    // A later publication narrows the window: the adapter that the extended admission built serves the next request.
+    const standard = { ...extended, resolvedModelMetadata: { ...extendedMetadata, contextLimit: 200_000 } };
+    const served: number[] = [];
+    for (const attribution of [standard, extended]) {
+      const staged = await adapter.stage({ attribution, accountOfferings: [] });
+      served.push(staged.attempt.contextLimit);
+      const client = await staged.connect();
+      await streamFailure(client.streamWithTools({ messages: [{ kind: "user", origin: "human", content: "Read a." }], tools: [], systemPrompt: { stable: "Stable prompt.", session: "", conversation: "" } }));
+    }
+    await Effect.runPromise(Scope.close(lifetime, Exit.void));
+
+    expect(served).toEqual([200_000, 1_000_000]);
+    expect(recorded.launches.map(({ contextLimit }) => contextLimit)).toEqual([200_000, 1_000_000]);
+  });
+
   test.each([
     ["a token login, whose config names no account, keeps serving after its first included response", true, []],
     ["a login whose config names no account stops at its first response, because nothing confirms included usage", false, ["raise"]],
@@ -169,7 +197,7 @@ describe("the Agent SDK bridge client", () => {
     const queries: FakeQuery[] = [];
     const base = build({ launcher: noLaunch, lifetime, configDir });
     const credential = { type: "external", configDir, ...(tokenLogin ? { token: Redacted.make("token-login") } : {}) } as const;
-    const staged = await createClaudeAgentSdkClient({
+    const staged = await stageClaudeClient({
       ...base, notify: (notice) => { raised.push(notice.type); },
       connection: { ...base.connection, subscriptionCredentials: new Map([["claude_agent_sdk", [{ instanceId: "login", identity: "token login", lineageId: "login", credential }]]]) },
     }, {
@@ -188,7 +216,7 @@ describe("the Agent SDK bridge client", () => {
   });
 
   test("a tool name the model invents under the MCP prefix returns to Flywheel's name space", async () => {
-    const { toolPresentation } = (await createClaudeAgentSdkClient(build(), recordingLaunches().seams)).attempt;
+    const { toolPresentation } = (await stageClaudeClient(build(), recordingLaunches().seams)).attempt;
     expect(toolPresentation.canonicalName?.(toolPresentation.wireName?.("note_append") ?? "")).toBe("note_append");
     expect(toolPresentation.canonicalName?.("mcp__runtime__note_edit_placeholder")).toBe("note_edit_placeholder");
     expect(toolPresentation.canonicalName?.("mcp__runtime__mcp__runtime__ask_user")).toBe("ask_user");
@@ -200,8 +228,8 @@ describe("the Agent SDK bridge client", () => {
     const lifetime = Effect.runSync(Scope.make());
     const recorded = recordingLaunches();
     const configDir = temporaryDirectory("claude-config-");
-    const first = await (await createClaudeAgentSdkClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams)).connect();
-    const second = await (await createClaudeAgentSdkClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams)).connect();
+    const first = await (await stageClaudeClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams)).connect();
+    const second = await (await stageClaudeClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams)).connect();
     const request = { messages: [{ kind: "user", origin: "human", content: "Read a." }] satisfies ConversationMessage[], tools: [], systemPrompt: { stable: "Stable prompt.", session: "", conversation: "" } };
 
     const failures = [await streamFailure(first.streamWithTools(request)), await streamFailure(second.streamWithTools(request)), await streamFailure(first.streamWithTools(request))];
@@ -218,8 +246,8 @@ describe("the Agent SDK bridge client", () => {
     const lifetime = Effect.runSync(Scope.make());
     const recorded = recordingLaunches();
     const configDir = temporaryDirectory("claude-config-");
-    const included = await (await createClaudeAgentSdkClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams)).connect();
-    const paid = await (await createClaudeAgentSdkClient(build({ launcher: noLaunch, lifetime, spendMode: "automatic", configDir }), recorded.seams)).connect();
+    const included = await (await stageClaudeClient(build({ launcher: noLaunch, lifetime, configDir }), recorded.seams)).connect();
+    const paid = await (await stageClaudeClient(build({ launcher: noLaunch, lifetime, spendMode: "automatic", configDir }), recorded.seams)).connect();
     const request = { messages: [{ kind: "user", origin: "human", content: "Read a." }] satisfies ConversationMessage[], tools: [], systemPrompt: { stable: "Stable prompt.", session: "", conversation: "" } };
 
     const failures = [await streamFailure(included.streamWithTools(request)), await streamFailure(paid.streamWithTools(request))];

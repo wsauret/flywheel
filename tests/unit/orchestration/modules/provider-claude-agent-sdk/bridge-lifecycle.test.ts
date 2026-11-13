@@ -11,7 +11,7 @@ import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { releaseLiveBridges } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/live-bridges.js";
 import {
   A1, A2, admittedStart, answers, callHandler, forwardDiagnostics, init, messageStop, parked, payloads,
-  R1, readsFile, records, request, send, settle, stopReason, text, U1, U2, until, withBridge, originsOf,
+  R1, readsFile, records, request, send, settle, stopReason, text, turnDone, U1, U2, until, withBridge, originsOf,
 } from "./_bridge-harness.js";
 
 forwardDiagnostics();
@@ -37,7 +37,7 @@ describe("bridge lifetime", () => {
   test("worker exit rejects a pending reply even when the inbox accepted it", async () => {
     const inbox = await Effect.runPromise(Queue.unbounded<BridgeRequestInput>());
     const worker = Effect.runFork(Effect.never);
-    const ops = createBridgeRequests((input) => Queue.offerUnsafe(inbox, input), worker);
+    const ops = createBridgeRequests((input) => Queue.offerUnsafe(inbox, input), worker)({ contextLimit: 1_000_000, eligibilityRevision: undefined });
     try {
       const pending = ops.createStream(request([U1]), { origins: originsOf(request([U1])), sharedHost: true, signal: new AbortController().signal, headers: {} });
       await Effect.runPromise(Fiber.interrupt(worker));
@@ -130,6 +130,25 @@ describe("bridge lifetime", () => {
     expect(await next.error).toBeUndefined();
     expect(harness.queries).toHaveLength(1);
     expect(harness.log).toEqual(["push", "push"]);
+  }));
+
+  test("a live query serves on at the window that it started with: a parked call's result and the next message of requests admitted for another window go to its engine", () => withBridge(async (harness) => {
+    const { query } = await parked(harness);
+    const handler = callHandler(query, "toolu_1");
+    await settle();
+    // A later publication narrows the window that each next request's admission states.
+    const narrowed = harness.opsFor({ contextLimit: 200_000, eligibilityRevision: 2 });
+    const second = await send(narrowed, request([U1, A1, R1]));
+    expect(await handler).toEqual({ content: [{ type: "text", text: "file a" }] });
+    query.emit(...answers("Done."));
+    expect(await second.read).toContain("message_stop");
+
+    const third = await send(narrowed, request([U1, A1, R1, A2, U2]));
+    query.emit(turnDone, ...answers("Next done."));
+    expect(await third.error).toBeUndefined();
+    expect(harness.queries.map(({ launch }) => launch.contextLimit)).toEqual([1_000_000]);
+    expect(harness.log).toEqual(["push", "push"]);
+    expect(payloads("provider.claude_sdk.query.stopped")).toEqual([]);
   }));
 
   test("turning the module off releases a parked query's CLI at once, and a streaming query's CLI as soon as its request ends, and each drain asks the session to plan again once", () => {

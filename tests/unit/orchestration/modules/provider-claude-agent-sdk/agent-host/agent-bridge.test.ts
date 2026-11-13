@@ -6,8 +6,10 @@ import { join } from "node:path";
 import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
 import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import { environmentReminder } from "../../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
-import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ConversationMessage, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { TOOL_MCP_PREFIX } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
+import { cliView } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
+import { createToolGate } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/tool-gate.js";
 import { originsOf } from "../_bridge-harness.js";
 import type { BridgeRequest } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { createHostedAgent, type HostedAgentConfig } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.js";
@@ -42,6 +44,9 @@ function environment(cwd: string): string {
 }
 
 const unused = (): never => { throw new Error("the bridge stops at the host it leased"); };
+
+/** The binding of a request admitted for the standard window, with no lineup. */
+const BINDING = { lineup: [], contextLimit: 200_000, eligibilityRevision: undefined };
 
 const LOOKUP = { name: "lookup", description: "Looks a key up.", input_schema: { type: "object", properties: { key: { type: "string" } }, required: ["key"] } };
 /** The tool names that a hosted client sends: each under the runtime MCP prefix, as its engine declares them. */
@@ -81,7 +86,7 @@ async function lease(agents: readonly Agent[]): Promise<Leased> {
   const registry = recordingRegistry(leased);
   for (const { model, contextLimit, effort = "low", thinking = { type: "adaptive" as const }, maxTokens = 64_000, cwd } of agents) {
     const config: HostedAgentConfig = {
-      registry, launchHost: unused, configDir: "/scratch", tree: TREE, login: "login", projectRoot: tmpdir(), wireModelId: model, contextLimit, lineup: () => [], recordModelRefusal: () => {},
+      registry, launchHost: unused, configDir: "/scratch", tree: TREE, login: "login", projectRoot: tmpdir(), wireModelId: model, recordModelRefusal: () => {},
       markQuotaExhausted: unused, extraUsage: "refuse", reportsExtraUsage: () => false, accountEmail: () => undefined, engineShell: () => undefined, onExtraUsageStop: () => {}, recordUsage: () => {}, recordOutcome: () => {}, ownEngine: unused, silentVersions: silentVersions(),
     };
     const request: BridgeRequest = {
@@ -90,7 +95,7 @@ async function lease(agents: readonly Agent[]): Promise<Leased> {
         { type: "text", text: "Refute the claim." }, ...(cwd === undefined ? [] : [{ type: "text" as const, text: environment(cwd) }]), { type: "text", text: DISPATCH_TEXT },
       ] }],
     };
-    await createHostedAgent(config).operations.createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} }).catch(() => undefined);
+    await createHostedAgent(config).operationsFor({ lineup: [], contextLimit, eligibilityRevision: undefined }).createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} }).catch(() => undefined);
   }
   return leased;
 }
@@ -143,7 +148,7 @@ describe("the hosted agent's host", () => {
     };
     const config: HostedAgentConfig = {
       registry: { lease: () => ({ host, opened: true, release: async () => {} }), drain: async () => {} }, launchHost: unused, configDir: folder.configDir, tree: TREE, login: "login", projectRoot: hostCwd,
-      wireModelId: "claude-opus-5-5", contextLimit: 200_000, lineup: () => [], recordModelRefusal: () => {}, markQuotaExhausted: unused, extraUsage: "refuse", reportsExtraUsage: () => false,
+      wireModelId: "claude-opus-5-5", recordModelRefusal: () => {}, markQuotaExhausted: unused, extraUsage: "refuse", reportsExtraUsage: () => false,
       accountEmail: () => undefined, engineShell: () => undefined, onExtraUsageStop: () => {}, recordUsage: () => {}, recordOutcome: () => {}, ownEngine: unused, silentVersions: silentVersions(),
     };
     // The agent's second dispatch: its file holds the first, and the environment row of its opening message.
@@ -155,7 +160,7 @@ describe("the hosted agent's host", () => {
         { role: "user", content: [{ type: "text", text: "Refute the next claim." }, { type: "text", text: DISPATCH_TEXT }] },
       ],
     };
-    await createHostedAgent(config).operations.createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} }).catch(() => undefined);
+    await createHostedAgent(config).operationsFor(BINDING).createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} }).catch(() => undefined);
     const [meta = "", file = ""] = written;
     expect(JSON.parse(meta)).toMatchObject({ cwd: agentCwd });
     const rows = file.trim().split("\n").map((line) => Schema.decodeUnknownSync(AgentFileRow)(JSON.parse(line)));
@@ -191,7 +196,7 @@ describe("a hosted agent's anticipated request", () => {
   };
   const anticipate = (agent: ReturnType<typeof createHostedAgent>, sharedHost = true, maxTokens?: number) => {
     const request = hostedRequest("(next message)", maxTokens);
-    return agent.operations.anticipate?.(request, { origins: originsOf(request), sharedHost });
+    return agent.operationsFor(BINDING).anticipate?.(request, { origins: originsOf(request), sharedHost });
   };
 
   test("of a session shares one lease of its host place across the session's roles and clients, and the last claim's release ends it", async () => {
@@ -245,7 +250,7 @@ describe("a hosted agent's anticipated request", () => {
     const request = hostedRequest("(next message)");
     const gone = { ...request, messages: [{ role: "user" as const, content: [{ type: "text" as const, text: "(next message)" }, { type: "text" as const, text: environment(join(repository, "gone")) }, { type: "text" as const, text: DISPATCH_TEXT }] }] };
 
-    expect(await agent.operations.anticipate?.(gone, { origins: originsOf(gone), sharedHost: true })).toBeUndefined();
+    expect(await agent.operationsFor(BINDING).anticipate?.(gone, { origins: originsOf(gone), sharedHost: true })).toBeUndefined();
     await agent.close("lifetime-end");
     await owner.close();
   });
@@ -314,7 +319,7 @@ function watchDemand() {
 
 function hostedConfig(registry: HostRegistry): HostedAgentConfig {
   return {
-    registry, launchHost: unused, configDir: "/scratch", tree: TREE, login: "login", projectRoot: tmpdir(), wireModelId: "claude-sonnet-5-5", contextLimit: 200_000, lineup: () => [], recordModelRefusal: () => {},
+    registry, launchHost: unused, configDir: "/scratch", tree: TREE, login: "login", projectRoot: tmpdir(), wireModelId: "claude-sonnet-5-5", recordModelRefusal: () => {},
     markQuotaExhausted: unused, extraUsage: "refuse", reportsExtraUsage: () => false, accountEmail: () => undefined, engineShell: () => undefined, onExtraUsageStop: () => {}, recordUsage: () => {}, recordOutcome: () => {}, ownEngine: unused, silentVersions: silentVersions(),
   };
 }
@@ -343,7 +348,7 @@ describe("a hosted agent's request that its consumer leaves", () => {
     const leases = { released: 0 };
     const agent = createHostedAgent(hostedConfig({ lease: () => ({ host, opened: true, release: async () => { leases.released += 1; } }), drain: async () => {} }));
     const caller = new AbortController();
-    const open = () => agent.operations.createStream(hostedRequest("Find the value."), { origins: originsOf(hostedRequest("Find the value.")), sharedHost: true, signal: caller.signal, headers: {} });
+    const open = () => agent.operationsFor(BINDING).createStream(hostedRequest("Find the value."), { origins: originsOf(hostedRequest("Find the value.")), sharedHost: true, signal: caller.signal, headers: {} });
     return { agent, stops, leases, caller, open };
   }
 
@@ -412,7 +417,7 @@ describe("the module turned off", () => {
     const agent = (sessionId: string) => createHostedAgent({ ...hostedConfig({ lease: (place) => registry.lease(place, () => open(sessionId)), drain: registry.drain }), demand: owner.demand });
     const send = (hosted: ReturnType<typeof agent>, maxTokens?: number) => {
       const request = hostedRequest("Find the value.", maxTokens);
-      return hosted.operations.createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} });
+      return hosted.operationsFor(BINDING).createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} });
     };
     const read = async (data: AsyncIterable<unknown>) => {
       const events: unknown[] = [];
@@ -422,7 +427,7 @@ describe("the module turned off", () => {
     // An idle agent whose request ended, on the host that the session's claim also holds.
     const idle = agent("idle");
     const request = hostedRequest("(next message)");
-    expect(await idle.operations.anticipate?.(request, { origins: originsOf(request), sharedHost: true })).toBeDefined();
+    expect(await idle.operationsFor(BINDING).anticipate?.(request, { origins: originsOf(request), sharedHost: true })).toBeDefined();
     const answered = await send(idle);
     await read(answered.data);
     answered.data.controller.abort();
@@ -467,7 +472,7 @@ describe("the module turned off", () => {
     const agent = createHostedAgent({ ...hostedConfig({ lease: (place) => registry.lease(place, () => host), drain: registry.drain }), ...(withDemand ? { demand: owner.demand } : {}) });
     const request = hostedRequest("Find the value.");
     // The prompt-prefix hold: the request's anticipation claims its host, and the request streams later.
-    const claim = await agent.operations.anticipate?.(request, { origins: originsOf(request), sharedHost: true });
+    const claim = await agent.operationsFor(BINDING).anticipate?.(request, { origins: originsOf(request), sharedHost: true });
     expect(claim).toBeDefined();
     releaseLiveBridges();
     if (onAgain) resumeLiveBridges();
@@ -475,7 +480,7 @@ describe("the module turned off", () => {
     // The session's claim serves no request, so its host closes at once; a claim of the request's own holds it.
     const atRelease = withDemand ? ["released"] : [];
     expect(closes).toEqual(atRelease);
-    const { data } = await agent.operations.createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} });
+    const { data } = await agent.operationsFor(BINDING).createStream(request, { origins: originsOf(request), sharedHost: true, signal: new AbortController().signal, headers: {} });
     for await (const _ of data) { /* the adapter reads the whole response, then releases it */ }
     expect(closes).toEqual(atRelease);
     data.controller.abort();
@@ -525,8 +530,8 @@ describe("a hosted agent's request that no host can serve", () => {
     const projectRoot = directory("hosted-project-");
     const config: HostedAgentConfig = {
       registry: { lease: () => ({ host, opened: true, release: async () => { releases += 1; } }), drain: async () => {} }, launchHost: unused, configDir: folder.configDir, tree: TREE, login: "login", projectRoot,
-      wireModelId: MODEL, contextLimit: 200_000, lineup: () => [], recordModelRefusal: () => {}, markQuotaExhausted: unused, extraUsage: "refuse", reportsExtraUsage: () => false,
-      accountEmail: () => undefined, engineShell: () => undefined, onExtraUsageStop: () => {}, recordUsage: () => {}, recordOutcome: () => {}, ownEngine: async () => own,
+      wireModelId: MODEL, recordModelRefusal: () => {}, markQuotaExhausted: unused, extraUsage: "refuse", reportsExtraUsage: () => false,
+      accountEmail: () => undefined, engineShell: () => undefined, onExtraUsageStop: () => {}, recordUsage: () => {}, recordOutcome: () => {}, ownEngine: async () => () => own,
       silentVersions: silentVersions(),
     };
     const agent = createHostedAgent(config);
@@ -539,7 +544,7 @@ describe("a hosted agent's request that no host can serve", () => {
       const prepared = () => prepareAnthropicRequest({ accessProvider: "claude_agent_sdk", model: MODEL, wireModel: MODEL, info, contextLimit: 200_000, options: options(), presentation: MCP_TOOLS, hosted: true });
       if (prepared().historyTarget.sharedHost) history.push(...entries(options()));
       const { params, historyTarget, origins } = prepared();
-      const { data } = await agent.operations.createStream(params, { sharedHost: historyTarget.sharedHost, origins, signal: new AbortController().signal, headers: {} });
+      const { data } = await agent.operationsFor(BINDING).createStream(params, { sharedHost: historyTarget.sharedHost, origins, signal: new AbortController().signal, headers: {} });
       for await (const _ of data) { /* the bridge parks or settles the agent at the stream's end */ }
       return params;
     };
@@ -571,5 +576,77 @@ describe("a hosted agent's request that no host can serve", () => {
     expect(dispatched).toHaveLength(2);
     expect(dispatched[1]).not.toBe(first);
     expect(ownRequests).toHaveLength(1);
+  });
+});
+
+describe("a hosted agent across admitted windows", () => {
+  test("a parked agent's task takes its results from a request of another window, an idle agent dispatched on another window starts again under a new id with that window's model, and one on the same window resumes", async () => {
+    const MODEL = "claude-sonnet-5-5";
+    const folder = { configDir: directory("hosted-login-"), cwd: directory("hosted-host-"), sessionId: "host" };
+    const done = (text: string): HostStepItem[] => [{ kind: "text", index: 0, text }, { kind: "stop", stopReason: "end_turn", usage: null }];
+    // The engine names the call as it declares the tool, under the runtime MCP prefix.
+    const answers: HostStepItem[][] = [
+      [{ kind: "tool", index: 0, id: "toolu_1", name: `${TOOL_MCP_PREFIX}lookup` }, { kind: "input", index: 0, json: "{\"key\":\"k\"}" }, { kind: "stop", stopReason: "tool_use", usage: null }],
+      done("The value is VALUE."), done("VALUE."), done("VALUE again."),
+    ];
+    const dispatched: string[] = [];
+    const definitions: string[] = [];
+    const stops: (readonly [string, string])[] = [];
+    const host: AgentHost = {
+      sessionId: "host", folder, toolGate: createToolGate([]), settled: async () => {}, takeHiddenRequests: () => [], released: () => {}, requestFailure: unused,
+      definition: (_prompt, model) => { definitions.push(model); return "flywheel-agents:agent"; },
+      admit: async (_agentId, _values, sink) => {
+        for (const item of answers.shift() ?? []) sink.item(item);
+        return { close: () => {} };
+      },
+      dispatch: async (agentId) => { dispatched.push(agentId); },
+      stopTask: (agentId, cause) => { stops.push([agentId, cause]); },
+      ended: new Promise(() => {}), served: false, close: async () => {},
+    };
+    const projectRoot = directory("hosted-project-");
+    const agent = createHostedAgent({ ...hostedConfig({ lease: () => ({ host, opened: true, release: async () => {} }), drain: async () => {} }), configDir: folder.configDir, projectRoot });
+    let window = 1_000_000;
+    const prepared = (options: StreamOptions) => prepareAnthropicRequest({
+      accessProvider: "claude_agent_sdk", model: MODEL, wireModel: MODEL, info: providerModelInfo({ provider: "anthropic", id: MODEL, contextLimit: window, outputLimit: 64_000, reasoning: true }),
+      contextLimit: window, options, presentation: MCP_TOOLS, hosted: true,
+    });
+    // The client's entries: a request that the live agent cannot take as a delivery on its window is a dispatch.
+    const entries = createHostedAgentEntries((options) => {
+      const { params, origins } = prepared(options);
+      return agent.dispatches(cliView(params, origins, projectRoot), { requestContext: options.requestContext, runtimeNotices: trailingRuntimeNotices(options.messages) }, window);
+    });
+    const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Find the value." }];
+    const reply = (text: string): ConversationMessage => ({ kind: "assistant", accessProvider: "claude_agent_sdk", provider: "anthropic", api: "anthropic-messages", model: MODEL, content: [{ type: "text", text }] });
+    /** Sends the next request of an admission for `contextLimit`, as the agent loop does, and reads its answer. */
+    const send = async (contextLimit: number) => {
+      window = contextLimit;
+      const options = (): StreamOptions => ({ messages: [...history], tools: [LOOKUP], systemPrompt: { stable: "You review one claim.", session: "", conversation: "" }, reasoningEffort: "low" });
+      history.push(...entries(options()));
+      const { params, historyTarget, origins } = prepared(options());
+      const { data } = await agent.operationsFor({ contextLimit, eligibilityRevision: undefined, lineup: [] }).createStream(params, { sharedHost: historyTarget.sharedHost, origins, signal: new AbortController().signal, headers: {} });
+      for await (const _ of data) { /* the bridge parks or settles the agent at the stream's end */ }
+    };
+
+    await send(1_000_000);
+    history.push(
+      { kind: "assistant", accessProvider: "claude_agent_sdk", provider: "anthropic", api: "anthropic-messages", model: MODEL, content: [{ type: "tool_use", id: "toolu_1", name: "lookup", input: { key: "k" } }] },
+      { kind: "toolResult", toolUseId: "toolu_1", content: [{ type: "text", text: "VALUE" }] },
+    );
+    // A later publication narrows the window: the parked task runs on, and takes the results as a delivery.
+    await send(200_000);
+    expect({ dispatched: dispatched.length, definitions, stops }).toEqual({ dispatched: 1, definitions: ["claude-sonnet-5-5[1m]"], stops: [] });
+
+    history.push(reply("The value is VALUE."), { kind: "user", origin: "human", content: "Say it." });
+    await send(200_000);
+    history.push(reply("VALUE."), { kind: "user", origin: "human", content: "Say it again." });
+    await send(200_000);
+    const [first, second, third] = dispatched;
+    expect(definitions).toEqual(["claude-sonnet-5-5[1m]", "claude-sonnet-5-5", "claude-sonnet-5-5"]);
+    expect(second).not.toBe(first);
+    expect(third).toBe(second);
+    // The idle agent's task had ended, so its restart stops no task.
+    expect(stops).toEqual([]);
+    expect(answers).toEqual([]);
+    await agent.close("lifetime-end");
   });
 });

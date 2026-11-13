@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { authDir } from "../../../../../src/infra/paths.js";
 import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access-provider.js";
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
-import { captureAccountConnection, stagedProviderClient, type AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+import { captureAccountConnection, providerAdapter, type AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
@@ -57,7 +57,7 @@ describe("client construction login recovery", () => {
           } },
           createClient: async (build: AccessProviderBuild) => {
             const client = { ...fakeClient(build.candidate.providerId, textStream("unused")), modelFamily: build.family };
-            return stagedProviderClient(build, client, async () => client);
+            return providerAdapter(build, () => client, async () => client, (connected) => connected);
           },
         } },
         ...claude.contributions.slice(1),

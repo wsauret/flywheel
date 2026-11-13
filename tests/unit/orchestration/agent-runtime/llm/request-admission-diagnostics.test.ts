@@ -42,7 +42,7 @@ describe("provider request admission diagnostics", () => {
         priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
         async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } as const; },
         };
-        return { attempt: client, connect: async () => client };
+        return { stage: async () => ({ attempt: client, connect: async () => client }) };
       }),
     };
     // Per request, so DEBUG: model.requested names the provider and model.

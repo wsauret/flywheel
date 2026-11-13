@@ -37,7 +37,7 @@ import { openAIReasoningEffort, supportsThinkingDisable } from "./model-compat.j
 import type { ProviderAvailability } from "./provider-availability-types.js";
 import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
-import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions } from "./types.js";
+import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions } from "./types.js";
 import { renderSystemPrompt } from "./system-prompt-tiers.js";
 import type { ProviderHistoryTarget } from "./provider-history.js";
 
@@ -338,7 +338,7 @@ function* handleToolCallDelta(
 export async function createOpenAIChatCompletionsAdapter(
   client: OpenAI,
   defaultModel: string,
-  info: ModelInfo,
+  openingInfo: ModelInfo,
   overrides?: {
     accessProvider?: AccessProviderId; extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>; resetIdleConnections?: () => void | Promise<void>;
     candidate?: AccessProviderCandidate;
@@ -357,238 +357,243 @@ export async function createOpenAIChatCompletionsAdapter(
      *  provider that states one; undefined when the report states none. */
     reportedChargeUsd?: (usage: unknown) => number | undefined;
   },
-): Promise<LLMClient> {
+): Promise<ConnectedClient & { withModelInfo(info: ModelInfo, providerOutputCap?: number): LLMClient }> {
   const accessProvider = overrides?.accessProvider ?? "openai_api";
   const extraHeaders = overrides?.extraHeaders;
 
-  const adapter = {
-    accessProvider,
-    // Wire family, not catalog family: a Claude or Gemini model served over
-    // this endpoint replays as an OpenAI-family turn (`chatCompletionsTarget`).
-    modelFamily: "openai",
-    model: defaultModel,
-    toolPresentation: FUNCTION_TOOL_PRESENTATION,
-    contextLimit: info.contextLimit,
-    outputLimit: info.outputLimit,
-    supportsReasoning: info.reasoning,
+  /** The client that lowers each request on `info` over this adapter's connection (`ConnectedClient`). */
+  const withModelInfo = (info: ModelInfo, providerOutputCap?: number): LLMClient => {
+    const adapter = {
+      accessProvider,
+      // Wire family, not catalog family: a Claude or Gemini model served over
+      // this endpoint replays as an OpenAI-family turn (`chatCompletionsTarget`).
+      modelFamily: "openai",
+      model: defaultModel,
+      toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      contextLimit: info.contextLimit,
+      outputLimit: info.outputLimit,
+      supportsReasoning: info.reasoning,
 
-    priceFor(tokens) {
-      return computeUsagePrice(tokens, info.pricing, OPENAI_CACHE_RATES);
-    },
+      priceFor(tokens) {
+        return computeUsagePrice(tokens, info.pricing, OPENAI_CACHE_RATES);
+      },
 
-    historyTarget: (options: StreamOptions) => chatCompletionsTarget(accessProvider, options.model ?? defaultModel),
+      historyTarget: (options: StreamOptions) => chatCompletionsTarget(accessProvider, options.model ?? defaultModel),
 
-    async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
-      const modelId = options.model ?? defaultModel;
-      // A provider that serves models under its own wire ids passes the fold
-      // in (the same pattern as Copilot's dotted-Claude fold in anthropic.ts),
-      // so adapter identity and metadata stay canonical.
-      const wireModel = overrides?.wireModelId ?? modelId;
+      async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
+        const modelId = options.model ?? defaultModel;
+        // A provider that serves models under its own wire ids passes the fold
+        // in (the same pattern as Copilot's dotted-Claude fold in anthropic.ts),
+        // so adapter identity and metadata stay canonical.
+        const wireModel = overrides?.wireModelId ?? modelId;
 
-      const descriptor = prepareOpenAICompletionsRequest({
-        accessProvider, model: modelId, wireModel, info, options,
-        ...(overrides?.providerOutputCap === undefined ? {} : { providerOutputCap: overrides.providerOutputCap }),
-      });
-      const headers = {
-        ...(accessProvider === "github_copilot" ? {} : await providerRequestHeaders()),
-        ...await extraHeaders?.(options),
-      };
-
-      const throwChatCompletionsFailure = (error: unknown): never => {
-        throw normalizeProviderAttemptFailure(classifyChatCompletionsError(error, descriptor.params.messages));
-      };
-
-      // oxlint-disable-next-line eslint/complexity -- boundary: one generator owns the ordered chat-completions stream state machine.
-      yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
-        const runId = crypto.randomUUID();
-        const params = descriptor.params;
-        const requestOpts = headers ? { signal: attempt.signal, headers } : { signal: attempt.signal };
-        const streamLiveness = armStreamLiveness(attempt, {
-          label: "llm-openai-completions",
-          provider: "OpenAI chat-completions",
-          telemetry: options.telemetry,
-          timeoutMessage: (event) => `OpenAI chat-completions stream ${event.phase === "pre-stream" ? "pre-stream timeout" : "idle timeout"}`,
+        const descriptor = prepareOpenAICompletionsRequest({
+          accessProvider, model: modelId, wireModel, info, options,
+          ...(providerOutputCap === undefined ? {} : { providerOutputCap }),
         });
-        let usage: { input: number; output: number; cacheRead: number | null; cacheWrite: number; reasoning: number; reportedChargeUsd: number | undefined } | undefined;
-        // The usage chunk is the stream's terminal report, so any usage seen is final.
-        const usageEvent = () => usage ? ({
-          kind: "usage",
-          final: true,
-          inputTokens: Math.max(0, usage.input - (usage.cacheRead ?? 0) - usage.cacheWrite),
-          outputTokens: usage.output,
-          cacheReadTokens: usage.cacheRead,
-          cacheCreateTokens: usage.cacheWrite,
-          reasoningTokens: usage.reasoning,
-          ...(usage.reportedChargeUsd === undefined ? {} : { reportedChargeUsd: usage.reportedChargeUsd }),
-        } as const) : undefined;
-        streamLiveness.preStream();
-        await options.onDispatch?.();
-        const stream = await invokeProviderAttempt(() => client.chat.completions.create(params, requestOpts), throwChatCompletionsFailure);
+        const headers = {
+          ...(accessProvider === "github_copilot" ? {} : await providerRequestHeaders()),
+          ...await extraHeaders?.(options),
+        };
 
-        try {
-          let hasText = false;
-          let textCompleteEmitted = false;
-          let textRunOrdinal = 0;
-          let thinkingRunOrdinal = 0;
-          let thinkingBuf = "";
-          let thinkingField: string | undefined;
-          const toolCalls: StreamingToolCallRegistry = { byIndex: new Map(), byId: new Map(), ordered: [] };
-          // Encrypted reasoning keyed by the tool-call id it is bound to. Tool
-          // calls flush at stream end, so a detail arriving before or after its
-          // tool-call delta resolves the same way.
-          const reasoningDetailsByToolCallId = new Map<string, string>();
-          let finishReason: string | undefined;
-          let responseStarted = false;
+        const throwChatCompletionsFailure = (error: unknown): never => {
+          throw normalizeProviderAttemptFailure(classifyChatCompletionsError(error, descriptor.params.messages));
+        };
 
-          for await (const chunk of normalizeProviderAttemptIterator(stream, throwChatCompletionsFailure)) {
-            const receivedAt = performance.now();
-            streamLiveness.frame();
-            if (!responseStarted) {
-              responseStarted = true;
-              yield { kind: "provider_response_started" } as const;
-            }
-            observeProviderTelemetry(options.telemetry, "chunk", {
-              choiceCount: chunk.choices?.length ?? 0,
-              finishReason: chunk.choices?.[0]?.finish_reason ?? undefined,
-              hasUsage: chunk.usage !== undefined,
-            });
-            const choice = chunk.choices?.[0];
-            const delta = choice?.delta;
+        // oxlint-disable-next-line eslint/complexity -- boundary: one generator owns the ordered chat-completions stream state machine.
+        yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
+          const runId = crypto.randomUUID();
+          const params = descriptor.params;
+          const requestOpts = headers ? { signal: attempt.signal, headers } : { signal: attempt.signal };
+          const streamLiveness = armStreamLiveness(attempt, {
+            label: "llm-openai-completions",
+            provider: "OpenAI chat-completions",
+            telemetry: options.telemetry,
+            timeoutMessage: (event) => `OpenAI chat-completions stream ${event.phase === "pre-stream" ? "pre-stream timeout" : "idle timeout"}`,
+          });
+          let usage: { input: number; output: number; cacheRead: number | null; cacheWrite: number; reasoning: number; reportedChargeUsd: number | undefined } | undefined;
+          // The usage chunk is the stream's terminal report, so any usage seen is final.
+          const usageEvent = () => usage ? ({
+            kind: "usage",
+            final: true,
+            inputTokens: Math.max(0, usage.input - (usage.cacheRead ?? 0) - usage.cacheWrite),
+            outputTokens: usage.output,
+            cacheReadTokens: usage.cacheRead,
+            cacheCreateTokens: usage.cacheWrite,
+            reasoningTokens: usage.reasoning,
+            ...(usage.reportedChargeUsd === undefined ? {} : { reportedChargeUsd: usage.reportedChargeUsd }),
+          } as const) : undefined;
+          streamLiveness.preStream();
+          await options.onDispatch?.();
+          const stream = await invokeProviderAttempt(() => client.chat.completions.create(params, requestOpts), throwChatCompletionsFailure);
 
-            if (typeof delta?.content === "string" && delta.content.length > 0) {
-              hasText = true;
-              yield { kind: "text_delta", text: delta.content, blockKey: `${runId}:text:${textRunOrdinal}` } as const;
-            }
-
-            // Reasoning streams via `reasoning_content` (llama.cpp), `reasoning`
-            // (most OpenAI-compatible endpoints, including Copilot for Grok/Gemini),
-            // or `reasoning_text`. Use the first non-empty field; chutes.ai etc.
-            // sometimes return both with identical content. runtime pattern.
-            if (delta) {
-              // SAFETY: reasoning_content / reasoning / reasoning_text are non-standard
-              // delta fields the SDK's ChatCompletionChunk.Choice.Delta does not declare;
-              // OpenAI-compatible endpoints (llama.cpp, Copilot's Grok/Gemini) add them.
-              // readReasoningDelta type-checks each field is a string before use.
-              // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: read nonstandard reasoning fields from the SDK delta
-              const reasoningDelta = readReasoningDelta(delta as UnknownFields);
-              if (reasoningDelta) {
-                if (!thinkingBuf) {
-                  streamLiveness.begin(`${runId}:thinking:${thinkingRunOrdinal}`);
-                  yield { kind: "thinking_delta", text: "", blockKey: `${runId}:thinking:${thinkingRunOrdinal}` } as const;
-                }
-                thinkingField ??= reasoningDelta.field;
-                thinkingBuf += reasoningDelta.text;
-                streamLiveness.append(reasoningDelta.text);
-                yield { kind: "thinking_delta", text: reasoningDelta.text, blockKey: `${runId}:thinking:${thinkingRunOrdinal}` } as const;
-              }
-            }
-
-            if (delta?.tool_calls) {
-              // First tool-call delta after streamed text marks the text-block
-              // boundary. Flush text_complete so downstream can exit "generating"
-              // before the tool flow starts.
-              if (hasText && !textCompleteEmitted) {
-                textCompleteEmitted = true;
-                yield { kind: "text_complete", blockKey: `${runId}:text:${textRunOrdinal}` } as const;
-                textRunOrdinal += 1;
-              }
-              for (const toolDelta of delta.tool_calls) {
-                yield* handleToolCallDelta(toolDelta, toolCalls, receivedAt);
-              }
-            }
-
-            // SAFETY: reasoning_details is an OpenRouter extension field the SDK's
-            // delta type does not declare; the capture validates each entry's shape.
-            // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: read OpenRouter reasoning details from the SDK delta
-            if (delta) captureEncryptedReasoningDetails(delta as UnknownFields, reasoningDetailsByToolCallId);
-
-            if (choice?.finish_reason) finishReason = choice.finish_reason;
-
-            if (chunk.usage) {
-              // Servers that omit the cache detail did not report cache reads; that is unknown, not zero.
-              const cacheRead = chunk.usage.prompt_tokens_details?.cached_tokens ?? null;
-              const reasoning = chunk.usage.completion_tokens_details?.reasoning_tokens ?? 0;
-              // OpenRouter reports Anthropic cache writes on this extension field.
-              const cacheWrite = cacheWriteTokens(chunk.usage.prompt_tokens_details);
-              const input = chunk.usage.prompt_tokens ?? 0;
-              const completion = chunk.usage.completion_tokens ?? 0;
-              // Most servers count reasoning inside completion_tokens. Some (xAI's convention) count it beside them,
-              // and their own total_tokens then adds both; output must include reasoning either way (ARCH-PROVIDERS-076).
-              const reasoningBesideCompletion = reasoning > 0 && chunk.usage.total_tokens === input + completion + reasoning;
-              usage = {
-                input,
-                output: reasoningBesideCompletion ? completion + reasoning : completion,
-                cacheRead,
-                cacheWrite: typeof cacheWrite === "number" ? cacheWrite : 0,
-                reasoning,
-                reportedChargeUsd: overrides?.reportedChargeUsd?.(chunk.usage),
-              };
-            }
-          }
-
-          // Flush accumulated reasoning as a thinking block. The signature is
-          // the reasoning field name the endpoint streamed it on; the converter
-          // replays same-API thinking on that field and degrades anything else
-          // to text (pi `openai-completions.ts:502-506,:1120-1127`).
-          if (thinkingBuf) {
-            streamLiveness.complete(`${runId}:thinking:${thinkingRunOrdinal}`);
-            yield { kind: "thinking_complete", thinking: thinkingBuf, blockKey: `${runId}:thinking:${thinkingRunOrdinal}`, ...(thinkingField ? { signature: thinkingField } : {}) } as const;
-            thinkingBuf = ""; thinkingRunOrdinal += 1;
-          }
-          // End of stream: flush text_complete if text was streamed and we
-          // didn't already emit it at a tool-call boundary.
-          if (hasText && !textCompleteEmitted) {
-            textCompleteEmitted = true;
-            yield { kind: "text_complete", blockKey: `${runId}:text:${textRunOrdinal}` } as const;
-            textRunOrdinal += 1;
-          }
-
-          for (const tc of toolCalls.ordered) {
-            const { input, parseError } = parseToolArguments(tc.argumentsBuffer);
-            const thoughtSignature = reasoningDetailsByToolCallId.get(tc.id);
-            yield {
-              kind: "tool_use",
-              toolCall: {
-                id: tc.id,
-                name: tc.name,
-                input,
-                providerCallId: tc.id,
-                ...(thoughtSignature ? { thoughtSignature } : {}),
-                ...(parseError ? { inputParseError: parseError } : {}),
-              },
-            } as const;
-          }
-
-          const finalUsage = usageEvent();
-          if (finalUsage) yield finalUsage;
-
-          // pi `openai-completions.ts:400-402`: throw on stream close without
-          // a finish_reason; proxies (Copilot in particular) drop connections
-          // mid-stream non-trivially; silently mapping to `end_turn` would
-          // treat a truncated response as a successful turn.
-          if (!finishReason) {
-            throw normalizeProviderAttemptFailure(new LlmStreamError("stream closed before finish_reason", "transient"));
-          }
-
-          let stopReason: CompletedStopReason;
           try {
-            stopReason = mapChatCompletionsStopReason(finishReason);
-          } catch (error) {
-            throw normalizeProviderAttemptFailure(error);
-          }
+            let hasText = false;
+            let textCompleteEmitted = false;
+            let textRunOrdinal = 0;
+            let thinkingRunOrdinal = 0;
+            let thinkingBuf = "";
+            let thinkingField: string | undefined;
+            const toolCalls: StreamingToolCallRegistry = { byIndex: new Map(), byId: new Map(), ordered: [] };
+            // Encrypted reasoning keyed by the tool-call id it is bound to. Tool
+            // calls flush at stream end, so a detail arriving before or after its
+            // tool-call delta resolves the same way.
+            const reasoningDetailsByToolCallId = new Map<string, string>();
+            let finishReason: string | undefined;
+            let responseStarted = false;
 
-          const { api, provider, model } = chatCompletionsTarget(accessProvider, modelId);
-          yield { kind: "done", stopReason, metadata: { api, provider, model, timestamp: Date.now(), stopReason } } as const;
-        } catch (err) {
-          const finalUsage = usageEvent();
-          if (finalUsage) yield finalUsage;
-          throwIfLivenessFailure(err, attempt, options.signal);
-          log.warn("OpenAI chat-completions stream error", { err: String(err) });
-          throw err;
-        } }, options);
-    },
+            for await (const chunk of normalizeProviderAttemptIterator(stream, throwChatCompletionsFailure)) {
+              const receivedAt = performance.now();
+              streamLiveness.frame();
+              if (!responseStarted) {
+                responseStarted = true;
+                yield { kind: "provider_response_started" } as const;
+              }
+              observeProviderTelemetry(options.telemetry, "chunk", {
+                choiceCount: chunk.choices?.length ?? 0,
+                finishReason: chunk.choices?.[0]?.finish_reason ?? undefined,
+                hasUsage: chunk.usage !== undefined,
+              });
+              const choice = chunk.choices?.[0];
+              const delta = choice?.delta;
 
-  } satisfies LLMClient;
+              if (typeof delta?.content === "string" && delta.content.length > 0) {
+                hasText = true;
+                yield { kind: "text_delta", text: delta.content, blockKey: `${runId}:text:${textRunOrdinal}` } as const;
+              }
 
-  return adapter;
+              // Reasoning streams via `reasoning_content` (llama.cpp), `reasoning`
+              // (most OpenAI-compatible endpoints, including Copilot for Grok/Gemini),
+              // or `reasoning_text`. Use the first non-empty field; chutes.ai etc.
+              // sometimes return both with identical content. runtime pattern.
+              if (delta) {
+                // SAFETY: reasoning_content / reasoning / reasoning_text are non-standard
+                // delta fields the SDK's ChatCompletionChunk.Choice.Delta does not declare;
+                // OpenAI-compatible endpoints (llama.cpp, Copilot's Grok/Gemini) add them.
+                // readReasoningDelta type-checks each field is a string before use.
+                // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: read nonstandard reasoning fields from the SDK delta
+                const reasoningDelta = readReasoningDelta(delta as UnknownFields);
+                if (reasoningDelta) {
+                  if (!thinkingBuf) {
+                    streamLiveness.begin(`${runId}:thinking:${thinkingRunOrdinal}`);
+                    yield { kind: "thinking_delta", text: "", blockKey: `${runId}:thinking:${thinkingRunOrdinal}` } as const;
+                  }
+                  thinkingField ??= reasoningDelta.field;
+                  thinkingBuf += reasoningDelta.text;
+                  streamLiveness.append(reasoningDelta.text);
+                  yield { kind: "thinking_delta", text: reasoningDelta.text, blockKey: `${runId}:thinking:${thinkingRunOrdinal}` } as const;
+                }
+              }
+
+              if (delta?.tool_calls) {
+                // First tool-call delta after streamed text marks the text-block
+                // boundary. Flush text_complete so downstream can exit "generating"
+                // before the tool flow starts.
+                if (hasText && !textCompleteEmitted) {
+                  textCompleteEmitted = true;
+                  yield { kind: "text_complete", blockKey: `${runId}:text:${textRunOrdinal}` } as const;
+                  textRunOrdinal += 1;
+                }
+                for (const toolDelta of delta.tool_calls) {
+                  yield* handleToolCallDelta(toolDelta, toolCalls, receivedAt);
+                }
+              }
+
+              // SAFETY: reasoning_details is an OpenRouter extension field the SDK's
+              // delta type does not declare; the capture validates each entry's shape.
+              // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: read OpenRouter reasoning details from the SDK delta
+              if (delta) captureEncryptedReasoningDetails(delta as UnknownFields, reasoningDetailsByToolCallId);
+
+              if (choice?.finish_reason) finishReason = choice.finish_reason;
+
+              if (chunk.usage) {
+                // Servers that omit the cache detail did not report cache reads; that is unknown, not zero.
+                const cacheRead = chunk.usage.prompt_tokens_details?.cached_tokens ?? null;
+                const reasoning = chunk.usage.completion_tokens_details?.reasoning_tokens ?? 0;
+                // OpenRouter reports Anthropic cache writes on this extension field.
+                const cacheWrite = cacheWriteTokens(chunk.usage.prompt_tokens_details);
+                const input = chunk.usage.prompt_tokens ?? 0;
+                const completion = chunk.usage.completion_tokens ?? 0;
+                // Most servers count reasoning inside completion_tokens. Some (xAI's convention) count it beside them,
+                // and their own total_tokens then adds both; output must include reasoning either way (ARCH-PROVIDERS-076).
+                const reasoningBesideCompletion = reasoning > 0 && chunk.usage.total_tokens === input + completion + reasoning;
+                usage = {
+                  input,
+                  output: reasoningBesideCompletion ? completion + reasoning : completion,
+                  cacheRead,
+                  cacheWrite: typeof cacheWrite === "number" ? cacheWrite : 0,
+                  reasoning,
+                  reportedChargeUsd: overrides?.reportedChargeUsd?.(chunk.usage),
+                };
+              }
+            }
+
+            // Flush accumulated reasoning as a thinking block. The signature is
+            // the reasoning field name the endpoint streamed it on; the converter
+            // replays same-API thinking on that field and degrades anything else
+            // to text (pi `openai-completions.ts:502-506,:1120-1127`).
+            if (thinkingBuf) {
+              streamLiveness.complete(`${runId}:thinking:${thinkingRunOrdinal}`);
+              yield { kind: "thinking_complete", thinking: thinkingBuf, blockKey: `${runId}:thinking:${thinkingRunOrdinal}`, ...(thinkingField ? { signature: thinkingField } : {}) } as const;
+              thinkingBuf = ""; thinkingRunOrdinal += 1;
+            }
+            // End of stream: flush text_complete if text was streamed and we
+            // didn't already emit it at a tool-call boundary.
+            if (hasText && !textCompleteEmitted) {
+              textCompleteEmitted = true;
+              yield { kind: "text_complete", blockKey: `${runId}:text:${textRunOrdinal}` } as const;
+              textRunOrdinal += 1;
+            }
+
+            for (const tc of toolCalls.ordered) {
+              const { input, parseError } = parseToolArguments(tc.argumentsBuffer);
+              const thoughtSignature = reasoningDetailsByToolCallId.get(tc.id);
+              yield {
+                kind: "tool_use",
+                toolCall: {
+                  id: tc.id,
+                  name: tc.name,
+                  input,
+                  providerCallId: tc.id,
+                  ...(thoughtSignature ? { thoughtSignature } : {}),
+                  ...(parseError ? { inputParseError: parseError } : {}),
+                },
+              } as const;
+            }
+
+            const finalUsage = usageEvent();
+            if (finalUsage) yield finalUsage;
+
+            // pi `openai-completions.ts:400-402`: throw on stream close without
+            // a finish_reason; proxies (Copilot in particular) drop connections
+            // mid-stream non-trivially; silently mapping to `end_turn` would
+            // treat a truncated response as a successful turn.
+            if (!finishReason) {
+              throw normalizeProviderAttemptFailure(new LlmStreamError("stream closed before finish_reason", "transient"));
+            }
+
+            let stopReason: CompletedStopReason;
+            try {
+              stopReason = mapChatCompletionsStopReason(finishReason);
+            } catch (error) {
+              throw normalizeProviderAttemptFailure(error);
+            }
+
+            const { api, provider, model } = chatCompletionsTarget(accessProvider, modelId);
+            yield { kind: "done", stopReason, metadata: { api, provider, model, timestamp: Date.now(), stopReason } } as const;
+          } catch (err) {
+            const finalUsage = usageEvent();
+            if (finalUsage) yield finalUsage;
+            throwIfLivenessFailure(err, attempt, options.signal);
+            log.warn("OpenAI chat-completions stream error", { err: String(err) });
+            throw err;
+          } }, options);
+      },
+
+    } satisfies LLMClient;
+
+    return adapter;
+  };
+
+  return Object.assign(withModelInfo(openingInfo, overrides?.providerOutputCap), { withModelInfo });
 }

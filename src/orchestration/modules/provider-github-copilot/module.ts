@@ -2,7 +2,7 @@ import { Redacted } from "effect";
 import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
 import type { ProviderAllowanceFactory } from "../../agent-runtime/llm/provider-availability-types.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
@@ -66,8 +66,7 @@ const createClient: AccessProviderFactory = async (build) => {
   const endpoint = capturedEndpoint;
   const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "openai-completions" ? "openai-completions" : "openai-responses";
   const info = requireModelMetadata(model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: info });
-  return stagedProviderClient(build, described, async () => {
+  return providerAdapter(build, (attribution) => describeProvider(model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: requireModelMetadata(model, attribution.resolvedModelMetadata) }), async () => {
     const cred = credentialForCandidate(connection, build.candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No GitHub Copilot tokens found. Run: flywheel auth login --copilot", recovery: { kind: "none" } });
     const [{ buildCopilotClients }, { createAnthropicAdapter, operationsFromAnthropicClient }, { createOpenAIAdapter }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([
@@ -96,7 +95,7 @@ const createClient: AccessProviderFactory = async (build) => {
       client: openai, accessProvider: definition.id, catalogId: definition.catalogId, extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
       resetIdleConnections, availability, candidate,
     });
-  });
+  }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(model, attribution.resolvedModelMetadata)));
 };
 const createAffordability: ProviderAffordabilityFactory = () => copilotAffordability;
 const allowance: ProviderAllowanceFactory = ({ candidates, usage, settings }) => captureCopilotAllowanceAdmission({ candidates, service: usage, monthlyCreditCap: definition.usage.allowanceCap(settings) });

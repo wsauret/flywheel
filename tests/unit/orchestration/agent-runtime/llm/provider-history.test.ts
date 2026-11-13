@@ -91,9 +91,9 @@ describe("Claude framing", () => {
       },
       classifySlot: () => "metered", availability: fakeAvailability({}).availability, projectRoot: "/scratch",
       attribution: { candidate, wireModelId: `openai/${metadata.id}`, dataUse: "standard", resolvedModelMetadata: metadata },
-      recordModelRefusal: () => {}, accountOfferings: () => [],
+      recordModelRefusal: () => {},
     };
-    const staged = await openrouterModule.contributions[0].value.createClient(build);
+    const staged = await (await openrouterModule.contributions[0].value.createClient(build)).stage({ attribution: build.attribution, accountOfferings: [] });
     const sol = await (await staged.connect()).historyTarget({ messages: [], tools: [], systemPrompt: { stable: "", session: "", conversation: "" } } satisfies StreamOptions);
     const gemini = { ...google, model: "gemini-3-pro" };
     const ownModel = (appended: readonly ConversationMessage[]) => text(appended.find((message) => reminderKind(message) === "model"));

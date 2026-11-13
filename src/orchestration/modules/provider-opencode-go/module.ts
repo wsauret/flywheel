@@ -4,7 +4,7 @@ import { canonicalizeProviderIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extra
 import { openCodeGoRequestHeaders, providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createOpenCodeGoUsageReader } from "./usage-reader.js";
@@ -52,8 +52,7 @@ const createClient: AccessProviderFactory = async (build) => {
   if (endpoint === undefined || endpoint === "google") throw new ApiError({ message: `OpenCode Go has no supported transport for "${build.model}".`, recovery: { kind: "none" } });
   const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "openai-responses" ? "openai-responses" : "openai-completions";
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: info });
-  return stagedProviderClient(build, described, async () => {
+  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const credential = credentialForCandidate(build.connection, build.candidate);
     if (credential?.type !== "api_key") throw new ApiError({ message: "No OpenCode Go API key in the active auth profile. Run: flywheel auth login --opencode-go", recovery: { kind: "none" } });
     const key = credential.key;
@@ -84,7 +83,7 @@ const createClient: AccessProviderFactory = async (build) => {
       candidate: build.candidate,
       extraHeaders: (options) => openCodeGoRequestHeaders(options.providerSessionKey),
     });
-  });
+  }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };
 
 export const opencodeGoModule = {

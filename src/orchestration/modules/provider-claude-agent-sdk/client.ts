@@ -1,12 +1,12 @@
 import { Effect, Exit, Redacted, Scope } from "effect";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { createAnthropicAdapter, prepareAnthropicRequest } from "../../agent-runtime/llm/anthropic.js";
+import { createAnthropicAdapter, prepareAnthropicRequest, type AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
 import { engineModelId, createClaudeReminders, environmentFacts } from "../../agent-runtime/llm/runtime-reminders.js";
-import { credentialForCandidate, stagedProviderClient, type AccessProviderBuild } from "../../agent-runtime/llm/client-factory.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderBuild } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
-import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type StagedProviderClient, type ToolPresentation } from "../../agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ProviderAdapter, type ToolPresentation } from "../../agent-runtime/llm/types.js";
 import { processUsageReadings } from "./account-usage.js";
 import { makeBridge } from "./bridge.js";
 import type { BridgeConfig } from "./bridge-state.js";
@@ -18,7 +18,7 @@ import { engineShell } from "./engine-environment.js";
 import { CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_PROVIDER_ID, TOOL_MCP_PREFIX } from "./names.js";
 import { silentVersions } from "./stderr-signals.js";
 import { createHostLauncher, createQueryLauncher } from "./query-launcher.js";
-import { createHostedAgent, type HostedAgent } from "./agent-host/agent-bridge.js";
+import { createHostedAgent, type HostedAgent, type HostedBinding } from "./agent-host/agent-bridge.js";
 import { createHostedAgentEntries } from "./agent-host/engine-text.js";
 import { cliView } from "./cli-view.js";
 import { processAgentHosts } from "./agent-host/host-registry.js";
@@ -67,39 +67,45 @@ function canonicalName(wireName: string): string {
  * conversation as an agent of the chat tree's shared agent host (agent-host/agent-bridge.ts), which also records the
  * engine's own text in canonical history.
  */
-export async function createClaudeAgentSdkClient(build: AccessProviderBuild, seams: ClaudeAgentSdkSeams = {}): Promise<StagedProviderClient> {
+export async function createClaudeAgentSdkClient(build: AccessProviderBuild, seams: ClaudeAgentSdkSeams = {}): Promise<ProviderAdapter> {
   const candidate = build.candidate;
   if (candidate.kind !== "subscription") throw new ApiError({ message: `The ${CLAUDE_AGENT_SDK_LABEL} provider requires a Claude login`, recovery: { kind: "none" } });
+  // Each request describes, lowers, and limits itself on its own metadata, and an engine or a dispatch that it starts
+  // runs on its window (`bind`). Only the in-place self-test, which runs once per CLI version on a fake host, names
+  // the window of the admission that built the adapter.
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(build.model, {
-    accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, protocol: "anthropic", providerHint: "anthropic", resolvedModelMetadata: info,
-  });
-  const contextLimit = described.totalContextLimit ?? described.contextLimit;
+  const contextLimit = info.totalContextLimit ?? info.contextLimit;
   const sharedHost = build.providerSessionLifetime.sharedHost;
   let hosted: HostedAgent | undefined;
-  return stagedProviderClient(build, {
-    ...described, toolPresentation: bridgePresentation,
-    // The bridge starts the engine of an anticipated request, and a hosted agent leases its host.
-    anticipatesRequests: true,
-    // The CLI joins every system block after its boundary into one cached
-    // block, so the conversations share only the tools and the stable tier
-    // (query-launcher.ts `cliSystemPrompt`). A hosted agent's definition holds
-    // the stable and session tiers, and its conversation tier is an entry of
-    // its first message, so hosted siblings share both tiers.
-    ...(sharedHost === undefined ? { sharedPromptPrefix: "stable" as const } : {}),
-    messagesToAppend: createClaudeReminders(build.wireModelId, contextLimit, info),
-    ...(sharedHost === undefined ? {} : {
-      // The request as the adapter prepares it for the bridge (`createAnthropicAdapter`). A request that no host
-      // serves is no dispatch. Before the client connected no agent runs, so a request that a host serves starts one.
-      requestEntries: createHostedAgentEntries((request) => {
-        const prepared = prepareAnthropicRequest({
-          accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, model: build.wireModelId, wireModel: build.wireModelId, info, contextLimit: info.contextLimit,
-          options: request, presentation: bridgePresentation, hosted: true,
-        });
-        if (!prepared.historyTarget.sharedHost) return false;
-        return hosted === undefined || hosted.dispatches(cliView(prepared.params, prepared.origins, build.projectRoot), { requestContext: request.requestContext, runtimeNotices: trailingRuntimeNotices(request.messages) });
+  return providerAdapter(build, async (attribution) => {
+    const requested = requireModelMetadata(build.model, attribution.resolvedModelMetadata);
+    const described = await describeProvider(build.model, {
+      accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, protocol: "anthropic", providerHint: "anthropic", resolvedModelMetadata: requested,
+    });
+    return {
+      ...described, toolPresentation: bridgePresentation,
+      // The bridge starts the engine of an anticipated request, and a hosted agent leases its host.
+      anticipatesRequests: true,
+      // The CLI joins every system block after its boundary into one cached
+      // block, so the conversations share only the tools and the stable tier
+      // (query-launcher.ts `cliSystemPrompt`). A hosted agent's definition holds
+      // the stable and session tiers, and its conversation tier is an entry of
+      // its first message, so hosted siblings share both tiers.
+      ...(sharedHost === undefined ? { sharedPromptPrefix: "stable" as const } : {}),
+      messagesToAppend: createClaudeReminders(build.wireModelId, described.totalContextLimit ?? described.contextLimit, requested),
+      ...(sharedHost === undefined ? {} : {
+        // The request as the adapter prepares it for the bridge (`createAnthropicAdapter`). A request that no host
+        // serves is no dispatch. Before the client connected no agent runs, so a request that a host serves starts one.
+        requestEntries: createHostedAgentEntries((request) => {
+          const prepared = prepareAnthropicRequest({
+            accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, model: build.wireModelId, wireModel: build.wireModelId, info: requested, contextLimit: requested.contextLimit,
+            options: request, presentation: bridgePresentation, hosted: true,
+          });
+          if (!prepared.historyTarget.sharedHost) return false;
+          return hosted === undefined || hosted.dispatches(cliView(prepared.params, prepared.origins, build.projectRoot), { requestContext: request.requestContext, runtimeNotices: trailingRuntimeNotices(request.messages) }, requested.totalContextLimit ?? requested.contextLimit);
+        }),
       }),
-    }),
+    };
   }, async () => {
     const lifetime = build.providerSessionLifetime;
     const launch = cliLaunch(credentialForCandidate(build.connection, candidate), build.launcher, seams);
@@ -117,7 +123,7 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
     const selfTest: SelfTestConfig = { launcher: launch.config, launchQuery: createLauncher, wireModelId: build.wireModelId, contextLimit };
     const config: BridgeConfig = {
       launchQuery, configDir: launch.config.configDir, inPlace: (seams.inPlaceGate ?? selfTestedGate)(selfTest),
-      openingEnvironment: environmentFacts, engineShell: () => engineShell(launch.config), silentVersions: processSilentVersions, projectRoot: build.projectRoot, wireModelId: build.wireModelId, contextLimit,
+      openingEnvironment: environmentFacts, engineShell: () => engineShell(launch.config), silentVersions: processSilentVersions, projectRoot: build.projectRoot, wireModelId: build.wireModelId,
       recordModelRefusal: (refusal) => { build.recordModelRefusal(build.wireModelId, refusal); },
       markQuotaExhausted: (resetsAtMs) => build.availability.markQuotaExhausted(candidate, resetsAtMs),
       extraUsage: extraUsageOf(candidate.spendMode),
@@ -135,27 +141,29 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
       ...(lifetime.demand === undefined ? {} : { demand: lifetime.demand }),
     };
     const ownEngine = () => Effect.runPromise(Scope.provide(lifetime.scope)(makeBridge(config)));
-    let operations;
-    if (sharedHost === undefined) operations = await ownEngine();
-    else {
-      const agent = createHostedAgent({
-        registry: seams.agentHosts ?? processAgentHosts, launchHost: (seams.createHostLauncher ?? createHostLauncher)(launch.config), configDir: launch.config.configDir,
-        tree: sharedHost, login: accessProviderAccountKey(candidate), projectRoot: build.projectRoot, wireModelId: build.wireModelId, contextLimit,
-        lineup: build.accountOfferings, recordModelRefusal: build.recordModelRefusal, silentVersions: processSilentVersions,
-        markQuotaExhausted: config.markQuotaExhausted, extraUsage: config.extraUsage, reportsExtraUsage: config.reportsExtraUsage, accountEmail: config.accountEmail, engineShell: config.engineShell,
-        onExtraUsageStop: config.onExtraUsageStop, recordUsage: config.recordUsage, recordOutcome: config.recordOutcome, ownEngine,
-        ...(lifetime.demand === undefined ? {} : { demand: lifetime.demand }),
-        ...(seams.dispatcherStepDeadlineMs === undefined ? {} : { dispatcherStepDeadlineMs: seams.dispatcherStepDeadlineMs }),
-      });
-      hosted = agent;
-      // The lifetime's close waits for the host that the agent's use kept open, so a session's disposal and a drain
-      // return only after its engine stopped.
-      Effect.runSync(Scope.addFinalizerExit(lifetime.scope, (exit) => Effect.promise(() => agent.close(Exit.hasInterrupts(exit) ? "abort" : "lifetime-end"))));
-      operations = agent.operations;
-    }
-    return createAnthropicAdapter(Redacted.make(""), build.wireModelId, info, {
+    if (sharedHost === undefined) return ownEngine();
+    const agent = createHostedAgent({
+      registry: seams.agentHosts ?? processAgentHosts, launchHost: (seams.createHostLauncher ?? createHostLauncher)(launch.config), configDir: launch.config.configDir,
+      tree: sharedHost, login: accessProviderAccountKey(candidate), projectRoot: build.projectRoot, wireModelId: build.wireModelId,
+      recordModelRefusal: build.recordModelRefusal, silentVersions: processSilentVersions,
+      markQuotaExhausted: config.markQuotaExhausted, extraUsage: config.extraUsage, reportsExtraUsage: config.reportsExtraUsage, accountEmail: config.accountEmail, engineShell: config.engineShell,
+      onExtraUsageStop: config.onExtraUsageStop, recordUsage: config.recordUsage, recordOutcome: config.recordOutcome, ownEngine,
+      ...(lifetime.demand === undefined ? {} : { demand: lifetime.demand }),
+      ...(seams.dispatcherStepDeadlineMs === undefined ? {} : { dispatcherStepDeadlineMs: seams.dispatcherStepDeadlineMs }),
+    });
+    hosted = agent;
+    // The lifetime's close waits for the host that the agent's use kept open, so a session's disposal and a drain
+    // return only after its engine stopped.
+    Effect.runSync(Scope.addFinalizerExit(lifetime.scope, (exit) => Effect.promise(() => agent.close(Exit.hasInterrupts(exit) ? "abort" : "lifetime-end"))));
+    return agent.operationsFor;
+  }, (operationsFor: (binding: HostedBinding) => AnthropicOperations, { attribution, accountOfferings }) => {
+    // The adapter holds no connection of its own: the engine is the transport, so each request lowers on its own
+    // metadata, and an engine, a host, or a dispatch that the request starts takes the window and the lineup of the
+    // request's admission.
+    const requested = requireModelMetadata(build.model, attribution.resolvedModelMetadata);
+    return createAnthropicAdapter(Redacted.make(""), build.wireModelId, requested, {
       accessProvider: CLAUDE_AGENT_SDK_PROVIDER_ID, catalogId: "anthropic", candidate,
-      operations, toolPresentation: bridgePresentation,
+      operations: operationsFor({ contextLimit: requested.totalContextLimit ?? requested.contextLimit, eligibilityRevision: attribution.eligibilityRevision, lineup: accountOfferings }), toolPresentation: bridgePresentation,
       ...(sharedHost === undefined ? {} : { hosted: true }),
     });
   });

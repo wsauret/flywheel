@@ -16,7 +16,7 @@ import { openProviderSession, type HeldProviderSession } from "../../../../src/o
 import { holdSharedTree, type SharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
 import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js"
 import { createAnthropicAdapter, type AnthropicOperations } from "../../../../src/orchestration/agent-runtime/llm/anthropic.js"
-import { createAdmittedClient, stagedProviderClient } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
+import { createAdmittedClient, providerAdapter } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import type { ProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js"
 import { testProviderEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../helpers/provider-authority.js"
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
@@ -102,7 +102,7 @@ describe("a pre-start's request preparation", () => {
         accessProvider: "anthropic_api", candidate: build.candidate, availability: build.availability,
         operations: { isBadRequestError: () => false, ...operations },
       })
-      return stagedProviderClient(build, { ...client, anticipatesRequests: true }, async () => client)
+      return providerAdapter(build, () => ({ ...client, anticipatesRequests: true }), async () => client, (connected) => connected)
     })
     const providers = { ...registry, factories }
     const eligibility = testProviderEligibility()

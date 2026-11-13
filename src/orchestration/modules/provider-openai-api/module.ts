@@ -7,7 +7,7 @@ import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { currentOpenAiStandardPricing, openAiPricingFromMetadata, openAiPricingMetadata, refreshOpenAiStandardPricing } from "../../../infra/llm/openai-pricing.js";
 import { isRecord } from "../../../infra/record.js";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
@@ -71,15 +71,14 @@ const definition = {
 
 const createClient: AccessProviderFactory = async (build) => {
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: info });
-  return stagedProviderClient(build, described, async () => {
+  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenAI API key in the active auth profile. Run: flywheel auth login --openai", recovery: { kind: "none" } });
     const { createOpenAIAdapter } = await import("../../agent-runtime/llm/openai.js");
     return createOpenAIAdapter({ kind: "apiKey", apiKey: key }, build.wireModelId, info, {
       availability: build.availability, candidate: build.candidate,
     });
-  });
+  }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };
 
 export const openaiApiModule = {

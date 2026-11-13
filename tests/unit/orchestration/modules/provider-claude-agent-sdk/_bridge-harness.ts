@@ -18,6 +18,7 @@ import type { AnthropicOperations } from "../../../../../src/orchestration/agent
 import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
 import { QuotaCoordinationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { makeBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge.js";
+import type { AdmittedWindow } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge-requests.js";
 import type { BridgeConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/bridge-state.js";
 import type { ExtraUsage, ExtraUsageStop } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/extra-usage-guard.js";
 import type { UsageWindows } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
@@ -344,7 +345,10 @@ export function launchFakeQuery(launch: QueryLaunch, log: string[], reports: "au
 
 export interface Harness {
   readonly config: BridgeConfig;
+  /** The operations for a request admitted for the model's extended window at the eligibility revision `1`. */
   readonly ops: AnthropicOperations;
+  /** The operations for a request of another admitted window. */
+  readonly opsFor: (window: AdmittedWindow) => AnthropicOperations;
   readonly queries: FakeQuery[];
   readonly log: string[];
   readonly files: Map<string, string>;
@@ -410,7 +414,7 @@ export function withBridge(body: (harness: Harness) => Promise<void>, options: {
       inPlace: { status: () => Effect.succeed(options.inPlace ?? "unlisted") }, silentVersions: silentVersions(options.silentCliVersions),
       openingEnvironment: (cwd) => options.openingEnvironment === undefined ? { ...MACOS_ENVIRONMENT, workingDirectory: cwd } : options.openingEnvironment(cwd),
       engineShell: () => options.engineShell,
-      configDir, projectRoot: "/work", wireModelId: "claude-sonnet-5-5", contextLimit: 1_000_000, transcriptFiles,
+      configDir, projectRoot: "/work", wireModelId: "claude-sonnet-5-5", transcriptFiles,
       recordModelRefusal: (refusal) => { refusals.push(refusal); },
       markQuotaExhausted: (resetsAtMs) => {
         quotaMarks.push(resetsAtMs);
@@ -424,10 +428,11 @@ export function withBridge(body: (harness: Harness) => Promise<void>, options: {
       providerSessionKey: "conversation-1",
       ...(options.demand === undefined ? {} : { demand: options.demand }),
     };
-    const ops = yield* makeBridge(config);
+    const opsFor = yield* makeBridge(config);
+    const ops = opsFor({ contextLimit: 1_000_000, eligibilityRevision: 1 });
     const context = yield* Effect.context<never>();
     const advance = (ms: number) => Effect.runPromiseWith(context)(TestClock.adjust(ms));
-    yield* Effect.promise(() => body({ config, ops, queries, log, files, lock, refusals, quotaMarks, usageStops, usageWindows, outcomes, advance }));
+    yield* Effect.promise(() => body({ config, ops, opsFor, queries, log, files, lock, refusals, quotaMarks, usageStops, usageWindows, outcomes, advance }));
   })).pipe(Effect.provide(TestClock.layer())));
 }
 

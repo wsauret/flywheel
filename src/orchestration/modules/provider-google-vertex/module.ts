@@ -4,7 +4,7 @@ import type { AccessProviderDefinition } from "../../../infra/llm/access-provide
 import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
 import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/llm/model-id.js";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 
@@ -66,13 +66,12 @@ const definition = {
 
 const createClient: AccessProviderFactory = async (build) => {
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: info });
-  return stagedProviderClient(build, described, async () => {
+  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "google", providerHint: "google", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Google Vertex API key in the active auth profile. Run: flywheel auth login --google-vertex", recovery: { kind: "none" } });
     const { createGoogleAdapter } = await import("../../agent-runtime/llm/google.js");
     return createGoogleAdapter(key, build.wireModelId, info, { accessProvider: definition.id });
-  });
+  }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };
 
 export const googleVertexModule = {

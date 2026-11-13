@@ -503,6 +503,23 @@ describe("the bridge request machine", () => {
     expect(await second.read).toContain("message_stop");
   }));
 
+  test("a refused extended window narrows the queries of admissions from before its publication, and an admission after its clearing starts the extended window again", () => withBridge(async ({ ops, opsFor, queries }) => {
+    const met = await send(ops, request([U1]));
+    queries[0]?.emit(init, ...admittedStart(), ...extendedWindowRefused);
+    expect(await met.error).toBeInstanceOf(ModelAccessRefusedError);
+    // A request whose admission was read at the refused request's revision still states the extended window.
+    const stale = await send(ops, request([U1]));
+    await until(() => queries.length === 2);
+    queries[1]?.emit(init, ...admittedStart(), ...extendedWindowRefused);
+    expect(await stale.error).toBeInstanceOf(ModelAccessRefusedError);
+    // The refusal expired or an access check cleared it, and a later publication grants the extended window again.
+    const cleared = await send(opsFor({ contextLimit: 1_000_000, eligibilityRevision: 2 }), request([U1]));
+    await until(() => queries.length === 3);
+    queries[2]?.emit(init, ...answers("ok"));
+    expect(await cleared.read).toContain("message_stop");
+    expect(queries.map(({ launch }) => launch.contextLimit)).toEqual([1_000_000, 200_000, 1_000_000]);
+  }));
+
   test("a resend whose query cannot start fails the open request with the launch failure", () => withBridge(async ({ ops, queries, refusals }) => {
     const first = await send(ops, request([U1]));
     queries[0]?.emit(init, ...extendedWindowRefused);

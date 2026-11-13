@@ -4,7 +4,7 @@ import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-st
 import type { ProviderDemand } from "../../agent-runtime/llm/types.js";
 import type { UsageWindows } from "./account-usage.js";
 import type { AssistantAssembler, SettlementEvidence } from "./assistant-assembler.js";
-import type { AbortSource, BridgeRequestInput } from "./bridge-requests.js";
+import type { AbortSource, AdmittedWindow, BridgeRequestInput } from "./bridge-requests.js";
 import type { CliMessage, CliView, PlacedReminder, QueryIdentity } from "./cli-view.js";
 import type { ExtraUsage, ExtraUsageEvidence, ExtraUsageStop, UsageReports } from "./extra-usage-guard.js";
 import type { InPlaceGate } from "./in-place-check.js";
@@ -42,8 +42,6 @@ export interface BridgeConfig {
   /** The working directory when canonical history holds no environment reminder. */
   readonly projectRoot: string;
   readonly wireModelId: string;
-  /** The model's window from the account's listing. A refusal of an extended window narrows it for this bridge. */
-  readonly contextLimit: number;
   /** Records a refusal that the bridge answered itself, so the adapter never saw it (`AccessProviderBuild`). It
    *  returns at once and never fails. */
   readonly recordModelRefusal: (refusal: ModelRefusal) => void;
@@ -84,6 +82,8 @@ export interface OpenRequest {
   readonly signal: AbortSignal;
   /** What the request asked for, so that a recoverable refusal can send it again. */
   readonly view: CliView;
+  /** The window of the request's admission, which a query that the request starts asks for (`BridgeState.refusedWindow`). */
+  readonly window: AdmittedWindow;
   /** The request already went to a fresh engine once, after an engine-local fault (an unread login or an unreachable
    *  step gate). A second such fault is permanent for the request. */
   freshEngineRetried: boolean;
@@ -111,6 +111,9 @@ export interface LiveQuery {
   readonly acks: ReplayAcks;
   /** Holds the timers and the owned CLI process. */
   readonly scope: Scope.Closeable;
+  /** The window that the query's engine fixed at its start. A later request with another window continues the query
+   *  as it is; only a query that a request starts takes that request's window. */
+  readonly contextLimit: number;
   identity: QueryIdentity;
   /** The next admitted request follows a rotation, so its cache read is recorded (bridge rule 7). */
   rotated: boolean;
@@ -172,6 +175,8 @@ export interface StopOptions {
 export interface StartedEngine {
   readonly id: number;
   readonly sessionId: string;
+  /** The window that the engine fixed at its start. */
+  readonly contextLimit: number;
   /** Holds the engine's close, and once a query takes the engine, its timers. */
   readonly scope: Scope.Closeable;
   readonly stepGate: StepGate;
@@ -190,8 +195,6 @@ export interface StartedEngine {
  *  from its transcript. */
 export interface Reservation extends StartedEngine {
   readonly identity: QueryIdentity;
-  /** The window that the engine fixed at its start. */
-  readonly contextLimit: number;
   readonly history: StartPlan["history"];
   readonly reminders: readonly PlacedReminder[];
   readonly delivery: StartPlan["delivery"];
@@ -213,8 +216,12 @@ export interface BridgeState {
   stopped: StoppedQuery | undefined;
   queries: number;
   lastPromptTokens: number;
-  /** The window that the next query asks for. */
-  contextLimit: number;
+  /** The last refusal of the extended window that a query of the bridge met: the window that it left open, and the
+   *  eligibility revision of the request that met it. A query that a request admitted at that revision or earlier
+   *  starts asks for at most that window, because its admission was read before the refusal was published. A later
+   *  admission already states what the published evidence grants: the standard window while the refusal applies, and
+   *  the extended window again once it expired or an access check cleared it. */
+  refusedWindow: AdmittedWindow | undefined;
 }
 
 /**

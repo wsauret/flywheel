@@ -43,7 +43,7 @@ import { buildSystemPrompt } from "./system-prompt.js";
 import { readModuleMemory, requestSystemPromptOptions } from "./request-system-prompt.js";
 import { turnReminders, type TurnReminderState } from "./turn-reminders.js";
 import { budgetStreamIdOf, prepareRuntimeUsage } from "./runtime-usage.js";
-import { ProviderRuntimeCache, providerRuntimeRoutingKey } from "./provider-runtime-cache.js";
+import { ProviderRuntimeCache, providerRuntimeRoutingKey, providerRuntimeServingKey } from "./provider-runtime-cache.js";
 import { createRuntimeRequestAudit, type RuntimeConversation } from "./runtime-conversation.js";
 import { withTurnRequestScope } from "./turn-request-model-client.js";
 import { modelRequestRoute } from "./active-request-context.js";
@@ -447,14 +447,18 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       ? capture.admit(new Map([[model, resolved.plan]])).createLLMClient
       : modelRuntime.createLLMClient;
     const routingKey = providerRuntimeRoutingKey(model, providerOptions, runtimeConfig.providerSettings);
+    const servingPlan = resolved?.kind === "selected" ? resolved.plan : capture?.providers.selection.plan(model, capture.connection, capture.eligibility, runtimeConfig.allowTrainingRoutes);
+    const servingKey = capture && servingPlan?.kind === "admitted" ? providerRuntimeServingKey(servingPlan, capture.connection) : modelRuntime.generation;
     const providerModules = liveModules(requestModuleSnapshot);
     // A pre-start that its owner stopped, as when the chat's turn started, never replaces the client that a send uses.
     if (use.kind === "prestart") use.signal.throwIfAborted();
-    const cachedClient = await providerRuntimeCache.resolve(providerModules, modelRuntime.generation, routingKey, (lifetime) => capturedCreateLLMClient(model, providerModules, runtimeConfig, lifetime),
-      { lifetime: providerSessionLifetime, eligibilityGeneration: capture?.eligibility });
+    const cachedClient = await providerRuntimeCache.resolve(providerModules, servingKey, routingKey, (lifetime) => capturedCreateLLMClient(model, providerModules, runtimeConfig, lifetime),
+      { lifetime: providerSessionLifetime });
     const client = turn ? withTurnRequestScope(cachedClient, turn.usage.usageTracker) : cachedClient;
     const interactionProfile = resolveModelInteractionProfile(cachedClient.model, cachedClient.modelFamily);
-    const admittedRequest = await client.admitRequest();
+    // The cached client can outlive the eligibility and the training-route permission that it was built on, so this
+    // request admits on its own capture of both.
+    const admittedRequest = await client.admitRequest(capture === undefined ? undefined : { eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes });
     const plannedAttempt = await admittedRequest.plannedAttempt(providerOptions);
     const mainRoute = modelRequestRoute(client, providerOptions);
     return {

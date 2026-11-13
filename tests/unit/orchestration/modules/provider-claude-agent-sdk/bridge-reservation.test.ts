@@ -140,6 +140,22 @@ describe("the bridge's anticipated engines", () => {
     expect(ended()).toEqual([expect.objectContaining({ rule: "bridge-closed" })]);
   });
 
+  test.each([
+    ["a narrower window than the reserved engine's", 1_000_000, 200_000],
+    ["a wider window than the reserved engine's", 200_000, 1_000_000],
+  ] as const)("a request admitted for %s stops the reserved engine and starts its own at the request's window", (_name, reservedWindow, requestWindow) => withBridge(async (harness) => {
+    harness.opsFor({ contextLimit: reservedWindow, eligibilityRevision: 1 }).anticipate?.(request([U1]), { origins: originsOf(request([U1])), sharedHost: false });
+    await until(() => reserved().length === 1);
+
+    const first = await send(harness.opsFor({ contextLimit: requestWindow, eligibilityRevision: 2 }), request([U1]));
+    await until(() => harness.queries[1]?.pushed.length === 1);
+    harness.queries[1]?.emit(init, ...answers("Done."));
+    expect(await first.error).toBeUndefined();
+    await until(() => harness.queries[0]?.exited === true);
+    expect(harness.queries.map(({ launch }) => launch.contextLimit)).toEqual([reservedWindow, requestWindow]);
+    expect(ended()).toEqual([expect.objectContaining({ rule: "unmatched", field: "context-limit" })]);
+  }));
+
   test("a request whose launch values differ from the anticipated ones stops the reserved engine and starts its own", () => withBridge(async (harness) => {
     harness.ops.anticipate?.(request([U1]), { origins: originsOf(request([U1])), sharedHost: false });
     await until(() => reserved().length === 1);

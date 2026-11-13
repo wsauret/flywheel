@@ -24,6 +24,12 @@ import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/l
 
 interface UnknownRecord { [key: string]: unknown }
 import { wireClient } from "./_wire-fixtures.js";
+import { Redacted } from "effect";
+import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
+import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+import { openrouterModule } from "../../../../../src/orchestration/modules/provider-openrouter/module.js";
+import { fakeAvailability } from "./_provider-chain-harness.js";
+import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 
 const REASONING_INFO: ModelInfo = {
   provider: "openrouter",
@@ -527,3 +533,44 @@ describe("chat-completions tool-call delta assembly", () => {
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+
+test("the OpenRouter module sends each request with the output cap of that request's own live listing over one connection", async () => {
+  const metadata = providerModelInfo({ provider: "openai", id: "gpt-6.1-sol", contextLimit: 400_000, outputLimit: 64_000 });
+  const candidate = { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" } as const;
+  const listed = (cap: number) => ({ candidate, wireModelId: `openai/${metadata.id}`, dataUse: "standard", resolvedModelMetadata: metadata, catalogProvenance: "live", catalogMetadata: { top_provider: { max_completion_tokens: cap } } } as const);
+  const build: AccessProviderBuild = {
+    notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
+    candidate, providerIdentity: { name: "OpenRouter API Key", credential: "api_key" },
+    model: metadata.id, wireModelId: `openai/${metadata.id}`, family: "openai",
+    modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
+    connection: {
+      id: "connection", authDir: "/scratch/auth", oauthPersistence: "memory-only",
+      auth: { providers: new Map([["openrouter", { kind: "api_key", key: Redacted.make("sk-or-test") }]]), credentialLineages: {}, droppedCredentials: [] },
+      subscriptionCredentials: new Map(),
+    },
+    classifySlot: () => "metered", availability: fakeAvailability({}).availability, projectRoot: "/scratch",
+    attribution: listed(64_000),
+    recordModelRefusal: () => {},
+  };
+  const sent: unknown[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
+    const body: { max_completion_tokens?: unknown } = JSON.parse(String(init?.body));
+    sent.push(body.max_completion_tokens);
+    return new Response(JSON.stringify({ error: { message: "recorded", code: 400 } }), { status: 400, headers: { "content-type": "application/json" } });
+  }, { preconnect: originalFetch.preconnect });
+  const options = { messages: [{ kind: "user", origin: "human", content: "Hi." }], tools: [], systemPrompt: { stable: "", session: "", conversation: "" } } satisfies StreamOptions;
+  try {
+    // The listing that opened the connection allows 64,000 output tokens; a later listing of the same route allows 8,000.
+    const adapter = await openrouterModule.contributions[0].value.createClient(build);
+    for (const attribution of [listed(64_000), listed(8_000)]) {
+      const client = await (await adapter.stage({ attribution, accountOfferings: [] })).connect();
+      try {
+        for await (const _event of client.streamWithTools(options)) { /* The recorded refusal ends the stream. */ }
+      } catch { /* The recorded refusal fails the request after its body was sent. */ }
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  expect(sent).toEqual([64_000, 8_000]);
+});

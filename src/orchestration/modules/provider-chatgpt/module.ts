@@ -9,7 +9,7 @@ import { ApiError } from "../../agent-runtime/errors.js";
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../agent-runtime/llm/provider-failure.js";
 import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/openai-chatgpt.js";
 import { startBrowserFlow } from "../../auth/openai-oauth.js";
-import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { credentialForCandidate, providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import { retainWebSocketSession } from "../../agent-runtime/llm/chatgpt-adapter/websocket-session.js";
 import type { FirstPartyModule } from "../../modules.js";
@@ -87,13 +87,12 @@ const createClient: AccessProviderFactory = async (build) => {
   if (build.candidate.kind !== "subscription") throw new ApiError({ message: "ChatGPT requires a subscription candidate", recovery: { kind: "none" } });
   const candidate = build.candidate;
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: info });
   const { providerSessionKey, scope } = build.providerSessionLifetime;
   await Effect.runPromise(Scope.provide(scope)(Effect.acquireRelease(
     Effect.sync(() => retainWebSocketSession(providerSessionKey)),
     (release) => Effect.sync(release),
   )));
-  return stagedProviderClient(build, described, async () => {
+  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-responses", providerHint: "openai", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const cred = credentialForCandidate(build.connection, candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No ChatGPT tokens found. Run: flywheel auth login", recovery: { kind: "none" } });
     const { createOpenAIAdapter } = await import("../../agent-runtime/llm/openai.js");
@@ -116,7 +115,7 @@ const createClient: AccessProviderFactory = async (build) => {
       candidate,
       projectRoot: build.projectRoot,
     });
-  });
+  }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };
 
 export const chatgptModule = {

@@ -231,7 +231,7 @@ A failed provider attempt settles before any retry or replacement: emitted assis
 
 ## ARCH-PROVIDERS-036: Provider clients are lazy and cache only transport
 
-Only a candidate selected after every admission gate and probe claim is constructed. The model client caches successful adapters by canonical account identity, shares concurrent construction per key, and evicts a rejected construction. An adapter holds transport state only; admission, candidate order, quota standing, spend authorization, and failover state are request-local and never cached.
+Only a candidate selected after every admission gate and probe claim is constructed. The model client caches successful adapters by canonical account identity, shares concurrent construction per key, and evicts a rejected construction. An adapter holds transport state only; admission, candidate order, quota standing, spend authorization, and failover state are request-local and never cached. Each request binds the shared transport to its own captured eligibility, model metadata, limits, coordinator lineup, and training permission. A runner keeps its client and adapters while its credentials and selected model are unchanged, so an eligibility publication alone replaces neither.
 
 Because: Configuration and chain creation must not authenticate, poll quota, or construct providers that selection never reaches.
 Not: Eager client construction.

@@ -39,7 +39,7 @@ import { sanitizeSurrogates } from "./sanitize-unicode.js";
 import { renderSystemPrompt } from "./system-prompt-tiers.js";
 import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
-import { FUNCTION_TOOL_PRESENTATION, type CompletedStopReason, type LLMClient, type ProviderStreamEvent, type StreamOptions, type ToolPresentation } from "./types.js";
+import { FUNCTION_TOOL_PRESENTATION, type CompletedStopReason, type ConnectedClient, type LLMClient, type ProviderStreamEvent, type StreamOptions, type ToolPresentation } from "./types.js";
 
 interface UnknownFields { [key: string]: unknown }
 function isUnknownFields<T>(value: T): value is T & UnknownFields {
@@ -74,9 +74,9 @@ export type GoogleAccessProvider = "google_api" | "google_vertex";
 export async function createGoogleAdapter(
   apiKey: Redacted.Redacted<string>,
   defaultModel: string,
-  info: ModelInfo,
+  openingInfo: ModelInfo,
   overrides?: { client?: GoogleClientOverrides; accessProvider?: GoogleAccessProvider },
-): Promise<LLMClient> {
+): Promise<ConnectedClient> {
   const accessProvider = overrides?.accessProvider ?? "google_api";
   const client = overrides?.client ?? await createGoogleClientOverrides(apiKey, accessProvider === "google_vertex");
   // Counter for synthesizing tool_call IDs when Gemini doesn't supply one.
@@ -84,286 +84,291 @@ export async function createGoogleAdapter(
   // and no module-level singleton exists.
   let toolCallCounter = 0;
 
-  const adapter = {
-    accessProvider,
-    modelFamily: "google",
-    model: defaultModel,
-    toolPresentation: FUNCTION_TOOL_PRESENTATION,
-    contextLimit: info.contextLimit,
-    outputLimit: info.outputLimit,
-    supportsReasoning: info.reasoning,
+  /** The client that lowers each request on `info` over this adapter's connection (`ConnectedClient`). */
+  const withModelInfo = (info: ModelInfo): LLMClient => {
+    const adapter = {
+      accessProvider,
+      modelFamily: "google",
+      model: defaultModel,
+      toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      contextLimit: info.contextLimit,
+      outputLimit: info.outputLimit,
+      supportsReasoning: info.reasoning,
 
-    priceFor(tokens) {
-      return computeUsagePrice(tokens, info.pricing, GOOGLE_CACHE_RATES);
-    },
+      priceFor(tokens) {
+        return computeUsagePrice(tokens, info.pricing, GOOGLE_CACHE_RATES);
+      },
 
-    historyTarget: (options: StreamOptions) => googleHistoryTarget({ accessProvider, model: options.model ?? defaultModel }),
+      historyTarget: (options: StreamOptions) => googleHistoryTarget({ accessProvider, model: options.model ?? defaultModel }),
 
-    async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
-      const modelId = options.model ?? defaultModel;
-      const requestedReasoning = options.reasoningEffort;
+      async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
+        const modelId = options.model ?? defaultModel;
+        const requestedReasoning = options.reasoningEffort;
 
-      const contents = toGoogleGenerativeAiRequest({
-        accessProvider,
-        provider: "google",
-        model: modelId,
-        supportsImages: supportsGoogleImages(info),
-      }, options.messages);
+        const contents = toGoogleGenerativeAiRequest({
+          accessProvider,
+          provider: "google",
+          model: modelId,
+          supportsImages: supportsGoogleImages(info),
+        }, options.messages);
 
-      const googleOpts = options.providerOptions?.google;
-      const systemPrompt = renderSystemPrompt(options.systemPrompt);
-      // Tool choice is cross-provider via `options.toolChoice`; converted to
-      // Google's `toolConfig.functionCallingConfig` shape.
-      const toolChoice = buildGoogleToolConfig(options.toolChoice);
+        const googleOpts = options.providerOptions?.google;
+        const systemPrompt = renderSystemPrompt(options.systemPrompt);
+        // Tool choice is cross-provider via `options.toolChoice`; converted to
+        // Google's `toolConfig.functionCallingConfig` shape.
+        const toolChoice = buildGoogleToolConfig(options.toolChoice);
 
-      // `abortSignal` is added inside the attempt so its lifetime is explicit.
-      const baseConfig: GenerateContentConfig = {
-        maxOutputTokens: info.outputLimit,
-        ...(systemPrompt && { systemInstruction: sanitizeSurrogates(systemPrompt) }),
-        ...(options.tools.length > 0 && { tools: convertTools(options.tools, adapter.toolPresentation) }),
-        ...(typeof googleOpts?.temperature === "number" ? { temperature: googleOpts.temperature } : {}),
-        ...(toolChoice ? { toolConfig: toolChoice } : {}),
-      };
-      yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
-        const runId = crypto.randomUUID();
-        const effort = clampEffort(requestedReasoning);
-        const config: GenerateContentConfig = { ...baseConfig, abortSignal: attempt.signal };
-        if (info.reasoning) {
-          const thinkingConfig = getThinkingConfig(modelId, effort, googleOpts?.thinking_budgets);
-          if (thinkingConfig) config.thinkingConfig = thinkingConfig;
-        }
-        const request: GenerateContentParameters = { model: modelId, contents, config };
+        // `abortSignal` is added inside the attempt so its lifetime is explicit.
+        const baseConfig: GenerateContentConfig = {
+          maxOutputTokens: info.outputLimit,
+          ...(systemPrompt && { systemInstruction: sanitizeSurrogates(systemPrompt) }),
+          ...(options.tools.length > 0 && { tools: convertTools(options.tools, adapter.toolPresentation) }),
+          ...(typeof googleOpts?.temperature === "number" ? { temperature: googleOpts.temperature } : {}),
+          ...(toolChoice ? { toolConfig: toolChoice } : {}),
+        };
+        yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
+          const runId = crypto.randomUUID();
+          const effort = clampEffort(requestedReasoning);
+          const config: GenerateContentConfig = { ...baseConfig, abortSignal: attempt.signal };
+          if (info.reasoning) {
+            const thinkingConfig = getThinkingConfig(modelId, effort, googleOpts?.thinking_budgets);
+            if (thinkingConfig) config.thinkingConfig = thinkingConfig;
+          }
+          const request: GenerateContentParameters = { model: modelId, contents, config };
 
-        const streamLiveness = armStreamLiveness(attempt, { label: "llm-google", provider: "Google", telemetry: options.telemetry });
-        // `final` marks usage read from the chunk that ended the response; earlier usage is a lower bound.
-        let usage: { input: number; output: number; cacheRead: number; reasoning: number; final: boolean } | undefined;
-        const usageEvent = () => usage ? ({
-          kind: "usage",
-          final: usage.final,
-          inputTokens: usage.input,
-          outputTokens: usage.output,
-          cacheReadTokens: usage.cacheRead,
-          cacheCreateTokens: 0,
-          reasoningTokens: usage.reasoning,
-        } as const) : undefined;
+          const streamLiveness = armStreamLiveness(attempt, { label: "llm-google", provider: "Google", telemetry: options.telemetry });
+          // `final` marks usage read from the chunk that ended the response; earlier usage is a lower bound.
+          let usage: { input: number; output: number; cacheRead: number; reasoning: number; final: boolean } | undefined;
+          const usageEvent = () => usage ? ({
+            kind: "usage",
+            final: usage.final,
+            inputTokens: usage.input,
+            outputTokens: usage.output,
+            cacheReadTokens: usage.cacheRead,
+            cacheCreateTokens: 0,
+            reasoningTokens: usage.reasoning,
+          } as const) : undefined;
 
-        {
-          let rawFinishReason: FinishReason | undefined;
-          // A blocked prompt returns no candidate, so no finish reason; the
-          // block is the provider's statement about the request content.
-          let promptBlock: GoogleTerminalState["promptBlock"];
-          let sawToolCall = false;
-          // Gemini occasionally repeats a functionCall id across parallel calls
-          // in one turn; a duplicate would collide the tool results and one
-          // requested operation would silently never dispatch (the loop's
-          // submittedIds guard drops it). Regenerate on collision (pi
-          // `google-generative-ai.ts:185-191`).
-          const seenToolCallIds = new Set<string>();
-          let thinkingBuffer = "";
-          let thinkingActive = false;
-          let textRunOrdinal = 0;
-          let thinkingRunOrdinal = 0;
-          let responseId: string | undefined;
-          let contextUpdateEmitted = false;
-          let responseStarted = false;
-          // M1: per-block signature retention. Gemini emits `thoughtSignature` on
-          // the last chunk of a logical block (text or thinking), so we accumulate
-          // across chunks of the same block and only emit on block boundaries.
-          let currentTextSignature: string | undefined;
-          let currentThinkingSignature: string | undefined;
-          // Track whether we're currently in a text run, so we can yield
-          // text_complete at the block boundary (text → thinking, text → tool,
-          // or text → end-of-stream) symmetric with thinking_complete above.
-          let inTextRun = false;
-          const flushThinking = function* (): Generator<ProviderStreamEvent> {
-            if (!thinkingActive) return;
-            const blockKey = `${runId}:thinking:${thinkingRunOrdinal}`;
-            streamLiveness.complete(blockKey);
-            if (thinkingBuffer) {
-              yield {
-                kind: "thinking_complete",
-                thinking: thinkingBuffer,
-                blockKey,
-                ...(currentThinkingSignature ? { signature: currentThinkingSignature } : {}),
-              };
-            }
-            thinkingRunOrdinal += 1;
-            thinkingBuffer = "";
-            thinkingActive = false;
-            currentThinkingSignature = undefined;
-          };
-          const closeTextRun = function* (): Generator<ProviderStreamEvent> {
-            if (!inTextRun) return;
-            yield { kind: "text_complete", blockKey: `${runId}:text:${textRunOrdinal}` } as const;
-            textRunOrdinal += 1;
-            inTextRun = false;
-            currentTextSignature = undefined;
-          };
-
-          streamLiveness.preStream();
-          await options.onDispatch?.();
-          const stream = await invokeProviderAttempt(async () => {
-            try {
-              return await client.generateContentStream(request);
-            } catch (error) {
-              throw classifyGoogleError(error, client.apiErrorStatus);
-            }
-          });
-          const providerChunks = stream[Symbol.asyncIterator]();
-          let exhausted = false;
-          let failed = false;
-          try {
-          while (true) {
-            let result: Awaited<ReturnType<typeof providerChunks.next>>;
-            try {
-              result = await invokeProviderAttempt(async () => {
-                try {
-                  return await providerChunks.next();
-                } catch (error) {
-                  throw classifyGoogleError(error, client.apiErrorStatus);
-                }
-              });
-            } catch (error) {
-              const finalUsage = usageEvent();
-              if (finalUsage) yield finalUsage;
-              throwIfLivenessFailure(error, attempt, options.signal);
-              throw error;
-            }
-            if (result.done) {
-              exhausted = true;
-              break;
-            }
-            const chunk = result.value;
-            streamLiveness.frame();
-            if (!responseStarted) {
-              responseStarted = true;
-              yield { kind: "provider_response_started" } as const;
-            }
-            observeProviderTelemetry(options.telemetry, "chunk", {
-              candidateCount: chunk.candidates?.length ?? 0,
-              partCount: chunk.candidates?.[0]?.content?.parts?.length ?? 0,
-              hasUsage: chunk.usageMetadata !== undefined,
-            });
-            const candidate = chunk.candidates?.[0];
-            for (const part of candidate?.content?.parts ?? []) {
-              if (part.text !== undefined) {
-                if (isThinkingPart(part)) {
-                  yield* closeTextRun();
-                  if (!thinkingActive) {
-                    streamLiveness.begin(`${runId}:thinking:${thinkingRunOrdinal}`);
-                    thinkingActive = true;
-                  }
-                  thinkingBuffer += part.text;
-                  if (part.text) streamLiveness.append(part.text);
-                  currentThinkingSignature = retainThoughtSignature(currentThinkingSignature, part.thoughtSignature);
-                  yield { kind: "thinking_delta", text: part.text, blockKey: `${runId}:thinking:${thinkingRunOrdinal}` };
-                } else {
-                  yield* flushThinking();
-                  currentTextSignature = retainThoughtSignature(currentTextSignature, part.thoughtSignature);
-                  inTextRun = true;
-                  yield {
-                    kind: "text_delta",
-                    text: part.text,
-                    blockKey: `${runId}:text:${textRunOrdinal}`,
-                    ...(currentTextSignature ? { signature: currentTextSignature } : {}),
-                  };
-                }
-              }
-              if (part.functionCall) {
-                yield* flushThinking();
-                yield* closeTextRun();
-                sawToolCall = true;
-                const wireId = part.functionCall.id;
-                const id = !wireId || seenToolCallIds.has(wireId)
-                  ? `${part.functionCall.name}_${Date.now()}_${++toolCallCounter}`
-                  : wireId;
-                seenToolCallIds.add(id);
-                const input = part.functionCall.args ?? {};
-                yield { kind: "tool_input_start", toolUseId: id, name: part.functionCall.name || "" };
-                yield { kind: "tool_input_delta", toolUseId: id, partialJson: JSON.stringify(input) };
+          {
+            let rawFinishReason: FinishReason | undefined;
+            // A blocked prompt returns no candidate, so no finish reason; the
+            // block is the provider's statement about the request content.
+            let promptBlock: GoogleTerminalState["promptBlock"];
+            let sawToolCall = false;
+            // Gemini occasionally repeats a functionCall id across parallel calls
+            // in one turn; a duplicate would collide the tool results and one
+            // requested operation would silently never dispatch (the loop's
+            // submittedIds guard drops it). Regenerate on collision (pi
+            // `google-generative-ai.ts:185-191`).
+            const seenToolCallIds = new Set<string>();
+            let thinkingBuffer = "";
+            let thinkingActive = false;
+            let textRunOrdinal = 0;
+            let thinkingRunOrdinal = 0;
+            let responseId: string | undefined;
+            let contextUpdateEmitted = false;
+            let responseStarted = false;
+            // M1: per-block signature retention. Gemini emits `thoughtSignature` on
+            // the last chunk of a logical block (text or thinking), so we accumulate
+            // across chunks of the same block and only emit on block boundaries.
+            let currentTextSignature: string | undefined;
+            let currentThinkingSignature: string | undefined;
+            // Track whether we're currently in a text run, so we can yield
+            // text_complete at the block boundary (text → thinking, text → tool,
+            // or text → end-of-stream) symmetric with thinking_complete above.
+            let inTextRun = false;
+            const flushThinking = function* (): Generator<ProviderStreamEvent> {
+              if (!thinkingActive) return;
+              const blockKey = `${runId}:thinking:${thinkingRunOrdinal}`;
+              streamLiveness.complete(blockKey);
+              if (thinkingBuffer) {
                 yield {
-                  kind: "tool_use",
-                  toolCall: {
-                    id,
-                    name: part.functionCall.name || "",
-                    input,
-                    // Gemini 3 thinking-replay: preserve thoughtSignature on functionCall parts.
-                    ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
-                  },
+                  kind: "thinking_complete",
+                  thinking: thinkingBuffer,
+                  blockKey,
+                  ...(currentThinkingSignature ? { signature: currentThinkingSignature } : {}),
                 };
-                currentTextSignature = undefined;
               }
-            }
-            if (candidate?.finishReason) rawFinishReason = candidate.finishReason;
-            const blockReason = chunk.promptFeedback?.blockReason;
-            if (blockReason) promptBlock = { reason: blockReason, message: chunk.promptFeedback?.blockReasonMessage };
-            // pi `google.ts:91` uses `output.responseId ||= chunk.responseId`;
-            // first non-empty wins. Gemini emits the response id on the first
-            // chunk; later chunks shouldn't overwrite it.
-            if (!responseId && chunk.responseId) {
-              responseId = chunk.responseId;
-            }
-            if (chunk.usageMetadata) {
-              const promptTotal = chunk.usageMetadata.promptTokenCount ?? 0;
-              const cached = chunk.usageMetadata.cachedContentTokenCount ?? 0;
-              const candidates = chunk.usageMetadata.candidatesTokenCount ?? 0;
-              const thoughts = chunk.usageMetadata.thoughtsTokenCount ?? 0;
-              // Emitting context_update on the first chunk with a non-zero
-              // promptTokenCount gives the agent loop the server-counted prompt
-              // size mid-stream, matching Anthropic's `message_start` signal.
-              if (!contextUpdateEmitted && promptTotal > 0) {
-                contextUpdateEmitted = true;
-                yield { kind: "context_update", promptTokens: promptTotal, contextWindow: info.contextLimit } as const;
-              }
-              usage = {
-                input: promptTotal - cached,
-                // Google bills thoughts at the output rate, so fold them into
-                // `output` for accurate cost accounting (pi full-fat's choice).
-                // `reasoning` is reported separately for observability.
-                output: candidates + thoughts,
-                cacheRead: cached,
-                reasoning: thoughts,
-                final: rawFinishReason !== undefined || promptBlock !== undefined,
-              };
-            }
-          }
-          } catch (error) {
-            failed = true;
-            throw error;
-          } finally {
-            if (!exhausted) {
+              thinkingRunOrdinal += 1;
+              thinkingBuffer = "";
+              thinkingActive = false;
+              currentThinkingSignature = undefined;
+            };
+            const closeTextRun = function* (): Generator<ProviderStreamEvent> {
+              if (!inTextRun) return;
+              yield { kind: "text_complete", blockKey: `${runId}:text:${textRunOrdinal}` } as const;
+              textRunOrdinal += 1;
+              inTextRun = false;
+              currentTextSignature = undefined;
+            };
+
+            streamLiveness.preStream();
+            await options.onDispatch?.();
+            const stream = await invokeProviderAttempt(async () => {
               try {
-                await providerChunks.return?.(undefined);
+                return await client.generateContentStream(request);
               } catch (error) {
-                // oxlint-disable-next-line no-unsafe-finally -- boundary: cleanup failure escapes only when no stream or consumer failure exists.
-                if (!failed) throw error;
+                throw classifyGoogleError(error, client.apiErrorStatus);
+              }
+            });
+            const providerChunks = stream[Symbol.asyncIterator]();
+            let exhausted = false;
+            let failed = false;
+            try {
+            while (true) {
+              let result: Awaited<ReturnType<typeof providerChunks.next>>;
+              try {
+                result = await invokeProviderAttempt(async () => {
+                  try {
+                    return await providerChunks.next();
+                  } catch (error) {
+                    throw classifyGoogleError(error, client.apiErrorStatus);
+                  }
+                });
+              } catch (error) {
+                const finalUsage = usageEvent();
+                if (finalUsage) yield finalUsage;
+                throwIfLivenessFailure(error, attempt, options.signal);
+                throw error;
+              }
+              if (result.done) {
+                exhausted = true;
+                break;
+              }
+              const chunk = result.value;
+              streamLiveness.frame();
+              if (!responseStarted) {
+                responseStarted = true;
+                yield { kind: "provider_response_started" } as const;
+              }
+              observeProviderTelemetry(options.telemetry, "chunk", {
+                candidateCount: chunk.candidates?.length ?? 0,
+                partCount: chunk.candidates?.[0]?.content?.parts?.length ?? 0,
+                hasUsage: chunk.usageMetadata !== undefined,
+              });
+              const candidate = chunk.candidates?.[0];
+              for (const part of candidate?.content?.parts ?? []) {
+                if (part.text !== undefined) {
+                  if (isThinkingPart(part)) {
+                    yield* closeTextRun();
+                    if (!thinkingActive) {
+                      streamLiveness.begin(`${runId}:thinking:${thinkingRunOrdinal}`);
+                      thinkingActive = true;
+                    }
+                    thinkingBuffer += part.text;
+                    if (part.text) streamLiveness.append(part.text);
+                    currentThinkingSignature = retainThoughtSignature(currentThinkingSignature, part.thoughtSignature);
+                    yield { kind: "thinking_delta", text: part.text, blockKey: `${runId}:thinking:${thinkingRunOrdinal}` };
+                  } else {
+                    yield* flushThinking();
+                    currentTextSignature = retainThoughtSignature(currentTextSignature, part.thoughtSignature);
+                    inTextRun = true;
+                    yield {
+                      kind: "text_delta",
+                      text: part.text,
+                      blockKey: `${runId}:text:${textRunOrdinal}`,
+                      ...(currentTextSignature ? { signature: currentTextSignature } : {}),
+                    };
+                  }
+                }
+                if (part.functionCall) {
+                  yield* flushThinking();
+                  yield* closeTextRun();
+                  sawToolCall = true;
+                  const wireId = part.functionCall.id;
+                  const id = !wireId || seenToolCallIds.has(wireId)
+                    ? `${part.functionCall.name}_${Date.now()}_${++toolCallCounter}`
+                    : wireId;
+                  seenToolCallIds.add(id);
+                  const input = part.functionCall.args ?? {};
+                  yield { kind: "tool_input_start", toolUseId: id, name: part.functionCall.name || "" };
+                  yield { kind: "tool_input_delta", toolUseId: id, partialJson: JSON.stringify(input) };
+                  yield {
+                    kind: "tool_use",
+                    toolCall: {
+                      id,
+                      name: part.functionCall.name || "",
+                      input,
+                      // Gemini 3 thinking-replay: preserve thoughtSignature on functionCall parts.
+                      ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
+                    },
+                  };
+                  currentTextSignature = undefined;
+                }
+              }
+              if (candidate?.finishReason) rawFinishReason = candidate.finishReason;
+              const blockReason = chunk.promptFeedback?.blockReason;
+              if (blockReason) promptBlock = { reason: blockReason, message: chunk.promptFeedback?.blockReasonMessage };
+              // pi `google.ts:91` uses `output.responseId ||= chunk.responseId`;
+              // first non-empty wins. Gemini emits the response id on the first
+              // chunk; later chunks shouldn't overwrite it.
+              if (!responseId && chunk.responseId) {
+                responseId = chunk.responseId;
+              }
+              if (chunk.usageMetadata) {
+                const promptTotal = chunk.usageMetadata.promptTokenCount ?? 0;
+                const cached = chunk.usageMetadata.cachedContentTokenCount ?? 0;
+                const candidates = chunk.usageMetadata.candidatesTokenCount ?? 0;
+                const thoughts = chunk.usageMetadata.thoughtsTokenCount ?? 0;
+                // Emitting context_update on the first chunk with a non-zero
+                // promptTokenCount gives the agent loop the server-counted prompt
+                // size mid-stream, matching Anthropic's `message_start` signal.
+                if (!contextUpdateEmitted && promptTotal > 0) {
+                  contextUpdateEmitted = true;
+                  yield { kind: "context_update", promptTokens: promptTotal, contextWindow: info.contextLimit } as const;
+                }
+                usage = {
+                  input: promptTotal - cached,
+                  // Google bills thoughts at the output rate, so fold them into
+                  // `output` for accurate cost accounting (pi full-fat's choice).
+                  // `reasoning` is reported separately for observability.
+                  output: candidates + thoughts,
+                  cacheRead: cached,
+                  reasoning: thoughts,
+                  final: rawFinishReason !== undefined || promptBlock !== undefined,
+                };
               }
             }
-          }
-          yield* flushThinking();
-          yield* closeTextRun();
-          const finalUsage = usageEvent();
-          if (finalUsage) yield finalUsage;
-          const stopReason = resolveGoogleStopReason({ finishReason: rawFinishReason, promptBlock, sawToolCall });
-          yield {
-            kind: "done",
-            stopReason,
-            metadata: {
-              api: "google-generative-ai",
-              provider: "google",
-              model: modelId,
-              timestamp: Date.now(),
-              ...(responseId ? { responseId } : {}),
+            } catch (error) {
+              failed = true;
+              throw error;
+            } finally {
+              if (!exhausted) {
+                try {
+                  await providerChunks.return?.(undefined);
+                } catch (error) {
+                  // oxlint-disable-next-line no-unsafe-finally -- boundary: cleanup failure escapes only when no stream or consumer failure exists.
+                  if (!failed) throw error;
+                }
+              }
+            }
+            yield* flushThinking();
+            yield* closeTextRun();
+            const finalUsage = usageEvent();
+            if (finalUsage) yield finalUsage;
+            const stopReason = resolveGoogleStopReason({ finishReason: rawFinishReason, promptBlock, sawToolCall });
+            yield {
+              kind: "done",
               stopReason,
-            },
-          };
-        }
-        }, options);
-    },
+              metadata: {
+                api: "google-generative-ai",
+                provider: "google",
+                model: modelId,
+                timestamp: Date.now(),
+                ...(responseId ? { responseId } : {}),
+                stopReason,
+              },
+            };
+          }
+          }, options);
+      },
 
-  } satisfies LLMClient;
+    } satisfies LLMClient;
 
-  return adapter;
+    return adapter;
+  };
+
+  return Object.assign(withModelInfo(openingInfo), { withModelInfo });
 }
 
 // Provider-shape mapping (formerly google-helpers.ts; single consumer, merged

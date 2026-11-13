@@ -16,7 +16,7 @@ import { createLauncherScope, createProcessSupervisor } from "../../../../../src
 import { privateTemporaryRoot } from "../../../../../src/infra/private-temporary-root.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
-import type { Claim, ContentBlock, ConversationMessage, ProviderStreamEvent, StagedProviderClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { AdapterAdmission, Claim, ContentBlock, ConversationMessage, ProviderStreamEvent, StagedProviderClient, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { engineModelId } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
 import { holdSharedTree, type SharedTree } from "../../../../../src/orchestration/agent-runtime/shared-tree.js";
@@ -44,7 +44,7 @@ export interface SdkClientTarget {
 }
 
 /** The parts of a build that come from the login's account. */
-export type AccountBuild = Partial<Pick<AccessProviderBuild, "accountOfferings" | "availability" | "recordModelRefusal" | "notify">>;
+export type AccountBuild = Partial<Pick<AccessProviderBuild, "availability" | "recordModelRefusal" | "notify"> & Pick<AdapterAdmission, "accountOfferings">>;
 
 /** The models of a Claude login's lineup, each with the facts that models.dev states for it. */
 export const CLAUDE_LINEUP = [
@@ -114,7 +114,6 @@ function sdkBuild(target: SdkClientTarget, launcher: AccessProviderBuild["launch
     classifySlot: () => "subscription", availability: target.build?.availability ?? fakeAvailability({}).availability, projectRoot: target.projectRoot,
     attribution: { candidate, wireModelId: metadata.id, dataUse: "standard", resolvedModelMetadata: metadata },
     recordModelRefusal: target.build?.recordModelRefusal ?? (() => {}),
-    accountOfferings: target.build?.accountOfferings ?? (() => CLAUDE_LINEUP.map((offering) => ({ ...offering, candidate, dataUse: "standard" as const }))),
     launcher,
     providerSessionLifetime: {
       providerSessionKey: `qualification-${crypto.randomUUID()}`, scope: lifetime, ...(sharedHost === undefined ? {} : { sharedHost: heldTree(lifetime, sharedHost) }),
@@ -155,7 +154,11 @@ export async function withSdkClient<T>(
   const stage = async (options: ConversationOptions = {}): Promise<StagedSdkClient> => {
     const lifetime = Effect.runSync(Scope.make());
     lifetimes.push(lifetime);
-    const staged = await createClaudeAgentSdkClient(sdkBuild({ ...target, ...options.model }, launcher, lifetime, options.sharedHost), target.seams);
+    const build = sdkBuild({ ...target, ...options.model }, launcher, lifetime, options.sharedHost);
+    const staged = await (await createClaudeAgentSdkClient(build, target.seams)).stage({
+      attribution: build.attribution,
+      accountOfferings: target.build?.accountOfferings ?? CLAUDE_LINEUP.map((offering) => ({ ...offering, candidate: build.candidate, dataUse: "standard" as const })),
+    });
     return {
       staged,
       connect: async () => {

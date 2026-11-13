@@ -5,7 +5,7 @@ import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { apiKey } from "../../../infra/auth/auth-context.js";
 import { ApiError } from "../../agent-runtime/errors.js";
-import { stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
+import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createDeepSeekUsageReader } from "./usage-reader.js";
@@ -45,8 +45,7 @@ const definition = {
 
 const createClient: AccessProviderFactory = async (build) => {
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "deepseek", resolvedModelMetadata: info });
-  return stagedProviderClient(build, described, async () => {
+  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "deepseek", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No DeepSeek API key in the active auth profile. Run: flywheel auth login --deepseek", recovery: { kind: "none" } });
     const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/openai-completions.js")]);
@@ -54,7 +53,7 @@ const createClient: AccessProviderFactory = async (build) => {
     return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
       accessProvider: definition.id, providerHint: "deepseek", candidate: build.candidate,
     });
-  });
+  }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };
 
 export const deepseekModule = {

@@ -8,7 +8,7 @@ import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/
 import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
 import { createSubscriptionAccountIdentity } from "../../../../../src/infra/llm/subscription-account-identity.js";
 import { HandoffCorrectionExhausted, isAgentRuntimeError, toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
-import { captureAccountConnection, createAdmittedClient, createClient, stagedProviderClient, type AccessProviderBuild, type ModelRefusalRecord } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+import { captureAccountConnection, createAdmittedClient, createClient, providerAdapter, type AccessProviderBuild, type ModelRefusalRecord } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { ModelAccessRefusedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { isFailoverFailure, normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
@@ -16,7 +16,7 @@ import { composeFirstPartyModules } from "../../../../../src/orchestration/modul
 import { installedModules } from "../../../../../src/orchestration/module-catalog.js";
 import { anthropicApiModule } from "../../../../../src/orchestration/modules/provider-anthropic-api/module.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
 import { isWebSocketSseFallbackActive, recordWebSocketFailure, recordWebSocketSuccess } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.js";
 import { authDir } from "../../../../../src/infra/paths.js";
@@ -213,7 +213,8 @@ describe("subscription usage binding", () => {
     await ordinary.plannedAttempt();
     await expect(admitted.plannedAttempt()).rejects.toThrow("allowance cannot be verified");
 
-    expect(bound).toEqual(["default", "default", "default", "default"]);
+    // Each request's chain and each adapter that a request builds bind the profile's availability.
+    expect(bound).toEqual(["default", "default", "default"]);
   });
 
   test("awaits one secret-free pooled admission before constructing the request chain", async () => {
@@ -285,7 +286,7 @@ describe("subscription usage binding", () => {
           priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
           async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } as const; },
         };
-        return { attempt: client, connect: async () => client };
+        return { stage: async () => ({ attempt: client, connect: async () => client }) };
       }),
     };
     const connection = captureProviderConnection({
@@ -331,15 +332,17 @@ describe("subscription usage binding", () => {
     })).toBe("automatic");
   });
 
-  test("a client hands every refusal its requests proved to the owner with the exact connection, candidate, and wire model, and each build reads its account's offerings from the request's eligibility", async () => {
+  test("a client hands every refusal its requests proved to the owner with the exact connection, candidate, and wire model, and each request stages its account's offerings from its own eligibility", async () => {
     const base = testProviderRegistry();
     const builds: AccessProviderBuild[] = [];
+    const admissions: AdapterAdmission[] = [];
     const records: ModelRefusalRecord[] = [];
     const providers = {
       ...base,
       factories: new Map(base.factories).set("openai_api", async (build) => {
         builds.push(build);
-        return base.factories.get("openai_api")!(build);
+        const adapter = await base.factories.get("openai_api")!(build);
+        return { stage: (admission: AdapterAdmission) => { admissions.push(admission); return adapter.stage(admission); } };
       }),
     };
     const client = await createClient("gpt-5.5", testModelsClient(), {
@@ -360,7 +363,7 @@ describe("subscription usage binding", () => {
       { providerId: "openai_api", wireModelId: "gpt-5.5", refused: refusal },
       { providerId: "openai_api", wireModelId: "gpt-5.4", refused: { kind: "model" } },
     ]);
-    expect(builds[0]!.accountOfferings().map(({ candidate, wireModelId }) => ({ candidate, wireModelId }))).toEqual([
+    expect(admissions[0]!.accountOfferings.map(({ candidate, wireModelId }) => ({ candidate, wireModelId }))).toEqual([
       { candidate: builds[0]!.candidate, wireModelId: "gpt-5.5" },
       { candidate: builds[0]!.candidate, wireModelId: "gpt-5.4" },
     ]);
@@ -390,12 +393,12 @@ describe("subscription usage binding", () => {
     const providers = {
       ...base,
       factories: new Map(base.factories).set("openai_api", async (build) => {
-        const staged = await base.factories.get("openai_api")!(build);
-        return stagedProviderClient(build, staged.attempt, async () => {
+        const adapter = await base.factories.get("openai_api")!(build);
+        return providerAdapter(build, async (attribution) => (await adapter.stage({ attribution, accountOfferings: [] })).attempt, async () => {
           connections += 1;
           if (connections === 1) throw new Error("engine directory unsafe");
-          return await staged.connect();
-        });
+          return await (await adapter.stage({ attribution: build.attribution, accountOfferings: [] })).connect();
+        }, (client) => client);
       }),
     };
     const client = await createClient("gpt-5.5", testModelsClient(), { ...noKeysAuth, providers: authProviders({ base: noKeysAuth.providers, apiKeys: { openai_api: "key" } }) }, { ...CLIENT_DIRECTORIES, providers });

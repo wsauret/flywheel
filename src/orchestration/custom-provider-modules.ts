@@ -3,9 +3,9 @@ import { apiKey } from "../infra/auth/auth-context.js";
 import { providerRequestHeaders } from "../infra/llm/provider-request-identity.js";
 import { customProviderModelInfo } from "../infra/llm/models.js";
 import { customProviderModelUnavailableReason, customProviders, type CustomProviderDefinition } from "../infra/llm/custom-provider-registry.js";
-import type { AccessProviderDefinition } from "../infra/llm/access-provider.js";
+import type { AccessProviderCandidateAttribution, AccessProviderDefinition } from "../infra/llm/access-provider.js";
 import { ApiError } from "./agent-runtime/errors.js";
-import { stagedProviderClient, type AccessProviderFactory } from "./agent-runtime/llm/client-factory.js";
+import { providerAdapter, type AccessProviderFactory } from "./agent-runtime/llm/client-factory.js";
 import { describeProvider } from "./agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "./modules.js";
 
@@ -40,14 +40,14 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
   };
 
   const createClient: AccessProviderFactory = async (build) => {
-    const info = build.attribution.resolvedModelMetadata ?? customProviderModelInfo(entry, build.model);
-    const described = await describeProvider(build.model, {
+    const metadataOf = (attribution: AccessProviderCandidateAttribution) => attribution.resolvedModelMetadata ?? customProviderModelInfo(entry, build.model);
+    const info = metadataOf(build.attribution);
+    return providerAdapter(build, (attribution) => describeProvider(build.model, {
       accessProvider: entry.id,
       protocol: "openai-completions",
       providerHint: entry.catalogId ?? entry.id,
-      resolvedModelMetadata: info,
-    });
-    return stagedProviderClient(build, described, async () => {
+      resolvedModelMetadata: metadataOf(attribution),
+    }), async () => {
       const key = apiKey(build.connection.auth, entry.id);
       if (!key) throw new ApiError({ message: `No ${entry.displayName} API key in the active auth profile. Run: flywheel auth login --provider ${entry.id}`, recovery: { kind: "none" } });
       const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("./agent-runtime/llm/openai-completions.js")]);
@@ -57,7 +57,7 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
         candidate: build.candidate,
         providerHint: entry.catalogId ?? "openai",
       });
-    });
+    }, (client, { attribution }) => client.withModelInfo(metadataOf(attribution)));
   };
 
   return {

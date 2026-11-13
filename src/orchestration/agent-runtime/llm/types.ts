@@ -5,7 +5,7 @@ import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import type { CompletedStopReason, LlmApi, LlmStopReason, LlmToolOutputPart } from "./messages.js";
 import type { ToolOutcome } from "../../../infra/tool-outcome.js";
-import type { ReasoningEffort } from "../../../infra/llm/models.js";
+import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
 import type { ContentRepair } from "../../../infra/llm/content-repair.js";
 export type { CompletedStopReason, LlmStopReason } from "./messages.js";
@@ -703,10 +703,34 @@ export interface LLMClient extends ServingAttempt {
   anticipate?(options: StreamOptions): Promise<Claim | undefined>;
 }
 
-/** One candidate described without opening its provider transport. */
+/** One candidate described for one request without opening its provider transport. */
 export interface StagedProviderClient {
   readonly attempt: ServingAttempt;
   connect(): Promise<LLMClient>;
+}
+
+/** A protocol client on a connection that outlives one request's eligibility. It lowers requests on the metadata that
+ *  built it, and `withModelInfo` returns the client that lowers them on `info` over the same connection: the same SDK
+ *  client, sockets, and token state, with the limits, capabilities, and headers of `info` (ARCH-PROVIDERS-023). */
+export interface ConnectedClient extends LLMClient {
+  withModelInfo(info: ModelInfo): LLMClient;
+}
+
+/** The evidence of one request that its attempt on an adapter reads, all from the request's captured eligibility: the
+ *  candidate's attribution, the tokenizer that the request's admission resolved, and the offerings of every model that
+ *  the eligibility admits for the candidate's account, which is the lineup of a host that the request opens. */
+export interface AdapterAdmission {
+  readonly attribution: AccessProviderCandidateAttribution;
+  readonly tokenizerIdentity?: ClaudeTokenizerIdentity;
+  readonly accountOfferings: readonly AccessProviderCandidateAttribution[];
+}
+
+/** A provider's adapter for one candidate's wire model on one connection. Its transport opens once, at the first
+ *  connect, and serves every request of the client that holds the adapter, so a publication of eligibility never
+ *  ends it (ARCH-PROVIDERS-070). Each request stages its own attempt and binds its own wire requests from its own
+ *  admission (ARCH-PROVIDERS-023). */
+export interface ProviderAdapter {
+  stage(admission: AdapterAdmission): Promise<StagedProviderClient>;
 }
 
 /** How one candidate's attempt settled. `provider_failure` is the one signal
@@ -781,6 +805,14 @@ export interface AdmittedModelRequest {
 }
 
 
+/** What one request captured of its profile's routing policy (ARCH-PROVIDERS-023): its exact-account eligibility and
+ *  its training-route permission. The request's candidate plan and each candidate's account lineup read only these,
+ *  so a client that outlives a publication of either serves each later request on that request's own capture. */
+export interface ModelRequestCapture {
+  readonly eligibility?: AccessProviderModelEligibility;
+  readonly allowTrainingRoutes: boolean;
+}
+
 /** What the agent runtime holds instead of a provider: a model plus the
  *  access-provider chain that can serve it. Which provider serves a request
  *  is decided immediately before that request's I/O, so a ModelClient carries
@@ -792,19 +824,19 @@ export interface ModelClient {
 
   /** Captures one real request. The returned object is the sole serving path
    * for that capture and the sole path on which a real-client facade emits
-   * request-admission diagnostics. `eligibility` is the request's own captured
-   * eligibility, which plans its candidates; a client that outlives an
-   * eligibility publication serves each later request on that request's
-   * capture (ARCH-PROVIDERS-023). Without it the client reads the eligibility
-   * that its builder supplied. */
-  admitRequest(eligibility?: AccessProviderModelEligibility): Promise<AdmittedModelRequest>;
+   * request-admission diagnostics. `capture` is the request's own capture,
+   * which plans its candidates; a client that outlives a publication of
+   * eligibility or training-route permission serves each later request on
+   * that request's capture (ARCH-PROVIDERS-023). Without it, or without its
+   * eligibility, the client reads what its builder supplied. */
+  admitRequest(capture?: ModelRequestCapture): Promise<AdmittedModelRequest>;
 
   /** Provider facts for work that must be shaped before any request exists
    *  (context budgeting, compaction prompts, subagent model choice): the
    *  candidate the chain would serve a request carrying `providerOptions`
    *  with right now. A request never plans from this; it reads its own
-   *  ServingAttempt. `eligibility` is read as by `admitRequest`. */
-  plannedAttempt(providerOptions?: ProviderRequestOptions, eligibility?: AccessProviderModelEligibility): Promise<ServingAttempt>;
+   *  ServingAttempt. `capture` is read as by `admitRequest`. */
+  plannedAttempt(providerOptions?: ProviderRequestOptions, capture?: ModelRequestCapture): Promise<ServingAttempt>;
 
 }
 

@@ -57,7 +57,7 @@ import { parseAnthropicToolInput } from "./anthropic-tool-input.js";
 import { anthropicUsageEvent, emptyAnthropicUsage, foldAnthropicMessageDeltaUsage, foldAnthropicMessageStartUsage } from "./anthropic-usage.js";
 import { definitionText, definitionValue } from "./tool-definition-text.js";
 import type { ProviderHistoryTarget } from "./provider-history.js";
-import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, presentToolHistory, resolveCacheRetention, trailingRuntimeNotices, type Claim, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions, type ToolChoice, type ToolPresentation, type TransportContextFrame } from "./types.js";
+import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, presentToolHistory, resolveCacheRetention, trailingRuntimeNotices, type Claim, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions, type ToolChoice, type ToolPresentation, type TransportContextFrame } from "./types.js";
 const log = Log.create({ service: "llm-anthropic" });
 
 interface StringHeaders {
@@ -274,7 +274,7 @@ export function operationsFromAnthropicClient(client: Anthropic): AnthropicOpera
 export async function createAnthropicAdapter(
   apiKey: Redacted.Redacted<string>,
   defaultModel: string,
-  info: ModelInfo,
+  openingInfo: ModelInfo,
   overrides?: {
     /** Narrow provider operations for direct adapter dependency injection. */ operations?: AnthropicOperations;
     toolPresentation?: ToolPresentation;
@@ -291,7 +291,7 @@ export async function createAnthropicAdapter(
      *  built outside the composition root records none. */
     availability?: ProviderAvailability;
   },
-): Promise<LLMClient> {
+): Promise<ConnectedClient> {
   const transport = resolveAdapterTransport({ client: overrides?.operations, resetIdleConnections: overrides?.resetIdleConnections });
   // SDK 1.x sends `apiKey` as `Authorization: Bearer`; OpenCode Go rejects that with a 401, so the key keeps its
   // `x-api-key` header. Null credentials stop the SDK from reading ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN.
@@ -308,274 +308,279 @@ export async function createAnthropicAdapter(
   let requestCount = 0;
   ensureEventLoopLagSampler();
 
-  /** The request that `options` describe, as this adapter sends it. */
-  const describeRequest = async (options: StreamOptions) => {
-    const model = options.model ?? defaultModel;
-    // Anthropic counts `max_tokens` against the org's TPM bucket as if the request
-    // produced the full output. Halving the cap roughly doubles throughput under
-    // TPM pressure; the 32k floor preserves full output budget on smaller models.
-    const wireModel = accessProvider === "anthropic_api" ? dashedModelId(model) : model;
-    return { model, descriptor: prepareAnthropicRequest({ accessProvider, model, wireModel, info, contextLimit: info.contextLimit, options, presentation: overrides?.toolPresentation, hosted: overrides?.hosted }) };
-  };
+  /** The client that lowers each request on `info` over this adapter's connection (`ConnectedClient`). */
+  const withModelInfo = (info: ModelInfo): LLMClient => {
+    /** The request that `options` describe, as this adapter sends it. */
+    const describeRequest = async (options: StreamOptions) => {
+      const model = options.model ?? defaultModel;
+      // Anthropic counts `max_tokens` against the org's TPM bucket as if the request
+      // produced the full output. Halving the cap roughly doubles throughput under
+      // TPM pressure; the 32k floor preserves full output budget on smaller models.
+      const wireModel = accessProvider === "anthropic_api" ? dashedModelId(model) : model;
+      return { model, descriptor: prepareAnthropicRequest({ accessProvider, model, wireModel, info, contextLimit: info.contextLimit, options, presentation: overrides?.toolPresentation, hosted: overrides?.hosted }) };
+    };
 
-  const adapter = {
-    accessProvider,
-    modelFamily: "anthropic",
-    model: defaultModel,
-    toolPresentation: overrides?.toolPresentation ?? FUNCTION_TOOL_PRESENTATION,
-    // No availableModels constraint: any model the API key can call works.
-    contextLimit: info.contextLimit,
-    outputLimit: info.outputLimit,
-    supportsReasoning: info.reasoning,
+    const adapter = {
+      accessProvider,
+      modelFamily: "anthropic",
+      model: defaultModel,
+      toolPresentation: overrides?.toolPresentation ?? FUNCTION_TOOL_PRESENTATION,
+      // No availableModels constraint: any model the API key can call works.
+      contextLimit: info.contextLimit,
+      outputLimit: info.outputLimit,
+      supportsReasoning: info.reasoning,
 
-    priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number }) {
-      return computeUsagePrice(tokens, info.pricing, ANTHROPIC_CACHE_RATES);
-    },
+      priceFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; cacheWrite1h?: number; reasoning: number; promptTokens?: number }) {
+        return computeUsagePrice(tokens, info.pricing, ANTHROPIC_CACHE_RATES);
+      },
 
-    historyTarget(options: StreamOptions) {
-      return anthropicRequestThinking({ accessProvider, model: options.model ?? defaultModel, info, options, hosted: overrides?.hosted }).historyTarget;
-    },
+      historyTarget(options: StreamOptions) {
+        return anthropicRequestThinking({ accessProvider, model: options.model ?? defaultModel, info, options, hosted: overrides?.hosted }).historyTarget;
+      },
 
-    async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
-      const turnStart = performance.now();
-      const coldAdapter = requestCount === 0;
-      requestCount += 1;
-      const { model, descriptor } = await describeRequest(options);
-      if ((options.reasoningEffort ?? "medium") !== "off" && !info.reasoning) {
-        log.warn(`Model ${model} does not support reasoning - proceeding without extended thinking`);
-      }
+      async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
+        const turnStart = performance.now();
+        const coldAdapter = requestCount === 0;
+        requestCount += 1;
+        const { model, descriptor } = await describeRequest(options);
+        if ((options.reasoningEffort ?? "medium") !== "off" && !info.reasoning) {
+          log.warn(`Model ${model} does not support reasoning - proceeding without extended thinking`);
+        }
 
-      yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
-        const runId = crypto.randomUUID();
-        let releaseStream: (() => Promise<void>) | undefined;
-        const streamLiveness = armStreamLiveness(attempt, {
-          label: "llm-anthropic",
-          provider: "Anthropic",
-          telemetry: options.telemetry,
-          idleTimeoutMs: STREAM_IDLE_TIMEOUT_PATIENT_MS,
-          stallThresholds: ANTHROPIC_STALL_THRESHOLDS,
-          timeoutMessage: () => "Anthropic stream idle timeout",
-        });
-
-        // Usage state lives above the try so the catch can report what a failed
-        // attempt was billed before rethrowing.
-        let sawMessageStart = false;
-        let sawUsage = false;
-        const usage = emptyAnthropicUsage();
-        const usageEvent = () => anthropicUsageEvent(usage);
-        // The failure that `surfaced` (today's classification of the provider's error) becomes, typed as a content
-        // refusal when the provider refused the conversation's content.
-        const failure = (surfaced: Error, body: unknown) => normalizeProviderAttemptFailure(anthropicContentRefusal(surfaced, body, {
-          wireMessages: descriptor.params.messages, canonicalMessages: options.messages, wireIds: descriptor.wireIds, wireOrigins: descriptor.origins, supportsImages: supportsImageInput(info), preparedBlock: operations.preparedBlock,
-        }));
-        // The failure for an error that the SDK throws: a context overflow first, then the provider's classification.
-        const thrownFailure = (error: unknown) => {
-          if (error instanceof Error && operations.isBadRequestError(error) && /prompt is too long|context/i.test(error.message)) {
-            return normalizeProviderAttemptFailure(new ContextLengthExceededError(error.message, { cause: error }));
-          }
-          const surfaced = classifyAnthropicError(error);
-          if (surfaced instanceof LlmStreamError && surfaced.kind === "rate_limit" && error instanceof Anthropic.APIError && error.headers !== undefined) {
-            observeRateLimit?.(error.headers);
-          }
-          return failure(surfaced, error);
-        };
-        try {
-          const params = descriptor.params;
-          const requestHeaders = {
-            ...(accessProvider === "github_copilot" ? {} : await providerRequestHeaders()),
-            "anthropic-beta": descriptor.betaHeader,
-            ...(extraHeaders ? await extraHeaders(options) : {}),
-          };
-          // Resolved wire shape (betas + body params) for diffing against a real
-          // Anthropic request: `request`/`params` fact, query `--request`.
-          options.telemetry?.observe({
-            source: "request",
-            kind: "params",
-            metadata: { ...descriptor.telemetryMetadata, extraHeaderNames: Object.keys(requestHeaders).filter((header) => header !== "anthropic-beta") },
+        yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
+          const runId = crypto.randomUUID();
+          let releaseStream: (() => Promise<void>) | undefined;
+          const streamLiveness = armStreamLiveness(attempt, {
+            label: "llm-anthropic",
+            provider: "Anthropic",
+            telemetry: options.telemetry,
+            idleTimeoutMs: STREAM_IDLE_TIMEOUT_PATIENT_MS,
+            stallThresholds: ANTHROPIC_STALL_THRESHOLDS,
+            timeoutMessage: () => "Anthropic stream idle timeout",
           });
-          // Arm the pre-stream deadline before the request goes out (OpenAI
-          // adapter convention): the watchdog is inert until its first reset,
-          // which used to happen only after headers arrived.
-          streamLiveness.preStream();
-          // Instrumented send: in-flight, fetch connect/header timing, loop lag.
-          await options.onDispatch?.();
-          const runtimeNotices = trailingRuntimeNotices(options.messages);
-          const sent = await sendStreamingRequest(
-            async () => {
-              try {
-                return await operations.createStream(params, { signal: attempt.signal, headers: requestHeaders, origins: descriptor.origins, sharedHost: descriptor.historyTarget.sharedHost, onProgress: () => { streamLiveness.frame(); }, ...(options.requestContext === undefined ? {} : { requestContext: options.requestContext }), ...(runtimeNotices.length === 0 ? {} : { runtimeNotices }) });
-              } catch (error) {
-                throw thrownFailure(error);
-              }
-            },
-            { telemetry: options.telemetry, turnStart, coldAdapter },
-          );
-          const rawStream = sent.data;
-          const streamResponse: Response | undefined = sent.response;
-          releaseStream = async () => {
-            sent.endInFlight();
-            try { if (!rawStream.controller.signal.aborted) rawStream.controller.abort(); } catch (err) { log.warn("anthropic raw stream abort failed", { error: errorMessage(err), errorDetail: errorDetail(err) }); }
-            // The abort above already rejects the body with an AbortError; only another failure is news.
-            try { await streamResponse?.body?.cancel(); } catch (err) { if (!isAbortError(err)) log.warn("anthropic response body cancel failed", { error: errorMessage(err), errorDetail: errorDetail(err) }); }
+
+          // Usage state lives above the try so the catch can report what a failed
+          // attempt was billed before rethrowing.
+          let sawMessageStart = false;
+          let sawUsage = false;
+          const usage = emptyAnthropicUsage();
+          const usageEvent = () => anthropicUsageEvent(usage);
+          // The failure that `surfaced` (today's classification of the provider's error) becomes, typed as a content
+          // refusal when the provider refused the conversation's content.
+          const failure = (surfaced: Error, body: unknown) => normalizeProviderAttemptFailure(anthropicContentRefusal(surfaced, body, {
+            wireMessages: descriptor.params.messages, canonicalMessages: options.messages, wireIds: descriptor.wireIds, wireOrigins: descriptor.origins, supportsImages: supportsImageInput(info), preparedBlock: operations.preparedBlock,
+          }));
+          // The failure for an error that the SDK throws: a context overflow first, then the provider's classification.
+          const thrownFailure = (error: unknown) => {
+            if (error instanceof Error && operations.isBadRequestError(error) && /prompt is too long|context/i.test(error.message)) {
+              return normalizeProviderAttemptFailure(new ContextLengthExceededError(error.message, { cause: error }));
+            }
+            const surfaced = classifyAnthropicError(error);
+            if (surfaced instanceof LlmStreamError && surfaced.kind === "rate_limit" && error instanceof Anthropic.APIError && error.headers !== undefined) {
+              observeRateLimit?.(error.headers);
+            }
+            return failure(surfaced, error);
           };
-
-          const toolInputBuffers = new Map<number, ToolInputBuffer>();
-          // The prepared tools keep the order of `options.tools`, so each wire name maps to the tool at its index.
-          const canonicalNames = new Map(descriptor.params.tools?.map((tool, index) => [tool.name, options.tools[index]?.name ?? tool.name]));
-          // Keyed by the canonical name, so a call by the tool's own name, which the claude-agent-sdk engine takes as
-          // an alias of the presented name, is read against the same schema.
-          const inputSchemas = new Map(descriptor.params.tools?.map((tool) => [canonicalNames.get(tool.name) ?? tool.name, tool.input_schema]));
-          const thinkingBuffers = new Map<number, { thinking: string; signature: string; redacted?: boolean }>();
-          let receivedMessageStop = false;
-          let stopReason: CompletedStopReason = "unknown";
-          let responseId = "";
-
-
-          const providerEvents = rawStream[Symbol.asyncIterator]();
-          while (true) {
-            let result: IteratorResult<Anthropic.RawMessageStreamEvent | AnthropicErrorFrame | TransportContextFrame>;
-            try {
-              result = await invokeProviderAttempt(async () => {
+          try {
+            const params = descriptor.params;
+            const requestHeaders = {
+              ...(accessProvider === "github_copilot" ? {} : await providerRequestHeaders()),
+              "anthropic-beta": descriptor.betaHeader,
+              ...(extraHeaders ? await extraHeaders(options) : {}),
+            };
+            // Resolved wire shape (betas + body params) for diffing against a real
+            // Anthropic request: `request`/`params` fact, query `--request`.
+            options.telemetry?.observe({
+              source: "request",
+              kind: "params",
+              metadata: { ...descriptor.telemetryMetadata, extraHeaderNames: Object.keys(requestHeaders).filter((header) => header !== "anthropic-beta") },
+            });
+            // Arm the pre-stream deadline before the request goes out (OpenAI
+            // adapter convention): the watchdog is inert until its first reset,
+            // which used to happen only after headers arrived.
+            streamLiveness.preStream();
+            // Instrumented send: in-flight, fetch connect/header timing, loop lag.
+            await options.onDispatch?.();
+            const runtimeNotices = trailingRuntimeNotices(options.messages);
+            const sent = await sendStreamingRequest(
+              async () => {
                 try {
-                  return await providerEvents.next();
+                  return await operations.createStream(params, { signal: attempt.signal, headers: requestHeaders, origins: descriptor.origins, sharedHost: descriptor.historyTarget.sharedHost, onProgress: () => { streamLiveness.frame(); }, ...(options.requestContext === undefined ? {} : { requestContext: options.requestContext }), ...(runtimeNotices.length === 0 ? {} : { runtimeNotices }) });
                 } catch (error) {
                   throw thrownFailure(error);
                 }
-              });
-            } catch (error) {
-              if (sawUsage) yield usageEvent();
-              throwIfLivenessFailure(error, attempt, options.signal);
-              throw error;
-            }
-            if (result.done) break;
-            const event = result.value;
-            if (event.type === "transport_context") {
-              yield { kind: "transport_context", context: event.context } as const;
-              continue;
-            }
-            streamLiveness.frame();
-            if (event.type === "error") {
-              observeProviderTelemetry(options.telemetry, event.type, { errorType: event.error.type });
-              if (sawUsage) yield usageEvent();
-              const payload = JSON.stringify({ type: "error", error: event.error });
-              throw failure(classifyAnthropicError(new Error(payload)), event.error);
-            }
-            observeProviderTelemetry(options.telemetry, event.type, anthropicProviderMetadata(event));
+              },
+              { telemetry: options.telemetry, turnStart, coldAdapter },
+            );
+            const rawStream = sent.data;
+            const streamResponse: Response | undefined = sent.response;
+            releaseStream = async () => {
+              sent.endInFlight();
+              try { if (!rawStream.controller.signal.aborted) rawStream.controller.abort(); } catch (err) { log.warn("anthropic raw stream abort failed", { error: errorMessage(err), errorDetail: errorDetail(err) }); }
+              // The abort above already rejects the body with an AbortError; only another failure is news.
+              try { await streamResponse?.body?.cancel(); } catch (err) { if (!isAbortError(err)) log.warn("anthropic response body cancel failed", { error: errorMessage(err), errorDetail: errorDetail(err) }); }
+            };
 
-            if (event.type === "content_block_start") {
-              const block = event.content_block;
-              if (block.type === "tool_use") {
-                const name = canonicalNames.get(block.name) ?? overrides?.toolPresentation?.canonicalName?.(block.name) ?? block.name;
-                toolInputBuffers.set(event.index, { id: block.id, name, json: "", schema: inputSchemas.get(name) });
-                yield { kind: "tool_input_start", toolUseId: block.id, name } as const;
-              } else if (block.type === "thinking") {
-                streamLiveness.begin(`${runId}:${event.index}`);
-                thinkingBuffers.set(event.index, { thinking: "", signature: "" });
-                yield { kind: "thinking_delta", text: "", blockKey: `${runId}:${event.index}` } as const;
-              } else if (block.type === "redacted_thinking") {
-                streamLiveness.begin(`${runId}:${event.index}`);
-                // Encrypted reasoning blob from the safety classifier. Preserve the opaque
-                // `data` as the signature so replay can re-send it as `redacted_thinking`.
-                thinkingBuffers.set(event.index, { thinking: "[Reasoning redacted]", signature: block.data, redacted: true });
+            const toolInputBuffers = new Map<number, ToolInputBuffer>();
+            // The prepared tools keep the order of `options.tools`, so each wire name maps to the tool at its index.
+            const canonicalNames = new Map(descriptor.params.tools?.map((tool, index) => [tool.name, options.tools[index]?.name ?? tool.name]));
+            // Keyed by the canonical name, so a call by the tool's own name, which the claude-agent-sdk engine takes as
+            // an alias of the presented name, is read against the same schema.
+            const inputSchemas = new Map(descriptor.params.tools?.map((tool) => [canonicalNames.get(tool.name) ?? tool.name, tool.input_schema]));
+            const thinkingBuffers = new Map<number, { thinking: string; signature: string; redacted?: boolean }>();
+            let receivedMessageStop = false;
+            let stopReason: CompletedStopReason = "unknown";
+            let responseId = "";
+
+
+            const providerEvents = rawStream[Symbol.asyncIterator]();
+            while (true) {
+              let result: IteratorResult<Anthropic.RawMessageStreamEvent | AnthropicErrorFrame | TransportContextFrame>;
+              try {
+                result = await invokeProviderAttempt(async () => {
+                  try {
+                    return await providerEvents.next();
+                  } catch (error) {
+                    throw thrownFailure(error);
+                  }
+                });
+              } catch (error) {
+                if (sawUsage) yield usageEvent();
+                throwIfLivenessFailure(error, attempt, options.signal);
+                throw error;
               }
-            } else if (event.type === "message_start") {
-              sawMessageStart = true;
-              yield { kind: "provider_response_started" } as const;
-              if (event.message?.id) responseId = event.message.id;
-              if (event.message?.usage) {
-                sawUsage = true;
-                foldAnthropicMessageStartUsage(event.message.usage, usage);
-                const promptTokens = usage.input + usage.cacheRead + usage.cacheCreate;
-                if (promptTokens > 0) {
-                  yield { kind: "context_update", promptTokens, contextWindow: info.contextLimit } as const;
+              if (result.done) break;
+              const event = result.value;
+              if (event.type === "transport_context") {
+                yield { kind: "transport_context", context: event.context } as const;
+                continue;
+              }
+              streamLiveness.frame();
+              if (event.type === "error") {
+                observeProviderTelemetry(options.telemetry, event.type, { errorType: event.error.type });
+                if (sawUsage) yield usageEvent();
+                const payload = JSON.stringify({ type: "error", error: event.error });
+                throw failure(classifyAnthropicError(new Error(payload)), event.error);
+              }
+              observeProviderTelemetry(options.telemetry, event.type, anthropicProviderMetadata(event));
+
+              if (event.type === "content_block_start") {
+                const block = event.content_block;
+                if (block.type === "tool_use") {
+                  const name = canonicalNames.get(block.name) ?? overrides?.toolPresentation?.canonicalName?.(block.name) ?? block.name;
+                  toolInputBuffers.set(event.index, { id: block.id, name, json: "", schema: inputSchemas.get(name) });
+                  yield { kind: "tool_input_start", toolUseId: block.id, name } as const;
+                } else if (block.type === "thinking") {
+                  streamLiveness.begin(`${runId}:${event.index}`);
+                  thinkingBuffers.set(event.index, { thinking: "", signature: "" });
+                  yield { kind: "thinking_delta", text: "", blockKey: `${runId}:${event.index}` } as const;
+                } else if (block.type === "redacted_thinking") {
+                  streamLiveness.begin(`${runId}:${event.index}`);
+                  // Encrypted reasoning blob from the safety classifier. Preserve the opaque
+                  // `data` as the signature so replay can re-send it as `redacted_thinking`.
+                  thinkingBuffers.set(event.index, { thinking: "[Reasoning redacted]", signature: block.data, redacted: true });
                 }
-              }
-            } else if (event.type === "content_block_delta") {
-              if (event.delta.type === "thinking_delta" && typeof event.delta.thinking === "string") streamLiveness.append(event.delta.thinking);
-              yield* handleAnthropicDelta(event, toolInputBuffers, thinkingBuffers, runId, params.thinking?.type !== "disabled" && params.thinking?.display === "updates");
-            } else if (event.type === "content_block_stop") {
-              if (thinkingBuffers.has(event.index)) streamLiveness.complete(`${runId}:${event.index}`);
-              yield* handleAnthropicBlockStop(event, toolInputBuffers, thinkingBuffers, runId, params.thinking?.type !== "disabled" && params.thinking?.display === "updates");
-            } else if (event.type === "message_delta") {
-              // Anthropic emits cumulative deltas of all usage counters here; keep
-              // the latest for accurate cost accounting (pi captures all fields).
-              if (event.usage) {
-                sawUsage = true;
-                foldAnthropicMessageDeltaUsage(event.usage, usage);
-              }
-              if (event.delta?.stop_reason) {
-                // Widen via String() rather than a cast: proxies emit `sensitive`, a wire value
-                // outside the SDK's StopReason union, so equality checks need a plain string.
-                const resolved = resolveAnthropicStopReason(String(event.delta.stop_reason));
-                if (resolved.truncated) {
-                  if (sawUsage) yield usageEvent();
-                  throw normalizeProviderAttemptFailure(new OutputLengthExceededError("Response truncated"));
-                }
-                stopReason = resolved.stopReason;
-                if (resolved.refusal) {
-                  // The refusal's stop_details.explanation names what was refused
-                  // (pi `anthropic-messages.ts:1336-1340`); surface it
-                  // as a transcript notice, never as model-visible content.
-                  // SAFETY: narrow read of the refusal wire field the SDK's
-                  // MessageDeltaEvent delta type omits; string-checked before use.
-                  const refusalDelta: { stop_details?: { explanation?: string | null } | null } = event.delta;
-                  const explanation = refusalDelta.stop_details?.explanation;
-                  if (typeof explanation === "string" && explanation.length > 0) {
-                    yield { kind: "provider_status", message: `Model refused to continue: ${explanation}`, level: "error" } as const;
+              } else if (event.type === "message_start") {
+                sawMessageStart = true;
+                yield { kind: "provider_response_started" } as const;
+                if (event.message?.id) responseId = event.message.id;
+                if (event.message?.usage) {
+                  sawUsage = true;
+                  foldAnthropicMessageStartUsage(event.message.usage, usage);
+                  const promptTokens = usage.input + usage.cacheRead + usage.cacheCreate;
+                  if (promptTokens > 0) {
+                    yield { kind: "context_update", promptTokens, contextWindow: info.contextLimit } as const;
                   }
                 }
+              } else if (event.type === "content_block_delta") {
+                if (event.delta.type === "thinking_delta" && typeof event.delta.thinking === "string") streamLiveness.append(event.delta.thinking);
+                yield* handleAnthropicDelta(event, toolInputBuffers, thinkingBuffers, runId, params.thinking?.type !== "disabled" && params.thinking?.display === "updates");
+              } else if (event.type === "content_block_stop") {
+                if (thinkingBuffers.has(event.index)) streamLiveness.complete(`${runId}:${event.index}`);
+                yield* handleAnthropicBlockStop(event, toolInputBuffers, thinkingBuffers, runId, params.thinking?.type !== "disabled" && params.thinking?.display === "updates");
+              } else if (event.type === "message_delta") {
+                // Anthropic emits cumulative deltas of all usage counters here; keep
+                // the latest for accurate cost accounting (pi captures all fields).
+                if (event.usage) {
+                  sawUsage = true;
+                  foldAnthropicMessageDeltaUsage(event.usage, usage);
+                }
+                if (event.delta?.stop_reason) {
+                  // Widen via String() rather than a cast: proxies emit `sensitive`, a wire value
+                  // outside the SDK's StopReason union, so equality checks need a plain string.
+                  const resolved = resolveAnthropicStopReason(String(event.delta.stop_reason));
+                  if (resolved.truncated) {
+                    if (sawUsage) yield usageEvent();
+                    throw normalizeProviderAttemptFailure(new OutputLengthExceededError("Response truncated"));
+                  }
+                  stopReason = resolved.stopReason;
+                  if (resolved.refusal) {
+                    // The refusal's stop_details.explanation names what was refused
+                    // (pi `anthropic-messages.ts:1336-1340`); surface it
+                    // as a transcript notice, never as model-visible content.
+                    // SAFETY: narrow read of the refusal wire field the SDK's
+                    // MessageDeltaEvent delta type omits; string-checked before use.
+                    const refusalDelta: { stop_details?: { explanation?: string | null } | null } = event.delta;
+                    const explanation = refusalDelta.stop_details?.explanation;
+                    if (typeof explanation === "string" && explanation.length > 0) {
+                      yield { kind: "provider_status", message: `Model refused to continue: ${explanation}`, level: "error" } as const;
+                    }
+                  }
+                }
+              } else if (event.type === "message_stop") {
+                receivedMessageStop = true;
               }
-            } else if (event.type === "message_stop") {
-              receivedMessageStop = true;
+
+            }
+            throwIfAnthropicStreamAborted(attempt, options.signal);
+
+            // A body that closes without message_stop is a dropped connection,
+            // whether it died mid-message or never carried a message_start at
+            // all: a 200 with an empty SSE body is what a proxy sends when the
+            // upstream went away, not an answer. Passing it through would settle
+            // the turn as a completed empty response; failing it transient lets
+            // the walk retry in place and fail over.
+            if (!receivedMessageStop) {
+              if (sawUsage) yield usageEvent();
+              throw normalizeProviderAttemptFailure(new LlmStreamError(
+                sawMessageStart ? "Anthropic stream closed before message_stop" : "Anthropic stream closed before message_start",
+                "transient",
+              ));
             }
 
-          }
-          throwIfAnthropicStreamAborted(attempt, options.signal);
-
-          // A body that closes without message_stop is a dropped connection,
-          // whether it died mid-message or never carried a message_start at
-          // all: a 200 with an empty SSE body is what a proxy sends when the
-          // upstream went away, not an answer. Passing it through would settle
-          // the turn as a completed empty response; failing it transient lets
-          // the walk retry in place and fail over.
-          if (!receivedMessageStop) {
             if (sawUsage) yield usageEvent();
-            throw normalizeProviderAttemptFailure(new LlmStreamError(
-              sawMessageStart ? "Anthropic stream closed before message_stop" : "Anthropic stream closed before message_start",
-              "transient",
-            ));
-          }
 
-          if (sawUsage) yield usageEvent();
-
-          yield {
-            kind: "done",
-            stopReason,
-            metadata: {
-              api: "anthropic-messages",
-              provider: "anthropic",
-              model,
-              timestamp: Date.now(),
-              responseId,
+            yield {
+              kind: "done",
               stopReason,
-            },
-          } as const;
-        } finally {
-          await releaseStream?.();
-        }
-        }, options);
-    },
+              metadata: {
+                api: "anthropic-messages",
+                provider: "anthropic",
+                model,
+                timestamp: Date.now(),
+                responseId,
+                stopReason,
+              },
+            } as const;
+          } finally {
+            await releaseStream?.();
+          }
+          }, options);
+      },
 
-    // An anticipation never rejects, because its callers do not wait for it: a request that cannot be described, or
-    // whose transport fails to anticipate it, fails the same way when it streams, which reports it.
-    ...(operations.anticipate === undefined ? {} : {
-      anticipate: (options: StreamOptions) => describeRequest(options)
-        .then(({ descriptor }) => operations.anticipate?.(descriptor.params, { sharedHost: descriptor.historyTarget.sharedHost, origins: descriptor.origins }))
-        .catch(() => undefined),
-    }),
-  } satisfies LLMClient;
+      // An anticipation never rejects, because its callers do not wait for it: a request that cannot be described, or
+      // whose transport fails to anticipate it, fails the same way when it streams, which reports it.
+      ...(operations.anticipate === undefined ? {} : {
+        anticipate: (options: StreamOptions) => describeRequest(options)
+          .then(({ descriptor }) => operations.anticipate?.(descriptor.params, { sharedHost: descriptor.historyTarget.sharedHost, origins: descriptor.origins }))
+          .catch(() => undefined),
+      }),
+    } satisfies LLMClient;
 
-  return adapter;
+    return adapter;
+  };
+
+  return Object.assign(withModelInfo(openingInfo), { withModelInfo });
 }
 
 function throwIfAnthropicStreamAborted(attempt: StreamAttempt, callerSignal: AbortSignal | undefined): void {

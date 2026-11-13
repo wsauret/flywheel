@@ -4,7 +4,7 @@ import { Cause, Deferred, Duration, Effect, Exit, Fiber, Queue, Scope } from "ef
 import { DebugLog } from "../../../infra/debug-log.js";
 import { localDate } from "../../../infra/env-detection.js";
 import type { AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
-import { bridgeClosedError as closedError, createBridgeRequests } from "./bridge-requests.js";
+import { bridgeClosedError as closedError, createBridgeRequests, queryWindow, type AdmittedWindow } from "./bridge-requests.js";
 import { createReservations } from "./bridge-reservation.js";
 import type { BridgeConfig, BridgeState, CliErrorEvidence, EngineInput, Inbox, LiveQuery, OpenRequest, SinkEvent, StartedEngine, StopDecision, StopOptions } from "./bridge-state.js";
 import { classifyAnthropicError } from "../../agent-runtime/llm/anthropic-adapter-helpers.js";
@@ -42,9 +42,10 @@ const RELOAD_BOUND_MS = 10_000;
  * Builds the bridge that serves the shared Anthropic adapter's requests through the Claude CLI. One actor fiber
  * owns every query of the bridge and is the only writer of its state: requests, SDK messages, CLI debug lines,
  * aborts, and timers all reach it through one queue, in order. Closing the scope runs the stop procedure for a
- * live query before anything else of the bridge closes.
+ * live query before anything else of the bridge closes. It returns the bridge's operations for the window of one
+ * request's admission: a query that a request starts asks for that window, and a live query serves on at its own.
  */
-export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperations, LlmStreamError, Scope.Scope> {
+export function makeBridge(config: BridgeConfig): Effect.Effect<(window: AdmittedWindow) => AnthropicOperations, LlmStreamError, Scope.Scope> {
   return Effect.gen(function* () {
     const bridgeScope = yield* Effect.scope;
     const isClosed = () => bridgeScope.state._tag === "Closed";
@@ -58,7 +59,8 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
     // The scope of every query closes before this finalizer runs, so the lifetime session id stays locked until every
     // stop of every engine on it ended.
     yield* Scope.addFinalizer(queries, Effect.sync(() => releaseLifetime?.()));
-    const state: BridgeState = { live: undefined, reserved: undefined, ended: "released", stopped: undefined, queries: 0, lastPromptTokens: 0, contextLimit: config.contextLimit };
+    const state: BridgeState = { live: undefined, reserved: undefined, ended: "released", stopped: undefined, queries: 0, lastPromptTokens: 0, refusedWindow: undefined };
+    const windowOf = (window: AdmittedWindow) => queryWindow(window, state.refusedWindow);
     const hold = accountHold();
     const audit = createEngineAudit(config.accountEmail);
     /** The CLI session of every query of the bridge, so a rotation resumes the same session. The first
@@ -270,7 +272,8 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
 
     /**
      * Ends a request that the CLI or the service failed. A refusal of the extended window states that the standard
-     * window is open, so the bridge keeps that window for every later query. When the adapter has read no event of the
+     * window is open, so the bridge keeps that window for every later query that an admission from before the
+     * refusal's publication starts (`BridgeState.refusedWindow`). When the adapter has read no event of the
      * open request, the bridge also sends it once more at that window and records the refusal, because the adapter
      * never sees it. An engine-local login fault gets one cold retry before the adapter sees a refusal.
      * Every other refusal reaches the adapter, and the provider walk records it.
@@ -280,9 +283,9 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
       const unread = phase.kind === "awaiting" || (phase.kind === "failing" && !phase.streamed) ? phase.request : undefined;
       // The adapter classifies the service's raw answer itself; the bridge reads the same class for the window.
       const refused = classifyAnthropicError(error);
-      const narrowed = refused instanceof ModelAccessRefusedError && refused.refusal.kind === "extended-context" && state.contextLimit > refused.refusal.contextLimit
+      const narrowed = refused instanceof ModelAccessRefusedError && refused.refusal.kind === "extended-context" && live.contextLimit > refused.refusal.contextLimit
         ? refused.refusal : undefined;
-      if (narrowed !== undefined) state.contextLimit = narrowed.contextLimit;
+      if (narrowed !== undefined) state.refusedWindow = { contextLimit: narrowed.contextLimit, eligibilityRevision: "request" in phase ? phase.request.window.eligibilityRevision : undefined };
       // With no announced request, this engine-local refusal reached no service. Only a fresh engine can clear
       // the engine's cached no-login state, and the same request gets that fresh start once.
       const loginRetry = unread !== undefined && !unread.freshEngineRetried && evidence.report === "authentication_failed"
@@ -291,7 +294,7 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
       const wire = live.answer;
       const decision: StopDecision = { reason: "cli-error", rule, evidence: {
         ...evidence, ...(wire === undefined ? {} : { wire: wireKind(wire) }),
-        ...(loginRetry ? { retry: "fresh-engine" } : resend ? { resentAt: state.contextLimit } : {}),
+        ...(loginRetry ? { retry: "fresh-engine" } : resend && narrowed !== undefined ? { resentAt: narrowed.contextLimit } : {}),
       } };
       yield* stopLive(live, decision, { turnActive: cliTurnActive, poisoned: true, error: loginRetry ? undefined : error, keepRequest: resend });
       if (!resend) return;
@@ -487,9 +490,11 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
     /**
      * Starts the engine of the next query, which resumes the transcript of `plan.history`. A start for a query fixes
      * the bridge's lifetime session id at once, also when the engine then fails to start; a reservation fixes it only
-     * when a query takes it.
+     * when a query takes it. The engine asks for the window of the request's admission, `use.window`, within a window
+     * that a refusal which the admission came before left open (`windowOf`).
      */
-    const startEngine = (identity: QueryIdentity, plan: Pick<StartPlan, "history" | "reminders" | "delivery">, use: { readonly reserve: boolean }) => Effect.gen(function* () {
+    const startEngine = (identity: QueryIdentity, plan: Pick<StartPlan, "history" | "reminders" | "delivery">, use: { readonly reserve: boolean; readonly window: AdmittedWindow }) => Effect.gen(function* () {
+      const contextLimit = windowOf(use.window);
       const id = state.queries + 1;
       state.queries = id;
       const scope = yield* Scope.fork(queries);
@@ -531,10 +536,10 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
         Effect.onError(() => Scope.close(scope, Exit.void)),
       );
       const session: QueryLaunch["session"] = written === undefined ? { kind: "fresh", id: sessionId } : { kind: "resume", id: sessionId, at: written.resumeAt };
-      const engine = yield* startColdEngine(config.launchQuery, identity, engineValues(identity, config.wireModelId, state.contextLimit), session, stepGate, observer).pipe(
+      const engine = yield* startColdEngine(config.launchQuery, identity, engineValues(identity, config.wireModelId, contextLimit), session, stepGate, observer).pipe(
         Effect.tapError(() => Effect.sync(() => { removeWritten(written); })), Effect.onError(() => Scope.close(scope, Exit.void)));
       yield* Scope.addFinalizer(scope, Effect.promise(() => engine.close()));
-      const started: StartedEngine = { id, sessionId, scope, stepGate, engine, acks, usage, transcript: written, historyRows: userRowIds(plan.history, rows) };
+      const started: StartedEngine = { id, sessionId, contextLimit, scope, stepGate, engine, acks, usage, transcript: written, historyRows: userRowIds(plan.history, rows) };
       return started;
     });
 
@@ -542,7 +547,7 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
      *  bridge that comes before the fiber first runs still waits for the whole stop. */
     const stopInBackground = (stop: Effect.Effect<void>) => Effect.forkIn(stop, queries, { uninterruptible: true });
 
-    const reservations = createReservations({ config, state, hold, offer, queryState, startEngine, removeWritten, stopInBackground });
+    const reservations = createReservations({ config, state, hold, offer, queryState, windowOf, startEngine, removeWritten, stopInBackground });
 
     /** Stops the live query and starts the next one, on the engine reserved for its request or on one that
      *  `startEngine` starts. `coldBecause` names why a live query did not reload in place. */
@@ -558,17 +563,17 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
         yield* stopInBackground(stop);
       }
       const identity = view.identity;
-      const reserved = yield* reservations.take(view, plan);
+      const reserved = yield* reservations.take(view, plan, request.window);
       if (reserved !== undefined) fixLifetime(reserved.sessionId);
       // A rotation whose new engine cannot start ends the session's engine that it would have taken on.
-      const started = reserved ?? (yield* startEngine(identity, plan, { reserve: false }).pipe(
+      const started = reserved ?? (yield* startEngine(identity, plan, { reserve: false, window: request.window }).pipe(
         Effect.tapError(() => Effect.sync(() => { if (previous !== undefined) reportEngineEnd(config.demand, { drained: false, served: previous.served }); })),
       ));
       const { id, sessionId, scope, stepGate, engine, acks, usage, transcript: written } = started;
       const { launched, toolGate, prompt } = engine;
       const frame = userFrame(plan.message);
       state.live = {
-        id, sessionId, launched, toolGate, stepGate, prompt, acks, scope, identity, signIn: engine.signIn, rotated: written !== undefined,
+        id, sessionId, contextLimit: started.contextLimit, launched, toolGate, stepGate, prompt, acks, scope, identity, signIn: engine.signIn, rotated: written !== undefined,
         messages: [...view.messages], rows: new Map([...started.historyRows, ...(plan.delivery === "push" ? [[view.messages.length - 1, frame.uuid] as const] : [])]),
         phase: { kind: "awaiting", request }, turnEnded: false, diverged: false, owedTurnResults: 0,
         transcript: written, timer: undefined, armed: 0, admitted: 0, endedWith: undefined, requestLines: [], requests: serviceRequests(sessionId), answer: undefined, hidden: 0, releaseAtRest: false, pings: 0, cliVersion: undefined, usage,
@@ -580,7 +585,7 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
       Queue.offerUnsafe(prompt, frame);
       DebugLog.record({ type: "provider.claude_sdk.query.started", payload: {
         sessionId, trigger: plan.trigger.kind, ...(plan.trigger.kind === "identity" ? { field: plan.trigger.field } : {}), historyMessages: plan.history.length, delivery: plan.delivery,
-        contextLimit: state.contextLimit, wireModelId: config.wireModelId, engine: reserved === undefined ? "cold" : "reserved",
+        contextLimit: started.contextLimit, wireModelId: config.wireModelId, engine: reserved === undefined ? "cold" : "reserved",
         ...(reserved === undefined ? {} : { reservedMs: Date.now() - reserved.reservedAt }),
         // The conversation's key ties the bridge's random session id to the requests that it served.
         providerSessionKey: config.providerSessionKey,
@@ -609,7 +614,7 @@ export function makeBridge(config: BridgeConfig): Effect.Effect<AnthropicOperati
       if (live !== undefined && usageStop !== undefined) return yield* stopForUsage(live, usageStop).pipe(Effect.andThen(Effect.fail(usageStop.error)));
       // The usage report can take a while, and the caller can cancel the request meanwhile.
       yield* refuseCancelled(input.signal);
-      const request: OpenRequest = { id: input.id, sink: yield* Queue.unbounded<SinkEvent, Error | Cause.Done>(), signal: input.signal, view, freshEngineRetried: false };
+      const request: OpenRequest = { id: input.id, sink: yield* Queue.unbounded<SinkEvent, Error | Cause.Done>(), signal: input.signal, view, window: input.window, freshEngineRetried: false };
       if (plan.kind === "start") {
         const coldBecause = live === undefined ? undefined : yield* reloadInPlace(live, view, plan, request);
         if (live === undefined || coldBecause !== undefined) {

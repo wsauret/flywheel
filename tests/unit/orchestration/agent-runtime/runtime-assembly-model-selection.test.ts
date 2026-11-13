@@ -12,10 +12,11 @@ import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
-import { modelInfo } from "../../../helpers/model-tier-fixtures.js"
+import { fakeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
-import { asModelClient } from "./_model-client.js"
-import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import { attemptHistoryTarget } from "./_model-client.js"
+import { createAdmittedClient, type AccessProviderBuild } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
+import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type ConversationMessage, type LLMClient, type ServingAttempt } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
 
 const tempDir = temporaryDirectories()
@@ -31,6 +32,34 @@ function freshBenchmarkCacheRoot(): string {
 
 test("skips an unavailable saved pair, captures each next model, and keeps tool calls on their request selection", async () => {
   const providers = accessProviderRegistry(testCapabilityModules())
+  const outgoing: Array<{ model: string; wire: string; effort?: string }> = []
+  /** Each request's attempt on a provider adapter that records the wire of the attribution that the request's own
+   *  admission staged: the real client plans the request from the capture that the runtime passed it. */
+  const recordingAdapter = async (build: AccessProviderBuild) => ({
+    stage: async ({ attribution }: AdapterAdmission) => {
+      const attempt: ServingAttempt = {
+        accessProvider: build.candidate.providerId, modelFamily: build.family, model: build.model, candidateAttribution: attribution,
+        toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: true,
+        priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+      }
+      const client: LLMClient = {
+        ...attempt, historyTarget: () => attemptHistoryTarget(attempt),
+        async *streamWithTools(options) {
+          outgoing.push({ model: build.model, wire: attribution.wireModelId, effort: options.reasoningEffort })
+          if (outgoing.length === 1) {
+            eligibility = access("claude-haiku-4.5", "anthropic")
+            yield { kind: "tool_use", toolCall: { id: "tc", name: "missing-tool", input: {} } }
+            yield { kind: "done", stopReason: "tool_use" }
+          } else {
+            yield { kind: "text_delta", text: "done", blockKey: "text" }
+            yield { kind: "done", stopReason: "end_turn" }
+          }
+        },
+      }
+      return { attempt, connect: async () => client }
+    },
+  })
+  const recordingProviders = { ...providers, factories: new Map([["openai_api", recordingAdapter], ["anthropic_api", recordingAdapter]]) }
   const auth = testAuthContext({ apiKeys: { openai_api: "test-key", anthropic_api: "test-key" } })
   const connection = captureProviderConnection({ profileId: "default", authDir: "/scratch/auth", auth })
   const access = (model: string, family: "openai" | "anthropic", wire = `${model}-wire`) => {
@@ -59,7 +88,6 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
     }).worker
   }
   let eligibility = access("gpt-6-luna", "openai")
-  const outgoing: Array<{ model: string; wire: string; effort?: string }> = []
   const toolModels: string[] = []
   const plans: string[] = []
   const notices: ConversationMessage[] = []
@@ -101,28 +129,16 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
         admit(admitted) {
           return {
             createAgent: () => { throw new Error("unused") },
-            createLLMClient: async (model) => {
+            createLLMClient: async (model, _modules, runtimeConfig, providerSessionLifetime) => {
               const plan = admitted.get(model)
               if (plan?.kind !== "admitted") throw new Error("missing selected plan")
               expect(plan.connectionId).toBe(connection.id)
-              const wire = plan.candidateAttributions[0]?.wireModelId
-              if (!wire) throw new Error("missing exact wire")
               plans.push(model)
-              return asModelClient({
-                model, modelFamily: plan.family, accessProvider: plan.candidates[0]?.providerId ?? "",
-                contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: true,
-                priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
-                async *streamWithTools(options) {
-                  outgoing.push({ model, wire, effort: options.reasoningEffort })
-                  if (outgoing.length === 1) {
-                    eligibility = access("claude-haiku-4.5", "anthropic")
-                    yield { kind: "tool_use", toolCall: { id: "tc", name: "missing-tool", input: {} } }
-                    yield { kind: "done", stopReason: "tool_use" }
-                  } else {
-                    yield { kind: "text_delta", text: "done", blockKey: "text" }
-                    yield { kind: "done", stopReason: "end_turn" }
-                  }
-                },
+              // The client keeps the eligibility of its build; each request admits on the capture that it passes.
+              return createAdmittedClient(plan, fakeModelsClient, connection, {
+                providers: recordingProviders, providerSessionLifetime: providerSessionLifetime ?? testProviderSessionLifetime(), projectRoot: process.cwd(),
+                allowTrainingRoutes: runtimeConfig?.allowTrainingRoutes ?? false, eligibility, notify: () => {},
+                requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }),
               })
             },
           }
@@ -137,7 +153,8 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
     { model: "gpt-6-luna", wire: "gpt-6-luna-updated-wire", effort: "high" },
     { model: "claude-haiku-4.5", wire: "claude-haiku-4.5-wire", effort: "high" },
   ])
-  expect(plans).toEqual(["gpt-6-luna", "gpt-6-luna", "claude-haiku-4.5"])
+  // A new wire of the same selection keeps the client; a new selected model builds one.
+  expect(plans).toEqual(["gpt-6-luna", "claude-haiku-4.5"])
   expect(initialSurface.providerRuntime?.role?.model).toBe("gpt-6-luna")
   expect(initialSurface.providerRuntime?.interactionProfile.fileEditContract).not.toBe(assembled.tools.current().providerRuntime?.interactionProfile.fileEditContract)
   expect(toolModels).toEqual(["gpt-6-luna"])

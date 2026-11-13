@@ -1,5 +1,7 @@
 import { Effect, Exit, Scope } from "effect";
 import { subscribeCustomProviderRetirement } from "../../infra/llm/custom-provider-registry.js";
+import type { AdmittedFailoverPlan } from "../../infra/llm/access-provider.js";
+import type { ProviderConnection } from "../../infra/auth/auth-context.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
 import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
 import type { ModelClient, ProviderDemand, ProviderSessionLifetime } from "./llm/types.js";
@@ -9,8 +11,7 @@ import type { SharedTree } from "./shared-tree.js";
  *  resources. */
 interface CurrentRuntime<Value> {
   readonly composition: FirstPartyModuleComposition;
-  readonly connectionGeneration: WeakKey;
-  readonly eligibilityGeneration?: WeakKey;
+  readonly servingKey: ServingKey;
   readonly routingKey: string;
   /** The shared tree that the client captured. The tree ends with its last release, and a client must not keep a
    *  dead tree alive past it: the tree's next holder gets a new tree whose login is the live host's. */
@@ -21,8 +22,11 @@ interface CurrentRuntime<Value> {
   reusable: boolean;
 }
 
+/** What decides the client that a request needs beyond its route: the value of its serving selection and credentials
+ *  (`providerRuntimeServingKey`), or, for a request that captured no connection, the model runtime that built it. */
+type ServingKey = string | WeakKey;
+
 interface ResolveOptions<Value> {
-  readonly eligibilityGeneration?: WeakKey;
   /** The runner's provider-session lifetime. Each client gets its own child scope of it, which the cache closes
    *  when a different client replaces this one. */
   readonly lifetime: ProviderSessionLifetime;
@@ -32,7 +36,10 @@ interface ResolveOptions<Value> {
 
 /**
  * Runner-owned memoization of provider construction. The runner uses one client at a time: the one built for the
- * request's module composition, account connection generation, routing key, and bound shared tree. A request that needs different
+ * request's module composition, serving key, routing key, and bound shared tree. The serving key is a value, so a
+ * publication of eligibility or a new admission of the same account state keeps the client and the provider-session
+ * resources that it holds, such as a hosted Claude agent's task (ARCH-PROVIDERS-070); each request still plans on its
+ * own captured eligibility (ARCH-PROVIDERS-023). A request that needs different
  * inputs replaces that client, and the cache first closes the replaced client's provider-session scope, so a
  * provider process or socket that the client held (such as a Claude CLI) ends at once instead of idling until the
  * runner ends. A replaced client is never returned again: a later request with its inputs builds a new one.
@@ -76,19 +83,19 @@ export class ProviderRuntimeCache<Value> {
 
   resolve(
     composition: FirstPartyModuleComposition,
-    connectionGeneration: WeakKey,
+    servingKey: ServingKey,
     routingKey: string,
     build: (lifetime: ProviderSessionLifetime) => Promise<Value>,
     options: ResolveOptions<Value>,
   ): Promise<Value> {
-    const resolved = this.resolving.then(() => this.resolveNow(composition, connectionGeneration, routingKey, build, options));
+    const resolved = this.resolving.then(() => this.resolveNow(composition, servingKey, routingKey, build, options));
     this.resolving = resolved.catch(() => undefined);
     return resolved;
   }
 
   private async resolveNow(
     composition: FirstPartyModuleComposition,
-    connectionGeneration: WeakKey,
+    servingKey: ServingKey,
     routingKey: string,
     build: (lifetime: ProviderSessionLifetime) => Promise<Value>,
     options: ResolveOptions<Value>,
@@ -96,13 +103,13 @@ export class ProviderRuntimeCache<Value> {
     const held = this.current;
     const lifetime = options.lifetime;
     const sharedHost = lifetime.sharedHost;
-    if (held?.reusable === true && held.composition === composition && held.connectionGeneration === connectionGeneration && held.eligibilityGeneration === options.eligibilityGeneration && held.routingKey === routingKey && held.sharedHost === sharedHost) {
+    if (held?.reusable === true && held.composition === composition && held.servingKey === servingKey && held.routingKey === routingKey && held.sharedHost === sharedHost) {
       return held.construction;
     }
     await this.endCurrent();
     const scope = await Effect.runPromise(Scope.fork(lifetime.scope));
     const construction = build({ ...lifetime, scope });
-    const entry: CurrentRuntime<Value> = { composition, connectionGeneration, eligibilityGeneration: options.eligibilityGeneration, routingKey, sharedHost, construction, scope, reusable: !this.disposed };
+    const entry: CurrentRuntime<Value> = { composition, servingKey, routingKey, sharedHost, construction, scope, reusable: !this.disposed };
     this.current = entry;
     try {
       const value = await construction;
@@ -154,6 +161,32 @@ export function providerRuntimeRoutingKey(
   providerSettings: { readonly [providerId: string]: { readonly [key: string]: number } },
 ): string {
   return stableValueKey({ model, providerOptions, providerSettings });
+}
+
+/**
+ * The value of what a client admitted on `plan` serves with: the selected model and its family, and the credentials
+ * that `connection` captured: its profile, its credential directory, the observation of its credential store, the
+ * lineage of each provider key, and each subscription login with the directory of an external one. A login, a login
+ * again to another account, a logout, or a Disconnect changes the logins or a login directory; a stored credential
+ * change moves the store's observation. The plan's candidates are not part of it: each request plans its own
+ * candidates on its own captured eligibility (ARCH-PROVIDERS-023), so a fallback that joins or leaves the plan keeps
+ * the client and the provider-session resources that it holds (ARCH-PROVIDERS-070). Nor is any other evidence that a
+ * request reads from its eligibility: the eligibility revision, the catalog provenance, and the model metadata.
+ */
+export function providerRuntimeServingKey(plan: Pick<AdmittedFailoverPlan, "model" | "family">, connection: ProviderConnection): string {
+  return stableValueKey({
+    profileId: connection.profileId ?? null,
+    authDir: connection.authDir,
+    observation: connection.auth.observation ?? null,
+    credentialLineages: connection.auth.credentialLineages,
+    oauthPersistence: connection.oauthPersistence,
+    model: plan.model,
+    family: plan.family,
+    logins: [...connection.subscriptionCredentials].map(([providerId, logins]) => ({
+      providerId,
+      logins: logins.map(({ instanceId, credential }) => ({ instanceId, loginDirectory: credential.type === "external" ? credential.configDir : null })),
+    })),
+  });
 }
 
 function stableValueKey(value: unknown): string {

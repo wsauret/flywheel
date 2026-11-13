@@ -20,7 +20,7 @@ import { createLearningReviewExecution } from "../../../../src/orchestration/mod
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import { createAnthropicAdapter, type AnthropicOperations } from "../../../../src/orchestration/agent-runtime/llm/anthropic.js"
-import { createAdmittedClient, stagedProviderClient } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
+import { createAdmittedClient, providerAdapter } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import type { AgentFactory, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
@@ -194,7 +194,7 @@ async function fixture(scenario: Scenario) {
           },
         },
       })
-      return stagedProviderClient(build, client, async () => client)
+      return providerAdapter(build, () => client, async () => client, (connected) => connected)
     })
   }
   const providers = { ...registry, factories }

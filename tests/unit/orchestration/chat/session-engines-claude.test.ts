@@ -74,7 +74,6 @@ async function claudeClient(model: string, lifetime: ProviderSessionLifetime, re
     classifySlot: () => "subscription", availability: fakeAvailability({}).availability, projectRoot: process.cwd(),
     attribution: { candidate, wireModelId: model, dataUse: "standard", resolvedModelMetadata: info },
     recordModelRefusal: () => {},
-    accountOfferings: () => [],
     launcher: {
       spawnOwned: () => Promise.reject(new Error("no launch in a unit test")),
       adoptOwned: () => Promise.reject(new Error("no adoption in a unit test")),
@@ -83,12 +82,13 @@ async function claudeClient(model: string, lifetime: ProviderSessionLifetime, re
     },
     providerSessionLifetime: lifetime,
   }
-  const staged = await createClaudeAgentSdkClient(build, {
+  const adapter = await createClaudeAgentSdkClient(build, {
     enginePath: "/scratch/bin/claude",
     createLauncher: () => () => { throw new Error("a tree-hosted client starts no engine of its own") },
     createHostLauncher: () => () => { throw new Error("the counting registry opens no host") },
     agentHosts: registry,
   })
+  const staged = await adapter.stage({ attribution: build.attribution, accountOfferings: [] })
   const connected = await staged.connect()
   return asModelClient({
     ...staged.attempt,

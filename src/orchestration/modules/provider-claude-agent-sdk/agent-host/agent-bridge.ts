@@ -11,7 +11,7 @@ import type { AnthropicOperations } from "../../../agent-runtime/llm/anthropic.j
 import { LlmStreamError, ProviderRequestValidationError } from "../../../agent-runtime/llm/errors.js";
 import { engineModelId } from "../../../agent-runtime/llm/runtime-reminders.js";
 import type { ProviderDemand, TransportContextFrame } from "../../../agent-runtime/llm/types.js";
-import { bridgeClosedError } from "../bridge-requests.js";
+import { bridgeClosedError, type AdmittedWindow } from "../bridge-requests.js";
 import { cliView, type CliView } from "../cli-view.js";
 import { onceClaim, sessionEngineDemand } from "../engine-demand.js";
 import { engineBlockLocation } from "../engine-additions.js";
@@ -51,9 +51,6 @@ export interface HostedAgentConfig {
   readonly login: string;
   readonly projectRoot: string;
   readonly wireModelId: string;
-  readonly contextLimit: number;
-  /** The login's models that a host's coordinator may run on (`AccessProviderBuild.accountOfferings`). */
-  readonly lineup: () => readonly AccessProviderCandidateAttribution[];
   readonly recordModelRefusal: (wireModelId: string, refusal: ModelRefusal) => void;
   readonly markQuotaExhausted: QuotaMark;
   /** The engine versions whose debug output Flywheel cannot read (`AgentHostConfig.silentVersions`). */
@@ -66,8 +63,9 @@ export interface HostedAgentConfig {
   readonly onExtraUsageStop: (stop: ExtraUsageStop) => void;
   readonly recordUsage: (windows: UsageWindows) => void;
   readonly recordOutcome: (outcome: RequestOutcome) => void;
-  /** The agent's own engine, for a request that no host can serve exactly (`hostable`). */
-  readonly ownEngine: () => Promise<AnthropicOperations>;
+  /** The agent's own engine, for a request that no host can serve exactly (`hostable`), with its operations for the
+   *  window of one request's admission (`makeBridge`). */
+  readonly ownEngine: () => Promise<(window: AdmittedWindow) => AnthropicOperations>;
   /** The engine demand of the session whose client this is (`ProviderSessionLifetime.demand`), which holds the hosts
    *  that the session's anticipations claim. */
   readonly demand?: ProviderDemand;
@@ -83,6 +81,13 @@ interface HostedRequestInput {
   readonly runtimeNotices?: readonly string[];
 }
 
+/** What one request's admission fixes of the agent's operations (`AdapterAdmission`): the model's window, which names
+ *  the model that a dispatch's definition states and an engine that the request opens runs on, and the login's models
+ *  that the request's eligibility admits (`AdapterAdmission.accountOfferings`). */
+export interface HostedBinding extends AdmittedWindow {
+  readonly lineup: readonly AccessProviderCandidateAttribution[];
+}
+
 /** One hosted agent: its requests, and the forecast of whether its next request starts or resumes it. */
 export interface HostedAgent {
   /** Whether the request whose view is `view`, which a host serves (`PreparedAnthropicRequest.historyTarget`), is a
@@ -90,9 +95,14 @@ export interface HostedAgent {
    *  (`createHostedAgentEntries`). A request extends the agent's running turn only when the agent is parked on the host of the request's values and
    *  the bridge's plan of the request delivers the parked calls' results (`planRequest`), with the request's runtime
    *  notices folded into the last result when its input is only those notices: the plan that the bridge makes of the
-   *  same request when it serves it. Every other hosted request is a dispatch. */
-  dispatches(view: CliView, input: HostedRequestInput): boolean;
-  readonly operations: AnthropicOperations;
+   *  same request when it serves it. Every other hosted request is a dispatch. `contextLimit` is the window of the
+   *  request's admission (`HostedBinding`). */
+  dispatches(view: CliView, input: HostedRequestInput, contextLimit: number): boolean;
+  /** The agent's operations for one request's `binding`: a dispatch of the request states the model of its window,
+   *  and a host or own engine that the request opens runs on that window, with its coordinator on a model of the
+   *  binding's lineup. A host that is open already, an engine that runs, and the agent's running task keep what they
+   *  run on. */
+  operationsFor(binding: HostedBinding): AnthropicOperations;
   /** Stops the agent for `cause`, removes its file, and ends the bridge's use of its host: `abort` when a person's or
    *  a parent's stop ended the agent's session, else `lifetime-end`. Resolves when the use ended, which waits for the
    *  host's close when it was the host's last use (`HostLease.release`). */
@@ -111,6 +121,8 @@ type Phase =
 
 interface Agent {
   readonly id: string;
+  /** The model that the agent's definition states (`engineModelId`). */
+  readonly model: string;
   readonly host: AgentHost;
   /** The key of the agent's host. */
   readonly key: string;
@@ -142,8 +154,10 @@ function newAgentId(): string {
  * agent file with the whole conversation and the host's dispatcher starts the agent from it, under the same id when
  * the agent answered and its task ended, else under a new id after `stopTask` ended the old one. The effort is part of
  * the agent's identity, so a changed effort, also of a parked agent, starts it again under a new id. A request whose
- * launch values differ from the host's moves the agent to the host of its new values. The agent runs on the bridge's
- * model on any host, because its definition states that model; a model change replaces the bridge, and the new
+ * launch values differ from the host's moves the agent to the host of its new values. The agent runs on any host on
+ * the model that its definition states, which each dispatch names from the window of its request's admission
+ * (`HostedBinding`); an agent that answered on another window starts again under a new id. A delivery to a parked
+ * agent continues its task on the model that the task runs on. A model change replaces the bridge, and the new
  * bridge's first request dispatches the agent again, on the same host when the host's values did not change. The bridge holds its host's
  * lease for its whole life, so a host closes when the last runner that uses it ends (`HostLease`). A request that the
  * bridge anticipates (`AnthropicOperations.anticipate`) claims the host of its values before it comes, so a session
@@ -159,10 +173,10 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
   let releasing: Promise<void> = Promise.resolve();
   let agent: Agent | undefined;
   let closed = false;
-  let own: Promise<AnthropicOperations> | undefined;
-  /** The model that the agent's definition states, in the engine's spelling, so the engine's model line for the
-   *  agent and the model reminder in its history name the same model. */
-  const definitionModel = engineModelId(config.wireModelId, config.contextLimit);
+  let own: Promise<(window: AdmittedWindow) => AnthropicOperations> | undefined;
+  /** The model that the definition of an agent dispatched on `contextLimit` states, in the engine's spelling, so the
+   *  engine's model line for the agent and the model reminder in its history name the same model. */
+  const definitionModel = (contextLimit: number) => engineModelId(config.wireModelId, contextLimit);
 
   /** Ends the bridge's use of its host. The registry owns the close that a last use starts, so a move to another host
    *  waits for nothing, and `close` waits for every such close. */
@@ -203,11 +217,11 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
 
   /** Opens the host of `place` for an agent in `agentCwd`. The host runs in the tree root's directory, whose git
    *  status the engine states, unless the agent's directory has another git status (`HostPlace.gitRepository`). */
-  const openHost = (place: HostPlace, agentCwd: string) => {
+  const openHost = (place: HostPlace, agentCwd: string, { contextLimit, lineup }: HostedBinding) => {
     const cwd = realpathSync(isGitRepo(config.projectRoot) === place.gitRepository ? config.projectRoot : agentCwd);
     const host: AgentHost = openAgentHost({
       launchHost: config.launchHost, configDir: config.configDir, cwd, values: place.values, markQuotaExhausted: config.markQuotaExhausted,
-      coordinators: coordinatorCandidates(config.lineup(), place.values, { wireModelId: config.wireModelId, model: definitionModel }), recordModelRefusal: config.recordModelRefusal,
+      coordinators: coordinatorCandidates(lineup, place.values, { wireModelId: config.wireModelId, model: definitionModel(contextLimit) }), recordModelRefusal: config.recordModelRefusal,
       silentVersions: config.silentVersions,
       ...(config.dispatcherStepDeadlineMs === undefined ? {} : { dispatcherStepDeadlineMs: config.dispatcherStepDeadlineMs }),
       extraUsage: config.extraUsage, reportsExtraUsage: config.reportsExtraUsage(), onExtraUsageStop: config.onExtraUsageStop, recordUsage: config.recordUsage,
@@ -218,8 +232,8 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
 
   /** Leases the host of `place`. A host that ends drops the lease and its agent, so the next request opens a new host
    *  and starts the agent again there. */
-  const leaseHost = (key: string, place: HostPlace, agentCwd: string) => {
-    const leased = { key, lease: config.registry.lease(place, () => openHost(place, agentCwd)) };
+  const leaseHost = (key: string, place: HostPlace, agentCwd: string, binding: HostedBinding) => {
+    const leased = { key, lease: config.registry.lease(place, () => openHost(place, agentCwd, binding)) };
     const { host } = leased.lease;
     void host.ended.then(() => {
       if (agent?.host === host) agent = undefined;
@@ -250,9 +264,9 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
    *  effort. Every value of the place must be the same for every agent of the tree: a value that differs starts
    *  another engine process, so a new difference must be an entry of `HOST_SPLIT_EXCEPTIONS` with its reason. The
    *  agent's directory is no part of the place; its meta file states it (`AgentFileInput.cwd`). Its git status is,
-   *  as an accepted split (`HostPlace.gitRepository`). */
-  const placement = (view: CliView) => {
-    const values = engineValues(view.identity, config.wireModelId, config.contextLimit);
+   *  as an accepted split (`HostPlace.gitRepository`). The window is no part of the place either (`hostValues`). */
+  const placement = (view: CliView, contextLimit: number) => {
+    const values = engineValues(view.identity, config.wireModelId, contextLimit);
     const { cwd } = view.identity;
     const place: HostPlace = {
       configDir: config.configDir, extraUsage: config.extraUsage, treeRootSessionId: config.tree.treeRootSessionId, gitRepository: gitRepository(cwd), values: hostValues(values),
@@ -260,12 +274,12 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     return { place, key: hostKey(place), cwd, stepEffort: values.effort };
   };
 
-  const stream = async (view: CliView, signal: AbortSignal, input: HostedRequestInput, onProgress: () => void): Promise<AsyncIterable<Anthropic.RawMessageStreamEvent | TransportContextFrame>> => {
-    const { place, key, cwd, stepEffort } = placement(view);
+  const stream = async (view: CliView, signal: AbortSignal, input: HostedRequestInput, onProgress: () => void, binding: HostedBinding): Promise<AsyncIterable<Anthropic.RawMessageStreamEvent | TransportContextFrame>> => {
+    const { place, key, cwd, stepEffort } = placement(view, binding.contextLimit);
     const { requestContext } = input;
     if (held?.key !== key) {
       void release();
-      held = leaseHost(key, place, cwd);
+      held = leaseHost(key, place, cwd, binding);
     }
     const host = held.lease.host;
     // An agent of another host moves here; a host that closed while the bridge held no lease took its agent with it.
@@ -333,18 +347,19 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       for (const { toolUseId, rewrite } of plan.results) if (rewrite !== undefined) current.rewrites.push({ at: delivery.messages.length - 1, toolUseId, rewrite });
       host.toolGate.deliver(plan.results);
     } else {
-      const resumed = plan.kind === "push" && agent?.phase.kind === "idle" ? agent : undefined;
+      const model = definitionModel(binding.contextLimit);
+      const resumed = plan.kind === "push" && agent?.phase.kind === "idle" && agent.model === model ? agent : undefined;
       if (resumed === undefined) endAgent(agent, "restarted");
       else await awaitWithAbortSignal(host.settled(resumed.id), signal);
       const id = resumed?.id ?? newAgentId();
-      const agentType = host.definition(hosted.definitionPrompt, definitionModel);
+      const agentType = host.definition(hosted.definitionPrompt, model);
       const accountEmail = config.accountEmail();
       const shell = config.engineShell();
       const offset = writeAgentFile(host.folder, {
         agentId: id, agentType, model: config.wireModelId, cwd, view: hosted, ...(accountEmail === undefined ? {} : { accountEmail }), ...(shell === undefined ? {} : { shell }),
       });
       current = {
-        id, host, key, rows: agentRows(agentFilePath(host.folder, id), offset), phase: { kind: "running" }, copy: undefined, rewrites: [], step: undefined,
+        id, model, host, key, rows: agentRows(agentFilePath(host.folder, id), offset), phase: { kind: "running" }, copy: undefined, rewrites: [], step: undefined,
         requestContext: hosted.endsWithRequestContext && requestContext !== undefined ? { text: requestContext, at: hosted.messages.length - 1 } : undefined,
       };
       agent = current;
@@ -405,14 +420,14 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     });
   };
 
-  const operations: AnthropicOperations = {
+  const operationsFor = (binding: HostedBinding): AnthropicOperations => ({
     anticipate: async (params, { sharedHost, origins }) => {
       if (closed || !sharedHost) return undefined;
       // An anticipation never fails: a request that cannot be read or placed, or whose host cannot open, such as one
       // in an agent directory that is gone, fails the same way when it streams, which reports it.
       try {
-        const { place, key, cwd } = placement(cliView(params, origins, config.projectRoot));
-        const lease = () => config.registry.lease(place, () => openHost(place, cwd));
+        const { place, key, cwd } = placement(cliView(params, origins, config.projectRoot), binding.contextLimit);
+        const lease = () => config.registry.lease(place, () => openHost(place, cwd, binding));
         if (config.demand !== undefined) return sessionEngineDemand(config.demand).claimHost(key, lease);
         const leased = lease();
         return onceClaim(leased.release);
@@ -430,7 +445,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
         endAgent(agent, "own-engine");
         void release();
         own ??= config.ownEngine();
-        return (await own).createStream(params, options);
+        return (await own)(binding).createStream(params, options);
       }
       // The adapter aborts the controller after every request: before the response's end it stops the agent's task,
       // after it it is only a release.
@@ -446,7 +461,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       };
       requestSignal.addEventListener("abort", settle, { once: true });
       try {
-        const data = await stream(cliView(params, options.origins, config.projectRoot), requestSignal, options, () => { options.onProgress?.(); });
+        const data = await stream(cliView(params, options.origins, config.projectRoot), requestSignal, options, () => { options.onProgress?.(); }, binding);
         return { data: Object.assign(data, { controller }), response: new Response(null) };
       } catch (error) {
         settle();
@@ -455,13 +470,13 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     },
     isBadRequestError: (error) => error instanceof Anthropic.BadRequestError,
     preparedBlock: engineBlockLocation,
-  };
+  });
 
   return {
-    operations,
-    dispatches(view, input) {
+    operationsFor,
+    dispatches(view, input, contextLimit) {
       const current = agent;
-      if (current === undefined || held?.key !== placement(view).key || current.host !== held.lease.host) return true;
+      if (current === undefined || held?.key !== placement(view, contextLimit).key || current.host !== held.lease.host) return true;
       return planRequest(hostedView(view, current.requestContext), queryState(current), hostedDelivery(input)).kind !== "deliver";
     },
     async close(cause) {

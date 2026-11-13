@@ -2,7 +2,9 @@ import { describe, expect, it } from "bun:test";
 import { testProviderSessionLifetime } from "../../../helpers/provider-authority.js";
 import { Effect, Exit, Scope } from "effect";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
-import { ProviderRuntimeCache } from "../../../../src/orchestration/agent-runtime/provider-runtime-cache.js";
+import { ProviderRuntimeCache, providerRuntimeServingKey } from "../../../../src/orchestration/agent-runtime/provider-runtime-cache.js";
+import { captureProviderConnection, type ProviderConnection } from "../../../../src/infra/auth/auth-context.js";
+import type { AdmittedFailoverPlan } from "../../../../src/infra/llm/access-provider.js";
 import type { ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { holdSharedTree, treeLogin, type SharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js";
 
@@ -17,30 +19,87 @@ describe("provider runtime cache", () => {
     expect(unsubscribeCalls).toBe(1);
   });
 
-  it("reuses a client only for the same composition, auth, eligibility, and routing key", async () => {
+  it("reuses a client only for the same composition, serving key, and routing key", async () => {
     const cache = new ProviderRuntimeCache<object>();
     // Composition is one value per disabled set, so a different composition
     // is a different selection, not a second call.
     const firstComposition = composeFirstPartyModules();
     const secondComposition = composeFirstPartyModules(undefined, ["provider-chatgpt"]);
-    const firstAuthGeneration = {};
-    const secondAuthGeneration = {};
-    const firstEligibility = {};
-    const secondEligibility = {};
     let constructions = 0;
     const build = async (): Promise<object> => ({ construction: ++constructions });
 
-    const first = await cache.resolve(firstComposition, firstAuthGeneration, "model-a", build, { lifetime: testProviderSessionLifetime(), eligibilityGeneration: firstEligibility });
-    const reused = await cache.resolve(firstComposition, firstAuthGeneration, "model-a", build, { lifetime: testProviderSessionLifetime(), eligibilityGeneration: firstEligibility });
-    const reeligible = await cache.resolve(firstComposition, firstAuthGeneration, "model-a", build, { lifetime: testProviderSessionLifetime(), eligibilityGeneration: secondEligibility });
-    const recomposed = await cache.resolve(secondComposition, firstAuthGeneration, "model-a", build, { lifetime: testProviderSessionLifetime(), eligibilityGeneration: secondEligibility });
-    const reauthenticated = await cache.resolve(firstComposition, secondAuthGeneration, "model-a", build, { lifetime: testProviderSessionLifetime(), eligibilityGeneration: secondEligibility });
+    const first = await cache.resolve(firstComposition, "serving-a", "model-a", build, { lifetime: testProviderSessionLifetime() });
+    const reused = await cache.resolve(firstComposition, "serving-a", "model-a", build, { lifetime: testProviderSessionLifetime() });
+    const recomposed = await cache.resolve(secondComposition, "serving-a", "model-a", build, { lifetime: testProviderSessionLifetime() });
+    const reauthenticated = await cache.resolve(firstComposition, "serving-b", "model-a", build, { lifetime: testProviderSessionLifetime() });
 
     expect(reused).toBe(first);
-    expect(reeligible).not.toBe(first);
     expect(recomposed).not.toBe(first);
-    expect(reauthenticated).not.toBe(first);
-    expect(constructions).toBe(4);
+    expect(reauthenticated).not.toBe(recomposed);
+    expect(constructions).toBe(3);
+  });
+
+  it("keeps the client and its provider-session scope across an eligibility publication that leaves the selection unchanged, such as the listing's move from cached to live rows or an unused fallback that leaves the plan, and rebuilds it for a new login or a removed one", async () => {
+    const cache = new ProviderRuntimeCache<{ readonly released: () => boolean }>();
+    const runnerScope = Scope.makeUnsafe();
+    const lifetime = { providerSessionKey: "conversation", scope: runnerScope };
+    const composition = composeFirstPartyModules();
+    const build = async (owned: ProviderSessionLifetime) => {
+      let released = false;
+      // A hosted Claude agent closes its task in this finalizer (cause lifetime-end).
+      await Effect.runPromise(Scope.addFinalizer(owned.scope, Effect.sync(() => { released = true; })));
+      return { released: () => released };
+    };
+    const claude = (instanceId: string) => ({ kind: "subscription", providerId: "claude_agent_sdk", instanceId, spendMode: "included" } as const);
+    const connectionOf = (logins: readonly string[]) => captureProviderConnection({
+      profileId: "default", authDir: "/scratch/auth", auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [], observation: "store-1" },
+      subscriptionCredentials: new Map([["claude_agent_sdk", logins.map((instanceId) => ({ instanceId, lineageId: instanceId, identity: instanceId, credential: { type: "external", configDir: `/scratch/auth/claude/${instanceId}` } as const }))]]),
+    });
+    const openrouter = { kind: "singleton", providerId: "openrouter", spendMode: "direct_api" } as const;
+    const planOf = (connection: ProviderConnection, logins: readonly string[], revision: number, catalogProvenance: "last-known-good" | "live", fallback: boolean): AdmittedFailoverPlan => {
+      const attributions = logins.map((instanceId) => ({ candidate: claude(instanceId), wireModelId: "claude-haiku-5-5", dataUse: "standard", transport: "anthropic-messages", catalogProvenance, eligibilityProfileId: "default", eligibilityRevision: revision } as const));
+      const candidateAttributions = fallback ? [...attributions, { candidate: openrouter, wireModelId: "anthropic/claude-haiku-5.5", dataUse: "standard", catalogProvenance, eligibilityProfileId: "default", eligibilityRevision: revision } as const] : attributions;
+      return { kind: "admitted", connectionId: connection.id, model: "claude-haiku-5.5", family: "anthropic", candidates: candidateAttributions.map(({ candidate }) => candidate), candidateAttributions };
+    };
+    // Each admission captures a new connection and a new eligibility revision of the same account state.
+    const keyOf = (logins: readonly string[], revision: number, catalogProvenance: "last-known-good" | "live" = "live", fallback = false) => {
+      const connection = connectionOf(logins);
+      return providerRuntimeServingKey(planOf(connection, logins, revision, catalogProvenance, fallback), connection);
+    };
+
+    // Startup admits on the cached listing; the live listing publishes the next revision.
+    const first = await cache.resolve(composition, keyOf(["account-a"], 1, "last-known-good", true), "model-a", build, { lifetime });
+    const republished = await cache.resolve(composition, keyOf(["account-a"], 2, "live", true), "model-a", build, { lifetime });
+    expect(republished).toBe(first);
+    expect(first.released()).toBe(false);
+
+    // The fallback's listing drops the model, so the plan loses a candidate that no request used: the hosted task on
+    // the primary candidate serves on.
+    const narrowed = await cache.resolve(composition, keyOf(["account-a"], 3, "live", false), "model-a", build, { lifetime });
+    expect(narrowed).toBe(first);
+    expect(first.released()).toBe(false);
+
+    const loggedIn = await cache.resolve(composition, keyOf(["account-a", "account-b"], 3), "model-a", build, { lifetime });
+    expect(loggedIn).not.toBe(first);
+    expect(first.released()).toBe(true);
+
+    const disconnected = await cache.resolve(composition, keyOf(["account-a"], 4), "model-a", build, { lifetime });
+    expect(disconnected).not.toBe(loggedIn);
+    expect(loggedIn.released()).toBe(true);
+
+    await Effect.runPromise(Scope.close(runnerScope, Exit.void));
+  });
+
+  it("the serving key follows a stored credential change through the credential store's observation", () => {
+    const connectionOf = (observation: string) => captureProviderConnection({
+      profileId: "default", authDir: "/scratch/auth", auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [], observation }, subscriptionCredentials: new Map(),
+    });
+    const keyOf = (observation: string) => {
+      const connection = connectionOf(observation);
+      return providerRuntimeServingKey({ model: "claude-haiku-5.5", family: "anthropic" }, connection);
+    };
+    expect(keyOf("store-1")).toBe(keyOf("store-1"));
+    expect(keyOf("store-2")).not.toBe(keyOf("store-1"));
   });
 
   it("retains only the current routing generation for a composition and auth pair", async () => {

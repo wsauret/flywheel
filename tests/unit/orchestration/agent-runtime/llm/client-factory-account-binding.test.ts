@@ -9,7 +9,9 @@ import { authDir, modelsSnapshotFile } from "../../../../../src/infra/paths.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { fakeModelsClient, modelInfo } from "../../../../helpers/model-tier-fixtures.js";
 import { clearSharedModelListingClients, getSharedModelListingClient, getSharedModelsClient, resetSharedLlmClients } from "../../../../../src/orchestration/config/llm-clients.js";
-import { createAdmittedClient, createClient } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+import { createAdmittedClient, createClient, type AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
+import type { AdapterAdmission } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../../src/orchestration/modules.js";
 import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
@@ -31,6 +33,26 @@ import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modul
 import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/session/session-title.js";
 
 const temporaryDirectory = temporaryDirectories();
+
+/** The fixture metadata of `model`. */
+function listedInfo(model: string): ModelInfo {
+  const info = fakeModelsClient.modelInfos.get(model);
+  if (info === undefined) throw new Error(`Missing fixture metadata for ${model}`);
+  return info;
+}
+
+/** A standard-data Responses offering of `model` with its fixture metadata. */
+function liveOffering(candidate: AccessProviderCandidate, model: string) {
+  return { candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const, resolvedModelMetadata: listedInfo(model) } as const;
+}
+
+/** The options of a client on the live-eligibility auth whose admission allows every request. */
+function liveClientOptions() {
+  return {
+    notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(), authDir: CREDENTIALS, profileId: "default", allowTrainingRoutes: true,
+    requestAdmission: async () => Object.freeze({ spendSources: () => undefined, subscriptionSpendAuthorizationFor: () => undefined }), projectRoot: testDirectories(process.cwd()).projectRoot,
+  };
+}
 
 const accountA: OAuthCredential = {
   type: "oauth",
@@ -318,48 +340,79 @@ describe("provider credential binding", () => {
     expect(eligibilityReads).toBe(3);
     expect(trainingPolicyReads.every(Boolean)).toBe(true);
     expect(admittedProviders).toEqual([["openai_api", "openrouter"], ["openrouter"]]);
+
+    // The person revoked training routes after the client was built: the request's own capture of the permission
+    // plans it, and the client that the permission built admits no contributor route for it.
+    trainingPolicyReads.length = 0;
+    expect((await client.plannedAttempt(undefined, { allowTrainingRoutes: false })).candidateAttribution?.dataUse).toBe("standard");
+    expect(trainingPolicyReads.length).toBeGreaterThan(0);
+    expect(trainingPolicyReads.some(Boolean)).toBe(false);
   });
 
-  test("one staged adapter serves every admission of the same exact wire", async () => {
-    let constructions = 0;
+  test("one adapter serves every admission of the same exact wire, also of a later eligibility revision, and each request plans on its own captured eligibility", async () => {
+    const builds: string[] = [];
+    const registry = accessProviderRegistry(composeFirstPartyModules());
+    const factories = new Map([...registry.factories].map(([id, factory]) => [id, async (build: AccessProviderBuild) => {
+      builds.push(`${build.candidate.providerId}@${build.attribution.eligibilityRevision}`);
+      return factory(build);
+    }]));
+    const published = (revision: number, refused: ReadonlySet<string> = new Set()) => ({
+      profileId: "default", revision, candidateModelUnavailableReason: () => undefined, candidateOffering: liveOffering,
+      modelUnavailableReason: (provider: string) => refused.has(provider) ? `${provider} no longer offers the model` : undefined,
+    });
+    const client = await createClient("gpt-5.5", fakeModelsClient, LIVE_ELIGIBILITY_AUTH, {
+      ...liveClientOptions(), providers: { ...registry, factories }, getProviderModelEligibility: () => published(1),
+    });
+
+    // Two admissions of one request route: the adapter is a value of the client, so the second finds the first's.
+    expect((await client.plannedAttempt()).accessProvider).toBe("openai_api");
+    expect((await client.plannedAttempt()).accessProvider).toBe("openai_api");
+    // The client outlives later publications (ARCH-PROVIDERS-070): each request plans on its own capture, and a new
+    // revision of the same wire reuses the adapter (ARCH-PROVIDERS-023).
+    expect((await (await client.admitRequest({ eligibility: published(2), allowTrainingRoutes: true })).plannedAttempt()).accessProvider).toBe("openai_api");
+    expect((await client.plannedAttempt(undefined, { eligibility: published(3), allowTrainingRoutes: true })).accessProvider).toBe("openai_api");
+    expect((await (await client.admitRequest({ eligibility: published(4, new Set(["openai_api"])), allowTrainingRoutes: true })).plannedAttempt()).accessProvider).toBe("openrouter");
+    expect(builds).toEqual(["openai_api@1", "openrouter@4"]);
+  });
+
+  test("one adapter stages each request's attempt from that request's eligibility: its provenance, revision, narrowed window, and account lineup, which no later request changes", async () => {
+    const builds: AccessProviderBuild[] = [];
+    const admissions: AdapterAdmission[] = [];
     const registry = accessProviderRegistry(composeFirstPartyModules());
     const openai = registry.factories.get("openai_api");
     if (openai === undefined) throw new Error("openai_api factory missing");
-    const factories = new Map(registry.factories);
-    factories.set("openai_api", async (build) => { constructions += 1; return openai(build); });
-    const directories = testDirectories(process.cwd());
-    const client = await createClient(
-      "gpt-5.5",
-      fakeModelsClient,
-      LIVE_ELIGIBILITY_AUTH,
-      {
-        notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
-        authDir: CREDENTIALS,
-        profileId: "default",
-        allowTrainingRoutes: true,
-        requestAdmission: async () => Object.freeze({ spendSources: () => undefined, subscriptionSpendAuthorizationFor: () => undefined }),
-        projectRoot: directories.projectRoot,
-        providers: { ...registry, factories },
-        getProviderModelEligibility: () => ({
-          modelUnavailableReason: () => undefined,
-          candidateModelUnavailableReason: () => undefined,
-          candidateOffering: (candidate, model: string) => {
-            const resolvedModelMetadata = fakeModelsClient.modelInfos.get(model);
-            if (resolvedModelMetadata === undefined) throw new Error(`Missing fixture metadata for ${model}`);
-            return { candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const, resolvedModelMetadata } as const;
-          },
-        }),
-      },
-    );
+    const factories = new Map(registry.factories).set("openai_api", async (build) => {
+      builds.push(build);
+      const adapter = await openai(build);
+      return { stage: (admission: AdapterAdmission) => { admissions.push(admission); return adapter.stage(admission); } };
+    });
+    const listed = listedInfo("gpt-5.5");
+    const published = (revision: number, catalogProvenance: "last-known-good" | "live", contextLimit: number, modelIds: readonly string[]) => {
+      const candidateOffering = (candidate: AccessProviderCandidate, model: string) => ({ ...liveOffering(candidate, model), catalogProvenance, resolvedModelMetadata: { ...listedInfo(model), contextLimit } });
+      return {
+        profileId: "default", revision, modelIds: new Set(modelIds), modelUnavailableReason: () => undefined, candidateModelUnavailableReason: () => undefined, candidateOffering,
+        candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [candidateOffering(candidate, model)],
+      };
+    };
+    const client = await createClient("gpt-5.5", fakeModelsClient, { ...LIVE_ELIGIBILITY_AUTH, providers: authProviders({ apiKeys: { openai_api: "test-openai-key" } }) }, {
+      ...liveClientOptions(), providers: { ...registry, factories }, getProviderModelEligibility: () => published(0, "live", listed.contextLimit, ["gpt-5.5"]),
+    });
+    const lineup = (admission: AdapterAdmission | undefined) => admission?.accountOfferings.map(({ wireModelId }) => wireModelId);
 
-    // Two admissions of one request route: the adapter is a value of the
-    // client, so the second admission finds the first one's staged client.
-    expect((await client.plannedAttempt()).accessProvider).toBe("openai_api");
-    expect((await client.plannedAttempt()).accessProvider).toBe("openai_api");
-    expect(constructions).toBe(1);
+    const first = await (await client.admitRequest({ eligibility: published(1, "last-known-good", listed.contextLimit, ["gpt-5.5", "gpt-5.4"]), allowTrainingRoutes: false })).plannedAttempt();
+    expect(first).toMatchObject({ catalogProvenance: "last-known-good", contextLimit: listed.contextLimit, candidateAttribution: { eligibilityRevision: 1 } });
+    expect(lineup(admissions[0])).toEqual(["gpt-5.5", "gpt-5.4"]);
+
+    // The listing went live, the account refused the extended window, and a person disabled gpt-5.4.
+    const narrowed = await (await client.admitRequest({ eligibility: published(2, "live", 100_000, ["gpt-5.5"]), allowTrainingRoutes: false })).plannedAttempt();
+    expect(narrowed).toMatchObject({ catalogProvenance: "live", contextLimit: 100_000, candidateAttribution: { eligibilityRevision: 2 } });
+    // Each request carries its own lineup: the later request's narrower lineup leaves the earlier one as it was.
+    expect(lineup(admissions[1])).toEqual(["gpt-5.5"]);
+    expect(lineup(admissions[0])).toEqual(["gpt-5.5", "gpt-5.4"]);
+    expect(builds).toHaveLength(1);
   });
 
-  test("an admitted run plan remains the ceiling for request eligibility", async () => {
+  test("each request plans its own candidates, not those of the plan that built the client", async () => {
     let disabled = new Set(["openrouter"]);
     let admissions = 0;
     const composition = composeFirstPartyModules();
@@ -398,8 +451,10 @@ describe("provider credential binding", () => {
       allowTrainingRoutes: testRuntimeConfigCapture().allowTrainingRoutes,
     });
 
-    await expect(client.plannedAttempt()).rejects.toThrow("No provider");
-    expect(admissions).toBe(0);
+    // The client outlives a publication that moves the model from one candidate to another (ARCH-PROVIDERS-070),
+    // and the request plans the candidate that its own eligibility admits (ARCH-PROVIDERS-023).
+    expect((await client.plannedAttempt()).accessProvider).toBe("openrouter");
+    expect(admissions).toBe(1);
   });
 
   test("model listings retain one generation per auth directory and enabled provider identity", () => {
