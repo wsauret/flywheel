@@ -1,6 +1,5 @@
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import type { Effort } from "../../infra/workflow-types.js";
-import type { ModelTier } from "../../protocol/model-assignment-protocol-types.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import { canonicalRoleId } from "./retired-config-names.js";
 
@@ -13,137 +12,130 @@ export interface RoleModelCandidate extends RoleModelPreference {
   family: ModelFamily;
 }
 
-interface RoleModelDefault {
-  readonly openai: RoleModelPreference;
-  readonly anthropic: RoleModelPreference;
-  readonly tier: { readonly tier: ModelTier; readonly effort: Effort };
+type CodedFamily = "openai" | "anthropic";
+
+interface CodedPreference<F extends CodedFamily> extends RoleModelPreference {
+  readonly family: F;
 }
 
-type RoleModelDefaults = { readonly [K in string]: RoleModelDefault };
+/** A role's benchmark result: one coded preference per family, the first preferred (PI-MODEL-016). The role's
+ *  fallback is the price tier of its first preference, at that preference's effort, so the list is the one source. */
+export type RoleModelPreferences =
+  | readonly [CodedPreference<"openai">, CodedPreference<"anthropic">]
+  | readonly [CodedPreference<"anthropic">, CodedPreference<"openai">];
 
-/** Coded role policy. Each preference owns its effort; the tier uses the OpenAI effort. */
+type RoleModelDefaults = { readonly [K in string]: RoleModelPreferences };
+
+/** Coded role policy. Each preference owns its effort. */
 export const ROLE_MODEL_DEFAULTS = {
-  chat: {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "workflow-agent": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  explorer: {
-    openai: { model: "gpt-6-luna", effort: "high" },
-    anthropic: { model: "claude-haiku-5.5", effort: "high" },
-    tier: { tier: "cheap", effort: "high" },
-  },
-  reviewer: {
-    openai: { model: "gpt-6.1-sol", effort: "high" },
-    anthropic: { model: "claude-opus-5.5", effort: "high" },
-    tier: { tier: "mid", effort: "high" },
-  },
-  "reviewer-elegance": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "reviewer-mechanism": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  implementer: {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  ship: {
-    openai: { model: "gpt-6-luna", effort: "high" },
-    anthropic: { model: "claude-haiku-5.5", effort: "high" },
-    tier: { tier: "cheap", effort: "high" },
-  },
-  "reviewer-design": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "reviewer-data-integrity": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "reviewer-performance": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "reviewer-security": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "reviewer-uat": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "learning-review": {
-    openai: { model: "gpt-6.1-sol", effort: "medium" },
-    anthropic: { model: "claude-opus-5.5", effort: "medium" },
-    tier: { tier: "mid", effort: "medium" },
-  },
-  "title-generation": {
-    openai: { model: "gpt-6-luna", effort: "low" },
-    anthropic: { model: "claude-haiku-5.5", effort: "low" },
-    tier: { tier: "cheap", effort: "low" },
-  },
-  "subagent-summary": {
-    openai: { model: "gpt-6-luna", effort: "low" },
-    anthropic: { model: "claude-haiku-5.5", effort: "low" },
-    tier: { tier: "cheap", effort: "low" },
-  },
-  "benchmark-judge": {
-    openai: { model: "gpt-6.1-sol", effort: "high" },
-    anthropic: { model: "claude-opus-5.5", effort: "high" },
-    tier: { tier: "mid", effort: "high" },
-  },
-  advisor: {
-    openai: { model: "gpt-6-astra", effort: "high" },
-    anthropic: { model: "claude-fable-5.2", effort: "high" },
-    tier: { tier: "powerful", effort: "high" },
-  },
+  chat: [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "workflow-agent": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  explorer: [
+    { family: "openai", model: "gpt-6-luna", effort: "high" },
+    { family: "anthropic", model: "claude-haiku-5.5", effort: "high" },
+  ],
+  reviewer: [
+    { family: "openai", model: "gpt-6.1-sol", effort: "high" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "high" },
+  ],
+  "reviewer-elegance": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "reviewer-mechanism": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  implementer: [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  ship: [
+    { family: "openai", model: "gpt-6-luna", effort: "high" },
+    { family: "anthropic", model: "claude-haiku-5.5", effort: "high" },
+  ],
+  "reviewer-design": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "reviewer-data-integrity": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "reviewer-performance": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "reviewer-security": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "reviewer-uat": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "learning-review": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ],
+  "title-generation": [
+    { family: "openai", model: "gpt-6-luna", effort: "low" },
+    { family: "anthropic", model: "claude-haiku-5.5", effort: "low" },
+  ],
+  "subagent-summary": [
+    { family: "openai", model: "gpt-6-luna", effort: "low" },
+    { family: "anthropic", model: "claude-haiku-5.5", effort: "low" },
+  ],
+  "benchmark-judge": [
+    { family: "openai", model: "gpt-6.1-sol", effort: "high" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "high" },
+  ],
+  advisor: [
+    { family: "openai", model: "gpt-6-astra", effort: "high" },
+    { family: "anthropic", model: "claude-fable-5.2", effort: "high" },
+  ],
 } satisfies RoleModelDefaults;
 
 /** Unknown reviewer subtypes inherit Reviewer; all other dynamic seats inherit Workflow Agent. */
-export function roleModelDefault(roleId: string): RoleModelDefault {
+export function roleModelPreferences(roleId: string): RoleModelPreferences {
   const canonicalRole = canonicalRoleId(roleId);
   return Object.entries(ROLE_MODEL_DEFAULTS).find(([id]) => id === canonicalRole)?.[1]
     ?? (canonicalRole.startsWith("reviewer-") ? ROLE_MODEL_DEFAULTS.reviewer : ROLE_MODEL_DEFAULTS["workflow-agent"]);
 }
 
-/** Select the first fixed candidate available under the active profile's
- *  provider listing. Returns undefined when neither preference is listed, so
- *  the caller can use the role's tier and effort. */
+/** The role's coded preference of one family, for a caller that must run that family's model. */
+export function codedRolePreference(roleId: string, family: CodedFamily): RoleModelPreference {
+  const [first, second] = roleModelPreferences(roleId);
+  const { model, effort } = first.family === family ? first : second;
+  return { model, effort };
+}
+
+/** Select the first coded preference available under the active profile's
+ *  provider listing. Returns undefined when no preference is listed, so the
+ *  caller can use the role's tier fallback. */
 export function selectRoleModelDefault(
   roleId: string,
   availableModels: ReadonlyMap<ModelFamily, ReadonlySet<string>> | undefined,
 ): RoleModelCandidate | undefined {
-  return reachableRoleModelDefaults(roleId, availableModels)[0];
+  return reachableRoleModelDefaults(roleModelPreferences(roleId), availableModels)[0];
 }
 
-/** The role's fixed candidates that the active profile's provider listing names, OpenAI first. */
+/** The coded preferences that the active profile's provider listing names, in the role's order. */
 export function reachableRoleModelDefaults(
-  roleId: string,
+  preferences: RoleModelPreferences,
   availableModels: ReadonlyMap<ModelFamily, ReadonlySet<string>> | undefined,
 ): RoleModelCandidate[] {
-  const defaults = roleModelDefault(roleId);
-  return (["openai", "anthropic"] as const).flatMap((preference) => {
-    const candidate = defaults[preference];
-    const normalized = normalizeSelectableModelId(candidate.model);
+  return preferences.flatMap(({ model, effort }) => {
+    const normalized = normalizeSelectableModelId(model);
     for (const [family, familyModels] of availableModels ?? []) {
       for (const listed of familyModels) {
-        if (normalizeSelectableModelId(listed) === normalized) return [{ ...candidate, model: normalized, family }];
+        if (normalizeSelectableModelId(listed) === normalized) return [{ model: normalized, effort, family }];
       }
     }
     return [];

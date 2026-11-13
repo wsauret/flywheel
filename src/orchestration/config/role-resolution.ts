@@ -8,9 +8,9 @@ import type { ModelInfo } from "../../infra/llm/models.js";
 import { EFFORT_VALUES } from "../../infra/workflow-types.js";
 import { clampReasoningEffort } from "../agent-runtime/llm/model-compat.js";
 import { parseBriefRoleId, briefPersonaRoleId } from "../../protocol/brief-role-id.js";
-import { beginTierResolutionOperation, resolveModelForTierAcrossFamilies, type TierResolutionOptions } from "./model-tiers.js";
+import { beginTierResolutionOperation, modelPriceTier, resolveModelForTierAcrossFamilies, type TierResolutionOptions } from "./model-tiers.js";
 import { modelTierForReference } from "../../protocol/model-tier-reference.js";
-import { ROLE_MODEL_DEFAULTS, reachableRoleModelDefaults, roleModelDefault } from "./role-model-defaults.js";
+import { ROLE_MODEL_DEFAULTS, reachableRoleModelDefaults, roleModelPreferences } from "./role-model-defaults.js";
 import type { CapacityReset } from "../../infra/llm/provider-error-copy.js";
 import type { ModelStanding } from "../agent-runtime/llm/model-standing.js";
 import { canonicalRoleId } from "./retired-config-names.js";
@@ -193,9 +193,9 @@ function hasModels(available: ReadonlyMap<ModelFamily, ReadonlySet<string>> | un
   return available !== undefined && [...available.values()].some((models) => models.size > 0);
 }
 
-/** The role's reachable preferences in PI-MODEL-016 order: the saved tier or the saved model, the coded OpenAI
- *  preference, the coded Anthropic preference, and the price tier. Lazy, so a request whose first preference serves
- *  resolves no tier.
+/** The role's reachable preferences in PI-MODEL-016 order: the saved tier or the saved model, the coded preferences in
+ *  the role's order, and the price tier of its first coded preference. Lazy, so a request whose first preference
+ *  serves resolves no tier.
  *  @yields {RolePreference} Each preference with its own effort; the tier preference always comes last. */
 async function* rolePreferences(
   roleId: RoleId,
@@ -203,16 +203,18 @@ async function* rolePreferences(
   available: ReadonlyMap<ModelFamily, ReadonlySet<string>>,
   options: TierResolutionOptions,
 ): AsyncGenerator<RolePreference> {
-  const defaults = roleModelDefault(roleId);
+  const preferences = roleModelPreferences(roleId);
+  const [first] = preferences;
   const savedModel = configured.model ? canonicalModelId(configured.model) : undefined;
   const savedTier = modelTierForReference(savedModel);
   const reachable = (model: string) => [...available.values()].some((models) => [...models].some((listed) => canonicalModelId(listed) === model));
-  if (savedTier) yield { model: (await resolveModelForTierAcrossFamilies(savedTier, available, options)).model, effort: configured.effort ?? defaults.tier.effort };
+  if (savedTier) yield { model: (await resolveModelForTierAcrossFamilies(savedTier, available, options)).model, effort: configured.effort ?? first.effort };
   else if (savedModel !== undefined && reachable(savedModel)) {
-    yield { model: savedModel, effort: configured.effort ?? (savedModel === defaults.anthropic.model ? defaults.anthropic.effort : defaults.tier.effort) };
+    yield { model: savedModel, effort: configured.effort ?? preferences.find((preference) => preference.model === savedModel)?.effort ?? first.effort };
   }
-  yield* reachableRoleModelDefaults(roleId, available);
-  yield { model: (await resolveModelForTierAcrossFamilies(defaults.tier.tier, available, options)).model, effort: defaults.tier.effort };
+  yield* reachableRoleModelDefaults(preferences, available);
+  const tier = modelPriceTier(first.model, first.family, options);
+  yield { model: (await resolveModelForTierAcrossFamilies(tier, available, options)).model, effort: first.effort };
 }
 
 /** The resolved role of `selected`: a fixed effort wins, an authored effort applies when no model is saved, and the

@@ -7,13 +7,13 @@ import { join } from "node:path";
 import { Schema } from "effect";
 import { detectModelFamily } from "../../src/infra/llm/model-family.js";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference } from "../../src/orchestration/config/role-model-defaults.js";
 import type { CampaignConfig, RunRecord } from "./store.js";
 
 /** The one judge of every chat-ab score and comparison. The model is the
  *  benchmark judge pin, and the effort is pinned too, so that a change of the
  *  model's default effort cannot move the scores between campaigns. */
-export const CHAT_AB_JUDGE = ROLE_MODEL_DEFAULTS["benchmark-judge"].openai;
+export const CHAT_AB_JUDGE = codedRolePreference("benchmark-judge", "openai");
 
 /** Why `judge` cannot judge these campaigns, or undefined when it can. The
  *  judge must come from a known model family that no seat of any campaign

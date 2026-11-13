@@ -22,8 +22,11 @@ import {
   type CrossComparisonV2Store,
 } from "../../src/orchestration/modules/development/benchmark/comparison-v2-store.js";
 import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
-import { ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference } from "../../src/orchestration/config/role-model-defaults.js";
 import { formatAccountingObservation } from "../../src/orchestration/modules/development/benchmark/report-accounting.js";
+
+/** The judge runs on the benchmark judge's coded OpenAI preference, whatever the role's order. */
+const JUDGE_SEAT = codedRolePreference("benchmark-judge", "openai");
 
 const JUDGE_SYSTEM_PROMPT = "";
 const SCORING_VERSION = "cross-implement-v2";
@@ -339,7 +342,7 @@ export async function main(
     background: runtime.background,
     foregroundBashHold: runtime.foregroundBashHold,
     shell: runtime.shell,
-  }, [{ role: "judge", ...ROLE_MODEL_DEFAULTS["benchmark-judge"].openai }]);
+  }, [{ role: "judge", ...JUDGE_SEAT }]);
   const configBody = {
     sources: sources.map((source) => ({
       directory: source.directory,
@@ -358,14 +361,14 @@ export async function main(
     })),
     taskIdentity,
     personaGuidanceIdentity: sources[0]?.config.personaGuidanceIdentity ?? "",
-    judgeModel: ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.model,
+    judgeModel: JUDGE_SEAT.model,
     judgeRubricIdentity: structuredIdentity(IMPLEMENT_QUALITY_RUBRIC),
     scoringVersion: SCORING_VERSION,
     judge: {
       profileId: runtime.usageAuthority.profileId,
       authorityIncarnation: runtime.usageAuthority.authorityIncarnation,
       contentIdentity: structuredIdentity({
-        model: ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.model,
+        model: JUDGE_SEAT.model,
         systemPrompt: JUDGE_SYSTEM_PROMPT,
         qualityInput: implementQualityJudgeInputIdentity(tasks),
         rubric: IMPLEMENT_QUALITY_RUBRIC,
@@ -389,7 +392,7 @@ export async function main(
   const { scores: scoreRows } = await store.loadEvidence();
   const successful = new Set(scoreRows.map((row) => pairKey(row.verdict.task, row.verdict.repeat, row.verdict.slotA, row.verdict.slotB)));
   const missing = pairs.filter((pair) => !successful.has(pairKey(pair.task, pair.repeat, pair.labelA, pair.labelB)));
-  const judge = await admission.createJudge(ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.model, JUDGE_SYSTEM_PROMPT, ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.effort, join(output, "judge-requests"));
+  const judge = await admission.createJudge(JUDGE_SEAT.model, JUDGE_SYSTEM_PROMPT, JUDGE_SEAT.effort, join(output, "judge-requests"));
   await runGroups(
     missing.map((pair) => [pair]),
     async (pair): Promise<PairSettlement> => {

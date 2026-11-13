@@ -6,6 +6,7 @@ import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { listEffortOptionsForSlot, listModelAssignments, listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
 import { defaultRoleSlots, resolveWorkflowAgentRole, resolveSubagentRole, roleSlot } from "../../../../src/orchestration/config/role-selection.js";
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js";
+import { roleModelPreferences } from "../../../../src/orchestration/config/role-model-defaults.js";
 import { resolveRoles as resolveProfileRoles } from "../../../../src/orchestration/config/role-resolution.js";
 import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { updateModelAssignment, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
@@ -48,7 +49,7 @@ describe("roles config parsing and resolution", () => {
     const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions);
 
     for (const roleId of Object.keys(DEFAULT_ROLES)) expect(roles.get(roleId)?.model).toBe("fixture-model");
-    expect(roles.get("advisor")?.effort).toBe(DEFAULT_ROLES.advisor.effort);
+    expect(roles.get("advisor")?.effort).toBe(roleModelPreferences("advisor")[0].effort);
   });
 
   it("keeps tiered catalog models ahead of custom provider models without metadata", async () => {

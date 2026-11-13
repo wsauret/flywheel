@@ -152,7 +152,7 @@ Opening model selection or provider model controls shows saved choices at once a
 
 ## PI-MODEL-016: Every agent role has an eligible default
 
-For every request, Flywheel resolves each agent role against the active auth profile's reachable models. It uses the role's saved model and effort when reachable, then its coded OpenAI preference, then its coded Anthropic preference, then the newest reachable model in its price tier. When that tier is empty, it uses the nearest populated tier, or a reachable unranked model when no ranked model is reachable. For an agent that is not a chat, a model whose included quota is spent until a known time is not reachable until then (PI-MODEL-087). An unsupported effort maps to the nearest supported effort.
+Flywheel resolves each agent role per request against the active auth profile's reachable models. It uses the role's saved pair when reachable, then its coded preferences in the order its benchmark results set. Then it uses the newest reachable model in the first preference's price tier, at its effort. When that tier is empty, it uses the nearest populated tier, then a reachable unranked model. For an agent that is not a chat, a model whose included quota is spent is unreachable until its known reset (PI-MODEL-087). An unsupported effort maps to the nearest supported effort.
 
 ## PI-MODEL-087: An agent uses its next model while its model's quota is spent
 
