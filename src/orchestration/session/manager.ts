@@ -89,7 +89,8 @@ export interface SessionManager {
   /** Atomically publishes a conversation-backed subagent, its parent link,
    * selected profile and roles, and the module-owned recoverable first run. */
   publishSubagent(input: SubagentSessionPublication): Promise<string>
-  createChat(opts: { id?: string; conversationId?: string; name?: string; executionCwd?: string; initialState?: SessionLifecycleState; initialRoles?: RoleAssignments; authProfileId?: string }): Promise<string>
+  /** `userNamed` records the given name as chosen at birth, so no generated title replaces it. */
+  createChat(opts: { id?: string; conversationId?: string; name?: string; userNamed?: true; executionCwd?: string; initialState?: SessionLifecycleState; initialRoles?: RoleAssignments; authProfileId?: string }): Promise<string>
   /** Copies the source chat's committed branch, then atomically publishes an inactive independent session and both lineage links. */
   forkChat(sourceSessionId: string): Promise<string>
   /** Publishes a validated copied context as an inactive independent chat.
@@ -323,7 +324,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   const commitWorkflow = (input: WorkflowCommitPublication) => serializeStructuralMutation(() => workflowPublication.commit(input))
   const adoptWorkflow = (input: WorkflowAdoption) => serializeStructuralMutation(() => workflowPublication.adopt(input))
 
-  async function createChat(opts: { id?: string; conversationId?: string; name?: string; executionCwd?: string; initialState?: SessionLifecycleState; initialRoles?: RoleAssignments; authProfileId?: string }): Promise<string> {
+  async function createChat(opts: { id?: string; conversationId?: string; name?: string; userNamed?: true; executionCwd?: string; initialState?: SessionLifecycleState; initialRoles?: RoleAssignments; authProfileId?: string }): Promise<string> {
     startupTrace("session manager create start")
     const now = new Date().toISOString()
     const id = opts.id ?? metadata.allocateId()
@@ -334,6 +335,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       kind: "chat",
       command: "chat",
       conversationId,
+      ...(opts.userNamed ? { userNamed: true as const } : {}),
       ...(opts.authProfileId !== undefined ? { authProfileId: opts.authProfileId } : {}),
     }
     return persistNewSession({

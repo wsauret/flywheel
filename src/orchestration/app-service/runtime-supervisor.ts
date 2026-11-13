@@ -131,9 +131,8 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       const actor = ensureActor(sessionId)
       deps.sessionStore.openSessionRuntime({ sessionId, conversationId, description: options.name ?? "New Chat" })
       startupTrace("runtime openSessionRuntime store opened")
-      // A named chat (a workflow launch's parent) takes its run's generated
-      // name later, so it generates no title of its own.
-      if (options.name === undefined) actor.startTitleGeneration()
+      // A named chat is born user-named, so its runner skips this request.
+      actor.startTitleGeneration()
       return sessionId
     })
   }

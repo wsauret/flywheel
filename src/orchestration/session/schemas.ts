@@ -148,7 +148,7 @@ const baseFields = {
   executionCwd: CanonicalDirectorySchema,
   /** User- or generator-provided session name; absent means unnamed. */
   name: Schema.optionalKey(Schema.String),
-  /** Set by an explicit user rename; generated titles never overwrite it. */
+  /** Set by an explicit user rename or by a name given when the chat opened; generated titles never overwrite it. */
   userNamed: Schema.optionalKey(Schema.Literal(true)),
   createdAt: Schema.optionalKey(Schema.String),
   activatedAt: Schema.optionalKey(Schema.String),

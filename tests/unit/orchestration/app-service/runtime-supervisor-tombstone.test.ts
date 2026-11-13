@@ -149,6 +149,23 @@ describe("RuntimeSupervisor close tombstone", () => {
     expect(entry?.kind === "chat" && entry.description).toBe("Chosen Name")
   })
 
+  test("a chat opened with a name keeps it: its runner generates no title and a stray generated title is refused", async () => {
+    let captured: ChatRunnerDeps | undefined
+    const sup = supervisorWithRunner(async (deps) => { captured = deps; return mockRunner(deps.sessionId) })
+    const sessionId = await sup.openSessionRuntime({ name: "Lead" })
+
+    await sup.sendChat(sessionId, "first message")
+    await sup.activateSession(sessionId, { shown: true })
+    await Bun.sleep(0)
+    expect(captured?.suppressTitleGeneration).toBe(true)
+
+    captured?.onSessionName?.({ label: "Generated Title", shortLabel: "Gen" })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect((await ctx.manager.read(sessionId))?.label).toBe("Lead")
+    const entry = ctx.sessionStore.get(sessionId)
+    expect(entry?.kind === "chat" && entry.description).toBe("Lead")
+  })
+
   test("a generated title is accepted and mirrored to the live entry when the session is not user-named", async () => {
     let captured: ChatRunnerDeps | undefined
     const sup = supervisorWithRunner(async (deps) => { captured = deps; return mockRunner(deps.sessionId) })

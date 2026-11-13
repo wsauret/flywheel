@@ -96,11 +96,11 @@ test("a dismissed lead does not open on launch, and the lead command designates 
   expect(await service.view()).toEqual({ leadSessionId: sessionId, dismissed: false, rows: [] })
 })
 
-test("a launch after the lead chat was removed as an empty chat opens and designates a new chat", async () => {
+test("a launch after the person deleted the lead chat opens and designates a new chat", async () => {
   const { service } = harness()
   const removed = await service.open("launch")
   expect(removed).not.toBeNull()
-  await supervisor.closeChat(removed!)
+  await supervisor.deleteSession(removed!)
   expect(await ctx.manager.read(removed!)).toBeNull()
 
   const opened = await service.open("launch")

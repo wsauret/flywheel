@@ -166,6 +166,7 @@ const CreateChatInputSchema = Schema.Struct({
   id: Schema.optionalKey(Schema.String),
   conversationId: Schema.optionalKey(Schema.String),
   name: OptionalString,
+  userNamed: Schema.optionalKey(Schema.Literal(true)),
   executionCwd: Schema.optionalKey(Schema.String),
   initialState: Schema.optionalKey(SessionLifecycleStateSchema),
   initialRoles: Schema.optionalKey(RoleAssignmentsSchema),

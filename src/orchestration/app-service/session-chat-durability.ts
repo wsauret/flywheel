@@ -62,9 +62,10 @@ export async function ensureDurableChatSession(ctx: ChatDurabilityContext, conve
   await createDurableChatSession(ctx, conversationId)
 }
 
-/** How a new chat is born. A chat a person opens is the active "New Chat";
- *  a parent chat a workflow launch creates takes the launch's name, and a
- *  headless parent that no client shows is born inactive (ARCH-SESSIONS-038). */
+/** How a new chat is born. A chat a person opens is the active "New Chat",
+ *  which titles itself from its first message; a chat opened with a name keeps
+ *  that name for its whole life, as a renamed chat does. A headless parent that
+ *  no client shows is born inactive (ARCH-SESSIONS-038). */
 interface DurableChatBirth {
   readonly name?: string
   readonly initialState?: "active" | "inactive"
@@ -79,6 +80,7 @@ export async function createDurableChatSession(ctx: ChatDurabilityContext, conve
   const authProfileId = ctx.authProfileId?.()
   await ctx.manager.createChat({
     id: ctx.sessionId, conversationId, name: birth.name ?? "New Chat", initialState: birth.initialState ?? "active",
+    ...(birth.name === undefined ? {} : { userNamed: true as const }),
     initialRoles: {},
     ...(authProfileId === undefined ? {} : { authProfileId }),
   })
