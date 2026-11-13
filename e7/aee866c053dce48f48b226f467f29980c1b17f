@@ -1,0 +1,52 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 188
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 7
+src/tui/hooks/create-launch-state.ts
+  h_4b47e9e4a8b456 43-45,80,85-101,189-191
+src/tui/hooks/create-new-chat-actions.ts
+  h_4b47e9e4a8b456 1-31
+src/tui/hooks/create-tab-closer.ts
+  h_4b47e9e4a8b456 2,20-25,29-30,33-34,65-71,75-78,81-87,97
+src/tui/hooks/create-tabs.ts
+  h_4b47e9e4a8b456 2,29-31,103-108,151-152
+src/tui/modules.ts
+  h_4b47e9e4a8b456 9-10,18,25-36
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 1-58
+src/tui/modules/lead/close-confirm.tsx
+  h_4b47e9e4a8b456 1-29
+src/tui/modules/lead/index.ts
+  h_4b47e9e4a8b456 1-4
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 15,44,210-212,315,329,354,362
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 1,6,21-22,38-47,55-57
+tests/unit/tui/chat-default-landing.test.ts
+  h_4b47e9e4a8b456 108
+tests/unit/tui/components/prompt-area-draft.test.ts
+  h_4b47e9e4a8b456 176,231
+tests/unit/tui/hooks/create-launch-state.test.ts
+  h_4b47e9e4a8b456 64,198-270
+tests/unit/tui/hooks/create-session-creator.test.ts
+  h_4b47e9e4a8b456 46,267
+tests/unit/tui/hooks/create-tab-closer.test.ts
+  h_4b47e9e4a8b456 55,63-64,74-76,93,204-223,251-281
+tests/unit/tui/hooks/create-tabs.test.ts
+  h_4b47e9e4a8b456 65,193-218,232
+tests/unit/tui/modules/lead/client.test.tsx
+  h_4b47e9e4a8b456 1-147
+tests/unit/tui/modules/lead/close-confirm.test.tsx
+  h_4b47e9e4a8b456 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e7aee866c053dce48f48b226f467f29980c1b17f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
