@@ -276,6 +276,15 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
     "project.notification.resolved": HISTORY,
   } },
 
+  { owner: "lead", families: {
+    // The designation of the lead chat, the chats that it started, its forwards, and the read marks.
+    "lead.chat.designated": HISTORY,
+    "lead.chat.dismissed": HISTORY,
+    "lead.chat.started": HISTORY,
+    "lead.request.forwarded": HISTORY,
+    "lead.result.read": HISTORY,
+  } },
+
   { owner: "experiments", families: {
     // Experiment mode, configuration, run, and continuation history.
     "experiment.mode.changed": HISTORY,

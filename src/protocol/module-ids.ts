@@ -33,6 +33,7 @@ export const MODULE_IDS = [
   "discovery",
   "experiments",
   "file-tools",
+  "lead",
   "learning",
   "mcp",
   "papercuts",

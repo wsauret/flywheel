@@ -3,6 +3,7 @@ import type { ProjectDirectories } from "../../infra/directory-authorities.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
+import type { ModuleServices } from "../../infra/module-service.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
 import type { CommandOutcome, RuntimeCommandInvocation } from "../../protocol/command-catalog-protocol-types.js"
 import type { FirstPartyModuleSnapshot, ModuleCommandMetadata } from "../modules.js"
@@ -34,6 +35,7 @@ export interface CommandInvokeDeps {
   readonly directories: ProjectDirectories
   readonly authDirectory: () => string
   readonly runOwnedCommand?: OwnedCommandRunner
+  readonly modules: ModuleServices
 }
 
 export interface CommandInvokeService {
@@ -117,6 +119,7 @@ export function createCommandInvokeService(deps: CommandInvokeDeps): CommandInvo
       authDirectory: deps.authDirectory,
       projectionReader: deps.projectionReader,
       runOwnedCommand: deps.runOwnedCommand,
+      modules: deps.modules,
     }
     try {
       // A client of an earlier release asks even for a command that only

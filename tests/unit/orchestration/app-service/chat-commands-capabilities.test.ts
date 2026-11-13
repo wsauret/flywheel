@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { moduleDescriptor } from "../../../../src/orchestration/config/module-descriptor.js"
@@ -53,6 +54,7 @@ async function learnWith(published: readonly ModuleId[], held: readonly ModuleId
     eventWriter: ctx.runtime.runSync(EventStoreWriterService),
     directories: testDirectories(ctx.baseDir),
     authDirectory: () => ctx.baseDir,
+    modules: NO_MODULE_SERVICES,
   })
   const outcome = await invoke({ type: "command.invoke", id: "learn", revision: 1, sessionId })
   await supervisor.disposeAll()

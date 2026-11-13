@@ -48,7 +48,7 @@ function workflowPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain
 function sessionPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "session" | "session_detail" | "output" | "status" | "budget" | "question" | "roles" | "auth" | "changes" | "background" | "experiment_view"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "session", domain, sessionId: "session-1" }, position: 17, prevPosition: 11, payload }
 }
-function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "chat_default" | "executor" | "service" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote"): RuntimeUiPatch & { readonly payload: P } {
+function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "chat_default" | "executor" | "service" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote" | "lead"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "workspace", domain }, position: 17, prevPosition: 11, payload }
 }
 
@@ -91,6 +91,7 @@ export const RUNTIME_UI_PATCH_FIXTURES = {
   "experiment_view.removed": sessionPatch({ kind: "experiment_view.removed" }, "experiment_view"),
   "mcp.changed": workspacePatch({ kind: "mcp.changed", servers: [], claudeAiConnectors: false }, "mcp"),
   "papercuts.changed": workspacePatch({ kind: "papercuts.changed", papercuts: { undisposedCount: 0 } }, "papercuts"),
+  "lead.changed": workspacePatch({ kind: "lead.changed", leadSessionId: "session-1", dismissed: false }, "lead"),
   "project_notifications.raised": workspacePatch({ kind: "project_notifications.raised", episode: notification }, "project_notifications"),
   "project_notifications.resolved": workspacePatch({ kind: "project_notifications.resolved", sourceId: "fixture", episodeId: "episode-1", resolvedAt: 2 }, "project_notifications"),
   "project_notifications.dismissed": workspacePatch({ kind: "project_notifications.dismissed", sourceId: "fixture", episodeId: "episode-1", dismissedAt: 2 }, "project_notifications"),

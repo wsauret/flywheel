@@ -1135,6 +1135,7 @@
       "moduleIds": [
         "definition-overrides",
         "experiments",
+        "lead",
         "mcp",
         "papercuts",
         "project-notifications",
@@ -1183,6 +1184,7 @@
       "discovery",
       "experiments",
       "file-tools",
+      "lead",
       "learning",
       "mcp",
       "papercuts",

@@ -76,6 +76,7 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
     gates: ["toolExecution", "toolExposure"],
   },
   "file-tools": { contributions: { tools: ["edit", "read", "write"] } },
+  lead: { contributions: { settings: ["lead"], commands: ["lead"] } },
   learning: {
     contributions: { tools: ["memory", "skill_manage"], promptFragments: ["learning-memory"], memory: ["learning-memory"], settings: ["learning"], commands: ["learn"] },
     settlesAfterAdmission: ["learning"],

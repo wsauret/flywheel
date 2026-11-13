@@ -7,6 +7,7 @@ import { moduleDomainReader } from "../../../../../src/protocol/client/module-do
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
+import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js"
 import { sideQuestionModule } from "../../../../../src/orchestration/modules/side-question/module.js"
 import type { CommandHost } from "../../../../../src/orchestration/app-service/command-host.js"
 import { createSessionFactWriter, emptyEventReader } from "../../chat/_chat-session-agent-runtime-fixtures.js"
@@ -235,6 +236,7 @@ test("bare /btw opens the resident surface without a parent turn; an argument st
     authDirectory: () => "/scratch/auth",
     projectionReader: asAsyncEventReadSurface(emptyEventReader()),
     runOwnedCommand: undefined,
+    modules: NO_MODULE_SERVICES,
     session: {
       id: "parent", executionCwd: "/scratch", host: async (handle) => composeModuleRuntimes([["side-question", host]]).get(handle),
       prompt: async () => { throw new Error("A side command must not send a parent turn") },

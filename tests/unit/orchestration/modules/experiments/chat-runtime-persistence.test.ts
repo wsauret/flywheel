@@ -8,6 +8,7 @@ import type { OwnedCommandRunner, OwnedCommandResult } from "../../../../../src/
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import { resolveSessionDir } from "../../../../../src/infra/paths.js"
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
+import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js"
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/module-runtime-services.js"
 import type { CommandHost } from "../../../../../src/orchestration/app-service/command-host.js"
 import { experimentsModule } from "../../../../../src/orchestration/modules/experiments.js"
@@ -198,6 +199,7 @@ function experimentCommand(target: Target, runtime: ExperimentsRuntime | undefin
     authDirectory: () => target.directory,
     projectionReader: reader,
     runOwnedCommand: controlledCommands(target.commands),
+    modules: NO_MODULE_SERVICES,
   }
   const registration = experimentsModule.contributions.find((contribution) => contribution.domain === "commands")
   if (registration?.domain !== "commands") throw new Error("expected the experiment command")

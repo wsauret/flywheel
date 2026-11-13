@@ -2,6 +2,7 @@ import type { CapabilityCheck } from "../../infra/capability-text.js"
 import type { ProjectDirectories } from "../../infra/directory-authorities.js"
 import type { AsyncEventStateReadSurface, InFlightRecord } from "../../infra/event-store-types.js"
 import type { ModuleRuntimeHandle } from "../../infra/module-runtime.js"
+import type { ModuleServices } from "../../infra/module-service.js"
 import type { OwnedCommandRunner } from "../../infra/owned-command.js"
 import type { CommandOutcome } from "../../protocol/command-catalog-protocol-types.js"
 import type { SessionFactWriter } from "../session/session-fact-writer.js"
@@ -18,6 +19,8 @@ export interface CommandHost {
   readonly projectionReader: AsyncEventStateReadSurface
   /** Absent in a composition that owns no launcher; a command that needs a process refuses. */
   readonly runOwnedCommand: OwnedCommandRunner | undefined
+  /** The process-scoped module services; a module reads its own through its handle. */
+  readonly modules: ModuleServices
 }
 
 /** The prompt a command delivers into its session as the next turn. `context`

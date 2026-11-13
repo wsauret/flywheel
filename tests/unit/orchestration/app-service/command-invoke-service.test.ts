@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 import { mkdirSync, realpathSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { composeModules } from "../../../../src/infra/module-descriptor.js"
@@ -111,6 +112,7 @@ function service(overrides: Partial<CommandInvokeDeps> = {}) {
     eventWriter: ctx.runtime.runSync(EventStoreWriterService),
     directories: testDirectories(ctx.baseDir),
     authDirectory: () => ctx.baseDir,
+    modules: NO_MODULE_SERVICES,
     ...overrides,
   }
   return { invoke: createCommandInvokeService(deps).invoke, calls: double.calls, sent: double.sent }

@@ -122,11 +122,11 @@ describe("complete and member capability module writes", () => {
     await withConfig(source, async (path) => {
       expect(await updateModuleMember("learning", false, true, { configPath: path })).toEqual({ ok: true });
       const added = await readFile(path, "utf8");
-      expectPersistedSelection(added, ["definition-overrides", "experiments", "learning", "mcp", "papercuts", "project-notifications", ...providerModules, "side-question", "skills"]);
+      expectPersistedSelection(added, ["definition-overrides", "experiments", "learning", "mcp", "papercuts", "project-notifications", "lead", ...providerModules, "side-question", "skills"]);
       expect(added).toContain("# account settings");
       expect(added).toContain('[profiles.personal.roles.chat]\nmodel = "gpt-5.4-mini"');
       expect(await updateModuleMember("learning", true, false, { configPath: path })).toEqual({ ok: true });
-      expectPersistedSelection(await readFile(path, "utf8"), ["definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", ...providerModules, "side-question", "skills"]);
+      expectPersistedSelection(await readFile(path, "utf8"), ["definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", "lead", ...providerModules, "side-question", "skills"]);
     });
   });
 
@@ -230,11 +230,11 @@ describe("capability presets and workflow mode", () => {
   test("workflow mode changes capability and preference in one commit", async () => {
     await withConfig('modules = ["ask-user", "skills"]\nrequire_workflow_confirmation = true\n', async (path) => {
       expect(await updateWorkflowsMode("off", "on", { configPath: path })).toEqual({ ok: true });
-      expectPersistedSelection(await readFile(path, "utf8"), ["ask-user", "definition-overrides", "experiments", "side-question", "skills", "workflows", "mcp", "papercuts", "project-notifications", ...providerModules]);
+      expectPersistedSelection(await readFile(path, "utf8"), ["ask-user", "definition-overrides", "experiments", "side-question", "skills", "workflows", "mcp", "papercuts", "project-notifications", "lead", ...providerModules]);
       expect(await readFile(path, "utf8")).toContain("require_workflow_confirmation = false");
       expect(await updateWorkflowsMode("on", "off", { configPath: path })).toEqual({ ok: true });
       const off = await readFile(path, "utf8");
-      expectPersistedSelection(off, ["ask-user", "definition-overrides", "experiments", "side-question", "skills", "mcp", "papercuts", "project-notifications", ...providerModules]);
+      expectPersistedSelection(off, ["ask-user", "definition-overrides", "experiments", "side-question", "skills", "mcp", "papercuts", "project-notifications", "lead", ...providerModules]);
       expect(off).toContain("require_workflow_confirmation = false");
       expect(await updateWorkflowsMode("off", "ask", { configPath: path })).toEqual({ ok: true });
       expect(await readFile(path, "utf8")).toContain("require_workflow_confirmation = true");
@@ -270,8 +270,8 @@ describe("multiline TOML and line endings", () => {
   test("complete, member, and workflow writers replace the entire multiline value", async () => {
     const writers = [
       { run: async (path: string) => await updateCapabilityModules(["skills", "learning"], { configPath: path }), enabled: ["skills", "learning"] },
-      { run: async (path: string) => await updateModuleMember("learning", false, true, { configPath: path }), enabled: ["ask-user", "definition-overrides", "experiments", "workflows", "side-question", "skills", "learning", "mcp", "papercuts", "project-notifications", ...providerModules] },
-      { run: async (path: string) => await updateWorkflowsMode("ask", "on", { configPath: path }), enabled: ["ask-user", "definition-overrides", "experiments", "workflows", "side-question", "skills", "mcp", "papercuts", "project-notifications", ...providerModules] },
+      { run: async (path: string) => await updateModuleMember("learning", false, true, { configPath: path }), enabled: ["ask-user", "definition-overrides", "experiments", "workflows", "side-question", "skills", "learning", "mcp", "papercuts", "project-notifications", "lead", ...providerModules] },
+      { run: async (path: string) => await updateWorkflowsMode("ask", "on", { configPath: path }), enabled: ["ask-user", "definition-overrides", "experiments", "workflows", "side-question", "skills", "mcp", "papercuts", "project-notifications", "lead", ...providerModules] },
     ];
     for (const writer of writers) {
       await withConfig(MULTILINE_MODULES, async (path) => {
@@ -305,7 +305,7 @@ describe("strict legacy capability migration", () => {
     await withConfig(source, async (path) => {
       expect((await migrateCapabilityModules({ configPath: path })).write).toEqual({ ok: true });
       const text = await readFile(path, "utf8");
-      expectPersistedSelection(text, ["definition-overrides", "experiments", "side-question", "skills", "mcp", "papercuts", "project-notifications", ...providerModules]);
+      expectPersistedSelection(text, ["definition-overrides", "experiments", "side-question", "skills", "mcp", "papercuts", "project-notifications", "lead", ...providerModules]);
       expect(text).not.toContain('"provider-google-vertex"');
       expect(text).not.toContain('"experiments"');
       expect((await migrateCapabilityModules({ configPath: path })).write).toEqual({ ok: true });
@@ -384,7 +384,7 @@ describe("strict legacy capability migration", () => {
       expect(first.write).toEqual({ ok: true });
       expect(first.notice).toContain("module selection decides Learning");
       const migrated = await readFile(path, "utf8");
-      expectPersistedSelection(migrated, ["definition-overrides", "experiments", "side-question", "skills", "learning", "mcp", "papercuts", "project-notifications", ...providerModules]);
+      expectPersistedSelection(migrated, ["definition-overrides", "experiments", "side-question", "skills", "learning", "mcp", "papercuts", "project-notifications", "lead", ...providerModules]);
       expect((await migrateCapabilityModules({ configPath: path })).write).toEqual({ ok: true });
       expect(await readFile(path, "utf8")).toBe(migrated);
     });

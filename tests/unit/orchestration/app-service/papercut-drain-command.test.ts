@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
+import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 import { asAsyncEventAppender, asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { createCommandInvokeService } from "../../../../src/orchestration/app-service/command-invoke-service.js"
@@ -24,6 +25,7 @@ function papercutsCommand(ctx: SupervisorTestContext, supervisor: RuntimeSupervi
     eventWriter: ctx.runtime.runSync(EventStoreWriterService),
     directories: testDirectories(ctx.baseDir),
     authDirectory: () => ctx.baseDir,
+    modules: NO_MODULE_SERVICES,
   })
   return invoke({ type: "command.invoke", id: "papercuts", revision: 1, sessionId, ...(argument === undefined ? {} : { argument }) })
 }

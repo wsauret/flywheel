@@ -593,7 +593,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   const commandInvoke = createCommandInvokeService({
     catalog: commandCatalog, availability, moduleSelection, manager, sessionStore,
     supervisor: runtimeSupervisor, projectionReader, eventWriter, directories, authDirectory: () => authRuntime.activeProfile().directory,
-    runOwnedCommand: ownedCommandRunner(options.launcher),
+    runOwnedCommand: ownedCommandRunner(options.launcher), modules: moduleServices.services,
   })
 
   const moduleProtocol = scope.own("module-protocol-runtimes", composeModuleProtocolRuntimes(installedModules(), {
