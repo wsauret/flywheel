@@ -40,7 +40,7 @@ interface Watcher {
 }
 
 /** The notice text: each watched chat's id, title, and latest kind, and no chat content. */
-export function formatSessionEventNotice(events: ReadonlyMap<string, PendingEvent>): string {
+function formatSessionEventNotice(events: ReadonlyMap<string, PendingEvent>): string {
   return formatRuntimeNotification({
     tag: "session_event_notice",
     handling: "Chats that you watch changed state, as listed below. The person reads each chat's own question, result, or failure in that chat. You can add a short comment or recommendation for the person, or end your turn with no text. Never answer a chat's question and never speak for a chat.",
