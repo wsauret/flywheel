@@ -1,5 +1,4 @@
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
-import type { ProjectDefinitionRegistryRevision } from "../../../../src/workflows/definition-registry.js"
 
 /** A bundled persona with the turn cap that the builds before the persona
  *  budget cut shipped, whose persona hashes covered the turn cap. A test that
@@ -108,11 +107,53 @@ export function beforeUatScratchpadRule<Definition extends AgentDefinition>(pers
   return { ...persona, systemPrompt: persona.systemPrompt.replace(rule, "") }
 }
 
+/** `persona` with each clause restored to the text it replaced. Throws when a clause is missing, so a later edit of
+ *  the persona updates the fixture that names it. */
+function restoreClauses<Definition extends AgentDefinition>(persona: Definition, clauses: readonly (readonly [current: string, retired: string])[]): Definition {
+  if (persona.kind !== "persona") return persona
+  let { description, systemPrompt } = persona
+  for (const [current, retired] of clauses) {
+    if (description.includes(current)) description = description.replace(current, retired)
+    else if (systemPrompt.includes(current)) systemPrompt = systemPrompt.replace(current, retired)
+    else throw new Error(`Persona ${persona.name} lacks the clause: ${current.slice(0, 40)}`)
+  }
+  return { ...persona, description, systemPrompt }
+}
+
+/** A bundled persona as the builds before 2026-11-11 shipped it: explorer claimed that it runs on a cheaper model. */
+export function beforeExplorerModelClaim<Definition extends AgentDefinition>(persona: Definition): Definition {
+  return persona.name === "explorer" ? restoreClauses(persona, [["Fast read-only investigation. Answers", "Fast read-only investigation on a cheaper model. Answers"]]) : persona
+}
+
+/** Each clause that the agent-type edit of 2026-11-10 (588fa3a9f) rewrote, paired with the text it replaced:
+ *  reviewer-uat named its fellow reviewers behind no marker, and explorer and implementer told the dispatcher to
+ *  dispatch general instead. */
+const AGENT_TYPE_TEXT_BEFORE: ReadonlyMap<string, readonly (readonly [current: string, retired: string])[]> = new Map([
+  ["reviewer-uat", [[
+    "{{if:type:reviewer-quality&type:reviewer-performance&type:reviewer-data-integrity&type:reviewer-security&type:reviewer-elegance}}\nThe code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{else}}\nThe code-reading reviewer personas judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{end}}",
+    "The code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.",
+  ]]],
+  ["explorer", [["when the brief asks for full coverage.", "when the brief asks for full coverage. For investigation that needs your full intelligence, dispatch general instead."]]],
+  ["implementer", [["with full tool access.", "with full tool access. For open-ended work that needs your own judgment and conversation context, dispatch general instead."]]],
+])
+
+/** A bundled persona as the builds before the agent-type edit of 2026-11-10 shipped it (refer to
+ *  {@link AGENT_TYPE_TEXT_BEFORE}). Start from {@link beforeUatScratchpadRule} and {@link beforeExplorerModelClaim},
+ *  because those edits came later. */
+export function beforeAgentTypeMarkers<Definition extends AgentDefinition>(persona: Definition): Definition {
+  return restoreClauses(persona, AGENT_TYPE_TEXT_BEFORE.get(persona.name) ?? [])
+}
+
+/** A bundled persona as it read from the capability-text edit of 2026-11-07 (78b5473c9) to the agent-type edit of
+ *  2026-11-10: every later edit undone, and the bundled mark kept. */
+export function atCapabilityMarkers<Definition extends AgentDefinition>(definition: Definition): Definition {
+  return beforeAgentTypeMarkers(beforeUatScratchpadRule(beforeExplorerModelClaim(definition)))
+}
+
 /** Each clause of a bundled persona that the capability-text edit of
- *  2026-11-06 rewrote, paired with its text at dd2fab076, the last revision
- *  before that edit. No identity proof covers that edit, so a workflow paused
- *  on those hashes reports drift; a test of an older proof rebuilds its
- *  recorded hashes from the personas as they read before it. */
+ *  2026-11-07 rewrote, paired with its text at dd2fab076, the last revision
+ *  before that edit. A test of an older proof rebuilds its recorded hashes
+ *  from the personas as they read before it. */
 const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: string, base: string])[]> = new Map([
   ["advisor", [[
     "Inspect the repository read-only, only to verify",
@@ -120,7 +161,6 @@ const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: 
   ]]],
   ["explorer", [
     ["and makes targeted external lookups such as documentation.", "and makes targeted non-repository external lookups such as documentation with the web tool."],
-    ["when the brief asks for full coverage.", "when the brief asks for full coverage. For investigation that needs your full intelligence, dispatch general instead."],
     [
       "- **Locate before reading.** Find every plausibly relevant location, then read only the functions or line ranges you need. Do not read entire files to find one function.",
       "- **Search before reading.** Use search to locate relevant code, then read only the functions or line ranges that matter. Do not read entire files to find one function; use `symbol:` or `offset`/`limit` to read just what you need.",
@@ -135,51 +175,32 @@ const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: 
     ],
   ]],
   ["implementer", [[
-    "with full tool access.",
-    "with full tool access. For open-ended work that needs your own judgment and conversation context, dispatch general instead.",
-  ], [
     "{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}",
     "- Use the read, search, file edit, and write tools for project files; bash grep, sed, cat, ls, and heredoc scripts are not substitutes.",
   ]]],
   ["ship", [
     ["{{if:bash}}\nFollow the composed Ship method.", "Follow the composed Ship method."],
+    ["Keep commit-message drafts and other publication scratch files", "You may use Write or Bash to create commit-message drafts and other publication scratch files"],
     ["or modify repository file contents.\n{{else}}\nYou have no shell, so you cannot inspect, commit, or push. Change nothing and return Not published, with the missing shell as the condition that stopped publication.\n{{end}}", "or modify repository file contents."],
   ]],
   ["reviewer-uat", [[
     "{{if:bash}}\nBound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:\n{{else}}\nA single command must remain bounded:\n{{end}}",
     "Bound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:",
-  ], [
-    "{{if:type:reviewer-quality&type:reviewer-performance&type:reviewer-data-integrity&type:reviewer-security&type:reviewer-elegance}}\nThe code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{else}}\nThe code-reading reviewer personas judge implementation evidence. You remain the outside-code observer and report only what the public surface did.\n{{end}}",
-    "The code-reading personas use target-specific names such as `reviewer-code-quality`, `reviewer-code-performance`, `reviewer-code-data-integrity`, `reviewer-code-security`, and `reviewer-code-elegance`. They judge implementation evidence. You remain the outside-code observer and report only what the public surface did.",
   ]]],
 ]);
 
 /** A bundled persona as it read at dd2fab076, before the capability-text
  *  edit, which also added the bundled mark to persona identity. Starts from
- *  {@link beforeUatScratchpadRule}, because that rule came later. Throws when
- *  a rewritten clause is missing, so a later edit of these personas updates
- *  this fixture. */
+ *  {@link atCapabilityMarkers}, because the other edits came later. Throws
+ *  when a rewritten clause is missing, so a later edit of these personas
+ *  updates this fixture. */
 export function atCapabilityTextBase(definition: AgentDefinition): AgentDefinition {
   if (definition.kind !== "persona") return definition;
-  const { bundled: _mark, ...persona } = beforeUatScratchpadRule(definition);
-  const clauses = CAPABILITY_TEXT_AT_BASE.get(persona.name);
-  if (!clauses) return persona;
-  let { description, systemPrompt } = persona;
-  for (const [current, atBase] of clauses) {
-    if (description.includes(current)) description = description.replace(current, atBase);
-    else if (systemPrompt.includes(current)) systemPrompt = systemPrompt.replace(current, atBase);
-    else throw new Error(`Persona ${persona.name} lacks the clause: ${current.slice(0, 40)}`);
-  }
-  return { ...persona, description, systemPrompt };
+  const { bundled: _mark, ...persona } = atCapabilityMarkers(definition);
+  return restoreClauses(persona, CAPABILITY_TEXT_AT_BASE.get(persona.name) ?? []);
 }
 
 /** Every persona of `personas` as it read at dd2fab076 (refer to {@link atCapabilityTextBase}). */
 export function personasAtCapabilityTextBase(personas: ReadonlyMap<string, AgentDefinition>): ReadonlyMap<string, AgentDefinition> {
   return new Map([...personas].map(([name, persona]) => [name, atCapabilityTextBase(persona)]));
-}
-
-/** A definition revision whose personas read as at dd2fab076 (refer to {@link atCapabilityTextBase}). */
-export function atCapabilityTextBaseRevision(revision: ProjectDefinitionRegistryRevision): ProjectDefinitionRegistryRevision {
-  const personas = personasAtCapabilityTextBase(revision.personas);
-  return { ...revision, personas, personaRevision: { ...revision.personaRevision, personas } };
 }
