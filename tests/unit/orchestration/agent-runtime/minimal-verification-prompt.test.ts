@@ -26,6 +26,9 @@ test("assembled prompts require the smallest complete verification", () => {
     "only for a specific evidence gap or explicit acceptance requirement",
     "Assume past observations are stale",
     "Run fresh checks for the current decision",
+    "Avoid changing public interfaces or contracts without the approval of the user.",
+    "Internal changes that the request needs, such as a new helper or a reworked private function, are not interface changes.",
+    "An input that the code accepts should continue to be accepted",
   ]) expect(compiled).toContain(rule)
   expect(compiled).not.toContain("not only the test suite")
   expect(compiled).not.toContain("Inspect the code to verify")
