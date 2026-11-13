@@ -1,0 +1,25 @@
+scripts/lead-store-compat/read-with-main.ts
+  s_b93f84f51b2c5a::t_bf5ec5ca94c340 1-52
+scripts/lead-store-compat/write-with-branch.ts
+  s_b93f84f51b2c5a::t_5f859e9c20777f 1-40
+scripts/lead-store-compat.ts
+  s_b93f84f51b2c5a::t_add6b759d3a6a2 1-101
+scripts/lead-store-compat/fixture.ts
+  s_b93f84f51b2c5a::t_31cbc1b331b091 1-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d48384ba3e3a303cbf03c81f94b0f2363825a853",
+  "prompts": {},
+  "sessions": {
+    "s_b93f84f51b2c5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5446e171-6e92-4da4-98f8-fdc46ea9b1ad",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
