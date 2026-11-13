@@ -1,0 +1,22 @@
+src/workflows/docs/commands.md
+  h_4b47e9e4a8b456 23
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 641
+webview/src/app/module-rows.test.tsx
+  h_4b47e9e4a8b456 39,53,61
+webview/src/app/toolbar-badges.test.ts
+  h_4b47e9e4a8b456 24
+webview/src/client/session-lanes.test.ts
+  h_4b47e9e4a8b456 272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9e3b50fd7f0d22c3d8d652d67ea20506c69fd71f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
