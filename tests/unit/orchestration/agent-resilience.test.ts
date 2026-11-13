@@ -30,7 +30,7 @@ describe("workerOutcome", () => {
   it("frames an unclassified api_error as a failed model request, keeping the raw detail", () => {
     expect(workerOutcome({ servedRequests: 0, durationMs: 100, terminal: { kind: "api_error", message: "x", recovery: { kind: "none" } } }))
       .toEqual({ output: "failed", failureKind: "api_error", failureMessage: "Model request failed: x", failureDetail: "x" })
-    const copy = exhaustedProvidersCopy([{ provider: "OpenAI", cause: "rate_limit", detail: "slow down", resetsAtMs: undefined }])
+    const copy = exhaustedProvidersCopy([{ provider: "OpenAI", cause: "rate_limit", detail: "slow down", reset: undefined }])
     expect(workerOutcome({ servedRequests: 0, durationMs: 100, terminal: { kind: "api_error", message: "raw aggregate", copy, recovery: { kind: "none" } } }))
       .toEqual({ output: "failed", failureKind: "api_error", failureMessage: "Rate limited: OpenAI: Rate limited. slow down", failureDetail: "raw aggregate" })
   })

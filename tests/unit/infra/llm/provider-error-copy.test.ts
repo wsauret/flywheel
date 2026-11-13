@@ -88,9 +88,9 @@ describe("providerErrorProse", () => {
   it("deduplicates presentation only after preserving different reasons and redacts provider credentials", () => {
     const credential = "aB3_".repeat(10);
     const copy = exhaustedProvidersCopy([
-      { provider: "account", cause: "quota", detail: `Authorization: Bearer ${credential}`, resetsAtMs: undefined },
-      { provider: "account", cause: "rate_limit", detail: "slow down", resetsAtMs: undefined },
-      { provider: "account", cause: "rate_limit", detail: "slow down", resetsAtMs: undefined },
+      { provider: "account", cause: "quota", detail: `Authorization: Bearer ${credential}`, reset: undefined },
+      { provider: "account", cause: "rate_limit", detail: "slow down", reset: undefined },
+      { provider: "account", cause: "rate_limit", detail: "slow down", reset: undefined },
     ]);
     expect(copy.detail).not.toContain(credential);
     expect(copy.detail?.match(/slow down/g)).toHaveLength(1);
@@ -140,8 +140,8 @@ describe("extractProviderErrorDetail", () => {
     expect(extractProviderErrorDetail("x".repeat(1000))).toBe("x".repeat(1000));
     const credential = "aB3_".repeat(10);
     const copy = exhaustedProvidersCopy([
-      { provider: "first", cause: "quota", detail: `Authorization: Bearer ${credential} ${"x".repeat(300)}`, resetsAtMs: undefined },
-      { provider: "ChatGPT", cause: "connection", detail: `automatic recheck failed ${"y".repeat(300)}`, resetsAtMs: undefined },
+      { provider: "first", cause: "quota", detail: `Authorization: Bearer ${credential} ${"x".repeat(300)}`, reset: undefined },
+      { provider: "ChatGPT", cause: "connection", detail: `automatic recheck failed ${"y".repeat(300)}`, reset: undefined },
     ]);
     expect(copy.title).toBe("Providers unavailable");
     expect(copy.detail).not.toContain(credential);
@@ -156,8 +156,8 @@ describe("exhaustedProvidersCopy", () => {
   it("names a banked reset in the line of each quota-refused account that holds one, without predicting that it helps", () => {
     const hint = "This account has a banked reset that you can apply in Usage (/usage).";
     const banked = exhaustedProvidersCopy([
-      { provider: "ChatGPT", cause: "quota", detail: "out of quota", resetsAtMs: undefined, bankedReset: true },
-      { provider: "OpenAI", cause: "quota", detail: "insufficient_quota", resetsAtMs: undefined },
+      { provider: "ChatGPT", cause: "quota", detail: "out of quota", reset: undefined, bankedReset: true },
+      { provider: "OpenAI", cause: "quota", detail: "insufficient_quota", reset: undefined },
     ]);
     expect(banked.title).toBe("Out of credits");
     expect(banked.detail).toBe(`ChatGPT: Out of credits. ${hint} out of quota OpenAI: Out of credits. insufficient_quota`);
@@ -166,7 +166,7 @@ describe("exhaustedProvidersCopy", () => {
     expect(providerErrorProse(banked)).toContain(`ChatGPT: Out of credits. ${hint}`);
 
     // A reset restores used-up included usage only, so another refusal names none.
-    const throttled = exhaustedProvidersCopy([{ provider: "ChatGPT", cause: "rate_limit", detail: "slow down", resetsAtMs: undefined, bankedReset: true }]);
+    const throttled = exhaustedProvidersCopy([{ provider: "ChatGPT", cause: "rate_limit", detail: "slow down", reset: undefined, bankedReset: true }]);
     expect(throttled.detail).not.toContain("banked reset");
   });
 });
@@ -176,25 +176,58 @@ describe("exhaustedProvidersRecovery", () => {
 
   it("waits for the earliest bound when every candidate that waiting can help states one", () => {
     expect(exhaustedProvidersRecovery([
-      { cause: "quota", resetsAtMs: at + 60_000 },
-      { cause: "rate_limit", resetsAtMs: at },
-      { cause: "model_access", resetsAtMs: undefined },
-    ])).toEqual({ kind: "at", atMs: at });
+      { cause: "quota", reset: { atMs: at + 60_000, hold: { kind: "usage_limit", stated: true } } },
+      { cause: "rate_limit", reset: { atMs: at, hold: { kind: "rate_limit" } } },
+      { cause: "model_access", reset: undefined },
+    ])).toEqual({ kind: "at", atMs: at, hold: { kind: "rate_limit" } });
+    // A hold that clears by itself at the earliest time can find a candidate that serves, so it decides a tie.
+    expect(exhaustedProvidersRecovery([
+      { cause: "quota", reset: { atMs: at + 60_000, hold: { kind: "usage_limit", stated: true } } },
+      { cause: "quota", reset: { atMs: at, hold: { kind: "usage_limit", stated: true } } },
+      { cause: "connection", reset: { atMs: at, hold: { kind: "recheck" } } },
+    ])).toEqual({ kind: "at", atMs: at, hold: { kind: "recheck" } });
+    expect(exhaustedProvidersRecovery([
+      { cause: "quota", reset: { atMs: at + 60_000, hold: { kind: "usage_limit", stated: true } } },
+      { cause: "quota", reset: { atMs: at, hold: { kind: "usage_limit", stated: true } } },
+    ])).toEqual({ kind: "at", atMs: at, hold: { kind: "usage_limit", stated: true } });
+    // When every candidate's limit is spent, the earliest recheck of a reset that no provider stated is still a spent
+    // limit, and a stated reset at the same time names it.
+    expect(exhaustedProvidersRecovery([
+      { cause: "quota", reset: { atMs: at + 60_000, hold: { kind: "usage_limit", stated: true } } },
+      { cause: "quota", reset: { atMs: at, hold: { kind: "usage_limit", stated: false } } },
+    ])).toEqual({ kind: "at", atMs: at, hold: { kind: "usage_limit", stated: false } });
+    expect(exhaustedProvidersRecovery([
+      { cause: "quota", reset: { atMs: at, hold: { kind: "usage_limit", stated: false } } },
+      { cause: "quota", reset: { atMs: at, hold: { kind: "usage_limit", stated: true } } },
+    ])).toEqual({ kind: "at", atMs: at, hold: { kind: "usage_limit", stated: true } });
+    // A spent limit at the earliest time names the earliest later hold that clears by itself, which a run that does
+    // not wait for a spent limit waits for.
+    expect(exhaustedProvidersRecovery([
+      { cause: "quota", reset: { atMs: at, hold: { kind: "usage_limit", stated: true } } },
+      { cause: "connection", reset: { atMs: at + 120_000, hold: { kind: "recheck" } } },
+      { cause: "rate_limit", reset: { atMs: at + 60_000, hold: { kind: "rate_limit" } } },
+    ])).toEqual({ kind: "at", atMs: at, hold: { kind: "usage_limit", stated: true }, selfClearing: { atMs: at + 60_000, hold: { kind: "rate_limit" } } });
+  });
+
+  it("states that no reset time is known when the earliest spent limit states none", () => {
+    const copy = (stated: boolean) => exhaustedProvidersCopy([{ provider: "OpenRouter", cause: "quota", detail: "out of credit", reset: { atMs: at, hold: { kind: "usage_limit", stated } } }]).message;
+    expect(copy(false)).toContain(`No reset time is known. A request after ${new Date(at).toLocaleString()} can recheck`);
+    expect(copy(true)).not.toContain("No reset time is known");
   });
 
   it("retries without a time when a candidate that waiting can help states no bound", () => {
     expect(exhaustedProvidersRecovery([
-      { cause: "quota", resetsAtMs: at },
-      { cause: "connection", resetsAtMs: undefined },
+      { cause: "quota", reset: { atMs: at, hold: { kind: "usage_limit", stated: true } } },
+      { cause: "connection", reset: undefined },
     ])).toEqual({ kind: "retry" });
     // The next request uses the standard context window.
-    expect(exhaustedProvidersRecovery([{ cause: "extended_context", resetsAtMs: undefined }])).toEqual({ kind: "retry" });
+    expect(exhaustedProvidersRecovery([{ cause: "extended_context", reset: undefined }])).toEqual({ kind: "retry" });
   });
 
   it("states no recovery when only what the accounts grant refused the request", () => {
     expect(exhaustedProvidersRecovery([
-      { cause: "ineligible", resetsAtMs: undefined },
-      { cause: "model_access", resetsAtMs: undefined },
+      { cause: "ineligible", reset: undefined },
+      { cause: "model_access", reset: undefined },
     ])).toEqual({ kind: "none" });
   });
 });

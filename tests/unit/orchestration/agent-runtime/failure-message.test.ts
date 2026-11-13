@@ -85,8 +85,8 @@ describe("formatAgentFailure", () => {
     const detail = `automatic recheck failed ${"y".repeat(500)}`
     expect(formatAgentFailure({ kind: "transient_disconnect", message: detail })).toBe(detail)
     const copy = exhaustedProvidersCopy([
-      { provider: "first", cause: "quota", detail: "x".repeat(400), resetsAtMs: undefined },
-      { provider: "ChatGPT", cause: "connection", detail, resetsAtMs: undefined },
+      { provider: "first", cause: "quota", detail: "x".repeat(400), reset: undefined },
+      { provider: "ChatGPT", cause: "connection", detail, reset: undefined },
     ])
     expect(formatAgentFailure({ kind: "api_error", message: "no access provider can run", copy, recovery: { kind: "none" } })).toEndWith(`ChatGPT: Connection lost. ${detail}`)
   })

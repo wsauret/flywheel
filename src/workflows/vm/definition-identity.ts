@@ -397,6 +397,20 @@ export const DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID = "workflow-def
 const DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_REASON =
   "Control recorded the personas that the agents could dispatch while a role grant matched only the exact persona role; the session adopts the same identity with the personas that a grant reaches through their family role added, because those personas and the skills they require are the only difference."
 
+/** Bundled personas started to carry capability markers on 2026-11-07, which persona identity covers with the
+ *  bundled mark, and reviewer-uat named its fellow reviewers behind an agent-type marker on 2026-11-10, when explorer
+ *  and implementer stopped pointing at general. The proofs of earlier persona edits read the personas as they read
+ *  before the bundled mark. Resume records this adoption through `withCapabilityMarkers`. Remove after 2027-05-11. */
+export const DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID = "workflow-definition-identity-capability-markers-v1"
+const DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_REASON =
+  "Control recorded bundled personas as they read before the capability-marker edits of 2026-11-07 or 2026-11-10; the session adopts the same personas as they read now, because the current definitions prove the clauses those edits rewrote and the bundled mark are the only difference."
+
+/** The explorer persona stopped claiming that it runs on a cheaper model. Resume records this adoption through
+ *  `withoutExplorerModelClaim`. Remove after 2027-05-11. */
+export const DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID = "workflow-definition-identity-explorer-model-claim-v1"
+const DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_REASON =
+  "Control recorded an explorer persona whose description claimed a cheaper model; the session adopts the same persona without that claim, because the current definitions prove the claim is the only difference."
+
 /** The strict ordered chain of definition-identity adoptions. Replay accepts
  * recorded adoptions only in increasing order and only once each, so a session
  * that already adopted an earlier migration can still receive a later one.
@@ -428,6 +442,8 @@ export const DEFINITION_IDENTITY_MIGRATIONS = [
   { id: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID, reason: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID, reason: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID, reason: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_REASON },
+  { id: DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID, reason: DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_REASON },
+  { id: DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID, reason: DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_REASON },
 ] as const
 
 export type DefinitionIdentityMigrationId = typeof DEFINITION_IDENTITY_MIGRATIONS[number]["id"]
