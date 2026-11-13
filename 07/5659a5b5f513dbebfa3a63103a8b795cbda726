@@ -1,0 +1,62 @@
+bench/tasks/explorer/README.md
+  h_4b47e9e4a8b456 1-61
+bench/tasks/explorer/concurrency-limit-quota/WHY.md
+  h_4b47e9e4a8b456 1-49
+bench/tasks/explorer/concurrency-limit-quota/manifest.json
+  h_4b47e9e4a8b456 1-44
+bench/tasks/explorer/concurrency-limit-quota/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/concurrency-limit-quota/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/conversation-tree-reopen-fold/WHY.md
+  h_4b47e9e4a8b456 1-90
+bench/tasks/explorer/conversation-tree-reopen-fold/manifest.json
+  h_4b47e9e4a8b456 1-76
+bench/tasks/explorer/conversation-tree-reopen-fold/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/conversation-tree-reopen-fold/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/resume-while-agent-opens/WHY.md
+  h_4b47e9e4a8b456 1-43
+bench/tasks/explorer/resume-while-agent-opens/manifest.json
+  h_4b47e9e4a8b456 1-42
+bench/tasks/explorer/resume-while-agent-opens/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/resume-while-agent-opens/task.json
+  h_4b47e9e4a8b456 1-14
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 7,22-23,26,114-116,337-338,345,367,373,377,380-386
+src/orchestration/modules/development/benchmark/persona-benchmark.ts
+  h_4b47e9e4a8b456 11,14,102,188,244-251,439,606,682-686,691
+src/orchestration/modules/development/benchmark/persona-evidence-validation.ts
+  h_4b47e9e4a8b456 2,8,61,112,114-123
+src/orchestration/modules/development/benchmark/persona-store.ts
+  h_4b47e9e4a8b456 56,83
+src/orchestration/modules/development/benchmark/reports.ts
+  h_4b47e9e4a8b456 4-5,100-134,170,183
+src/orchestration/modules/development/benchmark/research-scoring.ts
+  h_4b47e9e4a8b456 1-254
+src/orchestration/modules/development/benchmark/research-task.ts
+  h_4b47e9e4a8b456 1-103
+src/orchestration/modules/development/benchmark/run-store.ts
+  h_4b47e9e4a8b456 8,128,198-204,555
+tests/unit/bench/catalog.test.ts
+  h_4b47e9e4a8b456 6,76-113
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 16,144,442,477,518-595
+tests/unit/bench/standalone-admission.test.ts
+  h_4b47e9e4a8b456 223
+tests/unit/orchestration/modules/development/benchmark-tool.test.ts
+  h_4b47e9e4a8b456 262,271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "075659a5b5f513dbebfa3a63103a8b795cbda726",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
