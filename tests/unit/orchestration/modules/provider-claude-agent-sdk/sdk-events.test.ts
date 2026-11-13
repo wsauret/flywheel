@@ -8,7 +8,7 @@ import type { QuotaExhaustionObservation } from "../../../../../src/orchestratio
 import { ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { classifySdkMessage, cliFailure, cliResendFailure, readSdkMessages, type CliErrorReport, type CliTurnResult } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/sdk-events.js";
 import type { WireFailure } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/service-requests.js";
-import { assistantError, cliInit, cliOnlyMessage, ENVELOPE, event, GENERIC_USAGE_LIMIT_TEXT, rateLimitReport, turnError, turnResult, type CliRateLimitInfo } from "./_bridge-harness.js";
+import { assistantError, cliInit, cliOnlyMessage, concurrentsRejected, ENVELOPE, event, GENERIC_USAGE_LIMIT_TEXT, rateLimitReport, turnError, turnResult, type CliRateLimitInfo } from "./_bridge-harness.js";
 
 const turn = (overrides: Partial<CliTurnResult> = {}): CliTurnResult => ({ isError: true, status: null, terminalReason: undefined, text: "", userMessageUuid: undefined, ...overrides });
 const OBSERVATION: QuotaExhaustionObservation = { exhaustion: { exhaustedAtMs: 1, resetsAtMs: 2_000, hold: { kind: "usage_limit", stated: true } }, newlyExhausted: true, reportedResetAtMs: 2_000 };
@@ -93,7 +93,8 @@ describe("the SDK message classification", () => {
     // The engine's report of a 429 without those headers (CLI 2.1.296): the service refused the request, which spent nothing.
     expect(billing({ status: "rejected", isUsingOverage: false })).toBe("refused");
     // A rejection on a limit that is no usage window, such as too many concurrent requests (CLI 2.1.321), served nothing.
-    expect(billing({ status: "rejected", rateLimitType: "concurrents" as SDKRateLimitInfo["rateLimitType"], isUsingOverage: false })).toBe("refused");
+    const concurrents = classifySdkMessage(concurrentsRejected);
+    expect(concurrents.kind === "rate-limit" ? concurrents.billing : undefined).toBe("refused");
   });
 });
 
