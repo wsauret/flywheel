@@ -1,0 +1,58 @@
+scripts/capability-terms.ts
+  h_4b47e9e4a8b456 83
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 12-14,21,35-36,79-81,96-97,102,154-155,195-197,199-201,203-204,267
+src/infra/tools/displays/lead.ts
+  h_4b47e9e4a8b456 1-39
+src/infra/tools/tool-display-registry.ts
+  h_4b47e9e4a8b456 46,81-82
+src/orchestration/modules/lead/chat-progress.ts
+  h_4b47e9e4a8b456 1-200
+src/orchestration/modules/lead/journal.ts
+  h_4b47e9e4a8b456 7-8,17-20,28,30,42-44,46-54,56-86,89-102,104-105,111,113,115-116,120-122,127,130,155
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 4-5,7-8,10,14-16,23,27-35
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 1-34
+src/orchestration/modules/lead/route-request.ts
+  h_4b47e9e4a8b456 1-107
+src/orchestration/modules/lead/runtime.ts
+  h_4b47e9e4a8b456 1-28
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 7-9,11,15-17,19-23,31-39,47-48,51-54,75-78,82-86,88-89,91,105,107,117-120,122,124-127,133,142-158,163,183-220,227
+src/orchestration/modules/lead/tools.ts
+  h_4b47e9e4a8b456 1-54
+src/orchestration/session/conversation/person-entries.ts
+  h_4b47e9e4a8b456 10-11,47,54-57,59-60
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1019-1052
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 10,28,39,97-100,135,139,221-222,225-230,232,312-314,325
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-contract.test.ts
+  h_4b47e9e4a8b456 30,66-67
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 1-56
+tests/unit/orchestration/modules/lead/chat-progress.test.ts
+  h_4b47e9e4a8b456 1-85
+tests/unit/orchestration/modules/lead/profile.test.ts
+  h_4b47e9e4a8b456 1-128
+tests/unit/orchestration/modules/lead/protocol.test.ts
+  h_4b47e9e4a8b456 5-6,19-20,23,30,38,50,53
+tests/unit/orchestration/modules/lead/route-request.test.ts
+  h_4b47e9e4a8b456 1-218
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 6-8,10-11,23-24,26-29,132-236
+tests/unit/orchestration/session/conversation/person-entries.test.ts
+  h_4b47e9e4a8b456 106-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eabd9cc0d0f95a10793122b56224ad4d99de5796",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
