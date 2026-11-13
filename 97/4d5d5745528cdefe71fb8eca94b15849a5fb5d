@@ -1,0 +1,40 @@
+docs/terminology.md
+  h_4b47e9e4a8b456 88
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 224,351-353,361,363-367,597
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 50-51,76
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 171-172,193-197,245
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 285-288,354-357
+src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
+  h_4b47e9e4a8b456 22,27,151,156-159
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 193-196
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 26-29
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 58-65,289-293
+tests/unit/orchestration/agent-runtime/capability-checks.test.ts
+  h_4b47e9e4a8b456 177-181
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 10,18-27,646-713
+tests/unit/orchestration/agent-runtime/system-prompt.test.ts
+  h_4b47e9e4a8b456 5,35-57
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 249-269
+tests/unit/orchestration/modules/learning/learning-review-runner.test.ts
+  h_4b47e9e4a8b456 15,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "974d5d5745528cdefe71fb8eca94b15849a5fb5d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
