@@ -1,0 +1,24 @@
+docs/architecture-intent/distribution.md
+  h_4b47e9e4a8b456 7,172-177
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 172,370-375
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 11
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 555,559-563
+docs/product-intent/local-access.md
+  h_4b47e9e4a8b456 36-43
+docs/product-intent/updates.md
+  h_4b47e9e4a8b456 31-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d507f210d6ce4f39d4028afaf80270559243e97b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
