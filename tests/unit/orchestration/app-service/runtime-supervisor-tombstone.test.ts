@@ -154,6 +154,8 @@ describe("RuntimeSupervisor close tombstone", () => {
     const sup = supervisorWithRunner(async (deps) => { captured = deps; return mockRunner(deps.sessionId) })
     const sessionId = await sup.openSessionRuntime()
     await sup.sendChat(sessionId, "first message")
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await sup.activateSession(sessionId, { shown: true })
     await Bun.sleep(0)
     expect(captured?.suppressTitleGeneration).toBe(false)
 

@@ -27,6 +27,7 @@ import type { AttachChildSessionProjection, ParentNotificationDelivery } from ".
 import type { ChatRunner } from "../chat/runner-types.js"
 import type { RuntimeFaultReporter } from "./runtime-fault-reporting.js"
 import type { AccountModuleRequest } from "../../protocol/account-attach.js"
+import type { PersonEntryForward } from "./person-entry-forward.js"
 
 /** Request-time execution authorities. Reading this port does not activate a session. */
 interface ModuleExecutionEnvironment {
@@ -35,6 +36,11 @@ interface ModuleExecutionEnvironment {
   readonly recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
   readonly attachProjection: AttachChildSessionProjection
   readonly deliverNotification: ParentNotificationDelivery
+  readonly personEntries: PersonEntryForward["personEntries"]
+  readonly forwardPersonEntries: PersonEntryForward["forwardPersonEntries"]
+  /** Opens a new chat with no tab, born with its auth profile and its store
+   *  entry. A chat with no name generates its own title. */
+  readonly openChat: (options: { readonly name?: string }) => Promise<string>
 }
 
 /** What the runtime hands a module that declares a process-scoped service:

@@ -162,6 +162,9 @@ describe("RuntimeSupervisor actor mailbox", () => {
     })
     const sessionId = await supervisor.openSessionRuntime()
     const conversationId = chatConversationId(sessionId)
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await supervisor.activateSession(sessionId, { shown: true }).catch(() => {})
+    failures.length = 0
 
     await expect(supervisor.sendChat(sessionId, "retained")).resolves.toEqual({ ok: true })
     await Promise.resolve()
@@ -313,6 +316,8 @@ describe("RuntimeSupervisor actor mailbox", () => {
     const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx), runnerCapabilities: async () => { throw new Error("capabilities unavailable") } })
     const sessionId = await supervisor.openSessionRuntime()
     const conversationId = chatConversationId(sessionId)
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await supervisor.activateSession(sessionId, { shown: true }).catch(() => {})
     await expect(supervisor.sendChat(sessionId, "kept")).resolves.toEqual({ ok: true })
     await settled()
     expect(supervisor.runtimeState(sessionId)).toEqual({ kind: "failed", message: "capabilities unavailable" })
@@ -342,7 +347,7 @@ describe("RuntimeSupervisor actor mailbox", () => {
     const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx), runnerCapabilities: () => held.promise })
     const sessionId = await supervisor.openSessionRuntime()
     const conversationId = chatConversationId(sessionId)
-    const activation = supervisor.activateSession(sessionId)
+    const activation = supervisor.activateSession(sessionId, { shown: true })
     await expect(supervisor.sendChat(sessionId, "kept")).resolves.toEqual({ ok: true })
 
     held.reject(new Error("capabilities unavailable"))
@@ -438,7 +443,7 @@ describe("RuntimeSupervisor actor mailbox", () => {
     })
     const supervisor = supervisorWithRunner(ctx, async () => runner)
     const id = await supervisor.openSessionRuntime()
-    await supervisor.ensureChatRunner(id)
+    await supervisor.activateSession(id, { shown: true })
 
     await expect(supervisor.sendChat(id, "during the lock")).resolves.toEqual({ ok: false, reason: "Chat message could not be saved: database is locked" })
     await expect(supervisor.sendChat(id, "after the lock")).resolves.toEqual({ ok: true })
@@ -579,7 +584,7 @@ describe("RuntimeSupervisor actor mailbox", () => {
     }
     expect(ctx.sessionStore.has(id)).toBe(false)
 
-    expect(await supervisor.activateSession(id)).toBe(true)
+    expect(await supervisor.activateSession(id, { shown: true })).toBe(true)
     await expect(supervisor.sendChat(id, "after the failed close")).resolves.toEqual({ ok: true })
     expect(chatEntry(id).runner).not.toBeNull()
   })

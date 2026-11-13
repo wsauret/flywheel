@@ -13,6 +13,10 @@ import type { SessionLifecycleState } from "./types.js"
 import { readReplyWaits } from "./conversation/reply-wait-cells.js"
 import type { RestoredAgentWait } from "../agent-runtime/agent-loop-types.js"
 
+/** One conversation entry as an entries batch stores it, in any version
+ *  that this release reads: tool text can still be a reference. */
+export type StoredTailEntry = Extract<ConversationTreeFact, { readonly type: "chat.entries.appended" }>["payload"]["entries"][number]
+
 /** The newest entry batches of a conversation, oldest first, or nothing when
  *  this release cannot read them: a corrupt row or a batch that fails its
  *  parse. One unreadable batch makes the whole tail unreadable, because the
@@ -33,8 +37,8 @@ import type { RestoredAgentWait } from "../agent-runtime/agent-loop-types.js"
  *  as a message with images, never shares a slice with another batch, and the
  *  tail stays inside the state Worker's response budget whatever the batches
  *  around it hold. */
-async function readConversationTail(reader: AsyncEventStateReadSurface, conversationId: string, decides: (tail: readonly TurnEndEntry[]) => boolean = tailDecision(), wholeTail = false): Promise<{ readonly entries: readonly (TurnEndEntry & { readonly timestamp: string })[]; readonly sessionId: string } | undefined> {
-  const entries: (TurnEndEntry & { readonly timestamp: string })[] = []
+export async function readConversationTail(reader: AsyncEventStateReadSurface, conversationId: string, decides: (tail: readonly StoredTailEntry[]) => boolean = tailDecision(), wholeTail = false): Promise<{ readonly entries: readonly StoredTailEntry[]; readonly sessionId: string } | undefined> {
+  const entries: StoredTailEntry[] = []
   let beforePosition: number | undefined
   let sessionId = ""
   for (;;) {

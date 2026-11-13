@@ -26,6 +26,9 @@ describe("RuntimeSupervisor recovered chat handling", () => {
             ...mockRunner(sessionId),
             send: async (input) => {
               if (typeof input === "string") delivered.push(input)
+              // The turn runs, so the runner of this chat that no client
+              // shows stays until the turn comes to rest (ARCH-SESSIONS-053).
+              ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "streaming" })
               return "accepted" as const
             },
           }

@@ -35,6 +35,7 @@ import type { ContinuationLanes } from "../session/planned-session-continuation.
 import type { ModuleRetainedOperationAuthority, RetainedOperationAcceptance } from "../module-seams.js"
 import type { SessionStops } from "../session/module-session-operations.js"
 import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
+import type { PersonEntryForward } from "./person-entry-forward.js"
 
 interface AgentInputAnswers {
   readonly [question: string]: AgentInputAnswer
@@ -168,7 +169,7 @@ export interface RuntimeRunnerCapabilities {
   readonly recall: (conversationId: string, contract: RecallInput) => Promise<RecallResult>
 }
 
-export interface RuntimeSupervisor {
+export interface RuntimeSupervisor extends PersonEntryForward {
   claimComposerReturns(sessionId: string, submissionIds: readonly string[]): Promise<import("../../protocol/composer-returns.js").ClaimComposerReturnsResult>
   reconcileChildSessionCompletions(parentSessionId: string): Promise<ChildSessionReconciliation>
   undoChanges(request: SessionChangesUndo): Promise<SessionChangesUndoResult>
@@ -182,7 +183,10 @@ export interface RuntimeSupervisor {
    *  which can have no durable row yet, or the kind of its durable row.
    *  Nothing for a session that does not exist. */
   sessionKind(sessionId: string): Promise<SessionKind | undefined>
-  /** A person's message to a chat, which starts or joins its turn. */
+  /** A person's message to a chat, which starts or joins its turn. A chat
+   *  that no client shows ends its runner when the turn comes to rest, as
+   *  it does after a person's answer or skip of its question
+   *  (ARCH-SESSIONS-053). */
   sendChat(sessionId: string, input: ChatInputLike): Promise<SendChatOutcome>
   /** Persist module work before admitting it to the chat's ordinary save point. */
   acceptRetainedOperation(sessionId: string, operation: RetainedOperationAcceptance): Promise<boolean>

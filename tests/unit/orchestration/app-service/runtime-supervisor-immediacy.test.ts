@@ -89,9 +89,11 @@ describe("RuntimeSupervisor preemptive immediacy and two-phase lifecycle", () =>
       },
     }))
     const sessionId = await supervisor.openSessionRuntime()
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await supervisor.activateSession(sessionId, { shown: true })
     await expect(supervisor.sendChat(sessionId, "first turn")).resolves.toEqual({ ok: true })
-    await supervisor.ensureChatRunner(sessionId)
     order.length = 0
+    injected.length = 0
 
     const queuedSend = supervisor.sendChat(sessionId, "send after detach")
     await Bun.sleep(0)
@@ -166,7 +168,8 @@ describe("RuntimeSupervisor preemptive immediacy and two-phase lifecycle", () =>
     }))
     const sessionId = await supervisor.openSessionRuntime()
     await expect(supervisor.sendChat(sessionId, "keep me")).resolves.toEqual({ ok: true })
-    await supervisor.ensureChatRunner(sessionId)
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await supervisor.activateSession(sessionId, { shown: true })
 
     await expect(supervisor.closeChat(sessionId)).resolves.toBe(true)
     // Its record waits for the person even when the turn waited on background work.

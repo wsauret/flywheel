@@ -14,6 +14,7 @@ import { createSessionRuntimeActor } from "./session-runtime-actor.js"
 import type { SessionRuntimeActor, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 import type { QuestionSettlementOutcome, ResumeChatOutcome, RuntimeSupervisor, RuntimeSupervisorDeps, SendChatOutcome } from "./runtime-supervisor-types.js"
 import { createTranscriptProjectionCache } from "./transcript-projection-cache.js"
+import { createPersonEntryForward } from "./person-entry-forward.js"
 import { attachedRunnerDelivery } from "./session-background-notifications.js"
 import { liveChildRun, liveChildRuns, liveSessionControl } from "../session/live-session-control.js"
 import { isEmptyChat } from "../session/empty-chat.js"
@@ -187,9 +188,27 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       { log, operation: "send chat", level: "debug", fields: { sessionId }, summarize: (result) => ({ ok: result.ok }) },
       () => ensureActor(sessionId).dispatch({ kind: "session.send", input }),
     )
-    if (outcome.ok) await markActive(sessionId)
+    if (outcome.ok) {
+      await markActive(sessionId)
+      await releaseUnshown(sessionId)
+    }
     return outcome
   }
+  /** A person's input to a chat that no client shows holds no runner past
+   *  its turn (ARCH-SESSIONS-053): the release ends the runner at rest. The
+   *  input's outcome waits until the actor has taken the release, so a
+   *  later command finds the runner either ended or waiting for rest. */
+  async function releaseUnshown(sessionId: string): Promise<void> {
+    if (!shownSessions.has(sessionId)) await releaseSession(sessionId)
+  }
+  const personEntryForward = createPersonEntryForward({
+    reader: eventStore,
+    conversationOf: async (sessionId) => {
+      const session = await deps.manager.read(sessionId)
+      return session?.kind === "chat" ? session.conversationId : undefined
+    },
+    sendChat,
+  })
   async function acceptRetainedOperation(sessionId: string, operation: RetainedOperationAcceptance): Promise<boolean> {
     return ensureActor(sessionId).dispatch({ kind: "operation.accept", operation })
   }
@@ -348,11 +367,16 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       else await ensureActor(sessionId).dispatch({ kind: "background.terminate", toolUseId })
     }
   }
+  async function settleQuestion(sessionId: string, settled: Promise<QuestionSettlementOutcome>): Promise<QuestionSettlementOutcome> {
+    const outcome = await settled
+    if (outcome.ok) await releaseUnshown(sessionId)
+    return outcome
+  }
   function answerQuestion(sessionId: string, toolUseId: string, answers: QuestionAnswers): Promise<QuestionSettlementOutcome> {
-    return ensureActor(sessionId).dispatch({ kind: "question.answer", toolUseId, answers })
+    return settleQuestion(sessionId, ensureActor(sessionId).dispatch({ kind: "question.answer", toolUseId, answers }))
   }
   function cancelQuestion(sessionId: string, toolUseId: string): Promise<QuestionSettlementOutcome> {
-    return ensureActor(sessionId).dispatch({ kind: "question.cancel", toolUseId })
+    return settleQuestion(sessionId, ensureActor(sessionId).dispatch({ kind: "question.cancel", toolUseId }))
   }
   function compactChat(sessionId: string): Promise<boolean> {
     const member = liveSessionControl(eventStore, sessionId)?.member
@@ -656,5 +680,5 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     }
     return removed
   }
-  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader: deps.projectionReader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
+  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader: deps.projectionReader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, personEntries: personEntryForward.personEntries, forwardPersonEntries: personEntryForward.forwardPersonEntries, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
 }

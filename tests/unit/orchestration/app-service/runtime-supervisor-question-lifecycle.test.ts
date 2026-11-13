@@ -40,7 +40,8 @@ test.each(["answer", "cancel"] as const)("child completion leaves the mailbox av
   try {
     const sessionId = await supervisor.openSessionRuntime()
     await supervisor.sendChat(sessionId, "Ask me")
-    await supervisor.ensureChatRunner(sessionId)
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await supervisor.activateSession(sessionId, { shown: true })
     const session = await ctx.manager.read(sessionId)
     if (session?.kind !== "chat") throw new Error("missing chat session")
     const question = { question: "Continue?", choices: [{ kind: "option" as const, choiceId: "yes", label: "Yes" }], multiSelect: false }

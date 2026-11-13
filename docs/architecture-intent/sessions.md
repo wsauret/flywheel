@@ -228,3 +228,8 @@ Not: A brief that the lead writes, or a session-provenance message that carries 
 ## ARCH-SESSIONS-052: Chat events reach the lead as notices
 
 When a chat that the lead started asks the person a question, ends a turn, fails, or is cut, the runtime records one system-origin notice for the lead. Notices derive from live state, coalesce while the lead works, and never count as a person's turn.
+
+## ARCH-SESSIONS-053: A runner without a client hold lasts one turn
+
+A person's input to a chat that no client shows starts the chat's runner without a hold. The executor then ends that runner when the turn comes to rest, as it does after the last hold ends (ARCH-RUNTIME-023).
+Not: A runner that stays attached after its turn because no hold ever ends.

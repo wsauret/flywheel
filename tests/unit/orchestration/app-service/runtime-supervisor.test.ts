@@ -314,6 +314,8 @@ describe("RuntimeSupervisor", () => {
     expect(existsSync(join(resolveSessionDir(destinationSessionId, ctx.baseDir), "owner.pid"))).toBe(false)
     expect(createCalls).toBe(0)
 
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await supervisor.activateSession(destinationSessionId, { shown: true })
     expect(await supervisor.sendChat(destinationSessionId, "follow-up")).toEqual({ ok: true })
 
     expect(await ctx.manager.read(destinationSessionId)).toMatchObject({ lifecycleState: "active", ...labels })
@@ -595,10 +597,12 @@ describe("RuntimeSupervisor", () => {
       manager,
     })
     const sessionId = await supervisor.openSessionRuntime()
+    // A client shows the chat, so its runner outlives the turn (ARCH-SESSIONS-053).
+    await supervisor.activateSession(sessionId, { shown: true })
     await supervisor.sendChat(sessionId, "keep me")
 
     const deleting = supervisor.deleteSession(sessionId)
-    for (let i = 0; i < 20 && sequence.length === 0; i++) await Promise.resolve()
+    for (let i = 0; i < 20 && sequence.length === 0; i++) await Bun.sleep(1)
     expect(sequence).toEqual(["dispose:start"])
 
     release.resolve()

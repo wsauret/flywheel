@@ -63,6 +63,7 @@ import { composeBackgroundIndex } from "./background-index-publisher.js"
 import { createRuntimeSupervisor } from "./runtime-supervisor.js"
 import { createChatRunnerLoader } from "./chat-runner-loader.js"
 import type { ChatRunner } from "../chat/runner-types.js"
+import type { PersonEntryForward } from "./person-entry-forward.js"
 import { createIdleCompactionPolicy } from "../chat/idle-compaction.js"
 import type { RuntimeRunnerCapabilities, RuntimeSupervisor } from "./runtime-supervisor-types.js"
 import { createCommandInvokeService } from "./command-invoke-service.js"
@@ -345,6 +346,9 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       attachProjection: childSessionProjectionAttachment(sessionStore),
       deliverNotification: attachedRunnerDelivery(sessionStore),
       openChatRunner: async (sessionId): Promise<ChatRunner | undefined> => await runtimeSupervisor.activateSession(sessionId) ? runtimeSupervisor.ensureChatRunner(sessionId) : undefined,
+      personEntries: (sessionId, earlierTurns): ReturnType<PersonEntryForward["personEntries"]> => runtimeSupervisor.personEntries(sessionId, earlierTurns),
+      forwardPersonEntries: (input): ReturnType<PersonEntryForward["forwardPersonEntries"]> => runtimeSupervisor.forwardPersonEntries(input),
+      openChat: (chat): Promise<string> => runtimeSupervisor.openSessionRuntime(chat),
     }),
   }, options.notify !== undefined), (services) => services.dispose())
   moduleServices.reconcile()
