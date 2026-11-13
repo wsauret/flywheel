@@ -9,15 +9,16 @@
  * carry the real persona registry and workflow summaries but cannot dispatch, and the handoff schema is the agent's
  * or the subagent's. With `hosts`, every optional module that needs a host to build its tool gets one that builds
  * but never runs: a web search provider, one MCP server with one tool, the Code Mode service, an unresolved
- * definition override, and the development tooling. Known approximations: the memory and skill_manage tools need a
- * live store and are omitted, and the environment block, which a live run reads with git, is absent.
+ * definition override, and the development tooling. A chat resolves its chat profile and builds the lead's runtime
+ * from the module services it is given, as a live chat does. Known approximations: the memory and skill_manage tools
+ * need a live store and are omitted, and the environment block, which a live run reads with git, is absent.
  */
 
 import { join } from "node:path";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
 import type { CapabilityCheck } from "../src/infra/capability-text.js";
 import { composeModuleRuntimes, type ModuleRuntimes } from "../src/infra/module-runtime.js";
-import { composeModuleServices } from "../src/infra/module-service.js";
+import { composeModuleServices, NO_MODULE_SERVICES, type ModuleServices } from "../src/infra/module-service.js";
 import { createBackgroundWorkRegistry } from "../src/orchestration/agent-runtime/background-work.js";
 import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/capability-checks.js";
 import { createChildSlotRegistry } from "../src/orchestration/agent-runtime/child-slot-registry.js";
@@ -31,6 +32,8 @@ import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/ag
 import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
 import type { FirstPartyModuleComposition } from "../src/orchestration/modules.js";
+import { resolveChatProfile } from "../src/orchestration/chat-profile.js";
+import { createLeadRuntime } from "../src/orchestration/modules/lead/runtime.js";
 import { disabledAgentTypes } from "../src/orchestration/module-catalog.js";
 import { createCodeModeRuntime } from "../src/orchestration/modules/code-mode/runtime.js";
 import { createCodeModeService } from "../src/orchestration/modules/code-mode/service.js";
@@ -73,6 +76,9 @@ export interface PlanInput {
   readonly capabilityAccess?: CapabilityAccess;
   /** The project's session messaging authority, which a live runner holds; absent, the message tools are omitted. */
   readonly sessions?: SessionMessaging;
+  /** The process services of the request's modules, which a live runner holds; absent, none. A chat resolves its
+   *  chat profile from them. */
+  readonly moduleServices?: ModuleServices;
 }
 
 /** One planned request: its kernel, its module runtimes, its tools, and the logical identity of each tool. */
@@ -87,10 +93,13 @@ export interface PlannedRequest {
   readonly eligibleTools: ToolExposurePlan["eligibleTools"];
   /** The modules whose advertised tools this agent's calls are refused as turned off (`ToolExposurePlan.turnedOff`). */
   readonly turnedOff: ToolExposurePlan["turnedOff"];
+  /** The prompt of the chat profile that limited the tools, which replaces the chat body of the system prompt. */
+  readonly chatPrompt?: string;
 }
 
 const noop = (): void => {};
 const notDispatched = (): never => { throw new Error("Prompt assembly does not dispatch subagents."); };
+const ASSEMBLY_SESSION_ID = "assembly-session";
 
 /** The planner's catalog for one request. The kernel facts come from the production builder (`requestKernel`)
  *  over stub surfaces; the module runtimes carry only what tool construction and prompt fragments read (the
@@ -142,8 +151,8 @@ export async function planPromptRequest(assembly: PromptAssembly, input: PlanInp
     onChildRenderEvent: noop,
     backgroundTasks,
     childSlots: createChildSlotRegistry(),
-    sessionId: "assembly-session",
-    providerSessionKey: "assembly-session",
+    sessionId: ASSEMBLY_SESSION_ID,
+    providerSessionKey: ASSEMBLY_SESSION_ID,
     createRunner: notDispatched,
     planChildCapabilities: notDispatched,
     authProfileId: "default",
@@ -183,10 +192,16 @@ export async function planPromptRequest(assembly: PromptAssembly, input: PlanInp
       authority: () => ({ toolActions: new Set(), personas: new Set() }),
     }]);
   if (assembly.hosts) runtimes.push(...hostRuntimes(input.purpose));
+  const moduleServices = input.moduleServices ?? NO_MODULE_SERVICES;
+  const lead = createLeadRuntime({ sessionId: ASSEMBLY_SESSION_ID, modules: moduleServices });
+  if (lead) runtimes.push(["lead", lead]);
   const modules = composeModuleRuntimes(runtimes);
+  // A chat asks its profile with the request's module snapshot, as a live chat's request options do; a child never.
+  const chat = input.purpose.kind === "interactive-chat" || input.purpose.kind === "unattended-chat";
+  const chatProfile = chat ? resolveChatProfile(assembly.capture, { sessionId: ASSEMBLY_SESSION_ID, modules: moduleServices }) : undefined;
   // An agent that plans from its tree's capture keeps a tool its own selection turned off advertised and unusable.
-  const plan = await planToolExposure({ kernel, modules, ...(assembly.live === assembly.capture ? {} : { live: assembly.live }) });
-  return { kernel, modules, tools: new Map(plan.tools), registrationIdentities: plan.registrationIdentities, usable: plan.usable, eligibleTools: plan.eligibleTools, turnedOff: plan.turnedOff };
+  const plan = await planToolExposure({ kernel, modules, ...(assembly.live === assembly.capture ? {} : { live: assembly.live }), ...(chatProfile ? { profile: { only: new Set(chatProfile.tools) } } : {}) });
+  return { kernel, modules, tools: new Map(plan.tools), registrationIdentities: plan.registrationIdentities, usable: plan.usable, eligibleTools: plan.eligibleTools, turnedOff: plan.turnedOff, ...(chatProfile ? { chatPrompt: chatProfile.prompt } : {}) };
 }
 
 /** The interaction profile of the assembly's serving model. */
@@ -249,6 +264,7 @@ export async function promptParts(assembly: PromptAssembly, purpose: AgentPurpos
     moduleSnapshot: assembly.capture,
     tools: planned.tools,
     registrationIdentities: planned.registrationIdentities,
+    ...(planned.chatPrompt !== undefined ? { chatPrompt: planned.chatPrompt } : {}),
     kernel: planned.kernel,
     modules: planned.modules,
     memory: sources.memory,

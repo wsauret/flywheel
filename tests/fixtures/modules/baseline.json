@@ -1007,6 +1007,40 @@
           "kind": "omitted",
           "reason": "no experiment session available"
         }
+      },
+      {
+        "name": "route_request",
+        "tool": "route_request",
+        "policy": {
+          "action": "ui_meta",
+          "personaBaseline": false
+        },
+        "category": "ambient",
+        "capabilities": [],
+        "cloneInheritance": "reconstruct",
+        "learningReviewExecutable": false,
+        "semanticBundle": null,
+        "creation": {
+          "kind": "omitted",
+          "reason": "only the lead chat has this tool"
+        }
+      },
+      {
+        "name": "chat_progress",
+        "tool": "chat_progress",
+        "policy": {
+          "action": "ui_meta",
+          "personaBaseline": false
+        },
+        "category": "ambient",
+        "capabilities": [],
+        "cloneInheritance": "reconstruct",
+        "learningReviewExecutable": false,
+        "semanticBundle": null,
+        "creation": {
+          "kind": "omitted",
+          "reason": "only the lead chat has this tool"
+        }
       }
     ]
   },

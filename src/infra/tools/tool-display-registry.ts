@@ -44,6 +44,7 @@ import { handoffDisplay } from "./displays/handoff.js";
 import { historicalBackgroundDisplay } from "./displays/background.js";
 import { processDisplay } from "./displays/process.js";
 import { listSessionsDisplay, messageSessionDisplay } from "./displays/message-session.js";
+import { chatProgressDisplay, routeRequestDisplay } from "./displays/lead.js";
 import { modelsDisplay } from "./displays/models.js";
 import { benchmarkDisplay } from "./displays/benchmark.js";
 import type { ToolDisplay, ToolPresentation, ToolPresentationContext } from "./types.js";
@@ -78,6 +79,8 @@ const BUILT_IN: readonly ToolDisplay[] = [
   processDisplay,
   messageSessionDisplay,
   listSessionsDisplay,
+  routeRequestDisplay,
+  chatProgressDisplay,
   modelsDisplay,
   benchmarkDisplay,
 ];

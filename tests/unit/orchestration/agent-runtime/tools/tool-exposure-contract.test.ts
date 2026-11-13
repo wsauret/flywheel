@@ -27,7 +27,7 @@ function plan(kernel: Partial<KernelToolDeps> = {}, runtimes: RuntimeEntries = [
 
 const expected = {
   core: ["apply_patch", "bash", "edit", "list", "read", "search", "write"],
-  ambient: ["handoff", "list_sessions", "message_session", "models", "init_experiment", "log_experiment", "checkpoint_read", "checkpoint_replace", "checkpoint_decide", "papercut_dispose", "papercut_log", "process.native", "run_experiment", "skill"],
+  ambient: ["handoff", "list_sessions", "message_session", "models", "init_experiment", "log_experiment", "checkpoint_read", "checkpoint_replace", "checkpoint_decide", "papercut_dispose", "papercut_log", "process.native", "run_experiment", "skill", "route_request", "chat_progress"],
   "opt-in": ["definition_overrides", "memory", "recall", "skill_manage", "ask_user", "code", "subagent", "web", "workflow"],
 } as const;
 const categories = ["core", "ambient", "opt-in"] as const;
@@ -63,6 +63,8 @@ const missingSurfaceReasons = {
   log_experiment: "no experiment session available",
   subagent: "no subagent registry available",
   workflow: "no workflow starter available",
+  route_request: "only the lead chat has this tool",
+  chat_progress: "only the lead chat has this tool",
 } as const;
 /** Ambient tools a runner without the owning surface still exposes. */
 const ambientExposed = expected.ambient.filter((name) => !(name in missingSurfaceReasons));

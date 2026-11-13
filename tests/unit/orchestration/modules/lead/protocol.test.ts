@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
-import { createSessionEventNotices } from "../../../../../src/orchestration/app-service/session-event-notices.js"
 import { createLeadProtocol } from "../../../../../src/orchestration/modules/lead/protocol.js"
-import { createLeadService } from "../../../../../src/orchestration/modules/lead/service.js"
 import { EMPTY_LEAD_VIEW, leadCursor } from "../../../../../src/protocol/modules/lead.js"
-import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorWithRunner, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
+import { createSupervisorTestContext, disposeSupervisorTestContext, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
+import { leadHarness } from "./_lead-harness.js"
 
 let ctx: SupervisorTestContext
 let dispose: (() => Promise<void>) | undefined
@@ -18,30 +16,18 @@ afterEach(async () => {
 
 /** The lead's protocol runtime over its started service, with a switch for the module selection. */
 function protocolHarness() {
-  const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId))
-  const sessionEvents = createSessionEventNotices({ sessionStore: ctx.sessionStore })
+  const lead = leadHarness(ctx)
+  dispose = lead.dispose
   let enabled = true
-  const service = createLeadService({
-    projectionReader: asAsyncEventReadSurface(ctx.store),
-    eventWriter: ctx.store,
-    onStored: ctx.store.onStored,
-    publish: () => undefined,
-    sessionManager: ctx.manager,
-    executionEnvironment: () => ({ openChat: (options) => supervisor.openSessionRuntime(options), sessionEvents }),
-    onSelectionChanged: () => () => {},
-    enabled: () => enabled,
-  })
-  service.start?.()
-  dispose = async () => { await service.dispose(); sessionEvents.dispose(); await supervisor.disposeAll() }
   const protocol = createLeadProtocol({
-    modules: composeModuleServices([["lead", service]]),
+    modules: composeModuleServices([["lead", lead.service]]),
     enabled: () => enabled,
     snapshotPosition: (scope) => {
       expect(scope).toEqual({ kind: "cursor", cursor: leadCursor() })
       return 7
     },
   })
-  return { protocol, setEnabled: (next: boolean) => { enabled = next } }
+  return { protocol, setEnabled: async (next: boolean) => { enabled = next; await lead.setEnabled(next) } }
 }
 
 const factCount = () => ctx.store.read({ aggregateId: "lead" }).length
@@ -49,7 +35,7 @@ const chatCount = async () => (await ctx.manager.listMetadata()).sessions.length
 
 test("while the module is off, open and dismiss answer no chat, create none, and append nothing", async () => {
   const { protocol, setEnabled } = protocolHarness()
-  setEnabled(false)
+  await setEnabled(false)
   expect(await protocol.mutate["lead.open"]({ type: "lead.open", reason: "launch" })).toEqual({ ok: true, sessionId: null })
   expect(await protocol.mutate["lead.dismiss"]({ type: "lead.dismiss", sessionId: "any" })).toEqual({ ok: true, sessionId: null })
   expect(await chatCount()).toBe(0)
@@ -61,9 +47,9 @@ test("while the module is off the snapshot is the empty view, and the stored des
   const opened = await protocol.mutate["lead.open"]({ type: "lead.open", reason: "command" })
   if (!opened.ok || opened.sessionId === null) throw new Error("expected the lead to open")
 
-  setEnabled(false)
+  await setEnabled(false)
   expect(await protocol.serve.leadSnapshot({ type: "leadSnapshot" })).toEqual({ snapshotPosition: 7, view: EMPTY_LEAD_VIEW })
 
-  setEnabled(true)
+  await setEnabled(true)
   expect(await protocol.serve.leadSnapshot({ type: "leadSnapshot" })).toEqual({ snapshotPosition: 7, view: { leadSessionId: opened.sessionId, dismissed: false, rows: [] } })
 })

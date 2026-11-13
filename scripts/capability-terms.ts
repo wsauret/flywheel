@@ -80,6 +80,7 @@ export const CAPABILITY_PHRASES: CapabilityPhraseTable = {
     phrases: [/\bfile-edit\b/i],
     sources: [`${TOOLS}/apply-patch.ts`, `${TOOLS}/edit.ts`, `${TOOLS}/read.ts`, `${TOOLS}/write.ts`, `${TOOLS}/streaming-edit-validator.ts`],
   },
+  lead: { phrases: [] },
   learning: { phrases: [/\b(?:to|in) memory\b/] },
   mcp: { phrases: [/\bMCP\b/], sources: ["src/orchestration/agent-runtime/mcp-result.ts", "src/orchestration/agent-runtime/mcp-stdio-client-transport.ts"] },
   papercuts: { phrases: [] },

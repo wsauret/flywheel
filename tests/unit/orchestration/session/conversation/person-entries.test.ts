@@ -103,17 +103,10 @@ describe("personEntrySelection", () => {
     expect(select([person("A", "first"), answer("r1"), compaction("k"), person("B", "second")], 1).map((ref) => ref.entryId)).toEqual(["A", "B"])
   })
 
-  test("a chat that ends with a reply answers that turn as the newest", () => {
-    const ended = [person("A", "first"), answer("r1"), person("B", "second"), answer("r2")]
-    expect(select(ended, 0)).toEqual([{ entryId: "B", firstLine: "second", turnsBack: 0 }])
-    expect(select(ended, 1)).toEqual([
-      { entryId: "A", firstLine: "first", turnsBack: 1 },
-      { entryId: "B", firstLine: "second", turnsBack: 0 },
-    ])
-  })
-
-  test("a newest turn that a notice started holds no entry of the person and is not counted", () => {
-    expect(select([person("A", "first"), answer("r1"), system("n"), answer("r2")], 0)).toEqual([{ entryId: "A", firstLine: "first", turnsBack: 0 }])
+  test("a newest turn that a notice started holds no entry of the person and still counts as the newest", () => {
+    const fromNotice = [person("A", "first"), answer("r1"), system("n"), toolCall("t")]
+    expect(select(fromNotice, 0)).toEqual([])
+    expect(select(fromNotice, 1)).toEqual([{ entryId: "A", firstLine: "first", turnsBack: 1 }])
   })
 
   test("an earlier turn with no entry of the person is not counted", () => {

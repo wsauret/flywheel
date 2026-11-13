@@ -7,8 +7,8 @@ import type { StoredTailEntry } from "../chat-session-run-evidence.js"
 export type PersonEntry = StoredTailEntry & { readonly kind: "message"; readonly message: Extract<Extract<StoredTailEntry, { readonly kind: "message" }>["message"], { readonly kind: "user" }> }
 
 /** One of the person's entries of a chat's newest turns. `turnsBack` is 0 for
- *  the newest turn and counts only the earlier turns that hold an entry of
- *  the person. */
+ *  the newest turn, every entry after the newest turn end, and counts only
+ *  the earlier turns that hold an entry of the person. */
 export interface PersonEntryRef {
   readonly entryId: string
   readonly firstLine: string
@@ -44,16 +44,20 @@ export function personEntrySelection(earlierTurns: number): PersonEntrySelection
   const newestFirst: PersonEntryRef[] = []
   let turn = 0
   let turnHasPerson = false
+  let newestEnded = false
   let closed = false
   return {
     feed(batch) {
       for (let index = batch.length - 1; index >= 0 && !closed; index -= 1) {
         const entry = batch[index]
         if (entry === undefined) continue
-        // An end met before its turn holds an entry of the person closes a
-        // turn that is not counted, such as a reply to a notice.
+        // The newest turn counts also with no entry of the person, as a turn
+        // that a notice started. An earlier end met before its turn holds an
+        // entry of the person closes a turn that is not counted, such as a
+        // reply to a notice.
         if (endsTurn(entry)) {
-          if (!turnHasPerson) continue
+          if (!turnHasPerson && newestEnded) continue
+          newestEnded = true
           if (turn >= earlierTurns) closed = true
           else turn += 1
           turnHasPerson = false

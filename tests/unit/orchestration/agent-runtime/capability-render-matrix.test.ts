@@ -7,6 +7,7 @@ import { planPromptRequest, plannedCapabilities, promptParts, type PlannedReques
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import type { CapabilityCheck } from "../../../../src/infra/capability-text.js";
 import { composeModuleRuntimes } from "../../../../src/infra/module-runtime.js";
+import { composeModuleServices } from "../../../../src/infra/module-service.js";
 import { createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../src/orchestration/app-service/definition-availability.js";
 import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js";
 import { createCapabilityNarrowing } from "../../../../src/orchestration/agent-runtime/capability-narrowing.js";
@@ -24,6 +25,7 @@ import { decodeModuleState } from "../../../../src/orchestration/config/module-d
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import { composeFirstPartyModules, effectiveModuleIds, SHIPPED_MODULES, workflowsModeOf, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js";
+import type { LeadService } from "../../../../src/orchestration/modules/lead/service.js";
 import { reviewInstruction } from "../../../../src/orchestration/modules/learning/learning-review-prompts.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";
@@ -34,6 +36,7 @@ import { createProjectDefinitionRegistry } from "../../../../src/workflows/defin
 import { compileOutput } from "../../../../src/workflows/output-contract/compile.js";
 import { offeredSkillResources, readSkillResource } from "../../../../src/workflows/skill-context.js";
 import { renderSkillContext, renderSkillResourceWindow } from "../../../../src/workflows/skill-render.js";
+import { unusedSessionMessaging } from "../../../helpers/child-session-control.js";
 import { makeContext } from "./tools/_fixtures.js";
 
 // The render matrix of capability-aware prompt text (ARCH-CONTEXT-033). For each module configuration it renders
@@ -91,6 +94,10 @@ const SUBAGENT: AgentPurpose = { kind: "subagent", renderAs: "subagent", parentT
 /** A general subagent, which renders as a chat. */
 const GENERAL_SUBAGENT: AgentPurpose = { kind: "subagent", renderAs: "chat", parentToolUseId: "matrix" };
 const WORKFLOW_AGENT: AgentPurpose = { kind: "workflow-agent", briefScope: { briefId: "matrix" }, workflowAttemptId: "matrix" };
+/** The services of a chat that the lead service names its lead chat, so the chat takes the lead's chat profile while
+ *  the lead module is on, with the session messaging that its routing tool needs. */
+const leadRole: Pick<LeadService, "role"> = { role: () => "lead" };
+const LEAD_CHAT = { moduleServices: composeModuleServices([["lead", leadRole]]), sessions: unusedSessionMessaging() };
 /** One serving model per interaction profile: the default body with the edit tool, a Claude 5 chat body, and the
  *  apply_patch edit contract. */
 const PROFILES: readonly PromptAssembly["servingModel"][] = [
@@ -125,11 +132,11 @@ interface Render {
 
 /** Every surface that one request of `purpose` renders under `capture`, with `live` as the agent's own selection.
  *  Workflows is Off exactly while its module is off (`workflowsModeOf`); `ask` selects Ask while it is on. */
-async function render(capture: FirstPartyModuleComposition, live: FirstPartyModuleComposition, purpose: AgentPurpose, servingModel = PROFILES[0]!, ask = false, disabledTypes: readonly string[] = []): Promise<Render> {
+async function render(capture: FirstPartyModuleComposition, live: FirstPartyModuleComposition, purpose: AgentPurpose, servingModel = PROFILES[0]!, ask = false, disabledTypes: readonly string[] = [], lead = false): Promise<Render> {
   const workflowsMode = workflowsModeOf(ALL_IDS.filter((id) => live.enabledModuleIds.includes(id)), ask);
   const assembly: PromptAssembly = { projectRoot: root, userDataRoot: root, accountHome: root, scratchDir: join(root, "session", "scratch"), definitions, runtimeConfig: configWithTypes(disabledTypes), capture, live, workflowsMode, servingModel, hosts: true };
   const chat = purpose.kind === "interactive-chat";
-  const planned = await planPromptRequest(assembly, { personas: definitions.personas, purpose, askUser: chat, ...(chat ? {} : { handoffSchema: { schema: SUBAGENT_HANDOFF_SCHEMA } }) });
+  const planned = await planPromptRequest(assembly, { personas: definitions.personas, purpose, askUser: chat, ...(chat ? {} : { handoffSchema: { schema: SUBAGENT_HANDOFF_SCHEMA } }), ...(lead ? LEAD_CHAT : {}) });
   if (chat) planned.tools.delete("handoff");
   const has: CapabilityCheck = plannedCapabilities(planned);
   const usableIdentities = [...planned.usable].filter((name) => planned.tools.has(name)).map((name) => planned.registrationIdentities.get(name) ?? name);
@@ -211,17 +218,18 @@ async function render(capture: FirstPartyModuleComposition, live: FirstPartyModu
   return { rendered, planned };
 }
 
-/** Every surface of one configuration: a chat under each interaction profile, a subagent, and an agent of a
- *  workflow, each labeled with its purpose and model. */
+/** Every surface of one configuration: a chat under each interaction profile, the lead chat, a subagent, and an
+ *  agent of a workflow, each labeled with its purpose and model. */
 async function renderConfiguration(composition: FirstPartyModuleComposition, disabledTypes: readonly string[] = []): Promise<Rendered[]> {
   const requests = [
-    ...PROFILES.map((profile) => [CHAT, profile] as const),
-    [UNATTENDED_CHAT, PROFILES[0]!] as const,
-    [SUBAGENT, PROFILES[0]!] as const,
-    [GENERAL_SUBAGENT, PROFILES[0]!] as const,
-    [WORKFLOW_AGENT, PROFILES[0]!] as const,
+    ...PROFILES.map((profile) => [CHAT, profile, false] as const),
+    [CHAT, PROFILES[0]!, true] as const,
+    [UNATTENDED_CHAT, PROFILES[0]!, false] as const,
+    [SUBAGENT, PROFILES[0]!, false] as const,
+    [GENERAL_SUBAGENT, PROFILES[0]!, false] as const,
+    [WORKFLOW_AGENT, PROFILES[0]!, false] as const,
   ];
-  const renders = await Promise.all(requests.map(async ([purpose, profile]) => (await render(composition, composition, purpose, profile, false, disabledTypes)).rendered.map((entry) => ({ ...entry, surface: `${purpose.kind}${purpose.kind === "subagent" ? `:${purpose.renderAs}` : ""} ${profile.model} ${entry.surface}` }))));
+  const renders = await Promise.all(requests.map(async ([purpose, profile, lead]) => (await render(composition, composition, purpose, profile, false, disabledTypes, lead)).rendered.map((entry) => ({ ...entry, surface: `${purpose.kind}${purpose.kind === "subagent" ? `:${purpose.renderAs}` : ""}${lead ? ":lead" : ""} ${profile.model} ${entry.surface}` }))));
   return renders.flat();
 }
 
@@ -303,9 +311,9 @@ describe("capability render matrix", () => {
   // and each field of each tool schema.
   test("no sentence of one request appears in two homes", async () => {
     const capture = selection([]);
-    const requests = [...PROFILES.map((profile) => [CHAT, profile] as const), [UNATTENDED_CHAT, PROFILES[0]!] as const, [SUBAGENT, PROFILES[0]!] as const, [GENERAL_SUBAGENT, PROFILES[0]!] as const, [WORKFLOW_AGENT, PROFILES[0]!] as const];
-    const duplicates = await Promise.all(requests.map(async ([purpose, profile]) => {
-      const { rendered, planned } = await render(capture, capture, purpose, profile);
+    const requests = [...PROFILES.map((profile) => [CHAT, profile, false] as const), [CHAT, PROFILES[0]!, true] as const, [UNATTENDED_CHAT, PROFILES[0]!, false] as const, [SUBAGENT, PROFILES[0]!, false] as const, [GENERAL_SUBAGENT, PROFILES[0]!, false] as const, [WORKFLOW_AGENT, PROFILES[0]!, false] as const];
+    const duplicates = await Promise.all(requests.map(async ([purpose, profile, lead]) => {
+      const { rendered, planned } = await render(capture, capture, purpose, profile, false, [], lead);
       const homes = [
         ...rendered.filter((entry) => entry.surface.startsWith("prompt ")).flatMap((entry) => entry.surface === "prompt tool context"
           ? toolContextHomes(planned.tools, entry.text)
@@ -316,7 +324,7 @@ describe("capability render matrix", () => {
       for (const { home, text } of homes) {
         for (const sentence of sentencesOf(text)) seen.set(sentence, (seen.get(sentence) ?? new Set()).add(home));
       }
-      return [...seen].filter(([sentence, at]) => at.size > 1 && !exempt(at) && sentence !== SHORT_FORM_HINT).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
+      return [...seen].filter(([sentence, at]) => at.size > 1 && !exempt(at) && sentence !== SHORT_FORM_HINT).map(([sentence, at]) => `${purpose.kind}${lead ? ":lead" : ""} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
     }));
     expect(duplicates.flat()).toEqual([]);
   });

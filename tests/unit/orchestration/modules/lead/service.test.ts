@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
-import { createSessionEventNotices } from "../../../../../src/orchestration/app-service/session-event-notices.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
 import { leadModule } from "../../../../../src/orchestration/modules/lead/module.js"
-import { createLeadService, type LeadService } from "../../../../../src/orchestration/modules/lead/service.js"
-import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
-import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorWithRunner, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
+import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
+import type { LeadService } from "../../../../../src/orchestration/modules/lead/service.js"
+import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { testDirectories } from "../../../../helpers/directories.js"
+import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
+import { leadHarness } from "./_lead-harness.js"
 
 let ctx: SupervisorTestContext
 let supervisor: RuntimeSupervisor
@@ -19,36 +20,13 @@ afterEach(async () => {
   await disposeSupervisorTestContext(ctx)
 })
 
-/** A started lead service over the real store, session manager, and session event notices, with a switch for the
- *  module selection. Each notice that a chat's runner receives is recorded by the chat's id. */
+const conversation = supervisorConversationFixture(() => ctx)
+
 function harness(projectionReader = asAsyncEventReadSurface(ctx.store)) {
-  const notices: string[] = []
-  const patches: RuntimeUiPatchInput[] = []
-  supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId, {
-    deliverSilentNotice: async () => { notices.push(deps.sessionId); return "delivered" },
-  }))
-  const sessionEvents = createSessionEventNotices({ sessionStore: ctx.sessionStore })
-  let enabled = true
-  const selectionListeners = new Set<() => void | Promise<void>>()
-  const service = createLeadService({
-    projectionReader,
-    eventWriter: ctx.store,
-    onStored: ctx.store.onStored,
-    publish: (patch) => { patches.push(patch); return undefined },
-    sessionManager: ctx.manager,
-    executionEnvironment: () => ({ openChat: (options) => supervisor.openSessionRuntime(options), sessionEvents }),
-    onSelectionChanged: (listener) => { selectionListeners.add(listener); return () => { selectionListeners.delete(listener) } },
-    enabled: () => enabled,
-  })
-  service.start?.()
-  disposeAll.push(async () => { await service.dispose(); sessionEvents.dispose(); await supervisor.disposeAll() })
-  return {
-    service, sessionEvents, notices, patches,
-    async setEnabled(next: boolean) {
-      enabled = next
-      for (const listener of selectionListeners) await listener()
-    },
-  }
+  const lead = leadHarness(ctx, { projectionReader })
+  supervisor = lead.supervisor
+  disposeAll.push(lead.dispose)
+  return lead
 }
 
 function leadFacts() {
@@ -149,6 +127,111 @@ test("while the module is off a started chat's report gives no notice, and after
   sessionEvents.report("c", "turn_ended")
   await Bun.sleep(1)
   expect(notices).toEqual([lead!])
+})
+
+test("a chat that the lead started reports its first turn end to the lead", async () => {
+  const { service, sessionEvents, notices } = harness()
+  const lead = await service.open("launch")
+  if (lead === null) throw new Error("expected the lead to open")
+  await conversation.appendConversation(lead, [
+    { kind: "user", content: "Fix the login page", origin: "human" },
+    { kind: "assistant", content: [{ type: "tool_use", id: "route-1", name: "route_request", input: { kind: "new" } }] },
+  ])
+  const routed = await service.route({ leadSessionId: lead, kind: "new", earlierTurns: 0 })
+  if (!routed.ok) throw new Error(routed.reason)
+  await supervisor.ensureChatRunner(lead)
+  sessionEvents.report(routed.sessionId, "turn_ended")
+  await Bun.sleep(1)
+  expect(notices).toEqual([lead])
+})
+
+type Collection = readonly unknown[] | ReadonlyMap<unknown, unknown> | ReadonlySet<unknown>
+
+/** Counts the in-memory collection work of the process until `restore`: each step of a Map or Set iterator,
+ *  including the iteration that a spread or a copy does, each element that an array search or transform visits, and
+ *  each Map or Set lookup. A scan, a copy, or a linear search over the started chats shows as a count that grows with
+ *  them. */
+function countCollectionWork() {
+  let steps = 0
+  const restores: (() => void)[] = []
+  const size = (receiver: Collection): number => Array.isArray(receiver) ? receiver.length : "size" in receiver ? receiver.size : 0
+  /** Replaces one built-in method with one that counts `cost(receiver)` and, for an iterator, each step it takes. */
+  function patch(proto: Collection, name: PropertyKey, cost: (receiver: Collection) => number, kind: "iterator" | "call" = "call") {
+    const original = Object.getOwnPropertyDescriptor(proto, name)
+    if (!original) return
+    Object.defineProperty(proto, name, { ...original, value(this: Collection, ...args: never[]) {
+      steps += cost(this)
+      const result = original.value.apply(this, args)
+      if (kind === "iterator") {
+        const next = result.next.bind(result)
+        Object.defineProperty(result, "next", { value: (...nextArgs: never[]) => { steps += 1; return next(...nextArgs) } })
+      }
+      return result
+    } })
+    restores.push(() => { Object.defineProperty(proto, name, original) })
+  }
+  for (const proto of [Map.prototype, Set.prototype]) {
+    for (const name of ["keys", "values", "entries", Symbol.iterator]) patch(proto, name, () => 0, "iterator")
+    for (const name of ["get", "has"]) patch(proto, name, () => 1)
+    patch(proto, "forEach", size)
+  }
+  for (const name of ["some", "every", "find", "findIndex", "filter", "map", "flatMap", "forEach", "includes", "indexOf", "reduce"]) patch(Array.prototype, name, size)
+  return {
+    take() {
+      const taken = steps
+      steps = 0
+      return taken
+    },
+    restore() { for (const restore of restores.toReversed()) restore() },
+  }
+}
+
+test("each applied lead fact costs work that grows with neither the started chats nor the history", async () => {
+  /** The state requests, the watches, and the collection work of the service and the journal for each of `facts`
+   *  chats that another writer starts and forwards to, and checks again, after `existing` ones. */
+  async function costs(existing: number, facts: number) {
+    const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
+    const { service, trace, dispose } = harness(counter.reader)
+    // Only this run's service observes its facts.
+    disposeAll = disposeAll.filter((other) => other !== dispose)
+    await using _service = { [Symbol.asyncDispose]: dispose }
+    const writer = createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store })
+    const lead = await service.open("launch")
+    if (lead === null) throw new Error("expected the lead to open")
+    for (let index = 0; index < existing; index += 1) {
+      await writer.append({ type: "lead.chat.started", payload: { sessionId: `old-${existing}-${index}`, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
+      await writer.append({ type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: `old-${existing}-${index}`, newChat: true, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
+    }
+    await Bun.sleep(5)
+    const perFact = []
+    for (let index = 0; index < facts; index += 1) {
+      const sessionId = `new-${existing}-${index}`
+      const sourceEntryIds: [string] = [`new-entry-${existing}-${index}`]
+      const forwarded = { type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: sessionId, newChat: true, sourceEntryIds } } as const
+      counter.take()
+      const watches = trace.length
+      const work = countCollectionWork()
+      try {
+        await writer.append({ type: "lead.chat.started", payload: { sessionId, sourceEntryIds } })
+        await writer.append(forwarded)
+        // The journal already holds this forward, so the holds rule skips it.
+        expect(await writer.append(forwarded)).toBe(false)
+        await Bun.sleep(1)
+        expect(service.journal.state().forwarded(sessionId, sourceEntryIds)).toBe(true)
+        expect(service.journal.state().startedBy(sourceEntryIds)).toBe(sessionId)
+        perFact.push({ steps: work.take() })
+      } finally {
+        work.restore()
+      }
+      const requests = counter.take()
+      perFact[index] = { ...perFact[index], requests: requests.length, factsRead: factsRead(requests), watches: trace.length - watches }
+    }
+    return perFact
+  }
+  const few = await costs(3, 4)
+  const many = await costs(30, 4)
+  expect(many).toEqual(few)
+  for (const cost of many) expect(cost).toMatchObject({ requests: 0, factsRead: 0, watches: 1 })
 })
 
 test("the lead command focuses the lead chat", async () => {
