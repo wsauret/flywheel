@@ -6,6 +6,8 @@ import type { ModalHandle } from "../../components/modal-stack.js"
 import type { ModuleDomainIntakes } from "../../hooks/create-module-domain-intakes.js"
 import type { TuiModuleClient, TuiModuleClientHost } from "../../tui-module-client.js"
 import { LeadCloseConfirm, type LeadCloseFocus } from "./close-confirm.js"
+import { openLeadChatTab, openLeadChatViewer, type LeadChatViewerHost } from "./chat-viewer.js"
+import { openLeadPeek, type LeadPeekHost } from "./peek.js"
 import { openLeadReader, type LeadReaderHost } from "./reader.js"
 
 /** What the lead's strip reads and opens, shared through the client's provider. */
@@ -19,6 +21,12 @@ export interface LeadScreen {
   readonly openReader: (row: LeadRow) => void
   /** Opens the reader on the chat that has waited longest; false when no chat waits. */
   readonly openLongestWaiting: () => boolean
+  /** Opens a short look at a row's chat with an input to it. */
+  readonly openPeek: (row: LeadRow) => void
+  /** Opens a chat's full conversation over the lead. */
+  readonly openChat: (sessionId: string) => void
+  /** Opens a chat as an ordinary tab in front. */
+  readonly openTab: (sessionId: string) => void
 }
 
 const LeadScreenContext = createContext<LeadScreen>()
@@ -29,7 +37,7 @@ export function useLeadScreen(): LeadScreen {
   return screen
 }
 
-type LeadClientHost = LeadReaderHost & Pick<TuiModuleClientHost, "dialog" | "title"> & { readonly domains: Pick<ModuleDomainIntakes, "lead"> }
+type LeadClientHost = LeadReaderHost & LeadPeekHost & LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "title"> & { readonly domains: Pick<ModuleDomainIntakes, "lead"> }
 
 /** The lead's terminal client: the lead chat is the first tab while the
  *  capability is on and the person has not dismissed it, and closing it asks
@@ -41,10 +49,13 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
   })
   const report = (message: string): void => { host.showToast({ message, variant: "error" }) }
   const title = (sessionId: string): string => host.title(sessionId) ?? ""
+  const count = (): string | undefined => leadCountLabel(host.domains.lead.view())
   const openReader = (row: LeadRow): void => {
-    openLeadReader(host, { row, title: () => title(row.sessionId), count: () => leadCountLabel(host.domains.lead.view()) })
+    openLeadReader(host, { row, title: () => title(row.sessionId), count })
   }
   const rows = createMemo(() => leadRowOrder(host.domains.lead.view()?.rows ?? []))
+  const order = createMemo(() => rows().map((row) => row.sessionId))
+  const rowOf = (sessionId: string): LeadRow | undefined => rows().find((candidate) => candidate.sessionId === sessionId)
   const screen: LeadScreen = {
     leadSessionId: current,
     rows,
@@ -56,6 +67,12 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
       if (row) openReader(row)
       return row !== undefined
     },
+    openPeek: (opened) => {
+      // The peek follows its chat's row while the row is listed, and shows the opened row once it goes.
+      openLeadPeek(host, { row: () => rowOf(opened.sessionId) ?? opened, title: () => title(opened.sessionId), count })
+    },
+    openChat: (sessionId) => { openLeadChatViewer(host, { sessionId, order, row: rowOf, title }) },
+    openTab: (sessionId) => { openLeadChatTab(host, sessionId) },
   }
 
   /** Answers true once the person confirms, after it starts the dismissal and

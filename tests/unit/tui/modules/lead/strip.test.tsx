@@ -1,46 +1,17 @@
 /** @jsxImportSource @opentui/solid */
 import { afterEach, describe, expect, it } from "bun:test"
-import { testRender } from "@opentui/solid"
-import { createSignal } from "solid-js"
-import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
-import type { LeadRow } from "../../../../../src/protocol/modules/lead.js"
-import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
-import { TickPoolProvider } from "../../../../../src/tui/context/tick-pool-context.js"
-import { LeadStrip } from "../../../../../src/tui/modules/lead/strip.js"
-import type { TuiStripKeyEvent } from "../../../../../src/tui/tui-module.js"
-import { LEAD_ID, leadHarness, leadRow } from "./_lead-fixtures.js"
+import { LEAD_ID, leadRow, mountStrip as mountLeadStrip } from "./_lead-fixtures.js"
 
-type Rendered = Awaited<ReturnType<typeof testRender>>
+type Rendered = Awaited<ReturnType<typeof mountStrip>>["rendered"]
 const cleanups: (() => void)[] = []
 afterEach(() => { for (const cleanup of cleanups.splice(0)) cleanup() })
 
-/** The strip on a screen, with the kernel's key claim in its simplest form: a
- *  key reaches the strip's handler, and the focus is one signal. */
-async function mountStrip(rows: readonly LeadRow[], options: { readonly width?: number; readonly height?: number; readonly sessionId?: string } = {}) {
-  const lead = leadHarness(rows)
-  const [focused, setFocused] = createSignal(false)
-  const [composerEmpty, setComposerEmpty] = createSignal(true)
-  const [sessionId, setSessionId] = createSignal(options.sessionId ?? LEAD_ID)
-  let handler: ((event: TuiStripKeyEvent) => boolean) | undefined
-  const width = options.width ?? 80
-  const rendered: Rendered = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
-    {lead.client.provide?.(() => <box flexDirection="column">
-      <LeadStrip sessionId={sessionId()} read={moduleDomainReader(() => undefined)} width={() => width} openSurface={() => {}} composer={{ empty: composerEmpty }}
-        keys={{ claim: (input) => { handler = input.onKey; return { focused, setFocused } } }} />
-      <lead.Viewers />
-    </box>)}
-  </TickPoolProvider></ThemeProvider>, { width, height: options.height ?? 24 })
-  cleanups.push(() => { rendered.renderer.destroy(); lead.dispose() })
-  const key = async (name: string, modifiers: Omit<TuiStripKeyEvent, "name"> = {}): Promise<boolean> => {
-    const taken = handler?.({ name, ...modifiers }) ?? false
-    await rendered.renderOnce()
-    return taken
-  }
-  await rendered.renderOnce()
-  const lines = () => rendered.captureCharFrame().split("\n").map((line) => line.trimEnd()).filter((line) => line.length > 0)
-  return { ...lead, rendered, focused, setComposerEmpty, setSessionId, key, lines }
+async function mountStrip(...args: Parameters<typeof mountLeadStrip>) {
+  const strip = await mountLeadStrip(...args)
+  cleanups.push(strip.dispose)
+  return strip
 }
 
 const theme = resolveTheme(flywheelTheme, "dark")
@@ -103,7 +74,7 @@ describe("the lead list", () => {
     for (let step = 0; step < 9; step += 1) await strip.key("down")
     expect(strip.lines()).toHaveLength(8)
     expect(selectedRow(strip.rendered)).toStartWith("● working   Chat c09")
-    expect(strip.lines()[7]).toBe("  ↑↓ move · enter open · esc input")
+    expect(strip.lines()[7]).toBe("  ↑↓ move · enter open · space peek · ctrl+o chat · ctrl+t tab · esc input")
   })
 
   it("takes focus on Down only while the composer is empty, and Space types nothing", async () => {

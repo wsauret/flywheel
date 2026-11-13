@@ -91,10 +91,11 @@ export function createChildSessionViewerInput(deps: {
     if (!messaging.admits()) return
     if (!messaging.shown()) return
     const raw = prompt?.plainText ?? untrack(text)
-    const value = raw.trim()
-    if (!value || submitting) return
+    const trimmed = raw.trim()
+    if (!trimmed || submitting) return
     submitting = true
-    const submission = value.startsWith("/") ? deps.dispatchCommand(value) : messaging.send(value)
+    // A message goes as the person typed it, as the chat composer sends it; only a command is trimmed.
+    const submission = trimmed.startsWith("/") ? deps.dispatchCommand(trimmed) : messaging.send(raw)
     void submission.then((accepted) => {
       const current = prompt?.plainText ?? untrack(text)
       if (accepted && current.startsWith(raw)) writeDraft(current.slice(raw.length))

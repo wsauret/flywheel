@@ -15,6 +15,7 @@ import type { TranscriptLayoutSlot } from "../../output-window/output-window-scr
 import { QuestionDock } from "../../question-dock.js"
 import type { TuiModuleClientHost } from "../../tui-module-client.js"
 import { truncateToWidth } from "../../utils/text.js"
+import { LeadViewCover } from "./cover.js"
 
 type ChatBody = ReturnType<TuiModuleClientHost["viewer"]>
 
@@ -68,8 +69,8 @@ export function openLeadReader(host: LeadReaderHost, input: { readonly row: Lead
     else setCommand({ id: ++commandId, type: event.name === "pageup" ? "page-up" : "page-down" })
     event.preventDefault?.()
   }
-  setHandle(host.viewerLayer.push(() => <LeadReader host={host} row={input.row} title={input.title} count={input.count} questionInput={questionInput} scroll={scroll}
-    command={command} focused={() => handle()?.isFocused() ?? false} close={close} />, { onKey, onPaste: (text) => { questionInput.paste(text) } }))
+  setHandle(host.viewerLayer.push(() => <LeadViewCover><LeadReader host={host} row={input.row} title={input.title} count={input.count} questionInput={questionInput} scroll={scroll}
+    command={command} focused={() => handle()?.isFocused() ?? false} close={close} /></LeadViewCover>, { onKey, onPaste: (text) => { questionInput.paste(text) } }))
 }
 
 function LeadReader(props: LeadReaderProps) {
@@ -124,6 +125,19 @@ function LeadReaderQuestion(props: LeadReaderProps & { readonly width: number })
   </>
 }
 
+/** Marks a started chat's result read once, when `shows` first answers true
+ *  for its final message. A load that never brings that message leaves the
+ *  row unread (PI-LEAD-005). Runs under the caller's owner. */
+export function createResultReadMark(host: Pick<TuiModuleClientHost, "client" | "showToast">, sessionId: string, entryId: string, shows: Accessor<boolean>): void {
+  const report = (message: string): void => { host.showToast({ message, variant: "error" }) }
+  const shown = createMemo((was: boolean) => was || shows(), false)
+  createEffect(() => {
+    if (!shown()) return
+    void host.client.dispatch({ type: "lead.result.mark_read", sessionId, entryId })
+      .then((answer) => { if (!answer.ok) report(answer.error) }, (cause: unknown) => { report(errorMessage(cause)) })
+  })
+}
+
 /** The chat's transcript in the kernel's output window, placed with the
  *  anchor entry at the top once the window that holds it has loaded. */
 function LeadReaderTranscript(props: LeadReaderProps & { readonly width: number }) {
@@ -151,17 +165,7 @@ function LeadReaderTranscript(props: LeadReaderProps & { readonly width: number 
     return loaded() ? {} : undefined
   })
   const result = untrack(() => props.row.state === "result" ? props.row.result : undefined)
-  if (result) {
-    const report = (message: string): void => { props.host.showToast({ message, variant: "error" }) }
-    // A result is read once its final message shows; a load that never
-    // brings it leaves the row unread.
-    const shown = createMemo((was: boolean) => was || anchorIndex() !== undefined, false)
-    createEffect(() => {
-      if (!shown()) return
-      void props.host.client.dispatch({ type: "lead.result.mark_read", sessionId, entryId: result.entryId })
-        .then((answer) => { if (!answer.ok) report(answer.error) }, (cause: unknown) => { report(errorMessage(cause)) })
-    })
-  }
+  if (result) createResultReadMark(untrack(() => props.host), sessionId, result.entryId, () => anchorIndex() !== undefined)
   return <>
     <box flexGrow={1} minHeight={0} flexShrink={1} flexDirection="column">
       <Show when={slot()} fallback={<text fg={theme.textMuted}>{"Loading the chat…"}</text>}>{(layoutSlot) =>

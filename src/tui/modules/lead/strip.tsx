@@ -7,6 +7,7 @@ import { useTheme } from "../../context/theme.js"
 import { useTickPool } from "../../context/tick-pool-context.js"
 import type { TuiStripKeyEvent, TuiStripProps } from "../../tui-module.js"
 import { bindStyledTextContent } from "../../utils/reactive-text.js"
+import { isCtrlChord } from "./chat-viewer.js"
 import { useLeadScreen, type LeadScreen } from "./client.js"
 import { followSelection, layoutLeadRow, leadAge, leadListWindow, LEAD_STATE_LOOK } from "./list-model.js"
 
@@ -43,7 +44,7 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     return index < 0 ? undefined : index
   }
   // The claim lasts for the list's lifetime, so it is taken once.
-  const claim = untrack(() => props.strip.keys).claim({ chords: ["up", "down", "enter", "space", "ctrl+g"], onKey })
+  const claim = untrack(() => props.strip.keys).claim({ chords: ["up", "down", "enter", "space", "ctrl+g", "ctrl+o", "ctrl+t"], onKey })
   const window = createMemo<ReturnType<typeof leadListWindow>>((previous) => leadListWindow({
     total: rows().length, selected: claim.focused() ? selectedIndex() : undefined, start: claim.focused() ? previous.start : 0, terminalRows: dimensions().height,
   }), { start: 0, count: 0, more: 0 })
@@ -54,13 +55,20 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     setChosen({ id: ids()[index] })
   }
 
+  const selectedRow = (): LeadRow | undefined => rows().find((candidate) => candidate.sessionId === selection().id)
+
   function onKey(event: TuiStripKeyEvent): boolean {
     const plain = !event.ctrl && !event.meta && !event.shift
-    if (event.ctrl && !event.meta && !event.shift && event.name === "g") return props.screen.openLongestWaiting()
+    if (isCtrlChord(event, "g")) return props.screen.openLongestWaiting()
     if (!claim.focused()) {
       if (!plain || event.name !== "down" || !props.strip.composer.empty()) return false
       setChosen({ id: ids()[0] })
       claim.setFocused(true)
+      return true
+    }
+    const row = selectedRow()
+    if (isCtrlChord(event, "o") || isCtrlChord(event, "t")) {
+      if (row) (event.name === "o" ? props.screen.openChat : props.screen.openTab)(row.sessionId)
       return true
     }
     if (!plain) return false
@@ -68,13 +76,8 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
       case "up": move(-1); return true
       case "down": move(1); return true
       case "return":
-      case "enter": {
-        const row = rows().find((candidate) => candidate.sessionId === selection().id)
-        if (row) props.screen.openReader(row)
-        return true
-      }
-      // The peek opens on Space (L13); until then Space only never types.
-      case "space": return true
+      case "enter": if (row) props.screen.openReader(row); return true
+      case "space": if (row) props.screen.openPeek(row); return true
       case "escape": claim.setFocused(false); return true
       default: return false
     }
@@ -90,7 +93,7 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
       paint(theme[look.tone])(look.mark), paint(theme.textMuted)(layout.prefix.slice(look.mark.length)), paint(theme.text)(layout.title), paint(theme.textMuted)(`${layout.separator}${layout.update}${layout.gap}${layout.age}`),
     ])
   }
-  const hint = () => claim.focused() ? "↑↓ move · enter open · esc input" : "↓ list · ctrl+g longest wait"
+  const hint = () => claim.focused() ? "↑↓ move · enter open · space peek · ctrl+o chat · ctrl+t tab · esc input" : "↓ list · ctrl+g longest wait"
 
   return <box flexDirection="column" flexShrink={0} paddingLeft={SIDE_INSET} paddingRight={SIDE_INSET}>
     <For each={visible()}>{(row) => {
