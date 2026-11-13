@@ -245,7 +245,7 @@ const PLANNED_CHILD_RECALL: RecallPort = () => Promise.reject(new Error("A capab
 /** The options that the first request of a child that `options` start plans from: this run's options with the
  *  child's purpose and grant, and the runtime surfaces that a child gets (`deriveChildRuntimeSurfaces`). */
 export function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRun): RunnableAgentOptions {
-  const { toolNames: _names, toolActions: _actions, toolProfile: _profile, toolGrant: _grant, withheldTools: _withheld, readOnly: _readOnly, allowedSubagentTypes: _types, ...run } = options;
+  const { toolNames: _names, toolActions: _actions, toolProfile: _profile, chatProfile: _chatProfile, toolGrant: _grant, withheldTools: _withheld, readOnly: _readOnly, allowedSubagentTypes: _types, ...run } = options;
   const surfaces = options.runtimeSurfaces;
   return {
     ...run, ...child,
@@ -372,6 +372,9 @@ function runToolPlanner(source: RunToolsSource) {
     // Read now, not captured at assembly: the skill tool must observe the
     // revision published when this request is planned.
     const kernel = kernelOf(requestModuleSnapshot, runtimeConfig, providerRuntime, definitions.captureRevision(), live);
+    // Asked for each request, so a profile ends with the capability that gives it, also in a parked loop.
+    const chatProfile = options.chatProfile?.(requestModuleSnapshot);
+    const profile = chatProfile ? { only: new Set(chatProfile.tools) } : options.toolProfile;
     const plan = await planToolExposure({
       kernel,
       modules: await moduleRuntimesFor(requestModuleSnapshot),
@@ -379,9 +382,13 @@ function runToolPlanner(source: RunToolsSource) {
       ...(live === requestModuleSnapshot ? {} : { live }),
       ...(selected ? { selected } : {}),
       ...(granted ? { granted } : {}),
-      ...(options.toolProfile ? { profile: options.toolProfile } : {}),
+      ...(profile ? { profile } : {}),
     });
-    return { ...plan, definitionAvailability: kernel.definitionAvailability, ...(kernel.allowedSubagentTypes ? { allowedSubagentTypes: kernel.allowedSubagentTypes } : {}) };
+    return {
+      ...plan, definitionAvailability: kernel.definitionAvailability,
+      ...(kernel.allowedSubagentTypes ? { allowedSubagentTypes: kernel.allowedSubagentTypes } : {}),
+      ...(chatProfile ? { chatPrompt: chatProfile.prompt } : {}),
+    };
   };
   return { planRequestTools, kernelOf, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources };
 }
@@ -619,6 +626,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           moduleSnapshot: request.moduleSnapshot,
           tools: request.tools,
           registrationIdentities: request.registrationIdentities,
+          ...(request.chatPrompt !== undefined ? { chatPrompt: request.chatPrompt } : {}),
           kernel: kernelOf(request.moduleSnapshot, request.runtimeConfig, request.providerRuntime, request.definitionAvailability.tree.definitionRevision),
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           memory,

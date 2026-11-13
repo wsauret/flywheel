@@ -47,6 +47,8 @@ export interface RequestPromptFacts {
   readonly moduleSnapshot: FirstPartyModuleComposition;
   readonly tools: ReadonlyMap<string, RuntimeTool>;
   readonly registrationIdentities: ReadonlyMap<string, string>;
+  /** The prompt of the chat profile that limited the request's tools (`PlannedRequest.chatPrompt`). */
+  readonly chatPrompt?: string;
   readonly kernel: KernelToolDeps;
   readonly modules: ModuleRuntimes;
   /** The memory of the run, read only for a request that carries memory. */
@@ -71,6 +73,7 @@ export async function requestSystemPromptOptions(facts: RequestPromptFacts): Pro
   return {
     corePrompt: facts.corePrompt ?? "",
     ...(facts.engineeringDoctrine ? { engineeringDoctrine: facts.engineeringDoctrine } : {}),
+    ...(facts.chatPrompt !== undefined ? { chatPrompt: facts.chatPrompt } : {}),
     agentsMd: facts.agentsMd,
     tools: [...tools.values()],
     ...(facts.envBlock ? { envBlock: facts.envBlock } : {}),

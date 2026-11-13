@@ -187,6 +187,11 @@ describe("capability checks", () => {
       const childCheck = await planRunCapabilities(runSource(child))
       expect([parentCheck("code"), parentCheck("workflow")]).toEqual([false, true])
       expect([childCheck("code"), childCheck("workflow")]).toEqual([true, false])
+      // A chat profile limits its own chat and never the child that the chat starts.
+      const profiled = { ...parent, chatProfile: () => ({ prompt: "Profile body.", tools: ["read"] }) }
+      expect((await planRunCapabilities(runSource(profiled)))("subagent")).toBe(false)
+      const profiledChild = await planRunCapabilities(runSource(childRunOptions(profiled, { purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call" }, toolGrant: ["read", "code", "workflow", "handoff"] })))
+      expect(terms.filter((term) => profiledChild(term))).toEqual(terms.filter((term) => childCheck(term)))
       // The child's real first request, built from the same options, agrees on every tool.
       const usable = await usableTools(runSource(child), scope)
       for (const term of terms) expect(childCheck(term), term).toBe(usable.has(term))

@@ -204,6 +204,10 @@ const KERNEL_TOOLS = {
   },
 } as const satisfies { readonly [name: string]: ToolDeclaration<ModuleId> };
 
+/** The tools that every session keeps under every tool profile: the channel between sessions and the list of the
+ *  sessions around it (ARCH-STRUCTURE-039). */
+export const EVERY_SESSION_TOOLS: ReadonlySet<string> = new Set<keyof typeof KERNEL_TOOLS>(["message_session", "list_sessions"]);
+
 function kernelPolicy(
   category: ToolExposureCategory,
   action: ToolAction,

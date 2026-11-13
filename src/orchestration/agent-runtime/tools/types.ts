@@ -24,8 +24,10 @@ import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol
 type ToolExecutionMode = "foreground" | "background";
 type ToolTraceKind = "tool" | "subagent";
 
-/** Closed tool authority for an execution. Absence retains ordinary selection. */
-export type ToolProfile = "none";
+/** Closed tool authority for an execution. Absence retains ordinary selection. `none` plans no tool; `only` plans the
+ *  registrations whose tool identity it names, ambient ones included, and the tools of every session
+ *  (`EVERY_SESSION_TOOLS`). */
+export type ToolProfile = "none" | { readonly only: ReadonlySet<string> };
 
 /** Immutable provider-request identity copied into a call before tool effects start. */
 export interface ToolAttributionIdentity extends GitAiRequestRegistration {

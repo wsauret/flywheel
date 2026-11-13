@@ -55,6 +55,14 @@ import type { ShellRuntimeClient } from "./tools/shell-runtime-types.js";
 import type { SessionMessaging } from "../session/session-messaging.js";
 import type { ExternalSkillChildGrant } from "./tools/skill.js";
 import type { CaptureRuntimeConfig } from "./request-config.js";
+
+/** A chat's own prompt and the logical names of the tools that it has (ARCH-STRUCTURE-045). The prompt is
+ *  capability-marked text that renders with the request's capability check. */
+export interface ChatProfile {
+  readonly prompt: string;
+  readonly tools: readonly string[];
+}
+
 export type HeadlessPrompt =
   | { readonly kind: "assembled"; readonly corePrompt: "You are a helpful AI Agent." }
   | { readonly kind: "literal"; readonly systemPrompt: string };
@@ -280,6 +288,11 @@ interface AgentBaseOptions {
   treeRootSessionId?: string;
   /** Overrides ordinary tool selection, including ambient and nested authority. */
   toolProfile?: ToolProfile;
+  /** The chat's profile, asked once for each request with the module snapshot of that request, so a profile ends
+   *  with the capability that gives it. An answer limits the request's tools to the profile's tools and the tools of
+   *  every session, and its prompt replaces the chat body of the system prompt; no answer leaves `toolProfile` and
+   *  the prompt of today. A child never takes it (`childRunOptions`). */
+  chatProfile?: (modules: FirstPartyModuleComposition) => ChatProfile | undefined;
   /** Directory this runner's tools execute in. */
   executionCwd: string;
   /** Canonical directory that owns the project's durable state: its memory,

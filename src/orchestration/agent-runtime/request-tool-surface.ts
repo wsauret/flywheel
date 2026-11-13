@@ -167,6 +167,8 @@ interface RequestToolSurface {
   readonly providerRuntime?: RequestProviderRuntime;
   /** Complete skill revision captured with this request's prompt and executable tools. */
   readonly skillRegistry?: ToolExposurePlan["skillRegistry"];
+  /** The prompt of the chat profile that limited this request's tools (`PlannedRequest.chatPrompt`). */
+  readonly chatPrompt?: string;
   prepareStablePrompt(build: () => SystemPromptTiers | Promise<SystemPromptTiers>, profile: ModelInteractionProfile, literalOverride?: boolean): Promise<RequestStablePrompt>;
   prepareAttempt(attempt: Pick<ServingAttempt, "model" | "toolPresentation"> & Partial<Pick<ServingAttempt, "modelFamily" | "tokenizerIdentity">>): PreparedRequestAttempt;
   /** Captures the one immutable provider candidate chain this surface plans and dispatches. */
@@ -187,8 +189,11 @@ interface StaticTokenCache {
   };
 }
 
-/** One request's tool plan with the definition availability and the dispatch set its kernel was planned under. */
-export type PlannedRequest = ToolExposurePlan & Pick<KernelToolDeps, "definitionAvailability" | "allowedSubagentTypes">;
+/** One request's tool plan with the definition availability and the dispatch set its kernel was planned under, and
+ *  the prompt of the chat profile that limited the plan, when one did. */
+export type PlannedRequest = ToolExposurePlan & Pick<KernelToolDeps, "definitionAvailability" | "allowedSubagentTypes"> & {
+  readonly chatPrompt?: string;
+};
 
 /** The logical identities of the tools that a planned request can call. */
 function usableIdentities(plan: PlannedRequest): ReadonlySet<string> {
@@ -236,6 +241,7 @@ function pin(
     providerRegistry: accessProviderRegistry(moduleSnapshot),
     ...(providerRuntime ? { providerRuntime } : {}),
     ...(plan.skillRegistry ? { skillRegistry: plan.skillRegistry } : {}),
+    ...(plan.chatPrompt !== undefined ? { chatPrompt: plan.chatPrompt } : {}),
     executionAdmission(toolName) {
       const registrationId = plan.registrationIds.get(toolName)
       const registration = registrationId ? requestRegistry.get(registrationId) : undefined

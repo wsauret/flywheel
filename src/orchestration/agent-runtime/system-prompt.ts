@@ -154,6 +154,10 @@ export interface BuildSystemPromptOptions {
   /** The guidance blocks of the serving model, when it has an entry. A chat renders its chat blocks in the chat body;
    *  a subagent or a workflow agent renders its agent blocks after its finishing section. */
   modelGuidance?: ModelGuidance;
+  /** The prompt of the chat's profile (`ChatProfile.prompt`), capability-marked text. It renders with `capabilities`
+   *  as the chat body and replaces the chat body, the core prompt, the engineering doctrine, and the
+   *  proportionality block. */
+  chatPrompt?: string;
   tools: ReadonlyArray<ToolPromptFields>;
   /** Resolved `<env>` block of this runner's directory pair. Absent for a
    *  caller with no environment, such as prompt tooling and unit tests. */
@@ -216,7 +220,9 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const chat = opts.chatHost?.communication === true;
   const writesFiles = has("edit") || has("write");
   const engineeringDoctrine = renderedDoctrine(opts);
-  if (chat) {
+  if (opts.chatPrompt !== undefined) {
+    stable("chat profile", renderCapabilityText(opts.chatPrompt, has));
+  } else if (chat) {
     stable("chat body", renderChatBody(opts.modelGuidance?.chat ?? [], has, FLYWHEEL_CHAT_HOST));
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
   } else {

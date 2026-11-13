@@ -19,12 +19,13 @@ import type { ToolAction } from "../../../infra/workflow-types.js";
 import type { SkillRegistryRevision } from "../../../workflows/skill-schema.js";
 import type { FirstPartyModuleComposition, ToolExposureGate } from "../../modules.js";
 import type { KernelToolDeps } from "./kernel-tool-deps.js";
-import { exposedToolName, toolRegistryFromComposition, type DeferredToolFactory, type RegisteredTool, type ToolFactoryResult, type ToolRegistry } from "./tool-registry.js";
+import { EVERY_SESSION_TOOLS, exposedToolName, toolRegistryFromComposition, type DeferredToolFactory, type RegisteredTool, type ToolFactoryResult, type ToolRegistry } from "./tool-registry.js";
 import type { AdvertisedTool, RuntimeTool, ToolProfile } from "./types.js";
 import { shortFormTool } from "./short-form.js";
 import { canonicalModuleIds, moduleDisabledReason, type ModuleId } from "../../../protocol/module-ids.js";
 
 const CONTRACT_MISMATCH_REASON = "not selected by the request file edit contract";
+const OUTSIDE_PROFILE_REASON = "not in the chat profile";
 const NO_GATE_OMISSIONS: ReadonlyMap<string, string> = new Map();
 
 /** Resolve granted ToolActions to canonical tool names, in action order. */
@@ -150,10 +151,15 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
   const unusable = new Set<string>();
   const turnedOff = new Set<string>();
   const liveRegistry = input.live && toolRegistryFromComposition(input.live);
+  const only = input.profile?.only;
 
   for (const [registrationId, registration] of registry) {
     const exposedName = exposedToolName(registrationId, registration);
     const identity = registration.tool;
+    if (only && !only.has(identity) && !EVERY_SESSION_TOOLS.has(identity)) {
+      omitted.push({ name: exposedName, reason: OUTSIDE_PROFILE_REASON });
+      continue;
+    }
     if (registration.interactionContract !== undefined && registration.interactionContract !== interactionContract) {
       contractMismatches.add(exposedName);
       continue;
