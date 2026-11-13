@@ -1,0 +1,40 @@
+src/protocol/client/slash-route.ts
+  h_4b47e9e4a8b456 23-25,28-29,32
+src/tui/commands/close-chat-surface.ts
+  h_4b47e9e4a8b456 5-7
+src/tui/commands/command-definitions.ts
+  h_4b47e9e4a8b456 40-41
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 24,26,28-32,54-66,86,88-94,130,133-134,164-169,172-178,202-211,213,222,227
+src/tui/components/child-session-viewer.tsx
+  h_4b47e9e4a8b456 21,53-55,71,121,165,175,180
+src/tui/components/composer-border-layout.ts
+  h_4b47e9e4a8b456 57-59,62-66,68-79
+src/tui/hooks/transcript-in-view.ts
+  h_4b47e9e4a8b456 4-5,11,15-18,20,24-25
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 253
+tests/unit/tui/commands/close-chat-surface.test.ts
+  h_4b47e9e4a8b456 20,24
+tests/unit/tui/commands/command-dispatch.test.ts
+  h_4b47e9e4a8b456 105-109,121
+tests/unit/tui/components/_child-session-viewer-fixtures.ts
+  h_4b47e9e4a8b456 14-16,19-26
+tests/unit/tui/components/child-session-viewer-input.test.tsx
+  h_4b47e9e4a8b456 19-23,48-113
+tests/unit/tui/components/child-session-viewer.test.tsx
+  h_4b47e9e4a8b456 127-140
+tests/unit/tui/components/prompt-border-layout.test.ts
+  h_4b47e9e4a8b456 249-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c87c859b6bae5934d9be9a466d8857008b70c55c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
