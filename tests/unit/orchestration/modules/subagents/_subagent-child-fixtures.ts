@@ -168,6 +168,7 @@ export function continuationService(harness: SubagentChildHarness, createAgent: 
       forwardPersonEntries: async () => { throw new Error("A subagent forwards no person entries") },
       openChat: async () => { throw new Error("A subagent opens no chat") },
       sessionEvents: { watch: () => {}, unwatch: () => {} },
+      sessionRuntime: () => null,
     }),
   })
   return { service, async close() { await Promise.all([...hosts.values()].map((host) => host.owner.close())); await admission.dispose() } }

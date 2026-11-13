@@ -1,6 +1,6 @@
 import type { Schema } from "effect"
 import type { ModuleTransports } from "./module-transports.js"
-import type { FrontendEvent } from "../../protocol/app-service-types.js"
+import type { FrontendEvent, SessionRuntimeView } from "../../protocol/app-service-types.js"
 import type { AuthRuntime } from "./auth-runtime.js"
 import type { RuntimeConfigProjection } from "./runtime-config-projection.js"
 import type { StartupDirectories } from "../../infra/directory-authorities.js"
@@ -31,7 +31,7 @@ import type { PersonEntryForward } from "./person-entry-forward.js"
 import type { SessionEventNotices } from "./session-event-notices.js"
 
 /** Request-time execution authorities. Reading this port does not activate a session. */
-interface ModuleExecutionEnvironment {
+export interface ModuleExecutionEnvironment {
   readonly openChatRunner: (sessionId: string) => Promise<ChatRunner | undefined>
   readonly authAdmission: SessionAuthAdmission<WorkflowDeps>
   readonly recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
@@ -45,6 +45,13 @@ interface ModuleExecutionEnvironment {
   /** The runtime's notices to a watching chat about the chats that it watches (ARCH-SESSIONS-052). The kernel owns
    *  the service's life and the reports of each runner, so a module only watches. */
   readonly sessionEvents: Pick<SessionEventNotices, "watch" | "unwatch">
+  /** The runtime's view of a session's runner start, which the session store does not hold: `starting` from the
+   *  start of a runner until it attached and took the input that waited for it, `failed` after a start that rejected
+   *  until a later start begins or while a close that failed ends the session, and null otherwise, also for a session
+   *  that the runtime does not hold. It reads the runtime only and activates nothing. A failed start also shows in the
+   *  session store, so a store subscriber hears it; the end of a start is announced only by the attach that precedes
+   *  it. */
+  readonly sessionRuntime: (sessionId: string) => Extract<SessionRuntimeView, { kind: "starting" | "failed" }> | null
 }
 
 /** What the runtime hands a module that declares a process-scoped service:

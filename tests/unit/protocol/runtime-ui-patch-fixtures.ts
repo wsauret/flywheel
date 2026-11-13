@@ -92,6 +92,8 @@ export const RUNTIME_UI_PATCH_FIXTURES = {
   "mcp.changed": workspacePatch({ kind: "mcp.changed", servers: [], claudeAiConnectors: false }, "mcp"),
   "papercuts.changed": workspacePatch({ kind: "papercuts.changed", papercuts: { undisposedCount: 0 } }, "papercuts"),
   "lead.changed": workspacePatch({ kind: "lead.changed", leadSessionId: "session-1", dismissed: false }, "lead"),
+  "lead.row.updated": workspacePatch({ kind: "lead.row.updated", row: { sessionId: "session-2", state: "working", update: null, since: 1, request: null, updates: [] } }, "lead"),
+  "lead.row.removed": workspacePatch({ kind: "lead.row.removed", sessionId: "session-2" }, "lead"),
   "project_notifications.raised": workspacePatch({ kind: "project_notifications.raised", episode: notification }, "project_notifications"),
   "project_notifications.resolved": workspacePatch({ kind: "project_notifications.resolved", sourceId: "fixture", episodeId: "episode-1", resolvedAt: 2 }, "project_notifications"),
   "project_notifications.dismissed": workspacePatch({ kind: "project_notifications.dismissed", sourceId: "fixture", episodeId: "episode-1", dismissedAt: 2 }, "project_notifications"),

@@ -36,6 +36,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       },
       personEntries: (sessionId, earlierTurns) => supervisor.personEntries(sessionId, earlierTurns),
       forwardPersonEntries: (input) => { trace.push(`forward ${input.targetSessionId}`); return supervisor.forwardPersonEntries(input) },
+      sessionRuntime: (sessionId) => supervisor.runtimeState(sessionId),
     }),
     onSelectionChanged: (listener) => { selectionListeners.add(listener); return () => { selectionListeners.delete(listener) } },
     enabled: () => enabled,

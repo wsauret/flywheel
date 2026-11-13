@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation } from "../protocol-module.js"
+import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type ModuleComposerStatus } from "../protocol-module.js"
 import type { RuntimeCursorIdentity } from "../runtime-ui-protocol-types.js"
 
 /** The workspace-scoped `lead` contract: the project's one lead chat, whether
@@ -10,9 +10,11 @@ export const LEAD_COMMAND = "lead"
 /** The command's one name. */
 export const LEAD_COMMAND_NAME = "Lead"
 
-type LeadRowState = "question" | "failed" | "cut" | "working" | "result"
+export type LeadRowState = "question" | "failed" | "cut" | "working" | "result"
 
-interface LeadRow {
+/** One started chat that needs the person, works, or holds an unread result. The client joins the title from the
+ *  session catalog, so the title has one source. */
+export interface LeadRow {
   readonly sessionId: string
   readonly state: LeadRowState
   /** The first line of the chat's newest assistant text, at most 240 characters. */
@@ -39,7 +41,10 @@ export interface LeadView {
   readonly rows: readonly LeadRow[]
 }
 
-type LeadPatchPayload = { readonly kind: "lead.changed"; readonly leadSessionId: string | null; readonly dismissed: boolean }
+type LeadPatchPayload =
+  | { readonly kind: "lead.changed"; readonly leadSessionId: string | null; readonly dismissed: boolean }
+  | { readonly kind: "lead.row.updated"; readonly row: LeadRow }
+  | { readonly kind: "lead.row.removed"; readonly sessionId: string }
 
 /** The answer of `lead.open` and `lead.dismiss`: the chat that the mutation opened or dismissed, or null when it did
  *  neither. The refusal is the runtime's answer when it admits no mutation, as at a stop. */
@@ -71,11 +76,28 @@ const LeadViewSchema: Schema.Codec<LeadView> = Schema.Struct({
   rows: Schema.Array(LeadRowSchema),
 })
 
-const LeadPatchPayloadSchema: Schema.Codec<LeadPatchPayload> = Schema.Struct({
-  kind: Schema.Literal("lead.changed"),
-  leadSessionId: Schema.NullOr(Schema.NonEmptyString),
-  dismissed: Schema.Boolean,
-})
+const LeadPatchPayloadSchema: Schema.Codec<LeadPatchPayload> = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literal("lead.changed"),
+    leadSessionId: Schema.NullOr(Schema.NonEmptyString),
+    dismissed: Schema.Boolean,
+  }),
+  Schema.Struct({ kind: Schema.Literal("lead.row.updated"), row: LeadRowSchema }),
+  Schema.Struct({ kind: Schema.Literal("lead.row.removed"), sessionId: Schema.NonEmptyString }),
+])
+
+/** Each patch states a whole row or its removal, so the fold replaces one row in place. */
+function foldPatch(payload: LeadPatchPayload, current: LeadView | undefined): LeadView {
+  const view = current ?? EMPTY_LEAD_VIEW
+  switch (payload.kind) {
+    case "lead.changed": return { ...view, leadSessionId: payload.leadSessionId, dismissed: payload.dismissed }
+    case "lead.row.updated": {
+      const index = view.rows.findIndex((row) => row.sessionId === payload.row.sessionId)
+      return { ...view, rows: index === -1 ? [...view.rows, payload.row] : view.rows.with(index, payload.row) }
+    }
+    case "lead.row.removed": return { ...view, rows: view.rows.filter((row) => row.sessionId !== payload.sessionId) }
+  }
+}
 
 const LeadMutationResultSchema: Schema.Codec<LeadMutationResult> = Schema.Union([
   Schema.Struct({ ok: Schema.Literal(true), sessionId: Schema.NullOr(Schema.NonEmptyString) }),
@@ -85,15 +107,12 @@ const LeadMutationResultSchema: Schema.Codec<LeadMutationResult> = Schema.Union(
 const leadDomain = defineProtocolDomain({
   domain: "lead",
   scope: "workspace",
-  // A missed patch can hide a dismissal or a new designation, so a client resnapshots.
+  // A missed patch can hide a dismissal, a new designation, or a row, so a client resnapshots.
   delivery: "durable-resnapshot",
   content: "whole-value",
   snapshot: { query: "leadSnapshot", result: Schema.Struct({ snapshotPosition: Schema.Number, view: LeadViewSchema }), deadline: "control" },
   patch: LeadPatchPayloadSchema,
-  view: {
-    snapshot: (result) => result.view,
-    patch: (payload, current) => ({ rows: current?.rows ?? [], leadSessionId: payload.leadSessionId, dismissed: payload.dismissed }),
-  },
+  view: { snapshot: (result) => result.view, patch: foldPatch },
 })
 
 export const leadCursor = (): RuntimeCursorIdentity => ({ scope: "workspace", domain: leadDomain.domain })
@@ -116,8 +135,38 @@ const leadDismiss = defineProtocolMutation({
   policy: "lossless",
 })
 
+/** The person read a started chat's result up to `entryId`, so its row no longer holds that result. */
+const leadResultMarkRead = defineProtocolMutation({
+  type: "lead.result.mark_read",
+  fields: { sessionId: Schema.NonEmptyString, entryId: Schema.NonEmptyString },
+  result: Schema.Union([Schema.Struct({ ok: Schema.Literal(true) }), Schema.Struct({ ok: Schema.Literal(false), error: Schema.String })]),
+  policy: "lossless",
+})
+
+const NEEDS_PERSON: ReadonlySet<LeadRowState> = new Set(["question", "failed", "cut"])
+const GROUP = { question: 0, failed: 0, cut: 0, working: 1, result: 2 } as const satisfies { readonly [state in LeadRowState]: number }
+
+/** The rows in list order: the chats that need the person first, the longest wait first, then the working chats, then
+ *  the unread results, each of those two groups newest first. */
+export function leadRowOrder(rows: readonly LeadRow[]): readonly LeadRow[] {
+  return rows.toSorted((left, right) => GROUP[left.state] - GROUP[right.state]
+    || (NEEDS_PERSON.has(left.state) ? (left.waitingSince ?? left.since) - (right.waitingSince ?? right.since) : right.since - left.since))
+}
+
+/** The number of started chats that need the person: a question, a failure, or a cut. */
+export function leadNeedsPerson(view: LeadView): number {
+  return view.rows.filter((row) => NEEDS_PERSON.has(row.state)).length
+}
+
+/** The count of chats that need the person, on the composer border of every view. */
+function leadComposerStatus(view: LeadView | undefined): readonly ModuleComposerStatus[] {
+  const count = view ? leadNeedsPerson(view) : 0
+  return count === 0 ? [] : [{ id: "lead", text: count === 1 ? "1 needs you" : `${count} need you`, tone: "warning" }]
+}
+
 export const leadProtocol = defineProtocolModule({
   id: "lead",
   domains: [leadDomain],
-  mutations: [leadOpen, leadDismiss],
+  mutations: [leadOpen, leadDismiss, leadResultMarkRead],
+  composer: { status: (read) => leadComposerStatus(read(leadDomain)) },
 })

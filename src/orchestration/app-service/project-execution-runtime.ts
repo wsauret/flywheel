@@ -31,7 +31,6 @@ import { liveChildRuns, runningChildSessionIds, onLiveSessionRemoved, liveSessio
 import { bindRetainedOperations, bindSessionStops } from "../session/module-session-operations.js"
 import { attachedRunnerDelivery } from "./session-background-notifications.js"
 import { createChildSessionControl } from "../session/child-session-control.js"
-import { childSessionProjectionAttachment } from "../session-store/child-session-projection.js"
 import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../infra/retained-operation-hosts.js"
 import { workflowLaunchHost } from "../workflow-host/launch-operation-contract.js"
 import { createRuntimeConfigOwner } from "../config/runtime-config-owner.js"
@@ -61,9 +60,8 @@ import { createSessionChangesPublisher } from "./session-changes-publisher.js"
 import { createSessionPlacements } from "../session/session-metadata-store.js"
 import { composeBackgroundIndex } from "./background-index-publisher.js"
 import { createRuntimeSupervisor } from "./runtime-supervisor.js"
+import { moduleExecutionEnvironment } from "./module-execution-environment.js"
 import { createChatRunnerLoader } from "./chat-runner-loader.js"
-import type { ChatRunner } from "../chat/runner-types.js"
-import type { PersonEntryForward } from "./person-entry-forward.js"
 import { createSessionEventNotices } from "./session-event-notices.js"
 import { createIdleCompactionPolicy } from "../chat/idle-compaction.js"
 import type { RuntimeRunnerCapabilities, RuntimeSupervisor } from "./runtime-supervisor-types.js"
@@ -81,7 +79,7 @@ import { createDefinitionOverrideService } from "../definition-overrides/overrid
 import { createDefinitionOverrideBaselineOwner } from "../../workflows/definitions/override-baselines.js"
 import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../agent-runtime/llm/shared-provider-availability.js"
 import { composeSubscriptionNotifications } from "../auth/subscription-notification-composition.js"
-import { composeModuleProcessServices, createNotifySeam } from "./module-service-host.js"
+import { composeModuleProcessServices, createNotifySeam, type ModuleExecutionEnvironment } from "./module-service-host.js"
 import { containNotifyFailures } from "./contained-notify.js"
 import { createGitAiAttributionService } from "../agent-runtime/git-ai-attribution-service.js"
 import { createGitAiAttributionProjection } from "./git-ai-attribution-projection.js"
@@ -274,7 +272,9 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // on.
   // Construct the lazy lane before the executor kernel so every foreground
   // summary view shares it. Construction does not start its Worker.
-  const backgroundClient = scope.own("background-process-client", createProcessBackgroundClient({ workerUrl: options.workerUrl, logBase: projectRoot }), (owned) => owned.dispose())
+  const backgroundClient = scope.own(
+    "background-process-client", createProcessBackgroundClient({ workerUrl: options.workerUrl, logBase: projectRoot }), (owned) => owned.dispose(),
+  )
   const backgroundLane = scope.own("background-lane", createRuntimeBackgroundLane(projectRoot, {
     createClient: (laneCwd) => backgroundClient.acquire(laneCwd),
   }), (lane) => lane.dispose())
@@ -322,7 +322,9 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // The handoff this executor heard lives in the replacement report, which is
   // composed after the app service, which needs the supervisor.
   const commandHandover = composeExecutorCommandHandover({ reader: eventReader, projectionReader, writer: eventWriter, launcher: options.launcher, userDataRoot, keeper })
-  const streamingEditValidation = scope.own("streaming-edit-validation", createStreamingEditValidationService(), (service) => service.dispose())
+  const streamingEditValidation = scope.own(
+    "streaming-edit-validation", createStreamingEditValidationService(), (service) => service.dispose(),
+  )
   scope.own("session-changes-publisher", createSessionChangesPublisher({ onStored: eventStore.onStored, publish: bus.publish, sessionPlacements: createSessionPlacements(projectionReader) }), (publisher) => { publisher.dispose() })
   const backgroundIndex = scope.own("background-index", composeBackgroundIndex({ reader: projectionReader, readSession: manager.read, onStored: eventStore.onStored, publish: bus.publish, snapshotPosition: bus.snapshotPosition, sessionStore, onKeptChange: keeper.onChange }), (index) => { index.dispose() })
   const sessionEvents = scope.own("session-event-notices", createSessionEventNotices({ sessionStore }), (notices) => { notices.dispose() })
@@ -338,17 +340,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       void (async () => { await listener() })().catch((error: unknown) => log.warn("module selection application failed", { error: errorMessage(error) }))
     }),
     profileAccounting: () => authRuntime, configView: () => configProjection.view(), moduleSelection, notify: (episode) => notify(episode), interactive: options.interactive === true,
-    executionEnvironment: () => ({
-      authAdmission: authRuntime.sessionAuthAdmission,
-      recall: backgroundLane.recall,
-      attachProjection: childSessionProjectionAttachment(sessionStore),
-      deliverNotification: attachedRunnerDelivery(sessionStore),
-      openChatRunner: async (sessionId): Promise<ChatRunner | undefined> => await runtimeSupervisor.activateSession(sessionId) ? runtimeSupervisor.ensureChatRunner(sessionId) : undefined,
-      personEntries: (sessionId, earlierTurns): ReturnType<PersonEntryForward["personEntries"]> => runtimeSupervisor.personEntries(sessionId, earlierTurns),
-      forwardPersonEntries: (input): ReturnType<PersonEntryForward["forwardPersonEntries"]> => runtimeSupervisor.forwardPersonEntries(input),
-      openChat: (chat): Promise<string> => runtimeSupervisor.openSessionRuntime(chat),
-      sessionEvents,
-    }),
+    executionEnvironment: (): ModuleExecutionEnvironment => moduleExecutionEnvironment({ authAdmission: authRuntime.sessionAuthAdmission, recall: backgroundLane.recall, sessionEvents, sessionStore, supervisor: runtimeSupervisor }),
   }, options.notify !== undefined), (services) => services.dispose())
   moduleServices.reconcile()
   // The parent agent's controls of its own children (`process`). The
@@ -593,7 +585,8 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   const commandInvoke = createCommandInvokeService({
     catalog: commandCatalog, availability, moduleSelection, manager, sessionStore,
     supervisor: runtimeSupervisor, projectionReader, eventWriter, directories, authDirectory: () => authRuntime.activeProfile().directory,
-    runOwnedCommand: ownedCommandRunner(options.launcher), modules: moduleServices.services,
+    runOwnedCommand: ownedCommandRunner(options.launcher),
+    modules: moduleServices.services,
   })
 
   const moduleProtocol = scope.own("module-protocol-runtimes", composeModuleProtocolRuntimes(installedModules(), {

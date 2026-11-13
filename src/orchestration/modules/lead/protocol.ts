@@ -3,9 +3,9 @@ import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-se
 import { leadService } from "./service.js"
 
 /** The lead's protocol runtime. The service answers the view and the
- *  mutations and publishes `lead.changed`; while the module is off, or
- *  before its service was ever built, the snapshot is the empty view and
- *  neither mutation opens or dismisses a chat. */
+ *  mutations and publishes `lead.changed` and the row patches; while the
+ *  module is off, or before its service was ever built, the snapshot is the
+ *  empty view and no mutation opens or dismisses a chat or records a read. */
 export function createLeadProtocol(services: Pick<ModuleProtocolServices, "modules" | "enabled" | "snapshotPosition">): ModuleProtocolRuntime<typeof leadProtocol> {
   const service = () => (services.enabled() ? services.modules.get(leadService) : undefined)
   return {
@@ -18,6 +18,7 @@ export function createLeadProtocol(services: Pick<ModuleProtocolServices, "modul
     mutate: {
       "lead.open": async (mutation) => ({ ok: true, sessionId: await service()?.open(mutation.reason) ?? null }),
       "lead.dismiss": async (mutation) => ({ ok: true, sessionId: await service()?.dismiss(mutation.sessionId) ?? null }),
+      "lead.result.mark_read": async (mutation) => await service()?.markRead(mutation.sessionId, mutation.entryId) ?? { ok: true },
     },
     dispose() {},
   }

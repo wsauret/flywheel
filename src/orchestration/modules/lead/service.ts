@@ -9,6 +9,7 @@ import { readChatDetail, readChatRoster, type ChatProgress } from "./chat-progre
 import type { LeadFact } from "./facts.js"
 import { createLeadJournal, type LeadJournal } from "./journal.js"
 import type { RouteInput, RouteOutcome } from "./route-request.js"
+import { createLeadRows, type LeadRowChange, type LeadRows } from "./rows.js"
 
 const log = Log.create({ service: "lead" })
 
@@ -37,6 +38,9 @@ export interface LeadService extends ModuleServiceInstance {
   route(input: RouteInput): Promise<RouteOutcome>
   /** The progress of every chat that the lead started, or of one of them in its own words. */
   progress(chat: string | undefined): Promise<ChatProgress>
+  /** Records that the person read a started chat's result up to `entryId`, so its row no longer holds it. Appends
+   *  nothing while the module is off, and refuses a chat that the lead did not start. */
+  markRead(sessionId: string, entryId: string): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }>
   readonly journal: LeadJournal
 }
 
@@ -44,13 +48,14 @@ export const leadService = moduleServiceHandle<LeadService>("lead")
 
 type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled"> & {
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read">
-  readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get">
-  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "sessionEvents" | "personEntries" | "forwardPersonEntries">
+  readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
+  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime">
 }
 
 type NonEmptyIds = readonly [string, ...string[]]
 
 const startedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.started" ? [fact.payload.sessionId] : [])
+const readChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.result.read" ? [fact.payload.sessionId] : [])
 
 export function createLeadService(services: LeadServiceInputs): LeadService {
   const journal = createLeadJournal({
@@ -65,11 +70,51 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   let watched: { readonly lead: string; readonly chats: Set<string> } | undefined
   let published: string | undefined
   let disposed = false
+  // The rows of the started chats, while the module is on.
+  let rows: LeadRows | undefined
+  // The disposals of the rows owners that a turn-off ended; dispose settles them.
+  let endings: Promise<unknown> = Promise.resolve()
 
   const currentView = (): LeadView => {
     if (!services.enabled()) return EMPTY_LEAD_VIEW
     const state = journal.state()
-    return { leadSessionId: state.designated, dismissed: state.dismissed, rows: [] }
+    return { leadSessionId: state.designated, dismissed: state.dismissed, rows: rows?.rows() ?? [] }
+  }
+
+  const publishRow = (change: LeadRowChange): void => {
+    services.publish({ cursor: leadCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
+  }
+
+  /** Follows the started chats while the module is on. Turning it off releases every fold and removes each row that a
+   *  client holds; turning it on builds the rows again. Otherwise only the chats that `added` names gain a fold. */
+  const applyRows = (added: Iterable<string>): void => {
+    if (disposed || !services.enabled()) {
+      if (!rows) return
+      const ended = rows
+      rows = undefined
+      const shown = ended.rows()
+      // The owner stops at once, so no patch of its in-flight work follows these removals.
+      const ending = ended.dispose()
+      for (const row of shown) publishRow({ kind: "removed", sessionId: row.sessionId })
+      endings = Promise.all([endings, ending.catch((error: unknown) => { log.warn("the lead rows could not end", { error: errorMessage(error) }) })])
+      return
+    }
+    let chats = added
+    if (!rows) {
+      const owner: LeadRows = createLeadRows({
+        reader: services.projectionReader,
+        sessionManager: services.sessionManager,
+        sessionStore: services.sessionStore,
+        sessionRuntime: (sessionId) => services.executionEnvironment().sessionRuntime(sessionId),
+        readMark: (sessionId) => journal.state().readMarks.get(sessionId),
+        // Only the current owner publishes: an owner that a turn-off ended may still settle work it started.
+        publish: (change) => { if (rows === owner) publishRow(change) },
+      })
+      rows = owner
+      chats = journal.state().started.keys()
+    }
+    // The builds run beside the journal's lane: a fold's first replay reads through a position captured after it starts.
+    void rows.add(chats)
   }
 
   /** Watches each started chat for the shown lead while the module is on, and nothing otherwise. A change of the
@@ -93,30 +138,42 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     }
   }
 
-  /** Publishes the view's lead fields when they changed since the last publication. */
+  /** Publishes the view's lead fields when they changed since the last publication. It reads only those fields, so a
+   *  lead fact costs no walk of the rows. */
   const publishView = (): void => {
-    const view = currentView()
-    const key = `${view.leadSessionId ?? ""}:${view.dismissed}`
+    const { designated, dismissed } = services.enabled() ? journal.state() : { designated: EMPTY_LEAD_VIEW.leadSessionId, dismissed: EMPTY_LEAD_VIEW.dismissed }
+    const key = `${designated ?? ""}:${dismissed}`
     if (key === published) return
     published = key
-    services.publish({ cursor: leadCursor(), payload: { kind: "lead.changed", leadSessionId: view.leadSessionId, dismissed: view.dismissed } })
+    services.publish({ cursor: leadCursor(), payload: { kind: "lead.changed", leadSessionId: designated, dismissed } })
   }
 
   const follow = (added: readonly string[] = []): void => {
     if (!started || disposed) return
     applyWatches(added)
+    applyRows(added)
     publishView()
   }
 
-  const own = (task: () => Promise<void>, failure: (error: string) => void): void => {
+  function own(task: () => Promise<void>, failure: (error: string) => void): void {
     background = background.then(task).catch((error: unknown) => { failure(errorMessage(error)) })
   }
+
+  /** Follows the facts that the journal applied, whoever read them, so no read of the journal hides one from the
+   *  watches and the rows. */
+  const applyFacts = (applied: readonly LeadFact[]): void => {
+    if (applied.length === 0) return
+    follow(startedChats(applied))
+    for (const sessionId of readChats(applied)) rows?.refresh(sessionId)
+  }
+
+  const reconcileJournal = async (): Promise<void> => { applyFacts(await journal.reconcile()) }
 
   const unsubscribeStored = services.onStored((events) => {
     if (disposed) return
     own(async () => {
-      const applied = await journal.observe(events)
-      if (applied.length > 0) follow(startedChats(applied))
+      applyFacts(await journal.observe(events))
+      await rows?.observe(events)
     }, (error) => { log.warn("the lead journal could not fold a stored batch", { error }) })
   })
   const unsubscribeSelection = services.onSelectionChanged(() => { follow() })
@@ -127,7 +184,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   }
 
   const openOnce = async (reason: "launch" | "command"): Promise<string | null> => {
-    await journal.reconcile()
+    await reconcileJournal()
     const state = journal.state()
     if (reason === "launch" && state.dismissed) return null
     const existing = state.designated !== null && await chatTitle(state.designated) !== undefined ? state.designated : null
@@ -160,7 +217,10 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     journal,
     start() {
       started = true
-      own(async () => { follow(startedChats(await journal.reconcile())) }, (error) => { log.error("the lead journal could not replay", { error }) })
+      own(async () => {
+        applyFacts(await journal.reconcile())
+        follow()
+      }, (error) => { log.error("the lead journal could not replay", { error }) })
     },
     async open(reason) {
       if (!services.enabled()) return null
@@ -177,7 +237,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       return sessionId
     },
     async view() {
-      await journal.reconcile()
+      await reconcileJournal()
       return currentView()
     },
     role(sessionId) {
@@ -197,7 +257,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       const [first, ...rest] = entries.map((entry) => entry.entryId)
       if (first === undefined || !entries.some((entry) => entry.turnsBack === 0)) return { ok: false, reason: "the newest turn holds no message from the person, and the lead routes only what the person asks for" }
       const sourceEntryIds: NonEmptyIds = [first, ...rest]
-      await journal.reconcile()
+      await reconcileJournal()
       const target = await routeTarget(input, sourceEntryIds)
       if ("refused" in target) return { ok: false, reason: target.refused }
       const forwarded = await environment.forwardPersonEntries({ sourceSessionId: input.leadSessionId, entryIds: sourceEntryIds, targetSessionId: target.sessionId })
@@ -212,11 +272,21 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       }
     },
     async progress(chat) {
-      await journal.reconcile()
-      const deps = { reader: services.projectionReader, sessionManager: services.sessionManager, sessionStore: services.sessionStore }
+      await reconcileJournal()
+      const current = rows
+      if (!current) return { kind: "refused", reason: "the lead is off" }
+      const deps = { sessionManager: services.sessionManager, sessionStore: services.sessionStore, chat: (sessionId: string) => current.chat(sessionId) }
       if (chat === undefined) return readChatRoster(deps, [...journal.state().started.keys()])
       if (!journal.state().started.has(chat)) return { kind: "refused", reason: `the lead did not start chat ${chat}` }
       return readChatDetail(deps, chat)
+    },
+    async markRead(sessionId, entryId) {
+      if (!services.enabled()) return { ok: true }
+      await reconcileJournal()
+      if (!journal.state().started.has(sessionId)) return { ok: false, error: `the lead did not start chat ${sessionId}` }
+      // The journal folds its own append, so the store's broadcast of it applies nothing: refresh the row here.
+      if (await journal.append({ type: "lead.result.read", payload: { sessionId, entryId } })) rows?.refresh(sessionId)
+      return { ok: true }
     },
     async dispose() {
       disposed = true
@@ -225,6 +295,9 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       await background
       // `disposed` makes the shown lead null, so this releases every watch.
       if (watched) applyWatches([])
+      const ending = rows?.dispose()
+      rows = undefined
+      await Promise.all([ending, endings])
     },
   }
 }

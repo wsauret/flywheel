@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
+import { AsyncLocalStorage } from "node:async_hooks"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
@@ -147,12 +148,21 @@ test("a chat that the lead started reports its first turn end to the lead", asyn
 
 type Collection = readonly unknown[] | ReadonlyMap<unknown, unknown> | ReadonlySet<unknown>
 
-/** Counts the in-memory collection work of the process until `restore`: each step of a Map or Set iterator,
- *  including the iteration that a spread or a copy does, each element that an array search or transform visits, and
- *  each Map or Set lookup. A scan, a copy, or a linear search over the started chats shows as a count that grows with
- *  them. */
-function countCollectionWork() {
+/** Resolves on the next turn of the event loop. The service folds each stored batch in promise continuations that
+ *  nothing awaits, with no timer and no input or output, and every continuation runs before the next turn, whatever
+ *  the load of the machine. */
+const nextTurn = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve) })
+
+/** The in-memory collection work that `work` causes until the next turn after it: each step of a Map or Set
+ *  iterator, including the iteration that a spread or a copy does, each element that an array search or transform
+ *  visits, and each Map or Set lookup. A scan, a copy, or a linear search over the started chats shows as a count that
+ *  grows with them. Only calls in the asynchronous context of `work` count: its continuations, the store commits that
+ *  it starts, and the deliveries of their stored facts. Work of earlier setup, or of another test file that the same
+ *  process runs, never counts, also when it lands inside the window. */
+async function collectionWorkOf(work: () => Promise<void>): Promise<number> {
+  const scope = new AsyncLocalStorage<true>()
   let steps = 0
+  const count = (cost: number): void => { if (scope.getStore()) steps += cost }
   const restores: (() => void)[] = []
   const size = (receiver: Collection): number => Array.isArray(receiver) ? receiver.length : "size" in receiver ? receiver.size : 0
   /** Replaces one built-in method with one that counts `cost(receiver)` and, for an iterator, each step it takes. */
@@ -160,11 +170,11 @@ function countCollectionWork() {
     const original = Object.getOwnPropertyDescriptor(proto, name)
     if (!original) return
     Object.defineProperty(proto, name, { ...original, value(this: Collection, ...args: never[]) {
-      steps += cost(this)
+      count(cost(this))
       const result = original.value.apply(this, args)
       if (kind === "iterator") {
         const next = result.next.bind(result)
-        Object.defineProperty(result, "next", { value: (...nextArgs: never[]) => { steps += 1; return next(...nextArgs) } })
+        Object.defineProperty(result, "next", { value: (...nextArgs: never[]) => { count(1); return next(...nextArgs) } })
       }
       return result
     } })
@@ -176,13 +186,14 @@ function countCollectionWork() {
     patch(proto, "forEach", size)
   }
   for (const name of ["some", "every", "find", "findIndex", "filter", "map", "flatMap", "forEach", "includes", "indexOf", "reduce"]) patch(Array.prototype, name, size)
-  return {
-    take() {
-      const taken = steps
-      steps = 0
-      return taken
-    },
-    restore() { for (const restore of restores.toReversed()) restore() },
+  try {
+    await scope.run(true, async () => {
+      await work()
+      await nextTurn()
+    })
+    return steps
+  } finally {
+    for (const restore of restores.toReversed()) restore()
   }
 }
 
@@ -199,10 +210,14 @@ test("each applied lead fact costs work that grows with neither the started chat
     const lead = await service.open("launch")
     if (lead === null) throw new Error("expected the lead to open")
     for (let index = 0; index < existing; index += 1) {
-      await writer.append({ type: "lead.chat.started", payload: { sessionId: `old-${existing}-${index}`, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
-      await writer.append({ type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: `old-${existing}-${index}`, newChat: true, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
+      // A real chat, so the rows owner follows it and a walk of the rows would show in the collection work.
+      const chat = await supervisor.openSessionRuntime()
+      await writer.append({ type: "lead.chat.started", payload: { sessionId: chat, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
+      await writer.append({ type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: chat, newChat: true, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
     }
-    await Bun.sleep(5)
+    await nextTurn()
+    // The roster waits for the rows owner to build each started chat.
+    expect(await service.progress(undefined)).toMatchObject({ kind: "roster", chats: { length: existing } })
     const perFact = []
     for (let index = 0; index < facts; index += 1) {
       const sessionId = `new-${existing}-${index}`
@@ -210,24 +225,21 @@ test("each applied lead fact costs work that grows with neither the started chat
       const forwarded = { type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: sessionId, newChat: true, sourceEntryIds } } as const
       counter.take()
       const watches = trace.length
-      const work = countCollectionWork()
-      try {
+      const steps = await collectionWorkOf(async () => {
         await writer.append({ type: "lead.chat.started", payload: { sessionId, sourceEntryIds } })
         await writer.append(forwarded)
         // The journal already holds this forward, so the holds rule skips it.
         expect(await writer.append(forwarded)).toBe(false)
-        await Bun.sleep(1)
-        expect(service.journal.state().forwarded(sessionId, sourceEntryIds)).toBe(true)
-        expect(service.journal.state().startedBy(sourceEntryIds)).toBe(sessionId)
-        perFact.push({ steps: work.take() })
-      } finally {
-        work.restore()
-      }
+      })
+      expect(service.journal.state().forwarded(sessionId, sourceEntryIds)).toBe(true)
+      expect(service.journal.state().startedBy(sourceEntryIds)).toBe(sessionId)
       const requests = counter.take()
-      perFact[index] = { ...perFact[index], requests: requests.length, factsRead: factsRead(requests), watches: trace.length - watches }
+      perFact.push({ steps, requests: requests.length, factsRead: factsRead(requests), watches: trace.length - watches })
     }
     return perFact
   }
+  // The first service of the process pays the one-time setup of the session reads that a started chat's row makes.
+  await costs(1, 1)
   const few = await costs(3, 4)
   const many = await costs(30, 4)
   expect(many).toEqual(few)

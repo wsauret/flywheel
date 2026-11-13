@@ -1,22 +1,19 @@
-import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
 import type { QuestionEntry } from "../../../infra/output-blocks.js"
-import { askUserLeadingContext } from "../../../infra/tools/displays/ask-user.js"
 import type { RuntimeTool, ToolResult } from "../../agent-runtime/tools/types.js"
 import type { SessionManager } from "../../session/manager.js"
-import { loadAgentInputProjection } from "../../session/agent-input-projection.js"
-import { readChatTurnEnd, readConversationTail, type StoredTailEntry } from "../../session/chat-session-run-evidence.js"
-import { isPersonEntry } from "../../session/conversation/person-entries.js"
 import { sessionDisplayName } from "../../session/schemas.js"
 import { entryActivity } from "../../session-store/activity.js"
 import type { SessionStore } from "../../session-store/types.js"
 import type { ChatTurnEnd } from "../../session/conversation/turn-end-record.js"
+import type { LeadChatReading } from "./rows.js"
 
 export const CHAT_PROGRESS_TOOL_NAME = "chat_progress"
 
 interface ChatProgressDeps {
-  readonly reader: AsyncEventStateReadSurface
   readonly sessionManager: Pick<SessionManager, "read">
   readonly sessionStore: Pick<SessionStore, "get">
+  /** The rows owner's reading of a started chat that exists. */
+  readonly chat: (sessionId: string) => Promise<LeadChatReading | undefined>
 }
 
 interface ChatState {
@@ -39,107 +36,68 @@ export type ChatProgress =
   | { readonly kind: "roster"; readonly chats: readonly (ChatState & { readonly question: boolean })[] }
   | { readonly kind: "detail"; readonly chat: ChatState; readonly request: string | null; readonly question: PendingQuestion | null; readonly final: string | null }
 
-/** The chat's live activity in words, and whether a runner of it is live. */
-function liveActivity(deps: ChatProgressDeps, sessionId: string) {
+/** The chat's live activity in words. A chat that works with no turn in progress has a runner that starts. */
+function liveActivity(deps: ChatProgressDeps, sessionId: string, working: boolean): string {
   const entry = deps.sessionStore.get(sessionId)
-  if (entry?.kind !== "chat") return { words: "not running", live: false }
-  if (entry.waitingOnBackgroundWork) return { words: "waiting on its background work", live: true }
-  switch (entryActivity(entry)) {
-    case "absent": return { words: "not running", live: false }
-    case "idle": return { words: "at rest", live: true }
-    case "awaiting_user": return { words: "waiting for the person's answer", live: true }
-    default: return { words: "working", live: true }
+  if (entry?.kind !== "chat") return "not running"
+  if (entry.waitingOnBackgroundWork) return "waiting on its background work"
+  const activity = entryActivity(entry)
+  if (working && (activity === "absent" || activity === "idle")) return "starting"
+  switch (activity) {
+    case "absent": return "not running"
+    case "idle": return "at rest"
+    case "awaiting_user": return "waiting for the person's answer"
+    default: return "working"
   }
 }
 
-function lastTurnWords(turnEnd: ChatTurnEnd | undefined, live: boolean): string {
+/** How the last turn ended, in words. An open turn with no live work and no record failed, as its row reads. */
+function lastTurnWords(turnEnd: ChatTurnEnd | undefined, working: boolean): string {
   if (turnEnd === undefined) return "ended with an answer, or no turn ran yet"
   switch (turnEnd.end.reason) {
     case "paused": return "was cut"
-    // An unrecorded crash is an unanswered tail, such as a newest message of the person: the turn has not ended.
-    case "crash": return turnEnd.recorded ? "failed" : live ? "has not ended yet" : "stopped before it ended, and waits to resume"
+    case "crash": return turnEnd.recorded || !working ? "failed" : "has not ended yet"
     case "discarded": return "was discarded"
     case "settled": return "ended with an answer"
   }
 }
 
-async function chatState(deps: ChatProgressDeps, sessionId: string): Promise<(ChatState & { readonly conversationId: string }) | undefined> {
-  const session = await deps.sessionManager.read(sessionId)
-  if (session?.kind !== "chat") return undefined
-  const activity = liveActivity(deps, sessionId)
+async function chatState(deps: ChatProgressDeps, sessionId: string): Promise<{ readonly chat: ChatState; readonly reading: LeadChatReading } | undefined> {
+  const [session, reading] = await Promise.all([deps.sessionManager.read(sessionId), deps.chat(sessionId)])
+  if (session?.kind !== "chat" || reading === undefined) return undefined
   return {
-    sessionId,
-    conversationId: session.conversationId,
-    title: sessionDisplayName({ id: sessionId, session }),
-    activity: activity.words,
-    lastTurn: lastTurnWords(await readChatTurnEnd(deps.reader, session.conversationId), activity.live),
+    reading,
+    chat: {
+      sessionId,
+      title: sessionDisplayName({ id: sessionId, session }),
+      activity: liveActivity(deps, sessionId, reading.working),
+      lastTurn: lastTurnWords(reading.turnEnd, reading.working),
+    },
   }
 }
 
-async function pendingQuestion(deps: ChatProgressDeps, sessionId: string) {
-  for (const entry of (await loadAgentInputProjection(deps.reader, sessionId)).values()) {
-    if (entry.kind === "pending") return entry
-  }
-  return undefined
-}
-
-/** One line of state for each started chat that still exists. One explicit tool call reads each chat once. */
+/** One line of state for each started chat that still exists, read from the lead's rows. */
 export async function readChatRoster(deps: ChatProgressDeps, sessionIds: readonly string[]): Promise<ChatProgress> {
   const chats = await Promise.all(sessionIds.map(async (sessionId) => {
     const state = await chatState(deps, sessionId)
-    if (!state) return []
-    const { conversationId: _conversationId, ...chat } = state
-    return [{ ...chat, question: await pendingQuestion(deps, sessionId) !== undefined }]
+    return state ? [{ ...state.chat, question: state.reading.question !== undefined }] : []
   }))
   return { kind: "roster", chats: chats.flat() }
 }
 
-function textOf(content: string | readonly { readonly type: string; readonly text?: string }[]): string {
-  return typeof content === "string" ? content : content.flatMap((block) => block.type === "text" && block.text !== undefined ? [block.text] : []).join("\n")
-}
-
-/** A person's message as its text: the first block, without the bodies of attached files. */
-function personText(content: string | readonly { readonly type: string; readonly text?: string }[]): string {
-  if (typeof content === "string") return content
-  const first = content[0]
-  return first?.type === "text" ? first.text ?? "" : ""
-}
-
-/** One started chat in its own words: the person's newest message, the pending question with its context, and the
- *  final message of its last completed turn. It reads the chat's newest entry batches back until it holds all three,
- *  or to the start of the conversation. A final message is an assistant message with no tool call, so while a turn
- *  runs the final message is that of an earlier turn, before the person's newest message. */
+/** One started chat in its own words, read from the lead's rows: the person's newest message, the pending question
+ *  with its context, and the final message of its newest completed turn. */
 export async function readChatDetail(deps: ChatProgressDeps, sessionId: string): Promise<ChatProgress> {
   const state = await chatState(deps, sessionId)
   if (!state) return { kind: "refused", reason: `chat ${sessionId} no longer exists` }
-  const pending = await pendingQuestion(deps, sessionId)
-  let request: string | null = null
-  let final: string | null = null
-  let context: string | null = null
-  let askFound = pending === undefined
-  const tail = await readConversationTail(deps.reader, state.conversationId, (batch: readonly StoredTailEntry[]) => {
-    for (let index = batch.length - 1; index >= 0 && !(request !== null && askFound && final !== null); index -= 1) {
-      const entry = batch[index]
-      if (entry?.kind !== "message") continue
-      if (isPersonEntry(entry)) {
-        request ??= personText(entry.message.content)
-        continue
-      }
-      const { message } = entry
-      if (message.kind !== "assistant") continue
-      const blocks = typeof message.content === "string" ? [] : message.content
-      const ask = blocks.find((block) => block.type === "tool_use" && block.id === pending?.toolUseId)
-      if (ask?.type === "tool_use") {
-        context = askUserLeadingContext(ask.input) ?? null
-        askFound = true
-      }
-      if (final === null && !blocks.some((block) => block.type === "tool_use")) final = textOf(message.content) || null
-    }
-    return request !== null && askFound && final !== null
-  })
-  if (tail === undefined) return { kind: "refused", reason: `the conversation of chat ${sessionId} cannot be read` }
-  const { conversationId: _conversationId, ...chat } = state
-  return { kind: "detail", chat, request, final, question: pending ? { context, questions: pending.request } : null }
+  const { reading } = state
+  return {
+    kind: "detail",
+    chat: state.chat,
+    request: reading.request,
+    final: reading.final || null,
+    question: reading.question ? { context: reading.question.context, questions: reading.question.questions } : null,
+  }
 }
 
 function questionText({ context, questions }: PendingQuestion): string {

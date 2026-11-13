@@ -58,9 +58,10 @@ test("chat_progress answers a started chat's pending question, its context, and 
   expect(String(roster.content)).toContain("A question waits for the person.")
 })
 
-test("a chat whose newest entry is the person's forwarded message reads as a turn that has not ended, not as a failure", async () => {
-  const lead = leadHarness(ctx)
-  dispose = lead.dispose
+test("a chat whose newest entry is the person's forwarded message reads as starting while its runner starts, and as failed once it has no live work", async () => {
+  const runnerStartup = Promise.withResolvers<void>()
+  const lead = leadHarness(ctx, { runnerStartup: runnerStartup.promise })
+  dispose = async () => { runnerStartup.resolve(); await lead.dispose() }
   const leadSessionId = await lead.service.open("launch")
   if (leadSessionId === null) throw new Error("expected the lead to open")
   await conversation.appendConversation(leadSessionId, [
@@ -69,11 +70,13 @@ test("a chat whose newest entry is the person's forwarded message reads as a tur
   ])
   const routed = await lead.service.route({ leadSessionId, kind: "new", earlierTurns: 0 })
   if (!routed.ok) throw new Error(routed.reason)
-  await lead.supervisor.ensureChatRunner(routed.sessionId)
   const tool = createChatProgressTool((target) => lead.service.progress(target))
+  expect(String((await tool.execute({ chat: routed.sessionId }, makeContext())).content)).toContain(": starting; its last turn has not ended yet.")
+
+  runnerStartup.resolve()
+  await lead.supervisor.ensureChatRunner(routed.sessionId)
   const text = String((await tool.execute({ chat: routed.sessionId }, makeContext())).content)
-  expect(text).not.toContain("failed")
-  expect(text).toContain("its last turn has not ended yet")
+  expect(text).toContain(": at rest; its last turn failed.")
 })
 
 test("chat_progress refuses a chat that the lead did not start", async () => {
