@@ -1,0 +1,100 @@
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 258
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 227
+scripts/check-module-containment.ts
+  h_4b47e9e4a8b456 57-64,66-71,94-107,124-127,129-134,137-138,143
+src/infra/module-service.ts
+  h_4b47e9e4a8b456 5-6,9,13-19,29-30,34,36
+src/orchestration/app-service/control-chat-open.ts
+  h_4b47e9e4a8b456 1-39
+src/orchestration/app-service/module-protocol-host.ts
+  h_4b47e9e4a8b456 5,108,136-137,140,163-170,173-174,176-180
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 3,8,232-242,271-272,279-286,295,298-304,307-312,314-315,333-338,341-343
+src/orchestration/app-service/project-control-client.ts
+  h_4b47e9e4a8b456 20-21,123-126,519-520,651,742-746
+src/orchestration/app-service/project-control-runtime.ts
+  h_4b47e9e4a8b456 31,348-351
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 82,344-351
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 30,276-282,291
+src/orchestration/modules/lead/control.ts
+  h_4b47e9e4a8b456 1-121
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 1,6-7,15-16,26-30,47-48
+src/orchestration/modules/lead/protocol.ts
+  h_4b47e9e4a8b456 1-3,6-10,14,19-40
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 5,19-22,27-28,73,191
+src/protocol/modules.ts
+  h_4b47e9e4a8b456 63-69
+src/protocol/modules/lead.ts
+  h_4b47e9e4a8b456 4-5,7-10,15-16,43,47-50,54,58-66,70-73,95-106,109-110,113-114,116,120-121,123,126-131,135,143-147,155-158,181,186,192,198,203-209,212-214
+src/tui/hooks/create-launch-state.ts
+  h_4b47e9e4a8b456 15,46-48,91,93,100-105
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 40,52,56,65,111
+src/tui/modules/lead/index.ts
+  h_4b47e9e4a8b456 1,6-11
+src/tui/modules/lead/surface.ts
+  h_4b47e9e4a8b456 1-19
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 354
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 4,40-44
+tests/helpers/module-kernel.ts
+  h_4b47e9e4a8b456 3,11,13,121-122
+tests/unit/orchestration/app-service/project-control-client-catalog.test.ts
+  h_4b47e9e4a8b456 11-20,270-309
+tests/unit/orchestration/modules/config-contribution.test.ts
+  h_4b47e9e4a8b456 52
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 1-2,4,6,10,12-33,45-47,52,65-72,74-79,82-84,86,92
+tests/unit/orchestration/modules/lead/chat-progress.test.ts
+  h_4b47e9e4a8b456 65
+tests/unit/orchestration/modules/lead/control.test.ts
+  h_4b47e9e4a8b456 1-101
+tests/unit/orchestration/modules/lead/protocol.test.ts
+  h_4b47e9e4a8b456 2-4,17,22-23,25-32,39,41-42,47-57,61-62,65-74
+tests/unit/orchestration/modules/lead/route-request.test.ts
+  h_4b47e9e4a8b456 37
+tests/unit/orchestration/modules/lead/rows.test.ts
+  h_4b47e9e4a8b456 60
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 6,9,41,45-46,63-64,134,139,178-207
+tests/unit/orchestration/modules/module-control-part.test.ts
+  h_4b47e9e4a8b456 1-60
+tests/unit/orchestration/modules/project-notifications/service.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/modules/remote/service.test.ts
+  h_4b47e9e4a8b456 4,63,74-75
+tests/unit/protocol/modules/lead.test.ts
+  h_4b47e9e4a8b456 3,8-10
+tests/unit/scripts/check-module-containment.test.ts
+  h_4b47e9e4a8b456 159-174
+tests/unit/tui/hooks/create-launch-state.test.ts
+  h_4b47e9e4a8b456 11,18-22,70-72,206-216,219-220,225-226,229,244,251,266,273,281,284
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 8,45,93-94,96,103
+tests/unit/tui/modules/lead/client.test.tsx
+  h_4b47e9e4a8b456 4,11,14-15,27,39,70-71,74
+webview/src/app/module-rows.test.tsx
+  h_4b47e9e4a8b456 39,53,61
+webview/src/app/toolbar-badges.test.ts
+  h_4b47e9e4a8b456 24
+webview/src/client/session-lanes.test.ts
+  h_4b47e9e4a8b456 272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5c7747db756e5c24b9178688cf1bb91cb45dd924",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
