@@ -173,6 +173,31 @@ describe("coerceToolInput", () => {
       expect(editInput).toEqual({ path: "a.ts", edits: [{ old_string: "a\n\tb", new_string: "\\d+" }] });
     });
 
+    // Claude Haiku 5.5 sent this `edits` text in a terminal-bench trial: its own parameter syntax opens the
+    // entry, old_string follows raw, and new_string follows as one JSON string with no closing `}]`.
+    test("reads a one-entry list whose first value is raw text in mixed parameter syntax, and records it", () => {
+      const edits = "[{\"old_string\">  // hyperprior (improper in the flat sense, proper enough given the data)\n  target += -2.5 * log(alpha + beta);, \"new_string\": \"  // hyperprior p(alpha, beta) proportional to (alpha + beta)^(-5/2)\\n  target += -2.5 * log(alpha + beta);\"";
+      const schema = createEditDefinition().inputSchema;
+      expect(repairsOf({ path: "/app/hierarchical_model.stan", edits }, schema)).toEqual({
+        output: {
+          path: "/app/hierarchical_model.stan",
+          edits: [{
+            old_string: "  // hyperprior (improper in the flat sense, proper enough given the data)\n  target += -2.5 * log(alpha + beta);",
+            new_string: "  // hyperprior p(alpha, beta) proportional to (alpha + beta)^(-5/2)\n  target += -2.5 * log(alpha + beta);",
+          }],
+        },
+        repairs: [{ kind: "read_mixed_entry", path: "edits", raw: "old_string", encoded: "new_string" }],
+      });
+      // A separator that occurs twice, an entry closed with `}]`, or a JSON key opening stays as written.
+      for (const nearMiss of [
+        "[{\"old_string\">a, \"new_string\": \"b, \"new_string\": \"c\"",
+        "[{\"old_string\">a, \"new_string\": \"b\"}]",
+        "[{\"old_string\": a, \"new_string\": \"b\"",
+      ]) {
+        expect(repairsOf({ path: "a.ts", edits: nearMiss }, schema)).toEqual({ output: { path: "a.ts", edits: nearMiss }, repairs: [] });
+      }
+    });
+
     test("decodes double-escaped non-ASCII \\uXXXX escapes in a text value, and records it", () => {
       const schema = { type: "object", properties: { content: { type: "string" }, lines: { type: "array", items: { type: "string" } } } };
       expect(repairsOf({ content: "caf\\u00e9 \\ud83d\\ude00", lines: ["na\\u00EFve"] }, schema)).toEqual({

@@ -104,6 +104,8 @@ export function describeInputRepair(repair: ToolInputRepair): string {
       return `Note: the text value of \`${repair.path}\` was read as ${PARSED_TYPE_NAMES[repair.type]}.`;
     case "decoded_escapes":
       return `Note: the \`\\uXXXX\` escapes in \`${repair.path}\` were read as the characters they name.`;
+    case "read_mixed_entry":
+      return `Note: the text value of \`${repair.path}\` was read as a list with one entry: \`${repair.raw}\` as the raw text before \`, "${repair.encoded}": "\`, and \`${repair.encoded}\` as the JSON string after it.`;
   }
 }
 
@@ -280,6 +282,11 @@ function coerceMaybeArray(value: UnknownFields[string], schema: SchemaNode, path
       coercion.onRepair({ kind: "parsed_value", path, type: "array" });
       return coerceArray(parsed, schema, path, coercion);
     }
+    const entry = mixedSyntaxEntry(value, schema.items);
+    if (entry) {
+      coercion.onRepair({ kind: "read_mixed_entry", path, raw: entry.raw, encoded: entry.encoded });
+      return coerceArray([entry.value], schema, path, coercion);
+    }
   }
   // Bare scalar for a declared array: wrap into a single-element array when
   // the items type accepts the scalar's kind. The kind check keeps genuine
@@ -289,6 +296,30 @@ function coerceMaybeArray(value: UnknownFields[string], schema: SchemaNode, path
     return [value];
   }
   return value;
+}
+
+/** Reads the one-entry list that some models write by mixing their own parameter syntax into JSON text,
+ *  as Claude Haiku 5.5 does for the edit tool's `edits`: `[{"old_string">` opens the entry, the first
+ *  value follows as raw text up to `, "new_string": "`, and the rest is the second value as one JSON
+ *  string with no closing `}]`. The keys are the first declared string key of the items and the next
+ *  declared string key after it. Any other shape, or a separator that occurs more than once, stays as
+ *  written so that validation refuses it. */
+function mixedSyntaxEntry(text: string, items: SchemaNode | undefined): { readonly value: UnknownFields; readonly raw: string; readonly encoded: string } | undefined {
+  if (items?.type !== "object" || items.properties === undefined) return undefined;
+  const textKeys = Object.entries(items.properties).filter(([, property]) => property.type === "string").map(([key]) => key);
+  const [raw, encoded] = textKeys;
+  if (raw === undefined || encoded === undefined || Object.keys(items.properties)[0] !== raw) return undefined;
+  const opening = `[{${JSON.stringify(raw)}>`;
+  const separator = `, ${JSON.stringify(encoded)}: "`;
+  const [head = "", tail, ...more] = text.split(separator);
+  if (!head.startsWith(opening) || tail === undefined || more.length > 0) return undefined;
+  let second: unknown;
+  try {
+    second = JSON.parse(`"${tail}`);
+  } catch {
+    return undefined;
+  }
+  return typeof second === "string" ? { value: { [raw]: head.slice(opening.length), [encoded]: second }, raw, encoded } : undefined;
 }
 
 /** Applied at the wrap site: does the declared items type accept this

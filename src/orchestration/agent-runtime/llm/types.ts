@@ -1,6 +1,6 @@
 import type { Scope } from "effect";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderCatalogProvenance, AccessProviderId } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderCatalogProvenance, AccessProviderId, AccessProviderModelEligibility } from "../../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import type { CompletedStopReason, LlmApi, LlmStopReason, LlmToolOutputPart } from "./messages.js";
@@ -265,7 +265,8 @@ export type ToolInputRepair =
   | { readonly kind: "renamed_key"; readonly path: string; readonly from: string }
   | { readonly kind: "renamed_value"; readonly path: string; readonly from: string; readonly to: string }
   | { readonly kind: "parsed_value"; readonly path: string; readonly type: "number" | "integer" | "boolean" | "array" | "object" }
-  | { readonly kind: "decoded_escapes"; readonly path: string };
+  | { readonly kind: "decoded_escapes"; readonly path: string }
+  | { readonly kind: "read_mixed_entry"; readonly path: string; readonly raw: string; readonly encoded: string };
 
 /** How a provider that supports it constrains generation for this tool. Absent means an ordinary JSON function.
  *  `functionDescription` replaces the tool's description on a route that can send it only as a JSON function,
@@ -791,15 +792,19 @@ export interface ModelClient {
 
   /** Captures one real request. The returned object is the sole serving path
    * for that capture and the sole path on which a real-client facade emits
-   * request-admission diagnostics. */
-  admitRequest(): Promise<AdmittedModelRequest>;
+   * request-admission diagnostics. `eligibility` is the request's own captured
+   * eligibility, which plans its candidates; a client that outlives an
+   * eligibility publication serves each later request on that request's
+   * capture (ARCH-PROVIDERS-023). Without it the client reads the eligibility
+   * that its builder supplied. */
+  admitRequest(eligibility?: AccessProviderModelEligibility): Promise<AdmittedModelRequest>;
 
   /** Provider facts for work that must be shaped before any request exists
    *  (context budgeting, compaction prompts, subagent model choice): the
    *  candidate the chain would serve a request carrying `providerOptions`
    *  with right now. A request never plans from this; it reads its own
-   *  ServingAttempt. */
-  plannedAttempt(providerOptions?: ProviderRequestOptions): Promise<ServingAttempt>;
+   *  ServingAttempt. `eligibility` is read as by `admitRequest`. */
+  plannedAttempt(providerOptions?: ProviderRequestOptions, eligibility?: AccessProviderModelEligibility): Promise<ServingAttempt>;
 
 }
 
