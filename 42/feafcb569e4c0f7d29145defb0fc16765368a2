@@ -1,0 +1,26 @@
+src/orchestration/chat-profile.ts
+  h_4b47e9e4a8b456 1-28
+src/orchestration/chat/chat-request-options.ts
+  h_4b47e9e4a8b456 9-10,48-50
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 229
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 41,76-77
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 9,174-175
+tests/unit/orchestration/chat-profile.test.ts
+  h_4b47e9e4a8b456 1-43
+tests/unit/orchestration/chat/chat-request-options.test.ts
+  h_4b47e9e4a8b456 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "42feafcb569e4c0f7d29145defb0fc16765368a2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
