@@ -3,7 +3,7 @@ import type { AccessProviderId } from "../../../../../src/infra/llm/access-provi
 import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../../src/orchestration/agent-runtime/failure-message.js";
 import { toFailureReason } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import type { ProviderAvailability, RequestAdmission, SubscriptionAllowanceAdmission } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
-import { AllCandidatesExhaustedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
+import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
 import {
   chain,
@@ -175,7 +175,7 @@ describe("streamed failover", () => {
     const resetsAtMs = Date.now() + 3_600_000;
     const failure = raw ?? new QuotaExhaustedError("hard cap", {
       quotaObservation: {
-        exhaustion: { exhaustedAtMs: Date.now(), resetsAtMs },
+        exhaustion: { exhaustedAtMs: Date.now(), resetsAtMs, hold: { kind: "usage_limit", stated: true } },
         newlyExhausted: true,
         reportedResetAtMs: resetsAtMs,
       },
@@ -332,7 +332,7 @@ describe("all candidates exhausted", () => {
     const earliestResetsAtMs = Date.now() + 3_600_000;
     const chatGptResetsAtSeconds = Math.floor(Date.now() / 1000) + 7_200;
     const availability = fakeAvailability({
-      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: chatGptResetsAtSeconds * 1000 },
+      chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: chatGptResetsAtSeconds * 1000, hold: { kind: "usage_limit", stated: true } },
     });
     availability.availability.markQuotaExhausted(singletonCandidate("openai_api"), earliestResetsAtMs);
 
@@ -341,7 +341,7 @@ describe("all candidates exhausted", () => {
 
     const reason = toFailureReason(error);
     // A workflow step waits for the same bound that the copy states.
-    expect(reason).toMatchObject({ kind: "api_error", recovery: { kind: "at", atMs: earliestResetsAtMs } });
+    expect(reason).toMatchObject({ kind: "api_error", recovery: { kind: "at", atMs: earliestResetsAtMs, hold: { kind: "usage_limit", stated: true } } });
     const copy = describeAgentFailure(reason);
     expect(copy.title).toBe("Out of credits");
     expect(copy.message).toContain(new Date(earliestResetsAtMs).toLocaleString());
@@ -349,7 +349,7 @@ describe("all candidates exhausted", () => {
   });
 
   test("names a quota-refused account's banked reset from the request admission", async () => {
-    const availability = fakeAvailability({ chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + 7_200_000 } });
+    const availability = fakeAvailability({ chatGpt: { exhaustedAtMs: Date.now(), resetsAtMs: Date.now() + 7_200_000, hold: { kind: "usage_limit", stated: true } } });
     availability.availability.markQuotaExhausted(singletonCandidate("openai_api"), Date.now() + 3_600_000);
     const hint = "This account has a banked reset that you can apply in Usage (/usage).";
     const admission = (banked: boolean): RequestAdmission => ({
@@ -364,6 +364,52 @@ describe("all candidates exhausted", () => {
     expect(formatAgentFailure(banked)).toContain(hint);
     const none = toFailureReason(await exhaustedChain(availability.availability, admission(false)));
     expect(blockedFailureRecord(describeAgentFailure(none))).not.toContain("banked reset");
+  });
+
+  test("an only route out of credit with no stated reset holds a spent limit, also on a free route that no gate holds, and masks no stated reset", async () => {
+    const openrouter = singletonCandidate("openrouter");
+    const outOfCredit = async (attributions: Parameters<typeof chain>[0]["candidateAttributions"], availability = fakeAvailability({}).availability) => {
+      const before = Date.now();
+      const error = await requestEvents(chain({
+        candidateAttributions: attributions,
+        availability,
+        build: async (provider) => fakeClient(provider, provider === "openrouter" ? throwingStream(new QuotaExhaustedError("402 insufficient credits")) : textStream("served")),
+      })).then(() => { throw new Error("expected the request to reject") }, (thrown) => thrown);
+      expectSafeRecheck(error, before);
+      if (!(error instanceof AllCandidatesExhaustedError)) throw new Error("expected AllCandidatesExhaustedError");
+      return error;
+    };
+    const paid = await outOfCredit([{ candidate: openrouter, wireModelId: "vendor/model", dataUse: "standard" }]);
+    expect(paid.recovery).toMatchObject({ kind: "at", hold: { kind: "usage_limit", stated: false } });
+    expect(describeAgentFailure(toFailureReason(paid)).message).toContain("No reset time is known.");
+    const free = await outOfCredit([{ candidate: openrouter, wireModelId: "vendor/model:free", dataUse: "standard", routeKind: "free" }]);
+    expect(free.recovery).toMatchObject({ kind: "at", hold: { kind: "usage_limit", stated: false } });
+    // Another route's usage limit that resets in an hour: the earlier recheck of the spent credit decides the time, and
+    // what holds it is still a spent limit.
+    const availability = fakeAvailability({});
+    availability.availability.markQuotaExhausted(singletonCandidate("openai_api"), Date.now() + 3_600_000);
+    const both = await outOfCredit([
+      { candidate: singletonCandidate("openai_api"), wireModelId: "gpt-test", dataUse: "standard" },
+      { candidate: openrouter, wireModelId: "vendor/model", dataUse: "standard" },
+    ], availability.availability);
+    expect(both.recovery).toMatchObject({ kind: "at", hold: { kind: "usage_limit", stated: false } });
+  });
+
+  test("a route passed on a rate limit whose reset passes before the request ends still holds a rate limit, not a spent limit", async () => {
+    const anthropic = singletonCandidate("anthropic_api");
+    const availability = fakeAvailability({});
+    availability.availability.observeAnthropicRateLimit(anthropic, new Headers({ "anthropic-ratelimit-requests-reset": new Date(Date.now() + 30_000).toISOString() }));
+    const error = await requestEvents(chain({
+      availability: availability.availability,
+      candidates: [anthropic, singletonCandidate("openai_api")],
+      // The next route takes long enough that the rate limit resets before the request ends.
+      build: async (provider) => fakeClient(provider, async function* () {
+        availability.advance(60_000);
+        yield* throwingStream(new ModelAccessRefusedError("model not granted", { kind: "model" }))();
+      }),
+    })).then(() => { throw new Error("expected the request to reject") }, (thrown) => thrown);
+    if (!(error instanceof AllCandidatesExhaustedError)) throw new Error("expected AllCandidatesExhaustedError");
+    expect(error.recovery).toMatchObject({ kind: "at", hold: { kind: "rate_limit" } });
   });
 
   test("a failed quota recheck claim reports unavailability without inventing quota exhaustion or a reset", async () => {
