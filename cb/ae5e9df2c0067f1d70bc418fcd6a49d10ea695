@@ -1,0 +1,50 @@
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 231-235
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 30,39-43
+src/orchestration/app-service/person-entry-forward.ts
+  h_4b47e9e4a8b456 1-69
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 66,349-351
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 38,172,186-189
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 17,191-194,197-211,370-374,376,379,683
+src/orchestration/session/chat-session-run-evidence.ts
+  h_4b47e9e4a8b456 16-19,40-41
+src/orchestration/session/conversation/person-entries.ts
+  h_4b47e9e4a8b456 1-113
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 396-397
+tests/unit/orchestration/app-service/runtime-supervisor-forward.test.ts
+  h_4b47e9e4a8b456 1-188
+tests/unit/orchestration/app-service/runtime-supervisor-immediacy.test.ts
+  h_4b47e9e4a8b456 92-93,96,171-172
+tests/unit/orchestration/app-service/runtime-supervisor-mailbox.test.ts
+  h_4b47e9e4a8b456 165-167,319-320,350,446,587
+tests/unit/orchestration/app-service/runtime-supervisor-question-lifecycle.test.ts
+  h_4b47e9e4a8b456 43-44
+tests/unit/orchestration/app-service/runtime-supervisor-recovered-chat.test.ts
+  h_4b47e9e4a8b456 29-31
+tests/unit/orchestration/app-service/runtime-supervisor-tombstone.test.ts
+  h_4b47e9e4a8b456 157-158
+tests/unit/orchestration/app-service/runtime-supervisor.test.ts
+  h_4b47e9e4a8b456 317-318,600-601,605
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 167-169
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 249-251
+tests/unit/orchestration/session/conversation/person-entries.test.ts
+  h_4b47e9e4a8b456 1-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cbae5e9df2c0067f1d70bc418fcd6a49d10ea695",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
