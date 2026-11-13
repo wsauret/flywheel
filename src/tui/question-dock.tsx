@@ -39,6 +39,9 @@ interface QuestionDockBaseProps {
    *  takes no rows and paints nothing, so its owner keeps showing what the
    *  dock replaces. */
   onMeasured?: (measured: boolean) => void
+  /** Warnings of the composer border that the dock covers, such as the count
+   *  of chats that need the person, at the right of the header row. */
+  notices?: () => readonly string[]
 }
 
 /** `skip`, the default: Escape skips the question. `leave`: Escape calls
@@ -297,6 +300,9 @@ export function QuestionDock(props: QuestionDockProps) {
   // reads the sizes of the previous layout, so it would flash on the first
   // frame of every question.
   const overflowing = () => contentRows() > (allottedRows() ?? Number.POSITIVE_INFINITY)
+  // The notices sit on their own row outside the scrollbox, so scrolling to
+  // the focused choice never moves them out of view.
+  const notices = createMemo(() => props.notices?.().join(" · ") || undefined)
   const content = () => (
     <box flexDirection="column" flexShrink={0} paddingTop={gap("top")} paddingBottom={gap("bottom")}
       onSizeChange={function (this: BoxRenderable) {
@@ -361,7 +367,7 @@ export function QuestionDock(props: QuestionDockProps) {
       right={0}
       bottom={0}
       opacity={measured() ? 1 : 0}
-      flexBasis={measured() ? contentRows() + SPACING_SLOTS.length : "auto"}
+      flexBasis={measured() ? contentRows() + SPACING_SLOTS.length + (notices() ? 1 : 0) : "auto"}
       // Assigned before insertion, so the parent registers the pass.
       ref={(element: BoxRenderable) => { element.onLifecyclePass = () => untrack(() => {
         setContentRows(laidOutContentRows)
@@ -379,6 +385,7 @@ export function QuestionDock(props: QuestionDockProps) {
       borderColor={theme.primary}
       customBorderChars={VerticalBarBorder}
     >
+      <Show when={notices()}>{(text) => <text flexShrink={0} alignSelf="flex-end" fg={theme.warning} wrapMode="none">{text()}</text>}</Show>
       <scrollbox ref={scroll.attach}
         onSizeChange={function (this: BoxRenderable) { if (Number.isFinite(this.height) && measured()) setAllottedRows(this.height) }} minHeight={1} flexBasis={0} flexGrow={1} scrollY={true} scrollX={false} verticalScrollbarOptions={{ visible: overflowing() }}>
         {content()}

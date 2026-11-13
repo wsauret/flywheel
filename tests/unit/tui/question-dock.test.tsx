@@ -64,6 +64,7 @@ describe("QuestionDock", () => {
     draftCache?: ReturnType<typeof createDraftCache>
     captureFocus?: () => boolean
     onLeave?: () => void
+    notices?: () => readonly string[]
   } = {}) {
     const [current, setCurrent] = createSignal(options.question ?? question)
     let questionInput: QuestionInputContext | undefined
@@ -75,7 +76,7 @@ describe("QuestionDock", () => {
       questionInput = useQuestionInput()
       const shared = {
         sessionId: "session-a", get question() { return current() }, drafts: draftCache.questions, width, captureFocus: options.captureFocus ?? (() => true),
-        onAnswer: async (answers: Parameters<ComponentProps<typeof QuestionDock>["onAnswer"]>[0]) => (await onAnswer(answers)) !== false, onCancel: async () => true,
+        onAnswer: async (answers: Parameters<ComponentProps<typeof QuestionDock>["onAnswer"]>[0]) => (await onAnswer(answers)) !== false, onCancel: async () => true, notices: options.notices,
       }
       const onLeave = options.onLeave
       return onLeave ? <QuestionDock {...shared} escape="leave" onLeave={onLeave} /> : <QuestionDock {...shared} />
@@ -114,6 +115,25 @@ describe("QuestionDock", () => {
       await result.renderOnce()
       expect(result.captureCharFrame()).toContain("draft continued")
     } finally { result.renderer.destroy() }
+  })
+
+  it("keeps the warnings of the border it covers on a fixed row in the warning tone, also while a tall question scrolls to its choices", async () => {
+    const [notices, setNotices] = createSignal<readonly string[]>(["2 need you"])
+    const patch = Array.from({ length: 60 }, (_, index) => `-removed line ${index}`).join("\n")
+    const { result } = await renderQuestionDock({ notices, question: { ...question, questions: [{ ...question.questions[0]!, question: `Apply?\n\n\`\`\`diff\n${patch}\n\`\`\`` }] } })
+    try {
+      await result.renderOnce()
+      expect(result.captureCharFrame()).toContain("1. Red")
+      const row = result.captureSpans().lines.find((line) => line.spans.some((span) => span.text.includes("2 need you")))
+      const notice = row?.spans.find((span) => span.text.includes("2 need you"))
+      expect(notice?.fg.equals(theme.warning)).toBe(true)
+      expect(row?.spans.map((span) => span.text).join("").trimEnd()).toEndWith("2 need you")
+      setNotices([])
+      await result.renderOnce()
+      expect(result.captureCharFrame()).not.toContain("need you")
+    } finally {
+      result.renderer.destroy()
+    }
   })
 
   it("keeps the choices in the frame when the question is taller than the frame", async () => {

@@ -1,6 +1,7 @@
 import type { JSX } from "solid-js"
 import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
+import type { ModuleComposerStatus } from "../../../../src/protocol/protocol-module.js"
 import type { LocalRecall } from "../../../../src/protocol/client/chat-submissions.js"
 import type { ComposerHandle, ComposerProps } from "../../../../src/tui/components/composer-types.js"
 import type { DraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
@@ -44,6 +45,8 @@ interface MountOptions {
   readonly onPromptPress?: () => void
   /** Rendered above the prompt, as the shell renders module strips. */
   readonly above?: () => JSX.Element
+  /** The module statuses on the composer border. */
+  readonly composerStatus?: readonly ModuleComposerStatus[]
 }
 
 /** A foreground session at rest: no turn, no park, no notice. */
@@ -95,7 +98,7 @@ export async function mountPrompt(options: MountOptions) {
                   promptPopupKeySlot: options.promptPopupKeySlot ?? { register: () => {}, input: () => false },
                   promptAttachSlot: { register: () => {}, capture: () => undefined },
                   spinnerSource: options.spinnerSource ?? idleSpinnerSource(),
-                  promptBorderLayout: () => ({ modelLabel: undefined, update: undefined, composerStatus: [], hints: [], sessionsClickHint: null }),
+                  promptBorderLayout: () => ({ modelLabel: undefined, update: undefined, composerStatus: options.composerStatus ?? [], hints: [], sessionsClickHint: null }),
                   onDismissUpdate: () => {},
                   onOpenChanges: () => {},
                   history: options.history ?? createHistory(),

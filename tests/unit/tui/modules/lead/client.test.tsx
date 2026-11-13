@@ -8,6 +8,7 @@ import { createTabCloser } from "../../../../../src/tui/hooks/create-tab-closer.
 import type { TabInfo } from "../../../../../src/tui/hooks/create-tabs.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
+import { readerHost } from "./_lead-fixtures.js"
 
 const LEAD: LeadView = { leadSessionId: "lead-1", dismissed: false, rows: [] }
 
@@ -33,7 +34,8 @@ function harness(openAnswer: () => Promise<MutationResult<{ readonly type: "lead
     "session.close": async (command) => { sent.push(`session.close ${command.sessionId}${command.atRest ? " at rest" : ""}`); return { ok: true } },
   })
   const { client, closer, dispose } = createRoot((release) => {
-    const lead = createLeadClient({ domains: { lead: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({}) }, dialog, showToast: (toast) => { toasts.push(toast.message) } })
+    const lead = createLeadClient({ domains: { lead: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({}) }, dialog, showToast: (toast) => { toasts.push(toast.message) },
+      ...readerHost().host })
     const tabCloser = createTabCloser({
       tabs, appService: { dispatch },
       switchForeground: async (id) => { setTabs((list) => list.map((row) => ({ ...row, isForeground: row.id === id }))) },

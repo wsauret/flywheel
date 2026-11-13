@@ -158,10 +158,22 @@ export function leadNeedsPerson(view: LeadView): number {
   return view.rows.filter((row) => NEEDS_PERSON.has(row.state)).length
 }
 
+/** The chat that has waited longest for the person, which one key opens; none while no chat needs the person. */
+export function leadLongestWaiting(view: LeadView): LeadRow | undefined {
+  const first = leadRowOrder(view.rows)[0]
+  return first && NEEDS_PERSON.has(first.state) ? first : undefined
+}
+
+/** The count of chats that need the person, as every view shows it; none at zero. */
+export function leadCountLabel(view: LeadView | undefined): string | undefined {
+  const count = view ? leadNeedsPerson(view) : 0
+  return count === 0 ? undefined : count === 1 ? "1 needs you" : `${count} need you`
+}
+
 /** The count of chats that need the person, on the composer border of every view. */
 function leadComposerStatus(view: LeadView | undefined): readonly ModuleComposerStatus[] {
-  const count = view ? leadNeedsPerson(view) : 0
-  return count === 0 ? [] : [{ id: "lead", text: count === 1 ? "1 needs you" : `${count} need you`, tone: "warning" }]
+  const text = leadCountLabel(view)
+  return text === undefined ? [] : [{ id: "lead", text, tone: "warning" }]
 }
 
 export const leadProtocol = defineProtocolModule({

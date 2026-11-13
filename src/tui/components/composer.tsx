@@ -23,6 +23,7 @@ import { UNBOUND_COMPOSER_DRAFT, type ComposerDraftPaste } from "../hooks/create
 import { adoptDraftAttachments, mergeInputIntoDraft, replaceDraftMarker } from "../hooks/composer-draft-merge.js"
 import { normalizedPrintableText } from "../keymap/text-entry.js"
 import { QuestionDock } from "../question-dock.js"
+import { commandSpans as findCommandSpans } from "./composer-command-spans.js"
 import { ComposerBody, ComposerFrame, composerBodyGeometry, PROMPT_LEFT_INSET } from "./composer-frame.js"
 import { SlashSuggestions } from "./slash-suggestions.js"
 import { ComposerHistoryPopup } from "./composer-history-popup.js"
@@ -161,26 +162,7 @@ export function Composer(props: ComposerProps) {
     })
   })
 
-  const commandSpans = createMemo((): { start: number; end: number }[] => {
-    const text = inputText()
-    if (!text.includes("/")) return []
-    const names = completableNameSet()
-    const spans: { start: number; end: number }[] = []
-    // Match the leading whitespace/start as a non-captured boundary, then a
-    // single capture for the command token. The whole match starts at the
-    // boundary; the command starts at the "/" inside it, so cmdStart is the
-    // match index plus the offset of "/" within match[0].
-    const re = /(?:^|[\s])(\/[a-zA-Z][\w-]*(?::[\w-]*)?)/g
-    for (const match of text.matchAll(re)) {
-      const whole = match[0]
-      const slash = whole.indexOf("/")
-      const cmdText = whole.slice(slash)
-      const cmdStart = match.index + slash
-      const cmdName = cmdText.slice(1).toLowerCase()
-      if (names.has(cmdName)) spans.push({ start: cmdStart, end: cmdStart + cmdText.length })
-    }
-    return spans
-  })
+  const commandSpans = createMemo(() => findCommandSpans(inputText(), completableNameSet()))
   let commandTypeId: number | undefined
 
   function syncCommandExtmarks(): void {
@@ -683,6 +665,7 @@ export function Composer(props: ComposerProps) {
             onAnswer={(answers) => props.onAnswerQuestion(pq().sessionId, pq().question.toolUseId, answers)}
             onCancel={() => props.onCancelQuestion(pq().sessionId, pq().question.toolUseId)}
             captureFocus={props.captureFocus} onMeasured={setDockMeasured}
+            notices={() => (props.promptBorderLayout().composerStatus ?? []).filter((status) => status.tone === "warning").map((status) => status.text)}
           />
         )}
       </Show>

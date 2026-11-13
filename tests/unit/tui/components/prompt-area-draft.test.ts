@@ -368,10 +368,11 @@ describe("Composer draft loading", () => {
     }
   })
 
-  it("keeps the prompt until the question dock replaces it in one frame, ignores keys meanwhile, and keeps the draft", async () => {
+  it("keeps the prompt until the question dock replaces it in one frame, ignores keys meanwhile, keeps the draft, and keeps the border's count on the dock", async () => {
     const [question, setQuestion] = createSignal<QuestionBlock | undefined>()
     const draftCache = createDraftCache()
-    const result = await mountPrompt({ draftCache, foregroundId: () => "chat-1", pendingQuestion: question })
+    const result = await mountPrompt({ draftCache, foregroundId: () => "chat-1", pendingQuestion: question,
+      composerStatus: [{ id: "lead", text: "2 need you", tone: "warning" }, { id: "other", text: "3 running" }] })
 
     try {
       await result.renderOnce()
@@ -401,6 +402,8 @@ describe("Composer draft loading", () => {
       await result.renderOnce()
       expect(result.captureCharFrame()).toContain("Continue?")
       expect(result.captureCharFrame()).not.toContain("> before")
+      expect(result.captureCharFrame()).toContain("2 need you")
+      expect(result.captureCharFrame()).not.toContain("3 running")
       setQuestion(undefined)
       await result.renderOnce()
       await typeAsHuman(result.mockInput, " after")
