@@ -1,0 +1,33 @@
+{
+  "title": "Plan review: needsReorder flag on the stock route and a nightly reorder report",
+  "reviewers": [
+    "reviewer-plan-elegance"
+  ],
+  "defects": [
+    {
+      "id": "reorder-rule-in-http-layer",
+      "title": "The reorder rule is placed in the HTTP route module and the nightly job imports it from there",
+      "category": "elegance",
+      "files": [
+        "plan.md",
+        "ARCHITECTURE.md",
+        "src/http/stock-routes.ts",
+        "src/domain/stock.ts"
+      ],
+      "catch_criteria": "The review must identify that needsReorder, a stock rule, is defined in src/http/stock-routes.ts (phase-1/t2) and that src/jobs/reorder-report.ts imports it from ../http/stock-routes (phase-2/t1), which breaks ARCHITECTURE.md: every stock rule lives in src/domain/ and a job never imports src/http/. The rule belongs in src/domain/stock.ts next to availableUnits, where both the route and the job import it. Any wording and any severity count, as long as the misplaced rule and the wrong module or the job's import from the HTTP layer are both named, with a phase-1/t2 or phase-2/t1 location."
+    },
+    {
+      "id": "reorder-threshold-copy",
+      "title": "A startup map copies every product's reorderPoint, which StockItem already carries and the admin route changes",
+      "category": "elegance",
+      "files": [
+        "plan.md",
+        "src/domain/stock.ts",
+        "src/db/products.ts",
+        "src/http/admin-routes.ts"
+      ],
+      "catch_criteria": "The review must identify that the reorder-threshold map planned in phase-1/t1 (loadReorderThresholds, built once at server startup, and read by needsReorder through thresholds.get(sku) in phase-1/t2) is a second copy of a value that already has one home: every StockItem carries reorderPoint, mapped from the reorder_point column by src/db/products.ts. The copy goes stale as soon as a buyer changes a reorder point through PUT /admin/products/:sku/reorder-point (src/http/admin-routes.ts), and its `?? 0` default invents a threshold for a SKU missing from the map. needsReorder should read item.reorderPoint and the map should be dropped. Any wording and any severity count, as long as the map and the existing item.reorderPoint (or the reorder_point column) are both named as homes of the same value, with a phase-1/t1 or phase-1/t2 location. Noting that the new src/config/ module sits outside the four layers of ARCHITECTURE.md counts as part of the same finding when the map is named."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that adds a needsReorder flag to the stock route and a nightly reorder report job. Check every structural choice the plan makes against the code and ARCHITECTURE.md"
+}

@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: CSV download of the daily sales report",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [
+    {
+      "id": "csv-exporter-shallow-wrapper",
+      "title": "CsvExporter only forwards to toCsv and adds no capability",
+      "category": "elegance",
+      "files": ["plan.md", "src/format/csv.ts", "src/reports/stock.ts"],
+      "catch_criteria": "The review must identify that the CsvExporter class planned in phase-1/t1 (src/format/csv-exporter.ts), whose export method returns toCsv(headers, rows) unchanged, is a shallow wrapper: it adds no behavior, state, or seam that the toCsv function in src/format/csv.ts does not already give (stockCsv in src/reports/stock.ts calls toCsv directly), so salesCsv should call toCsv and the class, its construction in the route (phase-2/t1), and its parameter should be dropped. Any wording and any severity count, as long as the wrapper and the reason it adds nothing are both named, with a phase-1/t1 location."
+    },
+    {
+      "id": "regroup-sales-by-day",
+      "title": "The plan re-implements salesByDay as a local groupByDay in the CSV module",
+      "category": "elegance",
+      "files": ["plan.md", "src/reports/sales.ts"],
+      "catch_criteria": "The review must identify that the local groupByDay planned in phase-1/t2 (keyed by formatDate(soldAt, storeTimeZone), summing orders, units, and revenue, sorted by day) re-implements salesByDay in src/reports/sales.ts, which already returns exactly those SalesDay rows and feeds the HTML report, so the CSV and HTML reports would hold two copies of the day-grouping rule that can drift; salesCsv should map salesByDay(sales). Any wording and any severity count, as long as groupByDay and the existing salesByDay are both named, with a phase-1/t2 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that adds a CSV download of the daily sales report beside the HTML report. Check every structural choice the plan makes against the code"
+}

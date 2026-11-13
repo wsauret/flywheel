@@ -1,0 +1,6 @@
+{
+  "title": "Plan review: audit events for admin actions, to stdout or a JSON Lines file (control)",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that records an audit event for every successful admin action, written to stdout or to a JSON Lines file as the deployment chooses. Check every structural choice the plan makes against the code"
+}

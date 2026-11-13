@@ -1,0 +1,9 @@
+{
+  "name": "pocket-notes",
+  "private": true,
+  "type": "module",
+  "bin": { "notes": "src/cli.ts" },
+  "scripts": {
+    "test": "bun test"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "title": "Plan review: retry webhook deliveries with backoff",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [
+    {
+      "id": "hand-rolled-retry-loop",
+      "title": "The plan hand-writes a retry loop although withRetry in src/lib/retry.ts already does this",
+      "category": "elegance",
+      "files": ["plan.md", "src/lib/retry.ts", "src/email/sender.ts"],
+      "catch_criteria": "The review must identify that the attempt loop planned in phase-1/t1 (deliverWithRetry's `for` loop with a rethrow on a non-retryable error or the last try and `sleep(500 * 2 ** attempt)` between tries) re-implements withRetry in src/lib/retry.ts, which already takes attempts, baseDelayMs with doubling backoff, an isRetryable predicate, and an injectable sleep, and which sendMail in src/email/sender.ts already uses the same way; deliverWithRetry should be withRetry(() => deliverWebhook(...), { attempts: 5, baseDelayMs: 500, isRetryable: isRetryableWebhookError }) so the project keeps one retry policy implementation. Any wording and any severity count, as long as the hand-written loop and the existing withRetry are both named, with the phase-1/t1 location. Noting that the hand-written loop also drops withRetry's jitter counts as part of the same finding."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that retries failed webhook deliveries with backoff, per endpoint. Check every structural choice the plan makes against the code"
+}

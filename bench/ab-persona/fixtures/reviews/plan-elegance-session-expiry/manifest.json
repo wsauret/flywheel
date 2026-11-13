@@ -1,0 +1,6 @@
+{
+  "title": "Plan review: Keep me signed in with a per-session expiry (control)",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that adds a Keep me signed in option at login, giving remembered sessions a 30-day lifetime. Check every structural choice the plan makes against the code"
+}

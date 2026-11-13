@@ -1,0 +1,14 @@
+{
+  "title": "Plan review: weekend surcharge on delivery quotes",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [
+    {
+      "id": "rule-registry-one-rule",
+      "title": "A PricingRule interface and registry are built for one surcharge with one caller",
+      "category": "elegance",
+      "files": ["plan.md", "src/pricing/quote.ts"],
+      "catch_criteria": "The review must identify that phase-1/t2 and phase-1/t3 introduce a PricingRule interface, a PricingRuleRegistry with register and apply, and a WeekendSurchargeRule class for exactly one rule, registered once in a module-level registry inside quoteDelivery's module, its only caller; the request is one weekend surcharge and the holiday or peak-hour rules the plan cites are hypothetical, so this is a premature abstraction (or speculative generality) and quoteDelivery should add the weekend line directly with a small weekday check, introducing an interface only when a second rule exists. Any wording and any severity count, as long as the interface or registry and the fact that it serves one rule or one caller (or exists only for hypothetical future rules) are both named, with a phase-1/t2 or phase-1/t3 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that adds a weekend surcharge line to delivery quotes. Check every structural choice the plan makes against the code"
+}

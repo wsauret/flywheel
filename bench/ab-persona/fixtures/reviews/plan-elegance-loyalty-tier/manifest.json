@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: loyalty tier badge on receipts and a src/loyalty/ home for the tier rules",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [
+    {
+      "id": "stored-tier-derivable",
+      "title": "The plan stores a tier column that tierFor already derives from the points balance",
+      "category": "elegance",
+      "files": ["plan.md", "src/tiers.ts", "src/customers.ts", "src/checkout.ts"],
+      "catch_criteria": "The review must identify that phase-2 (the tier column and backfill in phase-2/t1, the tier field kept in step by awardPoints and redeemPoints in phase-2/t2, and checkout reading customer.tier in phase-2/t3) stores a value that is a pure function of the points balance: tierFor(pointsBalance) in src/tiers.ts already computes it, so the stored tier is a second source of truth that every balance writer must keep in step by hand (and the backfill CASE restates the thresholds a second time in SQL). The remedy is to derive the tier with tierFor(customer.pointsBalance) where checkout and the receipt need it and drop the column, field, and migration. Any wording and any severity count, as long as the stored tier field or column and the fact that it duplicates or could be derived from the points balance through tierFor are both named, with a phase-2 location."
+    },
+    {
+      "id": "tiers-reexport-shim",
+      "title": "The plan keeps src/tiers.ts as a re-export shim although every import of it moves",
+      "category": "elegance",
+      "files": ["plan.md", "src/tiers.ts", "README.md"],
+      "catch_criteria": "The review must identify that phase-1/t2 keeps src/tiers.ts as an `export * from \"./loyalty/tiers\"` compatibility shim for \"existing imports\" while phase-1/t1 already moves the only importers (src/checkout.ts and tests/tiers.test.ts) and README.md states that nothing outside the repository imports the service's modules, so the shim has no consumer and src/tiers.ts should simply be deleted in the move. Any wording and any severity count, as long as the re-export shim and the absence of any consumer are both named, with the phase-1/t2 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that adds a loyalty tier badge to the receipt and moves the tier rules under src/loyalty/. Check every structural choice the plan makes against the code"
+}

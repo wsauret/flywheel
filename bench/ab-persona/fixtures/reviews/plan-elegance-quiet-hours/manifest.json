@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: apply quiet-hours changes at once and show the next delivery time",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [
+    {
+      "id": "store-scheduler-cycle",
+      "title": "The store calls the scheduler and the scheduler writes back into the store",
+      "category": "elegance",
+      "files": ["plan.md", "src/preferences/store.ts", "src/notify/scheduler.ts"],
+      "catch_criteria": "The review must identify that phase-1 makes data flow both ways between PreferencesStore and NotificationScheduler: phase-1/t1 has the store hold the scheduler and call reschedule from update, and phase-1/t2 has reschedule write nextDeliveryAt back through store.update, so each depends on the other and the plan needs a #rescheduling re-entry flag to break the loop it created; it also puts the scheduler's runtime state into the user's persisted preferences. The remedy is one direction: the scheduler subscribes to the store (subscribe already exists) and owns the next delivery time, which the form reads from the scheduler. Any wording and any severity count, as long as both directions (store to scheduler and scheduler back to store) or the resulting cycle and its re-entry flag are named, with a phase-1 location."
+    },
+    {
+      "id": "unreachable-quiet-hours-fallback",
+      "title": "isQuiet gets a default window for quiet hours that parsePreferences already guarantees are present and valid",
+      "category": "elegance",
+      "files": ["plan.md", "src/preferences/parse.ts", "src/preferences/store.ts"],
+      "catch_criteria": "The review must identify that the fallback planned in phase-2/t1 (treat missing quietHours or a non-HH:MM start or end as 22:00 to 07:00 inside isQuiet) handles a state no producer can create: Preferences.quietHours is a required field, parsePreferences in src/preferences/parse.ts fills a default for any missing or invalid start or end, and PreferencesStore builds its value and every update through parsePreferences, so isQuiet never sees missing or invalid quiet hours and the branch, its duplicate default window, and its tests should be dropped. Any wording and any severity count, as long as the fallback and the fact that parsePreferences already guarantees valid quiet hours are both named, with the phase-2/t1 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that makes a quiet-hours change take effect at once and shows the next delivery time on the settings screen. Check every structural choice the plan makes against the code"
+}

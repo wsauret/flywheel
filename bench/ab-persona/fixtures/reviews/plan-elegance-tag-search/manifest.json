@@ -1,0 +1,14 @@
+{
+  "title": "Plan review: tag search in the notes CLI with a version 2 search index",
+  "reviewers": ["reviewer-plan-elegance"],
+  "defects": [
+    {
+      "id": "derived-index-v1-converter",
+      "title": "The plan adds a version 1 index converter for a cache that loadIndex already rebuilds from the notes",
+      "category": "elegance",
+      "files": ["plan.md", "src/search/index-file.ts", "src/notes/store.ts"],
+      "catch_criteria": "The review must identify that the SearchIndexV1 type and upgradeV1 converter planned in phase-1/t2, with their loadIndex branch and scheduled removal, are a compatibility path nobody needs: the index file is a cache derived from the notes (src/search/index-file.ts and src/notes/store.ts say so), loadIndex already replaces a file of another version with a fresh buildIndex(notes), and loadIndex already holds every note in memory, so the converter saves no reading and protects no user state; raising INDEX_VERSION alone makes old files rebuild. Any wording and any severity count, as long as the converter and the fact that the index is derived or already rebuilt on a version mismatch are both named, with the phase-1/t2 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) that adds #tag search to a notes CLI and moves the search index format to version 2. Check every structural choice the plan makes against the code"
+}
