@@ -6,6 +6,8 @@ import type { AgentOptions, RunnerToolSurfaces } from "../agent-runtime/types.js
 import type { ProviderSession } from "../agent-runtime/provider-runtime-cache.js"
 import type { ResolvedRole } from "../config/roles.js"
 import { SESSION_TITLE_PURPOSE } from "../session/session-title.js"
+import { resolveChatProfile } from "../chat-profile.js"
+import { NO_MODULE_SERVICES } from "../../infra/module-service.js"
 import type { ChatSessionDeps } from "./session.js"
 
 interface ChatRequestOptionsInput {
@@ -43,6 +45,9 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
       sessionDir: resolveSessionDir(sessionId, projectRoot),
       createChildConversation: deps.createChildConversation,
       moduleSelection: deps.moduleSelection,
+      // A resolver, not a profile: a parked loop keeps these options, and each request resolves the profile from the
+      // module snapshot that its tools and its prompt read, so the profile follows a change of the selection.
+      chatProfile: (modules) => resolveChatProfile(modules, { sessionId, modules: deps.moduleServices ?? NO_MODULE_SERVICES }),
       ...(deps.capabilityAccess ? { capabilityAccess: deps.capabilityAccess } : {}),
       purpose: { kind: deps.rootChatCompletion?.unattended ? "unattended-chat" : "interactive-chat" },
       // Read auth at runner-creation time (per turn). With ChatSessionDeps.auth

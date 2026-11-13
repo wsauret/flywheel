@@ -226,6 +226,7 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
       onNotification: workflowDeps.onNotification,
       captureProviderConnection: () => currentWorkflowDeps().captureProviderConnection(),
       moduleSelection: workflowDeps.moduleSelection,
+      ...(deps.moduleServices ? { moduleServices: deps.moduleServices } : {}),
       proactiveCompactionThreshold,
       idleCompaction: deps.idleCompaction,
       workflowMode: deps.workflowMode,

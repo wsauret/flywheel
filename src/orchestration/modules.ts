@@ -6,6 +6,7 @@ import { composeModules, type ModuleDescriptor, type ModuleComposition } from ".
 import type { ModuleRuntimeHandle, ModuleRuntimes } from "../infra/module-runtime.js"
 import type { ChatModuleHostContribution } from "./chat-module-host.js"
 import type { TerminalRemoteContribution } from "./terminal-remote.js"
+import type { ChatProfileContribution } from "./chat-profile.js"
 import type { ModuleServiceHandle, ModuleServices } from "../infra/module-service.js"
 import type { NotificationEpisodeInput } from "../infra/notification-episode.js"
 import { canonicalModuleIds, EMPTY_MODULE_IDS, MODULE_IDS, type ModuleId as WireModuleId } from "../protocol/module-ids.js"
@@ -170,6 +171,8 @@ interface FirstPartyContributionMap {
   /** How the terminal opens a project on another machine. At most one module
    *  contributes it. */
   readonly terminalRemote: TerminalRemoteContribution
+  /** The prompt and the tool names of the chats a module owns. One module contributes it. */
+  readonly chatProfiles: ChatProfileContribution
 }
 
 interface AccountModuleServiceContribution {

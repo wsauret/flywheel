@@ -38,6 +38,7 @@ import { readChatTurnEnd } from "../session/chat-session-run-evidence.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
+import type { ModuleServices } from "../../infra/module-service.js"
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
 import type { ChildSessionAuthority, ModuleChatObserver } from "../module-seams.js"
 import type { SessionMessaging } from "../session/session-messaging.js"
@@ -72,6 +73,8 @@ export interface ChatSessionDeps {
   captureProviderConnection: import("../agent-runtime/factory.js").CaptureProviderConnection
   onNotification?: AgentOptions["onNotification"]
   moduleSelection: FirstPartyModuleSnapshot
+  /** The process services, through which a module answers the profile of this chat (`resolveChatProfile`). */
+  moduleServices?: ModuleServices
   proactiveCompactionThreshold: () => number
   idleCompaction?: ReturnType<typeof import("./idle-compaction.js").createIdleCompactionPolicy>
   workflowMode: () => WorkflowsMode
