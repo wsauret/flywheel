@@ -1,0 +1,36 @@
+src/tui/components/child-session-viewer.tsx
+  h_4b47e9e4a8b456 94-95,97-98
+src/tui/modules/lead/chat-viewer.tsx
+  h_4b47e9e4a8b456 1-130
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 9-10,24-29,40,52,54,57-58,70-75
+src/tui/modules/lead/cover.tsx
+  h_4b47e9e4a8b456 1-13
+src/tui/modules/lead/peek.tsx
+  h_4b47e9e4a8b456 1-130
+src/tui/modules/lead/reader.tsx
+  h_4b47e9e4a8b456 18,72-73,128-140,168
+src/tui/modules/lead/strip.tsx
+  h_4b47e9e4a8b456 10,47,58-59,62,69-73,79-80,96
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 2-3,6-14,17,45-46,50-62,64-65,74-78,89-90,95,97,103,109-161
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 1-144
+tests/unit/tui/modules/lead/cover.test.tsx
+  h_4b47e9e4a8b456 1-67
+tests/unit/tui/modules/lead/peek.test.tsx
+  h_4b47e9e4a8b456 1-87
+tests/unit/tui/modules/lead/strip.test.tsx
+  h_4b47e9e4a8b456 5,7,11-14,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c1e493e878c5cbb9cb02405187b34779c3b6017b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
