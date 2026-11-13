@@ -1,0 +1,22 @@
+tests/unit/orchestration/agent-runtime/request-tool-surface-chat-profile.test.ts
+  h_4b47e9e4a8b456 1-83
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/agent-runtime/tools/_planner-fixtures.ts
+  h_4b47e9e4a8b456 10-13,42-56
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner-profile.test.ts
+  h_4b47e9e4a8b456 1-31
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0bad8b602f2d06af8c947b2f7df0ea730dba3291",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
