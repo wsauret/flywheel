@@ -1,0 +1,14 @@
+tests/unit/orchestration/modules/provider-claude-agent-sdk/sdk-events.test.ts
+  h_4b47e9e4a8b456 11,96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "16d481c25dbfeef16673286f2bd2cdb2e2869289",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
