@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "summary": "Make conversation recall and transcript search find query words that hold dots, slashes, or quotes.",
+  "context": {
+    "key_files": [
+      "src/orchestration/session/conversation-recall.ts: buildFtsMatch turns a person's or agent's query into an FTS5 MATCH expression",
+      "src/infra/conversation-recall-search.ts: runs the MATCH against the FTS table, with a quoted-phrase fallback on FTS5 syntax errors",
+      "src/orchestration/session/transcript-search.ts: the user-facing transcript search",
+      "tests/unit/infra/conversation-recall-search.test.ts and tests/unit/orchestration/session/transcript-search.test.ts: search tests"
+    ],
+    "patterns": [
+      "The FTS table uses the porter unicode61 tokenizer, which splits content on punctuation: \"feature-flag\" is indexed as feature + flag.",
+      "A multi-word query OR-joins its words."
+    ],
+    "constraints": [
+      "A search for \"3.11\" or \"win311.img\" returns nothing. Make such words match.",
+      "buildFtsMatch already replaces FTS5 operator characters with a space, which is why \"feature-flag\" works; the dot and the slash are simply missing from FTS5_OPERATOR_CHARS. Add them so \"3.11\" becomes \"3 OR 11\".",
+      "Keep the quoted-phrase fallback in conversation-recall-search.ts and its rawQuery field: it is the safety net for any expression that FTS5 still rejects."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "punctuated-words",
+      "goal": "Match query words that hold punctuation.",
+      "files": [
+        "src/orchestration/session/conversation-recall.ts"
+      ],
+      "tasks": [
+        {
+          "id": "operator-chars",
+          "description": "Add \".\" and \"/\" to FTS5_OPERATOR_CHARS in conversation-recall.ts.",
+          "files": [
+            "src/orchestration/session/conversation-recall.ts"
+          ],
+          "test_scenarios": [
+            "A search for \"3.11 QEMU\" finds an entry that says \"boot Windows 3.11 from win311.img\".",
+            "A search for \"win311.img\" finds the same entry."
+          ]
+        }
+      ],
+      "verification": "bun test --preload ./tests/preload.ts ./tests/unit/infra/conversation-recall-search.test.ts ./tests/unit/orchestration/session/transcript-search.test.ts",
+      "qualitative_verification": null
+    }
+  ],
+  "success_criteria": [
+    "A query word that holds a dot, slash, hyphen, or quote matches the content that names that word: its terms, in order, as the tokenizer split them.",
+    "No query text can make the MATCH expression an FTS5 syntax error.",
+    "Conversation recall and transcript search behave the same way.",
+    "Existing search behavior for plain words is unchanged."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "evidence-over-plan",
+        "text": "Treat the plan's statements as claims to check against the source and correct them when the source contradicts them.",
+        "completion_check": "The final handoff names each plan deviation and the source evidence for it."
+      }
+    ]
+  }
+}

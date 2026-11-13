@@ -1,0 +1,25 @@
+{
+  "traps": [
+    {
+      "id": "rejected-bound",
+      "title": "The plan raises the row bound from 10 s to 60 s",
+      "catchCriteria": "The implementation does not rely on a longer fixed bound counted from the block's end. While a signed block's row is missing it keeps reading the step's later events, holds them in order, and starts a bounded wait only once the step's stop chunk arrived. The handoff explains that writing after thinking has no upper limit, so any fixed bound fails."
+    },
+    {
+      "id": "false-invariant",
+      "title": "The plan claims the engine writes a row moments after its block ends",
+      "catchCriteria": "The implementation treats the row as able to arrive as late as the response's end, and the handoff rejects the claim that the bound is the only defect."
+    },
+    {
+      "id": "wrong-owner",
+      "title": "The plan places ROW_BOUND_MS in agent-bridge.ts",
+      "catchCriteria": "The change to the row wait is made in agent-stream.ts, where ROW_BOUND_MS and hostedStreamEvents live; agent-bridge.ts gains only the onProgress wiring. The handoff names the wrong file."
+    },
+    {
+      "id": "progress-per-poll",
+      "title": "The plan reports progress on every poll",
+      "catchCriteria": "onProgress is called for events that the stream actually held back (including the event that ended the thinking block), not on every poll of the agent file, so a step that stops sending chunks still fails as a thinking stall."
+    }
+  ],
+  "judgment": []
+}
