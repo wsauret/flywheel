@@ -9,7 +9,7 @@ import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js"
 import { makeDeps as makeSubagentDeps } from "../subagent/_fixtures.js";
 import { fullAuthority } from "../../../../helpers/launch-authority.js";
 import type { WorkflowToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
-import type { WorkflowsRuntime } from "../../../../../src/orchestration/modules/workflows.js";
+import type { workflowsModule } from "../../../../../src/orchestration/modules/workflows.js";
 import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js";
 
 /** The account data root startup publishes. The account-global skill store
@@ -50,7 +50,7 @@ function workflowDeps(mode: WorkflowsMode): WorkflowToolDeps {
   };
 }
 
-export function workflowsRuntime(mode: WorkflowsMode): WorkflowsRuntime {
+export function workflowsRuntime(mode: WorkflowsMode): NonNullable<ReturnType<typeof workflowsModule.runtime.create>> {
   return { deps: () => workflowDeps(mode), authority: () => fullAuthority() };
 }
 

@@ -58,7 +58,7 @@ export interface ChildSessionBodyInput {
 
 /** The pending question of a chat that shows outside its own tab. The person
  *  answers it here; Escape calls `leave` and the question stays pending. */
-export interface ChildQuestion {
+interface ChildQuestion {
   readonly view: Accessor<QuestionBlock | undefined>
   readonly answer: ChatModeHook["answerQuestion"]
   readonly cancel: ChatModeHook["cancelQuestion"]

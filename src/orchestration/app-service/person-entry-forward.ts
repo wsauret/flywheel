@@ -4,7 +4,7 @@ import { readConversationTail } from "../session/chat-session-run-evidence.js"
 import { isPersonEntry, personEntryInput, personEntrySelection, type PersonEntry, type PersonEntryRef } from "../session/conversation/person-entries.js"
 import type { SendChatOutcome } from "./runtime-supervisor-types.js"
 
-export type ForwardOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: string }
+type ForwardOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: string }
 
 export interface PersonEntryForward {
   /** The person's entries of the newest turn of a chat and of `earlierTurns`

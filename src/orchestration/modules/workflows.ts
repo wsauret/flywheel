@@ -58,7 +58,7 @@ import { settleWorkflowDeletion } from "./workflows/deletion.js"
 import { createWorkflowHosts } from "./workflows/host-collection.js"
 
 /** The launch surface of one runner. Each request reads the live mode. */
-export interface WorkflowsRuntime {
+interface WorkflowsRuntime {
   readonly deps: () => WorkflowToolDeps
   /** The authority of this runner's session under one planned tool set and its request's own availability. */
   readonly authority: (planned: ReadonlyMap<string, RuntimeTool>, availability: DefinitionAvailabilitySnapshot) => LaunchingSessionAuthority
