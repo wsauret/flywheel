@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import { fullAuthority } from "../../../../helpers/launch-authority.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,13 +17,10 @@ import { codeModeRuntimeOver } from "../../../../helpers/code-mode-worker.js";
 import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js";
 import type { AskUserController } from "../../../../../src/orchestration/runner/ask-user-controller.js";
 import type { SkillManageToolDeps } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { WorkflowToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import type { LearningRuntime } from "../../../../../src/orchestration/modules/learning.js";
-import type { WorkflowsRuntime } from "../../../../../src/orchestration/modules/workflows.js";
-import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js";
 import type { ModuleId } from "../../../../../src/protocol/module-ids.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
-import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot } from "./_planner-fixtures.js";
+import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot, workflowsRuntime } from "./_planner-fixtures.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
 import { createToolRegistry } from "../../../../../src/orchestration/tool-catalog.js";
 import { DEVELOPMENT_MODULES } from "../../../../../src/orchestration/development-modules.js";
@@ -60,21 +56,6 @@ function developmentRuntime() {
       execute: () => { throw new Error("unused in this test"); },
     }),
   };
-}
-
-/** Workflow deps of one mode. Only the mode and the launch-target resolver are
- *  read by the planner; a launch would fail, which no exposure test performs. */
-function workflowDeps(mode: WorkflowsMode): WorkflowToolDeps {
-  return {
-    startWorkflow: async () => ({ error: "unused in this test" }),
-    onRenderEvent: () => {},
-    mode,
-    resolveLaunchTarget: async () => ({ error: "unused in this test" }), executionCwd: "/project",
-  };
-}
-
-function workflowsRuntime(mode: WorkflowsMode): WorkflowsRuntime {
-  return { deps: () => workflowDeps(mode), authority: () => fullAuthority() };
 }
 
 function learningRuntime(root = userDataRoot): LearningRuntime {
@@ -245,27 +226,6 @@ describe("planToolExposure", () => {
     expect(planned.skillRegistry).toBeUndefined();
     expect(constructed).toEqual([]);
     expect(planned.omitted).toContainEqual({ name: "papercut_log", reason: "excluded by the no-tool profile" });
-  });
-
-  it("plans exactly the tools of an only profile and the tools of every session, ambient registrations included", async () => {
-    const profiled = (only: readonly string[]) => plan({
-      capabilities: ALL_CAPABILITIES,
-      backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
-      askUser: askUserController(),
-      handoff: {},
-      sessions: sessionMessaging,
-      skills: skillRevision([testSkill("fixture")]),
-    }, [["workflows", workflowsRuntime("on")], ["subagents", subagentsRuntime()]], { profile: { only: new Set(only) } });
-    const identities = (planned: Awaited<ReturnType<typeof profiled>>) => new Set(planned.registrationIdentities.values());
-
-    const planned = await profiled(["read", "ask_user"]);
-    expect(identities(planned)).toEqual(new Set(["read", "ask_user", "message_session", "list_sessions"]));
-    for (const name of ["process", "handoff", "workflow", "skill"]) {
-      expect(planned.omitted).toContainEqual({ name, reason: "not in the chat profile" });
-    }
-
-    const withShell = await profiled(["read", "ask_user", "bash"]);
-    expect(identities(withShell)).toEqual(new Set([...identities(planned), "bash"]));
   });
 
   it("marks subagent and workflow as background runtime tools", async () => {

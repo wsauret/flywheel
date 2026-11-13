@@ -7,6 +7,10 @@ import { publishSkillRevision, type SkillDefinition, type SkillRegistryRevision 
 import { testDirectories } from "../../../../helpers/directories.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { makeDeps as makeSubagentDeps } from "../subagent/_fixtures.js";
+import { fullAuthority } from "../../../../helpers/launch-authority.js";
+import type { WorkflowToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
+import type { WorkflowsRuntime } from "../../../../../src/orchestration/modules/workflows.js";
+import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js";
 
 /** The account data root startup publishes. The account-global skill store
  *  every skill surface of a turn resolves against lives under it. */
@@ -33,6 +37,21 @@ export function subagentsRuntime(): SubagentsRuntime {
     conversationId: "planner-conversation",
     resume: async () => { throw new Error("Resume is not used in this planner test") },
   };
+}
+
+/** Workflow deps of one mode. Only the mode and the launch-target resolver are
+ *  read by the planner; a launch would fail, which no exposure test performs. */
+function workflowDeps(mode: WorkflowsMode): WorkflowToolDeps {
+  return {
+    startWorkflow: async () => ({ error: "unused in this test" }),
+    onRenderEvent: () => {},
+    mode,
+    resolveLaunchTarget: async () => ({ error: "unused in this test" }), executionCwd: "/project",
+  };
+}
+
+export function workflowsRuntime(mode: WorkflowsMode): WorkflowsRuntime {
+  return { deps: () => workflowDeps(mode), authority: () => fullAuthority() };
 }
 
 export function askUserController(): AskUserController {
