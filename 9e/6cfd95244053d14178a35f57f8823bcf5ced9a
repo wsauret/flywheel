@@ -1,0 +1,19 @@
+src/protocol/modules/lead.ts
+  s_b93f84f51b2c5a::t_db06a8629a24e3 1-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9e6cfd95244053d14178a35f57f8823bcf5ced9a",
+  "prompts": {},
+  "sessions": {
+    "s_b93f84f51b2c5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5446e171-6e92-4da4-98f8-fdc46ea9b1ad",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
