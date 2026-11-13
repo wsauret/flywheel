@@ -28,6 +28,7 @@ import type { ChatRunner } from "../chat/runner-types.js"
 import type { RuntimeFaultReporter } from "./runtime-fault-reporting.js"
 import type { AccountModuleRequest } from "../../protocol/account-attach.js"
 import type { PersonEntryForward } from "./person-entry-forward.js"
+import type { SessionEventNotices } from "./session-event-notices.js"
 
 /** Request-time execution authorities. Reading this port does not activate a session. */
 interface ModuleExecutionEnvironment {
@@ -41,6 +42,9 @@ interface ModuleExecutionEnvironment {
   /** Opens a new chat with no tab, born with its auth profile and its store
    *  entry. A chat with no name generates its own title. */
   readonly openChat: (options: { readonly name?: string }) => Promise<string>
+  /** The runtime's notices to a watching chat about the chats that it watches (ARCH-SESSIONS-052). The kernel owns
+   *  the service's life and the reports of each runner, so a module only watches. */
+  readonly sessionEvents: Pick<SessionEventNotices, "watch" | "unwatch">
 }
 
 /** What the runtime hands a module that declares a process-scoped service:

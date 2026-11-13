@@ -58,6 +58,7 @@ export function chatRunnerDeps(input: {
     seedContext: shell.seedContext,
     conversationId,
     recall: capabilities.recall,
+    onSessionEvent: (kind) => { capabilities.sessionEvents?.report(sessionId, kind) },
     rootChatCompletion: capabilities.rootChatCompletion?.(sessionId),
     authAdmission: capabilities.authAdmission,
     subscribeProfiles: capabilities.subscribeProfiles,

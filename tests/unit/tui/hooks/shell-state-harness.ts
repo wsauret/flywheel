@@ -80,6 +80,7 @@ export function createMockChatRunner(sessionId: string): ChatRunner {
     dispose: async () => {},
     send: async () => "accepted",
     deliverHeldMessage: async () => ({ status: "held", reason: "no_reader" }), messageState: async () => "at_rest",
+    deliverSilentNotice: async () => "held",
     recallQueuedMessage: async () => null,
     compact: async () => false,
     deliverCommitted: () => true,

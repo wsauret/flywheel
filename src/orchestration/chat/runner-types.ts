@@ -16,6 +16,14 @@ import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js
  *  `ended` is a chat, or its one-shot invocation, that takes no more input. */
 export type ChatSendResult = "accepted" | "recorded" | "ended"
 
+/** What a chat's runner reports about its turn, once each time it occurs: the turn started to wait for the
+ *  person's answer to a question, the turn ended with an answer and nothing runs for it, the run failed, or an
+ *  interrupt cut the turn (ARCH-SESSIONS-052). */
+export type SessionEventKind = "asked" | "turn_ended" | "failed" | "cut"
+
+/** Whether a silent notice reached the chat's model (`delivered`) or waits for the person first (`held`). */
+export type SilentNoticeDelivery = "delivered" | "held"
+
 export interface ChatRunner extends Runner {
   /** Session resources available from attachment until awaited disposal. */
   readonly chatModuleHosts: ModuleRuntimes
@@ -36,6 +44,11 @@ export interface ChatRunner extends Runner {
   deliverHeldMessage(input: ChatInput, decide: (state: LiveRecipientState) => DeliveryOutcome): Promise<DeliveryOutcome>
   /** The state a message from another session would meet now. */
   messageState(): Promise<LiveRecipientState>
+  /** Tells the chat's model `text`, which the person never sees and which owes no reply. A live loop takes it
+   *  through the silent channel. With no live loop, the runner commits it as one system-origin entry and starts a
+   *  turn. A turn that waits for the person after an interrupt or a stall, and a runner that ended, answer `held`
+   *  and take nothing. */
+  deliverSilentNotice(text: string): Promise<SilentNoticeDelivery>
   deliverCommitted(input: ChatInputLike): boolean
   /** Admit already-durable module work to this runner's ordinary save point. */
   acceptRetainedOperation?(operation: HeldRetainedOperation): Promise<void>

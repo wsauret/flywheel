@@ -64,6 +64,7 @@ import { createRuntimeSupervisor } from "./runtime-supervisor.js"
 import { createChatRunnerLoader } from "./chat-runner-loader.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import type { PersonEntryForward } from "./person-entry-forward.js"
+import { createSessionEventNotices } from "./session-event-notices.js"
 import { createIdleCompactionPolicy } from "../chat/idle-compaction.js"
 import type { RuntimeRunnerCapabilities, RuntimeSupervisor } from "./runtime-supervisor-types.js"
 import { createCommandInvokeService } from "./command-invoke-service.js"
@@ -273,9 +274,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // on.
   // Construct the lazy lane before the executor kernel so every foreground
   // summary view shares it. Construction does not start its Worker.
-  const backgroundClient = scope.own(
-    "background-process-client", createProcessBackgroundClient({ workerUrl: options.workerUrl, logBase: projectRoot }), (owned) => owned.dispose(),
-  )
+  const backgroundClient = scope.own("background-process-client", createProcessBackgroundClient({ workerUrl: options.workerUrl, logBase: projectRoot }), (owned) => owned.dispose())
   const backgroundLane = scope.own("background-lane", createRuntimeBackgroundLane(projectRoot, {
     createClient: (laneCwd) => backgroundClient.acquire(laneCwd),
   }), (lane) => lane.dispose())
@@ -323,11 +322,10 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // The handoff this executor heard lives in the replacement report, which is
   // composed after the app service, which needs the supervisor.
   const commandHandover = composeExecutorCommandHandover({ reader: eventReader, projectionReader, writer: eventWriter, launcher: options.launcher, userDataRoot, keeper })
-  const streamingEditValidation = scope.own(
-    "streaming-edit-validation", createStreamingEditValidationService(), (service) => service.dispose(),
-  )
+  const streamingEditValidation = scope.own("streaming-edit-validation", createStreamingEditValidationService(), (service) => service.dispose())
   scope.own("session-changes-publisher", createSessionChangesPublisher({ onStored: eventStore.onStored, publish: bus.publish, sessionPlacements: createSessionPlacements(projectionReader) }), (publisher) => { publisher.dispose() })
   const backgroundIndex = scope.own("background-index", composeBackgroundIndex({ reader: projectionReader, readSession: manager.read, onStored: eventStore.onStored, publish: bus.publish, snapshotPosition: bus.snapshotPosition, sessionStore, onKeptChange: keeper.onChange }), (index) => { index.dispose() })
+  const sessionEvents = scope.own("session-event-notices", createSessionEventNotices({ sessionStore }), (notices) => { notices.dispose() })
   // One service per enabled module, once per process, before any producer
   // can raise: the notify seam reads the live selection, so a module turned
   // off hears nothing and no kernel producer names one (ARCH-RUNTIME-048, ARCH-STRUCTURE-034).
@@ -349,6 +347,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       personEntries: (sessionId, earlierTurns): ReturnType<PersonEntryForward["personEntries"]> => runtimeSupervisor.personEntries(sessionId, earlierTurns),
       forwardPersonEntries: (input): ReturnType<PersonEntryForward["forwardPersonEntries"]> => runtimeSupervisor.forwardPersonEntries(input),
       openChat: (chat): Promise<string> => runtimeSupervisor.openSessionRuntime(chat),
+      sessionEvents,
     }),
   }, options.notify !== undefined), (services) => services.dispose())
   moduleServices.reconcile()
@@ -550,6 +549,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     persistentProcesses: options.persistentProcesses,
     allowPersistentProcesses: effectivePersistent,
     recall: backgroundLane.recall,
+    sessionEvents,
   })
   // What the stop that disposes this composition says, read once that stop
   // reaches the supervisor. A teardown that no stop asked for, the rollback

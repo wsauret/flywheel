@@ -227,6 +227,7 @@ export function mockRunner(sessionId: string, overrides: Partial<ChatRunner> = {
     dispose: async () => { disposed += 1 },
     send: async () => "accepted",
     deliverHeldMessage: async () => ({ status: "held", reason: "no_reader" }), messageState: async () => "at_rest",
+    deliverSilentNotice: async () => "held",
     recallQueuedMessage: async () => null,
     deliverCommitted: () => true,
     deliverBackgroundNotification: async () => true,

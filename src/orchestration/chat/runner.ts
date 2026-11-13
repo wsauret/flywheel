@@ -106,6 +106,7 @@ export interface ChatRunnerDeps {
   startWorkflow: StartModelWorkflow
   /** Conversation recall executes in the runtime's bounded background Worker. */
   recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
+  onSessionEvent?: ChatSessionDeps["onSessionEvent"]
 }
 
 /** Assembles a chat session from the environment: config, auth, roles, and the
@@ -271,6 +272,7 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
       },
       refreshEnvironment: async () => { await authAdmission.admit(sessionId) },
       startWorkflow: deps.startWorkflow,
+      onSessionEvent: deps.onSessionEvent,
     }
 
     return createChatSession(chatCallbacks, chatSessionDeps)

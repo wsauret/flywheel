@@ -3,6 +3,7 @@ import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
 import type { ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import type { DeliveryOutcome, LiveRecipientState } from "../session/live-session-control.js"
+import type { SilentNoticeDelivery } from "./runner-types.js"
 import type { createChatInvocationCompletion } from "./runner-completion.js"
 import type { TurnCut } from "./runner-wait-state.js"
 import type { TurnInterruption } from "../session/conversation/turn-end-record.js"
@@ -28,6 +29,8 @@ export interface ChatPorts {
   deliverHeldMessage(input: ChatInput, decide: (state: LiveRecipientState) => DeliveryOutcome): Promise<DeliveryOutcome>
   /** The state a message from another session would meet now. */
   messageState(): Promise<LiveRecipientState>
+  /** See `ChatRunner.deliverSilentNotice`. */
+  deliverSilentNotice(text: string): Promise<SilentNoticeDelivery>
   deliverBackgroundNotification(notification: HeldBackgroundNotification): Promise<boolean>
   requestWithContext(input: ChatInputLike, context: string): boolean
   drainQueuedUserInputs(): ChatInputLike[]

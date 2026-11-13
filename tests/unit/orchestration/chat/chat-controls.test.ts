@@ -54,6 +54,7 @@ function lifecycleStub(): ChatPorts {
     enqueueInput(_input: ChatInputLike) {},
     deliverHeldMessage: async () => { throw new Error("unused") },
     messageState: async () => { throw new Error("unused") },
+    deliverSilentNotice: async () => { throw new Error("unused") },
     deliverBackgroundNotification: async () => false,
     requestWithContext() { return false },
     drainQueuedUserInputs() { return [] },

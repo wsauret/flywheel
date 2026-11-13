@@ -249,6 +249,7 @@ describe("the registered Resume route", () => {
           personEntries: async () => { throw new Error("A subagent reads no person entries") },
           forwardPersonEntries: async () => { throw new Error("A subagent forwards no person entries") },
           openChat: async () => { throw new Error("A subagent opens no chat") },
+          sessionEvents: { watch: () => {}, unwatch: () => {} },
         }),
       })
       const bus = createRuntimeUiBus()

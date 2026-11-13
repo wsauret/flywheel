@@ -5,6 +5,7 @@ import type { OutputSession } from "../runner/output-session.js"
 import { heldAtWakeLimit, type DeliveryOutcome, type LiveRecipientState } from "../session/live-session-control.js"
 import type { ChatTurnMailbox } from "./turn-mailbox.js"
 import type { ChatWaitState } from "./runner-wait-state.js"
+import type { SilentNoticeDelivery } from "./runner-types.js"
 
 /** One landing of input while no turn runs: whether it commits, and whether
  *  it starts its own turn. The chat runner owns the turn-slot sequence. */
@@ -14,17 +15,21 @@ export interface IdleLanding<T> {
   wake(): void
 }
 
-/** The parts of a chat runner that a message from another session meets. */
+/** The parts of a chat runner that a message from another session, or a
+ *  silent notice, meets. */
 export interface ChatMessageDeliveryPorts {
   readonly host: Pick<AgentHost, "turnState" | "activeTurnLease" | "reserveTurn">
-  readonly mailbox: Pick<ChatTurnMailbox, "enqueueNextTurn" | "enqueueHeldMessage">
+  readonly mailbox: Pick<ChatTurnMailbox, "enqueueNextTurn" | "enqueueHeldMessage" | "enqueueSilentSystem">
   readonly session: Pick<OutputSession, "pushUserMessage" | "flush">
   ended(): boolean
   /** What the runner's turn waits for. */
   readonly wait: Pick<ChatWaitState, "leasedState" | "awaitsPerson" | "undecidedStart">
-  landWhileIdle(reservation: AgentHostTurnLease, landing: IdleLanding<DeliveryOutcome>): Promise<DeliveryOutcome>
+  landWhileIdle<T>(reservation: AgentHostTurnLease, landing: IdleLanding<T>): Promise<T>
   commitHeldMessage(input: ChatInput): Promise<string | null>
-  wake(input: ChatInput): void
+  /** Commits system-produced text as a system-origin entry that owes no reply. */
+  commitSystemTurn(text: string): Promise<string | null>
+  /** Starts the turn that reads the entry just committed. */
+  wake(text: string): void
 }
 
 /** How a chat runner takes a message from another session, and the state
@@ -78,11 +83,30 @@ export function createChatMessageDelivery(ports: ChatMessageDeliveryPorts) {
           return { result: admitted, landing: admitted.status === "refused" ? "refuse" : admitted.status === "delivered" && admitted.startsTurn ? "wake" : "hold" }
         },
         commit: () => ports.commitHeldMessage(input),
-        wake: () => ports.wake(input),
+        wake: () => ports.wake(input.text),
       })
       // The commit put the message in history, so its row is not queued.
       if (outcome.status !== "refused") show(input, false)
       return outcome
+    },
+
+    /** See `ChatRunner.deliverSilentNotice`. A loop takes the notice at its
+     *  next drain, a parked one included, so the notice never waits unread
+     *  for the person's next message while its sender counts it delivered. */
+    async deliverSilentNotice(text: string): Promise<SilentNoticeDelivery> {
+      for (let pending = ports.wait.undecidedStart(); pending; pending = ports.wait.undecidedStart()) await pending
+      if (ports.ended()) return "held"
+      if (ports.host.activeTurnLease && ports.wait.leasedState() === "interrupted") return "held"
+      const reservation = ports.host.activeTurnLease ? null : ports.host.reserveTurn()
+      if (!reservation) {
+        ports.mailbox.enqueueSilentSystem(text)
+        return "delivered"
+      }
+      return await ports.landWhileIdle<SilentNoticeDelivery>(reservation, {
+        admit: (waits) => waits ? { result: "held", landing: "refuse" } : { result: "delivered", landing: "wake" },
+        commit: () => ports.commitSystemTurn(text),
+        wake: () => ports.wake(text),
+      })
     },
   }
 }

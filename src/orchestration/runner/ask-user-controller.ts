@@ -38,6 +38,8 @@ interface AskUserControllerOptions {
   host: AskUserHost;
   emit: EmitFn;
   sessionId: string;
+  /** Hears each start of a wait for the person: the first question that waits while none did. */
+  onAwaiting?: () => void;
 }
 
 interface PendingQuestion {
@@ -89,7 +91,10 @@ export function createAskUserController(options: AskUserControllerOptions): Owne
         };
         const wasEmpty = pending.size === 0;
         pending.set(toolUseId, { resolve, abort });
-        if (wasEmpty) emit("agent.user_input.awaiting", { sessionId, data: {} });
+        if (wasEmpty) {
+          emit("agent.user_input.awaiting", { sessionId, data: {} });
+          options.onAwaiting?.();
+        }
         signal?.addEventListener("abort", onAbort, { once: true });
       });
     },

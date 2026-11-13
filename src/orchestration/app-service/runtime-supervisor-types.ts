@@ -9,6 +9,7 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/e
 import type { EventStoreRuntime } from "../../infra/event-store-effect.js"
 import type { PublishedWorkflowLaunch } from "../agent-runtime/tools/workflow-tool.js"
 import type { ChatRunnerDeps } from "../chat/runner.js"
+import type { SessionEventNotices } from "./session-event-notices.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import type { AgentInputAnswer } from "../../protocol/question-protocol-types.js"
 import type { SessionManager } from "../session/manager.js"
@@ -167,6 +168,8 @@ export interface RuntimeRunnerCapabilities {
   readonly subscribeProfiles: ChatRunnerDeps["subscribeProfiles"]
   readonly startWorkflow?: (request: ModelWorkflowLaunchRequest) => Promise<PublishedWorkflowLaunch | WorkflowLaunchRefusal>
   readonly recall: (conversationId: string, contract: RecallInput) => Promise<RecallResult>
+  /** Where each chat runner reports the events of its turns (ARCH-SESSIONS-052). Absent in focused tests. */
+  readonly sessionEvents?: Pick<SessionEventNotices, "report">
 }
 
 export interface RuntimeSupervisor extends PersonEntryForward {

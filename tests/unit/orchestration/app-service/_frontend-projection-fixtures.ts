@@ -118,6 +118,7 @@ export function chatRunner(sessionId: string): ChatRunner {
     abort: async () => {},
     interrupt: () => false,
     messageState: async () => "at_rest",
+    deliverSilentNotice: async () => "held",
     dispose: async () => {},
     send: async () => "ended",
     deliverHeldMessage: async () => ({ status: "held", reason: "no_reader" }),

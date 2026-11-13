@@ -288,6 +288,11 @@ const PRODUCERS: readonly Producer[] = [
     what: "refused question settlements",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
+  {
+    file: "src/orchestration/app-service/session-event-notices.ts",
+    what: "answered session event notices",
+    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
+  },
 ];
 
 function readFile(relative: string): string {

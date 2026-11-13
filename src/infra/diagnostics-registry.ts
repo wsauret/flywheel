@@ -170,6 +170,9 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   // the question's tool call, and the reason; no content. A refusal follows a
   // person's tap, so it fires at most once per tap.
   ["question.settlement.refused", { tier: "info" }],
+  // One record per session event notice that a watcher's runner answered: the watcher, the number of chats and the
+  // kinds it named, and `delivered` or `held`. No content. It follows each turn end of a watched chat, so it is DEBUG.
+  ["session.event_notice.answered", { tier: "debug" }],
   // One record per deleted chat; passes without deletions stay at DEBUG.
   ["session.auto_delete.deleted", { tier: "info" }],
   ["session.auto_delete.swept", { tier: "debug" }],

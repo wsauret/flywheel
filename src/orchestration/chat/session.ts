@@ -14,7 +14,7 @@ import { nestedFactProjectionEvents } from "../../infra/output/nested-fact-proje
 import { hydrateToolContentFact } from "../../infra/tool-content-hydration.js"
 import { mapRuntimeEventToAgentStreamEvents } from "../agent-runtime/runtime-event-mapper.js"
 import { createChatControls } from "./controls.js"
-import type { ChatRunner } from "./runner-types.js"
+import type { ChatRunner, SessionEventKind } from "./runner-types.js"
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
 import { ChatSessionState, type ChatCallbacks } from "./types.js"
 import { createChatRunnerLifecycle } from "./runner-lifecycle.js"
@@ -144,6 +144,8 @@ export interface ChatSessionDeps {
    *  (config, credentials, model listing) so the next turn observes changes. */
   refreshEnvironment: () => Promise<void>
   startWorkflow?: StartModelWorkflow
+  /** Hears each event of this chat's turns (`SessionEventKind`), once as it occurs. */
+  onSessionEvent?: (kind: SessionEventKind) => void
 }
 
 /** Detects the provider's hard context overflow on a completed turn and drops
@@ -210,7 +212,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
   })
   adapter.connect(eventBus)
 
-  const askUser = createAskUserController({ host: session, emit, sessionId })
+  const askUser = createAskUserController({ host: session, emit, sessionId, onAwaiting: () => { deps.onSessionEvent?.("asked") } })
 
   eventUnsubs.push(
     eventBus.subscribeToType("model.turn.completed", (e) => {
@@ -408,6 +410,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
       return lifecycle.deliverHeldMessage(input, decide)
     }),
     messageState: () => inSession(() => lifecycle.messageState()),
+    deliverSilentNotice: (text) => inSession(() => lifecycle.deliverSilentNotice(text)),
     deliverCommitted(input) {
       return inSession(() => {
         markFirstMessageSent(input)

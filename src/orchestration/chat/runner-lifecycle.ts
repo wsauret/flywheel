@@ -16,7 +16,7 @@ import type { ChatSessionState } from "./types.js"
 import type { ChatPorts } from "./host-ports.js"
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
-import type { AgentRunResult, AgentRunTerminal } from "../agent-runtime/types.js"
+import { failureTerminal, type AgentRunResult, type AgentRunTerminal } from "../agent-runtime/types.js"
 import type { AgentLoopMaintenance } from "../agent-runtime/agent-loop-types.js"
 import type { ChatSessionDeps } from "./session.js"
 import { ChatTurnMailbox } from "./turn-mailbox.js"
@@ -50,6 +50,8 @@ interface RunningChatTurn {
   readonly completion: ReturnType<typeof createChatInvocationCompletion>
   readonly lease: AgentHostTurnLease
   preparatoryContextBuilt: boolean
+  /** The model answered a logical turn that has not parked idle since. */
+  answered: boolean
   /** A maintenance start's decision: whether the last turn waits for the person. */
   readonly maintenance?: Promise<AgentLoopMaintenance>
   /** The start consumes a Resume, which continues the open wait of a turn
@@ -280,6 +282,11 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         },
         onTurnParked: async (ctx) => {
           wait.parked(ctx.park)
+          // A park on background work or for the person is not the end of an answered turn.
+          if (ctx.park === "idle" && turn.answered && isLiveTurn(turn)) {
+            turn.answered = false
+            deps.onSessionEvent?.("turn_ended")
+          }
           await capacity.parked(ctx.park)
           busBridge.lifecycle.onTurnParked(ctx)
           if (isLiveTurn(turn)) await durability.end()
@@ -297,7 +304,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         },
         onCompactionContinuation: () => moduleObserver.onCompactionContinuation(),
         onTurnEnded: ({ runtimeConfig, contentRefused }) => {
-          if (isLiveTurn(turn)) turn.completion.turnEnded(contentRefused === true)
+          if (isLiveTurn(turn)) { turn.completion.turnEnded(contentRefused === true); turn.answered = true }
           return completeCurrentModelTurn(turn, runtimeConfig)
         },
         onConnectionState: (next) => { setCurrentTurnConnectionState(turn, next) },
@@ -330,7 +337,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     const lease = host.takeReservedTurn() ?? host.reserveTurn()
     if (!lease) throw new Error("startTurn requires an idle or reserved runner host")
     engines.turnStarted()
-    const turn: RunningChatTurn = { lease, completion: deps.rootChatCompletion ?? createChatInvocationCompletion(undefined), preparatoryContextBuilt: false, ...(opts.purpose === "maintenance" ? { maintenance: wait.decideMaintenance(lease) } : {}), ...(opts.resumes ? { resumes: true as const } : {}) }
+    const turn: RunningChatTurn = { lease, completion: deps.rootChatCompletion ?? createChatInvocationCompletion(undefined), preparatoryContextBuilt: false, answered: false, ...(opts.purpose === "maintenance" ? { maintenance: wait.decideMaintenance(lease) } : {}), ...(opts.resumes ? { resumes: true as const } : {}) }
     let runnerStarted = false
     let userInputAfterStartupStop: (() => boolean) | undefined
     const observeStartupInterrupt = (): void => {
@@ -383,6 +390,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       const detachStatus = (terminal: AgentRunTerminal): "completed" | "paused" =>
         state.ended || terminal.kind === "completed" || terminal.kind === "budget_exhausted" ? "completed" : "paused"
 
+      // An abort is a stop that a caller asked for, not a failure of the turn.
+      const reportFailed = (aborted: boolean): void => { if (!aborted && !state.ended) deps.onSessionEvent?.("failed") }
       let result: AgentRunResult | undefined
       try {
         // A command a previous build handed to this conversation is this
@@ -441,6 +450,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // them via `buildContext`, and the writer is idle for the next one.
         await turn.completion.finish(result.terminal, durability.end)
         if (result.terminal.kind === "stream_stalled") wait.stall()
+        if (failureTerminal(result.terminal)) reportFailed(result.terminal.kind === "aborted")
         state.detachRunner(session, detachStatus(result.terminal))
       } catch (err) {
         if (!ownsRunningTurn(turn)) return
@@ -452,6 +462,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // Even on failure, completed messages already buffered must land:
         // committed pending writes are preserved across abort.
         await durability.end().catch(() => undefined)
+        reportFailed(err instanceof AgentTurnAborted || turn.lease.signal.aborted || result?.terminal.kind === "aborted")
         state.detachRunner(session, "paused")
       } finally {
         lease.signal.removeEventListener("abort", observeStartupInterrupt)
@@ -609,7 +620,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     wait,
     landWhileIdle,
     commitHeldMessage: (input) => deps.treeWriter.commitHeldMessage(input),
-    wake: (input) => startTurn(input.text, { source: "background" }),
+    commitSystemTurn: (text) => deps.treeWriter.commitSystemTurn(text),
+    wake: (text) => startTurn(text, { source: "background" }),
   })
 
   function restartWithQueuedInputs(inputs: readonly ChatInputLike[]): void {
@@ -654,7 +666,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       // A turn that waits for capacity runs no generation: the interrupt cuts
       // the wait, and the turn ends with the person's turn end. Both run.
       const interrupted = [capacity.cutWait("person"), host.interruptGeneration()].includes(true)
-      if (interrupted) emit("agent.turn.interrupted", { sessionId, data: {} })
+      if (interrupted) { emit("agent.turn.interrupted", { sessionId, data: {} }); deps.onSessionEvent?.("cut") }
       return interrupted
     },
     get turnRunning() { return wait.turnRunning() },
@@ -677,6 +689,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     enqueueInput: submit,
     deliverHeldMessage: messages.deliverHeldMessage,
     messageState: messages.messageState,
+    deliverSilentNotice: messages.deliverSilentNotice,
     deliverBackgroundNotification: async (notification) => {
       if (state.ended || deps.rootChatCompletion?.sealed) return false
       const accepted = background.tasks.deliverDurableSubagentNotification(notification) !== undefined
