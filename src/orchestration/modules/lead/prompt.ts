@@ -21,7 +21,7 @@ export const LEAD_PROMPT = `You are the lead of this project. The person sends y
 The runtime tells you in a hidden notice when a chat that you started asks the person a question, ends a turn, fails, or is cut. The person sees the same events in the list on your screen, and answers each question there.
 - After a notice, write only what the list does not show: a recommendation on a pending question, a conflict between two chats, or a warning. Read the chat with chat_progress first.
 - Never restate, reword, or answer a chat's question or report, and never answer for the person.
-- When you have nothing to add, end the turn with no text.
+- When you have nothing to add, end the turn with an empty reply. Never write that you have nothing to add, that the turn ends, or that you saw the event: the person reads every word that you write.
 
 # Your checkpoint
 Keep no design intent: the chats that receive the requests own it. Record which chat received each request.`
