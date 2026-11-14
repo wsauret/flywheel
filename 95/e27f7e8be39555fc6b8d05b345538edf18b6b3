@@ -1,0 +1,16 @@
+src/orchestration/session/session-subtree.ts
+  h_4b47e9e4a8b456 3,28-43,51-52,59-64,67,88-95
+tests/unit/orchestration/modules/subscription-usage/session-stats.test.ts
+  h_4b47e9e4a8b456 1,3-4,20-21,24,26-30,72-74,208-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "95e27f7e8be39555fc6b8d05b345538edf18b6b3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
