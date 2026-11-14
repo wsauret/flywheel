@@ -1,0 +1,36 @@
+bench/ab-persona/rank.ts
+  h_4b47e9e4a8b456 12,72
+bench/findings/README.md
+  h_4b47e9e4a8b456 19-34
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 155
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 4,22,27-43,47,50-51,54-62,65-68,70-73,76-83,86-87,90-91,94-95,98-99,102-103,106-107,110-111,114-115,118-119,122-123,126,130,138,150
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 13,197-198,206,216-217
+src/orchestration/modules/subagents/execution/tool.ts
+  h_4b47e9e4a8b456 9,99
+tests/unit/bench/standalone-admission.test.ts
+  h_4b47e9e4a8b456 168
+tests/unit/orchestration/agent-runtime/runtime-assembly-model-selection.test.ts
+  h_4b47e9e4a8b456 104,106
+tests/unit/orchestration/config/config-models-roles.test.ts
+  h_4b47e9e4a8b456 9,52
+tests/unit/orchestration/config/default-pin-normalization.test.ts
+  h_4b47e9e4a8b456 104,120
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 30-31,34,36,65,71,76,90-91,94-98,116,130
+tests/unit/orchestration/config/role-preference-fallback.test.ts
+  h_4b47e9e4a8b456 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b9baced7ea200499577adb0174e5e230075eec59",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
