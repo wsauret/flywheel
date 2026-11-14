@@ -1,0 +1,40 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 7,26789-26790,26793,26816,27320,27354,27378,27497,27521,27553,27592,27771,27796,27871-27872,27875,27898,28402,28436,28460,28579,28603,28635,28674,28853,28878,28953-28954,28957,28980,29484,29518,29542,29661,29685,29717,29756,29935,29960,30035-30036,30039,30062,30566,30600,30624,30743,30767,30799,30838,31017,31042,31117-31118,31121,31144,31648,31682,31706,31825,31849,31881,31920,32099,32124,32199-32200,32203,32226,32730,32764,32788,32907,32931,32963,33002,33181,33206,33281-33282,33285,33308,33812,33846,33870,33989,34013,34045,34084,34263,34288,34363-34364,34367,34390,34894,34928,34952,35071,35095,35127,35166,35345,35370,35445-35446,35473-35474,43627-43628
+bun.lock
+  h_4b47e9e4a8b456 12-13,29,88,490,492,494,496,498,500,502,504,506,508,1698
+package.json
+  h_4b47e9e4a8b456 117-118,134
+scripts/generate-third-party-licenses.ts
+  h_4b47e9e4a8b456 245,247,249-259,418
+scripts/patch-deps.ts
+  h_4b47e9e4a8b456 37-38
+src/tui/components/scrollbox-layout-hooks.ts
+  h_4b47e9e4a8b456 1,59
+src/tui/output-blocks/agent-group-block.tsx
+  h_4b47e9e4a8b456 123
+src/workflows/docs/keys.md
+  h_4b47e9e4a8b456 39
+tests/unit/scripts/legal-payload.test.ts
+  h_4b47e9e4a8b456 78
+tests/unit/tui/components/modal-help-shortcuts.test.ts
+  h_4b47e9e4a8b456 40
+tests/unit/tui/components/modal-help.test.ts
+  h_4b47e9e4a8b456 65
+tests/unit/tui/output-blocks/agent-group-read-runs.test.ts
+  h_4b47e9e4a8b456 555
+tests/unit/tui/output-window-wheel.test.ts
+  h_4b47e9e4a8b456 1-2,106-127,209,212,219,222
+webview/package.json
+  h_4b47e9e4a8b456 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7da9aef69c16831aefe790e9ca01c8420f793914",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
