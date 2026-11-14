@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { modelConfigValidity } from "../../../../src/orchestration/app-service/model-assignment-service.js";
 import { pruneStaleConfig, updateModelAssignment } from "../../../../src/orchestration/config/writer.js";
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { createPersonaRegistryOwner } from "../../../../src/workflows/agents/registry.js";
+import { repoDefinitions } from "../../../helpers/project-definitions.js";
 
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-step-pruning-"));
@@ -45,11 +47,36 @@ describe("step model assignments", () => {
       const configPath = join(dir, "flywheel.toml");
       const valid = ["brief.myflow.review", "brief.debug.fix"];
       await writeFile(configPath, valid.map((id) => `[profiles.personal.roles."${id}"]\nmodel = "gpt-5-mini"\n`).join("\n"));
-      pruneStaleConfig(modelConfigValidity({ personas: new Map() }), { configPath, authProfileId: () => "personal" });
+      pruneStaleConfig(modelConfigValidity({ personas: new Map(), resolutions: [] }), { configPath, authProfileId: () => "personal" });
       updateModelAssignment(roleSlot("chat"), { model: "gpt-5.5" }, { configPath, authProfileId: () => "personal" });
       const text = await readFile(configPath, "utf8");
       for (const id of valid) expect(text).toContain(`[profiles.personal.roles."${id}"]`);
       expect(text).toContain('model = "gpt-5.5"');
+    });
+  });
+
+  test("a persona file that fails to parse keeps every saved role section until it loads", async () => {
+    await withTempDir(async (dir) => {
+      const agentsDir = join(dir, "agents");
+      await mkdir(agentsDir);
+      await writeFile(join(agentsDir, "auditor.md"), "---\nname: auditor\ndescription: Audits changes.\nrole: custom-auditor\ntools: [read]\n---\nCheck the changes.\n");
+      const brokenPath = join(agentsDir, "scout.md");
+      await writeFile(brokenPath, "---\nname: scout\ndescription: Scouts.\nrole: custom-scout\ntools: [read]\nunknownKey: true\n---\nScout.\n");
+      const configPath = join(dir, "flywheel.toml");
+      const sections = ["custom-auditor", "custom-scout", "removed-role"];
+      await writeFile(configPath, sections.map((id) => `[profiles.personal.roles."${id}"]\nmodel = "gpt-5-mini"\n`).join("\n"));
+      const owner = createPersonaRegistryOwner(join(dir, "no-bundled-personas"));
+      const options = { configPath, authProfileId: () => "personal" };
+
+      pruneStaleConfig(modelConfigValidity(owner.load(repoDefinitions().skills(), undefined, agentsDir)), options);
+      const kept = await readFile(configPath, "utf8");
+      for (const id of sections) expect(kept).toContain(`[profiles.personal.roles."${id}"]`);
+
+      await writeFile(brokenPath, "---\nname: scout\ndescription: Scouts.\nrole: custom-scout\ntools: [read]\n---\nScout.\n");
+      pruneStaleConfig(modelConfigValidity(owner.load(repoDefinitions().skills(), undefined, agentsDir)), options);
+      const pruned = await readFile(configPath, "utf8");
+      expect(pruned).toContain('[profiles.personal.roles."custom-scout"]');
+      expect(pruned).not.toContain('[profiles.personal.roles."removed-role"]');
     });
   });
 

@@ -20,7 +20,8 @@ import type { DefinitionAvailabilityOwner } from "./definition-availability.js"
 import { isProfileModelRole } from "../../protocol/brief-role-id.js"
 import type { SessionManager } from "../session/manager.js"
 import type { SessionStore } from "../session-store/types.js"
-import { personaRoleIds, type ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js"
+import { personaRoleIds } from "../../workflows/definition-registry.js"
+import type { PersonaRegistryRevision } from "../../workflows/agents/registry.js"
 import type { ConfigValidity } from "../config/writer.js"
 import type {
   ModelSelectionSlot,
@@ -73,12 +74,16 @@ interface RuntimeModelAssignmentServiceDeps {
   readonly prepareModelEligibility?: () => Promise<void>
 }
 
-/** Only persona roles have a complete pruning authority. Workflow files can use any brief id. */
+/** Only persona roles have a complete pruning authority. Workflow files can use any brief id.
+ *  A user or project persona file that failed to load hides the role it declares, so its
+ *  path makes the authority incomplete; the registry already warned about the file. */
 export function modelConfigValidity(
-  revision: Pick<ProjectDefinitionRegistryRevision, "personas">,
+  revision: Pick<PersonaRegistryRevision, "personas" | "resolutions">,
 ): ConfigValidity {
   return {
     roleIds: personaRoleIds(revision.personas),
+    unloadedPersonaFiles: revision.resolutions.flatMap((resolution) =>
+      resolution.diagnostics.flatMap((diagnostic) => diagnostic.kind === "rejected" ? [diagnostic.source.path] : [])),
   }
 }
 
@@ -91,7 +96,7 @@ export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignment
     return {
       ...deps.configDepsForScope(scope),
       config: deps.config(),
-      configValidity: modelConfigValidity(revision),
+      configValidity: modelConfigValidity(revision.personaRevision),
     }
   }
   // The global defaults are a value of their inputs: the configured roles, the

@@ -64,6 +64,9 @@ interface ModelAssignmentMutation {
 export interface ConfigValidity {
   /** Complete registered persona role ids, never a query's selected rows. */
   roleIds?: ReadonlySet<RoleId>;
+  /** Persona files that failed to load. Their roles are unknown, so while any remain the
+   *  role ids are not complete and no role section is pruned (ARCH-RUNTIME-069). */
+  unloadedPersonaFiles?: readonly string[];
 }
 
 interface BatchModelAssignmentPatch {
@@ -395,7 +398,7 @@ function patchModelAssignment(source: string, slot: ModelSelectionSlot, patch: M
 }
 
 function patchPrunedConfig(source: string, validity: ConfigValidity, profileId: string): string {
-  if (!validity.roleIds) return source;
+  if (!validity.roleIds || (validity.unloadedPersonaFiles?.length ?? 0) > 0) return source;
   const lines = configLines(source);
   for (let i = 0; i < lines.length - 1;) {
     const section = sectionFromHeader(lines[i]?.trim() ?? "", profileId);
