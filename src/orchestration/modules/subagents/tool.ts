@@ -15,40 +15,36 @@ import type { SubagentContext, SubagentResult } from "./execution/control-action
 // the schema offers it only while `has` offers the general agent; a closed
 // schema then refuses a `fork` field (ARCH-CONTEXT-033).
 function subagentInputSchema(has: CapabilityCheck) {
-  const general = has("type:general")
-  const examples = ["explorer", "implementer"].filter((type) => has(`type:${type}`))
   return {
     type: "object",
     properties: {
       persona: {
         type: "string",
-        description: `REQUIRED as the first field. Names which agent persona, tools, and system prompt the subagent runs with; there is no default. Must be one of the names listed under 'Available agent types' in the Subagents section of your system prompt${examples.length > 0 ? ` (e.g. ${examples.join(", ")})` : ""}. If none fits, do the work directly instead of dispatching.`,
+        description: "Put first. One agent type from the Subagents catalog in your system prompt. If none fits, do the work directly.",
       },
       description: {
         type: "string",
-        description: "A short (3-5 word) description of the task, shown in the UI as the subagent's goal.",
+        description: "3 to 5 word task label, shown as the subagent's goal.",
       },
       rationale: {
         type: "string",
         minLength: MIN_DISPATCH_RATIONALE_LENGTH,
-        description: "Why this dispatch is worth doing in a subagent rather than inline: the specific question it answers, why the result wouldn't fit cleanly in your current context, and any alternatives you considered. One or two sentences. Forces deliberate dispatch; terse rationales like 'investigate' or 'do the work' are rejected.",
+        description: "One or two sentences: the question this dispatch answers, why its result should not fill your own context, and the alternatives you considered.",
       },
       prompt: {
         type: "string",
         minLength: 1,
-        description: general
-          ? "The task instruction for the subagent. Project instructions (AGENTS.md) are provided automatically; unless fork: true, the subagent has no access to your conversation history, so include the task-specific context it needs."
-          : "The task instruction for the subagent. Project instructions (AGENTS.md) are provided automatically; the subagent has no access to your conversation history, so include the task-specific context it needs.",
+        description: "The task brief.",
       },
-      ...general ? {
+      ...has("type:general") ? {
         fork: {
           type: "boolean",
-          description: "Copy your conversation so far into a subagent that permits forked history (default false), so it starts with everything you currently know plus 'prompt' as its assignment. Use when the task builds on accumulated context rather than a self-contained briefing. It re-sends your full context as input tokens, so follow the selected persona's restrictions and do not fork work a self-contained prompt covers.",
+          description: "Copy your conversation into the child, so 'prompt' is only a directive. It re-sends your full context as input tokens: fork only when the task needs that context.",
         },
       } : {},
       cwd: {
         type: "string",
-        description: "Optional child working directory. Relative paths resolve from this agent's execution directory; absolute paths are accepted.",
+        description: "Child working directory; a relative path resolves from yours.",
       },
     },
     required: ["persona", "rationale", "prompt"],
@@ -60,8 +56,8 @@ const subagentPromptGuidelines = (has: CapabilityCheck): string[] => [
   has("type:general")
     ? "A question about what an external service returns, which endpoints exist, or how a dependency or the runtime behaves is not a lookup: it needs an experiment against the real thing, which a read-only agent cannot run. Run it inline or dispatch general."
     : "A question about what an external service returns, which endpoints exist, or how a dependency or the runtime behaves is not a lookup: it needs an experiment against the real thing, which a read-only agent cannot run. Run it inline.",
-  `Investigate directly OR delegate; not both for the same question - paying twice for one answer is waste. Verification is the deliberate exception: for audits and reviews, independently examining the same target as ${has("type:reviewer") ? "your dispatched reviewers" : "the agents you dispatched"} is redundancy that strengthens the result, and reconciling your findings with theirs is part of the job.`,
-  "After dispatching, continue with substantive independent work if you have any. When everything left depends on pending results, wait for them with process. Never fill the gap with busywork, polling, re-reading known files, or status chatter.",
+  "Do not also investigate a question that you delegated, except to check an audit or a review independently and reconcile both results.",
+  "After dispatching, continue independent work. Never fill the gap with busywork, re-reading known files, or status chatter.",
 ]
 
 /** The dispatch tool as the model sees it under the tree check `has`, the same bytes for every agent of the tree. */

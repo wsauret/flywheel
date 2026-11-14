@@ -40,6 +40,7 @@ export interface SettledCompaction {
 }
 
 const RECALL_HINT = "Use the read-only `recall` tool to recover missing details from recorded history; use `expand` for a known durable entry ID.";
+const SKILL_RELOAD_HINT = "Reload the listed relevant skills that still apply with the `skill` tool.";
 
 /** The text that opens a fresh context: the checkpoint or its absence, the
  *  standing brief, and one recovery instruction chosen by the save state. It
@@ -53,8 +54,10 @@ export function renderCompactionOpening(input: {
   readonly capabilities: CapabilityCheck;
 }): string {
   const recall = input.recallAvailable ? [RECALL_HINT] : [];
-  const recovery = input.checkpoint && input.saved ? [...recall, "Continue the task from the checkpoint above."]
-    : input.checkpoint ? ["This reset came before a checkpoint save, so the checkpoint above may not include the latest work.", ...recall, "Then continue the task."]
+  const restore = input.checkpoint && input.checkpoint.relevantSkills.length > 0 && input.capabilities("skill")
+    ? [...recall, SKILL_RELOAD_HINT] : recall;
+  const recovery = input.checkpoint && input.saved ? [...restore, "Continue the task from the checkpoint above."]
+    : input.checkpoint ? ["This reset came before a checkpoint save, so the checkpoint above may not include the latest work.", ...restore, "Then continue the task."]
     : input.brief ? [...recall, "Continue the task from the brief above."]
     : input.recallAvailable ? ["Use the read-only `recall` tool to recover the latest user request and the work done for it from recorded history, then continue the task."]
     : ["Ask the person what to continue."];

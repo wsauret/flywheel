@@ -226,7 +226,6 @@ describe("prepareWorkflowDeps", () => {
     expect(headless.description).not.toMatch(/mutat/)
     const interactive = await bashOf(false)
     expect(interactive.input_schema).toHaveProperty("properties.mutates")
-    expect(interactive.description).toMatch(/mutat/)
   })
 
   it("captures the latest complete session runtime for each provider request", async () => {

@@ -131,8 +131,6 @@ describe("papercut disposition tool", () => {
     const target = appendRecorded(store, "owner")
     const tool = createPapercutDisposeTool(writer)
 
-    expect(tool.description).toContain("fixed when evidence shows the pain is gone")
-    expect(tool.description).toContain("dismissed when the record is no longer actionable")
     expect(tool.inputSchema).toEqual({
       type: "object",
       properties: {

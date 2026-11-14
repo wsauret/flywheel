@@ -274,10 +274,10 @@ const sentencesOf = (text: string): string[] => text
   .map((sentence) => sentence.replace(/^[-*\d.\s]+/, "").replace(/\s+/g, " ").trim())
   .filter((sentence) => sentence.split(" ").length >= 6);
 
-// One option subschema of ask_user renders under both of its question shapes; removing the copy needs a schema-shape
-// change.
-const SHARED_OPTION_SUBSCHEMA_HOMES = "tool ask_user field options,tool ask_user field questions";
-const exempt = (homes: ReadonlySet<string>): boolean => [...homes].toSorted().join(",") === SHARED_OPTION_SUBSCHEMA_HOMES;
+// The single-question shorthand of ask_user shares its option subschema and its header field with `questions[]`, so
+// each renders under both question shapes; removing the copy needs a schema-shape change.
+const SHARED_QUESTION_FIELD_HOMES = new Set(["tool ask_user field options,tool ask_user field questions", "tool ask_user field header,tool ask_user field questions"]);
+const exempt = (homes: ReadonlySet<string>): boolean => SHARED_QUESTION_FIELD_HOMES.has([...homes].toSorted().join(","));
 
 /** The modules that a selection leaves off once dependents follow their dependencies. */
 const turnedOff = (composition: FirstPartyModuleComposition): string[] => ALL_IDS.filter((id) => !composition.enabledModuleIds.includes(id));

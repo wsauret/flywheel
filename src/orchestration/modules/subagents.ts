@@ -24,11 +24,10 @@ import { loadSubagentRunsFromEvents, readSubagentRuns, SUBAGENT_RUN_FACT_TYPES }
 import { prepareSessionFactAppend } from "../session/session-fact-writer.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import type { RoleResolver } from "../config/roles.js"
-import type { ModuleId, FirstPartyModule, FirstPartyModuleComposition } from "../modules.js"
+import type { ModuleId, FirstPartyModule } from "../modules.js"
 import { moduleProtocol, type ModuleProtocolRuntime, type ModuleProtocolServices } from "../app-service/module-protocol-host.js"
 import { subagentsProtocol } from "../../protocol/modules/subagents.js"
 import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
-import { availableToolNames } from "../agent-runtime/persona-tool-rules.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { CapabilityCheck } from "../../infra/capability-text.js"
 import { disabledTypesOf, subagentsConfigSection } from "./subagents/config.js"
@@ -90,13 +89,12 @@ function createSubagentsProtocol(services: ModuleProtocolServices): ModuleProtoc
   }
 }
 
-/** The agent types the roster names, from the tree check and the tree's
- *  capture so every agent of the tree reads the same roster: each available
- *  one, a persona with only the declared tools the capture can serve. */
-function rosterAgents(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck, capture: FirstPartyModuleComposition): ReadonlyMap<string, AgentDefinition> {
-  return new Map([...agents].flatMap(([name, agent]) => has(`persona:${name}`)
-    ? [[name, agent.kind === "persona" ? { ...agent, tools: availableToolNames(agent.tools, capture) } : agent] as const]
-    : []))
+/** The agent types the roster names, from the tree check so every agent of
+ *  the tree reads the same roster. Each keeps its declared tools, because the
+ *  roster's read-only mark is the persona's declaration (ARCH-TOOLS-011), as
+ *  dispatch reads it. */
+function rosterAgents(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck): ReadonlyMap<string, AgentDefinition> {
+  return new Map([...agents].filter(([name]) => has(`persona:${name}`)))
 }
 
 /** Capabilities a child dispatch requires: this module and its dependencies. */
@@ -277,7 +275,7 @@ export const subagentsModule = {
     { domain: "promptFragments", id: "subagent-roster", value: {
       order: 0,
       render: ({ kernel, tools, capabilities }) => tools.has("subagent")
-        ? renderSubagentRoster(rosterAgents(scopedAgentRegistry(kernel.personas ?? new Map(), kernel.allowedSubagentTypes), capabilities, kernel.moduleSnapshot), capabilities)
+        ? renderSubagentRoster(rosterAgents(scopedAgentRegistry(kernel.personas ?? new Map(), kernel.allowedSubagentTypes), capabilities), capabilities, kernel.unattendedTree === true)
         : undefined,
     } },
     { domain: "definitions", id: "subagents", value: { kind: "subagents", roles: true, retainInstalled: true, disabledTypes: disabledTypesOf } },

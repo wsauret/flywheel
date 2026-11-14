@@ -14,6 +14,7 @@ import {
   DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
   DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID,
   DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
+  DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID,
   DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID,
@@ -26,7 +27,7 @@ import {
 } from "../../../../src/workflows/vm/definition-identity.js"
 import { replayWorkflowFromFacts } from "../../../../src/workflows/vm/replay.js"
 import { foldWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { atCapabilityMarkers, atCapabilityTextBase, beforeExplorerModelClaim, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../orchestration/migrations/_persona-budget.js"
+import { atCapabilityMarkers, atCapabilityTextBase, beforeExplorerModelClaim, beforeLeanPersonaText, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../orchestration/migrations/_persona-budget.js"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js"
 import {
   buildWorkflowControlInitializedFact,
@@ -36,7 +37,7 @@ import {
 } from "../../../../src/workflows/vm/session-facts.js"
 import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
-import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
+import { testSkill, testSkillRevision, withTestExternalSkills } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 
 /** One phase that composes the `work` package. */
@@ -254,10 +255,11 @@ describe("workflow fact replay", () => {
 
     const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, agentWorkflow))
 
-    expect(appends).toHaveLength(2)
+    expect(appends).toHaveLength(3)
     expect(appends).toMatchObject([
       { type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID } },
       { type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID } },
+      { type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID } },
     ])
     expect(result.state.context.committed.definitionIdentity).toEqual(current)
     const adoptions = appends.map(({ expectedSeq: _expectedSeq, ...persisted }, index) => ({ ...persisted, id: `adoption-${index}`, position: facts.length + index + 1, seq: facts.length + index }))
@@ -437,7 +439,7 @@ describe("workflow fact replay", () => {
     const agents = resolveWorkflowAgents(stepWorkflow)
     const compiled = compileWorkflowControl(stepWorkflow, agents, { skills: reviewSkills, personas })
     // The step-grammar build recorded the identity of the view, whose grants reached no reviewer through its family.
-    const recorded = retiredStepIdentity(view, stepWorkflow, agents, { skills: reviewSkills, personas: new Map([["general", general]]) })
+    const recorded = retiredStepIdentity(view, stepWorkflow, agents, { skills: reviewSkills, personas: new Map([["general", beforeLeanPersonaText(general)]]) })
     expect(recorded.personas.map(({ personaName }) => personaName)).toEqual(["general"])
 
     const appends: GuardedEventStoreAppend[] = []
@@ -453,7 +455,7 @@ describe("workflow fact replay", () => {
     const personas = new Map<string, AgentDefinition>([["reviewer-uat", uat]])
     const uatSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("uat")])
     const compiled = compileWorkflowControl(workflowWithUat, resolveWorkflowAgents(workflowWithUat), { skills: uatSkills, personas })
-    const recordedSha256 = personaIdentitySha256(beforeUatScratchpadRule(uat))
+    const recordedSha256 = personaIdentitySha256(beforeUatScratchpadRule(beforeLeanPersonaText(uat)))
     const recorded = { ...compiled.definitionIdentity, personas: compiled.definitionIdentity.personas.map((entry) => entry.personaName === "reviewer-uat" ? { ...entry, sha256: recordedSha256 } : entry) }
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
     const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
@@ -507,7 +509,7 @@ describe("workflow fact replay", () => {
     const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
-    const facts = pausedFacts(compiled, withRecordedExplorer(compiled.definitionIdentity, personaIdentitySha256(beforeExplorerModelClaim(explorer))))
+    const facts = pausedFacts(compiled, withRecordedExplorer(compiled.definitionIdentity, personaIdentitySha256(beforeExplorerModelClaim(beforeLeanPersonaText(explorer)))))
 
     const appends: GuardedEventStoreAppend[] = []
     const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
@@ -517,6 +519,48 @@ describe("workflow fact replay", () => {
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("explorer", { ...explorer, description: `${explorer.description} Edited.` })
     await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
+  })
+
+  it.each(["explorer", "implementer", "reviewer-mechanism", "reviewer-uat", "general"] as const)("adopts the %s hash recorded before the lean-prompt edit once, and keeps any other change as drift", async (name) => {
+    const agent = repoDefinitions().captureRevision().personas.get(name)
+    if (!agent) throw new Error(`Expected the built-in ${name}`)
+    const workflowWithAgent: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: [name] }] }
+    const personas = new Map<string, AgentDefinition>([[name, agent]])
+    const leanSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("uat"), testSkill("implementation"), testSkill("mechanism-verification")])
+    const compiled = compileWorkflowControl(workflowWithAgent, resolveWorkflowAgents(workflowWithAgent), { skills: leanSkills, personas })
+    const recordedSha256 = personaIdentitySha256(beforeLeanPersonaText(agent))
+    expect(recordedSha256).not.toBe(personaIdentitySha256(agent))
+    const facts = pausedFacts(compiled, { ...compiled.definitionIdentity, personas: compiled.definitionIdentity.personas.map((entry) => entry.personaName === name ? { ...entry, sha256: recordedSha256 } : entry) })
+
+    const appends: GuardedEventStoreAppend[] = []
+    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, leanSkills, personas, workflowWithAgent))
+    expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID } }])
+    expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
+
+    const rejected: GuardedEventStoreAppend[] = []
+    const edited = new Map(personas).set(name, { ...agent, description: `${agent.description} Edited.` })
+    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, leanSkills, edited, workflowWithAgent))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
+  })
+
+  it("drops implementation-planning that a run composed through the bundled implementation skill before the lean-prompt edit once, and keeps it as drift for another implementation", async () => {
+    const planning = testSkill("implementation-planning")
+    const leanSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("implementation"), planning])
+    const workflowWithImplementation: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, dependencies: ["work", "implementation"] }] }
+    const compiled = compileWorkflowControl(workflowWithImplementation, resolveWorkflowAgents(workflowWithImplementation), { skills: leanSkills })
+    expect(compiled.definitionIdentity.skills.map(({ skillId }) => skillId)).not.toContain("implementation-planning")
+    const recorded = { ...compiled.definitionIdentity, skills: [...compiled.definitionIdentity.skills, { skillId: "implementation-planning", sha256: "a".repeat(64) }] }
+    const facts = pausedFacts(compiled, recorded)
+
+    const appends: GuardedEventStoreAppend[] = []
+    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, leanSkills, new Map(), workflowWithImplementation))
+    expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID } }])
+    expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
+
+    const rejected: GuardedEventStoreAppend[] = []
+    const external = withTestExternalSkills(leanSkills, ["implementation"])
+    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, external, new Map(), workflowWithImplementation))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 })
@@ -554,7 +598,7 @@ function pausedOverTurnCaps() {
     personas: [...recordedCaps].map(([personaName, maxTurns]) => {
       const persona = personas.get(personaName)
       if (!persona) throw new Error(`Expected ${personaName}`)
-      return { personaName, sha256: hashDefinition({ ...persona, maxTurns }).sha256 }
+      return { personaName, sha256: hashDefinition({ ...beforeLeanPersonaText(persona), maxTurns }).sha256 }
     }),
   }
   const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })

@@ -15,7 +15,7 @@ function row(listing: SessionListing): string {
 export const LIST_SESSIONS_TOOL_DEFINITION: AdvertisedTool = {
   name: LIST_SESSIONS_TOOL_NAME,
   action: "ui_meta",
-  description: "List message targets that you did not start: your parent session, sibling sessions, other sessions of this project that run now, and discoverable workflows. Your own child sessions and workflows are in process(action='list'). Each row names whether its id is a session id or a workflow id, its name and state, and its session relation or owning chat. Agent-session rows also name their workflow membership. Use the row's target kind and id with message_session. A message to an agent session reaches only that agent; a workflow target is distinct.",
+  description: "List message targets that you did not start: your parent, sibling sessions, other running sessions of this project, and discoverable workflows.",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   isConcurrencySafe: true,
 };

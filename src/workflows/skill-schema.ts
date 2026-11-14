@@ -108,8 +108,9 @@ export const SKILL_BODY_BUDGET_CHARS = 12_000;
  *  never. Only bundled authority reads this table; an external package with
  *  the same id keeps the global budget. */
 const BUNDLED_SKILL_BODY_BUDGETS: ReadonlyMap<string, number> = new Map([
-  // One body saves a tool call on every authoring turn.
-  ["workflow-authoring", 22_487],
+  // One body saves a tool call on every authoring turn. It carries the one complete workflow file, which moved
+  // here from the workflow tool description so that only sessions that write a file pay for it.
+  ["workflow-authoring", 24_970],
 ]);
 
 /** The body budget of one package: its bundled exception, or the global budget. */

@@ -103,13 +103,19 @@ describe("canonical skill context", () => {
     expect(loaded.content).toBe(renderSkillContext(installed("alpha")));
   });
 
-  it("composes declared packages in declaration order, never sorted", () => {
+  it("composes declared packages in declaration order, never sorted, each under its name and source only", () => {
     const revision = owner().skills();
+    // A composed reader neither loads nor writes the package, so its section
+    // keeps the loaded header's name and source lines and none of its
+    // version, reach, ownership, or hash lines.
+    const composed = (id: string) => {
+      const [header = "", ...body] = renderSkillContext(installed(id)).split("\n\n");
+      return [header.split("\n").filter((line) => line.startsWith("# Skill: ") || line.startsWith("source: ")).join("\n"), ...body].join("\n\n");
+    };
 
-    expect(renderSkillClosure(["beta", "alpha"], revision, 'Skill "consumer"', () => true).slice(1)).toEqual([
-      renderSkillContext(installed("beta")),
-      renderSkillContext(installed("alpha")),
-    ]);
+    const sections = renderSkillClosure(["beta", "alpha"], revision, 'Skill "consumer"', () => true).slice(1);
+    expect(sections).toEqual([composed("beta"), composed("alpha")]);
+    expect(sections[0]?.startsWith("# Skill: beta\nsource: external package beta\n\n")).toBe(true);
     expect(renderSkillClosure(undefined, revision, 'Skill "consumer"', () => true)).toEqual([]);
   });
 

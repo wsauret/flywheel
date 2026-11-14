@@ -26,7 +26,6 @@ describe("edit tool", () => {
         edits: {
           type: "array",
           minItems: 1,
-          description: expect.any(String),
           items: {
             type: "object",
             properties: { old_string: expect.any(Object), new_string: expect.any(Object), replace_all: expect.any(Object) },

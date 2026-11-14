@@ -45,16 +45,6 @@ export const askUserModule = {
   attended: true,
   contributions: [
     { domain: "tools", id: "ask_user", value: { kind: "tool", name: "ask_user", declaration: askUser } },
-    // The kernel identity section says "ask the person" and names no module
-    // tool. Only a root chat plans ask_user (PI-AGENT-024), so this line
-    // reaches only the session a waiting child depends on, and only while the
-    // tree can start a child at all.
-    { domain: "promptFragments", id: "ask-user-root", value: {
-      order: 0,
-      render: ({ capabilities }) => capabilities("ask_user") && (capabilities("subagent") || capabilities("workflow"))
-        ? "# Asking the person\n\nWhen a child waits on you for a choice that belongs to the person, ask the person with ask_user, then reply to the child with message_session."
-        : undefined,
-    } },
     { domain: "settings", id: "ask-user", value: { control: "binary", group: "Tools", label: "Ask user", description: "Allow agents to ask you structured questions" } },
   ],
   observers: [],

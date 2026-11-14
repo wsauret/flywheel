@@ -44,17 +44,17 @@ const REPLACEMENTS = {
     ["Maintain notes in a way to best help you recover in a new context window. Remove obsolete information when updating them.", "Maintain the checkpoint in a way to best help you recover in a new context window. Remove obsolete information when updating it."],
   ],
   guidance_message: [
-    ["use `notes` to maintain a concise checkpoint of the goal, decisions, progress, learnings and next steps.", "use `checkpoint_read` to read your conversation's checkpoint and `checkpoint_replace` to replace one section. Use `checkpoint_decide` to add each dated decision in the user's words, naming the decision it replaces. The fixed sections are Design intent, Decisions, Current state, Open questions, Next step, Relevant skills, References, and Working notes. The complete checkpoint is limited to 24,576 UTF-8 bytes. A write over the limit is refused with its size and the limit; curate it, never discard intent to save tokens. {skill_checkpoint_guidance} {design_intent_guidance}"],
+    ["use `notes` to maintain a concise checkpoint of the goal, decisions, progress, learnings and next steps.", "keep your conversation's checkpoint current with the checkpoint tools. The complete checkpoint is limited to 24,576 UTF-8 bytes; when a write is refused, curate it, and never discard intent to save tokens. {skill_checkpoint_guidance} {design_intent_guidance}"],
     ["Include the window ID and item ID for every relevant user request you are currently solving as well as important actions/tool calls.", "{request_reference_guidance}"],
-    ["You can use `history` tool to look up details with the references later.", "{recall_guidance}"],
-    ["Note that every non-assistant item, such as user, developer, tool response, has an item id `[id: ...]` that is immediately after its item content.", "{keep_references}"],
-    ["Relative note paths belong to the current thread; absolute paths may read other threads' notes, but writes are limited to the current thread.", "Use only the scoped checkpoint tools, not Markdown files or ordinary project file tools. Only you change your checkpoint; children report through handoffs."],
+    [" You can use `history` tool to look up details with the references later.", ""],
+    [" Note that every non-assistant item, such as user, developer, tool response, has an item id `[id: ...]` that is immediately after its item content.", ""],
+    ["Relative note paths belong to the current thread; absolute paths may read other threads' notes, but writes are limited to the current thread.", "Use only the scoped checkpoint tools, not Markdown files or ordinary project file tools."],
     ["You can also use `get_context_remaining` tool to find the remaining token budget for better planning.", "Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it."],
     ["Once the token budget is exhausted, you will lose access to the current window and continue in a fresh context window and you can only recover through `notes` and `history` tools.", "Once the token budget is exhausted, recover details from the checkpoint{recall_recovery_source}."],
-    ["If Previous context window id is present in `<context_window>`, it means a context reset occurred and this is a new window. After a reset, read the checkpoint and use the read-only `history` tool to recover any missing details. When a window ID and item ID are known, prefer `read_item` directly; when they are missing or uncertain, use `list_items`, or `search_contents` to locate the item first.", "{recovery_guidance}"],
-    ["Treat notes and history as internal bookkeeping. Do not mention them in user-facing messages.", "Treat the checkpoint{recall_bookkeeping} as internal bookkeeping. Do not mention it in user-facing messages."],
+    [" So be careful not to over-run the context window without any documentation.", ""],
+    ["\n\nIf Previous context window id is present in `<context_window>`, it means a context reset occurred and this is a new window. After a reset, read the checkpoint and use the read-only `history` tool to recover any missing details. When a window ID and item ID are known, prefer `read_item` directly; when they are missing or uncertain, use `list_items`, or `search_contents` to locate the item first.", ""],
+    ["Treat notes and history as internal bookkeeping. Do not mention them in user-facing messages.", "Do not mention the checkpoint{recall_bookkeeping} in user-facing messages."],
     ["It is a good idea to take incremental notes while you work", "It is a good idea to update the checkpoint incrementally while you work"],
-    ["{recovery_guidance}", "{recovery_guidance} {skill_reload_guidance}"],
   ],
   auto_compact_fallback_prompt: [
     ["The next window will not automatically include this conversation.", "Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it."],
@@ -93,7 +93,6 @@ describe("session notes prompt adaptations", () => {
         expect(rendered).toContain("update it as discussion, inspection, and experiments change the understood intent, and mark the version the user approved as approved");
         expect(rendered).toContain("this section is the exact design intent you revise drafts against");
       }
-      expect(renderSessionNotesGuidance(input)).toContain("reassess the listed skills and explicitly reload those that still apply with the `skill` tool before resuming work");
     }
   });
 
@@ -135,18 +134,18 @@ describe("session notes prompt adaptations", () => {
     const fallback = renderSessionNotesAutoCompactFallback(input);
 
     expect(reminder).toContain("only 321 tokens remain");
+    expect(guidance).toContain("with the checkpoint tools");
+    for (const rendered of [reminder, fallback]) expect(rendered).toContain("`checkpoint_replace`");
     for (const rendered of [reminder, guidance, fallback]) {
-      expect(rendered).toContain("`checkpoint_replace`");
       expect(rendered).toContain("recall");
       expect(rendered).not.toMatch(/`notes`|history tool|get_context_remaining|new_context/);
     }
-    expect(guidance).toContain("After compaction, the recorded checkpoint opens the fresh context. Use the read-only `recall` tool to recover any missing details.");
-    expect(guidance).toContain("When a durable entry ID is known, prefer `expand` directly; when it is missing or uncertain, use `recall` with no query, or search terms to locate the item first.");
+    expect(guidance).toContain("Keep in References the durable recall entry IDs of every relevant user request");
     expect(guidance).not.toContain("Recent session notes");
 
     const withoutRecall = renderSessionNotesGuidance({ has: promptCapabilities([{ name: "skill" }]) });
     expect(withoutRecall).not.toContain("recall");
-    expect(withoutRecall).toContain("After compaction, the recorded checkpoint opens the fresh context.");
+    expect(withoutRecall).toContain("Include important actions and tool calls.");
   });
 
 });

@@ -5,7 +5,8 @@ import * as os from "node:os";
 
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definition-registry.js";
-import { renderSkillContext } from "../../../../../src/workflows/skill-render.js";
+import { renderSkillClosure } from "../../../../../src/workflows/skill-render.js";
+import type { SkillRegistryRevision } from "../../../../../src/workflows/skill-schema.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, TEST_RATIONALE, childTask } from "./_fixtures.js";
@@ -59,14 +60,18 @@ async function dispatchExplorer(
   return childTask(options);
 }
 
+/** The section that a persona composing the fixture skill reads for it. */
+function composedAuditing(revision: SkillRegistryRevision): string {
+  const section = renderSkillClosure(["auditing"], revision, "the explorer", () => true)[1];
+  if (section === undefined) throw new Error("fixture skill not composed");
+  return section;
+}
+
 describe("subagent tool - persona skill composition", () => {
   it("composes a persona's required skills ahead of its role instructions", async () => {
-    const skill = owner().skills().skills.get("auditing");
-    if (!skill) throw new Error("fixture skill not installed");
-
     const instructions = await dispatchExplorer(registryWith(["auditing"]));
 
-    expect(instructions).toContain(renderSkillContext(skill));
+    expect(instructions).toContain(composedAuditing(owner().skills()));
     expect(instructions.indexOf("Audit procedure."))
       .toBeLessThan(instructions.indexOf("You are a focused codebase investigator."));
   });
@@ -80,15 +85,13 @@ describe("subagent tool - persona skill composition", () => {
 
   it("composes the revision pinned for the dispatch, not one published after it", async () => {
     const pinned = owner().skills();
-    const skill = pinned.skills.get("auditing");
-    if (!skill) throw new Error("fixture skill not installed");
 
     writeFileSync(join(ROOT, "auditing", "SKILL.md"), "---\ndescription: Use when auditing.\n---\nAudit procedure, revised.");
     owner().reload();
 
     const instructions = await dispatchExplorer(registryWith(["auditing"]), pinned);
 
-    expect(instructions).toContain(renderSkillContext(skill));
+    expect(instructions).toContain(composedAuditing(pinned));
     expect(instructions).not.toContain("Audit procedure, revised.");
   });
 

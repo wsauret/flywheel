@@ -429,6 +429,13 @@ describe("planned agent-loop compaction", () => {
     if (!state.checkpoint) expect(opening).not.toContain("checkpoint above");
   });
 
+  test("the reset opening asks to reload the checkpoint's relevant skills only when the agent can load skills", () => {
+    const checkpoint = { ...emptyConversationCheckpoint(), relevantSkills: [{ id: "implementation", reason: "Code remains." }] };
+    const open = (tools: { name: string }[]) => renderCompactionOpening({ checkpoint, brief: undefined, saved: true, recallAvailable: false, capabilities: promptCapabilities(tools) });
+    expect(open([{ name: "skill" }])).toEndWith("Reload the listed relevant skills that still apply with the `skill` tool. Continue the task from the checkpoint above.");
+    expect(open([])).not.toContain("`skill` tool");
+  });
+
   test("prepareWaitForInput compact control checkpoints, resets, and re-parks", async () => {
     const requests: StreamOptions[] = [];
     const { client, capturedMessages } = makeCaptureClient([

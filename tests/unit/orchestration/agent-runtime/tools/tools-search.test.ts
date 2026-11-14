@@ -48,12 +48,9 @@ describe("search tool", () => {
     const pathProperty = properties.path;
     if (typeof pathProperty !== "object" || pathProperty === null || !("description" in pathProperty) || typeof pathProperty.description !== "string") throw new Error("path description is missing");
     expect(pathProperty.description).toContain("Single file or directory");
-    expect(pathProperty.description).toContain("independent search tool calls in the same response");
+    expect(pathProperty.description).toContain("For several roots, omit path and filter with glob, or make one call per root.");
     expect(searchDefinition.promptGuidelines).toBeUndefined();
-    expect(searchDefinition.promptExamples).toContain('"path":"src tests"');
-    expect(searchDefinition.promptExamples).toContain('"path":"src"');
-    expect(searchDefinition.promptExamples).toContain('"path":"tests"');
-    expect(searchDefinition.description).toContain("Use multiple independent search tool calls");
+    expect(searchDefinition.promptExamples).toBeUndefined();
   });
 
   it("records matched lines as seen in the read ledger without a content hash", async () => {

@@ -24,12 +24,11 @@ describe("subagent tool — execute validation", () => {
       expect(properties).not.toContain("tier");
       expect(tool.promptGuidelines?.join("\n")).not.toContain("tier");
       expect(tool.description).not.toContain("tier");
-      expect(JSON.stringify(schema.properties)).toContain("permits forked history");
+      expect(JSON.stringify(schema.properties)).toContain("fork only when the task needs that context");
       expect(JSON.stringify(schema.properties)).not.toContain("works with any agent type");
       // Agent selection and fork rules live in the description and the fork
       // field, not in a guideline that restates them.
-      expect(JSON.stringify(schema.properties)).toContain("follow the selected persona's restrictions");
-      expect(tool.description).toContain("every dispatch MUST pass `persona` as the FIRST field");
+      expect(JSON.stringify(schema.properties)).toContain("Put first. One agent type from the Subagents catalog");
       expect(tool.promptGuidelines?.join("\n")).not.toContain("Choosing an agent type");
       expect(JSON.stringify(schema.properties)).not.toContain("FIRST decision");
     });

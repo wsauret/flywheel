@@ -43,67 +43,57 @@ const SEARCH_INPUT_SCHEMA = {
     },
     path: {
       type: "string",
-      description: "Single file or directory to search (default: cwd). Do not pass multiple paths; issue multiple independent search tool calls in the same response instead.",
+      description: "Single file or directory to search (default: cwd). For several roots, omit path and filter with glob, or make one call per root.",
     },
     glob: {
       type: "string",
-      description: "Glob pattern to filter files (e.g. \"*.ts\"). Include-filter only; it does not bypass the default artifact-directory exclusions (pass path to search inside one).",
+      description: "Include filter on file paths, such as \"*.ts\".",
     },
     type: {
       type: "string",
-      description: "Ripgrep file type filter (e.g. \"js\", \"py\", \"rust\")",
+      description: "Ripgrep file type, such as \"py\".",
     },
     case_insensitive: {
       type: "boolean",
-      description: "Case-insensitive search (default: false)",
     },
     context: {
       type: "integer",
       minimum: 0,
       maximum: 100,
-      description: "Lines of context around each match (0-100)",
+      description: "Lines of context around each match.",
     },
     output_mode: {
       type: "string",
       enum: ["matching_files", "content", "count"],
-      description: "Output shape. \"matching_files\" (default, fast) lists files whose contents match, ranked with definition-holding and source files first (recency as tiebreaker). \"content\" shows matching lines with one-based line numbers and context, ranked definitions-first then distributed across files; match lines are prefixed with *, context lines with a space, and long lines truncate at 500 columns. \"count\" returns exact per-file match counts and a total, like `grep -c` (no match cap; sorted by count).",
+      description: "\"matching_files\" (default) lists files with matches, definitions and source files first. \"content\" lists matching lines with line numbers and context, definitions first. \"count\" lists exact match counts per file.",
     },
     multiline: {
       type: "boolean",
-      description: "Enable multiline matching for cross-line patterns (default: false)",
     },
     limit: {
       type: "number",
-      description: "Maximum number of matches to return - the first N, like `grep -m N` (combine with tail: true for the last N). In matching_files mode: maximum number of files listed, like `grep -l pattern dir | head -N`. In count mode: maximum number of files listed",
+      description: "Maximum matches to return; in matching_files and count mode, maximum files.",
     },
     tail: {
       type: "boolean",
-      description: "Return the LAST `limit` matches instead of the first, like `grep pattern file | tail -N`. Implies content mode; matches come back in plain file order (relevance ranking off) and the reported total match count is exact. The way to read the end of a log or other append-only file (default: false). Cannot combine with output_mode matching_files or count.",
+      description: "Return the last `limit` matching lines in file order, such as the end of a log. Content mode only.",
     },
     skip: {
       type: "number",
-      description: "Files to skip for pagination; use when the prior call hit the file limit (default: 20 files per page)",
+      description: "Files to skip, to get the next page.",
     },
     prefer_tests: {
       type: "boolean",
-      description: "Promote tests and fixtures over source paths when searching tests intentionally (default: false)",
+      description: "Rank tests and fixtures above source files.",
     },
   },
   required: ["pattern"],
 } as const;
 
-const SEARCH_PROMPT_EXAMPLES = `Wrong: one path string containing multiple roots
-{"pattern":"createSession","path":"src tests"}
-
-Right: independent calls in the same response
-{"pattern":"createSession","path":"src"}
-{"pattern":"createSession","path":"tests"}`;
-
 export const searchDefinition: RuntimeTool = {
   name: "search",
   action: "search",
-  description: `Search file contents using regex or literal patterns via native ripgrep; output_mode selects the result shape and tail reads the end of a file. Supports full regex syntax (e.g. "log.*Error", "function\\\\s+\\\\w+"). Literal braces need escaping ("interface\\\\{\\\\}" to find "interface{}" in Go). Searches ignored files, but a directory search skips artifact directories (${PRUNED_DIR_NAMES.slice(0, 6).join(", ")}, and similar), the runtime state directory, and every directory that the repository's .gitignore excludes; pass path at or inside one to search it explicitly. A search is stopped with an error after ${SEARCH_CPU_LIMIT_SECONDS} seconds of processing time, or after ${SEARCH_WALL_BACKSTOP_SECONDS} seconds spent waiting on slow file reads; narrow path/glob/type when that happens. path names one file or directory; glob and type constrain which files are searched, so omit path and constrain with glob to cover several roots at once. PERFORMANCE TIP: Use multiple independent search tool calls in a single response to search different patterns or directories in parallel; do not combine multiple paths in one path value.`,
-  promptExamples: SEARCH_PROMPT_EXAMPLES,
+  description: `Search file contents with a regex. It searches ignored files, but a directory search does not enter artifact directories (${PRUNED_DIR_NAMES.slice(0, 6).join(", ")}, and similar), the runtime state directory, or directories that .gitignore excludes, unless path names one. A search stops with an error after ${SEARCH_CPU_LIMIT_SECONDS} seconds of processing time or ${SEARCH_WALL_BACKSTOP_SECONDS} seconds of waiting on file reads.`,
   inputSchema: SEARCH_INPUT_SCHEMA,
   isConcurrencySafe: true,
   async prepareAdmission(input, context) {

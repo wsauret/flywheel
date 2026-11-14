@@ -96,7 +96,20 @@ function learningMemoryPrompt(snapshot: string): string {
   return rendered;
 }
 
+/** The baseline as a macOS host renders it. Tool text names the host platform's shell, and the unit suite also
+ *  runs on Windows, so the generator pins the platform for the one committed fixture. */
 export async function generateCapabilityModuleBaseline(): Promise<string> {
+  const platform = Object.getOwnPropertyDescriptor(process, "platform");
+  if (platform === undefined) throw new Error("process.platform has no property descriptor");
+  Object.defineProperty(process, "platform", { ...platform, value: "darwin" });
+  try {
+    return await renderCapabilityModuleBaseline();
+  } finally {
+    Object.defineProperty(process, "platform", platform);
+  }
+}
+
+async function renderCapabilityModuleBaseline(): Promise<string> {
   const composition = composeFirstPartyModules();
   const providers = accessProviderRegistry(composition).selection;
   const providerIds = providers.definitions.map((definition) => definition.id);

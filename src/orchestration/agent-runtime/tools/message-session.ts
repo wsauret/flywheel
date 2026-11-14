@@ -167,26 +167,36 @@ function launchToolUseIdOf(recipient: Pick<ReplayedSession, "launchedFrom">, sen
 
 /** The advertised form of the message_session tool. It names no messaging
  *  authority, so an agent without one advertises the same bytes. An
- *  unattended chat has no list_sessions (PI-AGENT-121), so its form names
- *  only process(action='list') for the targets that it can reach. It also has
- *  no person who reads its messages and no handoff tool, so its form leaves
- *  out the rules for both. */
-export function messageSessionToolDefinition(unattendedChat: boolean): AdvertisedTool {
+ *  unattended chat has no list_sessions and no person who reads its messages
+ *  (PI-AGENT-121), so its form names only process(action='list') for the
+ *  targets that it can reach and leaves out the rules about the person.
+ *  `workflowTargets` is false only for a tree that no person reads and whose
+ *  capture has no workflow tool: no workflow address or workflow child exists
+ *  there, so the form names no workflow (ARCH-CONTEXT-033). */
+export function messageSessionToolDefinition(unattendedChat: boolean, workflowTargets: boolean): AdvertisedTool {
+  const uses = unattendedChat
+    ? "answer a question that a session asked you; or revise the instructions of your own child"
+    : "answer a question that a session asked you; revise the instructions of your own child; deliver what your person asked you to send; or tell another root chat once that a check fails in a file that it owns";
+  const askUp = unattendedChat
+    ? "When you cannot answer a question that your child asked, ask your parent only that question, in your own words."
+    : "Your person sees every message that you send or receive, so do not quote or restate one to your person unless your person asks. When you cannot answer a question that your child asked, ask only that question, in your own words, of your parent, or of your person if you have no parent.";
+  const workflowRules = workflowTargets
+    ? " To direct a workflow that you launched, target its workflow id; a message to an agent session reaches only that agent and never becomes workflow direction. A peer message to a workflow is information for one agent, not direction."
+    : "";
   return {
     name: MESSAGE_SESSION_TOOL_NAME,
     action: "ui_meta",
-    description: `Send one message to another session or a workflow of this project. Name whether the target is a session or a workflow. Use it only to: ask a question that blocks your work and that your own tools cannot answer; answer a question that a session asked you; revise the instructions of your own child; deliver what your person asked you to send; or tell another root chat once that a check fails in a file that it owns. A message is not a conversation. Put everything the recipient needs in one message. A question gets one answer, and an answer ends the exchange: do not reply to it unless it asks you a new question. Do not send acknowledgements, thanks, confirmations, status or progress reports, promises such as "I will notify you when", requests such as "tell me when it lands", or "are you done?" checks. Do not pass on a message to a session that already has it.${unattendedChat ? "" : " Your person sees every message that you send or receive, so do not quote or restate one to your person unless your person asks. When a message needs a decision from your person, ask only that question, in your own words."} When your own child asks a question that you cannot answer, ask your parent in your own words. Do not send the same message to several sessions other than your own children. Peers are not your workers: never ask a session that is not your own child to fix, commit, publish, or revert its files for you. A message to your own interrupted child continues its work, unless a person made its latest interrupt. To direct a workflow that you launched, target its workflow id. Omit targets for the whole workflow, or name item keys or named-agent ids from process status. Each later agent that the address covers reads the direction. A message to an agent session reaches only that agent, including a reply to its question, and never adds workflow direction. A peer message to a workflow is information for one agent, not direction. With wait true toward your parent session or your own child session, your turn parks until its reply arrives or a notice ends the wait. With wait true and no text, you wait without sending anything. A child that you or the runtime interrupted takes no reply wait; a child that a person interrupted can keep one until it resumes. The result says only whether the message was delivered, held, or refused, and returns at once. A session that does not reply has not agreed to anything, so do not act as if it had. Never write a reply for another session yourself.`,
-    promptGuidelines: [
-      `One message is one question, one answer, one revision of your own child's instructions, or one thing your person asked you to send. Never acknowledge, confirm, promise a later update, or report status. A completion notice tells a parent when its child finishes; no session tells another that it finished.${unattendedChat ? "" : " Return delegated results through handoff, not message_session."}`,
-    ],
+    description: `Send one message to another session${workflowTargets ? " or a workflow" : ""} of this project. Use it only to: ask a question that blocks your work and that your own tools cannot answer; ${uses}. A message is not a conversation. Put everything the recipient needs in one message. A question gets one answer, and an answer ends the exchange: do not reply to it unless it asks you a new question. Do not send acknowledgements, thanks, confirmations, status or progress reports, promises such as "I will notify you when", requests such as "tell me when it lands", "are you done?" checks, or news that you finished: a completion notice tells your parent. Do not pass on a message to a session that already has it, or send one message to several sessions other than your own children. ${askUp} Peers are not your workers: never ask a session that is not your own child to fix, commit, publish, or revert its files for you. A message to your own interrupted child continues its work, unless a person made its latest interrupt.${workflowRules} With wait true, your turn parks until the reply arrives or a notice ends the wait; with no text, you wait without sending anything. A session that does not reply has not agreed to anything, so do not act as if it had.`,
     inputSchema: {
       type: "object",
       properties: {
-        target: { type: "string", enum: ["session", "workflow"], description: "Whether to names a session or a workflow. A session receives private input. A workflow receives direction from its launching parent, or information from a peer." },
-        to: { type: "string", description: `The id of the target selected by target: a session id for one session, or a workflow id for a workflow. Use process(action='list') for your own work${unattendedChat ? "" : " and list_sessions for other targets"}. To answer an agent's question, use that agent's session id.` },
-        text: { type: "string", description: "A question that blocks your work, your answer to a question that a session asked you, revised instructions for your own child, what your person asked you to send, or the file, the check, and the exact error of a check that fails in another chat's file. Its first sentence says what the message is about and what you need from the recipient, if anything. Write complete sentences in plain English, with a space between all words and numbers. Do not start with a greeting or a preamble. It must make sense on its own: the recipient does not see your conversation. Required unless wait is true." },
-        targets: { type: "array", items: { type: "string" }, description: "Only with a workflow target that you launched: item keys or named-agent ids from process status. Omit targets for the whole workflow. Each addressed agent reads the direction, including later agents that the address covers. Unknown, ambiguous, or finished targets refuse the whole message and list valid targets. An agent-session target takes no targets." },
-        wait: { type: "boolean", description: "Wait for a reply from your parent session or your own child session, only when you cannot continue without it. A workflow target takes no reply wait. To wait for workflow completion, use process wait instead." },
+        target: workflowTargets
+          ? { type: "string", enum: ["session", "workflow"], description: "Whether `to` names a session or a workflow." }
+          : { type: "string", enum: ["session"] },
+        to: { type: "string", description: `The target id. Find your own work with process(action='list')${unattendedChat ? "" : " and other targets with list_sessions"}. To answer an agent, use its session id${workflowTargets ? ", never the workflow id" : ""}.` },
+        text: { type: "string", description: "Its first sentence says what the message is about and what you need from the recipient, if anything. Write complete sentences in plain English, with a space between all words and numbers. Do not start with a greeting or a preamble. The recipient does not see your conversation. Required unless wait is true." },
+        ...(workflowTargets ? { targets: { type: "array", items: { type: "string" }, description: "Only for a workflow that you launched: item keys or named-agent ids from process status; later agents that the address covers also read it. Omit for the whole workflow." } } : {}),
+        wait: { type: "boolean", description: `Wait for a reply from your parent session or your own child session, only when you cannot continue without it.${workflowTargets ? " To wait for a workflow to complete, use process wait." : ""}` },
       },
       required: ["target", "to"],
       additionalProperties: false,
@@ -200,11 +210,12 @@ export function messageSessionToolDefinition(unattendedChat: boolean): Advertise
 
 /** `tasks` is the background work of the caller's run, which holds each
  *  reply wait; a run without one cannot wait. `unattendedChat` selects the
- *  form and the result text of an unattended chat, which name no list_sessions. */
-export function createMessageSessionTool(sessions: SessionMessaging, tasks?: ReplyWaitTasks, unattendedChat = false): RuntimeTool {
+ *  form and the result text of an unattended chat, which name no list_sessions.
+ *  `workflowTargets` is described at `messageSessionToolDefinition`. */
+export function createMessageSessionTool(sessions: SessionMessaging, tasks?: ReplyWaitTasks, unattendedChat = false, workflowTargets = true): RuntimeTool {
   const reasons = unattendedChat ? UNATTENDED_REASON_TEXT : REASON_TEXT;
   return {
-    ...messageSessionToolDefinition(unattendedChat),
+    ...messageSessionToolDefinition(unattendedChat, workflowTargets),
     async execute(input, context): Promise<ToolResult> {
       const to = typeof input.to === "string" ? input.to.trim() : "";
       const text = typeof input.text === "string" ? input.text.trim() : "";

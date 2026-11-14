@@ -1,6 +1,6 @@
 ---
 name: reviewer-uat
-description: "User acceptance testing (UAT) from outside the code surface: exercises the live system against the ticket's acceptance criteria without reading source. Catches what code-reading reviewers cannot: criteria never actually exercised, cross-cutting regressions, error paths that fail badly in practice. Include when the change touches an exercisable surface (CLI, UI, HTTP, file output); skip for pure internal refactors."
+description: "User acceptance testing: exercises the live system against the acceptance criteria without reading source, to catch criteria never exercised, cross-cutting regressions, and error paths that fail in practice. Use it when the change touches an exercisable surface (CLI, UI, HTTP, file output), not for internal refactors."
 role: reviewer-uat
 requiredSkills:
   - uat

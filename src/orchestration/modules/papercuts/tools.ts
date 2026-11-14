@@ -12,7 +12,7 @@ export const papercutLogDefinition: RuntimeTool = {
   inputSchema: {
     type: "object",
     properties: {
-      observation: { type: "string", minLength: 1, description: "One or two sentences that describe the observed papercut." },
+      observation: { type: "string", minLength: 1 },
       category: { type: "string", enum: CATEGORIES },
     },
     required: ["observation"],
@@ -54,7 +54,7 @@ export function createPapercutDisposeTool(writer: PapercutDispositionWriter): Ru
   return {
     name: "papercut_dispose",
     action: "ui_meta",
-    description: "Atomically close one live project papercut as fixed when evidence shows the pain is gone, or dismissed when the record is no longer actionable.",
+    description: "Close one live project papercut by its record id, as the papercut campaign directs.",
     inputSchema: {
       type: "object",
       properties: {

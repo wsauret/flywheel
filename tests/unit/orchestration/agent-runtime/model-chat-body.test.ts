@@ -59,7 +59,7 @@ const BASE_SECTIONS = ["# This session", "# Acting", "# Finishing the work", "# 
 const BASE_MARKERS = [
   "Do not work them out again, and do not reopen them",
   "When you compare options, finish with the one that you recommend",
-  "report the action that was refused, what refused it, and the reason that it gave",
+  "report the refused action, what refused it, and its reason",
   "Ask for permission only where a capable colleague would ask",
   "A permission covers that kind of step for the rest of the task",
   "Name the real risks and limits that remain",
@@ -129,7 +129,7 @@ describe("chat body", () => {
     for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS]) expect(occurrences(unlisted, rule)).toBe(1);
     for (const kept of DOCTRINE_SECTIONS) expect(unlisted).toContain(kept);
     for (const gone of [...CORE_SECTIONS, "PROPORTIONALITY:", "CONVERSATION-FIRST DELIVERY:", "CHAT CHANGE REVIEW:", "COMMUNICATION:", "MODEL NOTES:", "Provider Interaction Notes"]) expect(unlisted).not.toContain(gone);
-    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "the skill alone sizes the review to the change", "**Orchestration pays for itself.**", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "do not stop at a feasibility verdict, a diagnosis, or design approval", "a request to plan first does not set such a limit", "and what that proof does not cover", "A pull request description gives the same three things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", "a subagent result carries them in its summary", "**Do what the request asks and do not expand its scope.** Avoid changing public interfaces or contracts without the approval of the user.", "Internal changes that the request needs, such as a new helper or a reworked private function, are not interface changes.", "Spikes and experiments are the exception"]) {
+    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "the skill alone sizes the review to the change", "**Orchestration pays for itself.**", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "do not stop at a feasibility verdict, a diagnosis, or design approval", "a request to plan first does not set such a limit", "and what that proof does not cover", "A pull request description gives the same three things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", "Record your own deviations from that intent as you work. After", "**Do what the request asks and do not expand its scope.** Avoid changing public interfaces or contracts without the approval of the user.", "Internal changes that the request needs, such as a new helper or a reworked private function, are not interface changes.", "Spikes and experiments are the exception"]) {
       expect(unlisted).toContain(commitment);
     }
     expect(unlisted).not.toContain("trivial edits");
@@ -190,7 +190,7 @@ describe("chat body", () => {
       expect(sections.every((index, at) => index >= 0 && (at === 0 || index > sections[at - 1]!))).toBe(true);
       for (const shared of ["they/them", "Use no name that you made up during the work"]) expect(body).toContain(shared);
       // Each base rule renders once: an add-in block keeps only the conditions that it adds to the base.
-      for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "closing offers", "one idea per sentence", "one-line update before your first tool call", "Persist until the task is fully handled", "A long session is", "If one part is truly blocked"]) expect(occurrences(body, rule)).toBe(1);
+      for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "closing offers", "one idea per sentence", "one-line update before your first tool call", "A long session is", "If one part is truly blocked"]) expect(occurrences(body, rule)).toBe(1);
       expect(body).not.toContain("\u2014");
     }
     // Every GPT entry but luna's takes an authorized next step without ending the turn.

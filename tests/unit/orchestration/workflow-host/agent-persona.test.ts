@@ -69,7 +69,7 @@ describe("a workflow agent that runs as a persona", () => {
       const [instructions = "", template = ""] = subagent.task.split("\n\n---\n\n")
       expect(sections(run.instructions)).toEqual([
         ...sections(instructions),
-        ...sections(template).filter((section) => !SUBAGENT_ONLY.some((heading) => section.startsWith(`${heading}\n`))),
+        ...sections(template).filter((section) => !SUBAGENT_ONLY.some((heading) => section === heading || section.startsWith(`${heading}\n`))),
       ])
     },
   )
@@ -115,22 +115,14 @@ describe("a workflow agent that runs as a persona", () => {
     const bashUnplanned = workflowRun("implementer", [], (tool) => tool !== "bash")
     expect(bashUnplanned.toolGrant).toContain("bash")
     expect(bashUnplanned.instructions).not.toContain("## Git Discipline")
-    const FILE_TOOLS_LINE = "- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes."
-    const SEARCH_LINE = "- Use the search and list tools to find project files and text; shell grep and ls are not substitutes."
-    expect(all.instructions).toContain(FILE_TOOLS_LINE)
-    expect(all.instructions).toContain(SEARCH_LINE)
     const withoutDiscovery = workflowRun("implementer", ["discovery"])
     expect(withoutDiscovery.toolGrant).not.toContain("search")
-    expect(withoutDiscovery.instructions).toContain(FILE_TOOLS_LINE)
-    expect(withoutDiscovery.instructions).not.toContain(SEARCH_LINE)
-    // With File tools off and Discovery and Bash on, the implementer is not
-    // told to use file tools it lacks, nor that its shell is no substitute.
     const withoutFileTools = workflowRun("implementer", ["file-tools"])
     expect(withoutFileTools.toolGrant).not.toContain("read")
     expect(withoutFileTools.toolGrant).toContain("bash")
-    expect(withoutFileTools.instructions).not.toContain(FILE_TOOLS_LINE)
-    expect(withoutFileTools.instructions).toContain("- Read and change project files with the tools you hold.")
-    expect(withoutFileTools.instructions).toContain(SEARCH_LINE)
+    // The shell and the file tools are equal routes, so no module set tells the
+    // implementer that one of them is no substitute for the other.
+    for (const run of [all, withoutBash, withoutDiscovery, withoutFileTools]) expect(run.instructions).not.toMatch(/are not substitutes|with the tools you hold/u)
   })
 })
 

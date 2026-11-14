@@ -10,7 +10,7 @@
  */
 
 import type { CapabilityCheck } from "../../infra/capability-text.js";
-import { availableAgentTypes, type DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js";
+import { availableAgentTypes, grantedAgentTypes, type DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
 import { resolveSkillClosure } from "../../workflows/skill-closure.js";
 import { toolRegistryFromComposition } from "./tools/tool-registry.js";
@@ -27,8 +27,11 @@ type SkillDispatch = { readonly reader: "tree" } | { readonly reader: "agent"; r
  *  the skill tool is a tool term, because no agent loads a skill without it. For an agent, a skill that declares
  *  agents, itself or through a dependency, also needs the subagent tool and, when the agent's dispatch set is
  *  restricted, each such agent in it: the skill directs the dispatch of all of them, as its availability requires all
- *  of them. */
+ *  of them. For the same reason, an agent with a restricted dispatch set reads a type term as holding only while a
+ *  persona of that set covers the type. */
 function capabilityCheck(toolTerms: ReadonlySet<string>, availability: DefinitionAvailabilitySnapshot, dispatch: SkillDispatch): CapabilityCheck {
+  const allowed = dispatch.reader === "agent" ? dispatch.allowedSubagentTypes : undefined;
+  const types = allowed === undefined ? availableAgentTypes(availability) : grantedAgentTypes(availability, allowed);
   return (term) => {
     if (term.startsWith(SKILL_TERM)) {
       const id = term.slice(SKILL_TERM.length);
@@ -37,11 +40,10 @@ function capabilityCheck(toolTerms: ReadonlySet<string>, availability: Definitio
       // A load renders the whole dependency closure, so the agents of every member count.
       const agents = resolveSkillClosure([id], availability.skillRevision, `Skill "${id}"`).flatMap((skill) => skill.agents);
       if (agents.length === 0) return true;
-      const allowed = dispatch.allowedSubagentTypes;
       return toolTerms.has("subagent") && (allowed === undefined || agents.every((agent) => allowed.has(agent)));
     }
     if (term.startsWith(PERSONA_TERM)) return availability.personas.get(term.slice(PERSONA_TERM.length))?.available === true;
-    if (term.startsWith(TYPE_TERM)) return availableAgentTypes(availability).has(term.slice(TYPE_TERM.length));
+    if (term.startsWith(TYPE_TERM)) return types.has(term.slice(TYPE_TERM.length));
     return toolTerms.has(term);
   };
 }

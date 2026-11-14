@@ -1,7 +1,6 @@
 ---
 description: Use when implementing a bounded change or settled implementation specification.
 dependencies:
-  - implementation-planning
   - test-driven-development
   - verification
 ---
@@ -18,16 +17,19 @@ Start with the section of your brief labeled Design intent, the task or implemen
 
 1. Verify every named path and inspect the nearest established pattern.
 2. Trace signature, schema, registration, and wiring changes through all load-bearing callers and consumers.
-3. Own newly discovered uncertainty inside the task. Technical diagnoses and implementation designs are hypotheses, not user goals or constraints. State what observation would support, narrow, or reject each material hypothesis, then use the smallest fresh focused experiment or real observation that decides it. A freshly run existing check is decisive only for what that code does; a claim about an external service, a dependency, or runtime behavior is settled by a throwaway probe against the real thing, before you build on it and again after. Past observations guide hypotheses but cannot establish the current state. Revise or drop the implementation plan when evidence contradicts it. Cut or simplify proposed work when evidence supports it while preserving every approved outcome. Expand scope only by the smallest amount demonstrated necessary for an approved outcome, and defer independent improvements. Remaining work, elapsed effort, or needing another implementation pass is not a blocker. Preserve user intent, explicit user prohibitions, and required quality checks. Missing paths, extra callers, inaccurate estimates, and a failed planned approach require investigation and a revised attempt, not a blocked result.
+3. Own newly discovered uncertainty inside the task. Revise or drop the implementation plan when evidence contradicts it. Cut or simplify proposed work when evidence supports it while preserving every approved outcome. Expand scope only by the smallest amount demonstrated necessary for an approved outcome, and defer independent improvements. Missing paths, extra callers, inaccurate estimates, and a failed planned approach require investigation and a revised attempt, not a blocked result.
 4. Use the composed test-driven-development method for behavior changes.
 5. Implement the smallest complete change. Validate external boundaries, trust canonical internal state, keep one source of truth, and avoid speculative fallbacks, compatibility shims, forwarding wrappers, and single-use abstractions.
 6. Preserve unrelated work. Fix dependencies and defects needed to deliver the requested outcome; report unrelated improvements rather than adding them.
-7. Run narrow feedback while editing. Use the composed verification method for the smallest complete fresh post-implementation proof of the predicted benefit and preserved contracts. Tests alone can suffice; exercise the real user surface only for an evidence gap, explicit acceptance requirement, or explicit repository gate. Run the deciding checks against the current implementation; do not recycle earlier observations as acceptance evidence.
+7. Run narrow feedback while editing, then prove the predicted benefit and preserved contracts with the composed verification method.
 8. Inspect the final changed code for scope, dead code, accidental complexity, and unclear names. Delete every line whose removal would not change required behavior.
 
 ## Milestones
 
-When the change is larger than one bounded pass, decompose it with the composed implementation-planning method before editing, and verify each milestone with its own command as you land it.
+When the change is larger than one bounded pass, split it into milestones before editing, and verify each milestone with its own command as you land it.
+{{if:skill:implementation-planning}}
+Load the `implementation-planning` skill to plan the split.
+{{end}}
 
 ## Sizing
 

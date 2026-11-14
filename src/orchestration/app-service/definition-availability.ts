@@ -245,6 +245,15 @@ export function availableAgentTypes(snapshot: DefinitionAvailabilitySnapshot): R
   return types
 }
 
+/** The agent types that the available personas named in `names` cover: what an agent whose dispatch set is `names`
+ *  can dispatch. */
+export function grantedAgentTypes(snapshot: DefinitionAvailabilitySnapshot, names: ReadonlySet<string>): ReadonlySet<string> {
+  return new Set([...names].flatMap((name) => {
+    const persona = snapshot.availablePersonas.get(name)
+    return persona === undefined ? [] : coveringTypes(persona)
+  }))
+}
+
 /** Why `snapshot` does not offer the agent type `type`, or undefined while it does: the reasons of the installed
  *  personas that `type` covers, which name the type and how to turn it on (PI-CAP-022). */
 export function agentTypeRefusal(snapshot: DefinitionAvailabilitySnapshot, type: string): string | undefined {

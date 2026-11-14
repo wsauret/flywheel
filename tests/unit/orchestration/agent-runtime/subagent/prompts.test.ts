@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
-import { renderSubagentRoster, subagentDescription } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
+import { renderSubagentRoster } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
+import { subagentToolDefinition } from "../../../../../src/orchestration/modules/subagents/tool.js";
 
 const PLAN_DESIGN_REVIEWER = {
   kind: "persona",
@@ -17,26 +18,26 @@ const SHIP = {
   name: "ship",
   description: "Publishes a verified repository change.",
   role: "ship",
-  tools: ["bash"],
+  tools: ["bash", "edit", "write"],
   maxTurns: 30,
   systemPrompt: "Publish the supplied change.",
   allowFork: false,
 } satisfies AgentDefinition;
 
-/** What a dispatcher reads: the tool description and the roster its system prompt carries. */
-function modelVisible(agents: ReadonlyMap<string, AgentDefinition>, has: (term: string) => boolean = () => true): string {
-  return `${subagentDescription(has, false)}\n\n${renderSubagentRoster(agents, has)}`;
+/** What a dispatcher reads: the tool description, its input schema, and the roster its system prompt carries. */
+function modelVisible(agents: ReadonlyMap<string, AgentDefinition>, has: (term: string) => boolean = () => true, unattendedTree = false): string {
+  const tool = subagentToolDefinition(has, unattendedTree);
+  return `${tool.description}\n\n${JSON.stringify(tool.inputSchema)}\n\n${renderSubagentRoster(agents, has, unattendedTree)}`;
 }
 
 describe("subagent prompt", () => {
   it("keeps dispatch selection explicit without examples or a second persona list", () => {
     const prompt = modelVisible(new Map([[PLAN_DESIGN_REVIEWER.name, PLAN_DESIGN_REVIEWER]]));
 
-    expect(prompt).toContain("every dispatch MUST pass `persona` as the FIRST field");
-    expect(prompt).toContain("Use a persona name from the Subagents catalog in your system prompt.");
+    expect(prompt).toContain("Put first. One agent type from the Subagents catalog in your system prompt. If none fits, do the work directly.");
     expect(prompt).not.toContain("<example>");
     expect(prompt.match(/reviewer-plan-design/g)).toHaveLength(1);
-    expect(prompt).toContain("Rationale: explain why delegation is worthwhile (minimum 30 characters); follow the parameter guidance.");
+    expect(prompt).toContain("One or two sentences: the question this dispatch answers, why its result should not fill your own context, and the alternatives you considered.");
   });
 
   it("keeps role capabilities in the roster without repeated use-case summaries", () => {
@@ -48,7 +49,10 @@ describe("subagent prompt", () => {
     const prompt = modelVisible(agents);
 
     for (const agent of agents.values()) expect(prompt).toContain(agent.description);
-    expect(prompt).toContain("Tools: read");
+    // A persona that can change no file carries the read-only mark (ARCH-TOOLS-011); the general agent carries none.
+    expect(prompt).toContain("- explorer (read-only): Read-only investigation.");
+    expect(prompt).toContain("- general: Inherit the parent model and instructions.");
+    expect(prompt).not.toContain("Tools:");
     expect(prompt).not.toContain("- Read-only investigation:");
     expect(prompt).not.toContain("- Implementation tasks:");
     expect(prompt).not.toContain("- Full-capability isolated work:");
@@ -60,47 +64,46 @@ describe("subagent prompt", () => {
     expect(prompt).not.toContain("worktree-lifecycle");
     expect(prompt).not.toContain('kind: "steer"');
     expect(prompt).toContain("message_session");
-    expect(prompt).toContain("Steering a running child: use message_session to revise its instructions. You can also ask it a question that blocks your work, or answer a question that it asked you. The child replies only when you ask it a question.");
+    expect(prompt).toContain("Steer a running child with message_session; it replies only to a question.");
     // The subagent tool only dispatches; `process` controls a child.
     expect(prompt).not.toContain('kind: "resume"');
     expect(prompt).not.toContain('kind: "retry"');
-    expect(prompt).toContain("process(action='interrupt')");
-    expect(prompt).toContain("process(action='resume')");
+    expect(prompt).toContain("Check, interrupt, or resume it with process by its session_id.");
     expect(prompt).toContain("A child that you or the runtime interrupted never blocks your handoff");
-    expect(prompt).toContain("fork: true");
+    expect(prompt).toContain("Writing the prompt: unless you fork, the child has not seen your conversation.");
+    expect(modelVisible(agents, (term) => term !== "type:general")).toContain("Writing the prompt: the child has not seen your conversation.");
   });
 
   it("advertises target-specific design-reviewer personas without routing planning to them", () => {
     const prompt = modelVisible(new Map([[PLAN_DESIGN_REVIEWER.name, PLAN_DESIGN_REVIEWER]]));
 
-    expect(prompt).toContain("- reviewer-plan-design: Reviews interface design in implementation plans.");
+    expect(prompt).toContain("- reviewer-plan-design (read-only): Reviews interface design in implementation plans.");
     // Dispatch accepts only the name, and one role can cover several personas, so the role is never shown.
     expect(prompt).not.toContain("reviewer-design");
     expect(prompt).not.toContain("Interface judgment: use a designer agent");
   });
 
-  it("promises no publication through Ship while Bash is off, and keeps Ship in the roster", () => {
+  it("promises no publication through Ship while Bash is off or the tree is unattended, and keeps Ship in the roster", () => {
     const agents = new Map([[SHIP.name, SHIP]]);
     const withoutBash = modelVisible(agents, (term) => term !== "bash");
     expect(withoutBash).toContain("- ship: Publishes a verified repository change.");
     expect(withoutBash).not.toContain("Repository publication");
-    expect(modelVisible(agents)).toContain("- Repository publication: use the Ship agent");
+    const unattended = modelVisible(agents, () => true, true);
+    expect(unattended).toContain("- ship: Publishes a verified repository change.");
+    expect(unattended).not.toContain("Repository publication");
+    expect(modelVisible(agents)).toContain("- Repository publication: after you complete implementation, review, and verification, use the Ship agent.");
   });
 
   it("delegates Git work to Ship with files and intent instead of parent-side analysis", () => {
     const prompt = modelVisible(new Map([[SHIP.name, SHIP]]));
 
     expect(prompt).toContain("use the Ship agent");
-    expect(prompt).toContain("Do not use fork");
-    expect(prompt).toContain("files you changed");
+    expect(prompt).toContain("files you changed, from your own tracked list");
     expect(prompt).toContain("user intent and implemented design");
-    expect(prompt).toContain("Do not run Git analysis");
-    expect(prompt).toContain("Do not send verification evidence");
+    expect(prompt).toContain("Do not run Git analysis, prepare a commit message, or send verification evidence");
     expect(prompt).toContain("For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover");
     expect(prompt).toContain("Ship puts it in the pull request description as written, without assessing it");
-    expect(prompt).toContain("writes the commit message");
-    expect(prompt).toContain("complete selected files, including concurrent edits");
-    expect(prompt).toContain("Do not ask Ship to separate authorship, select hunks, or create isolation worktrees");
+    expect(prompt).toContain("do not ask Ship to verify, separate authorship, select hunks, or create isolation worktrees");
     expect(prompt).not.toContain("optional path constraints");
     expect(prompt).not.toContain("fresh verification evidence");
     expect(prompt).not.toContain("exact commit message or user-facing outcome");

@@ -279,7 +279,7 @@ describe("universal scoped notes assembly", () => {
     for (const name of ["read", "write", "edit"]) expect(surface.tools.has(name)).toBe(false)
     if (typeof assembled.systemPrompt !== "function") throw new Error("expected assembled prompt")
     const prompt = renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))
-    expect(prompt).toContain("use `checkpoint_read`")
+    expect(prompt).toContain("with the checkpoint tools")
     // The skill guidance follows the skill tool: chat and follow-up select no tools here, so they have none.
     expect(prompt.includes('Keep a short "Relevant skills" section')).toBe(surface.tools.has("skill"))
   })
@@ -320,7 +320,7 @@ describe("universal scoped notes assembly", () => {
     if (typeof assembled.systemPrompt !== "function") throw new Error("expected literal prompt")
     expect(renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))).toBe("literal\nbytes\n")
     expect(assembled.initialRequestContext).toStartWith("caller context")
-    expect(assembled.initialRequestContext).toContain("use `checkpoint_read`")
+    expect(assembled.initialRequestContext).toContain("with the checkpoint tools")
     let queued = false
     await runAgentLoop({ ...assembled, inputSource: { drainPending: () => { if (queued) return null; queued = true; return compactInput() } } })
     // The empty answers never save, so the save round asks until its bound of four requests, then resets.
@@ -328,7 +328,7 @@ describe("universal scoped notes assembly", () => {
     for (const request of requests) {
       expect(renderSystemPrompt(request.systemPrompt)).toBe("literal\nbytes\n")
       expect(JSON.stringify(request.messages)).toContain("caller context")
-      expect(JSON.stringify(request.messages)).toContain("use `checkpoint_read`")
+      expect(JSON.stringify(request.messages)).toContain("with the checkpoint tools")
     }
     expect(JSON.stringify(requests[4]?.messages)).toContain("fresh context window")
   })

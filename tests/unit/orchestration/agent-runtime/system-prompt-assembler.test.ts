@@ -72,10 +72,9 @@ const ELEGANCE_MARKERS = [
 // workers) and stays out of subagent prompts, because a dispatched child
 // executes one already-sized assignment.
 const PROPORTIONALITY_MARKERS = [
-  "Orchestration must pay for itself",
-  "Named triggers, not doubt",
-  "Correctness gates never shrink",
-  "Size honestly",
+  "only on a named trigger and only when it saves more work than it adds",
+  "Size honestly in both directions",
+  "sizing never weakens evidence or verification",
 ];
 // Role-specific doctrine that stays with its owning step or persona.
 const ROLE_SPECIFIC_REMAINDER = ["Spec Quality Bar", "Documentarian mode", "False-Positive Suppression", "OPEN QUESTION:", "Enumerative Explorer Fanout", "Lead with the Failure"];
@@ -113,8 +112,7 @@ describe("buildSystemPrompt -- chat", () => {
     });
     expect(withScratch).toContain("# Scratchpad Directory");
     expect(withScratch).toContain("`/proj/.flywheel/sessions/s1/scratch`");
-    expect(withScratch).toContain("All scratch is disposable");
-    expect(withScratch).toContain("Keep working context in the scoped checkpoint");
+    expect(withScratch).toContain("Scratch is disposable and goes away with the session");
 
     expect(build()).not.toContain("# Scratchpad Directory");
 
@@ -138,7 +136,7 @@ describe("buildSystemPrompt -- chat", () => {
     const noteTools = ["checkpoint_read", "checkpoint_replace", "checkpoint_decide"].map((name) => spec(name, { action: "ui_meta" }));
     const fileWriter = build({ checkpointAvailable, tools: noteTools });
     expect(fileWriter).toContain("For tasks that may span context windows");
-    expect(fileWriter).toContain("checkpoint_replace");
+    expect(fileWriter).toContain("with the checkpoint tools");
     expect(fileWriter).not.toContain("# Scratchpad Directory");
 
     const readOnly = build({ checkpointAvailable, tools: [spec("read", { action: "file_read" })] });
@@ -160,9 +158,8 @@ describe("buildSystemPrompt -- chat", () => {
     expect(result).toContain("fix valid findings, and verify each fix with the narrowest check that proves it");
     // The first-draft revision rule has one home: the first-draft commitment.
     expect(result.match(/realign what missed it/g)).toHaveLength(1);
-    expect(result).toContain("Record your own deviations from that intent as you work; a subagent result carries them in its summary, and a workflow handoff carries them in its declared output.");
-    expect(build({ tools: [...TOOLS, spec("subagent")] })).toContain("Record your own deviations from that intent as you work; a subagent result carries them in its summary.");
-    expect(build({ tools: [...TOOLS, spec("workflow")] })).toContain("Record your own deviations from that intent as you work; a workflow handoff carries them in its declared output.");
+    // Each route's own result contract carries the deviations, so the rule names no carrier (ARCH-AGENCY-021).
+    expect(result).toContain("Record your own deviations from that intent as you work. After your own edits");
     // A chat that can delegate nothing reads no delegation carrier, and keeps the first-draft rule for its own edits.
     const alone = build();
     expect(alone).toContain("Record your own deviations from that intent as you work. After your own edits");
@@ -279,12 +276,12 @@ describe("buildSystemPrompt -- subagent", () => {
 
   it("includes agentsMd under the AGENTS.md Instructions header", () => {
     expect(build({ agentsMd })).toContain(`# AGENTS.md Instructions\n\n${agentsMd}`);
-    expect(build({ agentsMd })).toContain("AGENTS.md files in directories that the sections above do not name are not loaded: read the one that governs a directory before you change files in it.");
+    expect(build({ agentsMd })).toContain("do not read them again or restate them in a dispatch prompt. Before you change files in a directory that no section above names, read the AGENTS.md file that governs it.");
     expect(build()).not.toContain("# AGENTS.md Instructions");
   });
 
   it("without a loaded chain, tells an agent that can change files to read the governing AGENTS.md, and tells a read-only agent nothing", () => {
-    const notLoaded = "No AGENTS.md files are loaded for your working directory. An AGENTS.md file in a directory below it is not loaded: read the one that governs a directory before you change files in it.";
+    const notLoaded = "No AGENTS.md file is loaded for your working directory. Before you change files in a directory below it, read the AGENTS.md file that governs it, if one exists.";
     expect(build()).toContain(notLoaded);
     expect(build({ tools: [spec("read", { description: "Read files from disk." })] })).not.toContain(notLoaded);
   });
@@ -335,8 +332,8 @@ describe("buildSystemPrompt -- elegance and proportionality doctrine", () => {
       for (const marker of CATALOG_MARKERS) expect(compile(TOOLS)).not.toContain(marker);
     });
 
-    it(`${promptKind} carries all seven decision checklist entries`, () => {
-      for (const entry of ["| 1 |", "| 2 |", "| 3 |", "| 4 |", "| 5 |", "| 6 |", "| 7 |"]) expect(compile(TOOLS)).toContain(entry);
+    it(`${promptKind} carries all six decision checklist entries`, () => {
+      for (const entry of ["1. One source of truth", "2. Would deleting this code change behavior under supported conditions", "3. Is this abstraction", "4. Does this wrapper", "5. Could a reader", "6. Does data flow"]) expect(compile(TOOLS)).toContain(entry);
     });
 
     it(`${promptKind} omits role-specific doctrine that belongs to its owning step`, () => {
@@ -425,23 +422,21 @@ describe("renderToolContext", () => {
 describe("cross-tool batching guideline", () => {
   // The canonical batching nudge lives once in DEFAULT_GUIDELINES (injected by
   // buildSystemPrompt) and must survive the Set dedup without per-tool copies.
-  const BATCHING = "Independent tool calls in one turn run concurrently and return together";
+  const BATCHING = "Calls in one turn run concurrently.";
 
   it("buildSystemPrompt injects the canonical batching guideline exactly once", () => {
     const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
     expect(result.split(BATCHING).length - 1).toBe(1);
   });
 
-  it("instructs grouping independent calls but serializing read-before-edit dependencies, consistent with purposeful tool use", () => {
+  it("instructs grouping the needed independent calls but serializing dependent ones, consistent with purposeful tool use", () => {
     const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true } }));
-    expect(result).toContain("reading a file before editing it");
-    expect(result).toContain("Calls are independent only when none of them can change state that another one reads.");
-    expect(result).toContain("a client that opens and rewrites the database another call examines");
-    expect(result).toContain("not making unnecessary ones");
-    expect(result).toContain("batch independent calls with distinct inputs");
-    expect(result).toContain("remove duplicate calls with the same tool name and arguments");
-    expect(result).toContain("Repeat a call only when a failure, changed state, or verification requirement makes a fresh result necessary");
-    expect(result).toContain("A turn carries both text and tool calls");
+    expect(result).toContain("Batch the calls you need that are independent: none of them can change state that another one reads.");
+    expect(result).toContain("Put a call in a later turn when it needs an earlier result");
+    expect(result).toContain("such as a database that a client rewrites when it opens it");
+    expect(result).toContain("Never send the same call twice in a turn");
+    expect(result).toContain("repeat a call only when a failure, a state change, or a verification needs a fresh result");
+    expect(result).toContain("Put a progress update first in the same turn as its calls.");
     expect(result).toContain("Use a tool only when the task needs it.");
   });
 
@@ -451,7 +446,7 @@ describe("secret redaction marker guideline", () => {
   // The mask reaches the model's own context, so the default guideline set
   // (which every caller uses today) must explain that the marker is a
   // redaction, not the true bytes of a command or file.
-  const MARKER_GUIDANCE = "usually marks a runtime redaction, not the true bytes";
+  const MARKER_GUIDANCE = "usually marks a runtime redaction";
 
   it("buildSystemPrompt injects the redaction-marker guidance exactly once", () => {
     const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
@@ -470,7 +465,7 @@ describe("global guideline selection", () => {
       globalGuidelineIds: ["batch-independent-tool-calls"],
     }));
 
-    expect(result).toContain("Independent tool calls in one turn run concurrently");
+    expect(result).toContain("Calls in one turn run concurrently");
     expect(result).not.toContain("saved-output file");
     expect(result).not.toContain("Give a one-line update before your first tool call");
     expect(result).not.toContain("Ground each claim about code, tests, or tools in what you observed");
@@ -588,12 +583,12 @@ describe("bash background-execution guidance", () => {
     expect(description).toContain("A foreground command moves to managed execution when you select Detach or it reaches the runtime cap; wait for it with the process tool.");
     expect(description).toContain("Wait for a background command the same way");
     // Timeout rules have one home: the timeout field.
-    expect(JSON.stringify(bashDefinition.inputSchema)).toContain("Timeouts are entirely optional and should be used sparingly. They apply equally to foreground and managed background commands.");
-    expect(description).not.toContain("Timeouts are entirely optional");
+    expect(JSON.stringify(bashDefinition.inputSchema)).toContain("Set it only when the command must stop by then. It also binds a background command");
+    expect(description).not.toContain("Set it only when the command must stop by then");
     expect(description + rendered).not.toMatch(/10 seconds|30 seconds|no output/);
     // The prompt states the mechanics nowhere a second time.
     expect(rendered).not.toContain("background: true");
-    expect(rendered).toContain("Preserve live command output.");
+    expect(rendered).toContain("Preserve live command output:");
   });
 
   // No person reads an unattended chat (PI-AGENT-121): it has nobody to run a prompt, a browser login, or Detach.
@@ -628,16 +623,13 @@ describe("buildSystemPrompt -- session identity", () => {
     expect(first?.text).toContain('You are session child-1, a subagent. Your parent is session root-1 ("Fix the parser").');
     expect(identitySection(child)).toEqual(first);
     expect(identitySection(root)?.text).toContain("You are session root-1, a root chat.");
-    // list_sessions leaves out a session's own children, so both texts say
-    // where they are.
-    for (const identity of [child, root]) expect(identitySection(identity)?.text).toContain("list_sessions shows targets that you did not start. Your own children are in process(action='list').");
   });
 
   it("sends a child to its parent wherever an instruction says to ask the user, has a root answer a waiting child first, and tells only a root how to treat other root chats", () => {
     const text = identitySection(child)?.text ?? "";
     expect(text).toContain("message your parent with wait true");
     expect(text).toContain("Where any instruction tells you to ask the user or the person, message your parent instead.");
-    expect(identitySection(root)?.text).toContain("Reply to the exact session that asked you before you end your turn. If you need the person first, ask the person, then reply to that session.");
+    expect(identitySection(root)?.text).toContain("Reply to the session that asked you before you end your turn, after you ask the person if you need them first.");
     expect(identitySection(root)?.text).toContain("A completion notice ends the open questions of the session that it reports.");
     for (const [identity, toldAboutRootChats] of [[root, true], [child, false]] as const) expect(identitySection(identity)?.text.includes("another root chat")).toBe(toldAboutRootChats);
   });

@@ -261,9 +261,9 @@ describe("persona tool grants", () => {
     }
   });
 
-  it("prints each persona's effective tools in the roster", async () => {
+  it("marks each persona that can change no file read-only in the roster, whatever modules are off", async () => {
     const revision = repoDefinitions().captureRevision();
-    const rosterLine = async (disabled: readonly ModuleId[]) => {
+    const roster = async (disabled: readonly ModuleId[]) => {
       const composition = composeFirstPartyModules(undefined, disabled);
       const fragment = composition.contributions.find((entry) => entry.domain === "promptFragments" && entry.id === "subagent-roster");
       if (fragment?.domain !== "promptFragments") throw new Error("Missing subagent roster fragment");
@@ -274,13 +274,16 @@ describe("persona tool grants", () => {
         memorySnapshot: null,
         capabilities: () => true,
       });
-      return rendered?.split("\n").find((row, index, rows) => rows[index - 1]?.startsWith("- advisor: ") === true) ?? "";
+      return rendered ?? "";
     };
-    expect(await rosterLine([])).toContain("search, list");
-    const narrowed = await rosterLine(["discovery"]);
-    expect(narrowed).toStartWith("  Tools: ");
-    expect(narrowed).toContain("read");
-    expect(narrowed).not.toMatch(/\b(search|list)\b/);
+    // ARCH-TOOLS-011: the mark is the persona's declaration, so turning a module off does not change it.
+    for (const rendered of [await roster([]), await roster(["discovery"]), await roster(["file-tools"])]) {
+      expect(rendered).toContain("- advisor (read-only): ");
+      expect(rendered).toContain("- explorer (read-only): ");
+      expect(rendered).toContain("- implementer: ");
+      expect(rendered).toContain("- ship: ");
+      expect(rendered).not.toContain("Tools: ");
+    }
   });
 
   it("enforces persona selection before dependency gating", async () => {

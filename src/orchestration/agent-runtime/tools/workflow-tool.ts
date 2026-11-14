@@ -196,15 +196,15 @@ export function createWorkflowToolCore(deps: LaunchableWorkflowToolDeps): Workfl
   return {
     name: "workflow",
     promptGuidelines: [
-      `Keep your checkpoint's approved Design intent and Decisions current before launch. The runtime records them once in the workflow's shared request context for every agent; do not copy them into the launch description or briefs. Every agent treats that intent as fixed and everything else as implementation design it may revise.`,
-      `After launch, target your workflow id in message_session to add direction to its request. Without targets, every running and later agent reads it. With targets, only the addressed items or named agents read it, including later agents that the address covers. Put a change to fixed intent under the heading Design intent.`,
+      `Keep your checkpoint's approved Design intent and Decisions current before launch. The runtime gives them to every agent as fixed intent, and a draft intent is not carried; do not copy them into the launch description or briefs.`,
+      `After launch, target your workflow id in message_session to add direction to its request. Put a change to fixed intent under the heading Design intent.`,
       // The launch resolves a relative path from the session directory, and
       // the file tools from the project directory first, so only the absolute
       // path names one file for both. The guideline names the directory by
       // its place in the scratchpad, whose absolute path the session tier
       // states: guidelines render in the stable tier, which every session of
       // the same role shares from the prompt cache.
-      ...(deps.sessionDir === undefined ? [] : ["This session's workflow directory is `workflows` inside its scratchpad directory, where a content launch saves its file. Edit a saved file by its absolute path, because a relative scratch/ path reaches this directory only when the project has no scratch entry of its own, and launch it by that same path."]),
+      ...(deps.sessionDir === undefined ? [] : ["This session's workflow directory is `workflows` inside its scratchpad directory, where a content launch saves its file. Edit and relaunch a saved file by its absolute path, never by a relative scratch/ path."]),
     ],
     async execute(input: RuntimeToolInput, context: WorkflowToolCallContext): Promise<WorkflowToolResult> {
       const requested = requestedSource(input.source);

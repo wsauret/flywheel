@@ -43,7 +43,7 @@ describe("Claude plugin export", () => {
     expect(body).toStartWith("You are Flywheel's chat agent.");
     expect(body).toContain("The host compacts the earlier conversation into a summary");
     expect(body).toContain("# Working method");
-    expect(body).toContain("Use `AskUserQuestion` only after the discussion has settled");
+    expect(body).toContain("Call `AskUserQuestion` only after the discussion settles");
     expect(body).toContain("load the `flywheel:design` skill");
     expect(body).toContain("load the `flywheel:code-review` skill");
     expect(body).toContain("ELEGANCE:");
@@ -54,8 +54,8 @@ describe("Claude plugin export", () => {
     expect(document("agents/advisor.md").frontmatter).toMatchObject({ tools: "Bash, Read", model: "claude-fable-5-2" });
     expect(document("agents/explorer.md").frontmatter).toMatchObject({ tools: "Bash, Read, WebSearch, WebFetch, Skill", model: "sonnet" });
     expect(document("agents/reviewer-plan-design.md").frontmatter).toMatchObject({ model: "opus", skills: ["plan-review", "interface-design"] });
-    expect(document("agents/implementer.md").body).toContain("Use `grep` and `find` through `Bash` to find project files and text.");
-    expect(document("agents/implementer.md").body).toContain("stop and return to your parent with the evidence and the decision that it needs");
+    expect(document("agents/implementer.md").body).toContain("Follow established local patterns");
+    expect(document("agents/implementer.md").body).not.toMatch(/message_session|handoff/);
   });
 
   test("the main agent names no workflow, because the host runs none", () => {

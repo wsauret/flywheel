@@ -111,6 +111,19 @@ describe("capability checks", () => {
     expect(dispatching(["advisor"])("skill:verification")).toBe(true)
   })
 
+  it("holds a type term for an agent with a restricted dispatch set only while a persona of the set covers the type", () => {
+    const availability = definitionAvailabilityOf(definitions, ALL.enabledModuleIds, [])
+    const dispatching = (allowed: readonly string[]) => agentCapabilityCheck(new Set(["subagent"]), availability, new Set(allowed))
+
+    expect(dispatching(["explorer"])("type:explorer")).toBe(true)
+    expect(dispatching(["explorer"])("type:implementer")).toBe(false)
+    // A persona covers its parent role, so a set of one reviewer persona holds the role term.
+    expect(dispatching(["reviewer-code-quality"])("type:reviewer")).toBe(true)
+    expect(dispatching(["reviewer-code-quality"])("type:reviewer-quality")).toBe(true)
+    // An agent that may dispatch every available persona reads every offered type.
+    expect(agentCapabilityCheck(new Set(["subagent"]), availability, undefined)("type:implementer")).toBe(true)
+  })
+
   it("answers a workflow agent's opening check, before any model route, as its first request's plan leaves each tool usable", async () => {
     const BASH_OFF = composeFirstPartyModules(undefined, ["bash"])
     const policyDenies = { available: () => false, admit: async () => { throw new Error("unused in this test") } }

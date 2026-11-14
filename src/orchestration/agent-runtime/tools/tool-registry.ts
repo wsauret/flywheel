@@ -120,14 +120,23 @@ function sessionCheckpoint(kind: CheckpointToolKind, registryOrder: number): Too
   };
 }
 
+/** Whether the tree's kernel tool text names workflow targets. Only an unattended tree whose capture has no workflow
+ *  tool can never reach a workflow; in an attended tree a peer can message a live workflow even with Workflows off
+ *  (PI-INTERACTION-050), so its text keeps them. Read from the tree check, so every agent of a tree agrees
+ *  (ARCH-CONTEXT-018, ARCH-CONTEXT-033). */
+function workflowTargets(kernel: ToolDeps["kernel"]): boolean {
+  return kernel.unattendedTree !== true || kernel.treeCapabilities("workflow");
+}
+
 function nativeProcess({ kernel }: ToolDeps): ToolFactoryResult {
   const unattendedChat = kernel.unattendedTree === true;
-  if (!kernel.backgroundTasks) return { unusable: { tool: processToolDefinition(unattendedChat), reason: "no background execution owner available" } };
+  const workflows = workflowTargets(kernel);
+  if (!kernel.backgroundTasks) return { unusable: { tool: processToolDefinition(unattendedChat, workflows), reason: "no background execution owner available" } };
   const producers = canonicalModuleIds(kernel.moduleSnapshot.backgroundWorkProducerIds);
   if (producers.some((capability) => kernel.capabilities.available(capability)) || kernel.backgroundTasks.activeTaskCount() > 0) {
-    return { tool: createProcessTool(kernel.backgroundTasks, kernel.sessions?.children, unattendedChat) };
+    return { tool: createProcessTool(kernel.backgroundTasks, kernel.sessions?.children, unattendedChat, workflows) };
   }
-  return { unusable: { tool: processToolDefinition(unattendedChat), reason: `no background task is running, and ${moduleDisabledReason(producers)}` } };
+  return { unusable: { tool: processToolDefinition(unattendedChat, workflows), reason: `no background task is running, and ${moduleDisabledReason(producers)}` } };
 }
 
 /** An unattended chat is the root of its tree and serves no person (PI-AGENT-121), so it coordinates with no peer
@@ -141,8 +150,9 @@ function startsChildSession(planned: ReadonlyMap<string, RuntimeTool>, registry:
 
 function messageSession({ kernel }: ToolDeps): ToolFactoryResult {
   const unattendedTree = kernel.unattendedTree === true;
-  if (!kernel.sessions) return { unusable: { tool: messageSessionToolDefinition(unattendedTree), reason: "no session messaging available" } };
-  const tool = createMessageSessionTool(kernel.sessions, kernel.backgroundTasks, unattendedTree);
+  const workflows = workflowTargets(kernel);
+  if (!kernel.sessions) return { unusable: { tool: messageSessionToolDefinition(unattendedTree, workflows), reason: "no session messaging available" } };
+  const tool = createMessageSessionTool(kernel.sessions, kernel.backgroundTasks, unattendedTree, workflows);
   // Only the root reaches no session that it did not start; a child keeps the channel to its parent.
   if (kernel.purpose.kind !== "unattended-chat") return { tool };
   const registry = toolRegistryFromComposition(kernel.moduleSnapshot);

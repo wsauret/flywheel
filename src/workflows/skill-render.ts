@@ -10,11 +10,6 @@ import { renderSkillBody, resolveSkillBody } from "./skill-references.js";
 import type { ShadowedPackage, SkillDefinition, SkillRegistryRevision, SkillSource } from "./skill-schema.js";
 import { SKILL_BODY_BUDGET_CHARS, SKILL_BODY_CROWDED_SHARE } from "./skill-schema.js";
 
-/** The canonical context of one loaded skill: a provenance header plus the
- *  `SKILL.md` body byte-for-byte. Every consumer renders exactly this text -
- *  the model's `skill` tool, explicit user invocation, and the deterministic
- *  composition of a brief's or persona's `requiredSkills` - so a package reads
- *  the same however it entered the prompt. */
 /** The body's share of the write-time budget, in the shape memory's snapshot
  *  header already uses so the two read alike. */
 function skillBodyUsage(body: string): string {
@@ -29,32 +24,43 @@ function skillBodyUsage(body: string): string {
   old bulk, and leaves the next writer with less room than you had.`;
 }
 
-/** The canonical context of one skill for the reader that `has` describes: a bundled body's `{{if:}}` blocks render
- *  from it, and so do its list of related skills and the resources it offers (`offeredSkillResources`). The header
- *  names no tested term, because a term that is off is never named to an agent (PI-CAP-021). Without `has`,
- *  the body keeps its markers as written: that form is the package's identity, which definition provenance hashes,
- *  never prompt text. */
+/** The canonical context of one loaded skill for the reader that `has` describes: a provenance header plus the
+ *  `SKILL.md` body. The model's `skill` tool and explicit user invocation render exactly this text. A bundled body's
+ *  `{{if:}}` blocks render from `has`, and so do its list of related skills and the resources it offers
+ *  (`offeredSkillResources`). The header names no tested term, because a term that is off is never named to an agent
+ *  (PI-CAP-021). Without `has`, the body keeps its markers as written: that form is the package's identity, which
+ *  definition provenance hashes, never prompt text. */
 export function renderSkillContext(skill: SkillDefinition, has?: CapabilityCheck): string {
+  return skillContext(skill, has, true);
+}
+
+/** One skill's context, with its full provenance header or, for a composed package, only the header lines that its
+ *  reader acts on. A composed reader neither loads nor writes the package, so its version, reach, write ownership,
+ *  hashes, and body budget are not for it; the runtime records the identity of what it composed. The `source` line
+ *  stays as attribution (ARCH-CONTEXT-017). */
+function skillContext(skill: SkillDefinition, has: CapabilityCheck | undefined, provenance: boolean): string {
   const body = renderBody(skill, has);
   const resources = offeredSkillResources(skill, has);
   // A bundled header names a related skill only while its reader can load it.
   const related = has === undefined || skill.source.authority !== "bundled" ? skill.relatedIds : skill.relatedIds.filter((id) => has(`skill:${id}`));
-  const header = [
-    `# Skill: ${skill.id}${skill.name === skill.id ? "" : ` (${skill.name})`}`,
+  const title = `# Skill: ${skill.id}${skill.name === skill.id ? "" : ` (${skill.name})`}`;
+  const source = `source: ${describeSkillSource(skill.source)}`;
+  const header = provenance ? [
+    title,
     `version: ${skill.version ?? "(unversioned)"}`,
     `reach: ${skill.source.reach}`,
-    `source: ${describeSkillSource(skill.source)}`,
+    source,
     `managed: ${skill.managed ?? "(none: this package refuses writes)"}`,
     `package: sha256 ${skill.packageIdentity.sha256} (${skill.packageIdentity.bytes} bytes)`,
     `content: sha256 ${skill.evidence.sha256} (${skill.evidence.bytes} bytes)`,
-  ];
+  ] : [title, source];
   // What a writer needs before it composes, not after it is refused. A body
   // enters context in full on every load and has a write-time budget, so a
   // writer that can see the headroom plans one edit instead of discovering the
   // wall with the edit already written. Bundled packages omit it: no writer can
   // change them, so the number is noise on the most-loaded skills in the
   // catalog. Mirrors the usage line every memory block already carries.
-  if (skill.managed !== undefined && skill.source.authority !== "bundled") {
+  if (provenance && skill.managed !== undefined && skill.source.authority !== "bundled") {
     header.push(`body: ${skillBodyUsage(skill.body)}`);
   }
   if (resources.length > 0) {
@@ -131,7 +137,7 @@ function describeSkillSource(source: SkillSource): string {
   return `${source.authority} package ${packageName}`;
 }
 
-/** The canonical context of every skill in one declaration's transitive closure,
+/** The composed context of every skill in one declaration's transitive closure,
  *  dependencies first (see skill-closure.ts). Composition is deterministic: the
  *  same declaration against the same registry revision always renders the same
  *  sections, which is what `skills` in the workflow definition identity pins.
@@ -164,8 +170,8 @@ export function renderSkillClosure(
     if (blocked) throw new Error(`${subject} composes skill "${blocked.id}", which dispatches agents, and the agent that reads it cannot call the subagent tool`);
   }
   const ids = closure.map((skill) => `\`${skill.id}\``).join(", ");
-  const preface = `# Composed Packages\n\nThese packages are part of your instructions and are in your context in full: ${ids}. Do not load them.`;
-  return [preface, ...closure.map((skill) => renderSkillContext(skill, has))];
+  const preface = `# Composed Packages\n\nThese packages are part of your instructions and follow in full: ${ids}. Do not load them.`;
+  return [preface, ...closure.map((skill) => skillContext(skill, has, false))];
 }
 
 /** The first package of `closure` that dispatches agents, which a reader that cannot call the subagent tool cannot

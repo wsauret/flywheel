@@ -71,7 +71,6 @@ const METHOD_IDS = [
 const INGREDIENT_IDS = [
   "design",
   "elegance-review-principles",
-  "implementation-planning",
   "root-cause-analysis",
   "test-driven-development",
   "uat",
@@ -164,7 +163,6 @@ describe("bundled skill packages", () => {
     const planReview = bundled.get("plan-review");
     const codeReview = bundled.get("code-review");
 
-    expect(implementation?.body).toContain("Technical diagnoses and implementation designs are hypotheses");
     expect(implementation?.body).toContain("Cut or simplify proposed work when evidence supports it");
     expect(implementation?.body).toContain("Expand scope only by the smallest amount demonstrated necessary");
     expect(implementation?.body).toContain("A no-change result is complete");
@@ -343,7 +341,7 @@ describe("deterministic composition", () => {
   };
 
   it("composes the canonical method into the packages that run it", () => {
-    expect(dependencies("implementation")).toEqual(["implementation-planning", "test-driven-development", "verification"]);
+    expect(dependencies("implementation")).toEqual(["test-driven-development", "verification"]);
     expect(dependencies("systematic-debugging")).toEqual(["root-cause-analysis", "test-driven-development", "verification"]);
     expect(dependencies("flywheel-uat")).toEqual(["uat"]);
     expect(dependencies("vscode-uat")).toEqual(["uat"]);

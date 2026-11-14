@@ -592,7 +592,7 @@ describe("native registry planning", () => {
 
     expect([...planned.tools.keys()]).toEqual(["bash", "edit", "list", "read", "search", "write", "process", "papercut_log", "papercut_dispose"]);
     expect(planned.omitted).toContainEqual({ name: "ask_user", reason: "not in selected allowlist" });
-    expect(planned.tools.get("read")?.description).toContain("Image files");
+    expect(planned.tools.get("read")?.description).toContain("Images (PNG, JPG, GIF, WebP)");
     expect(planned.registrationIdentities.get("process")).toBe("process");
     expect(planned.registrationIds.get("process")).toBe("process.native");
   });

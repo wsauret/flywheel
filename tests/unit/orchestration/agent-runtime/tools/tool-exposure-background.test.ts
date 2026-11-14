@@ -40,7 +40,7 @@ describe("background management under capability policy", () => {
     expect(new Set(definitions).size).toBe(1);
     expect(definitions[0]).toContain('"background"');
     expect(definitions[0]).toContain('"persist_after_exit"');
-    expect(definitions[0]).toContain("Timeouts are entirely optional and should be used sparingly. They apply equally to foreground and managed background commands.");
+    expect(definitions[0]).toContain("Set it only when the command must stop by then. It also binds a background command");
     expect(await definition(["background-commands"], true, false)).not.toContain('"persist_after_exit"');
   });
 

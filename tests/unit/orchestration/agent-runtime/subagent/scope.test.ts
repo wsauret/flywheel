@@ -105,7 +105,7 @@ describe("subagent scope enforcement", () => {
       availableTools: new Set(["read", "search", "list", "bash", "write", "edit", "subagent"]),
     };
 
-    const roster = renderSubagentRoster(scopedAgentRegistry(deps(calls).agentRegistry, new Set(["explorer"])), () => true);
+    const roster = renderSubagentRoster(scopedAgentRegistry(deps(calls).agentRegistry, new Set(["explorer"])), () => true, false);
     expect(roster).toContain("explorer");
     expect(roster).not.toContain("implementer");
 

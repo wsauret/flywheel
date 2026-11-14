@@ -377,8 +377,8 @@ describe("paused runs from before the inert fields left control", () => {
     if (resumed.command.kind !== "commit" || !pending) throw new Error("Expected a resume proposal");
     expect(pending.facts.map(({ type, version }) => `${type}@${version}`)).toEqual(["workflow.resumed@1", "workflow.control.committed@14"]);
     expect(acknowledge(resumed).command).toMatchObject({ kind: "prepare_attempt", attempt: { attemptId, conversationId, workflowDefinitionId: workflowId } });
-    // Content, persona budget, retired step scope, tool steering, persona prompt switch, scenario budget, and phase grammar adoptions at most.
-    expect(adopted.length).toBeLessThanOrEqual(7);
+    // Content, persona budget, retired step scope, tool steering, persona prompt switch, scenario budget, phase grammar, and lean-prompt adoptions at most.
+    expect(adopted.length).toBeLessThanOrEqual(8);
     expect(adopted.map(({ type, payload }) => type === "workflow.definition_identity.migrated" ? payload.migrationId : type)).toContain("workflow-definition-identity-phase-grammar-v1");
     const continued = [...facts.map(unstored), ...adopted.map(({ seq: _seq, ...envelope }) => envelope), ...pending.facts];
     expect(replayWorkflowControl(continued)).toEqual(pending.proposedCommitted);
@@ -456,8 +456,8 @@ describe("paused runs from before phase containers", () => {
     if (resumed.command.kind !== "commit" || !pending) throw new Error("Expected a resume proposal");
     expect(pending.facts.map(({ type, version }) => `${type}@${version}`)).toEqual(["workflow.resumed@1", "workflow.control.committed@14"]);
     expect(acknowledge(resumed).command).toMatchObject({ kind: "prepare_attempt", attempt: { attemptId, conversationId, workflowDefinitionId: workflowId } });
-    // Content, persona budget, retired step scope, tool steering, persona prompt switch, scenario budget, and phase grammar adoptions at most.
-    expect(adopted.length).toBeLessThanOrEqual(7);
+    // Content, persona budget, retired step scope, tool steering, persona prompt switch, scenario budget, phase grammar, and lean-prompt adoptions at most.
+    expect(adopted.length).toBeLessThanOrEqual(8);
     expect(adopted.map(({ type, payload }) => type === "workflow.definition_identity.migrated" ? payload.migrationId : type)).toContain("workflow-definition-identity-phase-grammar-v1");
     const continued = [...facts.map(unstored), ...adopted.map(({ seq: _seq, ...envelope }) => envelope), ...pending.facts];
     expect(replayWorkflowControl(continued)).toEqual(pending.proposedCommitted);
@@ -533,8 +533,8 @@ describe("paused runs from before map groups", () => {
     if (resumed.command.kind !== "commit" || !pending) throw new Error("Expected a resume proposal");
     expect(pending.facts.map(({ type, version }) => `${type}@${version}`)).toEqual(["workflow.resumed@1", "workflow.control.committed@14"]);
     expect(acknowledge(resumed).command).toMatchObject({ kind: "prepare_attempt", attempt: { attemptId, conversationId, workflowDefinitionId: workflowId, scope: { _tag: "workflow" } } });
-    // Content, persona budget, retired step scope, tool steering, persona prompt switch, scenario budget, and phase grammar adoptions at most.
-    expect(adopted.length).toBeLessThanOrEqual(7);
+    // Content, persona budget, retired step scope, tool steering, persona prompt switch, scenario budget, phase grammar, and lean-prompt adoptions at most.
+    expect(adopted.length).toBeLessThanOrEqual(8);
     expect(adopted.map(({ type, payload }) => type === "workflow.definition_identity.migrated" ? payload.migrationId : type)).toContain("workflow-definition-identity-phase-grammar-v1");
     const continued = [...facts.map(unstored), ...adopted.map(({ seq: _seq, ...envelope }) => envelope), ...pending.facts];
     expect(replayWorkflowControl(continued)).toEqual(pending.proposedCommitted);
