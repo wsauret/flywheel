@@ -76,7 +76,7 @@ async function main(): Promise<void> {
         assert.equal(grade.evidence.programs.length, 63);
         assert.equal(grade.evidence.observations.length, 131);
         assert.equal(grade.evidence.observations.filter((row: { timeout: number }) => row.timeout === 10).length, 63);
-        assert.equal(grade.evidence.observations.filter((row: { timeout: number }) => row.timeout === 60).length, 68);
+        assert.equal(grade.evidence.observations.filter((row: { timeout: number }) => row.timeout === 180).length, 68);
         assert.equal(grade.evidence.restored["interp.py"], ledger["original/environment/tests/interp.py"]!.sha256);
         for (const [source, hash] of Object.entries(grade.evidence.restored)) {
           if (source.startsWith("original/")) assert.equal(hash, ledger[source]!.sha256);

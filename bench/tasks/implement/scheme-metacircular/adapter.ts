@@ -147,6 +147,9 @@ async function main(): Promise<void> {
     test = replace("test_outputs.py", test, '"/app/eval.scm"', JSON.stringify(join(workspace, "eval.scm")));
     test = replace("test_outputs.py", test, '"/tests/test"', JSON.stringify(join(tests, "test")));
     test = replace("test_outputs.py", test, '"/tests/shadow_test"', JSON.stringify(join(tests, "shadow_test")));
+    // A correct evaluator's slowest metacircular case takes 59 to 82 seconds on the qualification host, so the
+    // original 60-second limit made a stored grade depend on host load. The direct 10-second limit is unchanged.
+    test = replace("test_outputs.py", test, "timeout=60", "timeout=180");
     await Bun.write(join(tests, "test_outputs.py"), test);
     const originalShell = await readFile(join(task, "original/tests/test.sh"), "utf8");
     const marker = "uvx \\\n  -p 3.13 \\\n  -w pytest==8.4.1 \\\n  -w pytest-json-ctrf==0.3.5 \\\n  pytest";
@@ -207,7 +210,7 @@ async function main(): Promise<void> {
       passed, failed: 1 - passed, total: 1,
       evidence: { criterion: "original pytest status and reward.txt", pytestExitCode, reward,
         programs, observations, ctrf, restored, removed, replacements, acquired, commands, metaAliasDirectory,
-        limits: { directSeconds: 10, metacircularSeconds: 60, verifierMs: 2400000, adapterMs: 2700000 },
+        limits: { directSeconds: 10, metacircularSeconds: 180, verifierMs: 2400000, adapterMs: 2700000 },
         equivalence: "native macOS arm64, not original container or cross-platform equivalence" },
     }, null, 2) + "\n");
   } finally {
