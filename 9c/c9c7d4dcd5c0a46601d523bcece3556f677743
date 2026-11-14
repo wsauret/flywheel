@@ -1,0 +1,18 @@
+src/orchestration/modules/development/benchmark/implement-task.ts
+  h_4b47e9e4a8b456 332-337,343-344,348,354,403
+tests/integration/bench/implement-task-capture.test.ts
+  h_4b47e9e4a8b456 70-73,80
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 278,412-413,419
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9cc9c7d4dcd5c0a46601d523bcece3556f677743",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
