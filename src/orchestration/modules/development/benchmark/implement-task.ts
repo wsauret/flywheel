@@ -329,22 +329,29 @@ function parseAcceptance(output: string, exitCode: number): AcceptanceResult {
   return { passed, failed, total: passed + failed };
 }
 
+/** A candidate that runs Python tests leaves bytecode caches beside the imported
+ * modules, and a task source without its own ignore rules does not hide them.
+ * They are not part of the candidate's change, and git refuses to apply their
+ * binary diffs, which would fail the grade of a correct change. */
+const PYTHON_BYTECODE_CACHES = "**/__pycache__/**";
+
 /** Capture all candidate changes against the baseline, including candidate commits.
  * Plan fixtures run restored acceptance tests; native adapters grade the patch
  * in a separate fresh workspace. Infrastructure failures throw instead of scoring.
  * Optional evidence retains native command failures without changing their outcome. */
 export async function captureImplementation(task: ImplementTaskSpec, sandboxDir: string, run: OwnedCommandRunner, evidence?: ImplementEvidence): Promise<CapturedImplementation> {
-  const excludes = task.kind === "native" ? [".flywheel", SANDBOX_HOME_DIR] : [".flywheel", PLAN_FILE, SANDBOX_HOME_DIR, "acceptance"];
+  const harnessPaths = task.kind === "native" ? [".flywheel", SANDBOX_HOME_DIR] : [".flywheel", PLAN_FILE, SANDBOX_HOME_DIR, "acceptance"];
+  const excludes = [...harnessPaths, PYTHON_BYTECODE_CACHES];
   const pathspec = [
     "--",
     ".",
-    ...excludes.map(path => `:(exclude)${path}`),
+    ...excludes.map(path => `:(exclude,glob)${path}`),
   ];
   const sandbox = { cwd: sandboxDir, sandboxDir } as const;
   await runCheckedSandboxCommand(run, ["git", "add", "-A"], sandbox);
   await runCheckedSandboxCommand(run, [
     "git", "reset", "--quiet", "HEAD", "--",
-    ...excludes,
+    ...excludes.map(path => `:(glob)${path}`),
   ], sandbox);
   const artifacts = await mkdtemp(join(tmpdir(), "flywheel-bench-capture-"));
   let diff: string;
@@ -393,7 +400,7 @@ function requireNativeAdapterSuccess(action: "prepare" | "grade", result: OwnedC
  * grade; command failures and invalid reports throw and never become scores.
  * The adapter reconstructs pinned source and original tests from taskDir, then
  * applies captured.patch. It receives: grade, taskDir, workspace, patch, report. */
-async function gradeNativeImplementation(task: NativeImplementTaskSpec, diff: string, run: OwnedCommandRunner, evidence?: ImplementEvidence): Promise<Pick<CapturedImplementation, "acceptance" | "nativeGrade">> {
+export async function gradeNativeImplementation(task: NativeImplementTaskSpec, diff: string, run: OwnedCommandRunner, evidence?: ImplementEvidence): Promise<Pick<CapturedImplementation, "acceptance" | "nativeGrade">> {
   const workspace = await mkdtemp(join(tmpdir(), "flywheel-bench-grade-"));
   const artifacts = await mkdtemp(join(tmpdir(), "flywheel-bench-grade-artifacts-"));
   try {

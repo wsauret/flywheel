@@ -275,7 +275,7 @@ describe("implementation sandbox", () => {
       expect(await Bun.file(capturedPatchPath).exists()).toBe(false);
       expect(grade.acceptance).toEqual({ passed: 0, failed: 1, total: 1 });
       expect(grade.nativeGrade).toBe(report);
-      expect(recorded.find(command => command[1] === "diff")?.includes(":(exclude)acceptance")).toBe(false);
+      expect(recorded.find(command => command[1] === "diff")?.includes(":(exclude,glob)acceptance")).toBe(false);
       for (const invalid of [
         "", "not JSON", '{"passed":1,"failed":0,"total":2,"evidence":false}',
         '{"passed":0,"failed":0,"total":0,"evidence":null}',
@@ -409,13 +409,14 @@ describe("implementation sandbox", () => {
       expect(commands).toContainEqual([
         "git", "diff", "--cached", "refs/flywheel/benchmark-baseline",
         expect.stringMatching(/^--output=/),
-        "--", ".", ":(exclude).flywheel", ":(exclude).bench-plan.json", ":(exclude).bench-home", ":(exclude)acceptance",
+        "--", ".", ":(exclude,glob).flywheel", ":(exclude,glob).bench-plan.json", ":(exclude,glob).bench-home", ":(exclude,glob)acceptance",
+        ":(exclude,glob)**/__pycache__/**",
       ]);
       expect(captured.diff).toBe("diff --git a/value.ts b/value.ts\n");
       expect<readonly string[] | undefined>(captureAddCommand).toEqual(["git", "add", "-A"]);
       expect<readonly string[] | undefined>(captureResetCommand).toEqual([
         "git", "reset", "--quiet", "HEAD", "--",
-        ".flywheel", ".bench-plan.json", ".bench-home", "acceptance",
+        ":(glob).flywheel", ":(glob).bench-plan.json", ":(glob).bench-home", ":(glob)acceptance", ":(glob)**/__pycache__/**",
       ]);
       expect(captured.diff).not.toContain(PLAN_FILE);
       expect(captured.diffStats).toEqual({ linesAdded: 1, linesRemoved: 1, filesTouched: 1 });
