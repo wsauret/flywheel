@@ -1,0 +1,18 @@
+tests/unit/orchestration/modules/development/benchmark-tool.test.ts
+  h_4b47e9e4a8b456 209
+tests/unit/orchestration/workflow-host/workflow-agent-models.test.ts
+  h_4b47e9e4a8b456 100,104
+tests/unit/scripts/build-claude-plugin.test.ts
+  h_4b47e9e4a8b456 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "84082454908551be8ed1795a3842a033ecde7443",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
