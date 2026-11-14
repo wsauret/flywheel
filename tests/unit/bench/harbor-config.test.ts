@@ -94,16 +94,17 @@ describe("Harbor config resolution", () => {
   });
 
   test.each([
-    ["OpenAI", "tb-mini-openai.toml", "gpt-6.1-terra", "medium", ["chatgpt"], []],
-    ["Claude", "tb-mini-claude.toml", "claude-sonnet-5.5", "medium", ["claude_agent_sdk"], ["api.anthropic.com"]],
-    ["DeepSeek board", "tb-board-deepseek-high.toml", "deepseek-v4.1-flash", "high", ["openrouter"], ["openrouter.ai"]],
-  ])("the checked-in %s arm config passes host validation, pins its model and effort, and names its credential providers and their declared hosts", async (_arm, file, model, effort, providers, hosts) => {
+    ["OpenAI", "tb-mini-openai.toml", "gpt-6.1-terra", "medium", ["chatgpt"], [], ["chatgpt"]],
+    ["Claude", "tb-mini-claude.toml", "claude-sonnet-5.5", "medium", ["claude_agent_sdk"], ["api.anthropic.com"], []],
+    ["DeepSeek board", "tb-board-deepseek-high.toml", "deepseek-v4.1-flash", "high", ["openrouter"], ["openrouter.ai"], []],
+    ["FrontierHarness DeepSeek 1017", "fh-deepseek-1017-max.toml", "deepseek-v4.1-flash-1017", "max", ["deepseek", "opencode_go", "openrouter"], ["openrouter.ai"], ["deepseek", "opencode_go"]],
+  ])("the checked-in %s arm config passes host validation, pins its model and effort, and names its credential providers and their declared hosts", async (_arm, file, model, effort, providers, hosts, undeclared) => {
     const config = await resolveArgs(["--benchmark", "terminal-bench-2.1", "--arm", `bench/harbor/configs/${file}`, ...ACCESS, ...ONE_TASK]);
     expect(config.model).toBe(model);
     expect(config.flywheelConfig.chatEffort).toBe(effort);
     expect(config.flywheelConfig.absolutePath).toBe(resolve(process.cwd(), `bench/harbor/configs/${file}`));
     expect(config.flywheelConfig.credentialProviders).toEqual(providers);
-    expect(config.flywheelConfig.providerHosts).toEqual({ declared: hosts, undeclared: hosts.length === 0 ? providers : [] });
+    expect(config.flywheelConfig.providerHosts).toEqual({ declared: hosts, undeclared });
   });
 
   const ARMS = resolve(import.meta.dir, "../../../bench/harbor/configs");
