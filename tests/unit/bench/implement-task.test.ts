@@ -389,6 +389,10 @@ describe("implementation sandbox", () => {
     const commands: string[][] = [];
     const runner: OwnedCommandRunner = (command, options) => {
       commands.push([...command]);
+      if (command[1] === "ls-files") {
+        const stdout = "target/CACHEDIR.TAG\0crate/build cache/CACHEDIR.TAG\0";
+        return Promise.resolve({ exitCode: 0, timedOut: false, stdoutBytes: new TextEncoder().encode(stdout), stdout, stderr: "" });
+      }
       return fakeCommandRunner(command, options);
     };
     const sandbox = await provisionTaskSandbox(process.cwd(), task, runner);
@@ -414,13 +418,14 @@ describe("implementation sandbox", () => {
         "git", "diff", "--cached", "refs/flywheel/benchmark-baseline",
         expect.stringMatching(/^--output=/),
         "--", ".", ":(exclude,glob).flywheel", ":(exclude,glob).bench-plan.json", ":(exclude,glob).bench-home", ":(exclude,glob)acceptance",
-        ":(exclude,glob)**/__pycache__/**",
+        ":(exclude,glob)**/__pycache__/**", ":(exclude,literal)target", ":(exclude,literal)crate/build cache",
       ]);
       expect(captured.diff).toBe("diff --git a/value.ts b/value.ts\n");
       expect<readonly string[] | undefined>(captureAddCommand).toEqual(["git", "add", "-A"]);
       expect<readonly string[] | undefined>(captureResetCommand).toEqual([
         "git", "reset", "--quiet", "HEAD", "--",
         ":(glob).flywheel", ":(glob).bench-plan.json", ":(glob).bench-home", ":(glob)acceptance", ":(glob)**/__pycache__/**",
+        ":(literal)target", ":(literal)crate/build cache",
       ]);
       expect(captured.diff).not.toContain(PLAN_FILE);
       expect(captured.diffStats).toEqual({ linesAdded: 1, linesRemoved: 1, filesTouched: 1 });
