@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: choose where a refund goes (original payment method, gift card, or store credit)",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [
+    {
+      "id": "store-credit-destination-missing",
+      "title": "The plan covers two of the three refund destinations the request names and drops store credit",
+      "category": "quality",
+      "files": ["plan.md", "REQUEST.md", "src/customers/credit.ts"],
+      "catch_criteria": "The review must identify that REQUEST.md names three refund destinations (the original payment method, a gift card, and store credit on the customer's account for a sale made to an account) while the plan implements only the original payment method and gift cards: no phase adds a store-credit destination (the summary, phase-1/t1's RefundDestination extension, phase-1/t2's refundSale branches, and phase-2/t1's route parsing all omit it), although addStoreCredit in src/customers/credit.ts and Sale.customerId exist to serve it. Any wording and any severity count, as long as the missing store-credit destination is named as a requirement the plan does not cover, with a plan location (the summary, phase-1, or phase-2 and its tasks)."
+    },
+    {
+      "id": "returns-import-caller-missed",
+      "title": "The plan makes refundSale's destination parameter required but updates only the till route; the nightly returns import also calls refundSale",
+      "category": "quality",
+      "files": ["plan.md", "src/payments/refunds.ts", "src/jobs/returns-import.ts", "src/till/routes.ts"],
+      "catch_criteria": "The review must identify that phase-1/t2 changes refundSale to take a required destination parameter while the plan updates only one caller (postRefund in src/till/routes.ts, phase-2/t1) and its key_files name the till route as the caller, but importReturns in src/jobs/returns-import.ts (with tests/returns-import.test.ts) also calls refundSale(deps, saleId, amountCents) and is never updated, so it no longer type-checks and the nightly web-shop returns lose their card refund path unless it passes { kind: \"original\" }; the RefundDeps additions also reach that job. Any wording and any severity count, as long as the returns-import job is named as an unupdated caller of the changed refundSale signature, with a phase-1/t2, phase-2, or key_files location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: a cashier chooses where a refund goes. Check the plan against the request and the code"
+}

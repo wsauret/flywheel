@@ -1,0 +1,6 @@
+{
+  "title": "Plan review: scale a recipe page to a chosen number of servings (control)",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: a reader scales a recipe page to a number of servings. Check the plan against the request and the code"
+}

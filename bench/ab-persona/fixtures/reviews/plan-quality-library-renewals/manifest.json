@@ -1,0 +1,6 @@
+{
+  "title": "Plan review: online loan renewal for library patrons (control)",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: patrons renew a library loan online. Check the plan against the request and the code"
+}

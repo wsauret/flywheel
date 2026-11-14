@@ -1,0 +1,6 @@
+{
+  "title": "Plan review: online renewal of residential parking permits (control)",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: residents renew a parking permit online. Check the plan against the request and the code"
+}
