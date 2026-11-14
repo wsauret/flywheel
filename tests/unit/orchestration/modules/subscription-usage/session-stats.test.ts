@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import assert from "node:assert/strict"
-import { asAsyncEventReadSurface, type EventStoreAppend, type StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, CorruptEventRowError, type EventStoreAppend, type StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { Log } from "../../../../../src/infra/log.js"
 import type { MeasuredUsageEntry as UsageEntry } from "../../../../../src/infra/llm/usage-entry.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
@@ -16,11 +17,17 @@ function fixture() {
   const store = inMemoryEventReader(events)
   const source = asAsyncEventReadSurface(store)
   const reads: NonNullable<Parameters<typeof store.read>[0]>[] = []
+  /** Ids of stored facts whose payload a page serves as a damaged row. */
+  const corrupt = new Set<string>()
   const reader = {
     capturePosition: source.capturePosition,
-    readPage: (query: Parameters<typeof source.readPage>[0], upper: number, after: number, tolerant?: boolean) => {
+    readPage: async (query: Parameters<typeof source.readPage>[0], upper: number, after: number, tolerant?: boolean) => {
       reads.push({ ...query, afterPosition: after })
-      return source.readPage(query, upper, after, tolerant)
+      const page = await source.readPage(query, upper, after, tolerant)
+      return { ...page, facts: page.facts.map((fact) => fact instanceof CorruptEventRowError || !corrupt.has(fact.id) ? fact : new CorruptEventRowError({
+        aggregateId: fact.aggregateId, seq: fact.seq, type: fact.type, version: fact.version, timestamp: fact.timestamp, actor: fact.actor,
+        sessionId: fact.sessionId, eventId: fact.id, position: fact.position, rawPayload: "{",
+      }, "Payload is not JSON")) }
     },
   }
   function append(sessionId: string, type: string, version: number, actor: EventStoreAppend["actor"], payload: EventStoreAppend["payload"]) {
@@ -62,7 +69,9 @@ function fixture() {
       executionCwd: "/scratch", launchedFrom: { parentSessionId, toolUseId: `launch-${sessionId}` },
     })
   }
-  return { append, usage, tool, generation, child, reads, events, stats: createSessionStatsReader(reader) }
+  /** A reader over the same store with a new identity, as when a workspace closes and opens again. */
+  const reopen = () => createSessionStatsReader({ ...reader })
+  return { append, usage, tool, generation, child, reads, events, corrupt, reopen, stats: createSessionStatsReader(reader) }
 }
 
 describe("session statistics", () => {
@@ -194,6 +203,30 @@ describe("session statistics", () => {
     f.append("sibling", "session.child.linked", 1, "flywheel", { childSessionId: "workflow", lastUpdated: "2025-01-01T00:00:00.000Z" })
     expect((await f.stats("root")).descendants.tokens.input).toBe(28)
     expect((await f.stats("sibling")).descendants.tokens.input).toBe(23)
+  })
+
+  test("skips an unreadable link or creation and reports each once per process by id and kind", async () => {
+    const warn = spyOn(Log.create({ service: "session-lineage" }), "warn").mockImplementation(() => {})
+    try {
+      const f = fixture()
+      f.child("child", "root")
+      const link = f.append("root", "session.child.linked", 1, "flywheel", { childSessionId: 7 })
+      const creation = f.append("lost", "session.created", 99, "flywheel", { kind: "subagent" })
+      const damaged = f.append("broken", "session.created", 4, "flywheel", {})
+      f.corrupt.add(damaged)
+      f.usage("child", 2)
+      expect(await f.stats("root")).toMatchObject({ descendantCount: 1, descendants: { tokens: { input: 2 } } })
+      f.usage("child", 3)
+      await f.stats("root")
+      expect(await f.reopen()("root")).toMatchObject({ descendantCount: 1 })
+      expect(warn.mock.calls).toEqual([
+        ["session lineage fact skipped", { sessionId: "root", eventId: link, eventType: "session.child.linked", eventVersion: 1, position: Number(link), reason: "schema-mismatch" }],
+        ["session lineage fact skipped", { sessionId: "lost", eventId: creation, eventType: "session.created", eventVersion: 99, position: Number(creation), reason: "schema-mismatch" }],
+        ["session lineage fact skipped", { sessionId: "broken", eventId: damaged, eventType: "session.created", eventVersion: 4, position: Number(damaged), reason: "corrupt-row" }],
+      ])
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   test("reads nested leaf usage once and refreshes on later committed facts", async () => {

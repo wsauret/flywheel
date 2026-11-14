@@ -1,5 +1,6 @@
 import { createEventProjection, parseProjectionFact } from "../../infra/event-projection.js"
 import type { AsyncEventReadSurface, CorruptEventRowError, StoredFact } from "../../infra/event-store-types.js"
+import { Log } from "../../infra/log.js"
 import { heldProjection } from "../../infra/projection-registry.js"
 import type { ContentResolver } from "../../infra/tool-content.js"
 import { yieldToNextTask } from "../../infra/task-scheduling.js"
@@ -24,6 +25,22 @@ interface LineageDraft {
   titles: Map<string, string>
 }
 
+const log = Log.create({ service: "session-lineage" })
+
+/** Facts already reported in this process. A workspace that closes and opens
+ *  again folds its lineage again with a new reader, and the bytes have not
+ *  changed, so a second report adds nothing. */
+const reportedSkips = new Set<string>()
+
+/** The fold moves past an unreadable fact, so it reports the fact by id and
+ *  kind, once per process. */
+function reportSkipped(row: { sessionId: string; eventId: string; type: string; version: number; position: number }, reason: string): void {
+  const key = `${row.sessionId}:${row.eventId}`
+  if (reportedSkips.has(key)) return
+  reportedSkips.add(key)
+  log.warn("session lineage fact skipped", { sessionId: row.sessionId, eventId: row.eventId, eventType: row.type, eventVersion: row.version, position: row.position, reason })
+}
+
 function addChild(state: LineageDraft, parentId: string, childId: string): void {
   const children = state.children.get(parentId) ?? []
   if (!children.includes(childId)) state.children.set(parentId, [...children, childId])
@@ -31,18 +48,23 @@ function addChild(state: LineageDraft, parentId: string, childId: string): void 
 
 /** An unreadable fact leaves the lineage as it was: a session whose creation
  *  does not read has no kind, so no ancestor counts its work, and no other
- *  session's tree depends on it. */
+ *  session's tree depends on it. The fact throws a schema mismatch, so the
+ *  fold reports it through `reduceUnreadableFact`. */
 function reduceLineage(state: LineageDraft, event: StoredFact): LineageDraft {
   if (event.type === "session.child.linked") {
     const fact = parseProjectionFact(event, parseSessionMetadataFact)
     if (fact.type === "session.child.linked") addChild(state, event.sessionId, fact.payload.childSessionId)
     return state
   }
-  const fact = decodeSessionMetadataFactForReplay({ type: event.type, version: event.version, actor: event.actor, payload: event.payload }, event.timestamp)
-  if (fact?.type === "session.label.updated") {
+  const fact = parseProjectionFact(event, (value) => {
+    const decoded = decodeSessionMetadataFactForReplay(value, event.timestamp)
+    if (!decoded) throw new Error("no registered version reads it")
+    return decoded
+  })
+  if (fact.type === "session.label.updated") {
     const title = fact.payload.label || fact.payload.name
     if (title) state.titles.set(event.sessionId, title)
-  } else if (fact?.type === "session.created") {
+  } else if (fact.type === "session.created") {
     state.kinds.set(event.sessionId, fact.payload.kind)
     const title = fact.payload.label || fact.payload.name
     if (title) state.titles.set(event.sessionId, title)
@@ -63,8 +85,14 @@ export function heldSessionLineage(reader: AsyncEventReadSurface) {
     // reader that holds one can tell a changed tree by identity.
     draft: (state) => ({ children: new Map(state.children), kinds: new Map(state.kinds), titles: new Map(state.titles) }),
     reduce: reduceLineage,
-    reduceCorruptRow: (state) => state,
-    reduceUnreadableFact: (state) => state,
+    reduceCorruptRow: (state, corrupt) => {
+      reportSkipped(corrupt.row, "corrupt-row")
+      return state
+    },
+    reduceUnreadableFact: (state, event, violation) => {
+      reportSkipped({ ...event, eventId: event.id }, violation.kind)
+      return state
+    },
   }))
 }
 
