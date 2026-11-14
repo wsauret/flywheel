@@ -57,9 +57,15 @@ export const ROLE_MODEL_DEFAULTS = {
     { family: "openai", model: "gpt-6.1-sol", effort: "low" },
     { family: "anthropic", model: "claude-sonnet-5.5", effort: "low" },
   ], fallback: { tier: "mid", effort: "medium" } },
-  // bench:rank on reviewer-code-quality-2026-11-11T01-03-13-088Z, T01-04-30-041Z, T05-15-25-509Z, T06-50-30-346Z, and
-  // T15-32-09-950Z, ranked as reviewer-quality, which inherits this entry.
+  // The specialist reviewer default, which every reviewer role without its own entry inherits. Only quality runs on
+  // stronger settings.
   reviewer: { preferences: [
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
+    { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
+  ] },
+  // bench:rank on reviewer-code-quality-2026-11-11T01-03-13-088Z, T01-04-30-041Z, T05-15-25-509Z, T06-50-30-346Z, and
+  // T15-32-09-950Z.
+  "reviewer-quality": { preferences: [
     { family: "openai", model: "gpt-6.1-sol", effort: "high" },
     { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
   ], fallback: { tier: "mid", effort: "xhigh" } },

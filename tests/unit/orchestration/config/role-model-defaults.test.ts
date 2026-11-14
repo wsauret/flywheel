@@ -29,7 +29,7 @@ const sonnetOnly = new Map<ModelFamily, ReadonlySet<string>>([
 describe("role model defaults", () => {
   it("selects each shipped role's first preference with its effort when both preferences are listed", () => {
     expect(selectRoleModelDefault("explorer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "low" });
-    expect(selectRoleModelDefault("reviewer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
+    expect(selectRoleModelDefault("reviewer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
     expect(selectRoleModelDefault("reviewer-quality", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
     expect(selectRoleModelDefault("reviewer-elegance", bothProviders)).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
     expect(selectRoleModelDefault("reviewer-mechanism", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
@@ -88,8 +88,8 @@ describe("role model defaults", () => {
     ]);
     const roles = await resolveRoles(config, noCandidates, tierOptions);
     expect(roles.get("explorer")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
-    // Reviewer stores the mid tier at xhigh; the fixture tier model supports at most high, so the effort clamps.
-    expect(roles.get("reviewer")).toMatchObject({ model: "gpt-5.4", effort: "high" });
+    expect(roles.get("reviewer")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
+    // Quality stores the mid tier at xhigh; the fixture tier model supports at most high, so the effort clamps.
     expect(roles.get("reviewer-quality")).toMatchObject({ model: "gpt-5.4", effort: "high" });
     expect(roles.get("reviewer-elegance")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
     expect(roles.get("reviewer-mechanism")).toMatchObject({ model: "gpt-5.4", effort: "medium" });

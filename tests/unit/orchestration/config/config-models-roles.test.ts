@@ -33,14 +33,14 @@ describe("roles config parsing and resolution", () => {
       const available = new Map([["openai", new Set(["gpt-6.1-sol", "gpt-6-astra"])] as const]);
       const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions, undefined, additional);
       expect(roles.get("custom-auditor")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
-      expect(roles.get("reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
+      expect(roles.get("reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step.persona.reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("reviewer-elegance")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
 
       const tierFallback = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), tierAvailableModels, tierOptions, undefined, additional);
       expect(tierFallback.get("custom-auditor")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
-      expect(tierFallback.get("reviewer-custom")).toMatchObject({ model: "gpt-5.4", effort: "high" });
+      expect(tierFallback.get("reviewer-custom")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
     });
   });
   it("defaults every unassigned role to an eligible custom provider model that carries no catalog metadata", async () => {

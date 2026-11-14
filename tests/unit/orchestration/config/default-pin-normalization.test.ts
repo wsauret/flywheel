@@ -89,7 +89,7 @@ describe("default-pin normalization", () => {
 
   it("compares explicit and automatic assignments with the inherited pair", async () => {
     const rows = await listModelAssignments({
-      ...deps({ reviewer: { model: "gpt-6.1-sol", effort: "medium" }, implementer: { model: "gpt-6.1-sol", effort: "low" } }),
+      ...deps({ reviewer: { model: "gpt-6.1-sol", effort: "high" }, implementer: { model: "gpt-6.1-sol", effort: "low" } }),
       slots: [roleSlot("reviewer"), roleSlot("implementer"), roleSlot("explorer")],
     });
     expect(rows.find((row) => row.slot.roleId === "reviewer")).toMatchObject({ modelSource: "explicit", matchesInheritedPair: false });
@@ -100,7 +100,7 @@ describe("default-pin normalization", () => {
   it("compares the complete global assignment pair with its automatic default", async () => {
     const rows = await listModelAssignments({
       ...deps({
-        reviewer: { model: "gpt-6.1-sol", effort: "high" },
+        reviewer: { model: "gpt-6.1-sol", effort: "medium" },
         implementer: { model: "gpt-6-astra", effort: "low" },
       }),
       slots: [roleSlot("reviewer"), roleSlot("implementer"), roleSlot("explorer")],
@@ -116,7 +116,7 @@ describe("default-pin normalization", () => {
       profiles: {
         work: {
           roles: {
-            reviewer: { model: "gpt-6.1-sol", effort: "medium" },
+            reviewer: { model: "gpt-6.1-sol", effort: "high" },
             implementer: { model: "gpt-6-astra", effort: "low" },
           },
         },
