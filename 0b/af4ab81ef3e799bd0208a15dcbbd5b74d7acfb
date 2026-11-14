@@ -1,0 +1,20 @@
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 60-61,63-68
+tests/unit/orchestration/config/config-models-roles.test.ts
+  h_4b47e9e4a8b456 36,43
+tests/unit/orchestration/config/default-pin-normalization.test.ts
+  h_4b47e9e4a8b456 92,103,119
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 32,91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0baf4ab81ef3e799bd0208a15dcbbd5b74d7acfb",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
