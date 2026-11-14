@@ -1,0 +1,298 @@
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/WHY.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/plan.md
+  h_4b47e9e4a8b456 1-143
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/README.md
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/REQUEST.md
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/migrations/001_items.sql
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/migrations/002_order_lines.sql
+  h_4b47e9e4a8b456 1-7
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/src/db.ts
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/src/items.ts
+  h_4b47e9e4a8b456 1-36
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/src/picklist.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/src/routes.ts
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/tests/memory-item-repo.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/tests/picklist.test.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-quality-bin-locations/project/tests/sql-item-repo.test.ts
+  h_4b47e9e4a8b456 1-23
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/WHY.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/plan.md
+  h_4b47e9e4a8b456 1-117
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/README.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/REQUEST.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/appointments.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/clinics.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/email/mailer.ts
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/format.ts
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/patients/patients.ts
+  h_4b47e9e4a8b456 1-7
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/patients/phone.ts
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/reminders/pass.ts
+  h_4b47e9e4a8b456 1-44
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/src/sms/gateway.ts
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/tests/fakes.ts
+  h_4b47e9e4a8b456 1-40
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/tests/format.test.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-clinic-reminders/project/tests/pass.test.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/WHY.md
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/plan.md
+  h_4b47e9e4a8b456 1-107
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/README.md
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/REQUEST.md
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/src/config.ts
+  h_4b47e9e4a8b456 1-2
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/src/dates.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/src/holds.ts
+  h_4b47e9e4a8b456 1-22
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/src/loans.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/src/web/routes.ts
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/tests/dates.test.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/tests/fakes.ts
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/tests/holds.test.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-library-renewals/project/tests/routes.test.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/WHY.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/plan.md
+  h_4b47e9e4a8b456 1-125
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/README.md
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/REQUEST.md
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/src/federation/client.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/src/members.ts
+  h_4b47e9e4a8b456 1-53
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/src/scheduler.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/src/settings.ts
+  h_4b47e9e4a8b456 1-5
+bench/ab-persona/fixtures/reviews/plan-quality-member-export/project/tests/members.test.ts
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/plan.md
+  h_4b47e9e4a8b456 1-132
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/README.md
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/REQUEST.md
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/migrations/001_permits.sql
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/src/dates.ts
+  h_4b47e9e4a8b456 1-17
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/src/payments.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/src/permits.ts
+  h_4b47e9e4a8b456 1-50
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/src/routes.ts
+  h_4b47e9e4a8b456 1-40
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/tests/dates.test.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/tests/memory-permit-repo.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/tests/routes.test.ts
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-quality-parking-permits/project/tests/sql-permit-repo.test.ts
+  h_4b47e9e4a8b456 1-26
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/WHY.md
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/manifest.json
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/plan.md
+  h_4b47e9e4a8b456 1-102
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/README.md
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/REQUEST.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/src/quantity.ts
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/src/recipes.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/src/views/html.ts
+  h_4b47e9e4a8b456 1-3
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/src/views/ingredients.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/src/views/recipe-page.ts
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/src/views/shopping-list.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/src/web/routes.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/tests/quantity.test.ts
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-quality-recipe-scaling/project/tests/views.test.ts
+  h_4b47e9e4a8b456 1-25
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/plan.md
+  h_4b47e9e4a8b456 1-90
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/README.md
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/REQUEST.md
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/kiosk/seat-picker.ts
+  h_4b47e9e4a8b456 1-25
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/src/api/seat-map.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/src/seats.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/tests/fake-store.ts
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/tests/kiosk.test.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/tests/seat-map.test.ts
+  h_4b47e9e4a8b456 1-24
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/tests/web.test.ts
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-seat-map/project/web/seat-map.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/WHY.md
+  h_4b47e9e4a8b456 1-16
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/plan.md
+  h_4b47e9e4a8b456 1-118
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/README.md
+  h_4b47e9e4a8b456 1-12
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/REQUEST.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/src/customers/credit.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/src/giftcards/giftcards.ts
+  h_4b47e9e4a8b456 1-27
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/src/jobs/returns-import.ts
+  h_4b47e9e4a8b456 1-28
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/src/payments/gateway.ts
+  h_4b47e9e4a8b456 1-4
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/src/payments/refunds.ts
+  h_4b47e9e4a8b456 1-33
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/src/sales.ts
+  h_4b47e9e4a8b456 1-25
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/src/till/routes.ts
+  h_4b47e9e4a8b456 1-29
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/tests/fakes.ts
+  h_4b47e9e4a8b456 1-20
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/tests/refunds.test.ts
+  h_4b47e9e4a8b456 1-24
+bench/ab-persona/fixtures/reviews/plan-quality-store-refunds/project/tests/returns-import.test.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/WHY.md
+  h_4b47e9e4a8b456 1-15
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/manifest.json
+  h_4b47e9e4a8b456 1-21
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/plan.md
+  h_4b47e9e4a8b456 1-114
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/README.md
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/REQUEST.md
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/src/billing/invoice.ts
+  h_4b47e9e4a8b456 1-37
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/src/billing/time.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/src/clients.ts
+  h_4b47e9e4a8b456 1-6
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/src/entries.ts
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/src/reports/statement.ts
+  h_4b47e9e4a8b456 1-18
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/tests/invoice.test.ts
+  h_4b47e9e4a8b456 1-13
+bench/ab-persona/fixtures/reviews/plan-quality-timesheet-rounding/project/tests/statement.test.ts
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/WHY.md
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/manifest.json
+  h_4b47e9e4a8b456 1-14
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/plan.md
+  h_4b47e9e4a8b456 1-81
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/README.md
+  h_4b47e9e4a8b456 1-9
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/REQUEST.md
+  h_4b47e9e4a8b456 1-10
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/package.json
+  h_4b47e9e4a8b456 1-8
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/src/cache.ts
+  h_4b47e9e4a8b456 1-34
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/src/editor.ts
+  h_4b47e9e4a8b456 1-11
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/src/pages.ts
+  h_4b47e9e4a8b456 1-22
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/src/render.ts
+  h_4b47e9e4a8b456 1-43
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/tests/cache.test.ts
+  h_4b47e9e4a8b456 1-19
+bench/ab-persona/fixtures/reviews/plan-quality-wiki-cache/project/tests/render.test.ts
+  h_4b47e9e4a8b456 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cffa097d8ad9cd74dbac19da796be75829e053f4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
