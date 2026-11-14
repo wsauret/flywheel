@@ -6,7 +6,7 @@ import { DEFAULT_BUDGET, toBudgetLimits } from "../../../../workflows/budget.js"
 import { resumeSubagentSession, type ContinuationTarget, type SubagentContext, type SubagentInput, type SubagentResult } from "./control-actions.js";
 import { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch-preparation.js";
 import type { SubagentDispatchDeps } from "./dispatch-deps.js";
-import { roleModelPreferences } from "../../../config/role-model-defaults.js";
+import { roleModelDefault } from "../../../config/role-model-defaults.js";
 import { resolveSubagentRole } from "../../../config/role-selection.js";
 import type { RoleSettings } from "../../../session/schemas.js";
 import { createChildExecution } from "./child-execution.js";
@@ -96,7 +96,7 @@ async function dispatchSubagent(
   const { roleAssignmentEntryFromSelection } = await import("../../../config/session-role-resolver.js")
   let initialRoles: RoleSettings = agent.kind === "general" && modelString !== undefined
     ? { chat: roleAssignmentEntryFromSelection({
-      model: modelString, effort: typeof effortForRunner === "string" ? effortForRunner : roleModelPreferences("chat")[0].effort,
+      model: modelString, effort: typeof effortForRunner === "string" ? effortForRunner : roleModelDefault("chat").preferences[0].effort,
       providerOptions: providerOptionsForRunner,
     }) }
     : {}

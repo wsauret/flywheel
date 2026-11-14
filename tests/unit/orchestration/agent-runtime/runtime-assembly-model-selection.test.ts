@@ -101,9 +101,9 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
       ...testDirectories(process.cwd()), userDataRoot: freshBenchmarkCacheRoot(), model: "lost-model", effort: "low",
       resolveRoles: (capture) => {
         if (!capture) throw new Error("The role resolver must share the request capture")
-        return resolveSessionRoles({ defaults: {}, overrides: { explorer: { model: "lost-model", effort: "low" } } }, capture, "/scratch")
+        return resolveSessionRoles({ defaults: {}, overrides: { ship: { model: "lost-model", effort: "low" } } }, capture, "/scratch")
       },
-      requestSelection: (roles) => roles.get("explorer") ?? { roleId: "explorer" },
+      requestSelection: (roles) => roles.get("ship") ?? { roleId: "ship" },
       purpose: { kind: "interactive-chat" }, agentsMd: "", onEvent(event) {
         if (event.type === "tool.result.recorded") toolModels.push(assembled.tools.current().providerRuntime?.role?.model ?? "")
       },

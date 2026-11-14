@@ -16,6 +16,22 @@ Never launch a paid matrix to verify a code change, and never verify the benchma
 
 The historical campaign `reviewer-code-quality-2026-09-10T03-12-57-087Z` retains its 44/46 quality evidence. Its historical cost is unavailable, and the campaign is not repriced. This preserves the recorded quality conclusion without inventing monetary evidence.
 
+## Role preferences and fallback tiers (2026-11-13)
+
+`bun run bench:rank` derives each benchmarked role's policy from the committed record files under `bench/ab-persona/records/` (refer to [bench/README.md](../README.md) for the pooling rules). Per role, it measures every setting on absolute per-cell measures: recall and false P1/P2 findings per review for a reviewer, fact recall and trap rate for the explorer, and hidden-test pass rate and followed false claims for the implementer. A setting passes the filters when its quality is at most 10 points below the role's best and its false measure is at most 0.6 per review (10 points for the explorer and the implementer) above the role's minimum. Score = quality - weight x false - 3 log2(cost / cheapest) - 3 log2(latency / fastest) over the passing settings, with weight 5 for a reviewer and 1 otherwise. Code and plan reviews of one role are averaged with equal weight. Each family's pick is its top-scoring passing setting, or its top scorer when none passes, which then goes second. The fallback tier is the average price tier (cheap = 1, mid = 2, powerful = 3) of the passing settings, rounded toward the cheaper tier, and the fallback effort is their most common effort, with a tie going to the higher effort (PI-MODEL-016). Pairwise quality judging does not enter the ranking.
+
+Each benchmarked role's entry in `ROLE_MODEL_DEFAULTS` (`src/orchestration/config/role-model-defaults.ts`) copies the Policy block that `bun run bench:rank` prints for it. A role without benchmark records keeps its coded preferences and falls back to the price tier of its first preference, at that preference's effort. Applied 2026-11-13 (user decision "Apply all"):
+
+| Role | Preferences, in order | Fallback | Evidence runs |
+|---|---|---|---|
+| `explorer` | gpt-6.1-sol low, claude-sonnet-5.5 low | mid, medium | `explorer-2026-11-13T21-20-04-158Z`, `explorer-2026-11-13T21-20-06-290Z` |
+| `reviewer` (ranked as `reviewer-quality`; every reviewer role without its own entry inherits it) | gpt-6.1-sol high, claude-opus-5.5 medium | mid, xhigh | `reviewer-code-quality-2026-11-11T01-03-13-088Z`, `T01-04-30-041Z`, `T05-15-25-509Z`, `T06-50-30-346Z`, `T15-32-09-950Z` |
+| `reviewer-elegance` | claude-opus-5.5 medium, gpt-6.1-sol medium | mid, medium | `reviewer-code-elegance-2026-11-11T21-48-22-147Z`, `reviewer-code-elegance-2026-11-12T00-44-54-328Z`, `reviewer-plan-elegance-2026-11-13T14-48-59-768Z` |
+| `reviewer-mechanism` | gpt-6.1-sol medium, claude-opus-5.5 medium | mid, medium | `reviewer-mechanism-2026-11-11T21-48-24-057Z` |
+| `implementer` | gpt-6-astra low, claude-fable-5.2 low (no Anthropic setting passes the filters) | mid, high | `implementer-2026-11-13T21-16-42-634Z`, `implementer-2026-11-13T21-16-44-771Z` |
+
+When a new setting is benchmarked, run `bun run bench:rank` again and copy any changed Policy block into the role's entry as an approved change. This replaces the 0.6 / 0.2 / 0.2 min-max composite of earlier drafts of the same day, which stretched small gaps.
+
 ## Chat methods (`chat-method-results.md`)
 
 Work methods for the parent Chat agent are judged end to end on 16 real Flywheel bugs with `bench/chat-ab/`: a blinded `claude-opus-5.5` judge compares each candidate change with the baseline change for the same task, in both slot orders. No measured method beats the shipped chat agent. A second sample of the primary code reviewer lost 5 pairs to 9, with 6 ties, at 20% more cost, because its extra findings made the chat widen its change past the request. Delegating all code to an implementer and a playbook procedure checklist matched baseline acceptance at 62% and 36% more cost per accepted result in an earlier POC. The 2026-10-23 challenge campaign in the same file sends a scripted user challenge after the first turn on four tasks, two where the simpler proposal is wrong and two where it is right; with the `design` skill's Challenge method the chat agent made the correct decision in 8 of 8 cells against 7 of 8 without it, and the one miss was a reverted correct fix.

@@ -165,7 +165,7 @@ describe("standalone benchmark admission", () => {
     expect(spy.captures).toBe(1);
     expect(spy.admitted?.has("gpt-6-luna")).toBe(true);
     expect(JSON.parse(output[0] ?? "{}").providerPlans).toMatchObject([
-      { role: "candidate", model: "gpt-6-luna", effort: "high" },
+      { role: "candidate", model: "gpt-6.1-sol", effort: "low" },
       { role: "candidate", model: "gpt-6-luna", effort: "high" },
       { role: "judge", model: "gpt-6.1-sol", effort: "high" },
     ]);

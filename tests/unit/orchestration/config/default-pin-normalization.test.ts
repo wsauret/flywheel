@@ -101,7 +101,7 @@ describe("default-pin normalization", () => {
     const rows = await listModelAssignments({
       ...deps({
         reviewer: { model: "gpt-6.1-sol", effort: "high" },
-        implementer: { model: "gpt-6.1-sol", effort: "medium" },
+        implementer: { model: "gpt-6-astra", effort: "low" },
       }),
       slots: [roleSlot("reviewer"), roleSlot("implementer"), roleSlot("explorer")],
     });
@@ -117,7 +117,7 @@ describe("default-pin normalization", () => {
         work: {
           roles: {
             reviewer: { model: "gpt-6.1-sol", effort: "medium" },
-            implementer: { model: "gpt-6.1-sol", effort: "medium" },
+            implementer: { model: "gpt-6-astra", effort: "low" },
           },
         },
       },
