@@ -37,6 +37,8 @@ const definition = {
   paidModes: ["prepaid", "automatic"],
   rank: 10,
   catalogId: undefined,
+  // Requests, the model catalog, and the usage read go to chatgpt.com; the token refresh goes to auth.openai.com.
+  apiHosts: ["chatgpt.com", "auth.openai.com"],
   dynamicCatalog: {
     limits: DEFAULT_DYNAMIC_CATALOG_LIMITS,
     extractRows: CHATGPT_CATALOG.extractRows,

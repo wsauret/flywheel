@@ -94,7 +94,7 @@ describe("Harbor config resolution", () => {
   });
 
   test.each([
-    ["OpenAI", "tb-mini-openai.toml", "gpt-6.1-terra", "medium", ["chatgpt"], [], ["chatgpt"]],
+    ["OpenAI", "tb-mini-openai.toml", "gpt-6.1-terra", "medium", ["chatgpt"], ["chatgpt.com", "auth.openai.com"], []],
     ["Claude", "tb-mini-claude.toml", "claude-sonnet-5.5", "medium", ["claude_agent_sdk"], ["api.anthropic.com"], []],
     ["DeepSeek board", "tb-board-deepseek-high.toml", "deepseek-v4.1-flash", "high", ["openrouter"], ["openrouter.ai"], []],
     ["FrontierHarness DeepSeek 1017", "fh-deepseek-1017-max.toml", "deepseek-v4.1-flash-1017", "max", ["deepseek", "opencode_go", "openrouter"], ["openrouter.ai"], ["deepseek", "opencode_go"]],

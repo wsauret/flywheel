@@ -102,6 +102,7 @@ describe("Harbor jobs", () => {
   test.each([
     ["OpenRouter", DEEPSEEK_ARM, ["openrouter.ai", "models.dev"]],
     ["Claude subscription", CLAUDE_ARM, ["api.anthropic.com", "models.dev"]],
+    ["ChatGPT subscription", ARM_CONFIG, ["chatgpt.com", "auth.openai.com", "models.dev"]],
   ])("an offline agent phase allows the %s arm's declared provider hosts and models.dev, and a benchmark without a wheelhouse has no wheelhouse step", async (_arm, arm, hosts) => {
     const builds: unknown[][] = [];
     const args = ["--benchmark", "deep-swe-1.1", "--arm", arm, "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--attempts", "1", "--allow-low-k"];
@@ -119,8 +120,8 @@ describe("Harbor jobs", () => {
   });
 
   test("an offline agent phase refuses an arm that enables a provider which declares no hosts, and names it", async () => {
-    const args = ["--benchmark", "deep-swe-1.1", "--arm", ARM_CONFIG, "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--hosted"];
-    await expect(prepareHarborRun(args, dependencies(temporaryDirectory("harbor-offline-refused-"), [], "no-network"))).rejects.toThrow("the arm enables providers that declare no API hosts: chatgpt");
+    const args = ["--benchmark", "deep-swe-1.1", "--arm", "bench/harbor/configs/fh-deepseek-1017-max.toml", "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--hosted"];
+    await expect(prepareHarborRun(args, dependencies(temporaryDirectory("harbor-offline-refused-"), [], "no-network"))).rejects.toThrow("the arm enables providers that declare no API hosts: deepseek, opencode_go");
   });
 
   test("an executing run in a round is recorded in the round at preparation with the round's identity and its purpose; a dry run is not", async () => {
