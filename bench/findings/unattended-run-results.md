@@ -28,7 +28,7 @@ An earlier audit found that much of the request gap on Terminal-Bench is probing
 
 ### Setup
 
-- Model: `claude-haiku-5.5` at high effort on the Claude subscription of the maintainer's auth profile. Subagents on, with the advisor, reviewer, and ship types off. Skills on. Arm config `bench/harbor/configs/haiku-high-agent-types.toml` (sha256 `2ac9ba3c92481dcfc55a8901039e6682924b139552ceb0e38d30394eece9da05`), the same file in every arm.
+- Model: `claude-haiku-5.5` at high effort on the Claude subscription of the maintainer's auth profile. Subagents on, with the advisor, reviewer, and ship types off. Skills on. Arm config: the settings of `bench/harbor/configs/haiku-high-agent-types.toml`, the same file in every arm. The arm branches ran a copy that differs only in its first comment line (sha256 `2ac9ba3c92481dcfc55a8901039e6682924b139552ceb0e38d30394eece9da05`).
 - Tasks: the 14 tasks of the `subset` split of `terminal-bench-2.1`, 3 trials per task, 42 trials per arm, 168 measured trials. Nine of the 14 tasks always pass or always fail on Haiku, so the pass rate is a guard, and the request counts are the primary outcome.
 - Base commit: `daca9bf56`. Each arm is one local worktree branch with its change committed on top. All four arms started together, at concurrency 4 each.
 - Arms. A1 and A2 add one bullet to the `WORKING UNATTENDED` prompt section, which only an unattended chat receives:
