@@ -1,0 +1,18 @@
+src/orchestration/app-service/model-assignment-service.ts
+  h_4b47e9e4a8b456 23-24,77-79,81,85-86,99
+src/orchestration/config/writer.ts
+  h_4b47e9e4a8b456 67-69,401
+tests/unit/orchestration/config/model-brief-pruning.test.ts
+  h_4b47e9e4a8b456 2,8-9,50,58-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6d2be54cbec0f0e1375d63a48f3a8c23f08480df",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
