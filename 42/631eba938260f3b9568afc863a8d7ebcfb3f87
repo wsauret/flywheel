@@ -1,0 +1,94 @@
+bench/chat-ab/workflow-authorship/patches/root-workflow-only.patch
+  h_4b47e9e4a8b456 4
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 262-266
+src/orchestration/modules/subagents.ts
+  h_4b47e9e4a8b456 12,100-104,193,206-210,283-284,287-290
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 81-83,189
+src/orchestration/session/conversation/tool-result-meta.ts
+  h_4b47e9e4a8b456 6,50-51,493
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 281-282,319
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 253-258,288-289,378-379
+src/orchestration/modules/subagents/execution/dispatch-deps.ts
+  h_4b47e9e4a8b456 10,56-58
+src/infra/output/structured-event-tool-results.ts
+  h_4b47e9e4a8b456 5,222-229,233,237,278-282
+src/orchestration/modules/learning.ts
+  h_4b47e9e4a8b456 67,87
+src/orchestration/modules/discovery.ts
+  h_4b47e9e4a8b456 7-8,10,28-29
+tests/unit/orchestration/agent-runtime/llm/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 113-123
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 7-8,436-437,456-471
+tests/unit/infra/output/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 80-89,92-96
+  h_4b47e9e4a8b456 90-91
+tests/unit/orchestration/agent-runtime/context/stale-tool-result-masker.test.ts
+  h_4b47e9e4a8b456 18-19,26-30,126,137-138,142-143
+tests/unit/orchestration/agent-runtime/llm/request-descriptor.test.ts
+  h_4b47e9e4a8b456 154-166
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 190-197
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 57,74,87,91-100,166
+tests/unit/orchestration/agent-runtime/subagent/prompts.test.ts
+  h_4b47e9e4a8b456 37
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 13,547-560
+tests/unit/orchestration/agent-runtime/shared-tree.test.ts
+  h_4b47e9e4a8b456 238-262
+src/orchestration/agent-runtime/tools/short-form.ts
+  h_4b47e9e4a8b456 1-54
+src/orchestration/modules/subagents/tool.ts
+  h_4b47e9e4a8b456 23,97,115
+src/infra/tools/tool-display-registry.ts
+  h_4b47e9e4a8b456 98-99,105-106
+  h_4b47e9e4a8b456 14,100-104
+tests/unit/orchestration/session/conversation-block-projection.test.ts
+  h_4b47e9e4a8b456 445,459
+tests/unit/orchestration/modules/code-mode/code.test.ts
+  h_4b47e9e4a8b456 117-119
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 94-97,100
+src/orchestration/modules/web.ts
+  h_4b47e9e4a8b456 22
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 524-527
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 194-195,220-222,239-242
+src/orchestration/modules/code-mode/module.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/modules/code-mode/code-mcp.test.ts
+  h_4b47e9e4a8b456 73-74
+src/orchestration/modules/development/module.ts
+  h_4b47e9e4a8b456 107
+tests/unit/orchestration/modules/provider-claude-agent-sdk/tool-gate.test.ts
+  h_4b47e9e4a8b456 8-9,13,40
+src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
+  h_4b47e9e4a8b456 24,102,109,176-177,190,196,207,210-211,246-247,270-272,274-301
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 24,233-256
+src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+  h_4b47e9e4a8b456 12-13,32,380,388-390,392-393
+src/orchestration/session/conversation/conversation-block-projection.ts
+  h_4b47e9e4a8b456 12,617-619
+src/protocol/client/tool-run-category.ts
+  h_4b47e9e4a8b456 37-39
+tests/unit/protocol/client/tool-run-category.test.ts
+  h_4b47e9e4a8b456 30-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "42631eba938260f3b9568afc863a8d7ebcfb3f87",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
