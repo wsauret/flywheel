@@ -1,10 +1,13 @@
 import { parseSchema } from "../../../helpers/schema-assertions.js";
 import { describe, expect, it } from "bun:test";
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
+import { modelsSnapshotFile } from "../../../../src/infra/paths.js";
 import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
-import { selectRoleModelDefault } from "../../../../src/orchestration/config/role-model-defaults.js";
+import { reachableRoleModelDefaults, type RoleModelPreferences, selectRoleModelDefault } from "../../../../src/orchestration/config/role-model-defaults.js";
 import { resolveRoles } from "../../../../src/orchestration/config/role-resolution.js";
 import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
-import { tierOptions } from "./_config-models-fixtures.js";
+import { tierOptions, withTempDir } from "./_config-models-fixtures.js";
 
 const bothProviders = new Map<ModelFamily, ReadonlySet<string>>([
   ["openai", new Set(["deepseek-v4.1-flash", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"])],
@@ -24,7 +27,7 @@ const sonnetOnly = new Map<ModelFamily, ReadonlySet<string>>([
 ]);
 
 describe("role model defaults", () => {
-  it("selects the OpenAI preference with its effort when both preferences are listed", () => {
+  it("selects each shipped role's first preference, OpenAI today, with its effort when both preferences are listed", () => {
     expect(selectRoleModelDefault("explorer", bothProviders)).toMatchObject({ model: "gpt-6-luna", effort: "high" });
     expect(selectRoleModelDefault("reviewer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
     expect(selectRoleModelDefault("reviewer-quality", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
@@ -39,6 +42,14 @@ describe("role model defaults", () => {
     expect(selectRoleModelDefault("subagent-summary", bothProviders)).toMatchObject({ model: "gpt-6-luna", effort: "low" });
     expect(selectRoleModelDefault("benchmark-judge", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
     expect(selectRoleModelDefault("chat", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
+  });
+
+  it("follows the role's own order, so an Anthropic-first role resolves to its Anthropic model when both are listed", () => {
+    const anthropicFirst: RoleModelPreferences = [
+      { family: "anthropic", model: "claude-opus-5.5", effort: "high" },
+      { family: "openai", model: "gpt-6.1-sol", effort: "low" },
+    ];
+    expect(reachableRoleModelDefaults(anthropicFirst, bothProviders)[0]).toEqual({ model: "claude-opus-5.5", effort: "high", family: "anthropic" });
   });
 
   it("returns undefined without a listed preference", () => {
@@ -86,6 +97,19 @@ describe("role model defaults", () => {
     expect(roles.get("chat")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
     expect(roles.get("advisor")).toMatchObject({ model: "gpt-5.5", effort: "high" });
     expect(roles.get("learning-review")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
+  });
+
+  it("prices a coded model from the bundled document when the admitted archive has no row for it", async () => {
+    await withTempDir(async (userDataRoot) => {
+      const withoutLuna: unknown = JSON.parse(await Bun.file("src/infra/llm/models-bundled.txt").text(), (key, value: unknown) => key === "gpt-6-luna" ? undefined : value);
+      await mkdir(dirname(modelsSnapshotFile(userDataRoot)), { recursive: true });
+      await Bun.write(modelsSnapshotFile(userDataRoot), JSON.stringify(withoutLuna));
+
+      const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), new Map<ModelFamily, ReadonlySet<string>>([
+        ["openai", new Set(["gpt-5.5", "gpt-5.4", "gpt-5-mini"])],
+      ]), { ...tierOptions, userDataRoot });
+      expect(roles.get("explorer")).toMatchObject({ model: "gpt-5-mini", effort: "high" });
+    });
   });
 
   it("uses reachable saved models, clamps unsupported effort, and skips an unreachable pair whole", async () => {

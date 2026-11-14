@@ -1,0 +1,59 @@
+diff --git a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+--- a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
++++ b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+@@ -260,7 +260,7 @@
+     return { place, key: hostKey(place), cwd, stepEffort: values.effort };
+   };
+ 
+-  const stream = async (view: CliView, signal: AbortSignal, input: HostedRequestInput): Promise<AsyncIterable<Anthropic.RawMessageStreamEvent | TransportContextFrame>> => {
++  const stream = async (view: CliView, signal: AbortSignal, input: HostedRequestInput, onProgress: () => void): Promise<AsyncIterable<Anthropic.RawMessageStreamEvent | TransportContextFrame>> => {
+     const { place, key, cwd, stepEffort } = placement(view);
+     const { requestContext } = input;
+     if (held?.key !== key) {
+@@ -389,7 +389,7 @@
+       const toolUseIds = answer.message.content.flatMap((block) => block.type === "tool_use" ? [block.id] : []);
+       if (current.phase.kind === "running") current.phase = answer.stopReason === "tool_use" ? { kind: "parked", toolUseIds } : { kind: "idle" };
+       config.recordOutcome("served");
+-    });
++    }, onProgress);
+     // The record takes the dispatcher's requests that the host holds now, and waits for none.
+     const transportRecord = (): TransportContextFrame => ({
+       type: "transport_context",
+@@ -446,7 +446,7 @@
+       };
+       requestSignal.addEventListener("abort", settle, { once: true });
+       try {
+-        const data = await stream(cliView(params, options.origins, config.projectRoot), requestSignal, options);
++        const data = await stream(cliView(params, options.origins, config.projectRoot), requestSignal, options, () => { options.onProgress?.(); });
+         return { data: Object.assign(data, { controller }), response: new Response(null) };
+       } catch (error) {
+         settle();
+diff --git a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts
+--- a/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts
++++ b/src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts
+@@ -11,7 +11,7 @@
+ const ROW_POLL_MS = 20;
+ /** The longest wait for the engine's row of a block that the step already streamed. The engine writes it within
+  *  moments of the block's end. */
+-const ROW_BOUND_MS = 10_000;
++const ROW_BOUND_MS = 60_000;
+ 
+ /** One event of an admitted step, as the host gate hands it on. */
+ export type StepEvent =
+@@ -41,7 +41,7 @@
+  *
+  * @yields {Anthropic.RawMessageStreamEvent} The Anthropic stream events of the response.
+  */
+-export async function* hostedStreamEvents(events: AsyncIterable<StepEvent>, rows: AgentRows, from: number, model: string, failure: () => Promise<Error>, onAnswer: (answer: HostedAnswer) => void): AsyncGenerator<Anthropic.RawMessageStreamEvent> {
++export async function* hostedStreamEvents(events: AsyncIterable<StepEvent>, rows: AgentRows, from: number, model: string, failure: () => Promise<Error>, onAnswer: (answer: HostedAnswer) => void, onProgress: () => void): AsyncGenerator<Anthropic.RawMessageStreamEvent> {
+   const content: CliBlock[] = [];
+   let open: OpenBlock | undefined;
+   let started = false;
+@@ -56,6 +56,7 @@
+         return block;
+       }
+       if (Date.now() > deadline) throw new LlmStreamError(`The ${CLAUDE_AGENT_SDK_LABEL} agent host wrote no row for a signed block of the response`, "transient");
++      onProgress();
+       await Bun.sleep(ROW_POLL_MS);
+     }
+   };

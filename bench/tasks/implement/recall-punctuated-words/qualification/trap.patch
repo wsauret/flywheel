@@ -1,0 +1,12 @@
+diff --git a/src/orchestration/session/conversation-recall.ts b/src/orchestration/session/conversation-recall.ts
+--- a/src/orchestration/session/conversation-recall.ts
++++ b/src/orchestration/session/conversation-recall.ts
+@@ -237,7 +237,7 @@
+ // "foo OR bar", which does. A query that reduces to zero tokens yields an empty
+ // match string, which the search treats as no hits. If the OR-joined expression
+ // still throws, the infra search retries the raw query as a single quoted phrase.
+-const FTS5_OPERATOR_CHARS = /["():^*-]|\bAND\b|\bOR\b|\bNOT\b|\bNEAR\b/gi
++const FTS5_OPERATOR_CHARS = /["():^*./-]|\bAND\b|\bOR\b|\bNOT\b|\bNEAR\b/gi
+ 
+ export function buildFtsMatch(query: string): string {
+   return query

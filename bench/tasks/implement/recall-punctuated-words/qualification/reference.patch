@@ -1,0 +1,185 @@
+diff --git a/src/infra/conversation-recall-search.ts b/src/infra/conversation-recall-search.ts
+index 3492c338c..ed58d8a89 100644
+--- a/src/infra/conversation-recall-search.ts
++++ b/src/infra/conversation-recall-search.ts
+@@ -1,4 +1,4 @@
+-import { SQLiteError, type Database } from "bun:sqlite"
++import type { Database } from "bun:sqlite"
+ import { CONVERSATION_FTS_TABLE } from "./conversation-fts.js"
+ 
+ export interface RecallSearchHit {
+@@ -14,12 +14,9 @@ export interface RecallSearchQuery {
+   /** Inclusive primary snapshot ceiling, shared by page and count. */
+   upperPosition: number
+   conversationId: string
+-  /** FTS5 MATCH expression, already sanitized by the caller (the session layer
+-   *  builds it via buildFtsMatch; see the FTS5 MATCH contract). */
++  /** FTS5 MATCH expression that the caller built with buildFtsMatch (see its
++   *  FTS5 MATCH contract); this module runs it as given. */
+   match: string
+-  /** The agent's original raw query, used only for the quoted-phrase fallback
+-   *  when the sanitized `match` still throws an FTS5 syntax error. */
+-  rawQuery: string
+   /** When set, restrict to these entry ids (the active-branch lineage scope).
+    *  When undefined, search the whole conversation (scope:all). */
+   entryIds?: ReadonlySet<string>
+@@ -56,9 +53,8 @@ export interface TranscriptIndexHit extends RecallSearchHit {
+ 
+ export interface TranscriptIndexQuery {
+   upperPosition: number
+-  /** FTS5 MATCH expression, sanitized by the caller as for recall. */
++  /** FTS5 MATCH expression, built by the caller as for recall. */
+   match: string
+-  rawQuery: string
+   /** The conversations to search; undefined searches every conversation in
+    *  the store, which is every session of the project. */
+   conversationIds?: ReadonlySet<string>
+@@ -89,10 +85,9 @@ export function searchTranscriptIndex(db: Database, query: TranscriptIndexQuery)
+     order by rank
+     limit $limit offset $offset
+   `
+-  return runWithFtsFallback(db, query, scope, (match, params) =>
+-    db.query<RecallSearchSqlRow & { conversation_id: string }, [SqlParameters]>(sql)
+-      .all({ ...params, $match: match, $limit: query.limit, $offset: query.offset ?? 0 })
+-      .map((r) => ({ conversationId: r.conversation_id, entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank })))
++  return db.query<RecallSearchSqlRow & { conversation_id: string }, [SqlParameters]>(sql)
++    .all({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition, $limit: query.limit, $offset: query.offset ?? 0 })
++    .map((r) => ({ conversationId: r.conversation_id, entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank }))
+ }
+ 
+ export function countTranscriptIndex(db: Database, query: TranscriptIndexQuery): number {
+@@ -103,10 +98,8 @@ export function countTranscriptIndex(db: Database, query: TranscriptIndexQuery):
+     from ${CONVERSATION_FTS_TABLE}
+     where ${CONVERSATION_FTS_TABLE} match $match${scope.clause} and source_position <= $upperPosition
+   `
+-  return runWithFtsFallback(db, query, scope, (match, params) => {
+-    const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...params, $match: match })
+-    return row?.total ?? 0
+-  })
++  const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition })
++  return row?.total ?? 0
+ }
+ 
+ /** The tool use id a tool result row names: the index stores a result as
+@@ -131,32 +124,6 @@ function buildScopePredicate(query: RecallSearchQuery): ScopePredicate | null {
+   return { clause: ` and conversation_id = $conversationId and entry_id in (${placeholders})`, params }
+ }
+ 
+-// Runs `match` against the FTS table with the scope predicate, retrying the raw
+-// query as a single quoted phrase if the sanitized expression is FTS5-invalid.
+-// Both the page-window search and the count run through this so the
+-// quoted-phrase fallback is applied identically to each.
+-function runWithFtsFallback<T>(
+-  db: Database,
+-  query: { match: string; rawQuery: string; upperPosition: number },
+-  scope: ScopePredicate,
+-  run: (match: string, params: SqlParameters) => T,
+-): T {
+-  try {
+-    return run(query.match, { ...scope.params, $upperPosition: query.upperPosition })
+-  } catch (err) {
+-    // Repair-when-semantics-are-clear: a residual FTS5 MATCH parse error falls
+-    // back to the raw query as a single quoted phrase, which FTS5 always parses
+-    // literally. FTS5 surfaces parse failures under several SQLiteError messages
+-    // ("fts5: syntax error", "unterminated string", "unknown special query");
+-    // each is a MATCH-expression parse failure, so all repair the same way.
+-    // Re-throw anything that is not an FTS5 MATCH parse error.
+-    if (err instanceof SQLiteError && isFtsMatchParseError(err.message)) {
+-      return run(`"${query.rawQuery.replace(/"/g, '""')}"`, { ...scope.params, $upperPosition: query.upperPosition })
+-    }
+-    throw err
+-  }
+-}
+-
+ export function searchConversationRecall(db: Database, query: RecallSearchQuery): RecallSearchHit[] {
+   // Named params throughout, matching the whole codebase (event-store-search.ts).
+   // The lineage allowlist is pushed INTO the SQL so FTS5 ranks only in-scope
+@@ -173,10 +140,9 @@ export function searchConversationRecall(db: Database, query: RecallSearchQuery)
+     order by rank
+     limit $limit offset $offset
+   `
+-  return runWithFtsFallback(db, query, scope, (match, params) =>
+-    db.query<RecallSearchSqlRow, [SqlParameters]>(sql)
+-      .all({ ...params, $match: match, $limit: query.limit, $offset: query.offset ?? 0 })
+-      .map((r) => ({ entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank })))
++  return db.query<RecallSearchSqlRow, [SqlParameters]>(sql)
++    .all({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition, $limit: query.limit, $offset: query.offset ?? 0 })
++    .map((r) => ({ entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank }))
+ }
+ 
+ // True total number of in-scope matches, independent of any page window. The
+@@ -192,12 +158,6 @@ export function countConversationRecall(db: Database, query: RecallSearchQuery):
+     from ${CONVERSATION_FTS_TABLE}
+     where ${CONVERSATION_FTS_TABLE} match $match${scope.clause} and source_position <= $upperPosition
+   `
+-  return runWithFtsFallback(db, query, scope, (match, params) => {
+-    const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...params, $match: match })
+-    return row?.total ?? 0
+-  })
+-}
+-
+-function isFtsMatchParseError(message: string): boolean {
+-  return /fts5: syntax error|unterminated string|unknown special query/.test(message)
++  const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition })
++  return row?.total ?? 0
+ }
+diff --git a/src/orchestration/session/conversation-recall.ts b/src/orchestration/session/conversation-recall.ts
+index 65401af94..899698011 100644
+--- a/src/orchestration/session/conversation-recall.ts
++++ b/src/orchestration/session/conversation-recall.ts
+@@ -51,7 +51,6 @@ export function createConversationRecall(deps: RecallDeps): RecallPort {
+         upperPosition,
+         conversationId: deps.conversationId,
+         match: buildFtsMatch(raw),
+-        rawQuery: raw,
+         ...(entryIds ? { entryIds } : {}),
+         limit: RECALL_PAGE_SIZE + 1,
+         offset: (page - 1) * RECALL_PAGE_SIZE,
+@@ -228,23 +227,20 @@ function expandedRecallRecord(entry: RecallEntry, index: number, offset: number,
+   }
+ }
+ 
+-// FTS5 MATCH contract: REPLACE FTS5 operator characters with a space (not
+-// delete), then tokenize on whitespace, drop empties, and OR-join the survivors
+-// (multi-word OR semantics). Replacing with a space is load-bearing: the
+-// `porter unicode61` tokenizer splits content on `-`, so "foo-bar" is indexed as
+-// the terms foo + bar. Deleting the hyphen would glue the query into the bareword
+-// "foobar", which can never match the tokenized content; replacing it yields
+-// "foo OR bar", which does. A query that reduces to zero tokens yields an empty
+-// match string, which the search treats as no hits. If the OR-joined expression
+-// still throws, the infra search retries the raw query as a single quoted phrase.
+-const FTS5_OPERATOR_CHARS = /["():^*-]|\bAND\b|\bOR\b|\bNOT\b|\bNEAR\b/gi
+-
++/** FTS5 MATCH contract: split the query on whitespace and OR-join each word as
++ *  an FTS5 string literal, with every `"` doubled. FTS5 runs a string literal
++ *  through the table tokenizer (`porter unicode61`) as a phrase, so a word that
++ *  holds punctuation matches the content it names: "3.11" matches the terms
++ *  3 + 11, "feature-flag" matches feature + flag, and an operator word such as
++ *  OR is a plain term. Punctuation and operator words thus cannot make the
++ *  result an FTS5 syntax error. A blank
++ *  query yields an empty string, which FTS5 rejects, so a caller must not
++ *  search with it. */
+ export function buildFtsMatch(query: string): string {
+   return query
+-    .replace(FTS5_OPERATOR_CHARS, " ")
+     .split(/\s+/)
+-    .map((t) => t.trim())
+-    .filter((t) => t.length > 0)
++    .filter((word) => word.length > 0)
++    .map((word) => `"${word.replace(/"/g, '""')}"`)
+     .join(" OR ")
+ }
+ interface StringMap<T> { [key: string]: T }
+diff --git a/src/orchestration/session/transcript-search.ts b/src/orchestration/session/transcript-search.ts
+index 847f8d4c8..70d65cd31 100644
+--- a/src/orchestration/session/transcript-search.ts
++++ b/src/orchestration/session/transcript-search.ts
+@@ -54,7 +54,7 @@ export function createTranscriptSearch(deps: TranscriptSearchDeps): TranscriptSe
+       conversationIds = new Set([conversationId])
+     }
+     const connection = await deps.index.through(upperPosition)
+-    const query = { upperPosition, match, rawQuery: request.query, ...(conversationIds ? { conversationIds } : {}), limit: TRANSCRIPT_SEARCH_PAGE_SIZE, offset: (page - 1) * TRANSCRIPT_SEARCH_PAGE_SIZE }
++    const query = { upperPosition, match, ...(conversationIds ? { conversationIds } : {}), limit: TRANSCRIPT_SEARCH_PAGE_SIZE, offset: (page - 1) * TRANSCRIPT_SEARCH_PAGE_SIZE }
+     const hits = searchTranscriptIndex(connection, query).flatMap((hit): TranscriptSearchHit[] => {
+       const session = byConversation.get(hit.conversationId)
+       // A conversation no session lists is one being deleted or a child the

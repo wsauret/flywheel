@@ -51,6 +51,8 @@ import { assembleInitialRequestContextWithSessionNotes, createRuntimeSessionNote
 import { resolveCapturedRole } from "../config/role-resolution.js";
 import { createModelFallbackNotice } from "./model-fallback-notice.js";
 import { ModelUnavailable } from "./errors.js";
+import { AllCandidatesExhaustedError } from "./llm/errors.js";
+import type { CapacityReset } from "../../infra/llm/provider-error-copy.js";
 import { commitToolNotice, toolNotice } from "./tool-notice.js";
 import { createCapabilityNarrowing, narrowingStatements, recordingNarrowings } from "./capability-narrowing.js";
 import { agentTypesTurnedOffSince } from "../app-service/definition-availability.js";
@@ -179,6 +181,28 @@ function treeLifetime(lifetime: ProviderSessionLifetime, runScope: Scope.Scope |
  *  a failure summary. */
 function headlessPromptOf(purpose: AgentOptions["purpose"]) {
   return "prompt" in purpose ? purpose.prompt : undefined;
+}
+
+/** Whether this run's requests pass over a role preference whose quota is spent (PI-MODEL-087): an agent's do, a chat
+ *  keeps its own model, and an unattended run never changes model (PI-AGENT-128). */
+function passesSpentPreferences(options: AgentOptions): boolean {
+  const agent = options.purpose.kind === "workflow-agent" || options.purpose.kind === "workflow-follow-up" || options.purpose.kind === "subagent";
+  return agent && options.capabilityAccess?.unattended !== true;
+}
+
+/** Rethrows the failure of an agent's request whose role walk passed over every spent preference and still found no
+ *  candidate as the role's, at the earliest moment that a preference serves again (`spentUntil`, when none serves on
+ *  standing), so its agent waits until then instead of resolving its role again at once (PI-MODEL-039,
+ *  ARCH-RUNTIME-082). */
+function throwAsRoleFailure(error: unknown, spentUntil: CapacityReset | undefined): never {
+  if (!(error instanceof AllCandidatesExhaustedError) || error.recovery.kind !== "at") throw error;
+  throw new AllCandidatesExhaustedError({
+    message: error.message,
+    ...(error.detail === undefined ? {} : { detail: error.detail }),
+    ...(error.copy === undefined ? {} : { copy: error.copy }),
+    recovery: spentUntil === undefined || error.recovery.atMs <= spentUntil.atMs ? error.recovery : { ...error.recovery, ...spentUntil },
+    noPreferenceServes: true,
+  });
 }
 
 /** What plans the tools of a run's requests: the run's source, its session identity, the shared state of its chat
@@ -430,17 +454,19 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
     const runtimeConfig = capture?.runtimeConfig ?? requestedConfig;
     if (turn && options.onRuntimeConfigCapture) await options.onRuntimeConfigCapture(runtimeConfig);
     const setting = authored.setting ?? authored;
+    const standing = passesSpentPreferences(options) ? capture?.standing : undefined;
     const resolved = capture && options.requestSelection
       ? await resolveCapturedRole(authored.roleId ?? "chat", {
         model: setting.model, effort: setting.effort, provider_options: setting.providerOptions, fixedEffort: authored.setting?.fixedEffort,
-      }, { selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes }, options.userDataRoot)
+      }, { selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes }, options.userDataRoot,
+      standing)
       : undefined;
     if (resolved && resolved.kind !== "selected") throw new ModelUnavailable({
       missing: resolved.kind === "access-pending" ? "access" : "provider",
       message: resolved.kind === "access-pending" ? "Model access is still being checked." : "The active profile has no reachable model.",
     });
     const selection = resolved?.kind === "selected" ? { ...resolved.role, effort: mapEffort(resolved.role.effort) } : authored;
-    if (resolved?.kind === "selected") await turn?.recordServingSelection?.({ saved: authored.setting?.model, model: resolved.role.model, effort: selection.effort });
+    if (resolved?.kind === "selected") await turn?.recordServingSelection?.({ saved: authored.setting?.model, model: resolved.role.model, effort: selection.effort, ...(resolved.passed === undefined ? {} : { passed: resolved.passed }) });
     const { model, providerOptions } = selection;
     if (!model) throw new ModelUnavailable({ missing: "provider", message: "The active profile has no reachable model." });
     const capturedCreateLLMClient = resolved?.kind === "selected" && capture
@@ -456,10 +482,12 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       { lifetime: providerSessionLifetime });
     const client = turn ? withTurnRequestScope(cachedClient, turn.usage.usageTracker) : cachedClient;
     const interactionProfile = resolveModelInteractionProfile(cachedClient.model, cachedClient.modelFamily);
-    // The cached client can outlive the eligibility and the training-route permission that it was built on, so this
-    // request admits on its own capture of both.
-    const admittedRequest = await client.admitRequest(capture === undefined ? undefined : { eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes });
-    const plannedAttempt = await admittedRequest.plannedAttempt(providerOptions);
+    // The cached client can outlive the eligibility, the training-route permission, and the spend admission that it was
+    // built on, so this request admits on its own capture of each, the one that its role selection read.
+    const admittedRequest = await client.admitRequest(capture === undefined ? undefined : { eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes, requestAdmission: capture.requestAdmission });
+    const plannedAttempt = resolved?.kind === "selected" && standing !== undefined
+      ? await admittedRequest.plannedAttempt(providerOptions).catch((error: unknown) => throwAsRoleFailure(error, resolved.spentUntil))
+      : await admittedRequest.plannedAttempt(providerOptions);
     const mainRoute = modelRequestRoute(client, providerOptions);
     return {
       mainRoute,

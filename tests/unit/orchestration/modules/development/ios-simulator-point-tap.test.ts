@@ -29,6 +29,8 @@ describe("iOS simulator point tap", () => {
         "31",
         "-y",
         "88",
+        "--tap-style",
+        "physical",
         "--udid",
         "F9CD63C0-F6CE-49FD-9434-AC90845999CD",
       ],

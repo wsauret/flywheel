@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "summary": "Stop hosted subagents on the Claude subscription route from failing with \"wrote no row for a signed block of the response\" when the model writes for a long time after it thinks.",
+  "context": {
+    "key_files": [
+      "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts: the hosted agent's stream() wrapper and the adapter request options",
+      "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts: hostedStreamEvents re-encodes one hosted step as Anthropic stream events",
+      "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.ts: AgentRows reads the engine's rows of signed blocks",
+      "tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts and tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.test.ts: existing hosted agent tests"
+    ],
+    "patterns": [
+      "Stream failures that a retry can fix are LlmStreamError with kind \"transient\".",
+      "The shared Anthropic adapter ends a response whose reasoning stalls past its deadline unless the transport reports progress through StreamOptions.onProgress."
+    ],
+    "constraints": [
+      "Hosted subagents on the Claude subscription route fail with \"The Anthropic Subscription agent host wrote no row for a signed block of the response\" when the model thinks and then writes for more than about ten seconds. One benchmark experiment lost 326 responses this way. Make these responses complete.",
+      "The engine writes the signed row of each thinking block within moments of that block's end, as the ROW_BOUND_MS comment states. The ten-second bound is simply too tight for slow disks, so the bound is the only defect.",
+      "Keep the exported signature hostedStreamEvents(events, rows, from, model, failure, onAnswer, onProgress), where onProgress is a new seventh parameter of type () => void; acceptance tests call it with exactly these seven arguments.",
+      "Anthropic event order must hold: a thinking block's signature_delta and content_block_stop come before any event of a later block."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "row-wait",
+      "goal": "Give the engine enough time to write a signed block's row and report the wait as progress.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts",
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts"
+      ],
+      "tasks": [
+        {
+          "id": "raise-row-bound",
+          "description": "In agent-bridge.ts, where the hosted stream waits for the row of a signed block, raise ROW_BOUND_MS from 10_000 to 60_000 so that a slow write after thinking fits inside the bound. Update the comment to say the engine writes the row within a minute of the block's end.",
+          "files": [
+            "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts"
+          ],
+          "test_scenarios": [
+            "A response that writes for 30 seconds after its thinking completes.",
+            "A response whose row never arrives still fails transient with \"wrote no row\"."
+          ]
+        },
+        {
+          "id": "report-progress",
+          "description": "Add the onProgress parameter to hostedStreamEvents and call it on every poll while the stream waits for a row, so that the adapter's thinking-stall deadline does not end a response while its row is pending. Pass () => { options.onProgress?.(); } from agent-bridge.ts.",
+          "files": [
+            "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts",
+            "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts"
+          ],
+          "test_scenarios": [
+            "A response that generates past the adapter's reasoning deadline while a row is pending completes.",
+            "A response that stops sending chunks still fails as a thinking stall."
+          ]
+        }
+      ],
+      "verification": "bun test --preload ./tests/preload.ts ./tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts ./tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.test.ts",
+      "qualitative_verification": "The longer bound and the progress reports are the only behavior change."
+    }
+  ],
+  "success_criteria": [
+    "A hosted response streams completely however long the model writes after its thinking, in Anthropic event order, with each thinking block's signature or redacted data from the engine's row.",
+    "A signed row that is still missing after the step's stop chunk fails transient with \"wrote no row\"; a step that ends without a stop chunk fails with the service's answer.",
+    "A response that keeps producing chunks is not ended as a thinking stall while it waits for a row, and a response that stops producing chunks still is.",
+    "The existing hosted agent tests pass."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "evidence-over-plan",
+        "text": "Treat the plan's statements as claims to check against the source and correct them when the source contradicts them.",
+        "completion_check": "The final handoff names each plan deviation and the source evidence for it."
+      },
+      {
+        "id": "pinned-surface",
+        "text": "Keep hostedStreamEvents exported from agent-stream.ts with the seven-parameter signature in context.constraints.",
+        "completion_check": "agent-stream.ts exports hostedStreamEvents(events, rows, from, model, failure, onAnswer, onProgress)."
+      }
+    ]
+  }
+}

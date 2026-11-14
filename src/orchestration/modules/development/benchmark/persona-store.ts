@@ -53,7 +53,7 @@ function validate(manifest: Manifest, events: readonly Event[]): void {
   validateRuns(plan, tasks, events.filter(event => event.kind === "agent-run"));
   validateAttempts(plan, tasks, events.filter(event => event.kind === "agent-run-attempt"));
   validateJudgeAttempts(plan, tasks, events.filter(event => event.kind === "judge-attempt"));
-  validateScoreCells(plan, tasks, events.filter(event => event.kind === "pair-score" || event.kind === "review-score" || event.kind === "trap-score"));
+  validateScoreCells(plan, tasks, events.filter(event => event.kind === "pair-score" || event.kind === "review-score" || event.kind === "trap-score" || event.kind === "research-score"));
   for (const event of events) {
     if (event.kind === "cell-roles" && (!tasks.has(event.task) || !plan.variants.some(({ id }) => id === event.variant) || event.repeat >= plan.repeats)) {
       throw new Error("Role evidence names an unscheduled persona cell");
@@ -80,7 +80,7 @@ export async function createPersonaStore(location: RunStoreLocation, config?: Ru
     async loadRuns() { return (await ledger.load()).filter(event => event.kind === "agent-run"); },
     async loadAttempts() { return (await ledger.load()).filter(event => event.kind === "agent-run-attempt"); },
     async loadJudgeAttempts() { return (await ledger.load()).filter(event => event.kind === "judge-attempt"); },
-    async loadScores() { return (await ledger.load()).filter(event => event.kind === "pair-score" || event.kind === "review-score" || event.kind === "trap-score"); },
+    async loadScores() { return (await ledger.load()).filter(event => event.kind === "pair-score" || event.kind === "review-score" || event.kind === "trap-score" || event.kind === "research-score"); },
     appendRun: ledger.append, appendAttempt: ledger.append, appendJudgeAttempt: ledger.append, appendScore: ledger.append, appendRoles: ledger.append,
     async writeArtifact(name, text) {
       await writeArtifactFile(join(await realDirectoryUnder(location.resultsRoot, directory, "The benchmark results directory"), name), text);

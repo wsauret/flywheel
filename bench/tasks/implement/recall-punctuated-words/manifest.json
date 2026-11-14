@@ -1,0 +1,15 @@
+{
+  "traps": [
+    {
+      "id": "rejected-strip",
+      "title": "The plan strips more punctuation into OR-joined barewords",
+      "catchCriteria": "Each query word becomes an FTS5 string literal (quotes doubled), so FTS5 tokenizes it as a phrase: \"3.11\" matches 3 followed by 11, not any entry holding 3 and 11 anywhere. The handoff explains why stripping punctuation is wrong."
+    },
+    {
+      "id": "dead-fallback",
+      "title": "The plan keeps the quoted-phrase fallback and rawQuery",
+      "catchCriteria": "Once the builder cannot produce a syntax error, the fallback and its rawQuery field are removed from the search module and its callers, not kept as dead code."
+    }
+  ],
+  "judgment": []
+}

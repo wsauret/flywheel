@@ -5,6 +5,7 @@ import type { ImplementCandidate } from "./implement-scoring.js";
 import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "./json-lines.js";
 import { ensuredDirectoryUnder, realDirectoryUnder } from "./paths.js";
 import { BenchmarkAccountingSchema, BenchmarkCampaignIdentitySchema } from "./evidence.js";
+import { ResearchScoreSchema } from "./research-scoring.js";
 
 // Stored records are decoded with onExcessProperty: "error" so a record from
 // a superseded shape (e.g. the removed provider field) fails loudly instead
@@ -124,6 +125,7 @@ const JudgeScoreIdentitySchema = Schema.Union([
   }),
   Schema.Struct({ kind: Schema.Literal("review-score"), variant: Schema.String, task: Schema.String, repeat: RepeatSchema }),
   Schema.Struct({ kind: Schema.Literal("trap-score"), variant: Schema.String, task: Schema.String, repeat: RepeatSchema }),
+  Schema.Struct({ kind: Schema.Literal("research-score"), variant: Schema.String, task: Schema.String, repeat: RepeatSchema }),
 ]);
 
 /** One logical judge call. judge-attempts.jsonl is the sole accounting
@@ -192,6 +194,13 @@ const ScoreRecordSchema = Schema.Union([
     persona: Schema.String,
     error: Schema.Null,
     score: ImplementScoreSchema,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("research-score"),
+    mode: Schema.Literal("research"),
+    persona: Schema.String,
+    error: Schema.Null,
+    score: ResearchScoreSchema,
   }),
 ]);
 
@@ -543,7 +552,7 @@ export async function openReadOnlyRunEvidence(location: RunStoreLocation): Promi
     }
     const assertScoreIdentity = (score: JudgeScoreIdentity): void => {
       const allowed = config.mode === "research"
-        ? score.kind === "pair-score"
+        ? score.kind === "pair-score" || score.kind === "research-score"
         : config.mode === "reviewer"
           ? score.kind === "review-score"
           : score.kind === "pair-score" || score.kind === "trap-score";

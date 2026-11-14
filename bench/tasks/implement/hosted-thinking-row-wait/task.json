@@ -1,0 +1,30 @@
+{
+  "id": "hosted-thinking-row-wait",
+  "stratum": "trapped-restore",
+  "sandbox": {
+    "commit": "afa11881c8eecca06ed5e429dc2e3dec65ab4c11",
+    "paths": [
+      "src",
+      "tests/helpers",
+      "tests/preload.ts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      ".gitignore",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json",
+      "tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts",
+      "tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.test.ts"
+    ],
+    "setup": [
+      [
+        "bun",
+        "install",
+        "--ignore-scripts",
+        "--backend=hardlink"
+      ]
+    ]
+  }
+}

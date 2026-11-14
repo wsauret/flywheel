@@ -4,6 +4,7 @@ import { bytesIdentity, directoryIdentity, structuredIdentity } from "./content-
 import { loadImplementTasks, PLAN_FILE, type ImplementTaskSpec } from "./implement-task.js";
 import { immutableGitObjectSelector, objectValue, type CommitSnapshot } from "./task-schema.js";
 import { containedPath, isPresent, realDirectoryUnder, realFileUnder } from "./paths.js";
+import { loadResearchTasks, type ResearchAnswerKey } from "./research-task.js";
 
 /** What a persona's cells produce and how they are scored. */
 export const BENCHMARK_MODES = ["research", "reviewer", "implement"] as const;
@@ -18,9 +19,11 @@ export interface BenchmarkTask {
 }
 
 /** A research task studies the benchmarked project itself, so its trial reads
- *  `snapshot`, a pinned commit restricted to an explicit path list. */
+ *  `snapshot`, a pinned commit restricted to an explicit path list. A task with
+ *  an answer key is also scored for fact recall, asserted traps, and citations. */
 export interface ResearchTask extends BenchmarkTask {
   snapshot: CommitSnapshot;
+  answerKey?: ResearchAnswerKey;
 }
 
 export interface ReviewDefect {
@@ -108,7 +111,9 @@ export const RESEARCH_SNAPSHOT: CommitSnapshot = {
  *  can be neither resumed nor rescored: its report would mix two corpora. */
 export const RESEARCH_TASKS_CHANGED = "Benchmark campaign identity changed: its research tasks do not match the current suite, which reads the corpus pinned by RESEARCH_SNAPSHOT. A campaign created before that pin, or under another pin or other prompts, is read-only evidence; start a new campaign";
 
-/** Read-only explorer research tasks, all reading RESEARCH_SNAPSHOT. */
+/** Read-only open-ended explorer research tasks, all reading RESEARCH_SNAPSHOT
+ *  and scored only by pairwise preference. The answer-key tasks live in the
+ *  catalog's `researchTasksDir`, each with its own pin. */
 const TASKS_BY_PERSONA: TasksByPersona = {
   explorer: [
     {
@@ -329,13 +334,15 @@ export interface BenchmarkCatalog {
   readonly projectRoot: string;
   readonly reviewFixturesDir: string;
   readonly implementTasksDir: string;
+  /** The explorer's answer-key research tasks, one folder each. */
+  readonly researchTasksDir: string;
   /** Persona definitions the production registry loads. */
   readonly personaDefinitionsDir: string;
   /** Persona definitions layered over the production ones, present only
    *  when a launch names an overlay directory. */
   readonly personaOverlayDir?: string;
   readonly researchPersonas: readonly string[];
-  researchTasks(persona: string): readonly ResearchTask[];
+  researchTasks(persona: string): Promise<readonly ResearchTask[]>;
   /** The review fixtures `persona` runs: the fixtures whose manifest names it
    *  in `reviewers`, or every fixture without `reviewers` when none names it. */
   reviewTasks(persona: string): Promise<readonly ReviewTask[]>;
@@ -357,21 +364,26 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
   if (!isAbsolute(projectRoot)) throw new Error(`The benchmark catalog requires an absolute project root, got "${projectRoot}"`);
   const reviewFixturesDir = containedPath(projectRoot, "bench", "ab-persona", "fixtures", "reviews");
   const implementTasksDir = containedPath(projectRoot, "bench", "tasks", "implement");
+  const researchTasksDir = containedPath(projectRoot, "bench", "tasks", "explorer");
   const resultsRoot = options.resultsRoot ?? containedPath(projectRoot, "bench", "ab-persona", "results");
   return {
     projectRoot,
     reviewFixturesDir,
     implementTasksDir,
+    researchTasksDir,
     personaDefinitionsDir: containedPath(projectRoot, "src", "workflows", "agents", "personas"),
     ...(options.personaOverlayDir === undefined ? {} : { personaOverlayDir: options.personaOverlayDir }),
     researchPersonas: Object.keys(TASKS_BY_PERSONA),
-    researchTasks(persona) {
+    async researchTasks(persona) {
       const tasks = TASKS_BY_PERSONA[persona];
       if (!tasks) throw new Error(`No task suite for persona "${persona}"; known: ${Object.keys(TASKS_BY_PERSONA).join(", ")}, implementer, reviewer-*`);
-      return tasks.map((task) => {
-        const source = { ...task, snapshot: RESEARCH_SNAPSHOT };
-        return { ...source, contentIdentity: structuredIdentity(source) };
-      });
+      const sources = [
+        ...tasks.map((task) => ({ ...task, snapshot: RESEARCH_SNAPSHOT })),
+        ...persona === "explorer" ? await loadResearchTasks(researchTasksDir) : [],
+      ];
+      const duplicate = sources.find((task, index) => sources.findIndex(({ id }) => id === task.id) !== index);
+      if (duplicate) throw new Error(`Research task ${duplicate.id} is defined twice`);
+      return sources.map((source) => ({ ...source, contentIdentity: structuredIdentity(source) }));
     },
     reviewTasks: async (persona) => fixturesFor(await loadReviewFixtures(reviewFixturesDir), persona),
     async implementTasks() {

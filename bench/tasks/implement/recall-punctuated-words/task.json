@@ -1,0 +1,33 @@
+{
+  "id": "recall-punctuated-words",
+  "stratum": "trapped-restore",
+  "sandbox": {
+    "commit": "b807acb0bb96cf67cc1e4748402b39aaa81ce97e",
+    "paths": [
+      "src",
+      "tests/helpers",
+      "tests/fixtures",
+      "tests/preload.ts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      ".gitignore",
+      "crates/tokenizer/tokenizer-prebuilt.json",
+      "crates/tokenizer/flywheel-tokenizer.wasm.zst",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json",
+      "tests/unit/infra/conversation-recall-search.test.ts",
+      "tests/unit/orchestration/session/transcript-search.test.ts"
+    ],
+    "setup": [
+      [
+        "bun",
+        "install",
+        "--ignore-scripts",
+        "--backend=hardlink"
+      ]
+    ]
+  }
+}

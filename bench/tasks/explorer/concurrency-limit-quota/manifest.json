@@ -1,0 +1,44 @@
+{
+  "facts": [
+    {
+      "id": "usage-window-gate",
+      "claim": "The usage-limit text reports spent quota only when the last rate-limit event read was a rejection that names a usage window (five_hour, seven_day, seven_day_opus, seven_day_sonnet, seven_day_overage_included, overage).",
+      "catch_criteria": "States that the quota mark needs both the usage-limit text and a rejected rate-limit report that names a usage window, and that the text alone is not enough.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/sdk-events.ts"
+      ]
+    },
+    {
+      "id": "concurrency-not-quota",
+      "claim": "A concurrency rejection names no usage window, so no quota mark is recorded; the 429 becomes a rate-limit failure.",
+      "catch_criteria": "States that the concurrency 429 is classified as a rate limit (throttling), not a spent quota.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/sdk-events.ts",
+        "src/orchestration/agent-runtime/llm/provider-failure.ts"
+      ]
+    },
+    {
+      "id": "retried-in-place",
+      "claim": "The rate-limit failure is retried on the same candidate up to 3 times, waiting the provider's retry delay (capped at 60 s) or a backoff.",
+      "catch_criteria": "States that the request is retried in place on the same account with a retry delay, and names a bounded retry count.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/failover-client.ts",
+        "src/orchestration/agent-runtime/llm/provider-failure.ts"
+      ]
+    },
+    {
+      "id": "failover-owner",
+      "claim": "The failover client's candidate walk owns moving to the next candidate, after the retry budget is spent; the Claude engine adapter only classifies the failure.",
+      "catch_criteria": "Names the failover client (candidate walk, selectNext) as the owner that advances to another account or provider, not the Claude adapter.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/failover-client.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "text-marks-quota",
+      "wrong_answer": "Any usage-limit text from the engine marks the login's quota spent and suppresses the account."
+    }
+  ]
+}

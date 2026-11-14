@@ -16,7 +16,7 @@ When the request itself caused a failure, such as a rejected or malformed reques
 
 ## PI-MODEL-060: A failing candidate is retried in place before failover
 
-Flywheel retries a candidate that drops the connection, throttles, or reports overload in place with bounded backoff, and moves on only when those retries are spent. The session status shows the reconnect progress while it waits. A lost connection alone never marks a provider unreachable for other sessions, and only a failure the provider stated does. A first mark holds briefly and lengthens only while the outage persists.
+Flywheel retries a candidate that drops the connection, throttles, or reports overload in place with bounded backoff, and moves on only when those retries are spent. A rate limit that names no spent usage window, such as too many concurrent requests, is throttling that clears as other requests finish, never spent quota, whatever its text says. The session status shows the reconnect progress while it waits. A lost connection alone never marks a provider unreachable for other sessions, and only a failure the provider stated does. A first mark holds briefly and lengthens only while the outage persists.
 
 ## PI-MODEL-083: A response whose reasoning repeats itself is resampled
 
@@ -152,11 +152,15 @@ Opening model selection or provider model controls shows saved choices at once a
 
 ## PI-MODEL-016: Every agent role has an eligible default
 
-For every request, Flywheel resolves each agent role against the active auth profile's reachable models. It uses the role's saved model and effort when reachable, then its coded OpenAI preference, then its coded Anthropic preference, then the newest reachable model in its price tier. When that tier is empty, it uses the nearest populated tier, or a reachable unranked model when no ranked model is reachable. An unsupported effort maps to the nearest supported effort.
+Flywheel resolves each agent role per request against the active auth profile's reachable models. It uses the role's saved pair when reachable, then its coded preferences in the order its benchmark results set. Then it uses the newest reachable model in the first preference's price tier, at its effort. When that tier is empty, it uses the nearest populated tier, then a reachable unranked model. For an agent that is not a chat, a model whose included quota is spent is unreachable until its known reset (PI-MODEL-087). An unsupported effort maps to the nearest supported effort.
 
-## PI-MODEL-056: A skipped saved model is announced in the transcript
+## PI-MODEL-087: An agent uses its next model while its model's quota is spent
 
-When a role's saved pair is unreachable, the agent's transcript shows one system message that names the saved model and the model and effort that serve instead. Another such message appears only when the serving selection changes or the saved model serves again. The model never reads these messages.
+When every included route of an agent's model has spent its quota or credit until a known time, the next request uses the next role preference that serves on included quota, at its effort. The agent takes that preference before a paid route of the spent model. A rate limit, an outage, or a pending recheck never moves the agent. From the first request after the known time, the agent uses its higher preference again. A chat keeps its own model.
+
+## PI-MODEL-056: A skipped model is announced in the transcript
+
+When a role's saved pair is unreachable, or an agent passes over a preference whose quota is spent, the agent's transcript shows one system message. It names the skipped model and the model and effort that serve instead. For a spent quota, it also states the provider and when the quota returns. Another such message appears only when the serving selection changes or the skipped model serves again. The model never reads these messages.
 
 ## PI-MODEL-057: Role selection waits for model discovery
 
@@ -342,8 +346,8 @@ On every client and in the auth login command, Flywheel refuses a free-plan sign
 
 ## PI-MODEL-039: Every agent waits out spent capacity and continues
 
-When no candidate can serve an agent until a stated time, such as a usage-limit reset, the agent waits until that time and continues its turn on its own. This holds for a chat, a workflow agent, a subagent, and a headless task. If every candidate is still spent then, the agent waits again. A spent candidate that states no time is checked again after a short interval. A wait that the runtime serves continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens its project if it closed.
+When no role preference of an agent can serve until a stated time, such as a usage reset, the agent waits until the earliest such time and continues on its own. A chat waits for its own model. An unattended Agent Client Protocol run does not wait for a spent limit (PI-AGENT-128). If everything is still spent then, the agent waits again. A spent candidate with no stated time is checked again soon. A runtime-served wait continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens a closed project.
 
 ## PI-MODEL-063: Capacity wait status and end
 
-While an agent waits for model capacity, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait.
+While an agent waits because none of its models can serve, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).

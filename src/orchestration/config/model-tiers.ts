@@ -4,7 +4,7 @@ import type { ModelInfo } from "../../infra/llm/models.js";
 import { callsToolsOnText } from "../../infra/llm/provider-model-info.js";
 import { Log } from "../../infra/log.js";
 import { modelTierForReference } from "../../protocol/model-tier-reference.js";
-import { clearSharedModelListingClients } from "./llm-clients.js";
+import { clearSharedModelListingClients, getSharedModelsClient } from "./llm-clients.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 
 type RankedModelTier = Exclude<ModelTier, "default">;
@@ -153,6 +153,20 @@ export async function resolveModelForTierAcrossFamilies(
   const bestUnranked = unranked[0];
   if (bestUnranked) return { family: bestUnranked.family, model: bestUnranked.model };
   throw new Error("No assignable models were returned by provider listing.");
+}
+
+/** The price tier of `model` from its own provider's models.dev row, which needs no provider listing, so it also prices
+ *  a model the profile cannot reach. An admitted archive can omit a model this release codes, so the bundled document
+ *  prices it then. A model that neither document prices has the default tier. */
+export function modelPriceTier(model: string, family: ModelFamily, options: TierResolutionOptions): ModelTier {
+  const normalized = normalizeSelectableModelId(model);
+  const client = getSharedModelsClient(options.userDataRoot);
+  for (const document of ["current", "bundled"] as const) {
+    const row = client.getProviderCatalog([family], Number.MAX_SAFE_INTEGER - 1, document)
+      .find((candidate) => normalizeSelectableModelId(candidate.wireModelId) === normalized);
+    if (row?.metadata.pricing.status === "available") return tierForInputCost(row.metadata.cost.input);
+  }
+  return "default";
 }
 
 export async function recommendedModelsForFamily(

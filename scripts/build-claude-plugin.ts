@@ -31,7 +31,7 @@ import { renderChatBody } from "../src/orchestration/agent-runtime/model-chat-bo
 import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
-import { roleModelDefault, ROLE_MODEL_DEFAULTS } from "../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference } from "../src/orchestration/config/role-model-defaults.js";
 import { SHIPPED_MODULES } from "../src/orchestration/modules.js";
 import { createToolRegistry } from "../src/orchestration/tool-catalog.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
@@ -60,7 +60,7 @@ const RUNTIME_PERSONAS: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** The chat blocks of the chat body that the main agent carries: the body of Flywheel's default chat model. */
-const CHAT_GUIDANCE = resolveModelInteractionProfile(ROLE_MODEL_DEFAULTS.chat.anthropic.model, "anthropic").modelGuidance?.chat ?? [];
+const CHAT_GUIDANCE = resolveModelInteractionProfile(codedRolePreference("chat", "anthropic").model, "anthropic").modelGuidance?.chat ?? [];
 /** The model families that the host names by alias; any other model goes by its full id. */
 const MODEL_ALIASES = ["opus", "sonnet", "haiku"] as const;
 
@@ -210,7 +210,7 @@ export function buildClaudePlugin(version: string, author: string): ClaudePlugin
       name: persona.name,
       description: hostText(rendered(persona.description)),
       tools: personaTools(persona).join(", "),
-      model: hostModel(roleModelDefault(persona.role).anthropic.model),
+      model: hostModel(codedRolePreference(persona.role, "anthropic").model),
       ...(persona.requiredSkills === undefined ? {} : { skills: persona.requiredSkills }),
     }, hostText(rendered(persona.systemPrompt))));
   }

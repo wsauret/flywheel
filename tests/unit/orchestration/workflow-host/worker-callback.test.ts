@@ -478,7 +478,7 @@ describe("a step's recovery between failed runs", () => {
   const readCall = (id: string) => (): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id, name: "read", input: { file_path: "missing.txt" } } }, { kind: "done", stopReason: "tool_use" }]
   const handoff = (): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id: "handoff-1", name: "handoff", input: { summary: "done" } } }, { kind: "done", stopReason: "tool_use" }]
 
-  it("reports the requests a failed run served to the recovery, and the next run continues the step", async () => {
+  it("reports the requests a failed run served to the recovery, and continues the step at once on a spent model, uncounted and with no wait (ARCH-RUNTIME-082)", async () => {
     const dir = temporary("step-served-recovery-")
     const store = await agentStore(dir)
     const recoveries: unknown[] = []
@@ -487,7 +487,7 @@ describe("a step's recovery between failed runs", () => {
       const worker = scriptedWorker(dir, handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }), [readCall("read-1"), readCall("read-2"), noCapacity, handoff])
       const result = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
       expect(result.output).toBe("completed")
-      expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "wait", failure: "api_error", streak: 0, delayMs: 0, hold: "usage_limit", resetsAtMs: 0, served: 2 }])
+      expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "continue", failure: "api_error", streak: 0, hold: "usage_limit", resetsAtMs: 0, served: 2 }])
     } finally {
       diagnostic.mockRestore()
       store.close()
@@ -525,8 +525,9 @@ describe("a step's recovery between failed runs", () => {
       if (typeof payload === "object" && payload !== null && "event" in payload && payload.event === "armed") armed.resolve()
     })
     try {
-      // The walk states a time an hour away, so only the message can end the wait inside the test.
-      const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } } }) }
+      // The request boundary finds no role preference that serves before a time an hour away, so the step waits and
+      // only the message can end the wait inside the test.
+      const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } }, noPreferenceServes: true }) }
       const run = scriptedWorker(dir, authority, [noCapacityForAnHour, handoff])(STEP, attemptBrief("work"), undefined, CONVERSATION)
       await armed.promise
       const control = liveSessionControl(authority.reader, sessionId)

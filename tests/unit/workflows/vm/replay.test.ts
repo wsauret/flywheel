@@ -9,8 +9,10 @@ import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import { hashDefinition } from "../../../../src/workflows/definition-hash.js"
 import {
   buildDefinitionIdentity,
+  DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID,
   DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID,
   DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
+  DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID,
   DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID,
   DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID,
@@ -24,7 +26,7 @@ import {
 } from "../../../../src/workflows/vm/definition-identity.js"
 import { replayWorkflowFromFacts } from "../../../../src/workflows/vm/replay.js"
 import { foldWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { atCapabilityTextBase, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../orchestration/migrations/_persona-budget.js"
+import { atCapabilityMarkers, atCapabilityTextBase, beforeExplorerModelClaim, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../orchestration/migrations/_persona-budget.js"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js"
 import {
   buildWorkflowControlInitializedFact,
@@ -315,7 +317,7 @@ describe("workflow fact replay", () => {
     const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
-    const { maxTurns: _budget, ...historical } = beforeLexiconCut(explorer)
+    const { maxTurns: _budget, ...historical } = beforeLexiconCut(atCapabilityTextBase(explorer))
     const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(historical).sha256)
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
     const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
@@ -324,8 +326,7 @@ describe("workflow fact replay", () => {
 
     const appends: GuardedEventStoreAppend[] = []
     const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
-    expect(appends).toHaveLength(1)
-    expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID } })
+    expect(appends.map(({ payload }) => "migrationId" in payload ? payload.migrationId : undefined)).toEqual([DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
@@ -335,14 +336,12 @@ describe("workflow fact replay", () => {
   })
 
   it("adopts the explorer hash recorded over its retired tool-steering clauses, and keeps any other change as drift", async () => {
-    // The explorer as it read before the capability-text edit, which no proof covers.
-    const bundled = repoDefinitions().captureRevision().personas.get("explorer")
-    if (!bundled) throw new Error("Expected the bundled explorer")
-    const explorer = atCapabilityTextBase(bundled)
+    const explorer = repoDefinitions().captureRevision().personas.get("explorer")
+    if (!explorer) throw new Error("Expected the bundled explorer")
     const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
-    const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(beforeToolSteeringCut(beforeLexiconCut(explorer))).sha256)
+    const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(beforeToolSteeringCut(beforeLexiconCut(atCapabilityTextBase(explorer)))).sha256)
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
     const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
     if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
@@ -350,8 +349,7 @@ describe("workflow fact replay", () => {
 
     const appends: GuardedEventStoreAppend[] = []
     const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
-    expect(appends).toHaveLength(1)
-    expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID } })
+    expect(appends.map(({ payload }) => "migrationId" in payload ? payload.migrationId : undefined)).toEqual([DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID, DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
@@ -367,7 +365,7 @@ describe("workflow fact replay", () => {
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
     // The explorer as its file read before both cuts: it opted out of project context and the doctrine.
-    const historical = { ...beforeToolSteeringCut(beforeLexiconCut(explorer)), projectContext: false, engineeringDoctrine: false }
+    const historical = { ...beforeToolSteeringCut(beforeLexiconCut(atCapabilityTextBase(explorer))), projectContext: false, engineeringDoctrine: false }
     const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(historical).sha256)
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
     const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
@@ -376,8 +374,7 @@ describe("workflow fact replay", () => {
 
     const appends: GuardedEventStoreAppend[] = []
     const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
-    expect(appends).toHaveLength(1)
-    expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID } })
+    expect(appends.map(({ payload }) => "migrationId" in payload ? payload.migrationId : undefined)).toEqual([DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID, DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
@@ -474,6 +471,54 @@ describe("workflow fact replay", () => {
     await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, uatSkills, edited, workflowWithUat))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
+
+  it.each([
+    ["reviewer-uat", "before its capability markers of 2026-11-07", atCapabilityTextBase],
+    ["reviewer-uat", "between its capability markers and its agent-type marker", atCapabilityMarkers],
+    ["explorer", "before its capability markers of 2026-11-07", atCapabilityTextBase],
+    ["explorer", "while it still pointed at general after its capability markers", atCapabilityMarkers],
+    ["implementer", "before its capability markers of 2026-11-07", atCapabilityTextBase],
+    ["implementer", "while it still pointed at general after its capability markers", atCapabilityMarkers],
+  ] as const)("adopts the %s hash recorded %s on the current personas once, and keeps any other change as drift", async (name, _era, recordedForm) => {
+    const persona = repoDefinitions().captureRevision().personas.get(name)
+    if (!persona) throw new Error(`Expected the bundled ${name}`)
+    const workflowWithPersona: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: [name] }] }
+    const personas = new Map<string, AgentDefinition>([[name, persona]])
+    const eraSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("uat"), testSkill("implementation")])
+    const compiled = compileWorkflowControl(workflowWithPersona, resolveWorkflowAgents(workflowWithPersona), { skills: eraSkills, personas })
+    const recordedSha256 = personaIdentitySha256(recordedForm(persona))
+    expect(recordedSha256).not.toBe(personaIdentitySha256(persona))
+    const facts = pausedFacts(compiled, { ...compiled.definitionIdentity, personas: compiled.definitionIdentity.personas.map((entry) => entry.personaName === name ? { ...entry, sha256: recordedSha256 } : entry) })
+
+    const appends: GuardedEventStoreAppend[] = []
+    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, eraSkills, personas, workflowWithPersona))
+    expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID } }])
+    expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
+
+    const rejected: GuardedEventStoreAppend[] = []
+    const edited = new Map(personas).set(name, { ...persona, description: `${persona.description} Edited.` })
+    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, eraSkills, edited, workflowWithPersona))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
+  })
+
+  it("adopts the explorer hash recorded while its description claimed a cheaper model, and keeps any other change as drift", async () => {
+    const explorer = repoDefinitions().captureRevision().personas.get("explorer")
+    if (!explorer) throw new Error("Expected the bundled explorer")
+    const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
+    const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
+    const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
+    const facts = pausedFacts(compiled, withRecordedExplorer(compiled.definitionIdentity, personaIdentitySha256(beforeExplorerModelClaim(explorer))))
+
+    const appends: GuardedEventStoreAppend[] = []
+    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
+    expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID } }])
+    expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
+
+    const rejected: GuardedEventStoreAppend[] = []
+    const edited = new Map(personas).set("explorer", { ...explorer, description: `${explorer.description} Edited.` })
+    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
+  })
 })
 
 /** `identity` with the explorer hash a paused build recorded. The other entries stay: the advisor default is
@@ -495,8 +540,10 @@ function pausedOverTurnCaps() {
   const general = repo.get("general")
   const explorer = repo.get("explorer")
   const advisor = repo.get("advisor")
-  if (!general || !explorer || !advisor) throw new Error("Expected the bundled agents")
-  const personas = new Map<string, AgentDefinition>([["advisor", advisor], ["general", general], ["helper", { ...explorer, name: "helper", maxTurns: 30 }]])
+  if (!general || explorer?.kind !== "persona" || !advisor) throw new Error("Expected the bundled agents")
+  // A project persona carries no bundled mark.
+  const { bundled: _mark, ...project } = explorer
+  const personas = new Map<string, AgentDefinition>([["advisor", advisor], ["general", general], ["helper", { ...project, name: "helper", maxTurns: 30 }]])
   const recordedCaps = new Map([["general", 100], ["helper", 30]])
   const steps = resolveWorkflowAgents(agentWorkflow)
   const compiled = compileWorkflowControl(agentWorkflow, steps, { skills, personas })

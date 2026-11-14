@@ -1,6 +1,8 @@
 import type { BenchmarkTask, ReviewTask } from "./catalog.js";
 import type { JudgeVerdict } from "./judge.js";
 import type { ReviewScore } from "./scoring.js";
+import type { ResearchScore } from "./research-scoring.js";
+import type { ResearchAnswerKey } from "./research-task.js";
 import type { AttemptRecord, JudgeAttemptRecord } from "./run-store.js";
 import type { BenchmarkAccounting } from "./evidence.js";
 import { combineBenchmarkAccounting, formatAccountingObservation, formatOverheadAccounting } from "./report-accounting.js";
@@ -95,6 +97,41 @@ function overallVerdict(args: ReportArgs, verdicts: readonly JudgeVerdict[]): st
   return `${leader.id} won the blind round-robin (${table}${ties ? `, ${ties} tied pair${ties === 1 ? "" : "s"}` : ""}).`;
 }
 
+type AnswerKeyTask = BenchmarkTask & { answerKey: ResearchAnswerKey };
+
+/** Fact recall, asserted traps, and valid citations of the runs scored against some answer keys. */
+function answerKeyTally(rows: readonly { readonly key: ResearchAnswerKey; readonly scores: readonly ResearchScore[] }[]): string {
+  const scores = rows.flatMap((row) => row.scores);
+  const facts = sum(rows.map(({ key, scores: scored }) => key.facts.length * scored.length));
+  const traps = sum(rows.map(({ key, scores: scored }) => key.traps.length * scored.length));
+  const citations = sum(scores.map((score) => score.citations.total));
+  const valid = citations - sum(scores.map((score) => score.citations.invalid.length));
+  const share = (part: number, whole: number) => whole === 0 ? "n/a" : `${part}/${whole} (${(part / whole * 100).toFixed(1)}%)`;
+  return `${scores.length} | ${share(sum(scores.map((score) => score.caught.length)), facts)} | ${sum(scores.map((score) => score.uncertain.length))} | ${share(sum(scores.map((score) => score.trapsAsserted.length)), traps)} | ${share(valid, citations)}`;
+}
+
+/** The answer-key section of a research report, or nothing when no task has an answer key. */
+function answerKeySection(args: ReportArgs, tasks: readonly BenchmarkTask[], scores: readonly ResearchScore[]): string[] {
+  const keyed = tasks.filter((task): task is AnswerKeyTask => "answerKey" in task && task.answerKey !== undefined);
+  if (keyed.length === 0) return [];
+  const row = (task: AnswerKeyTask, variant: string) => ({ key: task.answerKey, scores: scores.filter((score) => score.task === task.id && score.variant === variant) });
+  const header = ["| Scored runs | Fact recall | Uncertain | Traps asserted | Valid citations |", "---:|---:|---:|---:|---:|"];
+  return [
+    "## Answer-key scores",
+    "",
+    "Fact recall and asserted traps come from the judge against each task's answer key. Valid citations is a mechanical check that each distinct cited path:line names a line of exactly one file at the task's pin. This is the primary score; pairwise quality is secondary.",
+    "",
+    `| Task | Variant ${header[0]}`,
+    `|---|---|${header[1]}`,
+    ...keyed.flatMap((task) => args.variants.map((variant) => `| ${task.id} | ${variant.id} | ${answerKeyTally([row(task, variant.id)])} |`)),
+    "",
+    `| Variant ${header[0]}`,
+    `|---|${header[1]}`,
+    ...args.variants.map((variant) => `| ${variant.id} | ${answerKeyTally(keyed.map((task) => row(task, variant.id)))} |`),
+    "",
+  ];
+}
+
 function attemptNote(counts: ReportCounts): string {
   return `- Unsuccessful cell attempts: ${counts.unsuccessfulAttempts}. Their separate cumulative accounting is ${formatOverheadAccounting(counts.unsuccessfulAccounting)}. Accounting was unavailable for ${counts.unsuccessfulAccountingUnavailable} attempt(s). Every attempt is recorded in the campaign ledger and retried by --resume.`;
 }
@@ -130,7 +167,7 @@ export function judgeOverheadNote(counts: ReportCounts): string {
   return `- Judge overhead, excluded from every candidate total above: ${formatOverheadAccounting(counts.judgeAccounting)}, from the campaign ledger. Accounting was unavailable for ${unavailable} judge call${unavailable === 1 ? "" : "s"}.`;
 }
 
-export function renderReport(args: ReportArgs, tasks: readonly BenchmarkTask[], results: readonly RunResult[], verdicts: readonly JudgeVerdict[], stamp: string, counts: ReportCounts): string {
+export function renderReport(args: ReportArgs, tasks: readonly BenchmarkTask[], results: readonly RunResult[], verdicts: readonly JudgeVerdict[], stamp: string, counts: ReportCounts, researchScores: readonly ResearchScore[] = []): string {
   const verdictRows = verdicts.map((verdict) =>
     `| ${verdict.task} | ${verdict.repeat} | ${verdict.slotA} | ${verdict.slotB} | ${verdict.winner} | ${cell(verdict.rationale)} |`,
   );
@@ -143,6 +180,7 @@ export function renderReport(args: ReportArgs, tasks: readonly BenchmarkTask[], 
     "|---|---|---|",
     ...args.variants.map((variant) => `| ${variant.id} | ${variant.model ?? "profile role"} | ${variant.effort ?? "role policy"} |`),
     "",
+    ...answerKeySection(args, tasks, researchScores),
     "## Per-task results",
     "",
     "Quality is shown as wins-losses-ties from blinded pairwise judging.",

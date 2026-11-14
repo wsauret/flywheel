@@ -174,4 +174,33 @@ describe("subscription consent serving composition", () => {
     expect(capturedRevisions).toEqual([3, 4])
     expect(admissionOrder).toEqual(["allowance-start", "allowance-settled", "consent", "allowance-start", "allowance-settled", "consent"])
   })
+
+  test("captures one request's admission once for its role standing and its selected client, and the next request captures again (ARCH-PROVIDERS-080)", async () => {
+    const directories = testDirectories("/scratch")
+    const connection = captureProviderConnection({ auth, authDir: directories.userDataRoot, profileId: "default", subscriptionCredentials: new Map() })
+    let captures = 0
+    const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
+      profileId: "default", getAuth: () => auth, definitions: repoDefinitions(), moduleSelection: testCapabilityModules(),
+      captureRuntimeConfig: testRuntimeConfigCapture, authDirectory: () => directories.userDataRoot, connection,
+      userDataRoot: directories.userDataRoot, getProviderModelEligibility: () => testProviderEligibility(),
+      captureSubscriptionAdmission: async () => {
+        captures += 1
+        return Object.freeze({
+          subscriptionAllowanceFor: () => ({ freshness: "unknown" as const, allowance: "unknown" as const }), bankedResetFor: () => false, expiringResetFor: () => undefined,
+          consent: Object.freeze({ profileId: "default", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1, rows: Object.freeze([]), authorizations: new Map() }),
+        })
+      },
+    })
+    const capture = await runtime.captureProviderConnection()
+    const plan = capture.providers.selection.plan("gpt-5.5", capture.connection, capture.eligibility)
+    if (plan.kind !== "admitted") throw new Error(plan.reason)
+    // The API key is the model's only route, so it serves on paid spend.
+    expect(await capture.standing(plan, undefined)).toEqual({ kind: "paid" })
+    const client = await capture.admit(new Map([["gpt-5.5", plan]])).createLLMClient("gpt-5.5", undefined, undefined, testProviderSessionLifetime())
+    const attempt = await client.plannedAttempt(undefined, { eligibility: capture.eligibility, allowTrainingRoutes: false, requestAdmission: capture.requestAdmission })
+    expect(attempt.accessProvider).toBe("openai_api")
+    expect(captures).toBe(1)
+    await (await runtime.captureProviderConnection()).standing(plan, undefined)
+    expect(captures).toBe(2)
+  })
 })

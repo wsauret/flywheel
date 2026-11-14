@@ -15,8 +15,12 @@ The runner host owns runner-context construction, one logical turn lease, explic
 
 ## ARCH-RUNTIME-003: One recovery policy restarts unattended runs
 
-One unattended recovery policy, the only restart owner, decides from its in-memory count of served requests whether a failed run of a workflow agent, subagent, or headless task runs again from its recorded conversation. A run that it starts again keeps the failed run's limits, so its model-call budget continues and a failure that a limit ended stands. A run that every candidate refused until a stated time takes a capacity wait, which for a headless task lasts only as long as its process. A chat takes only the capacity wait, because a person decides whether to send again.
+One unattended recovery policy, the only restart owner, decides from its in-memory count of served requests whether a failed run of a workflow agent, subagent, or headless task runs again from its recorded conversation. A run that it starts again keeps the failed run's limits, so its model-call budget continues and a failure that a limit ended stands. A run that no role preference can serve until a stated time waits until the earliest such time (ARCH-RUNTIME-082); a headless task waits only while its process lives. A chat waits only for its own model.
 Not: A recovery policy that retries or fails over inside a request.
+
+## ARCH-RUNTIME-082: A spent model's agent continues at once on its role
+
+When a workflow agent's or subagent's run fails because its model's quota is spent until a known time, the recovery policy continues it at once, without counting an attempt or arming a capacity wait. The next request boundary resolves the role against current availability. A capacity wait follows only when that boundary itself finds that no preference serves, until the earliest moment one serves again. The policy keeps no memory of earlier continuations. An unattended run never continues this way.
 
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 

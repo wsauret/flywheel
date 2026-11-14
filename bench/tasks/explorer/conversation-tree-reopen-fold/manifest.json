@@ -1,0 +1,76 @@
+{
+  "facts": [
+    {
+      "id": "held-returns-existing",
+      "claim": "A lookup for a key that is already held returns the held instance; the new caller's factory is not run.",
+      "catch_criteria": "States that an immediate reopen gets the same instance and the passed factory is skipped.",
+      "files": [
+        "src/infra/projection-registry.ts"
+      ]
+    },
+    {
+      "id": "family-bound-eight",
+      "claim": "The conversation-tree family holds at most 8 entries; inserting past the bound evicts the least recently used key that no owner pins.",
+      "catch_criteria": "States the bound of 8 conversation trees and least-recently-used eviction of unpinned keys.",
+      "files": [
+        "src/infra/projection-registry.ts"
+      ]
+    },
+    {
+      "id": "tree-not-pinned",
+      "claim": "Conversation trees are not pinned, so the first open is evicted after eight other opens; pins exist for other families such as subagent child measures.",
+      "catch_criteria": "States that conversation trees take no pin (unlike some other families), so eviction applies to them.",
+      "files": [
+        "src/orchestration/session/conversation/conversation-projection.ts",
+        "src/orchestration/modules/subagents/history/child-measures.ts"
+      ]
+    },
+    {
+      "id": "rebuild-refolds",
+      "claim": "After eviction, the next lookup builds a new instance that folds the aggregate again from its start; eviction drops only the registry's reference.",
+      "catch_criteria": "States that the reopen after eight others refolds the history from the start.",
+      "files": [
+        "src/infra/projection-registry.ts"
+      ]
+    },
+    {
+      "id": "two-live-instances",
+      "claim": "A holder that kept the evicted instance keeps feeding and reading it, so two instances of one key can be live at once and the aggregate is folded twice.",
+      "catch_criteria": "States that the old holder keeps its own (evicted) instance, so two live instances of the same key can exist.",
+      "files": [
+        "src/infra/projection-registry.ts"
+      ]
+    },
+    {
+      "id": "replay-not-getstate",
+      "claim": "A holder must read through replay: getState returns only the last folded state, not a fresh read.",
+      "catch_criteria": "Distinguishes replay (fresh fold) from getState (last folded state).",
+      "files": [
+        "src/infra/event-projection.ts",
+        "AGENTS.md"
+      ]
+    },
+    {
+      "id": "release-drops-reference",
+      "claim": "Releasing a conversation tree drops only the registry reference: a holder keeps its instance, and the next ask builds a new one.",
+      "catch_criteria": "States that release (or eviction) does not close a holder's instance; it only makes the next ask build anew.",
+      "files": [
+        "src/orchestration/session/conversation/conversation-projection.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "cached-until-restart",
+      "wrong_answer": "Held projections stay cached for the whole app session, so the reopen after eight others returns the same tree without rereading history."
+    },
+    {
+      "id": "factory-rebuilds",
+      "wrong_answer": "Every open builds the tree from the factory it passes, so an immediate reopen with another factory yields a different tree."
+    },
+    {
+      "id": "single-shared-instance",
+      "wrong_answer": "The holder of the first open sees the reopened tree's state, because the registry always shares one instance per key."
+    }
+  ]
+}

@@ -128,7 +128,7 @@ function fakeRuntime(options: {
           connection: captureProviderConnection({ profileId: "strategy-profile", authDir: join(directories.userDataRoot, "auth"), auth: AUTH }),
           runtimeConfig: deps.captureRuntimeConfig(),
           eligibility: roleCapture(["gpt-6-luna", "gpt-6.1-sol"]).eligibility,
-          admit: (plans: ReadonlyMap<string, FailoverPlan>) => {
+          requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: (plans: ReadonlyMap<string, FailoverPlan>) => {
             spy.admittedPlans = plans;
             return {
               createAgent: (agent: AgentOptions) => {

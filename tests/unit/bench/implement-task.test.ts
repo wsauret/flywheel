@@ -78,7 +78,7 @@ describe("shared implementation task loading", () => {
   it("gives the direct persona benchmark the shared plan and native implement tasks", async () => {
     expect(catalog.implementTasksDir).toBe(IMPLEMENT_TASKS_DIR);
     const tasks = await catalog.implementTasks();
-    expect(tasks.map((task) => task.id)).toEqual(["astropy__astropy-14598", "ds1000-298", "getmoto__moto-7365", "httpx-streaming-json-iteration", "jquense__yup-2305", "metrics-resteer", "psf__requests-6028", "redis__redis-10068", "regex-chess", "rust-react", "scheme-metacircular", "template-multiphase"]);
+    expect(tasks.map((task) => task.id)).toEqual(["astropy__astropy-14598", "ds1000-298", "getmoto__moto-7365", "hosted-thinking-row-wait", "httpx-streaming-json-iteration", "jquense__yup-2305", "metrics-resteer", "psf__requests-6028", "recall-punctuated-words", "redis__redis-10068", "regex-chess", "rust-react", "scheme-metacircular", "template-multiphase"]);
     for (const task of tasks) {
       if (task.kind === "native") {
         expect(task.prompt).toBe(task.instruction + (task.environment === undefined ? "" : `\n\n## Native environment context\n${task.environment}`));

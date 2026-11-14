@@ -3,6 +3,7 @@ import { cp, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import type { ResearchAnswerKey } from "../../../src/orchestration/modules/development/benchmark/research-task.js";
 import { createBenchmarkCatalog, DEFAULT_IMPLEMENTER_TIMEOUT_MS, resolveReviewFixture } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { PLAN_FILE } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
@@ -70,6 +71,44 @@ describe("benchmark catalog", () => {
     const [contextual] = await nativeCatalog.implementTasks();
     expect(contextual).toMatchObject({ instruction, environment });
     expect(contextual?.prompt).toBe(`${instruction}\n\n## Native environment context\n${environment}`);
+  });
+
+  it("adds the answer-key research tasks, each on its own pin, and keeps the open tasks' identities", async () => {
+    syntheticRoot = await mkdtemp(join(tmpdir(), "flywheel-research-tasks-"));
+    const researchCatalog = createBenchmarkCatalog(syntheticRoot);
+    const open = await researchCatalog.researchTasks("explorer");
+    const taskDir = join(researchCatalog.researchTasksDir, "bound");
+    const sandbox = { commit: "b5833f6a4e4458a80e02612cfb5c0729aaaaf267", paths: ["src"] };
+    const answerKey: ResearchAnswerKey = {
+      facts: [{ id: "start", claim: "The bound starts at the stop item.", catch_criteria: "Names the stop item", files: ["src/a.ts"] }],
+      traps: [{ id: "thinking-end", wrong_answer: "The bound starts when thinking ends." }],
+    };
+    await Bun.write(join(taskDir, "task.json"), JSON.stringify({ id: "bound", sandbox }));
+    await Bun.write(join(taskDir, "prompt.md"), "Where does the bound start?\n");
+    await Bun.write(join(taskDir, "manifest.json"), JSON.stringify(answerKey));
+    const tasks = await researchCatalog.researchTasks("explorer");
+    // The archive peels the pin to a commit, so a tree ID cannot make a subtree the corpus root.
+    const pinned = { commit: `${sandbox.commit}^{commit}`, paths: sandbox.paths };
+    expect(tasks.slice(0, open.length)).toEqual([...open]);
+    expect(tasks.at(-1)).toEqual({
+      id: "bound", prompt: "Where does the bound start?", snapshot: pinned, answerKey,
+      contentIdentity: structuredIdentity({ id: "bound", prompt: "Where does the bound start?", snapshot: pinned, answerKey }),
+    });
+
+    await Bun.write(join(taskDir, "manifest.json"), JSON.stringify({ ...answerKey, facts: [...answerKey.facts, ...answerKey.facts] }));
+    await expect(researchCatalog.researchTasks("explorer")).rejects.toThrow("fact IDs must be unique");
+    await Bun.write(join(taskDir, "manifest.json"), JSON.stringify(answerKey));
+    await Bun.write(join(taskDir, "task.json"), JSON.stringify({ id: "bound", sandbox: { ...sandbox, paths: ["src", "bench/tasks"] } }));
+    await expect(researchCatalog.researchTasks("explorer")).rejects.toThrow("must not copy bench/tasks");
+    // Each of these selects a forbidden folder through git archive, so none may load.
+    for (const paths of [["./bench/tasks"], ["src/../bench"], ["ben*"], [":(glob)**/WHY.md"], ["."], ["src/"], ["src\\a.ts"]]) {
+      await Bun.write(join(taskDir, "task.json"), JSON.stringify({ id: "bound", sandbox: { ...sandbox, paths } }));
+      await expect(researchCatalog.researchTasks("explorer")).rejects.toThrow("must be a literal, normalized, repository-relative path");
+    }
+    for (const commit of [`${sandbox.commit}:bench`, sandbox.commit.slice(0, 12), "HEAD"]) {
+      await Bun.write(join(taskDir, "task.json"), JSON.stringify({ id: "bound", sandbox: { ...sandbox, commit } }));
+      await expect(researchCatalog.researchTasks("explorer")).rejects.toThrow("must be a full lowercase commit ID");
+    }
   });
 
 });

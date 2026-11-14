@@ -38,6 +38,10 @@ During implementation, Flywheel follows the user's original intent and does not 
 
 Flywheel agents work on one coherent change at a time and decide each next step from concrete actions and fresh observations, with the full requested outcome in view. They implement only approaches that evidence supports, and evidence can narrow or remove work without weakening the user's goals, constraints, or explicit decisions. Work that the approved outcome does not need, even an independently useful improvement, does not expand the task. Past observations guide hypotheses but are assumed stale and never substitute for observing the current state.
 
+## PI-AGENT-130: Agents keep public interfaces unless the person approves a change
+
+Flywheel agents do what the request asks and do not expand its scope. Without the person's approval, they keep the names, signatures, parameters, and error handling of public interfaces and contracts that other callers can use. Inputs that the code accepts stay accepted when the request does not name them. Internal changes that the request needs, such as a new helper, are allowed. An agent that sees a better interface implements the request and proposes the improvement as a follow-up in its final report. Spikes and experiments are the exception and can change such interfaces.
+
 ## PI-AGENT-095: Designs are spiked before the user sees them
 
 Before Flywheel shows a design, it tests its diagnosis and design as hypotheses with throwaway probes of feasibility and mechanism against real code and systems. When inspection cannot tell viable approaches apart, it prototypes and compares them and says what it tests while the tests run. The design backs each claim about what code does with a code citation and every other claim with a spike observation, and labels an unsupported claim as untested theory. A disproving spike changes the approach before the user sees a design. A spike showing the request is infeasible returns that finding with its evidence.
@@ -372,7 +376,7 @@ An Agent Client Protocol client can request an unattended one-shot run. That run
 
 ## PI-AGENT-128: An unattended Agent Client Protocol run does not wait for model capacity
 
-No person can end a wait of an unattended one-shot Agent Client Protocol run, and the run has no deadline of its own. When no candidate can serve any agent of the run because each usage limit, quota, or credit is spent, that agent fails at once. The failure names the reset time that a provider stated, or says that no reset time is known. The agent waits out a rate limit or an outage, which clear by themselves (PI-AGENT-118). The prompt is answered with that failure, and the run publishes its evidence and ends.
+No person can end a wait of an unattended one-shot Agent Client Protocol run, and the run has no deadline of its own. When no candidate can serve any agent of the run because each usage limit, quota, or credit is spent, that agent fails at once and never moves to another model. The failure names the provider's stated reset time, or says that none is known. The agent waits out a rate limit or an outage, which clear by themselves (PI-AGENT-118). The prompt is answered with that failure, and the run publishes its evidence and ends.
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 

@@ -13,7 +13,7 @@
 // randomized blinded pairwise judging.
 
 import { dirname, join, resolve } from "node:path";
-import { ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/role-model-defaults.js";
+import { codedRolePreference, ROLE_MODEL_DEFAULTS } from "../../src/orchestration/config/role-model-defaults.js";
 import { createBenchmarkCatalog, RESEARCH_SNAPSHOT, RESEARCH_TASKS_CHANGED, type ResearchTask } from "../../src/orchestration/modules/development/benchmark/catalog.js";
 import { admitBenchmark, benchmarkPreflightReport } from "../../src/orchestration/modules/development/benchmark/admission.js";
 import { loadBenchmarkPersona, type BenchmarkPlan } from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
@@ -39,6 +39,10 @@ import {
   type RunConfig,
 } from "../../src/orchestration/modules/development/benchmark/run-store.js";
 import { failedJudgeCallCount } from "../../src/orchestration/modules/development/benchmark/judge-attempt-reconciliation.js";
+
+/** The judge runs on the benchmark judge's coded OpenAI preference, whatever the role's order. */
+const JUDGE_SEAT = codedRolePreference("benchmark-judge", "openai");
+
 type PersonaSeat = PersonaTaskRequest["seat"];
 
 const REPO_ROOT = resolve(import.meta.dir, "../..");
@@ -179,9 +183,9 @@ export async function parseArgs(argv: readonly string[]): Promise<CliArgs> {
 }
 
 /** Pin a role to its coded OpenAI preference so seats stay stable across
- *  runs regardless of user config. */
+ *  runs regardless of user config and the role's preference order. */
 export function seatFor(role: keyof typeof ROLE_MODEL_DEFAULTS): PersonaSeat {
-  return { ...ROLE_MODEL_DEFAULTS[role].openai };
+  return codedRolePreference(role, "openai");
 }
 
 /** Both arms run on the one explorer seat; only the strategy differs. */
@@ -360,7 +364,7 @@ export async function main(
     shell: runtime.shell,
   }, [
     ...admissionPlan.variants.map((variant) => ({ role: "candidate" as const, model: variant.model })),
-    { role: "judge", ...ROLE_MODEL_DEFAULTS["benchmark-judge"].openai },
+    { role: "judge", ...JUDGE_SEAT },
   ]);
   if (args.dryRun) {
     const matrix = [];
@@ -384,7 +388,7 @@ export async function main(
   // The facet brief is part of the task identity, so a protocol edit refuses resume.
   const taskIdentity = structuredIdentity({ snapshot: RESEARCH_SNAPSHOT, tasks: PLAN_TASKS, facetBrief });
   const personaGuidanceIdentity = structuredIdentity([renderPersonaTaskGuidance(explorer, registry, deps)]);
-  const judgeIdentity = structuredIdentity({ model: ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.model, template: buildPlanJudgePrompt("__TASK__", "__A__", "__B__") });
+  const judgeIdentity = structuredIdentity({ model: JUDGE_SEAT.model, template: buildPlanJudgePrompt("__TASK__", "__A__", "__B__") });
   const scoringVersion = "strategy-v1";
   const runningSource = await sourceIdentity();
   // The recorded source stays out of the identity comparison below, so a rescore never depends on it.
@@ -481,7 +485,7 @@ export async function main(
 
   console.error("Judging blinded summary pairs...");
   const existingVerdicts = scoreRecords.filter((record) => record.kind === "pair-score").map((record) => record.verdict);
-  const verdicts = await judgePairs(results, new Map(tasks.map((task) => [task.id, task.prompt])), await admission.createJudge(ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.model, undefined, ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.effort, join(outDir, "judge-requests")), undefined, buildPlanJudgePrompt, {
+  const verdicts = await judgePairs(results, new Map(tasks.map((task) => [task.id, task.prompt])), await admission.createJudge(JUDGE_SEAT.model, undefined, JUDGE_SEAT.effort, join(outDir, "judge-requests")), undefined, buildPlanJudgePrompt, {
     existing: existingVerdicts,
     onSettled: ({ value, error }) => error === null
       ? store.appendScore({ kind: "pair-score", mode: "research", persona, verdict: value, error })

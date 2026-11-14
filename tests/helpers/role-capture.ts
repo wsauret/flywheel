@@ -27,6 +27,6 @@ export function roleCapture(models: readonly string[], profileRoles: FlywheelCon
       accessPending: () => pending,
     },
     runtimeConfig: { ...testRuntimeConfigCapture(), profileRoles },
-    admit: () => { throw new Error("Role selection fixture does not construct clients") },
+    requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: () => { throw new Error("Role selection fixture does not construct clients") },
   }
 }

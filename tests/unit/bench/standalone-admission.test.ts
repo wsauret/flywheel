@@ -67,7 +67,7 @@ function fakeRuntime(usageAuthority: UsageAuthorityGeneration = { profileId: "de
         connection: captureProviderConnection({ profileId: usageAuthority.profileId, authDir: join(userDataRoot, "auth"), auth: AUTH }),
         runtimeConfig: testRuntimeConfigCapture(),
         eligibility,
-        admit: (plans: ReadonlyMap<string, FailoverPlan>) => {
+        requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: (plans: ReadonlyMap<string, FailoverPlan>) => {
           spy.admitted = plans;
           return {
             createAgent: () => { throw new Error("no benchmark cell may run in this test"); },
@@ -220,7 +220,7 @@ describe("standalone benchmark admission", () => {
       scoringVersion: "persona-v2",
     };
     await mkdir(catalog.resultsRoot, { recursive: true });
-    await createPersonaStore({ resultsRoot: catalog.resultsRoot, directory: resultsDir }, config, catalog.researchTasks("explorer").map(({ id }) => id));
+    await createPersonaStore({ resultsRoot: catalog.resultsRoot, directory: resultsDir }, config, (await catalog.researchTasks("explorer")).map(({ id }) => id));
     const { create } = fakeRuntime(identity);
     let requestedGeneration: UsageAuthorityGeneration | undefined;
     const log = spyOn(console, "log").mockImplementation(() => {});

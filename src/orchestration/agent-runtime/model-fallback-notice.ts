@@ -2,6 +2,7 @@ import { errorMessage } from "../../infra/error-message.js";
 import { canonicalModelId } from "../../infra/llm/model-id.js";
 import { Log } from "../../infra/log.js";
 import { isModelTierReference } from "../../protocol/model-tier-reference.js";
+import type { PassedPreference } from "../config/role-resolution.js";
 import type { RuntimeConversation } from "./runtime-conversation.js";
 
 const log = Log.create({ service: "model-fallback-notice" });
@@ -15,11 +16,14 @@ export interface RequestServingSelection {
   readonly saved: string | undefined;
   readonly model: string;
   readonly effort: string | undefined;
+  /** The higher preference that this request passed over for its spent quota. */
+  readonly passed?: PassedPreference;
 }
 
 /**
  * Tells the person, in the agent's own transcript, when a request resolves
- * past the saved model to another one, and when the saved model serves
+ * past the saved model or a preference whose quota is spent to another one
+ * (PI-MODEL-056), and when the saved model or the higher preference serves
  * again, or the setting no longer names a model, which ends the condition
  * with the model that serves. Each row is a display-only system entry, so no
  * model reads it.
@@ -76,11 +80,19 @@ export function createModelFallbackNotice(
 
 /** The row that states this selection after the newest row, or undefined when the newest row states it already.
  *  Only a fallback row opens the condition: a saved model that serves closes it by name, whether it recovered or the
- *  person saved another one, and a setting that names no concrete model closes it with the model that serves. */
+ *  person saved another one, and a setting that names no concrete model closes it with the model that serves. A row
+ *  for a passed preference states the same selection while it names the same passed and serving pairs, whatever
+ *  reset time or providers it states, so an update of only those adds no row. */
 function nextRow(selection: RequestServingSelection, newest: string | undefined): string | undefined {
-  const { saved } = selection;
+  const { saved, passed } = selection;
   const serving = selection.effort === undefined ? selection.model : `${selection.model} at ${selection.effort} effort`;
   const fallingBack = newest?.endsWith(UNTIL) === true;
+  if (passed !== undefined) {
+    const spentPair = `${passed.model} at ${passed.effort} effort is out of `;
+    const servingClause = `. ${serving}${UNTIL}`;
+    if (newest?.startsWith(spentPair) === true && newest.endsWith(servingClause)) return undefined;
+    return `${spentPair}${passed.providers.join(" and ")} quota until ${new Date(passed.reset.atMs).toISOString()}${servingClause}`;
+  }
   if (saved === undefined || isModelTierReference(saved)) return fallingBack ? `${serving} serves this agent.` : undefined;
   if (canonicalModelId(saved) === selection.model) return fallingBack ? `${SAVED}${saved}, serves this agent.` : undefined;
   const row = `${SAVED}${saved}, cannot serve now. ${serving}${UNTIL}`;

@@ -202,8 +202,10 @@ export interface ModelsClient {
    *  never waits on the network. A model newer than that document resolves after an owned refresh
    *  publishes a document that lists it. */
   getTokenizerIdentity(modelId: string): ClaudeTokenizerIdentity | undefined;
-  /** Returns immutable models.dev rows with exact wire IDs, metadata, transport, and namespace-qualified canonical relationships from the current document, without network I/O. */
-  getProviderCatalog(providerIds: readonly string[], rowLimit: number): readonly ModelsProviderCatalogRow[];
+  /** Returns immutable models.dev rows with exact wire IDs, metadata, transport, and namespace-qualified canonical relationships, without network I/O.
+   *  `document` selects the current document (live, archived, or bundled) or the bundled document shipped in the binary, which still lists the
+   *  models this release codes when a current document omits them. */
+  getProviderCatalog(providerIds: readonly string[], rowLimit: number, document?: "current" | "bundled"): readonly ModelsProviderCatalogRow[];
 }
 
 /** Returns the configured metadata contract for a custom provider offering without borrowing another provider's row. */
@@ -507,9 +509,9 @@ export function createModelsClient(
       if (generation.major !== 5) return undefined;
       return family === "claude-opus" ? "ClaudeV5" : "ClaudeV5Sonnet";
     },
-    getProviderCatalog(providerIds: readonly string[], rowLimit: number): readonly ModelsProviderCatalogRow[] {
+    getProviderCatalog(providerIds: readonly string[], rowLimit: number, document: "current" | "bundled" = "current"): readonly ModelsProviderCatalogRow[] {
       if (!Number.isSafeInteger(rowLimit) || rowLimit <= 0) throw new RangeError("models.dev row limit must be a positive integer");
-      const admitted = loadCurrent();
+      const admitted = document === "bundled" ? bundledModels() : loadCurrent();
       const rows: ModelsProviderCatalogRow[] = [];
       for (const providerId of providerIds) {
         const remaining = rowLimit - rows.length;

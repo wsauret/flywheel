@@ -68,6 +68,25 @@ test("records one display-only row when a request falls back, when the serving p
   expect(shown).toEqual(appended.map(({ message }) => message.kind === "system" ? message.content : ""))
 })
 
+test("records one row naming the spent preference, its provider, and its return when a request passes over it, and one when it serves again (PI-MODEL-056)", async () => {
+  const { runtime, appended } = conversation(3)
+  const record = runtime()
+  const passed = { model: "gpt-6-astra", effort: "high", reset: { atMs: Date.parse("2026-11-11T14:21:24Z"), hold: { kind: "usage_limit" as const, stated: true } }, providers: ["ChatGPT"] }
+  for (let request = 0; request < 3; request += 1) await record({ saved: "gpt-6-astra", model: "claude-opus-5.5", effort: "medium", passed })
+  // A later reading of the same quota moves its reset and names another provider, and the selection stays the same.
+  await record({ saved: "gpt-6-astra", model: "claude-opus-5.5", effort: "medium", passed: { ...passed, reset: { ...passed.reset, atMs: passed.reset.atMs + 60_000 }, providers: ["ChatGPT", "Copilot"] } })
+  await record({ saved: "gpt-6-astra", model: "gpt-6-astra", effort: "high" })
+  await record({ saved: "gpt-6-astra", model: "gpt-6-astra", effort: "high" })
+  await record({ saved: undefined, model: "claude-opus-5.5", effort: "medium", passed: { ...passed, model: "gpt-6.1-sol", effort: "medium" } })
+  await record({ saved: undefined, model: "gpt-6.1-sol", effort: "medium" })
+  expect(appended.map(({ message }) => message.kind === "system" ? message.content : "")).toEqual([
+    "gpt-6-astra at high effort is out of ChatGPT quota until 2026-11-11T14:21:24.000Z. claude-opus-5.5 at medium effort serves this agent until it can.",
+    "The saved model, gpt-6-astra, serves this agent.",
+    "gpt-6.1-sol at medium effort is out of ChatGPT quota until 2026-11-11T14:21:24.000Z. claude-opus-5.5 at medium effort serves this agent until it can.",
+    "gpt-6.1-sol at medium effort serves this agent.",
+  ])
+})
+
 test("continues from the newest row that an earlier runtime recorded", async () => {
   const { runtime, appended } = conversation(3)
   await runtime()(saved("gpt-6-luna"))

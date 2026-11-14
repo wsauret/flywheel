@@ -8,9 +8,10 @@ import { captureImplementation, provisionTaskSandbox } from "./implement-task.js
 import { withSnapshotWorkspace, withTrialWorkspace } from "./snapshot-workspace.js";
 import { materializeReviewSandbox } from "./review-sandbox.js";
 import { buildImplementRawResults, judgeImplementPairs, renderImplementReport, scoreImplementTraps, type ImplementCandidate } from "./implement-scoring.js";
-import { judgePairs, type JudgeAttemptReport, type JudgeModel, type JudgeVerdict } from "./judge.js";
+import type { JudgeAttemptReport, JudgeModel, JudgeVerdict } from "./judge.js";
 import { judgeOverhead, renderReport, renderReviewReport, unsuccessfulOverhead, type ReportCounts } from "./reports.js";
 import { scoreReviews } from "./scoring.js";
+import { judgeResearchCampaign, snapshotLines } from "./research-scoring.js";
 import { asPersonaTaskFailure, PersonaTaskFailure, renderPersonaTaskGuidance, runPersonaTask, type BenchmarkRuntime, type PersonaDefinition, type PersonaRunOutcome, type PersonaTaskRequest } from "./persona-run.js";
 import {
   implementCandidate,
@@ -98,7 +99,7 @@ export type BenchmarkEvent =
   | { kind: "cell.started"; cell: BenchmarkCellId }
   | { kind: "cell.completed"; cell: BenchmarkCellId; accounting: BenchmarkAccounting; durationMs: number; acceptance?: { passed: number; total: number } }
   | { kind: "cell.failed"; cell: BenchmarkCellId; message: string }
-  | { kind: "scoring.started"; phase: "traps" | "pairs" | "reviews" }
+  | { kind: "scoring.started"; phase: "traps" | "pairs" | "reviews" | "answer-keys" }
   | { kind: "scoring.skipped"; phase: "pairs"; reason: string }
   | { kind: "benchmark.completed"; resultsDir: string; reportPath: string; report: string; counts: ReportCounts }
   | { kind: "benchmark.cancelled"; resultsDir: string };
@@ -184,7 +185,7 @@ async function planTasks(persona: string, mode: BenchmarkMode, catalog: Benchmar
     return tasks;
   }
   if (mode === "implement") return await catalog.implementTasks();
-  return catalog.researchTasks(persona);
+  return await catalog.researchTasks(persona);
 }
 
 function selectTasks(tasks: readonly PlannedTask[], taskIds?: readonly string[]): readonly PlannedTask[] {
@@ -240,10 +241,14 @@ export async function planPersonaBenchmark(options: BenchmarkOptions, catalog: B
 }
 
 
-/** Whether a campaign calls a judge: every one except a solo research seat,
- *  which has no pair to compare. */
-export function campaignJudges(plan: Pick<BenchmarkPlan, "mode" | "variants">): boolean {
-  return plan.mode !== "research" || plan.variants.length >= 2;
+/** Whether a campaign calls a judge: every one except a solo research seat
+ *  whose tasks have no answer key, which has nothing to compare or score. */
+export function campaignJudges(plan: Pick<BenchmarkPlan, "mode" | "variants" | "tasks">): boolean {
+  return plan.mode !== "research" || plan.variants.length >= 2 || plan.tasks.some((task) => "answerKey" in task && task.answerKey !== undefined);
+}
+
+function isResearchTask(task: PlannedTask): task is ResearchTask {
+  return "snapshot" in task;
 }
 
 function isReviewTask(task: PlannedTask): task is ReviewTask {
@@ -431,7 +436,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
   }
 
   if (signal?.aborted) return await cancel(plan, scope, onEvent);
-  const report = await scoreAndRender(plan, resolvedDeps, store, results, implementResults);
+  const report = await scoreAndRender(plan, resolvedDeps, store, results, implementResults, scope.run);
   if (signal?.aborted) return await cancel(plan, scope, onEvent);
   const reportPath = join(store.directory, "report.md");
   const campaignSource = (await store.loadConfig()).sourceIdentity ?? "not recorded (the campaign predates source identity)";
@@ -598,6 +603,7 @@ async function scoreAndRender(
   store: RunStore,
   results: readonly CellRunResult[],
   implementResults: readonly ImplementCandidate[],
+  commands: OwnedCommandRunner,
 ): Promise<ScoredReport> {
   const { onEvent, signal } = deps;
   const reportArgs = { persona: plan.persona, variants: plan.variants, ...(deps.judge ? { judge: deps.judge } : {}) };
@@ -673,17 +679,14 @@ async function scoreAndRender(
     return { text: renderReviewReport(reportArgs, tasks, results, scores, plan.stamp, settledCounts), counts: settledCounts };
   }
 
-  if (plan.variants.length >= 2) onEvent({ kind: "scoring.started", phase: "pairs" });
-  const verdicts = plan.variants.length < 2 ? [] : await judgePairs(results, new Map(plan.tasks.map((task) => [task.id, task.prompt])), await deps.createJudge(join(store.directory, "judge-requests")), undefined, undefined, {
-    existing: scoreRecords.filter((record) => record.kind === "pair-score").map((record) => record.verdict),
-    onSettled: ({ value, error }) => error === null
-      ? store.appendScore({ kind: "pair-score", mode: "research", persona: plan.persona, verdict: value, error })
-      : Promise.resolve(),
-    onAttempt: persistJudgeAttempt,
-    ...(signal ? { signal } : {}),
+  const { scores: researchScores, verdicts } = await judgeResearchCampaign({
+    persona: plan.persona, variantCount: plan.variants.length, tasks: plan.tasks.filter(isResearchTask), results, records: scoreRecords, store,
+    createJudge: () => deps.createJudge(join(store.directory, "judge-requests")),
+    materialize: (snapshot) => withSnapshotWorkspace(deps.catalog.projectRoot, snapshot, commands, snapshotLines),
+    onAttempt: persistJudgeAttempt, onPhase: (phase) => onEvent({ kind: "scoring.started", phase }), signal,
   });
   if (plan.variants.length < 2) onEvent({ kind: "scoring.skipped", phase: "pairs", reason: "a solo variant has nothing to compare against" });
   await store.writeArtifact("raw.json", `${JSON.stringify(results, null, 2)}\n`);
   const settledCounts = await counts();
-  return { text: renderReport(reportArgs, plan.tasks, results, verdicts, plan.stamp, settledCounts), counts: settledCounts };
+  return { text: renderReport(reportArgs, plan.tasks, results, verdicts, plan.stamp, settledCounts, researchScores), counts: settledCounts };
 }
