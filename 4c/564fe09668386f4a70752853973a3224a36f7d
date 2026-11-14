@@ -1,0 +1,18 @@
+bench/tasks/implement/scheme-metacircular/adapter.ts
+  h_4b47e9e4a8b456 139-141,146
+bench/tasks/implement/scheme-metacircular/qualify.ts
+  h_4b47e9e4a8b456 84
+bench/tasks/implement/scheme-metacircular/replacement-ledger.json
+  h_4b47e9e4a8b456 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4c564fe09668386f4a70752853973a3224a36f7d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
