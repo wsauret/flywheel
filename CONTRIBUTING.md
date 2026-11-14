@@ -78,7 +78,12 @@ All three must pass before you open a pull request. Read the complete output: th
 - Run `bun run test:perf` after a change that can affect startup. A startup regression above 20% fails.
 - Run `bun run test:integration:no-api` only when unit tests and a focused script cannot prove the change. It needs no credentials.
 
-Unit tests must not make network calls, spawn real processes, or write into the project directory. `AGENTS.md` section 5 gives the full rules for tests and validation.
+Unit tests must not make network calls, spawn real processes, or write into the project directory. To keep a unit test hermetic, do these steps:
+
+- Make files only in a directory from `temporaryDirectories()` in `tests/helpers/directories.ts`. Call it one time at the top level of the test file or of a `describe` block. It removes each directory after the test that made it.
+- Fake the network at the seam that the product exposes, such as an injected client. `tests/preload.ts` refuses every `fetch` and `WebSocket` request to a host other than this machine, and it fails the test that made the request.
+
+`AGENTS.md` section 5 gives the full rules for tests and validation.
 
 A change to the source of a native crate under `crates/` follows the policy in [crates/README.md](crates/README.md#change-the-source-of-a-crate). If you do not have the toolchain of the crate, you can open the pull request with the source change only, even though the unit suite fails on the native assets of that crate. The maintainer then rebuilds every committed binary from its source and commits the rebuilt binaries and manifests to the pull request, and merges only after CI passes. The maintainer never merges a binary that a contributor built without that rebuild and comparison.
 
