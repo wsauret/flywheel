@@ -1,0 +1,56 @@
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 243
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 16,24,28
+src/orchestration/agent-runtime/agent-loop-history.ts
+  h_4b47e9e4a8b456 132
+src/orchestration/agent-runtime/llm/conversions/anthropic-messages.ts
+  h_4b47e9e4a8b456 24,27,47
+src/orchestration/agent-runtime/llm/provider-history.ts
+  h_4b47e9e4a8b456 106-107
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 99,139-141
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 61-64,135
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 42-43,612,679-680
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 38-39,76
+src/orchestration/agent-runtime/session-context.ts
+  h_4b47e9e4a8b456 1-15
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 66-68,70,77-94,211-213,248,287
+src/orchestration/session/conversation/conversation-entry-schemas.ts
+  h_4b47e9e4a8b456 286
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1224
+tests/integration/providers/_live-agent-loop.ts
+  h_4b47e9e4a8b456 28-29,91,93
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 21,48
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 9,71,217
+tests/unit/orchestration/agent-runtime/runner.test.ts
+  h_4b47e9e4a8b456 432-481
+tests/unit/orchestration/agent-runtime/session-context.test.ts
+  h_4b47e9e4a8b456 1-24
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 85,109,111,115,121,125,131,209-210,229,236,242,249,258,264,271,306,318,349,355,361,430,435,456,467,484,505,515,533-534,546,561
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 2,36,48,50,53-60,63-69,92,98
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 139,159-171
+tests/unit/orchestration/agent-runtime/workflow-agent-system-prompt.test.ts
+  h_4b47e9e4a8b456 37,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1086cd0b02d319953570241427d7cf4319d310fd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
