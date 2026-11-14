@@ -1,0 +1,73 @@
+# Flywheel config of a gpt-6-luna arm that turns off the advisor, reviewer, and ship agent types with subagents.disabled_types.
+# It runs the ChatGPT subscription route of the person's auth profile. Every
+# role runs gpt-6-luna at effort high, so one model serves the whole trial.
+# The launcher validates this file with Flywheel's config schema before any
+# trial and installs it in the trial as $HOME/.flywheel/flywheel.toml under
+# the neutral auth profile id "benchmark".
+
+allow_persistent_processes = true
+# Headless shell commands write in place; the guard that stops a write
+# outside the project would refuse ordinary task setup such as package installs.
+shell_write_guard = false
+idle_compaction = false
+auto_delete_session_days = 0
+
+disabled_modules = [
+  "ask-user",
+  "bug-reports",
+  "code-mode",
+  "development",
+  "experiments",
+  "learning",
+  "mcp",
+  "papercuts",
+  "project-notifications",
+  "provider-anthropic-api",
+  "provider-claude-agent-sdk",
+  "provider-deepseek",
+  "provider-github-copilot",
+  "provider-google-api",
+  "provider-google-vertex",
+  "provider-openai-api",
+  "provider-opencode-go",
+  "provider-openrouter",
+  "provider-supergrok",
+  "remote",
+  "side-question",
+  "web",
+  "web-chatgpt",
+  "web-exa",
+  "workflows",
+]
+
+# Subagents stay on with the agent types that do the task's work. The advisor and
+# the reviewers give a second opinion from another model, which a run of one
+# model cannot give, and nothing in a trial publishes.
+[subagents]
+disabled_types = ["advisor", "reviewer", "ship"]
+
+[updates]
+auto_install = false
+
+[profiles.benchmark]
+allow_training_routes = false
+
+[profiles.benchmark.roles.chat]
+model = "gpt-6-luna"
+effort = "high"
+
+[profiles.benchmark.roles.title-generation]
+model = "gpt-6-luna"
+effort = "high"
+
+[profiles.benchmark.roles.subagent-summary]
+model = "gpt-6-luna"
+effort = "high"
+
+[profiles.benchmark.roles.explorer]
+model = "gpt-6-luna"
+effort = "high"
+
+[profiles.benchmark.roles.implementer]
+model = "gpt-6-luna"
+effort = "high"

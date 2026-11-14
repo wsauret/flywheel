@@ -1,8 +1,8 @@
 # Unattended run rules: prompt rules, tool descriptions, and a bounded review
 
-Dates: 2026-11-11. Harness: `bench/harbor/` on Harbor Hub (hosted trials, launcher guide in `bench/harbor/README.md`). The raw rounds, trial stores, and analysis scripts are not in the repository. They stay in local spike worktrees and session scratch directories on the machine that ran them. This page names each run by its round name and run id only.
+Dates: 2026-11-11 (E4 and E2) and 2026-11-14 (E5). Harness: `bench/harbor/` on Harbor Hub (hosted trials, launcher guide in `bench/harbor/README.md`). The raw rounds, trial stores, and analysis scripts are not in the repository. They stay in local spike worktrees and session scratch directories on the machine that ran them. This page names each run by its round name and run id only.
 
-Two experiments test changes to an unattended chat, the purpose that a benchmark trial runs (`flywheel --headless --acp --unattended`). E4 asks whether one prompt rule or shorter tool descriptions make Haiku do the same work with fewer model requests. E2 asks whether a self-review rule or one bounded reviewer subagent makes Haiku pass more repository tasks, and at what cost. Each arm is one change against a control that runs at the same time from the same base commit. A decision rule was fixed before any trial of each experiment ran.
+Three experiments test changes to an unattended chat, the purpose that a benchmark trial runs (`flywheel --headless --acp --unattended`). E4 asks whether one prompt rule or shorter tool descriptions make Haiku do the same work with fewer model requests. E2 asks whether a self-review rule or one bounded reviewer subagent makes Haiku pass more repository tasks, and at what cost. E5 asks, on GPT-6 Luna and with an A/A control, whether a narrower probe rule or E4's deliverable-first rule cuts requests. Each arm is one change against a control that runs at the same time from the same base commit. A decision rule was fixed before any trial of each experiment ran.
 
 ## Decisions
 
@@ -14,6 +14,12 @@ Decisions (2026-11-11):
 - B1 (self-review rule) is not adopted. Its pass difference of +5 sits in the inconclusive band, and the permitted rerun cannot reach a threshold, so the result is "no detectable gain".
 - B2 (one bounded reviewer) does not pay. It costs 1.58 times control with no pass gain. Reviewers stay off for unattended runs.
 
+Results (2026-11-14), with the adoption decision left to the maintainer:
+
+- E5 probe-scoped rule: does not pass stage 1. Requests fell 3.6% with an interval that reaches no change, inside the A/A interval.
+- E5 deliverable-first rule: does not pass stage 1. Requests did not change (ratio 0.997).
+- Because neither treatment passed, stage 2 on DeepSWE did not run.
+
 ## E4: prompt rules and tool descriptions on Terminal-Bench
 
 ### Question
@@ -22,7 +28,7 @@ An earlier audit found that much of the request gap on Terminal-Bench is probing
 
 ### Setup
 
-- Model: `claude-haiku-5.5` at high effort on the Claude subscription of the maintainer's auth profile. Subagents on, with the advisor, reviewer, and ship types off. Skills on. Arm config `bench/harbor/configs/tb-haiku-high-agent-types.toml` (sha256 `2ac9ba3c92481dcfc55a8901039e6682924b139552ceb0e38d30394eece9da05`), the same file in every arm.
+- Model: `claude-haiku-5.5` at high effort on the Claude subscription of the maintainer's auth profile. Subagents on, with the advisor, reviewer, and ship types off. Skills on. Arm config `bench/harbor/configs/haiku-high-agent-types.toml` (sha256 `2ac9ba3c92481dcfc55a8901039e6682924b139552ceb0e38d30394eece9da05`), the same file in every arm.
 - Tasks: the 14 tasks of the `subset` split of `terminal-bench-2.1`, 3 trials per task, 42 trials per arm, 168 measured trials. Nine of the 14 tasks always pass or always fail on Haiku, so the pass rate is a guard, and the request counts are the primary outcome.
 - Base commit: `daca9bf56`. Each arm is one local worktree branch with its change committed on top. All four arms started together, at concurrency 4 each.
 - Arms. A1 and A2 add one bullet to the `WORKING UNATTENDED` prompt section, which only an unattended chat receives:
@@ -155,3 +161,75 @@ How the B2 review worked:
 - The 50-line gate in the B2 rule was not tested: almost every DeepSWE diff is above it.
 - Most of the B2 cost is the Sonnet price. A cheaper reviewer model would cost less; the reviewer model sweep decides that, not this experiment.
 - The result says nothing about other chat models, Terminal-Bench, interactive work, other bounds, several reviewers, or B1 and B2 together.
+
+## E5: probe rule scope and the deliverable-first rule on GPT-6 Luna
+
+### Question
+
+An audit found that about 65% of Flywheel's extra model requests per Terminal-Bench trial, against another agent on Haiku, come before the first deliverable, and that most of them are throwaway probe scripts: 4.05 per trial against 1.66. The suspected source is the shell branch of the first `CONSTRAINTS` bullet of the core prompt (`src/infra/agent-assets/system-prompt.md`), which asks for a probe before each design step and again after it, and says that a cheap probe "is not optional". E4 never changed that rule, and E4 had no A/A control. Does a probe rule scoped to the decision that it serves (probe-scoped), or E4's deliverable-first rule (deliverable-first), cut model requests on another model family without a loss of passes, measured against an A/A noise floor?
+
+### Setup
+
+- Model: `gpt-6-luna` at high effort for every role (chat, title generation, subagent summary, explorer, implementer) on the ChatGPT subscription of the maintainer's auth profile. Subagents on, with the advisor, reviewer, and ship types off. Skills on. Arm config `bench/harbor/configs/tb-luna-high-agent-types.toml` (sha256 `b16cc5a50a0cd9b82c6777cd0cd5ef08094ffc0697bd4b343e91cf4a7e6213e1`), the same file in every arm.
+- Stage 1 tasks: the 14 tasks of the `subset` split of `terminal-bench-2.1`, 6 trials per task, 84 trials per arm, 336 measured trials.
+- Base commit: `origin/main` at `72455098b`. Each arm is one local worktree branch with its change committed on top. All four arms started together.
+- Arms:
+  - Control: no change.
+  - Control-b: identical to control, as an A/A noise floor.
+  - Probe-scoped: for an unattended chat only, the shell branch of the first `CONSTRAINTS` bullet keeps every sentence up to "for those it is a hypothesis." and then says: "Settle such a claim with a throwaway script against the real thing when the claim decides your next step and reading cannot settle it. Do not probe before every design step and again after; where running the deliverable itself can settle the claim, let it be the probe. Keep credentials out of probe output." Every other agent renders the bullet byte for byte as before. An interactive chat does not read this file (it renders the chat body), so its prompt does not change.
+  - Deliverable-first: control plus E4's A1 bullet, verbatim, in the `WORKING UNATTENDED` section: "Write the first complete version of the requested deliverable at its requested path as soon as you understand the request. Before that, read or run only what that version needs; inspect the rest of the environment when a failure or a named requirement calls for it."
+- Uptake: one bring-up trial per arm on `kv-store-grpc` passed in every arm. Its first system prompt holds the new probe text in probe-scoped only, the A1 bullet in deliverable-first only, and the original probe text in every other arm. With the change and the session ids removed, each arm's first system prompt equals control's, and all 14 tool registrations have the same description and input schema hashes as control.
+- Accounting: billed spend was $0. All 7,257 recorded requests settled as included subscription use on the one ChatGPT account. List-equivalent spend was $1.29 (control), at least $1.50 (control-b, one unpriced request), $1.10 (probe-scoped), and $1.23 (deliverable-first), about $5.14 in total with the bring-ups. Harbor Hub compute charges are not known. A separate DeepSWE experiment of another chat ran `gpt-6-luna` on the same subscription account at the same time; no usage limit was reached.
+- Runs (round, run id, Hub job): `e5-control` `flywheel-terminal-bench-2.1-gpt-6-luna-2026-11-14T18-19-16.947Z` (`f4163791`); `e5-control-b` `flywheel-terminal-bench-2.1-gpt-6-luna-2026-11-14T18-19-16.926Z` (`ad59c528`); `e5-probe-scoped` `flywheel-terminal-bench-2.1-gpt-6-luna-2026-11-14T18-19-16.925Z` (`8cac941b`); `e5-deliverable-first` `flywheel-terminal-bench-2.1-gpt-6-luna-2026-11-14T18-19-16.964Z` (`9d2852bf`). Concurrency 6 per arm.
+
+Measures. As E4: requests are model responses per trial over all sessions; D1 is the number of root-session requests before the first `write` or `edit` call, where Luna's `apply_patch` tool counts as `edit`; "after last write" counts root requests after the last such call. D1 is not defined for a trial that writes only through the shell, so its ratio rests on 13 tasks. Probes per trial (the mechanism measure) counts the root-session tool calls before the first deliverable write that are throwaway probe scripts: a shell command that runs inline interpreter code (`python -c`, `python3 -I -c`, `python3 - <<`, `node -e`, `bun -e`, `perl -e`, `ruby -e`, `Rscript -e`, or an interpreter fed a heredoc), a shell command that runs a script file under `/tmp` or the session scratch directory, or a `write` of a file under `/tmp` or the scratch directory. The first deliverable write is the first `write` or `edit` call, or the first shell command that writes a file outside `/tmp` and the scratch directory, whichever comes first; a trial with no deliverable write counts its probes over the whole trial. Each ratio is the geometric mean of per-task ratios to control, with a 90% bootstrap interval over tasks (10,000 resamples). The D1 and after-last-write ratios add 1 to each task mean and the probe ratio adds 0.5, so that a task mean of 0 has a ratio. Passes use a Wilson 95% interval. Miscalls are input-validation failures plus repaired tool names plus tool identity conflicts.
+
+### Decision rule (fixed before the run)
+
+1. Validity, as E4: every round finalizes, the uptake check passes, and only slots that `hill.ts rerun` lists as infrastructure losses are run again. Any billed charge stops the experiment.
+2. Noise floor: the control-b request ratio to control and its interval. The gap is g = |1 - ratio(control-b)|.
+3. A treatment passes stage 1 when its request ratio's 90% interval excludes 1, its point reduction (1 - ratio) is at least 2g, and the quality guard holds.
+4. Quality guard: arm passes minus control passes of -1 or more is no loss, -4 or less rejects the arm, and -2 or -3 starts a rerun of the tasks that differ. A task that falls from 6/6 in control to 2/6 or lower rejects the arm unless a rerun clears it.
+5. If both treatments pass, the one with the larger request reduction goes to stage 2. If neither passes, the experiment stops after stage 1.
+6. Stage 2 runs the chosen arm and a fresh control on the 23 `deep-swe-1.1` tasks of E2, 5 attempts each, 115 trials per arm. Delta is arm passes minus control passes, paired by task, with a 95% paired bootstrap interval over tasks. Stage 2 rejects the arm if Delta is -10 or less, or if a task at 5/5 in control falls to 1/5 or lower and stays at 1/3 or lower in a 3-attempt rerun.
+7. A treatment is adopted only if it passes stage 1 and stage 2 does not reject it. The request and cost ratios on DeepSWE are reported in either case.
+
+### Results
+
+| Arm | Passes /84 (Wilson 95%) | Pass delta | Requests per trial | Request ratio [90%] | List cost per trial | Cost ratio [90%] | Mean wall (median) | Wall ratio [90%] | Timeouts |
+|---|---|---|---|---|---|---|---|---|---|
+| Control | 65 [0.67, 0.85] | | 21.6 | 1 | $0.0153 | 1 | 299 s (175 s) | 1 | 0 |
+| Control-b | 64 [0.66, 0.84] | -1 | 23.4 | 1.007 [0.924, 1.099] | $0.0179 | 1.009 [0.917, 1.111] | 350 s (185 s) | 0.987 [0.895, 1.090] | 0 |
+| Probe-scoped | 65 [0.67, 0.85] | 0 | 19.8 | 0.964 [0.896, 1.031] | $0.0131 | 0.960 [0.881, 1.040] | 296 s (179 s) | 0.965 [0.881, 1.055] | 0 |
+| Deliverable-first | 66 [0.69, 0.86] | +1 | 21.7 | 0.997 [0.937, 1.056] | $0.0146 | 0.989 [0.924, 1.057] | 309 s (181 s) | 0.989 [0.930, 1.047] | 0 |
+
+| Arm | D1 per trial | D1 ratio [90%] | After last write ratio [90%] | Probes before the first deliverable per trial | Probe ratio [90%] | Probes per trial, whole trial | Tool errors | Shell refusals | Miscalls |
+|---|---|---|---|---|---|---|---|---|---|
+| Control | 6.3 | 1 | 1 | 2.08 | 1 | 6.58 | 13 of 2,292 | 0 | 0 |
+| Control-b | 8.2 | 1.124 [0.930, 1.389] | 1.030 [0.864, 1.298] | 2.88 | 1.152 [0.934, 1.440] | 6.82 | 18 of 2,466 | 0 | 0 |
+| Probe-scoped | 7.5 | 1.076 [0.929, 1.270] | 0.901 [0.806, 0.996] | 1.83 | 0.918 [0.795, 1.048] | 5.89 | 10 of 2,129 | 0 | 0 |
+| Deliverable-first | 6.6 | 0.936 [0.773, 1.158] | 1.000 [0.870, 1.175] | 1.85 | 0.923 [0.830, 1.027] | 6.55 | 24 of 2,239 | 0 | 0 |
+
+- Noise floor: control-b against control gives a request ratio of 1.007 [0.924, 1.099], so g = 0.007 and the bar for a treatment is a point reduction of at least 1.4% with an interval that excludes 1. At this size the A/A interval is about plus or minus 9%.
+- No trial timed out, so the ratios without timed-out tasks are the same.
+- No task fell from 6/6 in control to 2/6 or lower in any arm. The largest per-task falls were one trial each on `bn-fit-modify` and `build-pmars` (6/6 to 5/6) in probe-scoped, and two trials on `install-windows-3.11` (4/6 to 3/6) in control-b and probe-scoped.
+- `install-windows-3.11` dominates the plain means: control used 79 requests per trial on it, control-b 98, probe-scoped 51, and deliverable-first 77. The geometric means of per-task ratios weigh it as one task of 14.
+- No trial dispatched a subagent, so every trial ran one session.
+- With deliverable-first, the first deliverable came through the `write` or `apply_patch` tool in 56 of 84 trials, against 44 in control, so the rule moved writes from the shell to the file tools. It did not move requests.
+
+### Validity
+
+All four rounds finalized with 84 of 84 trials scored, and `hill.ts rerun` listed no lost slots, so nothing ran again. The uptake check passed. Billed spend was $0. Exactly one response of 7,257 was not `ok`: a stream error in one control-b trial on `install-windows-3.11`, whose request is also the one unpriced request. No usage limit or rate limit refusal was recorded.
+
+### Verdicts
+
+- Probe-scoped: does not pass stage 1. Its 3.6% request reduction is above the 1.4% bar, but its interval [0.896, 1.031] includes 1. The guard holds (0 passes difference). The mechanism moved in the predicted direction but by less than the noise: probes before the first deliverable fell 8% [-20%, +5%] and whole-trial probes fell from 6.58 to 5.89 per trial, while D1 did not fall. Requests after the last write fell 10% [0.806, 0.996], so the effect, if any, is less re-verification after the work, not less probing before it.
+- Deliverable-first: does not pass stage 1. Requests did not change (0.997 [0.937, 1.056]), the point reduction of 0.3% is below the 1.4% bar, and the interval includes 1. The guard holds (+1).
+- Neither treatment passed, so by the rule the experiment stopped after stage 1 and stage 2 on DeepSWE did not run. Neither treatment is adopted by this evidence.
+
+### What the result cannot show
+
+- Luna probes less than the audit's Haiku trials: 2.08 probe scripts per control trial before the first deliverable, against the audit's 4.05 on Haiku, with a different counting rule. The headroom that the rule change targets is about half as large on this model, so a real effect on Haiku can be invisible here.
+- A reduction smaller than about 9% is not detectable at 14 tasks x 6 trials, as the A/A interval shows. The probe-scoped point estimate of 3.6% sits inside that band, so "no effect" is not shown either.
+- The probe measure is a text pattern over shell commands and was corrected once after a hand check of control trials, before any ratio was read: the first pattern missed interpreter flags before `-c` (as in `python3 -I -c`) and `Rscript -e`. It still misses probe scripts that a shell command writes and runs under another path.
+- The result covers GPT-6 Luna at high effort on 14 Terminal-Bench tasks only. It says nothing about Haiku, other models, repository tasks, interactive chat, or the two rules together.
