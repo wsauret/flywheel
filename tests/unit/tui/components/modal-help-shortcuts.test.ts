@@ -37,7 +37,7 @@ describe("helpShortcuts text entry rows", () => {
   it("keeps opposite editing directions in distinct rows", () => {
     expect(row("Move one character left")?.[0]).toContain("left arrow")
     expect(row("Move one character right")?.[0]).toContain("right arrow")
-    expect(row("Delete to line start")?.[0]).toBe("ctrl+u")
+    expect(row("Delete to line start")?.[0]).toBe("ctrl+u / super+backspace")
     expect(row("Delete to line end")?.[0]).toBe("ctrl+k")
     expect(row("Delete previous word")?.[0]).toContain("ctrl+backspace")
     expect(row("Delete next word")?.[0]).toContain("ctrl+delete")

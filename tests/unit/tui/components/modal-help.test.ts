@@ -62,7 +62,7 @@ describe("ModalHelp shortcuts", () => {
         "alt+d / alt+delete / ctrl+delete - Delete next word",
         "ctrl+shift+d - Delete current line",
         "ctrl+k - Delete to line end",
-        "ctrl+u - Delete to line start",
+        "ctrl+u / super+backspace - Delete to line start",
         "backspace / shift+backspace - Delete previous character",
         "ctrl+d / delete / shift+delete - Delete next character",
         "ctrl+- / super+z / ctrl+z - Undo text edit",
