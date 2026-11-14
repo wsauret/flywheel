@@ -278,6 +278,8 @@ const sentencesOf = (text: string): string[] => text
 // each renders under both question shapes; removing the copy needs a schema-shape change.
 const SHARED_QUESTION_FIELD_HOMES = new Set(["tool ask_user field options,tool ask_user field questions", "tool ask_user field header,tool ask_user field questions"]);
 const exempt = (homes: ReadonlySet<string>): boolean => SHARED_QUESTION_FIELD_HOMES.has([...homes].toSorted().join(","));
+// Every short-form tool's one line ends with the same call hint, because each line must stand alone (ARCH-CONTEXT-038).
+const SHORT_FORM_HINT = "Call with {} to read its full contract first.";
 
 /** The modules that a selection leaves off once dependents follow their dependencies. */
 const turnedOff = (composition: FirstPartyModuleComposition): string[] => ALL_IDS.filter((id) => !composition.enabledModuleIds.includes(id));
@@ -314,7 +316,7 @@ describe("capability render matrix", () => {
       for (const { home, text } of homes) {
         for (const sentence of sentencesOf(text)) seen.set(sentence, (seen.get(sentence) ?? new Set()).add(home));
       }
-      return [...seen].filter(([, at]) => at.size > 1 && !exempt(at)).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
+      return [...seen].filter(([sentence, at]) => at.size > 1 && !exempt(at) && sentence !== SHORT_FORM_HINT).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
     }));
     expect(duplicates.flat()).toEqual([]);
   });

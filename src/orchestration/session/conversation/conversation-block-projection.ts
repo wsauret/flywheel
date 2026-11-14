@@ -9,7 +9,7 @@ import { blockedStatusLine, formatAgentFailureDisplay, launderToolError, resolve
 import { extractFilePath } from "../../../infra/output/structured-event-tool-materializer.js";
 import { agentResultSummary, selectToolResultContent } from "../../../infra/output/structured-event-tool-results.js";
 import { toFileUri } from "../../../infra/paths.js";
-import { declaredMutationField, getToolDisplay, isHiddenFromTranscript, resolveToolRowPresentation, targetSessionField } from "../../../infra/tools/tool-display-registry.js";
+import { contractReadRow, declaredMutationField, getToolDisplay, isHiddenFromTranscript, resolveToolRowPresentation, targetSessionField } from "../../../infra/tools/tool-display-registry.js";
 import type { MessageEntry, ConversationEntry } from "./conversation-entry-types.js";
 import type { ConversationTreeTranscriptEntry } from "./conversation-projection.js";
 import type { ToolResultDisplayMeta } from "./tool-result-meta.js";
@@ -614,7 +614,9 @@ function settleContainerGroup(
   return { ...group, status: "completed", duration, ...(summary === undefined ? {} : { summary }) };
 }
 
-function settleToolEntry(tool: ToolEntry, result: ToolResultMessage, meta: ToolResultDisplayMeta | undefined, executionCwd: string, run?: ToolHistorySummary): ToolEntry {
+function settleToolEntry(call: ToolEntry, result: ToolResultMessage, meta: ToolResultDisplayMeta | undefined, executionCwd: string, run?: ToolHistorySummary): ToolEntry {
+  // Only the result says that a call read its tool's contract (PI-AGENT-131), as on the live row.
+  const tool = meta?.contractRead === true ? { ...call, ...contractReadRow(call.name) } : call;
   const rawResult = resultText(result);
   const display = getToolDisplay(tool.name);
   const content = selectToolResultContent(display, meta?.displayContent ?? rawResult, meta?.executionOutput, meta?.background);

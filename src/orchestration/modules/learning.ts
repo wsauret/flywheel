@@ -64,6 +64,7 @@ const memory = {
   semanticBundle: null,
   personaBaseline: false,
   registryOrder: 9,
+  shortForm: { trees: "always", summary: "Save, replace, or remove durable facts about the user and this project that future sessions read." },
   registrations: {
     memory: {
       capabilities: ["learning"],
@@ -83,6 +84,7 @@ const skillManage = {
   semanticBundle: null,
   personaBaseline: false,
   registryOrder: 13,
+  shortForm: { trees: "always", summary: "Create, patch, archive, restore, or promote managed skill packages." },
   registrations: {
     skill_manage: {
       capabilities: ["learning", "skills"],

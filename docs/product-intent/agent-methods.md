@@ -521,3 +521,7 @@ A held command shows that it waits for processor time and keeps its output. The 
 ## PI-AGENT-063: Commands that need more processor time than the machine has wait their turn
 
 When agent commands need more processor time than the machine has, Flywheel runs as many as its processor budget serves and holds the rest, so they finish in turn instead of all slowing together. The budget is the machine's logical core count of ready-to-run threads from Flywheel's own commands, and other programs on the machine do not reduce it. A held command resumes oldest first when the budget frees, and a command that rarely has work ready to run never waits. A command that a chat's own turn starts is never held, and its demand counts toward the budget.
+
+## PI-AGENT-131: Rarely used tools show their full instructions on first use
+
+An agent sees every tool that it can use, but a tool that agents of its kind rarely use appears by name and one line. The agent reads that tool's full instructions through a call to the tool, and the transcript shows that call as a read of the tool's contract. Which tools appear this way never changes while the agent runs.

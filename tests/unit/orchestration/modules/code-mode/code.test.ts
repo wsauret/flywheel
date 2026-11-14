@@ -114,9 +114,9 @@ describe("code tool", () => {
       kernel: testKernelToolDeps({ moduleSnapshot: composeFirstPartyModules(undefined, ["mcp", "bash"]) }),
       modules: composeModuleRuntimes([["code-mode", codeModeRuntimeOver(codeModeService())]]),
     });
-    const code = planned.tools.get("code");
-    const text = [code?.description, ...code?.promptGuidelines ?? []].join("\n");
-    expect(code?.description).toBe([
+    // Every tree offers code in short form, so its contract carries its description and guidelines (ARCH-CONTEXT-038).
+    const text = planned.tools.get("code")?.contract?.() ?? "";
+    expect(text).toContain([
       "Run JavaScript in a confined Code Mode runtime to compute and compose results.",
       "Imports, direct filesystem access, timers, and `fetch` are unavailable.",
       "Prefer an explicit `return`; if omitted, the final top-level expression becomes the result.",

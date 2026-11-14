@@ -78,6 +78,9 @@ interface ToolPolicy {
   readonly personaBaseline: boolean;
   readonly personaOrder?: number;
   readonly registryOrder: number;
+  /** The trees that offer the tool in short form (ARCH-CONTEXT-038): every tree, or only an unattended tree, whose
+   *  agents rarely call it. `summary` is the one line that the short form carries. Absent: always in full form. */
+  readonly shortForm?: { readonly trees: "always" | "unattended"; readonly summary: string };
 }
 
 /** One executable form of a tool. Its id is the registration id that
@@ -183,6 +186,7 @@ const KERNEL_TOOLS = {
   // module setting removes the only way a child reaches its parent.
   message_session: {
     ...kernelPolicy("ambient", "ui_meta", "reconstruct", false, 21),
+    shortForm: { trees: "unattended", summary: "Send one message to another session, such as your parent or a child that you started." },
     registrations: {
       message_session: { capabilities: [], create: messageSession },
     },

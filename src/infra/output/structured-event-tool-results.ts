@@ -2,7 +2,7 @@ import { Option, Result, Schema } from "effect";
 import { AgentFailureDisplaySchema, type AgentFailureDisplay, type ToolEntry } from "../output-blocks.js";
 import { isDeliveryConfirmationText } from "../delivery-confirmation.js";
 import type { LlmToolOutputPart } from "../llm/tool-output-part-schema.js";
-import { getToolDisplay } from "../tools/tool-display-registry.js";
+import { contractReadRow, getToolDisplay } from "../tools/tool-display-registry.js";
 import type { ToolDisplay } from "../tools/types.js";
 import { sanitizeExternalText } from "../control-characters.js";
 import { blockedStatusLine, extractErrorText, launderToolError, resolveAgentFailureDisplay } from "./output-formatter.js";
@@ -219,16 +219,22 @@ export function resultStatusMessage(details: unknown): string | undefined {
   return typeof message === "string" ? singleLine(sanitizeExternalText(message)) || undefined : undefined;
 }
 
-/** A result that names its target shows that name as the row's detail. */
-function nameResultTarget(builder: StructuredOutputBuilder, tracked: PlacedTool, toolUseId: string, name: string): void {
+/** Whether an ok result read a short-form tool's contract, which dispatch states under `details.contractRead`
+ *  (PI-AGENT-131). Exported for the derived-history tool-result meta reader. */
+export function resultReadContract(details: unknown): boolean {
+  return asRecord(details)?.contractRead === true;
+}
+
+/** Patches the presentation of a row from what its result states. */
+function presentResult(builder: StructuredOutputBuilder, tracked: PlacedTool, toolUseId: string, patch: (row: ToolEntry) => Partial<ToolEntry>): void {
   if (tracked.kind === "standalone") {
     const index = builder.toolBlockIndex(toolUseId);
     const block = index === undefined ? undefined : builder.getBlocks()[index];
-    if (index !== undefined && block?.kind === "tool") builder.patchTool(index, { presentation: { ...block.presentation, detail: name } });
+    if (index !== undefined && block?.kind === "tool") builder.patchTool(index, patch(block));
   } else if (tracked.kind === "row") {
     const group = builder.getBlocks().find((block) => block.kind === "agentGroup" && block.id === tracked.agentId);
     const child = group?.kind === "agentGroup" ? group.children[tracked.childIndex] : undefined;
-    if (child) builder.patchAgentChild(tracked.agentId, tracked.childIndex, { presentation: { ...child.presentation, detail: name } });
+    if (child) builder.patchAgentChild(tracked.agentId, tracked.childIndex, patch(child));
   }
 }
 
@@ -269,7 +275,11 @@ export function resolveTrackedToolResult(
       break;
   }
   const targetName = resultTargetName(details);
-  if (targetName !== undefined) nameResultTarget(builder, tracked, toolUseId, targetName);
+  if (targetName !== undefined) presentResult(builder, tracked, toolUseId, (row) => ({ presentation: { ...row.presentation, detail: targetName } }));
+  if (outcome === "ok" && resultReadContract(details)) {
+    const read = contractReadRow(tracked.toolName);
+    presentResult(builder, tracked, toolUseId, () => read);
+  }
 }
 
 function resolveAgentResult(

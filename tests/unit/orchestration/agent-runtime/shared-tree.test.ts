@@ -235,6 +235,31 @@ describe("the module capture of a chat tree's shared host", () => {
     await next.end()
   })
 
+  // ARCH-CONTEXT-038: the tree's attendance fixes once which tools take their short form, so every agent of the tree
+  // sends the same tool bytes.
+  it("gives every agent of a tree the short forms that the tree's attendance fixes", async () => {
+    const shortForms = (definitions: string) => {
+      const tools: { name: string; description: string; input_schema: unknown }[] = JSON.parse(definitions)
+      return tools.filter((tool) => tool.description.endsWith("Call with {} to read its full contract first."))
+        .map((tool) => { expect(tool.input_schema).toEqual({ type: "object", properties: {}, additionalProperties: true }); return tool.name })
+        .toSorted()
+    }
+    const unattended = { available: () => true, admit: async () => { throw new Error("unused in this test") }, unattended: true as const }
+    for (const [root, capabilityAccess, expected] of [
+      ["root-attended-forms", undefined, ["memory", "skill_manage", "web"]],
+      ["root-unattended-forms", unattended, ["list", "memory", "message_session", "search", "skill_manage", "subagent", "web"]],
+    ] as const) {
+      const agents = await Promise.all(([SUBAGENT, WORKFLOW_AGENT, { kind: "chat-side-call" }, { kind: "subagent-failure-summary", prompt: { kind: "literal", systemPrompt: "Summarize." } }] as const).map((purpose, index) =>
+        treeAgent(root, `agent-${index}`, purpose, () => ALL, capabilityAccess ? { capabilityAccess } : {})))
+      try {
+        expect(shortForms(agents[0]!.definitions)).toEqual([...expected])
+        for (const agent of agents) expect(agent.definitions).toBe(agents[0]!.definitions)
+      } finally {
+        for (const agent of agents) await agent.end()
+      }
+    }
+  })
+
   it("gives a workflow agent whose admission lacks a module the tree's tools, and refuses that module's tools from its first turn", async () => {
     const chatSubagent = await treeAgent("root-workflow", "agent-1", SUBAGENT, () => ALL)
     const workflowAgent = await treeAgent("root-workflow", "agent-2", WORKFLOW_AGENT, () => PAPERCUTS_OFF)

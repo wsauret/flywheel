@@ -250,6 +250,12 @@ export function prepareToolCall(rawCall: ToolCall, tools: ReadonlyMap<string, Ru
       },
     };
   }
+  // A short-form tool's call with no arguments reads its contract and runs nothing (ARCH-TOOLS-058). It is decided
+  // here, before a tool's admission preparation can act on the empty input. `details.contractRead` tells the
+  // transcript what the call did (PI-AGENT-131), since the same empty input runs a full-form tool.
+  if (tool.contract && Object.keys(call.input).length === 0) {
+    return { call, tool, input: call.input, validationResult: { content: tool.contract(), outcome: "ok", details: { contractRead: true } } };
+  }
   const inputRepairs: ToolInputRepair[] = [];
   const inputSchema = tool.inputValidationSchema ?? tool.inputSchema;
   // A custom-grammar tool takes raw text, so its arguments stay as written.
@@ -279,7 +285,8 @@ function validatePreparedInput(prepared: PreparedToolCall): void {
     prepared.repairNotice = undefined;
     prepared.preparedReservedPaths = undefined;
     problems = problemsOf(call.input);
-    prepared.validationResult = { content: formatToolInputProblems(call.name, problems), outcome: "error" };
+    const problemsText = formatToolInputProblems(call.name, problems);
+    prepared.validationResult = { content: tool.contract ? `${problemsText}\n\n${tool.contract()}` : problemsText, outcome: "error" };
   } else if (keepRepairs) {
     call.inputRepairs = [...inputRepairs];
     const sharedNotice = inputRepairs.map(describeInputRepair).join("\n");
@@ -368,7 +375,8 @@ export async function executePreparedTool(
   await ensureAdmissionPrepared(prepared, context, context.signal);
   const { call, tool, input, validationResult } = prepared;
   if (validationResult) {
-    log.warn("tool admission failed", { tool: call.name, toolUseId: call.id });
+    if (validationResult.outcome === "ok") log.debug("tool contract read", { tool: call.name, toolUseId: call.id });
+    else log.warn("tool admission failed", { tool: call.name, toolUseId: call.id });
     return withInputRepairNotice(prepared, validationResult);
   }
   if (!tool) throw new Error("prepared tool call has neither tool nor validation result");

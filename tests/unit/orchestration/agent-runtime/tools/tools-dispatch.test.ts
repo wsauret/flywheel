@@ -21,6 +21,7 @@ import type { CapabilityGrant } from "../../../../../src/orchestration/config/mo
 import { testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext, testGrant } from "./_fixtures.js";
 import { executeDispatchedTool } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
+import { shortFormTool } from "../../../../../src/orchestration/agent-runtime/tools/short-form.js";
 import type { ToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 
 const bashDefinition = createBashDefinition();
@@ -227,6 +228,30 @@ describe("tool dispatch", () => {
     expect(result.content).toContain("The required parameter `value` is missing");
     expect(invalid.input).toEqual({ model_value: "bad" });
     expect(invalid.repairNotice).toBeUndefined();
+  });
+
+  // ARCH-TOOLS-058: a short-form tool answers a call with no arguments with its contract, refuses an invalid call
+  // with its problems and the contract, and runs a valid call after the shared repairs.
+  it("answers a short-form tool's empty call with its contract, an invalid call with problems and the contract, and runs a valid call", async () => {
+    let preparations = 0;
+    const received: RuntimeToolInput[] = [];
+    const full: RuntimeTool = {
+      name: "probe", action: "ui_meta", description: "Probe the full description.", promptGuidelines: ["Probe guideline."], isConcurrencySafe: true,
+      inputSchema: { type: "object", properties: { value: { type: "number" } }, required: ["value"] },
+      prepareAdmission: async () => { preparations++; return {}; }, execute: async (input) => { received.push(input); return { content: "ran", outcome: "ok" }; },
+    };
+    const tool = shortFormTool(full, "Probe things.");
+    const tools = new Map([[tool.name, tool]]);
+    const contract = tool.contract?.() ?? "";
+    for (const part of ["Probe the full description.", "- Probe guideline.", JSON.stringify(full.inputSchema)]) expect(contract).toContain(part);
+
+    expect(await runTool(toolCall("probe", {}), makeContext(), tools)).toEqual({ content: contract, outcome: "ok", details: { contractRead: true } });
+    const invalid = await runTool(toolCall("probe", { value: "many" }), makeContext(), tools);
+    expect([invalid.outcome, received.length, preparations]).toEqual(["error", 0, 1]);
+    expect([String(invalid.content).startsWith("probe failed due to the following issue:"), String(invalid.content).endsWith(`\n\n${contract}`)]).toEqual([true, true]);
+
+    expect(await runTool(toolCall("probe", { value: "2" }), makeContext(), tools)).toEqual({ content: "Note: the text value of `value` was read as a number.\nran", outcome: "ok" });
+    expect(received).toEqual([{ value: 2 }]);
   });
 
   it("reports missing required parameters before executing the tool", async () => {

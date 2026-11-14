@@ -11,6 +11,7 @@
  */
 
 import { canonicalize } from "../canonical-name.js";
+import type { ToolAction } from "../workflow-types.js";
 import { stripAnsiEscapes } from "../control-characters.js";
 import { isRecord } from "../record.js";
 import { isHandoffPath } from "../paths.js";
@@ -92,6 +93,15 @@ const fallbacks = new Map<string, ToolDisplay>();
 interface ToolRowPresentation {
   readonly presentation: ToolPresentation;
   readonly sentence: ToolPresentation;
+}
+
+/** How a call that read a short-form tool's contract presents (PI-AGENT-131). Its result decides this, never its
+ *  input: the same empty input runs a full-form tool. The row takes a lookup action, not its tool's own, so every
+ *  client groups it under Explored even when the tool itself runs commands or bookkeeping; a lookup is not a file
+ *  read, so it never merges into a neighbouring file-read row. */
+export function contractReadRow(toolName: string): ToolRowPresentation & { readonly action: ToolAction } {
+  const read = { name: "Read", detail: `${canonicalize(toolName)} tool contract` };
+  return { presentation: read, sentence: read, action: "search" };
 }
 
 export function getToolDisplay(name: string): ToolDisplay {

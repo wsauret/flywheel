@@ -20,7 +20,7 @@ function subagentInputSchema(has: CapabilityCheck) {
     properties: {
       persona: {
         type: "string",
-        description: "Put first. One agent type from the Subagents catalog in your system prompt. If none fits, do the work directly.",
+        description: "Put first. One agent type from the Subagents catalog. If none fits, do the work directly.",
       },
       description: {
         type: "string",
@@ -94,7 +94,7 @@ export function createSubagentResume(deps: SubagentDispatchDeps): (childSessionI
 }
 
 function childFailureSummarizer(deps: SubagentDispatchDeps): NonNullable<SubagentDispatchDeps["failureSummarizerForChild"]> {
-  return ({ sessionId, conversationId, projectRoot, executionCwd, eventWriter, reader }) => (records, terminalError, signal) => summarizeSubagentWork({
+  return ({ sessionId, conversationId, projectRoot, executionCwd, eventWriter, reader, capabilityAccess }) => (records, terminalError, signal) => summarizeSubagentWork({
     records,
     terminalError,
     createRunner: deps.createRunner,
@@ -112,6 +112,7 @@ function childFailureSummarizer(deps: SubagentDispatchDeps): NonNullable<Subagen
         captureRuntimeConfig: deps.captureRuntimeConfig,
         awaitModelAccessSettled: deps.awaitModelAccessSettled,
         runtimeSurfaces: {},
+        capabilityAccess,
         memorySnapshot: null,
         ...(deps.usageProfile ? { usageProfile: deps.usageProfile } : {}),
         ...(treeRoot === undefined ? {} : { treeRootSessionId: treeRoot }),

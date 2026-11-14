@@ -7,6 +7,7 @@ import type { ModuleId } from "../../../../protocol/module-ids.js"
 import type { SkillRegistryRevision } from "../../../../workflows/skill-schema.js"
 import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "../../../agent-runtime/types.js"
 import type { BackgroundWorkRegistry } from "../../../agent-runtime/background-work.js"
+import type { CapabilityAccess } from "../../../agent-runtime/tools/types.js"
 import type { ChildSlotRegistry } from "../../../agent-runtime/child-slot-registry.js"
 import type { SubagentToolCallRecord } from "./work-log.js"
 import type { SessionFactWriter } from "../../../session/session-fact-writer.js"
@@ -52,6 +53,9 @@ export interface SubagentDispatchDeps {
     readonly executionCwd: string
     readonly eventWriter: SessionFactWriter
     readonly reader: AsyncEventStateReadSurface
+    /** The failed child's capability boundary. Its summary is a side call of the child's tree, so it states the
+     *  tree's attendance and sends the tree's tool bytes (ARCH-CONTEXT-038). */
+    readonly capabilityAccess: CapabilityAccess
   }) => NonNullable<SubagentDispatchDeps["summarizeOnFailure"]>
   childSlots: ChildSlotRegistry
   sessionDir?: string

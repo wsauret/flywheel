@@ -9,7 +9,7 @@ import { holdSubagentParentRuns, readSubagentParentReconciliationRuns } from "./
 // oxlint-disable-next-line import/no-cycle -- retained history recovery is installed with the module descriptor.
 import { recoverStaleSubagentRuns } from "./subagents/history/subagent-run-recovery.js"
 import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
-import type { ServingModel } from "../agent-runtime/tools/kernel-tool-deps.js"
+import type { KernelToolDeps, ServingModel } from "../agent-runtime/tools/kernel-tool-deps.js"
 import { createSubagentTool, createSubagentResume, subagentToolDefinition, subagentToolWith } from "./subagents/tool.js"
 import type { SubagentDispatchDeps } from "./subagents/execution/dispatch-deps.js"
 import { deliverSessionInput } from "../session/session-input-delivery.js"
@@ -95,6 +95,11 @@ function createSubagentsProtocol(services: ModuleProtocolServices): ModuleProtoc
  *  dispatch reads it. */
 function rosterAgents(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck): ReadonlyMap<string, AgentDefinition> {
   return new Map([...agents].filter(([name]) => has(`persona:${name}`)))
+}
+
+/** The catalog of the personas that `kernel`'s agent may dispatch. */
+function roster(kernel: KernelToolDeps, capabilities: CapabilityCheck): string {
+  return renderSubagentRoster(rosterAgents(scopedAgentRegistry(kernel.personas ?? new Map(), kernel.allowedSubagentTypes), capabilities), capabilities, kernel.unattendedTree === true)
 }
 
 /** Capabilities a child dispatch requires: this module and its dependencies. */
@@ -185,6 +190,7 @@ const subagent = {
   semanticBundle: null,
   personaBaseline: false,
   registryOrder: 17,
+  shortForm: { trees: "unattended", summary: "Launch a subagent for a focused subtask in an isolated context." },
   registrations: {
     subagent: {
       capabilities: ["subagents"],
@@ -197,8 +203,11 @@ const subagent = {
         const unattendedChat = kernel.unattendedTree === true
         if (!runtime) return { unusable: { tool: subagentToolDefinition(kernel.treeCapabilities, unattendedChat), reason: "no subagent registry available" } }
         // A capability plan (`planRunCapabilities`) reads only whether the tool is usable and calls nothing.
-        if (!kernel.servingModel) return { tool: subagentToolWith(() => Promise.reject(new Error("A capability plan runs no tool.")), kernel.treeCapabilities, unattendedChat) }
-        return { tool: createSubagentTool(runtime.toolDeps(kernel.servingModel, kernel.definitionAvailability.live), kernel.treeCapabilities, unattendedChat) }
+        const tool = kernel.servingModel
+          ? createSubagentTool(runtime.toolDeps(kernel.servingModel, kernel.definitionAvailability.live), kernel.treeCapabilities, unattendedChat)
+          : subagentToolWith(() => Promise.reject(new Error("A capability plan runs no tool.")), kernel.treeCapabilities, unattendedChat)
+        // The catalog is this agent's own, so it belongs to the contract that its call reads, never to the tool bytes.
+        return { tool: { ...tool, contractReference: () => roster(kernel, kernel.treeCapabilities) } }
       },
     },
   },
@@ -271,12 +280,14 @@ export const subagentsModule = {
     { domain: "agentTasks", id: "subagent", value: subagentTasks },
     { domain: "tools", id: "subagent", value: { kind: "tool", name: "subagent", declaration: subagent } },
     // The subagent catalog varies with the dispatcher's grant, so it renders in the
-    // session tier and the dispatch tool's bytes stay shared (ARCH-CONTEXT-018).
+    // session tier and the dispatch tool's bytes stay shared (ARCH-CONTEXT-018). A
+    // short-form dispatch tool carries it in its contract instead (ARCH-CONTEXT-039).
     { domain: "promptFragments", id: "subagent-roster", value: {
       order: 0,
-      render: ({ kernel, tools, capabilities }) => tools.has("subagent")
-        ? renderSubagentRoster(rosterAgents(scopedAgentRegistry(kernel.personas ?? new Map(), kernel.allowedSubagentTypes), capabilities), capabilities, kernel.unattendedTree === true)
-        : undefined,
+      render: ({ kernel, tools, capabilities }) => {
+        const tool = tools.get("subagent")
+        return tool && !tool.shortForm ? roster(kernel, capabilities) : undefined
+      },
     } },
     { domain: "definitions", id: "subagents", value: { kind: "subagents", roles: true, retainInstalled: true, disabledTypes: disabledTypesOf } },
     { domain: "config", id: subagentsConfigSection.key, value: subagentsConfigSection },

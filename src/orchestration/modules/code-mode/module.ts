@@ -12,6 +12,7 @@ const code = {
   personaBaseline: true,
   personaOrder: 11,
   registryOrder: 16,
+  shortForm: { trees: "always", summary: "Run JavaScript that calls external tools and composes their results." },
   registrations: {
     code: {
       capabilities: [],

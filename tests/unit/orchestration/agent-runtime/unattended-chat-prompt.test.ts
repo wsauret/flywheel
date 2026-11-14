@@ -191,7 +191,8 @@ describe("system prompt of an unattended chat", () => {
     const workflowWords = async (purpose: AgentPurpose, capture?: FirstPartyModuleComposition) => {
       const { planned } = await request(purpose, capture ? { capture } : {});
       const messageSession = planned.tools.get("message_session");
-      return { messaging: JSON.stringify([messageSession?.description, messageSession?.inputSchema]), processTargets: JSON.stringify(planned.tools.get("process")?.inputSchema).includes('"targets"') };
+      // An unattended tree offers message_session in short form, whose words are its contract (ARCH-CONTEXT-038).
+      return { messaging: messageSession?.contract?.() ?? JSON.stringify([messageSession?.description, messageSession?.inputSchema]), processTargets: JSON.stringify(planned.tools.get("process")?.inputSchema).includes('"targets"') };
     };
     const unattended = await workflowWords(UNATTENDED, withoutWorkflows);
     expect(unattended.messaging).not.toMatch(/workflow/i);
@@ -216,8 +217,9 @@ describe("system prompt of an unattended chat", () => {
         tools: JSON.stringify([...planned.tools.values()].map((tool) => [tool.name, tool.description, tool.promptGuidelines, tool.inputSchema])),
         // The tools whose words depend on whether a person reads the tree, which every agent of the tree shares.
         treeWorded: JSON.stringify(["bash", "subagent", "message_session", "process"].map((name) => planned.tools.get(name)).map((tool) => [tool?.description, tool?.promptGuidelines, tool?.inputSchema])),
-        subagent: planned.tools.get("subagent")?.description ?? "",
-        messaging: `${messageSession?.description ?? ""}\n${messageSession?.promptGuidelines?.join("\n") ?? ""}`,
+        // An unattended tree offers these tools in short form, whose words are their contracts (ARCH-CONTEXT-038).
+        subagent: planned.tools.get("subagent")?.contract?.() ?? planned.tools.get("subagent")?.description ?? "",
+        messaging: messageSession?.contract?.() ?? `${messageSession?.description ?? ""}\n${messageSession?.promptGuidelines?.join("\n") ?? ""}`,
         prompt: parts.map((part) => part.text).join("\n"),
       };
     };
@@ -234,6 +236,10 @@ describe("system prompt of an unattended chat", () => {
     expect(unattended.messaging).toContain("A message is not a conversation.");
     for (const rule of PERSON) expect(unattended.messaging).not.toContain(rule);
     expect(unattended.prompt).not.toContain(SELF_DEBUG);
+    // The persona catalog follows the dispatch tool's form (ARCH-CONTEXT-039).
+    expect(chat.prompt).toContain("# Subagents");
+    expect(unattended.prompt).not.toContain("# Subagents");
+    expect(unattended.subagent).toContain("# Subagents");
 
     // A child of a tree reads the tree's words, not its own purpose's (ARCH-CONTEXT-018).
     for (const [treeRoot, rootSurface] of [[INTERACTIVE, chat], [UNATTENDED, unattended]] as const) {

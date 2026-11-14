@@ -54,7 +54,7 @@ Each canonical tool call keeps the registration that produced it. Outbound histo
 
 ## ARCH-CONTEXT-011: Stale tool masking is a reversible request-time tier
 
-Stale tool-result masking changes only the outgoing provider request, never the durable conversation, and records enough audit metadata to explain the assembled request. Masking decisions persist across process restarts and are not recomputed in a way that breaks the cached request prefix. Compaction restarts masking from the fresh context. Reference material that defines project or architectural policy, the instructions of a loaded skill, and the person's answers to the agent's questions are never masked.
+Stale tool-result masking changes only the outgoing provider request, never the durable conversation, and records enough audit metadata to explain the assembled request. Masking decisions persist across process restarts and are not recomputed in a way that breaks the cached request prefix. Compaction restarts masking from the fresh context. Reference material that defines project or architectural policy, the instructions of a loaded skill, the contract of a short-form tool, and the person's answers to the agent's questions are never masked.
 
 ## ARCH-CONTEXT-012: Compaction is a recorded reset
 
@@ -71,7 +71,7 @@ The checkpoint tools bind to the owning conversation, and no tool input selects 
 
 ## ARCH-CONTEXT-016: Large optional context is disclosed progressively
 
-Large references, manuals, documentation, provider notes, and package bodies enter context only when the model or a definition selects them. A roster may advertise package triggers in their authors' words within admission limits, and a person cuts its cost by uninstalling packages. Small bounded context, such as a memory snapshot, loads eagerly when that is the simpler measured design. A rule enters the always-loaded instruction kernel only when every turn needs it.
+Large references, manuals, documentation, provider notes, package bodies, and the contracts of short-form tools enter context only when the model or a definition selects them. A roster may advertise package triggers in their authors' words within admission limits, and a person cuts its cost by uninstalling packages. Small bounded context, such as a memory snapshot, loads eagerly when that is the simpler measured design. A rule enters the always-loaded instruction kernel only when every turn needs it.
 Not: Eagerly injecting every available reference.
 
 ## ARCH-CONTEXT-030: Packages reach context only through declared paths
@@ -84,9 +84,19 @@ User-global and project instructions, memory, and loaded skills are point-in-tim
 
 ## ARCH-CONTEXT-018: Agents share one stable prompt prefix
 
-Every workflow agent and subagent gets one generic handoff schema and one stable system-prompt tier, and every agent and side call of a chat tree gets byte-identical tools, descriptions and schemas included. An agent's own material, its brief, instructions, context bundle, output contract, and the advertised tools that its grant refuses, goes in its opening user turn on every route, never in the system prompt. A fork does not copy another agent's grant. Material shared by one workflow or session, such as approved parent intent or the dispatchable persona catalog, renders once in the session tier after the stable prefix.
+Every workflow agent and subagent gets one generic handoff schema and one stable system-prompt tier, and every agent and side call of a chat tree gets byte-identical tools, descriptions and schemas included. An agent's own material, its brief, instructions, context bundle, output contract, and the advertised tools that its grant refuses, goes in its opening user turn on every route, never in the system prompt. A fork does not copy another agent's grant. Material shared by one workflow or session, such as approved parent intent, renders once in the session tier after the stable prefix.
 Because: tools come first in a cached request, so a per-agent tool set or system prompt breaks cache reuse across siblings.
 Not: narrowing an agent's tool set by persona instead of refusing ungranted calls at execution.
+
+## ARCH-CONTEXT-038: A tree offers rarely used tools in a fixed short form
+
+A tool that a tree's agents rarely call can carry a short form: its name, one line, and an open object schema. The tree's attendance fixes once which tools take their short form, so every agent and request of the tree sends the same tool bytes. The full contract, which is the tool's description, guidelines, examples, and schema, reaches the model only as the result of a call to that tool. The tool list never changes during a run.
+Because: tools come first in a cached request, so a definition added mid-run resends the whole context uncached.
+Not: mounting a full definition on first use.
+
+## ARCH-CONTEXT-039: The persona catalog follows the dispatch tool's form
+
+The catalog of dispatchable personas is part of the dispatch tool's contract when the tree offers that tool in short form, and renders once in the session tier otherwise.
 
 ## ARCH-CONTEXT-033: Prompt text names only capabilities its reader holds
 
@@ -153,7 +163,7 @@ One context admission budget bounds what enters the next request between request
 
 ## ARCH-CONTEXT-035: A rule has one home in a request
 
-Flywheel-owned text of one request states each rule once. A rule about one tool input lives on that input, a rule about one tool lives in that tool's description, and a rule that spans tools lives in the system prompt. The system prompt holds no list or summary of the tools that the request carries.
+Flywheel-owned text of one request states each rule once. A rule about one tool input lives on that input. A rule about one tool lives in that tool's description, or in its contract when the tree offers the tool in short form, and a rule that spans tools lives in the system prompt. The system prompt holds no list or summary of the tools that the request carries.
 Because: A second copy costs tokens on every request and drifts from the first.
 Not: Repeating a rule in each place where a model might look for it.
 

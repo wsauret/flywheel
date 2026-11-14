@@ -10,6 +10,7 @@ import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFact } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { buildRegistry, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
+import type { CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";
 
@@ -541,6 +542,20 @@ describe("child execution recovery", () => {
       expect(run.runs()).toBe(2);
       expect(run.notices.at(-1)).toEqual(expect.objectContaining({ data: { operation: expect.objectContaining({ type: "resolve" }) } }));
     } finally { release.resolve(); waits.restore(); clock.mockRestore(); }
+  });
+
+  // ARCH-CONTEXT-038: a failed child's summary is a side call of the child's tree, so it carries the child's boundary
+  // and with it the tree's attendance, which fixes the tool forms of every agent of the tree.
+  it("gives a failed child's summary the child's capability boundary", async () => {
+    const run = scriptedDispatch([{ kind: "api_error", message: "provider broke", recovery: { kind: "none" } }]);
+    const unattended = makeCapabilityAccess({ grant: grantOf(["subagents"]), unattended: true });
+    const summarized: CapabilityAccess[] = [];
+    await createSubagentDispatch({ ...run.deps, failureSummarizerForChild: ({ capabilityAccess }) => {
+      summarized.push(capabilityAccess);
+      return async () => "summary";
+    } }).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext({ capabilityAccess: unattended }));
+    expect((await run.settled).status).toBe("failed");
+    expect(summarized.map((access) => access.unattended)).toEqual([true]);
   });
 
   // No person can end the wait of an unattended run, whose chat waits on the child's work (PI-AGENT-074).

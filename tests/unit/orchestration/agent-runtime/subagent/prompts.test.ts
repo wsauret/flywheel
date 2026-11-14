@@ -34,7 +34,7 @@ describe("subagent prompt", () => {
   it("keeps dispatch selection explicit without examples or a second persona list", () => {
     const prompt = modelVisible(new Map([[PLAN_DESIGN_REVIEWER.name, PLAN_DESIGN_REVIEWER]]));
 
-    expect(prompt).toContain("Put first. One agent type from the Subagents catalog in your system prompt. If none fits, do the work directly.");
+    expect(prompt).toContain("Put first. One agent type from the Subagents catalog. If none fits, do the work directly.");
     expect(prompt).not.toContain("<example>");
     expect(prompt.match(/reviewer-plan-design/g)).toHaveLength(1);
     expect(prompt).toContain("One or two sentences: the question this dispatch answers, why its result should not fill your own context, and the alternatives you considered.");

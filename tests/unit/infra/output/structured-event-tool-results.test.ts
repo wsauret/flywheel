@@ -77,6 +77,23 @@ describe("resolveTrackedToolResult", () => {
     }
   });
 
+  // PI-AGENT-131: the result, never the empty input, says that a call read its tool's contract.
+  it("presents a call as a read of its tool's contract only when its ok result states it", () => {
+    const settle = (toolName: string, outcome: ToolOutcome, details?: unknown) => {
+      const builder = new StructuredOutputBuilder();
+      builder.pushStandaloneToolEntry({ kind: "tool", id: "call", name: toolName, presentation: { name: "Neutral", detail: "" }, timestamp: Date.now(), status: "pending" });
+      resolveTrackedToolResult(builder, { kind: "standalone", toolName, streamsInput: false }, "call", outcome, textContent("result"), details);
+      return toolBlock(builder);
+    };
+    const read = { name: "Read", detail: "list tool contract" };
+    expect(settle("list", "ok", { contractRead: true })).toMatchObject({ presentation: read, sentence: read, action: "search" });
+    // A bookkeeping tool's contract read is a lookup too, so it groups under Explored, not Ran.
+    expect(settle("memory", "ok", { contractRead: true })).toMatchObject({ presentation: { name: "Read", detail: "memory tool contract" }, action: "search" });
+    // A full-form call with no arguments, and a refused or invalid call, keep their own presentation.
+    expect(settle("search", "error").presentation).toEqual({ name: "Neutral", detail: "" });
+    expect(settle("list", "ok").presentation).toEqual({ name: "Neutral", detail: "" });
+  });
+
   it("settles a message that its recipient holds as waiting, with the line its result states, in a standalone row and in a subagent card", () => {
     const builder = new StructuredOutputBuilder();
     builder.pushStandaloneToolEntry({ kind: "tool", id: "message-1", name: "message_session", presentation: { name: "Message to", detail: "3f2a-parent" }, timestamp: Date.now(), status: "pending" });

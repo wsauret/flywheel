@@ -70,8 +70,8 @@ describe("code namespaced MCP", () => {
     expect(planned.tools.has("code")).toBe(true);
     expect(planned.registrationIdentities.get("work.lookup")).toBe("code");
     expect(planned.eligibleTools.get("work.lookup")?.isConcurrencySafe).toBe(true);
-    expect(planned.tools.get("code")?.promptGuidelines?.join("\n")).toContain("## Namespaces\n\n- work");
-    expect(planned.tools.get("code")?.promptGuidelines?.join("\n")).not.toContain("tools.work.lookup");
+    expect(planned.tools.get("code")?.contract?.()).toContain("## Namespaces\n\n- work");
+    expect(planned.tools.get("code")?.contract?.()).not.toContain("tools.work.lookup");
     expect(JSON.parse(String(result.content))).toEqual({ outcome: "ok", content: "mcp-result" });
     expect(output).toContain("1/2 working");
   });

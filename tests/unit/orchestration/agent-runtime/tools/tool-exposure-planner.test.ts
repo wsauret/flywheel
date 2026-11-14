@@ -4,7 +4,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { KernelToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
-import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { callerToolGrant, planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { testBaseTools, testCapabilityModules, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
 import type { HandoffToolSchema } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
@@ -432,8 +433,8 @@ describe("planToolExposure", () => {
     expect(exclusive?.isConcurrencySafe).toBe(true);
     expect(planned.tools.has("github.issue_get")).toBe(false);
     const code = planned.tools.get("code");
-    expect(code?.promptGuidelines?.join("\n")).toContain("## Namespaces\n\n- github\n- linear");
-    expect(code?.promptGuidelines?.join("\n")).not.toContain("tools.read(");
+    expect(code?.contract?.()).toContain("## Namespaces\n\n- github\n- linear");
+    expect(code?.contract?.()).not.toContain("tools.read(");
     expect(planned.eligibleTools.get("code")).toBe(code);
     expect(code?.gateAdmission).toBe("none");
     expect(planned.registrationIdentities.get("github.issue_get")).toBe(planned.registrationIdentities.get("code"));
@@ -450,6 +451,22 @@ describe("planToolExposure", () => {
     expect(planned.tools.has("mcp_call")).toBe(false);
     expect(planned.tools.has("github.issue_get")).toBe(false);
     expect(planned.eligibleTools.has("github.issue_get")).toBe(true);
+  });
+
+  // ARCH-CONTEXT-038, ARCH-CONTEXT-039, ARCH-TOOLS-058: an unattended tree offers subagent in short form, with the
+  // persona catalog in its contract; an agent that may not call it reads its refusal and no contract.
+  it("gives an unattended tree's subagent its catalog in the contract, and an ungranted agent only the refusal", async () => {
+    const purpose = { kind: "unattended-chat" } as const;
+    const kernel = { capabilities: ALL_CAPABILITIES, sessions: sessionMessaging, purpose, unattendedTree: true } as const;
+    const granted = (await plan(kernel, [["subagents", subagentsRuntime()]])).tools.get("subagent");
+    expect(granted?.inputSchema).toEqual({ type: "object", properties: {}, additionalProperties: true });
+    expect(granted?.promptGuidelines).toBeUndefined();
+    for (const part of ["# Subagents", '"persona"']) expect(granted?.contract?.()).toContain(part);
+
+    const refused = (await plan(kernel, [["subagents", subagentsRuntime()]], { granted: callerToolGrant(["read"]) })).tools.get("subagent");
+    expect([refused?.description, refused?.inputSchema, refused?.contract]).toEqual([granted?.description, granted?.inputSchema, undefined]);
+    const result = await executePreparedTool(prepareToolCall({ id: "c", name: "subagent", input: {} }, new Map([["subagent", refused!]]), { ok: true }), makeContext());
+    expect([result.outcome, String(result.content).includes("Contract of the subagent tool.")]).toEqual(["error", false]);
   });
 
   it("omits skill when every installed skill is model-disabled", async () => {

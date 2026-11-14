@@ -5,9 +5,12 @@ import { createToolGate } from "../../../../../src/orchestration/modules/provide
 
 const READ_SCHEMA = { type: "object" as const, properties: { path: { type: "string" } }, required: ["path"] };
 const BASH_SCHEMA = { type: "object" as const, properties: { command: { type: "string" } } };
+// A short-form tool's open object root (ARCH-CONTEXT-038).
+const SHORT_FORM_SCHEMA = { type: "object" as const, properties: {}, additionalProperties: true };
 const TOOLS = [
   { name: "read", description: "Reads a file.", inputSchema: READ_SCHEMA },
   { name: "bash", description: "Runs a command.", inputSchema: BASH_SCHEMA },
+  { name: "web", description: "Researches the web. Call with {} to read its full contract first.", inputSchema: SHORT_FORM_SCHEMA },
 ];
 
 /** The gate's server, reached as the CLI reaches it: through an MCP client over a linked transport. */
@@ -34,6 +37,7 @@ describe("the bridge tool gate", () => {
     expect((await client.listTools()).tools).toEqual([
       { name: "read", description: "Reads a file.", inputSchema: READ_SCHEMA, _meta: { "anthropic/alwaysLoad": true, "anthropic/maxResultSizeChars": 500_000 } },
       { name: "bash", description: "Runs a command.", inputSchema: BASH_SCHEMA, _meta: { "anthropic/alwaysLoad": true, "anthropic/maxResultSizeChars": 500_000 } },
+      { name: "web", description: "Researches the web. Call with {} to read its full contract first.", inputSchema: SHORT_FORM_SCHEMA, _meta: { "anthropic/alwaysLoad": true, "anthropic/maxResultSizeChars": 500_000 } },
     ]);
     await close();
   });

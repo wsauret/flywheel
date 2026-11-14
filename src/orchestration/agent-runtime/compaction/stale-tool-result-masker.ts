@@ -9,8 +9,8 @@
  * turn. A/B evidence showed a rolling window is worse than no masking at
  * all; do not reintroduce one.
  *
- * Reference material, loaded skill instructions, and the person's answers
- * are never masked (see isStandingContext).
+ * Reference material, loaded skill instructions, the contracts of short-form
+ * tools, and the person's answers are never masked (see isStandingContext).
  *
  * Two block kinds are maskable before the cutoff:
  *  - tool RESULTS (the original scope), and
@@ -29,6 +29,7 @@
 import type { ContentBlock, ConversationMessage } from "../llm/types.js";
 import { DELIVERY_CONFIRMATION } from "../../../infra/delivery-confirmation.js";
 import { editInputEntries } from "../../../infra/file-edit/edit-input.js";
+import { isToolContractResult } from "../tools/short-form.js";
 
 interface ToolInput {
   [key: string]: unknown;
@@ -376,7 +377,7 @@ function eligibleForMasking(message: ToolResultMessage, toolUse: ToolUseBlock | 
   if (message.isError === true || message.interrupted === true) return false;
   // No matching tool_use block means no recover handle; leave it alone.
   if (!toolUse) return false;
-  if (isStandingContext(toolUse)) return false;
+  if (isStandingContext(toolUse, message)) return false;
   const textLength = textContentLength(message);
   const hasImage = message.content.some((part) => part.type === "image");
   return textLength >= MIN_MASK_TEXT_LENGTH || hasImage;
@@ -384,9 +385,12 @@ function eligibleForMasking(message: ToolResultMessage, toolUse: ToolUseBlock | 
 
 /** Context that the model cannot recover by re-running its tool
  *  (ARCH-CONTEXT-011): reference material, the instructions of a loaded
- *  skill, and the person's answers, which a re-run would ask again. */
-function isStandingContext(toolUse: ToolUseBlock): boolean {
+ *  skill, the contract of a short-form tool, which a call with arguments never
+ *  returns again, and the person's answers, which a re-run would ask again. */
+function isStandingContext(toolUse: ToolUseBlock, message: ToolResultMessage): boolean {
   if (toolUse.name === "ask_user") return true;
+  const lead = message.content[0];
+  if (lead?.type === "text" && isToolContractResult(toolUse.name, lead.text)) return true;
   if (toolUse.name === "skill") return toolUse.input["action"] === "load";
   const path = typeof toolUse.input["path"] === "string" ? toolUse.input["path"] : "";
   return toolUse.name === "read" && path.length > 0 && isReferencePath(path);

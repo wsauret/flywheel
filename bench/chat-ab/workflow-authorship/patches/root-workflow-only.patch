@@ -1,7 +1,7 @@
 diff --git a/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts b/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
 --- a/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
 +++ b/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
-@@ -247,6 +247,18 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolExpo
+@@ -253,6 +253,18 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolExpo
      registrationIdentities.set(tool.name, deferred.identity);
      registrationIds.set(tool.name, deferred.registrationId);
    }
