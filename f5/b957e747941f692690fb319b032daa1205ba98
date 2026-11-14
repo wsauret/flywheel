@@ -1,0 +1,42 @@
+bench/README.md
+  h_4b47e9e4a8b456 131,139,143,349
+bench/ab-persona/records/implementer/2026-11-13T21-16-42-634Z.jsonl
+  h_4b47e9e4a8b456 36-81
+bench/ab-persona/records/implementer/2026-11-13T21-16-44-771Z.jsonl
+  h_4b47e9e4a8b456 42-111
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 111,119-125
+src/orchestration/modules/development/benchmark/benchmark-records.ts
+  h_4b47e9e4a8b456 10,14-16,53-54,93-104,111-114,123-131,171-172,187-188,205-210,217,237-241,245-246,274-280,283-286,291,293,297-301,303-347,362-363
+src/orchestration/modules/development/benchmark/persona-benchmark.ts
+  h_4b47e9e4a8b456 39,331-332,398,407,432,442,445
+src/orchestration/modules/development/benchmark/ranking.ts
+  h_4b47e9e4a8b456 7,14-16,33,35-36,39-48,50-53,56-57,93-94,128,133-134,166-167,173,210-212,221,226,265,280,287-289,293-299,302,306,310,408,447-453,464,466,511,517,520
+src/orchestration/modules/development/benchmark/regrade.ts
+  h_4b47e9e4a8b456 31,40-41,53
+src/orchestration/modules/development/benchmark/rejudge.ts
+  h_4b47e9e4a8b456 87,113
+src/orchestration/modules/development/benchmark/run-store.ts
+  h_4b47e9e4a8b456 100-101
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 2,33-34,37,46,48-50,54,67,73,175-176,182-184,192-214,218,222-223,229-230
+tests/unit/bench/benchmark-records.test.ts
+  h_4b47e9e4a8b456 4,7,33-34,43,45-46,50,52-73,83
+tests/unit/bench/benchmark-regrade.test.ts
+  h_4b47e9e4a8b456 56-57,62-64
+tests/unit/bench/benchmark-rejudge.test.ts
+  h_4b47e9e4a8b456 50
+tests/unit/bench/persona-native-benchmark.test.ts
+  h_4b47e9e4a8b456 12-13,167-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f5b957e747941f692690fb319b032daa1205ba98",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
