@@ -25,10 +25,12 @@ Each benchmarked role's entry in `ROLE_MODEL_DEFAULTS` (`src/orchestration/confi
 | Role | Preferences, in order | Fallback | Evidence runs |
 |---|---|---|---|
 | `explorer` | gpt-6.1-sol low, claude-sonnet-5.5 low | mid, medium | `explorer-2026-11-13T21-20-04-158Z`, `explorer-2026-11-13T21-20-06-290Z` |
-| `reviewer` (ranked as `reviewer-quality`; every reviewer role without its own entry inherits it) | gpt-6.1-sol high, claude-opus-5.5 medium | mid, xhigh | `reviewer-code-quality-2026-11-11T01-03-13-088Z`, `T01-04-30-041Z`, `T05-15-25-509Z`, `T06-50-30-346Z`, `T15-32-09-950Z` |
-| `reviewer-elegance` | claude-opus-5.5 medium, gpt-6.1-sol medium | mid, medium | `reviewer-code-elegance-2026-11-11T21-48-22-147Z`, `reviewer-code-elegance-2026-11-12T00-44-54-328Z`, `reviewer-plan-elegance-2026-11-13T14-48-59-768Z` |
+| `reviewer-quality` | gpt-6.1-sol high, claude-opus-5.5 medium | mid, xhigh | `reviewer-code-quality-2026-11-11T01-03-13-088Z`, `T01-04-30-041Z`, `T05-15-25-509Z`, `T06-50-30-346Z`, `T15-32-09-950Z`, `reviewer-plan-quality-2026-11-14T06-37-01-303Z` |
+| `reviewer-elegance` | claude-opus-5.5 medium, gpt-6.1-sol medium | mid, medium | `reviewer-code-elegance-2026-11-11T21-48-22-147Z`, `reviewer-code-elegance-2026-11-12T00-44-54-328Z`, `reviewer-plan-elegance-2026-11-13T14-48-59-768Z`, `reviewer-plan-elegance-2026-11-14T06-37-02-914Z` |
 | `reviewer-mechanism` | gpt-6.1-sol medium, claude-opus-5.5 medium | mid, medium | `reviewer-mechanism-2026-11-11T21-48-24-057Z` |
 | `implementer` | gpt-6-astra low, claude-fable-5.2 low (no Anthropic setting passes the filters) | mid, high | `implementer-2026-11-13T21-16-42-634Z`, `implementer-2026-11-13T21-16-44-771Z` |
+
+The generic `reviewer` entry, which every reviewer role without its own entry inherits, is the lighter specialist default (gpt-6.1-sol medium, then claude-opus-5.5 medium; user decision 2026-11-14 "Split it"). The 2026-11-14 plan-review sweeps left both reviewer policies unchanged.
 
 When a new setting is benchmarked, run `bun run bench:rank` again and copy any changed Policy block into the role's entry as an approved change. This replaces the 0.6 / 0.2 / 0.2 min-max composite of earlier drafts of the same day, which stretched small gaps.
 

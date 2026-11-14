@@ -64,13 +64,13 @@ export const ROLE_MODEL_DEFAULTS = {
     { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
   ] },
   // bench:rank on reviewer-code-quality-2026-11-11T01-03-13-088Z, T01-04-30-041Z, T05-15-25-509Z, T06-50-30-346Z, and
-  // T15-32-09-950Z.
+  // T15-32-09-950Z, and reviewer-plan-quality-2026-11-14T06-37-01-303Z.
   "reviewer-quality": { preferences: [
     { family: "openai", model: "gpt-6.1-sol", effort: "high" },
     { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
   ], fallback: { tier: "mid", effort: "xhigh" } },
   // bench:rank on reviewer-code-elegance-2026-11-11T21-48-22-147Z, reviewer-code-elegance-2026-11-12T00-44-54-328Z,
-  // and reviewer-plan-elegance-2026-11-13T14-48-59-768Z.
+  // reviewer-plan-elegance-2026-11-13T14-48-59-768Z, and reviewer-plan-elegance-2026-11-14T06-37-02-914Z.
   "reviewer-elegance": { preferences: [
     { family: "anthropic", model: "claude-opus-5.5", effort: "medium" },
     { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
