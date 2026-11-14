@@ -1,0 +1,99 @@
+# Flywheel config of the DeepSeek 1017 max-effort arm, matched to the
+# FrontierHarness v1.1 board (frontierharness.org): every harness there runs
+# DeepSeek-V4.1-Flash-1017 at max effort, served by Baseten, 62 tasks x 4
+# attempts. This arm runs the same model at max effort on every role, over the
+# same tasks and attempts.
+#
+# Known differences from the board:
+# - Route. Flywheel resolves the one model "deepseek-v4.1-flash-1017" from
+#   three providers and walks them in its fixed spend order: the OpenCode Go
+#   subscription (included quota) first, then the DeepSeek API (first-party,
+#   wire id "deepseek-flash"), then OpenRouter. A request moves to the next
+#   provider only when one refuses for spent quota, throttling, overload, or
+#   an outage, so one trial can be served by more than one provider. Each
+#   attempt records the provider that served it.
+# - Provider. Only the OpenRouter leg is the board's own route: it is
+#   restricted to Baseten's standard endpoint with no fallback. OpenCode Go and
+#   the DeepSeek API serve the same weights through other hosts.
+# - Cost. The run's own cost mixes included use (OpenCode Go), DeepSeek list
+#   prices, and Baseten prices. Compare cost per pass with the board by
+#   repricing each trial's tokens at Baseten's list price.
+# - Effort. Max on every role, including the short title-generation role.
+#
+# The launcher validates this file with Flywheel's config schema before any
+# trial, records its sha256 in run_manifest.json, and installs it in the trial
+# as $HOME/.flywheel/flywheel.toml. The trial exports its credentials under the
+# neutral auth profile id "benchmark", so the profile tables below apply. The
+# snapshot carries the credentials of the three enabled provider modules.
+
+allow_persistent_processes = true
+# Headless shell commands write in place; the guard that stops a write
+# outside the project would refuse ordinary task setup such as package installs.
+shell_write_guard = false
+idle_compaction = false
+auto_delete_session_days = 0
+
+disabled_modules = [
+  "ask-user",
+  "bug-reports",
+  "code-mode",
+  "development",
+  "experiments",
+  "learning",
+  "mcp",
+  "papercuts",
+  "project-notifications",
+  "provider-anthropic-api",
+  "provider-claude-agent-sdk",
+  "provider-github-copilot",
+  "provider-google-api",
+  "provider-google-vertex",
+  "provider-openai-api",
+  "provider-chatgpt",
+  "provider-supergrok",
+  "remote",
+  "side-question",
+  "web",
+  "web-chatgpt",
+  "web-exa",
+  "workflows",
+]
+
+# Subagents stay on with the agent types that do the task's work. The advisor and
+# the reviewers give a second opinion from another model, which a run of one
+# model cannot give, and nothing in a trial publishes.
+[subagents]
+disabled_types = ["advisor", "reviewer", "ship"]
+
+[updates]
+auto_install = false
+
+[profiles.benchmark]
+allow_training_routes = false
+
+# The board runs one model in a trial, so automatic titles use the chat route too.
+# "baseten" matches every Baseten endpoint, so its 2x-priced fast tier is excluded by name.
+[profiles.benchmark.roles.chat]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.explorer]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.implementer]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.subagent-summary]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.title-generation]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
