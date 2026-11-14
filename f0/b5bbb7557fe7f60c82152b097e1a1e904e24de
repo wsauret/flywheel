@@ -1,0 +1,26 @@
+bench/README.md
+  h_4b47e9e4a8b456 45
+bench/ab-persona/records/implementer/2026-11-13T21-16-42-634Z.jsonl
+  h_4b47e9e4a8b456 82-89
+bench/ab-persona/records/implementer/2026-11-13T21-16-44-771Z.jsonl
+  h_4b47e9e4a8b456 112-121
+bench/tasks/implement/scheme-metacircular/adapter.ts
+  h_4b47e9e4a8b456 150-152,213
+bench/tasks/implement/scheme-metacircular/provenance.json
+  h_4b47e9e4a8b456 33,41
+bench/tasks/implement/scheme-metacircular/qualify.ts
+  h_4b47e9e4a8b456 79
+bench/tasks/implement/scheme-metacircular/replacement-ledger.json
+  h_4b47e9e4a8b456 26-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f0b5bbb7557fe7f60c82152b097e1a1e904e24de",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
