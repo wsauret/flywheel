@@ -482,8 +482,10 @@ class RunShutdownTest(unittest.TestCase):
             self.assertTrue(summary["evidence_exported"])
             self.assertEqual(self.harbor_output_at_summary, b"")
             self.assertEqual(output, answer.encode())
+            # Graders that walk the workspace never see Flywheel's state once the evidence holds it.
+            self.assertFalse((root / "project" / ".flywheel").exists())
             # The export read the store after the teardown write.
-            connection = sqlite3.connect(root / "project" / ".flywheel" / "flywheel.sqlite")
+            connection = sqlite3.connect(root / "logs" / trial_runtime.EVIDENCE_DIR_NAME / ".flywheel" / "flywheel.sqlite")
             try:
                 self.assertEqual(connection.execute("select count(*) from event").fetchone(), (2,))
             finally:
