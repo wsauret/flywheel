@@ -1,0 +1,20 @@
+bench/harbor/configs/luna-high-agent-types.toml
+  h_4b47e9e4a8b456 1-71
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 40-41
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 97
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 105,123-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1b970b2027d3b0670d22e23ecc99882dc6b6c627",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
