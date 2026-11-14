@@ -1,0 +1,182 @@
+bench/README.md
+  h_4b47e9e4a8b456 127-143,349,372,379-381
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 33-36,59-60,63-65,90,94,106-112,127-128,191-211,252-298
+bench/ab-persona/rank.ts
+  h_4b47e9e4a8b456 1-84
+bench/ab-persona/records/explorer/2026-11-13T21-20-04-158Z.jsonl
+  h_4b47e9e4a8b456 1-97
+bench/ab-persona/records/explorer/2026-11-13T21-20-06-290Z.jsonl
+  h_4b47e9e4a8b456 1-97
+bench/ab-persona/records/implementer/2026-11-13T21-16-42-634Z.jsonl
+  h_4b47e9e4a8b456 1-35
+bench/ab-persona/records/implementer/2026-11-13T21-16-44-771Z.jsonl
+  h_4b47e9e4a8b456 1-41
+bench/ab-persona/records/reviewer-code-elegance/2026-11-11T21-48-22-147Z.jsonl
+  h_4b47e9e4a8b456 1-649
+bench/ab-persona/records/reviewer-code-elegance/2026-11-12T00-44-54-328Z.jsonl
+  h_4b47e9e4a8b456 1-145
+bench/ab-persona/records/reviewer-code-quality/2026-11-11T01-03-13-088Z.jsonl
+  h_4b47e9e4a8b456 1-724
+bench/ab-persona/records/reviewer-code-quality/2026-11-11T01-04-30-041Z.jsonl
+  h_4b47e9e4a8b456 1-466
+bench/ab-persona/records/reviewer-code-quality/2026-11-11T05-15-25-509Z.jsonl
+  h_4b47e9e4a8b456 1-94
+bench/ab-persona/records/reviewer-code-quality/2026-11-11T06-50-30-346Z.jsonl
+  h_4b47e9e4a8b456 1-94
+bench/ab-persona/records/reviewer-code-quality/2026-11-11T15-32-09-950Z.jsonl
+  h_4b47e9e4a8b456 1-559
+bench/ab-persona/records/reviewer-mechanism/2026-11-11T21-48-24-057Z.jsonl
+  h_4b47e9e4a8b456 1-541
+bench/ab-persona/records/reviewer-plan-elegance/2026-11-13T14-48-59-768Z.jsonl
+  h_4b47e9e4a8b456 1-121
+bench/ab-persona/strategy-bench.ts
+  h_4b47e9e4a8b456 24,27,394,457,470,508-509,518
+bench/findings/README.md
+  h_4b47e9e4a8b456 5,13
+bench/tasks/explorer/README.md
+  h_4b47e9e4a8b456 28-29,47
+bench/tasks/explorer/background-command-turn-end-wait/WHY.md
+  h_4b47e9e4a8b456 1-81
+bench/tasks/explorer/background-command-turn-end-wait/manifest.json
+  h_4b47e9e4a8b456 1-68
+bench/tasks/explorer/background-command-turn-end-wait/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/background-command-turn-end-wait/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/edit-mixed-parameter-syntax/WHY.md
+  h_4b47e9e4a8b456 1-76
+bench/tasks/explorer/edit-mixed-parameter-syntax/manifest.json
+  h_4b47e9e4a8b456 1-60
+bench/tasks/explorer/edit-mixed-parameter-syntax/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/edit-mixed-parameter-syntax/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/prompt-cache-key-by-request-kind/WHY.md
+  h_4b47e9e4a8b456 1-88
+bench/tasks/explorer/prompt-cache-key-by-request-kind/manifest.json
+  h_4b47e9e4a8b456 1-75
+bench/tasks/explorer/prompt-cache-key-by-request-kind/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/prompt-cache-key-by-request-kind/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/role-config-prune-scope/WHY.md
+  h_4b47e9e4a8b456 1-80
+bench/tasks/explorer/role-config-prune-scope/manifest.json
+  h_4b47e9e4a8b456 1-64
+bench/tasks/explorer/role-config-prune-scope/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/role-config-prune-scope/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/stop-during-signed-thinking-row/WHY.md
+  h_4b47e9e4a8b456 1-81
+bench/tasks/explorer/stop-during-signed-thinking-row/manifest.json
+  h_4b47e9e4a8b456 1-65
+bench/tasks/explorer/stop-during-signed-thinking-row/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/stop-during-signed-thinking-row/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/subagent-handoff-contract-failure/WHY.md
+  h_4b47e9e4a8b456 1-84
+bench/tasks/explorer/subagent-handoff-contract-failure/manifest.json
+  h_4b47e9e4a8b456 1-67
+bench/tasks/explorer/subagent-handoff-contract-failure/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/subagent-handoff-contract-failure/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/unattended-spent-capacity-vs-chat/WHY.md
+  h_4b47e9e4a8b456 1-80
+bench/tasks/explorer/unattended-spent-capacity-vs-chat/manifest.json
+  h_4b47e9e4a8b456 1-67
+bench/tasks/explorer/unattended-spent-capacity-vs-chat/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/unattended-spent-capacity-vs-chat/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/unreadable-launch-link-subtree/WHY.md
+  h_4b47e9e4a8b456 1-94
+bench/tasks/explorer/unreadable-launch-link-subtree/manifest.json
+  h_4b47e9e4a8b456 1-74
+bench/tasks/explorer/unreadable-launch-link-subtree/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/unreadable-launch-link-subtree/task.json
+  h_4b47e9e4a8b456 1-14
+bench/tasks/explorer/unshown-session-resume-paths/WHY.md
+  h_4b47e9e4a8b456 1-78
+bench/tasks/explorer/unshown-session-resume-paths/manifest.json
+  h_4b47e9e4a8b456 1-63
+bench/tasks/explorer/unshown-session-resume-paths/prompt.md
+  h_4b47e9e4a8b456 1
+bench/tasks/explorer/unshown-session-resume-paths/task.json
+  h_4b47e9e4a8b456 1-14
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 100,108-118
+package.json
+  h_4b47e9e4a8b456 103,107
+scripts/build-review-fixtures.ts
+  h_4b47e9e4a8b456 8-9,872,880
+scripts/check-intent-corpora.ts
+  h_4b47e9e4a8b456 72-73
+scripts/review-fixture-publication.ts
+  h_4b47e9e4a8b456 2-5
+src/orchestration/config/model-tiers.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/development/benchmark/benchmark-records.ts
+  h_4b47e9e4a8b456 1-318
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 358-361,373,407-408
+src/orchestration/modules/development/benchmark/content-identity.ts
+  h_4b47e9e4a8b456 52-55
+src/orchestration/modules/development/benchmark/harness-names.ts
+  h_4b47e9e4a8b456 1-75
+src/orchestration/modules/development/benchmark/implement-task.ts
+  h_4b47e9e4a8b456 40-45,156,163-165,177-178,205-208,215-222
+src/orchestration/modules/development/benchmark/persona-benchmark.ts
+  h_4b47e9e4a8b456 12,33,39,45-46,124-125,183-184,224,413,429,443,445,462,464,473,482
+src/orchestration/modules/development/benchmark/ranking.ts
+  h_4b47e9e4a8b456 1-488
+src/orchestration/modules/development/benchmark/regrade.ts
+  h_4b47e9e4a8b456 1-56
+src/orchestration/modules/development/benchmark/rejudge.ts
+  h_4b47e9e4a8b456 1-121
+src/orchestration/modules/development/benchmark/reports.ts
+  h_4b47e9e4a8b456 6,370-379
+src/orchestration/modules/development/benchmark/research-scoring.ts
+  h_4b47e9e4a8b456 173
+src/orchestration/modules/development/benchmark/run-store.ts
+  h_4b47e9e4a8b456 40-41,56-58,69,154,170,469
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 1-259
+tests/unit/bench/benchmark-records.test.ts
+  h_4b47e9e4a8b456 1-73
+tests/unit/bench/benchmark-regrade.test.ts
+  h_4b47e9e4a8b456 1-91
+tests/unit/bench/benchmark-rejudge.test.ts
+  h_4b47e9e4a8b456 1-95
+tests/unit/bench/cli.test.ts
+  h_4b47e9e4a8b456 19-27
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 107,110,127-131
+tests/unit/bench/persona-benchmark-stored-records.test.ts
+  h_4b47e9e4a8b456 332
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 19,360,364-365,368,370-380,544,550-555,558,561,566-567,579-591
+tests/unit/bench/persona-native-benchmark.test.ts
+  h_4b47e9e4a8b456 98,104
+tests/unit/bench/report-accounting.test.ts
+  h_4b47e9e4a8b456 63,86
+tests/unit/bench/strategy.test.ts
+  h_4b47e9e4a8b456 466,469-476
+tests/unit/scripts/review-fixture-publication.test.ts
+  h_4b47e9e4a8b456 5-6,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "64752b2dda7480735e6344f874f5d50f4f3f77dd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
