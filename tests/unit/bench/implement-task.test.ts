@@ -104,10 +104,10 @@ describe("shared implementation task loading", () => {
   it("identifies every consumed implementation task input", async () => {
     const tasksDir = await writeSyntheticTaskDir();
     const taskDir = join(tasksDir, "synthetic");
-    const identity = async (): Promise<string> => {
+    const identity = async () => {
       const [task] = await loadImplementTasks(tasksDir);
       if (!task) throw new Error("expected one implementation task");
-      return task.contentIdentity;
+      return { content: task.contentIdentity, candidate: task.candidateIdentity, grader: task.graderIdentity };
     };
     const original = await identity();
     const cases = [
@@ -124,7 +124,11 @@ describe("shared implementation task loading", () => {
         const path = join(taskDir, relativePath);
         const before = await Bun.file(path).text();
         await Bun.write(path, changed);
-        expect(await identity()).not.toBe(original);
+        const current = await identity();
+        expect(current.content).not.toBe(original.content);
+        // Only the hidden acceptance tests grade; every other input is what the candidate answers.
+        const grading = relativePath.startsWith("acceptance/");
+        expect([current.candidate === original.candidate, current.grader === original.grader], relativePath).toEqual([grading, !grading]);
         await Bun.write(path, before);
       }
     } finally {

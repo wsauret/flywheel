@@ -1,0 +1,60 @@
+{
+  "facts": [
+    {
+      "id": "one-open-entry",
+      "claim": "Only one shape is repaired: a single open-ended entry whose text opens with the old-text key, has exactly one separator to the new-text key, and ends with that key's string value and no closing bracket; anything more is refused.",
+      "catch_criteria": "States the narrow accepted shape (one entry, one separator, open-ended tail) and that other mixed shapes are refused.",
+      "files": [
+        "src/orchestration/agent-runtime/tools/coerce-input.ts"
+      ]
+    },
+    {
+      "id": "new-text-json",
+      "claim": "The new text is read as a JSON string; a tail that is not one closed JSON string is refused.",
+      "catch_criteria": "States that the new text is JSON-parsed and that an unparseable tail is refused.",
+      "files": [
+        "src/orchestration/agent-runtime/tools/coerce-input.ts"
+      ]
+    },
+    {
+      "id": "old-text-raw",
+      "claim": "The old text is kept raw, not decoded: an escape such as backslash-n stays two characters.",
+      "catch_criteria": "Contrasts the raw old text with the JSON-decoded new text.",
+      "files": [
+        "src/orchestration/agent-runtime/tools/coerce-input.ts"
+      ]
+    },
+    {
+      "id": "dispatch-coerces",
+      "claim": "Dispatch coerces the call before validation, and execution reads the coerced list, so an accepted mixed call executes as a normal edit.",
+      "catch_criteria": "States that the coercion happens at dispatch before validation and that the edit executes the coerced entries.",
+      "files": [
+        "src/orchestration/agent-runtime/tools/tool-dispatch.ts",
+        "src/orchestration/agent-runtime/tools/edit.ts"
+      ]
+    },
+    {
+      "id": "preview-json-only",
+      "claim": "The streaming validator and the diff preview read the edits list only as JSON text, so they see no entry for a mixed call that the tool applies.",
+      "catch_criteria": "States that the preview or streaming validator does not see the repaired entry of a mixed call.",
+      "files": [
+        "src/infra/file-edit/edit-input.ts",
+        "src/orchestration/agent-runtime/tools/streaming-edit-validator.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "all-mixed-applied",
+      "wrong_answer": "Every edit call written in mixed syntax is repaired and applied."
+    },
+    {
+      "id": "preview-matches",
+      "wrong_answer": "The streaming preview shows the same replacement that the tool applies."
+    },
+    {
+      "id": "both-decoded",
+      "wrong_answer": "Old and new texts are both JSON-decoded, so an escaped newline in the old text matches a real newline."
+    }
+  ]
+}

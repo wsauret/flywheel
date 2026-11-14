@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { addedLines } from "../../../scripts/build-review-fixtures.js";
-import { exposurePatterns, exposures, loadHarnessLint, publishedDiffLines } from "../../../scripts/review-fixture-publication.js";
+import { exposurePatterns, exposures, publishedDiffLines } from "../../../scripts/review-fixture-publication.js";
+import { loadHarnessLint } from "../../../src/orchestration/modules/development/benchmark/harness-names.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const directory = temporaryDirectories();
@@ -27,7 +28,7 @@ describe("review fixture publication", () => {
     const root = directory("review-publication-");
     writeFileSync(join(root, "lint.ts"), LINT);
     const lint = await loadHarnessLint(root, join(root, "lint.ts"));
-    expect(lint?.scrub("Like Acmebot.\nset ACMEBOT_API_KEY\nwidgetcode and acmebot\nimport { acmebotModelId } from \"./x\";\nread(ACMEBOT_API_KEY); // for acmebot\n")).toEqual({
+    expect(lint?.scrub("Like Acmebot.\nset ACMEBOT_API_KEY\nwidgetcode and acmebot\nimport { acmebotModelId } from \"./x\";\nread(ACMEBOT_API_KEY); // for acmebot\n", (term) => `peerAgent${term + 1}`)).toEqual({
       text: "Like peerAgent1.\nset ACMEBOT_API_KEY\npeerAgent2 and peerAgent1\nimport { peerAgent1ModelId } from \"./x\";\nread(ACMEBOT_API_KEY); // for peerAgent1\n",
       lines: 4,
     });

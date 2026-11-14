@@ -95,13 +95,13 @@ Implement and hand off.
       return { ...agent, send: (...args) => { sends.push(String(args[0])); return agent.send(...args); } };
     };
     const { nativeInvocation: _nativeInvocation, ...unconfined } = dependencies;
-    // A source change refuses a pending native cell before any native setup, which here would fail on isolation instead.
+    // A source change does not refuse a pending native cell: the resume reaches native setup, which here fails on isolation.
     const pendingCatalog = createBenchmarkCatalog(root, { resultsRoot: join(root, "pending-results") });
     const pending = await planPersonaBenchmark({ persona: "implementer", variants: [parseVariant("model-a:medium")], repeats: 1, operation: "run" }, pendingCatalog);
     await runPersonaBenchmark(pending, { ...dependencies, catalog: pendingCatalog, signal: AbortSignal.abort(), sourceIdentity: "a".repeat(64) });
     const pendingResume = await planPersonaBenchmark({ operation: "resume", resultsDir: pending.resultsDir, variants: [] }, pendingCatalog);
     await expect(runPersonaBenchmark(pendingResume, { ...unconfined, catalog: pendingCatalog, sourceIdentity: "b".repeat(64) }))
-      .rejects.toThrow("Flywheel source changed since this campaign started");
+      .rejects.toThrow(/native isolation/i);
     await expect(runPersonaBenchmark(plan, unconfined)).rejects.toThrow(/native isolation/i);
     expect(candidateCalls).toBe(0);
     expect(commands).toEqual([]);

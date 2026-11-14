@@ -69,6 +69,8 @@ const UNCITING_ROOTS = [
   "docs/research/",
   "bench/findings/",
   "bench/ab-persona/fixtures/",
+  // Benchmark records quote candidate output verbatim, as it was scored.
+  "bench/ab-persona/records/",
   "bench/chat-ab/tasks/",
   "bench/tasks/",
   "tests/fixtures/output-seam-corpus/",

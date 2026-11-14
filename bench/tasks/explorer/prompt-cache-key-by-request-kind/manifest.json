@@ -1,0 +1,75 @@
+{
+  "facts": [
+    {
+      "id": "body-key-gate",
+      "claim": "The body prompt_cache_key is set from the request's promptCacheKey unless cacheRetention is \"none\".",
+      "catch_criteria": "Names the gate: only cacheRetention none removes the body key.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/openai-helpers.ts"
+      ]
+    },
+    {
+      "id": "key-is-tree-root",
+      "claim": "promptCacheKey is the tree root's session id when the run belongs to a tree (so a subagent shares its root chat's key), else the conversation's provider session key.",
+      "catch_criteria": "States the root-or-own-conversation rule for the key value, and that a subagent uses its tree root's key.",
+      "files": [
+        "src/orchestration/agent-runtime/request-inputs.ts"
+      ]
+    },
+    {
+      "id": "title-shares-chat-key",
+      "claim": "The session title run is hosted in the chat's tree with the chat as root, so its cache key equals the chat's key.",
+      "catch_criteria": "States that the title request carries the chat's own cache key (the chat is its tree root), not a separate key or none.",
+      "files": [
+        "src/orchestration/chat/chat-request-options.ts"
+      ]
+    },
+    {
+      "id": "no-none-producer",
+      "claim": "No production path produces cacheRetention \"none\": the default retention is only 5m or 1h, the config schema has no none, and compaction makes no separate provider request because the summarizing compactor was removed.",
+      "catch_criteria": "States that no request kind on these routes is cache-disabled in practice, and that compaction has no separate request of its own.",
+      "files": [
+        "src/orchestration/agent-runtime/request-kernel.ts",
+        "src/orchestration/config/retired-config-names.ts"
+      ]
+    },
+    {
+      "id": "api-headers-own-key",
+      "claim": "On the OpenAI API route the session headers carry the session's own provider key, not the cache group.",
+      "catch_criteria": "States that on the API key route the session header is the provider session key, while the group travels in the body key.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/openai-helpers.ts"
+      ]
+    },
+    {
+      "id": "chatgpt-headers-group",
+      "claim": "On the ChatGPT subscription route the session-id header carries promptCacheKey, the cache group, because that backend groups by the header.",
+      "catch_criteria": "States that only on the ChatGPT route the session header carries the cache group.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/openai-helpers.ts"
+      ]
+    },
+    {
+      "id": "provider-policy-keeps-key",
+      "claim": "A cache policy of \"provider\" maps to an undefined retention, so the key is still sent.",
+      "catch_criteria": "States that the provider-managed policy does not remove the cache key.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/types.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "compaction-title-disabled",
+      "wrong_answer": "Compaction and title requests are cache-disabled, so they carry no prompt-cache key on either route."
+    },
+    {
+      "id": "api-group-in-headers",
+      "wrong_answer": "On the OpenAI API route the cache group travels in the session headers."
+    },
+    {
+      "id": "subagent-own-key",
+      "wrong_answer": "A subagent uses its own conversation's key, separate from the chat's."
+    }
+  ]
+}

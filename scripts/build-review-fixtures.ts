@@ -5,7 +5,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { homedir, hostname, tmpdir, userInfo } from "node:os";
 import { basename, dirname, join, posix, resolve } from "node:path";
 import { Schema } from "effect";
-import { exposurePatterns, exposures, loadHarnessLint, publishedDiffLines, type HarnessLint, type PrivateIdentity } from "./review-fixture-publication.js";
+import { exposurePatterns, exposures, publishedDiffLines, type PrivateIdentity } from "./review-fixture-publication.js";
+import { harnessLintFile, loadHarnessLint, type HarnessLint } from "../src/orchestration/modules/development/benchmark/harness-names.js";
 
 // Builds reviewer benchmark fixtures from real reviews recorded in a Flywheel
 // store. For each code review since the repository's first commit it rebuilds
@@ -868,7 +869,7 @@ if (import.meta.main) {
   if (!out) throw new Error("Usage: bun run scripts/build-review-fixtures.ts --out <empty directory> [--store <flywheel.sqlite>] [--archive <pre-public checkout>]");
   if (existsSync(out) && readdirSync(out).length > 0) throw new Error(`${out} is not empty; give an empty or new directory`);
   const archive = option("--archive");
-  const lint = await loadHarnessLint(REPO, join(REPO, "private", "scripts", "check-harness-names.ts"));
+  const lint = await loadHarnessLint(REPO, harnessLintFile(REPO));
   if (archive !== undefined && !lint) throw new Error("Restore mode rewrites the names of other coding agents with the terms of private/scripts/check-harness-names.ts, which this checkout does not have");
   const eras = [history(REPO, "recorded"), ...archive === undefined ? [] : [history(resolve(archive), "restore")]];
   const [pin] = eras[0]!.commits;
@@ -876,7 +877,7 @@ if (import.meta.main) {
   const store = loadStore(option("--store") ?? join(REPO, ".flywheel", "flywheel.sqlite"), eras.at(-1)!.commits[0]!.ms);
   const outcome: Outcome = new Map();
   try {
-    const sources: Sources = { eras, pin: pin.sha, scrub: lint?.scrub ?? ((text) => ({ text, lines: 0 })), ...lint ? { lint } : {}, exposure: exposurePatterns(privateIdentity(archive)) };
+    const sources: Sources = { eras, pin: pin.sha, scrub: (text) => lint ? lint.scrub(text, (term) => `peerAgent${term + 1}`) : { text, lines: 0 }, ...lint ? { lint } : {}, exposure: exposurePatterns(privateIdentity(archive)) };
     const { built, refused } = await build(store, sources, outcome);
     for (const fixture of built) {
       await mkdir(join(out, fixture.id), { recursive: true });

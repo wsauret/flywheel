@@ -3,7 +3,7 @@ import type { JudgeVerdict } from "./judge.js";
 import type { ReviewScore } from "./scoring.js";
 import type { ResearchScore } from "./research-scoring.js";
 import type { ResearchAnswerKey } from "./research-task.js";
-import type { AttemptRecord, JudgeAttemptRecord } from "./run-store.js";
+import type { AgentRunRecord, AttemptRecord, JudgeAttemptRecord } from "./run-store.js";
 import type { BenchmarkAccounting } from "./evidence.js";
 import { combineBenchmarkAccounting, formatAccountingObservation, formatOverheadAccounting } from "./report-accounting.js";
 
@@ -366,4 +366,14 @@ export function renderReviewReport(args: ReportArgs, tasks: readonly ReviewTask[
     judgeOverheadNote(counts),
     "",
   ].join("\n");
+}
+
+/** One line per Flywheel source that ran completed cells, with its cell count (ARCH-DIRECTORIES-018). */
+export function sourceReport(runs: readonly AgentRunRecord[]): string {
+  const counts = new Map<string, number>();
+  for (const run of runs) {
+    const source = run.sourceIdentity ?? "not recorded (the cell predates per-cell source identity)";
+    counts.set(source, (counts.get(source) ?? 0) + 1);
+  }
+  return `Flywheel source identities of completed cells:\n${[...counts].map(([source, cells]) => `- ${source}: ${cells} cell${cells === 1 ? "" : "s"}\n`).join("")}`;
 }

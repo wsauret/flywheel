@@ -1,0 +1,64 @@
+{
+  "facts": [
+    {
+      "id": "role-id-membership",
+      "claim": "The cleanup compares only role ids against the set of registered persona role ids; it never reads a model value or a provider listing.",
+      "catch_criteria": "States that deletion is decided by role-id membership alone, not by model availability.",
+      "files": [
+        "src/orchestration/config/writer.ts"
+      ]
+    },
+    {
+      "id": "runs-on-listing",
+      "claim": "The cleanup runs on every model-assignment listing, guarded by a present validity set, enabled persistence, and a profile.",
+      "catch_criteria": "States that merely listing assignments (opening the picker) runs the cleanup.",
+      "files": [
+        "src/orchestration/config/model-assignments.ts"
+      ]
+    },
+    {
+      "id": "broken-persona-absent",
+      "claim": "The registered set comes from the persona revision; a persona whose file is rejected has no valid candidate, so it gets no agent entry and its role id is absent from the set.",
+      "catch_criteria": "States that the broken persona file removes the persona from the registered set (skipped with a warning), so its role id is not registered.",
+      "files": [
+        "src/orchestration/app-service/model-assignment-service.ts",
+        "src/infra/definition-resolution.ts",
+        "src/workflows/agents/registry.ts"
+      ]
+    },
+    {
+      "id": "section-removed",
+      "claim": "A saved role section whose id is absent from the set is removed, and the file is rewritten.",
+      "catch_criteria": "States that the role section is removed from flywheel.toml by the patch that the cleanup writes.",
+      "files": [
+        "src/orchestration/config/writer.ts"
+      ]
+    },
+    {
+      "id": "exempt-sections",
+      "claim": "Some sections survive although their id is not a registered persona: retired brief seats, the agent roles, the default roles, and the auxiliary roles.",
+      "catch_criteria": "Names at least three of the exempt kinds of role section.",
+      "files": [
+        "src/orchestration/config/writer.ts"
+      ]
+    },
+    {
+      "id": "unlisted-model-kept",
+      "claim": "A saved model that the provider listing lacks is never deleted: the picker keeps it and shows it as the saved model.",
+      "catch_criteria": "States that a model missing from the listing stays in the file and is shown as saved.",
+      "files": [
+        "src/orchestration/config/model-assignments.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "prunes-unlisted-models",
+      "wrong_answer": "The picker deletes saved models that the provider's listing no longer returns."
+    },
+    {
+      "id": "broken-persona-kept",
+      "wrong_answer": "A persona whose file is broken stays registered, so its saved model setting is kept."
+    }
+  ]
+}

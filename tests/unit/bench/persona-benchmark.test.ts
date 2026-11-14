@@ -16,6 +16,7 @@ import { runGroups } from "../../../src/orchestration/modules/development/benchm
 import { checkCitations } from "../../../src/orchestration/modules/development/benchmark/research-scoring.js";
 import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
+import { loadCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
 import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
 import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
@@ -356,49 +357,27 @@ describe("persona benchmark service", () => {
       .rejects.toThrow(/Results persona explorer conflicts/);
   });
 
-  it("refuses to start candidates under a source the campaign did not record, and still rescores", async () => {
+  it("resumes a campaign under another Flywheel source and reports each source that ran cells", async () => {
     const root = await syntheticProject();
     const catalog = createBenchmarkCatalog(root);
     const plan = await planPersonaBenchmark({ variants: VARIANTS, repeats: 1, operation: "run" }, catalog);
-    const controller = new AbortController();
-    controller.abort();
-    await runPersonaBenchmark(plan, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, [], controller.signal), sourceIdentity: "a".repeat(64) });
+    const failOnB = fakeRuntime((options) => ({ terminal: options.model === "model-b" ? { kind: "api_error", message: "provider failed", recovery: { kind: "none" } } : { kind: "completed" } }));
+    await expect(runPersonaBenchmark(plan, { ...deps(failOnB, root, []), sourceIdentity: "a".repeat(64) })).rejects.toThrow(/failed/);
 
-    let candidateCalls = 0;
-    let judgeCalls = 0;
-    const counted = (sourceIdentity: string) => ({
-      ...deps(fakeRuntime(() => {
-        candidateCalls++;
-        return { terminal: { kind: "completed" } };
-      }), root, []),
-      createJudge: async () => {
-        judgeCalls++;
-        return verdictJudge;
-      },
-      sourceIdentity,
-    });
     const resume = await planPersonaBenchmark({ operation: "resume", resultsDir: plan.resultsDir, variants: [] }, catalog);
-    await expect(runPersonaBenchmark(resume, counted("b".repeat(64))))
-      .rejects.toThrow(`Flywheel source changed since this campaign started (campaign ${"a".repeat(12)}, running ${"b".repeat(12)})`);
-    expect(candidateCalls).toBe(0);
-    expect(judgeCalls).toBe(0);
-    const rescore = await planPersonaBenchmark({ operation: "rescore", resultsDir: plan.resultsDir, variants: [] }, catalog);
-    expect((await runPersonaBenchmark(rescore, counted("b".repeat(64)))).status).toBe("completed");
-    expect(candidateCalls).toBe(0);
+    const outcome = await runPersonaBenchmark(resume, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []), sourceIdentity: "b".repeat(64) });
 
-    // A campaign written before source identity was recorded stays rescorable, and starts no candidate.
-    const manifestPath = join(plan.resultsDir, "campaign.json");
-    const manifest = await Bun.file(manifestPath).json();
-    expect(manifest.config.sourceIdentity).toBe("a".repeat(64));
-    delete manifest.config.sourceIdentity;
-    await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-    await expect(runPersonaBenchmark(await planPersonaBenchmark({ operation: "resume", resultsDir: plan.resultsDir, variants: [] }, catalog), counted("a".repeat(64))))
-      .rejects.toThrow("This campaign predates recorded Flywheel source identity");
-    expect(candidateCalls).toBe(0);
-    const legacy = await runPersonaBenchmark(await planPersonaBenchmark({ operation: "rescore", resultsDir: plan.resultsDir, variants: [] }, catalog), counted("a".repeat(64)));
-    if (legacy.status !== "completed") throw new Error(`expected completion, got ${legacy.status}`);
-    expect(legacy.report).toContain("Flywheel source identity: not recorded");
-    expect(candidateCalls).toBe(0);
+    if (outcome.status !== "completed") throw new Error(`expected completion, got ${outcome.status}`);
+    const store = await createRunStore({ resultsRoot: catalog.resultsRoot, directory: plan.resultsDir });
+    const runs = await store.loadRuns();
+    expect(runs.filter((run) => run.variant === VARIANTS[0]!.id).every((run) => run.sourceIdentity === "a".repeat(64))).toBe(true);
+    expect(runs.filter((run) => run.variant === VARIANTS[1]!.id).every((run) => run.sourceIdentity === "b".repeat(64))).toBe(true);
+    expect((await store.loadAttempts()).every((attempt) => attempt.sourceIdentity === "a".repeat(64))).toBe(true);
+    expect(outcome.report).toContain(`- ${"a".repeat(64)}: ${plan.tasks.length} cells`);
+    expect(outcome.report).toContain(`- ${"b".repeat(64)}: ${plan.tasks.length} cells`);
+    // The failed run published nothing; the completed resume publishes every cell with the source that ran it.
+    const records = await loadCampaignRecords(catalog.recordsFile(plan.persona, plan.stamp));
+    expect(records?.cells.map((cell) => cell.sourceIdentity).sort()).toEqual(runs.map((run) => run.sourceIdentity).sort());
   });
 
   it("rejects changed task content before candidate or judge work", async () => {
@@ -562,23 +541,30 @@ describe("research answer keys", () => {
         return succeedingCommands(command, options);
       },
       createAgent: (options: AgentOptions) => ({
-        send: () => { options.runtimeSurfaces?.handoff?.onContent({ summary: "It starts at the stop item:\nC:\\trial\\src\\a.ts:2\nsrc/a.ts:1\nsrc/a.ts:40" }); },
+        send: () => { options.runtimeSurfaces?.handoff?.onContent({ summary: "It starts at the stop item, as in Acmebot:\nC:\\trial\\src\\a.ts:2\nsrc/a.ts:1\nsrc/a.ts:40" }); },
         abort: () => {},
         end: () => {},
         done: Promise.resolve({ durationMs: 1, servedRequests: 0, terminal: { kind: "completed" as const } }),
       }),
     };
+    // A harness-name lint in the shape of the maintainer's private one, with an invented name.
+    await Bun.write(join(root, "private", "scripts", "check-harness-names.ts"), [
+      "const HARNESS_TERMS: readonly RegExp[] = [\n  /acmebot/i,\n];",
+      "const WIRE_IDENTIFIERS: readonly RegExp[] = [\n  /ACMEBOT_API_KEY/g,\n];",
+      "export function findHarnessNames(): string[] { return []; }",
+    ].join("\n\n"));
     const prompts: string[] = [];
     const plan = await planPersonaBenchmark({ variants: [VARIANTS[0]!], operation: "run", taskIds: ["bound"] }, catalog);
-    const outcome = await runPersonaBenchmark(plan, {
+    const scoringDeps = {
       ...deps(runtime, root, []),
       createJudge: async () => ({
-        complete: async (prompt) => {
+        complete: async (prompt: string) => {
           prompts.push(prompt);
           return { ...await verdictJudge.complete(prompt, new AbortController().signal), text: `{"caught":["start"],"uncertain":[],"traps_asserted":["thinking-end"]}` };
         },
       }),
-    });
+    };
+    const outcome = await runPersonaBenchmark(plan, scoringDeps);
 
     if (outcome.status !== "completed") throw new Error(`expected completion, got ${outcome.status}`);
     expect(prompts).toHaveLength(1);
@@ -590,6 +576,19 @@ describe("research answer keys", () => {
       score: { variant: VARIANTS[0]!.id, task: "bound", repeat: 0, caught: ["start"], uncertain: [], trapsAsserted: ["thinking-end"], citations: { total: 3, invalid: ["src/a.ts:40"] } },
     }]);
     expect(outcome.report).toContain(`| bound | ${VARIANTS[0]!.id} | 1 | 1/2 (50.0%) | 0 | 1/1 (100.0%) | 2/3 (66.7%) |`);
+
+    // The completed campaign publishes its record file: header, the cell with its task identity and redacted output, and the score.
+    const recordsFile = catalog.recordsFile("explorer", plan.stamp);
+    const published = await Bun.file(recordsFile).text();
+    const [task] = await catalog.researchTasks("explorer").then((tasks) => tasks.filter(({ id }) => id === "bound"));
+    expect(published.trim().split("\n").map((line) => JSON.parse(line))).toEqual([
+      { kind: "campaign", version: 1, persona: "explorer", mode: "research", stamp: plan.stamp, judge: { model: "judge-model", effort: "high" }, scoringVersion: "persona-v2", personaGuidanceIdentity: expect.any(String) },
+      expect.objectContaining({ kind: "cell", variant: VARIANTS[0]!.id, task: "bound", taskIdentity: task!.contentIdentity, repeat: 0, sourceIdentity: TEST_SOURCE_IDENTITY, output: { kind: "answer", text: expect.stringContaining("as in another coding agent:") } }),
+      { kind: "score", judge: { model: "judge-model", effort: "high" }, scoringVersion: "persona-v2", scorer: "research", score: { variant: VARIANTS[0]!.id, task: "bound", repeat: 0, caught: ["start"], uncertain: [], trapsAsserted: ["thinking-end"], citations: { total: 3, invalid: ["src/a.ts:40"] } } },
+    ]);
+    // A rescore of the same campaign appends nothing that the file already holds.
+    await runPersonaBenchmark(await planPersonaBenchmark({ operation: "rescore", resultsDir: plan.resultsDir, variants: [] }, catalog), scoringDeps);
+    expect(await Bun.file(recordsFile).text()).toBe(published);
   });
 });
 

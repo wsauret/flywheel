@@ -1,0 +1,74 @@
+{
+  "facts": [
+    {
+      "id": "two-edge-sources",
+      "claim": "The launch lineage is one fold that takes child edges from two fact types: the link fact, parsed strictly, and the creation fact, decoded with a replay decoder.",
+      "catch_criteria": "Names both record types as sources of the parent-child edge.",
+      "files": [
+        "src/orchestration/session/session-subtree.ts"
+      ]
+    },
+    {
+      "id": "unreadable-routed",
+      "claim": "An unreadable link fact raises a schema-mismatch violation that the projection routes to the family's unreadable-fact hook instead of failing the fold; other failures still throw.",
+      "catch_criteria": "States that the unreadable record does not fail the fold because it is routed to the unreadable-fact hook.",
+      "files": [
+        "src/infra/event-projection.ts"
+      ]
+    },
+    {
+      "id": "lineage-drops-silently",
+      "claim": "The lineage family's unreadable-fact hook returns the state unchanged, and the lineage state has no error field, so nothing records the skip.",
+      "catch_criteria": "States that the lineage silently drops the unreadable record with no error or warning kept in its state.",
+      "files": [
+        "src/orchestration/session/session-subtree.ts"
+      ]
+    },
+    {
+      "id": "creation-undefined",
+      "claim": "An unreadable creation record that fails both the current and the salvage decoder decodes to undefined, which the reducer ignores.",
+      "catch_criteria": "States that an unreadable creation record is ignored after the salvage decode also fails.",
+      "files": [
+        "src/orchestration/session/session-metadata-facts.ts"
+      ]
+    },
+    {
+      "id": "creation-restores-edge",
+      "claim": "A readable creation record that names a parent adds the same edge, so the child stays in the tree when only its link record is unreadable; it drops out only when the creation record gives no edge too.",
+      "catch_criteria": "States the condition: the child stays when its creation record is readable, and drops out only when neither record yields the edge.",
+      "files": [
+        "src/orchestration/session/session-subtree.ts"
+      ]
+    },
+    {
+      "id": "stats-from-subtree",
+      "claim": "The usage stats replay the lineage and take the session's subtree, so a child absent from the subtree is absent from the stats.",
+      "catch_criteria": "Names that the stats member set is the lineage subtree of the session.",
+      "files": [
+        "src/orchestration/modules/subscription-usage/session-stats.ts"
+      ]
+    },
+    {
+      "id": "fork-contrast",
+      "claim": "By contrast, the fork summary family's unreadable-fact hook records the violation message in its state.",
+      "catch_criteria": "Contrasts the lineage's silent drop with a family that records the violation.",
+      "files": [
+        "src/orchestration/session/session-fork-summary.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "link-decides",
+      "wrong_answer": "The child drops out of the stats whenever its link record is unreadable."
+    },
+    {
+      "id": "fold-fails",
+      "wrong_answer": "One unreadable record makes the lineage fold fail, so the stats show an error."
+    },
+    {
+      "id": "warning-shown",
+      "wrong_answer": "The skipped record is reported to the person as a warning, as durable readers do for unknown shapes."
+    }
+  ]
+}

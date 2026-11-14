@@ -9,7 +9,7 @@ import { withSnapshotWorkspace, withTrialWorkspace } from "./snapshot-workspace.
 import { materializeReviewSandbox } from "./review-sandbox.js";
 import { buildImplementRawResults, judgeImplementPairs, renderImplementReport, scoreImplementTraps, type ImplementCandidate } from "./implement-scoring.js";
 import type { JudgeAttemptReport, JudgeModel, JudgeVerdict } from "./judge.js";
-import { judgeOverhead, renderReport, renderReviewReport, unsuccessfulOverhead, type ReportCounts } from "./reports.js";
+import { judgeOverhead, renderReport, renderReviewReport, sourceReport, unsuccessfulOverhead, type ReportCounts } from "./reports.js";
 import { scoreReviews } from "./scoring.js";
 import { judgeResearchCampaign, snapshotLines } from "./research-scoring.js";
 import { asPersonaTaskFailure, PersonaTaskFailure, renderPersonaTaskGuidance, runPersonaTask, type BenchmarkRuntime, type PersonaDefinition, type PersonaRunOutcome, type PersonaTaskRequest } from "./persona-run.js";
@@ -30,19 +30,20 @@ import { failedJudgeCallCount } from "./judge-attempt-reconciliation.js";
 import { parseVariant, sameVariants, type VariantSpec } from "./variant.js";
 import { personaToolEntries, toolRegistryFromComposition } from "../../../agent-runtime/tools/tool-registry.js";
 import { DEFAULT_BENCHMARK_CONCURRENCY, runGroups } from "./matrix-runner.js";
-import { benchmarkTaskIdentity, requireCampaignSource, structuredIdentity } from "./content-identity.js";
+import { benchmarkTaskIdentity, structuredIdentity } from "./content-identity.js";
 import type { BenchmarkAccounting } from "./evidence.js";
 import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores } from "./persona-evidence-validation.js";
 import { createNativePersonaInvocation } from "./native-persona-invocation.js";
 import { IMPLEMENT_TRANSCRIPT_FILE, retainImplementStore } from "./implement-evidence.js";
 import { createPersonaStore } from "./persona-store.js";
+import { exportCampaignRecords } from "./benchmark-records.js";
 import type { JudgeSelection } from "./admission.js";
 
 /** The scoring contract a campaign was judged under. Reviewer campaigns moved
  *  to persona-v3 when the judge began counting unsupported P1/P2 findings; a
  *  persona-v2 reviewer campaign stays readable through its report but cannot
- *  be resumed or rescored into the new contract. */
-function scoringVersion(mode: BenchmarkMode): string {
+ *  be resumed or rescored into the new contract. A ranking and a rejudge pool only scores of this contract. */
+export function scoringVersion(mode: BenchmarkMode): string {
   return mode === "reviewer" ? "persona-v3" : "persona-v2";
 }
 const JUDGE_IDENTITY_INPUT = {
@@ -120,7 +121,8 @@ export interface PersonaBenchmarkDeps {
   readonly onEvent: (event: BenchmarkEvent) => void;
   readonly signal?: AbortSignal;
   /** The identity of the Flywheel source that runs this process's candidates, from `runningSourceIdentity`.
-   *  A campaign records it, and a resume that would start a candidate under another source refuses. ARCH-DIRECTORIES-018. */
+   *  Each cell records it, and the report names every source that ran cells. It is not part of the campaign
+   *  identity, so a resume after an unrelated source change continues the campaign. ARCH-DIRECTORIES-018. */
   readonly sourceIdentity: string;
   /** Native candidates must execute behind actor confinement. The parent still provisions and grades their work. */
   readonly nativeInvocation?: {
@@ -178,7 +180,8 @@ function parseStoredVariant(variant: BenchmarkVariant): BenchmarkPlan["variants"
   return parsed;
 }
 
-async function planTasks(persona: string, mode: BenchmarkMode, catalog: BenchmarkCatalog): Promise<readonly PlannedTask[]> {
+/** Every current catalog task of a persona. */
+export async function planTasks(persona: string, mode: BenchmarkMode, catalog: BenchmarkCatalog): Promise<readonly PlannedTask[]> {
   if (mode === "reviewer") {
     const tasks = await catalog.reviewTasks(persona);
     if (tasks.length === 0) throw new Error(`No review fixtures for ${persona} found in ${catalog.reviewFixturesDir}`);
@@ -218,7 +221,7 @@ export async function planPersonaBenchmark(options: BenchmarkOptions, catalog: B
     throw new Error(`Results repeats ${stored.repeats} conflict with --repeats ${options.repeats}`);
   }
   if (stored?.judge && options.judge && (options.judge.model !== stored.judge.model || options.judge.effort !== stored.judge.effort)) {
-    throw new Error(`Results judge ${stored.judge.model}:${stored.judge.effort} conflicts with --judge ${options.judge.model}:${options.judge.effort}`);
+    throw new Error(`Results judge ${stored.judge.model}:${stored.judge.effort} conflicts with --judge ${options.judge.model}:${options.judge.effort}; to score this campaign's cells with another judge, run --rejudge ${stored.persona} --judge ${options.judge.model}:${options.judge.effort}`);
   }
   const judge = options.judge ?? stored?.judge;
   const repeats = options.repeats ?? stored?.repeats ?? 1;
@@ -326,7 +329,6 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
   const stored = await existingStore?.loadConfig();
   const runRecords = await existingStore?.loadRuns() ?? [];
   const groups = plan.operation === "rescore" ? [] : pendingGroups(plan, new Set(runRecords.map(runKey)));
-  if (groups.length > 0 && stored) requireCampaignSource(stored.sourceIdentity, deps.sourceIdentity);
   const nativeTasks = plan.tasks.some(task => "kind" in task && task.kind === "native");
   const pendingNative = groups.some(group => group.some(cell => "kind" in cell.task && cell.task.kind === "native"));
   const nativeInvocation = deps.nativeInvocation ?? (pendingNative ? await createNativePersonaInvocation(deps.runtime, catalog) : undefined);
@@ -408,7 +410,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
         return await runCell(cell, { deps: resolvedDeps, persona, registry, scope, resultsDir: plan.resultsDir, cellDirectory: cell.directory });
       },
       async (cell, result) => {
-        await store.appendRun(runRecord(plan, cell, result));
+        await store.appendRun(runRecord(plan, cell, result, deps.sourceIdentity));
         await persistRoles(cell);
         results.push(result);
         if (isImplementCandidate(result)) implementResults.push(result);
@@ -424,7 +426,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
         if (!(error instanceof PersonaTaskFailure)) throw error;
         // Persist the accounting before the observer hears about it: events.jsonl
         // is the authority, and `cell.failed` is its projection.
-        await store.appendAttempt(attemptRecord(plan, cell, error));
+        await store.appendAttempt(attemptRecord(plan, cell, error, deps.sourceIdentity));
         await persistRoles(cell);
         onEvent({ kind: "cell.failed", cell: cellId(cell), message: error.message });
       },
@@ -438,9 +440,9 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
   if (signal?.aborted) return await cancel(plan, scope, onEvent);
   const report = await scoreAndRender(plan, resolvedDeps, store, results, implementResults, scope.run);
   if (signal?.aborted) return await cancel(plan, scope, onEvent);
+  if (judge) await exportCampaignRecords(catalog.recordsFile(plan.persona, plan.stamp), { kind: "campaign", version: 1, persona: plan.persona, mode: plan.mode, stamp: plan.stamp, judge: { model: judge.model, effort: judge.effort }, scoringVersion: campaignScoringVersion, personaGuidanceIdentity }, await store.loadRuns(), await store.loadScores(), plan.tasks, catalog.projectRoot);
   const reportPath = join(store.directory, "report.md");
-  const campaignSource = (await store.loadConfig()).sourceIdentity ?? "not recorded (the campaign predates source identity)";
-  report.text += `\nFlywheel source identity: ${campaignSource}\n\n${await store.roleReport()}\nCandidate role selections are in each cell's roles.json. Judge role selections and profile IDs are in judge-requests/<profile>/<call>/roles.json.\n`;
+  report.text += `\n${sourceReport(await store.loadRuns())}\n${await store.roleReport()}\nCandidate role selections are in each cell's roles.json. Judge role selections and profile IDs are in judge-requests/<profile>/<call>/roles.json.\n`;
   await store.writeArtifact("report.md", report.text);
   await scope.settle();
   onEvent({ kind: "benchmark.completed", resultsDir: plan.resultsDir, reportPath, report: report.text, counts: report.counts });
@@ -457,9 +459,9 @@ function cellId(cell: BenchmarkCell): BenchmarkCellId {
   return { variant: cell.variant.id, task: cell.task.id, repeat: cell.repeat };
 }
 
-function runRecord(plan: BenchmarkPlan, cell: BenchmarkCell, result: CellRunResult | ImplementCandidate): AgentRunRecord {
+function runRecord(plan: BenchmarkPlan, cell: BenchmarkCell, result: CellRunResult | ImplementCandidate, sourceIdentity: string): AgentRunRecord {
   const seat = {
-    persona: plan.persona,
+    persona: plan.persona, sourceIdentity,
     ...(cell.variant.model === undefined ? {} : { model: cell.variant.model }),
     ...(cell.variant.effort === undefined ? {} : { effort: cell.variant.effort }),
   };
@@ -468,7 +470,7 @@ function runRecord(plan: BenchmarkPlan, cell: BenchmarkCell, result: CellRunResu
   return { kind: "agent-run", mode: "research", ...seat, ...result };
 }
 
-function attemptRecord(plan: BenchmarkPlan, cell: BenchmarkCell, failure: PersonaTaskFailure): AttemptRecord {
+function attemptRecord(plan: BenchmarkPlan, cell: BenchmarkCell, failure: PersonaTaskFailure, sourceIdentity: string): AttemptRecord {
   return {
     kind: "agent-run-attempt",
     attemptId: crypto.randomUUID(),
@@ -477,7 +479,7 @@ function attemptRecord(plan: BenchmarkPlan, cell: BenchmarkCell, failure: Person
     variant: cell.variant.id,
     ...(cell.variant.model === undefined ? {} : { model: cell.variant.model }),
     ...(cell.variant.effort === undefined ? {} : { effort: cell.variant.effort }),
-    task: cell.task.id,
+    sourceIdentity, task: cell.task.id,
     repeat: cell.repeat,
     at: new Date().toISOString(),
     durationMs: failure.accounting.durationMs,

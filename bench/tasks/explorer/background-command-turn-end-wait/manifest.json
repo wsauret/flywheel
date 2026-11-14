@@ -1,0 +1,68 @@
+{
+  "facts": [
+    {
+      "id": "nudge-then-default-wait",
+      "claim": "At a turn end with live background work and no wait call, the runtime sends one reminder and then opens a 240 second wait on the agent's behalf; the default wait repeats at later turn ends until a wait call or a person's message resets the nudge.",
+      "catch_criteria": "States both the single reminder and the 240 second default wait that the runtime opens itself.",
+      "files": [
+        "src/orchestration/agent-runtime/agent-loop.ts",
+        "src/orchestration/agent-runtime/pending-work-nudge.ts",
+        "src/orchestration/agent-runtime/tools/process.ts"
+      ]
+    },
+    {
+      "id": "expiry-notice-not-stop",
+      "claim": "The parked wait arms an expiry timer only while it waits on background work; expiry re-enters the loop with a wait-expired notice and does not stop the command.",
+      "catch_criteria": "States that wait expiry delivers a notice to the agent and does not stop the background work.",
+      "files": [
+        "src/orchestration/agent-runtime/agent-loop-input-consumer.ts",
+        "src/orchestration/agent-runtime/tools/process.ts"
+      ]
+    },
+    {
+      "id": "what-ends-wait",
+      "claim": "An open wait ends on a background notification, the wait-expired notice, a person's message, or a Resume that does not continue the wait; other inputs, such as runtime notices, do not end it.",
+      "catch_criteria": "Lists the enders (completion notification, expiry, a person's message, a non-continuing resume) and says other notices do not end the wait.",
+      "files": [
+        "src/orchestration/agent-runtime/agent-loop-wait.ts"
+      ]
+    },
+    {
+      "id": "awaited-work-only",
+      "claim": "Live work counts only awaited tasks: running tasks that the agent or the runtime did not interrupt, plus pending deliveries; when none remain the wait closes and the loop does not park.",
+      "catch_criteria": "States that a child interrupted by the agent or the runtime is not awaited, and that the wait closes once no awaited work remains.",
+      "files": [
+        "src/orchestration/agent-runtime/background-work.ts",
+        "src/orchestration/agent-runtime/background-work-readiness.ts",
+        "src/orchestration/agent-runtime/agent-loop.ts"
+      ]
+    },
+    {
+      "id": "over-hour-capped",
+      "claim": "A soft_timeout above one hour is accepted and capped at 3600 seconds, not refused: the tool validates its own input, so the schema maximum is never enforced as a refusal.",
+      "catch_criteria": "States that a wait over one hour is clamped to the one-hour ceiling rather than refused, and why the schema maximum does not refuse it.",
+      "files": [
+        "src/orchestration/agent-runtime/tools/process.ts",
+        "src/orchestration/agent-runtime/tools/tool-dispatch.ts"
+      ]
+    },
+    {
+      "id": "noop-wait",
+      "claim": "A wait with nothing pending does not park the turn; it returns at once with a no-op notice.",
+      "catch_criteria": "States that a wait call with no running work returns immediately with a notice instead of blocking.",
+      "files": [
+        "src/orchestration/agent-runtime/agent-loop-wait.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "over-hour-refused",
+      "wrong_answer": "A wait longer than one hour is refused with a validation error."
+    },
+    {
+      "id": "turn-goes-idle",
+      "wrong_answer": "When the turn ends over a running command with no wait call, the turn completes and the agent stays idle until the person writes."
+    }
+  ]
+}

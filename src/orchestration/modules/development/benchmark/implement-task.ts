@@ -37,6 +37,12 @@ interface ImplementTaskBase {
   taskDir: string;
   manifest: ImplementManifest;
   contentIdentity: string;
+  /** The part of the task that a candidate's change answers: its prompt, starting source, and limits. A recorded
+   *  cell stays comparable only while this matches. */
+  candidateIdentity: string;
+  /** The part of the task that grades a change. A grader change regrades stored diffs instead of rerunning
+   *  candidates (regrade.ts). */
+  graderIdentity: string;
 }
 
 interface PlanImplementTaskSpec extends ImplementTaskBase {
@@ -147,15 +153,16 @@ async function loadImplementTask(taskDir: string, entryName: string, config: Imp
     } : {}),
   };
   const timeoutMs = typeof timeoutMinutes === "number" ? Math.round(timeoutMinutes * 60_000) : undefined;
-  const contentIdentity = structuredIdentity({
+  const candidateContent = {
     id,
     stratum,
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
     source,
     plan: bytesIdentity(planDocument(plan)),
     manifest,
-    acceptance: await directoryIdentity(acceptanceDir),
-  });
+  };
+  const graderIdentity = await directoryIdentity(acceptanceDir);
+  const contentIdentity = structuredIdentity({ ...candidateContent, acceptance: graderIdentity });
   return {
     mode: "implement",
     id,
@@ -167,6 +174,8 @@ async function loadImplementTask(taskDir: string, entryName: string, config: Imp
     acceptanceDir,
     manifest,
     contentIdentity,
+    candidateIdentity: structuredIdentity(candidateContent),
+    graderIdentity,
   };
 }
 
@@ -193,13 +202,24 @@ async function loadNativeTask(taskDir: string, id: string, stratum: string, conf
   const timeoutMs = native.timeoutMs;
   if (typeof timeoutMs !== "number" || !Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw new Error(`${id}/task.json.native.timeoutMs must be a positive integer`);
   if (config.sandbox !== undefined) throw new Error(`${id}/task.json.sandbox is not supported: the native adapter owns source and runtime preparation`);
+  // The adapter both prepares the source and grades, so every task file can grade. The candidate answers its
+  // instruction, environment, and limits; the grade applies a stored diff to freshly rebuilt source, so a source
+  // change that the diff no longer fits fails the regrade instead of scoring it.
+  const graderIdentity = await directoryIdentity(taskDir);
   return {
     mode: "implement", kind: "native", id, stratum, family, split, instruction, taskDir,
     ...(environment === undefined ? {} : { environment }),
     ...(timeoutMsOverride === undefined ? {} : { timeoutMs: timeoutMsOverride }),
     native: { command: [command[0], script, ...command.slice(2)], timeoutMs, ...(path === undefined ? {} : { path }) },
     manifest: { traps: [], judgment: [] },
-    contentIdentity: structuredIdentity({ kind: "native", task: await directoryIdentity(taskDir) }),
+    contentIdentity: structuredIdentity({ kind: "native", task: graderIdentity }),
+    candidateIdentity: structuredIdentity({
+      kind: "native", id, stratum, instruction,
+      ...(environment === undefined ? {} : { environment }),
+      ...(timeoutMsOverride === undefined ? {} : { timeoutMs: timeoutMsOverride }),
+      ...(path === undefined ? {} : { path }),
+    }),
+    graderIdentity,
   };
 }
 

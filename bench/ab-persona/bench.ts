@@ -30,6 +30,10 @@ interface CliArgs extends BenchmarkOptions {
   personaDir?: string;
   resultsRoot?: string;
   reportDir?: string;
+  /** The persona whose benchmark records `--judge` scores, with no campaign or candidate. */
+  rejudge?: string;
+  /** Regrade recorded implementer cells with each task's current grader; no candidate or judge runs. */
+  regrade?: boolean;
 }
 
 type CreateRuntime = (projectRoot: string, stored?: UsageAuthorityGeneration, profile?: string) => Promise<OwnedBenchmarkRuntime>;
@@ -52,9 +56,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   let resultsRoot: string | undefined;
   let reportDir: string | undefined;
   let judge: VariantSpec | undefined;
+  let rejudge: string | undefined;
+  let regrade = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === "--dry-run") {
+    if (arg === "--regrade") {
+      regrade = true;
+    } else if (arg === "--dry-run") {
       dryRun = true;
     } else if (arg === "--repeats") {
       const value = argv[++i];
@@ -79,10 +87,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       else rescoreDir = resolve(value);
     } else if (arg === "--profile" || arg === "--task") {
       throw new Error(`${arg} was replaced by ${arg === "--profile" ? "--auth-profile" : "--tasks"}`);
-    } else if (arg === "--auth-profile" || arg === "--tasks" || arg === "--persona-dir" || arg === "--results-root" || arg === "--report") {
+    } else if (arg === "--auth-profile" || arg === "--tasks" || arg === "--persona-dir" || arg === "--results-root" || arg === "--report" || arg === "--rejudge") {
       const value = argv[++i];
       if (!value) throw new Error(`${arg} requires a value`);
       if (arg === "--auth-profile") profile = value;
+      else if (arg === "--rejudge") rejudge = value;
       else if (arg === "--tasks") taskIds.push(...value.split(",").map(id => id.trim()).filter(Boolean));
       else if (arg === "--persona-dir") personaDir = resolve(value);
       else if (arg === "--report") reportDir = resolve(value);
@@ -94,6 +103,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   if (resumeDir && rescoreDir) throw new Error("--resume and --rescore cannot be used together");
   if (reportDir && (resumeDir || rescoreDir || dryRun)) throw new Error("--report cannot be used with --resume, --rescore, or --dry-run");
   if (repeats !== undefined && (!Number.isInteger(repeats) || repeats < 1)) throw new Error("--repeats must be a positive integer");
+  if (rejudge !== undefined) {
+    if (!judge) throw new Error("--rejudge requires --judge model:effort");
+    const refused = [["--resume", resumeDir], ["--rescore", rescoreDir], ["--report", reportDir], ["--variant", variants[0]], ["--repeats", repeats], ["--tasks", taskIds[0]], ["--persona", persona]]
+      .filter(([, value]) => value !== undefined).map(([flag]) => flag);
+    if (refused.length > 0) throw new Error(`--rejudge scores the recorded cells of one persona and cannot be used with ${refused.join(", ")}`);
+  }
+  if (regrade && argv.length > 1) throw new Error("--regrade takes no other option");
   const resultsDir = resumeDir ?? rescoreDir;
   return {
     ...(persona === undefined ? {} : { persona }),
@@ -108,6 +124,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ...(resultsRoot ? { resultsRoot } : {}),
     ...(reportDir ? { reportDir } : {}),
     ...(judge ? { judge: { model: judge.model, effort: judge.effort } } : {}),
+    ...(rejudge === undefined ? {} : { rejudge }),
+    ...(regrade ? { regrade } : {}),
   };
 }
 
@@ -170,6 +188,27 @@ export async function main(
     console.log(report);
     return;
   }
+  if (args.regrade) {
+    const [{ createLauncherScope, createProcessSupervisor }, { ownedCommandRunner }, { regradeRecords }] = await Promise.all([
+      import("../../src/infra/process-supervisor.js"),
+      import("../../src/infra/owned-command.js"),
+      import("../../src/orchestration/modules/development/benchmark/regrade.js"),
+    ]);
+    const supervisor = createProcessSupervisor();
+    const scope = createLauncherScope(supervisor);
+    try {
+      const { graded, current, skipped } = await regradeRecords(catalog, ownedCommandRunner(scope));
+      console.log(`Regraded ${graded} implementer cells; ${current} already had the current grade; ${skipped} skipped (task removed, or changed what the candidate answered).`);
+    } finally {
+      await scope.close();
+      await supervisor.dispose();
+    }
+    return;
+  }
+  if (args.rejudge !== undefined) {
+    await rejudge(args.rejudge, args, catalog, createRuntime, projectRoot);
+    return;
+  }
   const plan = await planPersonaBenchmark(args, catalog);
   await using runtime = await createRuntime(projectRoot, undefined, args.profile);
   const { persona } = await loadBenchmarkPersona(plan, catalog, runtime.deps);
@@ -205,6 +244,53 @@ export async function main(
     });
     if (outcome.status === "completed") console.log(outcome.report);
     else process.exitCode = 1;
+  } finally {
+    process.off("SIGINT", onInterrupt);
+  }
+}
+
+/** Score the current, unscored record cells of `persona` with the `--judge` judge (ARCH-DIRECTORIES-020). */
+async function rejudge(persona: string, args: CliArgs, catalog: ReturnType<typeof createBenchmarkCatalog>, createRuntime: CreateRuntime, projectRoot: string): Promise<void> {
+  const requested = args.judge!;
+  const [{ admitBenchmark, personaCampaignJudge }, { rejudgeRecords }] = await Promise.all([
+    import("../../src/orchestration/modules/development/benchmark/admission.js"),
+    import("../../src/orchestration/modules/development/benchmark/rejudge.js"),
+  ]);
+  await using owned = new AsyncDisposableStack();
+  const admit = async () => {
+    const runtime = owned.use(await createRuntime(projectRoot, undefined, args.profile));
+    const admission = await admitBenchmark({
+      ...runtime.deps,
+      profileId: runtime.profileId,
+      authorityIncarnation: runtime.usageAuthority.authorityIncarnation,
+      launcher: runtime.launcher,
+      background: runtime.background,
+      foregroundBashHold: runtime.foregroundBashHold,
+      shell: runtime.shell,
+    }, [{ role: "judge", ...requested }]);
+    const { judge, createJudge } = personaCampaignJudge(admission);
+    if (judge?.model !== requested.model || judge.effort !== requested.effort) {
+      throw new Error(`The judge ${requested.model}:${requested.effort} resolved to ${judge ? `${judge.model}:${judge.effort}` : "no model"} on this profile; a rejudge scores only with the named judge`);
+    }
+    return { admission, judge, createJudge };
+  };
+  const openJudge = async (evidenceDirectory: string) => {
+    const { admission, createJudge } = await admit();
+    return { model: await createJudge(evidenceDirectory), runOwnedCommand: admission.runtime.runOwnedCommand };
+  };
+  if (args.dryRun) {
+    const { pending } = await rejudgeRecords({ catalog, persona, judge: requested, openJudge, dryRun: true });
+    const { admission, judge } = await admit();
+    console.log(JSON.stringify({ dryRun: true, rejudge: persona, judge, pendingCells: pending, providerPlans: admission.providerPlans }, null, 2));
+    return;
+  }
+  const controller = new AbortController();
+  const onInterrupt = (): void => controller.abort();
+  process.once("SIGINT", onInterrupt);
+  try {
+    const outcome = await rejudgeRecords({ catalog, persona, judge: requested, openJudge, signal: controller.signal });
+    console.log(`Rejudged ${persona} with ${requested.model}:${requested.effort}: ${outcome.scored} scored, ${outcome.failed} failed of ${outcome.pending} pending. Judge evidence: ${outcome.evidenceDirectory}`);
+    if (outcome.failed > 0 || controller.signal.aborted) process.exitCode = 1;
   } finally {
     process.off("SIGINT", onInterrupt);
   }

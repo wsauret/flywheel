@@ -1,0 +1,14 @@
+{
+  "id": "subagent-handoff-contract-failure",
+  "sandbox": {
+    "commit": "74d097f9c661f2e3b1e01c1731d69b6aa8dc2039",
+    "paths": [
+      "src",
+      "AGENTS.md",
+      "docs/architecture.md",
+      "docs/architecture-intent",
+      "docs/product-intent",
+      "docs/terminology.md"
+    ]
+  }
+}

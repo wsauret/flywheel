@@ -1,0 +1,65 @@
+{
+  "facts": [
+    {
+      "id": "close-awaits-signed",
+      "claim": "The stream holds the response's last block open until its signed row is read: closing awaits the next signed block.",
+      "catch_criteria": "States that the stream does not finish the response until the signed row of the thinking block is read.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts"
+      ]
+    },
+    {
+      "id": "polls-not-abort",
+      "claim": "After the stop item, the row wait only polls the row file and no longer reads the step's events, so the abort does not wake it.",
+      "catch_criteria": "States that the abort does not end the row wait because the wait polls the row file instead of reading the event queue.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts",
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts"
+      ]
+    },
+    {
+      "id": "ten-second-bound",
+      "claim": "The only bound is 10 seconds from the first poll after the stop item; then the stream throws a transient error that the engine wrote no row for a signed block.",
+      "catch_criteria": "Names the 10 second bound as what ends the delay when no row arrives (or the row arriving earlier).",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts"
+      ]
+    },
+    {
+      "id": "abort-marks-gone",
+      "claim": "The abort fails the step's event queue and marks the hosted agent's phase gone.",
+      "catch_criteria": "States that the stop marks the hosted agent gone (released), not paused for resume.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts"
+      ]
+    },
+    {
+      "id": "partial-not-copied",
+      "claim": "The aborted response never enters the hosted agent's copy: the copy is set only in the answer callback, which runs when a response ends normally, and a gone phase reads as released.",
+      "catch_criteria": "States that the partial reply is not kept in the hosted agent's copy because the copy is written only on a normally completed answer.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts",
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts"
+      ]
+    },
+    {
+      "id": "next-message-restarts",
+      "claim": "The next message starts a new hosted agent, not a resume: a released state plans a start, and the old agent ends as restarted.",
+      "catch_criteria": "States that the next message starts a fresh hosted agent (restart), not a resume of the old one.",
+      "files": [
+        "src/orchestration/modules/provider-claude-agent-sdk/request-plan.ts",
+        "src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "stop-is-immediate",
+      "wrong_answer": "Stop releases the request at once, because the abort ends the step's event stream immediately."
+    },
+    {
+      "id": "resume-with-partial",
+      "wrong_answer": "The next message resumes the same hosted agent, and its partial reply is part of the resumed context."
+    }
+  ]
+}

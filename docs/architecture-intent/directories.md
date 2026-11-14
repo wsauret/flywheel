@@ -97,7 +97,7 @@ Not: Identity metadata inside override files, or a persisted conflict status fie
 
 ## ARCH-DIRECTORIES-018: A benchmark campaign records its source identity
 
-A benchmark campaign records the identity of the Flywheel source that runs its candidates. A resume under a different source identity is refused, and rescoring is not restricted. The identity detects a change of source; it does not prove which code one long-lived process loaded.
+A benchmark campaign records the identity of the Flywheel source that ran each candidate. Its own identity covers its tasks, persona guidance, judge, scoring contract, and trial isolation, but not the rest of the source, so a resume after an unrelated source change continues it. Its report names each source that ran cells. The identity detects a change of source; it does not prove which code one long-lived process loaded.
 
 ## ARCH-DIRECTORIES-019: Benchmark fixtures depend only on the public repository
 
@@ -105,3 +105,14 @@ A runnable benchmark fixture depends only on content in the public repository: a
 
 Because: A contributor runs the benchmarks from a public clone, and a commit that only the maintainer's object store holds makes the fixture fail there.
 Not: Commits from before the public history, private folders, or snapshot archives outside the repository.
+
+## ARCH-DIRECTORIES-020: Benchmark records are the public ledger of scored cells
+
+Each benchmark campaign publishes one compact append-only record file in the public repository: every scored cell with its task identity, output, accounting, duration, and source, and each judge's absolute scores of it. It also holds each regrade of an implementer cell's stored diff by a changed task grader. Raw trial evidence, including full grader reports, stays on the machine that ran it. Rankings, rejudging, and regrading read only record files, so every clone reproduces them.
+
+Because: A new model must take its place among stored results without a rerun of older settings.
+Not: Publishing results folders, or keeping records private.
+
+## ARCH-DIRECTORIES-021: A ranking pools records by task content and scoring contract
+
+A benchmark ranking pools every recorded cell whose task content matches the current corpus and that one named judge scored under the current scoring contract. An implementer cell whose task changed only in grading pools through its grade by the current grader, never through the grade it recorded. It ranks a role on absolute per-cell measures only; pairwise preference stays in campaign reports. It reports every record it does not pool with the reason, and never drops one silently.
