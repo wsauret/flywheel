@@ -97,11 +97,11 @@ test("previews an unauthored persona seat with the same coded pair as its worker
     }]]),
   })
   expect(bound.roles).toEqual({})
-  expect(bound.models.pairs).toEqual([{ model: "gpt-6-luna", effort: "high", definitionIds: ["explore"] }])
+  expect(bound.models.pairs).toEqual([{ model: "gpt-6.1-sol", effort: "low", definitionIds: ["explore"] }])
   const worker = agents.get("explore")
   if (!worker) throw new Error("The explore phase must resolve")
   const roles = await resolveSessionRoles({ defaults: {}, overrides: {} }, capture, "/scratch", ["explorer"])
-  expect(resolveWorkflowAgentRole(worker, roles, "explorer")).toMatchObject({ model: "gpt-6-luna", effort: "high" })
+  expect(resolveWorkflowAgentRole(worker, roles, "explorer")).toMatchObject({ model: "gpt-6.1-sol", effort: "low" })
 })
 
 test("the viewer and request resolver follow the same live record, persona, brief, and workflow seats", async () => {

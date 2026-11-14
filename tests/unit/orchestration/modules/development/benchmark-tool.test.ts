@@ -206,7 +206,7 @@ describe("benchmark tool admission", () => {
       captureProviderConnection: async () => ({ ...captured, admit: () => ({ createAgent: () => { throw new Error("unused"); }, createLLMClient: () => { throw new Error("unused"); } }) }),
     }, [{ role: "candidate", roleId: "explorer", model: "lost-candidate", effort: "low" }, { role: "judge" }]);
     expect(admission.providerPlans).toEqual([
-      { role: "candidate", model: "claude-haiku-4.5", effort: "high", profileId: "default", providers: ["anthropic_api"] },
+      { role: "candidate", model: "claude-haiku-4.5", effort: "medium", profileId: "default", providers: ["anthropic_api"] },
       { role: "judge", model: "claude-opus-5.5", effort: "high", profileId: "default", providers: ["anthropic_api"] },
     ]);
   });
