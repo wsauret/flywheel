@@ -1,0 +1,20 @@
+bench/ab-persona/records/reviewer-plan-elegance/2026-11-14T06-37-02-914Z.jsonl
+  h_4b47e9e4a8b456 1-161
+bench/ab-persona/records/reviewer-plan-quality/2026-11-14T06-37-01-303Z.jsonl
+  h_4b47e9e4a8b456 1-121
+bench/findings/README.md
+  h_4b47e9e4a8b456 28-29,33-34
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 67,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1b45c499d8b0941ff2ed988dfe959a084fefe9a7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
