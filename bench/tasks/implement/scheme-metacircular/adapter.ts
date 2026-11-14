@@ -136,13 +136,14 @@ async function main(): Promise<void> {
     }
     let test = await readFile(join(task, "original/tests/test_outputs.py"), "utf8");
     let metaEvaluator = join(workspace, "eval.scm");
-    if (/["\\\r\n]/.test(metaEvaluator)) {
-      // Original read retains string escape bytes. A scoped macOS alias keeps the same file authority.
+    if (/[\s()';"]/.test(metaEvaluator)) {
+      // Upstream feeds the bare line "/app/eval.scm", which both (read) and a line read take whole.
+      // A path that a Scheme reader would split gets a scoped macOS alias with the same file authority.
       metaAliasDirectory = await mkdtemp("/private/tmp/scheme-meta-");
       metaEvaluator = join(metaAliasDirectory, "eval.scm");
       await symlink(join(workspace, "eval.scm"), metaEvaluator);
     }
-    test = replace("test_outputs.py", test, '"/app/eval.scm\\n"', JSON.stringify(`${JSON.stringify(metaEvaluator)}\n`));
+    test = replace("test_outputs.py", test, '"/app/eval.scm\\n"', JSON.stringify(`${metaEvaluator}\n`));
     test = replace("test_outputs.py", test, '"/app/eval.scm"', JSON.stringify(join(workspace, "eval.scm")));
     test = replace("test_outputs.py", test, '"/tests/test"', JSON.stringify(join(tests, "test")));
     test = replace("test_outputs.py", test, '"/tests/shadow_test"', JSON.stringify(join(tests, "shadow_test")));

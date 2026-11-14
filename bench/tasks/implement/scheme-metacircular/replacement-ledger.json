@@ -2,7 +2,7 @@
   {
     "file": "test_outputs.py",
     "original": "\"/app/eval.scm\\n\"",
-    "native": "JSON.stringify(JSON.stringify(${ABSOLUTE_EVALUATOR_OR_SCOPED_ALIAS}) + '\\n')",
+    "native": "JSON.stringify(${ABSOLUTE_EVALUATOR_OR_SCOPED_ALIAS} + '\\n')",
     "occurrences": 1
   },
   {
