@@ -105,6 +105,30 @@ async function main(): Promise<void> {
     await copyFile(join(task, "LICENSE"), join(workspace, "LICENSE"));
     await Bun.write(join(home, "provision.json"), JSON.stringify({ acquired, commands }, null, 2));
     if (action === "prepare") return;
+    // Upstream grades in a fresh container, so its /tmp starts empty. The host /tmp keeps files that earlier
+    // grades and candidate runs created at literal paths, and a candidate that picks a free name such as
+    // /tmp/eval-x with exclusive creation then fails once those names run out. macOS gives an unprivileged
+    // process no private mount, and a sandbox profile can only deny a path, so the interpreter that runs
+    // candidate code rebinds /tmp to a directory of this grade's own workspace, which nothing else shares.
+    // Candidate code reaches files only through interp.py's fopen, which calls builtins.open.
+    const privateTmp = join(home, "private-tmp");
+    await mkdir(privateTmp);
+    const sitePackages = (await execute("site-packages", [python, "-I", "-c",
+      "import sysconfig; print(sysconfig.get_path('purelib'))"])).stdout.trim();
+    await Bun.write(join(sitePackages, "scheme_private_tmp.py"), [
+      "import builtins, os",
+      `_root = ${JSON.stringify(privateTmp)}`,
+      "_open = builtins.open",
+      "def _private(file, *args, **kwargs):",
+      "    if isinstance(file, str) and file.startswith('/'):",
+      "        path = os.path.normpath(file)",
+      "        if path == '/tmp' or path.startswith('/tmp/'):",
+      "            file = _root + path[4:]",
+      "    return _open(file, *args, **kwargs)",
+      "builtins.open = _private",
+      "",
+    ].join("\n"));
+    await Bun.write(join(sitePackages, "scheme-private-tmp.pth"), "import scheme_private_tmp\n");
     await execute("git-init", ["git", "init", "-q"]);
     if ((await stat(artifacts[0]!)).size) {
       await execute("candidate-patch", ["git", "apply", "--verbose", resolve(artifacts[0]!)]);
@@ -209,7 +233,7 @@ async function main(): Promise<void> {
     await Bun.write(artifacts[1]!, JSON.stringify({
       passed, failed: 1 - passed, total: 1,
       evidence: { criterion: "original pytest status and reward.txt", pytestExitCode, reward,
-        programs, observations, ctrf, restored, removed, replacements, acquired, commands, metaAliasDirectory,
+        programs, observations, ctrf, restored, removed, replacements, acquired, commands, metaAliasDirectory, privateTmp,
         limits: { directSeconds: 10, metacircularSeconds: 180, verifierMs: 2400000, adapterMs: 2700000 },
         equivalence: "native macOS arm64, not original container or cross-platform equivalence" },
     }, null, 2) + "\n");

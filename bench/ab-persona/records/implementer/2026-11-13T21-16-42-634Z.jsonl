@@ -87,3 +87,11 @@
 {"kind":"grade","graderIdentity":"bd53f1bea2f025a625b5af36ad3e6c1d316488232ba9327abf74302b0449eaeb","variant":"claude-opus-5.5@medium","task":"scheme-metacircular","repeat":2,"passed":1,"failed":0,"total":1}
 {"kind":"grade","graderIdentity":"bd53f1bea2f025a625b5af36ad3e6c1d316488232ba9327abf74302b0449eaeb","variant":"claude-opus-5.5@high","task":"scheme-metacircular","repeat":1,"passed":1,"failed":0,"total":1}
 {"kind":"grade","graderIdentity":"bd53f1bea2f025a625b5af36ad3e6c1d316488232ba9327abf74302b0449eaeb","variant":"claude-fable-5.2@low","task":"scheme-metacircular","repeat":2,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-fable-5.2@low","task":"scheme-metacircular","repeat":0,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-opus-5.5@medium","task":"scheme-metacircular","repeat":0,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-opus-5.5@high","task":"scheme-metacircular","repeat":0,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-fable-5.2@low","task":"scheme-metacircular","repeat":1,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-opus-5.5@medium","task":"scheme-metacircular","repeat":1,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-opus-5.5@medium","task":"scheme-metacircular","repeat":2,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-opus-5.5@high","task":"scheme-metacircular","repeat":1,"passed":1,"failed":0,"total":1}
+{"kind":"grade","graderIdentity":"f5b583bb9c0c1d60d401d42936a239094be1fb84c1acbbb8094cdea4dd7f40be","variant":"claude-fable-5.2@low","task":"scheme-metacircular","repeat":2,"passed":1,"failed":0,"total":1}
