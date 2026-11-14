@@ -53,13 +53,15 @@ describe("benchmark regrade", () => {
     const header: CampaignHeader = { kind: "campaign", version: 1, persona: "implementer", mode: "implement", stamp: "s1", judge: JUDGE, scoringVersion: "persona-v2", personaGuidanceIdentity: "g" };
     const trap: ScoreLine = { kind: "score", judge: JUDGE, scoringVersion: "persona-v2", scorer: "trap", score: { variant: "model-a@high", task: "native-task", repeat: 0, traps: [] } };
     const file = catalog.recordsFile("implementer", "s1");
-    // Cells under an earlier grader of each task, a cell whose prompt changed since, and a cell of the current task.
-    await appendCampaignRecords(file, header, [
+    // Cells under an earlier grader of each task, a cell whose prompt changed since, a cell of the current task, and a timed-out cell.
+    await appendCampaignRecords(file, header, { cells: [
       cell(native!, "grader-before-the-fix"),
       cell(plan!, "grader-before-the-fix"),
       { ...cell(plan!, "grader-before-the-fix", "another-prompt"), repeat: 1 },
       { ...cell(native!, native!.contentIdentity), repeat: 1 },
-    ], [trap]);
+      // A timed-out cell under an earlier grader has no change to grade, and is neither graded nor skipped.
+      { ...cell(native!, "grader-before-the-fix"), repeat: 2, output: { kind: "timed-out", candidateIdentity: native!.candidateIdentity, timeoutMs: 1 } },
+    ], scores: [trap] });
     const graded: string[] = [];
     const applied: string[] = [];
     const run: OwnedCommandRunner = async (command, options) => {

@@ -47,7 +47,7 @@ describe("benchmark rejudge", () => {
     const file = catalog.recordsFile("reviewer-code-quality", "s1");
     // Repeat 0 is unscored by the other judge, repeat 1 already has its score, repeat 2 ran on older task content,
     // and the other judge scored repeat 3 only under an older scoring contract.
-    await appendCampaignRecords(file, header, [cell(0, task!.contentIdentity), cell(1, task!.contentIdentity), cell(2, "older"), cell(3, task!.contentIdentity)], [score(0, OWN), score(1, OWN), score(1, OTHER), score(2, OWN), score(3, OTHER, "persona-v2")]);
+    await appendCampaignRecords(file, header, { cells: [cell(0, task!.contentIdentity), cell(1, task!.contentIdentity), cell(2, "older"), cell(3, task!.contentIdentity)], scores: [score(0, OWN), score(1, OWN), score(1, OTHER), score(2, OWN), score(3, OTHER, "persona-v2")] });
     const before = await Bun.file(file).text();
     const prompts: string[] = [];
     const evidence: string[] = [];

@@ -97,7 +97,8 @@ const AttemptTerminalSchema = Schema.Union([
  *  or was stopped. runs.jsonl stays the completion authority and never carries a
  *  failure; attempts.jsonl is the sole accounting authority for what did not
  *  settle, so a resumed run reports every cell whose work was spent without a
- *  result. An attempt creates no completion key: --resume retries its cell. */
+ *  result. An attempt creates no completion key, so --resume retries its cell, except an implementer attempt that hit
+ *  its time limit: that is a scored cell (isScoredAttempt), which a resume keeps and never runs again. */
 const AttemptRecordSchema = Schema.Struct({
   ...seatFields,
   kind: Schema.Literal("agent-run-attempt"),

@@ -9,7 +9,8 @@ import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/d
 import { planPersonaBenchmark, runPersonaBenchmark, type BenchmarkEvent } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
 import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
-import { runPersonaTask, type PersonaTaskRequest } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
+import { loadCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { PersonaTaskFailure, runPersonaTask, type PersonaTaskRequest } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
 import { createNativePersonaInvocation } from "../../../src/orchestration/modules/development/benchmark/native-persona-invocation.js";
 import { decodeNativePersonaRequest, decodeNativePersonaResult, nativePersonaPath, nativePersonaStartupFailure, writeNativePersonaResult } from "../../../src/orchestration/modules/development/benchmark/native-persona-codec.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
@@ -162,6 +163,43 @@ Implement and hand off.
       await expect(runPersonaBenchmark(original, unconfined)).rejects.toThrow("identity changed");
       await Bun.write(personaFile, guidance);
     }
+  });
+  it("completes a campaign whose implementer cell hit its time limit, records it as a cell, and never runs it again on resume", async () => {
+    const root = temporaryDirectory("flywheel-persona-timed-out-");
+    await mkdir(join(root, "src", "workflows", "agents", "personas"), { recursive: true });
+    await Bun.write(join(root, "src", "workflows", "agents", "personas", "implementer.md"), "---\nname: implementer\ndescription: Implements.\nrole: implementer\ntools:\n  - read\n---\nImplement and hand off.\n");
+    const catalog = createBenchmarkCatalog(root);
+    const taskDir = join(catalog.implementTasksDir, "native");
+    await mkdir(taskDir, { recursive: true });
+    await Bun.write(join(taskDir, "instruction.txt"), "Bug report.");
+    await Bun.write(join(taskDir, "adapter.py"), "# adapter");
+    await Bun.write(join(taskDir, "task.json"), JSON.stringify({
+      kind: "native", id: "native", stratum: "small", family: "python", split: "development",
+      instruction: "instruction.txt", native: { command: ["python3", "adapter.py"], timeoutMs: 3_600_000 },
+    }));
+    const accounting = unavailableJudgeAccounting("synthetic candidate");
+    let candidateCalls = 0;
+    const dependencies = {
+      ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []),
+      createJudge: async () => ({ complete: async () => { throw new Error("a timed-out cell has no change to judge"); } }),
+      nativeInvocation: {
+        sourceIdentity: "test-native-v1",
+        run: async () => {
+          candidateCalls++;
+          throw new PersonaTaskFailure({ kind: "timed-out", timeoutMs: 1_500_000 }, { durationMs: 1_500_004, accounting }, "candidate deadline");
+        },
+      },
+    };
+    const plan = await planPersonaBenchmark({ persona: "implementer", variants: [parseVariant("model-a:medium")], repeats: 1, operation: "run" }, catalog);
+    expect((await runPersonaBenchmark(plan, dependencies)).status).toBe("completed");
+    const records = await loadCampaignRecords(catalog.recordsFile(plan.persona, plan.stamp));
+    expect(records?.cells.map((cell) => cell.output.kind)).toEqual(["timed-out"]);
+    expect(records?.failures).toEqual([]);
+    const events: BenchmarkEvent[] = [];
+    const resume = await planPersonaBenchmark({ operation: "resume", resultsDir: plan.resultsDir, variants: [] }, catalog);
+    expect((await runPersonaBenchmark(resume, { ...dependencies, onEvent: (event) => events.push(event) })).status).toBe("completed");
+    expect(events.at(0)).toEqual({ kind: "benchmark.started", resultsDir: plan.resultsDir, pendingCells: 0 });
+    expect(candidateCalls).toBe(1);
   });
   async function verifyNativeTransport(seat: PersonaTaskRequest["seat"]): Promise<void> {
     const resultsRoot = temporaryDirectory("flywheel-native-transport-");

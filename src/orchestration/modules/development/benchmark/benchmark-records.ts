@@ -7,12 +7,13 @@ import { BenchmarkAccountingSchema } from "./evidence.js";
 import { harnessLintFile, loadHarnessLint } from "./harness-names.js";
 import { createJsonLinesLedger } from "./json-lines.js";
 import { ResearchScoreSchema } from "./research-scoring.js";
-import { ImplementScoreSchema, ReviewScoreSchema, type AgentRunRecord, type ScoreRecord } from "./run-store.js";
+import { ImplementScoreSchema, ReviewScoreSchema, type AgentRunRecord, type AttemptRecord, type AttemptTerminal, type ScoreRecord } from "./run-store.js";
 
 // Benchmark records are the public ledger of scored cells (ARCH-DIRECTORIES-020).
 // Each campaign publishes one append-only file, bench/ab-persona/records/<persona>/<stamp>.jsonl:
-// a campaign header, one line per completed cell with its output, and one line per
-// absolute score of a cell by one judge. A campaign's events.jsonl stays the working
+// a campaign header, one line per completed cell with its output (an implementer cell that
+// hit its time limit included), one line per absolute score of a cell by one judge, and
+// one line per other failed attempt, which a ranking lists to retry. A campaign's events.jsonl stays the working
 // ledger of execution, attempts, and judge accounting on the machine that ran it; this
 // file is what a ranking or a rejudge reads, so every clone reproduces them. Pair
 // verdicts are relative to one campaign's set and stay in its report.
@@ -49,6 +50,8 @@ const CellOutputSchema = Schema.Union([
     acceptanceFailed: Schema.Int,
     acceptanceTotal: Schema.Int,
   }),
+  /** An implementer cell that hit its time limit: a failed attempt with no change to grade or judge. */
+  Schema.Struct({ kind: Schema.Literal("timed-out"), candidateIdentity: Schema.String, timeoutMs: Schema.Int }),
 ]);
 
 const CellLineSchema = Schema.Struct({
@@ -87,13 +90,28 @@ const GradeLineSchema = Schema.Struct({
   total: Schema.Int,
 });
 
-const RecordLineSchema = Schema.Union([CampaignHeaderSchema, CellLineSchema, ScoreLineSchema, GradeLineSchema]);
+/** One attempt that settled with no result to rank: an infrastructure or grader failure, a stop, or a time limit
+ *  outside the implementer. A later attempt of the same cell can still record its cell line. */
+const FailureLineSchema = Schema.Struct({
+  kind: Schema.Literal("failure"),
+  attemptId: Schema.String,
+  variant: Schema.String,
+  task: Schema.String,
+  repeat: RepeatSchema,
+  reason: Schema.String,
+});
+
+const RecordLineSchema = Schema.Union([CampaignHeaderSchema, CellLineSchema, ScoreLineSchema, GradeLineSchema, FailureLineSchema]);
 
 export type RecordJudge = typeof JudgeSchema.Type;
 export type CampaignHeader = typeof CampaignHeaderSchema.Type;
 export type CellLine = typeof CellLineSchema.Type;
 export type ScoreLine = typeof ScoreLineSchema.Type;
 export type GradeLine = typeof GradeLineSchema.Type;
+export type FailureLine = typeof FailureLineSchema.Type;
+
+/** The identities of a planned task that a record line keeps: an implementation task adds what its candidate answers. */
+type RecordedTask = Pick<ResearchTask | ReviewTask, "id" | "contentIdentity"> | Pick<ImplementTask, "id" | "contentIdentity" | "candidateIdentity">;
 
 /** One campaign's record file, loaded and validated. */
 export interface CampaignRecords {
@@ -102,6 +120,15 @@ export interface CampaignRecords {
   readonly cells: readonly CellLine[];
   readonly scores: readonly ScoreLine[];
   readonly grades: readonly GradeLine[];
+  readonly failures: readonly FailureLine[];
+}
+
+/** The lines one append offers; each kind defaults to none. */
+export interface RecordLines {
+  readonly cells?: readonly CellLine[];
+  readonly scores?: readonly ScoreLine[];
+  readonly grades?: readonly GradeLine[];
+  readonly failures?: readonly FailureLine[];
 }
 
 /** The scorer whose scores a campaign of `mode` records. */
@@ -141,8 +168,8 @@ function sameHeader(a: CampaignHeader, b: CampaignHeader): boolean {
 /** Load one record file. A missing file is undefined. Every structural
  *  violation is an error naming the file and line, never a skipped line: a
  *  header that is not the first line or appears twice, a second line for one
- *  cell or one score key, a score of no recorded cell, or a scorer that is not
- *  the header mode's. */
+ *  cell, score key, or failed attempt, a score of no recorded cell, or a scorer
+ *  that is not the header mode's. */
 export async function loadCampaignRecords(file: string): Promise<CampaignRecords | undefined> {
   const lines = await ledger(file).load();
   if (lines.length === 0) return undefined;
@@ -157,6 +184,8 @@ export async function loadCampaignRecords(file: string): Promise<CampaignRecords
   const scoreKeys = new Set<string>();
   const grades: GradeLine[] = [];
   const gradeKeys = new Set<string>();
+  const failures: FailureLine[] = [];
+  const attemptIds = new Set<string>();
   for (const [index, line] of rest.entries()) {
     const at = `${file}:${index + 2}`;
     if (line.kind === "campaign") throw new Error(`${at} repeats the campaign header`);
@@ -173,13 +202,19 @@ export async function loadCampaignRecords(file: string): Promise<CampaignRecords
       grades.push(line);
       continue;
     }
+    if (line.kind === "failure") {
+      if (attemptIds.has(line.attemptId)) throw new Error(`${at} repeats failed attempt ${line.attemptId}`);
+      attemptIds.add(line.attemptId);
+      failures.push(line);
+      continue;
+    }
     if (line.scorer !== recordScorer(header.mode)) throw new Error(`${at} is a ${line.scorer} score in a ${header.mode} campaign`);
     if (!cellKeys.has(cellKey(line.score))) throw new Error(`${at} scores ${line.score.variant} ${line.score.task} #${line.score.repeat}, which has no cell line before it`);
     if (scoreKeys.has(scoreKey(line))) throw new Error(`${at} repeats the ${judgeLabel(line.judge)} score of ${line.score.variant} ${line.score.task} #${line.score.repeat}`);
     scoreKeys.add(scoreKey(line));
     scores.push(line);
   }
-  return { file, header, cells, scores, grades };
+  return { file, header, cells, scores, grades, failures };
 }
 
 /** Every record file under `recordsRoot`, one folder per persona. */
@@ -199,18 +234,16 @@ export async function loadAllCampaignRecords(recordsRoot: string): Promise<Campa
   return campaigns;
 }
 
-/** Append the header, cells, and scores that `file` does not yet hold, in that
- *  order, and never rewrite a line, so a run, a resume, a rescore, and a
- *  rejudge can each call it with everything they know. A file whose header
- *  differs from `header` is another campaign's and refuses. Returns the count
- *  of appended cell and score lines. */
+/** Append the header, cells, scores, grades, and failed attempts that `file`
+ *  does not yet hold, in that order, and never rewrite a line, so a run, a
+ *  resume, a rescore, a rejudge, and a regrade can each call it with everything
+ *  they know. A file whose header differs from `header` is another campaign's
+ *  and refuses. Returns the count of appended lines of each kind. */
 export async function appendCampaignRecords(
   file: string,
   header: CampaignHeader,
-  cells: readonly CellLine[],
-  scores: readonly ScoreLine[],
-  grades: readonly GradeLine[] = [],
-): Promise<{ cells: number; scores: number; grades: number }> {
+  { cells = [], scores = [], grades = [], failures = [] }: RecordLines,
+): Promise<{ cells: number; scores: number; grades: number; failures: number }> {
   const existing = await loadCampaignRecords(file);
   if (existing && !sameHeader(existing.header, header)) throw new Error(`${file} holds another campaign header; refusing to append`);
   const records = ledger(file);
@@ -238,28 +271,80 @@ export async function appendCampaignRecords(
     await records.append(grade);
     gradeKeys.add(gradeKey(grade));
   }
-  return { cells: newCells.length, scores: newScores.length, grades: newGrades.length };
+  const attemptIds = new Set(existing?.failures.map(({ attemptId }) => attemptId));
+  const newFailures = failures.filter(({ attemptId }) => !attemptIds.has(attemptId));
+  for (const failure of newFailures) {
+    await records.append(failure);
+    attemptIds.add(failure.attemptId);
+  }
+  return { cells: newCells.length, scores: newScores.length, grades: newGrades.length, failures: newFailures.length };
 }
 
-/** Publish every successful run and absolute score of one campaign that its record file does not yet hold. Run,
- *  resume, and rescore all call it, and it only appends, so a later call adds what an earlier one could not.
- *  `tasks` are the campaign's planned tasks, whose identities each cell records. */
+/** Publish every successful run, timed-out implementer attempt, other failed attempt, and absolute score of one
+ *  campaign that its record file does not yet hold. Run, resume, and rescore all call it, and it only appends, so a
+ *  later call adds what an earlier one could not. `tasks` are the campaign's planned tasks, whose identities each
+ *  cell records. */
 export async function exportCampaignRecords(
   file: string,
   header: CampaignHeader,
   runs: readonly AgentRunRecord[],
+  attempts: readonly AttemptRecord[],
   scores: readonly ScoreRecord[],
-  tasks: readonly (ResearchTask | ReviewTask | ImplementTask)[],
+  tasks: readonly RecordedTask[],
   projectRoot: string,
 ): Promise<void> {
   const byId = new Map(tasks.map((task) => [task.id, task]));
+  const taskOf = (id: string) => {
+    const task = byId.get(id);
+    if (task === undefined) throw new Error(`Cell of ${id} names no planned task`);
+    return task;
+  };
   const redact = await recordRedactor(projectRoot);
-  const cells = runs.map((run) => {
-    const task = byId.get(run.task);
-    if (task === undefined) throw new Error(`Run of ${run.task} names no planned task`);
-    return cellLine(run, task, redact);
-  });
-  await appendCampaignRecords(file, header, cells, scores.flatMap((record) => scoreLine(record, header.judge, header.scoringVersion) ?? []));
+  const cells = runs.map((run) => cellLine(run, taskOf(run.task), redact));
+  const failures: FailureLine[] = [];
+  for (const attempt of attempts) {
+    const task = taskOf(attempt.task);
+    if (isScoredAttempt(attempt)) {
+      if (!("candidateIdentity" in task)) throw new Error(`Implementation attempt of ${attempt.task} names a task that is not an implementation task`);
+      cells.push(timedOutCellLine(attempt, attempt.terminal.timeoutMs, task));
+    } else failures.push({ kind: "failure", attemptId: attempt.attemptId, variant: attempt.variant, task: attempt.task, repeat: attempt.repeat, reason: redact(failureReason(attempt.terminal)) });
+  }
+  await appendCampaignRecords(file, header, { cells, scores: scores.flatMap((record) => scoreLine(record, header.judge, header.scoringVersion) ?? []), failures });
+}
+
+/** Whether an attempt is a scored cell rather than a failure: an implementer attempt that hit its time limit ranks as
+ *  a failed attempt at the limit, so a record publishes it as a cell and a resume never runs it again. */
+export function isScoredAttempt<Attempt extends Pick<AttemptRecord, "mode" | "terminal">>(attempt: Attempt): attempt is Attempt & { terminal: Extract<AttemptTerminal, { kind: "timed-out" }> } {
+  return attempt.mode === "implement" && attempt.terminal.kind === "timed-out";
+}
+
+function failureReason(terminal: AttemptTerminal): string {
+  if (terminal.kind === "failed") return terminal.message;
+  return terminal.kind === "timed-out" ? `timed out after ${terminal.timeoutMs}ms` : "cancelled";
+}
+
+/** The cell line of an implementer attempt that hit its time limit: it ranks as a failed attempt whose latency is
+ *  the limit and whose cost is what it spent. */
+function timedOutCellLine(attempt: AttemptRecord, timeoutMs: number, task: Extract<RecordedTask, { candidateIdentity: string }>): CellLine {
+  return {
+    ...seatOf(attempt, task),
+    durationMs: timeoutMs,
+    accounting: attempt.accounting,
+    output: { kind: "timed-out", candidateIdentity: task.candidateIdentity, timeoutMs },
+  };
+}
+
+function seatOf(seat: AgentRunRecord | AttemptRecord, task: RecordedTask) {
+  return {
+    kind: "cell" as const,
+    variant: seat.variant,
+    ...(seat.model === undefined ? {} : { model: seat.model }),
+    ...(seat.effort === undefined ? {} : { effort: seat.effort }),
+    task: seat.task,
+    taskIdentity: task.contentIdentity,
+    repeat: seat.repeat,
+    ...(seat.sourceIdentity === undefined ? {} : { sourceIdentity: seat.sourceIdentity }),
+  };
 }
 
 /** Rewrites each name of another coding agent in candidate output to these
@@ -274,19 +359,8 @@ async function recordRedactor(projectRoot: string): Promise<(text: string) => st
 
 /** The record line of one successful run. `redact` rewrites candidate text
  *  before publication (the names of other coding agents); scores are unaffected. */
-function cellLine(run: AgentRunRecord, task: ResearchTask | ReviewTask | ImplementTask, redact: (text: string) => string): CellLine {
-  const seat = {
-    kind: "cell" as const,
-    variant: run.variant,
-    ...(run.model === undefined ? {} : { model: run.model }),
-    ...(run.effort === undefined ? {} : { effort: run.effort }),
-    task: run.task,
-    taskIdentity: task.contentIdentity,
-    repeat: run.repeat,
-    durationMs: run.durationMs,
-    accounting: run.accounting,
-    ...(run.sourceIdentity === undefined ? {} : { sourceIdentity: run.sourceIdentity }),
-  };
+function cellLine(run: AgentRunRecord, task: RecordedTask, redact: (text: string) => string): CellLine {
+  const seat = { ...seatOf(run, task), durationMs: run.durationMs, accounting: run.accounting };
   if (run.mode === "reviewer") return { ...seat, output: { kind: "review", text: redact(run.reviewText) } };
   if (run.mode === "research") return { ...seat, output: { kind: "answer", text: redact(run.summary) } };
   if (!("candidateIdentity" in task)) throw new Error(`Implementation run of ${run.task} names a task that is not an implementation task`);

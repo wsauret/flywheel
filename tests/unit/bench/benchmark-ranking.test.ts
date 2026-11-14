@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { CampaignRecords, CellLine, GradeLine, RecordJudge, ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import type { CampaignRecords, CellLine, FailureLine, GradeLine, RecordJudge, ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
 import type { BenchmarkMode } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { rankBenchmarkRecords, renderRanking, type RankingCorpus, type RankingInput, type RoleRanking } from "../../../src/orchestration/modules/development/benchmark/ranking.js";
 
@@ -30,9 +30,11 @@ interface CellSpec {
   candidateIdentity?: string;
   judges?: readonly RecordJudge[];
   version?: string;
+  /** The time limit an implementation cell hit: it records no change and no score. */
+  timedOutMs?: number;
 }
 
-function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec[], options: { stamp?: string; judge?: RecordJudge; guidance?: string; grades?: readonly GradeLine[] } = {}): CampaignRecords {
+function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec[], options: { stamp?: string; judge?: RecordJudge; guidance?: string; grades?: readonly GradeLine[]; failures?: readonly FailureLine[] } = {}): CampaignRecords {
   const cells: CellLine[] = [];
   const scores: ScoreLine[] = [];
   for (const spec of specs) {
@@ -41,13 +43,15 @@ function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec
     const cost = spec.cost ?? 1;
     const estimatedUsd = typeof cost === "number" ? { kind: "observed" as const, value: cost } : { kind: "unavailable" as const, reason: "unpriced", ...cost };
     cells.push({
-      kind: "cell", variant: spec.setting, ...(model === "profile" ? {} : { model, effort }), task: spec.task, taskIdentity: spec.taskIdentity ?? `${spec.task}@1`, repeat, durationMs: spec.ms ?? 10_000,
+      kind: "cell", variant: spec.setting, ...(model === "profile" ? {} : { model, effort }), task: spec.task, taskIdentity: spec.taskIdentity ?? `${spec.task}@1`, repeat, durationMs: spec.timedOutMs ?? spec.ms ?? 10_000,
       accounting: { estimatedUsd, billedUsd: { kind: "observed", value: 0 }, tokens: { kind: "observed", value: 1 }, providers: { kind: "observed", value: ["p"] }, pricedEntryCount: 1, unpricedEntryCount: 0 },
-      output: mode === "implement"
+      output: spec.timedOutMs !== undefined
+        ? { kind: "timed-out", candidateIdentity: spec.candidateIdentity ?? `${spec.task}@candidate`, timeoutMs: spec.timedOutMs }
+        : mode === "implement"
         ? { kind: "implementation", candidateIdentity: spec.candidateIdentity ?? `${spec.task}@candidate`, summary: "", diff: "", linesAdded: 1, linesRemoved: 0, filesTouched: 1, acceptancePassed: spec.passed ?? 1, acceptanceFailed: (spec.total ?? 1) - (spec.passed ?? 1), acceptanceTotal: spec.total ?? 1 }
         : { kind: mode === "reviewer" ? "review" : "answer", text: "" },
     });
-    for (const judge of spec.judges ?? [SOL]) {
+    for (const judge of spec.timedOutMs === undefined ? spec.judges ?? [SOL] : []) {
       const base = { kind: "score" as const, judge, scoringVersion: spec.version ?? (mode === "reviewer" ? "v3" : "v2") };
       const id = { variant: spec.setting, task: spec.task, repeat };
       const caught = Array.from({ length: spec.caught ?? 0 }, (_, index) => `d${index}`);
@@ -60,13 +64,13 @@ function campaign(persona: string, mode: BenchmarkMode, specs: readonly CellSpec
   return {
     file: `${persona}/${stamp}.jsonl`,
     header: { kind: "campaign", version: 1, persona, mode, stamp, judge: options.judge ?? SOL, scoringVersion: mode === "reviewer" ? "v3" : "v2", personaGuidanceIdentity: options.guidance ?? "guidance" },
-    cells, scores, grades: options.grades ?? [],
+    cells, scores, grades: options.grades ?? [], failures: options.failures ?? [],
   };
 }
 
 /** A corpus of tasks given as [id, seeded defects or key facts], each at content `<id>@1`. */
 function corpus(persona: string, mode: BenchmarkMode, tasks: readonly (readonly [string, number | undefined])[]): RankingCorpus {
-  return { persona, mode, tasks: tasks.map(([id, opportunities]) => ({ id, contentIdentity: `${id}@1`, opportunities })) };
+  return { persona, mode, outsideSuite: new Set(), tasks: tasks.map(([id, opportunities]) => ({ id, contentIdentity: `${id}@1`, opportunities })) };
 }
 
 function input(campaigns: readonly CampaignRecords[], corpora: readonly RankingCorpus[], overrides: Partial<RankingInput> = {}): RankingInput {
@@ -168,13 +172,16 @@ describe("benchmark ranking", () => {
     expect(ranking.incomplete).toEqual([{ setting: "claude-mid@medium", missing: ["reviewer-plan-elegance: 0 of 1 tasks"] }]);
   });
 
-  it("ranks the implementer on hidden-test pass rate minus followed false claims, with no pairwise input", () => {
-    const tasks = corpus("implementer", "implement", [["x", 0], ["y", 0]]);
+  it("ranks the implementer on its suite by hidden-test pass rate minus followed false claims, with no pairwise input", () => {
+    const tasks: RankingCorpus = { ...corpus("implementer", "implement", [["x", 0], ["y", 0]]), outsideSuite: new Set(["easy"]) };
     const [role] = rankBenchmarkRecords(input([campaign("implementer", "implement", [
       { setting: "gpt-mid@high", task: "x", passed: 9, total: 10, traps: 2, followed: 1 },
       { setting: "gpt-mid@high", task: "y", passed: 10, total: 10 },
       { setting: "claude-mid@high", task: "x", passed: 10, total: 10, traps: 2 },
       { setting: "claude-mid@high", task: "y", passed: 10, total: 10 },
+      // A task outside the suite neither counts toward coverage nor pools.
+      { setting: "claude-mid@high", task: "easy" },
+      { setting: "gpt-cheap@high", task: "easy" },
     ])], [tasks]));
     const ranking = ranked(role);
     expect(ranking.settings.map((setting) => [setting.setting, setting.quality, setting.false, setting.score])).toEqual([
@@ -182,20 +189,45 @@ describe("benchmark ranking", () => {
       ["gpt-mid@high", 95, 50, 45],
     ]);
     expect(ranking.thresholds).toEqual({ quality: 90, false: 10 });
+    expect(ranking.incomplete).toEqual([]);
+    expect(ranking.notPooled.map(({ reason, cells }) => ({ reason, cells }))).toEqual([{ reason: "task outside the ranking suite", cells: 2 }]);
+    expect(renderRanking([role!])).toContain("Corpora: implementer (2 tasks of 3: its ranking suite)");
+  });
+
+  it("ranks a timed-out implementer cell as a failed attempt at the limit, and lists other failed attempts to retry", () => {
+    const tasks = corpus("implementer", "implement", [["x", 0], ["y", 0]]);
+    const failure = (attemptId: string, task: string, repeat: number): FailureLine => ({ kind: "failure", attemptId, variant: "gpt-mid@high", task, repeat, reason: "Native grade failed: exit code 1" });
+    const [role] = rankBenchmarkRecords(input([campaign("implementer", "implement", [
+      // Each task weighs the same whatever its test count, and each cell the same within its task.
+      { setting: "gpt-mid@high", task: "x", passed: 1, total: 1, ms: 1000 },
+      { setting: "gpt-mid@high", task: "y", passed: 20, total: 20, ms: 1000 },
+      { setting: "gpt-mid@high", task: "y", repeat: 1, timedOutMs: 5000, cost: 3 },
+      { setting: "gpt-mid@high", task: "x", repeat: 2, passed: 0, total: 1, ms: 1000 },
+    ], { failures: [failure("a1", "y", 2), failure("a2", "x", 2)] })], [tasks]));
+    const ranking = ranked(role);
+    // x averages 1 and 0, y averages 1 and the timed-out 0; the limit is the slowest cell's latency.
+    expect(ranking.settings).toEqual([expect.objectContaining({ setting: "gpt-mid@high", quality: 50, false: 0, cost: 1.5, latencySeconds: 1, cells: 4, timedOutCells: 1 })]);
+    // The failed attempt of x #2 has a later result, so only y #2 waits for a retry.
+    expect(ranking.retry).toEqual([{ setting: "gpt-mid@high", task: "y", repeat: 2, persona: "implementer", stamp: "s1", reason: "Native grade failed: exit code 1" }]);
+    const text = renderRanking([role!]);
+    expect(text).toContain("| 4 (1 timed out) |");
+    expect(text).toContain("- gpt-mid@high y #2 (implementer s1): Native grade failed: exit code 1");
   });
 
   it("pools an implementer cell under a changed grader only once the current grader regraded it and its prompt still matches", () => {
-    const tasks: RankingCorpus = { persona: "implementer", mode: "implement", tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }] };
+    const tasks: RankingCorpus = { persona: "implementer", mode: "implement", outsideSuite: new Set(), tasks: [{ id: "x", contentIdentity: "x@2", opportunities: 0, implementation: { candidateIdentity: "x@candidate", graderIdentity: "grader-2" } }] };
     const grade = (variant: string, graderIdentity: string): GradeLine => ({ kind: "grade", graderIdentity, variant, task: "x", repeat: 0, passed: 8, failed: 2, total: 10 });
     const records = campaign("implementer", "implement", [
       { setting: "gpt-mid@high", task: "x", passed: 1, total: 10 },
+      // A timed-out cell is a failed attempt under every grader, so it needs no regrade.
+      { setting: "gpt-mid@high", task: "x", repeat: 1, timedOutMs: 1000 },
       { setting: "gpt-cheap@high", task: "x" },
       { setting: "claude-mid@high", task: "x", candidateIdentity: "x@old-prompt" },
       { setting: "claude-big@high", task: "x" },
     ], { grades: [grade("gpt-mid@high", "grader-2"), grade("claude-mid@high", "grader-2"), grade("claude-big@high", "grader-1")] });
     const ranking = ranked(rankBenchmarkRecords(input([records], [tasks]))[0]);
-    // The regrade replaces the 1 of 10 that the cell recorded under the earlier grader.
-    expect(ranking.settings.map((setting) => [setting.setting, setting.quality])).toEqual([["gpt-mid@high", 80]]);
+    // The regrade replaces the 1 of 10 that the cell recorded under the earlier grader; the timed-out cell scores 0.
+    expect(ranking.settings.map((setting) => [setting.setting, setting.quality])).toEqual([["gpt-mid@high", 40]]);
     expect(ranking.notPooled.map(({ reason, cells }) => ({ reason, cells }))).toEqual([
       { reason: "task grader changed (--regrade grades it with the current grader)", cells: 2 },
       { reason: "task content changed", cells: 1 },
