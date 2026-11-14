@@ -1,4 +1,5 @@
-import { StdinParser, type StdinEvent } from "@opentui/core"
+import { BoxRenderable } from "@opentui/core"
+import { createTestRenderer } from "@opentui/core/testing"
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
 import { LINE_WHEEL, NOTCH_WHEEL, wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
@@ -102,6 +103,28 @@ describe("notch wheel reports (Windows Terminal)", () => {
   const MAX_TOP = 790
   const UP = "\u001b[<64;5;5M"
 
+  /** Feeds each chunk to a real renderer's stdin, so that OpenTUI's own
+   *  parser decodes the bytes, and forwards every scroll it reports to
+   *  `box`. Returns how many scroll reports arrived. */
+  async function feedTerminal(box: FakeScrollBox, chunks: readonly Uint8Array[]): Promise<number> {
+    const render = await createTestRenderer({ width: 20, height: 10 })
+    let reports = 0
+    try {
+      render.renderer.root.add(new BoxRenderable(render.renderer, {
+        width: "100%", height: "100%",
+        onMouseScroll: (event) => {
+          if (!event.scroll) return
+          reports += 1
+          box.onMouseEvent?.({ type: "scroll", scroll: event.scroll })
+        },
+      }))
+      await render.renderOnce()
+      for (const chunk of chunks) render.renderer.stdin.emit("data", Buffer.from(chunk))
+      await render.flush()
+    } finally { await render.dispose() }
+    return reports
+  }
+
   function mountNotch() {
     let clock = 0
     const slot: TranscriptLayoutSlot = {}
@@ -183,39 +206,20 @@ describe("notch wheel reports (Windows Terminal)", () => {
     expect(box.scrollTop).toBe(parked)
   })
 
-  it("a burst of reports in one read moves the view once per report", () => {
+  it("a burst of reports in one read moves the view once per report", async () => {
     const { box, at, settle } = mountNotch()
-    const parser = new StdinParser({ armTimeouts: false })
-    parser.push(new TextEncoder().encode(UP.repeat(100)))
-    let reports = 0
     at(1000)
-    parser.drain((event) => {
-      if (event.type !== "mouse" || event.event.type !== "scroll") return
-      reports += 1
-      box.onMouseEvent?.({ type: "scroll", scroll: event.event.scroll })
-    })
-    expect(reports).toBe(100)
+    expect(await feedTerminal(box, [new TextEncoder().encode(UP.repeat(100))])).toBe(100)
     settle()
     // The first report of the streak moves three rows; each report that came
     // in the same read moves one more.
     expect(box.scrollTop).toBe(MAX_TOP - 102)
   })
 
-  it("a report split across reads at every byte still moves the view", () => {
+  it("a report split across reads at every byte still moves the view", async () => {
     const { box, at, settle } = mountNotch()
-    const parser = new StdinParser({ armTimeouts: false })
-    let reports = 0
-    const forward = (event: StdinEvent): void => {
-      if (event.type !== "mouse" || event.event.type !== "scroll") return
-      reports += 1
-      box.onMouseEvent?.({ type: "scroll", scroll: event.event.scroll })
-    }
     at(1000)
-    for (const byte of new TextEncoder().encode(UP)) {
-      parser.push(Uint8Array.of(byte))
-      parser.drain(forward)
-    }
-    expect(reports).toBe(1)
+    expect(await feedTerminal(box, [...new TextEncoder().encode(UP)].map((byte) => Uint8Array.of(byte)))).toBe(1)
     settle()
     expect(box.scrollTop).toBe(MAX_TOP - 3)
   })

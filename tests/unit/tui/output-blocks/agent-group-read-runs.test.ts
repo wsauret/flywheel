@@ -552,7 +552,7 @@ describe("AgentGroupBlock read runs", () => {
     const details: [string, string, (x: number) => number[]][] = [
       [`qqq${" ".repeat(60)}zzz`, "zzz", (x) => [x + 3, x + 5, 38]],
       ["qqq\u00a0\u00a0\u00a0", "zzz", (x) => [x + 3, x + 5, 38]],
-      [`qqq${"q".repeat(34)}\u6f22`, "\u6f22", () => [39]],
+      [`qqq${"q".repeat(30)}\u6f22`, "\u6f22", () => [39]],
     ]
     for (const [detail, clippedGlyph, blanks] of details) {
       const failure = { title: "Provider request failed", message: "The provider rejected the request.", guidance: "", detail }
