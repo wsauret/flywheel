@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: seat map shows free, held, sold, and house seats",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [
+    {
+      "id": "house-state-missing",
+      "title": "The plan's seat states omit house seats, so seats the theatre keeps back become free",
+      "category": "quality",
+      "files": ["plan.md", "REQUEST.md", "src/api/seat-map.ts", "src/seats.ts"],
+      "catch_criteria": "The review must identify that REQUEST.md names four seat states (free, held, sold, and house, which is never offered online) while phase-1/t1 defines SeatState as only free, held, and sold and classifies every seat that is neither sold nor held as free, dropping the house seats that getSeatMap counts today through houseSeatIds; as planned, house seats show as free and become pickable on the booking site, breaking both the request's house state and its rule that a house seat cannot be picked. Any wording and any severity count, as long as the missing house state, or house seats becoming free, is named, with a summary, phase-1/t1, or phase-1/t2 location."
+    },
+    {
+      "id": "kiosk-consumer-missed",
+      "title": "The plan removes taken from the seat map response but updates only the booking site; the kiosk app still filters on taken",
+      "category": "quality",
+      "files": ["plan.md", "README.md", "src/api/seat-map.ts", "kiosk/seat-picker.ts"],
+      "catch_criteria": "The review must identify that phase-1/t1 replaces the taken field of the GET /events/:eventId/seats response with state, while the plan updates only web/seat-map.ts (key_files calls it the consumer), but the box-office kiosk in kiosk/seat-picker.ts (README.md: built from this repository, calls the same API) declares its own response type with taken and filters with !seat.taken, so after the change taken is undefined, every seat including held and sold ones is offered to counter staff, and no type error or planned test (tests/kiosk.test.ts builds its own data) catches it. Any wording and any severity count, as long as the kiosk is named as an unupdated consumer of the changed response, with a phase-1 or key_files location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: the seat map tells held seats from sold seats. Check the plan against the request and the code"
+}

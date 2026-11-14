@@ -170,7 +170,7 @@ export interface ScoredResearchTask {
  *  and asserted traps, and the mechanical citation check against the lines of
  *  the task's pin. `materialize` reads a pin's lines; it runs once per distinct
  *  pin, and only when a run still needs scoring. Runs of other tasks are skipped. */
-async function scoreResearch(
+export async function scoreResearch(
   results: readonly JudgeCandidate[],
   tasks: readonly ScoredResearchTask[],
   materialize: (snapshot: CommitSnapshot) => Promise<SnapshotLines>,

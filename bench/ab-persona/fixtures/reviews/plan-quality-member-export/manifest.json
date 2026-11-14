@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: nightly incremental member export to the federation",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [
+    {
+      "id": "set-status-keeps-updated-at",
+      "title": "The plan relies on every store write stamping updatedAt, but the payment sync's setStatus leaves updatedAt unchanged, so lapsed and cancelled members are never exported",
+      "category": "quality",
+      "files": ["plan.md", "src/members.ts", "tests/members.test.ts", "REQUEST.md"],
+      "catch_criteria": "The review must identify that the plan's claim that MemberStore stamps updatedAt on every write including the payment sync's setStatus (key_files and phase-1/t1) is false: setStatus in src/members.ts copies the member with the new status and keeps updatedAt (updatedAt is the officer's \"last edited\" time, and tests/members.test.ts asserts that setStatus does not move it), so changedSince by updatedAt never selects a member whose status the sync changed to lapsed or cancelled, breaking requirement 3 of REQUEST.md. Any wording and any severity count, as long as the review states that setStatus or the payment sync does not update updatedAt so status changes are missed, with a key_files or phase-1/t1 location."
+    },
+    {
+      "id": "watermark-before-upload",
+      "title": "The export job stores the new watermark before the upload, so a failed upload loses its changes for good",
+      "category": "quality",
+      "files": ["plan.md", "src/federation/client.ts", "src/scheduler.ts", "REQUEST.md"],
+      "catch_criteria": "The review must identify that phase-2/t1 stores startedAt as federation.lastExportAt before calling uploadMembers, so when the upload throws FederationError (src/federation/client.ts) the watermark has already moved and the next night's run selects only later changes; the members the failed upload carried are never sent, against requirement 4 of REQUEST.md. The watermark must be stored only after a successful upload (a re-sent row is harmless, a lost one is not). Any wording and any severity count, as long as the review names the order of the watermark write before the upload and the lost changes after a failed upload, with a phase-2/t1 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: a nightly export of new and changed members to the federation. Check the plan against the request and the code"
+}

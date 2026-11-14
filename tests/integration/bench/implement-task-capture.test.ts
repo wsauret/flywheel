@@ -67,12 +67,17 @@ test("captures the final candidate tree after commits and rejects a missing base
     await Bun.write(join(sandbox, ".bench-plan.json"), "excluded\n");
     await mkdir(join(sandbox, "acceptance"), { recursive: true });
     await Bun.write(join(sandbox, "acceptance", "candidate.test.ts"), "excluded\n");
+    for (const cache of ["__pycache__", "nested/__pycache__"]) {
+      await mkdir(join(sandbox, cache), { recursive: true });
+      await Bun.write(join(sandbox, cache, "value.cpython-313.pyc"), new Uint8Array([0, 1, 2, 3]));
+    }
 
     const captured = await captureImplementation(task, sandbox, run);
     expect(captured.diff).toContain("diff --git a/value.ts b/value.ts");
     expect(captured.diff).toContain("diff --git a/added.ts b/added.ts");
     expect(captured.diff).toContain("diff --git a/removed.ts b/removed.ts");
     expect(captured.diff).not.toContain("excluded");
+    expect(captured.diff).not.toContain("__pycache__");
     expect(captured.diffStats).toEqual({ linesAdded: 2, linesRemoved: 2, filesTouched: 3 });
 
     await checked(["git", "update-ref", "-d", "refs/flywheel/benchmark-baseline"], sandbox);

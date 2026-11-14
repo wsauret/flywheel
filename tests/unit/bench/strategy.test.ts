@@ -463,14 +463,17 @@ describe("strategy main", () => {
     }
   });
 
-  it("refuses to resume candidates under a source the campaign did not record", async () => {
+  it("resumes candidates under another source and records that source on each new cell", async () => {
     const root = await mkdtemp(join(tmpdir(), "flywheel-strategy-main-"));
     try {
-      const { directory } = await storedStrategyRun(root);
-      const { create, spy } = fakeRuntime();
-      await expect(captureConsole(() => main(["--resume", directory], create, async () => "other-source")))
-        .rejects.toThrow("Flywheel source changed since this campaign started (campaign strategy-sou, running other-source)");
-      expect(spy.agents).toHaveLength(0);
+      const { directory, store } = await storedStrategyRun(root);
+      const { create, spy } = fakeRuntime({ terminalFor: () => ({ kind: "output_overflow" }) });
+      await expect(captureConsole(() => main(["--resume", directory], create, async () => "other-source"))).rejects.toThrow();
+      expect(spy.agents.length).toBeGreaterThan(0);
+      const attempts = await store.loadAttempts();
+      expect(attempts.length).toBeGreaterThan(0);
+      expect(attempts.every((attempt) => attempt.sourceIdentity === "other-source")).toBe(true);
+      expect((await store.loadConfig()).sourceIdentity).toBe(STRATEGY_SOURCE);
 
       // A campaign whose tasks predate the corpus pin is read-only evidence: even a rescore refuses.
       const configPath = join(directory, "run-config.json");

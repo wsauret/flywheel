@@ -25,6 +25,8 @@ A question is kept when claude-opus-5.5 medium (or high, when medium is under 70
 
 The three open-ended explorer tasks in `catalog.ts` stay in the catalog: retiring them needs 8 or more kept questions, and the kept set is 3.
 
+The sweep suite also includes the nine pilot 2 drafts whose answer key is sound, which is every pilot 2 draft except compaction-during-capacity-wait and hosted-task-model-access-change. The 2026-11-13 explorer sweep ran on those twelve questions, and its benchmark records pool a cell only while its task content matches, so these folders stay unchanged for as long as those records are evidence. The keep rule decides which questions separate the seats; it does not remove a question that recorded campaigns use.
+
 ## Dropped drafts
 
 Pilot 1 (2026-11-13, pin `b5833f6a4e4458a80e02612cfb5c0729aaaaf267`) drafted questions that each named one recent fix. The code carries intent comments and statement IDs that point at each answer, so the cheap seats found them.
@@ -42,7 +44,7 @@ Pilot 1 (2026-11-13, pin `b5833f6a4e4458a80e02612cfb5c0729aaaaf267`) drafted que
 | late-interrupt-finished-subagent: what a late interrupt does to a finished subagent's result | 3/5 | 3/5 | 4/5 | Cheap seats at 60%, not under 50% |
 | midstream-provider-5xx: how a 502 inside a started OpenAI-compatible stream is classified | 2/4 | 4/4 | 4/4 | Luna at exactly 50%, not under 50% |
 
-Pilot 2 (2026-11-13, pin `74d097f9c661f2e3b1e01c1731d69b6aa8dc2039`) drafted questions that are harder by construction: each needs a trace across several files or subsystems, asks for an interaction, a condition, or a counterexample, has 5 to 7 facts, and has a trap that a nearby comment, name, or stated rule supports. Every fact and trap was checked mechanically against the pin before the pilot. Opus high ran where opus medium was under 70%.
+Pilot 2 (2026-11-13, pin `74d097f9c661f2e3b1e01c1731d69b6aa8dc2039`) drafted the questions below. The nine with a sound answer key stay in the sweep suite (see above); the table records why the keep rule did not keep them. Pilot 2 drafted questions that are harder by construction: each needs a trace across several files or subsystems, asks for an interaction, a condition, or a counterexample, has 5 to 7 facts, and has a trap that a nearby comment, name, or stated rule supports. Every fact and trap was checked mechanically against the pin before the pilot. Opus high ran where opus medium was under 70%.
 
 | Draft question | Luna | Haiku | Opus medium | Opus high | Reason |
 |---|---|---|---|---|---|

@@ -16,6 +16,15 @@ describe("persona benchmark CLI", () => {
     expect(() => parsePersonaArgs(["--profile", "Personal"])).toThrow("--auth-profile");
     expect(() => parsePersonaArgs(["--task", "native-a"])).toThrow("--tasks");
   });
+  it("parses --rejudge with its judge and refuses it without --judge or beside a campaign option", () => {
+    expect(parsePersonaArgs(["--rejudge", "reviewer-mechanism", "--judge", "claude-opus-5.5:xhigh", "--dry-run"]))
+      .toMatchObject({ rejudge: "reviewer-mechanism", judge: { model: "claude-opus-5.5", effort: "xhigh" }, dryRun: true });
+    expect(() => parsePersonaArgs(["--rejudge", "reviewer-mechanism"])).toThrow("--rejudge requires --judge model:effort");
+    expect(() => parsePersonaArgs(["--rejudge", "explorer", "--judge", "j:high", "--rescore", RESULTS_DIR, "--variant", "m:low", "--tasks", "a"]))
+      .toThrow("cannot be used with --rescore, --variant, --tasks");
+    expect(parsePersonaArgs(["--regrade"])).toMatchObject({ regrade: true });
+    expect(() => parsePersonaArgs(["--regrade", "--persona", "implementer"])).toThrow("--regrade takes no other option");
+  });
   it("constructs and disposes its runtime before a dry-run provider preflight", async () => {
     let created = 0;
     let disposed = 0;

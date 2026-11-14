@@ -1,0 +1,14 @@
+{
+  "title": "Plan review: show saved handbook pages at once by clearing their cached renders",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [
+    {
+      "id": "invalidate-is-exact-key",
+      "title": "The plan relies on TtlCache.invalidate removing every key with a prefix, but it deletes one exact key, so the page renders stay stale",
+      "category": "quality",
+      "files": ["plan.md", "src/cache.ts", "src/render.ts"],
+      "catch_criteria": "The review must identify that the plan's claim that TtlCache.invalidate(prefix) removes every entry whose key starts with the prefix (key_files and phase-1/t2) is false: invalidate in src/cache.ts calls Map.delete on the exact key, while renderPage caches under page:<slug>:html and page:<slug>:print, so invalidate(\"page:<slug>\") removes nothing and both views stay stale for up to ten minutes, failing requirement 1 of REQUEST.md (the section-index invalidation works because that key is exact). The fix is to invalidate both exact view keys or to add a real prefix removal. Any wording and any severity count, as long as the review states that invalidate removes only an exact key so the planned prefix call does not clear the page views, with a phase-1/t2 or key_files location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: readers see a saved handbook page and its sidebar title at once. Check the plan against the request and the code"
+}

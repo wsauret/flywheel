@@ -1,0 +1,63 @@
+{
+  "facts": [
+    {
+      "id": "release-waits-turn",
+      "claim": "When the last client releases a chat, its runner ends at once only if its turn is at rest; otherwise the running turn finishes first.",
+      "catch_criteria": "States both branches of the release: immediate end at rest, and the running turn finishing first.",
+      "files": [
+        "src/orchestration/app-service/session-runtime-actor.ts"
+      ]
+    },
+    {
+      "id": "attach-no-resume",
+      "claim": "Attaching seeds and attaches the runner and marks it shown; it never starts or resumes a turn.",
+      "catch_criteria": "States that attaching a client does not resume the stopped turn.",
+      "files": [
+        "src/orchestration/app-service/session-runtime-actor.ts"
+      ]
+    },
+    {
+      "id": "detach-paused",
+      "claim": "A turn end detaches the runner as completed or paused; failures and mid-turn kills detach as paused.",
+      "catch_criteria": "Names the paused detach outcome for an unfinished turn.",
+      "files": [
+        "src/orchestration/chat/runner-lifecycle.ts"
+      ]
+    },
+    {
+      "id": "capacity-wait-continues",
+      "claim": "A chat whose capacity wait is due is resumed by the account and project wake through a chat.resume mutation, with no check of whether a client shows it.",
+      "catch_criteria": "States that a due capacity wait is continued automatically even when no client shows the chat.",
+      "files": [
+        "src/orchestration/app-service/capacity-wait-continuation.ts",
+        "src/orchestration/app-service/project-executor-main.ts"
+      ]
+    },
+    {
+      "id": "resume-refusals",
+      "claim": "chat.resume activates and resumes the chat, refusing only when a turn already runs or the last turn end is not resumable.",
+      "catch_criteria": "Names the not-resumable refusal of the resume path.",
+      "files": [
+        "src/orchestration/app-service/session-continuation.ts"
+      ]
+    },
+    {
+      "id": "stall-needs-person",
+      "claim": "A stalled wait resumes only on an explicit resume, unlike a due capacity wait.",
+      "catch_criteria": "States that a stall is not resumed automatically and needs an explicit resume.",
+      "files": [
+        "src/orchestration/chat/runner-lifecycle.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "only-person-restarts",
+      "wrong_answer": "Nothing restarts the unshown chat: it stays paused until a person sends a message."
+    },
+    {
+      "id": "attach-resumes",
+      "wrong_answer": "Attaching a client tab to the paused chat resumes its turn."
+    }
+  ]
+}

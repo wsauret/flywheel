@@ -1,0 +1,67 @@
+{
+  "facts": [
+    {
+      "id": "chat-capacity-only",
+      "claim": "For a chat, a failure with a capacity reset enters the capacity wait and every other failure stands; a chat never reaches the unattended six-attempt retry policy.",
+      "catch_criteria": "States that the chat path takes only the capacity wait and does not use the bounded retry with backoff.",
+      "files": [
+        "src/orchestration/agent-runtime/unattended-recovery.ts"
+      ]
+    },
+    {
+      "id": "unattended-flag",
+      "claim": "A chat is unattended when its root completion is unattended, which sets the chat's request purpose.",
+      "catch_criteria": "Names where the unattended flag of the chat comes from.",
+      "files": [
+        "src/orchestration/chat/chat-request-options.ts"
+      ]
+    },
+    {
+      "id": "unattended-self-clearing",
+      "claim": "For an unattended run with a usage-limit hold, the wait uses the earliest self-clearing reset of another candidate, not the usage limit's own reset.",
+      "catch_criteria": "States that an unattended run waits only for another candidate's self-clearing hold, not for the stated usage-limit reset.",
+      "files": [
+        "src/orchestration/agent-runtime/unattended-recovery.ts"
+      ]
+    },
+    {
+      "id": "self-clearing-non-usage",
+      "claim": "A self-clearing reset exists only when another candidate's hold is not a usage limit.",
+      "catch_criteria": "States that the self-clearing candidate must be held by something other than a usage limit (such as a rate limit).",
+      "files": [
+        "src/infra/llm/provider-error-copy.ts"
+      ]
+    },
+    {
+      "id": "unattended-fails",
+      "claim": "When no such self-clearing candidate exists, the unattended run's failure stands at once, with no wait.",
+      "catch_criteria": "States that the unattended run ends with the usage-limit failure when no candidate self-clears.",
+      "files": [
+        "src/orchestration/agent-runtime/unattended-recovery.ts"
+      ]
+    },
+    {
+      "id": "interactive-waits-reset",
+      "claim": "The interactive chat waits until the stated usage-limit reset and then continues on its own.",
+      "catch_criteria": "States that the read chat waits to the stated reset and continues without a person.",
+      "files": [
+        "src/orchestration/agent-runtime/unattended-recovery.ts",
+        "src/orchestration/chat/chat-capacity-wait.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "six-retries",
+      "wrong_answer": "The unattended chat retries up to six times with growing pauses."
+    },
+    {
+      "id": "unattended-waits-reset",
+      "wrong_answer": "The unattended run waits for the usage limit's stated reset, like the interactive chat."
+    },
+    {
+      "id": "interactive-stops",
+      "wrong_answer": "The interactive chat stops and waits for the person to send again."
+    }
+  ]
+}

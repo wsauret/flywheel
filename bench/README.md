@@ -124,7 +124,23 @@ bun run --conditions=browser bench/ab-persona/bench.ts --resume <results-dir>
 bun run --conditions=browser bench/ab-persona/bench.ts --report <historical-results-dir>
 ```
 
-`--report` reads the retained report without runtime admission or writes. Historical persona results are read-only and cannot resume or rescore. New persona campaigns use the shared versioned `campaign.json` manifest and strict `events.jsonl` ledger. They retain successful cells, unsuccessful accounting, judge accounting, scores, and per-cell inherited role snapshots. Resume reuses successful cells and scores, refuses changed task or guidance content, and accepts profile changes. Reports disclose inherited role changes rather than pooling them silently. A torn final ledger line is refused and never repaired.
+`--report` reads the retained report without runtime admission or writes. Historical persona results are read-only and cannot resume or rescore. New persona campaigns use the shared versioned `campaign.json` manifest and strict `events.jsonl` ledger. They retain successful cells, unsuccessful accounting, judge accounting, scores, and per-cell inherited role snapshots. Resume reuses successful cells and scores, refuses changed task, guidance, judge, or scoring content, and accepts profile changes and unrelated Flywheel source changes. Each cell records the Flywheel source identity that ran it, and the report names every source that ran cells. Reports disclose inherited role changes rather than pooling them silently. A torn final ledger line is refused and never repaired.
+
+#### Benchmark records, ranking, and rejudging
+
+Every completed persona campaign that has a judge writes its record file `ab-persona/records/<persona>/<stamp>.jsonl`, which is committed: a campaign header, one line per successful cell (task content identity, output text or diff, accounting, duration, and source), one line per absolute score of a cell by one judge, and one line per regrade of an implementer cell. The full native grader report stays in the local results folder. Run, resume, and rescore append only the lines the file does not hold. The writer replaces the name of another coding agent in candidate output with "another coding agent" when the checkout has the maintainer's harness-name lint. Pair verdicts stay in the campaign's `report.md`.
+
+```bash
+bun run bench:rank
+bun run bench:rank --role reviewer-quality --judge claude-opus-5.5:xhigh
+bun bench/ab-persona/bench.ts --rejudge reviewer-mechanism --judge claude-opus-5.5:xhigh --dry-run
+```
+
+`bench:rank` reads only record files and the catalog, with no runtime or profile. Per role it pools every cell whose task content is current and that one judge scored under the current scoring version, averages the role's code and plan corpora with equal weight, and ranks settings on absolute measures: recall and false P1/P2 findings per review for reviewers, fact recall and trap rate for the explorer, and hidden-test pass rate and followed false claims for the implementer. A setting passes when its quality is at least the role's best minus 10 points and its false measure is at most the role's minimum plus 0.6 per review (10 points for rates). Score = quality - 5 x false (1 x for rates) - 3 log2(cost / cheapest passing) - 3 log2(latency / fastest passing). Each family's pick is its top passing setting, or its top scorer when none passes, and that family goes second. The fallback is the average price tier of the passing settings, rounded toward cheaper, at their most common effort, a tie going to the higher effort. The default judge is the one that scored the most current cells of the role, then the one more of those campaigns ran with. The output lists incomplete settings with the cells they still need, and every cell it does not pool with the reason. It prints the policy that the records imply; a change to `ROLE_MODEL_DEFAULTS` stays an approved, separate change.
+
+`--rejudge <persona> --judge model:effort` scores, with that judge, every recorded cell of the persona whose task content is current and that the judge has not scored under the current scoring version, and appends each score beside the other judges' lines. It reads no results folder. Its judge request evidence and `judge-attempts.jsonl` go to a gitignored `ab-persona/results/rejudge-<persona>-<stamp>/`. `--rescore <dir> --judge` with a judge other than the campaign's refuses and names `--rejudge`; a rescore retries only the campaign's own judge.
+
+An implementation task has two identities: what the candidate answers (its prompt, starting source, and limits) and what grades the change (a plan task's hidden acceptance tests; for a native task, every file its adapter can read). `bun bench/ab-persona/bench.ts --regrade` finds every recorded implementer cell whose task changed only in grading since the cell ran, runs the current grader on the cell's stored diff (without `__pycache__` sections), and appends a grade line keyed by the grader identity. No candidate or judge runs. The ranking reads a cell under a changed grader only through such a grade line, and a cell whose candidate-facing content changed stays out. A native task's candidate identity covers its instruction, environment, and limits; a source change that a stored diff no longer applies to fails the regrade.
 
 ```bash
 bun bench/ab-persona/compare.ts \
@@ -330,6 +346,7 @@ A stop is a cancellation, not a kill. The service starts no further cell group, 
 - `campaign.json` is the versioned persona campaign identity authority. It binds variants, task selection, prompts, fixtures, guidance, rubrics, and scoring content. The initial profile is provenance, not a resume restriction.
 - `events.jsonl` is the persona execution, accounting, scoring, and role-evidence authority. Successful `agent-run` records alone skip candidate work. Unsuccessful `agent-run-attempt` records retain spend and never create a completion key. Every judge call records `judge-attempt`; successful score records alone skip scoring.
 - `cell-roles` records name each cell attempt's inherited roles, profile, Usage-authority incarnation, and artifact directory. Later cells inherit current profile settings without campaign-wide role pins.
+- `ab-persona/records/<persona>/<stamp>.jsonl` is the committed public ledger of the campaign's completed cells and every judge's absolute scores. Rankings and rejudging read it, never the results folder.
 - `report.md`, `raw.json`, and notifications are projections. They never authorize execution. Historical split-ledger persona reports remain readable without conversion; strategy, Chat-routing, and comparison ledgers keep their existing contracts.
 
 All owned records use strict schemas. Candidate and judge accounting comes from committed `UsageEntry` observations and keeps tokens and serving attribution as observed values or explicit unavailable reasons. Reports distinguish estimated-equivalent cost from billed cost. Subscription-covered work can have positive estimated-equivalent cost and zero billed cost. Missing price evidence is unavailable, never `$0.0000`, and a report marks incomplete accounting instead of presenting a partial sum.
@@ -352,15 +369,16 @@ The benchmark faces persist each settled candidate, unsuccessful attempt, judge 
 - `compare.ts` adds pairwise quality across finished runs without candidate-agent spend; its judge calls still have strict judge-attempt accounting.
 - `--dry-run` performs preflight and prints the matrix without candidate or judge model calls.
 
-Recall, acceptance, and trap metrics are absolute per-cell and compare across runs. Pairwise quality W-L-T is only meaningful within a judged set; to bridge runs, include an anchor variant from the earlier run or use `compare.ts`.
+Recall, acceptance, and trap metrics are absolute per-cell and compare across runs: rank across campaigns with `bun run bench:rank`, so a new setting takes its place among stored results without a rerun of older settings. Pairwise quality W-L-T is only meaningful within a judged set and never enters the ranking; to bridge runs for it, include an anchor variant from the earlier run or use `compare.ts`.
 
 Persona judges use the live profile's `benchmark-judge` setting, then its coded preferences and tier. Older Chat A/B scorers keep an explicit run setting read from the same table entry. Every judge request uses the resolver. Stored scoring identities and report semantics stay unchanged, and each harness applies its own cross-family scoring rule to the resolved judge model.
 
 ## Where results go
 
 1. Raw run artifacts stay in `bench/*/results/<run>/` (configuration, strict ledgers, and reports) on the machine that ran them. Git ignores that folder, so they are not published, and they are never summarized in place.
-2. Findings are written to `bench/findings/<seat>-results.md`: setup, per-variant tables, conclusions, a decision section, caveats, and scoring notes, citing each run by its run id, never by a results path that readers cannot open. When a measured surface is removed, its findings leave `bench/findings/` for the maintainer's dated records.
-3. Approved role-policy changes go to `ROLE_MODEL_DEFAULTS` in `src/orchestration/config/role-model-defaults.ts`. Keep measured findings separate from current policy. Update the owning resolver tests and rebuild the binary (`bun run install:local`).
+2. A completed persona campaign writes its compact record file to `bench/ab-persona/records/<persona>/`. Commit it with the findings: it is what `bench:rank` and `--rejudge` read on every clone.
+3. Findings are written to `bench/findings/<seat>-results.md`: setup, per-variant tables, conclusions, a decision section, caveats, and scoring notes, citing each run by its run id, never by a results path that readers cannot open. When a measured surface is removed, its findings leave `bench/findings/` for the maintainer's dated records.
+4. Approved role-policy changes go to `ROLE_MODEL_DEFAULTS` in `src/orchestration/config/role-model-defaults.ts`. Keep measured findings separate from current policy. Update the owning resolver tests and rebuild the binary (`bun run install:local`).
 
 A challenge that loses still gets recorded in the findings document, so the next audit knows the variant was tested and dominated.
 

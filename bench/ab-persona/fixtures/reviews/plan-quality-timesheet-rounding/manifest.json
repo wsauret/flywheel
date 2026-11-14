@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: bill time in 6-minute increments for standard clients",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [
+    {
+      "id": "statement-caller-missed",
+      "title": "The plan deletes billableMinutes and moves only the invoice to billedTenths; the monthly statement also calls billableMinutes",
+      "category": "quality",
+      "files": ["plan.md", "src/billing/time.ts", "src/reports/statement.ts", "tests/statement.test.ts"],
+      "catch_criteria": "The review must identify that phase-1/t1 deletes billableMinutes and says its caller (buildInvoice, the only caller key_files names) moves to billedTenths in phase-1/t2, but monthlyStatement in src/reports/statement.ts also imports and calls billableMinutes and the plan never updates it, so the project no longer compiles, and once fixed only by keeping whole minutes the statement's billed hours would disagree with the invoice, against requirement 4 of REQUEST.md. Any wording and any severity count, as long as the review names src/reports/statement.ts or monthlyStatement as an unupdated consumer of billableMinutes, with a phase-1 or key_files location."
+    },
+    {
+      "id": "retainer-plan-not-covered",
+      "title": "The plan rounds every client's entries and notes every invoice, though the request keeps whole-minute billing for retainer clients",
+      "category": "quality",
+      "files": ["plan.md", "REQUEST.md", "src/clients.ts"],
+      "catch_criteria": "The review must identify that REQUEST.md limits the 6-minute rounding to clients on the standard plan (requirement 2: retainer clients keep whole-minute billing; requirement 5: the note goes on standard clients' invoices), while the plan applies billedTenths to every billable entry with no reference to the client's plan (phase-1/t1's billedTenths takes only the entry, phase-1/t2 uses it for every client), and phase-2/t1 puts the note on every invoice, although Client.plan in src/clients.ts distinguishes \"standard\" from \"retainer\". Any wording and any severity count, as long as the review names the missing retainer exception as a requirement the plan does not cover, with a summary, phase-1, or phase-2 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: bill time in 6-minute increments. Check the plan against the request and the code"
+}

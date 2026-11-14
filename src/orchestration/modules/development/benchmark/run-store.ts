@@ -37,8 +37,8 @@ const RunConfigSchema = Schema.Struct({
   // when the judge was not recorded; such a judgeIdentity hashes the rubric alone.
   judge: Schema.optionalKey(Schema.Struct({ model: Schema.String, effort: Schema.String })),
   scoringVersion: Schema.String,
-  // Remove after 2027-10-26: campaigns created before source identity was recorded carry none; they stay readable
-  // and rescorable, and a resume that would start a candidate refuses because their source cannot be proven.
+  // The source the campaign started on. Campaigns created before 2026-10-26 recorded none; that is permanent
+  // history, so the field stays optional. Each cell records the source that ran it.
   sourceIdentity: Schema.optionalKey(Schema.String),
 });
 
@@ -53,6 +53,9 @@ const seatFields = {
   effort: Schema.optionalKey(Schema.String),
   task: Schema.String,
   repeat: RepeatSchema,
+  // The Flywheel source that ran the cell (ARCH-DIRECTORIES-018). Cells recorded before 2026-11-13 carry none;
+  // that is permanent history, not a shape to convert.
+  sourceIdentity: Schema.optionalKey(Schema.String),
 };
 
 const agentRunBaseFields = {
@@ -63,10 +66,7 @@ const agentRunBaseFields = {
   summary: Schema.String,
 };
 
-const ResearchRunRecordSchema = Schema.Struct({
-  ...agentRunBaseFields,
-  mode: Schema.Literal("research"),
-});
+const ResearchRunRecordSchema = Schema.Struct({ ...agentRunBaseFields, mode: Schema.Literal("research") });
 const ReviewRunRecordSchema = Schema.Struct({
   ...agentRunBaseFields,
   mode: Schema.Literal("reviewer"),
@@ -151,7 +151,7 @@ const JudgeVerdictSchema = Schema.Struct({
   winner: Schema.String,
   rationale: Schema.String,
 });
-const ReviewScoreSchema = Schema.Struct({
+export const ReviewScoreSchema = Schema.Struct({
   variant: Schema.String,
   task: Schema.String,
   repeat: RepeatSchema,
@@ -167,7 +167,7 @@ const TrapVerdictSchema = Schema.Struct({
   outcome: Schema.Literals(["self-corrected", "followed-blindly", "silently-lucky", "unclear"]),
   rationale: Schema.String,
 });
-const ImplementScoreSchema = Schema.Struct({
+export const ImplementScoreSchema = Schema.Struct({
   variant: Schema.String,
   task: Schema.String,
   repeat: RepeatSchema,
@@ -466,7 +466,7 @@ export function runKey(run: Pick<AgentRunRecord, "variant" | "task" | "repeat">)
 }
 
 export function implementCandidate(run: ImplementRunRecord): ImplementCandidate {
-  const { kind: _kind, mode: _mode, persona: _persona, model: _model, effort: _effort, ...candidate } = run;
+  const { kind: _kind, mode: _mode, persona: _persona, model: _model, effort: _effort, sourceIdentity: _source, ...candidate } = run;
   return candidate;
 }
 

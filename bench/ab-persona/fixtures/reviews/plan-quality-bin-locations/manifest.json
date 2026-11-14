@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: bin codes on the warehouse pick list, set by stock clerks",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [
+    {
+      "id": "column-read-before-migration",
+      "title": "Phase 1 deploys a query that reads items.bin_code, but the migration that adds the column ships only in phase 2",
+      "category": "quality",
+      "files": ["plan.md", "README.md", "src/items.ts", "migrations/001_items.sql"],
+      "catch_criteria": "The review must identify that phase-1/t1 changes SqlItemRepo.linesForOrder to select i.bin_code while the column is created only by migrations/003_item_bin_code.sql in phase-2/t1, and the plan's constraint says each phase is its own merge and deploy (README.md: each merge deploys at once, migrations first), so after the phase-1 deploy every pick-list query fails with no such column until phase 2 deploys; the migration must ship in or before the phase that reads the column. Any wording and any severity count, as long as the review names that the bin_code read is deployed before the migration that adds the column, with a phase-1/t1 or phase-2/t1 location."
+    },
+    {
+      "id": "sql-changes-tested-only-through-memory-repo",
+      "title": "Every planned test of the SQL changes runs against MemoryItemRepo, so neither the bin_code read nor the UPDATE in SqlItemRepo is verified",
+      "category": "quality",
+      "files": ["plan.md", "src/items.ts", "tests/memory-item-repo.ts", "tests/sql-item-repo.test.ts"],
+      "catch_criteria": "The review must identify that the plan's tests for its SqlItemRepo changes (the bin_code select and mapping in phase-1/t1, whose only scenario is that the project type-checks, and the UPDATE in setBinCode in phase-2/t2) run only through MemoryItemRepo (phase-1/t2 and phase-2/t3 render or update through the memory repo, phase-1's verification runs only tests/picklist.test.ts), and the plan adds no scenario to tests/sql-item-repo.test.ts, the existing harness that runs SqlItemRepo on SQLite with every migration, so a wrong column name, a missing mapping, or a broken UPDATE passes every planned test. Any wording and any severity count, as long as the review states that no planned test exercises the SqlItemRepo changes against SQLite (for example, because the scenarios run through MemoryItemRepo, or because tests/sql-item-repo.test.ts gets no new scenario), with a phase-1 or phase-2 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: bin codes on the warehouse pick list, set by stock clerks. Check the plan against the request and the code"
+}

@@ -49,6 +49,10 @@ const LOADED_BUN_LOCK = resolve(import.meta.dir, "../../../../../bun.lock");
  *  snapshot rather than the benchmarked project, plus each `harnessDirectory`
  *  that a caller outside `src/` runs candidates through.
  *
+ *  A campaign records it on each candidate cell, and its report names every
+ *  source that ran cells. It is not part of the campaign identity, so a resume
+ *  after an unrelated source change continues the campaign.
+ *
  *  It names the tree on disk when it is called. A long-lived process can hold
  *  modules older than that tree, and a later dynamic import can load newer
  *  edits, so the identity detects a source change between runs of one campaign;
@@ -61,16 +65,6 @@ export async function runningSourceIdentity(harnessDirectories: readonly string[
     Bun.file(LOADED_BUN_LOCK).bytes(),
   ]);
   return structuredIdentity({ src, harness, packageJson: bytesIdentity(packageJson), bunLock: bytesIdentity(bunLock) });
-}
-
-/** Refuses to start a candidate of a resumed campaign under any source but the
- *  one the campaign recorded. A caller checks only when a candidate would
- *  start: judging alone runs no candidate and stays allowed. */
-export function requireCampaignSource(recorded: string | undefined, running: string): void {
-  if (recorded === running) return;
-  throw new Error(recorded === undefined
-    ? "This campaign predates recorded Flywheel source identity, so its remaining cells cannot be proven to run on the code that ran its earlier cells. Start a new campaign; rescoring stays available."
-    : `Flywheel source changed since this campaign started (campaign ${recorded.slice(0, 12)}, running ${running.slice(0, 12)}); its remaining cells would run on different code. Start a new campaign, or resume from a worktree at the recorded source.`);
 }
 
 /** Returns one stable identity for a regular-file tree, including empty directories. */

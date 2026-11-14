@@ -1,0 +1,8 @@
+{
+  "name": "box-office",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  }
+}

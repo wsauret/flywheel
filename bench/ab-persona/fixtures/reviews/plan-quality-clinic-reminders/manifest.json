@@ -1,0 +1,21 @@
+{
+  "title": "Plan review: SMS appointment reminders and clinic-local times in reminders",
+  "reviewers": ["reviewer-plan-quality"],
+  "defects": [
+    {
+      "id": "normalize-phone-does-not-validate",
+      "title": "The plan relies on normalizePhone returning null for an invalid mobile number, but it only strips punctuation and always returns a string",
+      "category": "quality",
+      "files": ["plan.md", "src/patients/phone.ts", "REQUEST.md"],
+      "catch_criteria": "The review must identify that the plan's claim about normalizePhone (key_files, and phase-2/t1's statement that a null result covers the invalid number so no separate validation is needed) does not hold: normalizePhone in src/patients/phone.ts only removes spaces, dashes, dots, and parentheses, returns string (never null), and neither validates the number nor produces E.164, so an invalid number such as \"12345\" would still be sent an SMS, breaking REQUEST.md's rule never to send to an invalid number (and the planned \"12345\" test would fail). Any wording and any severity count, as long as the review states that normalizePhone does not validate or never returns null, with a phase-2/t1 or key_files location."
+    },
+    {
+      "id": "time-zone-test-cannot-detect-change",
+      "title": "The time-zone tests use Europe/London in January, where local time equals UTC, so they pass with the old UTC formatter",
+      "category": "quality",
+      "files": ["plan.md", "src/format.ts", "tests/format.test.ts", "tests/pass.test.ts"],
+      "catch_criteria": "The review must identify that the tests the plan offers as proof of the clinic-time-zone change (phase-1/t1's scenario that \"proves the clinic's time zone is applied\" and phase-1/t2's email assertion) use the Europe/London clinic on 2027-01-12, when London is on UTC+0, so formatSlot gives \"09:30\" whether or not it applies the time zone; the old fixed-UTC formatter passes the same tests, so no planned test can detect the change. The fix is a scenario with a non-zero offset (for example America/Denver, or London in summer). Any wording and any severity count, as long as the review states that the planned time-zone test cannot distinguish the new behavior from UTC because the chosen zone and date have a zero offset, with a phase-1 location."
+    }
+  ],
+  "review_prompt_hint": "This is an implementation plan (plan-handoff JSON) for the request in REQUEST.md: SMS appointment reminders, and appointment times in the clinic's local time. Check the plan against the request and the code"
+}

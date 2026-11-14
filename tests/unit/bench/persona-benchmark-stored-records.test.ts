@@ -329,7 +329,7 @@ describe("benchmark stored-record validation", () => {
     await expect(runPersonaBenchmark(resume, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []), judge: { ...judge, effort: "low" } }))
       .rejects.toThrow("judged by judge-model:high, but this run's judge resolved to judge-model:low");
     await expect(planPersonaBenchmark({ operation: "resume", resultsDir: plan.resultsDir, variants: [], judge: { ...judge, model: "other" } }, catalog))
-      .rejects.toThrow("Results judge judge-model:high conflicts with --judge other:high");
+      .rejects.toThrow("Results judge judge-model:high conflicts with --judge other:high; to score this campaign's cells with another judge, run --rejudge explorer --judge other:high");
   });
 
   it("refuses to resume or rescore a campaign created before the judge was recorded, and still reads it", async () => {

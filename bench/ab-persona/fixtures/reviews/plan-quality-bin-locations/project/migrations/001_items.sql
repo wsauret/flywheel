@@ -1,0 +1,4 @@
+CREATE TABLE items (
+  sku TEXT PRIMARY KEY,
+  name TEXT NOT NULL
+);

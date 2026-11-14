@@ -21,10 +21,10 @@ import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores }
 import { sameVariants } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import { createBenchmarkRuntime, type OwnedBenchmarkRuntime } from "../shared/runtime.js";
 import { judgePairs, type JudgeCandidate } from "../../src/orchestration/modules/development/benchmark/judge.js";
-import { judgeOverhead, renderReport, unsuccessfulOverhead } from "../../src/orchestration/modules/development/benchmark/reports.js";
+import { judgeOverhead, renderReport, sourceReport, unsuccessfulOverhead } from "../../src/orchestration/modules/development/benchmark/reports.js";
 import { combineBenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/report-accounting.js";
 import { asPersonaTaskFailure, PersonaTaskFailure, renderPersonaTaskGuidance, runPersonaTask, type BenchmarkRuntime, type PersonaDefinition, type PersonaTaskRequest } from "../../src/orchestration/modules/development/benchmark/persona-run.js";
-import { requireCampaignSource, runningSourceIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { runningSourceIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/snapshot-workspace.js";
 import type { BenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/evidence.js";
 import type { AgentDefinition } from "../../src/infra/agent-definition.js";
@@ -391,7 +391,7 @@ export async function main(
   const judgeIdentity = structuredIdentity({ model: JUDGE_SEAT.model, template: buildPlanJudgePrompt("__TASK__", "__A__", "__B__") });
   const scoringVersion = "strategy-v1";
   const runningSource = await sourceIdentity();
-  // The recorded source stays out of the identity comparison below, so a rescore never depends on it.
+  // The campaign keeps the source it started on; each cell records the source that ran it (ARCH-DIRECTORIES-018).
   const recordedSource = args.operation === "run" ? runningSource : args.storedConfig?.sourceIdentity;
   const config: RunConfig = {
     kind: "benchmark-config",
@@ -431,9 +431,6 @@ export async function main(
   validateScores(evidencePlan, taskIds, scoreRecords);
   const results: JudgeCandidate[] = runRecords.map((run) => ({ variant: run.variant, task: run.task, repeat: run.repeat, summary: run.summary }));
   const completed = new Set(runRecords.map(runKey));
-  const pending = args.operation !== "rescore" && Array.from({ length: args.repeats }, (_, repeat) => repeat)
-    .some((repeat) => tasks.some((task) => variants.some((variant) => !completed.has(runKey({ variant: variant.id, task: task.id, repeat })))));
-  if (pending) requireCampaignSource(recordedSource, runningSource);
 
   if (args.operation !== "rescore") {
     const ctx: CellContext = { deps, seat, registry, explorer, facetBrief };
@@ -457,6 +454,7 @@ export async function main(
               variant: variant.id,
               model: variant.model,
               effort: variant.effort,
+              sourceIdentity: runningSource,
               task: task.id,
               repeat,
               at: new Date().toISOString(),
@@ -469,7 +467,7 @@ export async function main(
           }
           const record: ResearchRunRecord = {
             kind: "agent-run", mode: "research", persona,
-            variant: variant.id, model: variant.model, effort: variant.effort,
+            variant: variant.id, model: variant.model, effort: variant.effort, sourceIdentity: runningSource,
             task: task.id, repeat, ...outcome,
           };
           await store.appendRun(record);
@@ -507,7 +505,8 @@ export async function main(
     settledScores.map(scoreRecordIdentityKey),
   );
 
-  const runResults = (await store.loadRuns()).map((run) => ({ variant: run.variant, task: run.task, repeat: run.repeat, accounting: run.accounting, durationMs: run.durationMs, summary: run.summary }));
+  const runs = await store.loadRuns();
+  const runResults = runs.map((run) => ({ variant: run.variant, task: run.task, repeat: run.repeat, accounting: run.accounting, durationMs: run.durationMs, summary: run.summary }));
   const attempts = await store.loadAttempts();
   await store.writeArtifact("raw.json", `${JSON.stringify(runResults, null, 2)}\n`);
   const report = renderReport({ persona, variants }, tasks, runResults, verdicts, stamp, {
@@ -516,7 +515,7 @@ export async function main(
     ...unsuccessfulOverhead(attempts),
     ...judgeOverhead(judgeAttempts),
   });
-  await store.writeArtifact("report.md", report);
+  await store.writeArtifact("report.md", `${report}\n${sourceReport(runs)}`);
   console.error(`Report: ${join(outDir, "report.md")}`);
   console.log(report);
 }

@@ -1,0 +1,67 @@
+{
+  "facts": [
+    {
+      "id": "tracker-three",
+      "claim": "Each consecutive refused handoff counts; at 3 the handoff tracker throws HandoffCorrectionExhausted, and every agent loop, subagents included, gets this tracker.",
+      "catch_criteria": "Names the budget of 3 consecutive refused handoffs and that it applies to a subagent's loop.",
+      "files": [
+        "src/orchestration/agent-runtime/agent-loop-handoff.ts",
+        "src/orchestration/agent-runtime/agent-loop.ts"
+      ]
+    },
+    {
+      "id": "subagent-schema-only",
+      "claim": "A subagent's handoff contract is only its input schema (summary required); no accept step runs, so the refused submission recorded is the raw submission with its problems.",
+      "catch_criteria": "States that a subagent's contract is the schema alone (no output-contract accept step) and that the refused submission is recorded.",
+      "files": [
+        "src/orchestration/modules/subagents/execution/prompts.ts",
+        "src/orchestration/agent-runtime/tools/handoff-tool.ts"
+      ]
+    },
+    {
+      "id": "subagent-delivered-completed",
+      "claim": "When correction runs out after a refusal, the parent receives the last refused submission as a completed result, led by a note that lists the remaining problems.",
+      "catch_criteria": "States that the parent gets status completed with the last refused handoff plus a note of its problems.",
+      "files": [
+        "src/orchestration/modules/subagents/execution/child-execution.ts",
+        "src/orchestration/modules/subagents/execution/result-resolver.ts"
+      ]
+    },
+    {
+      "id": "no-handoff-failed",
+      "claim": "By contrast, a subagent run that fails without any handoff gives the parent a failed result.",
+      "catch_criteria": "Distinguishes the failed status of a run with no handoff from the completed status of a refused-and-delivered handoff.",
+      "files": [
+        "src/orchestration/modules/subagents/execution/result-resolver.ts"
+      ]
+    },
+    {
+      "id": "workflow-delivered",
+      "claim": "A workflow agent with the same exhaustion also gets its last refusal delivered as its outcome, and the issues travel into the attempt result; it fails with an invalid handoff only when no refusal was recorded.",
+      "catch_criteria": "States that the workflow agent's last refused handoff is delivered (with its issues) rather than the attempt failing.",
+      "files": [
+        "src/orchestration/workflow-host/agent-callback.ts",
+        "src/workflows/vm/attempt-runner.ts"
+      ]
+    },
+    {
+      "id": "workflow-reminder-limit",
+      "claim": "A workflow agent has a second exhaustion that a subagent lacks: its handoff observer sets a reminder limit of 2 and throws HandoffCorrectionExhausted when the agent keeps ending without a handoff; the subagent observer passes no reminder limit.",
+      "catch_criteria": "Names the workflow-only reminder limit (2 reminders) and that the subagent observer has none.",
+      "files": [
+        "src/orchestration/workflow-host/loop-observers.ts",
+        "src/orchestration/modules/subagents/execution/child-execution.ts"
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "id": "reported-failed",
+      "wrong_answer": "A subagent whose handoff keeps failing its contract is reported to its parent as failed."
+    },
+    {
+      "id": "workflow-attempt-fails",
+      "wrong_answer": "A workflow agent's refused handoffs are discarded and its attempt fails with an invalid-handoff error."
+    }
+  ]
+}

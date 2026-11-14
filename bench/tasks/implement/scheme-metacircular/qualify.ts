@@ -81,7 +81,7 @@ async function main(): Promise<void> {
         for (const [source, hash] of Object.entries(grade.evidence.restored)) {
           if (source.startsWith("original/")) assert.equal(hash, ledger[source]!.sha256);
         }
-        const meta = grade.evidence.observations.filter((row: { input?: string }) => row.input?.split("\n")[0]?.endsWith('/eval.scm"'));
+        const meta = grade.evidence.observations.filter((row: { input?: string }) => row.input?.split("\n")[0]?.endsWith("/eval.scm"));
         assert.equal(meta.length, 5);
         if (grade.evidence.metaAliasDirectory) {
           await assert.rejects(stat(grade.evidence.metaAliasDirectory), { code: "ENOENT" });

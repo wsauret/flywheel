@@ -355,6 +355,10 @@ export interface BenchmarkCatalog {
    *  directory name). Containment is enforced here, like every other path this
    *  catalog names. */
   resultsDirById(resultId: string): string;
+  /** The tracked folder of benchmark records, one folder per persona (ARCH-DIRECTORIES-020). */
+  readonly recordsRoot: string;
+  /** The record file of one campaign. */
+  recordsFile(persona: string, stamp: string): string;
 }
 
 export function createBenchmarkCatalog(projectRoot: string, options: {
@@ -366,6 +370,7 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
   const implementTasksDir = containedPath(projectRoot, "bench", "tasks", "implement");
   const researchTasksDir = containedPath(projectRoot, "bench", "tasks", "explorer");
   const resultsRoot = options.resultsRoot ?? containedPath(projectRoot, "bench", "ab-persona", "results");
+  const recordsRoot = containedPath(projectRoot, "bench", "ab-persona", "records");
   return {
     projectRoot,
     reviewFixturesDir,
@@ -399,5 +404,7 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
     resultsRoot,
     resultsDir: (persona, stamp) => containedPath(resultsRoot, `${persona}-${stamp}`),
     resultsDirById: (resultId) => containedPath(resultsRoot, resultId),
+    recordsRoot,
+    recordsFile: (persona, stamp) => containedPath(recordsRoot, persona, `${stamp}.jsonl`),
   };
 }

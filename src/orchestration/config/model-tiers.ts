@@ -7,7 +7,7 @@ import { modelTierForReference } from "../../protocol/model-tier-reference.js";
 import { clearSharedModelListingClients, getSharedModelsClient } from "./llm-clients.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 
-type RankedModelTier = Exclude<ModelTier, "default">;
+export type RankedModelTier = Exclude<ModelTier, "default">;
 
 interface ModelPowerSortRank {
   tier: number;

@@ -104,10 +104,10 @@ describe("shared implementation task loading", () => {
   it("identifies every consumed implementation task input", async () => {
     const tasksDir = await writeSyntheticTaskDir();
     const taskDir = join(tasksDir, "synthetic");
-    const identity = async (): Promise<string> => {
+    const identity = async () => {
       const [task] = await loadImplementTasks(tasksDir);
       if (!task) throw new Error("expected one implementation task");
-      return task.contentIdentity;
+      return { content: task.contentIdentity, candidate: task.candidateIdentity, grader: task.graderIdentity };
     };
     const original = await identity();
     const cases = [
@@ -124,7 +124,11 @@ describe("shared implementation task loading", () => {
         const path = join(taskDir, relativePath);
         const before = await Bun.file(path).text();
         await Bun.write(path, changed);
-        expect(await identity()).not.toBe(original);
+        const current = await identity();
+        expect(current.content).not.toBe(original.content);
+        // Only the hidden acceptance tests grade; every other input is what the candidate answers.
+        const grading = relativePath.startsWith("acceptance/");
+        expect([current.candidate === original.candidate, current.grader === original.grader], relativePath).toEqual([grading, !grading]);
         await Bun.write(path, before);
       }
     } finally {
@@ -275,7 +279,7 @@ describe("implementation sandbox", () => {
       expect(await Bun.file(capturedPatchPath).exists()).toBe(false);
       expect(grade.acceptance).toEqual({ passed: 0, failed: 1, total: 1 });
       expect(grade.nativeGrade).toBe(report);
-      expect(recorded.find(command => command[1] === "diff")?.includes(":(exclude)acceptance")).toBe(false);
+      expect(recorded.find(command => command[1] === "diff")?.includes(":(exclude,glob)acceptance")).toBe(false);
       for (const invalid of [
         "", "not JSON", '{"passed":1,"failed":0,"total":2,"evidence":false}',
         '{"passed":0,"failed":0,"total":0,"evidence":null}',
@@ -409,13 +413,14 @@ describe("implementation sandbox", () => {
       expect(commands).toContainEqual([
         "git", "diff", "--cached", "refs/flywheel/benchmark-baseline",
         expect.stringMatching(/^--output=/),
-        "--", ".", ":(exclude).flywheel", ":(exclude).bench-plan.json", ":(exclude).bench-home", ":(exclude)acceptance",
+        "--", ".", ":(exclude,glob).flywheel", ":(exclude,glob).bench-plan.json", ":(exclude,glob).bench-home", ":(exclude,glob)acceptance",
+        ":(exclude,glob)**/__pycache__/**",
       ]);
       expect(captured.diff).toBe("diff --git a/value.ts b/value.ts\n");
       expect<readonly string[] | undefined>(captureAddCommand).toEqual(["git", "add", "-A"]);
       expect<readonly string[] | undefined>(captureResetCommand).toEqual([
         "git", "reset", "--quiet", "HEAD", "--",
-        ".flywheel", ".bench-plan.json", ".bench-home", "acceptance",
+        ":(glob).flywheel", ":(glob).bench-plan.json", ":(glob).bench-home", ":(glob)acceptance", ":(glob)**/__pycache__/**",
       ]);
       expect(captured.diff).not.toContain(PLAN_FILE);
       expect(captured.diffStats).toEqual({ linesAdded: 1, linesRemoved: 1, filesTouched: 1 });

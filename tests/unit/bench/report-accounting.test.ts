@@ -60,7 +60,7 @@ describe("canonical report accounting", () => {
       sandbox: { fixtureRepo: "/project" },
       acceptanceDir: "/acceptance",
       manifest: { traps: [], judgment: [] },
-      contentIdentity: "task-identity",
+      contentIdentity: "task-identity", candidateIdentity: "task-candidate", graderIdentity: "task-grader",
     };
     const candidate = (repeat: number, estimatedUsd: number): ImplementCandidate => ({
       variant: "model@low",
@@ -83,7 +83,7 @@ describe("canonical report accounting", () => {
         mode: "implement", kind: "native", id: "native", stratum: "small", prompt: "Original bug", timeoutMs: 1000,
         taskDir: "/native", instruction: "Original bug", family: "python", split: "development",
         native: { command: ["python3", "/native/adapter.py"], timeoutMs: 1000 },
-        manifest: { traps: [], judgment: [] }, contentIdentity: "native-identity",
+        manifest: { traps: [], judgment: [] }, contentIdentity: "native-identity", candidateIdentity: "native-candidate", graderIdentity: "native-grader",
       }],
       [candidate(0, 1), candidate(1, 3)],
       [],
