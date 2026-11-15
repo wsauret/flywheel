@@ -1,0 +1,16 @@
+bench/findings/README.md
+  h_4b47e9e4a8b456 51
+bench/findings/unattended-run-results.md
+  h_4b47e9e4a8b456 3,5,22,237-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5411b0e20b2d5001d343e8bfc8ae8e9f07565d49",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
