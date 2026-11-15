@@ -1,0 +1,16 @@
+bench/harbor/configs/luna-t5b-finish-when-passed.toml
+  h_4b47e9e4a8b456 1-81
+bench/harbor/configs/shipped-first-t5b-finish-when-passed.toml
+  h_4b47e9e4a8b456 1-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "836d88c93784b803afa168166fd3a27f5bb83629",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
