@@ -1,0 +1,26 @@
+bench/harbor/configs/oc-parity-ledger.json
+  h_4b47e9e4a8b456 54-56,115-139
+bench/harbor/configs/shipped-ref-tone-proactive.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-ref-tone.toml
+  h_4b47e9e4a8b456 1-102
+src/orchestration/agent-runtime/diagnostic-parity.ts
+  h_4b47e9e4a8b456 58-73,75-85
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 196-197
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 370-395
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 84-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e91d66de6cfd6665c39dadb17913e16677fd89cc",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
