@@ -1,0 +1,64 @@
+tests/unit/infra/module-regression.test.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 17,47
+src/protocol/module-ids.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 41
+src/infra/llm/model-family.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 77-78
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  s_0d536ae5637d7f::t_bc67c067f7f38a 294-311,635
+  s_0d536ae5637d7f::t_d7c37380be135f 632-634
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 636
+tests/unit/cli/cli-auth.test.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 189,230-231,258-262,419-425
+tests/unit/orchestration/modules/provider-baseten/catalog.test.ts
+  s_0d536ae5637d7f::t_bc67c067f7f38a 1-81
+src/orchestration/credential-provider-modules.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 12,29
+docs/product-intent/model-access.md
+  s_0d536ae5637d7f::t_bc67c067f7f38a 65-68
+vscode/README.md
+  s_0d536ae5637d7f::t_bc67c067f7f38a 37
+src/orchestration/modules.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 371
+tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 122
+  s_0d536ae5637d7f::t_bc67c067f7f38a 105,111-121,123-127
+vscode/docs/about-flywheel.md
+  s_0d536ae5637d7f::t_bc67c067f7f38a 50
+src/orchestration/modules/provider-baseten/model-support.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 1-74
+src/orchestration/modules/provider-baseten/module.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 1-66
+  s_0d536ae5637d7f::t_687f9fd53b8a7f 67
+website/src/pages/index.astro
+  s_0d536ae5637d7f::t_bc67c067f7f38a 56
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 215-218
+tests/unit/orchestration/module-complete-off.test.ts
+  s_0d536ae5637d7f::t_a055b76aed23cb 87
+website/src/components/ProviderFlow.astro
+  s_0d536ae5637d7f::t_bc67c067f7f38a 14
+README.md
+  s_0d536ae5637d7f::t_bc67c067f7f38a 51,154
+docs/architecture-intent/providers.md
+  s_0d536ae5637d7f::t_bc67c067f7f38a 220-225
+tests/fixtures/modules/baseline.json
+  s_0d536ae5637d7f::t_4230c9d80b60f4 1142,1191,1249,1269-1275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5192da8d4363b6919a93243e20d10a34c8c2fda7",
+  "prompts": {},
+  "sessions": {
+    "s_0d536ae5637d7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "054b86e9-d761-4bd9-a4a3-8c91989e0b7a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
