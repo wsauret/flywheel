@@ -1,0 +1,58 @@
+src/infra/workflow-types.ts
+  h_4b47e9e4a8b456 18-20
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 460
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 116
+src/orchestration/app-service/role-assignment-projection.ts
+  h_4b47e9e4a8b456 42
+src/orchestration/config/model-assignment-controller.ts
+  h_4b47e9e4a8b456 24,27-28,95-98,153,172,178,181,210
+src/orchestration/config/model-assignment-types.ts
+  h_4b47e9e4a8b456 56
+src/orchestration/config/model-assignments.ts
+  h_4b47e9e4a8b456 171,309,314
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 62,220,223
+src/orchestration/config/role-selection.ts
+  h_4b47e9e4a8b456 39,45-50,52
+src/orchestration/config/roles.ts
+  h_4b47e9e4a8b456 43
+src/orchestration/config/session-role-resolver.ts
+  h_4b47e9e4a8b456 18,35-49,53,59,62-68,73-78,82,84-88,155,162,169,173,176,180,185-186,188-189,193,207-208,219-220
+src/orchestration/config/workflow-agent-models.ts
+  h_4b47e9e4a8b456 1,9,32,44,49,54-55,60
+src/orchestration/modules/workflows/definitions/skills/workflow-authoring/SKILL.md
+  h_4b47e9e4a8b456 146
+src/orchestration/session/schemas.ts
+  h_4b47e9e4a8b456 118-119
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 25,262
+src/orchestration/workflow-host/frontend-attempts.ts
+  h_4b47e9e4a8b456 5,52
+src/protocol/active-serving-seat.ts
+  h_4b47e9e4a8b456 1,17-18,25-27,43-44
+src/protocol/brief-role-id.ts
+  h_4b47e9e4a8b456 13-14,31,36-38,40-47,53,57-58,63,75-76
+tests/unit/orchestration/agent-runtime/subagent/execute-role-resolution.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/config/config-models-workflow-agents.test.ts
+  h_4b47e9e4a8b456 3,14-18
+tests/unit/orchestration/config/model-assignment-controller-scopes.test.ts
+  h_4b47e9e4a8b456 142,144-145,150,152-153,177,179-180,191,193-194,210-212,214-215,217,220-232,235-248
+tests/unit/orchestration/config/session-role-resolver.test.ts
+  h_4b47e9e4a8b456 10,75,88,94-131
+tests/unit/orchestration/workflow-host/workflow-agent-models.test.ts
+  h_4b47e9e4a8b456 125,130,134-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "151685c16c230f0446b87d91eaf4d6eadc20a95c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
