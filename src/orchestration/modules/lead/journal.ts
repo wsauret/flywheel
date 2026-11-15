@@ -6,16 +6,25 @@ import { LEAD_AGGREGATE_ID, parseLeadFact, type LeadFact } from "./facts.js"
 const JOURNAL_SESSION_ID = "lead"
 
 /** What the `lead` aggregate states, folded from its facts in sequence order. Each fact updates the state in place
- *  and touches only the entries that it names, so a fold costs the same for any number of started chats. */
+ *  and touches only the entries that it names, so a fold costs the same for any number of chats. */
 interface LeadJournalState {
   readonly lastSeq: number
   readonly designated: string | null
   readonly dismissed: boolean
   /** Each started chat and the ids of the person's entries that started it. */
   readonly started: ReadonlyMap<string, readonly string[]>
-  /** Each started chat's newest read result entry. */
+  /** The chats of the lead's list: each chat whose newest join no close followed (ARCH-SESSIONS-050). It can hold the
+   *  lead chat itself, which joins at its creation before its designation lands, and a deleted chat. */
+  readonly members: ReadonlySet<string>
+  /** The chats that joined at their creation while the lead showed (`lead.chat.joined`). */
+  readonly briefed: ReadonlySet<string>
+  /** The chats whose newest list fact is a close, so the person closed them. */
+  readonly closed: ReadonlySet<string>
+  /** Whether the first run of the list adopted the chats of the rule before it (`lead.list.seeded`). */
+  readonly seeded: boolean
+  /** Each chat's newest read result entry. */
   readonly readMarks: ReadonlyMap<string, string>
-  /** Each started chat's newest failed or cut state that the person saw, at its entry. */
+  /** Each chat's newest failed or cut state that the person saw, at its entry. */
   readonly seenMarks: ReadonlyMap<string, { readonly state: LeadSeenState; readonly entryId: string }>
   /** The chat that a list of the person's entries started, in the order that its fact names them. */
   startedBy(sourceEntryIds: readonly string[]): string | undefined
@@ -51,17 +60,25 @@ function createLeadState() {
   const started = new Map<string, readonly string[]>()
   const startedBySource = new Map<string, string>()
   const forwards = new Set<string>()
+  const members = new Set<string>()
+  const briefed = new Set<string>()
+  const closed = new Set<string>()
   const readMarks = new Map<string, string>()
   const seenMarks = new Map<string, { readonly state: LeadSeenState; readonly entryId: string }>()
   let lastSeq = -1
   let designated: string | null = null
   let dismissed = false
+  let seeded = false
 
   const state: LeadJournalState = {
     get lastSeq() { return lastSeq },
     get designated() { return designated },
     get dismissed() { return dismissed },
+    get seeded() { return seeded },
     started,
+    members,
+    briefed,
+    closed,
     readMarks,
     seenMarks,
     startedBy: (sourceEntryIds) => startedBySource.get(idsKey(sourceEntryIds)),
@@ -91,6 +108,18 @@ function createLeadState() {
       case "lead.chat.seen":
         seenMarks.set(fact.payload.sessionId, { state: fact.payload.state, entryId: fact.payload.entryId })
         return
+      case "lead.chat.joined":
+        members.add(fact.payload.sessionId)
+        closed.delete(fact.payload.sessionId)
+        if (fact.payload.briefed) briefed.add(fact.payload.sessionId)
+        return
+      case "lead.chat.closed":
+        members.delete(fact.payload.sessionId)
+        closed.add(fact.payload.sessionId)
+        return
+      case "lead.list.seeded":
+        seeded = true
+        return
     }
   }
 
@@ -111,6 +140,12 @@ function createLeadState() {
         const seen = seenMarks.get(fact.payload.sessionId)
         return seen?.state === fact.payload.state && seen.entryId === fact.payload.entryId
       }
+      case "lead.chat.joined":
+        return members.has(fact.payload.sessionId)
+      case "lead.chat.closed":
+        return !members.has(fact.payload.sessionId)
+      case "lead.list.seeded":
+        return seeded
     }
   }
 

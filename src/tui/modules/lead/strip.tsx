@@ -14,11 +14,13 @@ import { followSelection, layoutLeadRow, leadAge, leadListWindow, leadTitleColum
 
 /** The columns the list keeps clear on each side, so its rows line up with the text inside the composer frame above. */
 const SIDE_INSET = 2
-const HINT = "↑↓ move · enter open · ctrl+t tab · esc input"
+const HINT = "↑↓ move · enter open · ctrl+t tab · x close · esc input"
+/** The close mark at the right end of the row under the pointer. Its columns stay reserved on every row, so the row's
+ *  text never moves when the mark shows. */
+const CLOSE_MARK = " ×"
 
-/** The list of the chats the lead started, below the lead's input
- *  (PI-LEAD-004). It shows only on the lead's own screen and only while a
- *  chat has a row. */
+/** The list of the chats in use, below the lead's input (PI-LEAD-004). It
+ *  shows only on the lead's own screen and only while a chat has a row. */
 export function LeadStrip(props: TuiStripProps) {
   const screen = useLeadScreen()
   return <Show when={props.sessionId === screen.leadSessionId() && screen.rows().length > 0}>
@@ -46,7 +48,7 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     return index < 0 ? undefined : index
   }
   // The claim lasts for the list's lifetime, so it is taken once.
-  const claim = untrack(() => props.strip.keys).claim({ chords: ["up", "down", "enter", "ctrl+t"], onKey })
+  const claim = untrack(() => props.strip.keys).claim({ chords: ["up", "down", "enter", "ctrl+t", "x"], onKey })
   const window = createMemo<ReturnType<typeof leadListWindow>>((previous) => leadListWindow({
     total: rows().length, selected: claim.focused() ? selectedIndex() : undefined, start: claim.focused() ? previous.start : 0, terminalRows: dimensions().height,
   }), { start: 0, count: 0, above: 0, below: 0 })
@@ -76,8 +78,22 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
       case "return":
       case "enter": if (row) props.screen.openChat(row.sessionId); return true
       case "escape": claim.setFocused(false); return true
+      case "x": if (row) close(row.sessionId); return true
       default: return false
     }
+  }
+
+  /** Closes a chat and moves the selection to the next row, or to the row before at the end, or gives focus back to
+   *  the input when no row is left. The row leaves once the runtime records the close. */
+  function close(sessionId: string): void {
+    const order = ids()
+    const index = order.indexOf(sessionId)
+    const next = order[index + 1] ?? order[index - 1]
+    if (claim.focused()) {
+      if (next === undefined) claim.setFocused(false)
+      else setChosen({ id: next })
+    }
+    props.screen.closeChat(sessionId)
   }
 
   /** A press on a row selects it, gives the list focus, and opens the chat, so Escape comes back to that row. */
@@ -87,7 +103,7 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     props.screen.openChat(sessionId)
   }
 
-  const width = () => Math.max(1, props.strip.width() - 2 * SIDE_INSET)
+  const width = () => Math.max(1, props.strip.width() - 2 * SIDE_INSET - CLOSE_MARK.length)
   function rowContent(row: LeadRow, age: string): StyledText {
     const look = LEAD_STATE_LOOK[row.state]
     const layout = layoutLeadRow({ state: row.state, title: props.screen.title(row.sessionId), status: row.status, age }, { width: width(), titleColumn: titleColumn() })
@@ -102,8 +118,11 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
       // The clock ticks each second, and a row's text changes only when its age does.
       const age = createMemo(() => leadAge(row.since, now()))
       const hover = useHoverHighlight()
-      return <box selectable={false} backgroundColor={hover.background()} {...hover.handlers} onMouseDown={() => { press(row.sessionId) }}>
-        <text selectable={false} ref={bindStyledTextContent(() => rowContent(row, age()))} wrapMode="none" overflow="hidden" />
+      return <box flexDirection="row" selectable={false} backgroundColor={hover.background()} {...hover.handlers} onMouseDown={() => { press(row.sessionId) }}>
+        <text selectable={false} flexGrow={1} ref={bindStyledTextContent(() => rowContent(row, age()))} wrapMode="none" overflow="hidden" />
+        <box selectable={false} flexShrink={0} width={CLOSE_MARK.length} onMouseDown={(event) => { event.stopPropagation(); close(row.sessionId) }}>
+          <text selectable={false} fg={theme.textMuted} wrapMode="none">{hover.hovered() ? CLOSE_MARK : " ".repeat(CLOSE_MARK.length)}</text>
+        </box>
       </box>
     }}</For>
     <Show when={window().below > 0}><text fg={theme.textMuted} wrapMode="none">{`+${window().below} more`}</text></Show>

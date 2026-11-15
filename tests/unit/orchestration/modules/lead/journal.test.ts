@@ -22,6 +22,30 @@ test("an append whose fact the state already holds is skipped", async () => {
   expect(ctx.store.read({ aggregateId: "lead" }).map((fact) => fact.type)).toEqual(["lead.chat.started", "lead.request.forwarded", "lead.result.read"])
 })
 
+test("a chat is a member from its join until its close, joins again after the close, and keeps the briefing of its first join; the first-run seed is recorded once", async () => {
+  const lead = journal()
+  // A close of a chat that is not in the list changes nothing.
+  expect(await lead.append({ type: "lead.chat.closed", payload: { sessionId: "c" } })).toBe(false)
+  expect(await lead.append({ type: "lead.chat.joined", payload: { sessionId: "c", briefed: true } })).toBe(true)
+  expect(await lead.append({ type: "lead.chat.joined", payload: { sessionId: "c", briefed: false } })).toBe(false)
+  expect([...lead.state().members]).toEqual(["c"])
+  expect(await lead.append({ type: "lead.chat.closed", payload: { sessionId: "c" } })).toBe(true)
+  expect(await lead.append({ type: "lead.chat.closed", payload: { sessionId: "c" } })).toBe(false)
+  expect([...lead.state().members]).toEqual([])
+  expect([...lead.state().closed]).toEqual(["c"])
+  expect(await lead.append({ type: "lead.chat.joined", payload: { sessionId: "c", briefed: false } })).toBe(true)
+  expect([...lead.state().closed]).toEqual([])
+  expect(lead.state().seeded).toBe(false)
+  expect(await lead.append({ type: "lead.list.seeded", payload: {} })).toBe(true)
+  expect(await lead.append({ type: "lead.list.seeded", payload: {} })).toBe(false)
+
+  const replayed = journal()
+  await replayed.reconcile()
+  expect([...replayed.state().members]).toEqual(["c"])
+  expect(replayed.state().briefed.has("c")).toBe(true)
+  expect(replayed.state().seeded).toBe(true)
+})
+
 test("an append after another writer's commit lands at the next sequence, and a second journal replays both", async () => {
   const first = journal()
   const second = journal()

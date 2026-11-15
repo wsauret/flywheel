@@ -39,6 +39,9 @@ export interface TuiModuleClientHost {
   readonly questionDrafts: QuestionDraftNamespace
   /** Shows a chat outside its tab, as a view over another tab does (`SessionShows`). */
   readonly showSession: SessionShows["show"]
+  /** Closes a chat as the Sessions list's close chat does: its work ends now as an interrupt the person can resume,
+   *  and a tab that shows it goes. Rejects when the close fails. */
+  readonly closeChat: (sessionId: string) => Promise<void>
 }
 /** The session a module keeps as the first tab (ARCH-PROTOCOL-034). */
 export interface TuiFirstTab {

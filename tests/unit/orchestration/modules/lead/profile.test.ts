@@ -10,7 +10,7 @@ import { resolveRuntimeConversation } from "../../../../../src/orchestration/age
 import type { RunnableAgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import type { WebSearchPort } from "../../../../../src/orchestration/agent-runtime/web-search/types.js"
 import { resolveChatProfile } from "../../../../../src/orchestration/chat-profile.js"
-import { LEAD_PROMPT, STARTED_CHAT_PROMPT } from "../../../../../src/orchestration/modules/lead/prompt.js"
+import { LEAD_PROMPT, LISTED_CHAT_PROMPT, STARTED_CHAT_PROMPT } from "../../../../../src/orchestration/modules/lead/prompt.js"
 import { leadService, type LeadRole, type LeadService } from "../../../../../src/orchestration/modules/lead/service.js"
 import { LEAD_TOOLS } from "../../../../../src/orchestration/modules/lead/tools.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
@@ -39,7 +39,8 @@ const checkpointTestPersistence = checkpointTestPersistences()
  *  that answers `role` for the chat. `selections` gives the module snapshot of each request in turn. */
 async function chatRequests(role: LeadRole | undefined, selections: readonly ReturnType<typeof composeFirstPartyModules>[]) {
   const sessionId = "chat-1"
-  const service: Pick<LeadService, "role"> = { role: (id) => id === sessionId ? role : undefined }
+  const roleOf = (id: string) => id === sessionId ? role : undefined
+  const service: Pick<LeadService, "role" | "settledRole"> = { role: roleOf, settledRole: async (id) => roleOf(id) }
   const moduleServices = composeModuleServices([["lead", service]])
   let request = 0
   const options: RunnableAgentOptions = {
@@ -108,16 +109,20 @@ describe("the lead's chat profile", () => {
     }
   })
 
-  test("an ordinary chat plans neither lead tool and has no lead text; only a started chat has the started-chat addition", async () => {
+  test("an ordinary chat plans neither lead tool and has no lead text; a started chat and a briefed chat each have their addition", async () => {
     const [ordinary] = await chatRequests(undefined, [on])
     const [started] = await chatRequests("started", [on])
-    for (const chat of [ordinary!, started!]) {
+    const [briefed] = await chatRequests("briefed", [on])
+    for (const chat of [ordinary!, started!, briefed!]) {
       expect(chat.planned.has("route_request")).toBe(false)
       expect(chat.planned.has("chat_progress")).toBe(false)
       expect(chat.prompt).not.toContain(firstLine(LEAD_PROMPT))
     }
     expect(started!.prompt).toContain(STARTED_CHAT_PROMPT)
+    expect(briefed!.prompt).toContain(LISTED_CHAT_PROMPT)
+    expect(briefed!.prompt).not.toContain(firstLine(STARTED_CHAT_PROMPT))
     expect(ordinary!.prompt).not.toContain(firstLine(STARTED_CHAT_PROMPT))
+    expect(ordinary!.prompt).not.toContain(firstLine(LISTED_CHAT_PROMPT))
   })
 
   test("the lead prompt rendered without web has no line that names web", () => {

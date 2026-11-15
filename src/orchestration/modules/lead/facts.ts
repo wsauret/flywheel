@@ -43,7 +43,35 @@ const LeadRequestForwardedFactSchema = defineFact({
   }),
 })
 
-/** The person read a started chat's result up to this entry. */
+/** A chat joined the lead's list (PI-LEAD-004): a root chat other than the lead became active while it was not in the
+ *  list. `briefed` is true when the chat joined at its creation while the lead showed, so its prompt holds the
+ *  lead's rules for its whole life (PI-LEAD-012). */
+const LeadChatJoinedFactSchema = defineFact({
+  type: "lead.chat.joined",
+  version: 1,
+  actor: Schema.Literal("system"),
+  payload: Schema.Struct({ sessionId: Schema.NonEmptyString, briefed: Schema.Boolean }),
+})
+
+/** The person closed a chat of the lead's list, so it leaves the list until it becomes active again. A runtime stop
+ *  records none. */
+const LeadChatClosedFactSchema = defineFact({
+  type: "lead.chat.closed",
+  version: 1,
+  actor: Schema.Literal("system"),
+  payload: Schema.Struct({ sessionId: Schema.NonEmptyString }),
+})
+
+/** The first run of the list in a project joined every chat that the list adopts from the rule before it: each
+ *  chat that the lead started and that this rule still showed. Its absence makes the next start run it again. */
+const LeadListSeededFactSchema = defineFact({
+  type: "lead.list.seeded",
+  version: 1,
+  actor: Schema.Literal("system"),
+  payload: Schema.Struct({}),
+})
+
+/** The person read a listed chat's result up to this entry. */
 const LeadResultReadFactSchema = defineFact({
   type: "lead.result.read",
   version: 1,
@@ -51,8 +79,8 @@ const LeadResultReadFactSchema = defineFact({
   payload: Schema.Struct({ sessionId: Schema.NonEmptyString, entryId: Schema.NonEmptyString }),
 })
 
-/** The person opened a started chat while its row was failed or cut at this entry, so the row leaves the list until
- *  the chat changes state again. */
+/** The person opened a listed chat while its row was failed or cut at this entry, so the row shows that state no more
+ *  until the chat changes state again. */
 const LeadChatSeenFactSchema = defineFact({
   type: "lead.chat.seen",
   version: 1,
@@ -67,6 +95,9 @@ const LeadFactSchema = Schema.Union([
   LeadRequestForwardedFactSchema,
   LeadResultReadFactSchema,
   LeadChatSeenFactSchema,
+  LeadChatJoinedFactSchema,
+  LeadChatClosedFactSchema,
+  LeadListSeededFactSchema,
 ])
 
 export type LeadFact = typeof LeadFactSchema.Type

@@ -22,7 +22,7 @@ export function isCtrlChord(event: Pick<TuiStripKeyEvent, "name" | "ctrl" | "met
   return event.ctrl === true && !event.meta && !event.shift && event.name === letter
 }
 
-/** Marks a started chat's result read once, when `shows` first answers true
+/** Marks a listed chat's result read once, when `shows` first answers true
  *  for its final message. A load that never brings that message leaves the
  *  row unread (PI-LEAD-005). Runs under the caller's owner. */
 function createResultReadMark(host: Pick<TuiModuleClientHost, "client" | "showToast">, sessionId: string, entryId: string, shows: Accessor<boolean>): void {
@@ -37,8 +37,8 @@ function dispatchMark(host: Pick<TuiModuleClientHost, "client" | "showToast">, m
   void host.client.dispatch(mutation).then((answer) => { if (!answer.ok) report(answer.error) }, (cause: unknown) => { report(errorMessage(cause)) })
 }
 
-/** Records that the person opened a chat whose row is failed or cut, so the row leaves the list until the chat
- *  changes state again (PI-LEAD-005). Every way of opening a chat from the list runs it. */
+/** Records that the person opened a chat whose row is failed or cut, so the row shows that state no more until the
+ *  chat changes state again (PI-LEAD-005). Every way of opening a chat from the list runs it. */
 function markOpened(host: Pick<TuiModuleClientHost, "client" | "showToast">, row: LeadRow | undefined): void {
   if ((row?.state === "failed" || row?.state === "cut") && row.ended) dispatchMark(host, { type: "lead.chat.mark_seen", sessionId: row.sessionId, state: row.state, entryId: row.ended.entryId })
 }
@@ -50,18 +50,20 @@ export function openLeadChatTab(host: Pick<TuiModuleClientHost, "client" | "navi
   void host.navigateSession(sessionId).catch((cause: unknown) => { host.showToast({ message: `Open failed: ${errorMessage(cause)}`, variant: "error" }) })
 }
 
-/** Opens one started chat's full conversation over the lead (PI-LEAD-005,
+/** Opens one listed chat's full conversation over the lead (PI-LEAD-005,
  *  PI-LEAD-007). The person reads it, types to that chat, and answers its
  *  question there; a result it shows is read, and a failure or a cut is seen
  *  once the chat shows. Tab and Shift+Tab move through
  *  the chats in the list's order and stay at the ends, `ctrl+t` opens the
- *  chat as a tab, and Escape goes back to the lead, where the list keeps its
- *  selection. */
+ *  chat as a tab, Close chat closes it and goes back to the lead, and Escape
+ *  goes back to the lead, where the list keeps its selection. */
 export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   readonly sessionId: string
   readonly order: Accessor<readonly string[]>
   readonly row: (sessionId: string) => LeadRow | undefined
   readonly title: (sessionId: string) => string
+  /** Closes a chat as the Sessions list's close chat does. */
+  readonly closeChat: (sessionId: string) => void
   /** An entry of the first chat shown, such as its final message, that the view opens at and marks. */
   readonly landing?: string
 }): void {
@@ -71,6 +73,7 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   // The chat that leaves the view for its own tab, so the view's end does not close it.
   let toTab: string | undefined
   const openAsTab = (): void => { const sessionId = untrack(shown); toTab = sessionId; close(); openLeadChatTab(host, sessionId, undefined) }
+  const closeChat = (): void => { const sessionId = untrack(shown); close(); input.closeChat(sessionId) }
   let lastAt = 0
   /** The chat next to the shown one in the list, or undefined at an end. */
   const neighbour = (direction: 1 | -1): string | undefined => {
@@ -107,7 +110,7 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   }
   setHandle(host.viewerLayer.push(() => <LeadViewCover><LeadChatViewer host={host} shown={shown} landing={takeLanding} row={input.row} title={input.title} inputFor={inputFor} toTab={(sessionId) => sessionId === toTab}
     active={() => handle()?.isActive() ?? false} focused={() => handle()?.isFocused() ?? false}
-    canMove={(direction) => neighbour(direction) !== undefined} move={move} close={close} openAsTab={openAsTab} /></LeadViewCover>,
+    canMove={(direction) => neighbour(direction) !== undefined} move={move} close={close} openAsTab={openAsTab} closeChat={closeChat} /></LeadViewCover>,
   { onKey, onPaste: (text) => { inputFor(untrack(shown)).onPaste(text) } }))
 }
 
@@ -127,6 +130,7 @@ function LeadChatViewer(props: {
   readonly move: (direction: 1 | -1) => void
   readonly close: () => void
   readonly openAsTab: () => void
+  readonly closeChat: () => void
 }) {
   const { theme } = useTheme()
   const dimensions = useTerminalDimensions()
@@ -168,6 +172,7 @@ function LeadChatViewer(props: {
         navigation={<box flexDirection="row" gap={1} flexShrink={0}>
           <Button label="Back" hotkey="esc" muted onPress={props.close} />
           <Button label="Open as tab" hotkey="ctrl+t" muted onPress={props.openAsTab} />
+          <Button label="Close chat" muted onPress={props.closeChat} />
           <Show when={props.canMove(-1)}><Button label="Previous chat" hotkey="shift+tab" muted onPress={() => props.move(-1)} /></Show>
           <Show when={props.canMove(1)}><Button label="Next chat" hotkey="tab" muted onPress={() => props.move(1)} /></Show>
         </box>} />

@@ -15,7 +15,7 @@ async function mountStrip(...args: Parameters<typeof mountLeadStrip>) {
 }
 
 const theme = resolveTheme(flywheelTheme, "dark")
-const HINT = "  ↑↓ move · enter open · ctrl+t tab · esc input"
+const HINT = "  ↑↓ move · enter open · ctrl+t tab · x close · esc input"
 
 /** The text of the row painted in the selection style. */
 const selectedRow = (rendered: Rendered): string | undefined => rendered.captureSpans().lines
@@ -39,13 +39,67 @@ describe("the lead list", () => {
   })
 
   it("paints each state's mark in its own tone, with every chat that needs the person in the warning tone", async () => {
-    const strip = await mountStrip([leadRow("asks", "question"), leadRow("broke", "failed"), leadRow("stopped", "cut"), leadRow("busy", "working"), leadRow("done", "result")])
+    const strip = await mountStrip([leadRow("asks", "question"), leadRow("broke", "failed"), leadRow("stopped", "cut"), leadRow("busy", "working"), leadRow("unread", "result")])
     const markTone = (mark: string) => strip.rendered.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.startsWith(mark))?.fg
     expect(markTone("?")?.equals(theme.warning)).toBe(true)
     expect(markTone("✗")?.equals(theme.warning)).toBe(true)
     expect(markTone("■")?.equals(theme.warning)).toBe(true)
     expect(markTone("●")?.equals(theme.primary)).toBe(true)
     expect(markTone("✓")?.equals(theme.success)).toBe(true)
+    // The list shows five rows at most, so a done row is a list of its own.
+    const done = await mountStrip([leadRow("done", "done")])
+    const doneTone = done.rendered.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.startsWith("·"))?.fg
+    expect(doneTone?.equals(theme.textMuted)).toBe(true)
+  })
+
+  it("x closes the selected chat with no question, and the selection moves to the next row, to the row before at the end, or back to the input", async () => {
+    const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "done", { since: Date.now() - 6 * 60_000 }), leadRow("c", "done", { since: Date.now() - 7 * 60_000 })])
+    // x types into the input while the list has no focus.
+    expect(await strip.key("x")).toBe(false)
+    await strip.key("down")
+    expect(await strip.key("x")).toBe(true)
+    expect(strip.sent).toEqual(["session.close a"])
+    expect(strip.overlay.dialog.stack).toHaveLength(0)
+    expect(selectedRow(strip.rendered)).toStartWith("· Chat b")
+    // The row leaves once the runtime records the close.
+    strip.setView((view) => ({ ...view, rows: view.rows.filter((row) => row.sessionId !== "a") }))
+    await strip.rendered.renderOnce()
+    await strip.key("down")
+    await strip.key("x")
+    expect(selectedRow(strip.rendered)).toStartWith("· Chat b")
+    strip.setView((view) => ({ ...view, rows: view.rows.filter((row) => row.sessionId !== "c") }))
+    await strip.rendered.renderOnce()
+    await strip.key("x")
+    expect(strip.sent).toEqual(["session.close a", "session.close c", "session.close b"])
+    expect(strip.focused()).toBe(false)
+  })
+
+  it("shows a muted close mark at the right end of the row under the pointer only; a click on it closes the chat, and a click elsewhere on the row opens it", async () => {
+    const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "done")], { width: 80, height: 30 })
+    const rowOf = (title: string) => strip.lines().findIndex((line) => line.includes(title))
+    expect(strip.lines().some((line) => line.includes("×"))).toBe(false)
+    await strip.rendered.mockMouse.moveTo(10, rowOf("Chat b"))
+    await strip.rendered.renderOnce()
+    const frame = strip.rendered.captureCharFrame().split("\n")
+    const markLine = frame[rowOf("Chat b")]!
+    expect(markLine.trimEnd().endsWith("×")).toBe(true)
+    expect(frame[rowOf("Chat a")]).not.toContain("×")
+    const markColumn = markLine.lastIndexOf("×")
+    // The mark sits at the list's right inset, inside the 80 columns, and the row text did not move.
+    expect(markColumn).toBe(80 - 2 - 1)
+    const markSpan = strip.rendered.captureSpans().lines[rowOf("Chat b")]!.spans.find((span) => span.text.includes("×"))
+    expect(markSpan?.fg.equals(theme.textMuted)).toBe(true)
+    expect(markSpan?.bg.equals(theme.backgroundElement)).toBe(true)
+
+    await strip.rendered.mockMouse.click(markColumn, rowOf("Chat b"))
+    await strip.rendered.renderOnce()
+    expect(strip.sent).toEqual(["session.close b"])
+    expect(strip.overlay.viewer.stack).toHaveLength(0)
+
+    await strip.rendered.mockMouse.click(10, rowOf("Chat a"))
+    await strip.rendered.renderOnce()
+    expect(strip.sent).toEqual(["session.close b"])
+    expect(strip.overlay.viewer.stack).toHaveLength(1)
   })
 
   it("renders nothing with no rows or on another chat's screen", async () => {
@@ -59,7 +113,7 @@ describe("the lead list", () => {
   })
 
   it("cuts the title at 24 columns and the status at 48, or the room that is left, with an ellipsis, so no row wraps at widths 80 and 140", async () => {
-    for (const [width, status] of [[80, `${"word ".repeat(8)}wor…`], [140, `${"word ".repeat(9)}wo…`]] as const) {
+    for (const [width, status] of [[80, `${"word ".repeat(8)}w…`], [140, `${"word ".repeat(9)}wo…`]] as const) {
       const strip = await mountStrip([leadRow("long", "working", { status: "word ".repeat(80) })], { width, titles: { long: "A very long chat title that goes on" } })
       expect(strip.lines()).toEqual([`  ● A very long chat title…   ${status}  5m`])
     }
@@ -98,7 +152,7 @@ describe("the lead list", () => {
 
   it("claims no Space, ctrl+o, or ctrl+g, which therefore reach the input", async () => {
     const strip = await mountStrip([leadRow("a", "question")])
-    expect(strip.chords()).toEqual(["up", "down", "enter", "ctrl+t"])
+    expect(strip.chords()).toEqual(["up", "down", "enter", "ctrl+t", "x"])
     await strip.key("down")
     expect(await strip.key("space")).toBe(false)
     expect(await strip.key("o", { ctrl: true })).toBe(false)

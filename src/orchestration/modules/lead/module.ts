@@ -2,7 +2,7 @@ import { LEAD_COMMAND, LEAD_COMMAND_NAME, LEAD_SURFACE, leadChatsProtocol, leadD
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
 import type { FirstPartyModule } from "../../modules.js"
 import { CHAT_PROGRESS_TOOL_NAME } from "./chat-progress.js"
-import { LEAD_PROMPT, STARTED_CHAT_PROMPT } from "./prompt.js"
+import { LEAD_PROMPT, LISTED_CHAT_PROMPT, STARTED_CHAT_PROMPT } from "./prompt.js"
 import { createLeadControl, leadControl } from "./control.js"
 import { createLeadChatsProtocol, createLeadControlProtocol } from "./protocol.js"
 import { ROUTE_REQUEST_TOOL_NAME } from "./route-request.js"
@@ -15,7 +15,7 @@ import { chatProgressDeclaration, LEAD_TOOLS, routeRequestDeclaration } from "./
  *  designation of the lead chat in its control part (ARCH-STRUCTURE-045),
  *  its two workspace domains, the `/lead` command,
  *  the lead chat's prompt and tool list, its two tools, and the prompt
- *  addition of a chat that it started. */
+ *  addition of a chat that it started or that started while it showed. */
 export const leadModule = {
   id: "lead",
   dependencies: [],
@@ -35,9 +35,13 @@ export const leadModule = {
     } },
     { domain: "tools", id: ROUTE_REQUEST_TOOL_NAME, value: { kind: "tool", name: ROUTE_REQUEST_TOOL_NAME, declaration: routeRequestDeclaration } },
     { domain: "tools", id: CHAT_PROGRESS_TOOL_NAME, value: { kind: "tool", name: CHAT_PROGRESS_TOOL_NAME, declaration: chatProgressDeclaration } },
+    // The role is fixed when the chat starts, so a chat's prompt never changes while it lives (PI-LEAD-012).
     { domain: "promptFragments", id: "lead-started-chat", value: {
       order: 3,
-      render: ({ modules }) => modules.get(leadRuntime)?.role() === "started" ? STARTED_CHAT_PROMPT : undefined,
+      render: async ({ modules }) => {
+        const role = await modules.get(leadRuntime)?.settledRole()
+        return role === "started" ? STARTED_CHAT_PROMPT : role === "briefed" ? LISTED_CHAT_PROMPT : undefined
+      },
     } },
     { domain: "commands", id: LEAD_COMMAND, value: {
       id: LEAD_COMMAND,

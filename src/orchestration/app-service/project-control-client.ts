@@ -17,7 +17,7 @@ import { executionAskerOf, readAskerOf } from "./project-executor-generations.js
 import { createRuntimeUiBus, type RuntimeUiBus } from "./runtime-ui-bus.js"
 import { runtimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
 import type { AccountModuleProtocolRoutes } from "./module-protocol-host.js"
-import type { ControlModuleServices } from "./module-service-host.js"
+import type { ControlChatClose, ControlModuleServices } from "./module-service-host.js"
 import { createControlChatOpen } from "./control-chat-open.js"
 import { ProjectExecutionChannelDetached, type ProjectExecutionClient } from "./project-execution-channel.js"
 import { ExecutorGenerationChangedError } from "../../protocol/runtime-protocol-schemas.js"
@@ -50,6 +50,9 @@ export interface ProjectControlClientOptions {
   readonly executor: ProjectControlExecutor | Promise<ProjectControlExecutor>
   /** A closed generation has no live activity and selection cannot reactivate it. */
   readonly executionPaused?: () => boolean
+  /** Hears each person's close of a known chat that this facade carries out itself while execution is paused
+   *  (`ControlSessionPorts.onChatClosed`). */
+  readonly onPausedChatClosed?: (close: ControlChatClose) => void
   /** Whether explicit input has scheduled the restart of a paused project:
    *  work sent now waits for, and reaches, the generation that restart starts. */
   readonly restartScheduled?: () => boolean
@@ -666,6 +669,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       const known = await state.sessions.read(command.sessionId) !== null
       if (!known) return { ok: true, sessionId: command.sessionId }
       await state.sessions.updateLifecycleState(command.sessionId, "inactive")
+      options.onPausedChatClosed?.({ sessionId: command.sessionId, tabClose: command.atRest === true })
       const row = await catalogRow(command.sessionId)
       return { ok: true, sessionId: command.sessionId, ...(row ? { sessionCatalogRow: row } : {}) }
     }

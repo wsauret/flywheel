@@ -81,10 +81,22 @@ test("a chat whose newest entry is the person's forwarded message reads as start
   expect(text).toContain(": at rest; its last turn failed.")
 })
 
-test("chat_progress refuses a chat that the lead did not start", async () => {
+test("chat_progress reads a listed chat that the lead did not start, and refuses a chat that the person closed", async () => {
   const { lead, tool } = await chatWithQuestion()
   const other = await lead.supervisor.openSessionRuntime()
-  const result = await tool.execute({ chat: other }, makeContext())
+  await conversation.appendConversation(other, [{ kind: "user", content: "Fix the header", origin: "human" }])
+  let listed = ""
+  for (let attempt = 0; attempt < 200 && !listed.includes("Fix the header"); attempt += 1) {
+    await Bun.sleep(5)
+    listed = String((await tool.execute({ chat: other }, makeContext())).content)
+  }
+  expect(listed).toContain("Fix the header")
+  await lead.supervisor.closeChat(other)
+  let result = await tool.execute({ chat: other }, makeContext())
+  for (let attempt = 0; attempt < 200 && result.outcome !== "error"; attempt += 1) {
+    await Bun.sleep(5)
+    result = await tool.execute({ chat: other }, makeContext())
+  }
   expect(result.outcome).toBe("error")
-  expect(String(result.content)).toContain(`the lead did not start chat ${other}`)
+  expect(String(result.content)).toContain(`chat ${other} is not in your list`)
 })

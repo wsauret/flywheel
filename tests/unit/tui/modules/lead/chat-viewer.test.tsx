@@ -9,6 +9,7 @@ import { UserMessageBlock } from "../../../../../src/tui/output-blocks/user-mess
 import { leadReportLink } from "../../../../../src/protocol/modules/lead.js"
 import { choiceQuestion, leadHarness, leadRow, mountStrip } from "./_lead-fixtures.js"
 
+const theme = resolveTheme(flywheelTheme, "dark")
 const cleanups: (() => void)[] = []
 afterEach(() => { for (const cleanup of cleanups.splice(0)) cleanup() })
 
@@ -56,7 +57,7 @@ describe("the lead's full-chat viewer", () => {
     expect(frame).not.toContain("Short")
   })
 
-  it("marks a failed or cut chat seen once when it opens, so its row leaves the list", async () => {
+  it("marks a failed or cut chat seen once when it opens, so its row no longer needs the person", async () => {
     const strip = await mountStrip([leadRow("broke", "failed"), leadRow("stopped", "cut")], { width: 100, height: 40 })
     cleanups.push(strip.dispose)
     await strip.key("down")
@@ -71,6 +72,28 @@ describe("the lead's full-chat viewer", () => {
     await strip.key("down")
     expect(await strip.key("t", { ctrl: true })).toBe(true)
     expect(strip.sent).toEqual(["lead.chat.mark_seen broke failed broke-end", "navigate broke"])
+  })
+
+  it("has a muted Close chat button beside Back and Open as tab that closes the shown chat with no question and goes back to the lead", async () => {
+    const strip = await openViewer()
+    // The harness draws the viewer under the list; with the list gone, the viewer's navigation row is on screen.
+    strip.setSessionId("elsewhere")
+    await strip.viewerKey("pagedown")
+    const frame = strip.rendered.captureCharFrame().split("\n")
+    const y = frame.findIndex((line) => line.includes("Close chat"))
+    expect(y).toBeGreaterThanOrEqual(0)
+    expect(frame[y]).toMatch(/Back\s+esc\s+Open as tab\s+ctrl\+t\s+Close chat/)
+    const label = strip.rendered.captureSpans().lines[y]!.spans.find((span) => span.text.includes("Close chat"))
+    expect(label?.fg.equals(theme.textMuted)).toBe(true)
+    expect(label?.bg.equals(theme.backgroundElement)).toBe(true)
+
+    await strip.rendered.mockMouse.click(frame[y]!.indexOf("Close chat") + 1, y)
+    await strip.rendered.renderOnce()
+    expect(chatSends(strip)).toEqual(["session.close asks"])
+    expect(strip.overlay.viewer.stack).toHaveLength(0)
+    expect(strip.overlay.dialog.stack).toHaveLength(0)
+    // The view's end comes first, so the chat no view shows closes.
+    expect(strip.shows).toEqual(["show asks", "end asks"])
   })
 
   it("shows the row's chat over the lead, moves through the list order on Tab and Shift+Tab, and stays at the ends", async () => {

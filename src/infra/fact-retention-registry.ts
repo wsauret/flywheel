@@ -277,13 +277,16 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
   } },
 
   { owner: "lead", families: {
-    // The designation of the lead chat, the chats that it started, its forwards, and the read and seen marks.
+    // The designation of the lead chat, the chats that it started, its forwards, its list, and the read and seen marks.
     "lead.chat.designated": HISTORY,
     "lead.chat.dismissed": HISTORY,
     "lead.chat.started": HISTORY,
     "lead.request.forwarded": HISTORY,
     "lead.result.read": HISTORY,
     "lead.chat.seen": HISTORY,
+    "lead.chat.joined": HISTORY,
+    "lead.chat.closed": HISTORY,
+    "lead.list.seeded": HISTORY,
   } },
 
   { owner: "experiments", families: {

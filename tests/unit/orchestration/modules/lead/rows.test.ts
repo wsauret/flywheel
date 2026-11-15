@@ -71,7 +71,7 @@ function rowsHarness(reader: AsyncEventStateReadSurface = asAsyncEventReadSurfac
   return { lead, reader, latest, eventually, startChat, appendEntries, routeToNewChat, published }
 }
 
-test("a question, its answer and a live turn, a final answer read by the person: question, working, result, removed", async () => {
+test("a question, its answer and a live turn, a final answer read by the person: question, working, result, done", async () => {
   const { lead, latest, eventually, startChat, appendEntries } = rowsHarness()
   const chat = await startChat()
   await appendEntries(chat, [
@@ -107,9 +107,13 @@ test("a question, its answer and a live turn, a final answer read by the person:
   expect((await lead.service.view()).rows).toEqual([result])
 
   expect(await lead.service.markRead(chat, result.result.entryId)).toEqual({ ok: true })
-  expect(await eventually(() => latest(chat), (row) => row === "removed")).toBe("removed")
+  // Reading the result keeps the row, done, with the result's first line.
+  const done = await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "done")
+  expect(done).toMatchObject({ state: "done", status: "Changed the sign-in form." })
+  expect(done).not.toHaveProperty("result")
   expect(ctx.store.read({ aggregateId: "lead" }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: chat, entryId: result.result.entryId } })
-  expect((await lead.service.view()).rows).toEqual([])
+  if (typeof done !== "object") throw new Error("expected a done row")
+  expect((await lead.service.view()).rows).toEqual([done])
 })
 
 test("a routed chat reads working while its runner starts and after the runner attaches at rest, and never failed", async () => {
@@ -167,7 +171,7 @@ test("a visible interrupt is cut, a crash record is failed with its entry, and a
   expect(await eventually(() => latest(open), (row) => typeof row === "object" && row.state === "failed")).toMatchObject({ state: "failed", ended: { entryId: "u1" } })
 })
 
-test("a failure that the person saw leaves the list until the chat fails again at a later entry", async () => {
+test("a failure that the person saw turns the row done until the chat fails again at a later entry", async () => {
   const { lead, latest, eventually, startChat, appendEntries } = rowsHarness()
   const chat = await startChat()
   const crash = turnEndEntryId({ reason: "crash" }, "k1")
@@ -177,7 +181,7 @@ test("a failure that the person saw leaves the list until the chat fails again a
   ])
   expect(await eventually(() => latest(chat), (row) => typeof row === "object")).toMatchObject({ state: "failed", ended: { entryId: crash } })
   expect(await lead.service.markSeen(chat, "failed", crash)).toEqual({ ok: true })
-  expect(await eventually(() => latest(chat), (row) => row === "removed")).toBe("removed")
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "done")).toMatchObject({ state: "done" })
   expect(ctx.store.read({ aggregateId: "lead" }).at(-1)).toMatchObject({ type: "lead.chat.seen", payload: { sessionId: chat, state: "failed", entryId: crash } })
   // A second mark of the same failure appends nothing.
   const facts = ctx.store.read({ aggregateId: "lead" }).length
@@ -220,18 +224,19 @@ test("turning the module off ends the rows at once: no patch of a row's in-fligh
   expect(latest(chat)).toBe("removed")
 })
 
-test("a chat that the lead did not start gets no row and no read", async () => {
-  const { lead, latest, reader } = rowsHarness()
+test("a chat that the person closed loses its row and its pinned fold", async () => {
+  const { lead, latest, eventually, reader } = rowsHarness()
   const other = await lead.supervisor.openSessionRuntime()
   await conversation.appendConversation(other, [{ kind: "user", content: "Fix it", origin: "human" }])
-  await Bun.sleep(20)
-  expect(latest(other)).toBeUndefined()
+  await eventually(() => latest(other), (row) => typeof row === "object")
+  await lead.supervisor.closeChat(other)
+  expect(await eventually(() => latest(other), (row) => row === "removed")).toBe("removed")
   const marker = { untouched: true }
   // The registry holds no fold of the chat, so it builds the caller's object.
   expect(heldProjection(reader, `lead-row:${other}`, () => marker)).toBe(marker)
 })
 
-test("a deleted started chat loses its row and its pinned fold", async () => {
+test("a deleted listed chat loses its row and its pinned fold", async () => {
   const { lead, latest, eventually, reader, startChat } = rowsHarness()
   const chat = await startChat()
   await conversation.appendConversation(chat, [{ kind: "user", content: "Fix it", origin: "human" }])

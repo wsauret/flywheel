@@ -62,6 +62,11 @@ export interface ModuleExecutionEnvironment {
   readonly sessionRuntime: (sessionId: string) => Extract<SessionRuntimeView, { kind: "starting" | "failed" }> | null
   /** A new holder of chats that a module's view holds open as a tab does (`SessionOpenHold`). */
   readonly createOpenHold: () => SessionOpenHold
+  /** Calls `listener` with each chat that a person closes (`RuntimeSupervisor.onChatClosed`), and answers the
+   *  unsubscribe. */
+  readonly onChatClosed: (listener: (sessionId: string) => void) => () => void
+  /** Whether a client shows the chat now (`RuntimeSupervisor.isShown`). */
+  readonly sessionShown: (sessionId: string) => boolean
 }
 
 /** What the runtime hands a module that declares a process-scoped service:
@@ -249,6 +254,17 @@ export interface ControlSessionPorts {
   readonly openChat: (options: { readonly name: string }) => Promise<{ readonly sessionId: string; readonly row: SessionCatalogRow }>
   /** The catalog row of a chat, or undefined when no such chat exists, as after its deletion. */
   readonly chatRow: (sessionId: string) => Promise<SessionCatalogRow | undefined>
+  /** Calls `listener` with each person's close of a chat that the control placement carries out itself, with no
+   *  executor: a close while execution is paused. `tabClose` is true for the close of a tab, which no open hold can
+   *  block while nothing runs. An executor's own closes reach its modules through
+   *  `ModuleExecutionEnvironment.onChatClosed`. Answers the unsubscribe. */
+  readonly onChatClosed: (listener: (close: ControlChatClose) => void) => () => void
+}
+
+/** A person's close of a chat that the control placement carried out (`ControlSessionPorts.onChatClosed`). */
+export interface ControlChatClose {
+  readonly sessionId: string
+  readonly tabClose: boolean
 }
 
 /** What every module service instance owes composition: one disposal that

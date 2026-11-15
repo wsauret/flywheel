@@ -21,8 +21,11 @@ function harness() {
   return lead
 }
 
+/** The designation facts. The list's joins, such as the lead chat's own join at its creation, are the service's. */
 function leadFacts() {
-  return ctx.store.read({ aggregateId: "lead" }).map((fact) => ({ type: fact.type, sessionId: fact.sessionId, payload: fact.payload }))
+  return ctx.store.read({ aggregateId: "lead" })
+    .filter((fact) => fact.type === "lead.chat.designated" || fact.type === "lead.chat.dismissed")
+    .map((fact) => ({ type: fact.type, sessionId: fact.sessionId, payload: fact.payload }))
 }
 
 async function chatsNamedLead(): Promise<readonly { readonly id: string; readonly userNamed?: true }[]> {
@@ -99,3 +102,29 @@ test("while the module is off the control part opens no chat and serves the empt
   expect(leadFacts()).toEqual([])
   expect(await chatsNamedLead()).toEqual([])
 })
+
+test("a person's close that the control placement carries out while execution is paused removes the chat from the list, and a paused tab close does so only while no lead shows", async () => {
+  const { control, openLead, pausedClose, service } = harness()
+  const leadId = await openLead("launch")
+  if (leadId === null) throw new Error("expected the lead to open")
+  const closed = await supervisor.openSessionRuntime()
+  const tab = await supervisor.openSessionRuntime()
+  await settle(() => service.journal.state().members.has(closed) && service.journal.state().members.has(tab))
+  const closes = () => ctx.store.read({ aggregateId: "lead" }).flatMap((fact) => fact.type === "lead.chat.closed" ? [fact.payload] : [])
+
+  // The lead holds every listed chat, so a tab close while it shows returns the chat to the list.
+  await pausedClose(tab, true)
+  await pausedClose(closed, false)
+  await settle(() => !service.journal.state().members.has(closed))
+  expect(closes()).toEqual([{ sessionId: closed }])
+  expect(service.journal.state().members.has(tab)).toBe(true)
+
+  await control.dismiss(leadId)
+  await pausedClose(tab, true)
+  await settle(() => !service.journal.state().members.has(tab))
+  expect(closes()).toEqual([{ sessionId: closed }, { sessionId: tab }])
+})
+
+async function settle(until: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200 && !until(); attempt += 1) await Bun.sleep(5)
+}

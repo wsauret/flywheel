@@ -8,6 +8,7 @@ import { createLeadJournal } from "../../../../../src/orchestration/modules/lead
 import { leadChatsCursor, leadReportCall } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
+import { createUnstartedChild } from "../subagents/_subagent-child-fixtures.js"
 import { accountOpenChat, leadHarness } from "./_lead-harness.js"
 
 let ctx: SupervisorTestContext
@@ -43,11 +44,11 @@ test("dispose settles the startup replay, and nothing is published after it reso
   expect(patches.filter((patch) => patch.cursor.domain === leadChatsCursor().domain)).toEqual([])
 })
 
-test("while the module is off a started chat's question gives no notice, and after it turns on a question gives one", async () => {
+test("while the module is off a listed chat's question gives no notice, and after it turns on a question gives one", async () => {
   const { service, openLead, sessionEvents, notices, setEnabled } = harness()
   const lead = await openLead()
   expect(lead).not.toBeNull()
-  await service.journal.append({ type: "lead.chat.started", payload: { sessionId: "c", sourceEntryIds: ["entry-1"] } })
+  await service.journal.append({ type: "lead.chat.joined", payload: { sessionId: "c", briefed: false } })
   await supervisor.ensureChatRunner(lead!)
 
   await setEnabled(false)
@@ -271,9 +272,10 @@ function heldLeadFacts(onStored: (listener: (events: readonly StoredFact[]) => v
   }
 }
 
-test("each applied lead fact costs work that grows with neither the started chats nor the history", async () => {
+test("each applied lead fact costs work that grows with neither the listed chats nor the history", async () => {
   /** The state requests, the watches, and the collection work of the service, the control part, and the journal for
-   *  each of `facts` chats that another writer starts and forwards to, and checks again, after `existing` ones. */
+   *  each of `facts` chats that join the list through another writer and get a forward, and checks again, after
+   *  `existing` listed chats. */
   async function costs(existing: number, facts: number) {
     const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
     using stored = heldLeadFacts(ctx.store.onStored)
@@ -291,7 +293,7 @@ test("each applied lead fact costs work that grows with neither the started chat
       await writer.append({ type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: chat, newChat: true, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
     }
     await nextTurn()
-    // The roster waits for the rows owner to build each started chat.
+    // Each real chat joined the list at its creation; the roster waits for the rows owner to build each of them.
     expect(await service.progress(undefined)).toMatchObject({ kind: "roster", chats: { length: existing } })
     const perFact = []
     for (let index = 0; index < facts; index += 1) {
@@ -301,10 +303,10 @@ test("each applied lead fact costs work that grows with neither the started chat
       counter.take()
       const watches = trace.length
       stored.hold()
-      await writer.append({ type: "lead.chat.started", payload: { sessionId, sourceEntryIds } })
+      await writer.append({ type: "lead.chat.joined", payload: { sessionId, briefed: false } })
       await writer.append(forwarded)
       const applied = stored.release()
-      expect(applied.map((fact) => fact.type)).toEqual(["lead.chat.started", "lead.request.forwarded"])
+      expect(applied.map((fact) => fact.type)).toEqual(["lead.chat.joined", "lead.request.forwarded"])
       const steps = await collectionWorkOf(async () => {
         for (const fact of applied) {
           stored.deliver(fact)
@@ -314,13 +316,13 @@ test("each applied lead fact costs work that grows with neither the started chat
         expect(await writer.append(forwarded)).toBe(false)
       })
       expect(service.journal.state().forwarded(sessionId, sourceEntryIds)).toBe(true)
-      expect(service.journal.state().startedBy(sourceEntryIds)).toBe(sessionId)
+      expect(service.journal.state().members.has(sessionId)).toBe(true)
       const requests = counter.take()
       perFact.push({ steps, requests: requests.length, factsRead: factsRead(requests), watches: trace.length - watches })
     }
     return perFact
   }
-  // The first service of the process pays the one-time setup of the session reads that a started chat's row makes.
+  // The first service of the process pays the one-time setup of the session reads that a listed chat's row makes.
   await costs(1, 1)
   const few = await costs(3, 4)
   const many = await costs(30, 4)
@@ -354,71 +356,218 @@ test("appends from the control part and the service to the one lead aggregate at
     service.journal.append({ type: "lead.chat.started", payload: { sessionId: "c1", sourceEntryIds: ["entry-1"] } }),
     service.journal.append({ type: "lead.chat.started", payload: { sessionId: "c2", sourceEntryIds: ["entry-2"] } }),
   ])
-  expect(ctx.store.read({ aggregateId: "lead" }).map((fact) => fact.type).toSorted()).toEqual(["lead.chat.designated", "lead.chat.dismissed", "lead.chat.started", "lead.chat.started"])
+  // The list's own bookkeeping, such as the lead chat's join at its creation, is left out here.
+  expect(ctx.store.read({ aggregateId: "lead" }).map((fact) => fact.type).filter((type) => type !== "lead.chat.joined" && type !== "lead.list.seeded").toSorted()).toEqual(["lead.chat.designated", "lead.chat.dismissed", "lead.chat.started", "lead.chat.started"])
   await service.view()
   expect([...service.journal.state().started.keys()].toSorted()).toEqual(["c1", "c2"])
   expect(service.role(lead)).toBeUndefined()
 })
 
-test("a started chat whose result the person read closes once it is at rest while no client shows it, and a route to it opens it again and runs the turn", async () => {
+/** The chats that the service lists now, in list order. */
+async function listed(lead: ReturnType<typeof harness>): Promise<readonly string[]> {
+  return (await lead.service.view()).rows.map((row) => row.sessionId)
+}
+
+/** A root chat with one entry of the person, so a close keeps it rather than discarding it, as the person opens it in a
+ *  client: active, and listed once the service folds its creation. */
+async function personChat(lead: ReturnType<typeof harness>): Promise<string> {
+  const chat = await supervisor.openSessionRuntime()
+  await conversation.appendConversation(chat, [{ kind: "user", content: "Fix the header", origin: "human" }])
+  await settle(async () => (await listed(lead)).includes(chat))
+  return chat
+}
+
+test("every root chat that becomes active joins the list, whoever started it, and a child session never does", async () => {
   const lead = harness()
-  const { leadId, chat } = await routedChat(lead)
-  const lifecycle = async () => (await ctx.manager.read(chat))?.lifecycleState
-  expect(await lifecycle()).toBe("active")
-
-  // The report reads the result, so the row leaves and nothing holds the chat open. The final message continues the
-  // chat's branch, so the closed chat can open again.
-  await conversation.appendConversation(chat, [{ kind: "assistant", content: [{ type: "text", text: "The login page works now." }] }])
-  await settle(async () => await lifecycle() === "inactive")
-  expect((await lead.service.view()).rows.map((row) => row.sessionId)).not.toContain(chat)
-  expect(await lifecycle()).toBe("inactive")
-
-  await conversation.appendConversation(leadId, [
-    { kind: "user", content: "Also fix the signup page", origin: "human" },
-    { kind: "assistant", content: [{ type: "tool_use", id: "route-2", name: "route_request", input: { kind: "existing", chat } }] },
-  ])
-  const routed = await lead.service.route({ leadSessionId: leadId, kind: "existing", chat, earlierTurns: 0 })
-  if (!routed.ok) throw new Error(routed.reason)
-  await settle(async () => await lifecycle() === "active")
-  expect(await lifecycle()).toBe("active")
-  // The chat's new runner starts its turn on the person's forwarded message.
-  await settle(() => lead.inputs.some((input) => input.sessionId === chat))
-  expect(JSON.stringify(lead.inputs.filter((input) => input.sessionId === chat))).toContain("Also fix the signup page")
-})
-
-test("a started chat that asks the person stays open: its row holds it from its work through its question", async () => {
-  const lead = harness()
-  const { chat } = await routedChat(lead)
-  await settle(() => ctx.sessionStore.get(chat)?.runner != null)
-  ctx.sessionStore.updateEntry(chat, { runnerState: "streaming", streamPhase: "tool_executing" })
-  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === chat && row.state === "working"))
-  // The question turn as the runtime writes it: the model's ask_user call, the request, and the runner's park on it.
-  const conversationId = await conversation.chatConversationId(chat)
-  await ctx.store.append({
-    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId: chat,
-    payload: { conversationId, entries: [{ kind: "message", id: "ask", parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", stopReason: "tool_use", content: [
-      { type: "tool_use", id: "call-ask", name: "ask_user", input: { question: "Which color do you pick?", options: [{ label: "Red" }, { label: "Blue" }], context: "Pick red or blue." } },
-    ] } }] },
-  })
-  await ctx.store.append({
-    aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.requested", version: 3, actor: "agent", timestamp: Date.now(),
-    payload: { interactionId: "call-ask", conversationId, toolUseId: "call-ask", request: [{ question: "Which color do you pick?", multiSelect: false, choices: [
-      { kind: "option", choiceId: "choice-1", label: "Red" }, { kind: "option", choiceId: "choice-2", label: "Blue" }, { kind: "freeform", label: "Other" },
-    ] }] },
-  })
-  ctx.sessionStore.updateEntry(chat, { runnerState: "awaiting_user", streamPhase: null })
-  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === chat && row.state === "question"))
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  const opened = await personChat(lead)
+  // A chat that the person opens again from the Sessions list becomes active with no creation in the batch.
+  const reopened = await ctx.manager.createChat({ initialState: "inactive" })
+  await ctx.manager.updateLifecycleState(reopened, "active")
+  const conversationId = (await ctx.manager.read(opened))?.kind === "chat" ? await conversation.chatConversationId(opened) : ""
+  const { childSessionId } = await createUnstartedChild(ctx.manager, ctx.baseDir, { sessionId: opened, conversationId })
+  await ctx.manager.updateLifecycleState(childSessionId, "active")
+  // A fork is an independent root chat that names the chat it came from.
+  const forked = await ctx.manager.forkChat(opened)
+  await ctx.manager.updateLifecycleState(forked, "active")
+  await settle(async () => (await listed(lead)).includes(reopened) && (await listed(lead)).includes(forked))
   await Bun.sleep(20)
-  expect(lead.patches.some(({ payload }) => payload.kind === "lead.row.removed" && payload.sessionId === chat)).toBe(false)
-  expect((await ctx.manager.read(chat))?.lifecycleState).toBe("active")
+  expect([...await listed(lead)].toSorted()).toEqual([opened, reopened, forked].toSorted())
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.chat.joined").map((fact) => fact.sessionId)).not.toContain(childSessionId)
 })
 
-test("a started chat that a client shows stays open after its row leaves", async () => {
+test("a runtime stop keeps every row, and the person's close or a deletion removes one, also of an inactive chat", async () => {
+  const lead = harness()
+  await lead.openLead()
+  const stopped = await personChat(lead)
+  const deleted = await personChat(lead)
+  // A stop or a recovery deactivates the chat and records no close.
+  await ctx.manager.updateLifecycleState(stopped, "inactive")
+  await Bun.sleep(20)
+  expect(await listed(lead)).toContain(stopped)
+
+  await supervisor.closeChat(stopped)
+  await settle(async () => !(await listed(lead)).includes(stopped))
+  expect(await listed(lead)).not.toContain(stopped)
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.chat.closed", payload: { sessionId: stopped } })
+
+  expect(await supervisor.deleteSession(deleted)).toBe(true)
+  await settle(async () => !(await listed(lead)).includes(deleted))
+  expect(await listed(lead)).toEqual([])
+  // The deletion leaves the list for good: a turn off and on watches, holds, and routes to it no more.
+  await lead.setEnabled(false)
+  lead.trace.length = 0
+  await lead.setEnabled(true)
+  await Bun.sleep(20)
+  expect(lead.trace).not.toContain(`watch ${deleted}`)
+  expect(lead.service.journal.state().members.has(deleted)).toBe(false)
+
+  // The chat joins again when the person makes it active again.
+  await ctx.manager.updateLifecycleState(stopped, "active")
+  await settle(async () => (await listed(lead)).includes(stopped))
+  expect(await listed(lead)).toEqual([stopped])
+})
+
+test("while the lead shows a tab close returns its chat to the list, and while the lead is dismissed a tab close works as without a lead", async () => {
+  const lead = harness()
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  const chat = await personChat(lead)
+  const lifecycle = async () => (await ctx.manager.read(chat))?.lifecycleState
+
+  await supervisor.activateSession(chat, { shown: true })
+  await supervisor.closeChat(chat, true)
+  await supervisor.releaseSession(chat)
+  await Bun.sleep(20)
+  expect(await lifecycle()).toBe("active")
+  expect(await listed(lead)).toEqual([chat])
+
+  await lead.control.dismiss(leadId)
+  await settle(() => lead.service.role(leadId) === undefined)
+  await supervisor.activateSession(chat, { shown: true })
+  await supervisor.closeChat(chat, true)
+  await supervisor.releaseSession(chat)
+  await settle(async () => await lifecycle() === "inactive")
+  expect(await lifecycle()).toBe("inactive")
+  await settle(async () => !(await listed(lead)).includes(chat))
+  expect(await listed(lead)).toEqual([])
+})
+
+test("a finished turn of a chat that a client shows posts no report, and its row turns done and stays", async () => {
   const lead = harness()
   const { chat } = await routedChat(lead)
   await supervisor.activateSession(chat, { shown: true })
   await (await finalMessage(chat, "final-1", "The login page works now."))()
-  await settle(async () => !(await lead.service.view()).rows.some((row) => row.sessionId === chat))
-  await Bun.sleep(20)
+  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === chat && row.state === "done"))
+  expect((await lead.service.view()).rows).toEqual([expect.objectContaining({ sessionId: chat, state: "done", status: "The login page works now." })])
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: chat, entryId: "final-1" } })
+  expect(lead.reports).toEqual([])
   expect((await ctx.manager.read(chat))?.lifecycleState).toBe("active")
+})
+
+test("a chat that starts while the lead shows holds the lead's rules for its life, and one that starts while the lead is dismissed holds none", async () => {
+  const lead = harness()
+  // A chat that starts before any lead chat exists, as on a phone, and one that starts while execution is paused,
+  // which becomes active only when the person sends it its first message.
+  const early = await supervisor.openSessionRuntime()
+  expect(await lead.service.settledRole(early)).toBe("briefed")
+  const paused = await ctx.manager.createChat({ initialState: "inactive" })
+  await ctx.manager.updateLifecycleState(paused, "active")
+  await settle(() => lead.service.journal.state().members.has(paused))
+  expect(await lead.service.settledRole(paused)).toBe("briefed")
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  const briefed = await supervisor.openSessionRuntime()
+  // The chat's first request reads the role after the service folded the chat's creation.
+  expect(await lead.service.settledRole(briefed)).toBe("briefed")
+
+  await lead.control.dismiss(leadId)
+  await settle(() => lead.service.role(leadId) === undefined)
+  const plain = await supervisor.openSessionRuntime()
+  expect(await lead.service.settledRole(plain)).toBeUndefined()
+  // The lead shows again, and neither chat's role changes.
+  await lead.openLead("command")
+  await settle(() => lead.service.role(leadId) === "lead")
+  expect(lead.service.role(briefed)).toBe("briefed")
+  expect(lead.service.role(plain)).toBeUndefined()
+})
+
+test("the first run of a list joins every active root chat and each started chat that still needs a look, once", async () => {
+  // The project as the lead left it before it kept a list: only started facts, and chats at rest.
+  const active = await ctx.manager.createChat({ initialState: "active" })
+  const unread = await ctx.manager.createChat({ initialState: "inactive" })
+  const done = await ctx.manager.createChat({ initialState: "inactive" })
+  await conversation.appendConversation(unread, [{ kind: "user", content: "Fix it", origin: "human" }, { kind: "assistant", content: [{ type: "text", text: "Fixed." }] }])
+  await conversation.appendConversation(done, [{ kind: "user", content: "Fix it", origin: "human" }])
+  const writer = createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store })
+  await writer.append({ type: "lead.chat.started", payload: { sessionId: unread, sourceEntryIds: ["entry-1"] } })
+  await writer.append({ type: "lead.chat.started", payload: { sessionId: done, sourceEntryIds: ["entry-2"] } })
+  // The person read the done chat's result.
+  await (await finalMessage(done, "final-done", "Fixed."))()
+  await writer.append({ type: "lead.result.read", payload: { sessionId: done, entryId: "final-done" } })
+
+  const lead = harness()
+  await settle(async () => (await listed(lead)).length === 2)
+  expect([...await listed(lead)].toSorted()).toEqual([active, unread].toSorted())
+  const joins = () => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.chat.joined").map((fact) => fact.payload)
+  expect(joins()).toEqual(expect.arrayContaining([{ sessionId: active, briefed: false }, { sessionId: unread, briefed: false }]))
+  expect(joins()).toHaveLength(2)
+
+  // A later start reads the joins and seeds nothing again.
+  await lead.dispose()
+  disposeAll = disposeAll.filter((dispose) => dispose !== lead.dispose)
+  const again = harness()
+  await settle(async () => (await listed(again)).length === 2)
+  await Bun.sleep(20)
+  expect(joins()).toHaveLength(2)
+})
+
+test("a result that finishes in a chat that a client shows while the lead is dismissed is read there, and the lead that shows again gets no report of it", async () => {
+  const lead = harness()
+  const { leadId, chat } = await routedChat(lead)
+  await lead.control.dismiss(leadId)
+  await settle(() => lead.service.role(leadId) === undefined)
+  await supervisor.activateSession(chat, { shown: true })
+  await (await finalMessage(chat, "final-1", "The login page works now."))()
+  await settle(() => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read"))
+  await supervisor.releaseSession(chat)
+
+  await lead.openLead("command")
+  await settle(() => lead.service.role(leadId) === "lead")
+  await Bun.sleep(20)
+  expect(lead.reports).toEqual([])
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.result.read").map((fact) => fact.payload)).toEqual([{ sessionId: chat, entryId: "final-1" }])
+})
+
+test("a chat that became active while the module was off joins when it turns on, and a deleted member leaves then", async () => {
+  const lead = harness()
+  await lead.openLead()
+  const deleted = await personChat(lead)
+  await lead.setEnabled(false)
+  const missed = await ctx.manager.createChat({ initialState: "active" })
+  expect(await supervisor.deleteSession(deleted)).toBe(true)
+  await Bun.sleep(20)
+  await lead.setEnabled(true)
+  await settle(async () => (await listed(lead)).includes(missed))
+  await Bun.sleep(20)
+  expect(await listed(lead)).toEqual([missed])
+  expect(lead.service.journal.state().members.has(deleted)).toBe(false)
+})
+
+test("a first run that stopped after its first join finishes at the next start", async () => {
+  const first = await ctx.manager.createChat({ initialState: "active" })
+  const second = await ctx.manager.createChat({ initialState: "active" })
+  const unread = await ctx.manager.createChat({ initialState: "inactive" })
+  await conversation.appendConversation(unread, [{ kind: "user", content: "Fix it", origin: "human" }, { kind: "assistant", content: [{ type: "text", text: "Fixed." }] }])
+  const writer = createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store })
+  await writer.append({ type: "lead.chat.started", payload: { sessionId: unread, sourceEntryIds: ["entry-1"] } })
+  // The earlier run joined one chat and stopped.
+  await writer.append({ type: "lead.chat.joined", payload: { sessionId: first, briefed: false } })
+
+  const lead = harness()
+  await settle(async () => (await listed(lead)).length === 3)
+  expect([...await listed(lead)].toSorted()).toEqual([first, second, unread].toSorted())
+  await settle(() => lead.service.journal.state().seeded)
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.list.seeded")).toHaveLength(1)
 })

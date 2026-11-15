@@ -120,6 +120,8 @@ export function kernelPorts(provided: Partial<KernelPorts> = {}): KernelPorts {
     launcher: refusingLauncher,
     openChat: refuse("openChat"),
     chatRow: refuse("chatRow"),
+    // A control part follows the paused closes from its construction; this kernel carries out none.
+    onChatClosed: () => () => {},
     ...provided,
   }
 }

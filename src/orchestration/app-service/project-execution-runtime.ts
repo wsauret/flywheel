@@ -327,7 +327,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   )
   scope.own("session-changes-publisher", createSessionChangesPublisher({ onStored: eventStore.onStored, publish: bus.publish, sessionPlacements: createSessionPlacements(projectionReader) }), (publisher) => { publisher.dispose() })
   const backgroundIndex = scope.own("background-index", composeBackgroundIndex({ reader: projectionReader, readSession: manager.read, onStored: eventStore.onStored, publish: bus.publish, snapshotPosition: bus.snapshotPosition, sessionStore, onKeptChange: keeper.onChange }), (index) => { index.dispose() })
-  const sessionEvents = scope.own("session-event-notices", createSessionEventNotices({ sessionStore }), (notices) => { notices.dispose() })
+  const sessionEvents = scope.own("session-event-notices", createSessionEventNotices({ sessionStore, isShown: (sessionId): boolean => runtimeSupervisor.isShown(sessionId) }), (notices) => { notices.dispose() })
   // One service per enabled module, once per process, before any producer
   // can raise: the notify seam reads the live selection, so a module turned
   // off hears nothing and no kernel producer names one (ARCH-RUNTIME-048, ARCH-STRUCTURE-034).
@@ -348,7 +348,8 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       if (!row) throw new Error(`Session not found after creation: ${sessionId}`)
       return { sessionId, row }
     },
-    chatRow: async (sessionId): ReturnType<ControlSessionPorts["chatRow"]> => await projections.projection.catalogRow(sessionId) ?? undefined,
+    // This runtime carries out every close itself, so its execution services hear each one, and a control part none.
+    chatRow: async (sessionId): ReturnType<ControlSessionPorts["chatRow"]> => await projections.projection.catalogRow(sessionId) ?? undefined, onChatClosed: () => () => {},
   }, options.notify !== undefined), (services) => services.dispose())
   moduleServices.reconcile()
   // The parent agent's controls of its own children (`process`). The

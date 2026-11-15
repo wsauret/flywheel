@@ -14,8 +14,9 @@ type LeadOpening = { readonly sessionId: string; readonly row: SessionCatalogRow
 
 /** The lead module's control part (ARCH-STRUCTURE-045): the designation of the lead chat and whether the person
  *  dismissed it. It answers in the control placement, so the first tab never waits for the executor. It appends
- *  only `lead.chat.designated` and `lead.chat.dismissed`; the execution service appends the other lead facts to the
- *  same aggregate and follows these two through the store's broadcast. While the module is off it opens no chat
+ *  `lead.chat.designated`, `lead.chat.dismissed`, and the `lead.chat.closed` of a close that it carried out while
+ *  execution was paused; the execution service appends the other lead facts to the same aggregate and follows these
+ *  through the store's broadcast. While the module is off it opens no chat
  *  and appends nothing (PI-LEAD-008). */
 export interface LeadControl extends ModuleServiceInstance {
   /** Answers the lead chat, and creates it when none exists. `launch` answers null while the lead is dismissed;
@@ -68,6 +69,18 @@ export function createLeadControl(services: ControlModuleServices): LeadControl 
     own(async () => { if ((await journal.observe(events)).length > 0) publishView() }, (error) => { log.warn("the lead journal could not fold a stored batch", { error }) })
   })
   const unsubscribeSelection = services.onSelectionChanged(publishView)
+  /** A person's close that the control placement carried out while execution was paused leaves the list, as the
+   *  execution service records a close (PI-LEAD-004). A tab close while the lead shows does not: the lead holds every
+   *  listed chat, so that tab close returns the chat to the list. */
+  const unsubscribeClosed = services.onChatClosed(({ sessionId, tabClose }) => {
+    if (disposed || !services.enabled()) return
+    own(async () => {
+      await journal.reconcile()
+      const { designated, dismissed } = journal.state()
+      if (sessionId === designated || (tabClose && designated !== null && !dismissed)) return
+      if (await journal.append({ type: "lead.chat.closed", payload: { sessionId } })) log.info("chat left the lead's list while execution was paused", { sessionId, tabClose })
+    }, (error) => { log.warn("the lead could not record a closed chat", { sessionId, error }) })
+  })
 
   const openOnce = async (reason: "launch" | "command"): Promise<LeadOpening | null> => {
     await journal.reconcile()
@@ -114,6 +127,7 @@ export function createLeadControl(services: ControlModuleServices): LeadControl 
     async dispose() {
       disposed = true
       unsubscribeStored()
+      unsubscribeClosed()
       await unsubscribeSelection()
       await Promise.all([background, opens])
     },

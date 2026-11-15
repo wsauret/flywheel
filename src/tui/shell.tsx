@@ -312,7 +312,9 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     roleView: signals.roleView, ensureRoleViews: signals.ensureRoleViews,
     viewerLayer: overlay.viewer, dialog: modal, viewer: viewerProps, openChild: childPlaces.openChild,
     sessionTitles, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
-    question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions, showSession: sessionShows.show })
+    question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions, showSession: sessionShows.show,
+    // The tab closer takes the module clients' close guards, so it is read when a module closes a chat.
+    closeChat: (sessionId) => closeChat(sessionId) })
   const commandDefinitions = createMemo(() => buildCommandDefinitions(keymap.chordFor, signals.builtInCommands()))
   const commandCatalog = createMemo(() => commandSpecs(commandDefinitions()))
   function dispatchPaletteCommand(text: string): void {

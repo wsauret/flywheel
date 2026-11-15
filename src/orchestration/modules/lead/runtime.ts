@@ -9,6 +9,8 @@ import { leadService, type LeadRole } from "./service.js"
 /** The lead's per-runner runtime: what the runner's chat is to the lead, and the lead's two tools for that chat. */
 export interface LeadRuntime {
   role(): LeadRole | undefined
+  /** The role once the service folded what it heard before this call (`LeadService.settledRole`). */
+  settledRole(): Promise<LeadRole | undefined>
   readonly chatProgress: RuntimeTool
   routeRequest(sessions: SessionMessaging): RuntimeTool
 }
@@ -22,6 +24,7 @@ export function createLeadRuntime(services: Pick<ModuleRuntimeServices, "session
   if (!service || sessionId === undefined) return undefined
   return {
     role: () => service.role(sessionId),
+    settledRole: () => service.settledRole(sessionId),
     chatProgress: createChatProgressTool((chat) => service.progress(chat)),
     routeRequest: (sessions) => createRouteRequestTool((input) => service.route(input), sessions),
   }

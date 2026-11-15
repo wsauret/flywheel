@@ -13,7 +13,7 @@ const log = Log.create({ service: "session-event-notices" })
  *  keeps the latest kind of each watched chat while the watcher has a turn in progress, and hands the watcher's runner
  *  one silent notice when it has none. Pending events live in memory only: a report for a watcher with no attached
  *  runner, and every pending event of a watcher whose runner ended, is dropped, so a watcher that no client shows
- *  learns nothing. */
+ *  learns nothing. A chat that a client shows reports to no watcher, because the person sees its event there. */
 export interface SessionEventNotices {
   /** `watcherSessionId` hears the events of `watchedSessionId` from now on: every kind, or only the `kinds` named.
    *  Repeating it replaces the kinds. */
@@ -57,6 +57,8 @@ type WatchedEntry = Pick<SessionEntry, "kind" | "runnerState" | "streamPhase" | 
 
 export function createSessionEventNotices(input: {
   readonly sessionStore: { get(sessionId: string): WatchedEntry | undefined; readonly onChange: SessionStore["onChange"] }
+  /** Whether a client shows the chat now (`RuntimeSupervisor.isShown`). */
+  readonly isShown: (sessionId: string) => boolean
 }): SessionEventNotices {
   const { sessionStore } = input
   // Each watched chat's watchers, with the kinds that each hears; undefined hears every kind.
@@ -136,7 +138,7 @@ export function createSessionEventNotices(input: {
     },
     report(sessionId, kind) {
       const watching = watchersOf.get(sessionId)
-      if (!watching) return
+      if (!watching || input.isShown(sessionId)) return
       const title = chatEntry(sessionId)?.description ?? ""
       for (const [watcherId, kinds] of watching) {
         if (kinds && !kinds.has(kind)) continue

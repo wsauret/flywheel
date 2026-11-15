@@ -12,7 +12,7 @@ export const CHAT_PROGRESS_TOOL_NAME = "chat_progress"
 interface ChatProgressDeps {
   readonly sessionManager: Pick<SessionManager, "read">
   readonly sessionStore: Pick<SessionStore, "get">
-  /** The rows owner's reading of a started chat that exists. */
+  /** The rows owner's reading of a listed chat that exists. */
   readonly chat: (sessionId: string) => Promise<LeadChatReading | undefined>
 }
 
@@ -30,7 +30,7 @@ interface PendingQuestion {
   readonly questions: readonly QuestionEntry[]
 }
 
-/** What `chat_progress` answers: a refusal, one line for each started chat, or one started chat in its own words. */
+/** What `chat_progress` answers: a refusal, one line for each listed chat, or one listed chat in its own words. */
 export type ChatProgress =
   | { readonly kind: "refused"; readonly reason: string }
   | { readonly kind: "roster"; readonly chats: readonly (ChatState & { readonly question: boolean })[] }
@@ -78,7 +78,7 @@ async function chatState(deps: ChatProgressDeps, sessionId: string): Promise<{ r
   }
 }
 
-/** One line of state for each started chat that still exists, read from the lead's rows. */
+/** One line of state for each listed chat that still exists, read from the lead's rows. */
 export async function readChatRoster(deps: ChatProgressDeps, sessionIds: readonly string[]): Promise<ChatProgress> {
   const chats = await Promise.all(sessionIds.map(async (sessionId) => {
     const state = await chatState(deps, sessionId)
@@ -87,7 +87,7 @@ export async function readChatRoster(deps: ChatProgressDeps, sessionIds: readonl
   return { kind: "roster", chats: chats.flat() }
 }
 
-/** One started chat in its own words, read from the lead's rows: the person's newest message, the pending question
+/** One listed chat in its own words, read from the lead's rows: the person's newest message, the pending question
  *  with its context, and the final message of its newest completed turn. */
 export async function readChatDetail(deps: ChatProgressDeps, sessionId: string): Promise<ChatProgress> {
   const state = await chatState(deps, sessionId)
@@ -119,8 +119,8 @@ const headline = (chat: ChatState): string => `Chat ${chat.sessionId} "${chat.ti
 /** The model-visible text of one answer. The chat's own words follow their labels unchanged. */
 function progressText(progress: Exclude<ChatProgress, { kind: "refused" }>): string {
   if (progress.kind === "roster") {
-    if (progress.chats.length === 0) return "You have started no chats."
-    return ["The chats that you started:", ...progress.chats.map((chat) => `- ${headline(chat)}${chat.question ? " A question waits for the person." : ""}`)].join("\n")
+    if (progress.chats.length === 0) return "Your list holds no chats."
+    return ["The chats in your list:", ...progress.chats.map((chat) => `- ${headline(chat)}${chat.question ? " A question waits for the person." : ""}`)].join("\n")
   }
   return [
     headline(progress.chat),
@@ -135,17 +135,17 @@ function progressText(progress: Exclude<ChatProgress, { kind: "refused" }>): str
   ].join("\n")
 }
 
-/** The read-only tool through which the lead reads the progress of the chats that it started (PI-LEAD-001,
+/** The read-only tool through which the lead reads the progress of the chats in its list (PI-LEAD-001,
  *  PI-LEAD-006). `progress` answers for the calling lead. */
 export function createChatProgressTool(progress: (chat: string | undefined) => Promise<ChatProgress>): RuntimeTool {
   return {
     name: CHAT_PROGRESS_TOOL_NAME,
     action: "ui_meta",
-    description: "Read the progress of the chats that you started. Without `chat`, it lists each of them with its id, its title, its live activity, whether a question waits for the person, and how its last turn ended. With `chat`, it answers that chat in its own words: the person's newest message there, the chat's pending question with its context and options word for word, and the final message of its last turn. It reads only chats that you started.",
+    description: "Read the progress of the chats in your list: every chat of this project that is in use, whoever started it. Without `chat`, it lists each of them with its id, its title, its live activity, whether a question waits for the person, and how its last turn ended. With `chat`, it answers that chat in its own words: the person's newest message there, the chat's pending question with its context and options word for word, and the final message of its last turn. It reads only chats in your list.",
     inputSchema: {
       type: "object",
       properties: {
-        chat: { type: "string", description: "The id of one chat that you started. Omit it to list every chat that you started." },
+        chat: { type: "string", description: "The id of one chat in your list. Omit it to list every chat in your list." },
       },
       additionalProperties: false,
     },

@@ -247,6 +247,8 @@ describe("the registered Resume route", () => {
         executionEnvironment: () => ({ authAdmission: admission, recall: async () => ({ hits: [] }), attachProjection: childSessionProjectionAttachment(harness.sessionStore), deliverNotification: async () => false,
       sendSessionMessage: async () => { throw new Error("A subagent posts no session message") },
       createOpenHold: () => { throw new Error("A subagent holds no chat open") },
+      onChatClosed: () => { throw new Error("A subagent follows no close") },
+      sessionShown: () => { throw new Error("A subagent reads no shown chat") },
           openChatRunner: async () => { attached += 1; return parentHost.runner },
           personEntries: async () => { throw new Error("A subagent reads no person entries") },
           forwardPersonEntries: async () => { throw new Error("A subagent forwards no person entries") },

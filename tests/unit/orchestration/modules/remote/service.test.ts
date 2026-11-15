@@ -73,6 +73,7 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
     onStored: () => () => {},
     openChat: async () => { throw new Error("not used") },
     chatRow: async () => { throw new Error("not used") },
+    onChatClosed: () => () => {},
     accountModuleFaults,
     snapshotPosition: () => 0,
     publish: (input) => ({ ...input, position: 1, prevPosition: 0 }), notify: async () => {}, onFrontendEvent: (listener) => { frontendListeners.add(listener); return () => { frontendListeners.delete(listener) } },

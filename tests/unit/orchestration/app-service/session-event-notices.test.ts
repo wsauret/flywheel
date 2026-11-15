@@ -45,7 +45,7 @@ describe("session event notices", () => {
     const watcher = watcherRunner()
     set("w", { runner: watcher.runner, runnerState: "streaming" })
     set("c", { description: "Fix the parser" })
-    const notices = createSessionEventNotices({ sessionStore: store })
+    const notices = createSessionEventNotices({ sessionStore: store, isShown: () => false })
     notices.watch("w", "c")
     notices.watch("w", "d")
 
@@ -69,12 +69,18 @@ describe("session event notices", () => {
     notices.dispose()
   })
 
-  it("tells a watcher that names kinds only of those kinds", async () => {
+  it("tells a watcher that names kinds only of those kinds, and only of a chat that no client shows", async () => {
     const { store, set } = fakeStore()
     const watcher = watcherRunner()
     set("w", { runner: watcher.runner, runnerState: "idle" })
-    const notices = createSessionEventNotices({ sessionStore: store })
+    const shown = new Set(["c"])
+    const notices = createSessionEventNotices({ sessionStore: store, isShown: (sessionId) => shown.has(sessionId) })
     notices.watch("w", "c", ["asked", "failed", "cut"])
+    // The person sees the event in the chat that a client shows.
+    notices.report("c", "failed")
+    await settled()
+    expect(watcher.notices).toEqual([])
+    shown.clear()
     notices.report("c", "turn_ended")
     await settled()
     expect(watcher.notices).toEqual([])
@@ -88,7 +94,7 @@ describe("session event notices", () => {
     const { store, set } = fakeStore()
     const watcher = watcherRunner()
     set("w", { runner: watcher.runner, runnerState: "awaiting_user" })
-    const notices = createSessionEventNotices({ sessionStore: store })
+    const notices = createSessionEventNotices({ sessionStore: store, isShown: () => false })
     notices.watch("w", "c")
     notices.report("c", "failed")
     set("w", { runnerState: "idle", waitingOnBackgroundWork: true })
@@ -105,7 +111,7 @@ describe("session event notices", () => {
     const { store, set } = fakeStore()
     const watcher = watcherRunner("held", "delivered")
     set("w", { runner: watcher.runner })
-    const notices = createSessionEventNotices({ sessionStore: store })
+    const notices = createSessionEventNotices({ sessionStore: store, isShown: () => false })
     notices.watch("w", "c")
     notices.watch("w", "d")
 
@@ -139,7 +145,7 @@ describe("session event notices", () => {
     const { store, set } = fakeStore()
     const watcher = watcherRunner("held", "delivered")
     set("w", { runner: watcher.runner })
-    const notices = createSessionEventNotices({ sessionStore: store })
+    const notices = createSessionEventNotices({ sessionStore: store, isShown: () => false })
     notices.watch("w", "c")
     notices.report("c", "asked")
     await settled()
@@ -156,7 +162,7 @@ describe("session event notices", () => {
   it("reads only the store entry of a changed watcher, however many watchers wait", () => {
     const { store, set } = fakeStore()
     let reads = 0
-    const notices = createSessionEventNotices({ sessionStore: { ...store, get: (sessionId) => { reads += 1; return store.get(sessionId) } } })
+    const notices = createSessionEventNotices({ sessionStore: { ...store, get: (sessionId) => { reads += 1; return store.get(sessionId) } }, isShown: () => false })
     for (let index = 0; index < 50; index++) {
       set(`w${index}`, { runner: watcherRunner().runner, runnerState: "streaming" })
       notices.watch(`w${index}`, "c")
@@ -174,7 +180,7 @@ describe("session event notices", () => {
   it("drops reports for a watcher with no attached runner, and a runner that attaches later gets nothing", async () => {
     const { store, set } = fakeStore()
     set("w", {})
-    const notices = createSessionEventNotices({ sessionStore: store })
+    const notices = createSessionEventNotices({ sessionStore: store, isShown: () => false })
     notices.watch("w", "c")
     notices.report("c", "asked")
     notices.report("c", "turn_ended")
@@ -190,7 +196,7 @@ describe("session event notices", () => {
     const { store, set } = fakeStore()
     const watcher = watcherRunner()
     set("w", { runner: watcher.runner })
-    const notices = createSessionEventNotices({ sessionStore: store })
+    const notices = createSessionEventNotices({ sessionStore: store, isShown: () => false })
     notices.watch("w", "c")
     notices.report("x", "asked")
     notices.unwatch("w", "c")

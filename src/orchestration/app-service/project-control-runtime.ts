@@ -336,6 +336,8 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
     endStage = timeline.begin("modules")
     options.onStartupStep?.({ step: "project-modules" })
     const transports = scope.own("transports", createModuleTransports(), (owner) => owner.dispose())
+    // The control parts that follow a person's close that the facade below carries out while execution is paused.
+    const pausedCloseListeners = new Set<Parameters<ControlSessionPorts["onChatClosed"]>[0]>()
     const services = scope.own("modules", composeAccountProjectModuleServices(installedModules(), enabled, {
       directories, launcher: options.launcher.scope, projectRegistry: options.registry,
       readFaultReport: (source) => source === "service" ? options.readServiceFaultReport?.() : generations.failedReport(),
@@ -349,6 +351,10 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       // a request, which reaches it through that facade, so the facade exists by then.
       openChat: (chat): ReturnType<ControlSessionPorts["openChat"]> => client.openChat(chat),
       chatRow: (sessionId): ReturnType<ControlSessionPorts["chatRow"]> => client.chatRow(sessionId),
+      onChatClosed: (listener) => {
+        pausedCloseListeners.add(listener)
+        return () => { pausedCloseListeners.delete(listener) }
+      },
     }), async (owner) => {
       await Promise.all(writes)
       await owner.dispose()
@@ -439,6 +445,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
         await generations.current.recovery?.attempt
       },
       executionPaused: () => generations.current.recovery !== undefined,
+      onPausedChatClosed: (close) => { for (const listener of pausedCloseListeners) listener(close) },
       restartScheduled: () => generations.restartScheduled,
       executorState: () => generations.state,
       onExecutionReset(listener) {

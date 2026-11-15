@@ -56,7 +56,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     } }),
     sessionViewLoader: { load: (id) => loadSessionView(id, storeReader, storeReader) },
   })
-  const sessionEvents = createSessionEventNotices({ sessionStore: ctx.sessionStore })
+  const sessionEvents = createSessionEventNotices({ sessionStore: ctx.sessionStore, isShown: (sessionId) => supervisor.isShown(sessionId) })
   // The runtime's own environment, so a message between sessions takes the production delivery.
   const runtime = moduleExecutionEnvironment({
     authAdmission: testSessionAuthAdmission(),
@@ -68,6 +68,8 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   const selectionListeners = new Set<() => void | Promise<void>>()
   const onSelectionChanged = (listener: () => void | Promise<void>) => { selectionListeners.add(listener); return () => { selectionListeners.delete(listener) } }
   const publish = (patch: RuntimeUiPatchInput) => { patches.push(patch); return undefined }
+  // The closes that the control placement carries out itself while execution is paused.
+  const pausedCloseListeners = new Set<Parameters<ControlSessionPorts["onChatClosed"]>[0]>()
   const chatRow = async (sessionId: string) => (await ctx.manager.read(sessionId))?.kind === "chat" ? catalogRow(sessionId, sessionId) : undefined
   const service = createLeadService({
     projectionReader,
@@ -86,6 +88,8 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       forwardPersonEntries: (input) => { trace.push(`forward ${input.targetSessionId}`); return supervisor.forwardPersonEntries(input) },
       sessionRuntime: (sessionId) => supervisor.runtimeState(sessionId),
       createOpenHold: () => supervisor.createOpenHold(),
+      onChatClosed: (listener) => supervisor.onChatClosed(listener),
+      sessionShown: (sessionId) => supervisor.isShown(sessionId),
       sendSessionMessage: async (input) => {
         trace.push(`report ${input.fromSessionId} ${input.call}`)
         const outcome = await runtime.sendSessionMessage(input)
@@ -108,6 +112,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       return { sessionId, row: catalogRow(sessionId, name) }
     }),
     chatRow,
+    onChatClosed: (listener) => { pausedCloseListeners.add(listener); return () => { pausedCloseListeners.delete(listener) } },
   })
   service.start?.()
   control.start?.()
@@ -115,6 +120,12 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   const openLead = async (reason: "launch" | "command" = "launch"): Promise<string | null> => (await control.open(reason))?.sessionId ?? null
   return {
     service, control, openLead, supervisor, sessionEvents, notices, inputs, patches, trace, reports,
+    /** A person's close that the control placement carries out while execution is paused: the chat turns inactive
+     *  and the control placement tells its listeners. */
+    async pausedClose(sessionId: string, tabClose: boolean) {
+      await ctx.manager.updateLifecycleState(sessionId, "inactive")
+      for (const listener of pausedCloseListeners) listener({ sessionId, tabClose })
+    },
     async setEnabled(next: boolean) {
       enabled = next
       for (const listener of selectionListeners) await listener()

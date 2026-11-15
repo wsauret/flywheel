@@ -89,7 +89,8 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
         return viewerSurface("chat", { sessionId, transcript: { ...transcript, visibleRange: () => estimated } })
       },
     }),
-  } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & Pick<TuiModuleClientHost, "sessionTitles">
+    closeChat: async (sessionId: string) => { sent.push(`session.close ${sessionId}`) },
+  } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & Pick<TuiModuleClientHost, "sessionTitles" | "closeChat">
   return { host, overlay, setQuestions, sent, shows, holdSends }
 }
 

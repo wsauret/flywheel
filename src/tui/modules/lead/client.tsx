@@ -24,6 +24,8 @@ export interface LeadScreen {
   readonly openChat: (sessionId: string, landing?: string) => void
   /** Opens a chat as an ordinary tab in front. */
   readonly openTab: (sessionId: string) => void
+  /** Closes a chat as the Sessions list's close chat does, with no question first; its row leaves the list. */
+  readonly closeChat: (sessionId: string) => void
 }
 
 const LeadScreenContext = createContext<LeadScreen>()
@@ -38,7 +40,7 @@ export function useLeadScreen(): LeadScreen {
  *  columns. */
 const REPORT_TITLE_COLUMNS = 40
 
-type LeadClientHost = LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "sessionTitles"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
+type LeadClientHost = LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "sessionTitles" | "closeChat"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
 
 /** The terminal title of the lead's tab (PI-LEAD-009): Flywheel and the project's directory name, such as
  *  "Flywheel | Data", because the lead chat's own title names no project. */
@@ -61,12 +63,16 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
   const rows = createMemo(() => leadRowOrder(host.domains.leadChats.view()?.rows ?? []))
   const order = createMemo(() => rows().map((row) => row.sessionId))
   const rowOf = (sessionId: string): LeadRow | undefined => rows().find((candidate) => candidate.sessionId === sessionId)
+  const closeChat = (sessionId: string): void => {
+    void host.closeChat(sessionId).catch((cause: unknown) => { report(`Close failed for ${title(sessionId) || sessionId}: ${errorMessage(cause)}`) })
+  }
   const screen: LeadScreen = {
     leadSessionId: current,
     rows,
     title,
-    openChat: (sessionId, landing) => { openLeadChatViewer(host, { sessionId, order, row: rowOf, title, ...(landing === undefined ? {} : { landing }) }) },
+    openChat: (sessionId, landing) => { openLeadChatViewer(host, { sessionId, order, row: rowOf, title, closeChat, ...(landing === undefined ? {} : { landing }) }) },
     openTab: (sessionId) => { openLeadChatTab(host, sessionId, rowOf(sessionId)) },
+    closeChat,
   }
 
   /** Answers true once the person confirms, after it starts the dismissal and

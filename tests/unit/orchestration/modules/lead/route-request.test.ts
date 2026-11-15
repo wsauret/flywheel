@@ -70,7 +70,10 @@ async function userEntries(sessionId: string) {
   return (await messages(sessionId)).filter((entry) => entry.message.kind === "user")
 }
 
-const leadFacts = () => ctx.store.read({ aggregateId: "lead" }).map((fact) => ({ type: fact.type, payload: fact.payload }))
+/** The lead facts but the list's joins, which `joins` reads. */
+/** The lead facts but the list's own bookkeeping: its joins and the record of its first run. */
+const leadFacts = () => ctx.store.read({ aggregateId: "lead" }).filter((fact) => fact.type !== "lead.chat.joined" && fact.type !== "lead.list.seeded").map((fact) => ({ type: fact.type, payload: fact.payload }))
+const joins = () => ctx.store.read({ aggregateId: "lead" }).flatMap((fact) => fact.type === "lead.chat.joined" ? [fact.payload] : [])
 /** The chat that the lead started first. */
 function startedChat(): string {
   const started = ctx.store.read({ aggregateId: "lead" }).find((fact) => fact.type === "lead.chat.started")?.payload
@@ -97,6 +100,8 @@ test("a new route starts a chat whose first entry is the person's message with i
     { type: "lead.request.forwarded", payload: { leadSessionId: lead.leadSessionId, targetSessionId: started, newChat: true, sourceEntryIds: [source.id] } },
   ])
   expect(lead.trace).toEqual([`watch ${started}`, `forward ${started}`])
+  // The started chat joined the list before the forward, with the lead's rules in its prompt.
+  expect(joins()).toContainEqual({ sessionId: started, briefed: true })
   await settled()
   // The started fact precedes the chat's first entry in the store.
   const order = ctx.store.read().flatMap((fact) => fact.type === "lead.chat.started" ? ["started"] : JSON.stringify(fact.payload).includes(`person:forward:${source.id}`) ? ["entry"] : [])
@@ -154,14 +159,27 @@ async function commitHeldInput(sessionId: string): Promise<number> {
   return cells.length
 }
 
-test("an existing route to a chat that the lead did not start is refused and forwards nothing", async () => {
+test("an existing route reaches a listed chat that the lead did not start, and a chat that the person closed is refused and gets nothing", async () => {
   const lead = await routingLead()
-  const other = await lead.supervisor.openSessionRuntime()
-  const result = await lead.route([{ kind: "user", content: "Continue there", origin: "human" }], { kind: "existing", chat: other })
-  expect(result.outcome).toBe("error")
-  expect(textOf(result)).toContain(`the lead did not start chat ${other}`)
-  expect(await userEntries(other)).toEqual([])
-  expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated"])
+  const listed = await lead.supervisor.openSessionRuntime()
+  const closed = await lead.supervisor.openSessionRuntime()
+  // A chat with no entry is discarded at its close, so each holds the person's earlier work.
+  for (const chat of [listed, closed]) await conversation.appendConversation(chat, [{ kind: "user", content: "Earlier work", origin: "human" }])
+  await settled()
+  expect(joins().map((join) => join.sessionId)).toEqual(expect.arrayContaining([listed, closed]))
+  await lead.supervisor.closeChat(closed)
+  await settled()
+
+  const routed = await lead.route([{ kind: "user", content: "Continue here", origin: "human" }], { kind: "existing", chat: listed })
+  expect(routed.outcome).toBe("ok")
+  await settled()
+  expect((await userEntries(listed)).map((entry) => entry.message.kind === "user" ? entry.message.content : undefined)).toEqual(["Earlier work", "Continue here"])
+
+  const refused = await lead.route([{ kind: "user", content: "Continue there", origin: "human" }], { kind: "existing", chat: closed })
+  expect(refused.outcome).toBe("error")
+  expect(textOf(refused)).toContain(`chat ${closed} is not in your list`)
+  expect((await userEntries(closed)).map((entry) => entry.message.kind === "user" ? entry.message.content : undefined)).toEqual(["Earlier work"])
+  expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated", "lead.chat.closed", "lead.request.forwarded"])
 })
 
 test("in a turn that a notice started, a route is refused, also with earlier turns", async () => {

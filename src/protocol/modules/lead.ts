@@ -6,7 +6,7 @@ import { SessionCatalogRowSchema } from "../session-catalog-protocol-schemas.js"
 
 /** The workspace-scoped `lead` contract: the project's one lead chat and
  *  whether the person dismissed it, which the control placement serves, and
- *  the rows of the chats that it started, which the execution placement
+ *  the rows of the chats in its list, which the execution placement
  *  serves. A module that is off answers the empty views (ARCH-STRUCTURE-026). */
 
 export const LEAD_COMMAND = "lead"
@@ -15,19 +15,19 @@ export const LEAD_COMMAND_NAME = "Lead"
 /** The client surface that the lead command opens: it asks for the lead chat and shows it. */
 export const LEAD_SURFACE = "lead"
 
-export type LeadRowState = "question" | "failed" | "cut" | "working" | "result"
+export type LeadRowState = "question" | "failed" | "cut" | "working" | "result" | "done"
 
 /** The states that the person sees once a chat with that state is opened. */
 export type LeadSeenState = "failed" | "cut"
 
-/** One started chat that needs the person, works, or holds an unread result. The client joins the title from the
- *  session catalog, so the title has one source. */
+/** One chat of the lead's list: it needs the person, works, holds an unread result, or is done. The client joins the
+ *  title from the session catalog, so the title has one source. */
 export interface LeadRow {
   readonly sessionId: string
   readonly state: LeadRowState
   /** One line that the runtime derives and no model writes, at most 240 characters: for a working chat its newest
    *  tool call as the transcript sums it up, or the start of its newest text; the first line of a question or of a
-   *  result; `failed` and `interrupted` for the other states. */
+   *  result, also of the read result of a done chat; `failed` and `interrupted` for the other states. */
   readonly status: string
   /** Epoch milliseconds of the newest update or state change. The client counts the age from it. */
   readonly since: number
@@ -46,7 +46,7 @@ export interface LeadView {
   readonly dismissed: boolean
 }
 
-/** The rows of the chats that the lead started. */
+/** The rows of the chats in the lead's list. */
 export interface LeadChatsView {
   readonly rows: readonly LeadRow[]
 }
@@ -69,14 +69,14 @@ type LeadDismissResult =
 
 /** The designation of a module that is off, and of a project with no lead yet. */
 export const EMPTY_LEAD_VIEW: LeadView = { leadSessionId: null, dismissed: false }
-/** The rows of a module that is off, and of a lead that started no chat. */
+/** The rows of a module that is off, and of a list that holds no chat. */
 export const EMPTY_LEAD_CHATS: LeadChatsView = { rows: [] }
 
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 
 const LeadRowSchema: Schema.Codec<LeadRow> = Schema.Struct({
   sessionId: Schema.NonEmptyString,
-  state: Schema.Literals(["question", "failed", "cut", "working", "result"]),
+  state: Schema.Literals(["question", "failed", "cut", "working", "result", "done"]),
   status: Schema.String,
   since: NonNegativeInt,
   waitingSince: Schema.optionalKey(NonNegativeInt),
@@ -156,7 +156,7 @@ const leadDismiss = defineProtocolMutation({
   policy: "lossless",
 })
 
-/** The person read a started chat's result up to `entryId`, so its row no longer holds that result. */
+/** The person read a listed chat's result up to `entryId`, so its row no longer holds that result. */
 const leadResultMarkRead = defineProtocolMutation({
   type: "lead.result.mark_read",
   fields: { sessionId: Schema.NonEmptyString, entryId: Schema.NonEmptyString },
@@ -164,8 +164,8 @@ const leadResultMarkRead = defineProtocolMutation({
   policy: "lossless",
 })
 
-/** The person opened a started chat whose row is failed or cut at `entryId`, so the row leaves the list until the
- *  chat changes state again. */
+/** The person opened a listed chat whose row is failed or cut at `entryId`, so the row shows that state no more until
+ *  the chat changes state again. */
 const leadChatMarkSeen = defineProtocolMutation({
   type: "lead.chat.mark_seen",
   fields: { sessionId: Schema.NonEmptyString, state: Schema.Literals(["failed", "cut"]), entryId: Schema.NonEmptyString },
@@ -174,10 +174,10 @@ const leadChatMarkSeen = defineProtocolMutation({
 })
 
 const NEEDS_PERSON: ReadonlySet<LeadRowState> = new Set(["question", "failed", "cut"])
-const GROUP = { question: 0, failed: 0, cut: 0, working: 1, result: 2 } as const satisfies { readonly [state in LeadRowState]: number }
+const GROUP = { question: 0, failed: 0, cut: 0, working: 1, result: 2, done: 3 } as const satisfies { readonly [state in LeadRowState]: number }
 
 /** The rows in list order: the chats that need the person first, the longest wait first, then the working chats, then
- *  the unread results, each of those two groups newest first. */
+ *  the unread results, then the done chats, each of those three groups newest first. */
 export function leadRowOrder(rows: readonly LeadRow[]): readonly LeadRow[] {
   return rows.toSorted((left, right) => GROUP[left.state] - GROUP[right.state]
     || (NEEDS_PERSON.has(left.state) ? (left.waitingSince ?? left.since) - (right.waitingSince ?? right.since) : right.since - left.since))
@@ -186,7 +186,7 @@ export function leadRowOrder(rows: readonly LeadRow[]): readonly LeadRow[] {
 const REPORT_CALL_PREFIX = "lead-report:"
 const REPORT_LINK_PREFIX = "flywheel://lead/report/"
 
-/** The sending id of the message by which the runtime posts a started chat's report, its final message `entryId`, to
+/** The sending id of the message by which the runtime posts a listed chat's report, its final message `entryId`, to
  *  the lead (PI-LEAD-006). The lead's clients know a report by it. */
 export function leadReportCall(entryId: string): string {
   return `${REPORT_CALL_PREFIX}${entryId}`
@@ -215,7 +215,7 @@ export function parseLeadReportLink(uri: string): { readonly sessionId: string; 
   return sessionId && entryId && rest.length === 0 ? { sessionId: decodeURIComponent(sessionId), entryId: decodeURIComponent(entryId) } : undefined
 }
 
-/** The number of started chats that need the person: a question, a failure, or a cut. */
+/** The number of listed chats that need the person: a question, a failure, or a cut. */
 export function leadNeedsPerson(view: LeadChatsView): number {
   return view.rows.filter((row) => NEEDS_PERSON.has(row.state)).length
 }

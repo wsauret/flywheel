@@ -22,7 +22,7 @@ const STATUS_CHARS = 240
 const QUESTION_FACT_TYPES: ReadonlySet<string> = new Set(AGENT_INPUT_FACT_TYPES)
 const NEEDS_PERSON: ReadonlySet<LeadRowState> = new Set(["question", "failed", "cut"])
 
-/** One started chat as the lead reads it: its row, if any, and what the row derives from. */
+/** One listed chat as the lead reads it: its row and what the row derives from. */
 export interface LeadChatReading {
   readonly row: LeadRow | undefined
   /** Whether the chat works: the live store shows an active turn or a wait on background work, or a runner starts for its open turn. */
@@ -58,12 +58,14 @@ interface LeadRowsDeps {
   readonly now?: () => number
 }
 
-/** The rows of the chats that the lead started (PI-LEAD-004): one held fold of each chat's conversation, its pending
- *  question, and its live activity. Each change touches only the chats that it names, and a row publishes only when it
- *  differs. */
+/** The rows of the chats in the lead's list (PI-LEAD-004): one held fold of each chat's conversation, its pending
+ *  question, and its live activity. Every followed chat that exists has a row. Each change touches only the chats
+ *  that it names, and a row publishes only when it differs. */
 export interface LeadRows {
-  /** Starts following these started chats. A chat that is not a chat, or no longer exists, gets no row. */
+  /** Starts following these chats. A chat that is not a chat, or no longer exists, gets no row. */
   add(sessionIds: Iterable<string>): Promise<void>
+  /** Stops following a chat and removes its row. */
+  remove(sessionId: string): void
   /** Advances the chats that a committed batch of the store's broadcast names. */
   observe(events: readonly StoredFact[]): Promise<void>
   /** Reads a chat's row again, as after a change of its read mark. */
@@ -73,7 +75,7 @@ export interface LeadRows {
    *  as the fold holds them now. A caller that acts on the result later keeps this pair, because a later batch can
    *  bring a newer final message. */
   result(sessionId: string): { readonly entryId: string; readonly text: string } | undefined
-  /** A started chat that exists, once its fold is built; undefined for any other chat. */
+  /** A followed chat that exists, once its fold is built; undefined for any other chat. */
   chat(sessionId: string): Promise<LeadChatReading | undefined>
   /** Releases every fold and listener, and settles the builds that run. Publishes nothing. */
   dispose(): Promise<void>
@@ -126,23 +128,26 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     return open && (entry.runner === null || runtime?.kind === "starting") ? "working" : undefined
   }
 
-  /** The state of a chat by the order of section 2.5 of the lead design. A failure or a cut that the person saw at
-   *  the same entry has no row. */
-  function stateOf(member: Member, fold: RowFold, live: "failed" | "working" | undefined): RowState | undefined {
+  /** The state of a chat by the order of section 2.5 of the lead design. A chat at rest with nothing for the person,
+   *  such as a read result or a failure or a cut that the person saw at the same entry, is done since its newest
+   *  output. */
+  function stateOf(member: Member, fold: RowFold, live: "failed" | "working" | undefined): RowState {
     if (member.question) return { state: "question", at: member.question.openedAt }
     if (live === "working") return { state: "working", at: undefined }
     const end = fold.turnEnd
     const newest = fold.tail.at(-1)?.id
-    const ended = (state: LeadSeenState, at: number | undefined, entryId: string | undefined): RowState | undefined => {
+    const latest = Math.max(fold.latest?.at ?? 0, fold.final?.at ?? 0, end?.at ?? 0)
+    const done: RowState = { state: "done", at: latest > 0 ? latest : undefined }
+    const ended = (state: LeadSeenState, at: number | undefined, entryId: string | undefined): RowState => {
       const seen = deps.seenMark(member.sessionId)
-      if (seen && seen.state === state && seen.entryId === entryId) return undefined
+      if (seen && seen.state === state && seen.entryId === entryId) return done
       return { state, at, ...(entryId === undefined ? {} : { ended: entryId }) }
     }
     if (live === "failed") return ended("failed", undefined, newest)
     if (end?.reading.end.reason === "paused" && isVisibleTurnEnd(end.reading.end)) return ended("cut", end.at, end.recordId ?? newest)
     if (end?.reading.end.reason === "crash") return ended("failed", end.at, end.recordId ?? newest)
     if (fold.final && fold.final.entryId !== deps.readMark(member.sessionId)) return { state: "result", at: fold.final.at }
-    return undefined
+    return done
   }
 
   /** The row's one line, which the runtime derives from the chat's own output and no model writes. */
@@ -151,7 +156,8 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       case "failed": return "failed"
       case "cut": return "interrupted"
       case "question": return firstLine(member.question?.request[0]?.question ?? "")
-      case "result": return firstLine(fold.final?.text ?? "")
+      case "result":
+      case "done": return firstLine(fold.final?.text ?? "")
       case "working": {
         const latest = fold.latest
         if (latest?.kind === "text") return latest.text
@@ -179,14 +185,6 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
   function compute(member: Member): void {
     const fold = member.fold.getState()
     const next = stateOf(member, fold, liveState(member.sessionId, fold))
-    if (next === undefined) {
-      member.entered = undefined
-      if (member.row) {
-        member.row = undefined
-        deps.publish({ kind: "removed", sessionId: member.sessionId })
-      }
-      return
-    }
     if (member.entered?.state !== next.state) member.entered = { state: next.state, at: next.at ?? now() }
     const row = rowOf(member, fold, next, member.entered.at)
     if (member.row && Bun.deepEquals(member.row, row, true)) return
@@ -197,7 +195,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
   async function build(sessionId: string): Promise<Member | undefined> {
     const session = await deps.sessionManager.read(sessionId)
     if (session?.kind !== "chat" || disposed || !builds.has(sessionId)) return undefined
-    // Pinned while the chat is a started chat, so the registry's bound for a family never folds one from its start again.
+    // Pinned while the chat is in the list, so the registry's bound for a family never folds one from its start again.
     const release = [
       pinHeldProjection(deps.reader, `lead-row:${sessionId}`, { dropOnLastRelease: true }),
       pinHeldProjection(deps.reader, `agent-input:${sessionId}`),
@@ -257,6 +255,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       }
       await Promise.all(started)
     },
+    remove,
     async observe(events) {
       const batches = new Map<Member, StoredFact[]>()
       const questions = new Set<Member>()

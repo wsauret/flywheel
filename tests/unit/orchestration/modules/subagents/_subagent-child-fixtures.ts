@@ -159,6 +159,8 @@ export function continuationService(harness: SubagentChildHarness, createAgent: 
     executionEnvironment: () => ({ authAdmission: admission, recall: async () => ({ hits: [] }), attachProjection: childSessionProjectionAttachment(harness.sessionStore), deliverNotification: async () => false,
       sendSessionMessage: async () => { throw new Error("A subagent posts no session message") },
       createOpenHold: () => { throw new Error("A subagent holds no chat open") },
+      onChatClosed: () => { throw new Error("A subagent follows no close") },
+      sessionShown: () => { throw new Error("A subagent reads no shown chat") },
       openChatRunner: openChatRunner ?? (async (sessionId) => {
         const parent = await harness.manager.read(sessionId)
         if (parent?.kind !== "chat") return undefined

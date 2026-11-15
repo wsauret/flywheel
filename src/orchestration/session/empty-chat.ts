@@ -20,14 +20,14 @@ const SCAN_PAGE_BATCHES = 8
  *  counts, so a branch change never makes a chat with a message empty. A
  *  session that is gone, or that is not a chat, is not an empty chat. */
 export async function isEmptyChat(session: ReplayedSession | null, store: AsyncEventReadSurface): Promise<boolean> {
-  return session?.kind === "chat" && session.userNamed !== true && !await conversationHoldsUserMessage(store, session.conversationId)
+  return session?.kind === "chat" && session.userNamed !== true && !await conversationHoldsMessage(store, session.conversationId, "user")
 }
 
-/** Reads the conversation's appended batches in order and stops at the first
- *  message of the person, so the answer never replays the conversation. A
- *  batch that the store cannot read counts as a message, because its bytes
- *  can hold one, and no rule removes bytes that no reader can read. */
-async function conversationHoldsUserMessage(store: AsyncEventReadSurface, conversationId: string): Promise<boolean> {
+/** Whether the conversation holds a message of `kind` on any branch: of the person (`user`), or of the model
+ *  (`assistant`), which a chat holds once it ran a turn. Reads the conversation's appended batches in order and stops
+ *  at the first such message, so the answer never replays the conversation. A batch that the store cannot read counts
+ *  as a message, because its bytes can hold one, and no rule acts on bytes that no reader can read. */
+export async function conversationHoldsMessage(store: AsyncEventReadSurface, conversationId: string, kind: "user" | "assistant"): Promise<boolean> {
   const aggregateId = `conversation:${conversationId}`
   const upperPosition = await store.capturePosition()
   let afterPosition = 0
@@ -35,7 +35,7 @@ async function conversationHoldsUserMessage(store: AsyncEventReadSurface, conver
     const page = await store.readPage({ aggregateId, types: ["chat.entries.appended"], limit: SCAN_PAGE_BATCHES }, upperPosition, afterPosition, true)
     for (const batch of page.facts) {
       if (batch instanceof CorruptEventRowError) return unreadable(conversationId, batch.row.position)
-      const reading = readBatch(batch)
+      const reading = readBatch(batch, kind)
       if (reading === "unreadable") return unreadable(conversationId, batch.position)
       if (reading === "message") return true
       afterPosition = batch.position
@@ -46,25 +46,25 @@ async function conversationHoldsUserMessage(store: AsyncEventReadSurface, conver
 }
 
 function unreadable(conversationId: string, position: number): true {
-  log.warn("a conversation batch that the empty-chat check cannot read keeps its chat", { conversationId, position })
+  log.warn("a conversation batch that the message scan cannot read counts as a message", { conversationId, position })
   return true
 }
 
 /** Decodes one batch through the conversation's reviewed salvage, which
  *  the conversation's own projection also uses. */
-function readBatch(batch: StoredFact): "message" | "none" | "unreadable" {
+function readBatch(batch: StoredFact, kind: "user" | "assistant"): "message" | "none" | "unreadable" {
   const decoded = salvageConversationTreeFact({ type: batch.type, version: batch.version, actor: batch.actor, payload: batch.payload })
   switch (decoded.kind) {
     case "recovered":
-      return decoded.fact.type === "chat.entries.appended" && decoded.fact.payload.entries.some(isUserMessage) ? "message" : "none"
+      return decoded.fact.type === "chat.entries.appended" && decoded.fact.payload.entries.some((entry) => isMessage(entry, kind)) ? "message" : "none"
     case "entries":
-      if (decoded.items.some((item) => item.kind === "entry" && isUserMessage(item.entry))) return "message"
+      if (decoded.items.some((item) => item.kind === "entry" && isMessage(item.entry, kind))) return "message"
       return decoded.items.some((item) => item.kind === "degraded") ? "unreadable" : "none"
     case "degraded":
       return "unreadable"
   }
 }
 
-function isUserMessage(entry: ConversationEntry | StoredConversationEntry): boolean {
-  return entry.kind === "message" && entry.message.kind === "user"
+function isMessage(entry: ConversationEntry | StoredConversationEntry, kind: "user" | "assistant"): boolean {
+  return entry.kind === "message" && entry.message.kind === kind
 }

@@ -39,14 +39,14 @@ import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-
 import type { PersonEntryForward } from "./person-entry-forward.js"
 
 /** One holder's hold of chats open, as a tab holds its chat (PI-INTERACTION-082). While any holder holds a chat, the
- *  close of a tab that shows it does not close it. A hold attaches no runner and ends no work. */
+ *  close of a tab that shows it does not close it. A hold attaches no runner, ends no work, and closes nothing when it
+ *  ends: the chat stays as the person left it. */
 export interface SessionOpenHold {
   /** Holds the chat open. Holding again is a no-op. */
   hold(sessionId: string): void
-  /** Lets go of this holder's hold. When no holder is left and no client shows the chat, the chat closes once its
-   *  turn is at rest, as a chat whose tab closed does. Resolves when that close waits for the turn or is done. */
-  release(sessionId: string): Promise<void>
-  /** Lets go of every hold of this holder and closes nothing, as when the holder itself ends. */
+  /** Lets go of this holder's hold of one chat. */
+  release(sessionId: string): void
+  /** Lets go of every hold of this holder, as when the holder itself ends. */
   drop(): void
 }
 
@@ -225,6 +225,13 @@ export interface RuntimeSupervisor extends PersonEntryForward {
    *  comes first. Resolves when the close is done or, with `atRest`, when it
    *  waits for the turn. */
   closeChat(sessionId: string, atRest?: true): Promise<boolean>
+  /** Calls `listener` with each chat that a person closes through `closeChat`: Close chat, also of an inactive chat,
+   *  and a tab's close that no open hold blocks. A stop, a recovery, and a blocked tab close call it for no chat.
+   *  Answers the unsubscribe. */
+  onChatClosed(listener: (sessionId: string) => void): () => void
+  /** Whether a client shows the chat: from its activation that a client shows until its release, hide, close, or
+   *  deletion. */
+  isShown(sessionId: string): boolean
   /** A new holder that holds chats open as a tab does, for a view the runtime owns, such as a row in a list
    *  (`SessionOpenHold`). */
   createOpenHold(): SessionOpenHold

@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorWithRunner, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 let ctx: SupervisorTestContext
@@ -7,32 +6,7 @@ beforeEach(() => { ctx = createSupervisorTestContext() })
 afterEach(async () => { await disposeSupervisorTestContext(ctx) })
 
 describe("RuntimeSupervisor open holds", () => {
-  test("an open hold that ends while the turn runs ends no work, and closes the chat once the turn comes to rest", async () => {
-    const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId))
-    const sessionId = await supervisor.openSessionRuntime()
-    await supervisor.sendChat(sessionId, "keep working")
-    await settled()
-    const hold = supervisor.createOpenHold()
-    hold.hold(sessionId)
-    // A tab shows the chat while its turn runs, and closes.
-    await supervisor.activateSession(sessionId, { shown: true })
-    await settled()
-    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "streaming" })
-    await supervisor.closeChat(sessionId, true)
-    await supervisor.releaseSession(sessionId)
-
-    await hold.release(sessionId)
-    await settled()
-    expect(chatEntry(sessionId).runner).not.toBeNull()
-    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
-
-    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "idle" })
-    await settled()
-    expect(ctx.sessionStore.get(sessionId)).toBeUndefined()
-    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("inactive")
-  })
-
-  test("an open hold keeps a chat open past its tab's close, and its end closes nothing while a client shows the chat", async () => {
+  test("an open hold keeps a chat open past its tab's close, and its end closes nothing", async () => {
     const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId))
     const sessionId = await supervisor.openSessionRuntime()
     await supervisor.sendChat(sessionId, "start")
@@ -47,9 +21,8 @@ describe("RuntimeSupervisor open holds", () => {
     await settled()
     expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
 
-    // A tab shows the chat when the hold ends.
-    await supervisor.activateSession(sessionId, { shown: true })
-    await hold.release(sessionId)
+    // The hold ends while no client shows the chat, and the chat stays open.
+    hold.release(sessionId)
     await settled()
     expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
 
@@ -57,16 +30,54 @@ describe("RuntimeSupervisor open holds", () => {
     const other = supervisor.createOpenHold()
     other.hold(sessionId)
     other.drop()
-    await supervisor.releaseSession(sessionId)
     await settled()
     expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
   })
 })
 
-const settled = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+describe("RuntimeSupervisor person closes", () => {
+  test("a close by the person tells each listener, also for an inactive chat and an unheld tab close, and a hold-blocked tab close or a stop tells none", async () => {
+    const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId))
+    const closed: string[] = []
+    const unsubscribe = supervisor.onChatClosed((sessionId) => { closed.push(sessionId) })
+    const held = await supervisor.openSessionRuntime()
+    const tab = await supervisor.openSessionRuntime()
+    const modal = await supervisor.openSessionRuntime()
+    for (const sessionId of [held, tab, modal]) await supervisor.sendChat(sessionId, "start")
+    await settled()
+    const hold = supervisor.createOpenHold()
+    hold.hold(held)
 
-function chatEntry(sessionId: string): Extract<NonNullable<ReturnType<SessionStore["get"]>>, { kind: "chat" }> {
-  const entry = ctx.sessionStore.get(sessionId)
-  if (entry?.kind !== "chat") throw new Error("expected chat entry")
-  return entry
-}
+    // A tab close that a hold blocks.
+    await supervisor.closeChat(held, true)
+    // A tab close that no hold blocks.
+    await supervisor.closeChat(tab, true)
+    // Close chat, as the Sessions list or the web client sends it, and again once the chat is inactive.
+    await supervisor.closeChat(modal)
+    await settled()
+    expect((await ctx.manager.read(modal))?.lifecycleState).toBe("inactive")
+    await supervisor.closeChat(modal)
+    expect(closed).toEqual([tab, modal, modal])
+
+    unsubscribe()
+    await supervisor.closeChat(held)
+    expect(closed).toEqual([tab, modal, modal])
+
+    // A stop deactivates the open chats and tells no listener.
+    supervisor.onChatClosed((sessionId) => { closed.push(sessionId) })
+    await supervisor.disposeAll()
+    expect(closed).toEqual([tab, modal, modal])
+  })
+
+  test("a chat shows while a client's activation holds it, until its release", async () => {
+    const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId))
+    const sessionId = await supervisor.openSessionRuntime()
+    expect(supervisor.isShown(sessionId)).toBe(false)
+    await supervisor.activateSession(sessionId, { shown: true })
+    expect(supervisor.isShown(sessionId)).toBe(true)
+    await supervisor.releaseSession(sessionId)
+    expect(supervisor.isShown(sessionId)).toBe(false)
+  })
+})
+
+const settled = () => new Promise<void>((resolve) => setTimeout(resolve, 0))

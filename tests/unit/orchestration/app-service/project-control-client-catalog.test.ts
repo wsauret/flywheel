@@ -195,13 +195,16 @@ test("a failed history baseline keeps the changes heard meanwhile and is read ag
     await client.close()
   })
 
-  test("paused close controls settle on durable state without an executor", async () => {
+  test("paused close controls settle on durable state without an executor, and tell the control parts of each close of a known chat", async () => {
     const executor = privateExecutor()
     const f = fixture(executor.client)
-    const client = createProjectControlClient({ ...f.options, executionPaused: () => true })
+    const closes: unknown[] = []
+    const client = createProjectControlClient({ ...f.options, executionPaused: () => true, onPausedChatClosed: (close) => { closes.push(close) } })
     f.metadata.set("open", durableRow("open", { label: "Open", lifecycleState: "active" }))
     expect(await client.dispatch({ type: "session.close", sessionId: "open" })).toMatchObject({ ok: true, sessionCatalogRow: { lifecycleState: "inactive" } })
     expect(await client.dispatch({ type: "session.close", sessionId: "unknown" })).toEqual({ ok: true, sessionId: "unknown" })
+    await client.dispatch({ type: "session.close", sessionId: "open", atRest: true })
+    expect(closes).toEqual([{ sessionId: "open", tabClose: false }, { sessionId: "open", tabClose: true }])
     expect(await client.dispatch({ type: "session.discard_transient", sessionId: "open" })).toEqual({ ok: true, sessionId: "open", sessionRemoved: false })
     expect(executor.commands).toEqual([])
     await client.close()
@@ -280,7 +283,7 @@ test("a failed history baseline keeps the changes heard meanwhile and is read ag
       const store = createSqliteEventStore(join(directory, "events.sqlite"))
       try {
         // The production wiring of project-control-runtime.ts: the control part's chat ports are the facade's own.
-        const ports = { openChat: (chat: { readonly name: string }) => client.openChat(chat), chatRow: (sessionId: string) => client.chatRow(sessionId) }
+        const ports = { openChat: (chat: { readonly name: string }) => client.openChat(chat), chatRow: (sessionId: string) => client.chatRow(sessionId), onChatClosed: () => () => {} }
         const control = createLeadControl({
           projectionReader: asAsyncEventReadSurface(store), eventWriter: asAsyncEventWriter(store), onStored: store.onStored,
           publish: () => undefined, onSelectionChanged: () => () => {}, modules: composeModuleServices([]), enabled: () => true, ...ports,
