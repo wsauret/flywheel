@@ -57,9 +57,14 @@ export const OutputRangeRequestSchema: Schema.Codec<OutputRangeRequest> = Schema
   includeThinkingContent: Schema.optionalKey(Schema.Boolean),
 })
 
+/** Set on the first row of a turn that the runtime started (`turnStart` of the infra blocks). A client that does not
+ *  read it renders the row as before. */
+const TurnStartSchema = Schema.optionalKey(Schema.Literal(true))
+
 const ToolEntryBaseSchema = Schema.Struct({
   kind: Schema.Literal("tool"),
   id: Schema.String,
+  turnStart: TurnStartSchema,
   name: Schema.String,
   presentation: ToolPresentationSchema,
   sentence: Schema.optionalKey(ToolPresentationSchema),
@@ -97,6 +102,7 @@ const QuestionEntrySchema = Schema.Struct({ question: Schema.String, header: Sch
 export const QuestionBlockSchema = Schema.Struct({
   kind: Schema.Literal("question"),
   toolUseId: Schema.String,
+  turnStart: TurnStartSchema,
   sentence: Schema.optionalKey(ToolPresentationSchema),
   questions: Schema.mutable(Schema.Array(QuestionEntrySchema)),
   answers: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
@@ -106,10 +112,10 @@ export const QuestionBlockSchema = Schema.Struct({
 
 /** Shared wire rows for live patches and historical ranges. Image bytes travel only in body reads. */
 export const FrontendOutputBlockSchema = Schema.Union([
-  Schema.Struct({ kind: Schema.Literal("text"), id: Schema.String, content: Schema.String, timestamp: Schema.Number }),
+  Schema.Struct({ kind: Schema.Literal("text"), id: Schema.String, content: Schema.String, timestamp: Schema.Number, turnStart: TurnStartSchema }),
   ToolEntrySchema,
   Schema.Struct({
-    kind: Schema.Literal("agentGroup"), containerKind: ContainerKindSchema, id: Schema.String,
+    kind: Schema.Literal("agentGroup"), containerKind: ContainerKindSchema, id: Schema.String, turnStart: TurnStartSchema,
     label: Schema.String, description: Schema.String, agentType: Schema.optionalKey(Schema.String),
     status: Schema.Union([Schema.Literal("pending"), Schema.Literal("queued"), Schema.Literal("active"), Schema.Literal("completed"), Schema.Literal("partial"), Schema.Literal("cancelled"), Schema.Literal("stopped"), Schema.Literal("interrupted")]),
     activity: Schema.optionalKey(ToolPresentationSchema), summary: Schema.optionalKey(Schema.String),
@@ -121,7 +127,7 @@ export const FrontendOutputBlockSchema = Schema.Union([
     linkUri: Schema.optionalKey(Schema.String), toolUseId: Schema.String, card: Schema.optionalKey(WorkflowCardSchema),
   }),
   Schema.Struct({
-    kind: Schema.Literal("agentGroup"), containerKind: ContainerKindSchema, id: Schema.String,
+    kind: Schema.Literal("agentGroup"), containerKind: ContainerKindSchema, id: Schema.String, turnStart: TurnStartSchema,
     label: Schema.String, description: Schema.String, agentType: Schema.optionalKey(Schema.String),
     status: Schema.Literal("paused"), pausedBy: Schema.Literals(["person", "agent", "runtime"]),
     activity: Schema.optionalKey(ToolPresentationSchema), summary: Schema.optionalKey(Schema.String),
@@ -131,7 +137,7 @@ export const FrontendOutputBlockSchema = Schema.Union([
     linkUri: Schema.optionalKey(Schema.String), toolUseId: Schema.String, card: Schema.optionalKey(WorkflowCardSchema),
   }),
   Schema.Struct({
-    kind: Schema.Literal("agentGroup"), containerKind: ContainerKindSchema, id: Schema.String,
+    kind: Schema.Literal("agentGroup"), containerKind: ContainerKindSchema, id: Schema.String, turnStart: TurnStartSchema,
     label: Schema.String, description: Schema.String, agentType: Schema.optionalKey(Schema.String),
     status: Schema.Literal("error"), failure: AgentFailureDisplaySchema,
     activity: Schema.optionalKey(ToolPresentationSchema), summary: Schema.optionalKey(Schema.String),
@@ -149,7 +155,7 @@ export const FrontendOutputBlockSchema = Schema.Union([
     diffOmission: Schema.optionalKey(DiffOmissionSchema),
     timestamp: Schema.Number,
   }),
-  Schema.Struct({ kind: Schema.Literal("thinking"), id: Schema.String, content: Schema.String, status: Schema.Union([Schema.Literal("streaming"), Schema.Literal("completed")]), timestamp: Schema.Number, completedAt: Schema.optionalKey(Schema.Number) }),
+  Schema.Struct({ kind: Schema.Literal("thinking"), id: Schema.String, content: Schema.String, status: Schema.Union([Schema.Literal("streaming"), Schema.Literal("completed")]), timestamp: Schema.Number, completedAt: Schema.optionalKey(Schema.Number), turnStart: TurnStartSchema }),
   Schema.Struct({ kind: Schema.Literal("divider"), id: Schema.String, label: Schema.String, timestamp: Schema.Number }),
   Schema.Struct({ kind: Schema.Literal("userMessage"), id: Schema.String, content: Schema.String, timestamp: Schema.Number, pending: Schema.Boolean, injected: Schema.Boolean, submissionIds: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)), imageCount: Schema.optionalKey(PositiveInt), from: Schema.optionalKey(MessageSenderSchema) }),
   QuestionBlockSchema,

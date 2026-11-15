@@ -28,7 +28,8 @@ export type OutputProjectionEvent =
   | { type: "settle-assistant-message"; content: readonly SettledAssistantContent[]; timestamp: number }
   | { type: "complete-thinking"; timestamp: number }
   | { type: "complete-text"; timestamp: number; blockKey?: string }
-  | { type: "begin-turn" }
+  /** `runtimeStarted` when the runtime, not a person's message, started the turn: its first row carries `turnStart`. */
+  | { type: "begin-turn"; runtimeStarted?: true }
   | { type: "set-model-phase"; phase: StreamPhase; timestamp: number }
   | { type: "push-user-message"; text: string; timestamp: number; entryId?: string; pending?: boolean; injected?: boolean; submissionIds?: readonly string[]; dispatchIds?: readonly string[]; images?: readonly UserMessageImage[]; from?: MessageSender }
   | { type: "push-system-message"; id?: string; message: string; timestamp: number; level?: "info" | "error"; mutationEvidence?: MutationEvidence }

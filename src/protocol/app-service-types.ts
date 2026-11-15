@@ -231,7 +231,13 @@ export type FrontendToolEntry =
   | FrontendToolEntryBase & { readonly status: "error"; readonly errorMessage: string }
   | FrontendToolEntryBase & { readonly status: "blocked"; readonly statusMessage: string }
 
-interface FrontendToolEntryBase {
+/** The first row of a turn that the runtime started, where no person message marks the turn's start. Clients that
+ *  fold turns end the turn before at this row (PI-INTERACTION-053). */
+interface FrontendTurnStart {
+  readonly turnStart?: true
+}
+
+interface FrontendToolEntryBase extends FrontendTurnStart {
   readonly kind: "tool"
   readonly id: string
   /** Raw machine tool identifier. Display capability and bash settlement key
@@ -284,7 +290,7 @@ interface FrontendQuestionEntry {
   readonly multiSelect: boolean
 }
 
-interface FrontendQuestionBlock {
+interface FrontendQuestionBlock extends FrontendTurnStart {
   readonly kind: "question"
   readonly toolUseId: string
   readonly questions: FrontendQuestionEntry[]
@@ -293,7 +299,7 @@ interface FrontendQuestionBlock {
   readonly timestamp: number
 }
 
-interface FrontendContainerBase {
+interface FrontendContainerBase extends FrontendTurnStart {
   readonly kind: "agentGroup"
   readonly id: string
   readonly label: string
@@ -318,7 +324,7 @@ type FrontendContainerBlock = FrontendContainerBase & FrontendContainerStatus & 
 
 export type FrontendOutputBlock =
   | DegradedBlock
-  | { readonly kind: "text"; readonly id: string; readonly content: string; readonly timestamp: number }
+  | { readonly kind: "text"; readonly id: string; readonly content: string; readonly timestamp: number; readonly turnStart?: true }
   | FrontendToolEntry
   | FrontendContainerBlock
   | {
@@ -331,7 +337,7 @@ export type FrontendOutputBlock =
     readonly diffOmission?: DiffOmission
     readonly timestamp: number
   }
-  | { readonly kind: "thinking"; readonly id: string; readonly content: string; readonly status: "streaming" | "completed"; readonly timestamp: number; readonly completedAt?: number }
+  | { readonly kind: "thinking"; readonly id: string; readonly content: string; readonly status: "streaming" | "completed"; readonly timestamp: number; readonly completedAt?: number; readonly turnStart?: true }
   | { readonly kind: "divider"; readonly id: string; readonly label: string; readonly timestamp: number }
   | { readonly kind: "userMessage"; readonly id: string; readonly content: string; readonly timestamp: number; readonly pending: boolean; readonly injected: boolean; readonly submissionIds?: readonly string[]; readonly imageCount?: number; readonly from?: FrontendMessageSender }
   | FrontendQuestionBlock

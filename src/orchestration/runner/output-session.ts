@@ -36,7 +36,8 @@ export interface OutputSession {
    *  millisecond share one block. */
   dispatchRuntimeEvent(event: RuntimeEvent, timestamp?: number): void
   applyProjectionEvent(event: OutputProjectionEvent): void
-  beginTurn(): void
+  /** Opens a turn; `runtimeStarted` when no person's message started it, so its first row says where it starts. */
+  beginTurn(runtimeStarted?: boolean): void
   pushUserMessage(message: string, timestamp: number, options?: { entryId?: string; queued?: boolean; injected?: boolean; submissionIds?: readonly string[]; dispatchIds?: readonly string[]; images?: readonly UserMessageImage[]; from?: MessageSender }): void
   /** Seed prior display blocks ahead of live output. Chat seeds at runner
    *  attach (one synchronous frame with the store's authority handoff);
@@ -171,8 +172,8 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
   // every later change until the end-of-turn flush.
   if (options.priorBlocks !== undefined) projector.seedBlocks(options.priorBlocks)
 
-  function beginTurn(): void {
-    projector.apply({ type: "begin-turn" })
+  function beginTurn(runtimeStarted = false): void {
+    projector.apply(runtimeStarted ? { type: "begin-turn", runtimeStarted: true } : { type: "begin-turn" })
   }
   function pushUserMessage(message: string, timestamp: number, opts?: { entryId?: string; queued?: boolean; injected?: boolean; submissionIds?: readonly string[]; dispatchIds?: readonly string[]; images?: readonly UserMessageImage[]; from?: MessageSender }): void {
     projector.apply({ type: "push-user-message", text: message, timestamp, entryId: opts?.entryId, pending: opts?.queued ?? false, injected: opts?.injected ?? false, ...(opts?.submissionIds?.length ? { submissionIds: opts.submissionIds } : {}), ...(opts?.dispatchIds?.length ? { dispatchIds: opts.dispatchIds } : {}), ...(opts?.images?.length ? { images: opts.images } : {}), ...(opts?.from ? { from: opts.from } : {}) })

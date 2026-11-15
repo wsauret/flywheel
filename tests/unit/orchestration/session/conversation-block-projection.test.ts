@@ -101,11 +101,12 @@ describe("tree -> output blocks re-projection", () => {
     const assistant = entry({ kind: "assistant", content: [{ type: "text", text: "NUMBER=7" }] })
     const blocks = project([user, reply, injected, assistant])
 
-    // The hidden envelope leaves two replies adjacent; each stays its own row, as it was live.
+    // The hidden envelope leaves two replies adjacent; each stays its own row, as it was live. The envelope came after a
+    // finished turn, so the second reply opens a turn that the runtime started.
     expect(blocks).toEqual([
       { kind: "userMessage", id: user.id, content: "real question", timestamp: Date.parse(T0), pending: false, injected: false },
       { kind: "text", id: `${reply.id}:0`, content: "NUMBER=7", timestamp: Date.parse(T0) },
-      { kind: "text", id: `${assistant.id}:0`, content: "NUMBER=7", timestamp: Date.parse(T0) },
+      { kind: "text", id: `${assistant.id}:0`, content: "NUMBER=7", timestamp: Date.parse(T0), turnStart: true },
     ])
   })
 

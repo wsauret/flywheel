@@ -28,6 +28,8 @@ import { BlockRenderer } from "../output-blocks/block-renderer.js"
 import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import { createOutputWindowRenderDiagnostics } from "./output-window-diagnostics.js"
 import { createTranscriptWindowProjector, targetTimelineBlockIndex, type TranscriptWindowProjection } from "./output-window-projection.js"
+import { turnFoldProjector } from "./turn-fold-projection.js"
+import { useClientExtensions } from "../context/client-extensions.js"
 import { TranscriptViewport } from "./output-window-viewport.js"
 import { createMountedRowRegistry, createSlotSignal, type EdgeDirection, type TranscriptLayoutSlot } from "./output-window-scroll.js"
 import { SessionIntroBlock, type SessionIntroProps } from "../welcome-notice.js"
@@ -88,10 +90,20 @@ export function OutputWindow(props: OutputWindowProps) {
   // Cache the settled prefix's classify/group/flag output; each streaming flush
   // re-projects only the volatile suffix.
   const projectWindow = createTranscriptWindowProjector()
+  // The first tab's module can present its own session's transcript (`TuiFirstTab.transcript`); every other session,
+  // and this one in any other view, keeps the ordinary rows.
+  const firstTab = useClientExtensions().find((client) => client.firstTab)?.firstTab
+  const foldTurns = createMemo(() => {
+    const sessionId = layoutSlot.sessionId
+    const presentation = sessionId !== undefined && firstTab?.current() === sessionId ? firstTab.transcript : undefined
+    return presentation && sessionId !== undefined ? turnFoldProjector(presentation, sessionId) : undefined
+  })
   const projection = createMemo<TranscriptWindowProjection>(() => {
     probe("ow.timeline")
     try {
-      return projectWindow(snapshot(), props.showThinking)
+      const window = projectWindow(snapshot(), props.showThinking)
+      const fold = foldTurns()
+      return fold ? fold(window, !props.running, transcript.disclosure) : window
     } catch (error) {
       return untrack(() => transcript.reportProjectionFailure(error))
     }

@@ -128,6 +128,29 @@ describe("SessionEventAdapter", () => {
     expect(patches.flatMap((patch) => patch.runnerState ?? [])).toEqual(["streaming", "streaming", "idle"])
   })
 
+  it("marks the first row of a turn that the runtime started, and no row of a person's turn", () => {
+    const patches: ChatEntryPatch[] = []
+    const bus = new EventBus()
+    const emit = createEmit(bus)
+    adapter = chatAdapter(patches)
+    adapter.connect(bus)
+    const reply = (entryId: string, text: string) => emitRuntime(emit, "s1", createRuntimeEvent("model.assistant_message.recorded", {
+      type: "model.assistant_message.recorded", entry_id: entryId, message: { content: [{ type: "text", text }] },
+    }))
+    emit("agent.logical_turn.started", { sessionId: "s1", data: { origin: "user", reason: "new_input" } })
+    reply("answer", "Started a chat for it.")
+    emit("agent.logical_turn.ended", { sessionId: "s1", data: { status: "completed" } })
+    // A hidden notice wakes the session: no row shows the notice, so the comment's row says where its turn starts.
+    emit("agent.logical_turn.started", { sessionId: "s1", data: { origin: "background", reason: "new_input" } })
+    reply("comment", "That chat asks you a question.")
+    reply("more", "It waits on your answer.")
+    adapter.flush()
+    const texts = patches.findLast((patch) => patch.outputBlocks)?.outputBlocks?.filter((block) => block.kind === "text") ?? []
+    expect(texts.map((block) => [block.content, "turnStart" in block ? block.turnStart : undefined])).toEqual([
+      ["Started a chat for it.", undefined], ["That chat asks you a question.", true], ["It waits on your answer.", undefined],
+    ])
+  })
+
   it("keeps concurrent members' output, pending input, and lifecycle in their ordinary sessions", () => {
     const first: ChatEntryPatch[] = []
     const second: ChatEntryPatch[] = []

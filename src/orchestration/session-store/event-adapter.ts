@@ -66,7 +66,7 @@ export class SessionEventAdapter {
         break
       case "agent.logical_turn.started":
         updateEntry({ runnerState: "streaming", streamingStartedAt: event.timestamp, waitingOnBackgroundWork: false })
-        output.beginTurn()
+        output.beginTurn(event.data.origin !== "user")
         break
       case "agent.logical_turn.ended":
         output.endTurn(event.data.status === "paused" ? "paused" : "completed")

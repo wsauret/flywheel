@@ -199,6 +199,11 @@ export function leadReportEntry(message: { readonly id: string; readonly from: {
   return message.id.startsWith(prefix) ? message.id.slice(prefix.length) || undefined : undefined
 }
 
+/** Whether an entry id names a report, `msg:<sender>:<call>` with a report's sending id, from any sender. */
+export function isLeadReportEntry(entryId: string): boolean {
+  return entryId.startsWith("msg:") && entryId.includes(`:${REPORT_CALL_PREFIX}`)
+}
+
 /** The link of a report's line, which opens the chat at its final message. */
 export function leadReportLink(sessionId: string, entryId: string): string {
   return `${REPORT_LINK_PREFIX}${encodeURIComponent(sessionId)}/${encodeURIComponent(entryId)}`

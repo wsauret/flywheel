@@ -7,7 +7,7 @@ import type { RoleAssignmentView } from "../../src/protocol/role-protocol-types.
 import type { StatusView } from "../../src/protocol/status-protocol-types.js"
 import { createBlockDisclosure } from "../src/app/block-disclosure.js"
 import { Block, createToolPresentation, TurnFoldBlock } from "../src/app/blocks.js"
-import { foldWebTurns } from "../src/client/turn-folds.js"
+import { foldTurns } from "../../src/protocol/client/turn-folds.js"
 import { CompactToolRow } from "../src/app/compact-tool-row.js"
 import type { RunRow } from "../../src/protocol/client/tool-run-category.js"
 import { foldTranscript } from "../../src/protocol/client/transcript-model.js"
@@ -154,13 +154,13 @@ export function renderGroup(children: readonly FrontendOutputBlock[], options: R
 }
 
 export function renderTurnFold(blocks: readonly FrontendOutputBlock[]): string {
-  const fold = foldWebTurns(presentWebTranscript(foldTranscript(blocks, true)), true).rows.find(row => row.kind === "turnFold")
+  const fold = foldTurns(presentWebTranscript(foldTranscript(blocks, true)), true).rows.find(row => row.kind === "turnFold")
   if (fold?.kind !== "turnFold") throw new Error("expected a settled turn fold")
   return renderToString(() => createComponent(TurnFoldBlock, { fold, onToggle() {} }))
 }
 
 export function renderTurnChanges(blocks: readonly FrontendOutputBlock[], openPath?: string): string {
-  const fold = foldWebTurns(presentWebTranscript(foldTranscript(blocks, true)), true).rows.find(row => row.kind === "turnFold")
+  const fold = foldTurns(presentWebTranscript(foldTranscript(blocks, true)), true).rows.find(row => row.kind === "turnFold")
   if (fold?.kind !== "turnFold") throw new Error("expected a settled turn fold")
   const disclosure = createBlockDisclosure()
   if (openPath) disclosure.setOpen("session-1", `${fold.id}:changes:${openPath}`, true)

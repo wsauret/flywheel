@@ -1,6 +1,9 @@
 import { singleLine, strField } from "../detail-helpers.js";
 import type { ToolDisplay } from "../types.js";
 
+/** The name of a route row that started a new chat. */
+export const ROUTE_TO_NEW_CHAT = "Route to new chat";
+
 /** A route of the person's request by the lead. A route to a chat that the
  *  lead started names that chat; a new chat is named by the title that the
  *  call's result states, because the call holds no id for it. */
@@ -20,7 +23,7 @@ export const routeRequestDisplay: ToolDisplay = {
     const kind = strField(input, "kind");
     if (kind !== "new" && kind !== "existing") return "input_not_ready";
     const target = context?.targetDescription ?? strField(input, "chat");
-    return { name: kind === "new" ? "Route to new chat" : "Route to", detail: singleLine(target ?? "") ?? "" };
+    return { name: kind === "new" ? ROUTE_TO_NEW_CHAT : "Route to", detail: singleLine(target ?? "") ?? "" };
   },
 };
 

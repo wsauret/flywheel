@@ -30,6 +30,7 @@ import type { AccountModuleRequest } from "../../protocol/account-attach.js"
 import type { PersonEntryForward } from "./person-entry-forward.js"
 import type { DeliveryOutcome } from "../session/live-session-control.js"
 import type { SessionEventNotices } from "./session-event-notices.js"
+import type { SessionOpenHold } from "./runtime-supervisor-types.js"
 
 /** Request-time execution authorities. Reading this port does not activate a session. */
 export interface ModuleExecutionEnvironment {
@@ -59,6 +60,8 @@ export interface ModuleExecutionEnvironment {
    *  session store, so a store subscriber hears it; the end of a start is announced only by the attach that precedes
    *  it. */
   readonly sessionRuntime: (sessionId: string) => Extract<SessionRuntimeView, { kind: "starting" | "failed" }> | null
+  /** A new holder of chats that a module's view holds open as a tab does (`SessionOpenHold`). */
+  readonly createOpenHold: () => SessionOpenHold
 }
 
 /** What the runtime hands a module that declares a process-scoped service:

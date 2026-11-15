@@ -5,8 +5,8 @@ import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protoc
 import { foldTranscript } from "../../../src/protocol/client/transcript-model.js"
 import { createBlockDisclosure } from "../app/block-disclosure.js"
 import { createBlockLanding } from "../app/transcript-scroll.js"
-import { presentWebTranscript, rowHolding, rowIdentity, rowIndex, toolWorkCounts, type TranscriptViewRow } from "./tool-runs.js"
-import { createTurnFolds, foldWebTurns, turnCalls, turnFoldSummary, turnChangedFiles } from "./turn-folds.js"
+import { presentWebTranscript, rowHolding, rowIndex, type TranscriptViewRow } from "./tool-runs.js"
+import { createTurnFolds, foldTurns, rowIdentity, toolWorkCounts, turnCalls, turnFoldSummary, turnChangedFiles } from "../../../src/protocol/client/turn-folds.js"
 import type { MutationFilesView } from "../../../src/protocol/client/mutation-evidence.js"
 import { mutationEvidenceFixture } from "../../../tests/unit/tui/output-blocks/_mutation-evidence-fixture.js"
 
@@ -15,7 +15,7 @@ const narration: FrontendOutputBlock = { kind: "text", id: "narration", content:
 const answer: FrontendOutputBlock = { kind: "text", id: "answer", content: "Done", timestamp: 373000 }
 const command: FrontendOutputBlock = { kind: "tool", id: "command", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "pwd" }, status: "completed", timestamp: 3000 }
 const viewOf = (blocks: readonly FrontendOutputBlock[]) => presentWebTranscript(foldTranscript(blocks, true))
-const kinds = (blocks: readonly FrontendOutputBlock[], atRest = true) => foldWebTurns(viewOf(blocks), atRest).rows.map(row => row.kind)
+const kinds = (blocks: readonly FrontendOutputBlock[], atRest = true) => foldTurns(viewOf(blocks), atRest).rows.map(row => row.kind)
 
 test("reference turn counts use metadata display paths but review groups canonical files in call order", () => {
   const first: Extract<MutationFilesView["files"][number], { kind: "applied" }>["file"] = {
@@ -41,7 +41,7 @@ test("reference turn counts use metadata display paths but review groups canonic
   const partialMetadata = new Map<string, MutationFilesView>([...metadata, [again.id, { status: "ready", offset: 0, files: [], nextOffset: 0 }]])
   assert.equal(toolWorkCounts([call, again], partialMetadata).editedFiles, 3)
   assert.equal(toolWorkCounts([call, again], partialMetadata).complete, false)
-  const fold = foldWebTurns(viewOf([person, call, again, answer]), true).rows[1]
+  const fold = foldTurns(viewOf([person, call, again, answer]), true).rows[1]
   assert.ok(fold?.kind === "turnFold")
   assert.match(turnFoldSummary(fold, metadata).label, /edited 4 files/)
   assert.match(turnFoldSummary(fold, partialMetadata).label, /edited 3 files \(incomplete\)/)
@@ -54,9 +54,9 @@ test("reference turn counts use metadata display paths but review groups canonic
 
 test("a settled turn folds its work, leaves its answer and restores every divider when opened", () => {
   const view = viewOf([person, narration, command, answer])
-  const folded = foldWebTurns(view, true)
+  const folded = foldTurns(view, true)
   assert.deepEqual(folded.rows.map(row => row.kind), ["userMessage", "turnFold", "text"])
-  const opened = foldWebTurns(view, true, () => true)
+  const opened = foldTurns(view, true, () => true)
   assert.deepEqual(opened.rows.filter(row => row.kind !== "turnFold"), view.rows)
   assert.deepEqual(opened.boundaryBefore.slice(2), view.boundaryBefore.slice(1))
   const fold = folded.rows[1]
@@ -72,14 +72,14 @@ test("returned input stays after a closed fold and appears once when opened", ()
   }
   const ordinary: FrontendOutputBlock = { kind: "system", id: "ordinary", message: "Updated skill.", timestamp: 5000 }
   const view = viewOf([person, narration, command, returned, ordinary, answer])
-  const folded = foldWebTurns(view, true)
+  const folded = foldTurns(view, true)
   assert.deepEqual(folded.rows.map(row => row.kind), ["userMessage", "turnFold", "system", "text"])
   assert.equal(folded.rows[2], returned)
   const fold = folded.rows[1]
   assert.ok(fold?.kind === "turnFold")
-  assert.ok(!fold.rows.includes(returned))
-  assert.ok(fold.rows.includes(ordinary))
-  const opened = foldWebTurns(view, true, () => true)
+  assert.ok(!fold.rows.some(row => row === returned))
+  assert.ok(fold.rows.some(row => row === ordinary))
+  const opened = foldTurns(view, true, () => true)
   assert.deepEqual(opened.rows.filter(row => row.kind !== "turnFold"), view.rows)
   assert.equal(opened.rows.filter(row => row === returned).length, 1)
 })
@@ -104,17 +104,17 @@ test("turn changes sum parent edits per file and retain call order without child
     kind: "agentGroup", id: "agent", toolUseId: "child", containerKind: "subagent", label: "Explorer",
     description: "Find it", status: "completed", children: [await edit("child", "child.ts", "@@ -0,0 +1 @@\n+child")], totalToolCount: 1, timestamp: 5000,
   }
-  const fold = foldWebTurns(viewOf([person, first, await edit("other", "b.ts", "@@ -0,0 +1 @@\n+other"), child, second, answer]), true).rows[1]
+  const fold = foldTurns(viewOf([person, first, await edit("other", "b.ts", "@@ -0,0 +1 @@\n+other"), child, second, answer]), true).rows[1]
   assert.ok(fold?.kind === "turnFold")
   assert.equal(fold.answerId, "text:answer")
   const files = turnChangedFiles(fold, {}, undefined, metadata)
   assert.deepEqual(files.map(file => [file.path, file.added, file.removed]), [["src/a.ts", 3, 2], ["b.ts", 1, 0]])
   assert.deepEqual(files[0]?.edits.map(change => change.callId), ["first", "second"])
-  const privateFold = foldWebTurns(viewOf([person, await edit("scratch", ".flywheel/sessions/scratch.ts", "@@ -0,0 +1 @@\n+scratch"), answer]), true).rows[1]
+  const privateFold = foldTurns(viewOf([person, await edit("scratch", ".flywheel/sessions/scratch.ts", "@@ -0,0 +1 @@\n+scratch"), answer]), true).rows[1]
   assert.ok(privateFold?.kind === "turnFold")
   assert.deepEqual(turnChangedFiles(privateFold, {}, { projectRoot: "/project", executionCwd: "/project" }, metadata), [])
   const preview = await edit("preview", "src/a.ts", "@@ -1 +1 @@\n-old\n+new", 40)
-  const previewFold = foldWebTurns(viewOf([person, preview, answer]), true).rows[1]
+  const previewFold = foldTurns(viewOf([person, preview, answer]), true).rows[1]
   assert.ok(previewFold?.kind === "turnFold")
   assert.equal(turnChangedFiles(previewFold, {}, undefined, metadata)[0]?.partial, true)
   const sensitiveFixture = await mutationEvidenceFixture({ version: 1, files: [], omissions: [{ path: "private.ts", reason: "sensitive" }] })
@@ -122,7 +122,7 @@ test("turn changes sum parent edits per file and retain call order without child
   const sensitiveHandle = sensitiveFixture.reader.open("sensitive", sensitiveFixture.evidence.manifest)
   await sensitiveHandle.loadFiles()
   metadata.set("sensitive", sensitiveHandle.files)
-  const sensitiveFold = foldWebTurns(viewOf([person, { ...first, id: "sensitive", mutationEvidence: sensitiveFixture.evidence }, answer]), true).rows[1]
+  const sensitiveFold = foldTurns(viewOf([person, { ...first, id: "sensitive", mutationEvidence: sensitiveFixture.evidence }, answer]), true).rows[1]
   assert.ok(sensitiveFold?.kind === "turnFold")
   assert.deepEqual(turnChangedFiles(sensitiveFold, {}, undefined, metadata).map(file => [file.path, file.added, file.removed, file.omissions]), [["private.ts", 0, 0, ["sensitive"]]])
   const external = await edit("external", "../other/a.ts", "@@ -0,0 +1 @@\n+external")
@@ -159,14 +159,14 @@ test("the line counts parent commands, unique edited files and delegated runs; s
   assert.deepEqual(kinds([person, question, answer]), ["userMessage", "turnFold", "text"])
   const workflow: FrontendOutputBlock = { ...agent, id: "workflow", containerKind: "workflow" }
   const view = viewOf([person, command, edit, { ...edit, id: "edit-again" }, agent, workflow, question, answer])
-  const folded = foldWebTurns(view, true)
+  const folded = foldTurns(view, true)
   // The workflow's card stays in view after the fold, before the answer, and
   // the line does not count it.
   assert.deepEqual(folded.rows.map(row => row.kind === "agentGroup" ? row.containerKind : row.kind), ["userMessage", "turnFold", "workflow", "text"])
   const fold = folded.rows[1]
   assert.ok(fold?.kind === "turnFold")
   assert.equal(turnFoldSummary(fold, new Map([["edit", handle.files], ["edit-again", handle.files]])).label, "Worked 6m 12s · ran 1 command, edited 1 file, used 2 tools, 1 subagent")
-  const opened = foldWebTurns(view, true, () => true)
+  const opened = foldTurns(view, true, () => true)
   assert.equal(opened.rows.filter(row => row.kind === "agentGroup" && row.containerKind === "workflow").length, 1, "an open fold shows the card once, in its place")
   // A turn whose only work launched a workflow has nothing else to fold.
   assert.deepEqual(kinds([person, workflow, answer]), ["userMessage", "agentGroup", "text"])
@@ -177,14 +177,14 @@ test("the line counts parent commands, unique edited files and delegated runs; s
 })
 
 test("a delivered mid-turn redirect does not settle narration, and partial spans stay open", () => {
-  const redirected = foldWebTurns(viewOf([person, command, narration, { ...person, id: "redirect", timestamp: 4000 }]), false)
+  const redirected = foldTurns(viewOf([person, command, narration, { ...person, id: "redirect", timestamp: 4000 }]), false)
   assert.deepEqual(redirected.rows.map(row => row.kind), ["userMessage", "toolGroup", "text", "userMessage"])
   assert.deepEqual(redirected.boundaryBefore, [false, false, true, false])
   assert.deepEqual(kinds([command, answer]), ["toolGroup", "text"])
-  const settled = foldWebTurns(viewOf([person, command, answer]), true)
+  const settled = foldTurns(viewOf([person, command, answer]), true)
   const foldId = rowIdentity(settled.rows[1]!)
   const nextTurn = viewOf([person, command, answer, { ...person, id: "next" }, { ...command, id: "next-command" }, { ...narration, id: "next-narration" }, { ...person, id: "redirect" }])
-  const folded = foldWebTurns(nextTurn, false, undefined, new Set([foldId]))
+  const folded = foldTurns(nextTurn, false, undefined, new Set([foldId]))
   assert.deepEqual(folded.rows.map(row => row.kind), ["userMessage", "turnFold", "text", "userMessage", "toolGroup", "text", "userMessage"])
   assert.deepEqual(folded.boundaryBefore, [false, false, false, false, false, true, false])
 })
@@ -246,7 +246,7 @@ test("search disclosure opens the fold before rowHolding lands on its original w
   createRoot(dispose => {
     const disclosure = createBlockDisclosure()
     let view = viewOf([])
-    const current = () => foldWebTurns(view, true, id => disclosure.state("session", id)().open).rows
+    const current = () => foldTurns(view, true, id => disclosure.state("session", id)().open).rows
     const landing = createBlockLanding({
       rows: current,
       reveal: row => {
@@ -256,11 +256,11 @@ test("search disclosure opens the fold before rowHolding lands on its original w
     })
     landing.land("tool:command")
     view = viewOf([person, command, answer])
-    const closed = foldWebTurns(view, true)
+    const closed = foldTurns(view, true)
     const foldId = rowHolding(closed.rows, "tool:command")
     assert.ok(foldId !== undefined && foldId.startsWith("turnFold:"))
     assert.equal(landing.reconcile(), true)
-    const opened = foldWebTurns(view, true, id => disclosure.state("session", id)().open)
+    const opened = foldTurns(view, true, id => disclosure.state("session", id)().open)
     assert.equal(rowHolding(opened.rows, "tool:command"), rowHolding(view.rows, "tool:command"))
     disclosure.setOpen("session", foldId, false)
     view = viewOf([person, command, answer, { ...person, id: "next" }])

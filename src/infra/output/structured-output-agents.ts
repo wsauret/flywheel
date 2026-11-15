@@ -1,5 +1,6 @@
 import { type AgentFailureDisplay, type AgentGroupBlock, isAgentInFlight, type PausedBy } from "../output-blocks.js";
 import { INITIALIZING_DESCRIPTION } from "./deferred-agent-meta.js";
+import { keepTurnStart } from "./turn-start.js";
 import { insertOutputBlock, type OutputBuilderIndexes, resolveUnresolvedChildren } from "./structured-output-state.js";
 
 // agentIndexById maps an agent id to the index of its agentGroup block; the
@@ -34,7 +35,8 @@ export function startAgentBlock(
     toolUseId,
   };
   const idx = replaceIndex ?? insertOutputBlock(state, agent);
-  if (replaceIndex !== undefined) state.blocks[replaceIndex] = agent;
+  // The card takes the place of the call's row, and with it the row's mark of a turn's start.
+  if (replaceIndex !== undefined) state.blocks[replaceIndex] = keepTurnStart(state.blocks[replaceIndex], agent);
   state.agentIndexById.set(id, idx);
 }
 

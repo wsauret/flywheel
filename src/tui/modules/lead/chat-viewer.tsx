@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { createEffect, createMemo, createSignal, Show, untrack, type Accessor } from "solid-js"
+import { createEffect, createMemo, createSignal, onCleanup, Show, untrack, type Accessor } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { errorMessage } from "../../../infra/error-message.js"
 import { blockEntryKeys, blockIdentity } from "../../../protocol/block-identity.js"
@@ -15,7 +15,7 @@ import type { TuiModuleClientHost } from "../../tui-module-client.js"
 import { useTheme } from "../../context/theme.js"
 import { LeadViewCover } from "./cover.js"
 
-export type LeadChatViewerHost = Pick<TuiModuleClientHost, "client" | "viewer" | "viewerLayer" | "question" | "answerQuestion" | "cancelQuestion" | "questionDrafts" | "navigateSession" | "dispatchCommand" | "showToast">
+export type LeadChatViewerHost = Pick<TuiModuleClientHost, "client" | "viewer" | "viewerLayer" | "question" | "answerQuestion" | "cancelQuestion" | "questionDrafts" | "navigateSession" | "dispatchCommand" | "showToast" | "showSession">
 
 /** True for `ctrl+<letter>` with no other modifier. */
 export function isCtrlChord(event: Pick<TuiStripKeyEvent, "name" | "ctrl" | "meta" | "shift">, letter: string): boolean {
@@ -68,7 +68,9 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   const [handle, setHandle] = createSignal<ViewerHandle>()
   const [shown, setShown] = createSignal(input.sessionId)
   const close = (): void => { handle()?.close() }
-  const openAsTab = (): void => { const sessionId = untrack(shown); close(); openLeadChatTab(host, sessionId, undefined) }
+  // The chat that leaves the view for its own tab, so the view's end does not close it.
+  let toTab: string | undefined
+  const openAsTab = (): void => { const sessionId = untrack(shown); toTab = sessionId; close(); openLeadChatTab(host, sessionId, undefined) }
   let lastAt = 0
   /** The chat next to the shown one in the list, or undefined at an end. */
   const neighbour = (direction: 1 | -1): string | undefined => {
@@ -103,7 +105,7 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   const onKey = (event: Parameters<ChildSessionViewerInput["onKey"]>[0]): void => {
     if (isCtrlChord(event, "t")) { event.preventDefault?.(); openAsTab() } else inputFor(untrack(shown)).onKey(event)
   }
-  setHandle(host.viewerLayer.push(() => <LeadViewCover><LeadChatViewer host={host} shown={shown} landing={takeLanding} row={input.row} title={input.title} inputFor={inputFor}
+  setHandle(host.viewerLayer.push(() => <LeadViewCover><LeadChatViewer host={host} shown={shown} landing={takeLanding} row={input.row} title={input.title} inputFor={inputFor} toTab={(sessionId) => sessionId === toTab}
     active={() => handle()?.isActive() ?? false} focused={() => handle()?.isFocused() ?? false}
     canMove={(direction) => neighbour(direction) !== undefined} move={move} close={close} openAsTab={openAsTab} /></LeadViewCover>,
   { onKey, onPaste: (text) => { inputFor(untrack(shown)).onPaste(text) } }))
@@ -117,6 +119,8 @@ function LeadChatViewer(props: {
   readonly row: (sessionId: string) => LeadRow | undefined
   readonly title: (sessionId: string) => string
   readonly inputFor: (sessionId: string) => ChildSessionViewerInput
+  /** Whether the chat leaves the view for its own tab. */
+  readonly toTab: (sessionId: string) => boolean
   readonly active: Accessor<boolean>
   readonly focused: Accessor<boolean>
   readonly canMove: (direction: 1 | -1) => boolean
@@ -130,6 +134,9 @@ function LeadChatViewer(props: {
   return <ModalFrame title={props.title(props.shown())} width={width()} onClose={props.close}>
     {/* One body for each chat, so the surface and its transcript follow the chat the view shows. */}
     <Show when={props.shown()} keyed>{(sessionId) => {
+      // The view holds the chat open as a tab does, and its end closes it as a closed tab does (PI-LEAD-003).
+      const release = props.host.showSession(sessionId)
+      onCleanup(() => { release(props.toTab(sessionId)) })
       const body = props.host.viewer(sessionId)
       const surface = body.createSurface(() => sessionId)
       const row = untrack(() => props.row(sessionId))

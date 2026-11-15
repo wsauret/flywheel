@@ -43,6 +43,8 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
   const overlay = input.overlay ?? createOverlayLayers()
   const [questions, setQuestions] = createSignal<{ readonly [sessionId: string]: QuestionBlock }>({})
   const sent: string[] = []
+  // Each chat that the viewer showed, and how its view ended.
+  const shows: string[] = []
   let gate: Promise<void> = Promise.resolve()
   /** Holds every later send until the returned release runs. */
   const holdSends = (): (() => void) => {
@@ -65,6 +67,10 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
     answerQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.answer ${sessionId} ${toolUseId}`); return true },
     cancelQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.cancel ${sessionId} ${toolUseId}`); return true },
     questionDrafts: createDraftCache().questions,
+    showSession: (sessionId: string) => {
+      shows.push(`show ${sessionId}`)
+      return (toTab?: boolean) => { shows.push(`${toTab ? "to tab" : "end"} ${sessionId}`) }
+    },
     viewer: () => ({
       ...childBodyProps(),
       appService: { dispatch: runtimeDispatch({}), query: runtimeQuery({}) },
@@ -83,7 +89,7 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
       },
     }),
   } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & { readonly title: (sessionId: string) => string }
-  return { host, overlay, setQuestions, sent, holdSends }
+  return { host, overlay, setQuestions, sent, shows, holdSends }
 }
 
 /** The lead client over a scripted designation of `LEAD_ID` and scripted rows

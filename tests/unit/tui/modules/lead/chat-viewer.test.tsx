@@ -161,6 +161,17 @@ describe("the lead's full-chat viewer", () => {
     expect(title(strip.rendered.captureCharFrame())).toBe("asks")
   })
 
+  it("holds each chat it shows as a tab does, and its close ends the view as a closed tab, but not when the chat opens as a tab", async () => {
+    const strip = await openViewer()
+    await strip.viewerKey("tab")
+    await strip.viewerKey("escape")
+    expect(strip.shows).toEqual(["show asks", "end asks", "show broke", "end broke"])
+    strip.shows.length = 0
+    await strip.key("return")
+    await strip.viewerKey("t", { ctrl: true })
+    expect(strip.shows).toEqual(["show asks", "to tab asks"])
+  })
+
   it("opens the chat as a tab and closes, from the viewer and from the list", async () => {
     const strip = await openViewer()
     await strip.viewerKey("tab")

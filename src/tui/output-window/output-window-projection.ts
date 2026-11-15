@@ -2,7 +2,7 @@ import type { FrontendOutputBlock } from "../../protocol/app-service-types.js"
 import { blockEntryKeys, blockIdentity } from "../../protocol/block-identity.js"
 import { closesToolStretch, type TranscriptRow } from "../../protocol/client/transcript-model.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
-import { terminalTranscript, type PresentedTerminalRow, type TerminalTranscript } from "../output-blocks/visible-output-blocks.js"
+import { terminalTranscript, type PresentedTerminalRow, type TerminalTranscript, type TimelineRow } from "../output-blocks/visible-output-blocks.js"
 
 /** Every render transform OutputWindow needs, computed in one O(window) pass over
  *  the hydrated window's blocks: the shared transcript fold decides the rows and
@@ -14,7 +14,7 @@ import { terminalTranscript, type PresentedTerminalRow, type TerminalTranscript 
 export interface TranscriptWindowProjection {
   /** The grouped, visible blocks of the window (tool runs collapsed, hidden
    *  thinking filtered). The rows OutputWindow mounts. */
-  readonly timelineBlocks: readonly PresentedTerminalRow[]
+  readonly timelineBlocks: readonly TimelineRow[]
   /** Parallel boolean[] of implicit dividers before each timeline row,
    *  precomputed once (O(window)) so <Index> children read flags[i] not a per-row
    *  scan. */
@@ -35,15 +35,18 @@ export function targetTimelineBlockIndex(
   projection: TranscriptWindowProjection,
   entryId: string,
 ): number | undefined {
-  const rowIndex = projection.timelineBlocks.findIndex((block) => {
-    if (block.kind === "toolRun") return block.children.some((child) => child.id === entryId)
-    if (block.kind === "tool") return block.id === entryId
-    if (block.kind === "agentGroup") return block.id === entryId || block.toolUseId === entryId
-    if (block.kind === "question") return block.toolUseId === entryId
-    if (block.kind === "text") return blockEntryKeys(blockIdentity(block)).includes(entryId)
-    return false
-  })
+  const rowIndex = projection.timelineBlocks.findIndex((block) => holdsEntry(block, entryId))
   return rowIndex < 0 ? undefined : projection.timelineBlockIndices[rowIndex]
+}
+
+function holdsEntry(block: TimelineRow, entryId: string): boolean {
+  if (block.kind === "toolRun") return block.children.some((child) => child.id === entryId)
+  if (block.kind === "turnFold") return block.rows.some((row) => holdsEntry(row, entryId))
+  if (block.kind === "tool") return block.id === entryId
+  if (block.kind === "agentGroup") return block.id === entryId || block.toolUseId === entryId
+  if (block.kind === "question") return block.toolUseId === entryId
+  if (block.kind === "text") return blockEntryKeys(blockIdentity(block)).includes(entryId)
+  return false
 }
 
 const EMPTY: TranscriptWindowProjection = {

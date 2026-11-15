@@ -7,11 +7,14 @@ export interface OutputBuilderIndexes {
   blocks: AnyBlock[];
   agentIndexById: Map<string, number>;
   contentIndexById: Map<string, number>;
+  /** The block as it enters the list: the first row of a turn that the runtime started carries `turnStart`. */
+  admit?: (block: AnyBlock) => AnyBlock;
 }
 
 type QuestionAnswers = { [questionId in string]: string };
 
-export function insertOutputBlock(state: OutputBuilderIndexes, block: AnyBlock): number {
+export function insertOutputBlock(state: OutputBuilderIndexes, entering: AnyBlock): number {
+  const block = state.admit?.(entering) ?? entering;
   if (block.kind === "userMessage" && block.pending) {
     state.blocks.push(block);
     return state.blocks.length - 1;

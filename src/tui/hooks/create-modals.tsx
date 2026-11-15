@@ -25,6 +25,7 @@ import { useHelpModal } from "./use-help-modal.js"
 import { useModelModal } from "./use-model-modal.js"
 import type { TabInfo } from "./create-tabs.js"
 import { useSessionModal } from "./use-session-modal.js"
+import type { SessionNavigation } from "./use-session-modal-types.js"
 import { useSettingsModal } from "./use-settings-modal.js"
 import { createSettingsTree } from "./settings-tree.js"
 import { useProfileModal } from "./use-profile-modal.js"
@@ -110,6 +111,8 @@ interface ModalsDeps {
   closeSessionTab: (sessionId: string) => void
   /** Close chat, which also removes the tab that shows the chat. */
   closeChat: (sessionId: string) => Promise<void>
+  /** What modules change in the Sessions list. */
+  sessionNavigation: SessionNavigation
   settings: SettingsStore
   runtimeConfig: RuntimeConfigCache
   settingsOperations: SettingsOperations
@@ -332,7 +335,7 @@ export function createModalModals(deps: ModalsDeps) {
         actions={sessionModal.sessionModalActions()}
         appService={deps.appService}
         onClose={() => sessionModal.closeSessionsModal()}
-        onRowClick={sessionModal.selectModalItem}
+        onRowClick={sessionModal.clickRow}
         filterQuery={sessionModal.filterQuery()}
         inputPresentation={sessionModal.inputPresentation()}
         inputPlaceholder="Search"
@@ -356,6 +359,7 @@ export function createModalModals(deps: ModalsDeps) {
     activateSession: deps.activateSession,
     activateSessionById: deps.activateSessionById,
     closeChat: deps.closeChat,
+    navigation: deps.sessionNavigation,
     deleteActiveSession: createActiveSessionDelete({
       appService: deps.appService,
       signals,

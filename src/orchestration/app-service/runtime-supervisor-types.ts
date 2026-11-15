@@ -38,6 +38,18 @@ import type { SessionStops } from "../session/module-session-operations.js"
 import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
 import type { PersonEntryForward } from "./person-entry-forward.js"
 
+/** One holder's hold of chats open, as a tab holds its chat (PI-INTERACTION-082). While any holder holds a chat, the
+ *  close of a tab that shows it does not close it. A hold attaches no runner and ends no work. */
+export interface SessionOpenHold {
+  /** Holds the chat open. Holding again is a no-op. */
+  hold(sessionId: string): void
+  /** Lets go of this holder's hold. When no holder is left and no client shows the chat, the chat closes once its
+   *  turn is at rest, as a chat whose tab closed does. Resolves when that close waits for the turn or is done. */
+  release(sessionId: string): Promise<void>
+  /** Lets go of every hold of this holder and closes nothing, as when the holder itself ends. */
+  drop(): void
+}
+
 interface AgentInputAnswers {
   readonly [question: string]: AgentInputAnswer
 }
@@ -213,6 +225,9 @@ export interface RuntimeSupervisor extends PersonEntryForward {
    *  comes first. Resolves when the close is done or, with `atRest`, when it
    *  waits for the turn. */
   closeChat(sessionId: string, atRest?: true): Promise<boolean>
+  /** A new holder that holds chats open as a tab does, for a view the runtime owns, such as a row in a list
+   *  (`SessionOpenHold`). */
+  createOpenHold(): SessionOpenHold
   discardTransientChat(sessionId: string): Promise<DiscardTransientOutcome>
   deleteSession(sessionId: string, inactiveBefore?: number): Promise<boolean>
   renameSession(sessionId: string, patch: SessionTitlePatch): Promise<boolean>

@@ -103,6 +103,15 @@ export function formatDateTime(ms: number, now = Date.now()): string {
   return `${SHORT_MONTHS[date.getMonth()]} ${date.getDate()}${year}, ${clock}`
 }
 
+/** A start time as the terminal reads it: the 24-hour clock alone today, such as `17:21`, and `formatDateTime` on any
+ *  other day. */
+export function formatStartTime(ms: number, now = Date.now()): string {
+  const date = new Date(ms)
+  return date.toDateString() === new Date(now).toDateString()
+    ? `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+    : formatDateTime(ms, now)
+}
+
 /** System-notice line for a completed compaction. Token counts are the
  *  runtime's heuristic context estimates; paths without a measurement
  *  (failures, no-op compactions, pre-report events) fall back to the

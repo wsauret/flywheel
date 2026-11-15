@@ -27,6 +27,8 @@ interface SessionPickerResult {
 interface SessionPickerAction {
   key: string
   label: string
+  /** An open action shows on a footer line of its own, so the row's own controls stay in view. */
+  readonly opens?: true
 }
 
 interface SessionPickerListProps {
@@ -65,8 +67,21 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
   const blinkTick = useTickPool().createSharedTick(700, anyWorking)
   const blinkOn = () => blinkTick() % 2 === 0
 
+  const footerHint = createMemo(() => {
+    if (props.renaming) return SESSION_CONTROL_COPY[0]
+    const selected = props.result.rows[props.cursor]
+    if (selected?.kind === "corrupt") return SESSION_CONTROL_COPY[1]
+    return props.result.rows.length === 0 ? SESSION_CONTROL_COPY[2] : SESSION_CONTROL_COPY[3]
+  })
+  const footerRows = createMemo(() => {
+    if (props.actions.length === 0) return [footerHint()]
+    const line = (actions: readonly SessionPickerAction[]) => actions.map((action) => `${action.key} ${action.label}`).join(" · ")
+    const opens = props.actions.filter((action) => action.opens)
+    const controls = line(props.actions.filter((action) => !action.opens))
+    return opens.length === 0 ? [controls] : [controls, line(opens)]
+  })
   const viewportHeight = createMemo(() =>
-    Math.max(1, props.height - LIST_CHROME_ROWS - (props.renaming ? 3 : 0) - (props.result.capped ? 1 : 0)))
+    Math.max(1, props.height - LIST_CHROME_ROWS - (footerRows().length - 1) - (props.renaming ? 3 : 0) - (props.result.capped ? 1 : 0)))
 
   function syncCursorScroll(scrollbox: ScrollBoxRenderable): boolean {
     const cursor = props.cursor
@@ -92,12 +107,6 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
 
 
 
-  const footerHint = createMemo(() => {
-    if (props.renaming) return SESSION_CONTROL_COPY[0]
-    const selected = props.result.rows[props.cursor]
-    if (selected?.kind === "corrupt") return SESSION_CONTROL_COPY[1]
-    return props.result.rows.length === 0 ? SESSION_CONTROL_COPY[2] : SESSION_CONTROL_COPY[3]
-  })
 
   return (
     <>
@@ -167,7 +176,7 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
           </text>
         </box>
       </Show>
-      <box paddingTop={1}><ModalFooter rows={[props.actions.length > 0 ? props.actions.map((action) => `${action.key} ${action.label}`).join(" · ") : footerHint()]} /></box>
+      <box paddingTop={1}><ModalFooter rows={footerRows()} /></box>
     </>
   )
 }

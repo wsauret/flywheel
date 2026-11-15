@@ -7,7 +7,8 @@ import { createModalStack } from "../../../../../src/tui/components/modal-stack.
 import { createTabCloser } from "../../../../../src/tui/hooks/create-tab-closer.js"
 import type { TabInfo } from "../../../../../src/tui/hooks/create-tabs.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
-import { moduleTerminalTitle } from "../../../../../src/tui/modules.js"
+import { moduleSessionNavigation, moduleTerminalTitle } from "../../../../../src/tui/modules.js"
+import { createModal, rowLabels, session } from "../../hooks/_session-modal-fixtures.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
 import { catalogRow } from "../../../../helpers/session-catalog.js"
 import { viewerHost } from "./_lead-fixtures.js"
@@ -168,6 +169,82 @@ describe("the lead's terminal client", () => {
       expect(h.dialog.stack).toHaveLength(0)
       expect(h.sent).toEqual([])
       expect(h.tabs().map((row) => [row.id, row.isForeground])).toEqual([["chat-2", true]])
+    } finally { h.dispose() }
+  })
+})
+
+/** The Sessions modal over the lead client's session navigation, with the lead's tab or another tab in front. */
+function sessionsHarness(foregroundId: string, view: LeadView = LEAD) {
+  const viewer = viewerHost()
+  return createRoot((dispose) => {
+    const lead = createLeadClient({ domains: { lead: { scope: "workspace", view: () => view }, leadChats: { scope: "workspace", view: () => EMPTY_LEAD_CHATS } }, client: { dispatch: runtimeDispatch({}), query: runtimeQuery({}) }, dialog: viewer.overlay.dialog, showToast: () => {},
+      ...viewer.host })
+    const modal = createModal({ sessions: [session({ id: "lead-1", title: "Lead" }), session({ id: "chat-2", title: "Fix the parser" }), session({ id: "chat-3", title: "Old chat", lastUpdated: "2026-01-01T00:00:00.000Z" })], foregroundId, navigation: moduleSessionNavigation([lead]) })
+    return { ...modal, overlay: viewer.overlay, dispose }
+  })
+}
+
+describe("the Sessions modal with the lead", () => {
+  it("lists every chat but the lead on any tab, and a search does not find the lead", () => {
+    for (const foreground of ["lead-1", "chat-2"]) {
+      const h = sessionsHarness(foreground)
+      try {
+        h.hook.openSessionsModal()
+        expect(rowLabels(h.hook).filter((label) => label.startsWith("chat") || label.startsWith("lead"))).toEqual(["chat-2", "chat-3"])
+        h.hook.handleSessionFilter("Lead")
+        expect(rowLabels(h.hook)).not.toContain("lead-1")
+      } finally { h.dispose() }
+    }
+  })
+
+  it("lists every chat while the lead module is off", () => {
+    const h = sessionsHarness("lead-1", EMPTY_LEAD_VIEW)
+    try {
+      h.hook.openSessionsModal()
+      expect(rowLabels(h.hook).filter((label) => label.startsWith("chat") || label.startsWith("lead"))).toEqual(["lead-1", "chat-2", "chat-3"])
+    } finally { h.dispose() }
+  })
+
+  it("opens the chosen chat over the lead with Enter or a click, and as a tab with ctrl+t, and names both", async () => {
+    const h = sessionsHarness("lead-1")
+    try {
+      h.hook.openSessionsModal()
+      expect(h.hook.sessionModalActions().filter((action) => action.opens).map((action) => `${action.key} ${action.label}`)).toEqual(["enter open", "ctrl+t open as tab"])
+      h.modals.input({ name: "Enter" })
+      await settle()
+      expect(h.overlay.viewer.stack).toHaveLength(1)
+      expect(h.modals.stack).toHaveLength(0)
+      expect(h.activateSession).not.toHaveBeenCalled()
+      h.overlay.viewer.clear()
+
+      h.hook.openSessionsModal()
+      const chat3 = h.hook.sessionModalResult().rows.findIndex((row) => row.kind === "session" && row.session.id === "chat-3")
+      h.hook.clickRow(chat3)
+      await settle()
+      expect(h.overlay.viewer.stack).toHaveLength(1)
+      expect(h.activateSession).not.toHaveBeenCalled()
+      h.overlay.viewer.clear()
+
+      h.hook.openSessionsModal()
+      h.modals.input({ name: "t", ctrl: true })
+      await settle()
+      expect(h.overlay.viewer.stack).toHaveLength(0)
+      expect(h.activateSession).toHaveBeenCalledTimes(1)
+    } finally { h.dispose() }
+  })
+
+  it("opens the chosen chat's tab with Enter on another tab, as without a lead", async () => {
+    const h = sessionsHarness("chat-2")
+    try {
+      h.hook.openSessionsModal()
+      expect(h.hook.sessionModalActions().map((action) => action.key)).toEqual(["d", "n", "c"])
+      h.modals.input({ name: "Enter" })
+      await settle()
+      expect(h.activateSession).toHaveBeenCalledTimes(1)
+      expect(h.overlay.viewer.stack).toHaveLength(0)
+      h.hook.clickRow(h.hook.sessionModalResult().rows.findIndex((row) => row.kind === "session" && row.session.id === "chat-3"))
+      await settle()
+      expect(h.activateSession).toHaveBeenCalledTimes(1)
     } finally { h.dispose() }
   })
 })

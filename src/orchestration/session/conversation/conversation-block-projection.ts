@@ -25,6 +25,7 @@ import { CANCELED_LABEL, interruptedLabel, RESUMED_LABEL, STOPPED_LABEL, UNEXPEC
 import { isContextResetRecord, isVisibleTurnEnd, turnEndOfEntry } from "./turn-end-record.js";
 import { isHistoricalCompletionEntry } from "../child-session-completion.js";
 import { isBriefEntry } from "./brief-entry.js";
+import { createTurnStartMarks } from "./turn-start-marks.js";
 import { rawToolUseId } from "../../../protocol/block-identity.js";
 import { sessionMessageRecoveryNotice } from "../../../infra/chat-input.js";
 import { CONTINUATION_MESSAGES } from "../../agent-runtime/continuation-messages.js";
@@ -84,6 +85,7 @@ export class TreeBlockProjection {
   // followed it yet: the next assistant entry continues that turn, which the
   // transcript names the way the live session does when it resumes.
   private awaitingResume = false;
+  private readonly turnStarts = createTurnStartMarks();
 
   constructor(opts: TreeBlockProjectionOptions) {
     this.executionCwd = opts.executionCwd;
@@ -162,7 +164,7 @@ export class TreeBlockProjection {
   }
 
   snapshot(): AnyBlock[] {
-    return this.blocks.filter((_, index) => !this.hiddenBlockIndices.has(index));
+    return this.turnStarts.shown(this.blocks, this.hiddenBlockIndices);
   }
 
   /** Decorate one selected tool occurrence without retaining its result body
@@ -195,7 +197,7 @@ export class TreeBlockProjection {
   /** Text from separate entries never joins: two replies stay two rows even
    *  when a hidden entry, such as a runtime notice, is all that separates them. */
   private append(block: AnyBlock): number {
-    return this.blocks.push(block) - 1;
+    return this.turnStarts.placed(this.blocks.push(block) - 1);
   }
 
   private projectMessage(entry: Extract<ConversationEntry, { kind: "message" }>): void {
@@ -234,6 +236,7 @@ export class TreeBlockProjection {
     } else if (message.kind === "user" && message.origin !== "system" && !settledRecord) {
       this.awaitingResume = false;
     }
+    this.turnStarts.observe(entry.id, message);
     switch (message.kind) {
       case "user":
         this.projectUserMessage(entry.id, message, timestamp);

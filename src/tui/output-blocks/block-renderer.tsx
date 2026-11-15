@@ -14,14 +14,15 @@ import { ThinkingBlock } from "./thinking-block.js"
 import { ToolEntry } from "./tool-entry.js"
 import { AgentGroupBlock } from "./agent-group-block.js"
 import { ToolRunBlock } from "./tool-run-block.js"
+import { TurnFoldBlock } from "./turn-fold-block.js"
 import { UserMessageBlock } from "./user-message-block.js"
-import type { PresentedTerminalRow } from "./visible-output-blocks.js"
+import type { TimelineRow } from "./visible-output-blocks.js"
 import type { RowProcessControls } from "./stop-affordance.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 
 interface StreamingToolTextById { readonly [toolUseId: string]: ToolStreamingText }
 export interface BlockRendererProps {
-  block: PresentedTerminalRow
+  block: TimelineRow
   streamingToolText?: StreamingToolTextById
   showThinking?: boolean
   diffColors?: Accessor<DiffColorMode>
@@ -68,6 +69,9 @@ export function BlockRenderer(props: BlockRendererProps) {
           </Match>
           <Match when={props.block.kind === "toolRun" ? props.block : undefined}>
             {(block) => <ToolRunBlock block={block()} streamingToolText={props.streamingToolText} onHydrateBody={props.onHydrateBody} processControls={props.processControls} />}
+          </Match>
+          <Match when={props.block.kind === "turnFold" ? props.block : undefined}>
+            {(block) => <TurnFoldBlock block={block()} row={(row) => <BlockRenderer {...props} block={row} />} />}
           </Match>
           <Match when={props.block.kind === "system" ? props.block : undefined}>
             {(block) => <SystemBlock block={block()} diffColors={props.diffColors} onHydrateBody={props.onHydrateBody} />}

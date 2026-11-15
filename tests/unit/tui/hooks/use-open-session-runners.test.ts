@@ -33,7 +33,7 @@ describe("useOpenSessionRunners", () => {
     ])
     const stop = createRoot((dispose) => {
       const keeper = createOpenSessionKeeper({ client, focusReady: createFocusedSessionReadiness(viewReady) })
-      useOpenSessionRunners({ tabs, ready: () => true, keeper })
+      useOpenSessionRunners({ tabs, ready: () => true, keeper, client })
       return dispose
     })
     try {
@@ -63,7 +63,7 @@ describe("useOpenSessionRunners", () => {
     const [ready, setReady] = createSignal(false)
     // Effects run once the root has settled, so the assertions sit outside it.
     const stop = createRoot((disposeRoot) => {
-      useOpenSessionRunners({ tabs, ready, keeper })
+      useOpenSessionRunners({ tabs, ready, keeper, client: { dispatch: runtimeDispatch({}) } })
       return disposeRoot
     })
 
@@ -75,5 +75,32 @@ describe("useOpenSessionRunners", () => {
     expect(calls).toEqual(["open:chat-1", "close:chat-1", "open:chat-2"])
     stop()
     expect(calls.at(-1)).toBe("dispose")
+  })
+
+  it("holds a chat that a view shows outside its tab as a tab does, and its end closes the chat at rest unless a tab shows it or opens it", () => {
+    const calls: string[] = []
+    const keeper = { open: (id: string) => calls.push(`open:${id}`), close: (id: string) => calls.push(`close:${id}`), focus: () => {}, dispose: () => {} }
+    const client = { dispatch: recordedDispatch((mutation: FrontendMutation) => {
+      if (mutation.type === "session.close") calls.push(`session.close:${mutation.sessionId}${mutation.atRest ? " at rest" : ""}`)
+    }, runtimeDispatch({ "session.close": async () => ({ ok: true }) })) }
+    const [tabs, setTabs] = createSignal<readonly TabInfo[]>([sessionTab("lead")])
+    const { shows, stop } = createRoot((disposeRoot) => ({ shows: useOpenSessionRunners({ tabs, ready: () => true, keeper, client }), stop: disposeRoot }))
+    try {
+      expect(calls).toEqual(["open:lead"])
+      calls.length = 0
+
+      // The view's end closes the chat at rest, as a closed tab does.
+      shows.show("chat-2")()
+      expect(calls).toEqual(["open:chat-2", "close:chat-2", "session.close:chat-2 at rest"])
+      calls.length = 0
+
+      // A chat that leaves the view for its own tab, or that a tab shows, does not close.
+      shows.show("chat-3")(true)
+      setTabs([sessionTab("lead"), sessionTab("chat-4")])
+      const end = shows.show("chat-4")
+      end()
+      end()
+      expect(calls).toEqual(["open:chat-3", "close:chat-3", "open:chat-4"])
+    } finally { stop() }
   })
 })

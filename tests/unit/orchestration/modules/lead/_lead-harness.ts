@@ -4,10 +4,12 @@ import { createSessionEventNotices } from "../../../../../src/orchestration/app-
 import { moduleExecutionEnvironment } from "../../../../../src/orchestration/app-service/module-execution-environment.js"
 import type { ControlSessionPorts } from "../../../../../src/orchestration/app-service/module-service-host.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
+import { createRuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor.js"
+import { loadSessionView } from "../../../../../src/orchestration/session-store/view.js"
 import { createLeadControl } from "../../../../../src/orchestration/modules/lead/control.js"
 import { createLeadService } from "../../../../../src/orchestration/modules/lead/service.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
-import { mockRunner, supervisorWithRunner, testSessionAuthAdmission, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
+import { mockRunner, supervisorBaseDeps, testSessionAuthAdmission, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { catalogRow } from "../../../../helpers/session-catalog.js"
 
 /** The store surfaces that the lead's control part reads and writes through. */
@@ -36,13 +38,23 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   const projectionReader = setup.projectionReader ?? asAsyncEventReadSurface(ctx.store)
   const onStored = setup.onStored ?? ctx.store.onStored
   const notices: string[] = []
+  // Each input that a chat's runner took while attached, as its turn starts on it.
+  const inputs: { readonly sessionId: string; readonly message: unknown }[] = []
   const trace: string[] = []
   // Each message that the service posted between sessions, with how the runtime's delivery answered it.
   const reports: { readonly fromSessionId: string; readonly toSessionId: string; readonly call: string; readonly text: string; readonly status: string }[] = []
   const patches: RuntimeUiPatchInput[] = []
-  const supervisor: RuntimeSupervisor = supervisorWithRunner(ctx, async (deps) => {
-    await setup.runnerStartup
-    return mockRunner(deps.sessionId, { deliverSilentNotice: async () => { notices.push(deps.sessionId); return "delivered" } })
+  const storeReader = asAsyncEventReadSurface(ctx.store)
+  // It opens a closed chat again, as the executor does.
+  const supervisor: RuntimeSupervisor = createRuntimeSupervisor({
+    ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => {
+      await setup.runnerStartup
+      return mockRunner(deps.sessionId, {
+        deliverSilentNotice: async () => { notices.push(deps.sessionId); return "delivered" },
+        send: async (message) => { inputs.push({ sessionId: deps.sessionId, message }); return "accepted" },
+      })
+    } }),
+    sessionViewLoader: { load: (id) => loadSessionView(id, storeReader, storeReader) },
   })
   const sessionEvents = createSessionEventNotices({ sessionStore: ctx.sessionStore })
   // The runtime's own environment, so a message between sessions takes the production delivery.
@@ -73,6 +85,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       personEntries: (sessionId, earlierTurns) => supervisor.personEntries(sessionId, earlierTurns),
       forwardPersonEntries: (input) => { trace.push(`forward ${input.targetSessionId}`); return supervisor.forwardPersonEntries(input) },
       sessionRuntime: (sessionId) => supervisor.runtimeState(sessionId),
+      createOpenHold: () => supervisor.createOpenHold(),
       sendSessionMessage: async (input) => {
         trace.push(`report ${input.fromSessionId} ${input.call}`)
         const outcome = await runtime.sendSessionMessage(input)
@@ -101,7 +114,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   /** Opens the lead chat through the control part and answers its id, or null while it opens none. */
   const openLead = async (reason: "launch" | "command" = "launch"): Promise<string | null> => (await control.open(reason))?.sessionId ?? null
   return {
-    service, control, openLead, supervisor, sessionEvents, notices, patches, trace, reports,
+    service, control, openLead, supervisor, sessionEvents, notices, inputs, patches, trace, reports,
     async setEnabled(next: boolean) {
       enabled = next
       for (const listener of selectionListeners) await listener()

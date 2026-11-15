@@ -120,6 +120,7 @@ export class OutputProjector {
         return;
       case "begin-turn":
         this.builder.resetPhase();
+        if (event.runtimeStarted) this.builder.markTurnStart();
         return;
       case "set-model-phase":
         this.builder.setStreamPhase(event.phase, event.timestamp);

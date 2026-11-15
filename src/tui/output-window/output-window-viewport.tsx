@@ -8,7 +8,7 @@ import { Key } from "@solid-primitives/keyed"
 import { type Accessor, createEffect, createMemo, createSignal, on, onCleanup, Show, untrack } from "solid-js"
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
 import type { HeightIndex } from "../hooks/create-height-index.js"
-import { type PresentedTerminalRow, visibleBlockIdentity } from "../output-blocks/visible-output-blocks.js"
+import { type TimelineRow, visibleBlockIdentity } from "../output-blocks/visible-output-blocks.js"
 import type { OutputTranscriptView, TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { BlockRenderer } from "../output-blocks/block-renderer.js"
 import { Divider } from "../output-blocks/system-block.js"
@@ -328,7 +328,7 @@ export function TranscriptViewport(props: TranscriptViewportProps) {
 
 interface RowDescriptor {
   readonly id: string
-  readonly block: PresentedTerminalRow
+  readonly block: TimelineRow
   readonly absoluteIndex: number
   readonly hasBoundaryBefore: boolean
 }
@@ -432,7 +432,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 interface RowMountProps {
-  block: Accessor<PresentedTerminalRow>
+  block: Accessor<TimelineRow>
   absoluteIndex: Accessor<number>
   hasBoundaryBefore: Accessor<boolean>
   settled: Accessor<boolean>

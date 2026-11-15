@@ -12,7 +12,7 @@ import { useKeymap } from "@tui/context/keymap"
 import { NavigationProvider } from "@tui/context/navigation.js"
 import { SubagentControlsProvider } from "@tui/context/subagent-controls.js"
 import { ClientExtensionProviders, ClientExtensionsProvider } from "@tui/context/client-extensions.js"
-import { createTuiModuleClients, moduleCloseGuards, moduleFirstTab, moduleTerminalTitle } from "@tui/modules.js"
+import { createTuiModuleClients, moduleCloseGuards, moduleFirstTab, moduleSessionNavigation, moduleTerminalTitle } from "@tui/modules.js"
 import { useTheme } from "@tui/context/theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { useToast } from "@tui/context/toast"
@@ -214,8 +214,8 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   createEffect(() => { composerReturns.own(firstFrame() ? tabs().filter((tab) => tab.kind === "session").map((tab) => tab.id) : []) })
   const switchForeground = createForegroundSwitcher({ signals, sessions: signals.sessionCatalogRows, tabs })
   const focusReady = createFocusedSessionReadiness(() => { const id = signals.foregroundId(); return id === undefined || services.transcripts.isCurrent(id) })
-  useOpenSessionRunners({
-    tabs,
+  const sessionShows = useOpenSessionRunners({
+    tabs, client: appService,
     // eslint-disable-next-line solid/reactivity -- the hook tracks readiness in its owned effect
     ready: () => firstFrame() && signals.startupStatus() === null,
     keeper: createOpenSessionKeeper({ client: appService, focusReady, onDiagnostic: (message, detail) => keeperLog.warn(message, { detail }) }),
@@ -315,7 +315,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     roleView: signals.roleView, ensureRoleViews: signals.ensureRoleViews,
     viewerLayer: overlay.viewer, dialog: modal, viewer: viewerProps, openChild: childPlaces.openChild,
     title: sessionTitle, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
-    question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions })
+    question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions, showSession: sessionShows.show })
   const commandDefinitions = createMemo(() => buildCommandDefinitions(keymap.chordFor, signals.builtInCommands()))
   const commandCatalog = createMemo(() => commandSpecs(commandDefinitions()))
   function dispatchPaletteCommand(text: string): void {
@@ -334,7 +334,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     statusModal, helpModal, backgroundModal, modelModal, findModal, sessionChangesModal, activeSessionCount, sessionCount, activeModelLabel,
   } = createModalModals({
     directories, launcher, clipboard, modal, signals, services, appService, sessions: signals.sessionCatalogRows, sessionCatalogErrors: signals.sessionCatalogErrors, sessionCount: signals.sessionCount, tabs, appVersion, chat, startChat, switchForeground,
-    activateSession, activateSessionById, closeSessionTab, closeChat, settings, runtimeConfig, settingsOperations,
+    activateSession, activateSessionById, closeSessionTab, closeChat, sessionNavigation: moduleSessionNavigation(moduleClients), settings, runtimeConfig, settingsOperations,
     signInPage: signInPage(attach),
     onPaletteActivate: dispatchPaletteCommand,
     commands: commandCatalog,

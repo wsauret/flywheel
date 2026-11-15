@@ -6,8 +6,12 @@ import { createShellState, type ShellSignals } from "../../../../src/tui/hooks/s
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import type { SessionActivationResult } from "../../../../src/tui/hooks/session-activation.js"
 import { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
+import type { SessionNavigation } from "../../../../src/tui/hooks/use-session-modal-types.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+
+/** The navigation of a terminal with no module that changes the Sessions list. */
+export const NO_NAVIGATION: SessionNavigation = { hidden: () => new Set(), openOver: () => undefined }
 
 export const mockClipboardCopy = mock(async (_text: string) => {})
 
@@ -79,6 +83,7 @@ export function createModal(options: {
   closeChat?: (sessionId: string) => Promise<void>
   dispatch?: (command: { type: string; sessionId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>
   showToast?: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
+  navigation?: SessionNavigation
 }) {
   const modals = createModalStack()
   const appService = createAppService(options.dispatch)
@@ -99,6 +104,7 @@ export function createModal(options: {
     activateSessionById,
     closeChat,
     deleteActiveSession: options.deleteActiveSession ?? mock(async () => {}),
+    navigation: options.navigation ?? NO_NAVIGATION,
     clipboard: { copy: mockClipboardCopy, readImage: async () => null },
   }, 0)
   return { hook, modals, appService, activateSession, activateSessionById, closeChat }

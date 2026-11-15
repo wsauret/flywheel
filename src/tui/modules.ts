@@ -11,6 +11,7 @@ import { leadTui } from "./modules/lead/index.js"
 import { bugReportsTui } from "./modules/bug-reports/index.js"
 import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
 import type { RuntimeHealth } from "../protocol/app-service-types.js"
+import type { SessionNavigation } from "./hooks/use-session-modal-types.js"
 
 /** The terminal client's module registry. The slot host renders strips,
  *  surfaces, and rows from this list alone, so a module's terminal presence is
@@ -39,6 +40,16 @@ export function moduleTerminalTitle(clients: readonly TuiModuleClient[], session
 /** Every client's close guard, in registry order. */
 export function moduleCloseGuards(clients: readonly TuiModuleClient[]): readonly ((sessionId: string) => Promise<boolean>)[] {
   return clients.flatMap((client) => client.closeGuard ? [client.closeGuard] : [])
+}
+
+/** The Sessions list's part of every client (`TuiSessionNavigation`), combined: the sessions that any of them hides,
+ *  and the open of the client whose tab `foregroundId` names, or undefined for every other tab. */
+export function moduleSessionNavigation(clients: readonly TuiModuleClient[]): SessionNavigation {
+  const parts = clients.flatMap((client) => client.sessionNavigation ? [client.sessionNavigation] : [])
+  return {
+    hidden: () => new Set(parts.flatMap((part) => part.hidden())),
+    openOver: (foregroundId) => foregroundId === undefined ? undefined : parts.find((part) => part.over() === foregroundId)?.open,
+  }
 }
 
 /** Creates installed crash presenters under the fallback's Solid owner. */

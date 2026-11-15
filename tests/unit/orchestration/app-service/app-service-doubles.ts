@@ -367,6 +367,7 @@ export function runtimeSupervisor(overrides: Partial<RuntimeSupervisor> = {}): R
   return {
     claimComposerReturns: async () => ({ ok: true, kind: "empty" }),
     ownedSessionIds: () => [],
+    createOpenHold: () => ({ hold: () => {}, release: async () => {}, drop: () => {} }),
     awaitAcceptedWork: async () => {},
     replacementSuccessorRows: () => undefined,
     reconcileChildSessionCompletions: async () => ({ reconciledCount: 0, workflowAggregateReads: 0 }),

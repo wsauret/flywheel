@@ -9,7 +9,7 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager.js"
 import type { DurableSessionCatalogError, DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
 import { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
-import { createSignals } from "../hooks/_session-modal-fixtures.js"
+import { createSignals, NO_NAVIGATION } from "../hooks/_session-modal-fixtures.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 
 const TMP_ROOT = path.join(os.tmpdir(), `flywheel-session-modal-open-warning-${process.pid}`)
@@ -78,6 +78,7 @@ async function openSessionAndCollectToasts(sessionCatalogErrors: (sessionId: str
         activateSessionById: mock(async () => {}),
         closeChat: async () => {},
         deleteActiveSession: mock(async () => {}),
+        navigation: NO_NAVIGATION,
       })
 
       hook.openSessionsModal()

@@ -51,6 +51,7 @@ export function moduleExecutionEnvironment(owners: {
     openChat: (chat) => supervisor.openSessionRuntime(chat),
     sessionEvents: owners.sessionEvents,
     sessionRuntime: (sessionId) => supervisor.runtimeState(sessionId),
+    createOpenHold: () => supervisor.createOpenHold(),
     sendSessionMessage: (input) => sendRuntimeSessionMessage(owners.delivery, input),
   }
 }

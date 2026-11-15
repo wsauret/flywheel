@@ -22,6 +22,16 @@ export interface SessionModalDeps {
   /** Close chat, which also removes the tab that shows the chat. */
   closeChat: (sessionId: string) => Promise<void>
   deleteActiveSession: (sessionId: string) => Promise<void>
+  navigation: SessionNavigation
+}
+
+/** What modules change in the Sessions list (`moduleSessionNavigation`). */
+export interface SessionNavigation {
+  /** The sessions that the list does not show, also to a search. */
+  readonly hidden: () => ReadonlySet<string>
+  /** Opens a chosen session instead of its tab while `foregroundId` is in front; undefined for a tab that keeps the
+   *  ordinary open. */
+  readonly openOver: (foregroundId: string | undefined) => ((sessionId: string) => void) | undefined
 }
 
 export interface SessionPickerResult {
@@ -35,6 +45,8 @@ export interface SessionPickerResult {
 export interface SessionModalAction {
   readonly key: string
   readonly label: string
+  /** An open action, which the footer shows on a line of its own. */
+  readonly opens?: true
   onTrigger(): void
 }
 
@@ -58,6 +70,8 @@ export interface SessionModalHook {
   openSessionsModal(): void
   closeSessionsModal(): void
   selectModalItem(rowIndex: number): void
+  /** A click on a row: it selects the row, and opens it where the tab in front opens sessions over itself. */
+  clickRow(rowIndex: number): void
   openSessionRow(row: SelectablePickerRow): void
   handleSessionFilter(query: string): void
   filterQuery: Accessor<string>

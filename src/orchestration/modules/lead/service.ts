@@ -5,6 +5,7 @@ import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { EMPTY_LEAD_CHATS, leadChatsCursor, leadReportCall, type LeadChatsView, type LeadSeenState } from "../../../protocol/modules/lead.js"
 import type { SessionEventKind } from "../../chat/runner-types.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
+import type { SessionOpenHold } from "../../app-service/runtime-supervisor-types.js"
 import { sessionDisplayName } from "../../session/schemas.js"
 import { readChatDetail, readChatRoster, type ChatProgress } from "./chat-progress.js"
 import type { LeadFact } from "./facts.js"
@@ -51,7 +52,7 @@ export const leadService = moduleServiceHandle<LeadService>("lead")
 type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled"> & {
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read">
   readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
-  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage">
+  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold">
 }
 
 type NonEmptyIds = readonly [string, ...string[]]
@@ -73,8 +74,11 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   let background = Promise.resolve()
   let watched: { readonly lead: string; readonly chats: Set<string> } | undefined
   let disposed = false
-  // The rows of the started chats, while the module is on.
+  // The rows of the started chats, while the module is on, and the open hold of each chat that has one (PI-LEAD-003).
   let rows: LeadRows | undefined
+  let opened: SessionOpenHold | undefined
+  // The closes that let-gos of the open hold started; dispose settles them.
+  let releases: Promise<void> = Promise.resolve()
   // The disposals of the rows owners that a turn-off ended; dispose settles them.
   let endings: Promise<unknown> = Promise.resolve()
 
@@ -113,6 +117,9 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       if (!rows) return
       const ended = rows
       rows = undefined
+      // A module that turns off or a process that ends closes no chat: the rows leave without the person reading them.
+      opened?.drop()
+      opened = undefined
       const shown = ended.rows()
       // The owner stops at once, so no patch of its in-flight work follows these removals.
       const ending = ended.dispose()
@@ -122,6 +129,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     }
     let chats = added
     if (!rows) {
+      const hold = services.executionEnvironment().createOpenHold()
       const owner: LeadRows = createLeadRows({
         reader: services.projectionReader,
         sessionManager: services.sessionManager,
@@ -130,9 +138,19 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         readMark: (sessionId) => journal.state().readMarks.get(sessionId),
         seenMark: (sessionId) => journal.state().seenMarks.get(sessionId),
         // Only the current owner publishes: an owner that a turn-off ended may still settle work it started.
-        publish: (change) => { if (rows === owner) publishRow(change) },
+        publish: (change) => {
+          if (rows !== owner) return
+          if (change.kind === "updated") hold.hold(change.row.sessionId)
+          else {
+            const { sessionId } = change
+            // Beside the journal's lane, because the close waits in the chat's mailbox.
+            releases = releases.then(() => hold.release(sessionId)).catch((error: unknown) => { log.warn("the lead could not let go of a chat", { sessionId, error: errorMessage(error) }) })
+          }
+          publishRow(change)
+        },
       })
       rows = owner
+      opened = hold
       chats = journal.state().started.keys()
     }
     // The builds run beside the journal's lane: a fold's first replay reads through a position captured after it starts.
@@ -289,7 +307,9 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       if (watched) applyWatches([])
       const ending = rows?.dispose()
       rows = undefined
-      await Promise.all([ending, endings])
+      opened?.drop()
+      opened = undefined
+      await Promise.all([ending, endings, releases])
     },
   }
 }

@@ -10,6 +10,7 @@ import type { ModuleDomainIntakes } from "../../hooks/create-module-domain-intak
 import type { TuiModuleClient, TuiModuleClientHost } from "../../tui-module-client.js"
 import { LeadCloseConfirm, type LeadCloseFocus } from "./close-confirm.js"
 import { openLeadChatTab, openLeadChatViewer, type LeadChatViewerHost } from "./chat-viewer.js"
+import { LEAD_TRANSCRIPT } from "./transcript.js"
 
 /** What the lead's strip reads and opens, shared through the client's provider. */
 export interface LeadScreen {
@@ -113,7 +114,14 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
       },
       current,
       terminalTitle: leadTerminalTitle,
+      transcript: LEAD_TRANSCRIPT,
     },
     closeGuard: (sessionId) => sessionId === current() ? confirmClose(sessionId) : Promise.resolve(true),
+    // The lead command reopens a dismissed lead, so the Sessions list never shows it (PI-LEAD-010).
+    sessionNavigation: {
+      hidden: () => { const lead = host.domains.lead.view()?.leadSessionId; return lead ? [lead] : [] },
+      over: current,
+      open: (sessionId) => { screen.openChat(sessionId) },
+    },
   }
 }

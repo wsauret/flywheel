@@ -28,6 +28,13 @@ describe("transcript block wire schema", () => {
     expect(Schema.decodeUnknownSync(FrontendOutputBlockSchema)(version23)).toEqual(version23)
   })
 
+  it("carries the mark of a turn that the runtime started, and decodes a row from a runtime that sends none", () => {
+    const marked: FrontendOutputBlock = { kind: "text", id: "comment", content: "That chat asks you a question.", timestamp: 1, turnStart: true }
+    expect(Schema.decodeUnknownSync(FrontendOutputBlockSchema)(Schema.encodeUnknownSync(FrontendOutputBlockSchema)(marked))).toEqual(marked)
+    const { turnStart: _mark, ...earlier } = marked
+    expect(Schema.decodeUnknownSync(FrontendOutputBlockSchema)(earlier)).toEqual(earlier)
+  })
+
   it("carries the sender of a message row and the words of the person it attached", () => {
     const row = {
       kind: "userMessage" as const, id: "msg:child-1:call-1", content: "Which parser?", timestamp: 1, pending: false, injected: false,

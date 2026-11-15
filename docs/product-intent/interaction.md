@@ -564,7 +564,7 @@ The desktop app pages through the system's notifications for every open project,
 
 ## PI-INTERACTION-053: A finished turn on the web client folds to its answer
 
-On the web client, once the agent has answered and finished without an error, everything between the person's message and the final answer folds into one line. The terminal never folds turns. The line gives the start time, the duration, and what was run, edited, and delegated, such as "Worked 6m 12s · ran 14 commands, edited 5 files, 2 subagents". Cards of workflows that the turn launched stay visible after the line, in their finished form, before the answer. Opening the line, or a search hit inside it, shows every other row as it was.
+On the web client, once the agent has answered and finished without an error, everything between the person's message and the final answer folds into one line. The terminal folds only the lead's turns (PI-LEAD-011). The line gives the start time, the duration, and what was run, edited, and delegated, such as "Worked 6m 12s · ran 14 commands, edited 5 files, 2 subagents". Cards of workflows that the turn launched stay visible after the line, in their finished form, before the answer. Opening the line, or a search hit inside it, shows every other row as it was.
 
 ## PI-INTERACTION-099: Long durations count hours
 

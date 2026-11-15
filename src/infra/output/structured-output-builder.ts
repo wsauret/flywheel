@@ -18,6 +18,7 @@ import { Log } from "../log.js";
 import { EMPTY_OUTPUT_CHANGE_BATCH, NO_CHANGED_TOOLS, type OutputBlockChange, type OutputChangeBatch } from "./output-block-delta.js";
 import { StreamingToolTextStore } from "./streaming-tool-text.js";
 import { appendKeyedDelta } from "./structured-output-grouping.js";
+import { createTurnStartGate, keepTurnStart, withoutTurnStart } from "./turn-start.js";
 import { contentKey, definedProps, rebuildBlockIndexes } from "./structured-output-helpers.js";
 import { resetFailedFileChange } from "./file-change-settlement.js";
 import { resolveToolRowPresentation } from "../tools/tool-display-registry.js";
@@ -111,6 +112,7 @@ export class StructuredOutputBuilder {
   // because insertOutputBlock only shifts the helper-owned maps.
   private toolIndexById = new Map<string, number>();
   private phase: ResponsePhase | null = null;
+  private readonly turnStart = createTurnStartGate();
   private _streamingOutputChars = 0;
   // Changes are recorded at the write site instead of reconstructed later by
   // diffing full snapshots. `needsFullResync` covers rare structural rewrites
@@ -216,6 +218,8 @@ export class StructuredOutputBuilder {
     log.debug("phase transition", { from: before, to: phase });
     this.notifyChange();
   }
+  /** The next row of model output opens a turn that the runtime started, so it carries `turnStart`. */
+  markTurnStart(): void { this.turnStart.arm(); }
   resetPhase(): void {
     this.phase = nextResponsePhase(this.phase, { kind: "ended" });
     this._streamingOutputChars = 0;
@@ -310,7 +314,10 @@ export class StructuredOutputBuilder {
     this.completeThinking(timestamp);
     this._streamingOutputChars += text.length;
     this.phase = nextResponsePhase(this.phase, { kind: "claimed" });
-    this.blocks.splice(toolIndex, 0, { kind: "text", id: blockKey, content: text, timestamp });
+    // Text that leads a call renders before it, so it takes over the call's mark of a turn's start.
+    const tool = this.blocks[toolIndex];
+    if (tool) this.blocks[toolIndex] = withoutTurnStart(tool);
+    this.blocks.splice(toolIndex, 0, keepTurnStart(tool, { kind: "text", id: blockKey, content: text, timestamp }));
     this._visibleMessageCountSuffix++;
     rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
     this.rebuildToolIndex();
@@ -500,14 +507,14 @@ export class StructuredOutputBuilder {
     if (provisionalIndex >= 0) {
       const provisional = this.blocks[provisionalIndex];
       const sentence = provisional?.kind === "tool" ? provisional.sentence : undefined;
-      this.blocks[provisionalIndex] = { kind: "question", toolUseId, questions, timestamp, ...(sentence === undefined ? {} : { sentence }) };
+      this.blocks[provisionalIndex] = keepTurnStart(provisional, { kind: "question", toolUseId, questions, timestamp, ...(sentence === undefined ? {} : { sentence }) });
       this.rebuildToolIndex();
       this.recordUpsert(provisionalIndex);
       this.notifyChange();
       return provisionalIndex;
     }
     const idx = pushQuestionBlock(this.indexes(), toolUseId, questions, timestamp);
-    this.blocks[idx] = { kind: "question", toolUseId, questions, timestamp, sentence: resolveToolRowPresentation("ask_user", {}, "").sentence };
+    this.blocks[idx] = keepTurnStart(this.blocks[idx], { kind: "question", toolUseId, questions, timestamp, sentence: resolveToolRowPresentation("ask_user", {}, "").sentence });
     this.shiftToolIndexesFrom(idx);
     this.recordInsert(idx);
     this.enforceBlocksCap();
@@ -622,6 +629,7 @@ export class StructuredOutputBuilder {
     }
     return null;
   }
+  // The placed block can carry `turnStart`, which changes neither its kind nor its id.
   private insertBlock(block: AnyBlock): number {
     const idx = insertOutputBlock(this.indexes(), block);
     if (isVisibleMessageBlock(block)) this._visibleMessageCountSuffix++;
@@ -674,6 +682,7 @@ export class StructuredOutputBuilder {
       blocks: this.blocks,
       agentIndexById: this.agentIndexById,
       contentIndexById: this.contentIndexById,
+      admit: this.turnStart.admit,
     };
   }
 }

@@ -10,7 +10,7 @@ import { createSessionManager, type SessionManager } from "../../../../src/orche
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
 
 import { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
-import { createSignals } from "../hooks/_session-modal-fixtures.js"
+import { createSignals, NO_NAVIGATION } from "../hooks/_session-modal-fixtures.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 
@@ -95,6 +95,7 @@ describe("useSessionModal delete", () => {
           activateSessionById: mock(async () => {}),
           closeChat: async () => {},
           deleteActiveSession: mock(async () => {}),
+          navigation: NO_NAVIGATION,
         })
 
         hook.openSessionsModal()
@@ -143,6 +144,7 @@ describe("useSessionModal delete", () => {
           activateSessionById: mock(async () => {}),
           closeChat: async () => {},
           deleteActiveSession,
+          navigation: NO_NAVIGATION,
         })
 
         hook.openSessionsModal()

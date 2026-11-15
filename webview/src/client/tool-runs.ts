@@ -1,14 +1,11 @@
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
 import { blockIdentity } from "../../../src/protocol/block-identity.js"
-import { isShellMutationEntry, presentsAsFileChange } from "../../../src/protocol/client/file-change-body.js"
-import type { ReadRun } from "../../../src/protocol/client/tool-run-category.js"
 import type { StretchMember, ToolStretch, TranscriptModel } from "../../../src/protocol/client/transcript-model.js"
-import type { TurnFold } from "./turn-folds.js"
+import { rowIdentity, toolWorkCounts, type PresentedRows, type TurnFold } from "../../../src/protocol/client/turn-folds.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import { blockEnd, foldTranscript, runEnd, toolActivity, toolProcess } from "../../../src/protocol/client/transcript-model.js"
 import { agentGroupClockRuns } from "../../../src/protocol/client/agent-group-summary.js"
 import { messageDisclosureEntry } from "../../../src/protocol/client/message-sender.js"
-import type { MutationFilesView } from "../../../src/protocol/client/mutation-evidence.js"
 
 declare const presented: unique symbol
 export type PresentedWebBlock = FrontendOutputBlock & { readonly [presented]: true }
@@ -65,27 +62,13 @@ export interface ToolGroup {
   readonly endTimestamp?: number | undefined
 }
 
-export type TranscriptViewRow = FrontendOutputBlock | ToolGroup | TurnFold
+export type TranscriptViewRow = FrontendOutputBlock | ToolGroup | TurnFold<FrontendOutputBlock | ToolGroup>
 
 /** A row ends at its next wire block, including blocks presentation hides,
  *  unless its own work ended at another time (`blockEnd`). */
 export function blockEndTimes(blocks: readonly FrontendOutputBlock[]): ReadonlyMap<string, number | undefined> {
   return new Map(blocks.map((block, index) => [blockIdentity(block), blockEnd(block, blocks[index + 1]?.timestamp)]))
 }
-
-export interface TranscriptView<Row extends TranscriptViewRow = TranscriptViewRow> {
-  readonly rows: readonly Row[]
-  /** Whether a divider renders before each row, parallel to `rows`. */
-  readonly boundaryBefore: readonly boolean[]
-}
-
-/** The key a transcript row renders under. A group borrows its stretch's
- *  identity, so it stays mounted as more calls join it. */
-export function rowIdentity(row: TranscriptViewRow | RunRowLike): string {
-  return row.kind === "toolGroup" || row.kind === "turnFold" || row.kind === "readRun" ? row.id : blockIdentity(row)
-}
-
-type RunRowLike = FrontendToolEntry | ReadRun
 
 /** The identities of the blocks a row renders, in order. */
 export function rowBlockIdentities(row: TranscriptViewRow): readonly string[] {
@@ -178,7 +161,7 @@ function toolGroupOf(stretch: ToolStretch, keptKeys: ReadonlySet<string>): ToolG
  *  presented as one group, then the queued messages in place at the tail.
  *  A group keeps a key from `keptKeys` while it holds the block that key
  *  names. */
-export function presentWebTranscript(model: TranscriptModel, keptKeys: ReadonlySet<string> = new Set()): TranscriptView<PresentedWebBlock | ToolGroup> {
+export function presentWebTranscript(model: TranscriptModel, keptKeys: ReadonlySet<string> = new Set()): PresentedRows<PresentedWebBlock | ToolGroup> {
   const rows: (PresentedWebBlock | ToolGroup)[] = model.rows.map((row) => row.kind === "toolStretch" ? toolGroupOf(row, keptKeys) : presentBlock(row))
   const boundaryBefore = [...model.boundaryBefore]
   for (const pending of model.pendingBlocks) {
@@ -196,7 +179,7 @@ export function presentWebTranscript(model: TranscriptModel, keptKeys: ReadonlyS
  *  session, not the coordinates of a window read. */
 export function createWebTranscript() {
   let keys: ReadonlySet<string> = new Set()
-  return (blocks: readonly FrontendOutputBlock[], showThinking: boolean | undefined): TranscriptView<PresentedWebBlock | ToolGroup> => {
+  return (blocks: readonly FrontendOutputBlock[], showThinking: boolean | undefined): PresentedRows<PresentedWebBlock | ToolGroup> => {
     const view = presentWebTranscript(foldTranscript(blocks, showThinking), keys)
     const shownKeys = new Set<string>()
     for (const row of view.rows) if (row.kind === "toolGroup") shownKeys.add(row.id)
@@ -207,20 +190,6 @@ export function createWebTranscript() {
 
 function count(n: number, one: string, many: string): string {
   return n === 1 ? one : `${n} ${many}`
-}
-
-/** Counts displayed calls and unique project file mutations, not child work. */
-export function toolWorkCounts(children: readonly FrontendToolEntry[], metadata: ReadonlyMap<string, MutationFilesView> = new Map()) {
-  const commands = children.filter((child) => child.action === "shell_exec" && !isShellMutationEntry(child)).length
-  const tools = children.length - commands
-  const failed = children.filter((child) => child.status === "error" || (child.exitCode !== undefined && child.exitCode !== 0)).length
-  const interrupted = children.filter((child) => child.status === "interrupted").length
-  const fileCalls = children.filter(presentsAsFileChange)
-  const complete = fileCalls.every(child => (child.mutationEvidence === undefined && !metadata.has(child.id))
-    || (metadata.get(child.id)?.status === "ready" && metadata.get(child.id)?.nextOffset === null))
-  const editedFiles = new Set(fileCalls.flatMap(child =>
-    metadata.get(child.id)?.files.flatMap(entry => entry.kind === "applied" || entry.kind === "display" ? [entry.file.path] : entry.kind === "omitted" ? [entry.path] : []) ?? [])).size
-  return { commands, tools, failed, interrupted, editedFiles, complete }
 }
 
 /** A shell mutation counts as a tool. Nonzero command exits count as failures;

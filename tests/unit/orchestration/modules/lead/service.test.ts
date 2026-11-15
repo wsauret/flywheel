@@ -359,3 +359,39 @@ test("appends from the control part and the service to the one lead aggregate at
   expect([...service.journal.state().started.keys()].toSorted()).toEqual(["c1", "c2"])
   expect(service.role(lead)).toBeUndefined()
 })
+
+test("a started chat whose result the person read closes once it is at rest while no client shows it, and a route to it opens it again and runs the turn", async () => {
+  const lead = harness()
+  const { leadId, chat } = await routedChat(lead)
+  const lifecycle = async () => (await ctx.manager.read(chat))?.lifecycleState
+  expect(await lifecycle()).toBe("active")
+
+  // The report reads the result, so the row leaves and nothing holds the chat open. The final message continues the
+  // chat's branch, so the closed chat can open again.
+  await conversation.appendConversation(chat, [{ kind: "assistant", content: [{ type: "text", text: "The login page works now." }] }])
+  await settle(async () => await lifecycle() === "inactive")
+  expect((await lead.service.view()).rows.map((row) => row.sessionId)).not.toContain(chat)
+  expect(await lifecycle()).toBe("inactive")
+
+  await conversation.appendConversation(leadId, [
+    { kind: "user", content: "Also fix the signup page", origin: "human" },
+    { kind: "assistant", content: [{ type: "tool_use", id: "route-2", name: "route_request", input: { kind: "existing", chat } }] },
+  ])
+  const routed = await lead.service.route({ leadSessionId: leadId, kind: "existing", chat, earlierTurns: 0 })
+  if (!routed.ok) throw new Error(routed.reason)
+  await settle(async () => await lifecycle() === "active")
+  expect(await lifecycle()).toBe("active")
+  // The chat's new runner starts its turn on the person's forwarded message.
+  await settle(() => lead.inputs.some((input) => input.sessionId === chat))
+  expect(JSON.stringify(lead.inputs.filter((input) => input.sessionId === chat))).toContain("Also fix the signup page")
+})
+
+test("a started chat that a client shows stays open after its row leaves", async () => {
+  const lead = harness()
+  const { chat } = await routedChat(lead)
+  await supervisor.activateSession(chat, { shown: true })
+  await (await finalMessage(chat, "final-1", "The login page works now."))()
+  await settle(async () => !(await lead.service.view()).rows.some((row) => row.sessionId === chat))
+  await Bun.sleep(20)
+  expect((await ctx.manager.read(chat))?.lifecycleState).toBe("active")
+})

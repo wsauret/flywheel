@@ -10,7 +10,7 @@ import { CHAT_SLOT } from "./active-model.js"
 import { createSessionModuleMonitors, type SessionModuleMonitors } from "./module-domain-views.js"
 import { createSeatReading, type SeatReading } from "./session-seat.js"
 import type { createWebTranscript } from "./tool-runs.js"
-import type { createTurnFolds } from "./turn-folds.js"
+import type { createTurnFolds } from "../../../src/protocol/client/turn-folds.js"
 import type { HeldRoles } from "./session-roles.js"
 
 /** How many recently shown sessions a web client keeps resident. */

@@ -71,7 +71,9 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     if (!deps.modal.stack.some((modal) => modal.element === deps.renderModal)) {
       return { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "" }
     }
-    return pickerRowsFor(deps.sessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute())
+    const hidden = deps.navigation.hidden()
+    const sessions = hidden.size === 0 ? deps.sessions() : deps.sessions().filter((session) => !hidden.has(session.id))
+    return pickerRowsFor(sessions, deps.sessionCatalogErrors(), filterQuery(), nowMinute())
   })
   const selection = createKeyedListSelection(() => fullResult().rows.map((row) => isSelectablePickerRow(row) ? rowSessionId(row) : undefined))
   const currentResult = createMemo<SessionPickerResult>(() => {
@@ -152,7 +154,21 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     if (detailWarning) showToast({ message: detailWarning, variant: "warning" })
   }
 
+  /** The open that the tab in front takes instead of the session's own tab, if any (PI-LEAD-010). */
+  const openOver = (): ((sessionId: string) => void) | undefined => deps.navigation.openOver(signals.foregroundId())
+
   function openSession(session: SessionCatalogRow): void {
+    const over = openOver()
+    if (!over) {
+      openSessionTab(session)
+      return
+    }
+    clearPendingShortcut()
+    close()
+    over(session.id)
+  }
+
+  function openSessionTab(session: SessionCatalogRow): void {
     clearPendingShortcut()
     const opened = entry
     const subject = sessionSubject(session)
@@ -308,6 +324,8 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     if (offered.primary === "interrupt") actions.push({ key: "i", label: "interrupt", onTrigger: () => interruptSession(session) })
     // Last, so the footer's one line truncates it before the primary control.
     if (session.lifecycleState === "active") actions.push({ key: "x", label: "close chat", onTrigger: () => closeChat(session) })
+    // Named only where they differ from the ordinary open, on a line of their own; no typed key matches them.
+    if (openOver()) actions.push({ key: "enter", label: "open", opens: true, onTrigger: () => openSession(session) }, { key: "ctrl+t", label: "open as tab", opens: true, onTrigger: () => openSessionTab(session) })
     return actions
   }
 
@@ -424,6 +442,12 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
         close()
         return true
       }
+      if (evt.ctrl && name === "t" && openOver()) {
+        evt.preventDefault?.()
+        const row = currentSelectableRow()
+        if (row?.kind === "session") openSessionTab(row.session)
+        return true
+      }
       return false
     },
     textInput: (evt) => {
@@ -468,6 +492,11 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     openSessionsModal,
     closeSessionsModal: close,
     selectModalItem,
+    clickRow(rowIndex) {
+      selectModalItem(rowIndex)
+      const row = currentResult().rows[rowIndex]
+      if (openOver() && row?.kind === "session") openSession(row.session)
+    },
     openSessionRow,
     handleSessionFilter,
     filterQuery,

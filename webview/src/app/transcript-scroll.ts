@@ -1,5 +1,6 @@
 import type { ReadingState } from "../../../src/protocol/client/reading-state.js"
-import { rowHolding, rowIdentity, type TranscriptViewRow } from "../client/tool-runs.js"
+import { rowHolding, type TranscriptViewRow } from "../client/tool-runs.js"
+import { rowIdentity } from "../../../src/protocol/client/turn-folds.js"
 
 export interface ReaderExpansionState {
   readonly pending: boolean

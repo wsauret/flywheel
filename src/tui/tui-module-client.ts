@@ -9,8 +9,10 @@ import type { ShellSignals } from "./hooks/shell-state.js"
 import type { AgentGroupBlockProps } from "./output-blocks/agent-group-block.js"
 import type { ChildPlaces } from "./hooks/create-child-viewer-opener.js"
 import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
+import type { TurnFoldPresentation } from "../protocol/client/turn-folds.js"
 import type { ChatModeHook } from "./hooks/use-chat-mode.js"
 import type { QuestionDraftNamespace } from "./hooks/create-draft-cache.js"
+import type { SessionShows } from "./hooks/use-open-session-runners.js"
 /** The shell lends modules its ordinary child-body and navigation capabilities. */
 export interface TuiModuleClientHost {
   readonly domains: ModuleDomainIntakes
@@ -34,6 +36,8 @@ export interface TuiModuleClientHost {
   readonly cancelQuestion: ChatModeHook["cancelQuestion"]
   /** The shell's question drafts, so a question keeps its input wherever it shows. */
   readonly questionDrafts: QuestionDraftNamespace
+  /** Shows a chat outside its tab, as a view over another tab does (`SessionShows`). */
+  readonly showSession: SessionShows["show"]
 }
 /** The session a module keeps as the first tab (ARCH-PROTOCOL-034). */
 export interface TuiFirstTab {
@@ -48,6 +52,9 @@ export interface TuiFirstTab {
   /** The terminal title while this tab is in front, from the project's root directory; the tab's own title when
    *  unset. */
   readonly terminalTitle?: (projectRoot: string) => string
+  /** How the tab presents this session's transcript; every other session and every other view of this one keep the
+   *  ordinary rows. */
+  readonly transcript?: TurnFoldPresentation
 }
 
 export interface TuiModuleClient {
@@ -60,4 +67,15 @@ export interface TuiModuleClient {
   readonly firstTab?: TuiFirstTab
   /** Answers whether a session's tab or chat may close; it may ask the person first. */
   readonly closeGuard?: (sessionId: string) => Promise<boolean>
+  readonly sessionNavigation?: TuiSessionNavigation
+}
+
+/** A module's part in the Sessions list (PI-LEAD-010). */
+interface TuiSessionNavigation {
+  /** The sessions that the list does not show, also to a search. */
+  readonly hidden: Accessor<readonly string[]>
+  /** The tab in front of which a chosen session opens through `open` instead of in its own tab; undefined when there is
+   *  none. */
+  readonly over: Accessor<string | undefined>
+  readonly open: (sessionId: string) => void
 }

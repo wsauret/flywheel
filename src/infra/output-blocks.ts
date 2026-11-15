@@ -43,11 +43,17 @@ import { SessionRelationSchema } from "./chat-input-schema.js"
  *  content and legacy single diffs receive one budget. */
 export const TOOL_PREVIEW_LINE_LIMIT = 20
 
+/** `turnStart`, on each row that a turn's model output can open with: set on the first row of a turn that the runtime
+ *  started, such as one that a hidden notice woke, where no person message marks where the turn starts. Clients read
+ *  it to fold turns (PI-INTERACTION-053). */
+const TurnStartField = Schema.optionalKey(Schema.Literal(true))
+
 const TextBlockSchema = Schema.Struct({
   kind: Schema.Literal("text"),
   id: Schema.String,
   content: Schema.String,
   timestamp: Schema.Number,
+  turnStart: TurnStartField,
 })
 
 /** Canonical user-facing presentation of one tool invocation, derived from the
@@ -118,6 +124,7 @@ export type DiffOmission = typeof DiffOmissionSchema.Type
 const ToolEntryBaseSchema = Schema.Struct({
   kind: Schema.Literal("tool"),
   id: Schema.String,
+  turnStart: TurnStartField,
   /** Raw machine tool identifier: registry lookup, capability behavior, and
    *  bash settlement key off this, never off the presentation name. */
   name: Schema.String,
@@ -185,6 +192,7 @@ const ToolEntrySchema = Schema.Union([
 const ContainerBaseSchema = Schema.Struct({
   kind: Schema.Literal("agentGroup"),
   id: Schema.String,
+  turnStart: TurnStartField,
   label: Schema.String,
   description: Schema.String,
   sentence: Schema.optionalKey(ToolPresentationSchema),
@@ -392,6 +400,7 @@ const SystemBlockSchema = Schema.Struct({
 const ThinkingBlockSchema = Schema.Struct({
   kind: Schema.Literal("thinking"),
   id: Schema.String,
+  turnStart: TurnStartField,
   content: Schema.String,
   status: Schema.Union([Schema.Literal("streaming"), Schema.Literal("completed")]),
   timestamp: Schema.Number,
@@ -485,6 +494,7 @@ const QuestionEntrySchema = Schema.Struct({
 const QuestionBlockSchema = Schema.Struct({
   kind: Schema.Literal("question"),
   toolUseId: Schema.String,
+  turnStart: TurnStartField,
   sentence: Schema.optionalKey(ToolPresentationSchema),
   questions: Schema.mutable(Schema.Array(QuestionEntrySchema)),
   answers: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),

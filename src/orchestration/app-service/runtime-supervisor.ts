@@ -12,7 +12,7 @@ import type { SessionRuntimeView, SessionTitlePatch } from "../../protocol/app-s
 import { chatDurabilityContext, createDurableChatSession } from "./session-chat-durability.js"
 import { createSessionRuntimeActor } from "./session-runtime-actor.js"
 import type { SessionRuntimeActor, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
-import type { QuestionSettlementOutcome, ResumeChatOutcome, RuntimeSupervisor, RuntimeSupervisorDeps, SendChatOutcome } from "./runtime-supervisor-types.js"
+import type { QuestionSettlementOutcome, ResumeChatOutcome, RuntimeSupervisor, RuntimeSupervisorDeps, SendChatOutcome, SessionOpenHold } from "./runtime-supervisor-types.js"
 import { createTranscriptProjectionCache } from "./transcript-projection-cache.js"
 import { createPersonEntryForward } from "./person-entry-forward.js"
 import { attachedRunnerDelivery } from "./session-background-notifications.js"
@@ -240,8 +240,40 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     // no work, so the release of its last holder decides whether a client
     // still shows the chat.
     if (!atRest) shownSessions.delete(sessionId)
+    // A view that holds the chat open keeps it open past its tab's close (`SessionOpenHold`).
+    else if (openHolds.has(sessionId)) return true
     if (!deps.sessionStore.get(sessionId) && await deps.manager.read(sessionId) === null) return true
     return ensureActor(sessionId).dispatch(atRest ? { kind: "session.close", atRest } : { kind: "session.close" })
+  }
+  /** The holders of each chat that a view holds open (`SessionOpenHold`). */
+  const openHolds = new Map<string, Set<object>>()
+  function createOpenHold(): SessionOpenHold {
+    const holder = {}
+    const held = new Set<string>()
+    const letGo = (sessionId: string): boolean => {
+      const holders = openHolds.get(sessionId)
+      if (!holders?.delete(holder) || holders.size > 0) return false
+      openHolds.delete(sessionId)
+      return true
+    }
+    return {
+      hold(sessionId) {
+        if (held.has(sessionId)) return
+        held.add(sessionId)
+        const holders = openHolds.get(sessionId) ?? new Set()
+        holders.add(holder)
+        openHolds.set(sessionId, holders)
+      },
+      async release(sessionId) {
+        if (!held.delete(sessionId) || !letGo(sessionId) || shownSessions.has(sessionId) || disposed) return
+        log.info("chat closes at rest after its last open hold", { sessionId })
+        await closeChat(sessionId, true)
+      },
+      drop() {
+        for (const sessionId of held) letGo(sessionId)
+        held.clear()
+      },
+    }
   }
   async function discardTransientChat(sessionId: string): Promise<{ readonly removed: boolean }> {
     const entry = deps.sessionStore.get(sessionId)
@@ -679,5 +711,5 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     }
     return removed
   }
-  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader: deps.projectionReader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, personEntries: personEntryForward.personEntries, forwardPersonEntries: personEntryForward.forwardPersonEntries, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
+  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader: deps.projectionReader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, createOpenHold, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, personEntries: personEntryForward.personEntries, forwardPersonEntries: personEntryForward.forwardPersonEntries, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
 }
