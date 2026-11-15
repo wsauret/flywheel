@@ -1,0 +1,26 @@
+bench/harbor/configs/luna-codex-intro.toml
+  h_4b47e9e4a8b456 1-86
+bench/harbor/configs/luna-codex-validating.toml
+  h_4b47e9e4a8b456 1-92
+bench/harbor/configs/luna-codex-whole.toml
+  h_4b47e9e4a8b456 1-272
+bench/harbor/configs/luna-drop-minimal.toml
+  h_4b47e9e4a8b456 1-77
+bench/harbor/configs/luna-intro-own.toml
+  h_4b47e9e4a8b456 1-84
+bench/harbor/configs/luna-lean-constraints.toml
+  h_4b47e9e4a8b456 1-88
+bench/harbor/configs/luna-oc-whole.toml
+  h_4b47e9e4a8b456 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c8e7db8309976cbefed40bcc3dd3387bfdd36be2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
