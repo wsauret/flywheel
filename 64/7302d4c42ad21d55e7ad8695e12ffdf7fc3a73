@@ -1,0 +1,28 @@
+bench/harbor/configs/luna-t5-bullet.toml
+  h_4b47e9e4a8b456 1-80
+bench/harbor/configs/luna-t5-core-append.toml
+  h_4b47e9e4a8b456 1-81
+bench/harbor/configs/shipped-t5-bullet.toml
+  h_4b47e9e4a8b456 1-106
+bench/harbor/configs/shipped-t5-core-append.toml
+  h_4b47e9e4a8b456 1-107
+src/orchestration/agent-runtime/diagnostic-parity.ts
+  h_4b47e9e4a8b456 146-152,156-157,159,163-164,167,169
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 204-205
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 332-357
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 202-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "647302d4c42ad21d55e7ad8695e12ffdf7fc3a73",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
