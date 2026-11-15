@@ -1,0 +1,33 @@
+src/orchestration/agent-runtime/llm/provider-availability-types.ts
+  s_0d536ae5637d7f::t_4cd50ce3e2874f 125
+  s_0d536ae5637d7f::t_e283bfe7629c2e 118-124,126-137
+tests/unit/orchestration/agent-runtime/llm/_provider-chain-harness.ts
+  s_0d536ae5637d7f::t_e283bfe7629c2e 74
+tests/unit/orchestration/agent-runtime/llm/provider-availability-authority.test.ts
+  s_0d536ae5637d7f::t_e283bfe7629c2e 237,240,244
+src/orchestration/agent-runtime/llm/provider-availability.ts
+  s_0d536ae5637d7f::t_e283bfe7629c2e 508,511-518
+docs/product-intent/model-access.md
+  s_0d536ae5637d7f::t_4cd50ce3e2874f 354-357
+tests/unit/orchestration/auth/provider-observations/usage-availability-fold.test.ts
+  s_0d536ae5637d7f::t_92312208ba1f99 17-18,38-55
+  s_0d536ae5637d7f::t_a7779561a4455d 56
+src/orchestration/auth/provider-observations/usage-availability-fold.ts
+  s_0d536ae5637d7f::t_e283bfe7629c2e 10-17,21-22,24,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6d559be6a02687151d2a2f4de73b8b86b3a8f66b",
+  "prompts": {},
+  "sessions": {
+    "s_0d536ae5637d7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "054b86e9-d761-4bd9-a4a3-8c91989e0b7a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
