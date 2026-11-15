@@ -1139,6 +1139,7 @@
         "papercuts",
         "project-notifications",
         "provider-anthropic-api",
+        "provider-baseten",
         "provider-chatgpt",
         "provider-claude-agent-sdk",
         "provider-deepseek",
@@ -1187,6 +1188,7 @@
       "papercuts",
       "project-notifications",
       "provider-anthropic-api",
+      "provider-baseten",
       "provider-chatgpt",
       "provider-claude-agent-sdk",
       "provider-deepseek",
@@ -1244,6 +1246,7 @@
   "accessProviders": {
     "ids": [
       "anthropic_api",
+      "baseten",
       "chatgpt",
       "claude_agent_sdk",
       "deepseek",
@@ -1262,6 +1265,13 @@
         "shortName": "Anthropic",
         "billing": "metered",
         "catalogId": "anthropic"
+      },
+      {
+        "id": "baseten",
+        "displayName": "Baseten API Key",
+        "shortName": "Baseten",
+        "billing": "metered",
+        "catalogId": "baseten"
       },
       {
         "id": "chatgpt",

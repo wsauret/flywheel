@@ -102,11 +102,29 @@ test("every installed provider declares its place in the auto-routing order", ()
     { id: "google_api", billing: "metered", rank: 70 },
     { id: "google_vertex", billing: "metered", rank: 75 },
     { id: "deepseek", billing: "metered", rank: 78 },
+    { id: "baseten", billing: "metered", rank: 79 },
     { id: "openrouter", billing: "metered", rank: 80 },
   ]);
 });
 
 describe("provider chain preflight", () => {
+  test("routes a shared DeepSeek model through its subscription, developer API, Baseten host, then aggregator", () => {
+    const model = "deepseek-v4.1-flash-1017";
+    const connection = connect({ providers: authProviders({ apiKeys: { opencode_go: SECRET, deepseek: SECRET, baseten: SECRET, openrouter: SECRET } }) });
+    const routes = admitted(PROVIDERS.selection.plan(model, connection, exactEligibility({
+      opencode_go: { transport: "openai-completions" },
+      deepseek: { transport: "openai-completions", wireModelId: "deepseek-flash" },
+      baseten: { transport: "openai-completions", wireModelId: "deepseek-ai/DeepSeek-V4.1-Flash-1017" },
+      openrouter: { transport: "openai-completions" },
+    }))).candidates;
+    expect(routes.map(({ providerId, spendMode }) => ({ providerId, spendMode }))).toEqual([
+      { providerId: "opencode_go", spendMode: "included" },
+      { providerId: "opencode_go", spendMode: "prepaid" },
+      { providerId: "deepseek", spendMode: "direct_api" },
+      { providerId: "baseten", spendMode: "direct_api" },
+      { providerId: "openrouter", spendMode: "aggregator" },
+    ]);
+  });
   test("serves Claude first through the Agent SDK provider, then the other subscriptions, without bypassing eligibility or spend classes", () => {
     const model = "claude-sonnet-4-6";
     const connection = connect(

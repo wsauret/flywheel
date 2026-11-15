@@ -1,0 +1,89 @@
+# Flywheel config of the Baseten-only DeepSeek 1017 max-effort arm, matched to
+# the FrontierHarness v1.1 board (frontierharness.org): every harness there runs
+# DeepSeek-V4.1-Flash-1017 at max effort, served by Baseten, 62 tasks x 4
+# attempts. This arm runs the same model at max effort on every role, on
+# Baseten alone. The launcher selects the tasks and attempts.
+#
+# Known differences from the board:
+# - Route. Every request goes to Baseten's own API (inference.baseten.co) with
+#   the person's Baseten API key. Every other provider module is disabled, so
+#   no request falls back to another provider, and every attempt is served by
+#   Baseten.
+# - Cost. The run's own cost is at the prices of Baseten's model list, so it
+#   compares with the board's cost per pass without repricing.
+# - Effort. Max on every role, including the short title-generation role.
+#
+# The launcher validates this file with Flywheel's config schema before any
+# trial, records its sha256 in run_manifest.json, and installs it in the trial
+# as $HOME/.flywheel/flywheel.toml. The trial exports its credentials under the
+# neutral auth profile id "benchmark", so the profile tables below apply. The
+# snapshot carries only the Baseten credential.
+
+allow_persistent_processes = true
+# Headless shell commands write in place; the guard that stops a write
+# outside the project would refuse ordinary task setup such as package installs.
+shell_write_guard = false
+idle_compaction = false
+auto_delete_session_days = 0
+
+disabled_modules = [
+  "ask-user",
+  "bug-reports",
+  "code-mode",
+  "development",
+  "experiments",
+  "learning",
+  "mcp",
+  "papercuts",
+  "project-notifications",
+  "provider-anthropic-api",
+  "provider-chatgpt",
+  "provider-claude-agent-sdk",
+  "provider-deepseek",
+  "provider-github-copilot",
+  "provider-google-api",
+  "provider-google-vertex",
+  "provider-openai-api",
+  "provider-opencode-go",
+  "provider-openrouter",
+  "provider-supergrok",
+  "remote",
+  "side-question",
+  "web",
+  "web-chatgpt",
+  "web-exa",
+  "workflows",
+]
+
+# Subagents stay on with the agent types that do the task's work. The advisor and
+# the reviewers give a second opinion from another model, which a run of one
+# model cannot give, and nothing in a trial publishes.
+[subagents]
+disabled_types = ["advisor", "reviewer", "ship"]
+
+[updates]
+auto_install = false
+
+[profiles.benchmark]
+allow_training_routes = false
+
+# The board runs one model in a trial, so automatic titles use the chat route too.
+[profiles.benchmark.roles.chat]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+
+[profiles.benchmark.roles.explorer]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+
+[profiles.benchmark.roles.implementer]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+
+[profiles.benchmark.roles.subagent-summary]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+
+[profiles.benchmark.roles.title-generation]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"

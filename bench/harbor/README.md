@@ -41,10 +41,11 @@ The package carries the config. The trial installs it as `$HOME/.flywheel/flywhe
 The checked-in arms are in `configs/`:
 
 - `tb-board-deepseek-low.toml` and `tb-board-deepseek-high.toml` match the settings of the harness leaderboard. They run the September release of DeepSeek-V4.1-Flash at reasoning effort low or high, on the person's OpenRouter API key. OpenRouter is restricted to DeepInfra's fp8 endpoint with no fallback, because the board serves that model from DeepInfra. Automatic titles use the same route, so no other model runs in a trial.
+- `fh-deepseek-1017-max-baseten.toml` targets the FrontierHarness v1.1 board's model and route. Every role runs DeepSeek-V4.1-Flash-1017 at max effort through Baseten's own API, with Baseten's prices and no other provider. The launcher selects the tasks and attempts. Store the key in the run's auth profile: `printf '%s\n' "$BASETEN_API_KEY" | FLYWHEEL_AUTH_PROFILE=<profile> flywheel auth login --baseten`.
 - `tb-mini-openai.toml` runs `gpt-6.1-terra` at medium effort.
 - `tb-mini-claude.toml` runs Flywheel's Claude engine route on the person's Claude subscription. It runs on every registered benchmark, also where the agent phase is offline: Harbor installs the Claude engine in the setup phase (see [Agent package](#agent-package)).
 
-When the agent phase of a selected task has no public network, as on DeepSWE, the trial can reach only the hosts that the run allows. The launcher allows the API hosts that the arm's enabled provider modules declare, and the model metadata host `models.dev`. It refuses the run, with the name of each provider, when an enabled provider module declares no API hosts. Of the provider modules, OpenRouter (`openrouter.ai`) and the Claude engine route (`api.anthropic.com`) declare their hosts now, so only an arm that enables no other provider module can run such a task.
+When the agent phase of a selected task has no public network, as on DeepSWE, the trial can reach only the hosts that the run allows. The launcher allows the API hosts that the arm's enabled provider modules declare, and the model metadata host `models.dev`. It refuses the run, with the name of each provider, when an enabled provider module declares no API hosts. Of the provider modules, OpenRouter (`openrouter.ai`), Baseten (`inference.baseten.co`), and the Claude engine route (`api.anthropic.com`) declare their hosts now, so only an arm that enables no other provider module can run such a task.
 
 ## Launcher flags
 

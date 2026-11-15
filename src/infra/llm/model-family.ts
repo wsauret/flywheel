@@ -74,8 +74,8 @@ export function inferModelFamilyFromProvider(providerId: string): ModelFamily | 
   const normalized = canonicalize(providerId);
   if (normalized === "anthropic" || normalized.startsWith("anthropic-")) return "anthropic";
   if (normalized === "openai" || normalized.startsWith("openai-")) return "openai";
-  // OpenRouter, xAI, and DeepSeek use OpenAI-compatible wires.
-  if (normalized === "openrouter" || normalized === "xai" || normalized === "deepseek") return "openai";
+  // OpenRouter, xAI, DeepSeek, and Baseten use OpenAI-compatible wires.
+  if (normalized === "openrouter" || normalized === "xai" || normalized === "deepseek" || normalized === "baseten") return "openai";
   // The Go and Zen subscription plans serve their models over
   // OpenAI-compatible wires.
   if (normalized === "opencode" || normalized.startsWith("opencode-")) return "openai";

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { authStoreObservationKey, authStoreObservedRevision, getCredential, loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../../src/infra/auth/auth-store.js";
 import type { Credential } from "../../../../src/infra/auth/auth-store-types.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
+import { installedCredentialProviderIds, installedCredentialSlotClassifier } from "../../../../src/orchestration/credential-provider-modules.js";
 
 const slots = (providerId: string): "subscription" | "metered" => providerId === "chatgpt" ? "subscription" : "metered";
 const temporaryDirectory = temporaryDirectories();
@@ -150,6 +151,9 @@ describe("loadAuthStore", () => {
     writeAuthJson(dir, { anthropic_api: metered(credential) });
     expect(getCredential("anthropic_api", dir)).toEqual(credential);
     expect(getCredential("missing", dir)).toBeUndefined();
+    const current = loadAuthStoreWithDiagnostics(dir, installedCredentialProviderIds(), installedCredentialSlotClassifier());
+    expect(current.store).toEqual({ anthropic_api: credential });
+    expect(current.dropped).toEqual([]);
   });
 
   test("excludes legacy instances", () => {

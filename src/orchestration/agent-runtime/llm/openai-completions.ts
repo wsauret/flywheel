@@ -212,6 +212,10 @@ function chatCompletionsReasoningParams(
 ): UnknownFields {
   if (!info.reasoning || accessProvider === "github_copilot") return {};
   const wireEffort = chatCompletionsReasoningEffort(effort, info);
+  if (accessProvider === "baseten") {
+    if (wireEffort) return { reasoning_effort: wireEffort };
+    return effort === "off" && info.reasoningEfforts?.includes("none") ? { reasoning_effort: "none" } : {};
+  }
   if (accessProvider === "deepseek") {
     const forcedTool = toolChoice !== undefined && toolChoice !== "auto" && toolChoice !== "none";
     return wireEffort && !forcedTool ? { thinking: { type: "enabled" }, reasoning_effort: wireEffort } : { thinking: { type: "disabled" } };

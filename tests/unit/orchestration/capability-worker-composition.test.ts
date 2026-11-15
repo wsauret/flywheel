@@ -11,7 +11,7 @@ describe("first-party capability module composition", () => {
 
     const withoutChatGpt = accessProviderRegistry(composeFirstPartyModules(SHIPPED_MODULES, ["provider-chatgpt"]))
     expect(withoutChatGpt.selection.definitions.map((definition) => definition.id)).not.toContain("chatgpt")
-    expect(withoutChatGpt.selection.definitions).toHaveLength(10)
+    expect(withoutChatGpt.selection.definitions).toHaveLength(11)
   })
 
 })
