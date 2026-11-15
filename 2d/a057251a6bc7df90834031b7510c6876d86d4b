@@ -1,0 +1,14 @@
+bench/harbor/configs/fh-deepseek-1017-max-web.toml
+  h_4b47e9e4a8b456 1-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2da057251a6bc7df90834031b7510c6876d86d4b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
