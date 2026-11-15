@@ -73,9 +73,10 @@ export function selectExecutorPlateau(records: readonly ReleaseMemoryEvidence[],
 }
 
 /** The prompt-bar text that appears only when a chat session is foreground and
- *  idle; the flywheel-uat skill and the e2e harness both treat it as the ready
- *  signal (tests/e2e/lib/e2e-framework.sh wait_for_chat). */
-export const READY_MARKER = "for fresh chat"
+ *  idle, on the lead's tab and on an ordinary tab; the flywheel-uat skill and the e2e harness both treat it as the
+ *  ready signal (tests/e2e/lib/e2e-framework.sh wait_for_chat). It is "Send a message" with neither the "..." of a
+ *  composer with no chat nor the " to the running turn" of a busy one. */
+export const READY_MARKER = /Send a message(?!\.\.\.| to )/
 
 /** The welcome card's title once the runtime identity is known: `>_ Flywheel (v0.0.10)`. */
 export const INTRO_TITLE_MARKER = "Flywheel (v"

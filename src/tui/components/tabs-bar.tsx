@@ -5,6 +5,7 @@ import type { Accessor } from "solid-js"
 import { For, createEffect, createMemo, createSignal, on, untrack } from "solid-js"
 import { BOLD } from "../utils/text-attributes.js"
 import { CellColumn, type CellColumnState, type Gutter } from "./cell-column.js"
+import { tabBarHidden, useClientExtensions } from "../context/client-extensions.js"
 import type { TuiTheme } from "../context/theme/resolve.js"
 import type { TabInfo } from "../hooks/create-tabs.js"
 
@@ -151,6 +152,10 @@ function tabGutter(tab: TabInfo, dragging: boolean, blocked: boolean): Gutter | 
 }
 
 export function TabsBar(props: TabsBarProps) {
+  const clients = useClientExtensions()
+  // One tab needs no tab bar when its module stands for the whole window (`TuiFirstTab.hidesTabControls`): the row
+  // keeps its height and its divider, with no tab, gap, arrow, or "+".
+  const alone = createMemo(() => tabBarHidden(clients, props.tabs()))
   const [dragState, setDragState] = createSignal<DragState | null>(null)
   const previewTabs = createMemo(() => {
     const state = dragState()
@@ -270,6 +275,7 @@ export function TabsBar(props: TabsBarProps) {
   // Replacing a cell leaves a no-hit interval between frames and loses drag
   // capture. Stable semantic keys preserve controls while their positions change.
   const cells = createMemo<Cell[]>(() => {
+    if (alone()) return props.availableWidth() > 0 ? [chromeCell("trailing", props.availableWidth())] : []
     const items = visibleItems()
     const hasOverflow = layout().hasOverflow
     const state = dragState()
@@ -339,4 +345,11 @@ export function TabsBar(props: TabsBarProps) {
       </For>
     </box>
   )
+}
+
+/** The divider under the header's stats, which continues the tab bar's divider row to the right edge. While the bar
+ *  shows nothing, it takes the bar's colour, so the row is one unbroken line. */
+export function TabsBarDivider(props: { readonly tabs: Accessor<readonly TabInfo[]>; readonly width: Accessor<number>; readonly theme: TuiTheme }) {
+  const clients = useClientExtensions()
+  return <text fg={tabBarHidden(clients, props.tabs()) ? props.theme.border : props.theme.text} overflow="hidden" wrapMode="none">{"─".repeat(props.width())}</text>
 }

@@ -166,7 +166,7 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
     theme,
     layout: () => computeComposerBorderLayout({
       terminalWidth: props.width, modelLabel: modelReading(), update: undefined, composerStatus: props.composerStatus?.() ?? [],
-      primaryHints: [], showGlobalHints: false, activeSessionCount: 0, sessionCount: 0,
+      primaryHints: [], showGlobalHints: false, tabHints: false, activeSessionCount: 0, sessionCount: 0,
       resumeHint: undefined, newHint: undefined, closeHint: undefined, sessionsHint: undefined,
     }),
     lineWidth: () => props.width, status: () => props.active() ? spinnerStatus() : null, idle: () => surface.agentState() === "idle",

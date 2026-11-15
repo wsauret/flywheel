@@ -11,8 +11,8 @@ import { ToastDisplay } from "@tui/components/toast-display"
 import { useKeymap } from "@tui/context/keymap"
 import { NavigationProvider } from "@tui/context/navigation.js"
 import { SubagentControlsProvider } from "@tui/context/subagent-controls.js"
-import { ClientExtensionProviders, ClientExtensionsProvider } from "@tui/context/client-extensions.js"
-import { createTuiModuleClients, moduleCloseGuards, moduleFirstTab, moduleSessionNavigation, moduleTerminalTitle } from "@tui/modules.js"
+import { ClientExtensionProviders, ClientExtensionsProvider, hidesTabControls, moduleFirstTab } from "@tui/context/client-extensions.js"
+import { createTuiModuleClients, moduleCloseGuards, moduleSessionNavigation, moduleTerminalTitle } from "@tui/modules.js"
 import { useTheme } from "@tui/context/theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { useToast } from "@tui/context/toast"
@@ -34,7 +34,7 @@ import { Composer } from "./components/composer.js"
 import { RuntimeNotice } from "./components/runtime-notice.js"
 import type { ComposerHandle } from "./components/composer-types.js"
 import { StartupViewport } from "./components/startup-viewport.js"
-import { TabsBar } from "./components/tabs-bar.js"
+import { TabsBar, TabsBarDivider } from "./components/tabs-bar.js"
 import { ContextControl } from "./components/context-control.js"
 import { createTabCloser } from "./hooks/create-tab-closer.js"
 import { createComposerPopupKeySlot } from "./hooks/create-composer-popup-key-slot.js"
@@ -491,7 +491,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     chordFor: keymap.chordFor,
     resumeOffered: () => sessionControlsHook.offered().primary === "resume",
     activeSessionCount,
-    sessionCount, stripFocused: slots.stripFocused,
+    sessionCount, stripFocused: slots.stripFocused, hidesTabControls: (sessionId) => hidesTabControls(moduleClients, sessionId),
   })
 
   return (
@@ -519,11 +519,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
                 }
               </Show>
             </box>
-            <text
-              fg={theme.text}
-              overflow="hidden"
-              wrapMode="none"
-            >{"─".repeat(headerStats().width)}</text>
+            <TabsBarDivider tabs={tabs} width={() => headerStats().width} theme={theme} />
           </box>
           <box width={1} flexShrink={0} />
         </box>

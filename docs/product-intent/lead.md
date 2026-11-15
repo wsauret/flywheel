@@ -49,3 +49,11 @@ The lead speaks as the person's assistant, and its own words lead its transcript
 ## PI-LEAD-012: A started chat reports in one shape
 
 A chat that the lead started ends each turn with a report in one shape. It states its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, its open questions with a recommendation, and what it noticed along the way. The lead's summary names what the chat found and presents the chat's claims as the chat's, not as facts that the lead checked.
+
+## PI-LEAD-013: The lead's tab shows only beside other tabs
+
+While the lead's tab is the only tab, the terminal tab bar shows no tab and no new-tab control, only the stats and an unbroken divider line, because one tab needs no tab bar. When another tab opens, the lead's tab appears at once as the first tab, to the left of the new one. It hides again when the lead's tab is the only tab again. The new-tab key still opens a tab while the bar is empty. An ordinary chat that is the only tab keeps its tab as without a lead.
+
+## PI-LEAD-014: The lead's tab does not teach tabs
+
+While the lead's tab is in front, the composer's placeholder and border show no new-tab, close-tab, or tab-switch hint, because the lead is the happy path and tabs are the divergent one. Those keys still work. The Sessions hint stays, because the Sessions list opens chats over the lead.

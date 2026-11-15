@@ -1,9 +1,11 @@
+/** @jsxImportSource @opentui/solid */
 import { describe, expect, it } from "bun:test"
 import { RGBA, createTextAttributes, type CapturedFrame } from "@opentui/core"
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import type { TabInfo } from "../../../../src/tui/hooks/create-tabs.js"
+import type { TuiModuleClient } from "../../../../src/tui/tui-module-client.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme, type TuiTheme } from "../../../../src/tui/context/theme/resolve.js"
 
@@ -25,21 +27,33 @@ async function renderTabsFixture(
   onReorder?: (id: string, beforeId: string | null) => void,
   onActivate: (id: string) => void = () => {},
   rendererHeight = 3,
+  clients: readonly TuiModuleClient[] = [],
+  /** When set, the bar renders as the shell's header row does: the bar, then a stats column of this width whose
+   *  middle row reads "stats" and whose last row is the header's divider. */
+  stats?: number,
 ) {
-  const [{ TabsBar }, { TickPoolProvider }] = await Promise.all([
+  const [{ TabsBar, TabsBarDivider }, { TickPoolProvider }, { ClientExtensionsProvider }] = await Promise.all([
     import("../../../../src/tui/components/tabs-bar.js"),
     import("../../../../src/tui/context/tick-pool-context.js"),
+    import("../../../../src/tui/context/client-extensions.js"),
   ])
+  const bar = () => createComponent(TabsBar, { tabs, availableWidth, theme, onActivate, onNewTab: () => {}, onReorder })
+  const header = (width: number) => (
+    <box flexDirection="row">
+      <box flexGrow={1} overflow="hidden" flexShrink={1}>{bar()}</box>
+      <box flexDirection="column">
+        <box height={1} />
+        <box height={1}><text>{"stats".padStart(width)}</text></box>
+        {createComponent(TabsBarDivider, { tabs, width: () => width, theme })}
+      </box>
+    </box>
+  )
   return testRender(
-    () => createComponent(TickPoolProvider, {
+    () => createComponent(ClientExtensionsProvider, {
+      value: clients,
       get children() {
-        return createComponent(TabsBar, {
-          tabs,
-          availableWidth,
-          theme,
-          onActivate,
-          onNewTab: () => {},
-          onReorder,
+        return createComponent(TickPoolProvider, {
+          get children() { return stats === undefined ? bar() : header(stats) },
         })
       },
     }),
@@ -60,6 +74,18 @@ async function renderTabs(tabs: readonly TabInfo[]): Promise<{ text: string; fra
 
 function tabLabelRow(text: string): string {
   return text.split("\n")[1] ?? ""
+}
+
+/** A module client whose first tab is `current` and hides the tab controls while it is alone, as the lead's does. */
+function firstTabClient(current: () => string | undefined): TuiModuleClient {
+  return {
+    provide: (children) => children(), openUri: async () => false, openSession: () => false, restore: async () => false,
+    firstTab: { open: async () => undefined, current, hidesTabControls: true },
+  }
+}
+
+function sessionTab(id: string, isForeground: boolean): TabInfo {
+  return { kind: "session", id, title: id, isForeground, isBusy: false, isBlocked: false }
 }
 
 describe("TabsBar", () => {
@@ -356,6 +382,49 @@ describe("TabsBar", () => {
       expect(activated).toEqual(["key-4"])
     } finally {
       result.renderer.destroy()
+    }
+  })
+
+  it("shows no tab, gap, or new-tab control and one unbroken divider while the only tab is a first tab that hides its tab controls, and shows every tab at once beside another", async () => {
+    const [tabs, setTabs] = createSignal<readonly TabInfo[]>([sessionTab("Lead", true)])
+    const result = await renderTabsFixture(tabs, () => 90, undefined, () => {}, 3, [firstTabClient(() => "Lead")], 10)
+    const assertEmpty = (): void => {
+      const rows = result.captureCharFrame().split("\n")
+      expect(rows[1]).toBe(`${" ".repeat(95)}stats`)
+      expect(rows[2]).toBe("─".repeat(100))
+      const divider = result.captureSpans().lines[2]?.spans ?? []
+      expect(divider.every((span) => span.fg.equals(theme.border))).toBe(true)
+    }
+    try {
+      await result.renderOnce()
+      assertEmpty()
+
+      setTabs([sessionTab("Lead", true), sessionTab("Other", false)])
+      await result.renderOnce()
+      const row = tabLabelRow(result.captureCharFrame())
+      expect(row.indexOf("Lead")).toBeGreaterThan(-1)
+      expect(row.indexOf("Lead")).toBeLessThan(row.indexOf("Other"))
+      expect(row.indexOf("Other")).toBeLessThan(row.indexOf("+"))
+
+      setTabs([sessionTab("Lead", true)])
+      await result.renderOnce()
+      assertEmpty()
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
+  it("keeps the tab and new-tab control of an only tab that is not such a first tab, or whose module names none", async () => {
+    for (const [only, current] of [["Chat", "Lead"], ["Lead", undefined]] as const) {
+      const result = await renderTabsFixture(() => [sessionTab(only, true)], () => 100, undefined, () => {}, 3, [firstTabClient(() => current)])
+      try {
+        await result.renderOnce()
+        const row = tabLabelRow(result.captureCharFrame())
+        expect(row).toContain(only)
+        expect(row).toContain("+")
+      } finally {
+        result.renderer.destroy()
+      }
     }
   })
 })

@@ -33,7 +33,7 @@ export async function runScrollScenario(context: ScenarioContext): Promise<Scena
   let terminal: Terminal | undefined
   const { timeline } = context
   try {
-    await timeline.time("ready", () => app.pollPane("ready prompt", pane => pane.includes(READY_MARKER), READY_TIMEOUT_MS, 50))
+    await timeline.time("ready", () => app.pollPane("ready prompt", pane => READY_MARKER.test(pane), READY_TIMEOUT_MS, 50))
     await timeline.time("dismiss-modals", () => dismissFirstRunModals(app, context.measurementRole))
     await timeline.time("settle", () => sleep(1500))
     app.sendKeys("C-s")

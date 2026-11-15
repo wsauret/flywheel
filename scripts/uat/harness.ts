@@ -14,7 +14,10 @@ import { resolveInstalledBinary } from "./installed-binary.js"
 import { attachApp, INSTALLED_LAUNCH_EXCLUDED_ENV, killTmuxSession, launchApp, PanePollError, startSessionReaper, type PollOutcome, type TmuxApp } from "./tmux-driver.js"
 import { writeClaudeLoginReferences } from "../../src/orchestration/modules/provider-claude-agent-sdk/cli-login.js"
 
-const READY_MARKER = "for fresh chat"
+/** The idle chat composer's placeholder: "Send a message" with neither the "..." of a composer with no chat nor the
+ *  " to the running turn" of a busy one. An ordinary tab shows "Send a message (ctrl+n for fresh chat)" and the lead's
+ *  tab "Send a message"; transcript guidance such as "Send a message to retry" does not match. */
+const READY_MARKER = /Send a message(?!\.\.\.| to )/
 const READY_TIMEOUT_MS = 45_000
 
 export interface TuiUatOptions {
@@ -298,7 +301,7 @@ export async function startTuiUat(options: TuiUatOptions): Promise<TuiUatApp> {
     await writeFile(join(sandbox.root, ACTIVITY_FILE), "", { mode: 0o600 })
     const running = decorateApp(app, sandbox, sessionName, idleTimeoutMs)
     startSessionReaper(sandbox.tmuxServer, sessionName, [process.execPath, fileURLToPath(new URL("tui.ts", import.meta.url)), "_reap", sandbox.root])
-    await running.pollPane("fresh chat readiness", (pane) => pane.includes(READY_MARKER), READY_TIMEOUT_MS, 50)
+    await running.pollPane("fresh chat readiness", (pane) => READY_MARKER.test(pane), READY_TIMEOUT_MS, 50)
     await utimes(join(sandbox.root, ACTIVITY_FILE), new Date(), new Date())
     return running
   } catch (error) {

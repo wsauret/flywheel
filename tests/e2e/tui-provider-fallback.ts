@@ -119,7 +119,7 @@ async function runScenario(scenario: Scenario, binary: string, proxyUrl: string,
   ]
   await command(["tmux", "new-session", "-d", "-s", session, "-x", "120", "-y", "40", "env", ...environment, "sh", "-c", "exec \"$FLYWHEEL_BINARY\" 2>\"$FLYWHEEL_STDERR\""], { cwd: project })
   try {
-    await waitUntil(async () => (await pane(session)).includes("for fresh chat"), `${scenario} TUI readiness`)
+    await waitUntil(async () => /Send a message(?!\.\.\.| to )/.test(await pane(session)), `${scenario} TUI readiness`)
     await sendText(session, scenarioPrompt(scenario))
     const expected = scenario === "partial-tool" ? "FINAL-AFTER-RECORDED-READ" : "FALLBACK-SUCCESS"
     await waitUntil(async () => (await pane(session)).includes(expected), `${scenario} fallback answer`)

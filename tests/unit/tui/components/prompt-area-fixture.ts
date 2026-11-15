@@ -7,6 +7,7 @@ import type { ComposerHandle, ComposerProps } from "../../../../src/tui/componen
 import type { DraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
 import type { PromptHistoryHook } from "../../../../src/tui/hooks/create-composer-history.js"
 import type { SpinnerStatusSource } from "../../../../src/tui/hooks/create-spinner-status.js"
+import type { TuiModuleClient } from "../../../../src/tui/tui-module-client.js"
 
 const { testRender } = await import("@opentui/solid")
 const { createComponent } = await import("solid-js/web")
@@ -14,6 +15,7 @@ const { Composer } = await import("../../../../src/tui/components/composer.js")
 const { QuestionInputProvider } = await import("../../../../src/tui/components/question-input.js")
 const { ThemeProvider } = await import("../../../../src/tui/context/theme.js")
 const { TickPoolProvider } = await import("../../../../src/tui/context/tick-pool-context.js")
+const { ClientExtensionsProvider } = await import("../../../../src/tui/context/client-extensions.js")
 
 export function createHistory(entries: readonly string[] = []): PromptHistoryHook {
   return {
@@ -47,6 +49,8 @@ interface MountOptions {
   readonly above?: () => JSX.Element
   /** The module statuses on the composer border. */
   readonly composerStatus?: readonly ModuleComposerStatus[]
+  /** The installed module clients, as the shell provides them. */
+  readonly clients?: readonly TuiModuleClient[]
 }
 
 /** A foreground session at rest: no turn, no park, no notice. */
@@ -75,7 +79,7 @@ export async function mountPrompt(options: MountOptions) {
     readImage: () => clipboardImage,
   }
   return testRender(
-    () => createComponent(ThemeProvider, {
+    () => createComponent(ClientExtensionsProvider, { value: options.clients ?? [], get children() { return createComponent(ThemeProvider, {
       mode: "dark",
       get children() {
         return createComponent(TickPoolProvider, {
@@ -126,7 +130,7 @@ export async function mountPrompt(options: MountOptions) {
           },
         })
       },
-    }),
+    }) } }),
     { width: 100, height: 8, kittyKeyboard: options.kittyKeyboard },
   )
 }

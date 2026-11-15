@@ -60,6 +60,7 @@ describe("composer border hints", () => {
         resumeOffered: () => false,
         activeSessionCount: () => 1,
         sessionCount: () => 2,
+        hidesTabControls: () => false,
         stripFocused,
       })
       const escapeHints = () => layout().hints.filter((hint) => hint.key === "esc").map((hint) => `${hint.key} ${hint.label}`)
@@ -84,6 +85,7 @@ describe("composer border hints", () => {
         resumeOffered: () => false,
         activeSessionCount: () => 1,
         sessionCount: () => 2,
+        hidesTabControls: () => false,
       })
       const keys = (): readonly string[] => [...layout().hints, ...(layout().sessionsClickHint ? [layout().sessionsClickHint] : [])].map((hint) => hint?.key ?? "")
 
@@ -92,6 +94,29 @@ describe("composer border hints", () => {
       expect(keys()).toEqual(expect.arrayContaining(["ctrl+t", "ctrl+o"]))
       expect(keys()).not.toContain("ctrl+n")
       expect(keys()).not.toContain("ctrl+s")
+      dispose()
+    })
+  })
+
+  it("names no new, close, or switch key while a tab that hides the tab controls is in front, keeps esc, resume, and sessions with its target, and names every key on the other tab", () => {
+    createRoot((dispose) => {
+      const signals = { ...createSignals({}, "lead-1"), agentState: () => "idle" as const, sessionState: () => "inactive" as const }
+      const { layout } = createComposerBorderLayout({
+        signals,
+        terminalWidth: () => 200,
+        activeModelLabel: () => undefined,
+        chordFor: createKeymap().keymap.chordFor,
+        resumeOffered: () => true,
+        activeSessionCount: () => 2,
+        sessionCount: () => 2,
+        hidesTabControls: (sessionId) => sessionId === "lead-1",
+      })
+      const hints = (): readonly string[] => layout().hints.map((hint) => `${hint.key} ${hint.label}`)
+
+      expect(hints()).toEqual(["esc dismiss", "ctrl+r resume", "ctrl+s 2 sessions"])
+      expect(layout().sessionsClickHint?.key).toBe("ctrl+s")
+      signals.setForegroundId("chat-2")
+      expect(hints()).toEqual(["esc dismiss", "ctrl+r resume", "ctrl+n new", "ctrl+w close tab", "tab switch", "ctrl+s 2 sessions"])
       dispose()
     })
   })

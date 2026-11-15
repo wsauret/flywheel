@@ -21,6 +21,8 @@ export interface ComposerBorderLayoutDeps {
   resumeOffered: Accessor<boolean>
   activeSessionCount: Accessor<number>
   sessionCount: Accessor<number>
+  /** Whether a session's tab hides the tab controls (`TuiFirstTab.hidesTabControls`). */
+  hidesTabControls: (sessionId: string | undefined) => boolean
   /** While a module strip holds key focus, Escape returns to the prompt, so
    *  the border names no Escape action. */
   stripFocused?: Accessor<boolean>
@@ -92,6 +94,7 @@ export function createComposerBorderLayout(deps: ComposerBorderLayoutDeps): Comp
     showGlobalHints: shouldShowGlobalHints({
       hasPendingQuestion: signals.pendingQuestion() !== undefined,
     }),
+    tabHints: !deps.hidesTabControls(signals.foregroundId()),
     activeSessionCount: deps.activeSessionCount(),
     sessionCount: deps.sessionCount(),
     sessionsHint: { key: deps.chordFor("sessions"), label: "sessions" },

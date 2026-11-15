@@ -28,7 +28,7 @@ export async function runSessionModalScenario(context: ScenarioContext): Promise
   const metrics: MetricValues = {}
   try {
     const { timeline } = context
-    await timeline.time("ready", () => app.pollPane("ready prompt", (pane) => pane.includes(READY_MARKER), READY_TIMEOUT_MS, 50))
+    await timeline.time("ready", () => app.pollPane("ready prompt", (pane) => READY_MARKER.test(pane), READY_TIMEOUT_MS, 50))
     await timeline.time("dismiss-modals", () => dismissFirstRunModals(app, context.measurementRole))
     // Let post-boot background warming settle so the measurement is the
     // modal's own cost, not contention with startup work.

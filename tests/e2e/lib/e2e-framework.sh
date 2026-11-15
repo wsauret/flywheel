@@ -211,16 +211,19 @@ nav_down() {
 }
 
 # Wait until the TUI has an active chat as foreground.
-# Detects "for fresh chat" in the prompt - this only appears when
-# a chat session is foreground and the agent is idle (ready for input).
-# The generic "Send a message..." prompt appears when NO session is foreground.
+# Detects the idle chat placeholder: "Send a message" not followed by "..."
+# or " to ". It appears when a chat session is foreground and the agent is
+# idle (ready for input), on the lead's tab ("Send a message") and on an
+# ordinary tab ("Send a message (ctrl+n for fresh chat)"). The generic
+# "Send a message..." prompt appears when NO session is foreground, and
+# "Send a message to the running turn" while a turn runs.
 wait_for_chat() {
   local max_wait="${1:-25}"
   local waited=0
   while [ "$waited" -lt "$max_wait" ]; do
     local screen
     screen=$(tmux capture-pane -t "$SESSION" -p 2>/dev/null || echo "")
-    if echo "$screen" | grep -q "for fresh chat"; then
+    if echo "$screen" | grep -o "Send a message.\{0,4\}" | grep -qvE "^Send a message(\.\.\.| to )"; then
       return 0
     fi
     sleep 1

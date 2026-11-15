@@ -115,6 +115,8 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
       current,
       terminalTitle: leadTerminalTitle,
       transcript: LEAD_TRANSCRIPT,
+      // The lead is the happy path and tabs the divergent one (PI-LEAD-013, PI-LEAD-014).
+      hidesTabControls: true,
     },
     closeGuard: (sessionId) => sessionId === current() ? confirmClose(sessionId) : Promise.resolve(true),
     // The lead command reopens a dismissed lead, so the Sessions list never shows it (PI-LEAD-010).

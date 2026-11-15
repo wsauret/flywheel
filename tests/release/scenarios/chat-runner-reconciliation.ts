@@ -47,7 +47,7 @@ async function measureRunnerReconciliation(context: ScenarioContext): Promise<Sc
   const { timeline } = context
   let client: RuntimeClient | undefined
   try {
-    await timeline.time("ready", () => app.pollPane("ready prompt", (pane) => pane.includes(READY_MARKER), READY_TIMEOUT_MS, 50))
+    await timeline.time("ready", () => app.pollPane("ready prompt", (pane) => READY_MARKER.test(pane), READY_TIMEOUT_MS, 50))
     await timeline.time("dismiss-modals", () => dismissFirstRunModals(app, context.measurementRole))
     await timeline.time("settle", () => sleep(1500))
     const userDataRoot = join(context.workDir, ".flywheel")

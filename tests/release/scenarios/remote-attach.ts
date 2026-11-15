@@ -86,7 +86,7 @@ export async function runRemoteAttachScenario(context: ScenarioContext): Promise
       env: { ...context.environment },
     })
     const machine = machineApp
-    await context.timeline.time("machine-ready", () => machine.pollPane("machine ready prompt", (pane) => pane.includes(READY_MARKER), READY_TIMEOUT_MS, 50))
+    await context.timeline.time("machine-ready", () => machine.pollPane("machine ready prompt", (pane) => READY_MARKER.test(pane), READY_TIMEOUT_MS, 50))
     // The relay runs in a host process that names this run, so a killed suite
     // runner cannot leave workerd running past the gate's sweep.
     relay = await context.timeline.time("relay", () => spawnLocalRelay(context.evidenceDir))
@@ -118,7 +118,7 @@ export async function runRemoteAttachScenario(context: ScenarioContext): Promise
     const terminal = laptopApp
     await context.timeline.time("picker", () => terminal.pollPane("remote project picker", (pane) => pane.includes(PICKER_QUESTION), READY_TIMEOUT_MS, 50))
     terminal.sendKeys("1", "Enter")
-    const ready = await context.timeline.time("ready", () => terminal.pollPane("ready prompt and welcome card", (pane) => pane.includes(READY_MARKER) && pane.includes(INTRO_TITLE_MARKER), READY_TIMEOUT_MS, 50))
+    const ready = await context.timeline.time("ready", () => terminal.pollPane("ready prompt and welcome card", (pane) => READY_MARKER.test(pane) && pane.includes(INTRO_TITLE_MARKER), READY_TIMEOUT_MS, 50))
     writeFileSync(join(context.evidenceDir, "ready-pane.log"), ready.capture)
   } catch (error) {
     failures.push(`remoteAttach: ${String(error)}`)

@@ -22,6 +22,9 @@ export interface ComposerBorderLayoutInput {
   /** esc cancel / interrupt / dismiss; dropped only as the last resort. */
   primaryHints: readonly KeyHintSpec[]
   showGlobalHints: boolean
+  /** False while the tab in front hides the tab controls (`TuiFirstTab.hidesTabControls`): no new, close, or switch
+   *  hint. */
+  tabHints: boolean
   activeSessionCount: number
   sessionCount: number
   /** ctrl+r resume, present only while the foreground session admits Resume
@@ -78,13 +81,14 @@ export function computeComposerBorderLayout(input: ComposerBorderLayoutInput): C
   const composerStatus = statuses.filter((label) => warnings.has(label) || (label.tone !== "warning" && admit(composerStatusText(label).length)))
   const changesLabel = input.changesLabel && admit(input.changesLabel.length) ? input.changesLabel : undefined
 
+  const tabHints = input.showGlobalHints && input.tabHints
   const tabHint: KeyHintSpec | undefined =
-    input.showGlobalHints && input.activeSessionCount >= 2 ? { key: "tab", label: "switch", separatorStyle: "border" } : undefined
+    tabHints && input.activeSessionCount >= 2 ? { key: "tab", label: "switch", separatorStyle: "border" } : undefined
   const sessionsHint: KeyHintSpec | undefined =
     input.sessionsHint
       ? { key: input.sessionsHint.key, label: sessionCountLabel(input.sessionCount) }
       : undefined
-  const tabVerbHints: readonly KeyHintSpec[] = input.showGlobalHints
+  const tabVerbHints: readonly KeyHintSpec[] = tabHints
     ? [input.newHint, input.closeHint].filter((hint): hint is KeyHintSpec => hint !== undefined)
     : []
 

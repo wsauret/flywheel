@@ -4,6 +4,7 @@ import { createRoot, createSignal } from "solid-js"
 import { EMPTY_LEAD_CHATS, EMPTY_LEAD_VIEW, leadReportLink, type LeadView } from "../../../../../src/protocol/modules/lead.js"
 import type { MutationResult } from "../../../../../src/protocol/app-service-types.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
+import { hidesTabControls } from "../../../../../src/tui/context/client-extensions.js"
 import { createTabCloser } from "../../../../../src/tui/hooks/create-tab-closer.js"
 import type { TabInfo } from "../../../../../src/tui/hooks/create-tabs.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
@@ -66,6 +67,16 @@ describe("the lead's terminal client", () => {
       expect(h.client.firstTab?.current()).toBeUndefined()
       h.setView(LEAD)
       expect(h.client.firstTab?.current()).toBe("lead-1")
+    } finally { h.dispose() }
+  })
+
+  it("hides the tab controls for the lead's tab only, and for no tab once the lead is dismissed", () => {
+    const h = harness()
+    try {
+      expect(hidesTabControls([h.client], "lead-1")).toBe(true)
+      expect(hidesTabControls([h.client], "chat-2")).toBe(false)
+      h.setView({ ...LEAD, dismissed: true })
+      expect(hidesTabControls([h.client], "lead-1")).toBe(false)
     } finally { h.dispose() }
   })
 

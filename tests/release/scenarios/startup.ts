@@ -40,7 +40,7 @@ export async function runStartupScenario(context: ScenarioContext, metricPrefix:
         "ready prompt and welcome card",
         (pane) => {
           if (observationTimeoutMs !== undefined && existsSync(stderrFile) && readFileSync(stderrFile, "utf8").includes("runtime event lane silent past deadline")) throw new Error("runtime event lane failed before chat readiness")
-          return pane.includes(READY_MARKER) && pane.includes(INTRO_TITLE_MARKER)
+          return READY_MARKER.test(pane) && pane.includes(INTRO_TITLE_MARKER)
         },
         observationTimeoutMs ?? READY_TIMEOUT_MS,
         50,

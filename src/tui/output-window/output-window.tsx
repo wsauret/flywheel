@@ -29,7 +29,7 @@ import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import { createOutputWindowRenderDiagnostics } from "./output-window-diagnostics.js"
 import { createTranscriptWindowProjector, targetTimelineBlockIndex, type TranscriptWindowProjection } from "./output-window-projection.js"
 import { turnFoldProjector } from "./turn-fold-projection.js"
-import { useClientExtensions } from "../context/client-extensions.js"
+import { moduleFirstTab, useClientExtensions } from "../context/client-extensions.js"
 import { TranscriptViewport } from "./output-window-viewport.js"
 import { createMountedRowRegistry, createSlotSignal, type EdgeDirection, type TranscriptLayoutSlot } from "./output-window-scroll.js"
 import { SessionIntroBlock, type SessionIntroProps } from "../welcome-notice.js"
@@ -92,10 +92,10 @@ export function OutputWindow(props: OutputWindowProps) {
   const projectWindow = createTranscriptWindowProjector()
   // The first tab's module can present its own session's transcript (`TuiFirstTab.transcript`); every other session,
   // and this one in any other view, keeps the ordinary rows.
-  const firstTab = useClientExtensions().find((client) => client.firstTab)?.firstTab
+  const firstTab = moduleFirstTab(useClientExtensions())
   const foldTurns = createMemo(() => {
     const sessionId = layoutSlot.sessionId
-    const presentation = sessionId !== undefined && firstTab?.current() === sessionId ? firstTab.transcript : undefined
+    const presentation = sessionId !== undefined && firstTab.current() === sessionId ? firstTab.transcript : undefined
     return presentation && sessionId !== undefined ? turnFoldProjector(presentation, sessionId) : undefined
   })
   const projection = createMemo<TranscriptWindowProjection>(() => {

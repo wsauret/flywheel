@@ -6,7 +6,8 @@ import { sideQuestionTui } from "./modules/side-question/index.js"
 import { projectNotificationsTui } from "./modules/project-notifications/index.js"
 import type { TuiErrorReportProps, TuiFaultNotice, TuiFaultNoticeHost, TuiModule } from "./tui-module.js"
 import { workflowsTui } from "./modules/workflows/index.js"
-import type { TuiFirstTab, TuiModuleClient, TuiModuleClientHost } from "./tui-module-client.js"
+import type { TuiModuleClient, TuiModuleClientHost } from "./tui-module-client.js"
+import { moduleFirstTab } from "./context/client-extensions.js"
 import { leadTui } from "./modules/lead/index.js"
 import { bugReportsTui } from "./modules/bug-reports/index.js"
 import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
@@ -21,13 +22,6 @@ export const TUI_MODULES = [remoteTui, experimentsTui, mcpTui, sideQuestionTui, 
 /** Composes the installed client contributions once, independent of admission to new work. */
 export function createTuiModuleClients(host: TuiModuleClientHost): readonly TuiModuleClient[] {
   return TUI_MODULES.flatMap((module: TuiModule) => module.createClient ? [module.createClient(host)] : [])
-}
-
-const NO_FIRST_TAB: TuiFirstTab = { open: async () => undefined, current: () => undefined }
-
-/** The first tab of the first client that names one. */
-export function moduleFirstTab(clients: readonly TuiModuleClient[]): TuiFirstTab {
-  return clients.find((client) => client.firstTab)?.firstTab ?? NO_FIRST_TAB
 }
 
 /** The terminal title that the first tab's module declares while that tab is in front; undefined for every other tab,

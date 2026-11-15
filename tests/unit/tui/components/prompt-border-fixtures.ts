@@ -22,6 +22,7 @@ export const baseInput = {
   composerStatus: [],
   primaryHints: primary,
   showGlobalHints: true,
+  tabHints: true,
   activeSessionCount: 3,
   sessionCount: 5,
   sessionsHint,

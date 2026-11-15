@@ -277,7 +277,7 @@ describe("bundled skill packages", () => {
     const uat = development.get("flywheel-uat")
     expect(uat?.body).toContain("Credential-backed UAT is the default")
     expect(uat?.body).toContain("Clone only that profile's `auth.json` and optional `profile.json`")
-    expect(uat?.body).toContain("`for fresh chat`")
+    expect(uat?.body).toContain("`Send a message` not followed by `...` or ` to `")
     expect(uat?.body).toContain("45 seconds")
     expect(uat?.body).toContain("every 50 ms")
     expect(uat?.body).toContain("A pane process that exits before the marker, or a readiness timeout, is `blocked`")

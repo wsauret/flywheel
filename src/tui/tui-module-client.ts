@@ -55,6 +55,10 @@ export interface TuiFirstTab {
   /** How the tab presents this session's transcript; every other session and every other view of this one keep the
    *  ordinary rows. */
   readonly transcript?: TurnFoldPresentation
+  /** True when this tab stands for the whole window, so the window does not teach tabs: while it is the only tab, the
+   *  tab bar shows no tab and no new-tab control, only the stats and the divider; while it is in front, the composer
+   *  names no new-tab, close-tab, or tab-switch key. Every tab key still works. */
+  readonly hidesTabControls?: boolean
 }
 
 export interface TuiModuleClient {

@@ -39,7 +39,7 @@ function fakeApp(): driver.TmuxApp {
     click: () => {},
     clickText: () => {},
     hover: () => {},
-    pollPane: async () => ({ elapsedMs: 0, capture: "for fresh chat" }),
+    pollPane: async () => ({ elapsedMs: 0, capture: "Send a message (ctrl+n for fresh chat)" }),
     dispose: () => {},
   }
 }
@@ -96,7 +96,10 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     const readiness = poll.mock.calls[0]
     expect(readiness?.[2]).toBe(45_000)
     expect(readiness?.[3]).toBe(50)
-    expect(readiness?.[1]("for fresh chat")).toBe(true)
+    expect(readiness?.[1]("│ >   Send a message (ctrl+n for fresh chat)   │")).toBe(true)
+    expect(readiness?.[1]("│ >   Send a message                           │")).toBe(true)
+    expect(readiness?.[1]("│ >   Send a message...                        │")).toBe(false)
+    expect(readiness?.[1]("│ >   Send a message to the running turn       │")).toBe(false)
     expect(readiness?.[1]("New Chat")).toBe(false)
     expect(dispose).toHaveBeenCalledTimes(1)
     expect(disposalHome).toBe(sandbox.home)
@@ -111,7 +114,7 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     const sendKeys = spyOn(app, "sendKeys")
     const matched = { elapsedMs: 12, capture: "│    > Chat ready │" }
     poll.mockImplementation(async (label, predicate, timeoutMs) => {
-      if (label === "fresh chat readiness") return { elapsedMs: 0, capture: "for fresh chat" }
+      if (label === "fresh chat readiness") return { elapsedMs: 0, capture: "Send a message (ctrl+n for fresh chat)" }
       expect(sendKeys).not.toHaveBeenCalled()
       expect(timeoutMs).toBe(321)
       expect(predicate("example: > Chat")).toBe(false)
@@ -135,7 +138,7 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     const { app, options } = await setup()
     const sendKeys = spyOn(app, "sendKeys")
     spyOn(app, "pollPane").mockImplementation(async (label, _predicate, timeoutMs) => {
-      if (label === "fresh chat readiness") return { elapsedMs: 0, capture: "for fresh chat" }
+      if (label === "fresh chat readiness") return { elapsedMs: 0, capture: "Send a message (ctrl+n for fresh chat)" }
       expect(timeoutMs).toBe(654)
       throw new driver.PanePollError("row stayed unavailable", "│ Changes apply · loading │")
     })
@@ -236,7 +239,7 @@ async function startFixture() {
 trap 'exit 0' TERM
 printf '%s' "$$" > "$HOME/fixture.pid"
 sleep 1.2
-printf 'for fresh chat\\n'
+printf 'Send a message\\n'
 while :; do sleep 1; done
 `)
   const previousBinary = process.env.FLYWHEEL_INSTALLED_BINARY
@@ -255,7 +258,7 @@ while :; do sleep 1; done
 describe.skipIf(!hasTmux || process.platform === "win32")("UAT lifecycle with real tmux", () => {
   it("keeps readiness and a long wait active, confines forged metadata, and explicitly stops the fixture", async () => {
     const { app, pid, scratchRoot } = await startFixture()
-    expect(app.capture()).toContain("for fresh chat")
+    expect(app.capture()).toContain("Send a message")
     expect(processExists(pid)).toBe(true)
     expect(tmux(app.sandbox.tmuxServer, ["list-windows", "-t", app.sessionName, "-F", "#{window_name}:#{pane_dead}"]).split("\n")).toEqual(["app:0", "reaper:0"])
     expect(sessionExists(app.sessionName)).toBe(false)

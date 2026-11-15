@@ -259,11 +259,11 @@ async function submit(pane: Pane, text: string): Promise<void> {
 
 /** Opens two chats, answers both, scrolls the second up, and leaves a draft. */
 async function arrangePlace(pane: Pane, words: readonly [string, string], draft: string): Promise<{ readonly firstRow: string }> {
-  await paneUntil(pane, "the first chat is ready", (screen) => screen.includes("for fresh chat"))
+  await paneUntil(pane, "the first chat is ready", (screen) => /Send a message(?!\.\.\.| to )/.test(screen))
   await submit(pane, `tell me about ${words[0]}`)
   await paneUntil(pane, `the ${words[0]} reply`, (screen) => screen.includes(`${words[0]} row ${REPLY_LINES}`))
   pane.keys("C-n")
-  await paneUntil(pane, "the second chat is ready", (screen) => screen.includes("for fresh chat"))
+  await paneUntil(pane, "the second chat is ready", (screen) => /Send a message(?!\.\.\.| to )/.test(screen))
   await submit(pane, `tell me about ${words[1]}`)
   await paneUntil(pane, `the ${words[1]} reply`, (screen) => screen.includes(`${words[1]} row ${REPLY_LINES}`) && hasTab(screen, words[0]))
   pane.keys("PageUp")
