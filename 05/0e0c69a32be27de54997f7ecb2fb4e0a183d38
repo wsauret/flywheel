@@ -1,0 +1,78 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 45-46
+bench/harbor/configs/oc-addback-a.toml
+  h_4b47e9e4a8b456 1-103
+bench/harbor/configs/oc-addback-b.toml
+  h_4b47e9e4a8b456 1-103
+bench/harbor/configs/oc-addback-c.toml
+  h_4b47e9e4a8b456 1-103
+bench/harbor/configs/oc-addback-d.toml
+  h_4b47e9e4a8b456 1-103
+bench/harbor/configs/oc-addback-e.toml
+  h_4b47e9e4a8b456 1-103
+bench/harbor/configs/oc-addback-f.toml
+  h_4b47e9e4a8b456 1-103
+bench/harbor/configs/oc-addback-g.toml
+  h_4b47e9e4a8b456 1-103
+bench/harbor/configs/oc-parity-ledger.json
+  h_4b47e9e4a8b456 1-109
+bench/harbor/configs/oc-parity.toml
+  h_4b47e9e4a8b456 1-102
+src/infra/agent-assets/diagnostic-parity/skill.txt
+  h_4b47e9e4a8b456 1-453
+src/infra/agent-assets/diagnostic-parity/system.txt
+  h_4b47e9e4a8b456 1-114
+src/infra/agent-assets/diagnostic-parity/tools.json
+  h_4b47e9e4a8b456 1-355
+src/orchestration/agent-runtime/diagnostic-parity.ts
+  h_4b47e9e4a8b456 1-45
+src/orchestration/agent-runtime/request-config.ts
+  h_4b47e9e4a8b456 7,35
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 60,608-611
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 102-103
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 17,35,74-75
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 213
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 25,143-144,212-213,268,271
+src/orchestration/agent-runtime/tools/bash-output-tail.ts
+  h_4b47e9e4a8b456 445,469
+src/orchestration/agent-runtime/tools/diagnostic-parity-limits.ts
+  h_4b47e9e4a8b456 1-110
+src/orchestration/agent-runtime/tools/diagnostic-parity-tools.ts
+  h_4b47e9e4a8b456 1-65
+src/orchestration/agent-runtime/tools/diagnostic-parity.ts
+  h_4b47e9e4a8b456 1-94
+src/orchestration/agent-runtime/tools/shell-execution.ts
+  h_4b47e9e4a8b456 215,362
+src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
+  h_4b47e9e4a8b456 25,122,153,156
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 14-15,233,235,238
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 333-334
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 182-192,212
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 225-343
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 28-35,64,82,106-107,112
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 1-193
+tests/unit/orchestration/agent-runtime/tools/bash-output-tail.test.ts
+  h_4b47e9e4a8b456 4,251-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "050e0c69a32be27de54997f7ecb2fb4e0a183d38",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
