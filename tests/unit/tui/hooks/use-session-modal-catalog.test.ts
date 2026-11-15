@@ -46,6 +46,29 @@ describe("useSessionModal catalog lifecycle", () => {
     })
   })
 
+  it("counts the listed sessions once for each change of the catalog, not for each update of a memo that shows the count", () => {
+    const [catalog, setCatalog] = createSignal([session({ id: "lead" }), session({ id: "one" }), session({ id: "two" })])
+    const readCatalog = mock(catalog)
+    const hidden = mock(() => new Set(["lead"]))
+    // A memo that shows the count beside a signal that changes for other reasons, as the composer border does.
+    const [tick, setTick] = createSignal(0)
+    const shown: string[] = []
+    const dispose = createRoot((disposeRoot) => {
+      const { hook } = createModal({ get sessions() { return readCatalog() }, navigation: { hidden, openOver: () => undefined } })
+      createRenderEffect(() => { shown.push(`${tick()}:${hook.sessionCount()}`) })
+      return disposeRoot
+    })
+    try {
+      const reads = readCatalog.mock.calls.length + hidden.mock.calls.length
+      for (let i = 1; i <= 20; i += 1) setTick(i)
+      expect(shown).toHaveLength(21)
+      expect(readCatalog.mock.calls.length + hidden.mock.calls.length).toBe(reads)
+      setCatalog((rows) => [...rows, session({ id: "three" })])
+      expect(shown.at(0)).toBe("0:2")
+      expect(shown.at(-1)).toBe("20:3")
+    } finally { dispose() }
+  })
+
   it("stops catalog work on close and replacement, including minute ticks", () => {
     createRoot((dispose) => {
       try {

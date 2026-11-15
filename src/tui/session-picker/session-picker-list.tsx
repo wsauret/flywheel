@@ -11,7 +11,7 @@ import { isWorkingStatus, type StatusView } from "../../protocol/status-protocol
 import { SessionPickerRow } from "./session-picker-row.js"
 import type { PickerRow } from "./picker-types.js"
 import { ModalFooter } from "../components/modal-footer.js"
-import { SESSION_CONTROL_COPY } from "../components/modal-copy.js"
+import { SESSION_CONTROL_COPY, SESSION_NAVIGATION_HINT } from "../components/modal-copy.js"
 import { ControlledTextField } from "../components/controlled-text-field.js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
 import { SHORT_TITLE_MAX_CHARS } from "../../protocol/app-service-types.js"
@@ -77,8 +77,10 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
     if (props.actions.length === 0) return [footerHint()]
     const line = (actions: readonly SessionPickerAction[]) => actions.map((action) => `${action.key} ${action.label}`).join(" · ")
     const opens = props.actions.filter((action) => action.opens)
-    const controls = line(props.actions.filter((action) => !action.opens))
-    return opens.length === 0 ? [controls] : [controls, line(opens)]
+    const controls = props.actions.filter((action) => !action.opens)
+    if (opens.length === 0) return [line(controls)]
+    // A search leaves only the open actions, which take the place of the ordinary open in the navigation hint.
+    return controls.length === 0 ? [`${line(opens)} · ${SESSION_NAVIGATION_HINT}`] : [line(controls), line(opens)]
   })
   const viewportHeight = createMemo(() =>
     Math.max(1, props.height - LIST_CHROME_ROWS - (footerRows().length - 1) - (props.renaming ? 3 : 0) - (props.result.capped ? 1 : 0)))

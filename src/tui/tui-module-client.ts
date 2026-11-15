@@ -24,7 +24,8 @@ export interface TuiModuleClientHost {
   readonly dialog: Pick<ModalContext, "push">
   readonly openChild: ChildPlaces["openChild"]
   readonly viewer: (sessionId: string) => Omit<ChildSessionViewerProps, "sessionId" | "input" | "onClose" | "showToast" | "active" | "focused">
-  readonly title: (sessionId: string) => string | undefined
+  /** A session's titles as its catalog row holds them now, or undefined while no row is known. */
+  readonly sessionTitles: (sessionId: string) => Pick<SessionCatalogRow, "id" | "title" | "shortTitle"> | undefined
   readonly navigateUri: (uri: string) => void
   readonly navigateSession: (sessionId: string) => Promise<void>
   readonly showToast: ChildSessionViewerProps["showToast"]

@@ -2,6 +2,7 @@
 import { basename } from "node:path"
 import { createContext, createMemo, createSignal, useContext, type Accessor } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
+import { sessionListTitle } from "../../../protocol/app-service-types.js"
 import { leadReportEntry, leadReportLink, leadRowOrder, parseLeadReportLink, type LeadRow } from "../../../protocol/modules/lead.js"
 import { MessageRowProvider } from "../../context/message-row.js"
 import { truncateToWidth } from "../../utils/text.js"
@@ -37,7 +38,7 @@ export function useLeadScreen(): LeadScreen {
  *  columns. */
 const REPORT_TITLE_COLUMNS = 40
 
-type LeadClientHost = LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "title"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
+type LeadClientHost = LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "sessionTitles"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
 
 /** The terminal title of the lead's tab (PI-LEAD-009): Flywheel and the project's directory name, such as
  *  "Flywheel | Data", because the lead chat's own title names no project. */
@@ -55,7 +56,8 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
     return view && !view.dismissed ? view.leadSessionId ?? undefined : undefined
   })
   const report = (message: string): void => { host.showToast({ message, variant: "error" }) }
-  const title = (sessionId: string): string => host.title(sessionId) ?? ""
+  // The title that the Sessions list shows, read now, so every place in the lead names a chat alike (PI-LEAD-005).
+  const title = (sessionId: string): string => { const row = host.sessionTitles(sessionId); return row ? sessionListTitle(row) : "" }
   const rows = createMemo(() => leadRowOrder(host.domains.leadChats.view()?.rows ?? []))
   const order = createMemo(() => rows().map((row) => row.sessionId))
   const rowOf = (sessionId: string): LeadRow | undefined => rows().find((candidate) => candidate.sessionId === sessionId)
@@ -96,7 +98,7 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
     // opens the chat at the final message.
     provide: (children) => <LeadScreenContext.Provider value={screen}><MessageRowProvider present={(message) => {
       const entryId = leadReportEntry(message)
-      return entryId === undefined ? undefined : { name: "Report", detail: `· ${truncateToWidth(message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`, linkUri: leadReportLink(message.from.sessionId, entryId) }
+      return entryId === undefined ? undefined : { name: "Report", detail: `· ${truncateToWidth(title(message.from.sessionId) || message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`, linkUri: leadReportLink(message.from.sessionId, entryId) }
     }}>{children()}</MessageRowProvider></LeadScreenContext.Provider>,
     openUri: async (uri) => {
       const opened = parseLeadReportLink(uri)

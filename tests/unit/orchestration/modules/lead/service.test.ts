@@ -386,6 +386,33 @@ test("a started chat whose result the person read closes once it is at rest whil
   expect(JSON.stringify(lead.inputs.filter((input) => input.sessionId === chat))).toContain("Also fix the signup page")
 })
 
+test("a started chat that asks the person stays open: its row holds it from its work through its question", async () => {
+  const lead = harness()
+  const { chat } = await routedChat(lead)
+  await settle(() => ctx.sessionStore.get(chat)?.runner != null)
+  ctx.sessionStore.updateEntry(chat, { runnerState: "streaming", streamPhase: "tool_executing" })
+  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === chat && row.state === "working"))
+  // The question turn as the runtime writes it: the model's ask_user call, the request, and the runner's park on it.
+  const conversationId = await conversation.chatConversationId(chat)
+  await ctx.store.append({
+    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId: chat,
+    payload: { conversationId, entries: [{ kind: "message", id: "ask", parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", stopReason: "tool_use", content: [
+      { type: "tool_use", id: "call-ask", name: "ask_user", input: { question: "Which color do you pick?", options: [{ label: "Red" }, { label: "Blue" }], context: "Pick red or blue." } },
+    ] } }] },
+  })
+  await ctx.store.append({
+    aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.requested", version: 3, actor: "agent", timestamp: Date.now(),
+    payload: { interactionId: "call-ask", conversationId, toolUseId: "call-ask", request: [{ question: "Which color do you pick?", multiSelect: false, choices: [
+      { kind: "option", choiceId: "choice-1", label: "Red" }, { kind: "option", choiceId: "choice-2", label: "Blue" }, { kind: "freeform", label: "Other" },
+    ] }] },
+  })
+  ctx.sessionStore.updateEntry(chat, { runnerState: "awaiting_user", streamPhase: null })
+  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === chat && row.state === "question"))
+  await Bun.sleep(20)
+  expect(lead.patches.some(({ payload }) => payload.kind === "lead.row.removed" && payload.sessionId === chat)).toBe(false)
+  expect((await ctx.manager.read(chat))?.lifecycleState).toBe("active")
+})
+
 test("a started chat that a client shows stays open after its row leaves", async () => {
   const lead = harness()
   const { chat } = await routedChat(lead)

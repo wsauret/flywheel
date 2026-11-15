@@ -43,6 +43,19 @@ describe("the lead's full-chat viewer", () => {
     expect(strip.focused()).toBe(true)
   })
 
+  it("names a chat by the title that the Sessions list shows, in its row and in the view's header, never by its short title", async () => {
+    // The fixture's catalog row holds a short title too.
+    const strip = await mountStrip([leadRow("root", "result")], { width: 100, height: 40, titles: { root: "List Project Root Files" } })
+    cleanups.push(strip.dispose)
+    const row = strip.lines().findIndex((line) => line.includes("List Project Root Files"))
+    expect(row).toBeGreaterThanOrEqual(0)
+    await strip.rendered.mockMouse.click(10, row)
+    await strip.viewerKey("pagedown")
+    const frame = strip.rendered.captureCharFrame()
+    expect(frame).toMatch(/│\s+List Project Root Files\s+x\s+│/)
+    expect(frame).not.toContain("Short")
+  })
+
   it("marks a failed or cut chat seen once when it opens, so its row leaves the list", async () => {
     const strip = await mountStrip([leadRow("broke", "failed"), leadRow("stopped", "cut")], { width: 100, height: 40 })
     cleanups.push(strip.dispose)
@@ -183,11 +196,12 @@ describe("the lead's full-chat viewer", () => {
   })
 
   it("shows a report in the lead's transcript as one line, and its link opens the chat at the final message, marked", async () => {
-    const lead = leadHarness([])
+    // The line names each chat by its title now, as the Sessions list does.
+    const lead = leadHarness([], {}, undefined, { done: "DAG Failures", long: "Investigate why the nightly DAG failures started after the warehouse migration" })
     cleanups.push(lead.dispose)
     const row = await testRender(() => <ThemeProvider mode="dark">{lead.client.provide?.(() => <UserMessageBlock block={{
       kind: "userMessage", id: "msg:done:lead-report:final", content: "The build passes now.\nAll 40 tests ran.", timestamp: 1, pending: false, injected: false,
-      from: { sessionId: "done", name: "DAG Failures", relation: "other" },
+      from: { sessionId: "done", name: "New Chat", relation: "other" },
     }} />)}</ThemeProvider>, { width: 80, height: 4 })
     cleanups.push(() => { row.renderer.destroy() })
     await row.renderOnce()
@@ -197,8 +211,8 @@ describe("the lead's full-chat viewer", () => {
 
     // A long title is cut, so the line stays one row with its open action.
     const long = await testRender(() => <ThemeProvider mode="dark">{lead.client.provide?.(() => <UserMessageBlock block={{
-      kind: "userMessage", id: "msg:done:lead-report:final", content: "Done.", timestamp: 1, pending: false, injected: false,
-      from: { sessionId: "done", name: "Investigate why the nightly DAG failures started after the warehouse migration", relation: "other" },
+      kind: "userMessage", id: "msg:long:lead-report:final", content: "Done.", timestamp: 1, pending: false, injected: false,
+      from: { sessionId: "long", name: "New Chat", relation: "other" },
     }} />)}</ThemeProvider>, { width: 80, height: 4 })
     cleanups.push(() => { long.renderer.destroy() })
     await long.renderOnce()

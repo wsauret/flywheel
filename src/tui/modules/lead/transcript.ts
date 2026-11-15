@@ -7,10 +7,12 @@ const chats = (count: number): string => count === 1 ? "1 chat" : `${count} chat
 
 /** The lead's tab in a client that folds its turns (PI-LEAD-011): the checkpoint calls are bookkeeping and never show,
  *  the line says what the lead did with its chats, such as "checked chats, started 1 chat", and a chat's report starts
- *  a turn that no person asked for, so it never folds (PI-LEAD-006). */
+ *  a turn that no person asked for, so it is a row of its own that never folds (PI-LEAD-006). */
 export const LEAD_TRANSCRIPT: TurnFoldPresentation = {
   hidden: CHECKPOINT_TOOL_NAMES,
   startsTurn: isLeadReportEntry,
+  // A turn that a chat's event started can end without a word to the person, and then it has nothing but its line.
+  foldsQuietTurns: true,
   phrases: (calls) => {
     const routes = calls.filter((call) => call.name === routeRequestDisplay.name)
     const started = routes.filter((call) => call.presentation.name === ROUTE_TO_NEW_CHAT).length

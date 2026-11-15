@@ -44,6 +44,12 @@ describe("the Sessions picker footer", () => {
     expect(lines.at(-1)).toBe("enter open · ctrl+t open as tab")
   })
 
+  it("shows the open actions with the navigation hint on one line while a search leaves only them", async () => {
+    const lines = await footerLines(OPENS)
+    expect(lines.at(-1)).toBe("enter open · ctrl+t open as tab · ↑↓ navigate · esc close")
+    expect(lines.at(-2)).toContain("Fix the parser")
+  })
+
   it("shows one line without open actions", async () => {
     const lines = await footerLines(CONTROLS)
     expect(lines.at(-1)).toBe("d delete · n rename · c copy session ID · i interrupt · x close chat")

@@ -3,6 +3,7 @@ import type { FrontendMessageSender, FrontendOutputBlock, FrontendToolEntry } fr
 import { blockIdentity } from "../block-identity.js"
 import type { StatusView } from "../status-protocol-types.js"
 import { toolRunCategoryFor } from "./tool-run-category.js"
+import type { TurnStart } from "./turn-folds.js"
 
 /** The transcript model every viewer shows. One fold over a window of blocks
  *  decides what is a row, in what order, which blocks render on no client,
@@ -139,10 +140,11 @@ export interface TranscriptModel {
 
 /** A block that closes an open stretch. Thoughts never do: a visible one rides
  *  inside the stretch and a hidden one is not there; the seam between two
- *  slices must therefore fall after one of these. */
-export function closesToolStretch(block: FrontendOutputBlock): boolean {
+ *  slices must therefore fall after one of these. A message that `startsTurn`
+ *  names is a row of its own and closes the stretch, as a person's message does. */
+export function closesToolStretch(block: FrontendOutputBlock, startsTurn?: TurnStart): boolean {
   if (block.kind === "tool" || block.kind === "thinking") return false
-  if (block.kind === "userMessage" && (block.pending || isCommandMessage(block))) return false
+  if (block.kind === "userMessage" && (block.pending || (isCommandMessage(block) && !startsTurn?.(block.id)))) return false
   return true
 }
 
@@ -184,7 +186,10 @@ interface OpenStretch {
   readonly indices: number[]
 }
 
-export function foldTranscript(blocks: readonly FrontendOutputBlock[], showThinking: boolean | undefined, window: TranscriptWindow = WHOLE_TRANSCRIPT): TranscriptModel {
+/** Folds a window of blocks into rows. With `startsTurn`, as on a tab whose module names the entries that start turns,
+ *  no stretch spans a turn start: the first row of a turn that the runtime started, and an entry that `startsTurn`
+ *  names, close the stretch before them, and such an entry is a row of its own. */
+export function foldTranscript(blocks: readonly FrontendOutputBlock[], showThinking: boolean | undefined, window: TranscriptWindow = WHOLE_TRANSCRIPT, startsTurn?: TurnStart): TranscriptModel {
   const rows: TranscriptRow[] = []
   const sourceBlockIndices: number[] = []
   const boundaryBefore: boolean[] = []
@@ -262,6 +267,10 @@ export function foldTranscript(blocks: readonly FrontendOutputBlock[], showThink
       zeroHeightBlockIndices.push(index)
       continue
     }
+    if (startsTurn && "turnStart" in block && block.turnStart === true) {
+      flushCarrier()
+      closeStretch(block.timestamp)
+    }
     if (block.kind === "thinking") {
       if (!showThinking) { zeroHeightBlockIndices.push(index); continue }
       flushCarrier()
@@ -273,7 +282,7 @@ export function foldTranscript(blocks: readonly FrontendOutputBlock[], showThink
       stretch.indices.push(index)
       continue
     }
-    if (isCommandMessage(block)) {
+    if (isCommandMessage(block) && !startsTurn?.(block.id)) {
       flushCarrier()
       const stretch = openStretch(block)
       stretch.members.push(block)

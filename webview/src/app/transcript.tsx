@@ -112,7 +112,7 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
     }) ?? unfoldedView()
   })
   const rows = () => view().rows
-  const answerTurns = createMemo(() => new Map(rows().flatMap(row => row.kind === "turnFold" ? [[row.answerId, row] as const] : [])))
+  const answerTurns = createMemo(() => new Map(rows().flatMap(row => row.kind === "turnFold" && row.answerId !== undefined ? [[row.answerId, row] as const] : [])))
   // The rows read their inputs from these signals, not from the frame. The
   // frame is one signal rebuilt on every publish, and a turn publishes many
   // times a second, so every row that read it re-ran on every token of a block

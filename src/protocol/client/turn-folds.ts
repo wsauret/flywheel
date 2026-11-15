@@ -38,7 +38,11 @@ export interface TurnFold<Row = FoldRow> {
   readonly open: boolean
   readonly timestamp: number
   readonly duration: number
-  readonly answerId: string
+  /** The answer that follows the fold; none for a quiet turn, which ended without one (`foldsQuietTurns`). */
+  readonly answerId?: string
+  /** How many of the rows after the fold row belong to its turn before its answer: its work while it is open, else
+   *  the rows that stay in view after it. */
+  readonly held: number
 }
 
 /** A module's own words for its calls in a fold line: the phrases for the calls that it claims, and the calls that it
@@ -50,13 +54,18 @@ export type TurnCallPhrases = (calls: readonly FrontendToolEntry[]) => { readonl
 export type TurnStart = (entryId: string) => boolean
 
 /** How a module presents the transcript of its own session: finished turns fold, the calls named in `hidden` never
- *  show and never count, `phrases` words the module's calls in the fold line, and `startsTurn` names the entries that
- *  start a turn of their own. */
+ *  show and never count, `phrases` words the module's calls in the fold line, `startsTurn` names the entries that
+ *  start a turn of their own, and with `foldsQuietTurns` a finished turn that ends without an answer folds to its line
+ *  alone. */
 export interface TurnFoldPresentation {
   readonly hidden: ReadonlySet<string>
   readonly phrases?: TurnCallPhrases
   readonly startsTurn?: TurnStart
+  readonly foldsQuietTurns?: boolean
 }
+
+/** The parts of a presentation that decide where turns start and which turns fold. */
+type TurnRules = Pick<TurnFoldPresentation, "startsTurn" | "foldsQuietTurns">
 
 export type TurnFileEdit = { readonly callId: string; readonly evidence: NonNullable<FrontendToolEntry["mutationEvidence"]>; readonly entry: Extract<MutationFilesView["files"][number], { kind: "applied" | "display" }> }
 
@@ -88,7 +97,8 @@ const hasError = (row: FoldRow): boolean => {
  *  launched and unread person input, then its answer. A turn that holds a row named in `openedInside`
  *  arrives open; `choice` is the person's open or closed choice of a fold, or
  *  undefined without one, and it wins over how the fold arrived. */
-export function foldTurns<Row extends FoldRow>(view: PresentedRows<Row>, atRest: boolean, choice: (id: string) => boolean | undefined = () => undefined, settledIds: ReadonlySet<string> = new Set(), openedInside: ReadonlySet<string> = new Set(), startsTurn: TurnStart = () => false): PresentedRows<Row | TurnFold<Row>> {
+export function foldTurns<Row extends FoldRow>(view: PresentedRows<Row>, atRest: boolean, choice: (id: string) => boolean | undefined = () => undefined, settledIds: ReadonlySet<string> = new Set(), openedInside: ReadonlySet<string> = new Set(), turns: TurnRules = {}): PresentedRows<Row | TurnFold<Row>> {
+  const startsTurn = turns.startsTurn ?? (() => false)
   const bounds = (row: Row) => opensTurn(row) || entryIds(row).some(startsTurn)
   const rows: (Row | TurnFold<Row>)[] = []
   const boundaryBefore: boolean[] = []
@@ -104,32 +114,41 @@ export function foldTurns<Row extends FoldRow>(view: PresentedRows<Row>, atRest:
     // SAFETY: the loop condition keeps end inside view.rows.
     while (end < view.rows.length && (end === start || !bounds(view.rows[end]!))) end += 1
     const span = view.rows.slice(workStart, end)
-    const answerOffset = span.findLastIndex(row => row.kind === "text")
-    const answer = span[answerOffset]
-    const id = answer === undefined ? undefined : turnFoldId(answer)
-    const foldable = person !== undefined && opensTurn(person) && id !== undefined && (atRest || settledIds.has(id)) && answer !== undefined
+    const workEnd = span.findLastIndex(isWork) + 1
+    // A turn whose work follows its last text ended without an answer: on a tab that folds such a turn, all of its work
+    // folds, and what follows its work, such as the notice of a cut, stays in view as an answer does.
+    const answered = span[workEnd - 1]?.kind === "text"
+    const answerOffset = answered ? workEnd - 1 : workEnd
+    const answer = answered ? span[answerOffset] : undefined
+    const last = answer ?? span.at(-1)
+    const id = last === undefined ? undefined : turnFoldId(last)
+    const foldable = person !== undefined && opensTurn(person) && id !== undefined && last !== undefined && (answered || turns.foldsQuietTurns === true)
+      && (atRest || settledIds.has(id))
       && span.slice(0, answerOffset).some(row => isWork(row) && !isWorkflowCard(row))
-      && !span.slice(answerOffset + 1).some(isWork) && !span.some(hasError)
+      && !span.some(hasError)
       && !span.some(row => row.kind === "question" && row.answers === undefined && row.cancelled !== true)
-    if (!foldable || answer === undefined || id === undefined || person === undefined) append(start, end)
+    if (!foldable || last === undefined || id === undefined || person === undefined) append(start, end)
     else {
       append(start, workStart)
       const hidden = span.slice(0, answerOffset)
       const open = choice(id) ?? span.some(row => openedInside.has(rowIdentity(row)))
+      const kept = hidden.filter(staysVisible)
       rows.push({
-        kind: "turnFold", id, rows: hidden.filter(row => !staysVisible(row)), open, answerId: rowIdentity(answer),
+        kind: "turnFold", id, rows: hidden.filter(row => !staysVisible(row)), open,
+        ...(answer === undefined ? {} : { answerId: rowIdentity(answer) }),
+        held: open ? hidden.length : kept.length,
         timestamp: person.timestamp,
-        duration: answer.timestamp - person.timestamp,
+        duration: Math.max(0, last.timestamp - person.timestamp),
       })
       boundaryBefore.push(false)
       if (open) append(workStart, workStart + answerOffset)
-      else for (const row of hidden.filter(staysVisible)) {
+      else for (const row of kept) {
         rows.push(row)
         boundaryBefore.push(false)
       }
       const answerIndex = boundaryBefore.length
       append(workStart + answerOffset, end)
-      if (!open) boundaryBefore[answerIndex] = false
+      if (!open && answer !== undefined) boundaryBefore[answerIndex] = false
     }
     start = end
   }
@@ -146,7 +165,7 @@ const turnFoldId = (answer: FoldRow) => `turnFold:${rowIdentity(answer)}`
  *  the window showed of it, which holds while the turn runs and its answer
  *  changes. The resident session owns this memory through window recovery
  *  and a return from another session. */
-export function createTurnFolds(startsTurn?: TurnStart) {
+export function createTurnFolds(turns: TurnRules = {}) {
   let settled: ReadonlySet<string> = new Set()
   let openedInside: ReadonlySet<string> = new Set()
   return <Row extends FoldRow>(view: PresentedRows<Row>, atRest: boolean, choice: (id: string) => boolean | undefined): PresentedRows<Row | TurnFold<Row>> => {
@@ -160,7 +179,7 @@ export function createTurnFolds(startsTurn?: TurnStart) {
       }
     }
     openedInside = kept
-    const folded = foldTurns(view, atRest, choice, settled, openedInside, startsTurn)
+    const folded = foldTurns(view, atRest, choice, settled, openedInside, turns)
     const folds = new Set<string>()
     for (const row of folded.rows) if (row.kind === "turnFold") folds.add(row.id)
     settled = folds

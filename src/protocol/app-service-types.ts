@@ -363,6 +363,11 @@ export function effectiveSessionShortTitle(title: string, shortTitle?: string): 
   return shortTitle || title.slice(0, SHORT_TITLE_MAX_CHARS)
 }
 
+/** The title that the Sessions list shows for a session: its full title, else its short title, else its id. */
+export function sessionListTitle(session: Pick<SessionCatalogRow, "id" | "title" | "shortTitle">): string {
+  return session.title || session.shortTitle || session.id
+}
+
 /** Omitted fields keep their current value. User descriptions have no length cap. */
 export interface SessionTitlePatch {
   readonly title?: string

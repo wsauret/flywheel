@@ -1,9 +1,9 @@
-import { batch, createMemo, createSignal } from "solid-js"
+import { batch, createMemo, createSignal, getOwner, runWithOwner, type Accessor } from "solid-js"
 import fuzzysort from "fuzzysort"
 import { errorDetail, errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { isSessionId } from "../../infra/session-id.js"
-import { effectiveSessionShortTitle, isActiveActivity, SHORT_TITLE_MAX_CHARS, type SessionCatalogError, type SessionCatalogRow } from "../../protocol/app-service-types.js"
+import { effectiveSessionShortTitle, isActiveActivity, sessionListTitle, SHORT_TITLE_MAX_CHARS, type SessionCatalogError, type SessionCatalogRow } from "../../protocol/app-service-types.js"
 import { dispatchInterrupt, isInterruptible, offeredSessionControls, resumeMutationType } from "../../protocol/client/session-controls.js"
 import { createListModalKeys, type ListModalKeyEvent } from "../components/modal-list-keys.js"
 import { createControlledTextEditor, normalizedPrintableText, SINGLE_LINE_TEXT_ENTRY_POLICY, type ControlledTextEditor, type TextEditorPresentation } from "../keymap/text-entry.js"
@@ -17,10 +17,6 @@ import { createKeyedListSelection } from "./create-keyed-list-selection.js"
 const log = Log.create({ service: "session-modal" })
 const defaultShortcutDelayMs = 120
 
-/** Name a session in durable feedback: its title, or its id when untitled. */
-function sessionSubject(session: SessionCatalogRow): string {
-  return session.title || session.shortTitle || session.id
-}
 
 export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaultShortcutDelayMs): SessionModalHook {
   const { signals, showToast } = deps
@@ -67,13 +63,26 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   // 1-second ticker here rebuilt every picker row object every second for the
   // modal's whole lifetime.
   const nowMinute = createMemo(() => Math.floor(signals.now() / 60_000) * 60_000)
+  // The sessions that the list shows, which every count of them reads (PI-LEAD-010). A function, not a memo, so the
+  // list reads the catalog only while it is open.
+  const listedSessions = (): readonly SessionCatalogRow[] => {
+    const hidden = deps.navigation.hidden()
+    return hidden.size === 0 ? deps.sessions() : deps.sessions().filter((session) => !hidden.has(session.id))
+  }
+  // The count shows in memos that change for other reasons, such as the composer border, so it is one memo over the
+  // list, made on its first read: a terminal that shows no count reads no catalog for it.
+  const owner = getOwner()
+  let listedCount: Accessor<number> | undefined
+  const sessionCount = (): number => {
+    // SAFETY: runWithOwner answers undefined only when the computation throws, and a length does not throw.
+    listedCount ??= runWithOwner(owner, () => createMemo(() => listedSessions().length))!
+    return listedCount()
+  }
   const fullResult = createMemo<PickerRowsResult>(() => {
     if (!deps.modal.stack.some((modal) => modal.element === deps.renderModal)) {
       return { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "" }
     }
-    const hidden = deps.navigation.hidden()
-    const sessions = hidden.size === 0 ? deps.sessions() : deps.sessions().filter((session) => !hidden.has(session.id))
-    return pickerRowsFor(sessions, deps.sessionCatalogErrors(), filterQuery(), nowMinute())
+    return pickerRowsFor(listedSessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute())
   })
   const selection = createKeyedListSelection(() => fullResult().rows.map((row) => isSelectablePickerRow(row) ? rowSessionId(row) : undefined))
   const currentResult = createMemo<SessionPickerResult>(() => {
@@ -144,7 +153,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   async function handleSessionView(session: SessionCatalogRow, opened: ModalHandle | undefined): Promise<void> {
     const result = await deps.activateSession(session)
     if (!result.ok) {
-      if (result.error && opened?.isOpen()) showToast({ message: `Open failed for ${sessionSubject(session)}: ${result.error}`, variant: "error" })
+      if (result.error && opened?.isOpen()) showToast({ message: `Open failed for ${sessionListTitle(session)}: ${result.error}`, variant: "error" })
       return
     }
     // A modal that is no longer this one owns the screen: close nothing and
@@ -171,7 +180,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   function openSessionTab(session: SessionCatalogRow): void {
     clearPendingShortcut()
     const opened = entry
-    const subject = sessionSubject(session)
+    const subject = sessionListTitle(session)
     void handleSessionView(session, opened).catch((err) => {
       if (opened?.isOpen()) showToast({ message: `Open failed for ${subject}: ${extractErrorMessage(err)}`, variant: "error" })
     })
@@ -184,7 +193,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   }
 
   function resumeSession(session: SessionCatalogRow): void {
-    const subject = sessionSubject(session)
+    const subject = sessionListTitle(session)
     openSession(session)
     void deps.appService.dispatch({ type: resumeMutationType(session.kind), sessionId: session.id })
       .then((result) => {
@@ -196,7 +205,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   }
 
   function interruptSession(session: SessionCatalogRow): void {
-    const subject = sessionSubject(session)
+    const subject = sessionListTitle(session)
     close()
     void dispatchInterrupt(deps.appService, session).then((refusal) => {
       if (refusal) showToast({ message: `Interrupt failed for ${subject}: ${refusal.reason}`, variant: refusal.variant })
@@ -242,7 +251,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
       return
     }
     setModalConfirmDelete(undefined)
-    const subject = sessionSubject(session)
+    const subject = sessionListTitle(session)
     if (session.id === signals.foregroundId()) {
       void deleteSessionRow(subject, () => deps.deleteActiveSession(session.id))
       return
@@ -301,7 +310,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   /** Close chat ends the chat's work now, unlike the close of its tab
    *  (PI-INTERACTION-082), and a tab that shows the chat goes with it. */
   function closeChat(session: SessionCatalogRow): void {
-    const subject = sessionSubject(session)
+    const subject = sessionListTitle(session)
     void deps.closeChat(session.id).catch((err) => {
       showToast({ message: `Close failed for ${subject}: ${extractErrorMessage(err)}`, variant: "error" })
     })
@@ -343,9 +352,11 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   }
 
   const sessionModalActions = (): readonly SessionModalAction[] => {
-    if (filterQuery() !== "" || renameState() !== undefined) return []
+    if (renameState() !== undefined) return []
     const row = selectedPickerRow()
-    return row ? actionsForRow(row) : []
+    const actions = row ? actionsForRow(row) : []
+    // A typed key goes to the search, so only the open actions, which no typed key triggers, stay named.
+    return filterQuery() === "" ? actions : actions.filter((action) => action.opens === true)
   }
 
   function handleTypedTextKey(evt: ListModalKeyEvent, row: SelectablePickerRow): boolean {
@@ -489,6 +500,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     // from the same clock or the time column can misalign for up to a minute.
     pickerNow: nowMinute,
     sessionModalActions,
+    sessionCount,
     openSessionsModal,
     closeSessionsModal: close,
     selectModalItem,

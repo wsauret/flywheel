@@ -4,6 +4,7 @@ import { StyledText, bold as stBold, fg as stFg, type TextChunk, type TextRender
 import type { TuiTheme } from "@tui/context/theme/resolve"
 import { chunksLength } from "@tui/utils/text-attributes.js"
 import { createEffect, createMemo, type JSX } from "solid-js"
+import { sessionListTitle } from "../../protocol/app-service-types.js"
 import { formatCompactTimeAgo, buildDiffStatChunks } from "./picker-helpers.js"
 import type { PickerCorruptRow, PickerSessionRow, SelectablePickerRow } from "./picker-types.js"
 
@@ -66,7 +67,7 @@ export function SessionPickerRow(props: SessionPickerRowProps): JSX.Element {
 function sessionRowChunks(input: BuildSessionRowChunksInput, row: PickerSessionRow): TextChunk[] {
   const { theme } = input
   const session = row.session
-  const title = isConfirming(input) ? "Press d again to confirm" : session.title || session.shortTitle || session.id
+  const title = isConfirming(input) ? "Press d again to confirm" : sessionListTitle(session)
   const leftChunks: TextChunk[] = [rowPrefix(input)]
 
   if (session.id === input.foregroundId) leftChunks.push(stFg(theme.success)("(current) "))

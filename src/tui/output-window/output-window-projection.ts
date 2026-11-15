@@ -1,6 +1,7 @@
 import type { FrontendOutputBlock } from "../../protocol/app-service-types.js"
 import { blockEntryKeys, blockIdentity } from "../../protocol/block-identity.js"
 import { closesToolStretch, type TranscriptRow } from "../../protocol/client/transcript-model.js"
+import type { TurnStart } from "../../protocol/client/turn-folds.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { terminalTranscript, type PresentedTerminalRow, type TerminalTranscript, type TimelineRow } from "../output-blocks/visible-output-blocks.js"
 
@@ -81,8 +82,9 @@ function projectSlice(
   showThinking: boolean | undefined,
   predecessorBlock: FrontendOutputBlock | null,
   predecessorRow: TranscriptRow | null,
+  startsTurn: TurnStart | undefined,
 ): SliceProjection {
-  const terminal = terminalTranscript(blocks.slice(sliceStart, sliceEnd), showThinking, { startBlockIndex: windowStart + sliceStart, predecessorBlock, predecessorRow })
+  const terminal = terminalTranscript(blocks.slice(sliceStart, sliceEnd), showThinking, { startBlockIndex: windowStart + sliceStart, predecessorBlock, predecessorRow }, startsTurn)
   const { model } = terminal
   return {
     timelineBlocks: [...terminal.timelineBlocks],
@@ -101,11 +103,11 @@ function projectSlice(
  *  would only invalidate the cache), and everything after it - the open stretch
  *  and the live tail - is volatile by definition. Thoughts never close a
  *  stretch, so the seam never falls on one. */
-function settledPrefixLength(blocks: readonly FrontendOutputBlock[]): number {
+function settledPrefixLength(blocks: readonly FrontendOutputBlock[], startsTurn: TurnStart | undefined): number {
   let terminators = 0
   for (let i = blocks.length - 1; i >= 0; i -= 1) {
     // SAFETY: i ranges in [0, blocks.length).
-    if (!closesToolStretch(blocks[i]!)) continue
+    if (!closesToolStretch(blocks[i]!, startsTurn)) continue
     terminators += 1
     if (terminators === 2) return i + 1
   }
@@ -117,9 +119,10 @@ function settledPrefixLength(blocks: readonly FrontendOutputBlock[]): number {
  *  value, window origin, and seedEpoch (seed reconciliation can mutate blocks
  *  under stable identities), plus pointer identity for every prefix block. Any
  *  mismatch pays one whole-window projection. */
-export function createTranscriptWindowProjector(): (snapshot: TranscriptSnapshot | undefined, showThinking: boolean | undefined) => TranscriptWindowProjection {
+export function createTranscriptWindowProjector(): (snapshot: TranscriptSnapshot | undefined, showThinking: boolean | undefined, startsTurn?: TurnStart) => TranscriptWindowProjection {
   let cached: {
     showThinking: boolean | undefined
+    startsTurn: TurnStart | undefined
     windowStart: number
     seedEpoch: number
     prefixBlocks: FrontendOutputBlock[]
@@ -132,34 +135,35 @@ export function createTranscriptWindowProjector(): (snapshot: TranscriptSnapshot
   let prefixEpoch = 0
   let last: { prefixEpoch: number; prefixLength: number; suffix: SliceProjection; result: TranscriptWindowProjection } | null = null
 
-  const prefixValid = (blocks: readonly FrontendOutputBlock[], windowStart: number, seedEpoch: number, showThinking: boolean | undefined): boolean => {
+  const prefixValid = (blocks: readonly FrontendOutputBlock[], windowStart: number, seedEpoch: number, showThinking: boolean | undefined, startsTurn: TurnStart | undefined): boolean => {
     if (!cached) return false
-    if (cached.showThinking !== showThinking || cached.windowStart !== windowStart || cached.seedEpoch !== seedEpoch) return false
+    if (cached.showThinking !== showThinking || cached.startsTurn !== startsTurn || cached.windowStart !== windowStart || cached.seedEpoch !== seedEpoch) return false
     if (cached.prefixBlocks.length > blocks.length) return false
     for (let i = 0; i < cached.prefixBlocks.length; i += 1) if (blocks[i] !== cached.prefixBlocks[i]) return false
     return true
   }
 
-  return (snapshot, showThinking) => {
+  return (snapshot, showThinking, startsTurn) => {
     if (!snapshot) { cached = null; last = null; return EMPTY }
     const blocks: readonly FrontendOutputBlock[] = snapshot.blocks
     const windowStart = snapshot.window.startBlockIndex ?? 0
-    const boundary = settledPrefixLength(blocks)
+    const boundary = settledPrefixLength(blocks, startsTurn)
 
-    if (!prefixValid(blocks, windowStart, snapshot.seedEpoch, showThinking)) {
+    if (!prefixValid(blocks, windowStart, snapshot.seedEpoch, showThinking, startsTurn)) {
       prefixEpoch += 1
       cached = boundary > 0
         ? {
           showThinking,
+          startsTurn,
           windowStart,
           seedEpoch: snapshot.seedEpoch,
           prefixBlocks: blocks.slice(0, boundary),
-          prefix: projectSlice(blocks, 0, boundary, windowStart, showThinking, null, null),
+          prefix: projectSlice(blocks, 0, boundary, windowStart, showThinking, null, null, startsTurn),
         }
         : null
     } else if (cached && boundary > cached.prefixBlocks.length) {
       const from = cached.prefixBlocks.length
-      const extension = projectSlice(blocks, from, boundary, windowStart, showThinking, blocks[from - 1] ?? null, cached.prefix.lastRow)
+      const extension = projectSlice(blocks, from, boundary, windowStart, showThinking, blocks[from - 1] ?? null, cached.prefix.lastRow, startsTurn)
       cached.prefix.timelineBlocks.push(...extension.timelineBlocks)
       cached.prefix.hasBoundaryBefore.push(...extension.hasBoundaryBefore)
       cached.prefix.timelineBlockIndices.push(...extension.timelineBlockIndices)
@@ -171,7 +175,7 @@ export function createTranscriptWindowProjector(): (snapshot: TranscriptSnapshot
 
     const prefix = cached?.prefix
     const from = cached?.prefixBlocks.length ?? 0
-    const suffix = projectSlice(blocks, from, blocks.length, windowStart, showThinking, blocks[from - 1] ?? null, prefix?.lastRow ?? null)
+    const suffix = projectSlice(blocks, from, blocks.length, windowStart, showThinking, blocks[from - 1] ?? null, prefix?.lastRow ?? null, startsTurn)
     const previous = last !== null && last.prefixEpoch === prefixEpoch && last.prefixLength === from ? last : null
     const field = <K extends keyof TranscriptWindowProjection>(key: K): TranscriptWindowProjection[K] => {
       if (previous && sameItems(previous.suffix[key], suffix[key])) return previous.result[key]

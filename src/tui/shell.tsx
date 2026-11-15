@@ -21,7 +21,7 @@ import { createEffect, createMemo, createSignal, from, onCleanup, onMount, Show 
 import { startupTrace, traceShellMount } from "../infra/startup-trace.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
-import { effectiveSessionShortTitle, type AttachedRuntimeClient } from "../protocol/app-service-types.js"
+import type { AttachedRuntimeClient } from "../protocol/app-service-types.js"
 import type { RuntimeIdentity } from "../protocol/client/runtime-identity.js"
 import type { ModuleRowAction } from "../protocol/protocol-module.js"
 import type { LauncherScope } from "../infra/process-supervisor.js"
@@ -239,12 +239,9 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   })
   const chat = useChatMode({ signals, appService, showToast: services.showToast })
   const sessionControlsHook = useSessionControls({ row: signals.foregroundSummary, status: signals.foregroundStatus, appService, showToast: services.showToast })
-  // The title the session's tab and list row show, which a workflow's way
-  // back names as the place it returns to.
-  const sessionTitle = (sessionId: string): string | undefined => {
-    const row = signals.sessionCatalogRows().find(({ id }) => id === sessionId) ?? services.sessionDetails.view(sessionId)?.row
-    return row === undefined ? undefined : effectiveSessionShortTitle(row.title, row.shortTitle)
-  }
+  // A session's catalog row, also for a session that only a detail read names.
+  const sessionTitles = (sessionId: string) =>
+    signals.sessionCatalogRows().find(({ id }) => id === sessionId) ?? services.sessionDetails.view(sessionId)?.row
   const transcriptInView = createTranscriptInView(() => { void modelModal.openActiveModelPicker() })
   const viewerProps: Parameters<typeof createChildViewerOpener>[0]["viewer"] = (sessionId) => ({
       createSurface: services.createSessionSurface,
@@ -314,7 +311,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     domains: signals.modules, client: appService,
     roleView: signals.roleView, ensureRoleViews: signals.ensureRoleViews,
     viewerLayer: overlay.viewer, dialog: modal, viewer: viewerProps, openChild: childPlaces.openChild,
-    title: sessionTitle, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
+    sessionTitles, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
     question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions, showSession: sessionShows.show })
   const commandDefinitions = createMemo(() => buildCommandDefinitions(keymap.chordFor, signals.builtInCommands()))
   const commandCatalog = createMemo(() => commandSpecs(commandDefinitions()))
@@ -333,7 +330,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     commandPalette, themeModal, profileModal, sessionModal, authModal, openSettingsDestination, openSubscriptionSpendReview, reviewCachedActiveProfile,
     statusModal, helpModal, backgroundModal, modelModal, findModal, sessionChangesModal, activeSessionCount, sessionCount, activeModelLabel,
   } = createModalModals({
-    directories, launcher, clipboard, modal, signals, services, appService, sessions: signals.sessionCatalogRows, sessionCatalogErrors: signals.sessionCatalogErrors, sessionCount: signals.sessionCount, tabs, appVersion, chat, startChat, switchForeground,
+    directories, launcher, clipboard, modal, signals, services, appService, sessions: signals.sessionCatalogRows, sessionCatalogErrors: signals.sessionCatalogErrors, tabs, appVersion, chat, startChat, switchForeground,
     activateSession, activateSessionById, closeSessionTab, closeChat, sessionNavigation: moduleSessionNavigation(moduleClients), settings, runtimeConfig, settingsOperations,
     signInPage: signInPage(attach),
     onPaletteActivate: dispatchPaletteCommand,

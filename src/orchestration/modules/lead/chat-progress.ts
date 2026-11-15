@@ -70,8 +70,10 @@ async function chatState(deps: ChatProgressDeps, sessionId: string): Promise<{ r
     chat: {
       sessionId,
       title: sessionDisplayName({ id: sessionId, session }),
-      activity: liveActivity(deps, sessionId, reading.working),
-      lastTurn: lastTurnWords(reading.turnEnd, reading.working),
+      // A pending question decides both: a chat whose runner closed or opened again keeps it, and the store shows
+      // such a chat at rest or not running (PI-INTERACTION-009).
+      activity: reading.question ? "waiting for the person's answer" : liveActivity(deps, sessionId, reading.working),
+      lastTurn: reading.question ? "stopped on a question for the person" : lastTurnWords(reading.turnEnd, reading.working),
     },
   }
 }

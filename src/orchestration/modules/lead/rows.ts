@@ -119,7 +119,9 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     if (runtime?.kind === "failed") return "failed"
     const entry = deps.sessionStore.get(sessionId)
     if (entry?.kind !== "chat") return undefined
-    if (entry.waitingOnBackgroundWork || isActiveActivity(entryActivity(entry))) return "working"
+    // A runner that parks on a question announces it in the store before the question's fact folds here, so it works
+    // until the question shows: a row that left in between would let go of the chat's open hold (PI-LEAD-003).
+    if (entry.waitingOnBackgroundWork || entry.runnerState === "awaiting_user" || isActiveActivity(entryActivity(entry))) return "working"
     const open = fold.turnEnd?.reading.end.reason === "crash" && !fold.turnEnd.reading.recorded
     return open && (entry.runner === null || runtime?.kind === "starting") ? "working" : undefined
   }

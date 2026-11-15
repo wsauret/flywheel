@@ -86,6 +86,16 @@ describe("foldTranscript: stretches of tool work", () => {
       expect(closesToolStretch(control)).toBe(true)
     }
   })
+  it("with the entries that start turns named, keeps each stretch inside one turn; without them, a turn start rides in the stretch", () => {
+    const report = { ...user("msg:chat:lead-report:final", 3), from: { sessionId: "chat", name: "Chat", relation: "other" as const } }
+    const woken = { ...bash("woken", 5), turnStart: true as const }
+    const blocks = [bash("b1", 1), report, bash("b2", 4), woken]
+    const startsTurn = (entryId: string) => entryId === report.id
+    expect(listing(foldTranscript(blocks, false, undefined, startsTurn))).toEqual(["stretch[b1]", `userMessage:${report.id}`, "stretch[b2]", "stretch[woken]"])
+    expect(closesToolStretch(report, startsTurn)).toBe(true)
+    expect(listing(foldTranscript(blocks, false))).toEqual([`stretch[b1,~${report.id},b2,woken]`])
+  })
+
   it("keeps a hidden thought out of the transcript without splitting the stretch around it", () => {
     const model = foldTranscript([read("r1", 1), thinking("th", 2), search("s1", 3)], false)
     expect(listing(model)).toEqual(["stretch[r1,s1]"])

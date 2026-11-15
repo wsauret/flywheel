@@ -150,7 +150,6 @@ export interface ShellSignals {
    *  foreground's empty new chat, which its tab already stands for. */
   listedSessions: Accessor<readonly SessionCatalogRow[]>
   /** How many sessions the Sessions list shows. */
-  sessionCount: Accessor<number>
   /** The account projection's exact resolved assignment for a new chat. */
   chatDefault: Accessor<RuntimeChatDefault>
   /** The serving backend's identity, from the attach and then each snapshot. */
@@ -449,8 +448,8 @@ export function createShellState(deps: {
     ...moduleIntakes,
   } satisfies RuntimeDomainIntakeBindings
   const { output: transcriptCache, status: statusCache, budget: budgetCache, question: questionCache, roles: roleCache, runtime: transportHealth, auth: authCache, updates: updateCache, modules: moduleCache, config, commands: commandCatalog, gitAiAttribution, git, commandUsage } = intake
-  // The one rule for which sessions the Sessions list shows. The status line
-  // counts these rows, so the count never includes a row the list hides.
+  // The one rule for which sessions the Sessions list shows, before the
+  // sessions a module hides; the Sessions list and its count read it.
   const listedSessions = createMemo(() => {
     const foreground = foregroundId()
     return sessionCatalog.rows().filter((row) => row.id !== foreground || !isEmptyNewChat(row, transcriptCache.view(row.id)))
@@ -656,7 +655,6 @@ export function createShellState(deps: {
     sessionCatalogRows: sessionCatalog.rows,
     sessionCatalogErrors: sessionCatalog.errors,
     listedSessions,
-    sessionCount: () => listedSessions().length,
     chatDefault: sessionCatalog.chatDefault,
     runtimeIdentity: sessionCatalog.runtimeIdentity,
     catalogReady: sessionCatalog.catalogReady,

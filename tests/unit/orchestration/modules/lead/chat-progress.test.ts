@@ -46,6 +46,8 @@ test("chat_progress answers a started chat's pending question, its context, and 
   const result = await tool.execute({ chat }, makeContext())
   expect(result.outcome).toBe("ok")
   const text = String(result.content)
+  // The chat has no runner, as after a close at rest, while its question waits.
+  expect(text).toContain(`Chat ${chat} "New Chat": waiting for the person's answer; its last turn stopped on a question for the person.`)
   expect(text).toContain("The person's newest message in that chat:\nFix the login page")
   expect(text).toContain(`Context:\n${CONTEXT}\n`)
   expect(text).toContain(`Question (Form): ${QUESTION.question}`)

@@ -8,6 +8,7 @@ import { createChildSessionViewerInput } from "../../components/child-session-vi
 import { NavigationProvider } from "../../context/navigation.js"
 import { parseSessionLink, parseWorkflowLink } from "../../../protocol/client/session-links.js"
 import { errorMessage } from "../../../infra/error-message.js"
+import { effectiveSessionShortTitle } from "../../../protocol/app-service-types.js"
 import type { SessionSurface } from "../../hooks/create-session-surface.js"
 import { createWorkflowCards, WorkflowCardsProvider } from "./cards.js"
 import { createWorkflowInspection } from "./inspection.js"
@@ -32,7 +33,9 @@ function createWorkflowClient(host: TuiModuleClientHost): TuiModuleClient {
   const provide = (children: () => JSX.Element) => <NavigationProvider value={host.navigateUri}><WorkflowCardsProvider value={cards}>{children()}</WorkflowCardsProvider></NavigationProvider>
   const shared = () => ({
     inspectWorkflow: (workflowId: () => string) => createWorkflowInspection(host.domains, workflowId),
-    appService: host.client, title: host.title,
+    appService: host.client,
+    // The short title that the chat's tab shows names the place that the way back returns to.
+    title: (sessionId: string) => { const row = host.sessionTitles(sessionId); return row && effectiveSessionShortTitle(row.title, row.shortTitle) },
   })
   function openCard(workflowId: string): ViewerHandle {
     const [handle, setHandle] = createSignal<ViewerHandle>()

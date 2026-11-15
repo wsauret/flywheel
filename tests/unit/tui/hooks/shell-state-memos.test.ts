@@ -36,7 +36,7 @@ describe("Shell state derived memos", () => {
     expect(signals.foregroundRevision()).toBe(start + 4)
   })
 
-  it("counts exactly the sessions the Sessions list shows, which leaves out the foreground's empty new chat", async () => {
+  it("lists for the Sessions list every session but the foreground's empty new chat", async () => {
     await createRoot(async (dispose) => {
       try {
         const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
@@ -47,14 +47,12 @@ describe("Shell state derived memos", () => {
         signals.setForegroundId("startup")
         await waitForAssertion(() => expect(signals.sessionCatalogRows().length).toBe(3))
 
-        // An empty chat that is not in front stays listed and counted.
-        expect(signals.sessionCount()).toBe(2)
+        // An empty chat that is not in front stays listed.
         expect(signals.listedSessions().map((row) => row.id).toSorted()).toEqual(["kept", "prior"])
 
-        // The foreground chat is listed and counted once it has content.
+        // The foreground chat is listed once it has content.
         sessionStore.updateChatEntry("startup", { outputBlocks: [{ kind: "userMessage", id: "user-1", content: "hello", timestamp: 1, pending: false, injected: false }], visibleMessageCountSuffix: 1 })
-        await waitForAssertion(() => expect(signals.sessionCount()).toBe(3))
-        expect(signals.listedSessions().map((row) => row.id).toSorted()).toEqual(["kept", "prior", "startup"])
+        await waitForAssertion(() => expect(signals.listedSessions().map((row) => row.id).toSorted()).toEqual(["kept", "prior", "startup"]))
       } finally {
         dispose()
       }

@@ -14,6 +14,7 @@ import { createOverlayLayers, type OverlayLayers } from "../../../../../src/tui/
 import { createDraftCache } from "../../../../../src/tui/hooks/create-draft-cache.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
 import type { LeadChatViewerHost } from "../../../../../src/tui/modules/lead/chat-viewer.js"
+import type { TuiModuleClientHost } from "../../../../../src/tui/tui-module-client.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
 import { heightEstimatesFromBlocks } from "../../../../../src/tui/hooks/output-height-estimates.js"
 import { transcriptOf } from "../../_output-window-transcript.js"
@@ -62,7 +63,7 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
     navigateSession: async (sessionId: string) => { sent.push(`navigate ${sessionId}`) },
     dispatchCommand: async () => false,
     viewerLayer: overlay.viewer,
-    title: (sessionId: string) => input.titles?.[sessionId] ?? `Chat ${sessionId}`,
+    sessionTitles: (sessionId: string) => ({ id: sessionId, title: input.titles?.[sessionId] ?? `Chat ${sessionId}`, shortTitle: "Short" }),
     question: (sessionId: string) => questions()[sessionId],
     answerQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.answer ${sessionId} ${toolUseId}`); return true },
     cancelQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.cancel ${sessionId} ${toolUseId}`); return true },
@@ -88,7 +89,7 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
         return viewerSurface("chat", { sessionId, transcript: { ...transcript, visibleRange: () => estimated } })
       },
     }),
-  } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & { readonly title: (sessionId: string) => string }
+  } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & Pick<TuiModuleClientHost, "sessionTitles">
   return { host, overlay, setQuestions, sent, shows, holdSends }
 }
 

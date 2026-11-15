@@ -4,7 +4,12 @@ import { testRender } from "@opentui/solid"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
 import { formatStartTime } from "../../../../../src/protocol/client/format.js"
 import { foldTurns, turnFoldSummary } from "../../../../../src/protocol/client/turn-folds.js"
-import { ClientExtensionsProvider } from "../../../../../src/tui/context/client-extensions.js"
+import { projectFrontendOutputBlocks } from "../../../../../src/orchestration/app-service/frontend-output-blocks.js"
+import { projectBlocksFromEntries } from "../../../../../src/orchestration/session/conversation/conversation-block-projection.js"
+import type { ConversationTreeTranscriptEntry } from "../../../../../src/orchestration/session/conversation/conversation-projection.js"
+import { leadReportLink } from "../../../../../src/protocol/modules/lead.js"
+import { ClientExtensionProviders, ClientExtensionsProvider } from "../../../../../src/tui/context/client-extensions.js"
+import { NavigationProvider } from "../../../../../src/tui/context/navigation.js"
 import { createBlockDisclosureChannel } from "../../../../../src/tui/context/block-disclosure.js"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
@@ -35,12 +40,14 @@ function labelOf(work: readonly FrontendOutputBlock[]): string {
   return turnFoldSummary(fold, undefined, LEAD_TRANSCRIPT.phrases).label
 }
 
-/** The tab of `sessionId` over `blocks`, under the real lead client, whose first tab is `LEAD_ID`. */
-async function mountTab(sessionId: string, blocks: readonly FrontendOutputBlock[], running = false) {
-  const lead = leadHarness([])
+/** The tab of `sessionId` over `blocks`, under the real lead client and its providers, whose first tab is `LEAD_ID`.
+ *  `navigated` records each link that a click opens. */
+async function mountTab(sessionId: string, blocks: readonly FrontendOutputBlock[], running = false, height = 30, sessionKind: "chat" | "subagent" = "subagent", titles?: { readonly [sessionId: string]: string }) {
+  const lead = leadHarness([], {}, undefined, titles)
   const disclosure = createBlockDisclosureChannel()
+  const navigated: string[] = []
   const result = await testRender(() => (
-    <ThemeProvider mode="dark"><TickPoolProvider><ClientExtensionsProvider value={[lead.client]}>
+    <ThemeProvider mode="dark"><TickPoolProvider><ClientExtensionsProvider value={[lead.client]}><ClientExtensionProviders><NavigationProvider value={(uri) => { navigated.push(uri) }}>
       <OutputWindow
         layoutSlot={{ sessionId }}
         transcript={{ ...transcriptOf(blocks), ...disclosure }}
@@ -48,20 +55,41 @@ async function mountTab(sessionId: string, blocks: readonly FrontendOutputBlock[
         sessionIntro={{
           moduleRows: () => [], runtimeIdentity: () => ({ version: "0.0.1", buildId: null }), showBuild: () => false,
           projectRoot: () => "/Users/test/project", accountHome: "/Users/test", userDataRoot: "/Users/test/.flywheel",
-          branchName: () => undefined, sessionKind: () => "subagent", modelLabel: () => "model", profileName: () => "default",
+          branchName: () => undefined, sessionKind: () => sessionKind, modelLabel: () => "model", profileName: () => "default",
           fontTipDismissed: () => false, tabsHintDismissed: () => false, onDismissTabsHint: () => {}, availableWidth: () => 80, noProviderReady: () => false,
         }}
       />
-    </ClientExtensionsProvider></TickPoolProvider></ThemeProvider>
-  ), { width: 100, height: 30 })
+    </NavigationProvider></ClientExtensionProviders></ClientExtensionsProvider></TickPoolProvider></ThemeProvider>
+  ), { width: 100, height })
   const frame = async (): Promise<string> => {
     await result.renderOnce()
     await new Promise((resolve) => setTimeout(resolve, 0))
     await result.renderOnce()
     return result.captureCharFrame()
   }
-  return { result, frame, dispose: () => { result.renderer.destroy(); lead.dispose() } }
+  return { result, frame, navigated, dispose: () => { result.renderer.destroy(); lead.dispose() } }
 }
+
+/** The lead's conversation as the installed build wrote it in a live run: two routes, a report after each, and
+ *  between them a turn that a chat's question started and that ended with no answer. The system reminders and the
+ *  provider fields of each message are left out. */
+const LIVE_LEAD_ENTRIES: readonly ConversationTreeTranscriptEntry[] = [
+  { id: "person:7e1fa464", parentId: null, timestamp: "2026-11-15T08:16:15.470Z", kind: "message", message: { kind: "user", content: "Start a chat that lists the files in the project root, then reports. Keep it tiny.", origin: "human", submissionIds: ["7e1fa464"] } },
+  { id: "98d03266", parentId: "person:7e1fa464", timestamp: "2026-11-15T08:16:18.088Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "I’ll start a chat to list the root files and report briefly.\n" }, { type: "tool_use", id: "call_4551", name: "route_request", input: { kind: "new" } }], stopReason: "tool_use" } },
+  { id: "321736cd", parentId: "98d03266", timestamp: "2026-11-15T08:16:18.144Z", kind: "message", message: { kind: "toolResult", toolUseId: "call_4551", content: [{ type: "text", text: "Started chat 99b414b85fde \"New Chat\" with the person's messages." }] } },
+  { id: "9441f1c2", parentId: "321736cd", timestamp: "2026-11-15T08:16:19.951Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "The root-file listing chat has it and will report back here." }], stopReason: "end_turn" } },
+  { id: "msg:99b414b85fde:lead-report:71e0915a", parentId: "9441f1c2", timestamp: "2026-11-15T08:16:31.546Z", kind: "message", message: { kind: "user", content: "Done. The project root has no files, only two directories: `.flywheel/` and `.git/`.", producer: { kind: "session", sessionId: "99b414b85fde", conversationId: "2293ecac3cf5", toolUseId: "lead-report:71e0915a", hop: 0, envelope: { name: "List Project Root Files", relation: "other", waits: false } } } },
+  { id: "b229df2f", parentId: "msg:99b414b85fde:lead-report:71e0915a", timestamp: "2026-11-15T08:16:33.363Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "The chat reports no root files." }], stopReason: "end_turn" } },
+  { id: "person:dbbea66c", parentId: "b229df2f", timestamp: "2026-11-15T08:17:57.496Z", kind: "message", message: { kind: "user", content: "Start a new chat that asks me with ask_user to pick red or blue, then reports my pick in one line.", origin: "human", submissionIds: ["dbbea66c"] } },
+  { id: "a412be6a", parentId: "person:dbbea66c", timestamp: "2026-11-15T08:17:59.647Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "I’ll start a new chat to ask for your choice.\n" }, { type: "tool_use", id: "call_6093", name: "route_request", input: { kind: "new" } }], stopReason: "tool_use" } },
+  { id: "9841c570", parentId: "a412be6a", timestamp: "2026-11-15T08:17:59.691Z", kind: "message", message: { kind: "toolResult", toolUseId: "call_6093", content: [{ type: "text", text: "Started chat e1c82693293b \"New Chat\" with the person's messages." }] } },
+  { id: "2abebaef", parentId: "9841c570", timestamp: "2026-11-15T08:18:02.424Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "The color-choice chat has it and will report your pick here." }], stopReason: "end_turn" } },
+  { id: "5cba8910", parentId: "2abebaef", timestamp: "2026-11-15T08:18:03.110Z", kind: "message", message: { kind: "user", content: "<session_event_notice>\n<source>runtime</source>\n<visibility>hidden_from_user</visibility>\n<chat><session_id>e1c82693293b</session_id><title>Pick Red or Blue</title><event>asked</event></chat>\n</session_event_notice>", origin: "system" } },
+  { id: "ff4f49bc", parentId: "5cba8910", timestamp: "2026-11-15T08:18:06.334Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "I’ll check the color chat’s question for any needed context.\n" }, { type: "tool_use", id: "call_1eb8", name: "chat_progress", input: { chat: "e1c82693293b" } }], stopReason: "tool_use" } },
+  { id: "eeee34cd", parentId: "ff4f49bc", timestamp: "2026-11-15T08:18:06.339Z", kind: "message", message: { kind: "toolResult", toolUseId: "call_1eb8", content: [{ type: "text", text: "Chat e1c82693293b \"Pick Red or Blue\": waiting for the person's answer." }] } },
+  { id: "msg:e1c82693293b:lead-report:166f9bae", parentId: "eeee34cd", timestamp: "2026-11-15T08:18:36.257Z", kind: "message", message: { kind: "user", content: "Done: You picked blue.", producer: { kind: "session", sessionId: "e1c82693293b", conversationId: "f29d55e69a36", toolUseId: "lead-report:166f9bae", hop: 0, envelope: { name: "Pick Red or Blue", relation: "other", waits: false } } } },
+  { id: "9b39c6c8", parentId: "msg:e1c82693293b:lead-report:166f9bae", timestamp: "2026-11-15T08:18:38.209Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "The chat reports you picked blue." }], stopReason: "end_turn" } },
+]
 
 describe("the lead's tab folds its finished turns to their answers (PI-LEAD-011)", () => {
   it("says what the lead did with its chats in place of a tool count", () => {
@@ -112,6 +140,38 @@ describe("the lead's tab folds its finished turns to their answers (PI-LEAD-011)
       expect(frame).toContain("Chat progress")
       expect(frame).toContain("DAG Failures finished: the build passes.")
     } finally { tab.dispose() }
+  })
+
+  it("shows each report of a live run as its own line outside every fold, folds the quiet turn to its line, and a click opens the report", async () => {
+    // The rows that a reload reads: the runtime's own projection of the stored entries.
+    const blocks = projectFrontendOutputBlocks(projectBlocksFromEntries(LIVE_LEAD_ENTRIES, { executionCwd: "/project" }))
+    // The second chat was renamed after its report: the line names it as the Sessions list does now.
+    const tab = await mountTab(LEAD_ID, blocks, false, 60, "subagent", { "99b414b85fde": "List Project Root Files", "e1c82693293b": "Pick a Color" })
+    try {
+      const frame = await tab.frame()
+      expect(frame).toContain("Report · List Project Root Files · open")
+      expect(frame).toContain("Report · Pick a Color · open")
+      expect(frame).not.toContain("Message from")
+      // The turn that the question started ended without an answer: it folds to its line, its words with it.
+      expect(frame).not.toContain("I’ll check the color chat’s question")
+      expect(frame).not.toContain("Chat progress")
+      expect(frame).toContain(`▸ ${formatStartTime(Date.parse("2026-11-15T08:18:06.334Z"))} · Worked 0s · checked chats `)
+      const rows = frame.split("\n")
+      const y = rows.findIndex((row) => row.includes("Report · Pick a Color · open"))
+      await tab.result.mockMouse.click(rows[y]!.lastIndexOf("open") + 1, y)
+      expect(tab.navigated).toEqual([leadReportLink("e1c82693293b", "166f9bae")])
+    } finally { tab.dispose() }
+  })
+
+  it("teaches tab keys in the welcome block of every tab but the lead's (PI-LEAD-014)", async () => {
+    for (const [sessionId, taught] of [[LEAD_ID, false], ["other", true]] as const) {
+      const tab = await mountTab(sessionId, [], false, 30, "chat")
+      try {
+        const frame = await tab.frame()
+        expect(frame).toContain("project:")
+        expect(frame.includes("Each tab is one session")).toBe(taught)
+      } finally { tab.dispose() }
+    }
   })
 
   it("keeps a settled fold folded when the tab mounts again while the next turn runs", async () => {

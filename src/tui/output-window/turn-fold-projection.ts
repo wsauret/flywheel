@@ -1,4 +1,4 @@
-import { createTurnFolds, rowIdentity, turnFoldSummary, type TurnFold, type TurnFoldPresentation } from "../../protocol/client/turn-folds.js"
+import { createTurnFolds, turnFoldSummary, type TurnFold, type TurnFoldPresentation } from "../../protocol/client/turn-folds.js"
 import type { PresentedTerminalRow, TimelineRow } from "../output-blocks/visible-output-blocks.js"
 import type { TranscriptWindowProjection } from "./output-window-projection.js"
 
@@ -40,7 +40,7 @@ function sameItems(a: readonly unknown[], b: readonly unknown[]): boolean {
  *  The fold memory lives as long as the returned function. A frame that changes nothing hands back the arrays of the
  *  previous frame, as the window projector does. */
 function createTurnFoldProjector(presentation: TurnFoldPresentation) {
-  const folds = createTurnFolds(presentation.startsTurn)
+  const folds = createTurnFolds(presentation)
   const runs = new WeakMap<PresentedTerminalRow, PresentedTerminalRow>()
   const foldRows = new Map<string, FoldOutputRow>()
   let last: TranscriptWindowProjection | undefined
@@ -99,9 +99,7 @@ function createTurnFoldProjector(presentation: TurnFoldPresentation) {
         timelineBlockIndices.push(indexOf.get(row)!)
         continue
       }
-      let end = i + 1
-      // SAFETY: the loop condition keeps end inside folded.rows.
-      while (end < folded.rows.length && rowIdentity(folded.rows[end]!) !== row.answerId) end += 1
+      const end = i + 1 + row.held
       const held = folded.rows.slice(i + 1, end).filter(isInputRow)
       // An open fold holds its work rows in both lists; a closed one holds only the rows that stay in view after it.
       // SAFETY: a fold holds input rows only, each indexed above.

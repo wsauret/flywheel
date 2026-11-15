@@ -100,7 +100,6 @@ interface ModalsDeps {
   appService: Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe" | "onLane">
   sessions: Accessor<readonly SessionCatalogRow[]>
   sessionCatalogErrors: Accessor<readonly SessionCatalogError[]>
-  sessionCount: Accessor<number>
   tabs: Accessor<readonly TabInfo[]>
   appVersion: string
   chat: ChatModeHook
@@ -283,48 +282,6 @@ export function createModalModals(deps: ModalsDeps) {
     navigateToProcess: deps.navigateToProcess,
     openTarget: deps.openTarget,
   })
-  const activeSessionCount = createMemo(() => deps.tabs().filter((tab) => tab.kind === "session").length)
-  const sessionCount = deps.sessionCount
-  const foregroundBudget = () => {
-    const sessionId = signals.foregroundId()
-    return sessionId ? signals.budgetView(sessionId) : undefined
-  }
-  const statusModalRows = createMemo(() => [
-    ...statusRows({
-      sessionId: signals.foregroundId(),
-      sessionKind: signals.sessionKind(),
-      sessionState: signals.sessionState(),
-      modelLabel: activeModelLabel(),
-      budget: foregroundBudget(),
-      activeSessionCount: activeSessionCount(),
-      sessionCount: sessionCount(),
-      appVersion: deps.appVersion,
-      projectRoot: signals.projectRoot(),
-      executionCwd: signals.sessionExecutionCwd(),
-      update: signals.updateStatus(),
-    }),
-    ...deps.moduleStatusRows(),
-  ])
-  const statusModal = useStatusModal({
-    onOpen: deps.refreshModuleStatus,
-    modal,
-    renderModal: () => (
-      <LazyStatusModal
-        rows={statusModalRows()}
-        cursor={statusModal.statusCursor()}
-        onRowClick={statusModal.selectStatusRow}
-        onClose={() => statusModal.closeStatusModal()}
-      />
-    ),
-    rows: statusModalRows,
-    copy: (text) => clipboard.copy(text),
-    activate: deps.activateModuleRow,
-    showToast: services.showToast,
-  })
-  const helpModal = useHelpModal({
-    modal,
-    renderModal: (scroll) => <LazyModalHelp onClose={() => modal.clear()} scroll={scroll} />,
-  })
   const sessionModal = useSessionModal({
     modal,
     renderModal: () => (
@@ -368,6 +325,48 @@ export function createModalModals(deps: ModalsDeps) {
       switchForeground,
       startChat,
     }),
+  })
+  const activeSessionCount = createMemo(() => deps.tabs().filter((tab) => tab.kind === "session").length)
+  const sessionCount = sessionModal.sessionCount
+  const foregroundBudget = () => {
+    const sessionId = signals.foregroundId()
+    return sessionId ? signals.budgetView(sessionId) : undefined
+  }
+  const statusModalRows = createMemo(() => [
+    ...statusRows({
+      sessionId: signals.foregroundId(),
+      sessionKind: signals.sessionKind(),
+      sessionState: signals.sessionState(),
+      modelLabel: activeModelLabel(),
+      budget: foregroundBudget(),
+      activeSessionCount: activeSessionCount(),
+      sessionCount: sessionCount(),
+      appVersion: deps.appVersion,
+      projectRoot: signals.projectRoot(),
+      executionCwd: signals.sessionExecutionCwd(),
+      update: signals.updateStatus(),
+    }),
+    ...deps.moduleStatusRows(),
+  ])
+  const statusModal = useStatusModal({
+    onOpen: deps.refreshModuleStatus,
+    modal,
+    renderModal: () => (
+      <LazyStatusModal
+        rows={statusModalRows()}
+        cursor={statusModal.statusCursor()}
+        onRowClick={statusModal.selectStatusRow}
+        onClose={() => statusModal.closeStatusModal()}
+      />
+    ),
+    rows: statusModalRows,
+    copy: (text) => clipboard.copy(text),
+    activate: deps.activateModuleRow,
+    showToast: services.showToast,
+  })
+  const helpModal = useHelpModal({
+    modal,
+    renderModal: (scroll) => <LazyModalHelp onClose={() => modal.clear()} scroll={scroll} />,
   })
   const authModal = useAuthModal({
     auth: signals.auth,

@@ -3,6 +3,7 @@ import { blockIdentity } from "../../protocol/block-identity.js"
 import { toolRunCategoryFor, type ToolRunCategory } from "../../protocol/client/tool-run-category.js"
 import { foldTranscript, runEnd, type ToolStretch, type TranscriptModel, type TranscriptWindow } from "../../protocol/client/transcript-model.js"
 import { messageDisclosureEntry } from "../../protocol/client/message-sender.js"
+import type { TurnStart } from "../../protocol/client/turn-folds.js"
 import type { ToolRenderEntry } from "./tool-entry-helpers.js"
 
 /** The terminal's presentation of the shared transcript model. The model
@@ -184,8 +185,9 @@ export function presentTerminalTranscript(model: TranscriptModel): TerminalTrans
   return { timelineBlocks, pendingBlocks, hasBoundaryBefore, timelineBlockIndices, zeroHeightBlockIndices: zeroHeightBlockIndices.sort((a, b) => a - b) }
 }
 
-/** Fold a raw transcript window and present its terminal rows. */
-export function terminalTranscript(blocks: readonly FrontendOutputBlock[], showThinking: boolean | undefined, window?: TranscriptWindow) {
-  const model = foldTranscript(blocks, showThinking, window)
+/** Fold a raw transcript window and present its terminal rows. `startsTurn` keeps each stretch inside one turn
+ *  (`foldTranscript`). */
+export function terminalTranscript(blocks: readonly FrontendOutputBlock[], showThinking: boolean | undefined, window?: TranscriptWindow, startsTurn?: TurnStart) {
+  const model = foldTranscript(blocks, showThinking, window, startsTurn)
   return { ...presentTerminalTranscript(model), model }
 }

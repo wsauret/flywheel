@@ -90,11 +90,14 @@ export const AUTH_LIST_ACTION_COPY = [
   "enter provider settings",
 ] as const
 
+/** The Sessions list's keys that move through it and leave it. */
+export const SESSION_NAVIGATION_HINT = "↑↓ navigate · esc close"
+
 export const SESSION_CONTROL_COPY = [
   "tab switch field · enter rename · esc cancel",
   "d delete · esc close",
   "Type to filter · esc close",
-  "enter open · ↑↓ navigate · esc close",
+  `enter open · ${SESSION_NAVIGATION_HINT}`,
 ] as const
 
 export function settingsGroupDescription(group: string): string {

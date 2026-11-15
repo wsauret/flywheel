@@ -202,6 +202,8 @@ describe("the Sessions modal with the lead", () => {
       try {
         h.hook.openSessionsModal()
         expect(rowLabels(h.hook).filter((label) => label.startsWith("chat") || label.startsWith("lead"))).toEqual(["chat-2", "chat-3"])
+        // The count that the composer border and the status show is of these rows.
+        expect(h.hook.sessionCount()).toBe(2)
         h.hook.handleSessionFilter("Lead")
         expect(rowLabels(h.hook)).not.toContain("lead-1")
       } finally { h.dispose() }
@@ -213,6 +215,7 @@ describe("the Sessions modal with the lead", () => {
     try {
       h.hook.openSessionsModal()
       expect(rowLabels(h.hook).filter((label) => label.startsWith("chat") || label.startsWith("lead"))).toEqual(["lead-1", "chat-2", "chat-3"])
+      expect(h.hook.sessionCount()).toBe(3)
     } finally { h.dispose() }
   })
 
@@ -221,6 +224,10 @@ describe("the Sessions modal with the lead", () => {
     try {
       h.hook.openSessionsModal()
       expect(h.hook.sessionModalActions().filter((action) => action.opens).map((action) => `${action.key} ${action.label}`)).toEqual(["enter open", "ctrl+t open as tab"])
+      // A typed search keeps both open actions named, and only them, because a typed key goes to the search.
+      h.hook.handleSessionFilter("parser")
+      expect(h.hook.sessionModalActions().map((action) => `${action.key} ${action.label}`)).toEqual(["enter open", "ctrl+t open as tab"])
+      h.hook.handleSessionFilter("")
       h.modals.input({ name: "Enter" })
       await settle()
       expect(h.overlay.viewer.stack).toHaveLength(1)

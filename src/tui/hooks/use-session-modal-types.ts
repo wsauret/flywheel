@@ -67,6 +67,8 @@ export interface SessionModalHook {
   /** The minute clock the picker rows were built against; row time labels must render from it. */
   pickerNow: Accessor<number>
   sessionModalActions: Accessor<readonly SessionModalAction[]>
+  /** How many sessions the list shows without a search. */
+  sessionCount: Accessor<number>
   openSessionsModal(): void
   closeSessionsModal(): void
   selectModalItem(rowIndex: number): void
