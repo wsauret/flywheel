@@ -351,3 +351,7 @@ When no role preference of an agent can serve until a stated time, such as a usa
 ## PI-MODEL-063: Capacity wait status and end
 
 While an agent waits because none of its models can serve, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
+
+## PI-MODEL-088: A usage reading corrects a spent account's reset time
+
+The time until which Flywheel passes over a spent account only spares requests while nothing newer is known. Every usage reading checks it: the reading at startup and each refresh in Usage. When a reading taken after the account was marked spent shows capacity in every window, the next request can use that account at once.
