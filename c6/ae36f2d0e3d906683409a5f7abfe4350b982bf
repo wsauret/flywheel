@@ -1,0 +1,24 @@
+tests/unit/orchestration/modules/provider-claude-agent-sdk/transcript.test.ts
+  s_0d536ae5637d7f::t_ff60393783f7f1 263
+  s_0d536ae5637d7f::t_6a7807feab2289 2,7-8,262,264-274
+  s_0d536ae5637d7f::t_b239bbd7cfbe8b 275-276
+src/orchestration/modules/provider-claude-agent-sdk/transcript.ts
+  s_0d536ae5637d7f::t_6a7807feab2289 8,330
+  s_0d536ae5637d7f::t_02e448047bbd71 19-20,320-322,324-329,331-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c6ae36f2d0e3d906683409a5f7abfe4350b982bf",
+  "prompts": {},
+  "sessions": {
+    "s_0d536ae5637d7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "054b86e9-d761-4bd9-a4a3-8c91989e0b7a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
