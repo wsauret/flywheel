@@ -1,0 +1,21 @@
+tests/unit/bench/harbor-jobs.test.ts
+  s_0d536ae5637d7f::t_13cb45340f8a18 110
+bench/harbor/harbor-config.ts
+  s_0d536ae5637d7f::t_13cb45340f8a18 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eabc28bb91c590835c2d8643889219d66c7aaad3",
+  "prompts": {},
+  "sessions": {
+    "s_0d536ae5637d7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "054b86e9-d761-4bd9-a4a3-8c91989e0b7a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
