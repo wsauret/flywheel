@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { errnoCode } from "../../../infra/error-message.js";
 import { acquireLockSync, releaseLock, tryAcquireLockSync } from "../../../infra/ownership-file-lock.js";
+import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
 import { canonicalShell, type RuntimeReminder } from "../../agent-runtime/llm/runtime-reminders.js";
 import type { CliBlock, CliMessage, PlacedReminder } from "./cli-view.js";
 import { isBridgeSessionId } from "./session-id.js";
@@ -15,6 +16,8 @@ import { isBridgeSessionId } from "./session-id.js";
 /** The Flywheel-owned directory of a login's session locks, beside the engine's `projects/` tree, so that neither the
  *  engine nor the person's own sessions read a lock, and the sweep never reads one as a session. */
 const SESSION_LOCKS_DIRECTORY = "session-locks";
+/** What a request states when its account was disconnected while its engine started. */
+const LOGIN_REMOVED = "The Claude login of this account was disconnected while the request started";
 /** The CLI shortens a project directory name past this length and adds a hash. */
 const PROJECT_SLUG_LIMIT = 200;
 
@@ -314,10 +317,19 @@ const createdDirectories = new Map<string, number>();
  * owner of a session id, a chat bridge or a shared agent host, holds the lock from before its engine writes anything
  * of the session until it deleted the session's artifacts after its engine's awaited close, so a sweep that takes
  * the lock proves that no owner can still use them. Throws when the lock cannot be taken; a new session id has no
- * other holder, so only the file system refuses it.
+ * other holder, so only the file system refuses it. A lock directory that is gone again right after this made it
+ * means that a disconnect of the account removes the login now: the account can serve nothing more, so the request
+ * goes to the next route (`RouteUnavailableError`). `acquire` is the file system boundary.
  */
-export function lockSession(configDir: string, sessionId: string): () => void {
-  const ownership = acquireLockSync(sessionLockPath(configDir, sessionId));
+export function lockSession(configDir: string, sessionId: string, acquire: typeof acquireLockSync = acquireLockSync): () => void {
+  const path = sessionLockPath(configDir, sessionId);
+  let ownership: ReturnType<typeof acquireLockSync>;
+  try {
+    ownership = acquire(path);
+  } catch (error) {
+    if (errnoCode(error) === "ENOENT") throw new RouteUnavailableError(LOGIN_REMOVED);
+    throw error;
+  }
   return () => { releaseLock(ownership); };
 }
 

@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import type { CliMessage, PlacedReminder } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { canonicalShell } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { acquireLockSync } from "../../../../../src/infra/ownership-file-lock.js";
+import { classifyProviderFailure, isFailoverFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { processHolders } from "../../../../../src/infra/process-holder.js";
 import { bridgeSessionId } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/session-id.js";
 import { cliProjectSlug, lockSession, removeTranscript, sweepLeftBehindSessions, transcriptFiles, transcriptRows, writeTranscript, type TranscriptClock } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/transcript.js";
@@ -255,6 +257,21 @@ describe("the rotation transcript", () => {
       unlock();
       unlockTranscript();
     }
+  });
+
+  test("a session lock that meets the removal of its login hands the request to the next route", () => {
+    const config = join(temporaryDirectory("flywheel-sdk-login-"), "login");
+    // A disconnect removes the login directory between the lock directory's creation and the lock's first file.
+    const removedUnderneath: typeof acquireLockSync = (path) => {
+      rmSync(config, { recursive: true, force: true });
+      return acquireLockSync(path);
+    };
+    let thrown: unknown;
+    try { lockSession(config, bridgeSessionId(), removedUnderneath); } catch (error) { thrown = error; }
+    const failure = classifyProviderFailure(thrown);
+    expect(failure._tag).toBe("RouteUnavailableFailure");
+    expect(isFailoverFailure(failure)).toBe(true);
+    expect(failure.message).toBe("The Claude login of this account was disconnected while the request started");
   });
 
   test("a sweep takes no lock on a lockless session written since the boot, so a sweep that crashes leaves no proof of a gone owner for it", () => {
