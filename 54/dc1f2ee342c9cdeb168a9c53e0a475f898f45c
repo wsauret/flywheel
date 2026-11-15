@@ -1,0 +1,16 @@
+bench/harbor/configs/luna-t1t5-role-finish.toml
+  h_4b47e9e4a8b456 1-83
+bench/harbor/configs/shipped-first-t1t5-role-finish.toml
+  h_4b47e9e4a8b456 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "54dc1f2ee342c9cdeb168a9c53e0a475f898f45c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
