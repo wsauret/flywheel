@@ -1,0 +1,14 @@
+bench/harbor/configs/oc-addback-all.toml
+  h_4b47e9e4a8b456 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "728e367353deb5e7c0cb786f1656329ec8bfbfaf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
