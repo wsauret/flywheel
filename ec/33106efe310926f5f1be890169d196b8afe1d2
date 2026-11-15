@@ -1,0 +1,16 @@
+bench/harbor/configs/shipped-first-own-proof.toml
+  h_4b47e9e4a8b456 1-108
+bench/harbor/configs/shipped-first-own-validating.toml
+  h_4b47e9e4a8b456 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ec33106efe310926f5f1be890169d196b8afe1d2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
