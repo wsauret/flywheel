@@ -1,0 +1,20 @@
+bench/harbor/configs/luna-t5t6-finish-words.toml
+  h_4b47e9e4a8b456 1-84
+bench/harbor/configs/luna-t6-request-words.toml
+  h_4b47e9e4a8b456 1-79
+bench/harbor/configs/shipped-first-t5t6-finish-words.toml
+  h_4b47e9e4a8b456 1-110
+bench/harbor/configs/shipped-first-t6-request-words.toml
+  h_4b47e9e4a8b456 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4e36344430e2b50eee9b02a2ac4c7be9b6ff8b08",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
