@@ -21,6 +21,11 @@ export const TRIAL_AUTH_PROFILE = "benchmark";
 /** The macOS keychain item (service name) that holds a Claude arm's token when no `--claude-token-keychain-item` names one. */
 const DEFAULT_CLAUDE_TOKEN_KEYCHAIN_ITEM = "flywheel-claude-oauth-token";
 const DEFAULT_CONCURRENCY = 4;
+/** The FrontierHarness board's concurrency on Runta, which its quota of 32 vCPU and 64 GiB holds at the largest task's 4 vCPU and 8 GiB. */
+const RUNTA_DEFAULT_CONCURRENCY = 8;
+/** The storage that the FrontierHarness board's Runta command sets with `--override-storage-mb`. It is the mode's own
+ *  setting, so it needs no admission and keeps the grade. */
+const RUNTA_RESOURCE_DEFAULTS: Readonly<JsonMap> = { storage_mb: 32768 };
 
 /** The job settings of the harness leaderboard, which a board-matched run
  *  keeps: three attempts per task, and agent setup and environment builds at
@@ -67,8 +72,8 @@ export interface ResolvedHarborConfig {
   /** The dataset ref that the benchmark pins, such as `sha256:<digest>`. */
   datasetRef: string;
   agentPackage: HarborAgentPackage;
-  /** Set when the run executes on Harbor Hub instead of local Docker. */
-  hosted?: HarborHosting;
+  /** Where the trials run: local Docker, Harbor Hub, or Runta runtimes driven by a local Harbor process. */
+  execution: HarborExecution;
   taskNames: string[];
   /** The filter of Harbor's dataset selection that selects `taskNames`. */
   datasetFilter: DatasetFilter;
@@ -82,6 +87,7 @@ export interface ResolvedHarborConfig {
   jobName: string;
   jobsDirectory: string;
   timeoutMultipliers: Record<TimeoutMultiplier, number>;
+  /** The resource overrides of every trial: the mode's own defaults with the admitted `--resource-overrides` over them. */
   resourceOverrides: JsonMap;
 }
 
@@ -112,11 +118,9 @@ interface HarborAgentPackage {
   claudeTokenKeychainItems: readonly string[];
 }
 
-/** What only a Harbor Hub run adds. */
-interface HarborHosting {
-  /** The Hub organization that owns the job; without one, the job is the signed-in user's own. */
-  organization?: string;
-}
+/** Where the trials of a run execute. Only a Hub run names an organization, which owns the job; without one, the
+ *  job is the signed-in user's own. */
+export type HarborExecution = { mode: "local" } | { mode: "hosted"; organization?: string } | { mode: "runta" };
 
 interface ResolveOptions {
   cwd: string;
@@ -212,11 +216,14 @@ function harborAgentPackage(agentRepository: string | undefined, claudeTokenKeyc
   return { agentRepository, claudeTokenKeychainItems: items };
 }
 
-/** Validates the Hub selection. Hub builds its own sandboxes, so a local
- *  image prebuild has no meaning there. */
-function harborHosting(organization: string | undefined, prebuild: boolean): HarborHosting {
-  if (prebuild) throw new Error("--hosted does not support --prebuild");
-  return organization === undefined ? {} : { organization: requiredName(organization, "--organization or FLYWHEEL_HARBOR_HUB_ORG") };
+/** Validates the execution selection. Hub and Runta build their own sandboxes, so a local image prebuild has no
+ *  meaning there. */
+function harborExecution(hosted: boolean, runta: boolean, organization: string | undefined, prebuild: boolean): HarborExecution {
+  if (hosted && runta) throw new Error("select at most one of --hosted and --runta");
+  if (!hosted && !runta) return { mode: "local" };
+  if (prebuild) throw new Error(`${hosted ? "--hosted" : "--runta"} does not support --prebuild`);
+  if (runta) return { mode: "runta" };
+  return organization === undefined ? { mode: "hosted" } : { mode: "hosted", organization: requiredName(organization, "--organization or FLYWHEEL_HARBOR_HUB_ORG") };
 }
 
 /** Harbor's dataset filter: the tasks to include, or the tasks to leave out
@@ -285,7 +292,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   let roundName: string | undefined;
   let cliAuthProfile: string | undefined;
   let attempts = BOARD_ATTEMPTS;
-  let concurrency = DEFAULT_CONCURRENCY;
+  let cliConcurrency: number | undefined;
   let cliJobName: string | undefined;
   let cliJobsDirectory: string | undefined;
   const timeoutMultipliers: Record<TimeoutMultiplier, number> = { ...BOARD_TIMEOUT_MULTIPLIERS };
@@ -296,6 +303,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   let allowTimeoutMultipliers = false;
   let allowResourceOverrides = false;
   let hosted = false;
+  let runta = false;
   const env = options.env ?? process.env;
   let cliAgentRepository = env.FLYWHEEL_HARBOR_AGENT_REPO;
   let cliOrganization = env.FLYWHEEL_HARBOR_HUB_ORG;
@@ -318,7 +326,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
       case "--round": roundName = next(args, index); index += 1; break;
       case "--auth-profile": cliAuthProfile = requiredName(next(args, index), "--auth-profile"); index += 1; break;
       case "--attempts": attempts = positiveInteger(next(args, index), flag); index += 1; break;
-      case "--concurrency": concurrency = positiveInteger(next(args, index), flag); index += 1; break;
+      case "--concurrency": cliConcurrency = positiveInteger(next(args, index), flag); index += 1; break;
       case "--job-name": cliJobName = next(args, index); index += 1; break;
       case "--jobs-dir": cliJobsDirectory = next(args, index); index += 1; break;
       case "--resource-overrides": resourceOverrides = resourceOverridesOf(JSON.parse(next(args, index)), flag); index += 1; break;
@@ -330,6 +338,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
       case "--allow-timeout-multipliers": allowTimeoutMultipliers = true; break;
       case "--allow-resource-overrides": allowResourceOverrides = true; break;
       case "--hosted": hosted = true; break;
+      case "--runta": runta = true; break;
       case "--agent-repo": cliAgentRepository = next(args, index); index += 1; break;
       case "--organization": cliOrganization = next(args, index); index += 1; break;
       case "--claude-token-keychain-item": claudeTokenKeychainItems.push(next(args, index)); index += 1; break;
@@ -342,7 +351,8 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   if (armPath === undefined) throw new Error("every run requires --arm <Flywheel config>: the agent package ships the arm config");
   const { config: flywheelConfig, model } = await readFlywheelConfig(armPath);
   const agentPackage = harborAgentPackage(cliAgentRepository, claudeTokenKeychainItems);
-  const hosting = hosted ? harborHosting(cliOrganization, prebuild) : undefined;
+  const execution = harborExecution(hosted, runta, cliOrganization, prebuild);
+  const concurrency = cliConcurrency ?? (execution.mode === "runta" ? RUNTA_DEFAULT_CONCURRENCY : DEFAULT_CONCURRENCY);
   const authProfile = requiredName(cliAuthProfile, "--auth-profile");
   const { taskNames, datasetFilter } = await selectedTasks(benchmark, split, taskList, options.listTasks ?? harborDatasetTasks);
   // A run of every task measures the reserved split that names the whole benchmark.
@@ -354,8 +364,10 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   if (attempts < BOARD_ATTEMPTS && !allowLowK) throw new Error(`attempts below ${BOARD_ATTEMPTS} require --allow-low-k`);
   const hasNonstandardTimeout = Object.values(TIMEOUT_FLAGS).some((key) => timeoutMultipliers[key] !== BOARD_TIMEOUT_MULTIPLIERS[key]);
   if (hasNonstandardTimeout && !allowTimeoutMultipliers) throw new Error("timeout multipliers other than the board's require --allow-timeout-multipliers");
-  const hasResourceOverrides = Object.keys(resourceOverrides).length > 0;
+  const modeResources = execution.mode === "runta" ? RUNTA_RESOURCE_DEFAULTS : {};
+  const hasResourceOverrides = Object.entries(resourceOverrides).some(([key, value]) => modeResources[key] !== value);
   if (hasResourceOverrides && !allowResourceOverrides) throw new Error("resource overrides require --allow-resource-overrides");
+  resourceOverrides = { ...modeResources, ...resourceOverrides };
   const grade: CampaignGrade = attempts === 1 ? "debug_only" : attempts < BOARD_ATTEMPTS || hasNonstandardTimeout || hasResourceOverrides ? "local_low_k" : "leaderboard_valid";
   const warning = grade === "leaderboard_valid" ? undefined : `${grade} campaign is not leaderboard-valid`;
   const jobName = cliJobName ?? `flywheel-${benchmark.id}-${model}`.replace(/[^A-Za-z0-9._-]+/g, "-");
@@ -366,7 +378,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
     ...(roundName === undefined ? {} : { round: roundName }),
     authProfile, expectedInteraction: harborInteraction(model), profileSha256, flywheelConfig, model,
     dataset: benchmark.dataset.name, datasetRef: benchmark.dataset.ref, agentPackage,
-    ...(hosting ? { hosted: hosting } : {}),
+    execution,
     taskNames, datasetFilter, attempts, concurrency, expectedTrials: taskNames.length * attempts, dryRun, prebuild, grade, ...(warning === undefined ? {} : { warning }),
     jobName, jobsDirectory, timeoutMultipliers, resourceOverrides,
   };

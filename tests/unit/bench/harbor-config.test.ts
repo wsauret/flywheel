@@ -35,7 +35,7 @@ describe("Harbor config resolution", () => {
     expect(config.warning).toBeUndefined();
     expect(config.resourceOverrides).toEqual({});
     expect(config.agentPackage).toEqual({ agentRepository: "owner/agent", claudeTokenKeychainItems: ["flywheel-claude-oauth-token"] });
-    expect(config.hosted).toBeUndefined();
+    expect(config.execution).toEqual({ mode: "local" });
     expect(config.round).toBeUndefined();
     expect(config.profileSha256).toMatch(/^[a-f0-9]{64}$/);
   });
@@ -131,12 +131,26 @@ describe("Harbor config resolution", () => {
     expect((await resolveArgs(base, { FLYWHEEL_HARBOR_AGENT_REPO: "owner/agent" })).agentPackage.agentRepository).toBe("owner/agent");
     await expect(resolveArgs(base)).rejects.toThrow("every run requires --agent-repo");
     const hosted = await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted", "--organization", "org", "--claude-token-keychain-item", "other-item", "--claude-token-keychain-item", "second-item"]);
-    expect(hosted.hosted).toEqual({ organization: "org" });
+    expect(hosted.execution).toEqual({ mode: "hosted", organization: "org" });
     // Each named item is one token and one Claude account, in the order named; a named item replaces the default.
     expect(hosted.agentPackage.claudeTokenKeychainItems).toEqual(["other-item", "second-item"]);
-    expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted"], { FLYWHEEL_HARBOR_HUB_ORG: "env-org" })).hosted).toEqual({ organization: "env-org" });
-    expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted"])).hosted).toEqual({});
-    await expect(resolveArgs([...launchArgs, ...ONE_TASK, "--hosted", "--prebuild"])).rejects.toThrow("--prebuild");
+    expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted"], { FLYWHEEL_HARBOR_HUB_ORG: "env-org" })).execution).toEqual({ mode: "hosted", organization: "env-org" });
+    expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--hosted"])).execution).toEqual({ mode: "hosted" });
+    await expect(resolveArgs([...launchArgs, ...ONE_TASK, "--hosted", "--prebuild"])).rejects.toThrow("--hosted does not support --prebuild");
+  });
+
+  test("a Runta run excludes --hosted and --prebuild, runs 8 trials at once by default, and keeps the grade at its own 32768 MB storage", async () => {
+    const runta = await resolveArgs([...launchArgs, ...ONE_TASK, "--runta"]);
+    expect(runta).toMatchObject({ execution: { mode: "runta" }, concurrency: 8, grade: "leaderboard_valid", resourceOverrides: { storage_mb: 32768 } });
+    expect(runta.warning).toBeUndefined();
+    expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--runta", "--concurrency", "3"])).concurrency).toBe(3);
+    await expect(resolveArgs([...launchArgs, ...ONE_TASK, "--runta", "--hosted"])).rejects.toThrow("select at most one of --hosted and --runta");
+    await expect(resolveArgs([...launchArgs, ...ONE_TASK, "--runta", "--prebuild"])).rejects.toThrow("--runta does not support --prebuild");
+    // Naming the mode's own storage is no departure; any other override keeps today's admission and grade.
+    expect((await resolveArgs([...launchArgs, ...ONE_TASK, "--runta", "--resource-overrides", '{"storage_mb":32768}'])).grade).toBe("leaderboard_valid");
+    await expect(resolveArgs([...launchArgs, ...ONE_TASK, "--runta", "--resource-overrides", '{"storage_mb":16384}'])).rejects.toThrow("--allow-resource-overrides");
+    const overridden = await resolveArgs([...launchArgs, ...ONE_TASK, "--runta", "--resource-overrides", '{"cpus":2}', "--allow-resource-overrides"]);
+    expect(overridden).toMatchObject({ grade: "local_low_k", resourceOverrides: { storage_mb: 32768, cpus: 2 } });
   });
 
   test("expects the shell tool of the profile the product selects for the model", async () => {
