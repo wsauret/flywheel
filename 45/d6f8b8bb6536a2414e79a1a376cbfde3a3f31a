@@ -1,0 +1,34 @@
+bench/harbor/configs/oc-parity-ledger.json
+  h_4b47e9e4a8b456 61-62,289-363
+bench/harbor/configs/shipped-drop-constraints.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-drop-core.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-drop-doctrine.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-drop-guidelines.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-drop-minimal.toml
+  h_4b47e9e4a8b456 1-103
+src/orchestration/agent-runtime/diagnostic-parity.ts
+  h_4b47e9e4a8b456 2,61-103,109-110
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 25,213-217,280-281,283-284
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 8,204
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 332-345
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 202-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "45d6f8b8bb6536a2414e79a1a376cbfde3a3f31a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
