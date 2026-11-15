@@ -1,0 +1,30 @@
+bench/harbor/configs/oc-parity-ledger.json
+  h_4b47e9e4a8b456 43,60-83
+bench/harbor/configs/oc-shipped-prompt-ref-tools.toml
+  h_4b47e9e4a8b456 1-102
+src/orchestration/agent-runtime/diagnostic-parity.ts
+  h_4b47e9e4a8b456 7-12
+src/orchestration/agent-runtime/tools/diagnostic-parity.ts
+  h_4b47e9e4a8b456 2,13,15-17,33-34,38-40,54,80,84
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 15,235,238
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 184
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 331-343
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 34
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 29-30,187-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ead041d490345e67d06f3767c36d6a1e43293de4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
