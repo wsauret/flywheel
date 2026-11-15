@@ -1,0 +1,21 @@
+tests/unit/orchestration/auth/provider-observations/subscription-usage-service.test.ts
+  s_0d536ae5637d7f::t_47dd130867db11 356-373
+src/orchestration/auth/provider-observations/subscription-usage-service.ts
+  s_0d536ae5637d7f::t_97fd323a684300 237-240,246,248,423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9a12a8527c8d457a7e1dd62d12244feaa87e4957",
+  "prompts": {},
+  "sessions": {
+    "s_0d536ae5637d7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "054b86e9-d761-4bd9-a4a3-8c91989e0b7a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
