@@ -1,0 +1,18 @@
+bench/harbor/configs/shipped-first-intro-capabilities.toml
+  h_4b47e9e4a8b456 1-108
+bench/harbor/configs/shipped-first-intro-identity.toml
+  h_4b47e9e4a8b456 1-104
+bench/harbor/configs/shipped-first-intro-own.toml
+  h_4b47e9e4a8b456 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "73f9111b1359f6cafe543ff93af4a498ba1e1bec",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
