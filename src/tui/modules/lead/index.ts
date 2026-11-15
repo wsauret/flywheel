@@ -7,5 +7,6 @@ export const leadTui = {
   id: "lead",
   createClient: createLeadClient,
   strip: LeadStrip,
+  stripPlacement: "below",
   surfaces: [{ id: LEAD_SURFACE, loadController: async () => (await import("./surface.js")).createLeadSurface }],
 } as const satisfies TuiModule

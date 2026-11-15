@@ -18,6 +18,8 @@ afterEach(async () => {
 const conversation = supervisorConversationFixture(() => ctx)
 
 const CHANGES = 20
+/** Each turn's own number, so every run's turns differ from the turns of the runs before it. */
+let turns = 0
 
 async function appendTurn(chat: string, index: number): Promise<void> {
   const conversationId = await conversation.chatConversationId(chat)
@@ -33,7 +35,7 @@ async function appendTurn(chat: string, index: number): Promise<void> {
 async function costs(chats: readonly string[], members: number) {
   const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
   const published: LeadRowChange[] = []
-  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, publish: (change) => { published.push(change) } })
+  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) } })
   let observing: Promise<void> = Promise.resolve()
   const unsubscribe = ctx.store.onStored((events: readonly StoredFact[]) => { observing = observing.then(() => rows.observe(events)) })
   try {
@@ -43,7 +45,8 @@ async function costs(chats: readonly string[], members: number) {
       const chat = chats[index % members]!
       counter.take()
       published.length = 0
-      await appendTurn(chat, 1_000 + index)
+      turns += 1
+      await appendTurn(chat, 1_000 + turns)
       await observing
       const requests = counter.take()
       const changed = `conversation:${await conversation.chatConversationId(chat)}`
@@ -71,7 +74,7 @@ test("a reorder and a removal in the session store read nothing durable and publ
   const other = await supervisor.openSessionRuntime()
   const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
   const published: LeadRowChange[] = []
-  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, publish: (change) => { published.push(change) } })
+  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) } })
   try {
     await rows.add(chats)
     // Each chat holds an open turn with no live work and no record, so each has a row that the sweep reads again.

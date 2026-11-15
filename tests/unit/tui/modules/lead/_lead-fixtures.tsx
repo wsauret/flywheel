@@ -5,8 +5,7 @@ import type { QuestionBlock } from "../../../../../src/infra/output-blocks.js"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
 import { createChatSubmissions } from "../../../../../src/protocol/client/chat-submissions.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
-import { leadCountLabel, type LeadRow, type LeadChatsView, type LeadRowState } from "../../../../../src/protocol/modules/lead.js"
-import type { SessionChangesResult } from "../../../../../src/protocol/session-changes-protocol-types.js"
+import { leadProtocol, type LeadRow, type LeadChatsView, type LeadRowState } from "../../../../../src/protocol/modules/lead.js"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import { TickPoolProvider } from "../../../../../src/tui/context/tick-pool-context.js"
 import { LeadStrip } from "../../../../../src/tui/modules/lead/strip.js"
@@ -15,7 +14,6 @@ import { createOverlayLayers, type OverlayLayers } from "../../../../../src/tui/
 import { createDraftCache } from "../../../../../src/tui/hooks/create-draft-cache.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
 import type { LeadChatViewerHost } from "../../../../../src/tui/modules/lead/chat-viewer.js"
-import type { LeadReaderHost } from "../../../../../src/tui/modules/lead/reader.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
 import { heightEstimatesFromBlocks } from "../../../../../src/tui/hooks/output-height-estimates.js"
 import { transcriptOf } from "../../_output-window-transcript.js"
@@ -27,11 +25,10 @@ export const LEAD_ID = "lead-1"
 export function leadRow(sessionId: string, state: LeadRowState, over: Partial<LeadRow> = {}): LeadRow {
   const since = Date.now() - 5 * 60_000
   return {
-    sessionId, state, update: `Update from ${sessionId}`, since, request: { entryId: `${sessionId}-request`, text: `Request to ${sessionId}` }, updates: [],
+    sessionId, state, status: `Status of ${sessionId}`, since,
     ...(state === "question" || state === "failed" || state === "cut" ? { waitingSince: since } : {}),
-    ...(state === "question" ? { question: { toolUseId: `${sessionId}-ask`, context: `Context of ${sessionId}` } } : {}),
     ...(state === "result" ? { result: { entryId: `${sessionId}-final` } } : {}),
-    ...(state === "failed" ? { failure: { entryId: null } } : {}),
+    ...(state === "failed" || state === "cut" ? { ended: { entryId: `${sessionId}-end` } } : {}),
     ...over,
   }
 }
@@ -40,13 +37,12 @@ export function choiceQuestion(toolUseId: string): QuestionBlock {
   return { kind: "question", toolUseId, questions: [{ question: "Which provider?", choices: [{ kind: "option", choiceId: "a", label: "Alpha" }, { kind: "freeform", label: "Other" }], multiSelect: false }], timestamp: 1 }
 }
 
-/** The host capabilities the reader uses beyond the client and the toasts,
- *  each recording what it was asked. */
-export function readerHost(input: { readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }; readonly view?: Accessor<LeadChatsView>; readonly overlay?: OverlayLayers } = {}) {
+/** The host capabilities the chat viewer uses beyond the client and the
+ *  toasts, each recording what it was asked. */
+export function viewerHost(input: { readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }; readonly titles?: { readonly [sessionId: string]: string }; readonly view?: Accessor<LeadChatsView>; readonly overlay?: OverlayLayers } = {}) {
   const overlay = input.overlay ?? createOverlayLayers()
   const [questions, setQuestions] = createSignal<{ readonly [sessionId: string]: QuestionBlock }>({})
   const sent: string[] = []
-  const loadedAround: string[] = []
   let gate: Promise<void> = Promise.resolve()
   /** Holds every later send until the returned release runs. */
   const holdSends = (): (() => void) => {
@@ -64,7 +60,7 @@ export function readerHost(input: { readonly transcripts?: { readonly [sessionId
     navigateSession: async (sessionId: string) => { sent.push(`navigate ${sessionId}`) },
     dispatchCommand: async () => false,
     viewerLayer: overlay.viewer,
-    title: (sessionId: string) => `Chat ${sessionId}`,
+    title: (sessionId: string) => input.titles?.[sessionId] ?? `Chat ${sessionId}`,
     question: (sessionId: string) => questions()[sessionId],
     answerQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.answer ${sessionId} ${toolUseId}`); return true },
     cancelQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.cancel ${sessionId} ${toolUseId}`); return true },
@@ -75,7 +71,7 @@ export function readerHost(input: { readonly transcripts?: { readonly [sessionId
       submissions: { send: submissions.send, recallQueued: submissions.recallQueued },
       compactionThreshold: () => undefined,
       // The shell's module slots: the lead's count on every composer border.
-      composerStatus: () => { const label = leadCountLabel(input.view?.()); return label === undefined ? [] : [{ id: "lead", text: label, tone: "warning" as const }] },
+      composerStatus: () => leadProtocol.composer.status(moduleDomainReader((domain) => domain.domain === "leadChats" ? input.view?.() : undefined)),
       createSurface: (sessionId: () => string | undefined) => {
         const id = sessionId() ?? ""
         const blocks = input.transcripts?.[id] ?? []
@@ -83,37 +79,29 @@ export function readerHost(input: { readonly transcripts?: { readonly [sessionId
         // The store's own estimates, so a place by block index lands where it would in the product.
         const snapshot = transcript.visibleRange()
         const estimated = snapshot && { ...snapshot, heightEstimates: heightEstimatesFromBlocks(blocks, 0, false) }
-        return viewerSurface("chat", { sessionId, transcript: { ...transcript, visibleRange: () => estimated, loadAround: async (entryId: string) => { loadedAround.push(`${id} ${entryId}`) } } })
+        return viewerSurface("chat", { sessionId, transcript: { ...transcript, visibleRange: () => estimated } })
       },
     }),
-  } satisfies Omit<LeadReaderHost & LeadChatViewerHost, "client" | "showToast"> & { readonly title: (sessionId: string) => string }
-  return { host, overlay, setQuestions, sent, loadedAround, holdSends }
+  } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & { readonly title: (sessionId: string) => string }
+  return { host, overlay, setQuestions, sent, holdSends }
 }
 
 /** The lead client over a scripted designation of `LEAD_ID` and scripted rows
- *  (`view`), with every mutation the list and the reader send recorded in `sent`. */
-export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [sessionId: string]: readonly FrontendOutputBlock[] } = {}, changes: { readonly [sessionId: string]: readonly string[] } = {}, overlay?: OverlayLayers) {
+ *  (`view`), with every mutation the list and the viewer send recorded in `sent`. */
+export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [sessionId: string]: readonly FrontendOutputBlock[] } = {}, overlay?: OverlayLayers, titles?: { readonly [sessionId: string]: string }) {
   const [view, setView] = createSignal<LeadChatsView>({ rows })
-  const reader = readerHost({ transcripts, view, ...(overlay ? { overlay } : {}) })
+  const viewer = viewerHost({ transcripts, view, ...(overlay ? { overlay } : {}), ...(titles ? { titles } : {}) })
   const dispatch = runtimeDispatch({
-    "lead.result.mark_read": async (command) => { reader.sent.push(`lead.result.mark_read ${command.sessionId} ${command.entryId}`); return { ok: true } },
+    "lead.result.mark_read": async (command) => { viewer.sent.push(`lead.result.mark_read ${command.sessionId} ${command.entryId}`); return { ok: true } },
+    "lead.chat.mark_seen": async (command) => { viewer.sent.push(`lead.chat.mark_seen ${command.sessionId} ${command.state} ${command.entryId}`); return { ok: true } },
   })
   const built = createRoot((dispose) => ({
     dispose,
-    client: createLeadClient({ ...reader.host, domains: { lead: { scope: "workspace", view: () => ({ leadSessionId: LEAD_ID, dismissed: false }) }, leadChats: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({ sessionChanges: (query) => changedFiles(changes[query.sessionId] ?? [], query.maxFiles) }) }, dialog: reader.overlay.dialog, showToast: () => {} }),
+    client: createLeadClient({ ...viewer.host, domains: { lead: { scope: "workspace", view: () => ({ leadSessionId: LEAD_ID, dismissed: false }) }, leadChats: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({}) }, dialog: viewer.overlay.dialog, showToast: () => {} }),
   }))
   /** The open viewers, as the shell's overlay renders them. */
-  const Viewers = (): JSX.Element => <For each={reader.overlay.viewer.stack}>{(entry) => typeof entry.element === "function" ? entry.element() : entry.element}</For>
-  return { ...built, ...reader, view, setView, Viewers }
-}
-
-/** A first page of a session's changes under `/repo`, as the runtime answers it. */
-function changedFiles(paths: readonly string[], maxFiles: number): SessionChangesResult {
-  return {
-    status: "ready", cursor: "0".repeat(64), offset: 0, nextOffset: paths.length > maxFiles ? maxFiles : null, totalFiles: paths.length, revision: 1, unknownFileMutationGaps: 0,
-    executionCwd: "/repo", excludedFileCount: 0,
-    files: paths.slice(0, maxFiles).map((path, index) => ({ fileId: `file:${index}`, path: `/repo/${path}`, change: "modified", editToken: { position: index, eventId: `edit-${index}` }, review: { status: "unviewed" }, writers: [] })),
-  }
+  const Viewers = (): JSX.Element => <For each={viewer.overlay.viewer.stack}>{(entry) => typeof entry.element === "function" ? entry.element() : entry.element}</For>
+  return { ...built, ...viewer, view, setView, Viewers }
 }
 
 /** The strip on a screen, with the kernel's key claim in its simplest form: a
@@ -123,10 +111,10 @@ export async function mountStrip(rows: readonly LeadRow[], options: {
   readonly width?: number
   readonly height?: number
   readonly sessionId?: string
-  readonly changes?: { readonly [sessionId: string]: readonly string[] }
+  readonly titles?: { readonly [sessionId: string]: string }
   readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }
 } = {}) {
-  const lead = leadHarness(rows, options.transcripts, options.changes)
+  const lead = leadHarness(rows, options.transcripts, undefined, options.titles)
   const [focused, setFocused] = createSignal(false)
   const [composerEmpty, setComposerEmpty] = createSignal(true)
   const [sessionId, setSessionId] = createSignal(options.sessionId ?? LEAD_ID)

@@ -170,8 +170,10 @@ export interface TuiModule {
   readonly faultNotice?: (notice: TuiFaultNotice, health: RuntimeHealth, host: TuiFaultNoticeHost) => TuiFaultNotice
   readonly createClient?: (host: import("./tui-module-client.js").TuiModuleClientHost) => import("./tui-module-client.js").TuiModuleClient
   readonly id: ModuleId
-  /** Rendered above the composer for the foreground session, in registry order. */
+  /** Rendered beside the composer for the foreground session, in registry order on each side. */
   readonly strip?: (props: TuiStripProps) => JSX.Element
+  /** The side of the composer the strip renders on; above when unset. */
+  readonly stripPlacement?: "above" | "below"
   /** Read only when the person opens Status. */
   readonly status?: (host: Pick<TuiControllerHost, "client" | "foregroundId">) => Promise<readonly ModuleRow[]>
   readonly surfaces?: readonly TuiSurface[]

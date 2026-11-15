@@ -1,15 +1,16 @@
 /** @jsxImportSource @opentui/solid */
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { EMPTY_LEAD_CHATS, EMPTY_LEAD_VIEW, type LeadView } from "../../../../../src/protocol/modules/lead.js"
+import { EMPTY_LEAD_CHATS, EMPTY_LEAD_VIEW, leadReportLink, type LeadView } from "../../../../../src/protocol/modules/lead.js"
 import type { MutationResult } from "../../../../../src/protocol/app-service-types.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
 import { createTabCloser } from "../../../../../src/tui/hooks/create-tab-closer.js"
 import type { TabInfo } from "../../../../../src/tui/hooks/create-tabs.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
+import { moduleTerminalTitle } from "../../../../../src/tui/modules.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
 import { catalogRow } from "../../../../helpers/session-catalog.js"
-import { readerHost } from "./_lead-fixtures.js"
+import { viewerHost } from "./_lead-fixtures.js"
 
 const LEAD: LeadView = { leadSessionId: "lead-1", dismissed: false }
 const LEAD_ROW = catalogRow("lead-1", "Lead")
@@ -37,7 +38,7 @@ function harness(openAnswer: () => Promise<MutationResult<{ readonly type: "lead
   })
   const { client, closer, dispose } = createRoot((release) => {
     const lead = createLeadClient({ domains: { lead: { scope: "workspace", view }, leadChats: { scope: "workspace", view: () => EMPTY_LEAD_CHATS } }, client: { dispatch, query: runtimeQuery({}) }, dialog, showToast: (toast) => { toasts.push(toast.message) },
-      ...readerHost().host })
+      ...viewerHost().host })
     const tabCloser = createTabCloser({
       tabs, appService: { dispatch },
       switchForeground: async (id) => { setTabs((list) => list.map((row) => ({ ...row, isForeground: row.id === id }))) },
@@ -65,6 +66,27 @@ describe("the lead's terminal client", () => {
       h.setView(LEAD)
       expect(h.client.firstTab?.current()).toBe("lead-1")
     } finally { h.dispose() }
+  })
+
+  it("titles the terminal 'Flywheel | <Project>' from the project directory's name while the lead's tab is in front, and leaves an ordinary tab's title alone", () => {
+    const h = harness()
+    try {
+      expect(h.client.firstTab?.terminalTitle?.("/Users/someone/Documents/GitHub/data")).toBe("Flywheel | Data")
+      expect(moduleTerminalTitle([h.client], "lead-1", "/Users/someone/Documents/GitHub/data")).toBe("Flywheel | Data")
+      expect(moduleTerminalTitle([h.client], "chat-2", "/Users/someone/Documents/GitHub/data")).toBeUndefined()
+    } finally {
+      h.dispose()
+    }
+  })
+
+  it("opens a report's link as the chat over the lead, and claims no other link", async () => {
+    const h = harness()
+    try {
+      expect(await h.client.openUri("flywheel://session/chat-2")).toBe(false)
+      expect(await h.client.openUri(leadReportLink("chat-2", "final-1"))).toBe(true)
+    } finally {
+      h.dispose()
+    }
   })
 
   it("asks the runtime for the lead at launch and answers the chat it names with its row", async () => {

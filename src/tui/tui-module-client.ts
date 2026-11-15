@@ -45,6 +45,9 @@ export interface TuiFirstTab {
   /** The session whose tab stays first; undefined when there is none. It
    *  notifies only when it names another session. */
   readonly current: Accessor<string | undefined>
+  /** The terminal title while this tab is in front, from the project's root directory; the tab's own title when
+   *  unset. */
+  readonly terminalTitle?: (projectRoot: string) => string
 }
 
 export interface TuiModuleClient {

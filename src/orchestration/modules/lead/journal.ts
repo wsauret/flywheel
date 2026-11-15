@@ -1,4 +1,5 @@
 import { capturedFacts, type AsyncEventReadSurface, type AsyncGuardedEventAppender, type StoredFact } from "../../../infra/event-store-types.js"
+import type { LeadSeenState } from "../../../protocol/modules/lead.js"
 import { LEAD_AGGREGATE_ID, parseLeadFact, type LeadFact } from "./facts.js"
 
 /** The session id that every lead fact carries: the aggregate is the project's, not one session's. */
@@ -14,6 +15,8 @@ interface LeadJournalState {
   readonly started: ReadonlyMap<string, readonly string[]>
   /** Each started chat's newest read result entry. */
   readonly readMarks: ReadonlyMap<string, string>
+  /** Each started chat's newest failed or cut state that the person saw, at its entry. */
+  readonly seenMarks: ReadonlyMap<string, { readonly state: LeadSeenState; readonly entryId: string }>
   /** The chat that a list of the person's entries started, in the order that its fact names them. */
   startedBy(sourceEntryIds: readonly string[]): string | undefined
   /** Whether the journal holds a forward of these entries, in this order, to this chat. */
@@ -49,6 +52,7 @@ function createLeadState() {
   const startedBySource = new Map<string, string>()
   const forwards = new Set<string>()
   const readMarks = new Map<string, string>()
+  const seenMarks = new Map<string, { readonly state: LeadSeenState; readonly entryId: string }>()
   let lastSeq = -1
   let designated: string | null = null
   let dismissed = false
@@ -59,6 +63,7 @@ function createLeadState() {
     get dismissed() { return dismissed },
     started,
     readMarks,
+    seenMarks,
     startedBy: (sourceEntryIds) => startedBySource.get(idsKey(sourceEntryIds)),
     forwarded: (targetSessionId, sourceEntryIds) => forwards.has(forwardKey(targetSessionId, sourceEntryIds)),
   }
@@ -83,6 +88,9 @@ function createLeadState() {
       case "lead.result.read":
         readMarks.set(fact.payload.sessionId, fact.payload.entryId)
         return
+      case "lead.chat.seen":
+        seenMarks.set(fact.payload.sessionId, { state: fact.payload.state, entryId: fact.payload.entryId })
+        return
     }
   }
 
@@ -99,6 +107,10 @@ function createLeadState() {
         return state.forwarded(fact.payload.targetSessionId, fact.payload.sourceEntryIds)
       case "lead.result.read":
         return readMarks.get(fact.payload.sessionId) === fact.payload.entryId
+      case "lead.chat.seen": {
+        const seen = seenMarks.get(fact.payload.sessionId)
+        return seen?.state === fact.payload.state && seen.entryId === fact.payload.entryId
+      }
     }
   }
 

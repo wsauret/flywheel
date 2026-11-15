@@ -61,6 +61,28 @@ describe("Shell state derived memos", () => {
     })
   })
 
+  it("sets the terminal title a module declares for the tab in front, and the chat's own title on every other tab", async () => {
+    await createRoot(async (dispose) => {
+      try {
+        const titles: string[] = []
+        const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
+        const { signals } = buildShellState(sessionStore, undefined, {}, undefined, undefined, {
+          setTerminalTitle: (title) => { titles.push(title) },
+          terminalTitle: (sessionId, projectRoot) => sessionId === "lead" ? `Declared for ${projectRoot.length > 0 ? "the project" : "nothing"}` : undefined,
+        })
+        attachChat(sessionStore, "lead", createMockChatRunner("lead"), "Lead")
+        attachChat(sessionStore, "other", createMockChatRunner("other"), "Fix login")
+        await waitForAssertion(() => expect(signals.sessionCatalogRows().length).toBe(2))
+        signals.setForegroundId("lead")
+        await waitForAssertion(() => expect(titles.at(-1)).toBe("Declared for the project"))
+        signals.setForegroundId("other")
+        await waitForAssertion(() => expect(titles.at(-1)).toBe("Fix login"))
+      } finally {
+        dispose()
+      }
+    })
+  })
+
   it("agentState defaults to idle when no foreground session", () => {
     const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const { signals } = buildShellState(sessionStore)

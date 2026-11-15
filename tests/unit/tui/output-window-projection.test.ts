@@ -66,6 +66,10 @@ describe("createTranscriptWindowProjector (transcript prefix cache)", () => {
 
     expect(targetTimelineBlockIndex(projection, "command-b")).toBe(20)
   })
+  it("maps an assistant message's entry to its text row, so a landing reaches a final message", () => {
+    const projection = createTranscriptWindowProjector()(snapshotOf([tool("read-a", 1), text("final", "Done.", 2)], 1, 10), false)
+    expect(targetTimelineBlockIndex(projection, "final")).toBe(11)
+  })
   it("equals the whole-window projection for a mixed window", () => {
     const project = createTranscriptWindowProjector()
     const snap = snapshotOf(mixedBlocks())

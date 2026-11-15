@@ -5,7 +5,8 @@ import type { QuestionEntry } from "../../../infra/output-blocks.js"
 import { recordBackgroundFailure } from "../../../infra/operation-log.js"
 import { pinHeldProjection } from "../../../infra/projection-registry.js"
 import { isActiveActivity } from "../../../protocol/app-service-types.js"
-import type { LeadRow, LeadRowState } from "../../../protocol/modules/lead.js"
+import { resolveToolRowPresentation } from "../../../infra/tools/tool-display-registry.js"
+import type { LeadRow, LeadRowState, LeadSeenState } from "../../../protocol/modules/lead.js"
 import { AGENT_INPUT_FACT_TYPES } from "../../session/agent-input-facts.js"
 import { loadAgentInputProjection, type AgentInputEntry } from "../../session/agent-input-projection.js"
 import { isVisibleTurnEnd, type ChatTurnEnd } from "../../session/conversation/turn-end-record.js"
@@ -13,12 +14,11 @@ import type { ModuleProcessServices } from "../../app-service/module-service-hos
 import type { SessionManager } from "../../session/manager.js"
 import { entryActivity } from "../../session-store/activity.js"
 import type { SessionStore } from "../../session-store/types.js"
-import { leadRowFold, type RowFold } from "./row.js"
+import { firstLine, leadRowFold, type RowFold } from "./row.js"
 
 const log = Log.create({ service: "lead-rows" })
 
-const UPDATE_CHARS = 240
-const REQUEST_CHARS = 400
+const STATUS_CHARS = 240
 const QUESTION_FACT_TYPES: ReadonlySet<string> = new Set(AGENT_INPUT_FACT_TYPES)
 const NEEDS_PERSON: ReadonlySet<LeadRowState> = new Set(["question", "failed", "cut"])
 
@@ -36,11 +36,11 @@ export interface LeadChatReading {
   readonly question: { readonly toolUseId: string; readonly context: string | null; readonly questions: readonly QuestionEntry[] } | undefined
 }
 
-/** A row's state, the time its evidence names, and for a failure the entry that records it, null when none does. */
+/** A row's state, the time its evidence names, and for a failure or a cut the entry that the person sees it at. */
 interface RowState {
   readonly state: LeadRowState
   readonly at: number | undefined
-  readonly failure?: string | null
+  readonly ended?: string
 }
 
 export type LeadRowChange = { readonly kind: "updated"; readonly row: LeadRow } | { readonly kind: "removed"; readonly sessionId: string }
@@ -52,6 +52,8 @@ interface LeadRowsDeps {
   readonly sessionRuntime: ReturnType<ModuleProcessServices["executionEnvironment"]>["sessionRuntime"]
   /** The entry of the newest result that the person read in the chat. */
   readonly readMark: (sessionId: string) => string | undefined
+  /** The newest failed or cut state that the person saw in the chat, at its entry. */
+  readonly seenMark: (sessionId: string) => { readonly state: LeadSeenState; readonly entryId: string } | undefined
   readonly publish: (change: LeadRowChange) => void
   readonly now?: () => number
 }
@@ -67,6 +69,10 @@ export interface LeadRows {
   /** Reads a chat's row again, as after a change of its read mark. */
   refresh(sessionId: string): void
   rows(): readonly LeadRow[]
+  /** The unread result of a chat whose row holds one: the entry of its final message and that message's full text,
+   *  as the fold holds them now. A caller that acts on the result later keeps this pair, because a later batch can
+   *  bring a newer final message. */
+  result(sessionId: string): { readonly entryId: string; readonly text: string } | undefined
   /** A started chat that exists, once its fold is built; undefined for any other chat. */
   chat(sessionId: string): Promise<LeadChatReading | undefined>
   /** Releases every fold and listener, and settles the builds that run. Publishes nothing. */
@@ -76,6 +82,8 @@ export interface LeadRows {
 interface Member {
   readonly sessionId: string
   readonly conversation: string
+  /** The chat's directory, against which a tool call's paths read as its transcript shows them. */
+  readonly cwd: string
   readonly fold: PositionedEventProjection<RowFold>
   readonly release: readonly (() => void)[]
   question: Extract<AgentInputEntry, { kind: "pending" }> | undefined
@@ -116,32 +124,52 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     return open && (entry.runner === null || runtime?.kind === "starting") ? "working" : undefined
   }
 
-  /** The state of a chat by the order of section 2.5 of the lead design. */
+  /** The state of a chat by the order of section 2.5 of the lead design. A failure or a cut that the person saw at
+   *  the same entry has no row. */
   function stateOf(member: Member, fold: RowFold, live: "failed" | "working" | undefined): RowState | undefined {
     if (member.question) return { state: "question", at: member.question.openedAt }
-    if (live === "failed") return { state: "failed", at: undefined, failure: null }
     if (live === "working") return { state: "working", at: undefined }
     const end = fold.turnEnd
-    if (end?.reading.end.reason === "paused" && isVisibleTurnEnd(end.reading.end)) return { state: "cut", at: end.at }
-    if (end?.reading.end.reason === "crash") return { state: "failed", at: end.at, failure: end.recordId }
+    const newest = fold.tail.at(-1)?.id
+    const ended = (state: LeadSeenState, at: number | undefined, entryId: string | undefined): RowState | undefined => {
+      const seen = deps.seenMark(member.sessionId)
+      if (seen && seen.state === state && seen.entryId === entryId) return undefined
+      return { state, at, ...(entryId === undefined ? {} : { ended: entryId }) }
+    }
+    if (live === "failed") return ended("failed", undefined, newest)
+    if (end?.reading.end.reason === "paused" && isVisibleTurnEnd(end.reading.end)) return ended("cut", end.at, end.recordId ?? newest)
+    if (end?.reading.end.reason === "crash") return ended("failed", end.at, end.recordId ?? newest)
     if (fold.final && fold.final.entryId !== deps.readMark(member.sessionId)) return { state: "result", at: fold.final.at }
     return undefined
   }
 
-  function rowOf(member: Member, fold: RowFold, { state, failure }: RowState, entered: number): LeadRow {
-    const update = fold.updates.at(-1)
-    const toolUseId = member.question?.toolUseId
+  /** The row's one line, which the runtime derives from the chat's own output and no model writes. */
+  function statusOf(member: Member, fold: RowFold, state: LeadRowState): string {
+    switch (state) {
+      case "failed": return "failed"
+      case "cut": return "interrupted"
+      case "question": return firstLine(member.question?.request[0]?.question ?? "")
+      case "result": return firstLine(fold.final?.text ?? "")
+      case "working": {
+        const latest = fold.latest
+        if (latest?.kind === "text") return latest.text
+        if (latest === null) return "working"
+        const { sentence } = resolveToolRowPresentation(latest.name, latest.input, member.cwd)
+        return `${sentence.name} ${sentence.detail}`.trim()
+      }
+    }
+  }
+
+  function rowOf(member: Member, fold: RowFold, { state, ended }: RowState, entered: number): LeadRow {
     return {
       sessionId: member.sessionId,
       state,
-      update: update ? update.text.slice(0, UPDATE_CHARS) : null,
-      since: Math.max(entered, update?.at ?? 0),
+      status: statusOf(member, fold, state).slice(0, STATUS_CHARS),
+      // A working chat's age counts from its newest output, so its line and its age change together.
+      since: state === "working" ? Math.max(entered, fold.latest?.at ?? 0) : entered,
       ...(NEEDS_PERSON.has(state) ? { waitingSince: entered } : {}),
-      request: fold.request ? { entryId: fold.request.entryId, text: fold.request.text.slice(0, REQUEST_CHARS) } : null,
-      updates: fold.updates.map((line) => ({ text: line.text.slice(0, UPDATE_CHARS), at: line.at })),
-      ...(state === "question" && toolUseId !== undefined ? { question: { toolUseId, context: fold.contexts[toolUseId] ?? null } } : {}),
-      ...(failure !== undefined ? { failure: { entryId: failure } } : {}),
       ...(state === "result" && fold.final ? { result: { entryId: fold.final.entryId } } : {}),
+      ...(ended !== undefined ? { ended: { entryId: ended } } : {}),
     }
   }
 
@@ -173,7 +201,8 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       pinHeldProjection(deps.reader, `agent-input:${sessionId}`),
     ]
     const member: Member = {
-      sessionId, conversation: `conversation:${session.conversationId}`, release,
+      // The type admits a row written before sessions recorded a directory; such a row shows its paths whole.
+      sessionId, conversation: `conversation:${session.conversationId}`, cwd: session.executionCwd ?? "", release,
       fold: leadRowFold(deps.reader, sessionId, session.conversationId), question: undefined, entered: undefined, row: undefined,
     }
     pinned.set(sessionId, member)
@@ -263,6 +292,11 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       if (member && !disposed) compute(member)
     },
     rows: () => [...members.values()].flatMap((member) => member.row ? [member.row] : []),
+    result(sessionId) {
+      const member = members.get(sessionId)
+      const final = member?.row?.state === "result" ? member.fold.getState().final : null
+      return final && final.entryId === member?.row?.result?.entryId ? { entryId: final.entryId, text: final.text } : undefined
+    },
     async chat(sessionId) {
       const member = await builds.get(sessionId)?.catch(() => undefined)
       if (!member || members.get(sessionId) !== member) return undefined

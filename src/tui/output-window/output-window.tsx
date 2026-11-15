@@ -60,6 +60,8 @@ interface OutputWindowProps {
   streamingToolText?: StreamingToolTextById
   diffColors?: Accessor<DiffColorMode>
   command?: OutputWindowCommand
+  /** An entry the window lands on once, when it mounts, as a block command does. */
+  landing?: string
   onNearEdge?: (direction: EdgeDirection) => void
   captureScrollbox?: (el: ScrollBoxRenderable) => void
   registerSelectionAutoScroll?: (controller: TranscriptSelectionAutoScroll) => () => void
@@ -213,6 +215,8 @@ export function OutputWindow(props: OutputWindowProps) {
       default: return scroll.page(command.type)
     }
   }
+  const landing = untrack(() => props.landing)
+  if (landing !== undefined) runCommand({ id: 0, type: "block", entryId: landing })
   createEffect(() => {
     const command = props.command
     if (!command || command.id === lastCommandId) return

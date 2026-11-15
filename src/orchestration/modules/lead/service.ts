@@ -2,7 +2,8 @@ import { errorMessage } from "../../../infra/error-message.js"
 import { requireGuardedEventAppender } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
-import { EMPTY_LEAD_CHATS, leadChatsCursor, type LeadChatsView } from "../../../protocol/modules/lead.js"
+import { EMPTY_LEAD_CHATS, leadChatsCursor, leadReportCall, type LeadChatsView, type LeadSeenState } from "../../../protocol/modules/lead.js"
+import type { SessionEventKind } from "../../chat/runner-types.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import { sessionDisplayName } from "../../session/schemas.js"
 import { readChatDetail, readChatRoster, type ChatProgress } from "./chat-progress.js"
@@ -38,6 +39,10 @@ export interface LeadService extends ModuleServiceInstance {
   /** Records that the person read a started chat's result up to `entryId`, so its row no longer holds it. Appends
    *  nothing while the module is off, and refuses a chat that the lead did not start. */
   markRead(sessionId: string, entryId: string): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }>
+  /** Records that the person opened a started chat while its row was failed or cut at `entryId`, so the row leaves
+   *  the list until the chat changes state again. Appends nothing while the module is off, and refuses a chat that
+   *  the lead did not start. */
+  markSeen(sessionId: string, state: LeadSeenState, entryId: string): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }>
   readonly journal: LeadJournal
 }
 
@@ -46,13 +51,17 @@ export const leadService = moduleServiceHandle<LeadService>("lead")
 type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled"> & {
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read">
   readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
-  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime">
+  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage">
 }
 
 type NonEmptyIds = readonly [string, ...string[]]
 
+/** The events of a started chat that reach the lead as a hidden notice. A finished turn reaches it as the chat's
+ *  report instead (PI-LEAD-006). */
+const NOTICE_KINDS: readonly SessionEventKind[] = ["asked", "failed", "cut"]
+
 const startedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.started" ? [fact.payload.sessionId] : [])
-const readChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.result.read" ? [fact.payload.sessionId] : [])
+const markedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.result.read" || fact.type === "lead.chat.seen" ? [fact.payload.sessionId] : [])
 
 export function createLeadService(services: LeadServiceInputs): LeadService {
   const journal = createLeadJournal({
@@ -71,6 +80,30 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
 
   const publishRow = (change: LeadRowChange): void => {
     services.publish({ cursor: leadChatsCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
+    if (change.kind === "updated") postReport(change.row.sessionId)
+  }
+
+  /** Posts a chat's unread result to the shown lead as its report: the chat's final message in full, as a message
+   *  from the chat, which the lead's transcript shows as one line that opens it. Posting it reads it, so its row
+   *  leaves the list. A lead with no runner holds the message until it runs. The report is the result as it stands
+   *  now, so a later final message never takes its place. The runtime's delivery records nothing for a report that
+   *  the lead already holds, so a repeat after a restart or a replayed batch posts it once. */
+  function postReport(sessionId: string): void {
+    const lead = watched?.lead
+    const result = rows?.result(sessionId)
+    if (lead === undefined || result === undefined) return
+    const { entryId, text } = result
+    own(async () => {
+      const outcome = await services.executionEnvironment().sendSessionMessage({ fromSessionId: sessionId, toSessionId: lead, call: leadReportCall(entryId), text })
+      if (outcome.status === "refused") {
+        log.warn("lead could not post a report", { leadSessionId: lead, sessionId, entryId, reason: outcome.reason })
+        return
+      }
+      log.info("lead posted a report", { leadSessionId: lead, sessionId, entryId, status: outcome.status, bytes: Buffer.byteLength(text) })
+      await appendMark(sessionId, { type: "lead.result.read", payload: { sessionId, entryId } })
+    }, (error) => {
+      log.warn("lead could not post a report", { leadSessionId: lead, sessionId, entryId, error })
+    })
   }
 
   /** Follows the started chats while the module is on. Turning it off releases every fold and removes each row that a
@@ -95,6 +128,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         sessionStore: services.sessionStore,
         sessionRuntime: (sessionId) => services.executionEnvironment().sessionRuntime(sessionId),
         readMark: (sessionId) => journal.state().readMarks.get(sessionId),
+        seenMark: (sessionId) => journal.state().seenMarks.get(sessionId),
         // Only the current owner publishes: an owner that a turn-off ended may still settle work it started.
         publish: (change) => { if (rows === owner) publishRow(change) },
       })
@@ -113,17 +147,21 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     const lead = !disposed && services.enabled() && !state.dismissed ? state.designated : null
     const events = services.executionEnvironment().sessionEvents
     let chats = added
+    let moved = false
     if (watched?.lead !== lead) {
       if (watched) for (const chat of watched.chats) events.unwatch(watched.lead, chat)
       watched = lead === null ? undefined : { lead, chats: new Set() }
       chats = state.started.keys()
+      moved = true
     }
     if (!watched) return
     for (const chat of chats) {
       if (watched.chats.has(chat)) continue
-      events.watch(watched.lead, chat)
+      events.watch(watched.lead, chat, NOTICE_KINDS)
       watched.chats.add(chat)
     }
+    // The results that waited while no lead showed go to the lead that shows now.
+    if (moved) for (const row of rows?.rows() ?? []) postReport(row.sessionId)
   }
 
   const follow = (added: readonly string[] = []): void => {
@@ -141,7 +179,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   const applyFacts = (applied: readonly LeadFact[]): void => {
     if (applied.length === 0) return
     follow(startedChats(applied))
-    for (const sessionId of readChats(applied)) rows?.refresh(sessionId)
+    for (const sessionId of markedChats(applied)) rows?.refresh(sessionId)
   }
 
   const reconcileJournal = async (): Promise<void> => { applyFacts(await journal.reconcile()) }
@@ -175,6 +213,16 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     follow([sessionId])
     log.info("lead started a chat", { leadSessionId: input.leadSessionId, sessionId, entries: sourceEntryIds.length })
     return { sessionId, started: "now" }
+  }
+
+  /** Appends a read or seen mark of a started chat and reads its row again. */
+  async function appendMark(sessionId: string, fact: Parameters<LeadJournal["append"]>[0]): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }> {
+    if (!services.enabled()) return { ok: true }
+    await reconcileJournal()
+    if (!journal.state().started.has(sessionId)) return { ok: false, error: `the lead did not start chat ${sessionId}` }
+    // The journal folds its own append, so the store's broadcast of it applies nothing: refresh the row here.
+    if (await journal.append(fact)) rows?.refresh(sessionId)
+    return { ok: true }
   }
 
   return {
@@ -230,14 +278,8 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       if (!journal.state().started.has(chat)) return { kind: "refused", reason: `the lead did not start chat ${chat}` }
       return readChatDetail(deps, chat)
     },
-    async markRead(sessionId, entryId) {
-      if (!services.enabled()) return { ok: true }
-      await reconcileJournal()
-      if (!journal.state().started.has(sessionId)) return { ok: false, error: `the lead did not start chat ${sessionId}` }
-      // The journal folds its own append, so the store's broadcast of it applies nothing: refresh the row here.
-      if (await journal.append({ type: "lead.result.read", payload: { sessionId, entryId } })) rows?.refresh(sessionId)
-      return { ok: true }
-    },
+    markRead: (sessionId, entryId) => appendMark(sessionId, { type: "lead.result.read", payload: { sessionId, entryId } }),
+    markSeen: (sessionId, state, entryId) => appendMark(sessionId, { type: "lead.chat.seen", payload: { sessionId, state, entryId } }),
     async dispose() {
       disposed = true
       unsubscribeStored()

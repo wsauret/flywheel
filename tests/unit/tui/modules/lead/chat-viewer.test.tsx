@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it } from "bun:test"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
 import { textBlock } from "../../_output-window-transcript.js"
-import { choiceQuestion, leadRow, mountStrip } from "./_lead-fixtures.js"
+import { testRender } from "@opentui/solid"
+import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
+import { UserMessageBlock } from "../../../../../src/tui/output-blocks/user-message-block.js"
+import { leadReportLink } from "../../../../../src/protocol/modules/lead.js"
+import { choiceQuestion, leadHarness, leadRow, mountStrip } from "./_lead-fixtures.js"
 
 const cleanups: (() => void)[] = []
 afterEach(() => { for (const cleanup of cleanups.splice(0)) cleanup() })
@@ -17,18 +21,43 @@ async function openViewer() {
   ], { width: 100, height: 40 })
   cleanups.push(strip.dispose)
   await strip.key("down")
-  expect(await strip.key("o", { ctrl: true })).toBe(true)
+  expect(await strip.key("return")).toBe(true)
   return strip
 }
+
+/** What the viewer sent to the chats, without the seen marks that opening a failed chat sends. */
+const chatSends = (strip: { readonly sent: readonly string[] }): readonly string[] => strip.sent.filter((line) => !line.startsWith("lead.chat.mark_seen"))
 
 /** The chat the viewer's own title names, not a row of the list under it. */
 const title = (frame: string): string | undefined => /│\s+Chat (\w+)\s+x\s+│/.exec(frame)?.[1]
 
 describe("the lead's full-chat viewer", () => {
-  it("declares its chords to the kernel", async () => {
-    const strip = await mountStrip([leadRow("busy", "working")])
+  it("opens on a click on a row, with the list focused on that row for Escape", async () => {
+    const strip = await mountStrip([leadRow("busy", "working"), leadRow("asks", "question")], { width: 100, height: 40 })
     cleanups.push(strip.dispose)
-    expect(strip.chords()).toEqual(expect.arrayContaining(["space", "ctrl+o", "ctrl+t"]))
+    const row = strip.lines().findIndex((line) => line.includes("Chat busy"))
+    await strip.rendered.mockMouse.click(10, row)
+    await strip.viewerKey("pagedown")
+    expect(title(strip.rendered.captureCharFrame())).toBe("busy")
+    await strip.viewerKey("escape")
+    expect(strip.focused()).toBe(true)
+  })
+
+  it("marks a failed or cut chat seen once when it opens, so its row leaves the list", async () => {
+    const strip = await mountStrip([leadRow("broke", "failed"), leadRow("stopped", "cut")], { width: 100, height: 40 })
+    cleanups.push(strip.dispose)
+    await strip.key("down")
+    await strip.key("return")
+    await strip.viewerKey("tab")
+    expect(strip.sent).toEqual(["lead.chat.mark_seen broke failed broke-end", "lead.chat.mark_seen stopped cut stopped-end"])
+  })
+
+  it("marks a failed chat seen when ctrl+t opens it as a tab from the list", async () => {
+    const strip = await mountStrip([leadRow("broke", "failed")], { width: 100, height: 40 })
+    cleanups.push(strip.dispose)
+    await strip.key("down")
+    expect(await strip.key("t", { ctrl: true })).toBe(true)
+    expect(strip.sent).toEqual(["lead.chat.mark_seen broke failed broke-end", "navigate broke"])
   })
 
   it("shows the row's chat over the lead, moves through the list order on Tab and Shift+Tab, and stays at the ends", async () => {
@@ -55,10 +84,10 @@ describe("the lead's full-chat viewer", () => {
     for (const letter of "yes") await strip.viewerKey(letter)
     await strip.viewerKey("tab")
     await strip.viewerKey("return")
-    expect(strip.sent).toEqual([])
+    expect(chatSends(strip)).toEqual([])
     await strip.viewerKey("tab", { shift: true })
     await strip.viewerKey("return")
-    expect(strip.sent).toEqual(["session.send asks yes"])
+    expect(chatSends(strip)).toEqual(["session.send asks yes"])
   })
 
   it("leaves another chat's draft unchanged when a send's receipt arrives after Tab", async () => {
@@ -71,7 +100,7 @@ describe("the lead's full-chat viewer", () => {
     release()
     await strip.viewerKey("pagedown")
     await strip.viewerKey("return")
-    expect(strip.sent).toEqual(["session.send asks same", "session.send broke same beta"])
+    expect(chatSends(strip)).toEqual(["session.send asks same", "session.send broke same beta"])
   })
 
   it("marks a result read once its final message shows, and Shift+Tab still moves on after its row goes", async () => {
@@ -83,7 +112,7 @@ describe("the lead's full-chat viewer", () => {
     cleanups.push(strip.dispose)
     await strip.key("down")
     await strip.key("down")
-    expect(await strip.key("o", { ctrl: true })).toBe(true)
+    expect(await strip.key("return")).toBe(true)
     expect(title(strip.rendered.captureCharFrame())).toBe("done")
     expect(strip.sent).toEqual(["lead.result.mark_read done final"])
     strip.setView((view) => ({ ...view, rows: view.rows.filter((row) => row.sessionId !== "done") }))
@@ -127,9 +156,9 @@ describe("the lead's full-chat viewer", () => {
     await strip.viewerKey("escape")
     expect(strip.overlay.viewer.stack).toHaveLength(0)
     expect(strip.focused()).toBe(true)
-    // The reader opens on the row the viewer opened from.
+    // Enter opens the row the viewer opened from.
     await strip.key("return")
-    expect(strip.rendered.captureCharFrame()).toContain("Request  Request to asks")
+    expect(title(strip.rendered.captureCharFrame())).toBe("asks")
   })
 
   it("opens the chat as a tab and closes, from the viewer and from the list", async () => {
@@ -137,8 +166,44 @@ describe("the lead's full-chat viewer", () => {
     await strip.viewerKey("tab")
     await strip.viewerKey("t", { ctrl: true })
     expect(strip.overlay.viewer.stack).toHaveLength(0)
-    expect(strip.sent).toEqual(["navigate broke"])
+    expect(chatSends(strip)).toEqual(["navigate broke"])
     expect(await strip.key("t", { ctrl: true })).toBe(true)
-    expect(strip.sent).toEqual(["navigate broke", "navigate asks"])
+    expect(chatSends(strip)).toEqual(["navigate broke", "navigate asks"])
+  })
+
+  it("shows a report in the lead's transcript as one line, and its link opens the chat at the final message, marked", async () => {
+    const lead = leadHarness([])
+    cleanups.push(lead.dispose)
+    const row = await testRender(() => <ThemeProvider mode="dark">{lead.client.provide?.(() => <UserMessageBlock block={{
+      kind: "userMessage", id: "msg:done:lead-report:final", content: "The build passes now.\nAll 40 tests ran.", timestamp: 1, pending: false, injected: false,
+      from: { sessionId: "done", name: "DAG Failures", relation: "other" },
+    }} />)}</ThemeProvider>, { width: 80, height: 4 })
+    cleanups.push(() => { row.renderer.destroy() })
+    await row.renderOnce()
+    const frame = row.captureCharFrame()
+    expect(frame).toContain("Report · DAG Failures · open")
+    expect(frame).not.toContain("The build passes now.")
+
+    // A long title is cut, so the line stays one row with its open action.
+    const long = await testRender(() => <ThemeProvider mode="dark">{lead.client.provide?.(() => <UserMessageBlock block={{
+      kind: "userMessage", id: "msg:done:lead-report:final", content: "Done.", timestamp: 1, pending: false, injected: false,
+      from: { sessionId: "done", name: "Investigate why the nightly DAG failures started after the warehouse migration", relation: "other" },
+    }} />)}</ThemeProvider>, { width: 80, height: 4 })
+    cleanups.push(() => { long.renderer.destroy() })
+    await long.renderOnce()
+    const lines = long.captureCharFrame().split("\n").filter((line) => line.trim().length > 0)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain("Report · Investigate why the nightly DAG failure… · open")
+
+    const strip = await mountStrip([], { width: 100, height: 40, transcripts: { done: [textBlock("other", "Earlier work."), textBlock("final", "The build passes now.")] } })
+    cleanups.push(strip.dispose)
+    expect(await strip.client.openUri(leadReportLink("done", "final"))).toBe(true)
+    await strip.viewerKey("pagedown")
+    expect(title(strip.rendered.captureCharFrame())).toBe("done")
+    const marked = strip.rendered.captureSpans().lines.flatMap((line) => line.spans).filter((span) => span.text.includes("The build passes now."))
+    expect(marked.length).toBeGreaterThan(0)
+    expect(marked.every((span) => span.bg.equals(resolveTheme(flywheelTheme, "dark").backgroundElement))).toBe(true)
+    const other = strip.rendered.captureSpans().lines.flatMap((line) => line.spans).filter((span) => span.text.includes("Earlier work."))
+    expect(other.some((span) => span.bg.equals(resolveTheme(flywheelTheme, "dark").backgroundElement))).toBe(false)
   })
 })

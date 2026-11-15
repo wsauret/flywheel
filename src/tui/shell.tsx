@@ -12,7 +12,7 @@ import { useKeymap } from "@tui/context/keymap"
 import { NavigationProvider } from "@tui/context/navigation.js"
 import { SubagentControlsProvider } from "@tui/context/subagent-controls.js"
 import { ClientExtensionProviders, ClientExtensionsProvider } from "@tui/context/client-extensions.js"
-import { createTuiModuleClients, moduleCloseGuards, moduleFirstTab } from "@tui/modules.js"
+import { createTuiModuleClients, moduleCloseGuards, moduleFirstTab, moduleTerminalTitle } from "@tui/modules.js"
 import { useTheme } from "@tui/context/theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { useToast } from "@tui/context/toast"
@@ -162,6 +162,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     onTranscriptChange: composerReturns.observe,
     attachedIdentity,
     setTerminalTitle: (t: string) => { if (!renderer.isDestroyed) renderer.setTerminalTitle(t) },
+    terminalTitle: (sessionId, root) => moduleTerminalTitle(moduleClients, sessionId, root),
     showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => toast.show(opts),
   })
   const releaseNotice = () => signals.updateStatus()?.releaseNotice
@@ -573,55 +574,54 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
         <Show when={signals.foregroundId() ? runtimeFault() : null}>
           {(fault) => <RuntimeNotice notice={fault()} placement="composer" />}
         </Show>
-        <Show when={signals.sessionState() !== null && signals.foregroundId()} keyed>
-          {(id) => <ModuleStrips sessionId={id} width={lineWidth} />}
-        </Show>
-        <Composer
-          ref={(handle) => { composer = handle }}
-          foregroundId={composerDraftKey}
-          agentState={signals.agentState}
-          interruptible={() => signals.interruptible() && !slots.stripFocused()}
-          pendingQuestion={signals.pendingQuestion}
-          inChat={inChat}
-          lineWidth={lineWidth}
-          completableNames={commandDispatch.completableNames}
-          dispatchableNames={commandDispatch.dispatchableNames}
-          slashCatalog={slashCatalog()}
-          projectFiles={(query) => appService.query({ type: "projectFiles", request: { query, limit: 10 } }).then((result) => result.entries)}
-          promptPopupKeySlot={promptPopupKeySlot}
-          promptAttachSlot={promptAttachSlot}
-          spinnerSource={signals.spinnerStatusSource}
-          promptBorderLayout={promptBorderLayout}
-          onDismissUpdate={dismissUpdateStatus}
-          onOpenChanges={sessionChangesModal.openSessionChangesModal}
-          history={promptHistory}
-          commandFrequency={commandUses}
-          clipboard={clipboard}
-          onAttachmentWarning={(message) => services.showToast({ message, variant: "warning" })}
-          onSubmit={commands.handleComposerSubmit}
-          onRecallLocal={() => {
-            const sessionId = signals.foregroundId()
-            const local = sessionId ? submissions.recallLocal(sessionId) : null
-            const failedChat = local ? null : recallFailedChat()
-            return local ?? (failedChat ? { kind: "input", input: failedChat } : null)
-          }}
-          onRecallQueued={() => {
-            const sessionId = signals.foregroundId()
-            return sessionId ? submissions.recallQueued(sessionId, () => appService.query({ type: "recallQueuedMessage", sessionId })) : null
-          }}
-          onAnswerQuestion={chat.answerQuestion}
-          onCancelQuestion={chat.cancelQuestion}
-          draftCache={draftCache}
-          onOpenSessions={sessionModal.openSessionsModal}
-          onModuleAction={activateModuleRow}
-          onOpenModel={() => { void modelModal.openActiveModelPicker() }}
-          onNew={promptBarActions.newChat}
-          onClose={promptBarActions.closeTab}
-          onNextTab={promptBarActions.nextTab}
-          onOpenBackground={backgroundModal.openBackgroundModal}
-          onResume={sessionControlsHook.resume}
-          captureFocus={() => showPrompt() && !slots.stripFocused()} onPromptPress={slots.releaseStripFocus}
-        />
+        <ModuleStrips sessionId={() => signals.sessionState() !== null ? signals.foregroundId() : undefined} width={lineWidth}>
+          <Composer
+            ref={(handle) => { composer = handle }}
+            foregroundId={composerDraftKey}
+            agentState={signals.agentState}
+            interruptible={() => signals.interruptible() && !slots.stripFocused()}
+            pendingQuestion={signals.pendingQuestion}
+            inChat={inChat}
+            lineWidth={lineWidth}
+            completableNames={commandDispatch.completableNames}
+            dispatchableNames={commandDispatch.dispatchableNames}
+            slashCatalog={slashCatalog()}
+            projectFiles={(query) => appService.query({ type: "projectFiles", request: { query, limit: 10 } }).then((result) => result.entries)}
+            promptPopupKeySlot={promptPopupKeySlot}
+            promptAttachSlot={promptAttachSlot}
+            spinnerSource={signals.spinnerStatusSource}
+            promptBorderLayout={promptBorderLayout}
+            onDismissUpdate={dismissUpdateStatus}
+            onOpenChanges={sessionChangesModal.openSessionChangesModal}
+            history={promptHistory}
+            commandFrequency={commandUses}
+            clipboard={clipboard}
+            onAttachmentWarning={(message) => services.showToast({ message, variant: "warning" })}
+            onSubmit={commands.handleComposerSubmit}
+            onRecallLocal={() => {
+              const sessionId = signals.foregroundId()
+              const local = sessionId ? submissions.recallLocal(sessionId) : null
+              const failedChat = local ? null : recallFailedChat()
+              return local ?? (failedChat ? { kind: "input", input: failedChat } : null)
+            }}
+            onRecallQueued={() => {
+              const sessionId = signals.foregroundId()
+              return sessionId ? submissions.recallQueued(sessionId, () => appService.query({ type: "recallQueuedMessage", sessionId })) : null
+            }}
+            onAnswerQuestion={chat.answerQuestion}
+            onCancelQuestion={chat.cancelQuestion}
+            draftCache={draftCache}
+            onOpenSessions={sessionModal.openSessionsModal}
+            onModuleAction={activateModuleRow}
+            onOpenModel={() => { void modelModal.openActiveModelPicker() }}
+            onNew={promptBarActions.newChat}
+            onClose={promptBarActions.closeTab}
+            onNextTab={promptBarActions.nextTab}
+            onOpenBackground={backgroundModal.openBackgroundModal}
+            onResume={sessionControlsHook.resume}
+            captureFocus={() => showPrompt() && !slots.stripFocused()} onPromptPress={slots.releaseStripFocus}
+          />
+        </ModuleStrips>
       </box>
       <ToastDisplay headerHeight={showPrompt() ? 3 : 0} />
     </box>

@@ -1,4 +1,5 @@
 import type { FrontendOutputBlock } from "../../protocol/app-service-types.js"
+import { blockEntryKeys, blockIdentity } from "../../protocol/block-identity.js"
 import { closesToolStretch, type TranscriptRow } from "../../protocol/client/transcript-model.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { terminalTranscript, type PresentedTerminalRow, type TerminalTranscript } from "../output-blocks/visible-output-blocks.js"
@@ -39,6 +40,7 @@ export function targetTimelineBlockIndex(
     if (block.kind === "tool") return block.id === entryId
     if (block.kind === "agentGroup") return block.id === entryId || block.toolUseId === entryId
     if (block.kind === "question") return block.toolUseId === entryId
+    if (block.kind === "text") return blockEntryKeys(blockIdentity(block)).includes(entryId)
     return false
   })
   return rowIndex < 0 ? undefined : projection.timelineBlockIndices[rowIndex]

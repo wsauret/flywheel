@@ -20,6 +20,7 @@ import { ImageClip } from "@tui/components/image-clip.js"
 import { useAttachmentImages } from "@tui/context/attachment-images.js"
 import { messageDisclosureEntry, messageSenderLabel, PERSON_WORDS_LABEL } from "../../protocol/client/message-sender.js"
 import { ToolEntry } from "./tool-entry.js"
+import { useMessageRow } from "@tui/context/message-row.js"
 
 interface UserMessageBlockProps {
   block: UserMessageBlockType & { imageCount?: number }
@@ -90,6 +91,19 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
       <Show when={expanded()}><box ref={toggle.body} flexDirection="column" flexShrink={0}><UserMessageContent {...props} /></box></Show>
     </box>
   </Show>
+}
+
+/** A message from another session: the module's one-line presentation when one claims it, else the disclosure. */
+function SessionMessageRow(props: UserMessageBlockProps & { readonly from: NonNullable<UserMessageBlockType["from"]> }) {
+  const present = useMessageRow()
+  const entry = () => {
+    const disclosure = messageDisclosureEntry(props.block, props.from)
+    const custom = present({ id: props.block.id, from: props.from })
+    if (!custom) return disclosure
+    const { invocationBody: _body, ...line } = disclosure
+    return { ...line, presentation: { name: custom.name, detail: custom.detail }, linkUri: custom.linkUri }
+  }
+  return <ToolEntry block={entry()} disclosureId={`userMessage:${props.block.id}`} onHydrateBody={props.onHydrateBody} />
 }
 
 function UserMessageContent(props: UserMessageBlockProps) {
@@ -208,7 +222,7 @@ function UserMessageContent(props: UserMessageBlockProps) {
         </box>
       </Show>
     }>
-      {(from) => <ToolEntry block={messageDisclosureEntry(props.block, from())} disclosureId={`userMessage:${props.block.id}`} onHydrateBody={props.onHydrateBody} />}
+      {(from) => <SessionMessageRow {...props} from={from()} />}
     </Show>
   )
 }

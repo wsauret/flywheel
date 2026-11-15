@@ -29,6 +29,13 @@ export function moduleFirstTab(clients: readonly TuiModuleClient[]): TuiFirstTab
   return clients.find((client) => client.firstTab)?.firstTab ?? NO_FIRST_TAB
 }
 
+/** The terminal title that the first tab's module declares while that tab is in front; undefined for every other tab,
+ *  which keeps its own title. */
+export function moduleTerminalTitle(clients: readonly TuiModuleClient[], sessionId: string, projectRoot: string): string | undefined {
+  const first = moduleFirstTab(clients)
+  return sessionId === first.current() ? first.terminalTitle?.(projectRoot) : undefined
+}
+
 /** Every client's close guard, in registry order. */
 export function moduleCloseGuards(clients: readonly TuiModuleClient[]): readonly ((sessionId: string) => Promise<boolean>)[] {
   return clients.flatMap((client) => client.closeGuard ? [client.closeGuard] : [])

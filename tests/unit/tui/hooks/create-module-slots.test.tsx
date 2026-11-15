@@ -88,8 +88,7 @@ describe("createModuleSlots", () => {
     const rendered = await testRender(() => (
       <ThemeProvider mode="dark">
         <box flexDirection="column">
-          <Strips sessionId="chat-1" width={() => 40} />
-          <text>composer</text>
+          <Strips sessionId={() => "chat-1"} width={() => 40}><text>composer</text></Strips>
         </box>
       </ThemeProvider>
     ), { width: 40, height: 6 })
@@ -109,8 +108,7 @@ describe("createModuleSlots", () => {
     const contained = await testRender(() => (
       <ThemeProvider mode="dark">
         <box flexDirection="column">
-          <BrokenStrips sessionId="chat-1" width={() => 40} />
-          <text>composer</text>
+          <BrokenStrips sessionId={() => "chat-1"} width={() => 40}><text>composer</text></BrokenStrips>
         </box>
       </ThemeProvider>
     ), { width: 40, height: 6 })
@@ -121,6 +119,32 @@ describe("createModuleSlots", () => {
     } finally {
       contained.renderer.destroy()
       broken.dispose()
+    }
+  })
+
+  it("renders each strip on the side of the composer that its module names, above when it names none, and none without a session", async () => {
+    const [sessionId, setSessionId] = createSignal<string | undefined>("chat-1")
+    const h = harness([
+      { id: "development", strip: () => <text>below strip</text>, stripPlacement: "below" },
+      { id: "experiments", strip: () => <text>above strip</text> },
+    ])
+    const Strips = h.slots.Strips
+    const rendered = await testRender(() => (
+      <ThemeProvider mode="dark">
+        <box flexDirection="column">
+          <Strips sessionId={sessionId} width={() => 40}><text>composer</text></Strips>
+        </box>
+      </ThemeProvider>
+    ), { width: 40, height: 6 })
+    try {
+      await rendered.renderOnce()
+      expect(rendered.captureCharFrame().split("\n").map((line) => line.trim()).filter(Boolean)).toEqual(["above strip", "composer", "below strip"])
+      setSessionId(undefined)
+      await rendered.renderOnce()
+      expect(rendered.captureCharFrame().trim()).toBe("composer")
+    } finally {
+      rendered.renderer.destroy()
+      h.dispose()
     }
   })
 
@@ -219,7 +243,7 @@ describe("module strip keys", () => {
     const rendered = await mountPrompt({
       draftCache, foregroundId, ref: (handle) => { composer = handle },
       captureFocus: () => !slots.stripFocused(), onPromptPress: slots.releaseStripFocus,
-      above: () => <Strips sessionId="chat-1" width={() => 80} />,
+      above: () => <Strips sessionId={() => "chat-1"} width={() => 80} />,
     })
     // The shell's keyboard handler is a global listener that offers keys to the strips.
     rendered.renderer.keyInput.on("keypress", (event) => { slots.stripInput(event) })

@@ -69,6 +69,21 @@ describe("session event notices", () => {
     notices.dispose()
   })
 
+  it("tells a watcher that names kinds only of those kinds", async () => {
+    const { store, set } = fakeStore()
+    const watcher = watcherRunner()
+    set("w", { runner: watcher.runner, runnerState: "idle" })
+    const notices = createSessionEventNotices({ sessionStore: store })
+    notices.watch("w", "c", ["asked", "failed", "cut"])
+    notices.report("c", "turn_ended")
+    await settled()
+    expect(watcher.notices).toEqual([])
+    notices.report("c", "failed")
+    await settled()
+    expect(named(watcher.notices[0])).toEqual(["c:failed"])
+    notices.dispose()
+  })
+
   it("waits as long as the watcher waits on its own question or its background work", async () => {
     const { store, set } = fakeStore()
     const watcher = watcherRunner()

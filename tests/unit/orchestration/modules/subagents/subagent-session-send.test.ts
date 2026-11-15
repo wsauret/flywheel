@@ -245,6 +245,7 @@ describe("the registered Resume route", () => {
         directories: { projectRoot: harness.projectRoot, executionCwd: harness.projectRoot, userDataRoot: base.userDataRoot, accountHome: base.accountHome },
         sessionManager: harness.manager, sessionStore: harness.sessionStore, eventStore: harness.reader, projectionReader: harness.reader, enabled: () => true,
         executionEnvironment: () => ({ authAdmission: admission, recall: async () => ({ hits: [] }), attachProjection: childSessionProjectionAttachment(harness.sessionStore), deliverNotification: async () => false,
+      sendSessionMessage: async () => { throw new Error("A subagent posts no session message") },
           openChatRunner: async () => { attached += 1; return parentHost.runner },
           personEntries: async () => { throw new Error("A subagent reads no person entries") },
           forwardPersonEntries: async () => { throw new Error("A subagent forwards no person entries") },

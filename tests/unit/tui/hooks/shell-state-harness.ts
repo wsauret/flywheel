@@ -302,6 +302,7 @@ export function buildShellState(
   managerOverrides: Partial<SessionManager> = {},
   runtimeConfig: RuntimeConfigCache = { view: () => undefined, settlePublication: async () => false },
   gitView?: GitView,
+  shellOverrides: Pick<Partial<Parameters<typeof createShellState>[0]>, "setTerminalTitle" | "terminalTitle"> = {},
 ) {
   const manager = managerStub(sessionStore, managerOverrides)
   // Return the appService too: migrated output reads flow through the live output
@@ -316,5 +317,6 @@ export function buildShellState(
     runtimeConfig,
     setTerminalTitle: () => {},
     showToast: () => {},
+    ...shellOverrides,
   }), appService }
 }

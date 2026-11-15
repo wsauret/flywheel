@@ -15,7 +15,7 @@ const record = (id: string) => entry(id, { kind: "user", content: "The turn ende
 
 /** Folds each batch in order from an empty fold. */
 function fold(batches: readonly (readonly StoredTailEntry[])[]): RowFold {
-  let state: RowFold = { tail: [], truncated: false, turnEnd: undefined, updates: [], request: null, final: null, contexts: {} }
+  let state: RowFold = { tail: [], truncated: false, turnEnd: undefined, latest: null, request: null, final: null, contexts: {} }
   for (const [index, batch] of batches.entries()) state = foldRowBatch(state, batch, index + 1)
   return state
 }
@@ -61,13 +61,17 @@ describe("the row fold's turn-end reading", () => {
   }
 })
 
-test("the fold keeps the newest update lines, the person's newest message, the final answer, and each call's context", () => {
+test("the fold keeps the newest output, the person's newest message, the final answer, and each call's context", () => {
   const state = fold([
     [person("u1", "Add a form"), answer("a1", "Added the form.")],
     [person("u2", "Fix the login page"), entry("a2", { kind: "assistant", content: [{ type: "text", text: "\nDesign is ready.\nDetails..." }, { type: "tool_use", id: "ask-1", name: "ask_user", input: { context: "Two forms share a handler.", question: "Which?" } }] })],
   ])
   expect(state.request).toEqual({ entryId: "u2", text: "Fix the login page", at: 2 })
   expect(state.final).toEqual({ entryId: "a1", text: "Added the form.", at: 1 })
-  expect(state.updates).toEqual([{ text: "Added the form.", at: 1 }, { text: "Design is ready.", at: 2 }])
+  // The newest output is the message's last block: here its question call.
+  expect(state.latest).toEqual({ kind: "call", name: "ask_user", input: { context: "Two forms share a handler.", question: "Which?" }, at: 2 })
+  expect(fold([[answer("a1", "\nDesign is ready.\nDetails...")]]).latest).toEqual({ kind: "text", text: "Design is ready.", at: 1 })
+  // A message with no text and no shown call keeps the newest output before it.
+  expect(fold([[answer("a1", "Started.")], [entry("a2", { kind: "assistant", content: [{ type: "text", text: "  " }] })]]).latest).toEqual({ kind: "text", text: "Started.", at: 1 })
   expect(state.contexts).toEqual({ "ask-1": "Two forms share a handler." })
 })

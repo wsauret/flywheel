@@ -51,12 +51,22 @@ const LeadResultReadFactSchema = defineFact({
   payload: Schema.Struct({ sessionId: Schema.NonEmptyString, entryId: Schema.NonEmptyString }),
 })
 
+/** The person opened a started chat while its row was failed or cut at this entry, so the row leaves the list until
+ *  the chat changes state again. */
+const LeadChatSeenFactSchema = defineFact({
+  type: "lead.chat.seen",
+  version: 1,
+  actor: Schema.Literal("system"),
+  payload: Schema.Struct({ sessionId: Schema.NonEmptyString, state: Schema.Literals(["failed", "cut"]), entryId: Schema.NonEmptyString }),
+})
+
 const LeadFactSchema = Schema.Union([
   LeadChatDesignatedFactSchema,
   LeadChatDismissedFactSchema,
   LeadChatStartedFactSchema,
   LeadRequestForwardedFactSchema,
   LeadResultReadFactSchema,
+  LeadChatSeenFactSchema,
 ])
 
 export type LeadFact = typeof LeadFactSchema.Type

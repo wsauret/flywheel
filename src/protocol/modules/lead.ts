@@ -17,27 +17,27 @@ export const LEAD_SURFACE = "lead"
 
 export type LeadRowState = "question" | "failed" | "cut" | "working" | "result"
 
+/** The states that the person sees once a chat with that state is opened. */
+export type LeadSeenState = "failed" | "cut"
+
 /** One started chat that needs the person, works, or holds an unread result. The client joins the title from the
  *  session catalog, so the title has one source. */
 export interface LeadRow {
   readonly sessionId: string
   readonly state: LeadRowState
-  /** The first line of the chat's newest assistant text, at most 240 characters. */
-  readonly update: string | null
+  /** One line that the runtime derives and no model writes, at most 240 characters: for a working chat its newest
+   *  tool call as the transcript sums it up, or the start of its newest text; the first line of a question or of a
+   *  result; `failed` and `interrupted` for the other states. */
+  readonly status: string
   /** Epoch milliseconds of the newest update or state change. The client counts the age from it. */
   readonly since: number
   /** Epoch milliseconds since the chat needs the person. Present for question, failed, and cut. */
   readonly waitingSince?: number
-  /** The newest message of the person in that chat: its entry and its text, at most 400 characters. */
-  readonly request: { readonly entryId: string; readonly text: string } | null
-  /** The last five update lines, oldest first. */
-  readonly updates: readonly { readonly text: string; readonly at: number }[]
-  /** Present for state question. The form itself comes from the kernel question view of the session. */
-  readonly question?: { readonly toolUseId: string; readonly context: string | null }
-  /** Present for state failed: the entry of the crash record, or null for an open turn that has no record. */
-  readonly failure?: { readonly entryId: string | null }
   /** Present for state result: the entry of the final message that the person has not read. */
   readonly result?: { readonly entryId: string }
+  /** Present for states failed and cut: the entry that the person sees the state at once the chat opens, which is
+   *  the record that ended the turn, or the chat's newest entry when no record does. */
+  readonly ended?: { readonly entryId: string }
 }
 
 /** The designation of the lead chat. */
@@ -77,14 +77,11 @@ const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const LeadRowSchema: Schema.Codec<LeadRow> = Schema.Struct({
   sessionId: Schema.NonEmptyString,
   state: Schema.Literals(["question", "failed", "cut", "working", "result"]),
-  update: Schema.NullOr(Schema.String),
+  status: Schema.String,
   since: NonNegativeInt,
   waitingSince: Schema.optionalKey(NonNegativeInt),
-  request: Schema.NullOr(Schema.Struct({ entryId: Schema.NonEmptyString, text: Schema.String })),
-  updates: Schema.Array(Schema.Struct({ text: Schema.String, at: NonNegativeInt })),
-  question: Schema.optionalKey(Schema.Struct({ toolUseId: Schema.NonEmptyString, context: Schema.NullOr(Schema.String) })),
-  failure: Schema.optionalKey(Schema.Struct({ entryId: Schema.NullOr(Schema.NonEmptyString) })),
   result: Schema.optionalKey(Schema.Struct({ entryId: Schema.NonEmptyString })),
+  ended: Schema.optionalKey(Schema.Struct({ entryId: Schema.NonEmptyString })),
 })
 
 const LeadViewSchema: Schema.Codec<LeadView> = Schema.Struct({
@@ -167,6 +164,15 @@ const leadResultMarkRead = defineProtocolMutation({
   policy: "lossless",
 })
 
+/** The person opened a started chat whose row is failed or cut at `entryId`, so the row leaves the list until the
+ *  chat changes state again. */
+const leadChatMarkSeen = defineProtocolMutation({
+  type: "lead.chat.mark_seen",
+  fields: { sessionId: Schema.NonEmptyString, state: Schema.Literals(["failed", "cut"]), entryId: Schema.NonEmptyString },
+  result: Schema.Union([Schema.Struct({ ok: Schema.Literal(true) }), Schema.Struct({ ok: Schema.Literal(false), error: Schema.String })]),
+  policy: "lossless",
+})
+
 const NEEDS_PERSON: ReadonlySet<LeadRowState> = new Set(["question", "failed", "cut"])
 const GROUP = { question: 0, failed: 0, cut: 0, working: 1, result: 2 } as const satisfies { readonly [state in LeadRowState]: number }
 
@@ -177,19 +183,40 @@ export function leadRowOrder(rows: readonly LeadRow[]): readonly LeadRow[] {
     || (NEEDS_PERSON.has(left.state) ? (left.waitingSince ?? left.since) - (right.waitingSince ?? right.since) : right.since - left.since))
 }
 
+const REPORT_CALL_PREFIX = "lead-report:"
+const REPORT_LINK_PREFIX = "flywheel://lead/report/"
+
+/** The sending id of the message by which the runtime posts a started chat's report, its final message `entryId`, to
+ *  the lead (PI-LEAD-006). The lead's clients know a report by it. */
+export function leadReportCall(entryId: string): string {
+  return `${REPORT_CALL_PREFIX}${entryId}`
+}
+
+/** The final message entry that a report names, read from the entry id `msg:<sender>:<call>` that a message from
+ *  another session holds; undefined for any other message. */
+export function leadReportEntry(message: { readonly id: string; readonly from: { readonly sessionId: string } }): string | undefined {
+  const prefix = `msg:${message.from.sessionId}:${REPORT_CALL_PREFIX}`
+  return message.id.startsWith(prefix) ? message.id.slice(prefix.length) || undefined : undefined
+}
+
+/** The link of a report's line, which opens the chat at its final message. */
+export function leadReportLink(sessionId: string, entryId: string): string {
+  return `${REPORT_LINK_PREFIX}${encodeURIComponent(sessionId)}/${encodeURIComponent(entryId)}`
+}
+
+export function parseLeadReportLink(uri: string): { readonly sessionId: string; readonly entryId: string } | undefined {
+  if (!uri.startsWith(REPORT_LINK_PREFIX)) return undefined
+  const [sessionId, entryId, ...rest] = uri.slice(REPORT_LINK_PREFIX.length).split("/")
+  return sessionId && entryId && rest.length === 0 ? { sessionId: decodeURIComponent(sessionId), entryId: decodeURIComponent(entryId) } : undefined
+}
+
 /** The number of started chats that need the person: a question, a failure, or a cut. */
 export function leadNeedsPerson(view: LeadChatsView): number {
   return view.rows.filter((row) => NEEDS_PERSON.has(row.state)).length
 }
 
-/** The chat that has waited longest for the person, which one key opens; none while no chat needs the person. */
-export function leadLongestWaiting(view: LeadChatsView): LeadRow | undefined {
-  const first = leadRowOrder(view.rows)[0]
-  return first && NEEDS_PERSON.has(first.state) ? first : undefined
-}
-
 /** The count of chats that need the person, as every view shows it; none at zero. */
-export function leadCountLabel(view: LeadChatsView | undefined): string | undefined {
+function leadCountLabel(view: LeadChatsView | undefined): string | undefined {
   const count = view ? leadNeedsPerson(view) : 0
   return count === 0 ? undefined : count === 1 ? "1 needs you" : `${count} need you`
 }
@@ -205,7 +232,7 @@ function leadComposerStatus(view: LeadChatsView | undefined): readonly ModuleCom
 export const leadDesignationProtocol = defineProtocolModule({ id: "lead", domains: [leadDomain], mutations: [leadOpen, leadDismiss] })
 
 /** The part of the contract that the module's execution service answers. */
-export const leadChatsProtocol = defineProtocolModule({ id: "lead", domains: [leadChatsDomain], mutations: [leadResultMarkRead] })
+export const leadChatsProtocol = defineProtocolModule({ id: "lead", domains: [leadChatsDomain], mutations: [leadResultMarkRead, leadChatMarkSeen] })
 
 export const leadProtocol = defineProtocolModule({
   id: "lead",

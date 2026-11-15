@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
 import { moduleDomainReader } from "../../../../src/protocol/client/module-domain.js"
-import { leadLongestWaiting, leadNeedsPerson, leadProtocol, leadRowOrder, type LeadChatsView, type LeadRow, type LeadRowState } from "../../../../src/protocol/modules/lead.js"
+import { leadNeedsPerson, leadProtocol, leadRowOrder, type LeadChatsView, type LeadRow, type LeadRowState } from "../../../../src/protocol/modules/lead.js"
 
 const row = (sessionId: string, state: LeadRowState, since: number, waitingSince?: number): LeadRow => ({
-  sessionId, state, update: null, since, request: null, updates: [], ...(waitingSince === undefined ? {} : { waitingSince }),
+  sessionId, state, status: state, since, ...(waitingSince === undefined ? {} : { waitingSince }),
 })
 const view = (rows: readonly LeadRow[]): LeadChatsView => ({ rows })
 // The count reads the rows domain that the executor serves, never the designation that the control part serves.
@@ -28,10 +28,4 @@ test("question, failed, and cut need the person, and the composer border counts 
   expect(status(view([row("question", "question", 1, 1), row("working", "working", 2)]))).toEqual([{ id: "lead", text: "1 needs you", tone: "warning" }])
   expect(status(view([row("working", "working", 2), row("result", "result", 3)]))).toEqual([])
   expect(status(undefined)).toEqual([])
-})
-
-test("the longest waiting row is the chat that needs the person with the smallest waitingSince, and no row when none waits", () => {
-  expect(leadLongestWaiting(view(rows))?.sessionId).toBe("question-oldest")
-  expect(leadLongestWaiting(view([row("failed", "failed", 5, 30), row("cut", "cut", 9, 10)]))?.sessionId).toBe("cut")
-  expect(leadLongestWaiting(view([row("working", "working", 2), row("result", "result", 3)]))).toBeUndefined()
 })

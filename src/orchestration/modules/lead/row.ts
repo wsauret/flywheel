@@ -2,6 +2,7 @@ import { createEventProjection, parseProjectionFact, type PositionedEventProject
 import type { AsyncEventReadSurface, StoredFact } from "../../../infra/event-store-types.js"
 import { heldProjection } from "../../../infra/projection-registry.js"
 import { askUserLeadingContext } from "../../../infra/tools/displays/ask-user.js"
+import { getToolDisplay, isHiddenFromTranscript } from "../../../infra/tools/tool-display-registry.js"
 import type { StoredTailEntry } from "../../session/chat-session-run-evidence.js"
 import { parseConversationTreeFact } from "../../session/conversation/conversation-facts.js"
 import { isPersonEntry } from "../../session/conversation/person-entries.js"
@@ -15,7 +16,6 @@ import { CONTINUATION_MESSAGES } from "../../agent-runtime/continuation-messages
 export const ROW_TAIL_ENTRIES = 64
 /** The newest entries of a run that compaction keeps in place, so the entry before each stopper stays the same. */
 const RUN_NEWEST = 4
-const UPDATES = 5
 /** Strings in a kept entry are cut to this length: the turn-end readers compare only short ids, flags, and the
  *  prefixes of runtime messages, and a kept tool input can otherwise hold a whole file. */
 const KEPT_TEXT = 256
@@ -30,6 +30,13 @@ interface Said {
   readonly at: number
 }
 
+/** The chat's newest output, with the time of its batch: a tool call that its transcript shows, with the call's kept
+ *  input, or the first line of a text. */
+type RowLatest = (
+  | { readonly kind: "call"; readonly name: string; readonly input: { readonly [key: string]: unknown } }
+  | { readonly kind: "text"; readonly text: string }
+) & { readonly at: number }
+
 /** What one started chat's conversation states for its row, advanced batch by batch. */
 export interface RowFold {
   /** The newest entries, oldest first, at most `ROW_TAIL_ENTRIES`. */
@@ -38,8 +45,8 @@ export interface RowFold {
   readonly truncated: boolean
   /** How the last turn ended (`chatTurnEndOf` over the tail), with the entry of its record and the time it was read. */
   readonly turnEnd: { readonly reading: ChatTurnEnd; readonly recordId: string | null; readonly at: number } | undefined
-  /** The first lines of the newest assistant texts, oldest first, at most five. */
-  readonly updates: readonly { readonly text: string; readonly at: number }[]
+  /** The newest output of the chat's assistant messages, null before the first. */
+  readonly latest: RowLatest | null
   /** The person's newest message: its first text block. */
   readonly request: Said | null
   /** The newest assistant message that holds no tool call. */
@@ -48,12 +55,30 @@ export interface RowFold {
   readonly contexts: { readonly [toolUseId: string]: string | null }
 }
 
-const EMPTY_FOLD: RowFold = { tail: [], truncated: false, turnEnd: undefined, updates: [], request: null, final: null, contexts: {} }
+const EMPTY_ROW_FOLD: RowFold = { tail: [], truncated: false, turnEnd: undefined, latest: null, request: null, final: null, contexts: {} }
 
 type StoredMessage = Extract<StoredTailEntry, { readonly kind: "message" }>["message"]
 
 function blocksOf(content: StoredMessage["content"]): readonly { readonly type: string; readonly text?: string; readonly id?: string; readonly name?: string; readonly input?: { readonly [key: string]: unknown } }[] {
   return typeof content === "string" ? [] : content
+}
+
+/** The last text or transcript-visible tool call of a message, as the fold keeps it; undefined when it holds neither. */
+function latestOf(blocks: ReturnType<typeof blocksOf>, at: number): RowLatest | undefined {
+  for (const block of blocks.toReversed()) {
+    if (block.type === "text" && block.text !== undefined) {
+      const line = firstLine(block.text)
+      if (line) return { kind: "text", text: line, at }
+    } else if (block.type === "tool_use" && block.name !== undefined) {
+      const input = keptInput(block.input)
+      if (!isHiddenFromTranscript(getToolDisplay(block.name), input)) return { kind: "call", name: block.name, input, at }
+    }
+  }
+  return undefined
+}
+
+function keptInput(input: { readonly [key: string]: unknown } | undefined): { readonly [key: string]: unknown } {
+  return Object.fromEntries(Object.entries(input ?? {}).map(([key, value]) => [key, typeof value === "string" ? value.slice(0, KEPT_TEXT) : value]))
 }
 
 function textOf(message: StoredMessage): string {
@@ -65,7 +90,7 @@ function textOf(message: StoredMessage): string {
 function keptContent(message: StoredMessage): StoredMessage["content"] {
   if (message.kind === "assistant") {
     return blocksOf(message.content).flatMap((block) => block.type === "tool_use" && block.id !== undefined && block.name !== undefined
-      ? [{ type: "tool_use" as const, id: block.id, name: block.name, input: Object.fromEntries(Object.entries(block.input ?? {}).map(([key, value]) => [key, typeof value === "string" ? value.slice(0, KEPT_TEXT) : value])) }]
+      ? [{ type: "tool_use" as const, id: block.id, name: block.name, input: keptInput(block.input) }]
       : [])
   }
   return typeof message.content === "string" ? message.content.slice(0, KEPT_TEXT) : []
@@ -76,11 +101,12 @@ function reducedEntry(entry: StoredTailEntry, at: number): RowTailEntry {
   return { ...entry, message: { ...entry.message, content: keptContent(entry.message) }, at }
 }
 
-const firstLine = (text: string): string => text.split("\n").find((line) => line.trim().length > 0)?.trim() ?? ""
+/** The first line of a text that holds more than spaces, trimmed. */
+export const firstLine = (text: string): string => text.split("\n").find((line) => line.trim().length > 0)?.trim() ?? ""
 
 /** Advances the fold by the entries of one stored batch. */
 export function foldRowBatch(fold: RowFold, entries: readonly StoredTailEntry[], at: number): RowFold {
-  let { updates, request, final, contexts } = fold
+  let { latest, request, final, contexts } = fold
   const added: RowTailEntry[] = []
   for (const entry of entries) {
     added.push(reducedEntry(entry, at))
@@ -93,8 +119,7 @@ export function foldRowBatch(fold: RowFold, entries: readonly StoredTailEntry[],
     }
     const { message } = entry
     if (message.kind !== "assistant" || entry.displayOnly === true) continue
-    const line = firstLine(textOf(message))
-    if (line) updates = [...updates, { text: line, at }].slice(-UPDATES)
+    latest = latestOf(blocksOf(message.content), at) ?? latest
     const calls = blocksOf(message.content).filter((block) => block.type === "tool_use" && block.id !== undefined)
     if (calls.length === 0) final = { entryId: entry.id, text: textOf(message), at }
     else contexts = Object.fromEntries(calls.map((call) => [call.id, askUserLeadingContext(call.input) ?? null]))
@@ -108,7 +133,7 @@ export function foldRowBatch(fold: RowFold, entries: readonly StoredTailEntry[],
   const carried = truncated && reading?.recordId != null && reading.recordId === fold.turnEnd?.recordId && fold.turnEnd.reading.backgroundWait === true
     && reading.reading.backgroundWait === undefined && restoredWaitReadsOlder(tail)
   const turnEnd = carried && reading ? { ...reading, reading: { ...reading.reading, backgroundWait: true as const } } : reading
-  return { tail, truncated, turnEnd, updates, request, final, contexts }
+  return { tail, truncated, turnEnd, latest, request, final, contexts }
 }
 
 const CONTINUATIONS: ReadonlySet<string> = new Set(Object.values(CONTINUATION_MESSAGES).map((text) => text.slice(0, KEPT_TEXT)))
@@ -187,7 +212,7 @@ export function leadRowFold(reader: AsyncEventReadSurface, sessionId: string, co
     name: `lead-row:${sessionId}`,
     aggregateId: `conversation:${conversationId}`,
     factTypes: ["chat.entries.appended"],
-    initialState: () => EMPTY_FOLD,
+    initialState: () => EMPTY_ROW_FOLD,
     reduce: reduceRowFact,
     reduceUnreadableFact: (fold) => fold,
   }))

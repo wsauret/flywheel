@@ -15,6 +15,7 @@ async function mountStrip(...args: Parameters<typeof mountLeadStrip>) {
 }
 
 const theme = resolveTheme(flywheelTheme, "dark")
+const HINT = "  ↑↓ move · enter open · ctrl+t tab · esc input"
 
 /** The text of the row painted in the selection style. */
 const selectedRow = (rendered: Rendered): string | undefined => rendered.captureSpans().lines
@@ -22,27 +23,26 @@ const selectedRow = (rendered: Rendered): string | undefined => rendered.capture
   ?.spans.map((span) => span.text).join("").trim()
 
 describe("the lead list", () => {
-  it("shows one row for each chat, needs-you first and the longest wait first, in the chat's own words with a state word and an age", async () => {
+  it("shows one short row for each chat, needs-you first and the longest wait first: a mark, the title, the chat's status, and an age", async () => {
     const strip = await mountStrip([
-      leadRow("done", "result", { update: "All tests pass." }),
-      leadRow("busy", "working", { update: "Reading the auth module." }),
-      leadRow("asks", "question", { waitingSince: Date.now() - 10 * 60_000, update: "Which provider should I use?" }),
-      leadRow("broke", "failed", { waitingSince: Date.now() - 20 * 60_000 }),
+      leadRow("done", "result", { status: "All tests pass." }),
+      leadRow("busy", "working", { status: "Edited core.py" }),
+      leadRow("asks", "question", { waitingSince: Date.now() - 10 * 60_000, status: "Which provider should I use?" }),
+      leadRow("broke", "failed", { waitingSince: Date.now() - 20 * 60_000, status: "failed" }),
     ])
     expect(strip.lines()).toEqual([
-      expect.stringMatching(/^ {2}✗ failed {4}Chat broke {2}Update from broke +5m$/),
-      expect.stringMatching(/^ {2}\? question {2}Chat asks {2}Which provider should I use\? +5m$/),
-      expect.stringMatching(/^ {2}● working {3}Chat busy {2}Reading the auth module\. +5m$/),
-      expect.stringMatching(/^ {2}✓ result {4}Chat done {2}All tests pass\. +5m$/),
-      "  ↓ list · ctrl+g longest wait",
+      "  ✗ Chat broke  failed  5m",
+      "  ? Chat asks   Which provider should I use?  5m",
+      "  ● Chat busy   Edited core.py  5m",
+      "  ✓ Chat done   All tests pass.  5m",
     ])
   })
 
-  it("paints each state's mark in its own tone, with every chat that needs the person in an accent tone", async () => {
+  it("paints each state's mark in its own tone, with every chat that needs the person in the warning tone", async () => {
     const strip = await mountStrip([leadRow("asks", "question"), leadRow("broke", "failed"), leadRow("stopped", "cut"), leadRow("busy", "working"), leadRow("done", "result")])
-    const markTone = (mark: string) => strip.rendered.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text === mark)?.fg
+    const markTone = (mark: string) => strip.rendered.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.startsWith(mark))?.fg
     expect(markTone("?")?.equals(theme.warning)).toBe(true)
-    expect(markTone("✗")?.equals(theme.error)).toBe(true)
+    expect(markTone("✗")?.equals(theme.warning)).toBe(true)
     expect(markTone("■")?.equals(theme.warning)).toBe(true)
     expect(markTone("●")?.equals(theme.primary)).toBe(true)
     expect(markTone("✓")?.equals(theme.success)).toBe(true)
@@ -55,63 +55,68 @@ describe("the lead list", () => {
     expect(other.lines()).toEqual([])
     other.setSessionId(LEAD_ID)
     await other.rendered.renderOnce()
-    expect(other.lines()).toHaveLength(2)
+    expect(other.lines()).toHaveLength(1)
   })
 
-  it("never wraps a long row at widths 80 and 140", async () => {
-    for (const width of [80, 140]) {
-      const strip = await mountStrip([leadRow("long", "working", { update: "word ".repeat(80) })], { width })
-      expect(strip.lines()).toHaveLength(2)
-      expect(strip.lines()[0]).toEndWith("5m")
+  it("cuts the title at 24 columns and the status at 48, or the room that is left, with an ellipsis, so no row wraps at widths 80 and 140", async () => {
+    for (const [width, status] of [[80, `${"word ".repeat(8)}wor…`], [140, `${"word ".repeat(9)}wo…`]] as const) {
+      const strip = await mountStrip([leadRow("long", "working", { status: "word ".repeat(80) })], { width, titles: { long: "A very long chat title that goes on" } })
+      expect(strip.lines()).toEqual([`  ● A very long chat title…   ${status}  5m`])
     }
   })
 
-  it("shows 6 of 30 rows, '+24 more', and the hint line on 24 terminal rows, and keeps the selection in view", async () => {
+  it("shows 5 of 30 rows and '+25 more', keeps the selection in view, and counts the rows scrolled above and below", async () => {
     const strip = await mountStrip(Array.from({ length: 30 }, (_, index) => leadRow(`c${String(index).padStart(2, "0")}`, "working", { since: Date.now() - index * 60_000 })))
-    expect(strip.lines()).toHaveLength(8)
-    expect(strip.lines()[6]).toBe("  +24 more")
+    expect(strip.lines()).toHaveLength(6)
+    expect(strip.lines()[5]).toBe("  +25 more")
     await strip.key("down")
     for (let step = 0; step < 9; step += 1) await strip.key("down")
     expect(strip.lines()).toHaveLength(8)
-    expect(selectedRow(strip.rendered)).toStartWith("● working   Chat c09")
-    expect(strip.lines()[7]).toBe("  ↑↓ move · enter open · space peek · ctrl+o chat · ctrl+t tab · esc input")
+    expect(strip.lines()[0]).toBe("  +5 above")
+    expect(strip.lines()[6]).toBe("  +20 more")
+    expect(selectedRow(strip.rendered)).toStartWith("● Chat c09")
   })
 
-  it("takes focus on Down only while the composer is empty, and Space types nothing", async () => {
+  it("shows the key hint only while the list has focus; Down takes focus only on an empty input, and Up from the top or Escape gives it back", async () => {
     const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "result")])
+    expect(strip.lines()).not.toContain(HINT)
     strip.setComposerEmpty(false)
     expect(await strip.key("down")).toBe(false)
     expect(strip.focused()).toBe(false)
     strip.setComposerEmpty(true)
     expect(await strip.key("down")).toBe(true)
     expect(strip.focused()).toBe(true)
-    expect(selectedRow(strip.rendered)).toStartWith("● working   Chat a")
-    expect(await strip.key("space")).toBe(true)
+    expect(strip.lines().at(-1)).toBe(HINT)
+    expect(selectedRow(strip.rendered)).toStartWith("● Chat a")
+    expect(await strip.key("up")).toBe(true)
+    expect(strip.focused()).toBe(false)
+    expect(strip.lines()).not.toContain(HINT)
+    await strip.key("down")
     expect(await strip.key("escape")).toBe(true)
     expect(strip.focused()).toBe(false)
+  })
+
+  it("claims no Space, ctrl+o, or ctrl+g, which therefore reach the input", async () => {
+    const strip = await mountStrip([leadRow("a", "question")])
+    expect(strip.chords()).toEqual(["up", "down", "enter", "ctrl+t"])
+    await strip.key("down")
+    expect(await strip.key("space")).toBe(false)
+    expect(await strip.key("o", { ctrl: true })).toBe(false)
+    expect(await strip.key("g", { ctrl: true })).toBe(false)
+    expect(strip.overlay.viewer.stack).toHaveLength(0)
   })
 
   it("keeps the selection on its chat when rows reorder and moves it to the next row when its row goes", async () => {
     const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "working", { since: Date.now() - 6 * 60_000 }), leadRow("c", "working", { since: Date.now() - 7 * 60_000 })])
     await strip.key("down")
     await strip.key("down")
-    expect(selectedRow(strip.rendered)).toStartWith("● working   Chat b")
+    expect(selectedRow(strip.rendered)).toStartWith("● Chat b")
     strip.setView((view) => ({ ...view, rows: [leadRow("new", "question"), ...view.rows] }))
     await strip.rendered.renderOnce()
-    expect(selectedRow(strip.rendered)).toStartWith("● working   Chat b")
+    expect(selectedRow(strip.rendered)).toStartWith("● Chat b")
     strip.setView((view) => ({ ...view, rows: view.rows.filter((row) => row.sessionId !== "b") }))
     await strip.rendered.renderOnce()
-    expect(selectedRow(strip.rendered)).toStartWith("● working   Chat c")
-  })
-
-  it("opens the chat that has waited longest on ctrl+g, and nothing while no chat waits", async () => {
-    const strip = await mountStrip([leadRow("busy", "working"), leadRow("late", "cut", { waitingSince: Date.now() - 60_000 }), leadRow("early", "failed", { waitingSince: Date.now() - 90 * 60_000 })])
-    expect(await strip.key("g", { ctrl: true })).toBe(true)
-    expect(strip.overlay.viewer.stack).toHaveLength(1)
-    expect(strip.rendered.captureCharFrame()).toContain("Chat early")
-    const idle = await mountStrip([leadRow("busy", "working")])
-    expect(await idle.key("g", { ctrl: true })).toBe(false)
-    expect(idle.overlay.viewer.stack).toHaveLength(0)
+    expect(selectedRow(strip.rendered)).toStartWith("● Chat c")
   })
 
   it("opens no view when a question row arrives while the person types", async () => {

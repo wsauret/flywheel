@@ -15,8 +15,9 @@ const log = Log.create({ service: "session-event-notices" })
  *  runner, and every pending event of a watcher whose runner ended, is dropped, so a watcher that no client shows
  *  learns nothing. */
 export interface SessionEventNotices {
-  /** `watcherSessionId` hears the events of `watchedSessionId` from now on. Repeating it changes nothing. */
-  watch(watcherSessionId: string, watchedSessionId: string): void
+  /** `watcherSessionId` hears the events of `watchedSessionId` from now on: every kind, or only the `kinds` named.
+   *  Repeating it replaces the kinds. */
+  watch(watcherSessionId: string, watchedSessionId: string, kinds?: readonly SessionEventKind[]): void
   /** Ends the watch and drops its pending event. */
   unwatch(watcherSessionId: string, watchedSessionId: string): void
   /** The chat `sessionId` reports `kind`. Nothing happens when no chat watches it. */
@@ -58,7 +59,8 @@ export function createSessionEventNotices(input: {
   readonly sessionStore: { get(sessionId: string): WatchedEntry | undefined; readonly onChange: SessionStore["onChange"] }
 }): SessionEventNotices {
   const { sessionStore } = input
-  const watchersOf = new Map<string, Set<string>>()
+  // Each watched chat's watchers, with the kinds that each hears; undefined hears every kind.
+  const watchersOf = new Map<string, Map<string, ReadonlySet<SessionEventKind> | undefined>>()
   const watchers = new Map<string, Watcher>()
   // A change offers pending events only to the watchers among the changed sessions.
   const unsubscribe = sessionStore.onChange((changed) => {
@@ -118,10 +120,10 @@ export function createSessionEventNotices(input: {
   }
 
   return {
-    watch(watcherSessionId, watchedSessionId) {
+    watch(watcherSessionId, watchedSessionId, kinds) {
       let set = watchersOf.get(watchedSessionId)
-      if (!set) watchersOf.set(watchedSessionId, set = new Set())
-      set.add(watcherSessionId)
+      if (!set) watchersOf.set(watchedSessionId, set = new Map())
+      set.set(watcherSessionId, kinds && new Set(kinds))
     },
     unwatch(watcherSessionId, watchedSessionId) {
       const set = watchersOf.get(watchedSessionId)
@@ -136,7 +138,8 @@ export function createSessionEventNotices(input: {
       const watching = watchersOf.get(sessionId)
       if (!watching) return
       const title = chatEntry(sessionId)?.description ?? ""
-      for (const watcherId of watching) {
+      for (const [watcherId, kinds] of watching) {
+        if (kinds && !kinds.has(kind)) continue
         if (!chatEntry(watcherId)?.runner) continue
         let watcher = watchers.get(watcherId)
         if (!watcher) watchers.set(watcherId, watcher = { pending: new Map(), delivering: false, held: false, workedSinceHold: false })

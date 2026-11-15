@@ -107,6 +107,8 @@ export interface ChildSessionBodyProps {
   readonly navigation: JSX.Element
   readonly messaging: ChildMessaging
   readonly placeholder: string
+  /** An entry the transcript lands on and marks when it first shows. */
+  readonly landing?: string
   readonly initialMessageLabel?: (block: UserMessageBlock) => string
   readonly controls: Accessor<{
     readonly interrupt?: () => void
@@ -188,6 +190,7 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
             sessionIntro={{ ...props.sessionIntro, sessionKind: kind, availableWidth: () => props.width }}
             running={surface.agentState() === "active"}
             command={outputCommand()}
+            {...(props.landing === undefined ? {} : { landing: props.landing })}
             showThinking={props.showThinking}
             streamingToolText={surface.streamingToolText()}
             diffColors={props.diffColors}

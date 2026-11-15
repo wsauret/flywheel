@@ -83,11 +83,8 @@ test("a question, its answer and a live turn, a final answer read by the person:
     payload: { interactionId: "ask-1", conversationId: await conversation.chatConversationId(chat), toolUseId: "ask-1", request: [QUESTION] },
   })
   const question = await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "question")
-  expect(question).toMatchObject({
-    state: "question", update: "Design is ready.", waitingSince: 1_000,
-    question: { toolUseId: "ask-1", context: CONTEXT },
-    request: { entryId: "u1", text: "Fix the login page" },
-  })
+  // A question row shows the question's own first line.
+  expect(question).toMatchObject({ state: "question", status: QUESTION.question, waitingSince: 1_000 })
 
   await ctx.store.append({
     aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.answered", version: 3, actor: "user", timestamp: 2_000,
@@ -96,6 +93,9 @@ test("a question, its answer and a live turn, a final answer read by the person:
   ctx.sessionStore.updateEntry(chat, { runnerState: "streaming", streamPhase: "thinking" })
   const working = await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "working")
   expect(working).toMatchObject({ state: "working" })
+  // A working row shows the newest tool call as its transcript states it.
+  await conversation.appendConversation(chat, [{ kind: "assistant", content: [{ type: "tool_use", id: "edit-1", name: "edit", input: { path: "/repo/src/core.py", edits: [] } }] }])
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object" && row.status.startsWith("Edited"))).toMatchObject({ state: "working", status: "Edited core.py" })
   expect(working).not.toHaveProperty("question")
   expect(working).not.toHaveProperty("waitingSince")
 
@@ -103,6 +103,7 @@ test("a question, its answer and a live turn, a final answer read by the person:
   ctx.sessionStore.updateEntry(chat, { runnerState: "idle", streamPhase: null })
   const result = await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "result")
   if (typeof result !== "object" || result.result === undefined) throw new Error("expected a result row")
+  expect(result.status).toBe("Changed the sign-in form.")
   expect((await lead.service.view()).rows).toEqual([result])
 
   expect(await lead.service.markRead(chat, result.result.entryId)).toEqual({ ok: true })
@@ -118,7 +119,7 @@ test("a routed chat reads working while its runner starts and after the runner a
   const chat = await routeToNewChat("Fix the login page")
   expect(lead.supervisor.runtimeState(chat)).toEqual({ kind: "starting" })
   expect(ctx.sessionStore.get(chat)?.runner).toBeNull()
-  expect(await eventually(() => latest(chat), (row) => typeof row === "object" && row.request !== null)).toMatchObject({ state: "working", request: { text: "Fix the login page" } })
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object")).toMatchObject({ state: "working", status: "working" })
   expect(leadNeedsPerson(await lead.service.view())).toBe(0)
 
   // The store announces the attached runner at rest before the start settles and the runner takes the drained message.
@@ -138,7 +139,7 @@ test("a runner start that failed for a chat that a client shows reads failed wit
   await shown.catch(() => false)
   expect(await eventually(() => lead.supervisor.runtimeState(chat)?.kind, (kind) => kind === "failed")).toBe("failed")
   expect(ctx.sessionStore.get(chat)?.runner).toBeNull()
-  expect(await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "failed")).toMatchObject({ state: "failed", failure: { entryId: null } })
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "failed")).toMatchObject({ state: "failed", status: "failed" })
   expect(leadNeedsPerson(await lead.service.view())).toBe(1)
 })
 
@@ -161,9 +162,34 @@ test("a visible interrupt is cut, a crash record is failed with its entry, and a
   // No client shows the chat after a restart, so the store holds no entry and nothing works on the open turn.
   await ctx.sessionStore.remove(open)
 
-  expect(await eventually(() => latest(cut), (row) => typeof row === "object")).toMatchObject({ state: "cut", request: { entryId: "u1", text: "Fix it" } })
-  expect(await eventually(() => latest(crashed), (row) => typeof row === "object")).toMatchObject({ state: "failed", failure: { entryId: crash } })
-  expect(await eventually(() => latest(open), (row) => typeof row === "object" && row.state === "failed")).toMatchObject({ state: "failed", failure: { entryId: null } })
+  expect(await eventually(() => latest(cut), (row) => typeof row === "object")).toMatchObject({ state: "cut", status: "interrupted", ended: { entryId: interrupt } })
+  expect(await eventually(() => latest(crashed), (row) => typeof row === "object")).toMatchObject({ state: "failed", status: "failed", ended: { entryId: crash } })
+  expect(await eventually(() => latest(open), (row) => typeof row === "object" && row.state === "failed")).toMatchObject({ state: "failed", ended: { entryId: "u1" } })
+})
+
+test("a failure that the person saw leaves the list until the chat fails again at a later entry", async () => {
+  const { lead, latest, eventually, startChat, appendEntries } = rowsHarness()
+  const chat = await startChat()
+  const crash = turnEndEntryId({ reason: "crash" }, "k1")
+  await appendEntries(chat, [
+    { kind: "message", id: "u1", message: { kind: "user", content: "Fix it", origin: "human" } },
+    { kind: "message", id: crash, message: { kind: "user", content: "Your process exited unexpectedly.", origin: "system" } },
+  ])
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object")).toMatchObject({ state: "failed", ended: { entryId: crash } })
+  expect(await lead.service.markSeen(chat, "failed", crash)).toEqual({ ok: true })
+  expect(await eventually(() => latest(chat), (row) => row === "removed")).toBe("removed")
+  expect(ctx.store.read({ aggregateId: "lead" }).at(-1)).toMatchObject({ type: "lead.chat.seen", payload: { sessionId: chat, state: "failed", entryId: crash } })
+  // A second mark of the same failure appends nothing.
+  const facts = ctx.store.read({ aggregateId: "lead" }).length
+  await lead.service.markSeen(chat, "failed", crash)
+  expect(ctx.store.read({ aggregateId: "lead" })).toHaveLength(facts)
+
+  const again = turnEndEntryId({ reason: "crash" }, "k2")
+  await appendEntries(chat, [
+    { kind: "message", id: "u2", message: { kind: "user", content: "Try again", origin: "human" } },
+    { kind: "message", id: again, message: { kind: "user", content: "Your process exited unexpectedly.", origin: "system" } },
+  ])
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object")).toMatchObject({ state: "failed", ended: { entryId: again } })
 })
 
 test("turning the module off ends the rows at once: no patch of a row's in-flight update follows its removal", async () => {

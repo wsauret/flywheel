@@ -363,6 +363,9 @@ export function createShellState(deps: {
    *  the runtime reports the project root it opened (ARCH-DIRECTORIES-009). */
   projectRoot: string
   setTerminalTitle: (title: string) => void
+  /** The terminal title that a module declares for a session's tab, from the project root; undefined keeps the
+   *  session's own title. */
+  terminalTitle?: (sessionId: string, projectRoot: string) => string | undefined
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
   /** Override the transcript recovery retry schedule at the composition boundary. */
   transcriptRecoveryBackoff?: BackoffOptions
@@ -577,11 +580,15 @@ export function createShellState(deps: {
   // Empty string means absent: the tab consumer falls back through `||`, so it
   // does not distinguish a missing shortTitle from an empty one.
   const sessionShortTitle = () => foregroundSummary()?.shortTitle ?? ""
-  // Reactive terminal title: tracks foreground session description.
-  // "New Chat" is the placeholder before a real title arrives; show base title instead.
+  // Reactive terminal title: a module's declared title for the foreground tab, else the foreground session's
+  // description. "New Chat" is the placeholder before a real title arrives; show base title instead.
   createEffect(() => {
+    const sessionId = foregroundId()
+    const declared = sessionId === undefined ? undefined : deps.terminalTitle?.(sessionId, sessionCatalog.projectRoot())
     const desc = foregroundSummary()?.title ?? ""
-    if (desc && desc !== "New Chat") {
+    if (declared !== undefined) {
+      deps.setTerminalTitle(declared)
+    } else if (desc && desc !== "New Chat") {
       deps.setTerminalTitle(desc)
     } else {
       deps.setTerminalTitle(TERMINAL_TITLE_BASE)

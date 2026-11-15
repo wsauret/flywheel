@@ -24,7 +24,7 @@ async function leadScreen(open: (screen: LeadScreen) => void) {
   let lead: ReturnType<typeof leadHarness> | undefined
   let screen: LeadScreen | undefined
   function Screen() {
-    lead = leadHarness([asks], {}, {}, useOverlay())
+    lead = leadHarness([asks], {}, useOverlay())
     lead.setQuestions({ asks: choiceQuestion("asks-ask") })
     const dimensions = useTerminalDimensions()
     return lead.client.provide(() => {
@@ -50,18 +50,12 @@ async function leadScreen(open: (screen: LeadScreen) => void) {
 }
 
 describe("a lead view over the lead's screen", () => {
-  for (const [name, open] of [
-    ["the reader", (screen: LeadScreen) => { screen.openReader(leadRow("asks", "question")) }],
-    ["the peek", (screen: LeadScreen) => { screen.openPeek(leadRow("asks", "question")) }],
-    ["the chat viewer", (screen: LeadScreen) => { screen.openChat("asks") }],
-  ] as const) {
-    it(`${name} covers the whole terminal, so no border of the lead's composer shows beside or below it`, async () => {
-      const lines = await leadScreen(open)
-      expect(lines.join("\n")).not.toContain("Lead composer")
-      expect(lines.join("\n")).not.toContain("Lead transcript")
-      // The terminal's edge columns and rows lie outside the view's frame.
-      const edges = [lines[0] ?? "", lines.at(-1) ?? "", ...lines.map((line) => `${line.charAt(0)}${line.charAt(WIDTH - 1)}`)]
-      expect(edges.join("").trim()).toBe("")
-    })
-  }
+  it("the chat viewer covers the whole terminal, so no border of the lead's composer shows beside or below it", async () => {
+    const lines = await leadScreen((screen) => { screen.openChat("asks") })
+    expect(lines.join("\n")).not.toContain("Lead composer")
+    expect(lines.join("\n")).not.toContain("Lead transcript")
+    // The terminal's edge columns and rows lie outside the view's frame.
+    const edges = [lines[0] ?? "", lines.at(-1) ?? "", ...lines.map((line) => `${line.charAt(0)}${line.charAt(WIDTH - 1)}`)]
+    expect(edges.join("").trim()).toBe("")
+  })
 })

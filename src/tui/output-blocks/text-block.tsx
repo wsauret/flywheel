@@ -1,6 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { TextBlock as TextBlockType } from "@infra/output-blocks"
+import { useLandingBackground } from "@tui/context/landing-highlight.js"
+import { blockEntryKeys, blockIdentity } from "../../protocol/block-identity.js"
 import { BlockFrame } from "./block-frame.js"
 import { MarkdownBody } from "./markdown/markdown-body.js"
 
@@ -18,9 +20,13 @@ export function assistantDisplayContent(content: string): string {
 }
 
 export function TextBlock(props: TextBlockProps) {
+  // A landing on the message's entry marks it for a while, as a landing on a card does.
+  const landingBackground = useLandingBackground(() => blockEntryKeys(blockIdentity(props.block)))
   return (
-    <BlockFrame>
-      <MarkdownBody unwrapFences cache={props.settled === true}>{assistantDisplayContent(props.block.content)}</MarkdownBody>
-    </BlockFrame>
+    <box backgroundColor={landingBackground()}>
+      <BlockFrame>
+        <MarkdownBody unwrapFences cache={props.settled === true}>{assistantDisplayContent(props.block.content)}</MarkdownBody>
+      </BlockFrame>
+    </box>
   )
 }

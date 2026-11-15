@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { AsyncLocalStorage } from "node:async_hooks"
-import { asAsyncEventReadSurface, type StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
+import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { LEAD_AGGREGATE_ID } from "../../../../../src/orchestration/modules/lead/facts.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
-import { leadChatsCursor } from "../../../../../src/protocol/modules/lead.js"
+import { leadChatsCursor, leadReportCall } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
 import { accountOpenChat, leadHarness } from "./_lead-harness.js"
@@ -42,7 +43,7 @@ test("dispose settles the startup replay, and nothing is published after it reso
   expect(patches.filter((patch) => patch.cursor.domain === leadChatsCursor().domain)).toEqual([])
 })
 
-test("while the module is off a started chat's report gives no notice, and after it turns on a report gives one", async () => {
+test("while the module is off a started chat's question gives no notice, and after it turns on a question gives one", async () => {
   const { service, openLead, sessionEvents, notices, setEnabled } = harness()
   const lead = await openLead()
   expect(lead).not.toBeNull()
@@ -50,18 +51,18 @@ test("while the module is off a started chat's report gives no notice, and after
   await supervisor.ensureChatRunner(lead!)
 
   await setEnabled(false)
-  sessionEvents.report("c", "turn_ended")
+  sessionEvents.report("c", "asked")
   await Bun.sleep(1)
   expect(notices).toEqual([])
 
   await setEnabled(true)
-  sessionEvents.report("c", "turn_ended")
+  sessionEvents.report("c", "asked")
   await Bun.sleep(1)
   expect(notices).toEqual([lead!])
 })
 
-test("a chat that the lead started reports its first turn end to the lead", async () => {
-  const { service, openLead, sessionEvents, notices } = harness()
+test("a chat that the lead started posts its report to the lead once, as a message from the chat, instead of a turn-end notice, and the report counts as read", async () => {
+  const { service, openLead, sessionEvents, notices, trace, reports } = harness()
   const lead = await openLead()
   if (lead === null) throw new Error("expected the lead to open")
   await conversation.appendConversation(lead, [
@@ -73,7 +74,111 @@ test("a chat that the lead started reports its first turn end to the lead", asyn
   await supervisor.ensureChatRunner(lead)
   sessionEvents.report(routed.sessionId, "turn_ended")
   await Bun.sleep(1)
-  expect(notices).toEqual([lead])
+  expect(notices).toEqual([])
+
+  const report = "The login page works now.\nThe sign-in form had two handlers."
+  const final = "final-1"
+  const conversationId = await conversation.chatConversationId(routed.sessionId)
+  await asAsyncEventWriter(ctx.store).append({
+    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId: routed.sessionId,
+    payload: { conversationId, entries: [{ kind: "message", id: final, parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text: report }] } }] },
+  })
+  for (let attempt = 0; attempt < 200 && !trace.some((line) => line.startsWith("report")); attempt += 1) await Bun.sleep(5)
+  expect(trace.filter((line) => line.startsWith("report"))).toEqual([`report ${routed.sessionId} ${leadReportCall(final)}`])
+  for (let attempt = 0; attempt < 200 && (await service.view()).rows.some((row) => row.state === "result"); attempt += 1) await Bun.sleep(5)
+  expect((await service.view()).rows.filter((row) => row.state === "result")).toEqual([])
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: routed.sessionId, entryId: final } })
+  // The runtime's delivery took the whole report to the lead as a message from the chat.
+  expect(reports).toEqual([{ fromSessionId: routed.sessionId, toSessionId: lead, call: leadReportCall(final), text: report, status: expect.stringMatching(/^(delivered|held)$/) }])
+  // Reading the rows again posts nothing more.
+  await Bun.sleep(20)
+  expect(trace.filter((line) => line.startsWith("report"))).toHaveLength(1)
+})
+
+/** Routes one request from a new lead to a new chat, with the lead's runner started, and answers both ids. */
+async function routedChat(lead: ReturnType<typeof harness>): Promise<{ readonly leadId: string; readonly chat: string }> {
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  await conversation.appendConversation(leadId, [
+    { kind: "user", content: "Fix the login page", origin: "human" },
+    { kind: "assistant", content: [{ type: "tool_use", id: "route-1", name: "route_request", input: { kind: "new" } }] },
+  ])
+  const routed = await lead.service.route({ leadSessionId: leadId, kind: "new", earlierTurns: 0 })
+  if (!routed.ok) throw new Error(routed.reason)
+  await supervisor.ensureChatRunner(leadId)
+  return { leadId, chat: routed.sessionId }
+}
+
+/** The append of one final assistant message of `sessionId`, which the store broadcasts at once. */
+async function finalMessage(sessionId: string, id: string, text: string) {
+  const conversationId = await conversation.chatConversationId(sessionId)
+  return () => ctx.store.append({
+    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId,
+    payload: { conversationId, entries: [{ kind: "message", id, parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text }] } }] },
+  })
+}
+
+async function settle(until: () => boolean | Promise<boolean>): Promise<void> {
+  for (let attempt = 0; attempt < 200 && !await until(); attempt += 1) await Bun.sleep(5)
+}
+
+test("a report that the lead holds is not delivered again after a restart that lost its read mark", async () => {
+  // The first process sends the report and stops before its read mark lands.
+  const store = asAsyncEventWriter(ctx.store)
+  const appendGuarded: typeof store.appendGuarded = async (event) => {
+    if (event.type === "lead.result.read") throw new Error("the process stopped")
+    return await store.appendGuarded(event)
+  }
+  const first = harness()
+  const { leadId, chat } = await routedChat(first)
+  await first.dispose()
+  disposeAll = disposeAll.filter((dispose) => dispose !== first.dispose)
+  const before = leadHarness(ctx, { eventWriter: { ...store, appendGuarded } })
+  supervisor = before.supervisor
+  disposeAll.push(before.dispose)
+  await (await finalMessage(chat, "final-1", "The login page works now."))()
+  await settle(() => before.reports.length > 0)
+  await Bun.sleep(20)
+  expect(before.reports.map((report) => report.status)).toEqual([expect.stringMatching(/^(delivered|held)$/)])
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read")).toBe(false)
+  await before.dispose()
+  disposeAll = disposeAll.filter((dispose) => dispose !== before.dispose)
+
+  // The next process posts the unread result again, and the runtime's delivery finds the report the lead holds.
+  const key = `msg:${chat}:${leadReportCall("final-1")}`
+  const held = () => ctx.store.readInFlight(leadId, QUEUED_USER_INPUT_IN_FLIGHT_KIND, key).length
+  const heldBefore = held()
+  const after = harness()
+  await settle(async () => (await after.service.view()).rows.every((row) => row.state !== "result") && after.reports.length > 0)
+  expect(after.reports).toEqual([expect.objectContaining({ call: leadReportCall("final-1"), status: "delivered" })])
+  expect(held()).toBe(heldBefore)
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: chat, entryId: "final-1" } })
+})
+
+test("two finals of one chat that fold before their reports post each report with its own text", async () => {
+  // The store's broadcast, held while the test appends, then delivered one batch after another in one go.
+  const listeners = new Set<(events: readonly StoredFact[]) => void>()
+  let held: (readonly StoredFact[])[] | undefined
+  disposeAll.push(async () => { unsubscribe() })
+  const unsubscribe = ctx.store.onStored((events) => { if (held) held.push(events); else for (const listener of listeners) listener(events) })
+  const lead = harness(asAsyncEventReadSurface(ctx.store), (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } })
+  if (await lead.openLead() === null) throw new Error("expected the lead to open")
+  // A started chat with no runner, so each final message reads as a result at once.
+  const { sessionId: chat } = await accountOpenChat(ctx)({ name: "Login" })
+  // Appended through another connection, as the route of another process does, so the service follows it from the broadcast.
+  await createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store }).append({ type: "lead.chat.started", payload: { sessionId: chat, sourceEntryIds: ["entry-1"] } })
+  await settle(async () => (await lead.service.progress(chat)).kind !== "refused")
+  const first = await finalMessage(chat, "final-1", "First answer.")
+  const second = await finalMessage(chat, "final-2", "Second answer.")
+  // Both batches reach the service before its lane runs the first report.
+  held = []
+  await first()
+  await second()
+  const batches = held
+  held = undefined
+  for (const events of batches) for (const listener of listeners) listener(events)
+  await settle(() => lead.reports.length >= 2)
+  expect(lead.reports.map((report) => [report.call, report.text])).toEqual([[leadReportCall("final-1"), "First answer."], [leadReportCall("final-2"), "Second answer."]])
 })
 
 type Collection = readonly unknown[] | ReadonlyMap<unknown, unknown> | ReadonlySet<unknown>

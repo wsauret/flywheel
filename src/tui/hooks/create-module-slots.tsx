@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createComponent, createEffect, createMemo, createRoot, getOwner, createSignal, ErrorBoundary, on, onCleanup, untrack, type Accessor, type JSX } from "solid-js"
+import { createComponent, createEffect, createMemo, createRoot, getOwner, createSignal, ErrorBoundary, on, onCleanup, Show, untrack, type Accessor, type JSX } from "solid-js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
@@ -49,6 +49,12 @@ interface ModuleSlotDeps {
 
 interface StripKeyEventLike extends TuiStripKeyEvent { readonly preventDefault?: () => void }
 
+interface StripsProps {
+  readonly sessionId: Accessor<string | undefined>
+  readonly width: Accessor<number>
+  readonly children?: JSX.Element
+}
+
 export interface ModuleSlots {
   /** The rows every module contributes to the welcome card, the status
    *  modal, and Settings, for the foreground session, in registry order. */
@@ -57,8 +63,9 @@ export interface ModuleSlots {
   readonly statusRows: Accessor<readonly ModuleRow[]>
   readonly settingsRows: Accessor<readonly ModuleRow[]>
   readonly refreshStatus: () => void
-  /** Every module strip for one session, in registry order. */
-  readonly Strips: (props: { readonly sessionId: string; readonly width: Accessor<number> }) => JSX.Element
+  /** Every module strip of the session in front, in registry order on each side of the composer, which renders as
+   *  the children. The strips mount again for each session and show none while there is no session. */
+  readonly Strips: (props: StripsProps) => JSX.Element
   /** One opener per surface id. Controllers recheck optional presentation
    *  intent after loading and receive the opening command's argument. Each
    *  opener answers whether the surface accepted the opening. */
@@ -271,21 +278,26 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
     return false
   }
 
-  function Strips(props: { readonly sessionId: string; readonly width: Accessor<number> }): JSX.Element {
-    // A paste that no overlay or question took goes to the prompt, which has
-    // no focus while a strip holds it.
-    usePaste((event) => { if (!event.defaultPrevented && untrack(focusedClaim)) releaseStripFocus() })
+  function placedStrips(sessionId: string, placement: NonNullable<TuiModule["stripPlacement"]>, width: Accessor<number>): JSX.Element {
     return deps.modules.flatMap((module) => {
       const strip = module.strip
-      if (!strip) return []
-      const read = createDomainReader(deps.intakes, () => props.sessionId, deps.answering)
-      const composer = { empty: () => !(deps.composer?.hasDraft(props.sessionId) ?? false) }
+      if (!strip || (module.stripPlacement ?? "above") !== placement) return []
+      const read = createDomainReader(deps.intakes, () => sessionId, deps.answering)
+      const composer = { empty: () => !(deps.composer?.hasDraft(sessionId) ?? false) }
       return [(
         <ErrorBoundary fallback={(error: unknown) => { contain(module, "strip", error); return null }}>
-          {createComponent(strip, { sessionId: props.sessionId, read, width: props.width, openSurface, keys: stripKeys(module), composer })}
+          {createComponent(strip, { sessionId, read, width, openSurface, keys: stripKeys(module), composer })}
         </ErrorBoundary>
       )]
     })
+  }
+
+  function Strips(props: StripsProps): JSX.Element {
+    // A paste that no overlay or question took goes to the prompt, which has
+    // no focus while a strip holds it.
+    usePaste((event) => { if (!event.defaultPrevented && untrack(focusedClaim)) releaseStripFocus() })
+    const side = (placement: NonNullable<TuiModule["stripPlacement"]>): JSX.Element => <Show when={props.sessionId()} keyed>{(sessionId) => placedStrips(sessionId, placement, props.width)}</Show>
+    return <>{side("above")}{props.children}{side("below")}</>
   }
 
   return { composerStatus, introRows, statusRows, settingsRows, refreshStatus, Strips, surfaces, stripFocused, stripInput, releaseStripFocus }

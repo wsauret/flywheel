@@ -12,24 +12,40 @@ The lead gives a request to a new chat, or to a chat that it started earlier whe
 
 ## PI-LEAD-003: A chat that the lead started is an ordinary chat without a tab
 
-A chat that the lead started opens no tab and is otherwise an ordinary chat. It works while no client shows it, asks the person its own questions, and owns its own changes review and background list. Session navigation lists it like every chat. The person can open it as a tab, message it, interrupt it, close it, or delete it.
+A chat that the lead started opens no tab and is otherwise an ordinary chat. It works while no client shows it, asks the person its own questions, and owns its changes review and background list. Session navigation lists it. The person can open it as a tab, message it, interrupt it, close it, or delete it. Its row in the lead's list holds it open as a tab does. With no row and no client showing it, it closes as a chat whose tab closed does, once its work comes to rest. New input opens it again.
 
 ## PI-LEAD-004: The lead's screen lists the chats that need attention
 
-In the terminal, the lead's screen lists each chat that the lead started and that needs the person, is working, or holds a result that the person has not read. A row shows the chat's state as a mark and a word, its title, its latest update in its own words, and its age. Chats that need the person come first, the longest wait first. A row changes only when its chat posts an update or changes state. Every terminal view shows how many chats need the person.
+In the terminal, the lead's screen lists, below its input, each chat that the lead started and that needs the person, is working, or holds a result that the person has not read. A row shows the chat's state as a mark, its title, one short line of status, and its age. The status of a working chat names its newest action as its transcript summarizes it; a question or a result shows its own first line. Chats that need the person come first, the longest wait first. Every terminal view shows how many chats need the person.
 
-## PI-LEAD-005: The person decides from the lead's screen
+## PI-LEAD-005: The person opens a chat from the lead's screen
 
-From the list, the person opens a chat's pending question, failure, or unread result in place, in the chat's own words, without opening the chat. An answer goes directly to the chat that asked. Escape closes a question and leaves it pending, and a separate action skips it. One key opens the item that has waited longest. A question never opens on its own and never interrupts typing. Reading a result marks it as read.
+From the list, Enter or a click opens the chat's full conversation over the lead. A pending question shows in place of the chat's input, in the chat's own words, and the answer goes directly to that chat. Escape returns to the lead and leaves a question pending, and a separate action skips it. A question never opens on its own and never interrupts typing. Showing a result marks it as read, and opening a failed or cut chat marks that state as seen.
 
-## PI-LEAD-006: The lead comments and never speaks for a chat
+## PI-LEAD-006: The lead summarizes reports and never speaks for a chat
 
-The lead learns when a chat that it started asks the person a question, finishes a turn, fails, or is cut. It can then add its own comment or recommendation in its transcript. It never rewords, replaces, or answers a chat's question or report. It starts or routes work only at the person's request, never in response to a chat.
+The lead learns when a chat that it started asks the person a question, finishes a turn, fails, or is cut. When the chat finishes a turn, the lead's transcript shows a line that names the chat and opens its conversation at the final message, and the report counts as read. The lead then summarizes the report in its own words and can add a recommendation. It never rewords or answers a chat's question. It starts or routes work only at the person's request, never in response to a chat.
 
 ## PI-LEAD-007: Every chat is one step from the lead
 
-From a row, the person peeks at a chat: its request, its latest updates, its changed files, and an input that sends the person's message to that chat. The person also opens the chat's full conversation over the lead, to read it, type in it, answer its question, and move to the next chat. Escape returns to the lead. One action opens the chat as a tab.
+In a chat's conversation over the lead, the person reads it, types in it, changes its model, answers its question, and moves to the next or previous chat. Escape returns to the lead. One action, from the list or from the conversation, opens the chat as a tab.
 
 ## PI-LEAD-008: Working without the lead stays possible
 
 The person can start chats and open tabs directly, as without a lead. Closing the lead's tab asks for confirmation, and the chats that it started keep working. The project then opens on ordinary tabs until the lead command opens the lead again. Turning the lead capability off removes the lead's tab, list, and tool, and keeps every chat.
+
+## PI-LEAD-009: The lead's tab names the project
+
+While the lead's tab is in front, the terminal title names Flywheel and the project, such as "Flywheel | Data", because the lead is the project's own screen. Every other tab keeps its chat's title.
+
+## PI-LEAD-010: The Sessions list opens chats over the lead
+
+The Sessions list does not show the lead, because the lead is always the first tab and the lead command reopens it. While the lead's tab is in front, choosing a chat in the Sessions list opens it over the lead, and the open-as-tab action opens it as a tab. On every other tab, the Sessions list works as without a lead.
+
+## PI-LEAD-011: The lead speaks as the person's assistant
+
+The lead speaks as the person's assistant, and its own words lead its transcript. It talks to the person while it works. Before it checks chats or routes a request, it says in one short line what it does and why. After a route, it says which chat has the request and that the chat reports back when it finishes. In the terminal, a finished turn of the lead folds to its answer as on the web client (PI-INTERACTION-053), and its bookkeeping calls do not show.
+
+## PI-LEAD-012: A started chat reports in one shape
+
+A chat that the lead started ends each turn with a report in one shape. It states its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, its open questions with a recommendation, and what it noticed along the way. The lead's summary names what the chat found and presents the chat's claims as the chat's, not as facts that the lead checked.

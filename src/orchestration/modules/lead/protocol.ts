@@ -26,7 +26,7 @@ export function createLeadControlProtocol(services: AccountModuleProtocolService
   }
 }
 
-/** The lead's execution protocol: the rows of the started chats and the read marks of their results. While the
+/** The lead's execution protocol: the rows of the started chats and the person's read and seen marks. While the
  *  module is off the snapshot holds no row and no mutation records a read. */
 export function createLeadChatsProtocol(services: AccountModuleProtocolServices): ModuleProtocolRuntime<typeof leadChatsProtocol> {
   const service = () => (services.enabled() ? services.modules.get(leadService) : undefined)
@@ -39,6 +39,7 @@ export function createLeadChatsProtocol(services: AccountModuleProtocolServices)
     },
     mutate: {
       "lead.result.mark_read": async (mutation) => await service()?.markRead(mutation.sessionId, mutation.entryId) ?? { ok: true },
+      "lead.chat.mark_seen": async (mutation) => await service()?.markSeen(mutation.sessionId, mutation.state, mutation.entryId) ?? { ok: true },
     },
     dispose() {},
   }

@@ -7,14 +7,16 @@ import { useTheme } from "../../context/theme.js"
 import { useTickPool } from "../../context/tick-pool-context.js"
 import type { TuiStripKeyEvent, TuiStripProps } from "../../tui-module.js"
 import { bindStyledTextContent } from "../../utils/reactive-text.js"
+import { useHoverHighlight } from "../../hooks/use-hover-highlight.js"
 import { isCtrlChord } from "./chat-viewer.js"
 import { useLeadScreen, type LeadScreen } from "./client.js"
-import { followSelection, layoutLeadRow, leadAge, leadListWindow, LEAD_STATE_LOOK } from "./list-model.js"
+import { followSelection, layoutLeadRow, leadAge, leadListWindow, leadTitleColumn, LEAD_STATE_LOOK } from "./list-model.js"
 
-/** The columns the list keeps clear on each side, so its rows line up inside the composer frame below. */
+/** The columns the list keeps clear on each side, so its rows line up with the text inside the composer frame above. */
 const SIDE_INSET = 2
+const HINT = "↑↓ move · enter open · ctrl+t tab · esc input"
 
-/** The list of the chats the lead started, above the lead's input
+/** The list of the chats the lead started, below the lead's input
  *  (PI-LEAD-004). It shows only on the lead's own screen and only while a
  *  chat has a row. */
 export function LeadStrip(props: TuiStripProps) {
@@ -44,64 +46,67 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     return index < 0 ? undefined : index
   }
   // The claim lasts for the list's lifetime, so it is taken once.
-  const claim = untrack(() => props.strip.keys).claim({ chords: ["up", "down", "enter", "space", "ctrl+g", "ctrl+o", "ctrl+t"], onKey })
+  const claim = untrack(() => props.strip.keys).claim({ chords: ["up", "down", "enter", "ctrl+t"], onKey })
   const window = createMemo<ReturnType<typeof leadListWindow>>((previous) => leadListWindow({
     total: rows().length, selected: claim.focused() ? selectedIndex() : undefined, start: claim.focused() ? previous.start : 0, terminalRows: dimensions().height,
-  }), { start: 0, count: 0, more: 0 })
+  }), { start: 0, count: 0, above: 0, below: 0 })
   const visible = createMemo(() => rows().slice(window().start, window().start + window().count))
-
-  function move(step: -1 | 1): void {
-    const index = Math.min(Math.max(0, (selectedIndex() ?? 0) + step), ids().length - 1)
-    setChosen({ id: ids()[index] })
-  }
-
-  const selectedRow = (): LeadRow | undefined => rows().find((candidate) => candidate.sessionId === selection().id)
+  const titleColumn = createMemo(() => leadTitleColumn(visible().map((row) => props.screen.title(row.sessionId))))
 
   function onKey(event: TuiStripKeyEvent): boolean {
-    const plain = !event.ctrl && !event.meta && !event.shift
-    if (isCtrlChord(event, "g")) return props.screen.openLongestWaiting()
     if (!claim.focused()) {
-      if (!plain || event.name !== "down" || !props.strip.composer.empty()) return false
+      if (event.ctrl || event.meta || event.shift || event.name !== "down" || !props.strip.composer.empty()) return false
       setChosen({ id: ids()[0] })
       claim.setFocused(true)
       return true
     }
-    const row = selectedRow()
-    if (isCtrlChord(event, "o") || isCtrlChord(event, "t")) {
-      if (row) (event.name === "o" ? props.screen.openChat : props.screen.openTab)(row.sessionId)
+    const row = rows().find((candidate) => candidate.sessionId === selection().id)
+    if (isCtrlChord(event, "t")) {
+      if (row) props.screen.openTab(row.sessionId)
       return true
     }
-    if (!plain) return false
+    if (event.ctrl || event.meta || event.shift) return false
+    const index = selectedIndex() ?? 0
     switch (event.name) {
-      case "up": move(-1); return true
-      case "down": move(1); return true
+      case "up":
+        if (index === 0) claim.setFocused(false)
+        else setChosen({ id: ids()[index - 1] })
+        return true
+      case "down": setChosen({ id: ids()[Math.min(index + 1, ids().length - 1)] }); return true
       case "return":
-      case "enter": if (row) props.screen.openReader(row); return true
-      case "space": if (row) props.screen.openPeek(row); return true
+      case "enter": if (row) props.screen.openChat(row.sessionId); return true
       case "escape": claim.setFocused(false); return true
       default: return false
     }
   }
 
+  /** A press on a row selects it, gives the list focus, and opens the chat, so Escape comes back to that row. */
+  function press(sessionId: string): void {
+    setChosen({ id: sessionId })
+    claim.setFocused(true)
+    props.screen.openChat(sessionId)
+  }
+
   const width = () => Math.max(1, props.strip.width() - 2 * SIDE_INSET)
   function rowContent(row: LeadRow, age: string): StyledText {
     const look = LEAD_STATE_LOOK[row.state]
-    const layout = layoutLeadRow({ state: row.state, title: props.screen.title(row.sessionId), update: row.update, age }, width())
+    const layout = layoutLeadRow({ state: row.state, title: props.screen.title(row.sessionId), status: row.status, age }, { width: width(), titleColumn: titleColumn() })
     const selected = claim.focused() && selection().id === row.sessionId
     const paint = (color: RGBA) => (text: string) => selected ? stBg(theme.selectionBackground)(stFg(theme.selectionForeground)(text)) : stFg(color)(text)
-    return new StyledText([
-      paint(theme[look.tone])(look.mark), paint(theme.textMuted)(layout.prefix.slice(look.mark.length)), paint(theme.text)(layout.title), paint(theme.textMuted)(`${layout.separator}${layout.update}${layout.gap}${layout.age}`),
-    ])
+    return new StyledText([paint(theme[look.tone])(layout.mark), paint(theme.text)(layout.title), paint(theme.textMuted)(`${layout.status}${layout.age}`)])
   }
-  const hint = () => claim.focused() ? "↑↓ move · enter open · space peek · ctrl+o chat · ctrl+t tab · esc input" : "↓ list · ctrl+g longest wait"
 
   return <box flexDirection="column" flexShrink={0} paddingLeft={SIDE_INSET} paddingRight={SIDE_INSET}>
+    <Show when={window().above > 0}><text fg={theme.textMuted} wrapMode="none">{`+${window().above} above`}</text></Show>
     <For each={visible()}>{(row) => {
       // The clock ticks each second, and a row's text changes only when its age does.
       const age = createMemo(() => leadAge(row.since, now()))
-      return <text ref={bindStyledTextContent(() => rowContent(row, age()))} wrapMode="none" overflow="hidden" />
+      const hover = useHoverHighlight()
+      return <box selectable={false} backgroundColor={hover.background()} {...hover.handlers} onMouseDown={() => { press(row.sessionId) }}>
+        <text selectable={false} ref={bindStyledTextContent(() => rowContent(row, age()))} wrapMode="none" overflow="hidden" />
+      </box>
     }}</For>
-    <Show when={window().more > 0}><text fg={theme.textMuted} wrapMode="none">{`+${window().more} more`}</text></Show>
-    <text fg={theme.textMuted} wrapMode="none">{hint()}</text>
+    <Show when={window().below > 0}><text fg={theme.textMuted} wrapMode="none">{`+${window().below} more`}</text></Show>
+    <Show when={claim.focused()}><text fg={theme.textMuted} wrapMode="none">{HINT}</text></Show>
   </box>
 }
