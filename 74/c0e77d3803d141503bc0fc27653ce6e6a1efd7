@@ -1,0 +1,18 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 245
+bench/harbor/harbor_agent_package.py
+  h_4b47e9e4a8b456 98-102,372
+bench/harbor/test_harbor_agent_package.py
+  h_4b47e9e4a8b456 243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "74c0e77d3803d141503bc0fc27653ce6e6a1efd7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
