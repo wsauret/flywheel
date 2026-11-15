@@ -1,0 +1,18 @@
+bench/harbor/configs/shipped-drop-checkpoint.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-drop-tail.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-drop-unattended.toml
+  h_4b47e9e4a8b456 1-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a7458ebed4402afbb7699b1d8f4cc278187929a8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
