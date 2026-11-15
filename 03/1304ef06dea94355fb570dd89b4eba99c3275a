@@ -1,0 +1,26 @@
+bench/harbor/configs/shipped-first-codex-ambition.toml
+  h_4b47e9e4a8b456 1-110
+bench/harbor/configs/shipped-first-codex-brevity.toml
+  h_4b47e9e4a8b456 1-212
+bench/harbor/configs/shipped-first-codex-complement.toml
+  h_4b47e9e4a8b456 1-145
+bench/harbor/configs/shipped-first-codex-task-execution.toml
+  h_4b47e9e4a8b456 1-128
+bench/harbor/configs/shipped-first-codex-validating.toml
+  h_4b47e9e4a8b456 1-118
+bench/harbor/configs/shipped-first-codex-whole.toml
+  h_4b47e9e4a8b456 1-298
+bench/harbor/configs/shipped-first-codex-work.toml
+  h_4b47e9e4a8b456 1-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "031304ef06dea94355fb570dd89b4eba99c3275a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
