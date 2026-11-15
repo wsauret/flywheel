@@ -1,0 +1,22 @@
+src/tui/hooks/use-keyed-list-scroll.ts
+  h_4b47e9e4a8b456 14-17,25,32-34,36-51
+src/tui/hooks/use-model-modal.ts
+  h_4b47e9e4a8b456 123,165-178,323-326,378
+src/tui/modals/model-modal.tsx
+  h_4b47e9e4a8b456 219-220
+tests/unit/tui/modals/model-modal-operations.test.ts
+  h_4b47e9e4a8b456 156-157,167
+tests/unit/tui/modals/model-modal-regression-rendering.test.ts
+  h_4b47e9e4a8b456 150-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fa2f7043710f192cead19e7cbaee287fbacb4c36",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
