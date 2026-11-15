@@ -1,0 +1,14 @@
+bench/harbor/configs/shipped-prefix-neutral.toml
+  h_4b47e9e4a8b456 1-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "856a2b0a54b75a0f312d0b39819aaa99f98e0d8b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
