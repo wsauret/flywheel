@@ -1,0 +1,18 @@
+src/workflows/agents/personas/explorer.md
+  h_4b47e9e4a8b456 11,14-16,28,30,32,41
+src/workflows/vm/persona-identity-proofs.ts
+  h_4b47e9e4a8b456 368-369
+tests/unit/orchestration/agent-runtime/persona-tool-grants.test.ts
+  h_4b47e9e4a8b456 226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "db642b77fd8e3666e2be0e29724eeb2747ea1e6b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
