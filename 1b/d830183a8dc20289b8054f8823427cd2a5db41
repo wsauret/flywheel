@@ -1,0 +1,14 @@
+bench/chat-ab/workflow-authorship/patches/root-workflow-only.patch
+  h_4b47e9e4a8b456 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1bd830183a8dc20289b8054f8823427cd2a5db41",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
