@@ -107,6 +107,7 @@ describe("Harbor jobs", () => {
     const local = await prepareHarborRun(BRINGUP, dependencies(temporaryDirectory("harbor-runta-local-"), builds));
     const [generated, manifest, plan, localGenerated] = await Promise.all([read(runta.generatedConfig), read(runta.manifest), read(runta.preparationPlan), read(local.generatedConfig)]);
     expect(generated.environment).toEqual({ override_storage_mb: 32768, type: "runta" });
+    // oxlint-disable-next-line eslint/no-template-curly-in-string -- boundary: Harbor expands this placeholder from its own environment.
     expect(generated.agents).toEqual([{ ...localGenerated.agents[0], env: { FLYWHEEL_HARBOR_PROFILE_SHA256: manifest.profile_sha256, FLYWHEEL_AUTH_SNAPSHOT: "${FLYWHEEL_AUTH_SNAPSHOT}" } }]);
     expect(generated.jobs_dir).toBe(join(runta.artifactDirectory, "harbor-jobs"));
     expect(generated.n_concurrent_trials).toBe(8);

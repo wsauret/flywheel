@@ -120,7 +120,7 @@ interface HarborAgentPackage {
 
 /** Where the trials of a run execute. Only a Hub run names an organization, which owns the job; without one, the
  *  job is the signed-in user's own. */
-export type HarborExecution = { mode: "local" } | { mode: "hosted"; organization?: string } | { mode: "runta" };
+type HarborExecution = { mode: "local" } | { mode: "hosted"; organization?: string } | { mode: "runta" };
 
 interface ResolveOptions {
   cwd: string;
