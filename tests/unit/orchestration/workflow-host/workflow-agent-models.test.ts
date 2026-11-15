@@ -122,22 +122,26 @@ test("the viewer and request resolver follow the same live record, persona, brie
   }
 })
 
-test.each(["model", "effort"] as const)("an authored %s fixes only that field and retains the selected model's options", async (field) => {
+test.each(["model", "effort"] as const)("an authored %s sets only that field, the persona's profile setting fills the other, and a person's persona setting wins", async (field) => {
   const defaults: RoleSettings = field === "model"
     ? { "brief.demo.build.at.build.model": { model: "record-model" } }
     : { "brief.demo.build.at.build.effort": { effort: "low" } }
   const providerOptions = { openai: { text_verbosity: "low" as const } }
-  const capture = roleCapture(["record-model", "persona-model", "workflow-model"], {
+  const capture = roleCapture(["record-model", "persona-model", "workflow-model", "person-model"], {
     "workflow-agent": { model: "workflow-model", effort: "medium" },
     explorer: { model: "persona-model", effort: "high", provider_options: providerOptions },
   })
-  const roles = await resolveSessionRoles({ defaults, overrides: {} }, capture, "/scratch", ["explorer"])
-  const selected = resolveWorkflowAgentRole(agent, roles, "explorer")
-  expect(selected).toMatchObject(field === "model"
-    ? { model: "record-model", effort: "medium" }
-    : { model: "persona-model", effort: "low", providerOptions })
-  const displayed = sessionServingSelection(await publishedRoles({ defaults, overrides: {} }, capture) ?? undefined)
-  expect(displayed).toMatchObject({ model: selected?.model, effort: selected?.effort })
+  const personas = new Map([["build", { roles: ["explorer"] }]])
+  const locals: readonly RoleSettings[] = [{}, { explorer: { model: "person-model", effort: "medium" } }]
+  for (const local of locals) {
+    const roles = await resolveSessionRoles({ defaults: {}, overrides: local }, capture, "/scratch", ["explorer"], { defaults, overrides: {} }, personas)
+    const selected = resolveWorkflowAgentRole(agent, roles, "explorer")
+    expect(selected).toMatchObject("explorer" in local ? { model: "person-model", effort: "medium" }
+      : field === "model" ? { model: "record-model", effort: "high", providerOptions }
+      : { model: "persona-model", effort: "low", providerOptions })
+    const displayed = sessionServingSelection(await publishedRoles({ defaults, overrides: {} }, capture, { defaults: {}, overrides: local }) ?? undefined)
+    expect(displayed).toMatchObject({ model: selected?.model, effort: selected?.effort })
+  }
 })
 
 test.each([false, true])("does not refuse a launch with no model, pending=%s", async (pending) => {

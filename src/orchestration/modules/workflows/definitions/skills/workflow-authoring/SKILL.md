@@ -143,7 +143,7 @@ Call `models` before setting `model` or `effort`. Read `rows` in `columns` order
 
 Join `modelTiers` by model id and effort. `qualityTier`, `speedTier`, and `costTier` range from 1 to 10; higher means better quality, faster speed, or lower cost. Read absence and effort notes. These are not role tiers.
 
-Trade quality against cost and speed. Authored fields override defaults and session changes. Defaults never use the chat's model; they follow
+Trade quality against cost and speed. Authored fields are defaults a person can change. Unset fields never use the chat's model; they follow
 {{if:subagent}}
 persona settings, then
 {{end}}

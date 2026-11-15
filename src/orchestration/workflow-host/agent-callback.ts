@@ -22,7 +22,7 @@ import type { AgentHostContextOptions } from "../runner/types.js"
 import { CONTINUATION_MESSAGES } from "../agent-runtime/continuation-messages.js"
 import { readAuthorizedRestoredWait, readChatTurnEndEvidence } from "../session/chat-session-run-evidence.js"
 import type { SessionFactWriter } from "../session/session-fact-writer.js"
-import { resolveWorkflowAgentRole } from "../config/role-selection.js"
+import { personaRoleChain, resolveWorkflowAgentRole } from "../config/role-selection.js"
 import type { RoleResolver } from "../config/roles.js"
 import { createReconnectNoticeConnectionStateHandler } from "../agent-runtime/agent-resilience.js"
 import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
@@ -259,6 +259,7 @@ export function createWorkerCallback(
     const resolveRoles = createSessionRoleResolver({
       reader: opts.projectionReader, projectRoot, sessionId, userDataRoot: opts.userDataRoot,
       capture: opts.captureProviderConnection, requiredRoleIds: new Set(persona?.role ? [persona.role] : []),
+      personas: new Map([[attempt.definitionId, { roles: personaRoleChain(persona?.role) }]]),
     })
     const foregroundBashHold = createForegroundBashHoldController((ids) => { resources.projection?.updateForegroundBash(ids) })
     try {

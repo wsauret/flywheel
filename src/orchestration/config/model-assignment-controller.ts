@@ -21,12 +21,11 @@ import {
   resolveModelAssignment,
 } from "./model-assignments.js";
 import { saveModelAssignment } from "./model-selection.js";
-import { isBriefSlot, slotLabel, type AgentPersonaRoles } from "./role-selection.js";
+import { isBriefSlot, roleSlot, slotLabel, type AgentPersonaRoles } from "./role-selection.js";
 import { parentRoleId } from "./roles.js";
 import type { RoleSettingEntry as RoleAssignmentEntry, RoleSettings, RoleAssignments, RoleAssignmentSnapshot } from "../session/schemas.js";
-import { ensureSessionRoleSnapshot, captureRoleAssignments } from "./session-role-resolver.js";
-import { fixedSaveRefusal, briefAtAssignmentRow, briefAtEffortOptions, briefAtModelOptions, briefAtSeat } from "./brief-at-seat.js";
-import { isProfileModelRole } from "../../protocol/brief-role-id.js";
+import { ensureSessionRoleSnapshot, captureRoleAssignments, withInheritedRoles } from "./session-role-resolver.js";
+import { briefRoleId, isProfileModelRole, parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { Schema } from "effect";
 
 /** Persistent brief seats are retained for compatibility, not editable defaults. */
@@ -93,7 +92,10 @@ function createDefaultsController(deps: ModelAssignmentControllerDeps): ModelAss
 
   // The defaults hold no run, so the record seat of an agent is its brief
   // seat.
-  const seatOf = (slot: ModelSelectionSlot) => briefAtSeat(slot)?.brief ?? slot;
+  const seatOf = (slot: ModelSelectionSlot) => {
+    const selector = parseBriefRoleId(slot.roleId);
+    return selector?.definitionId === undefined ? slot : roleSlot(briefRoleId(selector.briefId));
+  };
 
   async function loadAssignments(slots: readonly ModelSelectionSlot[]): Promise<readonly ModelAssignmentRow[]> {
     const rows = await listModelAssignments({ ...configDeps, slots: slots.map(seatOf) });
@@ -148,10 +150,7 @@ function createSessionController(
       sessionId,
     });
     const snapshot = (await roleCaptureStore.read(sessionId))?.roleAssignments ?? { defaults: {}, overrides: transient };
-    return inheritedRoles ? {
-      defaults: inheritedRoles.defaults,
-      overrides: { ...inheritedRoles.overrides, ...snapshot.overrides },
-    } : snapshot;
+    return inheritedRoles ? withInheritedRoles(inheritedRoles, snapshot) : snapshot;
   };
 
   async function snapshotConfigDeps(
@@ -170,47 +169,19 @@ function createSessionController(
 
   async function loadAssignments(slots: readonly ModelSelectionSlot[]): Promise<readonly ModelAssignmentRow[]> {
     const snapshot = await readSnapshot();
-    const seats = slots.map((slot) => briefAtSeat(slot, snapshot));
-    const rows = await listModelAssignments(await snapshotConfigDeps(snapshot, slots));
-    return rows.map((row, index) => {
-      const seat = seats[index];
-      const slot = slots[index];
-      return seat === undefined || slot === undefined ? row : briefAtAssignmentRow(row, slot, seat);
-    });
-  }
-
-  async function effectiveSeat(slot: ModelSelectionSlot, snapshot: RoleAssignmentSnapshot, model: string | null) {
-    const seat = briefAtSeat(slot, snapshot);
-    if (seat?.fixed === undefined) return seat;
-    const preview = seat.fixed.fields === "effort" && model != null
-      ? { ...snapshot, overrides: { ...snapshot.overrides, [slot.roleId]: { ...snapshot.overrides[slot.roleId], model } } }
-      : snapshot;
-    const [pair] = await listModelAssignments(await snapshotConfigDeps(preview, [slot]));
-    return { ...seat, fixed: { ...seat.fixed, pair: pair ?? seat.fixed.pair } };
+    return listModelAssignments(await snapshotConfigDeps(snapshot, slots));
   }
 
   return {
     loadAssignments,
     async listModelOptions(slot) {
-      const snapshot = await readSnapshot();
-      const seat = briefAtSeat(slot, snapshot);
-      const rows = await listModelOptionsForSlot(slot, await snapshotConfigDeps(snapshot));
-      return seat === undefined ? rows : briefAtModelOptions(rows, slot, seat);
+      return listModelOptionsForSlot(slot, await snapshotConfigDeps(await readSnapshot()));
     },
     async listEffortOptions(slot, model) {
-      const snapshot = await readSnapshot();
-      const seat = await effectiveSeat(slot, snapshot, model);
-      const rows = await listEffortOptionsForSlot(slot, model, await snapshotConfigDeps(snapshot));
-      return seat === undefined ? rows : briefAtEffortOptions(rows, slot, seat, model);
+      return listEffortOptionsForSlot(slot, model, await snapshotConfigDeps(await readSnapshot()));
     },
     async saveEffort(requested, model, effort) {
       const snapshot = await readSnapshot();
-      const seat = await effectiveSeat(requested, snapshot, model);
-      // A person's change of an agent record whose file fixed a field is an
-      // override of its fixed seat, which reaches only the other field.
-      const fixed = seat?.fixed;
-      const refusal = fixed === undefined ? undefined : fixedSaveRefusal(fixed, model, effort);
-      if (refusal !== undefined) throw new Error(refusal);
       if (isProfileModelRole(requested.roleId) && !inheritedRoles) {
         await saveModelAssignment(requested, normalizeAssignmentPatch({ model, effort }), configDeps);
         await deps.afterGlobalConfigWrite?.();
@@ -236,11 +207,7 @@ function createSessionController(
       await roleCaptureStore.updateRoleAssignment(
         sessionId,
         slot.roleId,
-        {
-          ...(fixed?.fields === "both" || fixed?.fields === "model" ? {} : { model }),
-          ...(fixed?.fields === "both" || fixed?.fields === "effort" ? {} : { effort }),
-          ...carried,
-        },
+        { model, effort, ...carried },
       );
       return { label: slotLabel(slot) };
     },

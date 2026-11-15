@@ -168,7 +168,7 @@ export async function listModelOptionsForSlot(
       selectable: true,
       current: isCurrentModel && !isInheriting,
       efforts,
-      effort: effectiveOptionEffort(efforts, current.setting?.fixedEffort ?? current.effort),
+      effort: effectiveOptionEffort(efforts, current.setting?.defaultEffort ?? current.effort),
       providers: selectedRoute?.providers ?? [],
       ...(eligibility?.catalog?.kind === "available" ? { catalogProvenance: eligibility.catalog.provenance } : {}),
     });
@@ -306,12 +306,12 @@ function assignmentSettings(deps: ModelConfigDeps) {
   const profile = profileRoleSettings(deps.config.profiles[deps.authProfileId?.() ?? ""]?.roles, deps.roleEnvironment);
   return effectiveRoleAssignments(deps.sessionRoleAssignments ?? { defaults: {}, overrides: {} }, Object.fromEntries(Object.entries(profile).map(([id, role]) => [id, {
     model: role.model, effort: role.effort, providerOptions: role.provider_options,
-  }])));
+  }])), deps.agentPersonas);
 }
 
 function assignmentRoles(deps: ModelConfigDeps, available: ReadonlyMap<ModelFamily, ReadonlySet<string>>, options: TierResolutionOptions, requested: ReadonlySet<string>) {
   const profile = profileRoleSettings(deps.config.profiles[deps.authProfileId?.() ?? ""]?.roles, deps.roleEnvironment);
-  return previewSessionRoles(deps.sessionRoleAssignments ?? { defaults: {}, overrides: {} }, profile, available, options, requested);
+  return previewSessionRoles(deps.sessionRoleAssignments ?? { defaults: {}, overrides: {} }, profile, available, options, requested, deps.agentPersonas);
 }
 
 async function effortOptionsForModel(model: string, options: TierResolutionOptions): Promise<readonly ModelSelectionEffort[]> {

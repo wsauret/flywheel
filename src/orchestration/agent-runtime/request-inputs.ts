@@ -457,7 +457,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
     const standing = passesSpentPreferences(options) ? capture?.standing : undefined;
     const resolved = capture && options.requestSelection
       ? await resolveCapturedRole(authored.roleId ?? "chat", {
-        model: setting.model, effort: setting.effort, provider_options: setting.providerOptions, fixedEffort: authored.setting?.fixedEffort,
+        model: setting.model, effort: setting.effort, provider_options: setting.providerOptions, defaultEffort: authored.setting?.defaultEffort,
       }, { selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes }, options.userDataRoot,
       standing)
       : undefined;

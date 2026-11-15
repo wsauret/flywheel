@@ -10,8 +10,8 @@ import { isBriefId, isWorkflowLocalId } from "../infra/workflow-identifiers.js"
  *  `brief.<briefId>.persona.<role>`. An agent record of a workflow file that
  *  sets its own `model` or `effort` also has a record seat
  *  `brief.<briefId>.at.<definitionId>` (refer to {@link briefAtRoleId}) and
- *  one fixed seat, which only the launch writes (refer to
- *  {@link briefFixedRoleId}). Each of these seats has the Workflow Agent as
+ *  one default seat, which only the launch writes (refer to
+ *  {@link briefDefaultRoleId}). Each of these seats has the Workflow Agent as
  *  its parent. Every client uses this codec because two spellings of the
  *  same key silently stop a session from honoring overrides. */
 
@@ -28,37 +28,39 @@ export function briefPersonaRoleId(briefId: string, personaRole: string): string
 /** Format the record seat of one agent record:
  *  brief.<briefId>.at.<definitionId>. A session's role view holds it, with
  *  the pair that the record's agents run on, for each record that has a
- *  fixed seat, and a client opens it as the seat of a running agent. */
+ *  default seat, and a client opens it as the seat of a running agent. */
 export function briefAtRoleId(briefId: string, definitionId: string): string {
   return `${BRIEF_ROLE_PREFIX}${briefId}${AT_MARKER}${definitionId}`
 }
 
-/** The fields of one agent record that its workflow file fixed: both, or
- *  only one. */
-export type FixedBriefFields = "both" | "model" | "effort"
+/** The fields of one agent record that its workflow file or launch set as
+ *  the record's default: both, or only one. */
+export type BriefDefaultFields = "both" | "model" | "effort"
 
-/** Format the fixed seat of one agent record: its record seat, with `.model`
- *  or `.effort` after it when the file fixed only that field. Its entry holds
- *  the pair that the launch bound for the record; the fields that the id
- *  names are the file's choice, and no seat setting reaches them. */
-export function briefFixedRoleId(briefId: string, definitionId: string, fixed: FixedBriefFields): string {
-  return fixed === "both" ? briefAtRoleId(briefId, definitionId) : `${briefAtRoleId(briefId, definitionId)}.${fixed}`
+/** Format the default seat of one agent record: its record seat, with
+ *  `.model` or `.effort` after it when the file set only that field. Its
+ *  entry holds the fields that the launch bound for the record. They are the
+ *  record's default for the run, and a setting that a person saves for the
+ *  agent or its workflow ranks above them. Runs store these ids, so their
+ *  spelling never changes. */
+export function briefDefaultRoleId(briefId: string, definitionId: string, fields: BriefDefaultFields): string {
+  return fields === "both" ? briefAtRoleId(briefId, definitionId) : `${briefAtRoleId(briefId, definitionId)}.${fields}`
 }
 
 /** What a `brief.` role id selects: the agents that run the brief `briefId`,
  *  or, when `personaRole` is present, one persona under that brief. When
  *  `definitionId` is present, it selects the agents of that one agent
- *  record, and `fixed` names the fields that its fixed seat holds. A brief id
+ *  record, and `defaultFields` names the fields that its default seat holds. A brief id
  *  passes the workflow brief-id codec, so a malformed key is no brief
  *  selector at all rather than a brief selector with a strange id. */
 export type BriefRoleSelector =
-  | { readonly briefId: string; readonly personaRole?: string; readonly definitionId?: never; readonly fixed?: never }
-  | { readonly briefId: string; readonly personaRole?: never; readonly definitionId: string; readonly fixed: FixedBriefFields }
+  | { readonly briefId: string; readonly personaRole?: string; readonly definitionId?: never; readonly defaultFields?: never }
+  | { readonly briefId: string; readonly personaRole?: never; readonly definitionId: string; readonly defaultFields: BriefDefaultFields }
 
 const BRIEF_ROLE_PREFIX = "brief."
 const PERSONA_MARKER = ".persona."
 const AT_MARKER = ".at."
-/** Split a record id from the field that a seat fixes, when it fixes one. */
+/** Split a record id from the one field that its default seat sets, when it sets one. */
 const RECORD = /^([^.]+)(?:\.(model|effort))?$/
 
 export function parseBriefRoleId(roleId: string): BriefRoleSelector | undefined {
@@ -70,8 +72,8 @@ export function parseBriefRoleId(roleId: string): BriefRoleSelector | undefined 
     const record = at < 0 ? null : RECORD.exec(scoped.slice(at + AT_MARKER.length))
     const definitionId = record?.[1]
     if (definitionId !== undefined && isWorkflowLocalId(definitionId) && isBriefId(scoped.slice(0, at))) {
-      const fixed = record?.[2] === "model" || record?.[2] === "effort" ? record[2] : "both"
-      return { briefId: scoped.slice(0, at), definitionId, fixed }
+      const defaultFields = record?.[2] === "model" || record?.[2] === "effort" ? record[2] : "both"
+      return { briefId: scoped.slice(0, at), definitionId, defaultFields }
     }
     return isBriefId(scoped) ? { briefId: scoped } : undefined
   }

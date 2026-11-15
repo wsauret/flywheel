@@ -113,7 +113,7 @@ export type RequestModelSelection = {
   readonly model?: string;
   readonly effort?: string;
   readonly providerOptions?: import("../../infra/llm/provider-options.js").ProviderRequestOptions;
-  readonly setting?: import("../session/schemas.js").RoleSettingEntry & { readonly fixedEffort?: string };
+  readonly setting?: import("../session/schemas.js").RoleSettingEntry & { readonly defaultEffort?: string };
   readonly capture?: { readonly runtime: ModelRuntimeCapture; readonly connection?: ProviderConnectionCapture };
 };
 

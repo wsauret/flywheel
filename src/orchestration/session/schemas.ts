@@ -115,8 +115,8 @@ export function recoverRoleAssignmentSnapshot(
     const selector = parseBriefRoleId(roleId);
     if (selector?.definitionId === undefined) continue;
     defaults[roleId] = {
-      ...(selector.fixed === "effort" ? {} : { model: entry.model, ...(entry.providerOptions ? { providerOptions: entry.providerOptions } : {}) }),
-      ...(selector.fixed === "model" ? {} : { effort: entry.effort }),
+      ...(selector.defaultFields === "effort" ? {} : { model: entry.model, ...(entry.providerOptions ? { providerOptions: entry.providerOptions } : {}) }),
+      ...(selector.defaultFields === "model" ? {} : { effort: entry.effort }),
     };
   }
   return { defaults, overrides: normalizeRoleAssignments(historical.overrides) };

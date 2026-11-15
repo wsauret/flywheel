@@ -36,15 +36,20 @@ function requireResolvedRole(roles: ResolvedRoles, roleId: RoleId): ResolvedRole
 }
 
 /** The model and effort of one agent of a workflow: its record seat, which
- *  holds the pair that its file or launch fixed; then, for an agent that
+ *  holds a person's setting for the agent or the workflow's default for it; then, for an agent that
  *  runs as a persona, the seat of that persona under its brief and the
  *  persona's own seats, as a subagent dispatch of the persona reads them
  *  (refer to {@link resolveSubagentRole}); then its brief seat; then the
  *  Workflow Agent. */
 export function resolveWorkflowAgentRole(agent: Pick<AttemptRow, "briefId" | "definitionId">, roles: ResolvedRoles, personaRole?: string): ResolvedRole | undefined {
+  return activeServingSeat({ ...agent, personaRoles: personaRoleChain(personaRole) }, (roleId) => roles.get(roleId)).selection;
+}
+
+/** The roles whose seats an agent that runs as the persona of `personaRole`
+ *  reads: that role, then its parent. */
+export function personaRoleChain(personaRole: string | undefined): readonly string[] {
   const parent = personaRole === undefined ? undefined : parentRoleId(personaRole);
-  const personaRoles = personaRole === undefined ? [] : [personaRole, ...(parent === undefined ? [] : [parent])];
-  return activeServingSeat({ ...agent, personaRoles }, (roleId) => roles.get(roleId)).selection;
+  return personaRole === undefined ? [] : [personaRole, ...(parent === undefined ? [] : [parent])];
 }
 
 /** Resolve a subagent persona through exact brief and global subtype seats, then their explicit parent seat. */

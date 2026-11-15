@@ -139,19 +139,18 @@ describe("session assignment settings", () => {
     expect(readFileSync(configPath).equals(before)).toBe(true)
   })
 
-  it.each(["gpt-6-astra", "lost-model"])("preserves fixed launch effort over %s and writes only unfixed fields to the session", async (model) => {
+  it.each(["gpt-6-astra", "lost-model"])("keeps a workflow's default effort over %s until a person saves another pair", async (model) => {
     const { manager, store, configPath } = setup()
-    const fixed = { "brief.plan.at.worker.effort": { effort: "low" } }
-    const { id, inheritedRoles } = await publishMember(manager, store, { name: "fixed", workflowDefinitionId: "plan", initialRoles: fixed })
+    const authored = { "brief.plan.at.worker.effort": { effort: "low" } }
+    const { id, inheritedRoles } = await publishMember(manager, store, { name: "default-effort", workflowDefinitionId: "plan", initialRoles: authored })
     const seat = roleSlot("brief.plan.at.worker")
     const api = controller(manager, id, configPath, { "workflow-agent": { model, effort: "high" } }, models, {}, inheritedRoles)
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: model === "lost-model" ? "gpt-6.1-sol" : model, effort: "low" })
     expect((await api.listModelOptions(seat)).find((row) => row.current)?.effort).toBe("low")
-    await expect(api.saveEffort(seat, "gpt-6-luna", "high")).rejects.toThrow("sets the effort")
-    await api.saveEffort(seat, "gpt-6-luna", "low")
+    await api.saveEffort(seat, "gpt-6-luna", "high")
     expect(readFileSync(configPath, "utf8")).toBe("")
-    expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "gpt-6-luna" } } })
-    expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6-luna", effort: "low" })
+    expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "gpt-6-luna", effort: "high" } } })
+    expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6-luna", effort: "high" })
     await api.resetDefaults([seat], () => true)
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: model === "lost-model" ? "gpt-6.1-sol" : model, effort: "low" })
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: {} })
@@ -175,10 +174,10 @@ describe("session assignment settings", () => {
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" })
   })
 
-  it("saves a selectable model at its mapped fixed effort without losing the authored effort", async () => {
+  it("offers a model that cannot take the workflow's default effort at an effort it supports", async () => {
     const { manager, store, configPath } = setup()
-    const fixed = { "brief.plan.at.worker.effort": { effort: "high" } }
-    const { id, inheritedRoles } = await publishMember(manager, store, { name: "fixed-effort", workflowDefinitionId: "plan", initialRoles: fixed })
+    const authored = { "brief.plan.at.worker.effort": { effort: "high" } }
+    const { id, inheritedRoles } = await publishMember(manager, store, { name: "default-effort", workflowDefinitionId: "plan", initialRoles: authored })
     const low = modelInfo("openai", "custom-low", "fixture", 2, 8, "2026-10-01", { reasoningEfforts: ["low"] })
     const api = controller(manager, id, configPath, {}, [...models, "custom-low"], {
       modelInfos: new Map([...metadata.modelInfos, ["custom-low", low]]),
@@ -189,9 +188,10 @@ describe("session assignment settings", () => {
     expect(offered).toMatchObject({ selectable: true, effort: "low", efforts: ["low"] })
     expect(await api.listEffortOptions(seat, "custom-low")).toContainEqual(expect.objectContaining({ selectable: true, effort: "low" }))
     await api.saveEffort(seat, "custom-low", "low")
-    expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "custom-low" } } })
+    expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "custom-low", effort: "low" } } })
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "custom-low", effort: "low" })
-    expect((await api.listModelOptions(seat)).find((row) => row.model === "gpt-6.1-sol")).toMatchObject({ selectable: true, effort: "high" })
+    // The person's pair now serves whole, so its effort is the suggestion.
+    expect((await api.listModelOptions(seat)).find((row) => row.model === "gpt-6.1-sol")).toMatchObject({ selectable: true, effort: "low" })
     await api.saveEffort(seat, "gpt-6.1-sol", "high")
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6.1-sol", effort: "high" })
     expect(readFileSync(configPath, "utf8")).toBe("")
@@ -207,25 +207,45 @@ describe("session assignment settings", () => {
     expect((await api.loadAssignments([roleSlot("reviewer-design")]))[0]).toMatchObject({ model: "gpt-6-astra", effort: "high" })
   })
 
-  it.each(["model", "both"] as const)("shows the reachable fallback for an unavailable fixed %s without changing the authored fields", async (fields) => {
+  it.each([
+    ["model", "gpt-6-astra"], ["both", "gpt-6-astra"], ["model", "lost-model"], ["both", "lost-model"],
+  ] as const)("offers every model and effort over a workflow's default %s of %s, and an inherit returns to the default", async (fields, model) => {
     const { manager, store, configPath } = setup()
-    const fixed = { [fields === "both" ? "brief.plan.at.worker" : "brief.plan.at.worker.model"]: {
-      model: "lost-model", ...(fields === "both" ? { effort: "high" } : {}),
+    const authored = { [fields === "both" ? "brief.plan.at.worker" : "brief.plan.at.worker.model"]: {
+      model, ...(fields === "both" ? { effort: "high" } : {}),
     } }
-    const { id, inheritedRoles } = await publishMember(manager, store, { name: "fixed-model", workflowDefinitionId: "plan", initialRoles: fixed })
+    const { id, inheritedRoles } = await publishMember(manager, store, { name: "default-model", workflowDefinitionId: "plan", initialRoles: authored })
     const seat = roleSlot("brief.plan.at.worker")
     const api = controller(manager, id, configPath, {}, models, {}, inheritedRoles)
+    const reading = createRoleAssignmentReader({
+      readSession: (sessionId) => manager.read(sessionId),
+      inheritedRoles: async () => inheritedRoles,
+      capture: async () => roleCapture(models, {}),
+      personas: async () => new Map(),
+      childRole: async () => undefined,
+      workflowSeat: async () => ({ briefId: "plan", definitionId: "worker" }),
+      userDataRoot: "/scratch",
+    })
+    const serving = async () => sessionServingSelection(await reading(id) ?? undefined)
+    const reachable = model === "lost-model" ? "gpt-6.1-sol" : model
+    // A default pair whose model is unreachable serves the fallback at its own effort.
+    const authoredPair = { model: reachable, effort: fields === "both" && model === reachable ? "high" : "medium" }
     const options = await api.listModelOptions(seat)
     expect(options.map((row) => row.model)).not.toContain("lost-model")
-    expect(options.find((row) => row.current)).toMatchObject({ model: "gpt-6.1-sol", selectable: fields === "model" })
-    expect(options.filter((row) => row.model !== "gpt-6.1-sol").every((row) => !row.selectable)).toBe(true)
-    if (fields === "model") {
-      await api.saveEffort(seat, "gpt-6.1-sol", "high")
-      expect(readFileSync(configPath, "utf8")).toBe("")
-    } else {
-      await expect(api.saveEffort(seat, "gpt-6.1-sol", "low")).rejects.toThrow("sets the model and the effort")
-    }
-    expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: fields === "model" ? { "brief.plan.at.worker": { effort: "high" } } : {} })
+    expect(options.filter((row) => row.model !== null).map((row) => row.model).toSorted()).toEqual(models.toSorted())
+    expect(options.every((row) => row.selectable && row.reason === undefined)).toBe(true)
+    expect(options.find((row) => row.current)).toMatchObject({ model: reachable, effort: authoredPair.effort })
+    expect((await api.listEffortOptions(seat, "gpt-6-luna")).every((row) => row.selectable)).toBe(true)
+    expect(await serving()).toEqual(authoredPair)
+    await api.saveEffort(seat, "gpt-6-luna", "low")
+    expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "gpt-6-luna", effort: "low" } } })
+    expect(await serving()).toEqual({ model: "gpt-6-luna", effort: "low" })
+    expect((await api.listModelOptions(seat)).find((row) => row.current)).toMatchObject({ model: "gpt-6-luna", effort: "low" })
+    await api.saveEffort(seat, null, null)
+    expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: {} })
+    expect(await serving()).toEqual(authoredPair)
+    expect((await api.loadAssignments([seat]))[0]).toMatchObject(authoredPair)
+    expect(readFileSync(configPath, "utf8")).toBe("")
   })
 
   it.each(["persona child", "persona workflow agent"] as const)("a %s's picker marks the serving selection that its viewer shows, before and after a viewer edit", async (kind) => {
