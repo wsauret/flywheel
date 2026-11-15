@@ -1,0 +1,16 @@
+bench/harbor/configs/shipped-first-tone-examples.toml
+  h_4b47e9e4a8b456 1-137
+bench/harbor/configs/shipped-first-tone-prose.toml
+  h_4b47e9e4a8b456 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "83088c7cbd9c2ef8da13750d37a5f01baf0fa413",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
