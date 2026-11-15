@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { AsyncLocalStorage } from "node:async_hooks"
-import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
+import { LEAD_AGGREGATE_ID } from "../../../../../src/orchestration/modules/lead/facts.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
 import { leadChatsCursor } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
@@ -20,8 +21,8 @@ afterEach(async () => {
 
 const conversation = supervisorConversationFixture(() => ctx)
 
-function harness(projectionReader = asAsyncEventReadSurface(ctx.store)) {
-  const lead = leadHarness(ctx, { projectionReader })
+function harness(projectionReader = asAsyncEventReadSurface(ctx.store), onStored = ctx.store.onStored) {
+  const lead = leadHarness(ctx, { projectionReader, onStored })
   supervisor = lead.supervisor
   disposeAll.push(lead.dispose)
   return lead
@@ -82,16 +83,31 @@ type Collection = readonly unknown[] | ReadonlyMap<unknown, unknown> | ReadonlyS
  *  the load of the machine. */
 const nextTurn = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve) })
 
-/** The in-memory collection work that `work` causes until the next turn after it: each step of a Map or Set
- *  iterator, including the iteration that a spread or a copy does, each element that an array search or transform
- *  visits, and each Map or Set lookup. A scan, a copy, or a linear search over the started chats shows as a count that
- *  grows with them. Only calls in the asynchronous context of `work` count: its continuations, the store commits that
- *  it starts, and the deliveries of their stored facts. Work of earlier setup, or of another test file that the same
- *  process runs, never counts, also when it lands inside the window. */
+/** The frame of a call from the lead module's own source. */
+const LEAD_SOURCE = /[\\/]src[\\/]orchestration[\\/]modules[\\/]lead[\\/]/
+
+/** The in-memory collection work that the lead module's own code does for `work` until the next turn after it: each
+ *  step of a Map or Set iterator, including the iteration that a spread or a copy does, each element that an array
+ *  search or transform visits, and each Map or Set lookup. A scan, a copy, or a linear search over the started chats
+ *  shows as a count that grows with them. Only calls in the asynchronous context of `work` count, so work of earlier
+ *  setup, or of another test file that the same process runs, never counts, also when it lands inside the window.
+ *  Only calls from the lead module count: a kernel read that the lead starts, such as a read of the session manager,
+ *  catches up shared projections over whatever other writers committed meanwhile, so its cost depends on the timing
+ *  of the machine, and the kernel's own work-count tests bound it. */
 async function collectionWorkOf(work: () => Promise<void>): Promise<number> {
   const scope = new AsyncLocalStorage<true>()
   let steps = 0
-  const count = (cost: number): void => { if (scope.getStore()) steps += cost }
+  // True while a count reads its caller, whose stack text the patched methods must not count.
+  let counting = false
+  const count = (cost: number): void => {
+    if (cost === 0 || counting || !scope.getStore()) return
+    counting = true
+    try {
+      // Frames: the message, this function, the patched method, then its caller, past any native frame such as Array.from.
+      const caller = new Error("the caller of a collection call").stack?.split("\n").slice(3).find((frame) => !frame.includes("(native"))
+      if (caller !== undefined && LEAD_SOURCE.test(caller)) steps += cost
+    } finally { counting = false }
+  }
   const restores: (() => void)[] = []
   const size = (receiver: Collection): number => Array.isArray(receiver) ? receiver.length : "size" in receiver ? receiver.size : 0
   /** Replaces one built-in method with one that counts `cost(receiver)` and, for an iterator, each step it takes. */
@@ -126,12 +142,37 @@ async function collectionWorkOf(work: () => Promise<void>): Promise<number> {
   }
 }
 
+/** The store's broadcast, except that while `hold` is on it keeps back the facts of the lead aggregate, so that a test
+ *  can `deliver` each of them as a batch of its own. Every other fact passes at once. A commit batch of the store
+ *  holds whatever every writer committed at the same time, and each listener walks the whole batch, so only a
+ *  delivery of one fact has a cost that is the same in every run. */
+function heldLeadFacts(onStored: (listener: (events: readonly StoredFact[]) => void) => () => void) {
+  const listeners = new Set<(events: readonly StoredFact[]) => void>()
+  let held: StoredFact[] | undefined
+  const notify = (events: readonly StoredFact[]): void => { for (const listener of listeners) listener(events) }
+  const unsubscribe = onStored((events) => {
+    if (!held) return notify(events)
+    held.push(...events.filter((event) => event.aggregateId === LEAD_AGGREGATE_ID))
+    const passing = events.filter((event) => event.aggregateId !== LEAD_AGGREGATE_ID)
+    if (passing.length > 0) notify(passing)
+  })
+  return {
+    onStored(listener: (events: readonly StoredFact[]) => void) { listeners.add(listener); return () => { listeners.delete(listener) } },
+    hold() { held = [] },
+    /** Ends the hold and answers the facts that it kept, in commit order. */
+    release(): readonly StoredFact[] { const facts = held ?? []; held = undefined; return facts },
+    deliver(fact: StoredFact) { notify([fact]) },
+    [Symbol.dispose]: unsubscribe,
+  }
+}
+
 test("each applied lead fact costs work that grows with neither the started chats nor the history", async () => {
-  /** The state requests, the watches, and the collection work of the service and the journal for each of `facts`
-   *  chats that another writer starts and forwards to, and checks again, after `existing` ones. */
+  /** The state requests, the watches, and the collection work of the service, the control part, and the journal for
+   *  each of `facts` chats that another writer starts and forwards to, and checks again, after `existing` ones. */
   async function costs(existing: number, facts: number) {
     const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
-    const { service, openLead, trace, dispose } = harness(counter.reader)
+    using stored = heldLeadFacts(ctx.store.onStored)
+    const { service, openLead, trace, dispose } = harness(counter.reader, stored.onStored)
     // Only this run's service observes its facts.
     disposeAll = disposeAll.filter((other) => other !== dispose)
     await using _service = { [Symbol.asyncDispose]: dispose }
@@ -154,10 +195,17 @@ test("each applied lead fact costs work that grows with neither the started chat
       const forwarded = { type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: sessionId, newChat: true, sourceEntryIds } } as const
       counter.take()
       const watches = trace.length
+      stored.hold()
+      await writer.append({ type: "lead.chat.started", payload: { sessionId, sourceEntryIds } })
+      await writer.append(forwarded)
+      const applied = stored.release()
+      expect(applied.map((fact) => fact.type)).toEqual(["lead.chat.started", "lead.request.forwarded"])
       const steps = await collectionWorkOf(async () => {
-        await writer.append({ type: "lead.chat.started", payload: { sessionId, sourceEntryIds } })
-        await writer.append(forwarded)
-        // The journal already holds this forward, so the holds rule skips it.
+        for (const fact of applied) {
+          stored.deliver(fact)
+          await nextTurn()
+        }
+        // The journal already holds this forward, so the holds rule skips it, and nothing commits.
         expect(await writer.append(forwarded)).toBe(false)
       })
       expect(service.journal.state().forwarded(sessionId, sourceEntryIds)).toBe(true)

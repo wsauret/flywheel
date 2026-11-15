@@ -14,7 +14,7 @@ import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../../../src/orchestratio
 import { prepareLocalTokenizer } from "../../../../src/infra/local-tokenizer.js";
 import * as localTokenizer from "../../../../src/infra/local-tokenizer.js";
 import { tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
-import { renderSystemPrompt, stableSystemPrompt, SYSTEM_PROMPT_SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { renderSystemPrompt, stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
 const fullModules = () => composeRealmModuleSnapshot({ moduleIds: SHIPPED_MODULES.map((module) => module.id) });
 interface UnknownRecord { [key: string]: unknown }

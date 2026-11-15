@@ -26,12 +26,14 @@ export function accountOpenChat(ctx: SupervisorTestContext): ControlSessionPorts
 
 /** A started lead service and control part over the real store, session manager, supervisor, and session event
  *  notices, with a switch for the module selection. The control part writes through `control`, by default the same
- *  connection as the service and the standalone open of a chat, as in a standalone composition. Each notice that a chat's runner receives is recorded by
- *  the chat's id, and `trace` records each watch and each forward in order. A runner starts once `runnerStartup`
- *  resolves, so every message that lands before then commits as the chat's entry. `dispose` ends the service, the
- *  control part, the notices, and the supervisor. */
-export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projectionReader?: AsyncEventStateReadSurface; readonly runnerStartup?: Promise<void>; readonly control?: ControlConnection & { readonly openChat?: ControlSessionPorts["openChat"] } } = {}) {
+ *  connection as the service and the standalone open of a chat, as in a standalone composition. `onStored`, by default
+ *  the store's broadcast, delivers stored batches to the service and to the default control connection. Each notice
+ *  that a chat's runner receives is recorded by the chat's id, and `trace` records each watch and each forward in
+ *  order. A runner starts once `runnerStartup` resolves, so every message that lands before then commits as the chat's
+ *  entry. `dispose` ends the service, the control part, the notices, and the supervisor. */
+export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projectionReader?: AsyncEventStateReadSurface; readonly onStored?: ControlConnection["onStored"]; readonly runnerStartup?: Promise<void>; readonly control?: ControlConnection & { readonly openChat?: ControlSessionPorts["openChat"] } } = {}) {
   const projectionReader = setup.projectionReader ?? asAsyncEventReadSurface(ctx.store)
+  const onStored = setup.onStored ?? ctx.store.onStored
   const notices: string[] = []
   const trace: string[] = []
   const patches: RuntimeUiPatchInput[] = []
@@ -48,7 +50,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   const service = createLeadService({
     projectionReader,
     eventWriter: ctx.store,
-    onStored: ctx.store.onStored,
+    onStored,
     publish,
     sessionManager: ctx.manager,
     sessionStore: ctx.sessionStore,
@@ -66,7 +68,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     enabled: () => enabled,
   })
   const control = createLeadControl({
-    ...(setup.control ?? { projectionReader: asAsyncEventReadSurface(ctx.store), eventWriter: ctx.store, onStored: ctx.store.onStored }),
+    ...(setup.control ?? { projectionReader: asAsyncEventReadSurface(ctx.store), eventWriter: ctx.store, onStored }),
     publish,
     onSelectionChanged,
     modules: NO_MODULE_SERVICES,
