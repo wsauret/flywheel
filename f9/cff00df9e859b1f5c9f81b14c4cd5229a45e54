@@ -1,0 +1,26 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 10,28,61,66,68,79,199-214,278,309
+bench/harbor/harbor-config.ts
+  h_4b47e9e4a8b456 24-28,75-76,90,121-123,219-226,295,306,329,341,354-355,367-368,370,381
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 2,118-121,128-129,132,153-156,163,165,173-188,234-253
+bench/harbor/run-harbor.sh
+  h_4b47e9e4a8b456 50-51,64-76,115
+bench/harbor/run-harbor.ts
+  h_4b47e9e4a8b456 12,34-35,101,110,112,223,247-248,277-281,352,403-415,523-526,561-564,567,569,687
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 38,134,137-153
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 6,43,103-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f9cff00df9e859b1f5c9f81b14c4cd5229a45e54",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
