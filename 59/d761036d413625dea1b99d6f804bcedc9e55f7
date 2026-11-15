@@ -1,0 +1,19 @@
+src/infra/output/turn-start.ts
+  s_0d536ae5637d7f::t_fba61d6d5848e4 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "59d761036d413625dea1b99d6f804bcedc9e55f7",
+  "prompts": {},
+  "sessions": {
+    "s_0d536ae5637d7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "054b86e9-d761-4bd9-a4a3-8c91989e0b7a",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
