@@ -1,0 +1,38 @@
+bench/harbor/configs/oc-parity-ledger.json
+  h_4b47e9e4a8b456 58-59,176-220
+bench/harbor/configs/shipped-prefix-conventions.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-prefix-intro-tone.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-prefix-notone.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-prefix-tasks.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-prefix-tone.toml
+  h_4b47e9e4a8b456 1-102
+src/orchestration/agent-runtime/diagnostic-parity.ts
+  h_4b47e9e4a8b456 32-57,102-103
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 608
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 274-277
+src/orchestration/config/loader.ts
+  h_4b47e9e4a8b456 405-407,409,415,429-430,434-435
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 8,201
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 396-409
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 131-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "451dc7a9da10d4fad61405d007f53a783b08b4c1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
