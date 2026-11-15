@@ -1,0 +1,14 @@
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6bb97252fd5878045f428905728e10feda2a8a27",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
