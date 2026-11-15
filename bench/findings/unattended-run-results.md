@@ -1,8 +1,8 @@
 # Unattended run rules: prompt rules, tool descriptions, and a bounded review
 
-Dates: 2026-11-11 (E4 and E2) and 2026-11-14 (E5). Harness: `bench/harbor/` on Harbor Hub (hosted trials, launcher guide in `bench/harbor/README.md`). The raw rounds, trial stores, and analysis scripts are not in the repository. They stay in local spike worktrees and session scratch directories on the machine that ran them. This page names each run by its round name and run id only.
+Dates: 2026-11-11 (E4 and E2) and 2026-11-14 (E5 and E5 on Haiku). Harness: `bench/harbor/` on Harbor Hub (hosted trials, launcher guide in `bench/harbor/README.md`). The raw rounds, trial stores, and analysis scripts are not in the repository. They stay in local spike worktrees and session scratch directories on the machine that ran them. This page names each run by its round name and run id only.
 
-Three experiments test changes to an unattended chat, the purpose that a benchmark trial runs (`flywheel --headless --acp --unattended`). E4 asks whether one prompt rule or shorter tool descriptions make Haiku do the same work with fewer model requests. E2 asks whether a self-review rule or one bounded reviewer subagent makes Haiku pass more repository tasks, and at what cost. E5 asks, on GPT-6 Luna and with an A/A control, whether a narrower probe rule or E4's deliverable-first rule cuts requests. Each arm is one change against a control that runs at the same time from the same base commit. A decision rule was fixed before any trial of each experiment ran.
+Three experiments test changes to an unattended chat, the purpose that a benchmark trial runs (`flywheel --headless --acp --unattended`). E4 asks whether one prompt rule or shorter tool descriptions make Haiku do the same work with fewer model requests. E2 asks whether a self-review rule or one bounded reviewer subagent makes Haiku pass more repository tasks, and at what cost. E5 asks, on GPT-6 Luna and with an A/A control, whether a narrower probe rule or E4's deliverable-first rule cuts requests, and E5 on Haiku asks the probe question again on Haiku 5.5. Each arm is one change against a control that runs at the same time from the same base commit. A decision rule was fixed before any trial of each experiment ran.
 
 ## Decisions
 
@@ -19,6 +19,7 @@ Results (2026-11-14), with the adoption decision left to the maintainer:
 - E5 probe-scoped rule: does not pass stage 1. Requests fell 3.6% with an interval that reaches no change, inside the A/A interval.
 - E5 deliverable-first rule: does not pass stage 1. Requests did not change (ratio 0.997).
 - Because neither treatment passed, stage 2 on DeepSWE did not run.
+- E5 on Haiku probe-scoped rule: does not pass stage 1 on `claude-haiku-5.5` either. Requests fell 4.6% [0.878, 1.022], below the bar of 13.2% that the A/A gap of 6.6% sets.
 
 ## E4: prompt rules and tool descriptions on Terminal-Bench
 
@@ -233,3 +234,64 @@ All four rounds finalized with 84 of 84 trials scored, and `hill.ts rerun` liste
 - A reduction smaller than about 9% is not detectable at 14 tasks x 6 trials, as the A/A interval shows. The probe-scoped point estimate of 3.6% sits inside that band, so "no effect" is not shown either.
 - The probe measure is a text pattern over shell commands and was corrected once after a hand check of control trials, before any ratio was read: the first pattern missed interpreter flags before `-c` (as in `python3 -I -c`) and `Rscript -e`. It still misses probe scripts that a shell command writes and runs under another path.
 - The result covers GPT-6 Luna at high effort on 14 Terminal-Bench tasks only. It says nothing about Haiku, other models, repository tasks, interactive chat, or the two rules together.
+
+## E5 on Haiku: probe rule scope on Claude Haiku 5.5
+
+### Question
+
+On GPT-6 Luna the probe-scoped rule cut requests by 3.6% [0.896, 1.031], inside the A/A noise. But Luna ran 2.08 probe scripts per control trial before the first deliverable, while the audit that found the gap counted 4.05 on Haiku. Does the same probe-scoped rule cut model requests on `claude-haiku-5.5`, the model where the gap was found, without a loss of passes, measured against an A/A noise floor?
+
+### Setup
+
+- Model: `claude-haiku-5.5` at high effort for every role on Flywheel's Claude engine route, with the `claude setup-token` tokens of the maintainer's two Claude subscription accounts (both keychain items passed, so that a usage limit on one account moves the trial to the other). Subagents on, with the advisor, reviewer, and ship types off. Skills on. Arm config `bench/harbor/configs/haiku-high-agent-types.toml` (sha256 `ec6b20bd0b90b20f8b8f59effae45e578d3e9b7fd00dfc21e7dfcb797efff74c`), the file that E4 used, the same file in every arm.
+- Tasks: the 14 tasks of the `subset` split of `terminal-bench-2.1`, 6 trials per task, 84 trials per arm, 252 measured trials.
+- Base commit and arms: the E5 arm branches, unchanged. Control, control-b (A/A), and probe-scoped, each on `72455098b` with its E5 arm commit on top; the deliverable-first arm did not run. All three arms started together, at concurrency 6 each.
+- Uptake: one bring-up trial per arm on `kv-store-grpc` passed in every arm. Its first system prompt holds the new probe text in probe-scoped only and the original probe text in control and control-b. With the change and the session ids removed, each arm's first system prompt equals control's, and all 14 tool registrations have the same description and input schema hashes as control.
+- Quota preflight: the launcher reported both tokens as "not checked", because a login token is its own account of the trial profile, which no host store has observed. It gave no other quota state.
+- Accounting: billed spend was $0. All 5,504 recorded usage entries, bring-ups and the rerun included, settled as included subscription use. List-equivalent spend was at least $3.05 (control, one timed-out trial priced from its last snapshot), $3.30 (control-b), and $2.66 (probe-scoped, with its rerun), about $9.03 in total with the bring-ups. The stores record one Claude engine credential lineage per trial, not which of the two accounts served it. Harbor Hub compute charges are not known.
+- Runs (round, run id, Hub job): `e5h-control` `flywheel-terminal-bench-2.1-claude-haiku-5.5-2026-11-14T21-26-05.208Z` (`5578207d`); `e5h-control-b` `flywheel-terminal-bench-2.1-claude-haiku-5.5-2026-11-14T21-26-05.213Z` (`e417da4f`); `e5h-probe-scoped` `flywheel-terminal-bench-2.1-claude-haiku-5.5-2026-11-14T21-26-05.224Z` (`e2feab39`), with one rerun slot (Hub job `03084f1f`). Bring-ups: Hub jobs `d19e7b9e` (control), `5d668366` (control-b), and `ad44defc` (probe-scoped).
+
+Measures: as E5, with the same metric and analysis scripts. Haiku has no `apply_patch` tool, so D1 and "after last write" count the `write` and `edit` calls only.
+
+### Decision rule (fixed before the run)
+
+1. Validity, as E5: every round finalizes, the uptake check passes, and only slots that `hill.ts rerun` lists as infrastructure losses are run again. Any billed charge stops the experiment. A usage limit on both accounts is a hard stop; a rate limit is queueing.
+2. Noise floor: the control-b request ratio to control and its interval. The gap is g = |1 - ratio(control-b)|.
+3. Probe-scoped passes when its request ratio's 90% interval excludes 1, its point reduction (1 - ratio) is at least 2g, and the quality guard holds.
+4. Quality guard: arm passes minus control passes of -1 or more is no loss, -4 or less rejects the arm, and -2 or -3 starts a rerun of the tasks that differ. A task that falls from 6/6 in control to 2/6 or lower rejects the arm unless a rerun clears it.
+5. If probe-scoped passes, the result is reported and the experiment stops there. Whether DeepSWE runs is the maintainer's decision, not part of this rule.
+
+### Results
+
+| Arm | Passes /84 (Wilson 95%) | Pass delta | Requests per trial | Request ratio [90%] | List cost per trial | Cost ratio [90%] | Mean wall (median) | Wall ratio [90%] | Timeouts |
+|---|---|---|---|---|---|---|---|---|---|
+| Control | 67 [0.70, 0.87] | | 21.7 | 1 | $0.0363 | 1 | 377 s (156 s) | 1 | 1 |
+| Control-b | 70 [0.74, 0.90] | +3 | 23.2 | 1.066 [1.016, 1.118] | $0.0392 | 1.073 [1.028, 1.116] | 378 s (172 s) | 1.058 [1.001, 1.120] | 0 |
+| Probe-scoped | 71 [0.75, 0.91] | +4 | 20.2 | 0.954 [0.878, 1.022] | $0.0316 | 0.952 [0.885, 1.019] | 340 s (166 s) | 0.966 [0.885, 1.049] | 0 |
+
+| Arm | D1 per trial | D1 ratio [90%] | After last write ratio [90%] | Probes before the first deliverable per trial | Probe ratio [90%] | Probes per trial, whole trial | Tool errors | Shell refusals | Miscalls |
+|---|---|---|---|---|---|---|---|---|---|
+| Control | 8.2 | 1 | 1 | 1.35 | 1 | 3.37 | 22 of 1,907 | 0 | 0 |
+| Control-b | 8.6 | 1.081 [0.951, 1.235] | 0.905 [0.762, 1.053] | 1.52 | 1.045 [0.875, 1.281] | 4.42 | 21 of 2,024 | 0 | 0 |
+| Probe-scoped | 9.6 | 1.061 [0.910, 1.267] | 0.875 [0.733, 1.024] | 1.40 | 0.994 [0.850, 1.181] | 4.07 | 14 of 1,773 | 0 | 0 |
+
+- Noise floor: control-b against control gives a request ratio of 1.066 [1.016, 1.118], so g = 0.066 and the bar for a treatment is a point reduction of at least 13.2% with an interval that excludes 1. The A/A interval excludes 1 itself: an interval over 14 tasks does not hold the trial-to-trial noise of two identical arms, which is why the rule uses 2g as well.
+- With the task that timed out in control left out (`mcmc-sampling-stan`), the request ratios are 1.077 (control-b) and 0.956 (probe-scoped).
+- No task fell from 6/6 in control to 2/6 or lower in any arm. The only per-task falls were one trial on `custom-memory-heap-crash` (3/6 to 2/6) in control-b and probe-scoped. This task is broken on Hub (see E4).
+- `install-windows-3.11` dominates the plain means: control used 76 requests per trial on it, control-b 75, and probe-scoped 67.
+- No trial dispatched a subagent, so every trial ran one session. The first deliverable came through the shell in 53 (control), 61 (control-b), and 54 (probe-scoped) of 84 trials.
+
+### Validity
+
+All three rounds finalized with 84 of 84 trials scored. `hill.ts rerun` listed one lost slot, a probe-scoped `cobol-modernization` trial that exited before its first model request (`NonZeroAgentExitCodeError`, 0 requests). It ran again once and passed, and the analysis uses the rerun in its place; after that the plan showed no open attempt. The uptake check passed. Billed spend was $0. Exactly three responses of 5,475 measured were not `ok`: one `output_overflow` in each arm, all on `filter-js-from-html`. No usage limit or rate limit refusal was recorded. One bring-up (control-b) was started twice, because the first push of the agent package to its build repository failed with HTTP 500 before any trial was queued.
+
+### Verdicts
+
+- Probe-scoped: does not pass stage 1. Its 4.6% request reduction is below the 13.2% bar, and its interval [0.878, 1.022] includes 1. The guard holds (+4). The mechanism did not move: probes before the first deliverable did not change (0.994 [0.850, 1.181]) and D1 did not fall. As on Luna, requests after the last write fell most (0.875 [0.733, 1.024]), inside the A/A band of 0.905.
+- The experiment stops here by the rule. The rule is not adopted by this evidence.
+
+### What the result cannot show
+
+- The noise floor is larger on Haiku than on Luna: two identical arms differ by 6.6% in requests and 7.3% in cost. A reduction smaller than about 13% is not detectable at 14 tasks x 6 trials on this model.
+- The probe measure counts 1.35 probe scripts per Haiku control trial before the first deliverable, against the audit's 4.05 with a different counting rule. A hand check of the 776 shell commands that came before the first `write` or `edit` call in the control trials flagged 170. Most of the missed probes are scripts that a shell heredoc writes into the scratch directory and that the next command runs by a relative path or a shell variable (`cd $S && python3 resid.py`). The pattern does not see these, so the probe ratio covers only part of the probing on Haiku. The rule's effect on that unseen part shows only in the request and D1 ratios, which did not move.
+- The result covers Claude Haiku 5.5 at high effort on 14 Terminal-Bench tasks only. It says nothing about other models, repository tasks, interactive chat, or the deliverable-first rule on Haiku.
