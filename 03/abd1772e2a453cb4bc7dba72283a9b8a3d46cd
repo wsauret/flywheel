@@ -1,0 +1,282 @@
+bench/chat-ab/workflow-authorship/patches/authored-forced.patch
+  h_4b47e9e4a8b456 4,6,8-10,12
+bench/chat-ab/workflow-authorship/patches/handcrafted-forced.patch
+  h_4b47e9e4a8b456 4,6,11,14-15,17-18,30,32,34,36-37
+bench/chat-ab/workflow-authorship/patches/handcrafted.patch
+  h_4b47e9e4a8b456 1-18,30,32,34,36-37
+scripts/claude-plugin-host.ts
+  h_4b47e9e4a8b456 78
+scripts/dump-prompt.ts
+  h_4b47e9e4a8b456 44-45,165-172,174,181
+src/agent-skills/implementation/SKILL.md
+  h_4b47e9e4a8b456 20,24,29-32
+src/agent-skills/test-driven-development/SKILL.md
+  h_4b47e9e4a8b456 22-23,29
+src/agent-skills/verification/SKILL.md
+  h_4b47e9e4a8b456 9,13
+src/infra/agent-assets/engineering-doctrine.md
+  h_4b47e9e4a8b456 2,14,20,22,24,35,37,39-44,46,48,50,52-54,58,60,65,67,71
+src/infra/agent-assets/session-notes.ts
+  h_4b47e9e4a8b456 26,31,35,45,47
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 4,8,14,16,18-19,22,24,26-27
+src/orchestration/agent-runtime/agent-loop-compaction-state.ts
+  h_4b47e9e4a8b456 43,57-60
+src/orchestration/agent-runtime/capability-checks.ts
+  h_4b47e9e4a8b456 13,30-31,33-34,46
+src/orchestration/agent-runtime/global-guidelines.ts
+  h_4b47e9e4a8b456 18,20-21,23
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 69,77,80,82,94,98-99,101-102,117-119,122-125,129,131-132,134-135,140,143-144,177-187,189-198,257-259,262,264,266,270,294,297,303-310
+src/orchestration/agent-runtime/session-identity-prompt.ts
+  h_4b47e9e4a8b456 15-18,21,23,25,30,32,34-35
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 21,68,71,73,101,108-109,111,225,228-230,233-234,236
+src/orchestration/agent-runtime/tools/ask-user.ts
+  h_4b47e9e4a8b456 18-21,27-28,32-33,35,53,57,61,83,94-95,98,109,115,117-119
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 6,8,10,13,17-23,26,29,37-38,53,55-56,87,89-90,114-115,117,122
+src/orchestration/agent-runtime/tools/edit.ts
+  h_4b47e9e4a8b456 15,22-24,62
+src/orchestration/agent-runtime/tools/handoff.ts
+  h_4b47e9e4a8b456 12,23,25
+src/orchestration/agent-runtime/tools/list-sessions.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/agent-runtime/tools/list.ts
+  h_4b47e9e4a8b456 59-63,65-67,74
+src/orchestration/agent-runtime/tools/message-session.ts
+  h_4b47e9e4a8b456 170-185,189,193-199,213-215,218
+src/orchestration/agent-runtime/tools/process.ts
+  h_4b47e9e4a8b456 15,18,20-21,52-68,259,264-267,273,277,291-293,295,348
+src/orchestration/agent-runtime/tools/read.ts
+  h_4b47e9e4a8b456 593,597,601,605,609,623-624,627
+src/orchestration/agent-runtime/tools/recall.ts
+  h_4b47e9e4a8b456 9-10,12-14,18-19,23
+src/orchestration/agent-runtime/tools/search.ts
+  h_4b47e9e4a8b456 46,50,54,63,68,75,79,83,87,96
+src/orchestration/agent-runtime/tools/session-checkpoint.ts
+  h_4b47e9e4a8b456 19,21-22,27,29,35
+src/orchestration/agent-runtime/tools/skill.ts
+  h_4b47e9e4a8b456 23,25-27,29,40,44,48,50-51,53,143
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 81-83,126-133,136-137,140,142,156-158,189
+src/orchestration/agent-runtime/tools/web.ts
+  h_4b47e9e4a8b456 17,26,40,53-54,66
+src/orchestration/agent-runtime/tools/workflow-tool.ts
+  h_4b47e9e4a8b456 199-200,207
+src/orchestration/agent-runtime/tools/workflow.ts
+  h_4b47e9e4a8b456 9,13,15,32,56,64
+src/orchestration/agent-runtime/tools/write.ts
+  h_4b47e9e4a8b456 41,45,56
+src/orchestration/app-service/definition-availability.ts
+  h_4b47e9e4a8b456 248-256
+src/orchestration/modules/papercuts/tools.ts
+  h_4b47e9e4a8b456 15,57
+src/orchestration/modules/subagents.ts
+  h_4b47e9e4a8b456 12,27,92-97,100-104,193,206-210,283-284,287-290
+src/orchestration/modules/subagents/agent-tasks.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/subagents/execution/prompts.ts
+  h_4b47e9e4a8b456 5,15-19,22,27-28,31,39-40,42-43,52-55,57,59,61,65,67,69,80,86,90,95
+src/orchestration/modules/subagents/tool.ts
+  h_4b47e9e4a8b456 23,27,32,37,39,42,47,59-60,97,115
+src/orchestration/modules/workflows/definitions/skills/workflow-authoring/SKILL.md
+  h_4b47e9e4a8b456 61-105
+src/orchestration/modules/workflows/definitions/skills/workflow-authoring/references/implement-briefs.md
+  h_4b47e9e4a8b456 6,8
+src/orchestration/modules/workflows/models.ts
+  h_4b47e9e4a8b456 22
+src/orchestration/modules/workflows/orchestration.ts
+  h_4b47e9e4a8b456 4-7,17-18
+src/workflows/agents/personas/explorer.md
+  h_4b47e9e4a8b456 3,11,14-16,28,30,32,41
+src/workflows/agents/personas/reviewer-mechanism.md
+  h_4b47e9e4a8b456 3
+src/workflows/agents/personas/reviewer-uat.md
+  h_4b47e9e4a8b456 3
+src/workflows/agents/registry.ts
+  h_4b47e9e4a8b456 198
+src/workflows/output-contract/envelope.ts
+  h_4b47e9e4a8b456 7,34,36
+src/workflows/output-contract/instructions.ts
+  h_4b47e9e4a8b456 13-16,47,49,52,56,63-67,70-71,75-79,86-87,90,95-98,102,117-119,130,132-133,136,138,140-142
+src/workflows/skill-render.ts
+  h_4b47e9e4a8b456 27-32,34-41,46-49,52,56,63,140,173-174
+src/workflows/skill-schema.ts
+  h_4b47e9e4a8b456 111-113
+src/workflows/vm/definition-identity.ts
+  h_4b47e9e4a8b456 414-421,455
+src/workflows/vm/persona-identity-proofs.ts
+  h_4b47e9e4a8b456 91-92,95-97,99-101,367,368-369,370-376,377-399,401,403-404,406-407,415-422,425,482-490
+src/workflows/vm/replay.ts
+  h_4b47e9e4a8b456 13,40,48,174-178,187-192,199
+src/workflows/vm/skill-identity-proofs.ts
+  h_4b47e9e4a8b456 1-52
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 36,38,75,150,186,222,224,258,332,334,390,392,429-430,466,505,542,599,638,694,698-699,737-738,793-794,830,869,941,1215,1225,1230
+tests/integration/orchestration/workflow-authoring-examples.test.ts
+  h_4b47e9e4a8b456 353,355-357
+tests/unit/infra/module-baseline-generator.ts
+  h_4b47e9e4a8b456 99-100,102-112
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 87,107-108,114,117-118,120,127,137-150,172-173,181,189-190,205-206,217,228-230,233-235,238,279-280
+tests/unit/orchestration/agent-runtime/capability-checks.test.ts
+  h_4b47e9e4a8b456 114-126
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 277-280,281-282,319
+tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+  h_4b47e9e4a8b456 457
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 432-438
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 31,46,53-54,56,58-60,80-82,84
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 62,132,193
+tests/unit/orchestration/agent-runtime/persona-tool-grants.test.ts
+  h_4b47e9e4a8b456 226,264,266,277,279-286
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 282,323,331
+tests/unit/orchestration/agent-runtime/session-notes-prompts.test.ts
+  h_4b47e9e4a8b456 47,49-51,54-56,137-138,143,148
+tests/unit/orchestration/agent-runtime/subagent/execute-construction.test.ts
+  h_4b47e9e4a8b456 204
+tests/unit/orchestration/agent-runtime/subagent/execute-general.test.ts
+  h_4b47e9e4a8b456 264
+tests/unit/orchestration/agent-runtime/subagent/execute-validation.test.ts
+  h_4b47e9e4a8b456 27,31
+tests/unit/orchestration/agent-runtime/subagent/prompts.test.ts
+  h_4b47e9e4a8b456 3-4,21,27-30,37,40,52-55,67,71,73-74,80,86,91-94,101,103,106
+tests/unit/orchestration/agent-runtime/subagent/registry.test.ts
+  h_4b47e9e4a8b456 9,11,14,18,31-32,47,51-53
+tests/unit/orchestration/agent-runtime/subagent/scope.test.ts
+  h_4b47e9e4a8b456 108
+tests/unit/orchestration/agent-runtime/subagent/tool.test.ts
+  h_4b47e9e4a8b456 8-9,63-69,74,94
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 75-77,115,139,161-162,279,284,335-336,425,432,434-439,449,468,586-587,591,632
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 61,97
+tests/unit/orchestration/agent-runtime/tools/ask-user.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/agent-runtime/tools/process.test.ts
+  h_4b47e9e4a8b456 53
+tests/unit/orchestration/agent-runtime/tools/skill.test.ts
+  h_4b47e9e4a8b456 545,551
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-background.test.ts
+  h_4b47e9e4a8b456 43
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 7-8,436-437,456-471,612
+tests/unit/orchestration/agent-runtime/tools/tools-search.test.ts
+  h_4b47e9e4a8b456 51,53
+tests/unit/orchestration/agent-runtime/tools/workflow-tool.test.ts
+  h_4b47e9e4a8b456 11,348-350,414,493-494
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 13,82-83,88-89,97,135,187-193,194-195,196-206,210-211,220-222,239-242
+tests/unit/orchestration/agent-runtime/workflow-agent-system-prompt.test.ts
+  h_4b47e9e4a8b456 10,12,18-19,40,57-59,61-62
+tests/unit/orchestration/migrations/_persona-budget.ts
+  h_4b47e9e4a8b456 101-103,124-130,131-157,184,232
+tests/unit/orchestration/module-complete-off.test.ts
+  h_4b47e9e4a8b456 65,339,342
+tests/unit/orchestration/session/session-messaging.test.ts
+  h_4b47e9e4a8b456 78,81,85-88,96
+tests/unit/orchestration/workflow-host/agent-persona.test.ts
+  h_4b47e9e4a8b456 72,123-125
+tests/unit/scripts/build-claude-plugin.test.ts
+  h_4b47e9e4a8b456 46,57-58
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 344
+tests/unit/workflows/output-contract/__snapshots__/compile.test.ts.snap
+  h_4b47e9e4a8b456 5,7,11-14,19,21-22,41,74
+tests/unit/workflows/output-contract/compile.test.ts
+  h_4b47e9e4a8b456 255-257,262-263,267-277,291,300,302,307
+tests/unit/workflows/skill-composition.test.ts
+  h_4b47e9e4a8b456 106,108-118
+tests/unit/workflows/vm/definition-identity.test.ts
+  h_4b47e9e4a8b456 30,500
+tests/unit/workflows/vm/historical-replay.test.ts
+  h_4b47e9e4a8b456 380-381,459-460,536-537
+tests/unit/workflows/vm/replay.test.ts
+  h_4b47e9e4a8b456 17,30,40,258,262,442,458,512,524-565,601
+tests/unit/workflows/workflow-prompt-hygiene.test.ts
+  h_4b47e9e4a8b456 142-143,153-154
+bench/chat-ab/workflow-authorship/patches/root-workflow-only.patch
+  h_4b47e9e4a8b456 4
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 262-266
+src/orchestration/session/conversation/tool-result-meta.ts
+  h_4b47e9e4a8b456 6,50-51,493
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 253-258,288-289,378-379
+src/orchestration/modules/subagents/execution/dispatch-deps.ts
+  h_4b47e9e4a8b456 10,56-58
+src/infra/output/structured-event-tool-results.ts
+  h_4b47e9e4a8b456 5,222-229,233,237,278-282
+src/orchestration/modules/learning.ts
+  h_4b47e9e4a8b456 67,87
+src/orchestration/modules/discovery.ts
+  h_4b47e9e4a8b456 7-8,10,28-29
+tests/unit/orchestration/agent-runtime/llm/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 113-123
+tests/unit/infra/output/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 80-89,92-96
+  h_4b47e9e4a8b456 90-91
+tests/unit/orchestration/agent-runtime/context/stale-tool-result-masker.test.ts
+  h_4b47e9e4a8b456 18-19,26-30,126,137-138,142-143
+tests/unit/orchestration/agent-runtime/llm/request-descriptor.test.ts
+  h_4b47e9e4a8b456 154-166
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 190-197
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 57,74,87,91-100,166
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 13,547-560
+tests/unit/orchestration/agent-runtime/shared-tree.test.ts
+  h_4b47e9e4a8b456 238-262
+src/orchestration/agent-runtime/tools/short-form.ts
+  h_4b47e9e4a8b456 1-54
+src/infra/tools/tool-display-registry.ts
+  h_4b47e9e4a8b456 98-99,105-106
+  h_4b47e9e4a8b456 14,100-104
+tests/unit/orchestration/session/conversation-block-projection.test.ts
+  h_4b47e9e4a8b456 445,459
+tests/unit/orchestration/modules/code-mode/code.test.ts
+  h_4b47e9e4a8b456 117-119
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 94-97,100
+src/orchestration/modules/web.ts
+  h_4b47e9e4a8b456 22
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 524-527
+src/orchestration/modules/code-mode/module.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/modules/code-mode/code-mcp.test.ts
+  h_4b47e9e4a8b456 73-74
+src/orchestration/modules/development/module.ts
+  h_4b47e9e4a8b456 107
+tests/unit/orchestration/modules/provider-claude-agent-sdk/tool-gate.test.ts
+  h_4b47e9e4a8b456 8-9,13,40
+src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
+  h_4b47e9e4a8b456 24,102,109,176-177,190,196,207,210-211,246-247,270-272,274-301
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 24,233-256
+src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+  h_4b47e9e4a8b456 12-13,32,380,388-390,392-393
+src/orchestration/session/conversation/conversation-block-projection.ts
+  h_4b47e9e4a8b456 12,617-619
+src/protocol/client/tool-run-category.ts
+  h_4b47e9e4a8b456 37-39
+tests/unit/protocol/client/tool-run-category.test.ts
+  h_4b47e9e4a8b456 30-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "03abd1772e2a453cb4bc7dba72283a9b8a3d46cd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
