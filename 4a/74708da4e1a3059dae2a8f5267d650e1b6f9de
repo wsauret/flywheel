@@ -1,0 +1,16 @@
+bench/harbor/configs/luna-t5d-finish-repair-last.toml
+  h_4b47e9e4a8b456 1-82
+bench/harbor/configs/shipped-first-t5d-finish-repair-last.toml
+  h_4b47e9e4a8b456 1-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4a74708da4e1a3059dae2a8f5267d650e1b6f9de",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
