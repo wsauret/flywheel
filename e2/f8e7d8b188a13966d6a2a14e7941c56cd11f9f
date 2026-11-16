@@ -1,0 +1,20 @@
+src/orchestration/session/session-summary-index.ts
+  h_4b47e9e4a8b456 269-270,276-281,327-333,456-483
+tests/unit/orchestration/session/_summary-index-fixtures.ts
+  h_4b47e9e4a8b456 6-7,65-82
+tests/unit/orchestration/session/session-summary-index-cost.test.ts
+  h_4b47e9e4a8b456 1-84
+tests/unit/orchestration/session/session-summary-index.test.ts
+  h_4b47e9e4a8b456 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e2f8e7d8b188a13966d6a2a14e7941c56cd11f9f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
