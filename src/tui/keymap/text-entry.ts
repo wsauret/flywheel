@@ -109,7 +109,7 @@ export interface TextEntryKeyEvent extends PrintableTextKeyEvent {
 }
 
 /** Resolves a terminal key without consuming application-owned control chords. */
-export function resolveTextEntryAction(event: TextEntryKeyEvent): TextEntryAction | undefined {
+function resolveTextEntryAction(event: TextEntryKeyEvent): TextEntryAction | undefined {
   return TEXT_ENTRY_KEY_BINDINGS.find((binding) => bindingMatches(binding, event))?.action
 }
 

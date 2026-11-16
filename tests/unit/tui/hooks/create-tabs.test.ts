@@ -7,7 +7,7 @@ import { createRoot, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
-import { createTabs, createTabState } from "../../../../src/tui/hooks/create-tabs.js"
+import { createTabState } from "../../../../src/tui/hooks/create-tabs.js"
 import type { OutputView } from "../../../../src/protocol/output-protocol-types.js"
 import type { ForegroundTarget } from "../../../../src/tui/hooks/shell-state.js"
 import type { StatusView } from "../../../../src/protocol/status-protocol-types.js"
@@ -46,6 +46,13 @@ function makeSignals(
   }, outputView }
 }
 
+/** Opens each id as a session tab, in order, the way the shell opens them. */
+function openTabs(deps: { sessions: () => readonly SessionCatalogRow[]; openSessionIds: readonly string[]; signals: ReturnType<typeof makeSignals> }) {
+  const state = createTabState({ sessions: deps.sessions, signals: deps.signals })
+  for (const id of deps.openSessionIds) state.openSessionTab(id)
+  return state.tabs
+}
+
 function question(overrides: Partial<Question> = {}): Question {
   return {
     kind: "question",
@@ -56,7 +63,7 @@ function question(overrides: Partial<Question> = {}): Question {
   }
 }
 
-describe("createTabs", () => {
+describe("createTabState", () => {
   it("phase15a pending tabs share tab order but never read runtime session state", () => {
     createRoot((dispose) => {
       const [foregroundTarget, setForegroundTarget] = createSignal<ForegroundTarget>()
@@ -87,9 +94,9 @@ describe("createTabs", () => {
       setStatuses("a", { activity: "generating", activeSubagentCount: 0, waitingOnBackgroundWork: false })
       setQuestions("b", question())
 
-      const tabs = createTabs({
+      const tabs = openTabs({
         sessions: () => [catalogRow({ id: "a" }), catalogRow({ id: "b" }), catalogRow({ id: "c" })],
-        openSessionIds: () => ["a", "b", "c"],
+        openSessionIds: ["a", "b", "c"],
         signals: makeSignals((id) => questions[id], (id) => statuses[id]),
       })
 
@@ -104,9 +111,9 @@ describe("createTabs", () => {
 
   it("treats awaiting_user with an open question as blocked but not busy", () => {
     createRoot((dispose) => {
-      const tabs = createTabs({
+      const tabs = openTabs({
         sessions: () => [catalogRow({ id: "a" })],
-        openSessionIds: () => ["a"],
+        openSessionIds: ["a"],
         signals: makeSignals(
           () => question(),
           () => ({ activity: "awaiting_user", activeSubagentCount: 0, waitingOnBackgroundWork: false }),
@@ -124,9 +131,9 @@ describe("createTabs", () => {
       // (the server publishes `question.removed` the moment it's answered), so
       // the fixture for "b" models that as an absent questionView entry rather
       // than a raw answered block for the client to filter.
-      const tabs = createTabs({
+      const tabs = openTabs({
         sessions: () => [catalogRow({ id: "a" }), catalogRow({ id: "b" }), catalogRow({ id: "c" })],
-        openSessionIds: () => ["a", "b", "c"],
+        openSessionIds: ["a", "b", "c"],
         signals: makeSignals(
           () => undefined,
           (id) => {
@@ -150,14 +157,14 @@ describe("createTabs", () => {
       signals.setForegroundId("wf")
       signals.setSessionShortTitle("Foreground Flow")
       const [oldTitle, setOldTitle] = createSignal(catalogRow({ id: "old", title: "Original description", lifecycleState: "inactive" }))
-      const tabs = createTabs({
+      const tabs = openTabs({
         sessions: () => [
           catalogRow({ id: "chat", title: "Chat Title", shortTitle: "Chat" }),
           oldTitle(),
           catalogRow({ id: "global-active", title: "Other Runtime Tab" }),
           catalogRow({ id: "wf", title: "Foreground Chat", shortTitle: "Flow" }),
         ],
-        openSessionIds: () => ["old", "chat", "wf"],
+        openSessionIds: ["old", "chat", "wf"],
         signals,
       })
 
@@ -176,7 +183,7 @@ describe("createTabs", () => {
     createRoot((dispose) => {
       const signals = makeSignals()
       signals.setForegroundId("pending-fg")
-      const tabs = createTabs({ sessions: () => [], openSessionIds: () => [], signals })
+      const tabs = openTabs({ sessions: () => [], openSessionIds: [], signals })
 
       expect(tabs()).toEqual([{
         kind: "session",

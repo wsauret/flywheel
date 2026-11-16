@@ -1,31 +1,42 @@
 import { describe, expect, it } from "bun:test"
 import { createComponent, createMemo, createRoot, createSignal } from "solid-js"
-import { createKeymap, DEFAULT_BINDINGS, parseChord } from "../../../src/tui/keymap/keymap.js"
+import { createKeymap, DEFAULT_BINDINGS } from "../../../src/tui/keymap/keymap.js"
 import { createToastPresenter } from "../../../src/tui/utils/toast-presenter.js"
 import type { RuntimeConfigView } from "../../../src/protocol/runtime-config-protocol-types.js"
 import { configView } from "../../helpers/runtime-views.js"
 
 const { KeymapProvider, presentKeymapIssues, useKeymap } = await import("../../../src/tui/context/keymap.js")
 
-describe("parseChord", () => {
+/** The chord a single accepted override gives its command. */
+function overrideChord(spec: string, commandId: (typeof DEFAULT_BINDINGS)[number]["commandId"] = "help"): string {
+  const { keymap, issues } = createKeymap({ [commandId]: spec })
+  expect(issues).toEqual([])
+  return keymap.chordFor(commandId)
+}
+
+describe("override chord parsing", () => {
   it("canonicalizes simple and modified chords", () => {
-    expect(parseChord("ctrl+o")).toEqual({ ok: true, chord: "ctrl+o" })
-    expect(parseChord("pageup")).toEqual({ ok: true, chord: "pageup" })
-    expect(parseChord("escape")).toEqual({ ok: true, chord: "escape" })
-    expect(parseChord("ctrl+shift+p")).toEqual({ ok: true, chord: "ctrl+shift+p" })
+    expect(overrideChord("ctrl+o")).toBe("ctrl+o")
+    expect(overrideChord("pageup", "output.page-up")).toBe("pageup")
+    expect(overrideChord("escape")).toBe("escape")
+    expect(overrideChord("ctrl+shift+p")).toBe("ctrl+shift+p")
   })
 
   it("normalizes case, whitespace, and modifier order", () => {
-    expect(parseChord(" CTRL + Shift+P ")).toEqual({ ok: true, chord: "ctrl+shift+p" })
-    expect(parseChord("shift+ctrl+p")).toEqual({ ok: true, chord: "ctrl+shift+p" })
-    expect(parseChord("meta+ctrl+home")).toEqual({ ok: true, chord: "ctrl+meta+home" })
+    expect(overrideChord(" CTRL + Shift+P ")).toBe("ctrl+shift+p")
+    expect(overrideChord("shift+ctrl+p")).toBe("ctrl+shift+p")
+    expect(overrideChord("meta+ctrl+home")).toBe("ctrl+meta+home")
   })
 
-  it("rejects malformed chords with a reason", () => {
+  it("rejects malformed chords with a reason and keeps the default", () => {
     for (const bad of ["", "ctrl+", "ctrl", "ctrl+shift", "a+b", "ctrl+bogus", "ctrl+ctrl+p"]) {
-      const result = parseChord(bad)
-      expect(result.ok).toBe(false)
-      if (!result.ok) expect(result.reason.length).toBeGreaterThan(0)
+      const { keymap, issues } = createKeymap({ help: bad })
+      expect(issues).toHaveLength(1)
+      const prefix = `Ignoring [keybindings] entry help = "${bad}": `
+      expect(issues[0]).toStartWith(prefix)
+      // A non-empty parse reason sits between the prefix and the ". " before the usage hint.
+      expect(issues[0]!.slice(prefix.length)).toMatch(/^[^.]+\. /)
+      expect(keymap.chordFor("help")).toBe("ctrl+p")
     }
   })
 })

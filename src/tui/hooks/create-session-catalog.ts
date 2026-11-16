@@ -281,7 +281,7 @@ export function createSessionCatalog(deps: {
  *  both built from the same snapshot/patch stream, so an ordered id with no cache
  *  row is a divergence between two Flywheel-owned structures - an invariant
  *  violation, not a droppable row (ARCH-BOUNDARIES-004: fail at the reader, not silently). */
-export function resolveCatalogRows(
+function resolveCatalogRows(
   order: readonly string[],
   cache: Readonly<SessionCatalogCache>,
 ): readonly SessionCatalogRow[] {

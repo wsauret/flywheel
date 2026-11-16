@@ -35,9 +35,9 @@ function lineStyle(theme: TuiTheme, width: number): LineStyle {
   return { fg, bold: stBold, fit: (chunks) => truncateChunks(chunks, width, ellipsis) }
 }
 
-export const NO_RUNS_COPY = "No experiments yet."
-export const BASELINE_PENDING_COPY = "baseline pending"
-export const CONFIDENCE_PENDING_COPY = "confidence pending"
+const NO_RUNS_COPY = "No experiments yet."
+const BASELINE_PENDING_COPY = "baseline pending"
+const CONFIDENCE_PENDING_COPY = "confidence pending"
 
 /** Format a number with comma-separated thousands: 15586 -> "15,586" */
 function commas(n: number): string {

@@ -55,7 +55,7 @@ export interface Keymap {
   chordFor(commandId: KeymapCommandId): string
 }
 
-export type ChordParseResult =
+type ChordParseResult =
   | { readonly ok: true; readonly chord: string }
   | { readonly ok: false; readonly reason: string }
 
@@ -83,7 +83,7 @@ function canonical(modifiers: ReadonlySet<string>, key: string): string {
 }
 
 /** Parse a chord spec like "ctrl+shift+p" into its canonical form. */
-export function parseChord(spec: string): ChordParseResult {
+function parseChord(spec: string): ChordParseResult {
   const parts = spec.trim().toLowerCase().split("+").map((part) => part.trim())
   const modifiers = new Set<string>()
   const keys: string[] = []

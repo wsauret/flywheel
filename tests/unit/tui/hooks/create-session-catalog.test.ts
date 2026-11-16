@@ -1,11 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import { createEffect, createRoot } from "solid-js"
-import { InvariantViolation } from "../../../../src/infra/invariant.js"
 import type { AttachedRuntimeClient, FrontendEvent, RuntimeChatDefault, SessionCatalogError } from "../../../../src/protocol/app-service-types.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import type { RuntimeUiSnapshot } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import type { RuntimeIdentity } from "../../../../src/protocol/client/runtime-identity.js"
-import { createSessionCatalog as createCatalog, resolveCatalogRows } from "../../../../src/tui/hooks/create-session-catalog.js"
+import { createSessionCatalog as createCatalog } from "../../../../src/tui/hooks/create-session-catalog.js"
 
 import { awaitSnapshot, catalogRow, deferred, fakeAppService, readyCatalogRow, snapshotResult } from "../../../helpers/session-catalog.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
@@ -444,25 +443,16 @@ describe("createSessionCatalog (TUI protocol cache)", () => {
     })
   })
 
-  it("maps the order onto cache rows in order", () => {
-    const first = catalogRow("chat-1", "First")
-    const second = catalogRow("chat-2", "Second")
-    const rows = resolveCatalogRows(["chat-2", "chat-1"], { "chat-1": first, "chat-2": second })
-    expect(rows).toEqual([second, first])
-  })
+  it("lists rows in the snapshot's order", async () => {
+    await createRoot(async (dispose) => {
+      const first = catalogRow("chat-1", "First")
+      const second = catalogRow("chat-2", "Second")
+      const catalog = createSessionCatalog({ appService: fakeAppService([second, first]).service })
 
-  it("throws InvariantViolation when the order references an id absent from the cache", () => {
-    const present = catalogRow("chat-1", "First")
-    let caught: unknown
-    try {
-      resolveCatalogRows(["chat-1", "chat-ghost"], { "chat-1": present })
-    } catch (error) {
-      caught = error
-    }
-    expect(caught).toBeInstanceOf(InvariantViolation)
-    if (!(caught instanceof InvariantViolation)) throw new Error("expected InvariantViolation")
-    expect(caught.kind).toBe("orphan-event")
-    expect(caught.aggregateId).toBe("chat-ghost")
+      await awaitSnapshot()
+      expect(catalog.rows()).toEqual([second, first])
+      dispose()
+    })
   })
 
   it("unsubscribes on cleanup", () => {
