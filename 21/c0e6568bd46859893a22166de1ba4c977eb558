@@ -1,0 +1,36 @@
+src/orchestration/app-service/runtime-background-snapshot.ts
+  h_4b47e9e4a8b456 1,6,30-36
+src/orchestration/session/execution-evidence.ts
+  h_4b47e9e4a8b456 8,21-25,27,29,39-40,43-44
+src/orchestration/session/session-catalog-read.ts
+  h_4b47e9e4a8b456 10,109-111,118
+src/orchestration/session/session-metadata-projection.ts
+  h_4b47e9e4a8b456 51-54,58,96-98,113-122,131,155-157,163-180
+src/orchestration/session/session-metadata-store.ts
+  h_4b47e9e4a8b456 1,19,152,155,159-161,192,236-237
+tests/helpers/entries-visited.ts
+  h_4b47e9e4a8b456 1-2,5-16,19-21,30-34
+tests/unit/orchestration/app-service/output-live-derived-equivalence.test.ts
+  h_4b47e9e4a8b456 11,71
+tests/unit/orchestration/app-service/runtime-background-snapshot.test.ts
+  h_4b47e9e4a8b456 13-15,17-43,205-244
+tests/unit/orchestration/session/projection-invariants.test.ts
+  h_4b47e9e4a8b456 10,19-29,105,140,152,162,192,196,198,213,221-223,234,275
+tests/unit/orchestration/session/session-auth-profile.test.ts
+  h_4b47e9e4a8b456 5,268
+tests/unit/orchestration/session/session-metadata-store-reads.test.ts
+  h_4b47e9e4a8b456 6-7,102-128
+tests/unit/orchestration/session/session-role-assignments.test.ts
+  h_4b47e9e4a8b456 6,57,66,84-86,93,104,111,158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "21c0e6568bd46859893a22166de1ba4c977eb558",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
