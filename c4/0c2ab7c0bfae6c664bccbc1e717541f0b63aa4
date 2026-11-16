@@ -1,0 +1,82 @@
+src/orchestration/modules/mcp/claude-engine.ts
+  h_4b47e9e4a8b456 44-45,48-49,52,55,87,96-97,111,203,315
+src/orchestration/modules/mcp/cli/mcp.ts
+  h_4b47e9e4a8b456 16,149
+src/orchestration/modules/mcp/credentials.ts
+  h_4b47e9e4a8b456 91,126
+src/orchestration/modules/mcp/oauth.ts
+  h_4b47e9e4a8b456 276,289,300,310
+src/orchestration/modules/mcp/protocol.ts
+  h_4b47e9e4a8b456 85
+src/orchestration/modules/mcp/service.ts
+  h_4b47e9e4a8b456 11,73
+src/orchestration/modules/provider-claude-agent-sdk/account-usage.ts
+  h_4b47e9e4a8b456 171,201
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.ts
+  h_4b47e9e4a8b456 16,20,25,47
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.ts
+  h_4b47e9e4a8b456 61
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.ts
+  h_4b47e9e4a8b456 106,130,178
+src/orchestration/modules/provider-claude-agent-sdk/assistant-assembler.ts
+  h_4b47e9e4a8b456 54
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 137
+src/orchestration/modules/provider-claude-agent-sdk/usage-reader.ts
+  h_4b47e9e4a8b456 3,20,23,29,43,65
+tests/helpers/hosted-engine-text.ts
+  h_4b47e9e4a8b456 1-28
+tests/integration/mcp-claude-engine.test.ts
+  h_4b47e9e4a8b456 9-10,88,118-122
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-attribution.test.ts
+  h_4b47e9e4a8b456 8,10,18,36
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-notices.test.ts
+  h_4b47e9e4a8b456 13-14,16,19,27,137,186,211,243,259,296,319
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-recovery.test.ts
+  h_4b47e9e4a8b456 8,15,29,53,73,127,135,140,146,182,194,216,254,297,307,327,342
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+  h_4b47e9e4a8b456 11-13,17,22,30,74,100,134,160-161,183,197,200,217,239,250,277,298,322,337,406,427,440,459,486,501,536,601,609,647-648
+tests/unit/orchestration/agent-runtime/llm/provider-history.test.ts
+  h_4b47e9e4a8b456 10-11
+tests/unit/orchestration/agent-runtime/tree-host-key.test.ts
+  h_4b47e9e4a8b456 16-17,24,35,38-39,56-79,260-261,263,266,280,284,288
+tests/unit/orchestration/modules/mcp/claude-engine.test.ts
+  h_4b47e9e4a8b456 2,56-59,104-112,147,173
+tests/unit/orchestration/modules/mcp/credentials.test.ts
+  h_4b47e9e4a8b456 45-48
+tests/unit/orchestration/modules/mcp/oauth.test.ts
+  h_4b47e9e4a8b456 60-65,67-73
+tests/unit/orchestration/modules/mcp/protocol.test.ts
+  h_4b47e9e4a8b456 14,154,156,159,161-164
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 16-17
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts
+  h_4b47e9e4a8b456 1,17-18,21,30-31,265,400,458
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.test.ts
+  h_4b47e9e4a8b456 7-8,21-28
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.test.ts
+  h_4b47e9e4a8b456 4,28
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.test.ts
+  h_4b47e9e4a8b456 1,4,10-11,42,51,68,92,101
+tests/unit/orchestration/modules/provider-claude-agent-sdk/assistant-assembler.test.ts
+  h_4b47e9e4a8b456 3,33
+tests/unit/orchestration/modules/provider-claude-agent-sdk/module.test.ts
+  h_4b47e9e4a8b456 9,601-602,620
+tests/unit/orchestration/modules/provider-claude-agent-sdk/profile-conversions.test.ts
+  h_4b47e9e4a8b456 223
+tests/unit/orchestration/session/conversation-tree-context.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/session/provider-request-audit-reconstruction.test.ts
+  h_4b47e9e4a8b456 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c40c2ab7c0bfae6c664bccbc1e717541f0b63aa4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
