@@ -1,0 +1,36 @@
+src/infra/runtime-event-factory.ts
+  h_4b47e9e4a8b456 5-7,11-12
+src/infra/runtime-event-types.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/app-service/runtime-event-delivery.ts
+  h_4b47e9e4a8b456 1,23-24
+src/protocol/client/runtime-event-intake.ts
+  h_4b47e9e4a8b456 2,29-33,35-37,39-41,43-57,59-60
+src/protocol/runtime-client-diagnostics.ts
+  h_4b47e9e4a8b456 3
+tests/helpers/runtime-events.ts
+  h_4b47e9e4a8b456 1-13
+tests/unit/infra/runtime-facts-invariants.test.ts
+  h_4b47e9e4a8b456 325-332,335-336
+tests/unit/orchestration/agent-runtime/runtime-event-construction.test.ts
+  h_4b47e9e4a8b456 1-68
+tests/unit/orchestration/app-service/project-execution-channel.test.ts
+  h_4b47e9e4a8b456 365,387
+tests/unit/orchestration/app-service/runtime-event-stream.test.ts
+  h_4b47e9e4a8b456 211-235
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 5,65
+tests/unit/protocol/client/runtime-event-intake.test.ts
+  h_4b47e9e4a8b456 118-119,122,125-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7364939c9c0687e269dff1dc0b2bd33f316b4119",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
