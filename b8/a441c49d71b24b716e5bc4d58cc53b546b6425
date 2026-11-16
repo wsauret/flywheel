@@ -1,0 +1,30 @@
+src/orchestration/agent-runtime/tools/bash-command-policy.ts
+  h_4b47e9e4a8b456 1,6,165-172,252-269,272,276-302,324-325,350-357,361,363,410-411,414-415
+src/orchestration/agent-runtime/tools/bash-file-reads.ts
+  h_4b47e9e4a8b456 17,48-50,52-53,112-122,124
+src/orchestration/agent-runtime/tools/bash-parser.ts
+  h_4b47e9e4a8b456 67-68,70,73-74,79,82-83,85,90,93-95,97-99,102,104-107,111-115,117-119,121
+src/orchestration/agent-runtime/tools/bash-write-wrappers.ts
+  h_4b47e9e4a8b456 60-65,68-83,93-100,103-105,109-111,116,121-122,124,130-164
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 12,14,200-204,214,302,306,343,347-349,351-352
+tests/unit/orchestration/agent-runtime/tools/_bash-fixtures.ts
+  h_4b47e9e4a8b456 1,4-16
+tests/unit/orchestration/agent-runtime/tools/bash-command-policy.test.ts
+  h_4b47e9e4a8b456 234-287,495
+tests/unit/orchestration/agent-runtime/tools/tools-bash-background.test.ts
+  h_4b47e9e4a8b456 7,15,533,535-536,614
+tests/unit/orchestration/agent-runtime/tools/tools-bash.test.ts
+  h_4b47e9e4a8b456 5,9,15,17-18,40,44-47,65-71,119,338,503-520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b8a441c49d71b24b716e5bc4d58cc53b546b6425",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
