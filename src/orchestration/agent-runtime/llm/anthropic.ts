@@ -48,7 +48,7 @@ import { anthropicProviderMetadata } from "./anthropic-provider-metadata.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
 import { STREAM_IDLE_TIMEOUT_PATIENT_MS } from "./stream-watchdog.js";
-import { resolveAdapterTransport, sendStreamingRequest } from "./request-timing.js";
+import { sendStreamingRequest, timingFetch } from "./request-timing.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
 import { ensureEventLoopLagSampler } from "../../../infra/event-loop-lag.js";
 import type { RawContentBlockDelta, ThinkingDelta } from "@anthropic-ai/sdk/resources/messages.js";
@@ -283,7 +283,6 @@ export async function createAnthropicAdapter(
     /** models.dev namespace selected by the provider contribution. */ catalogId?: string;
     /** The client runs its agent on a shared engine host (`prepareAnthropicRequest`). */ hosted?: boolean;
     /** Per-request additional headers (e.g. Copilot's `X-Initiator`). */ extraHeaders?: (options: StreamOptions) => StringHeaders | Promise<StringHeaders>;
-    /** Transport hook used to reset idle sockets. */ resetIdleConnections?: () => void | Promise<void>;
     candidate?: AccessProviderCandidate;
     /** The availability owner bound to the account this adapter spends from.
      *  The Anthropic API's rate-limit headers fold into it, so a throttled
@@ -292,11 +291,10 @@ export async function createAnthropicAdapter(
     availability?: ProviderAvailability;
   },
 ): Promise<ConnectedClient> {
-  const transport = resolveAdapterTransport({ client: overrides?.operations, resetIdleConnections: overrides?.resetIdleConnections });
   // SDK 1.x sends `apiKey` as `Authorization: Bearer`; OpenCode Go rejects that with a 401, so the key keeps its
   // `x-api-key` header. Null credentials stop the SDK from reading ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN.
   const operations = overrides?.operations ?? operationsFromAnthropicClient(
-    new Anthropic({ apiKey: null, authToken: null, defaultHeaders: { "x-api-key": Redacted.value(apiKey) }, maxRetries: 0, timeout: ANTHROPIC_SDK_HEADER_TIMEOUT_MS, fetch: transport.fetch, ...(overrides?.baseURL ? { baseURL: overrides.baseURL } : {}) }),
+    new Anthropic({ apiKey: null, authToken: null, defaultHeaders: { "x-api-key": Redacted.value(apiKey) }, maxRetries: 0, timeout: ANTHROPIC_SDK_HEADER_TIMEOUT_MS, fetch: timingFetch, ...(overrides?.baseURL ? { baseURL: overrides.baseURL } : {}) }),
   );
   const accessProvider = overrides?.accessProvider ?? "anthropic_api";
   const extraHeaders = overrides?.extraHeaders;

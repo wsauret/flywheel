@@ -262,7 +262,6 @@ describe("automatic provider chain resolution", () => {
 
     const request = requestEvents(client, {
       ...streamOptions,
-      attemptProducedEvidence: () => false,
       providerOptions: { openai: { speed: "fast" } },
     });
     const failure = await request.catch((error) => error);

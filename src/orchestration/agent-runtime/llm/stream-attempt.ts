@@ -7,14 +7,9 @@ import type { StreamOptions } from "./types.js";
 
 export interface StreamAttemptStartEvent {
   readonly kind: "stream_attempt_start";
-  readonly attempt: 1;
-  readonly maxAttempts: 1;
-  readonly isFinalAttempt: true;
-  readonly sawThinkingStall: false;
   /** The attempt requests reasoning off because it is the last resample of a response that repeated itself
    *  (`RepetitionGuard`). */
   readonly disableReasoning: boolean;
-  readonly isRetry: false;
 }
 
 interface StreamAttemptDeadlineOptions extends Omit<StreamDeadlineOptions, "onTimeout"> {
@@ -108,15 +103,7 @@ export async function* withStreamAttempt<Event>(
   };
 
   try {
-    yield {
-      kind: "stream_attempt_start",
-      attempt: 1,
-      maxAttempts: 1,
-      isFinalAttempt: true,
-      sawThinkingStall: false,
-      disableReasoning: options.repetitionGuard === "reasoning_off",
-      isRetry: false,
-    };
+    yield { kind: "stream_attempt_start", disableReasoning: options.repetitionGuard === "reasoning_off" };
     try {
       for await (const event of run(attempt)) {
         const resumeDeadline = deadline?.pause();

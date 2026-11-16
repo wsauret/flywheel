@@ -86,10 +86,6 @@ export interface ProviderRequestAuditWriter {
     error?: ProviderRequestAuditResponseInput["error"];
     transportContext?: ProviderRequestAuditResponseInput["transportContext"];
   }): void | Promise<void>;
-  recordAbandonedResponse?(handle: ProviderRequestAuditHandle, input: {
-    outcome: ProviderRequestAuditResponseInput["outcome"];
-    error: ProviderRequestAuditResponseInput["error"];
-  }): void | Promise<void>;
   recordUsage(
     handle: ProviderRequestAuditHandle,
     input: Omit<ProviderRequestUsageInput, "requestId" | "identity" | "turn" | "workflowAttemptId" | "parentToolUseId">,
@@ -210,16 +206,6 @@ export function createProviderRequestAuditWriter(
     });
   }
 
-  async function recordAbandonedResponse(
-    handle: ProviderRequestAuditHandle,
-    input: {
-      outcome: ProviderRequestAuditResponseInput["outcome"];
-      error: ProviderRequestAuditResponseInput["error"];
-    },
-  ): Promise<void> {
-    await recordResponse(handle, input);
-  }
-
   async function recordUsage(
     handle: ProviderRequestAuditHandle,
     input: Parameters<ProviderRequestAuditWriter["recordUsage"]>[1],
@@ -258,5 +244,5 @@ export function createProviderRequestAuditWriter(
 
   return {
     ...(deps.resolveTreeLeafEntryId ? { captureTreeLeaf: deps.resolveTreeLeafEntryId } : {}),
-    recordRequest, recordDispatch, recordResponse, recordAbandonedResponse, recordUsage, recordStreamStarted, recordStreamEvent, recordStreamCompleted, recordStreamSummary };
+    recordRequest, recordDispatch, recordResponse, recordUsage, recordStreamStarted, recordStreamEvent, recordStreamCompleted, recordStreamSummary };
 }

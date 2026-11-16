@@ -423,7 +423,6 @@ describe("streamAssistantTurn provider request audit", () => {
         return handle;
       },
       recordResponse() {},
-      recordAbandonedResponse() { return Promise.resolve(); },
       recordUsage(handle, input) {
         usages.push({ requestId: handle.requestId, input });
       },

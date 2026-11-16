@@ -52,12 +52,6 @@ export function composeAttributionAudit(audit: ProviderRequestAuditWriter, regis
       try { await audit.recordResponse(handle, input) }
       finally { registry.retire(handle.requestId) }
     },
-    ...(audit.recordAbandonedResponse ? {
-      async recordAbandonedResponse(handle: ProviderRequestAuditHandle, input: Parameters<NonNullable<ProviderRequestAuditWriter["recordAbandonedResponse"]>>[1]) {
-        try { await audit.recordAbandonedResponse?.(handle, input) }
-        finally { registry.retire(handle.requestId) }
-      },
-    } : {}),
   }
 }
 

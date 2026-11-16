@@ -344,7 +344,7 @@ export async function createOpenAIChatCompletionsAdapter(
   defaultModel: string,
   openingInfo: ModelInfo,
   overrides?: {
-    accessProvider?: AccessProviderId; extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>; resetIdleConnections?: () => void | Promise<void>;
+    accessProvider?: AccessProviderId; extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>;
     candidate?: AccessProviderCandidate;
     /** Exact catalog transport ID, distinct from canonical model metadata. */
     wireModelId?: string;
