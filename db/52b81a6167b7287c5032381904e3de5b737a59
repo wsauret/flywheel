@@ -1,0 +1,62 @@
+src/protocol/client/agent-group-summary.ts
+  h_4b47e9e4a8b456 2-5,22
+src/protocol/client/chat-submissions.ts
+  h_4b47e9e4a8b456 32,39
+src/protocol/client/editor-protocol-coverage.ts
+  h_4b47e9e4a8b456 1-3,5,8,10-11,16-18
+src/protocol/client/family-intake.ts
+  h_4b47e9e4a8b456 30
+src/protocol/client/file-change-body.ts
+  h_4b47e9e4a8b456 18,107,212
+src/protocol/client/provider-setup.ts
+  h_4b47e9e4a8b456 33
+src/protocol/client/session-controls.ts
+  h_4b47e9e4a8b456 136,223
+src/protocol/client/slash-route.ts
+  h_4b47e9e4a8b456 15
+src/protocol/client/transcript-delta.ts
+  h_4b47e9e4a8b456 6,239
+src/protocol/frontend-output-block-metrics.ts
+  h_4b47e9e4a8b456 1,5
+tests/unit/orchestration/app-service/frontend-output-blocks.test.ts
+  h_4b47e9e4a8b456 2,6,14,73,75,98,100,137
+tests/unit/protocol/client/agent-group-summary.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/protocol/client/chat-submissions.test.ts
+  h_4b47e9e4a8b456 3,8-10
+tests/unit/protocol/client/family-intake.test.ts
+  h_4b47e9e4a8b456 8,41
+tests/unit/protocol/client/provider-setup.test.ts
+  h_4b47e9e4a8b456 1,3,31-43
+tests/unit/protocol/client/session-controls.test.ts
+  h_4b47e9e4a8b456 25,73-76,121-122
+tests/unit/protocol/client/session-links.test.ts
+  h_4b47e9e4a8b456 2,6-10
+tests/unit/protocol/client/slash-route.test.ts
+  h_4b47e9e4a8b456 1-2,18-33
+tests/unit/protocol/file-change-body.test.ts
+  h_4b47e9e4a8b456 4,121,262,270-276
+tests/unit/protocol/transcript-delta.test.ts
+  h_4b47e9e4a8b456 3,43-52
+tests/unit/tui/chat-auth-guard.test.ts
+  h_4b47e9e4a8b456 4-5,118
+tests/unit/tui/hooks/create-chat-submissions.test.ts
+  h_4b47e9e4a8b456 10-11
+tests/unit/tui/hooks/session-activation.test.ts
+  h_4b47e9e4a8b456 319,330
+tests/unit/tui/output-blocks/tool-entry-shell-mutations.test.ts
+  h_4b47e9e4a8b456 15-16
+webview/src/client/session-send.test.ts
+  h_4b47e9e4a8b456 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "db52b81a6167b7287c5032381904e3de5b737a59",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
