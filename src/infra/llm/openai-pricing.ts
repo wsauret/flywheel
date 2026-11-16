@@ -39,7 +39,7 @@ function rateTier([inputCell, cacheReadCell, cacheWriteCell, outputCell]: readon
 }
 
 /** Parses only OpenAI's named Standard table. Any structural drift fails closed. */
-export function parseOpenAiStandardPricing(markdown: string): ReadonlyMap<string, OpenAiRateCard> {
+function parseOpenAiStandardPricing(markdown: string): ReadonlyMap<string, OpenAiRateCard> {
   const start = markdown.indexOf("### Standard pricing data");
   if (start < 0) return new Map();
   const rest = markdown.slice(start);
@@ -61,7 +61,7 @@ export function parseOpenAiStandardPricing(markdown: string): ReadonlyMap<string
   return result;
 }
 
-export async function fetchOpenAiStandardPricing(signal: AbortSignal): Promise<ReadonlyMap<string, OpenAiRateCard>> {
+async function fetchOpenAiStandardPricing(signal: AbortSignal): Promise<ReadonlyMap<string, OpenAiRateCard>> {
   try {
     const response = await fetch(PRICING_URL, { signal });
     if (!response.ok || response.headers.get("content-type")?.startsWith("text/markdown") !== true) return new Map();

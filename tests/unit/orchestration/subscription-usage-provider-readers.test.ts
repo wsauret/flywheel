@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type SubscriptionUsageReaderContext, CHATGPT_RATE_LIMIT_RESET_TYPE } from "../../../src/infra/llm/subscription-usage.js";
+import type { SubscriptionUsageReaderContext } from "../../../src/infra/llm/subscription-usage.js";
 import { createCopilotUsageReader } from "../../../src/orchestration/modules/provider-github-copilot/quota-meter.js";
 import { Redacted } from "effect";
 import type { StoredTokens } from "../../../src/infra/auth/openai-auth-types.js";
@@ -311,14 +311,14 @@ describe("subscription usage provider readers", () => {
     const fresh = async (): Promise<StoredTokens> => ({ accessToken: Redacted.make("secret"), refreshToken: undefined, expiresAtMs: Date.now() + 60_000, accountId: "account-1" });
     const responses = [
       { plan_type: "pro", rate_limit: null, rate_limit_reset_credits: { available_count: 3, applicable_available_count: 1 } },
-      { available_count: 3, credits: [{ id: "later", reset_type: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", granted_at: "2026-01-01T00:00:00Z", expires_at: null, title: "Permanent", description: "Later" }, { id: "first", reset_type: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", granted_at: "2026-01-01T00:00:00Z", expires_at: "2026-01-02T00:00:00Z", title: "Weekly reset", description: "Soon" }] },
+      { available_count: 3, credits: [{ id: "later", reset_type: "codex_rate_limits", status: "available", granted_at: "2026-01-01T00:00:00Z", expires_at: null, title: "Permanent", description: "Later" }, { id: "first", reset_type: "codex_rate_limits", status: "available", granted_at: "2026-01-01T00:00:00Z", expires_at: "2026-01-02T00:00:00Z", title: "Weekly reset", description: "Soon" }] },
     ];
     const reader = createChatGPTUsageReader(async () => new Response(JSON.stringify(responses.shift())), fresh);
     const outcome = await reader(context({ providerId: "chatgpt" }));
     assertSuccess(outcome);
     expect(outcome.report.resetCredits).toEqual({ availableCount: 3, credits: [
-      { id: "later", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", grantedAtMs: Date.parse("2026-01-01T00:00:00Z"), expiresAtMs: null, title: "Permanent", description: "Later" },
-      { id: "first", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", grantedAtMs: Date.parse("2026-01-01T00:00:00Z"), expiresAtMs: Date.parse("2026-01-02T00:00:00Z"), title: "Weekly reset", description: "Soon" },
+      { id: "later", resetType: "codex_rate_limits", status: "available", grantedAtMs: Date.parse("2026-01-01T00:00:00Z"), expiresAtMs: null, title: "Permanent", description: "Later" },
+      { id: "first", resetType: "codex_rate_limits", status: "available", grantedAtMs: Date.parse("2026-01-01T00:00:00Z"), expiresAtMs: Date.parse("2026-01-02T00:00:00Z"), title: "Weekly reset", description: "Soon" },
     ] });
   });
 

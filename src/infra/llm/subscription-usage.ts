@@ -89,7 +89,7 @@ export type SubscriptionUsageResetCredit = typeof SubscriptionUsageResetCreditSc
 export type SubscriptionUsageResetCredits = typeof SubscriptionUsageResetCreditsSchema.Type;
 
 /** The ChatGPT backend's type for a banked reset of the subscription's rate limits, the only reset Flywheel offers. */
-export const CHATGPT_RATE_LIMIT_RESET_TYPE = "codex_rate_limits";
+const CHATGPT_RATE_LIMIT_RESET_TYPE = "codex_rate_limits";
 
 /**
  * Lists available ChatGPT rate-limit resets in redemption order, earliest expiry first.

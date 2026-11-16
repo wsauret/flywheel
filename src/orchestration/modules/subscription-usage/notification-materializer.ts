@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { SubscriptionUsageAlert } from "../../../infra/llm/subscription-usage-store.js";
 import type { SubscriptionUsageAccountRef, UsageAuthority } from "../../../infra/llm/usage-authority.js";
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js";
 import { createBackgroundLane } from "../../../infra/ordered-lane.js";
@@ -34,7 +35,7 @@ function notificationSourceId(profileId: string, alertId: string): string {
   return `subscription-usage:${digest}`;
 }
 
-function notificationCopy(alert: import("../../../infra/llm/usage-authority.js").SubscriptionUsageAlert, providerName: string, nowMs: number): string {
+function notificationCopy(alert: SubscriptionUsageAlert, providerName: string, nowMs: number): string {
   const account = alert.accountLabel ? ` (${alert.accountLabel})` : "";
   const window = alert.distinctWindow === true && alert.metricLabel !== undefined ? ` for ${alert.metricLabel}` : "";
   const days = alert.resetAtMs === undefined ? undefined : Math.max(0, Math.ceil((alert.resetAtMs - nowMs) / DAY_MS));

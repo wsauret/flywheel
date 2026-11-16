@@ -23,13 +23,8 @@ export function readModelScores(userDataRoot: string): Promise<ModelScoreSnapsho
 const Cache = Schema.Struct({ attemptedAt: Schema.Number, snapshot: Schema.Unknown });
 
 /** Reads on demand; failed refreshes retain the last good snapshot and are attempted at most daily.
- * The fetch/clock seam permits hermetic tests. The cache is replaceable public data, not user state. */
-export function createModelScoresReader(
-  userDataRoot: string,
-  deps: { readonly fetch?: typeof fetch; readonly now?: () => Date } = {},
-): () => Promise<ModelScoreSnapshot | undefined> {
-  const fetcher = deps.fetch ?? fetch;
-  const now = deps.now ?? (() => new Date());
+ * The cache is replaceable public data, not user state. */
+function createModelScoresReader(userDataRoot: string): () => Promise<ModelScoreSnapshot | undefined> {
   const path = join(userDataRoot, "models", "benchmark-tiers.json");
   let loaded = false;
   let attemptedAt = -Infinity;
@@ -37,7 +32,7 @@ export function createModelScoresReader(
   let pending: Promise<ModelScoreSnapshot | undefined> | undefined;
 
   async function request(url: string, init?: RequestInit): Promise<JsonValue> {
-    const response = await fetcher(url, { ...init, signal: AbortSignal.timeout(15_000) });
+    const response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
     if (!response.ok) throw new Error(`Benchmark source returned HTTP ${response.status}`);
     return JSON.parse(new TextDecoder().decode(await readBoundedModelsResponse(response)));
   }
@@ -56,7 +51,7 @@ export function createModelScoresReader(
         }
       }
     }
-    const time = now();
+    const time = new Date();
     if (time.getTime() - attemptedAt < DAY) return snapshot;
     attemptedAt = time.getTime();
     try {

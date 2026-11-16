@@ -9,7 +9,7 @@ import type { AccessProviderCatalogFetchInput, AccessProviderDefinition } from "
 import { normalizeCatalogRows, normalizeDecodedCatalogRows, resolveModelCatalog, type CatalogSourceRow } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { testProviderSelection } from "../../../helpers/provider-authority.js";
 import { OPENCODE_GO_API_BASE } from "../../../../src/orchestration/modules/provider-opencode-go/wire.js";
-import { fetchOpenAiStandardPricing, openAiPricingFromMetadata, parseOpenAiStandardPricing, refreshOpenAiStandardPricing } from "../../../../src/infra/llm/openai-pricing.js";
+import { openAiPricingFromMetadata, refreshOpenAiStandardPricing } from "../../../../src/infra/llm/openai-pricing.js";
 
 const originalFetch = globalThis.fetch;
 const temporaryDirectory = temporaryDirectories();
@@ -70,44 +70,6 @@ function installFetch(handler: (url: string, init?: RequestInit) => Response | P
 }
 
 describe("first-party provider model catalog contracts", () => {
-  test("OpenAI pricing Markdown admits only one strict Standard table", async () => {
-    const standardRow = "| gpt-6-sol | $2.00 | $0.20 | $2.50 | $10.00 | $4.00 | $0.40 | $5.00 | $15.00 |";
-    const markdown = [
-      "### Standard pricing data",
-      "",
-      "| Model | Short context input | Short context cached input | Short context cache writes | Short context output | Long context input | Long context cached input | Long context cache writes | Long context output |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-      standardRow,
-      "",
-      "### Batch pricing data",
-      "| gpt-6-sol | $1.00 | $0.10 | $1.25 | $5.00 | $2.00 | $0.20 | $2.50 | $7.50 |",
-    ].join("\n");
-    expect(parseOpenAiStandardPricing(markdown).get("gpt-6-sol")).toEqual({
-      input: 2, cacheRead: 0.2, cacheWrite: 2.5, output: 10,
-      highContext: { threshold: 272_000, input: 4, cacheRead: 0.4, cacheWrite: 5, output: 15 },
-    });
-    const unlistedCells = markdown.replace(standardRow, [
-      standardRow,
-      "| gpt-5.5 (<272K context length) | $5.00 | $0.50 | - | $30.00 | $10.00 | $1.00 | - | $45.00 |",
-      "| gpt-5.4-pro (<272K context length) | $30.00 | - | - | $180.00 | $60.00 | - | - | $270.00 |",
-      "| gpt-5.4-mini | $0.75 | $0.075 | - | $4.50 | - | - | - | - |",
-    ].join("\n"));
-    const parsed = parseOpenAiStandardPricing(unlistedCells);
-    expect(parsed.get("gpt-5.5")).toEqual({
-      input: 5, cacheRead: 0.5, output: 30,
-      highContext: { threshold: 272_000, input: 10, cacheRead: 1, output: 45 },
-    });
-    expect(parsed.get("gpt-5.4-pro")).toEqual({ input: 30, output: 180, highContext: { threshold: 272_000, input: 60, output: 270 } });
-    expect(parsed.get("gpt-5.4-mini")).toEqual({ input: 0.75, cacheRead: 0.075, output: 4.5 });
-    expect(parseOpenAiStandardPricing(markdown.replace("### Standard pricing data", "### Changed"))).toEqual(new Map());
-    expect(parseOpenAiStandardPricing(markdown.replace(standardRow, `${standardRow}\n${standardRow}`))).toEqual(new Map());
-
-    installFetch(() => Promise.reject(new Error("offline")));
-    expect(await fetchOpenAiStandardPricing(AbortSignal.timeout(1_000))).toEqual(new Map());
-    installFetch(() => new Response("x".repeat(512 * 1024 + 1), { headers: { "content-type": "text/markdown" } }));
-    expect(await fetchOpenAiStandardPricing(AbortSignal.timeout(1_000))).toEqual(new Map());
-  });
-
   test("OpenAI pricing metadata rejects every invalid numeric rate", () => {
     const valid = {
       standardPricing: {

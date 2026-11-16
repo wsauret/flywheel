@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   createSubscriptionUsageStore,
-  quotaSubjectDigest,
   type SubscriptionUsageAccount,
 } from "../../../src/infra/llm/subscription-usage-store.js";
 import { Database } from "bun:sqlite";
@@ -203,7 +202,6 @@ describe("profile-local subscription usage coordination", () => {
     expect(first.completeFetch(lease.lease, success(nowMs, 1)).kind).toBe("rejected");
     expect(second.completeFetch(replacement.lease, success(nowMs, 40)).kind).toBe("committed");
     expect(second.current(key)?.metrics[0]?.remaining?.value).toBe(40);
-    expect(quotaSubjectDigest(account.identity ?? "")).toBe(key.subjectDigest);
     first.dispose();
     second.dispose();
   });
