@@ -56,13 +56,13 @@ export interface WheelProfile {
 }
 
 /** Ghostty, iTerm2, kitty, and most terminals: one report per scrolled line. */
-export const LINE_WHEEL: WheelProfile = { baseRows: 1, frameShare: 1 }
+const LINE_WHEEL: WheelProfile = { baseRows: 1, frameShare: 1 }
 
 /** Windows Terminal and the Windows console: one report per notch. The curve
  *  values are tuned for Windows Terminal; three rows are the
  *  lines of a Windows notch, which is also the rows Windows Terminal scrolls
  *  its own buffer for one WHEEL_DELTA. */
-export const NOTCH_WHEEL: WheelProfile = {
+const NOTCH_WHEEL: WheelProfile = {
   baseRows: 3,
   frameShare: 0.5,
   curve: {

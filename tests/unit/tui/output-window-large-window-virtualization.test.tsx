@@ -5,9 +5,11 @@ import { testRender } from "@opentui/solid"
 import { describe, expect, it } from "bun:test"
 import { createComponent } from "solid-js/web"
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
-import type { OutputTranscriptView, TranscriptSnapshot, TranscriptWindow } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
+import type { OutputTranscriptView, TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
 import { makeView } from "./_output-window-transcript.js"
+
+type TranscriptWindow = TranscriptSnapshot["window"]
 
 function textBlock(index: number): FrontendOutputBlock {
   return { kind: "text", id: `b${index}`, content: `row ${index}`, timestamp: index }

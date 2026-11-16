@@ -2,7 +2,7 @@ import { BoxRenderable } from "@opentui/core"
 import { createTestRenderer } from "@opentui/core/testing"
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { LINE_WHEEL, NOTCH_WHEEL, wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
+import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
 import type { TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { createMountedRowRegistry, type TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 import { followBaseline } from "../../../src/tui/output-window/transcript-follow.js"
@@ -131,7 +131,7 @@ describe("notch wheel reports (Windows Terminal)", () => {
     const [snap] = createSignal<TranscriptSnapshot | undefined>(snapshotFor("notch", 400))
     const box = fakeScrollBox()
     createRoot(() => {
-      const controller = mountController(slot, snap, { wheel: NOTCH_WHEEL, now: () => clock })
+      const controller = mountController(slot, snap, { wheel: wheelProfileFor("win32", {}), now: () => clock })
       controller.attach(asScrollBox(box))
     })
     box.scrollHeight = 800
@@ -155,9 +155,10 @@ describe("notch wheel reports (Windows Terminal)", () => {
   }
 
   it("selects notch reports on Windows and inside Windows Terminal, line reports elsewhere", () => {
-    expect(wheelProfileFor("win32", {})).toBe(NOTCH_WHEEL)
-    expect(wheelProfileFor("linux", { WT_SESSION: "8c1e" })).toBe(NOTCH_WHEEL)
-    expect(wheelProfileFor("darwin", {})).toBe(LINE_WHEEL)
+    const notch = { baseRows: 3, frameShare: 0.5, curve: expect.any(Object) }
+    expect(wheelProfileFor("win32", {})).toEqual(notch)
+    expect(wheelProfileFor("linux", { WT_SESSION: "8c1e" })).toEqual(notch)
+    expect(wheelProfileFor("darwin", {})).toEqual({ baseRows: 1, frameShare: 1 })
   })
 
   it("a slow report moves the three lines of a notch and glides them over two frames", () => {

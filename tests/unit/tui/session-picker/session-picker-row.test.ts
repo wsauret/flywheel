@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test"
-import { createTextAttributes } from "@opentui/core"
+import { createTextAttributes, TextRenderable, type TextChunk } from "@opentui/core"
+import { testRender } from "@opentui/solid"
+import { createComponent } from "solid-js/web"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme, type ThemeJson } from "../../../../src/tui/context/theme/resolve.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
-import { buildSessionRowChunks } from "../../../../src/tui/session-picker/session-picker-row.js"
+import { SessionPickerRow } from "../../../../src/tui/session-picker/session-picker-row.js"
 import type { PickerCorruptRow, PickerSessionRow } from "../../../../src/tui/session-picker/picker-types.js"
 
 const themeJson: ThemeJson = flywheelTheme
@@ -43,8 +45,23 @@ function pickerRow(rowSession: SessionCatalogRow, overrides: Partial<PickerSessi
   }
 }
 
-function plain(row: PickerSessionRow, overrides: Partial<Parameters<typeof buildSessionRowChunks>[0]> = {}): string {
-  return buildSessionRowChunks({
+type RowInput = Omit<Parameters<typeof SessionPickerRow>[0], "rowIndex" | "onRowClick">
+
+/** The styled chunks that a mounted SessionPickerRow shows. */
+async function rowChunks(input: RowInput): Promise<TextChunk[]> {
+  const result = await testRender(() => createComponent(SessionPickerRow, { ...input, rowIndex: 0, onRowClick: () => {} }), { width: 120, height: 1 })
+  try {
+    await result.renderOnce()
+    const text = result.renderer.root.getChildren()[0]?.getChildren()[0]
+    if (!(text instanceof TextRenderable)) throw new Error("expected the row text")
+    return [...text.content.chunks]
+  } finally {
+    result.renderer.destroy()
+  }
+}
+
+async function plain(row: PickerSessionRow, overrides: Partial<RowInput> = {}): Promise<string> {
+  return (await rowChunks({
     row,
     theme,
     rowWidth: 80,
@@ -54,12 +71,12 @@ function plain(row: PickerSessionRow, overrides: Partial<Parameters<typeof build
     now,
     timeAgoWidth: 3,
     ...overrides,
-  }).map((chunk) => chunk.text).join("")
+  })).map((chunk) => chunk.text).join("")
 }
 
 describe("SessionPickerRow", () => {
-  it.each([false, true])("preserves diff colors when selected=%s", (selected) => {
-    const chunks = buildSessionRowChunks({
+  it.each([false, true])("preserves diff colors when selected=%s", async (selected) => {
+    const chunks = await rowChunks({
       row: pickerRow(session({ diffStats: { added: 38, modified: 0, removed: 0 } })),
       theme,
       rowWidth: 100,
@@ -88,8 +105,8 @@ describe("SessionPickerRow", () => {
     { lifecycleState: "active", isWorking: true, blinkOn: true, glyph: "● ", color: theme.success },
     { lifecycleState: "active", isWorking: true, blinkOn: false, glyph: "● ", color: theme.textMuted },
     { lifecycleState: "inactive", isWorking: true, blinkOn: true, glyph: "● ", color: theme.success },
-  ] as const)("styles the $glyph indicator for $lifecycleState, working=$isWorking, blink=$blinkOn", ({ lifecycleState, isWorking, blinkOn, glyph, color }) => {
-    const chunks = buildSessionRowChunks({
+  ] as const)("styles the $glyph indicator for $lifecycleState, working=$isWorking, blink=$blinkOn", async ({ lifecycleState, isWorking, blinkOn, glyph, color }) => {
+    const chunks = await rowChunks({
       row: pickerRow(session({ lifecycleState })),
       theme,
       rowWidth: 80,
@@ -105,11 +122,11 @@ describe("SessionPickerRow", () => {
       .toBe(isWorking ? createTextAttributes({ bold: true }) : 0)
   })
 
-  it("distinguishes inactive, active idle, and working sessions without shifting titles", () => {
+  it("distinguishes inactive, active idle, and working sessions without shifting titles", async () => {
     const active = pickerRow(session({ lifecycleState: "active" }))
-    const working = plain(active, { isWorking: true })
-    const idle = plain(active)
-    const inactive = plain(pickerRow(session()))
+    const working = await plain(active, { isWorking: true })
+    const idle = await plain(active)
+    const inactive = await plain(pickerRow(session()))
 
     expect(working.startsWith("  ● Session")).toBe(true)
     expect(idle.startsWith("  ● Session")).toBe(true)
@@ -118,24 +135,24 @@ describe("SessionPickerRow", () => {
     expect(inactive.indexOf("Session")).toBe(working.indexOf("Session"))
   })
 
-  it("marks the foreground session with the current prefix after row padding", () => {
+  it("marks the foreground session with the current prefix after row padding", async () => {
     const row = pickerRow(session({ id: "current" }))
 
-    expect(plain(row, { foregroundId: "current" }).startsWith("  (current) ")).toBe(true)
+    expect((await plain(row, { foregroundId: "current" })).startsWith("  (current) ")).toBe(true)
   })
 
 
-  it("ellipsizes long titles to keep the row at the requested width with right-aligned time", () => {
+  it("ellipsizes long titles to keep the row at the requested width with right-aligned time", async () => {
     const width = 42
     const row = pickerRow(session({ title: "A very long session title that cannot possibly fit" }))
-    const text = plain(row, { rowWidth: width })
+    const text = await plain(row, { rowWidth: width })
 
     expect(text.length).toBe(width)
     expect(text).toContain("…")
     expect(text.slice(-3)).toBe(" 5m")
   })
 
-  it("leaves unknown diff chips blank until totals arrive", () => {
+  it("leaves unknown diff chips blank until totals arrive", async () => {
     const loadingSession: SessionCatalogRow = {
       id: "session-1",
       kind: "chat",
@@ -147,7 +164,7 @@ describe("SessionPickerRow", () => {
       executionCwd: "/repo",
       totalsLoading: true,
     }
-    const withoutDiff = buildSessionRowChunks({
+    const withoutDiff = await rowChunks({
       row: pickerRow(loadingSession),
       theme,
       rowWidth: 80,
@@ -162,7 +179,7 @@ describe("SessionPickerRow", () => {
     expect(withoutDiff.map((chunk) => chunk.text).join("")).toContain("Session")
     expect(withoutDiff.map((chunk) => chunk.text).join("")).toContain("5m")
 
-    const selected = buildSessionRowChunks({
+    const selected = await rowChunks({
       row: pickerRow(session({ diffStats: { added: 1, modified: 2, removed: 3 } })),
       theme,
       rowWidth: 80,
@@ -179,11 +196,11 @@ describe("SessionPickerRow", () => {
     expect(chipColors).toEqual([theme.success, theme.warning, theme.error])
   })
 
-  it("renders corrupt rows with the session id, an error marker, and confirm-delete text", () => {
+  it("renders corrupt rows with the session id, an error marker, and confirm-delete text", async () => {
     const corrupt: PickerCorruptRow = { kind: "corrupt", id: "corrupt:broken", sessionId: "broken", reason: "bad fact" }
     const base = { theme, rowWidth: 60, selected: false, isWorking: false, blinkOn: true, now, timeAgoWidth: 3 }
 
-    const chunks = buildSessionRowChunks({ ...base, row: corrupt })
+    const chunks = await rowChunks({ ...base, row: corrupt })
     const text = chunks.map((chunk) => chunk.text).join("")
     expect(text).toContain("! ")
     expect(text).toContain("broken")
@@ -193,7 +210,7 @@ describe("SessionPickerRow", () => {
     expect((unreadable.attributes ?? 0) & createTextAttributes({ dim: true })).toBe(0)
 
     for (const row of [corrupt, pickerRow(session({ id: "broken" }))]) {
-      const confirming = buildSessionRowChunks({ ...base, row, confirmDeleteSessionId: "broken" })
+      const confirming = await rowChunks({ ...base, row, confirmDeleteSessionId: "broken" })
       expect(confirming.map(chunk => chunk.text).join("")).toContain("Press d again to confirm")
       expect(confirming.every(chunk => chunk.fg?.equals(theme.background))).toBe(true)
     }

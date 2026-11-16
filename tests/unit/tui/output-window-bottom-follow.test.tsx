@@ -8,10 +8,12 @@ import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
 import { heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
-import { LINE_WHEEL } from "../../../src/tui/output-window/output-window-wheel.js"
-import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus, TranscriptWindow } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
+import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
+import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { renderScheduledFrame } from "./_output-window-transcript.js"
 import { BOLD } from "../../../src/tui/utils/text-attributes.js"
+
+type TranscriptWindow = TranscriptSnapshot["window"]
 
 function textBlock(id: string, content: string): FrontendOutputBlock {
   return { kind: "text", id, content, timestamp: 1 }
@@ -79,7 +81,7 @@ async function renderWindow(view: OutputTranscriptView, belowRows: () => number 
           transcript: view,
           running: false,
           // One row per report on every host: these tests count rows.
-          wheel: LINE_WHEEL,
+          wheel: wheelProfileFor("darwin", {}),
           captureScrollbox: (el: ScrollBoxRenderable) => { scrollbox = el },
           sessionIntro: {
             moduleRows: () => [],
