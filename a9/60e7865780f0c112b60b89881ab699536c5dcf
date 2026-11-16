@@ -1,0 +1,78 @@
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 289,293-295,297,608,611,619-620
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 178,180,215,344
+src/orchestration/app-service/provider-model-preference-service.ts
+  h_4b47e9e4a8b456 2,7,42
+src/orchestration/config/provider-model-eligibility.ts
+  h_4b47e9e4a8b456 46,52,75-76,80,83-84
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 147
+src/orchestration/config/workflow-agent-models.ts
+  h_4b47e9e4a8b456 73
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 19,191,193
+tests/helpers/provider-authority.ts
+  h_4b47e9e4a8b456 1,21-33,38,43-44,46,55,57
+tests/helpers/role-capture.ts
+  h_4b47e9e4a8b456 6,15,17,19-20,24,27
+tests/unit/bench/standalone-admission.test.ts
+  h_4b47e9e4a8b456 123-128
+tests/unit/infra/llm/model-listing-relationships.test.ts
+  h_4b47e9e4a8b456 90
+tests/unit/orchestration/agent-runtime/llm/candidate-owner-regressions.test.ts
+  h_4b47e9e4a8b456 14,145,147,154
+tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+  h_4b47e9e4a8b456 11,31,88,90,94-95,179-180,182-183,232-233,236-237,314,316,320,326,328,355-356,388-389,391,423,425,431,456,469,472,508,512,530
+tests/unit/orchestration/agent-runtime/llm/client-factory-login.test.ts
+  h_4b47e9e4a8b456 2,24-25,28-29
+tests/unit/orchestration/agent-runtime/llm/client-factory-opencode-go.test.ts
+  h_4b47e9e4a8b456 15,59-60,75-76
+tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+  h_4b47e9e4a8b456 11,18,26,82,85
+tests/unit/orchestration/agent-runtime/llm/client-factory-supergrok.test.ts
+  h_4b47e9e4a8b456 15,53-54,61-62
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 25,44-45,51-52,101,103-104,298,300,351,511,513,519
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter-validation.test.ts
+  h_4b47e9e4a8b456 5,15,17,19-21
+tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts
+  h_4b47e9e4a8b456 2,6,10,65-67,69,75,77,82,150,163-165,168,180-181,183-185,223,226-227,232-248,258,261-262
+tests/unit/orchestration/agent-runtime/llm/request-admission-diagnostics.test.ts
+  h_4b47e9e4a8b456 11,58-59,64-65
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  h_4b47e9e4a8b456 193,197,216-218,229,235,240,244,246,253
+tests/unit/orchestration/app-service/eligibility-preparation-settlement.test.ts
+  h_4b47e9e4a8b456 528
+tests/unit/orchestration/app-service/eligibility-preparation.test.ts
+  h_4b47e9e4a8b456 190,194,201-205
+tests/unit/orchestration/app-service/model-catalog-auth-eligibility.test.ts
+  h_4b47e9e4a8b456 578
+tests/unit/orchestration/app-service/provider-model-preference-audit.test.ts
+  h_4b47e9e4a8b456 61-62,92
+tests/unit/orchestration/app-service/provider-model-preference-service.test.ts
+  h_4b47e9e4a8b456 69,168,305,316,321,371-372,411,529
+tests/unit/orchestration/config/custom-provider-composition.test.ts
+  h_4b47e9e4a8b456 15,37-39,41-43
+tests/unit/orchestration/config/model-listing-access-provider.test.ts
+  h_4b47e9e4a8b456 5,19,21,23,25
+tests/unit/orchestration/config/provider-model-eligibility.test.ts
+  h_4b47e9e4a8b456 10,14-17,34,46,53,59,71-73,82,87-88,95,103-107,111,136-137,148,150-151,184-185,208-209,231-232,248-249,300,325-327
+tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts
+  h_4b47e9e4a8b456 17,53-54,56,61,182-184
+tests/unit/orchestration/modules/development/benchmark-tool-execution.test.ts
+  h_4b47e9e4a8b456 167,169-171
+tests/unit/orchestration/workflow-host/_workflow-controller-fixtures.ts
+  h_4b47e9e4a8b456 32,542,544,550-551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a960e7865780f0c112b60b89881ab699536c5dcf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
