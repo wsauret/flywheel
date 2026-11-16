@@ -1,0 +1,26 @@
+bench/harbor/configs/luna-skill-rule-off.toml
+  h_4b47e9e4a8b456 1-77
+bench/harbor/configs/luna-work-skills.toml
+  h_4b47e9e4a8b456 1-77
+src/orchestration/agent-runtime/tools/skill.ts
+  h_4b47e9e4a8b456 11,110-114,138-140,143-144,148,152,156,163,175,218,224-225,227,240-242,244-245
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 207-208
+src/orchestration/modules/skills.ts
+  h_4b47e9e4a8b456 36
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 503-529
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 332-355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6a0134d4ada6d0c87c10af77c0e46256501bdc52",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
