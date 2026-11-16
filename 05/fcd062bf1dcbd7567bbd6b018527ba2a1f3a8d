@@ -1,0 +1,22 @@
+src/protocol/client/held-session-details.ts
+  h_4b47e9e4a8b456 5,7,57-61,109-110,126-133,190,203-204,256,261-263,297,299-305,308
+src/tui/hooks/create-session-surface.ts
+  h_4b47e9e4a8b456 109-110
+tests/unit/protocol/client/held-session-details.test.ts
+  h_4b47e9e4a8b456 3,8,70-106,295-296,304,309-359
+tests/unit/tui/hooks/create-session-surface.test.ts
+  h_4b47e9e4a8b456 1,439-476
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 45,628
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "05fcd062bf1dcbd7567bbd6b018527ba2a1f3a8d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
