@@ -13,7 +13,7 @@ import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-i
 import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import { createClaudeReminders } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";
 import { cliLaunch, type ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { describeCliLogin, readCliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -61,7 +61,7 @@ function cachedBytes(request: RecordedRequest, projectRoot: string): string {
 describe("the bundled Claude engine on a fake host", () => {
   test("the engine names the login's plan and a Claude model lineup, and sends no model request for them", async () => {
     await onFakeHost(temporary, () => ({ blocks: [] }), async ({ host, configDir, seams }) => {
-      const supervisor = createProcessSupervisor();
+      const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
       const launcher = createLauncherScope(supervisor);
       try {
         const launch = cliLaunch({ type: "external", configDir }, launcher, seams);
@@ -87,7 +87,7 @@ describe("the bundled Claude engine on a fake host", () => {
     await onFakeHost(temporary, () => ({ blocks: [{ text: "ok" }] }), async ({ host, open, configDir, seams }) => {
       const settings = () => readFileSync(join(configDir, ".claude.json"), "utf8");
       const ask = async () => expect((await (await open()).stream({ messages: [U1], tools: [READ_TOOL], systemPrompt: SYSTEM })).error).toBeUndefined();
-      const supervisor = createProcessSupervisor();
+      const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
       const launcher = createLauncherScope(supervisor);
       try {
         const launch = cliLaunch({ type: "external", configDir }, launcher, seams);

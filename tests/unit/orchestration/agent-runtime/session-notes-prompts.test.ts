@@ -5,24 +5,20 @@ import { Schema } from "effect";
 import {
   renderSessionNotesAutoCompactFallback,
   renderSessionNotesGuidance,
-  renderSessionNotesReminder,
   SESSION_NOTES_AUTO_COMPACT_FALLBACK_TEMPLATE,
   SESSION_NOTES_GUIDANCE_TEMPLATE,
-  SESSION_NOTES_REMINDER_TEMPLATE,
 } from "../../../../src/infra/agent-assets/session-notes.js";
 import { promptCapabilities } from "../../../helpers/prompt-capabilities.js";
 
-const TOKEN_BUDGET_KEYS = ["reminder_message_template", "guidance_message", "auto_compact_fallback_prompt"] as const;
+const TOKEN_BUDGET_KEYS = ["guidance_message", "auto_compact_fallback_prompt"] as const;
 const CODEX_MODELS = resolve("inspiration/codex/codex-rs/models-manager/models.json");
 
 interface ReplacementLedger {
-  reminder_message_template: readonly (readonly [string, string])[]
   guidance_message: readonly (readonly [string, string])[]
   auto_compact_fallback_prompt: readonly (readonly [string, string])[]
 }
 
 const TokenBudgetFixtureSchema = Schema.Struct({
-  reminder_message_template: Schema.String,
   guidance_message: Schema.String,
   auto_compact_fallback_prompt: Schema.String,
 });
@@ -34,15 +30,6 @@ const ModelSchema = Schema.Struct({
 });
 
 const REPLACEMENTS = {
-  reminder_message_template: [
-    ["save concise progress notes with the `notes` tool", "save your current state with `checkpoint_replace`, one section at a time"],
-    ["You should write or append notes in a way to best help you recover in a new context window. It is also a good idea to clean up your old notes if they become obsolete or irrelevant.", "Maintain notes in a way to best help you recover in a new context window. Remove obsolete information when updating them."],
-    [" with the goal, decisions, progress, learnings, next steps, and the window ID and item ID of every relevant user request still being solved, as well as important actions/tool calls for future reference.", "{request_reference_clause}, as well as important actions/tool calls for future reference. {skill_checkpoint_guidance} {design_intent_guidance}"],
-    ["Note that every non-assistant item, such as user, developer, tool response, has an item id `[id: ...]` that is immediately after its item content.", "{recall_guidance}"],
-    ["Future context windows will not automatically include the current conversation.", "Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it."],
-    ["After saving your state, call `functions.new_context` to continue in a fresh context window.", "After saving your state, continue the task."],
-    ["Maintain notes in a way to best help you recover in a new context window. Remove obsolete information when updating them.", "Maintain the checkpoint in a way to best help you recover in a new context window. Remove obsolete information when updating it."],
-  ],
   guidance_message: [
     ["use `notes` to maintain a concise checkpoint of the goal, decisions, progress, learnings and next steps.", "keep your conversation's checkpoint current with the checkpoint tools. The complete checkpoint is limited to 24,576 UTF-8 bytes; when a write is refused, curate it, and never discard intent to save tokens. {skill_checkpoint_guidance} {design_intent_guidance}"],
     ["Include the window ID and item ID for every relevant user request you are currently solving as well as important actions/tool calls.", "{request_reference_guidance}"],
@@ -78,7 +65,6 @@ describe("session notes prompt adaptations", () => {
     for (const recall of [[{ name: "recall" }], []]) {
       const input = { has: promptCapabilities([{ name: "skill" }, ...recall]) };
       for (const rendered of [
-        renderSessionNotesReminder({ ...input, remainingTokens: 321 }),
         renderSessionNotesGuidance(input),
         renderSessionNotesAutoCompactFallback(input),
       ]) {
@@ -99,7 +85,6 @@ describe("session notes prompt adaptations", () => {
   it("names no skill bookkeeping for an agent that cannot load skills, and keeps the design intent", () => {
     const input = { has: promptCapabilities([{ name: "recall" }]) };
     for (const rendered of [
-      renderSessionNotesReminder({ ...input, remainingTokens: 321 }),
       renderSessionNotesGuidance(input),
       renderSessionNotesAutoCompactFallback(input),
     ]) {
@@ -116,7 +101,6 @@ describe("session notes prompt adaptations", () => {
     const firstModel = Schema.decodeUnknownSync(ModelSchema)(source.models[0]);
     const tokenBudget = firstModel.model_messages.token_budget;
     const adapted = {
-      reminder_message_template: SESSION_NOTES_REMINDER_TEMPLATE,
       guidance_message: SESSION_NOTES_GUIDANCE_TEMPLATE,
       auto_compact_fallback_prompt: SESSION_NOTES_AUTO_COMPACT_FALLBACK_TEMPLATE,
     };
@@ -127,16 +111,14 @@ describe("session notes prompt adaptations", () => {
     }
   });
 
-  it("renders token parameters and only available recovery capabilities", () => {
+  it("renders only available recovery capabilities", () => {
     const input = { has: promptCapabilities([{ name: "recall" }, { name: "skill" }]) };
-    const reminder = renderSessionNotesReminder({ ...input, remainingTokens: 321 });
     const guidance = renderSessionNotesGuidance(input);
     const fallback = renderSessionNotesAutoCompactFallback(input);
 
-    expect(reminder).toContain("only 321 tokens remain");
     expect(guidance).toContain("with the checkpoint tools");
-    for (const rendered of [reminder, fallback]) expect(rendered).toContain("`checkpoint_replace`");
-    for (const rendered of [reminder, guidance, fallback]) {
+    expect(fallback).toContain("`checkpoint_replace`");
+    for (const rendered of [guidance, fallback]) {
       expect(rendered).toContain("recall");
       expect(rendered).not.toMatch(/`notes`|history tool|get_context_remaining|new_context/);
     }

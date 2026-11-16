@@ -24,7 +24,7 @@
 import { createReadStream, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedDirectory } from "../src/infra/descriptor-directory.js";
+import { openContainedDirectory } from "../src/infra/descriptor-directory.js";
 import { errorMessage } from "../src/infra/error-message.js";
 import { namedExitStatus } from "../src/infra/exit-status.js";
 import { BUILD_METADATA_FILE, buildExecutable, computeBuildId, NATIVE_DIR } from "../src/infra/update/build-identity.js";
@@ -127,7 +127,7 @@ async function buildViolations(archive: string, context: { readonly target: Cont
 /** Place the archive with the client's own reader, and answer the build's
  *  directory relative to the staging directory. */
 async function extract(scratch: string, archive: string): Promise<readonly string[]> {
-  const staging = ContainedDirectory.open(scratch, ["staging"], { privateDirectories: true });
+  const staging = openContainedDirectory(scratch, ["staging"], { privateDirectories: true });
   const spool = staging.openChild("spool", { privateDirectories: true });
   try {
     return await extractArchive(staging, spool, createReadStream(archive), new AbortController().signal);

@@ -45,7 +45,8 @@ import { dirname, join, relative } from "node:path"
 import { Schema } from "effect"
 
 import { isSourceSnapshotDigest, runningSourceSnapshot, SOURCE_DIGEST_HEX_LENGTH, sourceSnapshotHome, type SourceSnapshotLocation } from "./cli-subprocess.js"
-import { ContainedDirectory, ContainedPathError } from "./descriptor-directory.js"
+import { ContainedPathError, type ContainedDirectory } from "./descriptor-directory-contract.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "./descriptor-directory.js"
 import { errnoCode, errorMessage } from "./error-message.js"
 import { Log } from "./log.js"
 import { buildPlatformArch, checkoutClaudeEngine } from "./native-assets.js"
@@ -379,7 +380,7 @@ function snapshotHomeParts(checkout: string): string[] {
  *  in a snapshot names the checkout by its own real path, and a link would
  *  put the snapshot, and what the entry writes, outside the checkout. */
 function openSnapshotHome(checkout: string): ContainedDirectory {
-  return ContainedDirectory.open(checkout, snapshotHomeParts(checkout))
+  return openContainedDirectory(checkout, snapshotHomeParts(checkout))
 }
 
 const PROOF_FILE = "proof.json"
@@ -456,7 +457,7 @@ function knownProof(read: () => StoredProof): SnapshotProof | undefined {
 /** The proof record of `checkout`'s snapshots, read once without its gate. */
 function proofOf(checkout: string): SnapshotProof | undefined {
   return knownProof(() => {
-    const home = ContainedDirectory.openExisting(checkout, snapshotHomeParts(checkout))
+    const home = openExistingContainedDirectory(checkout, snapshotHomeParts(checkout))
     if (home === undefined) return { kind: "absent" }
     try {
       return readProof(home)
@@ -555,7 +556,7 @@ const holds: Array<{ readonly checkout: string; readonly hold: SharedHold }> = [
 function releaseHolds(): void {
   for (const { checkout, hold } of holds.splice(0)) {
     try {
-      const home = ContainedDirectory.openExisting(checkout, snapshotHomeParts(checkout))
+      const home = openExistingContainedDirectory(checkout, snapshotHomeParts(checkout))
       if (home === undefined) continue
       try {
         releaseSharedHolderIn(home, hold)

@@ -2,7 +2,8 @@ import { Result, Schema } from "effect";
 import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, relative } from "node:path";
-import { ContainedDirectory } from "../../../../infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../../../infra/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { containsSecret } from "../../../../infra/redact-secrets.js";
 import { describeOutputIssues, schemaIssues } from "../../../../workflows/output-contract/accept.js";
@@ -245,7 +246,7 @@ type BenchmarkSandboxTask = {
 );
 
 function openSandboxAuthority(dir: string): ContainedDirectory {
-  const authority = ContainedDirectory.openExisting(dir, [], { noFollowBase: true });
+  const authority = openExistingContainedDirectory(dir, [], { noFollowBase: true });
   if (!authority) throw new Error(`Benchmark sandbox is unavailable: ${dir}`);
   return authority;
 }

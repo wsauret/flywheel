@@ -16,7 +16,8 @@ import { randomBytes } from "node:crypto";
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { ContainedDirectory } from "../descriptor-directory.js";
+import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../descriptor-directory.js";
 import { errorMessage } from "../error-message.js";
 import { CURRENT_BUILD_LINK, versionsDir } from "../paths.js";
 import type { BuildRef } from "./build-identity.js";
@@ -84,7 +85,7 @@ export function openActiveBuild(accountRoot: ContainedDirectory, userDataRoot: s
 export function activeBuildDir(userDataRoot: string): string | undefined {
   let accountRoot: ContainedDirectory | undefined;
   try {
-    accountRoot = ContainedDirectory.openExisting(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+    accountRoot = openExistingContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
     if (!accountRoot) return undefined;
     const active = openActiveBuild(accountRoot, userDataRoot);
     active?.directory.close();

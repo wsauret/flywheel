@@ -21,7 +21,7 @@ import { normalizeAuthProfile } from "../../../src/infra/auth/auth-profile-norma
 import { resolveAuthContext } from "../../../src/infra/auth/auth-context.js";
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../src/infra/auth/resolve-key.js";
 import { selectStartupDirectories } from "../../../src/infra/directory-authorities.js";
-import { createLauncherScope, createProcessSupervisor, type LauncherScope } from "../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand, type LauncherScope } from "../../../src/infra/process-supervisor.js";
 import { createAgentRuntime } from "../../../src/orchestration/agent-runtime/factory.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
@@ -111,7 +111,7 @@ export async function withLiveClient<T>(label: string, use: (run: LiveRun) => Pr
   const releases: Array<() => void | Promise<void>> = [];
   const served: string[] = [];
   try {
-    const supervisor = createProcessSupervisor();
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     releases.push(() => supervisor.dispose());
     const launcher = createLauncherScope(supervisor);
     releases.push(async () => { await launcher.close(); });

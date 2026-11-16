@@ -2,7 +2,7 @@ import type { CatalogCanonicalRow, CatalogLimits } from "../llm/model-catalog-re
 import { validateCanonicalRows } from "../llm/model-catalog-resolution.js";
 import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "../llm/access-provider.js";
 import type { AuthProfileAccess } from "./auth-profile-store.js";
-import { ContainedFileTooLargeError } from "../descriptor-directory.js";
+import { ContainedFileTooLargeError } from "../descriptor-directory-contract.js";
 import { Log } from "../log.js";
 
 const log = Log.create({ service: "provider-model-catalog-store" });

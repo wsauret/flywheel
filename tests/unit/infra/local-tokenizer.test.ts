@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
 import {
-  countLocalTokens,
   commonLocalTokenizer,
   localTokenizerForModel,
   prepareLocalTokenizer,
@@ -10,8 +9,8 @@ import type { ClaudeTokenizerIdentity } from "../../../src/infra/llm/model-id.js
 
 describe("local tokenizer", () => {
   test("does not load or count a mapped model before preparation", async () => {
-    expect(countLocalTokens("arbitrary-model", "secret prompt")).toBeUndefined()
-    expect(() => countLocalTokens("gpt-4o", "secret prompt")).toThrow("Local tokenizer is not prepared")
+    expect(localTokenizerForModel("arbitrary-model")?.count("secret prompt")).toBeUndefined()
+    expect(() => localTokenizerForModel("gpt-4o")?.count("secret prompt")).toThrow("Local tokenizer is not prepared")
     expect(() => commonLocalTokenizer()).toThrow("Local tokenizer is not prepared")
 
     await Promise.all([prepareLocalTokenizer(), prepareLocalTokenizer()])
@@ -42,7 +41,7 @@ describe("local tokenizer", () => {
     ]
     for (const [model, identity, count] of mappings) {
       expect(localTokenizerForModel(model)?.identity, model).toBe(identity)
-      expect(countLocalTokens(model, "Hello, world!"), model).toBe(count)
+      expect(localTokenizerForModel(model)?.count("Hello, world!"), model).toBe(count)
     }
 
     const catalogMappings: ReadonlyArray<readonly [ClaudeTokenizerIdentity, LocalTokenizerIdentity, number]> = [
@@ -53,7 +52,7 @@ describe("local tokenizer", () => {
     ]
     for (const [catalogIdentity, identity, count] of catalogMappings) {
       expect(localTokenizerForModel("catalog-resolved-claude", catalogIdentity)?.identity).toBe(identity)
-      expect(countLocalTokens("catalog-resolved-claude", "Hello, world!", catalogIdentity)).toBe(count)
+      expect(localTokenizerForModel("catalog-resolved-claude", catalogIdentity)?.count("Hello, world!")).toBe(count)
     }
 
     const retiredGeneration = [5, 6].join(".")
@@ -71,7 +70,7 @@ describe("local tokenizer", () => {
       "claude-fable-5",
       "arbitrary-model",
     ]) {
-      expect(countLocalTokens(model, "hello world"), model).toBeUndefined()
+      expect(localTokenizerForModel(model)?.count("hello world"), model).toBeUndefined()
     }
   })
 
@@ -79,7 +78,7 @@ describe("local tokenizer", () => {
     await prepareLocalTokenizer()
     const text = "A\ud800B\udc00C"
 
-    expect(countLocalTokens("gpt-4o", text)).toBe(countLocalTokens("gpt-4o", text))
+    expect(localTokenizerForModel("gpt-4o")?.count(text)).toBe(localTokenizerForModel("gpt-4o")?.count(text))
   })
 
   test("counts common Unicode comparison units without an approved model mapping", async () => {

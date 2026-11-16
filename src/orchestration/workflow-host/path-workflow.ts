@@ -17,7 +17,8 @@
 import { createHash, randomBytes } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { ContainedDirectory, ContainedFileTooLargeError, ContainedPathError } from "../../infra/descriptor-directory.js"
+import { ContainedFileTooLargeError, ContainedPathError, type ContainedDirectory } from "../../infra/descriptor-directory-contract.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
 import { DebugLog } from "../../infra/debug-log.js"
 import { errnoCode, errorMessage } from "../../infra/error-message.js"
 import { sessionScratchDir } from "../../infra/paths.js"
@@ -75,7 +76,7 @@ export function saveWorkflowContent(sessionDir: string, content: string): string
   const bytes = Buffer.byteLength(content)
   if (bytes > WORKFLOW_FILE_MAX_BYTES) throw new Error(`the workflow content holds ${bytes} bytes, more than the limit of ${WORKFLOW_FILE_MAX_BYTES}`)
   const name = workflowContentFileName(content)
-  const directory = ContainedDirectory.open(sessionDir, relative(sessionDir, sessionWorkflowsDir(sessionDir)).split(sep), { noFollowBase: true })
+  const directory = openContainedDirectory(sessionDir, relative(sessionDir, sessionWorkflowsDir(sessionDir)).split(sep), { noFollowBase: true })
   try {
     const file = join(directory.canonicalPath(), name)
     const replaced = directory.hasEntry(name)
@@ -194,7 +195,7 @@ function resolveWorkflowFile(path: string, sessionDir: string, savedContent?: st
   const missing = `no file exists at ${shown}; write it in this session's workflow directory ${dir}`
   let directory: ContainedDirectory | undefined
   try {
-    directory = ContainedDirectory.openExisting(sessionDir, relative(sessionDir, dirname(named)).split(sep), { noFollowBase: true })
+    directory = openExistingContainedDirectory(sessionDir, relative(sessionDir, dirname(named)).split(sep), { noFollowBase: true })
     if (!directory) return { ok: false, reason: missing }
     const file = join(directory.canonicalPath(), basename(named))
     if (savedContent !== undefined) return { ok: true, file, shown, content: savedContent }

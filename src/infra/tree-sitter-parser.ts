@@ -89,7 +89,3 @@ export async function loadTreeSitterParser(language: TreeSitterLanguage): Promis
     throw error
   }
 }
-
-export function getTreeSitterParser(language: TreeSitterLanguage): Parser | null {
-  return parsers.get(language) ?? null
-}

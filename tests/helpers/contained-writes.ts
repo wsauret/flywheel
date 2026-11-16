@@ -2,15 +2,16 @@
  *  it makes, so a test can ask what reached the disk, including writes that
  *  failed, and an unlink that the platform refuses. */
 
-import { setContainedDirectoryBackendForTests, type ContainedDirectoryContract, type ContainedDirectoryOptions } from "../../src/infra/descriptor-directory.js";
+import type { ContainedDirectory, ContainedDirectoryOptions } from "../../src/infra/descriptor-directory-contract.js";
+import { setContainedDirectoryBackendForTests } from "../../src/infra/descriptor-directory.js";
 import { posixContainedDirectoryBackend } from "../../src/infra/descriptor-directory-posix.js";
 
 /** Every contained directory opened from now on, and every child it opens,
  *  is the real POSIX one with the members `override` returns. Own properties
  *  shadow the backend's methods on the same object, so its private state and
  *  its same-backend checks still hold. */
-function overrideContainedDirectories(override: (contract: ContainedDirectoryContract) => Partial<ContainedDirectoryContract>): void {
-  const wrap = (contract: ContainedDirectoryContract): ContainedDirectoryContract => {
+function overrideContainedDirectories(override: (contract: ContainedDirectory) => Partial<ContainedDirectory>): void {
+  const wrap = (contract: ContainedDirectory): ContainedDirectory => {
     const openChild = contract.openChild.bind(contract);
     return Object.assign(contract, override(contract), {
       openChild: (name: string, options?: ContainedDirectoryOptions) => wrap(openChild(name, options)),

@@ -10,8 +10,8 @@
  *  A caller performing several operations on one target directory holds it open
  *  instead of walking to it again for each one. */
 
-import { ContainedDirectory, type ContainedDirectoryOptions, type ContainedFileSnapshot } from "./descriptor-directory.js";
-import { validateComponent } from "./descriptor-directory-contract.js";
+import { validateComponent, type ContainedDirectoryOptions, type ContainedFileSnapshot } from "./descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "./descriptor-directory.js";
 
 export interface ContainedFileLocation {
   readonly baseDir: string;
@@ -39,14 +39,14 @@ export function directoryComponents(relativeDir: string): readonly string[] {
 
 /** Create one contained directory tree below a trusted base. */
 export function ensureDirectoryUnder(baseDir: string, relativeDir: string, options: ContainedDirectoryOptions = {}): void {
-  ContainedDirectory.open(baseDir, directoryComponents(relativeDir), options).close();
+  openContainedDirectory(baseDir, directoryComponents(relativeDir), options).close();
 }
 
 /** Admit an existing directory tree below a trusted base, creating nothing: a
  *  component that is a symlink or not a directory throws `ContainedPathError`,
  *  and absence is admitted because nothing is installed there yet. */
 export function requireContainedDirectory(baseDir: string, relativeDir: string): void {
-  ContainedDirectory.openExisting(baseDir, directoryComponents(relativeDir))?.close();
+  openExistingContainedDirectory(baseDir, directoryComponents(relativeDir))?.close();
 }
 
 /** Read one contained regular file without following links. Absence returns undefined. */
@@ -56,7 +56,7 @@ export function readFileUnder(
   options: ContainedDirectoryOptions & { readonly maxBytes: number },
 ): Buffer | undefined {
   const { dirs, file } = splitRelative(relativePath);
-  const directory = ContainedDirectory.openExisting(baseDir, dirs, options);
+  const directory = openExistingContainedDirectory(baseDir, dirs, options);
   if (!directory) return undefined;
   try {
     return directory.readFile(file, options.maxBytes);
@@ -72,7 +72,7 @@ export function readFileSnapshotUnder(
   options: ContainedDirectoryOptions & { readonly maxBytes: number },
 ): ContainedFileSnapshot | undefined {
   const { dirs, file } = splitRelative(relativePath);
-  const directory = ContainedDirectory.openExisting(baseDir, dirs, options);
+  const directory = openExistingContainedDirectory(baseDir, dirs, options);
   if (!directory) return undefined;
   try {
     return directory.readFileSnapshot(file, options.maxBytes);
@@ -89,7 +89,7 @@ export function writeFileUnder(
   options: ContainedDirectoryOptions = {},
 ): void {
   const { dirs, file } = splitRelative(relativePath);
-  const directory = ContainedDirectory.open(baseDir, dirs, options);
+  const directory = openContainedDirectory(baseDir, dirs, options);
   try {
     directory.writeFile(file, content);
   } finally {
@@ -102,7 +102,7 @@ export function writeFileUnder(
  *  cannot delete a tree through this boundary. */
 export function removeFileUnder(baseDir: string, relativePath: string): void {
   const { dirs, file } = splitRelative(relativePath);
-  const directory = ContainedDirectory.openExisting(baseDir, dirs);
+  const directory = openExistingContainedDirectory(baseDir, dirs);
   if (!directory) return;
   try {
     directory.removeFile(file);
@@ -117,7 +117,7 @@ export function removeFileUnder(baseDir: string, relativePath: string): void {
  *  it stands and whatever it points at is left alone. */
 export function removeTreeUnder(baseDir: string, relativePath: string, options: ContainedDirectoryOptions = {}): void {
   const { dirs, file } = splitRelative(relativePath);
-  const directory = ContainedDirectory.openExisting(baseDir, dirs, options);
+  const directory = openExistingContainedDirectory(baseDir, dirs, options);
   if (!directory) return;
   try {
     directory.removeTree(file);

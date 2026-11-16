@@ -2,7 +2,7 @@ import { $ } from "bun";
 import { cp, copyFile, mkdir, mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
 import { delimiter, join, resolve } from "node:path";
 import { ownedCommandRunner, type OwnedCommandResult } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { runSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 interface PublicInput {
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
     PYTHONNOUSERSITE: "1", PIP_NO_INDEX: "1", PIP_DISABLE_PIP_VERSION_CHECK: "1",
     PIP_CACHE_DIR: join(home, "pip-cache"),
   };
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   const run = ownedCommandRunner({
     async spawnOwned(command, options) {

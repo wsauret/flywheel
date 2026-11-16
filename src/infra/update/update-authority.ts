@@ -51,7 +51,8 @@ import * as path from "node:path";
 import { Database, SQLiteError } from "bun:sqlite";
 import { Schema } from "effect";
 import { errorMessage } from "../error-message.js";
-import { ContainedDirectory } from "../descriptor-directory.js";
+import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import { openContainedDirectory } from "../descriptor-directory.js";
 import { applySqliteBusyTimeout, applySqliteDurabilityPragmas } from "../sqlite-durability.js";
 
 /** Bumped when the stored shape changes. The file name carries this version
@@ -383,7 +384,7 @@ function isRetryableOpenFailure(error: unknown): boolean {
  *  either directory's name moves nothing this handle can touch. */
 function openUpdateDirectory(authorityDir: string): ContainedDirectory {
   const userDataRoot = path.dirname(authorityDir);
-  const accountData = ContainedDirectory.open(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+  const accountData = openContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
   try {
     return accountData.openChild(path.basename(authorityDir), { privateDirectories: true });
   } finally {

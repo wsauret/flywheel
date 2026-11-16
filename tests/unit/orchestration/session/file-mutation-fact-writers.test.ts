@@ -8,7 +8,7 @@ import { publishFileEdits } from "../../../../src/orchestration/file-edits/file-
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
 import { reconcilePendingFileMutations } from "../../../../src/orchestration/session/file-mutation-recovery.js"
 import { withStore, mutationFacts, context as mutationContext } from "./file-mutation-recovery-fixture.js"
-import type { ContainedFileSnapshot } from "../../../../src/infra/descriptor-directory.js"
+import type { ContainedFileSnapshot } from "../../../../src/infra/descriptor-directory-contract.js"
 import { computeLineStats, prepareFileMutationOperation, retireFileMutationNotApplied, settleFileMutation } from "../../../../src/orchestration/session/file-mutation-fact-writers.js"
 import { createGitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 import { settleFileMutationArtifact, takeFileMutationAttribution } from "../../../../src/orchestration/agent-runtime/tools/file-mutation-artifact.js"

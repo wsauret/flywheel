@@ -291,10 +291,6 @@ export function workflowRelativeDir(workflowId: string): string {
   return `${FLYWHEEL_DIR_NAME}/workflows/${requireSessionIdComponent(workflowId)}`;
 }
 
-export function resolveWorkflowDir(workflowId: string, projectRoot: string): string {
-  return path.resolve(projectRoot, workflowRelativeDir(workflowId));
-}
-
 export function ownerPidRelativePath(id: string, scope: "session" | "workflow" = "session"): string {
   return `${scope === "session" ? sessionRelativeDir(id) : workflowRelativeDir(id)}/owner.pid`;
 }

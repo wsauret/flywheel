@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, s
 import { join } from "node:path";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
 import { AuthProfileRetirementsError } from "../../../../src/infra/auth/auth-profile-retirements.js";
-import { ContainedDirectory, ContainedPathError } from "../../../../src/infra/descriptor-directory.js";
+import { ContainedPathError } from "../../../../src/infra/descriptor-directory-contract.js";
+import * as containedDirectories from "../../../../src/infra/descriptor-directory.js";
 import { authDir } from "../../../../src/infra/paths.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { HOLDS_DIRECTORY_VALUES } from "../../../helpers/held-directory-values.js";
@@ -309,7 +310,7 @@ describe("AuthProfileStore", () => {
     });
     const watcher = store.watchCatalog(() => {}, (error) => { throw error; }, { revalidateMs: 1 });
     await Bun.sleep(5);
-    const opens = spyOn(ContainedDirectory, "openExisting");
+    const opens = spyOn(containedDirectories, "openExistingContainedDirectory");
     try {
       const held = store.inspect();
       opens.mockClear();
@@ -358,7 +359,7 @@ describe("AuthProfileStore", () => {
     const controlled = fs.watch(root, () => {});
     const watching = spyOn(fs, "watch").mockImplementation(() => controlled);
     const watcher = store.watchCatalog(() => {}, (error) => { throw error; }, { revalidateMs: 5 });
-    const opens = spyOn(ContainedDirectory, "openExisting");
+    const opens = spyOn(containedDirectories, "openExistingContainedDirectory");
     const until = async (predicate: () => boolean): Promise<void> => {
       for (let attempt = 0; attempt < 400 && !predicate(); attempt += 1) await Bun.sleep(5);
       expect(predicate()).toBe(true);

@@ -1,4 +1,4 @@
-import type { ContainedDirectory } from "../descriptor-directory.js";
+import type { ContainedDirectory } from "../descriptor-directory-contract.js";
 import { requireAuthProfileName } from "../paths.js";
 
 export const AUTH_PROFILE_RETIREMENTS_FILE = ".profile-retirements.json";

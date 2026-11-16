@@ -4,7 +4,7 @@ import { MutationDiffSchema, type MutationDiff } from "../../infra/mutation-diff
 import { MutationFileEvidenceSchema } from "../../infra/mutation-evidence-schema.js"
 import type { MutationFileEvidence } from "../../infra/mutation-evidence.js"
 import type { InFlightWrite } from "../../infra/event-store-types.js"
-import type { ContainedFileMetadata, ContainedFileSnapshot } from "../../infra/descriptor-directory.js"
+import type { ContainedFileMetadata, ContainedFileSnapshot } from "../../infra/descriptor-directory-contract.js"
 import { parseFileMutationFact, type FileMutationFact } from "./file-mutation-facts.js"
 import { fileAccessProof, parseFileAccessProof, type FileAccessProof } from "./file-mutation-access.js"
 import { buildSessionContent, buildSessionContentManifest, readSessionContentRange, readSessionContentRecords, type ReadSessionContentNode, type StageSessionContentNodes, type SessionContentManifestReference } from "../../infra/session-content.js"

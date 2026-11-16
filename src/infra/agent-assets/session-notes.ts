@@ -17,12 +17,6 @@ export function canUseCheckpoint(
   return available && [...CHECKPOINT_TOOL_NAMES].every((name) => tools.has(name) && (!executionTools || executionTools.has(name)));
 }
 
-export interface SessionNotesReminderInput extends SessionNotesPromptInput {
-  readonly remainingTokens: number;
-}
-
-export const SESSION_NOTES_REMINDER_TEMPLATE = "<context_window_reminder>\nYour current context window is nearly exhausted; only {n_remaining} tokens remain. Before starting a new context window, save your current state with `checkpoint_replace`, one section at a time{request_reference_clause}, as well as important actions/tool calls for future reference. {skill_checkpoint_guidance} {design_intent_guidance} {recall_guidance} Maintain the checkpoint in a way to best help you recover in a new context window. Remove obsolete information when updating it. Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it. After saving your state, continue the task.\n</context_window_reminder>";
-
 export const SESSION_NOTES_GUIDANCE_TEMPLATE = "For tasks that may span context windows, keep your conversation's checkpoint current with the checkpoint tools. The complete checkpoint is limited to 24,576 UTF-8 bytes; when a write is refused, curate it, and never discard intent to save tokens. {skill_checkpoint_guidance} {design_intent_guidance} {request_reference_guidance} Use only the scoped checkpoint tools, not Markdown files or ordinary project file tools.\n\nIt is a good idea to update the checkpoint incrementally while you work so that you do not miss any important info. Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it. Once the token budget is exhausted, recover details from the checkpoint{recall_recovery_source}.\n\nDo not mention the checkpoint{recall_bookkeeping} in user-facing messages.\n";
 
 export const SESSION_NOTES_AUTO_COMPACT_FALLBACK_TEMPLATE = "<context_window_reminder>\nThe current context window is exhausted. Do not continue the task or give a final answer in this window. Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it. Save the checkpoint now: optionally use only `checkpoint_read` in the first response to recover saved context, then use `checkpoint_replace` or `checkpoint_decide` to save the sections that changed{request_reference_clause}, as well as important actions/tool calls for future reference. Read existing content before replacing it. Preserve saved user intent; if you cannot recover it, leave the existing checkpoint intact rather than replace it with empty recovery prose. {skill_checkpoint_guidance} {design_intent_guidance} {recall_guidance} After saving, continue in the next context; do not use other tools in this exhausted context.\n</context_window_reminder>";
@@ -48,11 +42,6 @@ function renderTemplate(template: string, { has }: SessionNotesPromptInput): str
     .replace(/ {2,}/g, " ")
     .replace(/ +\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n");
-}
-
-export function renderSessionNotesReminder(input: SessionNotesReminderInput): string {
-  return renderTemplate(SESSION_NOTES_REMINDER_TEMPLATE, input)
-    .replace("{n_remaining}", String(input.remainingTokens));
 }
 
 export function renderSessionNotesGuidance(input: SessionNotesPromptInput): string {

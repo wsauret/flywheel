@@ -1,6 +1,6 @@
 import { dirname } from "node:path"
 import { AuthProfileStore } from "../../src/infra/auth/auth-profile-store.js"
-import { appendCredentialInstance, setMeteredCredential } from "../../src/infra/auth/auth-store-mutations.js"
+import { appendCredentialInstanceWithReceipt, setMeteredCredentialWithReceipt } from "../../src/infra/auth/auth-store-mutations.js"
 import { loadAuthStoreWithDiagnostics } from "../../src/infra/auth/auth-store.js"
 import type { CredentialSlotClassifier } from "../../src/infra/auth/auth-store-types.js"
 import { createUsageAuthority } from "../../src/infra/llm/usage-authority.js"
@@ -37,18 +37,18 @@ async function seedProfile(profileId: string, displayName: string, isolated: boo
   }
   const profileDir = authDir(userDataRoot, profileId)
   const accountLabels = isolated ? ["Isolated Account"] : ["Alpha Exact", "Bravo Included Boundary", "Charlie Paid Boundary", "Delta Partial", "Echo Stale Active", "Foxtrot Stale Expired", "Golf Ledger Incomplete", "Hotel Many Cards"]
-  for (const label of accountLabels) await appendCredentialInstance("chatgpt", oauth(label), profileDir, classifySlot)
+  for (const label of accountLabels) await appendCredentialInstanceWithReceipt("chatgpt", oauth(label), profileDir, classifySlot)
   if (!isolated) {
-    await appendCredentialInstance("opencode_go", oauth("Go Timing Unavailable"), profileDir, classifySlot)
-    await appendCredentialInstance("github_copilot", oauth("Copilot Timing Unavailable"), profileDir, classifySlot)
-    await appendCredentialInstance("supergrok", oauth("SuperGrok Timing Unavailable"), profileDir, classifySlot)
+    await appendCredentialInstanceWithReceipt("opencode_go", oauth("Go Timing Unavailable"), profileDir, classifySlot)
+    await appendCredentialInstanceWithReceipt("github_copilot", oauth("Copilot Timing Unavailable"), profileDir, classifySlot)
+    await appendCredentialInstanceWithReceipt("supergrok", oauth("SuperGrok Timing Unavailable"), profileDir, classifySlot)
   }
 
-  await setMeteredCredential("anthropic_api", apiKey("direct-prior"), profileDir, classifySlot)
+  await setMeteredCredentialWithReceipt("anthropic_api", apiKey("direct-prior"), profileDir, classifySlot)
   const priorDirectLineage = loadAuthStoreWithDiagnostics(profileDir, undefined, classifySlot).credentialLineages.anthropic_api
   if (!priorDirectLineage) throw new Error("missing prior direct lineage")
-  await setMeteredCredential("anthropic_api", apiKey("direct-active"), profileDir, classifySlot)
-  await setMeteredCredential("openrouter", apiKey("aggregator-active"), profileDir, classifySlot)
+  await setMeteredCredentialWithReceipt("anthropic_api", apiKey("direct-active"), profileDir, classifySlot)
+  await setMeteredCredentialWithReceipt("openrouter", apiKey("aggregator-active"), profileDir, classifySlot)
   const lineages = loadAuthStoreWithDiagnostics(profileDir, undefined, classifySlot).credentialLineages
   const directLineage = lineages.anthropic_api
   const aggregatorLineage = lineages.openrouter

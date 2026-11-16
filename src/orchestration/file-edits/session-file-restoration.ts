@@ -1,5 +1,5 @@
 import { applyPatch, parsePatch, reversePatch } from "diff"
-import type { ContainedFileMetadata } from "../../infra/descriptor-directory.js"
+import type { ContainedFileMetadata } from "../../infra/descriptor-directory-contract.js"
 import { hydrateToolContentFact } from "../../infra/tool-content-hydration.js"
 import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js"
 import { fileAccessProof, type FileAccessProof } from "../session/file-mutation-access.js"

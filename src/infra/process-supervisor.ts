@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
+import { runsThroughBun } from "./cli-subprocess.js"
 import { readOutcomeRecord, type OutcomeRecordRead } from "./command-handover.js"
 import { unmarkedEnvironment } from "./container-mark.js"
 import { errorMessage } from "./error-message.js"
+import { EXECUTABLE_ROLES } from "./executable-roles.js"
 import { namedExitStatus } from "./exit-status.js"
 import { durationMs } from "./operation-log.js"
 import { onTermination, recordTermination, type TerminationCause } from "./process-container.js"
@@ -161,18 +163,32 @@ type AcquisitionPhase =
 
 type AcquisitionBarrier = (phase: AcquisitionPhase) => Promise<void> | void
 
-export interface ProcessSupervisorOptions {
-  readonly guardianCommand?: readonly string[]
+interface ProcessSupervisorTuning {
   readonly backend?: OwnedProcessBackend
   readonly acknowledgeTimeoutMs?: number
   readonly killGraceMs?: number
-  /** Records ownership through an existing lease instead of starting a
-   *  guardian. A supervisor given one never starts or closes a guardian, and
-   *  never opens a generation: both stay with the peer that opened the lease. */
-  readonly lease?: GuardianLease
   /** Test-only. Awaited at every acquisition phase. Production supplies none,
    *  and an acquisition then has no barrier at all. */
   readonly barrier?: AcquisitionBarrier
+}
+
+/** Who owns what a supervisor launches: a guardian that it starts with
+ *  `guardianCommand`, normally `guardianCommand()`, or the existing `lease` of
+ *  a peer. A supervisor given a lease never starts or closes a guardian, and
+ *  never opens a generation: both stay with the peer that opened the lease. */
+export type ProcessSupervisorOptions = ProcessSupervisorTuning & (
+  | { readonly guardianCommand: readonly string[] }
+  | { readonly lease: GuardianLease }
+)
+
+/** The one argv that starts this executable's guardian. A source run starts
+ *  it through the source entry, which holds the snapshot of a dev service that
+ *  the guardian runs from (ARCH-DISTRIBUTION-030); a packaged binary re-enters
+ *  itself with the role marker. */
+export function guardianCommand(): readonly string[] {
+  return runsThroughBun(process.execPath)
+    ? [process.execPath, fileURLToPath(new URL("../../scripts/source-cli.ts", import.meta.url)), EXECUTABLE_ROLES.guardian]
+    : [process.execPath, EXECUTABLE_ROLES.guardian]
 }
 
 /** The outcome of ending what an owner still holds. Settlement is proven, never
@@ -427,19 +443,12 @@ export function createLauncherScope(
   }
 }
 
-/** Argv that runs the guardian from source. A packaged binary has no module
- *  path, so it passes its own guardian argv instead. */
-function defaultGuardianCommand(): readonly string[] {
-  return [process.execPath, fileURLToPath(new URL("process-guardian.ts", import.meta.url))]
-}
-
-export function createProcessSupervisor(options: ProcessSupervisorOptions = {}): ProcessSupervisor {
+export function createProcessSupervisor(options: ProcessSupervisorOptions): ProcessSupervisor {
   const backend = options.backend ?? ownedProcessBackend
-  const guardianCommand = options.guardianCommand ?? defaultGuardianCommand()
   const acknowledgeTimeoutMs = options.acknowledgeTimeoutMs ?? DEFAULT_ACKNOWLEDGE_TIMEOUT_MS
   const killGraceMs = options.killGraceMs ?? PROCESS_KILL_GRACE_MS
   const barrier = options.barrier
-  const injected = options.lease
+  const injected = "lease" in options ? options.lease : undefined
   let disposed = false
 
   // Every launch this supervisor still owns, recorded before its adoption can
@@ -490,12 +499,12 @@ export function createProcessSupervisor(options: ProcessSupervisorOptions = {}):
   }
 
   const guardian = (): Promise<GuardianChannel> => {
-    if (injected) throw new Error("this supervisor records ownership through a peer's lease and owns no guardian")
+    if ("lease" in options) throw new Error("this supervisor records ownership through a peer's lease and owns no guardian")
     // Disposal ends the guardian and forgets it, and nothing may start another.
     if (disposed) throw new Error("process supervisor is disposed")
     if (!channel) {
       startupTrace("guardian start")
-      const started: Promise<GuardianChannel> = startGuardian(guardianCommand, acknowledgeTimeoutMs, (exit) => { guardianEnded(started, exit) }, replaces)
+      const started: Promise<GuardianChannel> = startGuardian(options.guardianCommand, acknowledgeTimeoutMs, (exit) => { guardianEnded(started, exit) }, replaces)
       channel = started
       started.then(
         () => {

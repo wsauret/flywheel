@@ -12,7 +12,8 @@ import { basename, dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { Schema } from "effect";
 import { acquireLockIn, releaseLockIn, type LockHold } from "../ownership-file-lock.js";
-import { ContainedDirectory, ContainedPathError } from "../descriptor-directory.js";
+import { ContainedPathError } from "../descriptor-directory-contract.js";
+import { openContainedDirectory } from "../descriptor-directory.js";
 import { ensurePrivateRootDirectory } from "../private-path.js";
 import { directoryComponents, readFileUnder, type ContainedFileLocation } from "../write-file-under.js";
 
@@ -131,7 +132,7 @@ export async function mutateLockedJsonStore<T>(
     // A link already at its name survives this call and is then refused by the
     // no-follow open below, so creating it first cannot admit one.
     ensurePrivateRootDirectory(baseDir);
-    return ContainedDirectory.open(baseDir, directoryComponents(dirname(relativePath)), { privateDirectories: true, noFollowBase: true });
+    return openContainedDirectory(baseDir, directoryComponents(dirname(relativePath)), { privateDirectories: true, noFollowBase: true });
   });
   try {
     let hold: LockHold;

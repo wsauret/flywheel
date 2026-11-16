@@ -1,12 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import {
-  ContainedDirectory,
-  type ContainedFileMetadata,
-  type ContainedFileSnapshot,
-  type FileMutationAttemptResult,
-} from "../../infra/descriptor-directory.js"
-import { sameFileMetadata, sameFileSnapshot } from "../../infra/descriptor-directory-contract.js"
+import { sameFileMetadata, sameFileSnapshot, type ContainedDirectory, type ContainedFileMetadata, type ContainedFileSnapshot, type FileMutationAttemptResult } from "../../infra/descriptor-directory-contract.js"
+import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
 import { canonicalMutationPath } from "../../infra/file-mutation-queue.js"
 
 /** The largest file a text edit admits or encodes. Exact bytes admitted with a larger bound publish at any size. */
@@ -71,7 +66,7 @@ export class RetainedFileEditAuthority {
     const components = suffix.split(sep)
     const name = components.pop()
     if (!name) throw new Error(`${path} has no file name`)
-    const opened = ContainedDirectory.openExisting(selected, [], { noFollowBase: false })
+    const opened = openExistingContainedDirectory(selected, [], { noFollowBase: false })
     if (!opened) throw new Error(`${ancestor} does not exist`)
     let directory: ContainedDirectory = opened
     let existingCount = 0
@@ -205,7 +200,7 @@ export class RetainedFileEditAuthority {
 function deepestExistingParent(target: string): string {
   let candidate = dirname(target)
   for (;;) {
-    const directory = ContainedDirectory.openExisting(candidate, [], { noFollowBase: false })
+    const directory = openExistingContainedDirectory(candidate, [], { noFollowBase: false })
     if (directory) {
       directory.close()
       return candidate
