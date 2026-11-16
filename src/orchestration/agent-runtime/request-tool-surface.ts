@@ -26,8 +26,6 @@ import type { ExecutionAdmission } from "./tools/tool-dispatch.js";
 import type { AdmittedModelRequest, ModelClient, ModelRequestRoute, ServingAttempt, StreamOptions, ToolPresentation } from "./llm/types.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
-import { runModuleTransformerChain } from "../module-hooks.js";
-import type { ProviderRequestAuditContextApplication } from "../session/provider-request-audit-types.js";
 import { hashToolInputFormat } from "../session/provider-request-audit-hash.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
 import type { ModelRuntimeCapture, ProviderConnectionCapture } from "./factory.js";
@@ -91,7 +89,6 @@ function materializeToolInputSchema(tool: RuntimeTool): ProviderToolDef["input_s
 interface RequestStablePrompt {
   readonly systemPrompt: SystemPromptTiers;
   readonly staticContextTokens: number;
-  readonly contextApplication: ProviderRequestAuditContextApplication;
   readonly definitions: readonly ProviderToolDef[];
   readonly definitionChars: number;
   readonly interactionProfileId: ModelInteractionProfile["id"];
@@ -103,7 +100,6 @@ export interface PreparedRequestAttempt {
   readonly tools: readonly ProviderToolDef[];
   readonly auditTools: readonly AuditToolDef[];
   readonly attemptStaticTokens: number;
-  readonly contextApplication: ProviderRequestAuditContextApplication;
   readonly interactionProfileId: ModelInteractionProfile["id"];
   readonly omittedTools: ReadonlyArray<{ readonly name: string; readonly reason: string }>;
 }
@@ -167,7 +163,7 @@ interface RequestToolSurface {
   readonly providerRuntime?: RequestProviderRuntime;
   /** Complete skill revision captured with this request's prompt and executable tools. */
   readonly skillRegistry?: ToolExposurePlan["skillRegistry"];
-  prepareStablePrompt(build: () => SystemPromptTiers | Promise<SystemPromptTiers>, profile: ModelInteractionProfile, literalOverride?: boolean): Promise<RequestStablePrompt>;
+  prepareStablePrompt(build: () => SystemPromptTiers | Promise<SystemPromptTiers>, profile: ModelInteractionProfile): Promise<RequestStablePrompt>;
   prepareAttempt(attempt: Pick<ServingAttempt, "model" | "toolPresentation"> & Partial<Pick<ServingAttempt, "modelFamily" | "tokenizerIdentity">>): PreparedRequestAttempt;
   /** Captures the one immutable provider candidate chain this surface plans and dispatches. */
   admitProviderRequest(client: ModelClient, signal?: AbortSignal): Promise<AdmittedModelRequest>;
@@ -212,7 +208,6 @@ function pin(
   const enabledModuleIds = new Set(moduleSnapshot.enabledModuleIds);
   const requestRegistry = toolRegistryFromComposition(moduleSnapshot);
   const usableToolNames = usableIdentities(plan);
-  const applicationIdentity = crypto.randomUUID();
   let stablePrompt: RequestStablePrompt | undefined;
   let admittedProviderRequest: Promise<AdmittedModelRequest> | undefined;
   const projections = new WeakMap<ToolPresentation, { definitions: readonly ProviderToolDef[]; auditDefinitions: readonly AuditToolDef[]; serializedDefinitions: string; omittedTools: ReadonlyArray<{ readonly name: string; readonly reason: string }> }>();
@@ -245,26 +240,9 @@ function pin(
         ? { ok: true }
         : { ok: false, refusal: { content: moduleDisabledReason(missing), outcome: "error" } }
     },
-    async prepareStablePrompt(build, profile, literalOverride = false) {
+    async prepareStablePrompt(build, profile) {
       if (stablePrompt) return stablePrompt;
-      const built = await build();
-      // Each cache tier crosses the modelContext seam on its own so a transformer
-      // cannot move bytes across the tier boundary, and each tier's applications
-      // carry their own identity so the audit tells the passes apart. An
-      // empty tier has no context to transform and stays empty so it renders as
-      // absent.
-      const transform = (tier: keyof SystemPromptTiers, value: string) => literalOverride || value.length === 0
-        ? { value, applications: [] }
-        : runModuleTransformerChain({
-            seam: "modelContext",
-            value,
-            applicationIdentity: `${applicationIdentity}\u0000${tier}`,
-            transformers: moduleSnapshot.transformers,
-          });
-      const stable = transform("stable", built.stable);
-      const session = transform("session", built.session);
-      const conversation = transform("conversation", built.conversation);
-      const systemPrompt: SystemPromptTiers = { stable: stable.value, session: session.value, conversation: conversation.value };
+      const systemPrompt = await build();
       const definitions = projectProviderToolDefinitions(tools);
 
       const definitionChars = JSON.stringify(definitions).length;
@@ -273,7 +251,6 @@ function pin(
       stablePrompt = {
         systemPrompt,
         staticContextTokens: Math.ceil((renderSystemPrompt(systemPrompt).length + definitionChars) / 4),
-        contextApplication: { identity: applicationIdentity, applications: [...stable.applications, ...session.applications, ...conversation.applications] },
         definitionChars,
         definitions,
 
@@ -340,7 +317,6 @@ function pin(
         tools: projection.definitions,
         auditTools: projection.auditDefinitions,
         attemptStaticTokens,
-        contextApplication: stablePrompt.contextApplication,
         interactionProfileId: stablePrompt.interactionProfileId,
         omittedTools: projection.omittedTools,
       };

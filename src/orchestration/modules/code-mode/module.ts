@@ -41,6 +41,5 @@ export const codeModeModule = {
     { domain: "settings", id: "code-mode", value: { control: "binary", group: "Tools", label: "Code mode", description: "Run supported external tools through JavaScript." } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

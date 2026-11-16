@@ -48,7 +48,7 @@ describe("request tool surface", () => {
       semanticBundle: null, personaBaseline: false, registryOrder: 80,
     } as const
     const module: FirstPartyModule = {
-      id: "development", dependencies: [], availability: { kind: "available" }, observers: [], transformers: [], gates: [],
+      id: "development", dependencies: [], availability: { kind: "available" }, observers: [], gates: [],
       contributions: [
         { domain: "tools", id: "diagnostic-shell", value: { kind: "tool", name: "diagnostic-shell", declaration: { ...policy, registrations: {
           "diagnostic-shell": { capabilities: [], exposedName: shell.name, create: () => ({ tool: shell }) },
@@ -393,7 +393,7 @@ describe("request tool surface", () => {
       fakeTool("handoff", { toJSON: () => { schemaSerializations += 1; return { type: "object" }; } }),
     ], [{ name: "workflow", reason: "Workflows is disabled" }]), fullModules, testRuntimeConfigCapture);
     const surface = await owner.resolve();
-    await surface.prepareStablePrompt(() => stableSystemPrompt("literal bytes"), DEFAULT_MODEL_INTERACTION_PROFILE, true);
+    await surface.prepareStablePrompt(() => stableSystemPrompt("literal bytes"), DEFAULT_MODEL_INTERACTION_PROFILE);
 
     const first = surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION });
     const repeated = surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION });
@@ -551,80 +551,17 @@ describe("request tool surface", () => {
     }
   });
 
-  test("applies the pinned model-context transformer sequence once per request surface", async () => {
-    const calls: string[] = [];
-    const transformerModule = {
-      id: "test-transformers",
-      dependencies: [],
-      availability: { kind: "available" },
-      contributions: [],
-      observers: [],
-      transformers: [
-        { seam: "modelContext", id: "second", order: 20, transformer: (value: string) => { calls.push("second"); return `${value}:second`; } },
-        { seam: "modelContext", id: "first", order: 10, transformer: (value: string) => { calls.push("first"); return `${value}:first`; } },
-      ],
-      gates: [],
-    } as const satisfies FirstPartyModule;
-    const modules = () => composeFirstPartyModules([...SHIPPED_MODULES, transformerModule]);
-    const owner = await createRequestToolSurface(() => plan([]), modules, testRuntimeConfigCapture);
+  test("prepares the stable prompt once per surface and passes each cache tier through unchanged", async () => {
+    const owner = await createRequestToolSurface(() => plan([]), fullModules, testRuntimeConfigCapture);
     const pinned = await owner.resolve();
-    const first = await pinned.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
+    const tiers = { stable: "STABLE", session: "SESSION", conversation: "CONVERSATION" };
+    const prepared = await pinned.prepareStablePrompt(() => tiers, DEFAULT_MODEL_INTERACTION_PROFILE);
     const repeated = await pinned.prepareStablePrompt(() => stableSystemPrompt("unused"), DEFAULT_MODEL_INTERACTION_PROFILE);
 
-    expect(first.systemPrompt).toEqual(stableSystemPrompt("prompt:first:second"));
-    expect(repeated).toBe(first);
-    expect(calls).toEqual(["first", "second"]);
-    expect(first.contextApplication.applications.map(({ transformerId, seam, order, outcome }) => ({ transformerId, seam, order, outcome }))).toEqual([
-      { transformerId: "first", seam: "modelContext", order: 10, outcome: "applied" },
-      { transformerId: "second", seam: "modelContext", order: 20, outcome: "applied" },
-    ]);
-    expect(JSON.stringify(first.contextApplication.applications)).not.toContain("prompt");
-
-    pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION });
-    expect(calls).toEqual(["first", "second"]);
-  });
-
-  test("transforms each cache tier on its own and accounts for the joined prompt", async () => {
-    const transformerModule = {
-      id: "tier-transformer",
-      dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], gates: [],
-      transformers: [{ seam: "modelContext", id: "tag", order: 1, transformer: (value: string) => `${value}:tagged` }],
-    } as const satisfies FirstPartyModule;
-    const modules = () => composeFirstPartyModules([...SHIPPED_MODULES, transformerModule]);
-    const owner = await createRequestToolSurface(() => plan([]), modules, testRuntimeConfigCapture);
-    const pinned = await owner.resolve();
-    const prepared = await pinned.prepareStablePrompt(() => ({ stable: "STABLE", session: "SESSION", conversation: "CONVERSATION" }), DEFAULT_MODEL_INTERACTION_PROFILE);
-
-    expect(prepared.systemPrompt).toEqual({ stable: "STABLE:tagged", session: "SESSION:tagged", conversation: "CONVERSATION:tagged" });
-    const applicationIds = prepared.contextApplication.applications.map(({ applicationId }) => applicationId);
-    expect(applicationIds).toHaveLength(3);
-    expect(new Set(applicationIds).size).toBe(3);
+    expect(repeated).toBe(prepared);
+    expect(prepared.systemPrompt).toEqual(tiers);
     expect(prepared.staticContextTokens).toBe(Math.ceil((renderSystemPrompt(prepared.systemPrompt).length + JSON.stringify(prepared.definitions).length) / 4));
-
-    const attempt = pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION });
-    expect(attempt.systemPrompt.stable).toBe("STABLE:tagged");
-    expect(attempt.systemPrompt.session).toBe("SESSION:tagged");
-    expect(attempt.systemPrompt.conversation).toBe("CONVERSATION:tagged");
-  });
-
-  test("literal prompts bypass mutating model-context transformers and retain empty application evidence", async () => {
-    let calls = 0;
-    const transformerModule = {
-      id: "literal-transformer",
-      dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], gates: [],
-      transformers: [{ seam: "modelContext", id: "mutator", order: 1, transformer: (value: string) => { calls += 1; return `${value}:mutated`; } }],
-    } as const satisfies FirstPartyModule;
-    const owner = await createRequestToolSurface(() => plan([fakeTool("bash")]), () => composeFirstPartyModules([...SHIPPED_MODULES, transformerModule]), testRuntimeConfigCapture);
-    const surface = await owner.resolve();
-    const literal = "literal\nbytes";
-    const stable = await surface.prepareStablePrompt(() => stableSystemPrompt(literal), DEFAULT_MODEL_INTERACTION_PROFILE, true);
-    const prepared = surface.prepareAttempt({ model: "model", toolPresentation: FUNCTION_TOOL_PRESENTATION });
-
-    expect(calls).toBe(0);
-    expect(stable.systemPrompt).toEqual(stableSystemPrompt(literal));
-    expect(stable.contextApplication.applications).toEqual([]);
-    expect(prepared.systemPrompt).toEqual(stableSystemPrompt(literal));
-    expect(prepared.tools.map(({ name }) => name)).toEqual(["bash"]);
+    expect(pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION }).systemPrompt).toEqual(tiers);
   });
 });
 

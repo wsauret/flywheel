@@ -85,13 +85,13 @@ Not: Excluding development tooling with a build-time flag or a development-build
 
 A module declares one id, its dependencies, its availability, and owner-typed contributions and hooks. Orchestration defines the closed map of contribution domains, so a module cannot contribute an unknown bag or create a reverse dependency. A contribution is a narrow, host-owned structural value, never a planner or client implementation union.
 
-## ARCH-STRUCTURE-015: Observers observe, transformers chain, and gates are singletons
+## ARCH-STRUCTURE-015: Observers observe and gates are singletons
 
-An observer hook cannot replace a value or veto control flow: its return is ignored, each failure is isolated, delivery continues, and it causes only the side effects its seam supplies. Transformers form deterministic ordered chains. A gate is a singleton per seam, a duplicate gate is a startup error, an absent gate adds no wrapper, and the seam owner defines the gate's power and position.
+An observer hook cannot replace a value or veto control flow: its return is ignored, each failure is isolated, delivery continues, and it causes only the side effects its seam supplies. A gate is a singleton per seam, a duplicate gate is a startup error, an absent gate adds no wrapper, and the seam owner defines the gate's power and position. No module hook transforms a value that a seam passes on.
 
 ## ARCH-STRUCTURE-016: Catalog position has no meaning
 
-Composition sorts module ids and contribution identities, uses declared numeric order for transformers, and rejects collisions. Canonical module order for persistence and display is lexicographic by id. A semantic order, such as the delivery order of a chain of observers, is declared inside one cohesive contribution.
+Composition sorts module ids and contribution identities and rejects collisions. Canonical module order for persistence and display is lexicographic by id. A semantic order, such as the delivery order of a chain of observers, is declared inside one cohesive contribution.
 
 Because: Source order is not policy, and import order would otherwise decide authority.
 
@@ -142,7 +142,7 @@ Not: Writing dependents off when their dependency turns off.
 
 ## ARCH-STRUCTURE-026: A module reaches the product only through its contributions
 
-Every effect of a module, including model tools, prompt guidance, commands, providers, settings rows, observers, transformers, gates, reviews, maintenance, and other automatic work, comes from one typed catalog contribution. Composition reads the live effective selection, so an off module contributes nothing and its hidden protocol views answer empty from the next snapshot.
+Every effect of a module, including model tools, prompt guidance, commands, providers, settings rows, observers, gates, reviews, maintenance, and other automatic work, comes from one typed catalog contribution. Composition reads the live effective selection, so an off module contributes nothing and its hidden protocol views answer empty from the next snapshot.
 
 Not: Per-subsystem enable flags kept in step with the module selection.
 

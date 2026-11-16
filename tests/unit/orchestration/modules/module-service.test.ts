@@ -39,7 +39,6 @@ const greeterModule = {
   service: { handle: greeterService, create: () => { constructions.push("greeter"); return { greeting: "hello", dispose() {} } } },
   contributions: [],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 
@@ -56,7 +55,6 @@ const probeModule = {
   },
   contributions: [],
   observers: [{ seam: "notify", observer: (episode, modules) => { modules.get(probeService)?.received.push(episode) } }],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 

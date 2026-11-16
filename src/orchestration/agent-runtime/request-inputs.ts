@@ -102,7 +102,7 @@ export type RequestInputsUse =
  *  A send's loop reads them (`AgentLoopOptions`), and so does a pre-start (`prepareRequest`). */
 export type RequestInputs = Pick<AgentLoopOptions,
   | "client" | "initialPlannedAttempt" | "initialInteractionProfile" | "tools" | "systemPrompt" | "turnReminders"
-  | "literalSystemPrompt" | "initialRequestContext" | "executionCwd" | "seed" | "persistence" | "reasoningEffort"
+  | "initialRequestContext" | "executionCwd" | "seed" | "persistence" | "reasoningEffort"
   | "providerOptions" | "cacheRetention" | "providerSessionKey" | "promptCacheKey" | "sessionId" | "conversationId"
   | "sessionEventStore" | "sessionEventReader">;
 
@@ -677,7 +677,6 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
             ...turnReminders(messages, await turnReminderStates(), toolSurface.current().capabilities),
             ...narrowingStatements(narrowingOf(messages)),
           ],
-          ...(headlessPrompt?.kind === "literal" ? { literalSystemPrompt: true } : {}),
           ...(initialRequestContext !== undefined ? { initialRequestContext } : {}),
           executionCwd: options.executionCwd,
           seed,

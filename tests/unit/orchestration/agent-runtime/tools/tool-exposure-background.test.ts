@@ -151,7 +151,7 @@ describe("background management under capability policy", () => {
         context(false),
         { gate: () => {
           effects.push("gate");
-          return { kind: "replace", execute: async () => ({ content: "replaced", outcome: "ok" }) };
+          return { kind: "veto", reason: "vetoed" };
         } },
       );
       expect(malformed.outcome).toBe("error");

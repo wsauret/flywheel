@@ -69,7 +69,6 @@ const definition = {
   id: "anthropic_api",
   displayName: "Anthropic API Key",
   shortName: "Anthropic",
-  supportedFamilies: ["anthropic"],
   defaultChatTransport: "anthropic-messages",
   cacheRetentionPolicies: ["5m", "1h"],
   configHints: ["flywheel auth login --anthropic"],
@@ -115,6 +114,5 @@ export const anthropicApiModule = {
     { domain: "settings", id: "provider-anthropic-api", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Anthropic models through an API key" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

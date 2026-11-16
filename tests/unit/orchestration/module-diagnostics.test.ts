@@ -4,7 +4,7 @@ import { composeFirstPartyModules, type FirstPartyModule } from "../../../src/or
 
 const diagnosticModule: FirstPartyModule = {
   id: "development", dependencies: [], availability: { kind: "available" },
-  contributions: [], observers: [], transformers: [], gates: [],
+  contributions: [], observers: [], gates: [],
   retainedDiagnostics: {
     attempts: () => ({ attempts: [{ id: "step", name: "Task", definitionId: "task", workflowDefinitionId: "flow", status: "completed", startedAt: 10, completedAt: 20 }], conversationToAttempt: new Map([["conversation", "step"]]) }),
     children: () => [{ runId: "child", status: "completed", modelRequestId: "parent", totalCostUsd: 0.03, completedAt: 18 }],

@@ -28,6 +28,5 @@ export const sideQuestionModule = {
     { domain: "settings", id: "side-question", value: { control: "binary", group: "Tools", label: "Side questions", description: "Ask temporary contextual questions with /btw" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

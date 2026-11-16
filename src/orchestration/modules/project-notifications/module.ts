@@ -39,6 +39,5 @@ export const projectNotificationsModule = {
     seam: "notify",
     observer: (episode, modules) => modules.get(projectNotificationsService)?.sink.apply(episode),
   }],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

@@ -29,7 +29,6 @@ const definition = {
   displayName: "ChatGPT Subscription",
   shortName: "ChatGPT",
   billingUrl: "https://help.openai.com/en/articles/9039756-managing-billing-settings-on-chatgpt-web-and-platform",
-  supportedFamilies: ["openai"],
   defaultChatTransport: "openai-responses",
   configHints: ["flywheel auth login"],
   cli: { flag: "chatgpt", name: "ChatGPT" },
@@ -129,6 +128,5 @@ export const chatgptModule = {
     { domain: "settings", id: "provider-chatgpt", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow OpenAI models through a ChatGPT subscription" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

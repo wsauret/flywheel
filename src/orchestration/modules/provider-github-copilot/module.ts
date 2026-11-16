@@ -26,7 +26,7 @@ const definition = {
   displayName: "Copilot Subscription",
   shortName: "Copilot",
   billingUrl: "https://github.com/settings/billing",
-  supportedFamilies: ["anthropic", "openai", "google"],
+ 
   defaultChatTransport: "openai-completions",
   configHints: ["flywheel auth login --copilot"],
   cli: { flag: "copilot", name: "GitHub Copilot" },
@@ -110,6 +110,5 @@ export const githubCopilotModule = {
     { domain: "settings", id: `provider-github-copilot:${MONTHLY_CREDIT_CAP.key}`, value: MONTHLY_CREDIT_CAP },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

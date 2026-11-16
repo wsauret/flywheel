@@ -199,10 +199,6 @@ interface FirstPartyObserverMap {
    *  the commit; with no observer enabled the call settles at once (ARCH-STRUCTURE-040). */
   readonly notify: (episode: NotificationEpisodeInput, modules: ModuleServices) => Promise<void> | void
 }
-interface FirstPartyTransformerMap {
-  readonly modelContext: (value: string) => string
-  readonly startupLabel: (value: string) => string
-}
 interface FirstPartyGateMap {
   readonly toolExecution: ToolExecutionGate
   readonly toolExposure: ToolExposureGate
@@ -234,7 +230,7 @@ interface ModuleServiceDeclaration<Instance extends ModuleServiceInstance, Servi
  *  through the same activation walk. */
 type PortableServiceDeclaration<Instance extends ModuleServiceInstance> = ModuleServiceDeclaration<Instance, PortableModuleServices> & { readonly portable: true }
 
-export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, FirstPartyObserverMap, FirstPartyTransformerMap, FirstPartyGateMap> & {
+export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, FirstPartyObserverMap, FirstPartyGateMap> & {
   readonly runtime?: ModuleRuntimeDeclaration<unknown>
   /** The type prefixes of the durable fact families this module owns. The
    *  retention registry names the owner per family; the prefixes are the
@@ -305,7 +301,7 @@ export interface ModuleCommandIdentity {
   readonly reading?: CommandReading
 }
 
-export type FirstPartyModuleComposition = ModuleComposition<FirstPartyContributionMap, FirstPartyObserverMap, FirstPartyTransformerMap, FirstPartyGateMap>
+export type FirstPartyModuleComposition = ModuleComposition<FirstPartyContributionMap, FirstPartyObserverMap, FirstPartyGateMap>
 export type FirstPartyModuleSnapshot = () => FirstPartyModuleComposition
 
 /** The composition one realm's selection enables. Same value as
@@ -654,7 +650,6 @@ export function composeFirstPartyModules(
     installedContributions: Object.freeze([...composition.installedContributions]),
     contributions: Object.freeze([...composition.contributions]),
     observers: Object.freeze([...composition.observers]),
-    transformers: Object.freeze([...composition.transformers]),
     gates: Object.freeze([...composition.gates]),
     warnings: Object.freeze([...composition.warnings]),
   })

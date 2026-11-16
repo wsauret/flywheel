@@ -203,6 +203,5 @@ export const learningModule = {
     } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

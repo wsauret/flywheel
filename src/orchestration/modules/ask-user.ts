@@ -48,6 +48,5 @@ export const askUserModule = {
     { domain: "settings", id: "ask-user", value: { control: "binary", group: "Tools", label: "Ask user", description: "Allow agents to ask you structured questions" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

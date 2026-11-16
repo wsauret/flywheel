@@ -81,7 +81,7 @@ describe("provider request audit recorder", () => {
       },
     })
     const writer = createSessionFactWriter({ sessionId: "atomic-audit", writer: lane, lane: lane.lease({ kind: "session", sessionId: "atomic-audit" }) })
-    const input = { ...requestBase, turn: 1, messages: [], contextApplication: { identity: "application-1", applications: [] } }
+    const input = { ...requestBase, turn: 1, messages: [] }
     const expected = buildProviderRequestFacts(input, {}).facts.map((fact) => fact.type)
     const observed: string[] = []
     try {
@@ -300,46 +300,6 @@ describe("provider request audit recorder", () => {
     const promptFacts = observed.filter((fact) => fact.type === "prompt.assembled")
     const withSystemBody = promptFacts.filter((fact) => fact.type === "prompt.assembled" && typeof fact.payload.systemPrompt === "string")
     expect(withSystemBody).toHaveLength(3)
-  })
-
-  test("rejects a context-application identity that names a different transformer sequence", async () => {
-    const observed: ProviderRequestAuditFact[] = []
-    const audit = { observe: (fact: ProviderRequestAuditFact) => { observed.push(fact) } }
-    const application = {
-      applicationId: "application-1",
-      transformerId: "transformer-1",
-      seam: "modelContext",
-      order: 10,
-      outcome: "error" as const,
-      inputHash: "a".repeat(64),
-      outputHash: "b".repeat(64),
-    }
-    const input = {
-      ...requestBase,
-      identity: { providerSessionKey: "provider-transformer", conversationId: "conv-transformer" },
-      messages: [{ role: "user", content: "secret message bytes" }],
-      contextApplication: { identity: "context-application-1", applications: [application] },
-    }
-    const dedup: ConversationDedup = {}
-
-    await recordProviderRequest(audit, { ...input, turn: 1 }, dedup)
-    await recordProviderRequest(audit, { ...input, turn: 2 }, dedup)
-    expect(dedup.contextApplicationIdentity).toBe("context-application-1")
-    expect(dedup.contextApplicationDigest).toMatch(/^[a-f0-9]{64}$/)
-    await expect(recordProviderRequest(audit, {
-      ...input,
-      turn: 3,
-      contextApplication: {
-        identity: "context-application-1",
-        applications: [{ ...application, outputHash: "c".repeat(64) }],
-      },
-    }, dedup)).rejects.toThrow("names a different transformer sequence")
-    expect(observed.filter((fact) => fact.payload.turn === 3)).toEqual([])
-
-    expect(observed.map((fact) => fact.type)).toEqual([
-      "prompt.assembled", "tool_surface.selected", "context.application.recorded", "context.transformer.applied", "model.requested",
-      "prompt.assembled", "model.requested",
-    ])
   })
 
   test("recorded provider options omit arbitrary and identifying values while retaining behavior controls", async () => {

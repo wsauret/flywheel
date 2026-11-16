@@ -21,6 +21,5 @@ export const subscriptionUsageModule = {
     { domain: "settings", id: "subscription-usage-alert-thresholds", value: { control: "config-number-list", section: subscriptionUsageConfigSection.key, key: "alert_thresholds", defaultValue: DEFAULT_USAGE_ALERT_THRESHOLDS, suffix: "%", group: "Model & spend", label: "Usage alert thresholds", description: "Ascending usage percentages for alerts. Empty disables alerts.", min: 1, max: 100 } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

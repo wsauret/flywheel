@@ -43,7 +43,6 @@ describe("fact prefix claims at composition", () => {
     facts: { prefixes },
     contributions: [],
     observers: [],
-    transformers: [],
     gates: [],
   })
 

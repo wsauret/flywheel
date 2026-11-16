@@ -18,7 +18,6 @@ import { errorDetail, errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/module-runtime.js";
 import { durationMs, logCompletion } from "../../../infra/operation-log.js";
-import { runModuleGate, type ModuleGate } from "../../module-hooks.js";
 import type { ToolCall, ToolInputRepair } from "../llm/types.js";
 import type { AgentOptions } from "../types.js";
 import type { GateAdmission } from "./tool-concurrency-gate.js";
@@ -82,14 +81,21 @@ export interface ToolExecutionGateInput {
   readonly modules: ModuleRuntimes;
 }
 
-interface ToolReplacementExecutionContext {
-  readonly signal?: AbortSignal;
-  readonly reportProgress: (text: string) => void;
+type ToolExecutionGateDecision =
+  | { readonly kind: "allow" }
+  | { readonly kind: "veto"; readonly reason: string };
+
+/** A module's singleton gate. It allows the exact core path or vetoes the call with a complete reason. */
+export type ToolExecutionGate = (input: ToolExecutionGateInput) => ToolExecutionGateDecision | Promise<ToolExecutionGateDecision>;
+
+/** A gate that fails refuses the call instead of falling through to the core path. */
+async function gateDecision(gate: ToolExecutionGate, input: ToolExecutionGateInput): Promise<ToolExecutionGateDecision> {
+  try {
+    return await gate(input);
+  } catch (error) {
+    throw new Error(`Capability gate failed closed: ${errorMessage(error)}`, { cause: error });
+  }
 }
-
-export type ToolExecutionGate = ModuleGate<ToolExecutionGateInput, ToolReplacementExecutionContext, ToolResult>;
-
-const MAX_GATE_PROGRESS_CHARS = 50_000;
 
 function immutable<Value>(value: Value): Readonly<Value> {
   if (value !== null && typeof value === "object") {
@@ -390,21 +396,12 @@ export async function executePreparedTool(
   // moved to the done record rather than being lost with it.
   log.debug("tool execution start", { tool: call.name, toolUseId: call.id, sessionId: context.sessionId, artifactScopeId: context.artifactScopeId, modelRequestId: call.modelRequestId });
   try {
-    const result = options.gate
-      ? await runModuleGate(
-        options.gate,
-        immutableGateInput(prepared, context),
-        Object.freeze({
-          signal: ctx.signal,
-          reportProgress: (text: string) => ctx.onExecutionOutput?.(text.slice(0, MAX_GATE_PROGRESS_CHARS)),
-        }),
-        () => tool.execute(input, ctx),
-      )
-      : await tool.execute(input, ctx);
-    if ("kind" in result) {
+    const decision = options.gate ? await gateDecision(options.gate, immutableGateInput(prepared, context)) : undefined;
+    if (decision?.kind === "veto") {
       log.info("tool vetoed by capability gate", { tool: call.name, toolUseId: call.id });
-      return withInputRepairNotice(prepared, { content: result.reason, outcome: "error" });
+      return withInputRepairNotice(prepared, { content: decision.reason, outcome: "error" });
     }
+    const result = await tool.execute(input, ctx);
     if (watchdog?.signal.aborted && !context.signal?.aborted) {
       log.warn("tool execution timed out", { tool: call.name, toolUseId: call.id, durationMs: durationMs(start), timeoutMs: watchdogMs });
       // The tool's own account follows the notice: it can say what the

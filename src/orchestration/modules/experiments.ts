@@ -124,7 +124,6 @@ export const experimentsModule = {
       })
     },
   }],
-  transformers: [],
   gates: [
     { seam: "toolExecution", gate: experimentToolExecutionGate },
     { seam: "toolExposure", gate: async ({ modules }) => {

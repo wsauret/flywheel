@@ -15,6 +15,5 @@ export const webChatgptModule = {
     { domain: "settings", id: "web-chatgpt", value: { control: "binary", group: "Web retrieval", label: "ChatGPT web search", description: "Use ChatGPT as a web retrieval backend" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

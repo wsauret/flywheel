@@ -30,6 +30,5 @@ export const discoveryModule = {
     { domain: "settings", id: "discovery", value: { control: "binary", group: "Tools", label: "Discovery", description: "Allow agents to search file contents and list paths" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

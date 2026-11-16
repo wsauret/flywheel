@@ -308,45 +308,30 @@ describe("tool dispatch", () => {
     expect(result.outcome).toBe("ok");
   });
 
-  it("gives replacement gates immutable data and a dispatcher-owned execution context", async () => {
+  it("gives a vetoing gate immutable data and refuses the call with its reason without running core", async () => {
     let coreExecuted = false;
     const tool = {
-      name: "replaceable",
+      name: "vetoable",
       action: "shell_exec" as const,
-      description: "replacement probe",
+      description: "veto probe",
       inputSchema: { type: "object", properties: { value: { type: "string" } } },
       isConcurrencySafe: true,
       execute: async () => { coreExecuted = true; return { content: "core", outcome: "ok" as const }; },
     } satisfies RuntimeTool;
-    const progress: string[] = [];
     const gate: ToolExecutionGate = (gateInput) => {
       expect(Object.keys(gateInput).sort()).toEqual(["call", "executionCwd", "input", "modules", "preparedReservedPaths", "tool"]);
-      expect(gateInput.tool).toBe("replaceable");
+      expect(gateInput.tool).toBe("vetoable");
       expect(Object.isFrozen(gateInput)).toBe(true);
       expect(Object.isFrozen(gateInput.call)).toBe(true);
       expect(Object.isFrozen(gateInput.input)).toBe(true);
       expect(gateInput.call.input).toBe(gateInput.input);
       expect(Object.isFrozen(gateInput.preparedReservedPaths)).toBe(true);
-      return {
-        kind: "replace",
-        execute: async (executionContext) => {
-          expect(Object.keys(executionContext).sort()).toEqual(["reportProgress", "signal"]);
-          expect(Object.isFrozen(executionContext)).toBe(true);
-          executionContext.reportProgress("replacement progress");
-          return { content: `replacement:${gateInput.call.id}`, outcome: "ok" };
-        },
-      };
+      return { kind: "veto", reason: `vetoed:${gateInput.call.id}` };
     };
 
-    const result = await runTool(
-      toolCall(tool.name, { value: "validated" }),
-      makeContext({ onExecutionOutput: (text) => progress.push(text) }),
-      new Map([[tool.name, tool]]),
-      { gate },
-    );
+    const result = await runTool(toolCall(tool.name, { value: "validated" }), makeContext(), new Map([[tool.name, tool]]), { gate });
 
-    expect(result).toEqual({ content: "replacement:test-replaceable", outcome: "ok" });
-    expect(progress).toEqual(["replacement progress"]);
+    expect(result).toEqual({ content: "vetoed:test-vetoable", outcome: "error" });
     expect(coreExecuted).toBe(false);
   });
 
@@ -409,13 +394,14 @@ describe("tool dispatch", () => {
   });
 
   it("fails closed when the execution gate throws", async () => {
+    let coreExecuted = false;
     const tool = {
       name: "gated",
       action: "shell_exec" as const,
       description: "gate failure probe",
       inputSchema: { type: "object", properties: {} },
       isConcurrencySafe: true,
-      execute: async () => ({ content: "core", outcome: "ok" as const }),
+      execute: async () => { coreExecuted = true; return { content: "core", outcome: "ok" as const }; },
     } satisfies RuntimeTool;
     const gate: ToolExecutionGate = () => { throw new Error("gate unavailable"); };
 
@@ -423,6 +409,7 @@ describe("tool dispatch", () => {
 
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("Capability gate failed closed: gate unavailable");
+    expect(coreExecuted).toBe(false);
   });
 
   it("reaches the execution gate only after policy and concurrency admission", async () => {

@@ -44,6 +44,5 @@ export const webModule = {
     { domain: "settings", id: "web", value: { control: "binary", label: "Web", description: "Allow agents to search and retrieve public web content" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

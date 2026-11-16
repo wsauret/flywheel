@@ -37,7 +37,7 @@ Every agent loop owns one repeated-call observer that checks each tool batch. A 
 
 ## ARCH-TOOLS-008: The module execution gate changes behavior, not ownership
 
-One module execution gate runs after input validation, deterministic execution policy, capability admission, and concurrency admission, so no stale, disabled, refused, invalid, or unadmitted call reaches it. It reads only immutable normalized call data and its runner's enabled module runtimes, with no effect authority. It allows the unchanged core path, vetoes with a complete reason, or replaces execution with a complete function. A gate failure refuses the call. A replacement runs under the dispatcher owner, watchdog, permit lifetime, publication, and observation of core execution. The gate cannot publish, launch processes, dispatch nested calls, hold permits, or bypass earlier admission.
+One module execution gate runs after input validation, deterministic execution policy, capability admission, and concurrency admission, so no stale, disabled, refused, invalid, or unadmitted call reaches it. It reads only immutable normalized call data and its runner's enabled module runtimes, with no effect authority. It allows the unchanged core path or vetoes with a complete reason. A gate failure refuses the call. The gate cannot run the tool itself, publish, launch processes, dispatch nested calls, hold permits, or bypass earlier admission.
 Not: Treating the gate as an approval step or as containment.
 
 ## ARCH-TOOLS-009: Code Mode is an ordinary tool whose nested calls admit separately

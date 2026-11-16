@@ -79,7 +79,6 @@ const probeModule = {
     } },
   ],
   observers: [],
-  transformers: [],
   gates: [{ seam: "toolExposure", gate: ({ modules }) => new Map((modules.get(probeRuntime)?.forbid ?? []).map((name) => [name, "forbidden by the probe charter"])) }],
 } as const satisfies FirstPartyModule;
 

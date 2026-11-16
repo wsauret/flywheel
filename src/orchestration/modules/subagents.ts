@@ -294,6 +294,5 @@ export const subagentsModule = {
     { domain: "settings", id: "subagents", value: { control: "binary", label: "Subagents", description: "Allow agents to delegate focused work" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

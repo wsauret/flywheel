@@ -18,7 +18,6 @@ const definition = {
   id: "baseten",
   displayName: "Baseten API Key",
   shortName: "Baseten",
-  supportedFamilies: ["openai"],
   defaultChatTransport: "openai-completions",
   apiHosts: ["inference.baseten.co"],
   configHints: ["flywheel auth login --baseten"],
@@ -63,5 +62,5 @@ export const basetenModule = {
     { domain: "providers", id: "baseten", value: { definition, createClient } },
     { domain: "settings", id: "provider-baseten", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Baseten models through an API key" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

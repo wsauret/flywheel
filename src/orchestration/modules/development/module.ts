@@ -155,6 +155,5 @@ export const developmentModule = {
     { domain: "cli", id: "claude-sdk", value: claudeSdkNoun },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

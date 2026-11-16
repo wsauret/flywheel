@@ -38,7 +38,6 @@ const probeModule = {
     } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 

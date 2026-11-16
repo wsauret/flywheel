@@ -34,7 +34,7 @@ const NEXT_MESSAGE = "(next message)";
 
 /** Builds the stable system prompt of the request that `surface` plans, for `attempt` and `profile`. */
 export function prepareRequestPrompt(
-  inputs: Pick<AgentLoopOptions, "tools" | "systemPrompt" | "literalSystemPrompt">,
+  inputs: Pick<AgentLoopOptions, "tools" | "systemPrompt">,
   profile: ModelInteractionProfile,
   attempt: ServingAttempt,
 ): ReturnType<ReturnType<RequestToolSurfaceOwner["current"]>["prepareStablePrompt"]> {
@@ -42,7 +42,6 @@ export function prepareRequestPrompt(
   return inputs.tools.current().prepareStablePrompt(
     () => typeof systemPrompt === "function" ? systemPrompt(attempt, profile) : systemPrompt,
     profile,
-    inputs.literalSystemPrompt === true,
   );
 }
 
