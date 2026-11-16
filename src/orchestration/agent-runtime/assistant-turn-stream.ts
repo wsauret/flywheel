@@ -8,11 +8,11 @@ import { resolveCacheRetention, type AdmittedModelRequest, type AdmittedModelReq
 import { estimateConversationTokens, tokenCountingPolicy } from "./compaction/token-counter.js";
 import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
 import { redactMessage } from "./agent-loop-history.js";
-import { isProviderResponseEvent, promptPrefixKey, type PrefixHoldTicket, type PromptPrefixHold } from "./prompt-prefix-hold.js";
+import { promptPrefixKey, type PrefixHoldTicket, type PromptPrefixHold } from "./prompt-prefix-hold.js";
 
 type Attempt = ReturnType<typeof createAssistantAttempt>;
 type SettledAttempt<T> = { value: T; stop: boolean };
-type ExecutionInput = Pick<AssistantAttemptInput, "signal" | "onEvent" | "canonicalizeToolCall" | "canonicalizeToolName" | "onStreamAbandoned" | "onHandoffStarted">;
+type ExecutionInput = Pick<AssistantAttemptInput, "signal" | "observeToolInput" | "canonicalizeToolCall" | "canonicalizeToolName" | "onStreamAbandoned" | "onHandoffStarted">;
 type FoldAttempt<T> = (input: Partial<ExecutionInput>, settle: (attempt: Attempt) => Promise<SettledAttempt<T>>) => Promise<AdmittedModelRequestExecution<T>>;
 type StreamRetryEvent = Extract<ProviderStreamEvent, { kind: "stream_retry" }>;
 type StreamResampleEvent = Extract<ProviderStreamEvent, { kind: "stream_resample" }>;
@@ -212,16 +212,10 @@ export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (R
   async function executeCandidate(candidate: ServingCandidate, ticket: PrefixHoldTicket | undefined): Promise<AdmittedModelRequestExecution<T | AssistantTurnResult>> {
     const current = revision.current();
     const fold = async <Value>(executionInput: Partial<ExecutionInput>, settle: (attempt: Attempt) => Promise<SettledAttempt<Value>>): Promise<AdmittedModelRequestExecution<Value>> => {
-      const merged = {
+      const attemptInput: AssistantAttemptInput = {
         ...current.input, ...executionInput, cacheRetention: candidate.prepared.cacheRetention,
         ...(treeLeafEntryId === undefined ? {} : { treeLeafEntryId }),
-      };
-      const attemptInput = ticket === undefined ? merged : {
-        ...merged,
-        onEvent: (event: ProviderStreamEvent) => {
-          if (isProviderResponseEvent(event)) ticket.responded();
-          merged.onEvent(event);
-        },
+        ...(ticket === undefined ? {} : { prefixHoldTicket: ticket }),
       };
       const attempt = createAssistantAttempt(candidate, attemptInput, revision.preparedAttempt());
       const settled = await settle(attempt);

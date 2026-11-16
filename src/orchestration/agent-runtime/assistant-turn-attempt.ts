@@ -36,6 +36,7 @@ import type { PreparedRequestAttempt } from "./request-tool-surface.js";
 import { type AssistantTurnResult, handleStreamEvent, settledTextOf, type TurnOutcome } from "./assistant-turn-result.js";
 import { hasAssistantOutput } from "./assistant-output.js";
 import { createRequestStreamTelemetry } from "./stream-telemetry.js";
+import { isProviderResponseEvent, type PrefixHoldTicket } from "./prompt-prefix-hold.js";
 import type { UsageSettlement } from "./usage-settlement.js";
 
 const log = Log.create({ service: "assistant-turn-stream" });
@@ -91,7 +92,14 @@ export interface AssistantAttemptInput {
    *  request records (`ProviderRequestAuditWriter.captureTreeLeaf`). Absent for a conversation without a durable tree. */
   treeLeafEntryId?: string | null;
   estimatedContextTokens: number;
+  /** The run's publisher: every event of the response passes it once. */
   onEvent: (event: ProviderStreamEvent) => void;
+  /** Observes each published tool input event of the response once its tool name is canonical: the turn's
+   *  streamed edit validation. */
+  observeToolInput?: (event: Extract<ProviderStreamEvent, { kind: "tool_input_start" | "tool_input_delta" }>) => void;
+  /** The prompt-prefix hold that this attempt entered (prompt-prefix-hold.ts). The attempt reports each response
+   *  event to it, so the hold releases its followers once the provider answers. */
+  prefixHoldTicket?: PrefixHoldTicket;
   reserveMessageId?: () => Promise<string>;
   releaseMessageId?: (id: string) => void;
   /** Pauses source reads at the session event bus watermark. */
@@ -106,9 +114,13 @@ export interface AssistantAttemptInput {
 
 function publishToConsumers(input: AssistantAttemptInput, event: ProviderStreamEvent, signal: AbortSignal | undefined): void | Promise<void> {
   if (event.kind === "done" || event.kind === "transport_context") return;
+  if (isProviderResponseEvent(event)) input.prefixHoldTicket?.responded();
   // One probed unit per delta, named by the event kind only, so an event-loop
   // stall names the stream consumers that ran across it.
-  probeLoopUnit("stream-consumer", event.kind, () => input.onEvent(event));
+  probeLoopUnit("stream-consumer", event.kind, () => {
+    input.onEvent(event);
+    if (event.kind === "tool_input_start" || event.kind === "tool_input_delta") input.observeToolInput?.(event);
+  });
   if (signal?.aborted) return;
   const pressure = input.waitForEventCapacity?.(signal);
   // Cancellation stops waiting, then the adapter iterator drains its terminal
@@ -271,7 +283,9 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
       const stamped = attachModelRequestId(attributed, auditHandle?.requestId);
       const canonicalEvent = canonicalizeToolEvent(input, stamped);
       const publication = handleStreamEvent(canonicalEvent, result);
-      await streamTelemetry?.observeNormalized(canonicalEvent);
+      // Synchronous unless the debug tier records the event through a writer that acknowledges later.
+      const telemetryRecorded = streamTelemetry?.observeNormalized(canonicalEvent);
+      if (telemetryRecorded) await telemetryRecorded;
       if (canonicalEvent.kind === "provider_response_started") responseStarted = true;
       if (canonicalEvent.kind === "usage" && input.usageSettlement && unmeasured && attemptId) {
         await input.usageSettlement.settlement.checkpoint(settlementDraft(input.usageSettlement, attemptId, input.turn, measuredEntry(unmeasured, serving, canonicalEvent)));
@@ -412,7 +426,6 @@ function recordAuditRequest(
     toolHistoryProjection: input.toolHistoryProjection,
     ...(historyLowering === undefined ? {} : { historyLowering }),
     requestContext: input.requestContext,
-    contextApplication: prepared?.contextApplication,
     ...(input.treeLeafEntryId === undefined ? {} : { treeLeafEntryId: input.treeLeafEntryId }),
   });
 }

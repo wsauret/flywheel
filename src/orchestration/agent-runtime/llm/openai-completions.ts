@@ -35,7 +35,7 @@ import { cacheWriteTokens } from "./openai-usage-normalization.js";
 import { cacheControlFor } from "./anthropic-adapter-helpers.js";
 import { openAIReasoningEffort, supportsThinkingDisable } from "./model-compat.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
-import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
+import { throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions } from "./types.js";
 import { renderSystemPrompt } from "./system-prompt-tiers.js";
@@ -409,7 +409,7 @@ export async function createOpenAIChatCompletionsAdapter(
           const runId = crypto.randomUUID();
           const params = descriptor.params;
           const requestOpts = headers ? { signal: attempt.signal, headers } : { signal: attempt.signal };
-          const streamLiveness = armStreamLiveness(attempt, {
+          const streamLiveness = attempt.armLiveness({
             label: "llm-openai-completions",
             provider: "OpenAI chat-completions",
             telemetry: options.telemetry,
@@ -453,11 +453,11 @@ export async function createOpenAIChatCompletionsAdapter(
                 responseStarted = true;
                 yield { kind: "provider_response_started" } as const;
               }
-              observeProviderTelemetry(options.telemetry, "chunk", {
+              observeProviderTelemetry(options.telemetry, "chunk", () => ({
                 choiceCount: chunk.choices?.length ?? 0,
                 finishReason: chunk.choices?.[0]?.finish_reason ?? undefined,
                 hasUsage: chunk.usage !== undefined,
-              });
+              }));
               const choice = chunk.choices?.[0];
               const delta = choice?.delta;
 

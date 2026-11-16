@@ -157,7 +157,7 @@ describe("classifyProviderFailure classification table", () => {
   });
 
   test("thinking stalls are outage-shaped: retryable, failover-eligible, never attributed", () => {
-    const failure = classifyProviderFailure(new ThinkingStallError({ elapsedMs: 1, summary: "" }));
+    const failure = classifyProviderFailure(new ThinkingStallError({ elapsedMs: 1 }));
     expect(failure._tag).toBe("TransientNetworkFailure");
     expect(isRetryableFailure(failure)).toBe(true);
     expect(isFailoverFailure(failure)).toBe(true);

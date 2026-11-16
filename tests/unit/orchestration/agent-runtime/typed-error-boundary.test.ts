@@ -66,7 +66,7 @@ describe("typed Effect runtime boundary", () => {
   })
 
   test("thinking stalls are typed runtime errors with public failure mapping", () => {
-    const error = new ThinkingStallError({ blockKey: "thinking:0", elapsedMs: 120_000, summary: "partial" })
+    const error = new ThinkingStallError({ blockKey: "thinking:0", elapsedMs: 120_000 })
 
     expect(isAgentRuntimeError(error)).toBe(true)
     expect(toFailureReason(error)).toEqual({

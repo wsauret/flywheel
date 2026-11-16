@@ -110,7 +110,6 @@ export async function assembleRuntimeForTurn(input: AssembleInput): Promise<Agen
     parentToolUseId: runtimeEventParentToolUseId,
     surface: toolSurface,
   });
-  const onEvent = streamEvents.onEvent;
 
   const onTurnAssistantMessage = (content: LLMContentBlock[], entryId?: string): void => {
     streamEvents.assistantCommitted();
@@ -138,9 +137,8 @@ export async function assembleRuntimeForTurn(input: AssembleInput): Promise<Agen
     signal,
     disposalSignal: input.disposalSignal,
     background,
-    onEvent: conversation.requestAccounting
-      ? (event) => { if (event.kind !== "context_update") onEvent(event); }
-      : onEvent,
+    onEvent: streamEvents.onEvent,
+    ...(conversation.requestAccounting ? { hidesContextUsage: true } : {}),
     onSystemMessage: options.onSystemMessage,
     onNotice: options.onNotice,
     onNotification: options.onNotification,

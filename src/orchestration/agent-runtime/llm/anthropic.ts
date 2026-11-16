@@ -46,8 +46,7 @@ import { anthropicContentRefusal, type PreparedBlockLocation } from "./anthropic
 import type { BlockOrigins } from "./conversions/anthropic-messages.js";
 import { anthropicProviderMetadata } from "./anthropic-provider-metadata.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
-import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
-import { STREAM_IDLE_TIMEOUT_PATIENT_MS } from "./stream-watchdog.js";
+import { STREAM_IDLE_TIMEOUT_PATIENT_MS, throwIfLivenessFailure } from "./stream-liveness.js";
 import { sendStreamingRequest, timingFetch } from "./request-timing.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
 import { ensureEventLoopLagSampler } from "../../../infra/event-loop-lag.js";
@@ -348,7 +347,7 @@ export async function createAnthropicAdapter(
         yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
           const runId = crypto.randomUUID();
           let releaseStream: (() => Promise<void>) | undefined;
-          const streamLiveness = armStreamLiveness(attempt, {
+          const streamLiveness = attempt.armLiveness({
             label: "llm-anthropic",
             provider: "Anthropic",
             telemetry: options.telemetry,
@@ -455,12 +454,12 @@ export async function createAnthropicAdapter(
               }
               streamLiveness.frame();
               if (event.type === "error") {
-                observeProviderTelemetry(options.telemetry, event.type, { errorType: event.error.type });
+                observeProviderTelemetry(options.telemetry, event.type, () => ({ errorType: event.error.type }));
                 if (sawUsage) yield usageEvent();
                 const payload = JSON.stringify({ type: "error", error: event.error });
                 throw failure(classifyAnthropicError(new Error(payload)), event.error);
               }
-              observeProviderTelemetry(options.telemetry, event.type, anthropicProviderMetadata(event));
+              observeProviderTelemetry(options.telemetry, event.type, () => anthropicProviderMetadata(event));
 
               if (event.type === "content_block_start") {
                 const block = event.content_block;

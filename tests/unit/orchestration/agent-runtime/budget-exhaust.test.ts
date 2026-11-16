@@ -11,6 +11,7 @@ import { runBudgetExhaustionTurn } from "../../../../src/orchestration/agent-run
 import { resolveModelInteractionProfile } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import {
   FUNCTION_TOOL_PRESENTATION,
+  type ContentBlock,
   type ConversationMessage,
   type ModelClient,
   type ProviderStreamEvent,
@@ -30,6 +31,12 @@ import { handoffDefinition } from "../../../../src/orchestration/agent-runtime/t
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loginWaitingRequest } from "./_login-wait-fixture.js";
 import { createHandoffTracker } from "../../../../src/orchestration/agent-runtime/agent-loop-handoff.js";
+import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
+
+interface AssistantWrite { readonly content: ContentBlock[]; readonly incomplete?: true }
+function recordAssistant(pushed: AssistantWrite[]) {
+  return (content: ContentBlock[], _provenance?: unknown, incomplete?: true) => { pushed.push({ content, ...(incomplete ? { incomplete } : {}) }); };
+}
 
 const turns: ReturnType<typeof openStandaloneTurn>[] = [];
 afterEach(async () => { for (const turn of turns.splice(0)) await turn.end(); });
@@ -67,7 +74,7 @@ function strictSettlementClient(onPrepare: () => void): ModelClient {
 describe("budget exhaust turn under failover", () => {
   it.each([false, true])("preserves a declined login during the %s forced-handoff variant", async (handoffConfigured) => {
     const fixture = loginWaitingRequest();
-    const pushed: ConversationMessage[] = [];
+    const pushed: AssistantWrite[] = [];
     let captures = 0;
     const interactionProfile = resolveModelInteractionProfile("test-model", "openai");
     const tools = new RequestToolMap(handoffConfigured ? [["handoff", handoffDefinition]] : []);
@@ -79,7 +86,7 @@ describe("budget exhaust turn under failover", () => {
           client: fixture.client, request: await fixture.client.admitRequest(), interactionProfile,
           providerOptions: undefined, executionAdmission: admitEveryTool, tools, appendEntries: async () => {}, materializeCandidatePolicy: () => {},
           prepareOutgoing: () => ({
-            messages: [], prepared: { systemPrompt: stableSystemPrompt("test"), tools: [], auditTools: [], attemptStaticTokens: 0, contextApplication: { identity: "test", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] },
+            messages: [], prepared: { systemPrompt: stableSystemPrompt("test"), tools: [], auditTools: [], attemptStaticTokens: 0, interactionProfileId: interactionProfile.id, omittedTools: [] },
             staleMasking: undefined, toolHistoryProjection: undefined, messageCount: 0, estimatedContextTokens: 0,
           }),
         };
@@ -88,7 +95,7 @@ describe("budget exhaust turn under failover", () => {
       requestAudit: undefined, turnOrdinal: 1, cacheRetention: undefined, providerSessionKey: "declined-budget", promptCacheKey: "declined-budget",
       onEvent: () => {}, maxLLMCalls: 0, handoffConfigured,
       toolContext: makeContext(), afterToolCall: undefined, onTurnAssistantMessage: undefined,
-      pushMessage: (message) => { pushed.push(message); }, pushUser: () => {}, pushToolResults: () => {},
+      pushAssistant: recordAssistant(pushed), pushUser: () => {}, pushToolResults: () => {},
     });
     const declined = fixture.entered.then(() => {
       const question = fixture.observations.loginQuestions()[0]!;
@@ -104,7 +111,7 @@ describe("budget exhaust turn under failover", () => {
   it("does not publish a fallback after its owned turn is interrupted", async () => {
     const lifecycle = new RunLifecycle<{ handoffWritten: boolean }>();
     const prepared: StreamOptions[] = [];
-    const pushed: ConversationMessage[] = [];
+    const pushed: AssistantWrite[] = [];
     const client = summaryClient(prepared);
     const interactionProfile = resolveModelInteractionProfile("test-model", "anthropic");
     expect(lifecycle.start(async () => {
@@ -118,7 +125,7 @@ describe("budget exhaust turn under failover", () => {
               client, request: await client.admitRequest(), interactionProfile,
               providerOptions: undefined, executionAdmission: admitEveryTool, tools: new RequestToolMap(), appendEntries: async () => {}, materializeCandidatePolicy: () => {},
               prepareOutgoing: () => ({
-                messages: [], prepared: { systemPrompt: stableSystemPrompt("test"), tools: [], auditTools: [], attemptStaticTokens: 0, contextApplication: { identity: "test", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] },
+                messages: [], prepared: { systemPrompt: stableSystemPrompt("test"), tools: [], auditTools: [], attemptStaticTokens: 0, interactionProfileId: interactionProfile.id, omittedTools: [] },
                 staleMasking: undefined, toolHistoryProjection: undefined, messageCount: 0, estimatedContextTokens: 0,
               }),
             };
@@ -127,7 +134,7 @@ describe("budget exhaust turn under failover", () => {
           requestAudit: undefined, turnOrdinal: 1, cacheRetention: undefined, providerSessionKey: "interrupt-budget", promptCacheKey: "interrupt-budget",
           onEvent: () => {}, maxLLMCalls: 0, handoffConfigured: false,
           toolContext: makeContext(), afterToolCall: undefined, onTurnAssistantMessage: undefined,
-          pushMessage: (message) => { pushed.push(message); }, pushUser: () => {}, pushToolResults: () => {},
+          pushAssistant: recordAssistant(pushed), pushUser: () => {}, pushToolResults: () => {},
         });
       } finally { await turn.end(); }
     })).toBe(true);
@@ -138,7 +145,7 @@ describe("budget exhaust turn under failover", () => {
 
   it("records the summary from one admitted provider request", async () => {
     const prepared: StreamOptions[] = [];
-    const pushed: ConversationMessage[] = [];
+    const pushed: AssistantWrite[] = [];
     const messages: ConversationMessage[] = [
       { kind: "assistant", content: [{ type: "tool_use", id: "old-tool", name: "bash", input: { command: "oldmaskedtoolbody" } }] },
       { kind: "toolResult", toolUseId: "old-tool", content: [{ type: "text", text: "oldmaskedtoolbody" }] },
@@ -164,7 +171,7 @@ describe("budget exhaust turn under failover", () => {
         appendEntries: async () => {}, materializeCandidatePolicy: () => {},
         prepareOutgoing: () => {
           const tools = [{ name: "bash", description: "canonical bash", input_schema: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } }];
-          const preparedAttempt = { systemPrompt: stableSystemPrompt("sys"), tools, auditTools: tools.map(tool => ({ ...tool, registrationId: tool.name, executableId: tool.name })), attemptStaticTokens: Math.ceil(("sys".length + JSON.stringify(tools).length) / 4), contextApplication: { identity: "context", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] };
+          const preparedAttempt = { systemPrompt: stableSystemPrompt("sys"), tools, auditTools: tools.map(tool => ({ ...tool, registrationId: tool.name, executableId: tool.name })), attemptStaticTokens: Math.ceil(("sys".length + JSON.stringify(tools).length) / 4), interactionProfileId: interactionProfile.id, omittedTools: [] };
           const outgoingMessages: ConversationMessage[] = [
             { kind: "assistant", content: [{ type: "tool_use", id: "old-tool", name: "bash", input: { command: "[Old tool input cleared]" } }] },
             { kind: "toolResult", toolUseId: "old-tool", content: [{ type: "text", text: "[Old tool result cleared]" }] },
@@ -194,7 +201,7 @@ describe("budget exhaust turn under failover", () => {
       toolContext: makeContext(),
       afterToolCall: undefined,
       onTurnAssistantMessage: undefined,
-      pushMessage: (message) => { pushed.push(message); },
+      pushAssistant: recordAssistant(pushed),
       pushUser: (content) => { messages.push({ kind: "user", content }); },
       pushToolResults: () => {},
     });
@@ -211,8 +218,7 @@ describe("budget exhaust turn under failover", () => {
     expect(JSON.stringify(prepared[0]?.messages)).not.toContain("oldmaskedtoolbody");
     expect(prepared[0]?.messages.at(-1)).toEqual({ kind: "user", content: "Budget exhausted (5 LLM calls used). No tool runs now: provide a final summary of progress and remaining work in text." });
     expect(audited).toEqual([{ systemPrompt: "sys", interactionProfileId: "default", tools: ["bash"], omittedTools: [], attemptStaticTokens: 38, messageCount: 3, estimatedContextTokens: 79, staleMasking: { cutoffIndex: 2, masksApplied: 2, bytesSaved: 34, maskedToolUseIds: ["old-tool"], maskedToolUseInputIds: ["old-tool"] }, toolHistoryProjection: { loweredToolUseIds: ["old-tool"] } }]);
-    const assistant = pushed.find((message) => message.kind === "assistant");
-    expect(assistant?.content).toEqual([{ type: "text", text: "the whole summary" }]);
+    expect(pushed).toEqual([{ content: [{ type: "text", text: "the whole summary" }] }]);
   });
 
   it("rethrows strict audit settlement failure without a second prepare", async () => {
@@ -232,13 +238,13 @@ describe("budget exhaust turn under failover", () => {
         client, request: await client.admitRequest(), interactionProfile,
         providerOptions: undefined, executionAdmission: admitEveryTool, tools: new RequestToolMap(),
         appendEntries: async () => {}, materializeCandidatePolicy: () => {},
-        prepareOutgoing: () => ({ messages: [...messages], prepared: { systemPrompt: stableSystemPrompt("sys"), tools: [], auditTools: [], attemptStaticTokens: 1, contextApplication: { identity: "strict", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] }, staleMasking: undefined, toolHistoryProjection: undefined, messageCount: messages.length, estimatedContextTokens: 1 }),
+        prepareOutgoing: () => ({ messages: [...messages], prepared: { systemPrompt: stableSystemPrompt("sys"), tools: [], auditTools: [], attemptStaticTokens: 1, interactionProfileId: interactionProfile.id, omittedTools: [] }, staleMasking: undefined, toolHistoryProjection: undefined, messageCount: messages.length, estimatedContextTokens: 1 }),
       }),
       artifactScopeId: "artifacts-1", background: undefined, turn: openTurn(),
       requestAudit, turnOrdinal: 1, cacheRetention: undefined, providerSessionKey: "conversation-1", promptCacheKey: "conversation-1", signal: undefined,
       onEvent: () => {}, maxLLMCalls: 1, handoffConfigured: false,
       toolContext: makeContext(), afterToolCall: undefined, onTurnAssistantMessage: undefined,
-      pushMessage: () => {}, pushUser: (content) => { messages.push({ kind: "user", content }); }, pushToolResults: () => {},
+      pushAssistant: () => {}, pushUser: (content) => { messages.push({ kind: "user", content }); }, pushToolResults: () => {},
     })).rejects.toMatchObject({ _tag: "ProviderAuditSettlementError", message: "strict append failed" });
     expect(prepares).toBe(1);
   });
@@ -246,7 +252,7 @@ describe("budget exhaust turn under failover", () => {
   it.each([undefined, "handoff", "Handoff"])("fences and records the capped handoff (streamed name: %s)", async (streamedName) => {
     const prepared: StreamOptions[] = [];
     const messages: ConversationMessage[] = [];
-    const pushed: ConversationMessage[] = [];
+    const pushed: AssistantWrite[] = [];
     const observedStarts: boolean[] = [];
     let fenced = false;
     const handoffTool = {
@@ -289,7 +295,7 @@ describe("budget exhaust turn under failover", () => {
             prepared: {
               systemPrompt: stableSystemPrompt("sys"), tools: selected.map(({ name, description, inputSchema }) => ({ name, description, input_schema: inputSchema })),
               auditTools: selected.map(({ name, description, inputSchema }) => ({ name, description, input_schema: inputSchema, registrationId: name, executableId: name })),
-              attemptStaticTokens: selected.length, contextApplication: { identity: "handoff", applications: [] },
+              attemptStaticTokens: selected.length,
               interactionProfileId: interactionProfile.id, omittedTools: [], tokenCountingPolicyIdentity: tokenCountingPolicy(servingAttempt.model, servingAttempt.modelFamily).identity,
             },
             staleMasking: undefined, toolHistoryProjection: undefined, messageCount: messages.length, estimatedContextTokens: selected.length,
@@ -301,7 +307,7 @@ describe("budget exhaust turn under failover", () => {
       onEvent: (event) => { if (event.kind === "tool_input_start") observedStarts.push(fenced); },
       maxLLMCalls: 1, handoffConfigured: true,
       toolContext: makeContext(), afterToolCall: undefined, onTurnAssistantMessage: undefined,
-      pushMessage: (message) => { pushed.push(message); }, pushUser: (content) => { messages.push({ kind: "user", content }); }, pushToolResults: () => {},
+      pushAssistant: recordAssistant(pushed), pushUser: (content) => { messages.push({ kind: "user", content }); }, pushToolResults: () => {},
     });
 
     expect(result.handoffWritten).toBe(true);
@@ -311,7 +317,6 @@ describe("budget exhaust turn under failover", () => {
     expect(prepared[0]?.toolChoice).toBeUndefined();
     expect(prepared[0]?.cacheRetention).toBe("5m");
     expect(pushed).toContainEqual(expect.objectContaining({
-      kind: "assistant",
       content: [expect.objectContaining({ id: "forced-handoff", registrationId: "handoff" })],
     }));
   });
@@ -352,7 +357,7 @@ describe("budget exhaust turn under failover", () => {
             messages: [...messages],
             prepared: {
               systemPrompt: stableSystemPrompt("sys"), tools: definitions, auditTools: definitions.map((definition) => ({ ...definition, registrationId: definition.name, executableId: definition.name })),
-              attemptStaticTokens: 1, contextApplication: { identity: "limit", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [],
+              attemptStaticTokens: 1, interactionProfileId: interactionProfile.id, omittedTools: [],
             },
             staleMasking: undefined, toolHistoryProjection: undefined, messageCount: messages.length, estimatedContextTokens: 1,
           };
@@ -362,7 +367,7 @@ describe("budget exhaust turn under failover", () => {
       requestAudit: undefined, turnOrdinal: 1, cacheRetention: undefined, providerSessionKey: "conversation-1", promptCacheKey: "conversation-1", signal: undefined,
       onEvent: () => {}, maxLLMCalls: 7, handoffConfigured: true,
       toolContext: makeContext(), afterToolCall: undefined, onTurnAssistantMessage: undefined,
-      pushMessage: () => {}, pushUser: (content) => { messages.push({ kind: "user", content }); },
+      pushAssistant: () => {}, pushUser: (content) => { messages.push({ kind: "user", content }); },
       pushToolResults: (entries) => { results.push(...entries); },
     });
 
@@ -432,7 +437,7 @@ describe("budget exhaust turn under failover", () => {
           const attemptStaticTokens = policy.countText(renderSystemPrompt(systemPrompt));
           return {
             messages: [...messages],
-            prepared: { systemPrompt, tools: [], auditTools: [], attemptStaticTokens, tokenCountingPolicyIdentity: policy.identity, contextApplication: { identity: "candidate", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] },
+            prepared: { systemPrompt, tools: [], auditTools: [], attemptStaticTokens, tokenCountingPolicyIdentity: policy.identity, interactionProfileId: interactionProfile.id, omittedTools: [] },
             staleMasking: undefined, toolHistoryProjection: undefined, messageCount: messages.length, estimatedContextTokens: attemptStaticTokens,
           };
         },
@@ -441,12 +446,110 @@ describe("budget exhaust turn under failover", () => {
       requestAudit: undefined, turnOrdinal: 1, cacheRetention: undefined, providerSessionKey: "conversation-1", promptCacheKey: "conversation-1", signal: undefined,
       onEvent: () => {}, maxLLMCalls: 1, handoffConfigured: false,
       toolContext: makeContext(), afterToolCall: undefined, onTurnAssistantMessage: undefined,
-      pushMessage: () => {}, pushUser: (content) => { messages.push({ kind: "user", content }); }, pushToolResults: () => {},
+      pushAssistant: () => {}, pushUser: (content) => { messages.push({ kind: "user", content }); }, pushToolResults: () => {},
     });
 
     expect(materializedPolicies).toEqual(["local:ClaudeV3", "local:ClaudeV5"]);
     expect(preparedRequests.map(({ estimatedContextTokens }) => estimatedContextTokens)).toEqual(
       preparedRequests.map(({ systemPrompt }, index) => tokenCountingPolicy(attempts[index]!.model, "anthropic", attempts[index]!.tokenizerIdentity).countText(renderSystemPrompt(systemPrompt))),
     );
+  });
+
+  it("A person stop during the exhaustion turn records the streamed text as an incomplete assistant message", async () => {
+    const lifecycle = new RunLifecycle<{ handoffWritten: boolean }>();
+    const pushed: AssistantWrite[] = [];
+    const interactionProfile = resolveModelInteractionProfile("test-model", "anthropic");
+    const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
+    const client = withRequestAdmission({
+      model: attempt.model, modelFamily: attempt.modelFamily, plannedAttempt: async () => attempt,
+      async *streamWithTools(options) {
+        yield { kind: "text_delta", text: "partial summary", blockKey: "text" };
+        lifecycle.interrupt();
+        options.signal?.throwIfAborted();
+      },
+    });
+    expect(lifecycle.start(async () => {
+      const turn = lifecycle.beginTurn();
+      try {
+        return await runBudgetExhaustionTurn({
+          handoffTracker: createHandoffTracker(),
+          captureRequest: async () => ({
+            client, request: await client.admitRequest(), interactionProfile,
+            providerOptions: undefined, executionAdmission: admitEveryTool, tools: new RequestToolMap(), appendEntries: async () => {}, materializeCandidatePolicy: () => {},
+            prepareOutgoing: () => ({
+              messages: [], prepared: { systemPrompt: stableSystemPrompt("test"), tools: [], auditTools: [], attemptStaticTokens: 0, interactionProfileId: interactionProfile.id, omittedTools: [] },
+              staleMasking: undefined, toolHistoryProjection: undefined, messageCount: 0, estimatedContextTokens: 0,
+            }),
+          }),
+          artifactScopeId: "stopped-budget", background: undefined, turn, signal: turn.signal,
+          requestAudit: undefined, turnOrdinal: 1, cacheRetention: undefined, providerSessionKey: "stopped-budget", promptCacheKey: "stopped-budget",
+          onEvent: () => {}, maxLLMCalls: 0, handoffConfigured: false,
+          toolContext: makeContext(), afterToolCall: undefined, onTurnAssistantMessage: undefined,
+          pushAssistant: recordAssistant(pushed), pushUser: () => {}, pushToolResults: () => {},
+        });
+      } finally { await turn.end(); }
+    })).toBe(true);
+    await expect(lifecycle.done).rejects.toBeDefined();
+    expect(pushed).toEqual([{ content: [{ type: "text", text: "partial summary" }], incomplete: true }]);
+  });
+
+  it("An exhaustion turn's tool results flush with their checkpoint swaps, in the same order as the main turn", async () => {
+    const order: string[] = [];
+    const checkpoints: unknown[] = [];
+    const writer: SessionFactWriter = {
+      record: async () => null, recordBatch: async () => [],
+      recordGuarded: async () => null, transaction: async (fn) => { fn(); }, dispose() {},
+      putInFlight: async (_kind, key) => { checkpoints.push(key); },
+    };
+    const tools = new RequestToolMap([["handoff", { ...handoffDefinition, execute: async () => ({ content: "written", outcome: "ok" as const }) }]]);
+    const interactionProfile = resolveModelInteractionProfile("gpt-6-luna", "openai");
+    const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;
+    const client = withRequestAdmission({
+      model: attempt.model, modelFamily: attempt.modelFamily, plannedAttempt: async () => attempt,
+      async *streamWithTools() {
+        yield { kind: "tool_use", toolCall: { id: "forced-handoff", name: "handoff", input: {} } } as const;
+        yield { kind: "done", stopReason: "tool_use" } as const;
+      },
+    });
+
+    const result = await runBudgetExhaustionTurn({
+      handoffTracker: createHandoffTracker(),
+      captureRequest: async () => ({
+        client, request: await client.admitRequest(), interactionProfile, appendEntries: async () => {}, materializeCandidatePolicy: () => {},
+        providerOptions: undefined, executionAdmission: admitEveryTool, tools,
+        prepareOutgoing: () => {
+          const definitions = [...tools.values()].map(({ name, description, inputSchema }) => ({ name, description, input_schema: inputSchema }));
+          return {
+            messages: [],
+            prepared: {
+              systemPrompt: stableSystemPrompt("sys"), tools: definitions, auditTools: definitions.map((definition) => ({ ...definition, registrationId: definition.name, executableId: definition.name })),
+              attemptStaticTokens: 1, interactionProfileId: interactionProfile.id, omittedTools: [],
+            },
+            staleMasking: undefined, toolHistoryProjection: undefined, messageCount: 0, estimatedContextTokens: 1,
+          };
+        },
+      }),
+      artifactScopeId: "artifacts-1", background: undefined, turn: openTurn(),
+      requestAudit: undefined, turnOrdinal: 1, cacheRetention: undefined, providerSessionKey: "conversation-1", promptCacheKey: "conversation-1", signal: undefined,
+      onEvent: () => {}, maxLLMCalls: 1, handoffConfigured: true,
+      toolContext: makeContext({ conversationId: "conversation-1", sessionEventWriter: writer, flushCanonicalMessages: async () => {} }),
+      afterToolCall: undefined, onTurnAssistantMessage: undefined,
+      pushAssistant: () => { order.push("assistant"); },
+      pushUser: () => { order.push("user"); },
+      pushToolResults: (entries) => { order.push(`results ${entries.map(({ toolUseId }) => toolUseId).join(",")}`); },
+      flushCanonicalMessages: async (protectedToolUseIds?: ReadonlySet<string>, swaps?: readonly { readonly key: string }[]) => {
+        order.push(swaps?.length ? `flush swapping ${swaps.map(({ key }) => key).join(",")}` : protectedToolUseIds ? `flush protecting ${[...protectedToolUseIds].join(",")}` : "flush");
+      },
+      awaitDurableFacts: async () => { order.push("durable facts"); },
+    });
+
+    expect(result.handoffWritten).toBe(true);
+    expect(checkpoints).toEqual(["conversation-1:forced-handoff"]);
+    expect(order).toEqual([
+      "user", "flush",
+      "assistant", "flush protecting forced-handoff",
+      "durable facts",
+      "results forced-handoff", "flush swapping conversation-1:forced-handoff",
+    ]);
   });
 });

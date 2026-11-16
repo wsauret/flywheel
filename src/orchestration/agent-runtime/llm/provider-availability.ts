@@ -25,7 +25,7 @@ import {
   AvailabilityTransientError,
 } from "../../../infra/llm/availability-store.js";
 import { QUOTA_CODES, QuotaCoordinationError } from "./errors.js";
-import { STREAM_TTFT_TIMEOUT_MS } from "./stream-watchdog.js";
+import { STREAM_TTFT_TIMEOUT_MS } from "./stream-liveness.js";
 import { startProbeLeaseRenewal } from "./probe-lease-renewal.js";
 import { bridgeExternalPromise } from "../external-promise-bridge.js";
 import type {

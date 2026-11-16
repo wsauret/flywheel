@@ -370,10 +370,14 @@ export interface TransportContextFrame {
 
 type StreamTelemetrySource = "provider" | "normalized" | "watchdog" | "request";
 
+export interface TelemetryFields { [key: string]: unknown }
+
 export interface StreamTelemetryObservation {
   source: StreamTelemetrySource;
   kind: string;
-  metadata?: UnknownFields;
+  /** The observation's fields. A function builds them only when the telemetry records the observation, so a
+   *  per-frame caller pays nothing for a frame that is only counted. */
+  metadata?: TelemetryFields | (() => TelemetryFields);
 }
 
 export type StreamTelemetryObserveResult = void | Promise<void>;

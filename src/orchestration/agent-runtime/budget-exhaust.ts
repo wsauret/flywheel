@@ -43,6 +43,8 @@ import type { PromptStaleMasking, PromptToolHistoryProjection } from "../session
 import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
 import type { createHandoffTracker } from "./agent-loop-handoff.js";
 import { repairToolName } from "./tools/tool-dispatch.js";
+import { createAssistantMessageSettlement, type AssistantProvenance } from "./assistant-message-settlement.js";
+import { createToolResultCommit } from "./agent-loop-result-commit.js";
 
 const log = Log.create({ service: "budget-exhaust" });
 
@@ -104,11 +106,13 @@ interface BudgetExhaustionInput {
   onTurnAssistantMessage: AgentLoopOptions["onTurnAssistantMessage"];
   reserveMessageId?: () => Promise<string>;
   releaseMessageId?: (id: string) => void;
-  pushMessage(message: ConversationMessage, humanTyped?: boolean, entryId?: string): void | Promise<ConversationMessage | void>;
+  /** The loop's assistant writer, the one the main turn settles through. */
+  pushAssistant(content: ContentBlock[], provenance?: AssistantProvenance, incomplete?: true, entryId?: string): void | Promise<void>;
   pushUser(content: string | ContentBlock[]): void | Promise<void>;
   pushToolResults(results: ReadonlyArray<ToolResultEntry>): void | Promise<void>;
   usageSettlement?: AssistantAttemptInput["usageSettlement"];
-  flushCanonicalMessages?: () => Promise<void>;
+  flushCanonicalMessages?: AgentLoopOptions["flushCanonicalMessages"];
+  awaitDurableFacts?: AgentLoopOptions["awaitDurableFacts"];
 }
 
 interface PreparedBudgetExhaustionRequest {
@@ -154,9 +158,10 @@ export async function runBudgetExhaustionTurn(input: BudgetExhaustionInput): Pro
     onTurnAssistantMessage: input.onTurnAssistantMessage,
     reserveMessageId: input.reserveMessageId,
     releaseMessageId: input.releaseMessageId,
-    pushMessage: input.pushMessage,
+    pushAssistant: input.pushAssistant,
     pushToolResults: input.pushToolResults,
     flushCanonicalMessages: input.flushCanonicalMessages,
+    awaitDurableFacts: input.awaitDurableFacts,
   });
 
   input.signal?.throwIfAborted();
@@ -165,7 +170,7 @@ export async function runBudgetExhaustionTurn(input: BudgetExhaustionInput): Pro
   const fallback: ContentBlock[] = [{ type: "text", text: `Budget exhausted. The agent gave no final summary after ${MAX_SUMMARY_ATTEMPTS} requests.` }];
   const entryId = await input.reserveMessageId?.() ?? crypto.randomUUID();
   input.onTurnAssistantMessage?.(fallback, entryId);
-  await input.pushMessage({ kind: "assistant", content: fallback }, false, entryId);
+  await input.pushAssistant(fallback, undefined, undefined, entryId);
   return { handoffWritten: false };
 }
 
@@ -193,9 +198,10 @@ interface ExhaustionStreamInput {
   afterToolCall: AgentLoopOptions["afterToolCall"];
   artifactScopeId: string;
   onTurnAssistantMessage: AgentLoopOptions["onTurnAssistantMessage"];
-  pushMessage: BudgetExhaustionInput["pushMessage"];
+  pushAssistant: BudgetExhaustionInput["pushAssistant"];
   pushToolResults(results: ReadonlyArray<ToolResultEntry>): void | Promise<void>;
-  flushCanonicalMessages?: () => Promise<void>;
+  flushCanonicalMessages?: AgentLoopOptions["flushCanonicalMessages"];
+  awaitDurableFacts?: AgentLoopOptions["awaitDurableFacts"];
 }
 
 interface ExhaustionStreamOutcome {
@@ -268,6 +274,10 @@ async function attemptExhaustionTurn(input: ExhaustionStreamInput & BudgetReques
         executionWhitelist,
         ...(input.toolExecutionGate ? { toolExecutionGate: input.toolExecutionGate } : {}),
       });
+      const commitAssistant = createAssistantMessageSettlement({
+        interruptSignal: input.turn.signal, ...(input.signal ? { runSignal: input.signal } : {}), observedCalls: () => observedCalls,
+        onTurnAssistantMessage: input.onTurnAssistantMessage, pushAssistant: input.pushAssistant,
+      });
       return await fold({
         ...(handoffAdmission ? { onHandoffStarted: handoffAdmission.start } : {}),
         canonicalizeToolName: (name) => repairToolName(name, input.tools) ?? name,
@@ -281,19 +291,10 @@ async function attemptExhaustionTurn(input: ExhaustionStreamInput & BudgetReques
           dispatcher,
           ...(input.signal ? { turnSignal: input.signal } : {}),
           stream: attempt.stream,
-          commitAssistant: async (exit) => {
-            if (Exit.isFailure(exit)) return observedCalls;
-            const content = exit.value.assistantContent;
-            if (content.length > 0) {
-              input.onTurnAssistantMessage?.(content, exit.value.entryId);
-              await input.pushMessage({ kind: "assistant", content }, false, exit.value.entryId);
-            }
-            return observedCalls;
-          },
-          commitResults: async (results) => {
-            await input.pushToolResults(results);
-            await input.flushCanonicalMessages?.();
-          },
+          commitAssistant,
+          commitAssistantBarrier: (calls) => input.flushCanonicalMessages?.(new Set(calls.map((call) => call.id))) ?? Promise.resolve(),
+          commitResults: createToolResultCommit(async (results) => { await input.pushToolResults(results); }, input.flushCanonicalMessages),
+          commitDisplayBarrier: () => input.awaitDurableFacts?.() ?? Promise.resolve(),
           closeAttempt: attempt.close,
           onEvent: input.onEvent,
           publishTerminal: (exit) => {

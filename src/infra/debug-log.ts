@@ -69,7 +69,7 @@ export function formatDebugLogLine(input: DebugLogRecordInput): string | null {
 }
 
 /** Whether a record reaches the sink at the current verbosity. */
-function passesTier(input: DebugLogRecordInput, verbose: boolean): boolean {
+function passesTier(input: Pick<DebugLogRecordInput, "type" | "notable">, verbose: boolean): boolean {
   if (verbose) return true
   const tier = diagnosticTier(input.type)
   return tier === "info" || (tier === "notable" && input.notable === true)
@@ -104,7 +104,7 @@ const UNEXPECTED_EXIT_SUFFIX = ".unexpected-exit.jsonl"
  *  in the shape before it, `<timestamp>-<pid>-<uuid>.jsonl`. */
 const LOG_FILE_WRITER = /^\d{4}-\d{2}-\d{2}T\d+Z-(\d+)-(?:(\d+)-(?=[0-9a-f]{8}-[0-9a-f]{4}-))?/
 
-export interface LogFileWriter {
+interface LogFileWriter {
   readonly pid: string
   /** One process thread that writes its own file: a Worker has a sink of its
    *  own beside its process's main thread. */
@@ -117,8 +117,8 @@ function launchStamp(date: Date): string {
 }
 
 /** The writer a log file name names, or undefined for a name in no known
- *  shape. Retention and the release harness both read writers through this. */
-export function logFileWriter(file: string): LogFileWriter | undefined {
+ *  shape. */
+function logFileWriter(file: string): LogFileWriter | undefined {
   const match = LOG_FILE_WRITER.exec(file)
   const pid = match?.[1]
   if (pid === undefined) return undefined
@@ -393,6 +393,13 @@ export namespace DebugLog {
    *  the per-event fact families rather than two unrelated knobs. */
   export const setVerbose = (enabled: boolean): void => {
     verbose = enabled
+  }
+
+  /** Whether a record of `type` reaches a destination at the current
+   *  verbosity. A producer of a per-event family asks once, so that it builds
+   *  no payload that `record` would drop. */
+  export const records = (type: string): boolean => {
+    return isOpen() && passesTier({ type }, verbose)
   }
 
   /** Report a family that crossed the high-volume threshold, once per type.
