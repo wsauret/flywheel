@@ -8,7 +8,7 @@ import {
   getFontStatus,
   installBundledFont,
 } from "../orchestration/font-installer.js";
-import { updateFontTipDismissed } from "../orchestration/config/writer.js";
+import { updateDefinedSetting } from "../orchestration/config/writer.js";
 
 const USAGE = `Usage: flywheel font <command>
 
@@ -29,13 +29,13 @@ export async function runFont(args: string[], directories: AccountDirectories, l
       await install(directories, launcher);
       break;
     case "dismiss":
-      updateFontTipDismissed(true, directories);
-      console.log("Font tip dismissed.");
+    case "reset": {
+      const dismissed = command === "dismiss";
+      const write = updateDefinedSetting("fontTipDismissed", dismissed, directories);
+      if (!write.ok) throw write.error;
+      console.log(dismissed ? "Font tip dismissed." : "Font tip reset.");
       break;
-    case "reset":
-      updateFontTipDismissed(false, directories);
-      console.log("Font tip reset.");
-      break;
+    }
     default:
       console.error(`Unknown font command: ${command}\n\n${USAGE}`);
       process.exit(1);

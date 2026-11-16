@@ -11,7 +11,7 @@ import { moduleServiceHandle } from "../../../../src/infra/module-service.js"
 import { composeModuleProcessServices, type ModuleProcessServices } from "../../../../src/orchestration/app-service/module-service-host.js"
 import { projectRuntimeConfig } from "../../../../src/orchestration/app-service/runtime-config-projection.js"
 import { configSection, type ModuleConfigSection } from "../../../../src/orchestration/config/config-section.js"
-import { CONFIG_DEFAULTS, flywheelConfigKeys, installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js"
+import { CONFIG_DEFAULTS, installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js"
 import { settingDefinitions } from "../../../../src/orchestration/config/setting-definitions.js"
 import type { FirstPartyModule } from "../../../../src/orchestration/modules.js"
 import { installedConfigSections } from "../../../../src/orchestration/module-catalog.js"
@@ -62,7 +62,7 @@ describe("a synthetic module under the config contribution contract", () => {
   it("composes the section into the setting definitions, the recognized root keys, and the loader schema", () => {
     expect(installedConfigSections(catalog)).toEqual([probeSection])
     expect(settingDefinitions(catalog).find((definition) => definition.id === "probe")).toMatchObject({ kind: "retained-section", key: "probe", owner: "probe greeting", protocolExposure: "secret" })
-    expect(flywheelConfigKeys(catalog).at(-1)).toBe("probe")
+    expect(Object.keys(installedConfigSchema(catalog).fields).at(-1)).toBe("probe")
     const decoded = Schema.decodeUnknownSync(installedConfigSchema(catalog))({ probe: { greeting: "hi" } })
     expect(configSection(decoded, probeSection)).toEqual({ greeting: "hi" })
     expect(decoded.show_thinking).toBe(CONFIG_DEFAULTS.show_thinking)

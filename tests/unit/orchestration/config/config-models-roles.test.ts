@@ -9,7 +9,7 @@ import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js";
 import { roleModelDefault } from "../../../../src/orchestration/config/role-model-defaults.js";
 import { resolveRoles as resolveProfileRoles } from "../../../../src/orchestration/config/role-resolution.js";
 import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
-import { updateModelAssignment, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
+import { updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { fakeModelInfos, fakeModelsClient, tierAvailableModels } from "../../../helpers/model-tier-fixtures.js";
 import { step, tierOptions as baseTierOptions, USER_DATA_ROOT, withTempDir, NO_CREDENTIALS } from "./_config-models-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
@@ -353,8 +353,8 @@ describe("roles config parsing and resolution", () => {
 describe("model assignment writer", () => {
   it("clears a step role section when all assignment fields are removed", async () => {
     await withTempDir(async (dir) => {
-      await updateModelAssignment(roleSlot("brief.plan"), { model: "gpt-5-mini", effort: "low" }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
-      await updateModelAssignment(roleSlot("brief.plan"), { model: null, effort: null }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("brief.plan"), patch: { model: "gpt-5-mini", effort: "low" } }] }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("brief.plan"), patch: { model: null, effort: null } }] }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
       const text = await readFile(join(dir, "flywheel.toml"), "utf8");
       expect(text).not.toContain("brief.plan");
     });
@@ -363,8 +363,8 @@ describe("model assignment writer", () => {
   it("removes an empty Learning Review section like other profile roles", async () => {
     await withTempDir(async (dir) => {
       const configPath = join(dir, "flywheel.toml");
-      await updateModelAssignment(roleSlot("learning-review"), { model: "gpt-5-mini", effort: "low" }, { configPath, authProfileId: () => "personal" });
-      await updateModelAssignment(roleSlot("learning-review"), { model: null, effort: null }, { configPath, authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("learning-review"), patch: { model: "gpt-5-mini", effort: "low" } }] }, { configPath, authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("learning-review"), patch: { model: null, effort: null } }] }, { configPath, authProfileId: () => "personal" });
       const text = await readFile(configPath, "utf8");
       expect(text).not.toContain('roles.learning-review');
       expect(text).not.toContain("model =");

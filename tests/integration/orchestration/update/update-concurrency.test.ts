@@ -179,7 +179,7 @@ unixClaimants("two claimants of one account", () => {
   test("a durable disable in another process revokes the held fence", async () => {
     const source = await payload("1.4.0");
     const writerUrl = new URL("../../../../src/orchestration/config/writer.ts", import.meta.url).href;
-    const child = Bun.spawnSync(["bun", "-e", `const { updateAutoInstall } = await import(${JSON.stringify(writerUrl)}); const result = updateAutoInstall(false, { userDataRoot: process.env.TEST_USER_DATA_ROOT }); if (!result.ok) throw result.error;`], {
+    const child = Bun.spawnSync(["bun", "-e", `const { updateDefinedSetting } = await import(${JSON.stringify(writerUrl)}); const result = updateDefinedSetting("autoInstall", false, { userDataRoot: process.env.TEST_USER_DATA_ROOT }); if (!result.ok) throw result.error;`], {
       env: { ...process.env, TEST_USER_DATA_ROOT: userDataRoot },
       stdout: "pipe",
       stderr: "pipe",

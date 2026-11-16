@@ -115,12 +115,6 @@ export function hasHeadlessAcpFlag(argv: readonly string[]): boolean {
   return argv.includes("--acp")
 }
 
-export function hasHeadlessJsonlFlag(argv: readonly string[]): boolean {
-  if (!argv.includes("--jsonl")) return false
-  if (!hasHeadlessFlag(argv)) throw new Error("--jsonl is only valid with --headless")
-  return true
-}
-
 export function needsHeadlessUsage(argv: readonly string[]): boolean {
   return hasHeadlessFlag(argv) && !isHeadlessChat(argv) && !headlessTask(argv)
 }

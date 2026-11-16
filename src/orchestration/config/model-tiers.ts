@@ -2,8 +2,6 @@ import type { ModelTier } from "../../protocol/model-assignment-protocol-types.j
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import type { ModelInfo } from "../../infra/llm/models.js";
 import { callsToolsOnText } from "../../infra/llm/provider-model-info.js";
-import { Log } from "../../infra/log.js";
-import { modelTierForReference } from "../../protocol/model-tier-reference.js";
 import { clearSharedModelListingClients, getSharedModelsClient } from "./llm-clients.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 
@@ -79,8 +77,6 @@ const TIER_RESOLUTION_ORDER: TierResolutionOrder = {
 };
 
 
-const log = Log.create({ service: "model-tier-resolution" });
-
 /** Invalidates credential-bound listing generations while retaining process-owned public metadata. */
 export function clearTierCache(authDirectory?: string): void {
   clearSharedModelListingClients(authDirectory);
@@ -90,22 +86,6 @@ export function clearTierCache(authDirectory?: string): void {
  * across every role in that operation. Process-wide caching remains unchanged. */
 export function beginTierResolutionOperation(options: TierResolutionOptions): TierResolutionOptions {
   return { ...options, [operationFamilyCatalogCache]: new Map() };
-}
-
-export async function resolveModelTier(
-  raw: string | undefined,
-  family: ModelFamily,
-  availableModels: ReadonlySet<string> | undefined,
-  options: TierResolutionOptions,
-): Promise<string> {
-  const tier = modelTierForReference(raw);
-  if (tier) {
-    const resolved = await resolveModelForTier(tier, family, availableModels, options);
-    log.debug("tier resolved", { raw, tier, family, resolved });
-    return resolved;
-  }
-  if (raw === undefined) throw new Error("No model was configured.");
-  return raw;
 }
 
 export async function resolveModelForTier(
@@ -167,26 +147,6 @@ export function modelPriceTier(model: string, family: ModelFamily, options: Tier
     if (row?.metadata.pricing.status === "available") return tierForInputCost(row.metadata.cost.input);
   }
   return "default";
-}
-
-export async function recommendedModelsForFamily(
-  family: ModelFamily,
-  availableModels: ReadonlySet<string> | undefined,
-  options: TierResolutionOptions,
-): Promise<readonly string[]> {
-  if (!availableModels || availableModels.size === 0) return [];
-  const catalog = await catalogForFamily(family, availableModels, options);
-  const seen = new Set<string>();
-  const models: string[] = [];
-  for (const tier of MODEL_TIER_ORDER) {
-    for (const model of catalog.tiers[tier]) {
-      if (seen.has(model)) continue;
-      seen.add(model);
-      models.push(model);
-    }
-  }
-  models.push(...catalog.unranked.filter((model) => !seen.has(model)));
-  return models;
 }
 
 export async function modelPowerSortRank(

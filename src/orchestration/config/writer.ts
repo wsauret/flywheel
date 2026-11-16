@@ -8,7 +8,7 @@ import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { canonicalRoleId, retiredBriefSeatWorkflow, patchRetiredConfigKeys } from "./retired-config-names.js";
 import { retireConfigTables } from "./retired-config-tables.js";
 import { persistedDisabledModuleIds } from "../../protocol/module-ids.js";
-import { CONFIG_DEFAULTS, type DiffColorMode } from "./schema.js";
+import { CONFIG_DEFAULTS } from "./schema.js";
 import { PERSISTED_SETTING_DEFINITIONS, persistedSettingDefinition } from "./setting-definitions.js";
 import { configLines, findFieldIndex, findSectionEnd, patchSemanticAssignment, removeAssignment, removeSection, escapeTomlString, quoteTomlKey, removeSemanticSubtree, replaceAssignment, rootEndIndex, sectionHasKeyLines, upsertSemanticAssignment } from "./config-assignment.js";
 import { installedConfigSections } from "../module-catalog.js";
@@ -76,54 +76,9 @@ interface BatchModelAssignmentPatch {
 
 type UnknownObject = { [K in string]: unknown };
 
-export function updateModelAssignment(
-  slot: ModelSelectionSlot,
-  patch: ModelAssignmentPatch,
-  options: RoleWriteOptions,
-): void {
-  updateModelAssignments({ mutations: [{ slot, patch }] }, options);
-}
-
 export function pruneStaleConfig(validity: ConfigValidity, options: RoleWriteOptions): void {
   updateModelAssignments({ validity }, options);
 }
-
-export function updateThemeSelection(themeName: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("theme", themeName, options);
-}
-
-/** Reset settings owned by the Settings modal in one validated config commit. */
-export function resetModalSettings(options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateConfigText((source) => PERSISTED_SETTING_DEFINITIONS.reduce(
-    (next, definition) => definition.reset === undefined ? next : patchDefinedSetting(next, definition, definition.reset),
-    source,
-  ), options);
-}
-
-export function updateShowThinking(value: boolean, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("showThinking", value, options);
-}
-
-/** Persist the account intent that controls future persistent-process admission. */
-export function updateAllowPersistentProcesses(value: boolean, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("allowPersistentProcesses", value, options);
-}
-
-/** Account-global binary auto-update (ARCH-DISTRIBUTION-022). The activation path re-reads
- *  this value under the same config ownership lock this write takes, so a
- *  committed `false` revokes every later activation. */
-export function updateAutoInstall(value: boolean, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("autoInstall", value, options);
-}
-
-export function updateDiffColors(value: DiffColorMode, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("diffColors", value, options);
-}
-
-export function updateProactiveCompactionThreshold(value: number, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("proactiveCompactionThreshold", value, options);
-}
-
 
 /** Set one canonical project root binding without normalizing unrelated config text. */
 export function setAuthProjectProfile(projectRoot: string, profile: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
@@ -139,8 +94,6 @@ export function removeAuthProjectProfile(projectRoot: string, options: UpdateMod
 export function retireAuthProfileConfig(profile: string, successorId: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
   return updateConfigText((source) => removeSemanticSubtree(patchAuthProjectProfileBindings(source, profile, successorId), ["profiles", profile]), options);
 }
-
-
 
 /** Materialize seeded defaults and migrate exact retired seed values. */
 export function seedConfigDefaults(options: UpdateModelSelectionOptions): ConfigWriteResult {
@@ -255,9 +208,6 @@ function configValueAtPath(config: unknown, path: readonly string[]): TomlValue 
   return isTomlValue(value) ? value : undefined;
 }
 
-export function updateFontTipDismissed(value: boolean, options: UpdateModelSelectionOptions): void {
-  unwrapConfigWrite(updateDefinedSetting("fontTipDismissed", value, options));
-}
 
 
 export function updateModelAssignments(
@@ -277,7 +227,10 @@ export function updateModelAssignments(
   }, options));
 }
 
-function updateDefinedSetting(id: string, value: TomlValue, options: UpdateModelSelectionOptions): ConfigWriteResult {
+/** Commits one persisted setting, named by its definition id, at the path its
+ *  definition declares. An unknown id throws; a value that fails to decode is a
+ *  typed failure, and the file is left as it was. */
+export function updateDefinedSetting(id: string, value: TomlValue, options: UpdateModelSelectionOptions): ConfigWriteResult {
   const definition = persistedSettingDefinition(id);
   return updateConfigText((source) => patchDefinedSetting(source, definition, value), options);
 }
@@ -292,18 +245,6 @@ export function patchDefinedSetting(source: string, definition: { readonly path:
   if (field === undefined) return source;
   return patchSectionField(source, [root, ...nested.slice(0, -1)].join("."), field, value);
 }
-
-export const PERSISTED_SETTING_WRITERS = new Map(
-  PERSISTED_SETTING_DEFINITIONS
-    .filter((definition) => definition.ownership === "generated-writer")
-    .map((definition) => [
-      definition.id,
-      (value: TomlValue, options: UpdateModelSelectionOptions) => updateConfigText(
-        (source) => patchDefinedSetting(source, definition, value),
-        options,
-      ),
-    ] as const),
-);
 
 /** Commits one text patch of the global config under file ownership: the
  *  patched document must decode, or the file is left as it was. */
@@ -348,9 +289,9 @@ function commitConfigText(config: ConfigOwnership, patch: (source: string) => st
   return durability ? { ok: true, durabilityError: new ConfigWriteError(errorMessage(durability)) } : { ok: true };
 }
 
-/** The model-assignment and font-tip writers reach us from non-UI flows whose
- *  callers expect a loud failure (a save-effort result contract, a fire-and-forget
- *  dismissal), so they collapse the typed result back to a throw at their seam. */
+/** The model-assignment writers reach us from non-UI flows whose callers expect
+ *  a loud failure (a save-effort result contract), so they collapse the typed
+ *  result back to a throw at their seam. */
 function unwrapConfigWrite(result: ConfigWriteResult): void {
   if (!result.ok) throw result.error;
 }

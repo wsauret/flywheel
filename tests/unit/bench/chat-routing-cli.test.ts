@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createRoutingConfig, executeRoutingBenchmark, main, planRoutingMatrix, ROUTING_FIXTURES, writeChatRoutingFatal } from "../../../bench/ab-persona/chat-routing-bench.js";
-import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, type RoutingRunRecord } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
+import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, type RoutingRunRecord } from "../../../src/orchestration/modules/development/benchmark/chat-routing-store.js";
 import { ChatRoutingFailure, chatRoutingGuidance, failureFromTerminal } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
 import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";

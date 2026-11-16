@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { installCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";
+import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";
 import { customProviderById, customProviderIds, customProviderModelUnavailableReason, customProviderOwning, installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js";
 import { staticOfferingMap } from "../../../../src/infra/llm/model-listing-rows.js";
 
@@ -11,13 +11,11 @@ afterEach(() => {
   installCustomProviders([]);
 });
 
-function install(section: Parameters<typeof installCustomProvidersFromConfig>[0]): string[] {
-  const warnings: string[] = [];
-  installCustomProvidersFromConfig(section, warnings);
-  return warnings;
+function install(section: Parameters<typeof publishCustomProvidersFromConfig>[0]): readonly string[] {
+  return publishCustomProvidersFromConfig(section).warnings;
 }
 
-describe("installCustomProvidersFromConfig", () => {
+describe("publishCustomProvidersFromConfig", () => {
   it("installs a valid entry with defaults applied", () => {
     const warnings = install({ local_llama: { base_url: "http://localhost:8080/v1/", models: ["Llama-3.3-70B"] } });
     expect(warnings).toEqual([]);

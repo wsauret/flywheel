@@ -2,9 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { appendJsonLine } from "../../../src/orchestration/modules/development/benchmark/json-lines.js";
 import {
-  createRunStore,
   implementCandidate,
   openReadOnlyRunEvidence,
   type AttemptRecord,
@@ -14,6 +12,7 @@ import {
 } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
 import { buildImplementRawResults } from "../../../src/orchestration/modules/development/benchmark/implement-scoring.js";
 import { createPersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
+import { writeSplitLedger } from "../../helpers/split-ledger.js";
 
 const ACCOUNTING = {
   estimatedUsd: { kind: "observed", value: 0.01 },
@@ -52,6 +51,18 @@ const RUN: ResearchRunRecord = {
   summary: "answer",
 };
 
+/** Two seats of one cell, so a pair score names two completed runs. */
+const PAIR_CONFIG: RunConfig = {
+  ...CONFIG,
+  variants: [{ id: "a", model: "model-a", effort: "medium" }, { id: "b", model: "model-b", effort: "medium" }],
+};
+const PAIR_RUNS: readonly ResearchRunRecord[] = PAIR_CONFIG.variants.map((variant) => ({
+  ...RUN,
+  variant: variant.id,
+  model: variant.model,
+  effort: variant.effort,
+}));
+
 let root: string | undefined;
 
 afterEach(async () => {
@@ -81,8 +92,6 @@ const ATTEMPT: AttemptRecord = {
   terminal: { kind: "timed-out", timeoutMs: 20 },
   accounting: ACCOUNTING,
 };
-
-
 
 const JUDGE_ATTEMPT: JudgeAttemptRecord = {
   kind: "judge-attempt",
@@ -121,39 +130,48 @@ describe("persona benchmark run store", () => {
 
   it("refuses historical persona resume without modifying the historical config", async () => {
     const location = await storeLocation();
-    await createRunStore(location, CONFIG);
+    await writeSplitLedger(location.directory, CONFIG);
     const path = join(location.directory, "run-config.json");
     const bytes = await Bun.file(path).text();
     await expect(createPersonaStore(location)).rejects.toThrow("Historical persona results are read-only");
     expect(await Bun.file(path).text()).toBe(bytes);
     expect(await readdir(location.directory)).toEqual(["run-config.json"]);
   });
-  it("round-trips config, runs, and scores", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await store.appendRun(RUN);
-    await store.appendScore({
+
+  it("rejects an invalid typed write before appending bytes", async () => {
+    const store = await createPersonaStore(await storeLocation(), CONFIG, [RUN.task]);
+    await expect(store.appendRun({ ...RUN, accounting: { ...RUN.accounting, tokens: { kind: "observed", value: 1.5 } } })).rejects.toThrow(/tokens/);
+    expect(await store.loadRuns()).toEqual([]);
+  });
+});
+
+describe("read-only persona benchmark evidence", () => {
+  it("reads the config, runs, and scores of a historical campaign", async () => {
+    const location = await storeLocation();
+    const score = {
       kind: "pair-score",
       mode: "research",
       persona: "explorer",
       error: null,
-      verdict: { task: "session-disposal", repeat: 0, slotA: "a", slotB: "b", winner: "a", rationale: "better" },
-    });
-    expect(await store.loadConfig()).toEqual(CONFIG);
-    expect(await store.loadRuns()).toEqual([RUN]);
-    expect((await store.loadScores())[0]?.kind).toBe("pair-score");
+      verdict: { task: RUN.task, repeat: 0, slotA: "a", slotB: "b", winner: "a", rationale: "better" },
+    } as const;
+    await writeSplitLedger(location.directory, PAIR_CONFIG, { runs: PAIR_RUNS, scores: [score] });
+    const evidence = await openReadOnlyRunEvidence(location);
+    expect(await evidence.loadConfig()).toEqual(PAIR_CONFIG);
+    expect(await evidence.loadRuns()).toEqual([...PAIR_RUNS]);
+    expect(await evidence.loadScores()).toEqual([score]);
   });
 
   it("reads old implementation rows and preserves original native grading through reload and raw reporting", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
+    const location = await storeLocation();
     const old = {
       ...RUN, mode: "implement" as const, diff: "", linesAdded: 0, linesRemoved: 0, filesTouched: 0,
       acceptancePassed: 0, acceptanceFailed: 1, acceptanceTotal: 1,
     };
     const nativeGrade = '{"passed":0,"failed":1,"total":1,"evidence":{"original.test_bug":"FAIL","grade":false}}\n';
     const current = { ...old, repeat: 1, nativeGrade };
-    await store.appendRun(old);
-    await store.appendRun(current);
-    const rows = await store.loadRuns();
+    await writeSplitLedger(location.directory, { ...CONFIG, mode: "implement", repeats: 2 }, { runs: [old, current] });
+    const rows = await (await openReadOnlyRunEvidence(location)).loadRuns();
     expect(rows).toEqual([old, current]);
     const row = rows[1];
     if (row?.mode !== "implement") throw new Error("expected implementation row");
@@ -162,108 +180,86 @@ describe("persona benchmark run store", () => {
     expect(buildImplementRawResults([candidate], [], [])[0]?.nativeGrade).toBe(nativeGrade);
   });
 
-  it("rejects an invalid typed write before appending bytes", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await expect(store.appendRun({ ...RUN, accounting: { ...RUN.accounting, tokens: { kind: "observed", value: 1.5 } } })).rejects.toThrow(/tokens/);
-    expect(await store.loadRuns()).toEqual([]);
-  });
-
-  it("rejects duplicate completion keys and attempt IDs after strict loading", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await store.appendRun(RUN);
-    await store.appendRun(RUN);
-    await expect(store.loadRuns()).rejects.toThrow(/Duplicate completed/);
-    await store.appendAttempt(ATTEMPT);
-    await store.appendAttempt(ATTEMPT);
-    await expect(store.loadAttempts()).rejects.toThrow(/Duplicate.*attempt/i);
+  it("rejects duplicate attempt IDs after strict loading", async () => {
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, CONFIG, { attempts: [ATTEMPT, ATTEMPT] });
+    await expect((await openReadOnlyRunEvidence(location)).loadAttempts()).rejects.toThrow(/Duplicate.*attempt/i);
   });
 
   it("rejects a stored run carrying a legacy provider field", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await appendJsonLine(join(store.directory, "runs.jsonl"), { ...RUN, provider: "openai_api" });
-    await expect(store.loadRuns()).rejects.toThrow(/provider/);
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, CONFIG, { runs: [{ ...RUN, provider: "openai_api" }] });
+    await expect((await openReadOnlyRunEvidence(location)).loadRuns()).rejects.toThrow(/provider/);
   });
 
   it("rejects failed settlements in the successful score ledger", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await appendJsonLine(join(store.directory, "scores.jsonl"), {
-      kind: "pair-score",
-      mode: "research",
-      persona: "explorer",
-      error: "Judge response did not contain JSON",
-      verdict: { task: "session-disposal", repeat: 0, slotA: "a", slotB: "b", winner: "tie", rationale: "failed" },
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, PAIR_CONFIG, {
+      runs: PAIR_RUNS,
+      scores: [{
+        kind: "pair-score",
+        mode: "research",
+        persona: "explorer",
+        error: "Judge response did not contain JSON",
+        verdict: { task: RUN.task, repeat: 0, slotA: "a", slotB: "b", winner: "tie", rationale: "failed" },
+      }],
     });
-    await expect(store.loadScores()).rejects.toThrow(/error/);
+    await expect((await openReadOnlyRunEvidence(location)).loadScores()).rejects.toThrow(/error/);
   });
 
-  it("reports no attempts when the run never wrote an attempts log", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    expect(await store.loadAttempts()).toEqual([]);
+  it("reports no attempts and no judge attempts for a campaign that never wrote those logs", async () => {
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, CONFIG);
+    const evidence = await openReadOnlyRunEvidence(location);
+    expect(await evidence.loadAttempts()).toEqual([]);
+    expect(await evidence.loadJudgeAttempts()).toEqual([]);
   });
 
-  it("round-trips unsuccessful attempts alongside the completed runs", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await store.appendRun(RUN);
-    await store.appendAttempt(ATTEMPT);
-    expect(await store.loadAttempts()).toEqual([ATTEMPT]);
-    expect(await store.loadRuns()).toEqual([RUN]);
+  it("reads unsuccessful attempts alongside the completed runs", async () => {
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, CONFIG, { runs: [RUN], attempts: [ATTEMPT] });
+    const evidence = await openReadOnlyRunEvidence(location);
+    expect(await evidence.loadAttempts()).toEqual([ATTEMPT]);
+    expect(await evidence.loadRuns()).toEqual([RUN]);
   });
 
   it("fails on a malformed attempts log rather than under-counting it", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await store.appendAttempt(ATTEMPT);
-    await Bun.write(join(store.directory, "attempts.jsonl"), `${JSON.stringify(ATTEMPT)}\n{"kind":"agent-run-attempt"`);
-    await expect(store.loadAttempts()).rejects.toThrow(/attempts.jsonl:2 is not valid JSON/);
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, CONFIG);
+    await Bun.write(join(location.directory, "attempts.jsonl"), `${JSON.stringify(ATTEMPT)}\n{"kind":"agent-run-attempt"`);
+    await expect((await openReadOnlyRunEvidence(location)).loadAttempts()).rejects.toThrow(/attempts.jsonl:2 is not valid JSON/);
   });
 
-  it("reports no judge attempts for a results directory that predates the ledger", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    expect(await store.loadJudgeAttempts()).toEqual([]);
-  });
-
-  it("round-trips the judge attempt ledger", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await store.appendJudgeAttempt(JUDGE_ATTEMPT);
-    await store.appendJudgeAttempt({ ...JUDGE_ATTEMPT, attemptId: "b", terminal: "cancelled", accounting: { ...JUDGE_ATTEMPT.accounting, estimatedUsd: { kind: "unavailable", reason: "the judge call reported no provider usage" } } });
-    const attempts = await store.loadJudgeAttempts();
+  it("reads the judge attempt ledger", async () => {
+    const location = await storeLocation();
+    const cancelled = { ...JUDGE_ATTEMPT, attemptId: "b", terminal: "cancelled", accounting: { ...JUDGE_ATTEMPT.accounting, estimatedUsd: { kind: "unavailable", reason: "the judge call reported no provider usage" } } } as const;
+    await writeSplitLedger(location.directory, PAIR_CONFIG, { runs: PAIR_RUNS, judgeAttempts: [JUDGE_ATTEMPT, cancelled] });
+    const attempts = await (await openReadOnlyRunEvidence(location)).loadJudgeAttempts();
     expect(attempts).toHaveLength(2);
     expect(attempts[0]).toEqual(JUDGE_ATTEMPT);
     expect(attempts[1]?.terminal).toBe("cancelled");
   });
 
   it("rejects an attempt whose cost is a bare number rather than an observation", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await appendJsonLine(join(store.directory, "attempts.jsonl"), { ...ATTEMPT, accounting: { ...ATTEMPT.accounting, estimatedUsd: 0 } });
-    await expect(store.loadAttempts()).rejects.toThrow(/estimatedUsd/);
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, CONFIG, { attempts: [{ ...ATTEMPT, accounting: { ...ATTEMPT.accounting, estimatedUsd: 0 } }] });
+    await expect((await openReadOnlyRunEvidence(location)).loadAttempts()).rejects.toThrow(/estimatedUsd/);
   });
 
   it("rejects an attempt whose terminal reason is a bare string", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    await appendJsonLine(join(store.directory, "attempts.jsonl"), { ...ATTEMPT, terminal: "timed-out" });
-    await expect(store.loadAttempts()).rejects.toThrow(/terminal/);
+    const location = await storeLocation();
+    await writeSplitLedger(location.directory, CONFIG, { attempts: [{ ...ATTEMPT, terminal: "timed-out" }] });
+    await expect((await openReadOnlyRunEvidence(location)).loadAttempts()).rejects.toThrow(/terminal/);
   });
 
-  it("repairs a torn tail in the completed-run log", async () => {
-    const store = await createRunStore(await storeLocation(), CONFIG);
-    const runsPath = join(store.directory, "runs.jsonl");
-    await Bun.write(runsPath, `${JSON.stringify(RUN)}\n${JSON.stringify(RUN).slice(0, 20)}`);
-    expect(await store.loadRuns()).toEqual([RUN]);
-    expect(await Bun.file(runsPath).text()).toBe(`${JSON.stringify(RUN)}\n`);
-  });
-});
-
-describe("read-only persona benchmark evidence", () => {
   it("rejects duplicate and foreign ledger identities after strict decoding", async () => {
     const location = await storeLocation();
-    const store = await createRunStore(location, CONFIG);
-    await store.appendRun(RUN);
-    await store.appendRun(RUN);
+    await writeSplitLedger(location.directory, CONFIG, { runs: [RUN, RUN] });
     const evidence = await openReadOnlyRunEvidence(location);
     await expect(evidence.loadRuns()).rejects.toThrow(/Duplicate completed/);
 
     const secondLocation = { resultsRoot: root!, directory: join(root!, "foreign") };
-    const second = await createRunStore(secondLocation, CONFIG);
-    await second.appendAttempt({ ...ATTEMPT, persona: "implementer" });
+    await writeSplitLedger(secondLocation.directory, CONFIG, { attempts: [{ ...ATTEMPT, persona: "implementer" }] });
     const foreignEvidence = await openReadOnlyRunEvidence(secondLocation);
     await expect(foreignEvidence.loadAttempts()).rejects.toThrow(/persona|campaign/i);
   });
@@ -271,48 +267,52 @@ describe("read-only persona benchmark evidence", () => {
   it("rejects single-seat and pair judging without the exact completed run cells", async () => {
     const location = await storeLocation();
     const reviewerConfig: RunConfig = { ...CONFIG, persona: "reviewer-code-quality", mode: "reviewer" };
-    const store = await createRunStore(location, reviewerConfig);
-    await store.appendJudgeAttempt({
-      ...JUDGE_ATTEMPT,
-      persona: reviewerConfig.persona,
-      mode: reviewerConfig.mode,
-      score: { kind: "review-score", variant: RUN.variant, task: "configured-but-missing", repeat: 0 },
+    await writeSplitLedger(location.directory, reviewerConfig, {
+      judgeAttempts: [{
+        ...JUDGE_ATTEMPT,
+        persona: reviewerConfig.persona,
+        mode: reviewerConfig.mode,
+        score: { kind: "review-score", variant: RUN.variant, task: "configured-but-missing", repeat: 0 },
+      }],
     });
     const evidence = await openReadOnlyRunEvidence(location);
     await expect(evidence.loadJudgeAttempts()).rejects.toThrow(/completed.*cell/i);
 
     const pairLocation = { resultsRoot: root!, directory: join(root!, "self-pair") };
-    const pairStore = await createRunStore(pairLocation, CONFIG);
-    await pairStore.appendRun(RUN);
-    await pairStore.appendJudgeAttempt({
-      ...JUDGE_ATTEMPT,
-      score: { kind: "pair-score", task: RUN.task, repeat: RUN.repeat, slotA: RUN.variant, slotB: RUN.variant },
+    await writeSplitLedger(pairLocation.directory, CONFIG, {
+      runs: [RUN],
+      judgeAttempts: [{
+        ...JUDGE_ATTEMPT,
+        score: { kind: "pair-score", task: RUN.task, repeat: RUN.repeat, slotA: RUN.variant, slotB: RUN.variant },
+      }],
     });
     await expect((await openReadOnlyRunEvidence(pairLocation)).loadJudgeAttempts()).rejects.toThrow(/distinct completed.*cells|self-pair/i);
 
     const missingLocation = { resultsRoot: root!, directory: join(root!, "missing-pair") };
-    const missingStore = await createRunStore(missingLocation, {
+    await writeSplitLedger(missingLocation.directory, {
       ...CONFIG,
       variants: [...CONFIG.variants, { id: "configured", model: "model", effort: "low" }],
-    });
-    await missingStore.appendRun(RUN);
-    await missingStore.appendJudgeAttempt({
-      ...JUDGE_ATTEMPT,
-      score: { kind: "pair-score", task: RUN.task, repeat: RUN.repeat, slotA: RUN.variant, slotB: "configured" },
+    }, {
+      runs: [RUN],
+      judgeAttempts: [{
+        ...JUDGE_ATTEMPT,
+        score: { kind: "pair-score", task: RUN.task, repeat: RUN.repeat, slotA: RUN.variant, slotB: "configured" },
+      }],
     });
     await expect((await openReadOnlyRunEvidence(missingLocation)).loadJudgeAttempts()).rejects.toThrow(/distinct completed.*cells/i);
   });
 
   it("restricts source score kinds to the campaign mode", async () => {
     const location = await storeLocation();
-    const store = await createRunStore(location, CONFIG);
-    await store.appendRun(RUN);
-    await store.appendScore({
-      kind: "review-score",
-      mode: "reviewer",
-      persona: CONFIG.persona,
-      error: null,
-      score: { variant: RUN.variant, task: RUN.task, repeat: RUN.repeat, caught: [], uncertain: [], unsupportedFindingCount: 0 },
+    await writeSplitLedger(location.directory, CONFIG, {
+      runs: [RUN],
+      scores: [{
+        kind: "review-score",
+        mode: "reviewer",
+        persona: CONFIG.persona,
+        error: null,
+        score: { variant: RUN.variant, task: RUN.task, repeat: RUN.repeat, caught: [], uncertain: [], unsupportedFindingCount: 0 },
+      }],
     });
     await expect((await openReadOnlyRunEvidence(location)).loadScores()).rejects.toThrow(/score kind|campaign mode|persona or mode/i);
   });
@@ -322,21 +322,21 @@ describe("persona benchmark results directory creation", () => {
   it("opens an existing directory without a config, and creates none when it is absent", async () => {
     const location = await storeLocation();
 
-    await expect(createRunStore(location)).rejects.toThrow(/is missing/);
-    expect(await Bun.file(join(location.directory, "run-config.json")).exists()).toBe(false);
+    await expect(openReadOnlyRunEvidence(location)).rejects.toThrow(/is missing/);
+    await expect(createPersonaStore(location)).rejects.toThrow(/is missing/);
     await expect(readdir(location.directory)).rejects.toThrow(/ENOENT/);
   });
 });
 
 describe("persona benchmark results containment", () => {
-  it("refuses to resume a results directory that is a symlink out of the results root", async () => {
+  it("refuses to read a results directory that is a symlink out of the results root", async () => {
     const location = await storeLocation();
     const outside = await mkdtemp(join(tmpdir(), "ab-persona-outside-"));
     await mkdir(location.resultsRoot, { recursive: true });
     await Bun.write(join(outside, "run-config.json"), `${JSON.stringify(CONFIG)}\n`);
     await symlink(outside, location.directory);
     try {
-      await expect(createRunStore(location)).rejects.toThrow(/resolves through the symlink/);
+      await expect(openReadOnlyRunEvidence(location)).rejects.toThrow(/resolves through the symlink/);
     } finally {
       await rm(outside, { recursive: true, force: true });
     }
@@ -348,8 +348,8 @@ describe("persona benchmark results containment", () => {
     await mkdir(location.resultsRoot, { recursive: true });
     await symlink(outside, location.directory);
     try {
-      await expect(createRunStore(location, CONFIG)).rejects.toThrow(/resolves through the symlink/);
-      expect(await Bun.file(join(outside, "run-config.json")).exists()).toBe(false);
+      await expect(createPersonaStore(location, CONFIG, [RUN.task])).rejects.toThrow(/resolves through the symlink/);
+      expect(await Bun.file(join(outside, "campaign.json")).exists()).toBe(false);
     } finally {
       await rm(outside, { recursive: true, force: true });
     }
@@ -374,11 +374,11 @@ describe("persona benchmark results containment", () => {
 
   it("refuses to append through an owned log file that was swapped for a symlink", async () => {
     const location = await storeLocation();
-    const store = await createRunStore(location, CONFIG);
+    const store = await createPersonaStore(location, CONFIG, [RUN.task]);
     const outside = await mkdtemp(join(tmpdir(), "ab-persona-outside-"));
     const target = join(outside, "stolen.jsonl");
     await Bun.write(target, "");
-    await symlink(target, join(store.directory, "runs.jsonl"));
+    await symlink(target, join(store.directory, "events.jsonl"));
     try {
       await expect(store.appendRun(RUN)).rejects.toThrow(/ELOOP/);
       expect(await Bun.file(target).text()).toBe("");

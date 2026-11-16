@@ -7,7 +7,8 @@ import { tmpdir } from "node:os";
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { DEFAULT_PROACTIVE_COMPACTION_THRESHOLD, DEFAULT_THEME_SELECTION, MIN_PROACTIVE_COMPACTION_THRESHOLD } from "../../../../src/orchestration/config/defaults.js";
-import { ConfigWriteError, PERSISTED_SETTING_WRITERS, migrateLegacyModelSpellings, migrateModelAssignments, patchProfileBoolean, patchProfileProviderSetting, resetModalSettings, seedConfigDefaults, setAuthProjectProfile, updateAutoInstall, updateDiffColors, updateProactiveCompactionThreshold, updateShowThinking, updateThemeSelection } from "../../../../src/orchestration/config/writer.js";
+import { ConfigWriteError, migrateLegacyModelSpellings, migrateModelAssignments, patchProfileBoolean, patchProfileProviderSetting, seedConfigDefaults, setAuthProjectProfile, updateDefinedSetting } from "../../../../src/orchestration/config/writer.js";
+import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
 import { profileBooleanSettingDefinition } from "../../../../src/orchestration/config/setting-definitions.js";
 
 async function withConfig(source: string, run: (path: string, dir: string) => Promise<void>): Promise<void> {
@@ -18,6 +19,17 @@ async function withConfig(source: string, run: (path: string, dir: string) => Pr
     await run(path, dir);
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+}
+
+/** Resets the Settings modal's values through the runtime config owner, the
+ *  one production reset path. */
+async function resetSettings(configPath: string): Promise<void> {
+  const owner = await createRuntimeConfigOwner({ configPath, env: {}, watch: false });
+  try {
+    expect((await owner.resetSettings("personal")).ok).toBe(true);
+  } finally {
+    await owner.dispose();
   }
 }
 
@@ -112,14 +124,14 @@ describe("config settings persistence", () => {
     const source = 'notes = """before \\"""\ntheme = "inside"\nafter"""\n';
     expect(() => Bun.TOML.parse(source)).not.toThrow();
     await withConfig(source, async (path) => {
-      expect(updateThemeSelection("aura", { configPath: path })).toEqual({ ok: true });
+      expect(updateDefinedSetting("theme", "aura", { configPath: path })).toEqual({ ok: true });
       expect(await readFile(path, "utf8")).toBe(`${source}theme = "aura"\n`);
     });
   });
 
   test("resets modal-owned config values without changing roles", async () => {
     await withConfig('theme = "aura"\nshow_thinking = true\ndiff_colors = "standard"\nproactive_compaction_threshold = 500000\nfeatures = ["skills"]\n\n[profiles.personal.roles.chat]\nmodel = "gpt-5.4-mini"\n\n[updates]\nauto_install = false\n\n[web_search]\nprovider = "exa"\n', async (path) => {
-      expect(resetModalSettings({ configPath: path })).toEqual({ ok: true });
+      await resetSettings(path);
 
       const text = await readFile(path, "utf8");
       const config = loadConfig(path, {}).config;
@@ -136,20 +148,18 @@ describe("config settings persistence", () => {
 
   test("persists and resets the Write syntax theme at the TOML root", async () => {
     await withConfig("", async (path) => {
-      const writer = PERSISTED_SETTING_WRITERS.get("writeSyntaxTheme");
-      if (writer === undefined) throw new Error("expected Write syntax theme writer");
-      expect(writer("vesper", { configPath: path })).toEqual({ ok: true });
+      expect(updateDefinedSetting("writeSyntaxTheme", "vesper", { configPath: path })).toEqual({ ok: true });
       expect(await readFile(path, "utf8")).toContain('write_syntax_theme = "vesper"');
       expect(loadConfig(path, {}).config.write_syntax_theme).toBe("vesper");
 
-      expect(resetModalSettings({ configPath: path })).toEqual({ ok: true });
+      await resetSettings(path);
       expect(loadConfig(path, {}).config.write_syntax_theme).toBe("nord");
     });
   });
 
   test("persists proactive compaction threshold as a bare TOML root number before sections", async () => {
     await withConfig('[profiles.personal.roles.chat]\nmodel = "gpt-5.4-mini"\n', async (path) => {
-      updateProactiveCompactionThreshold(300_000, { configPath: path });
+      updateDefinedSetting("proactiveCompactionThreshold", 300_000, { configPath: path });
 
       const text = await readFile(path, "utf8");
       expect(text).toContain("proactive_compaction_threshold = 300000");
@@ -164,7 +174,7 @@ describe("config settings persistence", () => {
       // The runtime write reaches us from a live TUI handler, so an invalid value
       // is a typed failure value -- not a throw into the reactive handler -- and
       // the failed write leaves the file untouched.
-      const result = updateProactiveCompactionThreshold(MIN_PROACTIVE_COMPACTION_THRESHOLD - 1, { configPath: path })
+      const result = updateDefinedSetting("proactiveCompactionThreshold", MIN_PROACTIVE_COMPACTION_THRESHOLD - 1, { configPath: path })
       expect(result.ok).toBe(false)
       if (result.ok) throw new Error("expected a failed write")
       expect(result.error).toBeInstanceOf(ConfigWriteError)
@@ -176,7 +186,7 @@ describe("config settings persistence", () => {
 
   test("persists a zero threshold as the proactive compaction opt-out", async () => {
     await withConfig("", async (path) => {
-      expect(updateProactiveCompactionThreshold(0, { configPath: path })).toEqual({ ok: true })
+      expect(updateDefinedSetting("proactiveCompactionThreshold", 0, { configPath: path })).toEqual({ ok: true })
       expect(loadConfig(path, {}).config.proactive_compaction_threshold).toBe(0)
     })
   })
@@ -225,9 +235,7 @@ describe("config settings persistence", () => {
     ] as const;
     for (const [source, expected] of fixtures) {
       await withConfig(source, async (path) => {
-        const writer = PERSISTED_SETTING_WRITERS.get("webSearchProvider");
-        if (writer === undefined) throw new Error("expected web search provider writer");
-        expect(writer("exa", { configPath: path })).toEqual({ ok: true });
+        expect(updateDefinedSetting("webSearchProvider", "exa", { configPath: path })).toEqual({ ok: true });
         expect(await readFile(path, "utf8")).toBe(expected);
       });
     }
@@ -237,9 +245,7 @@ describe("config settings persistence", () => {
   test("refuses competing semantic authorities without writing", async () => {
     const source = 'web_search.provider = "exa"\n\n[web_search]\nprovider = "chatgpt"\n';
     await withConfig(source, async (path) => {
-      const writer = PERSISTED_SETTING_WRITERS.get("webSearchProvider");
-      if (writer === undefined) throw new Error("expected web search provider writer");
-      expect(writer("exa", { configPath: path }).ok).toBe(false);
+      expect(updateDefinedSetting("webSearchProvider", "exa", { configPath: path }).ok).toBe(false);
       expect(await readFile(path, "utf8")).toBe(source);
     });
   });
@@ -255,7 +261,7 @@ describe("config settings persistence", () => {
         return original(fd)
       })
       try {
-        expect(updateShowThinking(false, { configPath: path })).toEqual({ ok: true })
+        expect(updateDefinedSetting("showThinking", false, { configPath: path })).toEqual({ ok: true })
         expect(syncedDirectory).toBe(true)
       } finally {
         fsync.mockRestore()
@@ -265,9 +271,9 @@ describe("config settings persistence", () => {
 
   test("composes settings updates from an empty file", async () => {
     await withConfig("", async (path) => {
-      updateShowThinking(false, { configPath: path });
-      updateDiffColors("standard", { configPath: path });
-      updateProactiveCompactionThreshold(300_000, { configPath: path });
+      updateDefinedSetting("showThinking", false, { configPath: path });
+      updateDefinedSetting("diffColors", "standard", { configPath: path });
+      updateDefinedSetting("proactiveCompactionThreshold", 300_000, { configPath: path });
 
       const text = await readFile(path, "utf8");
       expect(text).toContain("show_thinking = false");
@@ -321,7 +327,7 @@ describe("config settings persistence", () => {
       expect(config).not.toHaveProperty("roles");
       expect(config.profiles.work?.roles.compactor).toBeUndefined();
       expect(config.profiles.work?.roles.summarizer).toBeUndefined();
-      expect(updateShowThinking(true, { configPath: path })).toEqual({ ok: true });
+      expect(updateDefinedSetting("showThinking", true, { configPath: path })).toEqual({ ok: true });
       const reloaded = loadConfig(path, {});
       expect(reloaded.warnings).toEqual([]);
       expect(reloaded.config.show_thinking).toBe(true);
@@ -332,7 +338,7 @@ describe("config settings persistence", () => {
 
   test("persists updates.auto_install in its own section", async () => {
     await withConfig('show_thinking = true\n\n[roles.chat]\nmodel = "gpt-5.4-mini"\n', async (path) => {
-      expect(updateAutoInstall(false, { configPath: path })).toEqual({ ok: true });
+      expect(updateDefinedSetting("autoInstall", false, { configPath: path })).toEqual({ ok: true });
 
       const text = await readFile(path, "utf8");
       expect(text).toContain("[updates]\nauto_install = false");
@@ -340,7 +346,7 @@ describe("config settings persistence", () => {
       expect(occurrences(text, "[updates]")).toBe(1);
       expect(loadConfig(path, {}).config.updates.auto_install).toBe(false);
 
-      expect(updateAutoInstall(true, { configPath: path })).toEqual({ ok: true });
+      expect(updateDefinedSetting("autoInstall", true, { configPath: path })).toEqual({ ok: true });
       expect(occurrences(await readFile(path, "utf8"), "[updates]")).toBe(1);
       expect(loadConfig(path, {}).config.updates.auto_install).toBe(true);
     });
@@ -400,7 +406,7 @@ describe("the commit point of a settings write", () => {
         return original(fd)
       })
       try {
-        const result = updateShowThinking(false, { configPath: path })
+        const result = updateDefinedSetting("showThinking", false, { configPath: path })
         expect(result.ok).toBe(true)
         if (!result.ok) throw new Error("expected a committed write")
         expect(result.durabilityError?.message).toContain("directory sync boom")
@@ -444,7 +450,7 @@ describe("the private config boundary", () => {
       const configPath = join(dir, "flywheel.toml");
       symlinkSync(outside, configPath);
 
-      const result = updateShowThinking(false, { configPath });
+      const result = updateDefinedSetting("showThinking", false, { configPath });
       expect(result.ok).toBe(false);
       expect(await readFile(outside, "utf8")).toBe("show_thinking = true\n");
     } finally {
@@ -459,7 +465,7 @@ describe("the private config boundary", () => {
       mkdirSync(outside);
       symlinkSync(outside, join(dir, "linked"));
 
-      const result = updateShowThinking(false, { configPath: join(dir, "linked", "flywheel.toml") });
+      const result = updateDefinedSetting("showThinking", false, { configPath: join(dir, "linked", "flywheel.toml") });
       expect(result.ok).toBe(false);
       expect(await readFile(join(outside, "flywheel.toml"), "utf8").catch(() => "absent")).toBe("absent");
     } finally {
@@ -469,7 +475,7 @@ describe("the private config boundary", () => {
 
   test("keeps config secrets out of a failed write error", async () => {
     await withConfig('[providers.anthropic]\napi_key = "sk-ant-secret-value"\n', async (path) => {
-      const result = updateProactiveCompactionThreshold(MIN_PROACTIVE_COMPACTION_THRESHOLD - 1, { configPath: path });
+      const result = updateDefinedSetting("proactiveCompactionThreshold", MIN_PROACTIVE_COMPACTION_THRESHOLD - 1, { configPath: path });
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error("expected a failed write");
       expect(result.error.message).not.toContain("sk-ant-secret-value");

@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
-import { flywheelConfigKeys, FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import {
   PERSISTED_SETTING_DEFINITIONS,
   RETAINED_CONFIG_SECTION_DEFINITIONS,
   settingDefinitions,
 } from "../../../../src/orchestration/config/setting-definitions.js";
-import { PERSISTED_SETTING_WRITERS } from "../../../../src/orchestration/config/writer.js";
 import { installedConfigSections } from "../../../../src/orchestration/module-catalog.js";
 
 describe("persisted setting definitions", () => {
@@ -17,7 +16,6 @@ describe("persisted setting definitions", () => {
       ...installedConfigSections().map((section) => section.key),
     ];
 
-    expect(ownedKeys).toEqual([...flywheelConfigKeys()]);
     expect(new Set(ownedKeys).size).toBe(ownedKeys.length);
   });
 
@@ -37,14 +35,6 @@ describe("persisted setting definitions", () => {
         expect(definition.presentation.values.length).toBeGreaterThan(1);
       }
     }
-  });
-
-  test("indexes every generated writer from the definitions", () => {
-    expect([...PERSISTED_SETTING_WRITERS.keys()]).toEqual(
-      PERSISTED_SETTING_DEFINITIONS
-        .filter((definition) => definition.ownership === "generated-writer")
-        .map((definition) => definition.id),
-    );
   });
 
 

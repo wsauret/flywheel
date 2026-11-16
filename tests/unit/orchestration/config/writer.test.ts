@@ -2,21 +2,27 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { updateShowThinking } from "../../../../src/orchestration/config/writer.js";
+import { updateDefinedSetting } from "../../../../src/orchestration/config/writer.js";
+
+async function withConfig(source: string, run: (configPath: string, dir: string) => Promise<void>): Promise<void> {
+  const dir = await mkdtemp(join(tmpdir(), "flywheel-writer-strict-"));
+  try {
+    const configPath = join(dir, "flywheel.toml");
+    await writeFile(configPath, source);
+    await run(configPath, dir);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
 
 async function preservesUnknownBytes(source: string): Promise<void> {
-  const dir = await mkdtemp(join(tmpdir(), "flywheel-writer-strict-"));
-  const configPath = join(dir, "flywheel.toml");
-  try {
-    await writeFile(configPath, source);
-    const result = updateShowThinking(false, { configPath, userDataRoot: dir });
+  await withConfig(source, async (configPath, dir) => {
+    const result = updateDefinedSetting("showThinking", false, { configPath, userDataRoot: dir });
     expect(result.ok).toBe(true);
     const written = await readFile(configPath, "utf8");
     expect(written).toContain("show_thinking = false");
     for (const line of source.trim().split("\n")) expect(written).toContain(line);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+  });
 }
 
 // Unknown keys are tolerated at the load boundary, so a settings write must
@@ -25,4 +31,21 @@ describe("config writer with unrecognized keys", () => {
   test("preserves undeclared root keys", () => preservesUnknownBytes("unknown_root = true\n"));
 
   test("preserves undeclared nested keys", () => preservesUnknownBytes("[notifications]\ndesktop = true\nunknown_nested = true\n"));
+});
+
+describe("updateDefinedSetting", () => {
+  // Each of these settings had its own writer before the generic one replaced it.
+  test.each([
+    ["theme", "aura", 'theme = "aura"\n'],
+    ["showThinking", true, "show_thinking = true\n"],
+    ["allowPersistentProcesses", true, "allow_persistent_processes = true\n"],
+    ["autoInstall", false, "[updates]\nauto_install = false\n"],
+    ["diffColors", "standard", 'diff_colors = "standard"\n'],
+    ["proactiveCompactionThreshold", 300_000, "proactive_compaction_threshold = 300000\n"],
+  ] as const)("writes each formerly dedicated setting with the same TOML result: %s", async (id, value, expected) => {
+    await withConfig("", async (configPath) => {
+      expect(updateDefinedSetting(id, value, { configPath })).toEqual({ ok: true });
+      expect(await readFile(configPath, "utf8")).toBe(expected);
+    });
+  });
 });
