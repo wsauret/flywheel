@@ -1,0 +1,96 @@
+src/orchestration/session/budget-store.ts
+  h_4b47e9e4a8b456 20,83
+src/orchestration/session/chat-session-run-evidence.ts
+  h_4b47e9e4a8b456 7,71
+src/orchestration/session/child-completion-conversation.ts
+  h_4b47e9e4a8b456 13,24
+src/orchestration/session/child-completion-delivery.ts
+  h_4b47e9e4a8b456 10,48
+src/orchestration/session/child-reconciliation-index.ts
+  h_4b47e9e4a8b456 194
+src/orchestration/session/child-session-reconciliation.ts
+  h_4b47e9e4a8b456 51,115,145,158,278,364,453,499,556,644,675
+src/orchestration/session/child-workflow-candidate.ts
+  h_4b47e9e4a8b456 81,141,156
+src/orchestration/session/child-workflow-result.ts
+  h_4b47e9e4a8b456 15,30,46
+src/orchestration/session/conversation-recall.ts
+  h_4b47e9e4a8b456 115
+src/orchestration/session/conversation/conversation-entry-schemas.ts
+  h_4b47e9e4a8b456 2,20-26,327-330,332-341,344,371-374,377-380,391-392,395-401,403-404,407-409,411-413,415-421,429-433,435,438-442,445,448,451,455,459,463-464
+src/orchestration/session/conversation/conversation-projection.ts
+  h_4b47e9e4a8b456 143-148,183,277-280
+src/orchestration/session/conversation/conversation-tree-storage.ts
+  h_4b47e9e4a8b456 623,629,633
+src/orchestration/session/conversation/turn-end-record.ts
+  h_4b47e9e4a8b456 173,209,456-459,548,582,629,644,666
+src/orchestration/session/session-catalog-read.ts
+  h_4b47e9e4a8b456 29,56
+src/orchestration/workflow-host/historical-worker-task.ts
+  h_4b47e9e4a8b456 2,27-29,31
+tests/helpers/workflow-parent.ts
+  h_4b47e9e4a8b456 12,63
+tests/unit/orchestration/app-service/runtime-background-snapshot.test.ts
+  h_4b47e9e4a8b456 20,54,61,105,162
+tests/unit/orchestration/app-service/workflow-view-protocol-projection.test.ts
+  h_4b47e9e4a8b456 15,24,85,101,112,151,161,345,349
+tests/unit/orchestration/migrations/adopt-workflow-children.test.ts
+  h_4b47e9e4a8b456 346,443
+tests/unit/orchestration/modules/subagents/subagent-child-completion-recovery.test.ts
+  h_4b47e9e4a8b456 158,236,257,306
+tests/unit/orchestration/modules/subagents/subagent-prompt-inspectability.test.ts
+  h_4b47e9e4a8b456 93,226,292
+tests/unit/orchestration/session/_budget-store-fixtures.ts
+  h_4b47e9e4a8b456 15-17,139-166,200,212
+tests/unit/orchestration/session/_child-session-reconciliation-fixtures.ts
+  h_4b47e9e4a8b456 1,131
+tests/unit/orchestration/session/branch-history-builder.test.ts
+  h_4b47e9e4a8b456 60
+tests/unit/orchestration/session/budget-store-accumulation.test.ts
+  h_4b47e9e4a8b456 90,415,428,441,454
+tests/unit/orchestration/session/budget-store-limits.test.ts
+  h_4b47e9e4a8b456 12,18-29,31,34-36,41,46-47,50,54-55,57-58,60-61,63-64
+tests/unit/orchestration/session/budget-store-metrics.test.ts
+  h_4b47e9e4a8b456 7,105
+tests/unit/orchestration/session/budget-store-persistence.test.ts
+  h_4b47e9e4a8b456 19,82,180,194
+tests/unit/orchestration/session/chat-workflow-completion-recovery.test.ts
+  h_4b47e9e4a8b456 197
+tests/unit/orchestration/session/child-completion-conversation.test.ts
+  h_4b47e9e4a8b456 19
+tests/unit/orchestration/session/child-completion-membership.test.ts
+  h_4b47e9e4a8b456 90,126
+tests/unit/orchestration/session/child-reconciliation-fault.test.ts
+  h_4b47e9e4a8b456 35
+tests/unit/orchestration/session/child-reconciliation-work-count.test.ts
+  h_4b47e9e4a8b456 59,131,154,167,197,200,231,279,337,375,391
+tests/unit/orchestration/session/child-session-reconciliation.test.ts
+  h_4b47e9e4a8b456 65,70,93,99
+tests/unit/orchestration/session/child-workflow-stop.test.ts
+  h_4b47e9e4a8b456 86,195,237,249,261,278,300,317,326
+tests/unit/orchestration/session/conversation-block-projection.test.ts
+  h_4b47e9e4a8b456 571,574,576-577
+tests/unit/orchestration/session/conversation-entry-schemas.test.ts
+  h_4b47e9e4a8b456 3,6-8,15-20,356-358,361-362,364-418
+tests/unit/orchestration/session/live-usage-settlement.test.ts
+  h_4b47e9e4a8b456 168,183
+tests/unit/orchestration/session/session-fact-writer.test.ts
+  h_4b47e9e4a8b456 521,523-525
+tests/unit/orchestration/session/session-view.test.ts
+  h_4b47e9e4a8b456 10,58,67
+tests/unit/orchestration/session/turn-end-record.test.ts
+  h_4b47e9e4a8b456 49,124,208-209
+tests/unit/orchestration/workflow-host/workflow-runner.test.ts
+  h_4b47e9e4a8b456 17,29,51,91,100,266,295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "391729f233d0e96364e78bcdcee6f2e7be2f59ef",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
