@@ -1,0 +1,90 @@
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 21,46,148
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 88,90,94,145
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 40
+docs/terminology.md
+  h_4b47e9e4a8b456 169-170
+src/infra/module-descriptor.ts
+  h_4b47e9e4a8b456 34,50,65-68,70-71,130,137-139
+src/orchestration/agent-runtime/batch-observers.ts
+  h_4b47e9e4a8b456 31-37
+src/orchestration/agent-runtime/llm/provider-request-audit.ts
+  h_4b47e9e4a8b456 138
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 105
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 37
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 166,243,245
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 84-86,88-89,91-98,399-400,402,404
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 233,304
+src/orchestration/modules/bug-reports/module.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/modules/provider-baseten/module.ts
+  h_4b47e9e4a8b456 65
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 66
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 29
+src/orchestration/modules/provider-google-api/module.ts
+  h_4b47e9e4a8b456 99
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 84
+src/orchestration/modules/provider-openai-api/module.ts
+  h_4b47e9e4a8b456 91
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 24,90
+src/orchestration/modules/remote/module.ts
+  h_4b47e9e4a8b456 50
+src/orchestration/session/provider-request-audit-projection.ts
+  h_4b47e9e4a8b456 15,24
+src/orchestration/session/provider-request-audit-recorder.ts
+  h_4b47e9e4a8b456 4-12,49-50
+tests/unit/infra/capability-module-types.test.ts
+  h_4b47e9e4a8b456 16,19
+tests/unit/infra/capability-module.test.ts
+  h_4b47e9e4a8b456 11,35
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-request-evidence.test.ts
+  h_4b47e9e4a8b456 55-56,79,86,89,109-110
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 51,396,554-555,557-558,561-562,564
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 296
+tests/unit/orchestration/agent-runtime/runtime-assembly-request-audit.test.ts
+  h_4b47e9e4a8b456 5,15-18,28-33,39,55,69,72-83,167-199
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-background.test.ts
+  h_4b47e9e4a8b456 154
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 311,314,316,323,329,332,334,397,404,412
+tests/unit/orchestration/app-service/command-invoke-service.test.ts
+  h_4b47e9e4a8b456 149
+tests/unit/orchestration/chat/chat-module-host-lifetime.test.ts
+  h_4b47e9e4a8b456 17,46
+tests/unit/orchestration/module-diagnostics.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/module-lifecycles.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/session/module-session-facts.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/session/provider-request-audit-context-application-history.test.ts
+  h_4b47e9e4a8b456 2-5,7-19,21,23-28,31-54,57-93
+tests/unit/orchestration/session/provider-request-audit-store.test.ts
+  h_4b47e9e4a8b456 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d197c1968711f94a3a208d25322ca8765ff81691",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
