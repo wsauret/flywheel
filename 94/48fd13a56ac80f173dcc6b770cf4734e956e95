@@ -1,0 +1,76 @@
+relay/worker/test/relay-hibernation.test.ts
+  h_4b47e9e4a8b456 4,6,31,160-161,166,169
+relay/worker/test/relay-runtime.test.ts
+  h_4b47e9e4a8b456 17,191-193,227-228
+relay/worker/test/relay-sockets.ts
+  h_4b47e9e4a8b456 14,16,94-103
+relay/worker/test/relay-storage.test.ts
+  h_4b47e9e4a8b456 4,7,16
+src/protocol/client/workflow-addresses.ts
+  h_4b47e9e4a8b456 81
+src/protocol/client/workflow-agent.ts
+  h_4b47e9e4a8b456 33
+src/protocol/client/workflow-card.ts
+  h_4b47e9e4a8b456 409,421,616
+src/protocol/client/workflow-progress.ts
+  h_4b47e9e4a8b456 112-114,120-135,153,155-159,161-163,220
+src/protocol/modules/experiments.ts
+  h_4b47e9e4a8b456 65,70,102,106-107
+src/protocol/modules/papercuts.ts
+  h_4b47e9e4a8b456 12,17,20-21
+src/protocol/modules/project-notifications.ts
+  h_4b47e9e4a8b456 37,67
+src/protocol/modules/remote/relay-channel.ts
+  h_4b47e9e4a8b456 99,195,213-224,252,396-404
+src/protocol/modules/remote/relay-protocol.ts
+  h_4b47e9e4a8b456 70
+src/protocol/modules/remote/sealed-socket.ts
+  h_4b47e9e4a8b456 98,110-111
+src/protocol/modules/side-question.ts
+  h_4b47e9e4a8b456 28-29,58,82
+src/protocol/protocol-module.ts
+  h_4b47e9e4a8b456 259
+tests/helpers/heartbeat-clock.ts
+  h_4b47e9e4a8b456 1-3
+tests/unit/orchestration/app-service/rpc-protocol-mapping.test.ts
+  h_4b47e9e4a8b456 6,24,27,29-30,35-36,42-43,98-100,102-103,129,141-142,150,159-160,165,167
+tests/unit/orchestration/modules/project-notifications/protocol.test.ts
+  h_4b47e9e4a8b456 11,21
+tests/unit/orchestration/modules/side-question/protocol.test.ts
+  h_4b47e9e4a8b456 5,24-25,150
+tests/unit/protocol/client/workflow-addresses.test.ts
+  h_4b47e9e4a8b456 2,30-37,56,62-65,117,129-130,132-133
+tests/unit/protocol/client/workflow-agent.test.ts
+  h_4b47e9e4a8b456 4,97-98
+tests/unit/protocol/client/workflow-card.test.ts
+  h_4b47e9e4a8b456 3,33-45,145-146,149-150,169,175,180-185,187-188,228,240-243
+tests/unit/protocol/client/workflow-progress.test.ts
+  h_4b47e9e4a8b456 2,77,129,137,146
+tests/unit/protocol/module-protocol-registry.test.ts
+  h_4b47e9e4a8b456 7,61,81,247
+tests/unit/protocol/modules/remote/relay-channel.test.ts
+  h_4b47e9e4a8b456 5,19-20,27,35-37,53,92,108,118-120,123,126-127,135,147-158,160,162-181,196-197,203,206,208,217,256-257,259,261,271-272,281,287,296-297,305
+tests/unit/protocol/modules/remote/sealed-socket.test.ts
+  h_4b47e9e4a8b456 5-6,188-189,191-196
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 2,102
+tests/unit/tui/hooks/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 10,269
+tests/unit/tui/modules/project-notifications/list.test.ts
+  h_4b47e9e4a8b456 5,93
+tests/unit/tui/modules/side-question/modal.test.tsx
+  h_4b47e9e4a8b456 3,21
+vscode/src/providers/auth-notification-coordinator.test.ts
+  h_4b47e9e4a8b456 6-7,11-12,46,69,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9448fd13a56ac80f173dcc6b770cf4734e956e95",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
