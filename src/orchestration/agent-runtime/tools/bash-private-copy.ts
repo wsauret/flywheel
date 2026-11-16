@@ -21,6 +21,7 @@ import { digestStateEntries, readCopyRepositoryState, readIndexDigest, type Repo
 import { runPrivateCopyJob } from "./bash-private-copy-jobs.js";
 import { PRIVATE_COPY_RECORD, type PrivateCopyRecordRead, type ReadCopy, type RecordedCopy } from "./bash-private-copy-record.js";
 import type { CopyGeometry, PrivateCopyPool, ReusableCopy } from "./bash-private-copy-pool.js";
+import type { HeldListing } from "./bash-private-copy-mirror.js";
 import { rootAtPathBoundary, type CopiedProject, type CopyChanges, type CopyTopologyRequest } from "./bash-private-copy-tree.js";
 import { BEFORE_IMAGE, type SessionFolderSnapshot } from "./bash-session-observation.js";
 
@@ -376,10 +377,12 @@ export async function readPrivateProjectCopy(home: string): Promise<LandableCopy
   return read.kind === "recorded" ? { kind: "recorded", copy: { ...read.copy, home } } : read;
 }
 
-/** Finds every change the command made in its copy, on a Worker (see `scanCopyChanges`). */
-export async function detectCopyChanges(copy: CopiedProject): Promise<CopyChanges> {
+/** Finds every change the command made in its copy, on a Worker (see
+ *  `scanCopyChanges`). `baseListings`, the base listings its take left
+ *  (`reuse.state.base.listings`), spare reading the base again. */
+export async function detectCopyChanges(copy: CopiedProject, baseListings?: ReadonlyMap<string, HeldListing>): Promise<CopyChanges> {
   const { realRoot, copyRoot, baseRoot, shared, files, links } = copy;
-  return runPrivateCopyJob({ kind: "scan", copy: { realRoot, copyRoot, baseRoot, shared, files, links } });
+  return runPrivateCopyJob({ kind: "scan", copy: { realRoot, copyRoot, baseRoot, shared, files, links }, ...(baseListings ? { baseListings } : {}) });
 }
 
 /** A project below the Git top level is copied alone, so the rest of the

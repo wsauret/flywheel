@@ -26,7 +26,7 @@ import { constants, copyFileSync, cpSync, lstatSync, mkdirSync, readdirSync, rea
 import { isAbsolute, join, relative, sep } from "node:path";
 import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState, type FileFingerprint } from "../../file-edits/file-state.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
-import { cloneEntry, mirrorTree, PERMISSION_BITS, type CloneEntry, type MirroredFile, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
+import { cloneEntry, mirrorTree, PERMISSION_BITS, readListing, type CloneEntry, type HeldListing, type MirroredFile, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
 import { PRIVATE_INDEX, writePrivateCopyRecord, type PrivateCopyRecordRead, type RecordedCopy } from "./bash-private-copy-record.js";
 import { digestStateEntries, type RepositoryState, type StateDigest } from "./bash-copy-repository-state.js";
 import type { SessionFolderObservation, SessionFolderSnapshot } from "./bash-session-observation.js";
@@ -117,6 +117,11 @@ export interface CopyChanges {
   readonly changes: readonly CopyChange[];
   readonly unsupported: readonly UnsupportedChange[];
   readonly removedDirectories: readonly RemovedDirectory[];
+  /** The copy's directory listings as this scan read them. With them in
+   *  place of the take's, the take's state is the prior of the next take of
+   *  this copy: that take still compares each file and link with its record,
+   *  so a record of an entry the command changed only causes a fresh clone. */
+  readonly listings: ReadonlyMap<string, HeldListing>;
 }
 
 /** A directory that existed before a command and is gone after it, topmost only, with the number and total bytes of the files it held, both 0 for an empty one. */
@@ -129,13 +134,15 @@ export interface RemovedDirectory {
 /** The topmost directories of the before tree at `beforeRoot` that `afterRoot` no longer holds at the same
  *  relative path, in path order, each with the tally of `files` (relative path to byte size before the
  *  command) below it. `skip` names the entries, by parent directory and name, that neither tree observes.
- *  Links are never followed. */
-export function removedDirectories(beforeRoot: string, afterRoot: string, files: Iterable<readonly [string, number]>, skip: (directory: string, name: string) => boolean): RemovedDirectory[] {
+ *  The before tree's listings that a mirror holds (`held`) spare reading each directory they still prove
+ *  (`readListing`). Links are never followed. */
+export function removedDirectories(beforeRoot: string, afterRoot: string, files: Iterable<readonly [string, number]>, skip: (directory: string, name: string) => boolean, held?: ReadonlyMap<string, HeldListing>): RemovedDirectory[] {
   const removed = new Map<string, { files: number; bytes: number }>();
+  const readNs = nowNs();
   const walk = (directory: string): void => {
-    for (const entry of readdirSync(join(beforeRoot, directory), { withFileTypes: true })) {
-      if (!entry.isDirectory() || skip(directory, entry.name)) continue;
-      const path = join(directory, entry.name);
+    for (const [name, kind] of readListing(join(beforeRoot, directory), held?.get(directory), readNs).entries) {
+      if (kind !== "directory" || skip(directory, name)) continue;
+      const path = join(directory, name);
       const after = lstatSync(join(afterRoot, path), { throwIfNoEntry: false });
       // A directory replaced by another kind of entry is no removal; the file scans report what replaced it.
       if (!after) removed.set(path, { files: 0, bytes: 0 });
@@ -161,7 +168,7 @@ export type PrivateCopyJob =
   | { readonly kind: "finalize"; readonly copy: Omit<RecordedCopy, "execution">; readonly home: string; readonly treeRoot: string; readonly repository: RepositoryState | null }
   | { readonly kind: "topology"; readonly request: CopyTopologyRequest }
   | { readonly kind: "index"; readonly bytes: Uint8Array }
-  | { readonly kind: "scan"; readonly copy: CopiedProject }
+  | { readonly kind: "scan"; readonly copy: CopiedProject; readonly baseListings?: ReadonlyMap<string, HeldListing> }
   | { readonly kind: "session"; readonly home: string; readonly projectRoot: string | undefined; readonly snapshot?: SessionFolderSnapshot }
   | { readonly kind: "read"; readonly home: string };
 
@@ -175,7 +182,9 @@ export type PrivateCopyAnswer =
 /** Clones the project into `request.copyRoot`, then the copy into
  *  `request.baseRoot`, and writes the private Git index and excludes file.
  *  With `request.prior`, both mirrors write only what drifted since that
- *  take. Finalization writes the record after all Git setup. Throws when the
+ *  take, and read again only the copy and base directories whose held
+ *  listings no longer prove their entries; the base mirror reads the copy
+ *  through the state the copy's mirror just answered. Finalization writes the record after all Git setup. Throws when the
  *  project cannot be read or copied; the real project is only read. `clone`
  *  defaults to the platform's clone; a test replaces it to put a concurrent
  *  write between a file's observation and its clone. */
@@ -209,7 +218,7 @@ export function copyProjectTree(request: CopyTreeRequest, clone: CloneEntry = cl
   // The base is cloned from the copy, not from the real project, so it holds
   // exactly the bytes the command starts from even when a real write lands
   // between the two clones. Copy files are private, so their fingerprints are trusted without a pin.
-  const base = mirrorTree({ source: copyRoot, target: baseRoot, plan: planFrom(copyRoot, "omit"), prior: prior?.base, startedNs, pin: false, clone, tally });
+  const base = mirrorTree({ source: copyRoot, target: baseRoot, plan: planFrom(copyRoot, "omit"), prior: prior?.base, sourceState: tree, startedNs, pin: false, clone, tally });
   return {
     shared: sharedRoots,
     files: new Map([...tree.files].map(([path, file]) => [path, { real: file.source, copy: file.target, mode: file.mode }])),
@@ -348,20 +357,23 @@ function writePrivateGitFiles(git: NonNullable<CopyTreeRequest["git"]>, home: st
   }
 }
 
-/** Finds every change the command made in its copy. A regular file it added,
- *  changed, or deleted is a change, unless its bytes equal the real file's
- *  current bytes. Everything the publisher cannot land is reported instead:
- *  symlink changes, permission changes, a file replaced by another kind of
- *  entry, which never publishes as a deletion, and a file below a real
- *  directory that is a symlink or no directory at all, which would place it
- *  outside the project or fail. Shared entries are not walked. */
-export function scanCopyChanges(copy: CopiedProject): CopyChanges {
+/** Finds every change the command made in its copy, in one walk of it. A
+ *  regular file it added, changed, or deleted is a change, unless its bytes
+ *  equal the real file's current bytes. Everything the publisher cannot land
+ *  is reported instead: symlink changes, permission changes, a file replaced
+ *  by another kind of entry, which never publishes as a deletion, and a file
+ *  below a real directory that is a symlink or no directory at all, which
+ *  would place it outside the project or fail. Shared entries are not walked.
+ *  The base listings the copy's take left (`baseListings`) spare reading the
+ *  base again. */
+export function scanCopyChanges(copy: CopiedProject, baseListings?: ReadonlyMap<string, HeldListing>): CopyChanges {
   const changes: CopyChange[] = [];
   const unsupported: UnsupportedChange[] = [];
   // An entry whose kind changed is reported once, by the loop over the kind it had when the copy was taken.
   const nestedGit = new Set<string>();
   const shared = new Set(copy.shared);
-  for (const { path, stats } of walkCopy(copy.copyRoot, "", shared, nestedGit)) {
+  const walked: WalkedCopy = { entries: new Map(), listings: new Map() };
+  for (const { path, stats } of walkCopy(copy.copyRoot, "", shared, nestedGit, walked)) {
     const copyPath = join(copy.copyRoot, path);
     const linked = copy.links.get(path);
     if (stats.isSymbolicLink()) {
@@ -384,22 +396,26 @@ export function scanCopyChanges(copy: CopiedProject): CopyChanges {
     changes.push({ path, after, expected: before?.real ?? { kind: "absent" }, mode: before ? undefined : mode });
   }
   for (const path of nestedGit) unsupported.push({ path, reason: "Git repository or submodule registration was not applied" });
+  // The walk holds the stats of every file and link it reached. An entry it
+  // did not reach, such as one below a directory that became a link, is read
+  // through its path as it is now.
+  const entryNow = (path: string) => walked.entries.get(path) ?? lstatSync(join(copy.copyRoot, path), { throwIfNoEntry: false });
   for (const [path, file] of copy.files) {
-    const now = lstatSync(join(copy.copyRoot, path), { throwIfNoEntry: false });
+    const now = entryNow(path);
     if (!now) {
       if (observeFileState(join(copy.realRoot, path)).kind !== "absent") changes.push({ path, after: undefined, expected: file.real, mode: undefined });
     } else if (!now.isFile()) unsupported.push({ path, reason: `replaced by ${kindOf(now)}` });
   }
   for (const path of copy.links.keys()) {
-    const now = lstatSync(join(copy.copyRoot, path), { throwIfNoEntry: false });
+    const now = entryNow(path);
     if (!now) unsupported.push({ path, reason: "symbolic link removed" });
     else if (!now.isSymbolicLink()) unsupported.push({ path, reason: `symbolic link replaced by ${kindOf(now)}` });
   }
   // Directory order differs across filesystems; path order keeps reports and publication stable.
   const byPath = (a: { readonly path: string }, b: { readonly path: string }): number => a.path.localeCompare(b.path);
   const removed = removedDirectories(copy.baseRoot, copy.copyRoot, [...copy.files].map(([path, file]) => [path, file.real.size] as const),
-    (directory, name) => shared.has(join(directory, name)) || isGitMetadata(join(copy.baseRoot, directory), name));
-  return { changes: changes.sort(byPath), unsupported: unsupported.sort(byPath), removedDirectories: removed };
+    (directory, name) => shared.has(join(directory, name)) || isGitMetadata(join(copy.baseRoot, directory), name), baseListings);
+  return { changes: changes.sort(byPath), unsupported: unsupported.sort(byPath), removedDirectories: removed, listings: walked.listings };
 }
 
 /** Matches each literal occurrence of `root` that ends at a path boundary:
@@ -429,21 +445,38 @@ function isGitMetadata(directory: string, name: string): boolean {
   return git.dev === entry.dev && git.ino === entry.ino;
 }
 
+/** What one walk of a copy read: each regular file's and symlink's stats, and each directory's listing. */
+interface WalkedCopy {
+  readonly entries: Map<string, BigIntStats>;
+  readonly listings: Map<string, HeldListing>;
+}
+
 /**
  * Shared entries are skipped: a link is never followed, and a bind placeholder is no project file.
+ * Adds what it reads to `walked`.
  * @yields {object} Each regular file and symlink below `directory`, relative to `root`, with its own stats.
  */
-function* walkCopy(root: string, directory: string, shared: ReadonlySet<string>, nestedGit?: Set<string>): Generator<{ readonly path: string; readonly stats: BigIntStats }> {
-  for (const entry of readdirSync(join(root, directory), { withFileTypes: true })) {
-    const path = join(directory, entry.name);
+function* walkCopy(root: string, directory: string, shared: ReadonlySet<string>, nestedGit: Set<string>, walked: WalkedCopy, readNs = nowNs()): Generator<{ readonly path: string; readonly stats: BigIntStats }> {
+  const listing = readListing(join(root, directory), undefined, readNs);
+  walked.listings.set(directory, listing);
+  for (const [name, kind] of listing.entries) {
+    const path = join(directory, name);
     if (shared.has(path)) continue;
-    if (isGitMetadata(join(root, directory), entry.name)) {
-      if (directory !== "") nestedGit?.add(path);
+    if (isGitMetadata(join(root, directory), name)) {
+      if (directory !== "") nestedGit.add(path);
       continue;
     }
-    if (entry.isDirectory()) yield* walkCopy(root, path, shared, nestedGit);
-    else if (entry.isFile() || entry.isSymbolicLink()) yield { path, stats: lstatSync(join(root, path), { bigint: true }) };
+    if (kind === "directory") yield* walkCopy(root, path, shared, nestedGit, walked, readNs);
+    else if (kind === "file" || kind === "link") {
+      const stats = lstatSync(join(root, path), { bigint: true });
+      walked.entries.set(path, stats);
+      yield { path, stats };
+    }
   }
+}
+
+function nowNs(): bigint {
+  return BigInt(Date.now()) * 1_000_000n;
 }
 
 /** Names the first real ancestor of `path` that cannot hold it: a symlink would place the file outside the project, and a file cannot hold one at all. */

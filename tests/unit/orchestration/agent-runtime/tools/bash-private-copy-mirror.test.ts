@@ -1,10 +1,10 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, setSystemTime, spyOn } from "bun:test";
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { cloneEntry, mirrorTree, type MirrorRequest, type MirrorState } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-mirror.js";
-import { copyProjectTree, type CopyTreeRequest } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-tree.js";
+import { copyProjectTree, scanCopyChanges, type CopiedTree, type CopyTreeRequest, type CopyTreeState } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-tree.js";
 import { scanSessionChanges, snapshotSessionFolder } from "../../../../../src/orchestration/agent-runtime/tools/bash-session-observation.js";
 import { observeFileState, sameObservedState } from "../../../../../src/orchestration/file-edits/file-state.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -57,6 +57,35 @@ function take(root: string, overrides: Partial<CopyTreeRequest> = {}) {
   return copyProjectTree({ realRoot: root, home, copyRoot: path.join(home, "tree", "real"), baseRoot: path.join(home, "base"), guard: "none", whollyIgnored: [], git: undefined, ...overrides });
 }
 
+/** The change scan of a copy that `take` made, with the take's base listings,
+ *  and the prior of the next take as a landing pools it: the take's state with
+ *  the copy listings the scan read. */
+function scan(root: string, taken: CopiedTree) {
+  const home = path.join(path.dirname(root), "home");
+  const scanned = scanCopyChanges({ realRoot: root, copyRoot: path.join(home, "tree", "real"), baseRoot: path.join(home, "base"), ...taken }, taken.state.base.listings);
+  const refreshed: CopyTreeState = { ...taken.state, tree: { ...taken.state.tree, listings: scanned.listings } };
+  return { ...scanned, refreshed };
+}
+
+/** A real tree of `directories` directories with `files` files each. */
+function wideProject(prefix: string, directories: number, files: number): string {
+  const root = path.join(fs.realpathSync(createDirectory(prefix)), "real");
+  for (let d = 0; d < directories; d++) {
+    fs.mkdirSync(path.join(root, `d${d}`), { recursive: true });
+    for (let f = 0; f < files; f++) fs.writeFileSync(path.join(root, `d${d}`, `f${f}.txt`), `${d}:${f}\n`);
+  }
+  return root;
+}
+
+/** Moves the clock past the racy window of every directory written so far, so held listings are trusted. */
+function settleClock(): void {
+  setSystemTime(new Date(Date.now() + 10_000));
+}
+
+afterEach(() => {
+  setSystemTime();
+});
+
 describe("private copy mirror", () => {
   it("writes nothing when nothing changed, and answers the prior record", () => {
     const { root, target } = project("mirror-unchanged-");
@@ -64,9 +93,96 @@ describe("private copy mirror", () => {
     const before = entryStamps(target);
 
     const second = mirror(root, target, first);
+    const third = mirror(root, target, second);
 
     expect(entryStamps(target)).toEqual(before);
-    expect(second).toEqual(first);
+    expect({ ...second, listings: undefined }).toEqual({ ...first, listings: undefined });
+    expect(third).toEqual(second);
+  });
+
+  it("leaves a mirror state equal to a full rescan after a command that edits one file in a 2,000-file tree", () => {
+    const root = wideProject("mirror-rescan-", 40, 50);
+    const home = path.join(path.dirname(root), "home");
+    const edited = path.join("d7", "f3.txt");
+    // Every file is then outside the racy window, so no record pins a hash that a rescan would not.
+    settleClock();
+    const first = take(root);
+    fs.writeFileSync(path.join(home, "tree", "real", edited), "command write\n");
+    const scanned = scan(root, first);
+    // The landing publishes the command's bytes to the real file.
+    fs.writeFileSync(path.join(root, edited), "command write\n");
+    expect(scanned.changes.map(change => change.path)).toEqual([edited]);
+
+    const second = take(root, { prior: scanned.refreshed });
+
+    const withoutListings = (state: CopyTreeState["tree"]) => ({ ...state, listings: new Map() });
+    const tally = { recloned: 0, removed: 0 };
+    const tree = mirror(root, path.join(home, "tree", "real"), withoutListings(second.state.tree), { tally, startedNs: now() });
+    const base = mirror(path.join(home, "tree", "real"), path.join(home, "base"), withoutListings(second.state.base), { tally, startedNs: now(), pin: false });
+    expect(tally).toEqual({ recloned: 0, removed: 0 });
+    for (const [held, rescanned] of [[second.state.tree, tree], [second.state.base, base]] as const) {
+      expect({ ...held, listings: undefined }).toEqual({ ...rescanned, listings: undefined });
+    }
+    expect(fs.readFileSync(path.join(home, "base", edited), "utf8")).toBe("command write\n");
+  });
+
+  it("lets two consecutive no-change commands read each project directory at most once, and the second one no copy or base directory before its scan", () => {
+    const root = wideProject("mirror-work-count-", 6, 3);
+    const home = path.join(path.dirname(root), "home");
+    const copyRoot = path.join(home, "tree", "real");
+    const baseRoot = path.join(home, "base");
+    let state = take(root);
+    settleClock();
+    let refreshed = scan(root, state).refreshed;
+    const reads = spyOn(fs, "readdirSync");
+    const command = () => {
+      reads.mockClear();
+      state = take(root, { prior: refreshed });
+      const atTake = reads.mock.calls.map(([directory]) => String(directory));
+      reads.mockClear();
+      const scanned = scan(root, state);
+      expect(scanned.changes).toEqual([]);
+      refreshed = scanned.refreshed;
+      return { take: atTake, scan: reads.mock.calls.map(([directory]) => String(directory)) };
+    };
+    const inside = (tree: string) => (directory: string) => directory === tree || directory.startsWith(`${tree}${path.sep}`);
+    const realDirectories = [root, ...Array.from({ length: 6 }, (_, d) => path.join(root, `d${d}`))].sort();
+
+    try {
+      const first = command();
+      const second = command();
+      for (const counted of [first, second]) {
+        const all = [...counted.take, ...counted.scan];
+        expect(new Set(all).size).toBe(all.length);
+        expect(counted.take.filter(inside(root)).sort()).toEqual(realDirectories);
+        expect(counted.take.filter(inside(copyRoot))).toEqual([]);
+        expect(counted.scan.filter(inside(copyRoot)).length).toBe(realDirectories.length);
+        expect(counted.scan.filter(inside(baseRoot))).toEqual([]);
+      }
+      // The take that wrote the base held no listing of it, so the first command reads the base once.
+      expect(first.take.filter(inside(baseRoot)).length).toBe(realDirectories.length);
+      expect(second.take.filter(inside(baseRoot))).toEqual([]);
+    } finally {
+      reads.mockRestore();
+    }
+  });
+
+  it("still restores a copy that changed while it was idle after its scan", () => {
+    const { root } = project("mirror-idle-change-");
+    const home = path.join(path.dirname(root), "home");
+    const copyRoot = path.join(home, "tree", "real");
+    const first = take(root);
+    settleClock();
+    const scanned = scan(root, first);
+    fs.writeFileSync(path.join(copyRoot, "src", "stray.txt"), "stray\n");
+    fs.writeFileSync(path.join(copyRoot, "a.txt"), "idle write\n");
+    fs.rmSync(path.join(copyRoot, "src", "b.txt"));
+
+    take(root, { prior: scanned.refreshed });
+
+    expect(fs.existsSync(path.join(copyRoot, "src", "stray.txt"))).toBe(false);
+    expect(fs.readFileSync(path.join(copyRoot, "a.txt"), "utf8")).toBe("alpha\n");
+    expect(fs.readFileSync(path.join(copyRoot, "src", "b.txt"), "utf8")).toBe("bravo\n");
   });
 
   it("keeps a generated pointer at the target root and never mirrors a source entry over it", () => {

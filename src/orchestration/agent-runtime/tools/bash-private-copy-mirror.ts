@@ -10,11 +10,17 @@
  * The mirror reads entries with `lstat` and `readdir` only. It never follows a
  * symbolic link or a junction, in the source or in the target, and removing a
  * link removes the link, never its referent.
+ *
+ * Reading a directory's entries costs far more than reading one entry's
+ * stamps, so a directory listing that an earlier read holds stands in for a
+ * new read while the directory's stamps prove that no entry was added,
+ * removed, or renamed since (`readListing`). Each file is still compared with
+ * its record by its own stamps.
  */
 
 import { FFIType } from "bun:ffi";
 import { createHash } from "node:crypto";
-import { chmodSync, constants, copyFileSync, cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync, type Dirent } from "node:fs";
+import { chmodSync, constants, copyFileSync, cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync, type BigIntStats, type Dirent } from "node:fs";
 import { join } from "node:path";
 import { bindLibc } from "../../../infra/libc.js";
 import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState, type FileFingerprint } from "../../file-edits/file-state.js";
@@ -59,6 +65,47 @@ export interface MirrorState {
   readonly files: ReadonlyMap<string, MirroredFile>;
   readonly links: ReadonlyMap<string, MirroredLink>;
   readonly shared: ReadonlyMap<string, SharedPlaceholder>;
+  /** The listing of each target directory ("" is the target itself) that
+   *  is still exact after the mirror: one its own writes did not change. */
+  readonly listings: ReadonlyMap<string, HeldListing>;
+}
+
+type EntryKind = "file" | "directory" | "link" | "other";
+
+/** A directory's entries as one read found them, with the directory's
+ *  identity and stamps from just before that read. Adding, removing, or
+ *  renaming an entry changes both stamps, so equal stamps prove equal entries. */
+export interface HeldListing {
+  readonly identity: string;
+  readonly mtimeNs: bigint;
+  readonly ctimeNs: bigint;
+  /** A time no later than the read. */
+  readonly readNs: bigint;
+  readonly entries: ReadonlyMap<string, EntryKind>;
+}
+
+/** The entries of the directory at `path`, without following a final link.
+ *  Answers `held` when the directory still has its identity and stamps and
+ *  both stamps are older than `RACY_WINDOW_NS` before `held` was read: a
+ *  change in the same timestamp tick as that read would leave equal stamps.
+ *  Otherwise reads the directory, its stamps first, so an entry added during
+ *  the read changes the stamps it answers. `readNs` must be no later than
+ *  this call. Throws when `path` cannot be read. */
+export function readListing(path: string, held: HeldListing | undefined, readNs: bigint): HeldListing {
+  const stats = lstatSync(path, { bigint: true });
+  if (held && sameStamps(stats, held) && held.mtimeNs < held.readNs - RACY_WINDOW_NS && held.ctimeNs < held.readNs - RACY_WINDOW_NS) return held;
+  const entries = new Map(readdirSync(path, { withFileTypes: true }).map(entry => [entry.name, entryKind(entry)]));
+  return { identity: `${stats.dev}:${stats.ino}`, mtimeNs: stats.mtimeNs, ctimeNs: stats.ctimeNs, readNs, entries };
+}
+
+function sameStamps(stats: BigIntStats, listing: HeldListing): boolean {
+  return `${stats.dev}:${stats.ino}` === listing.identity && stats.mtimeNs === listing.mtimeNs && stats.ctimeNs === listing.ctimeNs;
+}
+
+function entryKind(entry: Dirent): EntryKind {
+  if (entry.isFile()) return "file";
+  if (entry.isDirectory()) return "directory";
+  return entry.isSymbolicLink() ? "link" : "other";
 }
 
 export interface MirrorRequest {
@@ -71,6 +118,10 @@ export interface MirrorRequest {
   readonly generated?: ReadonlySet<string>;
   /** The state the previous mirror into this target returned. */
   readonly prior: MirrorState | undefined;
+  /** The state a mirror into `source` answered just before, with nothing
+   *  written into `source` since: its listings and file states stand in for
+   *  reading the source again. */
+  readonly sourceState?: MirrorState;
   /** The start of the take, which decides which files are recent enough to pin. */
   readonly startedNs: bigint;
   /** How a `share` entry is placed: a symlink (a junction on Windows) to the
@@ -106,6 +157,7 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
   const files = new Map<string, MirroredFile>();
   const links = new Map<string, MirroredLink>();
   const shared = new Map<string, SharedPlaceholder>();
+  const listings = new Map<string, HeldListing>();
   const targetEntry = (path: string) => lstatSync(join(target, path), { bigint: true, throwIfNoEntry: false });
   const remove = (path: string): void => {
     rmSync(join(target, path), { recursive: true, force: true, maxRetries: 3 });
@@ -169,7 +221,7 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
   };
 
   const mirrorFile = (path: string): void => {
-    const state = observeFileState(join(source, path));
+    const state = request.sourceState?.files.get(path)?.target ?? observeFileState(join(source, path));
     const before = prior?.files.get(path);
     if (state.kind === "file" && before && sameObservedState(state, before.source) && (before.source.sha256 === undefined || sha256Of(join(source, path)) === before.source.sha256)) {
       const existing = targetEntry(path);
@@ -197,9 +249,9 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
     links.set(path, { source: text, target: readlinkSync(join(target, path)) });
   };
 
-  const placeShared = (path: string, entry: Dirent): void => {
+  const placeShared = (path: string, entry: EntryKind): void => {
     const form = request.share ?? "link";
-    const kind = form === "link" ? "link" : entry.isFile() ? "file" : "directory";
+    const kind = form === "link" ? "link" : entry === "file" ? "file" : "directory";
     const before = prior?.shared.get(path);
     const existing = targetEntry(path);
     const placed = before?.kind === kind && existing !== undefined && (before.kind === "link"
@@ -228,19 +280,20 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
       const bits = Number(lstatSync(join(source, directory)).mode) & PERMISSION_BITS;
       if ((Number(lstatSync(join(target, directory)).mode) & PERMISSION_BITS) !== bits) chmodSync(join(target, directory), bits);
     }
-    const entries = readdirSync(join(source, directory), { withFileTypes: true });
-    const plans = new Map(entries.map(entry => [entry.name, generated.has(join(directory, entry.name)) ? "omit" : request.plan(directory, entry.name)]));
+    const entries = readListing(join(source, directory), request.sourceState?.listings.get(directory), startedNs).entries;
+    const held = readListing(join(target, directory), prior?.listings.get(directory), startedNs);
+    const plans = new Map([...entries.keys()].map(name => [name, generated.has(join(directory, name)) ? "omit" : request.plan(directory, name)]));
     // Removals go first, so an old spelling leaves before a case-only rename clones the new one.
-    for (const name of readdirSync(join(target, directory))) {
+    for (const name of held.entries.keys()) {
       const path = join(directory, name);
       if (!generated.has(path) && (plans.get(name) ?? "omit") === "omit") remove(path);
     }
-    for (const entry of entries) {
-      const path = join(directory, entry.name);
-      const plan = plans.get(entry.name);
+    for (const [name, kind] of entries) {
+      const path = join(directory, name);
+      const plan = plans.get(name);
       if (plan === "omit") continue;
-      if (plan === "share") placeShared(path, entry);
-      else if (entry.isDirectory()) {
+      if (plan === "share") placeShared(path, kind);
+      else if (kind === "directory") {
         const existing = targetEntry(path);
         if (existing?.isDirectory()) mirrorDirectory(path);
         else {
@@ -250,16 +303,18 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
             mirrorDirectory(path);
           } else cloneDirectory(path);
         }
-      } else if (entry.isFile()) mirrorFile(path);
-      else if (entry.isSymbolicLink()) mirrorLink(path);
+      } else if (kind === "file") mirrorFile(path);
+      else if (kind === "link") mirrorLink(path);
       // Sockets, FIFOs, and devices are not copied.
       else if (targetEntry(path)) remove(path);
     }
+    // Writes into the directory changed its stamps; a child directory's own writes do not.
+    if (sameStamps(lstatSync(join(target, directory), { bigint: true }), held)) listings.set(directory, held);
   };
 
   mkdirSync(target, { recursive: true });
   mirrorDirectory("");
-  return { files, links, shared };
+  return { files, links, shared, listings };
 }
 
 function sha256Of(path: string): string {

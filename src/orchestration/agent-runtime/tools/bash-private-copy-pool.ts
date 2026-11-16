@@ -38,7 +38,8 @@ export interface CopyGeometry {
 export interface ReusableCopy {
   readonly home: string;
   readonly geometry: CopyGeometry;
-  /** What each mirror of the last take left in the home. */
+  /** What the home holds: each mirror's state from the last take, with the
+   *  copy's listings its landing's change scan read (`CopyChanges.listings`). */
   readonly state: CopyTreeState;
   /** In a repository, the real state the last take seeded the private Git
    *  directory from, and the private state that seed produced. A copy comes
