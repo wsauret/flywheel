@@ -15,6 +15,8 @@ export interface ShellCommand {
   readonly writes: readonly string[]
   /** The body of a heredoc or here-string it reads. */
   readonly stdin?: string
+  /** Source offset of its first word; absent when it has no words. */
+  readonly start?: number
 }
 
 interface Builder {
@@ -22,6 +24,7 @@ interface Builder {
   shown: string[]
   opaque: boolean[]
   quoted: boolean[]
+  starts: number[]
   pipedIn: boolean
   pipedOut: boolean
   writes: string[]
@@ -80,12 +83,15 @@ class Scanner {
         this.i++
         break
       }
-      if (char === " " || char === "\t" || char === "\r") this.i++
-      else if (char === "\\" && src.charAt(this.i + 1) === "\n") this.i += 2
+      if (char === "\\" && src.charAt(this.i + 1) === "\n") this.i += 2
       else if (char === "\n") {
         this.i++
         endCommand()
         this.readHeredocs()
+      } else if (/\s/.test(char)) {
+        // Every blank that ends a word separates words here, or a blank such
+        // as a no-break space would end each word before it starts.
+        this.i++
       } else if (char === "#") {
         while (this.i < src.length && src.charAt(this.i) !== "\n") this.i++
       } else if (char === ";") {
@@ -116,27 +122,29 @@ class Scanner {
         const start = this.i
         this.i += 2
         this.list(")")
-        this.push(builder, { value: src.slice(start, this.i), shown: src.slice(start, this.i), opaque: true, quoted: false })
+        this.push(builder, { value: src.slice(start, this.i), shown: src.slice(start, this.i), opaque: true, quoted: false }, start)
       } else if (char === "<" || char === ">") this.redirect(builder)
       else {
+        const start = this.i
         const word = this.word(terminator)
         const at = src.charAt(this.i)
         if (/^\d+$/.test(word.value) && !word.quoted && (at === "<" || at === ">")) this.redirect(builder)
-        else this.push(builder, word)
+        else this.push(builder, word, start)
       }
     }
     this.finish(builder)
   }
 
   private builder(pipedIn: boolean): Builder {
-    return { words: [], shown: [], opaque: [], quoted: [], pipedIn, pipedOut: false, writes: [] }
+    return { words: [], shown: [], opaque: [], quoted: [], starts: [], pipedIn, pipedOut: false, writes: [] }
   }
 
-  private push(builder: Builder, word: Word): void {
+  private push(builder: Builder, word: Word, start: number): void {
     builder.words.push(word.value)
     builder.shown.push(word.shown)
     builder.opaque.push(word.opaque)
     builder.quoted.push(word.quoted)
+    builder.starts.push(start)
   }
 
   /** Read one redirection operator and its target. */
@@ -319,6 +327,7 @@ class Scanner {
     }
     const first = declared === 1 ? builder.words.length : at
     if (first === builder.words.length && builder.writes.length === 0) return
+    const firstWordStart = builder.starts[first]
     builder.command = {
       words: builder.words.slice(first),
       shown: builder.shown.slice(first),
@@ -326,6 +335,7 @@ class Scanner {
       pipedOut: builder.pipedOut,
       writes: builder.writes,
       ...(builder.hereString === undefined ? {} : { stdin: builder.hereString }),
+      ...(firstWordStart === undefined ? {} : { start: firstWordStart }),
     }
     this.commands.push(builder.command)
   }

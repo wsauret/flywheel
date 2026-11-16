@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import { deslugify } from "../canonical-name.js";
+import { parseShell } from "./shell-words.js";
 
 export interface ToolInput {
   [key: string]: unknown;
@@ -65,97 +66,20 @@ export function formatDisplayPath(filePath: string | undefined | null, execution
   return sessionHandoffMatch ? `[handoff] ${sessionHandoffMatch[1]}` : relative;
 }
 
-function readShellWord(command: string, start: number) {
-  let i = start;
-  let quote: string | null = null;
-  while (i < command.length) {
-    // SAFETY: i < command.length is the loop guard, so this index is in bounds.
-    const ch = command[i]!;
-    if (quote) {
-      if (ch === "\\") {
-        i += 2;
-        continue;
-      }
-      if (ch === quote) quote = null;
-      i++;
-      continue;
-    }
-    if (ch === "'" || ch === '"') {
-      quote = ch;
-      i++;
-      continue;
-    }
-    if (/\s/.test(ch) || ch === ";" || ch === "|" || ch === "&" || ch === "(" || ch === ")") break;
-    i++;
-  }
-  return { raw: command.slice(start, i), end: i };
-}
-
-function unquoteShellWord(word: string): string {
-  if (word.length >= 2 && ((word.startsWith("'") && word.endsWith("'")) || (word.startsWith('"') && word.endsWith('"')))) {
-    return word.slice(1, -1);
-  }
-  return word;
-}
-
-function isEnvAssignment(word: string): boolean {
-  return /^[A-Za-z_]\w*=/.test(word);
-}
-
-function isBashScriptPath(word: string): boolean {
-  return unquoteShellWord(word).endsWith(".sh");
-}
-
-/** Consume leading whitespace from `start` and return it with the first non-whitespace index. */
-function readWhitespace(command: string, start: number) {
-  let i = start;
-  let text = "";
-  while (i < command.length) {
-    // SAFETY: i < command.length is the loop guard, so this index is in bounds.
-    const ch = command[i]!;
-    if (!/\s/.test(ch)) break;
-    text += ch;
-    i++;
-  }
-  return { text, end: i };
-}
-
-function normalizeBashScriptCommands(command: string): string {
+/** Show each script that a command runs directly as `bash <script>`, so the
+ *  row names the program that runs it. The commands and their first words come
+ *  from the display word model, so a heredoc body is never read as a command. */
+function showScriptsThroughBash(command: string): string {
+  const starts = parseShell(command)
+    .flatMap((parsed) => (parsed.start !== undefined && parsed.shown[0]?.endsWith(".sh") ? [parsed.start] : []))
+    .sort((left, right) => left - right);
   let out = "";
-  let i = 0;
-  let atCommandStart = true;
-  while (i < command.length) {
-    if (!atCommandStart) {
-      // SAFETY: i < command.length is the enclosing while guard; index in bounds.
-      const ch = command[i]!;
-      out += ch;
-      atCommandStart = ch === ";" || ch === "|" || ch === "&" || ch === "(";
-      i++;
-      continue;
-    }
-
-    const whitespace = readWhitespace(command, i);
-    out += whitespace.text;
-    i = whitespace.end;
-
-    while (i < command.length) {
-      const word = readShellWord(command, i);
-      if (!word.raw || !isEnvAssignment(word.raw)) break;
-      out += word.raw;
-      const envWhitespace = readWhitespace(command, word.end);
-      out += envWhitespace.text;
-      i = envWhitespace.end;
-    }
-
-    const word = readShellWord(command, i);
-    if (word.raw && isBashScriptPath(word.raw)) out += "bash ";
-    if (word.raw) {
-      out += word.raw;
-      i = word.end;
-    }
-    atCommandStart = false;
+  let copied = 0;
+  for (const start of starts) {
+    out += `${command.slice(copied, start)}bash `;
+    copied = start;
   }
-  return out;
+  return out + command.slice(copied);
 }
 
 export function shellDetail(input: ToolInput, executionCwd: string): string | null {
@@ -164,7 +88,7 @@ export function shellDetail(input: ToolInput, executionCwd: string): string | nu
   const shortened = executionCwd ? cmd.replaceAll(`${executionCwd}/`, "").replaceAll(executionCwd, ".") : cmd;
   // Multiline commands (heredoc scripts, inline python) keep their linebreaks;
   // the row renderer hard-breaks on them with a hanging indent.
-  return normalizeBashScriptCommands(shortened).trim() || null;
+  return showScriptsThroughBash(shortened).trim() || null;
 }
 
 /** Display label for a subagent tool call. The general agent renders as
