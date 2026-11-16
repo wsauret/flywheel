@@ -4,7 +4,7 @@ import { TextRenderable, type Renderable } from "@opentui/core"
 
 const { testRender, useKeyboard } = await import("@opentui/solid")
 const { ContextControl } = await import("../../../../src/tui/components/context-control.js")
-const { ModalProvider, useModal } = await import("../../../../src/tui/components/modal.js")
+const { ModalProvider, OverlayHost, useModal } = await import("../../../../src/tui/components/modal.js")
 const { QuestionInputProvider } = await import("../../../../src/tui/components/question-input.js")
 const { ThemeProvider, useTheme } = await import("../../../../src/tui/context/theme.js")
 const { ToastProvider } = await import("../../../../src/tui/context/toast.js")
@@ -29,7 +29,7 @@ function renderControl(mode: "dark" | "light", compact: () => Promise<boolean>) 
     </box>
   }
   return testRender(() => <ToastProvider><ThemeProvider mode={mode}><QuestionInputProvider>
-    <ModalProvider clipboard={clipboard}><Harness /></ModalProvider>
+    <ModalProvider><Harness /><OverlayHost clipboard={clipboard} /></ModalProvider>
   </QuestionInputProvider></ThemeProvider></ToastProvider>, { width: 80, height: 16, kittyKeyboard: true })
 }
 
@@ -52,7 +52,7 @@ describe("context control", () => {
       </box>
     }
     const result = await testRender(() => <ToastProvider><ThemeProvider mode="dark"><QuestionInputProvider>
-      <ModalProvider clipboard={clipboard}><Harness /></ModalProvider>
+      <ModalProvider><Harness /><OverlayHost clipboard={clipboard} /></ModalProvider>
     </QuestionInputProvider></ThemeProvider></ToastProvider>, { width: 40, height: 4 })
     try {
       await result.renderOnce()

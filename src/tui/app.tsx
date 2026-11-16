@@ -145,7 +145,7 @@ export async function startTUI(options: TUIOptions): Promise<void> {
                 }}>
                   <KeymapProvider config={runtimeConfig.view}>
                   <QuestionInputProvider>
-                    <ModalProvider clipboard={clipboard}>
+                    <ModalProvider>
                       <FlywheelShell appService={options.appService} attach={options.attach} runtimeConfig={runtimeConfig} projectRoot={options.projectRoot} stateRoot={options.stateRoot} userDataRoot={options.userDataRoot} accountHome={options.accountHome} appVersion={options.appVersion} launcher={options.launcher} clipboard={clipboard} settings={settings} settingsOperations={settingsOperations} launchState={options.launchState} attachedIdentity={options.attachedIdentity} registerForeground={(read) => { foregroundId = read }} terminalWriter={nativeSession} />
                     </ModalProvider>
                   </QuestionInputProvider>

@@ -6,9 +6,9 @@ import type { TuiModuleClient, TuiModuleClientHost } from "../../tui-module-clie
 import type { ViewerHandle } from "../../components/modal-stack.js"
 import { createChildSessionViewerInput } from "../../components/child-session-viewer.js"
 import { NavigationProvider } from "../../context/navigation.js"
-import { parseSessionLink, parseWorkflowLink } from "../../../protocol/client/session-links.js"
-import { errorMessage } from "../../../infra/error-message.js"
+import { parseWorkflowLink } from "../../../protocol/client/session-links.js"
 import type { SessionSurface } from "../../hooks/create-session-surface.js"
+import { viewerLinkNavigator } from "../../hooks/create-child-viewer-opener.js"
 import { createWorkflowCards, WorkflowCardsProvider } from "./cards.js"
 import { createWorkflowInspection } from "./inspection.js"
 import { WorkflowAgentViewer, type WorkflowAgentViewerTarget } from "./agent-viewer.js"
@@ -29,7 +29,7 @@ function createWorkflowClient(host: TuiModuleClientHost): TuiModuleClient {
     client: host.client, report: (refusal) => host.showToast({ message: refusal.reason, variant: refusal.variant }),
     openAgent: (id, target) => openAgent(id, { kind: "agent", ...target }),
   })
-  const provide = (children: () => JSX.Element) => <NavigationProvider value={host.navigateUri}><WorkflowCardsProvider value={cards}>{children()}</WorkflowCardsProvider></NavigationProvider>
+  const provide = (children: () => JSX.Element) => <WorkflowCardsProvider value={cards}>{children()}</WorkflowCardsProvider>
   const shared = () => ({
     inspectWorkflow: (workflowId: () => string) => createWorkflowInspection(host.domains, workflowId),
     appService: host.client, title: host.title,
@@ -37,10 +37,10 @@ function createWorkflowClient(host: TuiModuleClientHost): TuiModuleClient {
   function openCard(workflowId: string): ViewerHandle {
     const [handle, setHandle] = createSignal<ViewerHandle>()
     const input = createWorkflowCardViewerInput()
-    const opened = host.viewerLayer.push(() => provide(() => <WorkflowCardViewer {...shared()} workflowId={workflowId}
+    const opened = host.viewerLayer.push(() => <WorkflowCardViewer {...shared()} workflowId={workflowId}
       roleView={host.roleView} ensureRoleViews={host.ensureRoleViews}
       input={input} active={() => handle()?.isActive() ?? false} onClose={() => handle()?.close()} showToast={host.showToast}
-      onOpenAgent={(target) => openAgent(workflowId, { kind: "agent", ...target }, opened)} onOpenFollowUp={() => openAgent(workflowId, { kind: "followUp" }, opened)} />),
+      onOpenAgent={(target) => openAgent(workflowId, { kind: "agent", ...target }, opened)} onOpenFollowUp={() => openAgent(workflowId, { kind: "followUp" }, opened)} />,
     { onKey: input.onKey, route: { kind: "module", moduleId: "workflows", route: { workflowId } } })
     setHandle(opened)
     return opened
@@ -51,21 +51,14 @@ function createWorkflowClient(host: TuiModuleClientHost): TuiModuleClient {
     const back = () => { handle()?.close() }
     const input = createChildSessionViewerInput({ onClose: back, dispatchCommand: host.dispatchCommand })
     let route: typeof Route.Type = { workflowId, ...(target.kind === "agent" ? { agentNodeId: target.agentNodeId, follow: target.follow ?? false, ...(target.historySessionId ? { historySessionId: target.historySessionId } : {}) } : {}) }
+    const navigate = viewerLinkNavigator({ surface: () => surface, client: host.client, openChild: host.openChild, navigateUri: host.navigateUri, showToast: host.showToast })
     const opened = host.viewerLayer.push(() => {
       const body = host.viewer(workflowId)
-      const navigate = (uri: string) => {
-        const child = parseSessionLink(uri)
-        if (child && surface?.summary()?.childSessionIds?.includes(child.sessionId)) {
-          void host.client.query({ type: "sessionDetail", sessionId: child.sessionId }).then(({ view }) => { if (view) host.openChild(view.row) }, (cause: unknown) => {
-            host.showToast({ message: `Open failed for ${child.sessionId}: ${errorMessage(cause)}`, variant: "error" })
-          })
-        } else host.navigateUri(uri)
-      }
-      return provide(() => <NavigationProvider value={navigate}><WorkflowAgentViewer {...shared()} workflowId={workflowId} target={target} origin={card ? "card" : "chat"}
+      return <NavigationProvider value={navigate}><WorkflowAgentViewer {...shared()} workflowId={workflowId} target={target} origin={card ? "card" : "chat"}
         body={host.viewer} createSurface={(id) => (surface = body.createSurface(id))} input={input} active={() => handle()?.isActive() ?? false} focused={() => handle()?.isFocused() ?? false}
         onBack={back} onClose={() => { back(); card?.close() }} showToast={host.showToast}
         onShown={(shown) => { route = { ...route, workflowId, agentNodeId: shown.agentNodeId, follow: shown.follow } }}
-        onHistoryShown={(historySessionId) => { const { historySessionId: _previous, ...current } = route; route = { ...current, ...(historySessionId ? { historySessionId } : {}) } }} /></NavigationProvider>)
+        onHistoryShown={(historySessionId) => { const { historySessionId: _previous, ...current } = route; route = { ...current, ...(historySessionId ? { historySessionId } : {}) } }} /></NavigationProvider>
     }, { onKey: input.onKey, onPaste: input.onPaste, route: () => ({ kind: "module", moduleId: "workflows", route }) })
     setHandle(opened)
   }
@@ -90,9 +83,8 @@ function createWorkflowClient(host: TuiModuleClientHost): TuiModuleClient {
       await open(target.workflowId)
       return true
     },
-    openSession(session) {
+    async openSession(session) {
       if (session.kind !== "workflow-agent") return false
-      return (async () => {
       const { view: detail } = await host.client.query({ type: "sessionDetail", sessionId: session.id })
       if (detail?.kind !== "workflow-agent") return true
       const membership = detail.row.workflowMembership
@@ -104,7 +96,6 @@ function createWorkflowClient(host: TuiModuleClientHost): TuiModuleClient {
       if (node) openAgent(membership.workflowId, { kind: "agent", agentNodeId: node.id, follow: false, historySessionId: session.id })
       else host.showToast({ message: "This agent is no longer in the workflow.", variant: "error" })
       return true
-      })()
     },
     async restore(route) {
       if (route.kind !== "module" || route.moduleId !== "workflows") return false

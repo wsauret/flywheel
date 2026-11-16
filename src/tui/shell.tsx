@@ -5,14 +5,14 @@ import { createSurfaceOpener } from "../protocol/client/surface-presentation.js"
 import { usesPerCommand } from "../protocol/client/command-menu.js"
 import { runtimeFaultCopy, type ReleaseInstall } from "../protocol/client/runtime-fault-copy.js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { useModal, useOverlay } from "@tui/components/modal"
+import { OverlayHost, useModal, useOverlay } from "@tui/components/modal"
 import { useQuestionInput } from "@tui/components/question-input"
 import { ToastDisplay } from "@tui/components/toast-display"
 import { presentKeymapIssues, useKeymap } from "@tui/context/keymap"
 import { NavigationProvider } from "@tui/context/navigation.js"
 import { SubagentControlsProvider } from "@tui/context/subagent-controls.js"
-import { ClientExtensionProviders, ClientExtensionsProvider } from "@tui/context/client-extensions.js"
-import { createTuiModuleClients } from "@tui/modules.js"
+import { ClientExtensionsProvider } from "@tui/context/client-extensions.js"
+import { createTuiModuleClients, moduleNavigation } from "@tui/modules.js"
 import { useTheme } from "@tui/context/theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { useToast } from "@tui/context/toast"
@@ -146,10 +146,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const now = createMemo(() => { wallTick(); return Date.now() })
   const navigateUri = createLinkNavigator({
     openSession: (sessionId) => activateSessionById(sessionId),
-    openModuleUri: async (uri) => {
-      for (const client of moduleClients) if (await client.openUri(uri)) return true
-      return false
-    },
+    openModuleUri: (uri) => navigation.openUri(uri),
     showToast: toast.show,
   })
   const { signals, services } = createShellState({
@@ -276,17 +273,8 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const childPlaces = createChildViewerOpener({
     navigateUri, viewer: viewerProps, viewerLayer: overlay.viewer, showToast: services.showToast,
     returnDraft: composerReturns.returnDraft,
-    kindOf: (id) => services.sessionDetails.view(id)?.row.kind, dispatchCommand: (text) => commandDispatch.dispatch(text),
-    provide: (children) => <SubagentControlsProvider value={subagentControls}><ClientExtensionsProvider value={moduleClients}><ClientExtensionProviders>{children()}</ClientExtensionProviders></ClientExtensionsProvider></SubagentControlsProvider>,
-    openModuleSession: (session) => {
-      const open = (index: number): boolean | Promise<boolean> => {
-        const client = moduleClients[index]
-        if (!client) return false
-        const result = client.openSession(session)
-        return typeof result === "boolean" ? result || open(index + 1) : result.then((opened) => opened || open(index + 1))
-      }
-      return open(0)
-    },
+    client: appService, dispatchCommand: (text) => commandDispatch.dispatch(text),
+    openModuleSession: (session) => navigation.openSession(session),
   })
   const activateSession = createSessionActivator({
     signals,
@@ -312,6 +300,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     viewerLayer: overlay.viewer, viewer: viewerProps, openChild: childPlaces.openChild,
     title: sessionTitle, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
   })
+  const navigation = moduleNavigation(moduleClients)
   const commandDefinitions = createMemo(() => buildCommandDefinitions(keymap.chordFor, signals.builtInCommands()))
   const commandCatalog = createMemo(() => commandSpecs(commandDefinitions()))
   function dispatchPaletteCommand(text: string): void {
@@ -340,13 +329,13 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     activateModuleRow,
     navigateToProcess,
     openTarget: async (target) => {
-      if (target.kind === "session") { await activateSessionById(target.sessionId); return }
-      for (const client of moduleClients) if (await client.openTarget?.(target)) return
+      if (target.kind === "session") await activateSessionById(target.sessionId)
+      else await navigation.openTarget(target)
     },
   })
 
   const place = createLaunchState({ projectRoot: stateRoot, handed: launchState, catalogReady: signals.catalogReady, signals, tabs, openSessionTab, draftCache, outbox: submissions, composer: () => composer, transcripts: services.transcripts, layout: transcriptLayout, overlay, activateSessionById,
-    restoreModule: async (route) => { for (const client of moduleClients) if (await client.restore(route)) return true; return false },
+    restoreModule: navigation.restore,
     resolveSessionRoute: (id) => readSessionRoute(appService, signals.sessionCatalogRows(), id),
     reopen: { sessions: sessionModal.openSessionsModal, theme: themeModal.openThemeModal }, startChat: async () => (await startChat()).kind !== "failed", lanes: appService })
   const setup = createMemo(() => providerSetup(signals.auth()))
@@ -510,7 +499,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
 
   return (
     <SubagentControlsProvider value={subagentControls}><NavigationProvider value={navigateUri}>
-    <ClientExtensionsProvider value={moduleClients}><ClientExtensionProviders>
+    <ClientExtensionsProvider value={moduleClients}>{navigation.provide(() => <>
     <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={themeContext.baseBackground}
       onMouseDown={transcriptSelectionDrag.onMouseDown} onMouseDrag={transcriptSelectionDrag.onMouseDrag} onMouseUp={onShellMouseUp}>
 
@@ -640,7 +629,8 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
       </box>
       <ToastDisplay headerHeight={showPrompt() ? 3 : 0} />
     </box>
-    </ClientExtensionProviders></ClientExtensionsProvider>
+    <OverlayHost clipboard={clipboard} />
+    </>)}</ClientExtensionsProvider>
     </NavigationProvider></SubagentControlsProvider>
   )
 }

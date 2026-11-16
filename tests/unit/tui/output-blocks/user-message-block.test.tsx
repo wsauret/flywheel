@@ -12,7 +12,7 @@ const { UserMessageBlock } = await import("../../../../src/tui/output-blocks/use
 const { ThemeProvider, useTheme } = await import("../../../../src/tui/context/theme.js")
 const { ITALIC } = await import("../../../../src/tui/utils/text-attributes.js")
 const { TranscriptViewportHeightProvider } = await import("../../../../src/tui/context/transcript-viewport.js")
-const { ModalProvider, useOverlay } = await import("../../../../src/tui/components/modal.js")
+const { ModalProvider, OverlayHost, useOverlay } = await import("../../../../src/tui/components/modal.js")
 const { QuestionInputProvider } = await import("../../../../src/tui/components/question-input.js")
 const { ModalFrame } = await import("../../../../src/tui/components/modal-frame.js")
 const { ToastProvider } = await import("../../../../src/tui/context/toast.js")
@@ -301,7 +301,7 @@ describe("sent image previews", () => {
         images: [{ mediaType: "image/png", data: twoColorPng(800, 600) }] }} />
     }
     const result = await testRender(() => <ToastProvider><ThemeProvider mode="dark"><QuestionInputProvider>
-      <ModalProvider clipboard={{ copy: async () => {}, readImage: async () => null }}><Harness /></ModalProvider>
+      <ModalProvider><Harness /><OverlayHost clipboard={{ copy: async () => {}, readImage: async () => null }} /></ModalProvider>
     </QuestionInputProvider></ThemeProvider></ToastProvider>, { width: 90, height: 40 })
     try {
       const [preview] = await loadImages(result)

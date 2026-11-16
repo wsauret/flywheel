@@ -9,7 +9,10 @@ import { workflowsTui } from "./modules/workflows/index.js"
 import type { TuiModuleClient, TuiModuleClientHost } from "./tui-module-client.js"
 import { bugReportsTui } from "./modules/bug-reports/index.js"
 import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
-import type { RuntimeHealth } from "../protocol/app-service-types.js"
+import type { RuntimeHealth, SessionRow } from "../protocol/app-service-types.js"
+import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
+import type { LaunchModalRoute } from "../infra/launch-state.js"
+import type { JSX } from "solid-js"
 
 /** The terminal client's module registry. The slot host renders strips,
  *  surfaces, and rows from this list alone, so a module's terminal presence is
@@ -19,6 +22,24 @@ export const TUI_MODULES = [remoteTui, experimentsTui, mcpTui, sideQuestionTui, 
 /** Composes the installed client contributions once, independent of admission to new work. */
 export function createTuiModuleClients(host: TuiModuleClientHost): readonly TuiModuleClient[] {
   return TUI_MODULES.flatMap((module: TuiModule) => module.createClient ? [module.createClient(host)] : [])
+}
+
+/** The shell's one way into the module clients: each open goes to the clients
+ *  in registry order and settles true at the first client that handles it,
+ *  false when none does. `provide` nests every client's context around a
+ *  tree, the first client outermost. */
+export function moduleNavigation(clients: readonly TuiModuleClient[]) {
+  async function first(open: (client: TuiModuleClient) => Promise<boolean> | undefined): Promise<boolean> {
+    for (const client of clients) if (await open(client)) return true
+    return false
+  }
+  return {
+    openUri: (uri: string) => first((client) => client.openUri(uri)),
+    openTarget: (target: BackgroundWorkTarget) => first((client) => client.openTarget?.(target)),
+    openSession: (session: Pick<SessionRow, "id" | "kind">) => first((client) => client.openSession(session)),
+    restore: (route: LaunchModalRoute) => first((client) => client.restore(route)),
+    provide: (children: () => JSX.Element): JSX.Element => clients.reduceRight((inner, client) => () => client.provide(inner), children)(),
+  }
 }
 
 /** Creates installed crash presenters under the fallback's Solid owner. */
