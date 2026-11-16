@@ -1,0 +1,20 @@
+src/orchestration/app-service/auth-status-projection.ts
+  h_4b47e9e4a8b456 8-9,25-27,83-85
+tests/helpers/held-directory-values.ts
+  h_4b47e9e4a8b456 1-2,7-24
+tests/unit/orchestration/app-service/auth-status-projection.test.ts
+  h_4b47e9e4a8b456 1,12,19,23-26,47,294-295,516-574
+tests/unit/orchestration/app-service/held-profile-revisions.test.ts
+  h_4b47e9e4a8b456 11-12,21,41,292-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "47c8c2fa61957034f83bf4d0206fcd537034c41b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
