@@ -575,7 +575,7 @@ describe("catalog auth eligibility", () => {
     if (plan.kind !== "admitted") throw new Error(plan.reason);
     expect(plan.candidates).toEqual(candidates);
     const expectedAttributions = candidates.map((entry) => {
-      const offering = decision.worker.candidateOffering?.(entry, fallbackModel, false);
+      const offering = decision.worker.candidateOfferings(entry, fallbackModel, false)[0];
       if (offering === undefined) throw new Error(`Missing wire model for ${accessProviderCandidateKey(entry)}`);
       return { ...offering, candidate: entry, eligibilityProfileId: profileId, eligibilityRevision: state.revision };
     });

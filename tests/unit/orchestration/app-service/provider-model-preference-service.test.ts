@@ -66,7 +66,7 @@ describe("provider-model preference service", () => {
     service.publish(state)
     const target = { kind: "subscription", providerId: "github_copilot", accountCorrelationId: subscriptionSpendAccountCorrelationId("work", "github_copilot", "rejected") } as const
 
-    const rejectedRequestReason = (current: NonNullable<ReturnType<typeof service.state>>) => current.worker.candidateModelUnavailableReason?.(account, "gpt-5")
+    const rejectedRequestReason = (current: NonNullable<ReturnType<typeof service.state>>) => current.worker.candidateModelUnavailableReason(account, "gpt-5")
     expect(rejectedRequestReason(state)).toContain("no current connection")
 
     expect((await service.query("work", target)).rows).toEqual([
@@ -165,7 +165,7 @@ describe("provider-model preference service", () => {
     const result = await service.setFreeRoutes({ queriedProfileId: "work", queriedEligibilityRevision: 1, target, enabled: true })
     if ("hidden" in result) throw new Error("OpenRouter target unexpectedly disappeared")
     expect(result.freeRoutes).toEqual({ enabled: true })
-    expect(service.state("work")?.worker.candidateOfferings?.(candidate, "model", false).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model:free", "vendor/model"])
+    expect(service.state("work")?.worker.candidateOfferings(candidate, "model", false).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model:free", "vendor/model"])
     expect(writes).toEqual([true])
     await service.dispose()
   })
@@ -302,7 +302,7 @@ describe("provider-model preference service", () => {
     service.publish(service.prepare(input("work", catalogs, candidateCatalogs)))
     expect(service.state()?.picker.has("gpt-5-mini")).toBe(false)
     expect(service.state()?.enabledCandidates.get(accessProviderAccountKey(candidate))?.enabledOfferings?.has("gpt-5-mini")).toBe(false)
-    expect(service.state()?.worker.candidateOffering?.(candidate, "gpt-5-mini", false)).toBeUndefined()
+    expect(service.state()?.worker.candidateOfferings(candidate, "gpt-5-mini", false)[0]).toBeUndefined()
     expect((await service.query("work", { kind: "singleton", providerId: "openai_api" })).rows.find((row) => row.modelId === "gpt-5-mini")).toMatchObject({
       checked: false,
       optInAvailable: true,
@@ -313,12 +313,12 @@ describe("provider-model preference service", () => {
     await service.set({ queriedProfileId: "work", queriedEligibilityRevision: 1, target: { kind: "singleton", providerId: "openai_api" }, modelId: "gpt-5-mini", checked: true })
 
     expect(service.state()?.picker?.get("gpt-5-mini")?.explicitlyEnabled).toBe(true)
-    expect(service.state()?.worker.candidateOffering?.(candidate, "gpt-5-mini", false)?.wireModelId).toBe("gpt-5-mini")
+    expect(service.state()?.worker.candidateOfferings(candidate, "gpt-5-mini", false)[0]?.wireModelId).toBe("gpt-5-mini")
 
     await service.set({ queriedProfileId: "work", queriedEligibilityRevision: 2, target: { kind: "singleton", providerId: "openai_api" }, modelId: "gpt-5-mini", checked: false })
 
     expect(service.state()?.picker.has("gpt-5-mini")).toBe(false)
-    expect(service.state()?.worker.candidateOffering?.(candidate, "gpt-5-mini", false)).toBeUndefined()
+    expect(service.state()?.worker.candidateOfferings(candidate, "gpt-5-mini", false)[0]).toBeUndefined()
   })
 
   test("deselects the complete exact-account catalog in one persistence call", async () => {
@@ -368,8 +368,8 @@ describe("provider-model preference service", () => {
     const state = service.state()
     expect(state?.catalogs.get("openai_api")?.effective).toEqual(new Set(["gpt-5-mini"]))
     expect([...state?.picker.keys() ?? []]).toEqual(["gpt-5-mini"])
-    expect(state?.worker.candidateOffering?.(candidate, "gpt-5", false)).toBeUndefined()
-    expect(state?.worker.candidateOffering?.(candidate, "gpt-5-mini", false)?.wireModelId).toBe("gpt-5-mini")
+    expect(state?.worker.candidateOfferings(candidate, "gpt-5", false)[0]).toBeUndefined()
+    expect(state?.worker.candidateOfferings(candidate, "gpt-5-mini", false)[0]?.wireModelId).toBe("gpt-5-mini")
   })
 
   test("deselects and restores only canonical provider models", async () => {
@@ -408,7 +408,7 @@ describe("provider-model preference service", () => {
     await service.set({ queriedProfileId: "work", queriedEligibilityRevision: 2, target: { kind: "singleton", providerId: "openrouter" }, modelId: "gpt-6.1-sol", checked: true })
 
     expect([...service.state()?.picker.keys() ?? []]).toEqual(["gpt-6.1-sol"])
-    expect(service.state()?.worker.candidateOffering?.(candidate, "gpt-6.1-sol", false)?.wireModelId).toBe("openai/gpt-6.1-sol")
+    expect(service.state()?.worker.candidateOfferings(candidate, "gpt-6.1-sol", false)[0]?.wireModelId).toBe("openai/gpt-6.1-sol")
     expect(service.state()?.catalogs.get("openrouter")?.effective).toEqual(new Set(["gpt-6.1-sol"]))
     expect(service.state()?.catalogs.get("openrouter")?.curatedDefault).toEqual(new Set(["gpt-6.1-sol"]))
     await service.dispose()
@@ -526,7 +526,7 @@ describe("provider-model preference service", () => {
     const targetB = { kind: "subscription", providerId: "chatgpt", accountCorrelationId: subscriptionSpendAccountCorrelationId("work", "chatgpt", "b") } as const
     const first = await service.set({ queriedProfileId: "work", queriedEligibilityRevision: 1, target: targetA, modelId: "gpt-5", checked: false })
     expect((await service.query("work", targetB)).rows.find((row) => row.modelId === "gpt-5")?.checked).toBe(true)
-    expect(service.state()?.worker.candidateModelUnavailableReason?.(accountB, "gpt-5")).toBeUndefined()
+    expect(service.state()?.worker.candidateModelUnavailableReason(accountB, "gpt-5")).toBeUndefined()
     const second = await service.set({ queriedProfileId: "work", queriedEligibilityRevision: first.eligibilityRevision, target: targetA, modelId: "gpt-5", checked: true })
     expect(second.eligibilityRevision).toBeGreaterThan(first.eligibilityRevision)
   })

@@ -22,7 +22,7 @@ import { isWebSocketSseFallbackActive, recordWebSocketFailure, recordWebSocketSu
 import { authDir } from "../../../../../src/infra/paths.js";
 import { createModelsClient } from "../../../../../src/infra/llm/models.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
-import { testCapabilityModules, testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testCapabilityModules, testEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { fixedDefinitions, repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { fakeAvailability, preparedRequest, requestEvents } from "./_provider-chain-harness.js";
@@ -41,16 +41,15 @@ const noKeysAuth = {
 // here reaches the developer's own account state.
 const DIRECTORIES = testDirectories("/scratch");
 const EMPTY_ADMISSION = async () => Object.freeze({ subscriptionSpendAuthorizationFor: () => undefined });
-const TEST_ELIGIBILITY = {
-  modelUnavailableReason: () => undefined,
-  candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({
+const TEST_ELIGIBILITY = testEligibility({
+  candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{
     candidate,
     wireModelId: model,
     dataUse: "standard" as const,
     catalogMetadata: candidate.providerId === "github_copilot" ? { supportedEndpoints: ["/responses"] } : undefined,
     resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-  }),
-};
+  }],
+});
 const CLIENT_DIRECTORIES = { notify: () => {}, authDir: authDir(DIRECTORIES.userDataRoot, "default"), profileId: "default", projectRoot: DIRECTORIES.projectRoot, providers: testProviderRegistry(), eligibility: TEST_ELIGIBILITY, requestAdmission: EMPTY_ADMISSION, allowTrainingRoutes: false, providerSessionLifetime: testProviderSessionLifetime() };
 const testModelsClient = () => fakeModelsClient;
 
@@ -99,10 +98,10 @@ describe("createClient universal chain", () => {
         getProviderModelEligibility: () => {
           captures += 1;
           const captured = disabled;
-          return {
+          return testEligibility({
             modelUnavailableReason: (provider, model) => captured.has(provider) ? `${provider} is disabled for ${model}.` : undefined,
-            candidateOffering: (candidate, model) => ({ candidate, wireModelId: model, dataUse: "standard", resolvedModelMetadata: fakeModelsClient.modelInfos.get(model) }),
-          };
+            candidateOfferings: (candidate, model) => [{ candidate, wireModelId: model, dataUse: "standard", resolvedModelMetadata: fakeModelsClient.modelInfos.get(model) }],
+          });
         },
       },
     );
@@ -296,10 +295,9 @@ describe("subscription usage binding", () => {
       subscriptionCredentials: new Map([["github_copilot", [{ instanceId: "copilot-a", identity: "subject", credential: { type: "oauth", access: Redacted.make("copilot"), expires: 1 } }]]]),
     });
     let mode = "included";
-    const eligibility = () => ({
-      modelUnavailableReason: () => undefined,
+    const eligibility = () => testEligibility({
       candidateModelUnavailableReason: (candidate: { spendMode: string }) => candidate.spendMode === mode ? undefined : "other mode",
-      candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({ candidate, wireModelId: model, dataUse: "standard" as const, resolvedModelMetadata: fakeModelsClient.modelInfos.get(model) }),
+      candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{ candidate, wireModelId: model, dataUse: "standard" as const, resolvedModelMetadata: fakeModelsClient.modelInfos.get(model) }],
     });
     const plan = providers.selection.plan("gpt-6-luna", connection, TEST_ELIGIBILITY);
     const account = createSubscriptionAccountIdentity("github_copilot", "copilot-a", "subject");
@@ -350,7 +348,7 @@ describe("subscription usage binding", () => {
       providers: authProviders({ base: noKeysAuth.providers, apiKeys: { openai_api: "key" } }),
     }, {
       ...CLIENT_DIRECTORIES, providers, recordModelRefusal: (record) => { records.push(record); },
-      eligibility: { ...TEST_ELIGIBILITY, modelIds: new Set(["gpt-5.5", "gpt-5.4"]), candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [TEST_ELIGIBILITY.candidateOffering(candidate, model)] },
+      eligibility: { ...TEST_ELIGIBILITY, modelIds: new Set(["gpt-5.5", "gpt-5.4"]) },
     });
     const request = await client.admitRequest();
     const refusal = { kind: "extended-context", contextLimit: 200_000 } as const;
@@ -510,16 +508,15 @@ describe("createAgentRuntime connection forwarding", () => {
       moduleSelection: testCapabilityModules(),
       captureRuntimeConfig: testRuntimeConfigCapture,
       authDirectory: () => CLIENT_DIRECTORIES.authDir,
-      getProviderModelEligibility: () => ({
-        modelUnavailableReason: () => undefined,
+      getProviderModelEligibility: () => testEligibility({
         candidateModelUnavailableReason: (candidate) => candidate.spendMode === "automatic" ? undefined : "test selects automatic billing",
-        candidateOffering: (candidate, model) => ({
+        candidateOfferings: (candidate, model) => [{
           candidate,
           wireModelId: model,
           dataUse: "standard",
           catalogMetadata: { supportedEndpoints: ["/responses"] },
           resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-        }),
+        }],
       }),
       connection,
       userDataRoot: DIRECTORIES.userDataRoot,

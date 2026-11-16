@@ -58,8 +58,8 @@ test("preserves pending selections through policy changes and audit publications
   const assertPending = async (checked: boolean) => {
     expect((await service.query("work", target)).rows.find((row) => row.modelId === "pending")).toMatchObject({ checked, optInAvailable: true })
     expect(service.state("work")!.picker.has("pending")).toBe(false)
-    expect(service.state("work")!.worker.candidateModelUnavailableReason?.(candidate, "pending")).toContain("cannot serve")
-    expect(service.state("work")!.worker.candidateOffering?.(candidate, "pending", false)).toBeUndefined()
+    expect(service.state("work")!.worker.candidateModelUnavailableReason(candidate, "pending")).toContain("cannot serve")
+    expect(service.state("work")!.worker.candidateOfferings(candidate, "pending", false)[0]).toBeUndefined()
   }
   try {
     await refresh()
@@ -89,7 +89,7 @@ test("preserves pending selections through policy changes and audit publications
     await refresh()
     expect(service.state("work")!.picker.has("pending")).toBe(true)
     expect(service.state("work")!.picker.has("unselected")).toBe(false)
-    expect(service.state("work")!.worker.candidateModelUnavailableReason?.(candidate, "pending")).toBeUndefined()
+    expect(service.state("work")!.worker.candidateModelUnavailableReason(candidate, "pending")).toBeUndefined()
   } finally {
     await service.dispose()
     access.close()

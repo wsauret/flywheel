@@ -144,7 +144,7 @@ export function captureRoleCatalog(
     return plan;
   };
   const resolve = async (roleId: RoleId, setting: RoleSetting, standing?: ModelStandingReader): Promise<CapturedRoleSelection> => {
-    if (!hasModels(available)) return { kind: capture.eligibility?.accessPending?.(capture.allowTrainingRoutes) ? "access-pending" : "no-selection" };
+    if (!hasModels(available)) return { kind: capture.eligibility?.accessPending(capture.allowTrainingRoutes) ? "access-pending" : "no-selection" };
     const preferences = rolePreferences(roleId, setting, available, options);
     if (standing === undefined) {
       const first = await firstOf(preferences);

@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testEligibility, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { Redacted } from "effect";
 import type { AuthContext, CapturedSubscriptionCredential, ProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
-import { accessProviderAccountKey, candidateProviderId, createAccessProviderSelection, type AccessProviderCandidate, type AdmittedFailoverPlan, type FailoverPlan } from "../../../../../src/infra/llm/access-provider.js";
+import { accessProviderAccountKey, candidateProviderId, createAccessProviderSelection, type AccessProviderCandidate, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan } from "../../../../../src/infra/llm/access-provider.js";
 import { authDir } from "../../../../../src/infra/paths.js";
 import { createAdmittedClient } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
-import { workerProviderModelEligibilityFromState } from "../../../../../src/orchestration/config/provider-model-eligibility.js";
+import { providerModelEligibilityDecision } from "../../../../../src/orchestration/config/provider-model-eligibility.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { fakeAvailability } from "./_provider-chain-harness.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
@@ -62,25 +62,24 @@ interface ExactEligibilityRoutes {
 
 function exactEligibility(
   routes: ExactEligibilityRoutes,
-) {
-  return {
-    modelUnavailableReason: () => undefined,
-    candidateOffering: (candidate: AccessProviderCandidate, model: string) => {
+): AccessProviderModelEligibility {
+  return testEligibility({
+    candidateOfferings: (candidate: AccessProviderCandidate, model: string) => {
       const route = routes[candidate.providerId];
-      return route === undefined ? undefined : {
+      return route === undefined ? [] : [{
         candidate,
         wireModelId: route.wireModelId ?? model,
         dataUse: "standard" as const,
         transport: route.transport,
         resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-      };
+      }];
     },
-  };
+  });
 }
 
 /** Provider selection for one planned attempt, over scripted account state, so
  *  no case reads the machine's own quota rows. */
-function chainOptions(eligibility?: ReturnType<typeof exactEligibility>) {
+function chainOptions(eligibility?: AccessProviderModelEligibility) {
   const { availability } = fakeAvailability({});
   return { notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(), providers: PROVIDERS, eligibility, projectRoot: DIRECTORIES.projectRoot, allowTrainingRoutes: false, requestAdmission: async () => Object.freeze({ spendSources: () => undefined, subscriptionSpendAuthorizationFor: () => undefined }), availability: { forCandidates: () => availability, dispose: () => Promise.resolve() } };
 }
@@ -148,7 +147,7 @@ describe("provider chain preflight", () => {
   });
 
   test("names what an unavailable plan lacks: any provider, or a provider that offers the model", () => {
-    const refusing = { modelUnavailableReason: () => "not offered", candidateOffering: () => undefined };
+    const refusing = testEligibility({ modelUnavailableReason: () => "not offered" });
     expect(PROVIDERS.selection.plan("claude-sonnet-4-6", connect({}), refusing)).toMatchObject({ kind: "unavailable", missing: "provider" });
     expect(PROVIDERS.selection.plan("claude-sonnet-4-6", connect({ providers: authProviders({ apiKeys: { anthropic_api: SECRET } }) }), refusing)).toMatchObject({ kind: "unavailable", missing: "offering" });
   });
@@ -161,10 +160,12 @@ describe("provider chain preflight", () => {
       auth: NO_KEYS,
       subscriptionCredentials: new Map([["supergrok", [{ instanceId: "primary", credential: OAUTH_TOKENS }]]]),
     });
-    const pending = workerProviderModelEligibilityFromState({
+    const pending = providerModelEligibilityDecision({
+      profileId: "default",
+      revision: 1,
       catalogs: new Map(),
       enabledCandidates: new Map([[accessProviderAccountKey(supergrok), { candidate: supergrok, configured: true, currentConnection: true, enabledOfferings: null, catalog: { kind: "unavailable", reason: "discovery-pending" } }]]),
-    });
+    }).worker;
     // A role that materialized before any model was verified still names its tier.
     for (const model of ["grok-4", "powerful"]) {
       const plan = PROVIDERS.selection.plan(model, connection, pending);
@@ -176,13 +177,12 @@ describe("provider chain preflight", () => {
   test("dispatches an unknown first-party id through the provider default transport", () => {
     const model = "future-first-party-model";
     const connection = connect({ providers: authProviders({ apiKeys: { openai_api: SECRET } }) });
-    const eligibility = {
-      modelUnavailableReason: () => undefined,
-      candidateOffering: (candidate: AccessProviderCandidate) =>
+    const eligibility = testEligibility({
+      candidateOfferings: (candidate: AccessProviderCandidate) =>
         candidate.providerId === "openai_api"
-          ? { candidate, wireModelId: model, dataUse: "standard" as const }
-          : undefined,
-    };
+          ? [{ candidate, wireModelId: model, dataUse: "standard" as const }]
+          : [],
+    });
 
     const plan = admitted(PROVIDERS.selection.plan(model, connection, eligibility));
     expect(plan.family).toBe("openai");
@@ -220,13 +220,30 @@ describe("provider chain preflight", () => {
       { providers: authProviders({ apiKeys: { openai_api: SECRET }, oauth: ["chatgpt"] }),},
       { oauth: { chatgpt: OAUTH_TOKENS } },
     );
-    const eligibility = {
+    const eligibility = testEligibility({
       modelUnavailableReason: (provider: string, model: string) =>
         provider === "chatgpt" && model === "gpt-5.4" ? "ChatGPT is disabled for gpt-5.4." : undefined,
-      candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({ candidate, wireModelId: model, dataUse: "standard" as const }),
-    };
+      candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{ candidate, wireModelId: model, dataUse: "standard" as const }],
+    });
 
     expect(admitted(PROVIDERS.selection.plan("gpt-5.4", connection, eligibility)).candidates.filter(({ spendMode }) => spendMode === "included" || spendMode === "direct_api" || spendMode === "aggregator").map(candidateProviderId)).toEqual(["openai_api"]);
+  });
+
+  test("plans every offering of candidateOfferings for each candidate, the first offering first", () => {
+    const connection = connect({ providers: authProviders({ apiKeys: { openrouter: SECRET } }) });
+    const eligibility = testEligibility({
+      candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [
+        { candidate, wireModelId: `${model}:free`, dataUse: "standard" as const, routeKind: "free" as const, transport: "openai-completions" as const },
+        { candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-completions" as const },
+      ],
+    });
+
+    const plan = admitted(PROVIDERS.selection.plan("gpt-5.4", connection, eligibility));
+    expect(plan.candidateAttributions.map(({ candidate, wireModelId }) => ({ providerId: candidateProviderId(candidate), wireModelId }))).toEqual([
+      { providerId: "openrouter", wireModelId: "gpt-5.4:free" },
+      { providerId: "openrouter", wireModelId: "gpt-5.4" },
+    ]);
+    expect(plan.candidates.map(candidateProviderId)).toEqual(["openrouter"]);
   });
 
   test("filters subscription candidates by exact account catalog", () => {
@@ -238,12 +255,11 @@ describe("provider chain preflight", () => {
         { instanceId: "account-b", credential: OAUTH_TOKENS },
       ]]]),
     });
-    const eligibility = {
-      modelUnavailableReason: () => undefined,
+    const eligibility = testEligibility({
       candidateModelUnavailableReason: (candidate: AccessProviderCandidate, model: string) =>
         candidate.kind === "subscription" && (candidate.instanceId !== "account-a" || model !== "gpt-5.4") ? "not listed" : undefined,
-      candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({ candidate, wireModelId: model, dataUse: "standard" as const }),
-    };
+      candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{ candidate, wireModelId: model, dataUse: "standard" as const }],
+    });
 
     expect(admitted(PROVIDERS.selection.plan("gpt-5.4", connection, eligibility)).candidates).toEqual([
       { kind: "subscription", providerId: "chatgpt", instanceId: "account-a", spendMode: "included" },

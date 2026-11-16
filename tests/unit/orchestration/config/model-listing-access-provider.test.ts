@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { AUTH_DIR, AUTH_NONE } from "./_model-listing-fixtures.js";
 import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js";
 import type { AccessProviderCandidate, AccessProviderModelEligibility } from "../../../../src/infra/llm/access-provider.js";
-import { testProviderSelection } from "../../../helpers/provider-authority.js";
+import { testEligibility, testProviderSelection } from "../../../helpers/provider-authority.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 
 // ---------------------------------------------------------------------------
@@ -16,13 +16,13 @@ const AUTH_EVERYTHING = {
 
 type ExactOffering = { readonly wireModelId: string; readonly transport: "anthropic-messages" | "openai-responses" | "openai-completions" | "google" };
 function exactEligibility(offerings: ReadonlyMap<string, ReadonlyMap<string, ExactOffering>>): AccessProviderModelEligibility {
-  return {
+  return testEligibility({
     modelUnavailableReason: (provider, model) => offerings.get(provider)?.has(model) ? undefined : `${provider} does not offer "${model}"`,
-    candidateOffering: (candidate: AccessProviderCandidate, model) => {
+    candidateOfferings: (candidate: AccessProviderCandidate, model) => {
       const offering = offerings.get(candidate.providerId)?.get(model);
-      return offering === undefined ? undefined : { candidate, dataUse: "standard", ...offering };
+      return offering === undefined ? [] : [{ candidate, dataUse: "standard", ...offering }];
     },
-  };
+  });
 }
 
 it("exposes definition-owned provider presentation metadata", () => {

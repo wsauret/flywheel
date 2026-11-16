@@ -70,7 +70,7 @@ export async function bindWorkflowAgentModels(input: BindWorkflowAgentModelsInpu
       group.definitionIds.push(agent.definitionId)
       groups.set(key, group)
     } else {
-      unavailable.push({ definitionId: agent.definitionId, reason: input.capture.eligibility?.accessPending?.(input.capture.runtimeConfig.allowTrainingRoutes) ? "access-pending" : "no-selection" })
+      unavailable.push({ definitionId: agent.definitionId, reason: input.capture.eligibility?.accessPending(input.capture.runtimeConfig.allowTrainingRoutes) ? "access-pending" : "no-selection" })
     }
     if (agent.persona !== undefined) personas.set(agent.persona, [...personas.get(agent.persona) ?? [], agent.definitionId])
   }

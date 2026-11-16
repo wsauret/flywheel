@@ -164,11 +164,11 @@ function harness(cells: CellBehavior = "blocks") {
         runtimeConfig: testRuntimeConfigCapture(),
         eligibility: {
           ...eligibility,
-          candidateOffering: (candidate, model, allowTrainingRoutes) => {
+          candidateOfferings: (candidate, model, allowTrainingRoutes) => {
             const anthropicModel = model.startsWith("claude-");
-            if (candidate.providerId === "anthropic_api" && !anthropicModel) return undefined;
-            if (candidate.providerId === "openai_api" && anthropicModel) return undefined;
-            return eligibility.candidateOffering?.(candidate, model, allowTrainingRoutes);
+            if (candidate.providerId === "anthropic_api" && !anthropicModel) return [];
+            if (candidate.providerId === "openai_api" && anthropicModel) return [];
+            return eligibility.candidateOfferings(candidate, model, allowTrainingRoutes);
           },
         },
         requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: (plans) => {

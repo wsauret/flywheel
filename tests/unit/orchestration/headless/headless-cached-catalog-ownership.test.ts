@@ -14,7 +14,7 @@ import { createModelListingClient } from "../../../../src/infra/llm/model-listin
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { modelsSnapshotFile } from "../../../../src/infra/paths.js";
 import { createHeadlessProfileRuntime } from "../../../../src/orchestration/headless/headless-profile-runtime.js";
-import { getSharedModelsClient, resetSharedLlmClients } from "../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../src/orchestration/config/llm-clients.js";
 import { modelsDevDocument, modelsDevJson, type MutableModelsDevProviders } from "../../../helpers/model-catalog-fixtures.js";
 import { testAuthContext } from "../../../helpers/auth-context.js";
 import { catalogProfile } from "../../../helpers/catalog-profile.js";
@@ -50,15 +50,15 @@ function workflowPreparation(userDataRoot: string): ProfileRequestWorkflowPrepar
   };
 }
 
-// The shared models client is a process singleton bound to the first root it
-// sees; a file that ran earlier in this process may have left one behind.
+// Listing generations are process-shared; a file that ran earlier in this
+// process may have left one behind.
 beforeEach(() => {
-  resetSharedLlmClients();
+  clearSharedModelListingClients();
 });
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  resetSharedLlmClients();
+  clearSharedModelListingClients();
 });
 
 describe("headless cached catalog ownership", () => {
@@ -179,9 +179,9 @@ describe("headless cached catalog ownership", () => {
       }),
       prepareWorkflowDeps: async (input) => {
         const eligibility = input.providerModelEligibility?.();
-        cachedSourceOffering = eligibility?.candidateOffering?.({ kind: "singleton", providerId: "openai_api", spendMode: "direct_api" }, cachedModel, false);
-        vertexSnapshotOffering = eligibility?.candidateOffering?.({ kind: "singleton", providerId: "google_vertex", spendMode: "direct_api" }, vertexModel, false);
-        accessPending = eligibility?.accessPending?.();
+        cachedSourceOffering = eligibility?.candidateOfferings({ kind: "singleton", providerId: "openai_api", spendMode: "direct_api" }, cachedModel, false)[0];
+        vertexSnapshotOffering = eligibility?.candidateOfferings({ kind: "singleton", providerId: "google_vertex", spendMode: "direct_api" }, vertexModel, false)[0];
+        accessPending = eligibility?.accessPending();
         expect(input.capturedAuth?.providers).toEqual(auth.providers);
         return prepareWorkflowDeps(input);
       },

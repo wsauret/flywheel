@@ -525,7 +525,7 @@ describe("eligibility preparation settlement", () => {
       { status: "rejected", reason: expect.objectContaining({ message: "provider unreachable" }) },
       { status: "rejected", reason: expect.objectContaining({ message: "provider unreachable" }) },
     ])
-    expect(service.state()?.worker.candidateOffering?.(available, "gpt-5", false)).toBeUndefined()
+    expect(service.state()?.worker.candidateOfferings(available, "gpt-5", false)[0]).toBeUndefined()
     expect(service.state()?.preferenceRevision).toBe("preferences-v2")
     expect(service.state()?.inventoryCandidates.get(PENDING_KEY)?.catalog).toEqual({ kind: "unavailable", reason: "discovery-failed" })
     expect(service.state()?.accountCatalogs.get(availableKey)?.disabled).toEqual(new Set(["gpt-5"]))

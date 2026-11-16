@@ -1,10 +1,10 @@
 import type { ProviderModelPreferenceState } from "../../infra/auth/provider-model-preference-store.js"
-import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "../../infra/llm/access-provider.js"
+import { accessProviderAccountKey, type AccessProviderAccountIdentity, type AccessProviderModelEligibility } from "../../infra/llm/access-provider.js"
 import { resolveAccountProviderModelPreferences, transitionProviderAutoEnableNewModels, type ProviderModelCatalog, type ResolvedProviderModels } from "../../infra/llm/provider-model-preferences.js"
 import { subscriptionSpendAccountCorrelationId } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
 import { createProfileRuntimeStateOwner, type ProfileRuntimeSnapshot } from "./profile-runtime-state.js"
-import { providerModelEligibilityDecision, type PickerModelEligibility, type ProviderModelEnabledCandidate, type WorkerProviderModelEligibility } from "../config/provider-model-eligibility.js"
+import { providerModelEligibilityDecision, type PickerModelEligibility, type ProviderModelEnabledCandidate } from "../config/provider-model-eligibility.js"
 import type { CatalogModelOffering } from "../../infra/llm/model-catalog-resolution.js"
 import type { AccessAuditStatus } from "../../infra/llm/model-listing.js"
 import type { ProviderModelPreferenceService } from "./app-service.js"
@@ -39,7 +39,7 @@ export interface ProviderModelEligibilityState extends ProviderModelEligibilityI
   readonly autoEnableNewModels: boolean
   readonly revision: number
   readonly picker: ReadonlyMap<string, PickerModelEligibility>
-  readonly worker: WorkerProviderModelEligibility
+  readonly worker: AccessProviderModelEligibility
   readonly membership: ReadonlyMap<string, ProviderModelView>
   readonly targetAccounts: ReadonlyMap<string, AccessProviderAccountIdentity>
   readonly inventoryCandidates: ReadonlyMap<string, ProviderModelInventoryCandidate>

@@ -87,7 +87,7 @@ function admittedWire(candidate: AccessProviderCandidate, models: ReadonlyMap<st
       catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
     }]]),
   });
-  return decision.worker.candidateOffering?.(candidate, "gpt", allowTrainingRoutes)?.wireModelId;
+  return decision.worker.candidateOfferings(candidate, "gpt", allowTrainingRoutes)[0]?.wireModelId;
 }
 
 test("combined model-map relationships enrich known routes without hiding stable provider rows", async () => {

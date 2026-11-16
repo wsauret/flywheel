@@ -187,24 +187,22 @@ describe("eligibility preparation", () => {
 
     const state = await prepare(PROFILE)
 
-    const candidateOffering = state.worker.candidateOffering
-    expect(candidateOffering).toBeDefined()
-    if (!candidateOffering) throw new Error("candidate offering selector is unavailable")
+    const firstOffering = (...input: Parameters<typeof state.worker.candidateOfferings>) => state.worker.candidateOfferings(...input)[0]
     const enabledOffering = state.enabledCandidates.get(accessProviderAccountKey(custom))?.enabledOfferings?.get("gpt-4o")?.[0]
     const inventoryOffering = state.inventoryCandidates.get(accessProviderAccountKey(custom))?.inventoryOfferings?.get("gpt-4o")?.[0]
     const enabledCandidate = state.enabledCandidates.get(accessProviderAccountKey(custom))
-    const selectedOffering = candidateOffering(custom, "gpt-4o", false)
+    const selectedOffering = firstOffering(custom, "gpt-4o", false)
     expect(enabledOffering).toBe(customOfferings.get("gpt-4o")?.[0])
     expect(inventoryOffering).toBe(enabledOffering)
     expect(enabledCandidate).not.toHaveProperty("inventoryOfferings")
     expect(selectedOffering?.candidate).toBe(state.enabledCandidates.get(accessProviderAccountKey(custom))?.candidate)
     expect(selectedOffering?.catalogMetadata).toBe(enabledOffering?.metadata)
     expect(Object.isFrozen(enabledOffering)).toBe(true)
-    expect(candidateOffering(custom, "gpt-4o", false)?.wireModelId).toBe("gpt-4o")
-    expect(candidateOffering(custom, "gpt-4o", true)?.wireModelId).toBe("gpt-4o")
-    expect(candidateOffering(custom, "local", false)).toBeUndefined()
-    expect(candidateOffering(custom, "local", true)?.wireModelId).toBe("local-contributor")
-    expect(candidateOffering(vertex, "gemini-3.8-flash", false)?.wireModelId).toBe("gemini-3.8-flash")
+    expect(firstOffering(custom, "gpt-4o", false)?.wireModelId).toBe("gpt-4o")
+    expect(firstOffering(custom, "gpt-4o", true)?.wireModelId).toBe("gpt-4o")
+    expect(firstOffering(custom, "local", false)).toBeUndefined()
+    expect(firstOffering(custom, "local", true)?.wireModelId).toBe("local-contributor")
+    expect(firstOffering(vertex, "gemini-3.8-flash", false)?.wireModelId).toBe("gemini-3.8-flash")
     await service.dispose()
   })
 

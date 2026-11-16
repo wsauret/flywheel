@@ -286,15 +286,15 @@ export function isExternalLoginDefinition(definition: AccessProviderDefinition):
 /** One immutable user eligibility revision captured for a provider-chain plan. */
 export interface AccessProviderModelEligibility {
   /** Canonical identities in this immutable exact-account catalog revision. Planning still decides reachability. */
-  readonly modelIds?: ReadonlySet<string>;
+  readonly modelIds: ReadonlySet<string>;
   readonly profileId?: string;
   readonly revision?: number;
   readonly modelUnavailableReason: (provider: AccessProviderId, model: string) => string | undefined;
-  readonly candidateModelUnavailableReason?: (candidate: AccessProviderCandidate, model: string) => string | undefined;
-  readonly candidateOffering?: (candidate: AccessProviderCandidate, model: string, allowTrainingRoutes: boolean) => AccessProviderCandidateAttribution | undefined;
-  readonly candidateOfferings?: (candidate: AccessProviderCandidate, model: string, allowTrainingRoutes: boolean) => readonly AccessProviderCandidateAttribution[];
+  readonly candidateModelUnavailableReason: (candidate: AccessProviderCandidate, model: string) => string | undefined;
+  /** The offerings that `candidate` serves `model` through, in the order the chain tries them. */
+  readonly candidateOfferings: (candidate: AccessProviderCandidate, model: string, allowTrainingRoutes: boolean) => readonly AccessProviderCandidateAttribution[];
   /** Whether no account can serve a request yet because a configured account's model access is still being checked. */
-  readonly accessPending?: (allowTrainingRoutes?: boolean) => boolean;
+  readonly accessPending: (allowTrainingRoutes?: boolean) => boolean;
 }
 
 export interface AccessProviderCatalogFetchInput {
@@ -605,10 +605,10 @@ function planProviderChain(model: string, connection: ProviderConnection, eligib
     isProviderConfigured(definition, connection.auth)
     || (connection.subscriptionCredentials.get(definition.id)?.length ?? 0) > 0
   );
-  const missing: ModelUnavailableMissing = configured.length === 0 ? "provider" : eligibility?.accessPending?.(allowTrainingRoutes) === true ? "access" : "offering";
+  const missing: ModelUnavailableMissing = configured.length === 0 ? "provider" : eligibility?.accessPending(allowTrainingRoutes) === true ? "access" : "offering";
   const unavailable = (reason: string): FailoverPlan =>
     Object.freeze({ kind: "unavailable" as const, connectionId: connection.id, model: normalized, reason, missing });
-  if (eligibility?.candidateOffering !== undefined || eligibility?.candidateOfferings !== undefined) {
+  if (eligibility !== undefined) {
     const candidateAttributions = configured
       .flatMap((definition) => candidatesForProvider(definition.id, connection).map((candidate) => ({ candidate, rank: definition.rank })))
       .sort((left, right) => compareAutomaticSelection({ spendMode: left.candidate.spendMode, rank: left.rank }, { spendMode: right.candidate.spendMode, rank: right.rank }))
@@ -616,13 +616,8 @@ function planProviderChain(model: string, connection: ProviderConnection, eligib
       .flatMap((candidate) => {
         if (missingSubscriptionCredentialReason(candidate.providerId, connection.subscriptionCredentials) !== undefined) return [];
         if (eligibility.modelUnavailableReason(candidate.providerId, normalized) !== undefined) return [];
-        if (eligibility.candidateModelUnavailableReason?.(candidate, normalized) !== undefined) return [];
-        const selected = eligibility.candidateOfferings?.(candidate, normalized, allowTrainingRoutes);
-        const offerings = selected ?? (() => {
-          const offering = eligibility.candidateOffering?.(candidate, normalized, allowTrainingRoutes);
-          return offering === undefined ? [] : [offering];
-        })();
-        return offerings.flatMap((offering) => {
+        if (eligibility.candidateModelUnavailableReason(candidate, normalized) !== undefined) return [];
+        return eligibility.candidateOfferings(candidate, normalized, allowTrainingRoutes).flatMap((offering) => {
           const transport = offering.transport ?? definitionForProvider(candidate.providerId).defaultChatTransport;
           return transport === undefined ? [] : [Object.freeze({
             ...offering,
