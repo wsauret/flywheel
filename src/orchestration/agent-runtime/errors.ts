@@ -30,7 +30,7 @@ export class ApiError extends Schema.TaggedError<ApiError>()("ApiError", { messa
  *  from ApiError so that a caller can tell a wrong model id from a provider
  *  failure. */
 export class ModelUnavailable extends Schema.TaggedError<ModelUnavailable>()("ModelUnavailable", { message: Schema.String, missing: Schema.Literals(["provider", "offering", "access"]) }) {}
-export class TransientDisconnect extends Schema.TaggedError<TransientDisconnect>()("TransientDisconnect", { message: Schema.String }) {}
+class TransientDisconnect extends Schema.TaggedError<TransientDisconnect>()("TransientDisconnect", { message: Schema.String }) {}
 const StallAttributionSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("provider"), provider: AccessProviderIdSchema }),
   Schema.Struct({ kind: Schema.Literal("unattributed") }),
@@ -40,11 +40,11 @@ export class StreamStalled extends Schema.TaggedError<StreamStalled>()("StreamSt
   message: Schema.String,
   attribution: StallAttributionSchema,
 }) {}
-export class ApiOverloaded extends Schema.TaggedError<ApiOverloaded>()("ApiOverloaded", { message: Schema.String }) {}
+class ApiOverloaded extends Schema.TaggedError<ApiOverloaded>()("ApiOverloaded", { message: Schema.String }) {}
 /** The provider refused the request because of conversation content. `message` is the provider failure text
  *  the person reads, `reason` the provider's own words, `part` the canonical tool result part it names, and
  *  `policy` the provider's code when it refused the content under its usage policy. */
-export class ContentRefused extends Schema.TaggedError<ContentRefused>()("ContentRefused", {
+class ContentRefused extends Schema.TaggedError<ContentRefused>()("ContentRefused", {
   message: Schema.String,
   reason: Schema.String,
   part: Schema.optionalKey(Schema.Struct({ toolUseId: Schema.String, partIndex: Schema.Int, kind: RefusedPartKindSchema })),

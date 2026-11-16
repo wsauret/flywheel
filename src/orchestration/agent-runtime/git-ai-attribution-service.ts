@@ -14,7 +14,7 @@ const MAX_QUEUED_OPERATIONS = 32
 const MAX_QUEUED_BYTES = 8 * 1_024 * 1_024
 const log = Log.create({ service: "git-ai-attribution" })
 /** The agent name that every git-ai checkpoint of Flywheel carries: a git-ai wire value, not a name Flywheel shows. */
-export const GIT_AI_AGENT_NAME = "opencode"
+const GIT_AI_AGENT_NAME = "opencode"
 const SAFE_ENVIRONMENT_KEYS = ["PATH", "HOME", "USERPROFILE", "TMPDIR", "TMP", "TEMP", "SystemRoot", "SYSTEMROOT", "COMSPEC", "ComSpec", "PATHEXT", "LANG", "LC_ALL"] as const
 
 interface JsonObject { readonly [key: string]: unknown }

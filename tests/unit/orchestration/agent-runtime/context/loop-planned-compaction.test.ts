@@ -5,12 +5,11 @@ import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { compactInput, messageInput, type AgentLoopInput, type TurnParkedContext } from "../../../../../src/infra/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import type { ConversationMessage, ProviderStreamEvent, StreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { renderCompactionOpening } from "../../../../../src/orchestration/agent-runtime/agent-loop-compaction-state.js";
 import { emptyConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import type { ConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-checkpoint-facts.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
-import { budgetCaptureSurface, makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
+import { budgetCaptureSurface, makeCaptureClient, resetOpening, withSessionNotes } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { OutputLengthExceededError, ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
@@ -418,8 +417,8 @@ describe("planned agent-loop compaction", () => {
     [{ checkpoint: false, brief: true, saved: false, recallAvailable: false }, "Continue the task from the brief above."],
     [{ checkpoint: false, brief: false, saved: false, recallAvailable: true }, "Use the read-only `recall` tool to recover the latest user request and the work done for it from recorded history, then continue the task."],
     [{ checkpoint: false, brief: false, saved: false, recallAvailable: false }, "Ask the person what to continue."],
-  ])("the reset opening for %j states its recovery and never points to an absent checkpoint", (state, recovery) => {
-    const opening = renderCompactionOpening({
+  ])("the reset opening for %j states its recovery and never points to an absent checkpoint", async (state, recovery) => {
+    const opening = await resetOpening({
       checkpoint: state.checkpoint ? emptyConversationCheckpoint() : undefined,
       brief: state.brief ? "The brief." : undefined,
       saved: state.saved, recallAvailable: state.recallAvailable, capabilities: promptCapabilities([{ name: "skill" }]),
@@ -429,11 +428,11 @@ describe("planned agent-loop compaction", () => {
     if (!state.checkpoint) expect(opening).not.toContain("checkpoint above");
   });
 
-  test("the reset opening asks to reload the checkpoint's relevant skills only when the agent can load skills", () => {
+  test("the reset opening asks to reload the checkpoint's relevant skills only when the agent can load skills", async () => {
     const checkpoint = { ...emptyConversationCheckpoint(), relevantSkills: [{ id: "implementation", reason: "Code remains." }] };
-    const open = (tools: { name: string }[]) => renderCompactionOpening({ checkpoint, brief: undefined, saved: true, recallAvailable: false, capabilities: promptCapabilities(tools) });
-    expect(open([{ name: "skill" }])).toEndWith("Reload the listed relevant skills that still apply with the `skill` tool. Continue the task from the checkpoint above.");
-    expect(open([])).not.toContain("`skill` tool");
+    const open = (tools: { name: string }[]) => resetOpening({ checkpoint, brief: undefined, saved: true, recallAvailable: false, capabilities: promptCapabilities(tools) });
+    expect(await open([{ name: "skill" }])).toEndWith("Reload the listed relevant skills that still apply with the `skill` tool. Continue the task from the checkpoint above.");
+    expect(await open([])).not.toContain("`skill` tool");
   });
 
   test("prepareWaitForInput compact control checkpoints, resets, and re-parks", async () => {

@@ -45,7 +45,7 @@ const SKILL_RELOAD_HINT = "Reload the listed relevant skills that still apply wi
 /** The text that opens a fresh context: the checkpoint or its absence, the
  *  standing brief, and one recovery instruction chosen by the save state. It
  *  never points to a checkpoint that does not exist. */
-export function renderCompactionOpening(input: {
+function renderCompactionOpening(input: {
   readonly checkpoint: ConversationCheckpoint | undefined;
   readonly brief: string | undefined;
   readonly saved: boolean;

@@ -1,6 +1,11 @@
-import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent as StreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent as StreamEvent, type ServingAttempt, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ToolPromptFields } from "../../../../helpers/prompt-capabilities.js";
-import { RequestToolMap, testBaseTools, testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+import { fixedRequestToolSurface, RequestToolMap, testBaseTools, testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+import type { ConversationCheckpoint } from "../../../../../src/orchestration/session/conversation-checkpoint-facts.js";
+import { createAgentLoopCompactionState } from "../../../../../src/orchestration/agent-runtime/agent-loop-compaction-state.js";
+import { createActiveRequestContext } from "../../../../../src/orchestration/agent-runtime/active-request-context.js";
+import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { createCheckpointTool } from "../../../../../src/orchestration/agent-runtime/tools/session-checkpoint.js";
 import { emptyConversationCheckpoint, type ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
@@ -186,4 +191,45 @@ export async function waitUntil(condition: () => boolean, message: string): Prom
 /** Rethrows an error that a loop under test reported, with its cause. */
 export function throwLoopError(error: Error | undefined): void {
   if (error !== undefined) throw new Error(error.message, { cause: error });
+}
+
+/** The text that opens the fresh context of a reset, as the loop's compaction state records it: the reset after a save
+ *  round that `saved` states, with `checkpoint` and `brief` stored and `capabilities` as the check of the request that
+ *  opens the fresh context. */
+export async function resetOpening(input: {
+  readonly checkpoint: ConversationCheckpoint | undefined;
+  readonly brief: string | undefined;
+  readonly saved: boolean;
+  readonly recallAvailable: boolean;
+  readonly capabilities: CapabilityCheck;
+}): Promise<string> {
+  const attempt: ServingAttempt = {
+    accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION,
+    contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+    priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+  };
+  const owner = await fixedRequestToolSurface(new Map());
+  await owner.resolve();
+  const surface: RequestToolSurfaceOwner = { resolve: owner.resolve, current: () => ({ ...owner.current(), capabilities: input.capabilities }) };
+  const unused = (): never => { throw new Error("a reset opening needs no request"); };
+  const messages: ConversationMessage[] = [];
+  const checkpoint: ConversationCheckpointOwner = { read: async () => input.checkpoint, replace: unused, decide: unused };
+  const state = createAgentLoopCompactionState({
+    options: {
+      client: makeFakeLLMClient([]), tools: surface, systemPrompt: stableSystemPrompt("test"), instruction: null,
+      executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
+      providerSessionKey: "reset-opening", promptCacheKey: "reset-opening", artifactScopeId: "reset-opening", retrievalSessionId: "reset-opening",
+      persistence: { history: { append: () => {} } }, seed: { kind: "fresh" }, onEvent: () => {},
+      standingBrief: async () => input.brief, checkpoint,
+    },
+    messages: () => messages, surface,
+    requestContext: createActiveRequestContext({ messages: () => messages, attempt: () => attempt, onEvent: () => {} }),
+    initialInteractionProfile: resolveModelInteractionProfile(attempt.model, attempt.modelFamily),
+    prepareCurrentPrompt: unused, selectAttempt: unused, attempt: () => attempt, logicalRequestContext: () => undefined,
+    admitSurface: unused, compactionAllowedTools: () => undefined, carryTurnEnd: () => false, setMessages: unused,
+    onEvent: () => {}, pushUser: unused, pushMessage: unused, checkpoint, recallAvailable: () => input.recallAvailable,
+  });
+  const [opening] = (await state.prepareCompactedHistory({ saved: input.saved })).additions;
+  if (opening?.kind !== "user" || typeof opening.content !== "string") throw new Error("expected one text opening");
+  return opening.content;
 }

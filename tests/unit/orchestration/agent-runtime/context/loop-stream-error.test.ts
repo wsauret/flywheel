@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { ApiOverloaded } from "../../../../../src/orchestration/agent-runtime/errors.js";
-import { ContentFilteredError, ContentRefusedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
+import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { ContentFilteredError, ContentRefusedError, LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ProviderStreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
@@ -25,7 +25,7 @@ describe("agent loop stream_error recovery", () => {
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
         streamCalls++;
-        throw new ApiOverloaded({ message: "checkpoint failed" });
+        throw fromStreamError(new LlmStreamError("checkpoint failed", "overload"));
       },
       priceFor() {
         return { status: "unavailable", reason: "missing-rate-card" };

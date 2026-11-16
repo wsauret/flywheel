@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
 import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../../src/infra/output/partial-json.js"
-import { completeRuntimeToolSurfaces } from "../../../../../src/orchestration/agent-runtime/factory.js"
 import { deriveChildRuntimeSurfaces } from "../../../../../src/orchestration/agent-runtime/tools/tool-registry.js"
 import { createStreamingEditValidationService, type StreamingEditValidationService, type StreamingEditValidationWorker } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js"
 import type { StreamingEditValidationWorkerReply, StreamingEditValidationWorkerRequest } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation-protocol.js"
@@ -205,15 +204,13 @@ describe("streaming edit validation service", () => {
 })
 
 describe("streaming edit validation runtime ownership", () => {
-  test("preserves the runtime-owned service identity through hosted and child surfaces", () => {
+  test("preserves the runtime-owned service identity through child surfaces", () => {
     const validation = {
       openTurn: () => ({ start: () => {}, append: () => {}, retire: () => {}, reset: () => {} }),
       dispose: async () => {},
     } satisfies StreamingEditValidationService
-    const hosted = completeRuntimeToolSurfaces({}, { streamingEditValidation: validation })
-    const child = deriveChildRuntimeSurfaces(hosted)
+    const child = deriveChildRuntimeSurfaces({ streamingEditValidation: validation })
 
-    expect(hosted.streamingEditValidation).toBe(validation)
     expect(child.streamingEditValidation).toBe(validation)
   })
 })

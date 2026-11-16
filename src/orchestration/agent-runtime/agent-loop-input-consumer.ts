@@ -38,7 +38,7 @@ interface ConsumeLoopInputOptions {
 }
 
 /** What the model does when its process wait expires: the handling of the wait-expired notice. */
-export const WAIT_EXPIRED_HANDLING = "This wait expired once. Expiry does not stop managed work. Inspect progress or interact if needed. If nothing needs action or a reply, call process(action='wait') again with a fresh remaining-work estimate in soft_timeout seconds and no visible text. Estimate all managed work. Do not send status chatter.";
+const WAIT_EXPIRED_HANDLING = "This wait expired once. Expiry does not stop managed work. Inspect progress or interact if needed. If nothing needs action or a reply, call process(action='wait') again with a fresh remaining-work estimate in soft_timeout seconds and no visible text. Estimate all managed work. Do not send status chatter.";
 
 /** A park's consumption: whether the input starts a new turn of the session
  *  (the park's turn was answered, or a person resumed an interrupted one)
