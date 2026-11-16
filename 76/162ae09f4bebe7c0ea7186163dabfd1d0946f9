@@ -1,0 +1,44 @@
+src/orchestration/app-service/bun-socket-rpc.ts
+  h_4b47e9e4a8b456 2-3,13-17,347-348
+src/orchestration/app-service/chat-mutations.ts
+  h_4b47e9e4a8b456 3,45-47,49-54,56-111
+src/orchestration/app-service/web-serving/control-ui-csp.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/app-service/web-serving/control-ui-static.ts
+  h_4b47e9e4a8b456 3,6,131-152
+src/orchestration/app-service/web-serving/token-auth.ts
+  h_4b47e9e4a8b456 13
+src/orchestration/app-service/web-serving/upstream-ledger.json
+  h_4b47e9e4a8b456 104
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 520,522
+tests/helpers/socket-rpc-server.ts
+  h_4b47e9e4a8b456 1-32
+tests/integration/local/project-control-runtime.test.ts
+  h_4b47e9e4a8b456 26-27,194,331,522
+tests/integration/local/rpc-lane-pong-tolerance.test.ts
+  h_4b47e9e4a8b456 15,103
+tests/unit/orchestration/app-service/bun-socket-rpc.test.ts
+  h_4b47e9e4a8b456 10,15,101,314-318,320-328,330-335,337-338
+tests/unit/orchestration/app-service/runtime-session-contract.test.ts
+  h_4b47e9e4a8b456 4-5,242-265,267-273,276-298
+tests/unit/orchestration/app-service/socket-runtime-client.test.ts
+  h_4b47e9e4a8b456 18,49
+tests/unit/orchestration/app-service/web-origin-auth.test.ts
+  h_4b47e9e4a8b456 69,106,148,150
+tests/unit/orchestration/app-service/web-static-serving.test.ts
+  h_4b47e9e4a8b456 4,37,49-53,56-63
+tests/unit/orchestration/modules/workflows/protocol-controls.test.ts
+  h_4b47e9e4a8b456 2-21,23-26,29-30,34-39,41-43,47,49-51,66-70,78-81,83-93,96,98,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "76162ae09f4bebe7c0ea7186163dabfd1d0946f9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
