@@ -1,0 +1,120 @@
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 227
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 23
+src/tui/commands/close-chat-surface.ts
+  h_4b47e9e4a8b456 3,5-9,11-12,21-22
+src/tui/commands/command-definitions.ts
+  h_4b47e9e4a8b456 27-30,43-44
+src/tui/commands/command-surfaces.ts
+  h_4b47e9e4a8b456 8-10
+src/tui/commands/runtime-command-bindings.ts
+  h_4b47e9e4a8b456 31,54
+src/tui/components/chat-pane.tsx
+  h_4b47e9e4a8b456 1-350
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 13,85-86,139
+src/tui/components/composer-types.ts
+  h_4b47e9e4a8b456 15,45-46,48-52
+src/tui/components/composer.tsx
+  h_4b47e9e4a8b456 84-88,526,666-667,679-684
+src/tui/components/modal-stack.ts
+  h_4b47e9e4a8b456 6-7,123,126-127,193-194,200
+src/tui/components/modal.tsx
+  h_4b47e9e4a8b456 85-86,89
+src/tui/components/session-header-stats.tsx
+  h_4b47e9e4a8b456 1-29
+src/tui/hooks/create-composer-attach-slot.ts
+  h_4b47e9e4a8b456 3-7,9-10,15,17-24
+src/tui/hooks/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 5-6,12-13,16-18,20-23,27,31-36,83-84,86-87,89-96
+src/tui/hooks/create-composer-focus.ts
+  h_4b47e9e4a8b456 2,40-43
+src/tui/hooks/create-header-display.ts
+  h_4b47e9e4a8b456 58-59,65,74-77,79,81,84,87,89,93
+src/tui/hooks/create-keyboard-handler.ts
+  h_4b47e9e4a8b456 18-27,29-50,143-144,146,150,176-178,181,202-216,219,232,238-252,254-256
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 166,486
+src/tui/hooks/create-module-slots.tsx
+  h_4b47e9e4a8b456 28-31,52-53,69-71,97-102,104,139,189,209-213,223,229,304,313,318
+src/tui/hooks/create-session-changes.ts
+  h_4b47e9e4a8b456 23-25,28,38
+src/tui/hooks/create-session-surface.ts
+  h_4b47e9e4a8b456 17,19,57-71
+src/tui/hooks/session-activation.ts
+  h_4b47e9e4a8b456 25-27,52-54,63-69
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 12,71-73,114-115,200,202-204,408,505-508,514,612,627,672,681,685-689
+src/tui/hooks/transcript-in-view.ts
+  h_4b47e9e4a8b456 1,4-14,17,22,33-38,42-44,47-48,51-52,55-56
+src/tui/hooks/use-chat-mode.ts
+  h_4b47e9e4a8b456 21-22,62
+src/tui/hooks/use-commands.ts
+  h_4b47e9e4a8b456 6,25-30,54,77,83,90
+src/tui/hooks/use-session-changes-modal.ts
+  h_4b47e9e4a8b456 11-12,18-20,33,63,96,99,103,105-106,134-138,183,185
+src/tui/modules/lead/chat-viewer.tsx
+  h_4b47e9e4a8b456 3,8,10-12,14,19,54-59,70,84,87,96-99,102,106-113,115,118-122,127,129,133,146-151,158,164-180,182-186
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 19,32,36,77-79,122-123,172-176,180,185,304,318-320,336,347,372,381-382,385,390,419,443,455,458,465-467,469,473,484-546,562-563,569-574
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 1,47-48
+tests/helpers/command-context.ts
+  h_4b47e9e4a8b456 18-19
+tests/unit/tui/chat-auth-guard.test.ts
+  h_4b47e9e4a8b456 45-46
+tests/unit/tui/chat-default-landing.test.ts
+  h_4b47e9e4a8b456 18,56-57,82
+tests/unit/tui/commands/close-chat-surface.test.ts
+  h_4b47e9e4a8b456 5,7,9-10,21-29
+tests/unit/tui/commands/command-dispatch.test.ts
+  h_4b47e9e4a8b456 31,36,50,79,136-143
+tests/unit/tui/commands/command-registration.test.ts
+  h_4b47e9e4a8b456 233,236,238
+tests/unit/tui/components/_chat-pane-fixtures.tsx
+  h_4b47e9e4a8b456 1-119
+tests/unit/tui/components/chat-pane.test.tsx
+  h_4b47e9e4a8b456 1-159
+tests/unit/tui/components/child-session-viewer-input.test.tsx
+  h_4b47e9e4a8b456 56,98,105
+tests/unit/tui/components/child-session-viewer.test.tsx
+  h_4b47e9e4a8b456 130
+tests/unit/tui/components/prompt-area-fixture.ts
+  h_4b47e9e4a8b456 1,52-53,97,106
+tests/unit/tui/components/prompt-bar-cursor.test.ts
+  h_4b47e9e4a8b456 24-25,27,34
+tests/unit/tui/hooks/create-composer-border-layout.test.ts
+  h_4b47e9e4a8b456 49-67,69,71-73,75-77,86,98,100-101,106
+tests/unit/tui/hooks/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 193-197,200,209
+tests/unit/tui/hooks/header-display.test.ts
+  h_4b47e9e4a8b456 38,55,67-68,83,96,112,126,143,160,175,191,212,238,240,276-278,304,339,341,369,409,448,463,480
+tests/unit/tui/hooks/header-empty-state.test.ts
+  h_4b47e9e4a8b456 36-37,39
+tests/unit/tui/hooks/session-activation.test.ts
+  h_4b47e9e4a8b456 224,230,252-259,319
+tests/unit/tui/hooks/session-changes.test.ts
+  h_4b47e9e4a8b456 57,71
+tests/unit/tui/hooks/use-commands-async.test.ts
+  h_4b47e9e4a8b456 49,59-60
+tests/unit/tui/keyboard-handler.test.ts
+  h_4b47e9e4a8b456 66-90
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 2,18-23,43-49,52,71-94,103,111,113,127-132,141-142,149-151,157,159-161,170-178,180,185
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 2,13-15,36-41,84,127-154,231-257,306
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5eaf790fa733ad4013637f09285c982ad856a29d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
