@@ -1,0 +1,94 @@
+src/infra/control-characters.ts
+  h_4b47e9e4a8b456 3-8,13,16-17,58,148-208
+src/infra/output-blocks.ts
+  h_4b47e9e4a8b456 29-30
+src/infra/output/output-projection-events.ts
+  h_4b47e9e4a8b456 39
+src/infra/output/output-projector.ts
+  h_4b47e9e4a8b456 143-144,147,164
+src/infra/output/output-tool-projector.ts
+  h_4b47e9e4a8b456 12,44,53,140-146,174-175,188,194,208,213,217,222,233,240,320,327,343,412,415,424,469,471,485,537,539
+src/infra/output/partial-json.ts
+  h_4b47e9e4a8b456 63,76,78-82,110,126,152,162,164,190,198-216,321,325-326,328-329,339,404
+src/infra/output/runtime-event-projector.ts
+  h_4b47e9e4a8b456 96,100
+src/infra/output/streaming-tool-inputs.ts
+  h_4b47e9e4a8b456 3,13-14,37-41,47,54-56,60,63,67-68,78,83,93,100,108,115
+src/infra/output/structured-event-tool-materializer.ts
+  h_4b47e9e4a8b456 5,9,18,57-58,70,80,103,127,131-132,147,191-192,202-204,220-222,227,237,239-242,251,263-268,274-275,292,322-323
+src/infra/output/structured-event-tool-results.ts
+  h_4b47e9e4a8b456 47,230-233,251
+src/infra/output/structured-output-builder.ts
+  h_4b47e9e4a8b456 579-580,584-589
+src/infra/output/structured-output-helpers.ts
+  h_4b47e9e4a8b456 1
+src/infra/output/structured-output-state.ts
+  h_4b47e9e4a8b456 2
+src/infra/tools/detail-helpers.ts
+  h_4b47e9e4a8b456 3,69-188,190-191,194,201
+src/infra/tools/displays/bash.ts
+  h_4b47e9e4a8b456 1-4,8-11,18-105,119,121,123-126,128-132
+src/infra/tools/displays/edit.ts
+  h_4b47e9e4a8b456 1,4,6-51,56-58,66-105,112,117,121
+src/infra/tools/shell-sentence.ts
+  h_4b47e9e4a8b456 236-248,253-255,262-291,295-325
+src/infra/tools/shell-words.ts
+  h_4b47e9e4a8b456 58-60,63-90,93-99,101-130,132-136,138-179,183,185,187-188,193,197,203,205,207,209,212-213,217,229,232-235,238-240,244,259-262,264,266-267,269-270,273,275,277-278,281-283,285,288-289,293-294,297-299,302-306,310-314,316,319,328-329,333-335,339-342,345,355-356,359,371-373,375-376,378,381-383,385-387,394,398-400,402-406,420,461
+src/infra/tools/tool-display-registry.ts
+  h_4b47e9e4a8b456 15,49,107,158
+src/infra/tools/types.ts
+  h_4b47e9e4a8b456 32-51,60-63
+src/orchestration/app-service/frontend-output-blocks.ts
+  h_4b47e9e4a8b456 20-22
+src/orchestration/app-service/transcript-projection-cache.ts
+  h_4b47e9e4a8b456 436
+src/protocol/transcript-protocol-schemas.ts
+  h_4b47e9e4a8b456 119,129,139
+tests/unit/infra/output/abandoned-tool-input.test.ts
+  h_4b47e9e4a8b456 23,31,35,43
+tests/unit/infra/output/builder-agent.test.ts
+  h_4b47e9e4a8b456 3-5,188,190-197,199-203,205-210,213-216,218-220
+tests/unit/infra/output/display-paths.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/output/parser-agent-lifecycle.test.ts
+  h_4b47e9e4a8b456 70,75
+tests/unit/infra/output/parser-nested-filter.test.ts
+  h_4b47e9e4a8b456 5,37-40,60,62-64,66-67,71,74-75,77
+tests/unit/infra/output/parser-subagent.test.ts
+  h_4b47e9e4a8b456 164,179
+tests/unit/infra/output/parser-tools.test.ts
+  h_4b47e9e4a8b456 138,151-153,155-156,176
+tests/unit/infra/output/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 12,97
+tests/unit/infra/tools/file-change-materialization.test.ts
+  h_4b47e9e4a8b456 110
+tests/unit/infra/tools/partial-json.test.ts
+  h_4b47e9e4a8b456 41,46-47,109-136
+tests/unit/infra/tools/shell-sentence.test.ts
+  h_4b47e9e4a8b456 2-4,6-12,67-68,72,103-104,108,125-126,129-141
+tests/unit/infra/tools/streaming-tool-input.test.ts
+  h_4b47e9e4a8b456 1,8-10,80,88,474,526-716
+tests/unit/infra/tools/streaming-tool-validation.test.ts
+  h_4b47e9e4a8b456 86
+tests/unit/infra/tools/tool-contract.test.ts
+  h_4b47e9e4a8b456 3,33,35
+tests/unit/infra/tools/tool-contracts-registry.test.ts
+  h_4b47e9e4a8b456 2,36,108-109,217,224,375-386
+tests/unit/orchestration/agent-runtime/attempt-settlement-regressions.test.ts
+  h_4b47e9e4a8b456 213
+tests/unit/orchestration/agent-runtime/streaming-tool-validation.test.ts
+  h_4b47e9e4a8b456 117,119-123
+tests/unit/orchestration/app-service/transcript-group-children.test.ts
+  h_4b47e9e4a8b456 505,508-513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "abb156a00c33bd1e7301e90e09ded2e8ac6d2d85",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
