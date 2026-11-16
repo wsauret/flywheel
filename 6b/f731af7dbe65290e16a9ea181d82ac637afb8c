@@ -1,0 +1,22 @@
+src/orchestration/app-service/output-projection.ts
+  h_4b47e9e4a8b456 27-29,82-90,104,108-112,115,117-118,124-129,133,167,169-172,175-182,190,192,199,213,232,237,240,249,291-304,311-320,323,326,328-331,339,357,359-360,362,369,371-375,386,398-407,417-420,422-423,425,428-430,436-438,443-454,460,516,518
+src/orchestration/app-service/output-sequence.ts
+  h_4b47e9e4a8b456 52-56,72,86
+src/orchestration/app-service/transcript-projection-cache.ts
+  h_4b47e9e4a8b456 369-371,373,396,409,414,416
+tests/unit/orchestration/app-service/output-projection-cards.test.ts
+  h_4b47e9e4a8b456 1-195
+tests/unit/orchestration/app-service/output-projection-child-cards.test.ts
+  h_4b47e9e4a8b456 14,53,238,265-269,271-272,278,287-328,497-498,524,530-531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6bf731af7dbe65290e16a9ea181d82ac637afb8c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
