@@ -1,0 +1,42 @@
+src/infra/control-characters.ts
+  h_4b47e9e4a8b456 5-6,52,86-91,120-123,125-131
+src/orchestration/app-service/frontend-projection.ts
+  h_4b47e9e4a8b456 48-49,65-66,136-141,147,151,159-162,178,204,208,214,223-224,248-259,324-325,329,336-337,345,401,407,418-419,448,490-499
+src/orchestration/app-service/streaming-text-partition.ts
+  h_4b47e9e4a8b456 19,36-41,43-48,50-57,61-65,71-76,82-86,88-89,91,96-136
+src/orchestration/modules/side-question/host.ts
+  h_4b47e9e4a8b456 17,19-20,23-30,39,59,71-76,106,111-122,137,166,185
+src/orchestration/modules/side-question/protocol.ts
+  h_4b47e9e4a8b456 1,5,7-10,22-33,36,48-50,52
+src/orchestration/modules/side-question/request.ts
+  h_4b47e9e4a8b456 19-20,22,67,77-106
+src/protocol/modules/side-question.ts
+  h_4b47e9e4a8b456 31-36,49-52,72-81,85-88,94-95,113-116
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 275-278,280
+tests/unit/infra/control-characters.test.ts
+  h_4b47e9e4a8b456 4,99-131
+tests/unit/orchestration/app-service/frontend-projection.test.ts
+  h_4b47e9e4a8b456 12,33-38,385,387-388,392,394,398,400,407-447
+tests/unit/orchestration/app-service/streaming-text-partition.test.ts
+  h_4b47e9e4a8b456 15-19,29-32
+tests/unit/orchestration/modules/side-question/host.test.ts
+  h_4b47e9e4a8b456 54,171
+tests/unit/orchestration/modules/side-question/protocol.test.ts
+  h_4b47e9e4a8b456 224-272
+tests/unit/orchestration/modules/side-question/request.test.ts
+  h_4b47e9e4a8b456 161
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 110-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "54b62ae9f400844efad9ddb6cca514e8d7b949fb",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
