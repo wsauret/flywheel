@@ -1,0 +1,24 @@
+src/infra/event-store-types.ts
+  h_4b47e9e4a8b456 180-184
+src/infra/sqlite-event-store-core.ts
+  h_4b47e9e4a8b456 213,216,340-343
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 5,275-276,284,509,598,647
+tests/release/fixtures/workflow-agent-previous-shape.ts
+  h_4b47e9e4a8b456 70,177-178,204-209
+tests/unit/infra/event-store.test.ts
+  h_4b47e9e4a8b456 396-410
+tests/unit/orchestration/migrations/workflow-agent-execution-transfer.test.ts
+  h_4b47e9e4a8b456 59-60,131,133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "94d49a592b70fb23bbb4ef0cde066e0e51e87b28",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
