@@ -1,0 +1,18 @@
+bench/harbor/configs/luna-checkpoint-off.toml
+  h_4b47e9e4a8b456 1-77
+bench/harbor/configs/luna-scratch-off.toml
+  h_4b47e9e4a8b456 1-78
+bench/harbor/configs/luna-skills-off.toml
+  h_4b47e9e4a8b456 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bb5dc1106e9337fd72a73712d52572aa54a303eb",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
