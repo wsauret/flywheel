@@ -1,4 +1,4 @@
-import { describe, expect, spyOn, test } from "bun:test"
+import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
@@ -7,16 +7,16 @@ import type { MeasuredUsageEntry, UsageEntry } from "../../../../src/infra/llm/u
 import { Log } from "../../../../src/infra/log.js"
 import {
   createSessionUsageSettlement,
-  createUsageSettlement,
   recoverSessionUsageSettlements,
   type UsageSettlementDraft,
-  type UsageSettlementRetirement,
 } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/provider-request-audit-projection.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()
+const openStores: Array<() => void> = []
+afterEach(() => { for (const close of openStores.splice(0)) close() })
 
 const entry: MeasuredUsageEntry = {
   attemptId: "00000000-0000-4000-8000-000000000001",
@@ -49,39 +49,60 @@ const draft: UsageSettlementDraft = {
 
 const unmeasuredDraft: UsageSettlementDraft = { ...draft, entry: unmeasuredEntry }
 
+/** A session settlement over a real store, whose writer and authority lease log each step of the saga in `calls`:
+ *  a checkpoint write, a retirement with no fact, the lease (`open`), the ledger append, the publication, and the
+ *  lease release (`dispose`). */
 function harness(options: {
   checkpointError?: Error
   append?: () => { readonly kind: "appended" | "duplicate" }
-  publish?: (draft: UsageSettlementDraft, retirement: UsageSettlementRetirement) => Promise<{ readonly kind: "published" | "duplicate" }>
+  publishError?: Error
 } = {}) {
+  const store = createSqliteEventStore(join(temporaryDirectory("flywheel-usage-settlement-steps-"), "events.sqlite"))
+  const writer = createSessionFactWriter({ sessionId: "parent", writer: asAsyncEventWriter(store) })
+  openStores.push(() => { writer.dispose(); store.close() })
   const calls: string[] = []
   const opened: string[] = []
-  const checkpoints: Array<{ kind: string; key: string; payload: unknown }> = []
-  const authority = {
-    append: () => {
-      calls.push("append")
-      return options.append?.() ?? { kind: "appended" as const }
+  const settlement = createSessionUsageSettlement({
+    owner: { kind: "session", sessionId: "parent" },
+    reader: asAsyncEventReadSurface(store),
+    writer: {
+      ...writer,
+      putInFlight: async (kind, key, payload) => {
+        calls.push("checkpoint")
+        if (options.checkpointError) throw options.checkpointError
+        await writer.putInFlight!(kind, key, payload)
+      },
+      dropInFlight: async (kind, key) => {
+        calls.push("retire")
+        await writer.dropInFlight!(kind, key)
+      },
+      transaction: async (publication) => {
+        calls.push("publish")
+        if (options.publishError) throw options.publishError
+        await writer.transaction(publication)
+      },
     },
-    dispose: () => { calls.push("dispose") },
-  }
-  const settlement = createUsageSettlement({
-    putInFlight: async (kind, key, payload) => {
-      calls.push("checkpoint")
-      checkpoints.push({ kind, key, payload })
-      if (options.checkpointError) throw options.checkpointError
-    },
-    retire: async (retirement) => { calls.push(`retire:${retirement.op}`) },
-    openAuthority: (profileId) => {
+    acquireAuthority: async (profileId) => {
       calls.push("open")
       opened.push(profileId)
-      return authority
+      return {
+        profileId,
+        authorityIncarnation: "incarnation-1",
+        append: () => {
+          calls.push("append")
+          return options.append?.() ?? { kind: "appended" as const }
+        },
+        release: async () => { calls.push("dispose") },
+      }
     },
-    publish: options.publish ?? (async (_draft, retirement) => {
-      calls.push(`publish:${retirement.op}`)
-      return { kind: "published" as const }
-    }),
   })
-  return { settlement, calls, opened, checkpoints }
+  return {
+    settlement, calls, opened,
+    /** Writes a settlement cell as an earlier process left it. */
+    leaveCell: (payload: unknown) => writer.putInFlight!("usage.settlement", entry.attemptId, payload),
+    cells: () => store.readInFlight("parent", "usage.settlement").map(({ kind, key, payload }) => ({ kind, key, payload })),
+    facts: () => store.read({ sessionId: "parent" }),
+  }
 }
 
 describe("usage settlement", () => {
@@ -192,33 +213,40 @@ describe("usage settlement", () => {
   })
 
   test("persists the unmeasured record before the wire attempt and replaces it with the measured record", async () => {
-    const { settlement, calls, opened, checkpoints } = harness()
+    const { settlement, calls, opened, cells } = harness()
     await settlement.begin(unmeasuredDraft)
-    expect(checkpoints).toEqual([{ kind: "usage.settlement", key: entry.attemptId, payload: unmeasuredDraft }])
+    expect(cells()).toEqual([{ kind: "usage.settlement", key: entry.attemptId, payload: unmeasuredDraft }])
     await settlement.checkpoint(draft)
-    expect(checkpoints[1]).toEqual({ kind: "usage.settlement", key: entry.attemptId, payload: draft })
+    expect(cells()).toEqual([{ kind: "usage.settlement", key: entry.attemptId, payload: draft }])
     await settlement.settle(entry.attemptId, { served: true })
-    expect(calls).toEqual(["checkpoint", "checkpoint", "open", "append", "dispose", "publish:drop"])
+    expect(calls).toEqual(["checkpoint", "checkpoint", "open", "append", "publish", "dispose"])
     expect(opened).toEqual([entry.profileId])
+    expect(cells()).toEqual([])
   })
 
   test("an attempt the provider did not serve retires without opening the ledger or publishing facts", async () => {
-    const { settlement, calls } = harness()
+    const { settlement, calls, cells, facts } = harness()
     await settlement.begin(unmeasuredDraft)
     await settlement.settle(entry.attemptId, { served: false })
-    expect(calls).toEqual(["checkpoint", "retire:drop"])
+    expect(calls).toEqual(["checkpoint", "retire"])
+    expect(cells()).toEqual([])
+    expect(facts()).toEqual([])
   })
 
   test("recovers a measured checkpoint from a build before coverage, which named the workflow attempt stepId", async () => {
-    const published: UsageSettlementDraft[] = []
-    const { settlement } = harness({ publish: async (recovered) => {
-      published.push(recovered)
-      return { kind: "published" }
-    } })
+    const { settlement, leaveCell, cells, facts } = harness()
     const { workflowAttemptId: _current, ...rest } = draft
     const { coverage: _coverage, ...uncovered } = entry
-    await settlement.recover({ state: "measured", ...rest, entry: uncovered, stepId: "step-1" })
-    expect(published).toEqual([draft])
+    const earlier = { state: "measured", ...rest, entry: uncovered, stepId: "step-1" }
+    await leaveCell(earlier)
+    await settlement.recover(earlier)
+    const published = facts()
+    expect(published.find((fact) => fact.type === "model.usage.recorded")?.payload).toMatchObject({
+      requestId: draft.requestId, attemptId: entry.attemptId, identity: draft.identity, turn: draft.turn,
+      workflowAttemptId: draft.workflowAttemptId, parentToolUseId: draft.parentToolUseId, coverage: "complete",
+    })
+    expect(published.find((fact) => fact.type === "model.usage.measured")?.payload).toEqual({ ...entry, parentToolUseId: draft.parentToolUseId, budgetStreamId: draft.budgetStreamId })
+    expect(cells()).toEqual([])
   })
 
   test("recovery retires a pending checkpoint from a build before coverage with one warning and no ledger work", async () => {
@@ -234,7 +262,7 @@ describe("usage settlement", () => {
         identity: draft.identity,
         turn: draft.turn,
       })
-      expect(calls).toEqual(["retire:drop"])
+      expect(calls).toEqual(["retire"])
       expect(opened).toEqual([])
       expect(warn).toHaveBeenCalledTimes(1)
       expect(warn.mock.calls[0]?.[1]).toEqual({ attemptId: entry.attemptId })
@@ -255,7 +283,7 @@ describe("usage settlement", () => {
     const { settlement, calls } = harness({ append: () => ({ kind: "duplicate" }) })
     await settlement.checkpoint(draft)
     await settlement.settle(entry.attemptId, { served: true })
-    expect(calls).toEqual(["checkpoint", "open", "append", "dispose", "publish:drop"])
+    expect(calls).toEqual(["checkpoint", "open", "append", "publish", "dispose"])
   })
 
   test("disposes the authority and stops publication on conflict", async () => {
@@ -268,16 +296,12 @@ describe("usage settlement", () => {
 
   test("retains the checkpoint on publication failure", async () => {
     const failure = new Error("publish failed")
-    const publications: Array<{ draft: UsageSettlementDraft; retirement: UsageSettlementRetirement }> = []
-    const { settlement, calls } = harness({ publish: async (value, retirement) => {
-      calls.push("publish")
-      publications.push({ draft: value, retirement })
-      throw failure
-    } })
+    const { settlement, calls, cells, facts } = harness({ publishError: failure })
     await settlement.checkpoint(draft)
-    expect(settlement.settle(entry.attemptId, { served: true })).rejects.toBe(failure)
-    expect(calls).toEqual(["checkpoint", "open", "append", "dispose", "publish"])
-    expect(publications).toEqual([{ draft, retirement: { op: "drop", kind: "usage.settlement", key: entry.attemptId } }])
+    await expect(settlement.settle(entry.attemptId, { served: true })).rejects.toBe(failure)
+    expect(calls).toEqual(["checkpoint", "open", "append", "publish", "dispose"])
+    expect(cells()).toEqual([{ kind: "usage.settlement", key: entry.attemptId, payload: draft }])
+    expect(facts()).toEqual([])
   })
 
   test("rejects invalid durable payload before opening an authority", async () => {

@@ -1,5 +1,5 @@
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent as StreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ToolPromptFields } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
+import type { ToolPromptFields } from "../../../../helpers/prompt-capabilities.js";
 import { RequestToolMap, testBaseTools, testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { createCheckpointTool } from "../../../../../src/orchestration/agent-runtime/tools/session-checkpoint.js";
 import { emptyConversationCheckpoint, type ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";

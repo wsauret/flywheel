@@ -2,6 +2,9 @@ import type { CapabilityCheck } from "../../src/infra/capability-text.js";
 import { toolIdentity } from "../../src/orchestration/tool-catalog.js";
 import type { BuildSystemPromptOptions } from "../../src/orchestration/agent-runtime/system-prompt.js";
 
+/** The fields of a tool that the system prompt reads. */
+export type ToolPromptFields = BuildSystemPromptOptions["tools"][number];
+
 /** The tree check of a prompt test that names its tools directly: each tool's logical identity holds, each of
  *  `skills` holds while the skill tool is among the tools, as a request's tree check states it, and every agent type
  *  holds, as it does while no type is turned off. */

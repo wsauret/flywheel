@@ -12,7 +12,7 @@ import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, t
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { createMessageSessionTool, MESSAGE_SESSION_TOOL_NAME } from "../../../../src/orchestration/agent-runtime/tools/message-session.js"
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js"
-import { trackTurnHop, turnHopOf, type TurnHopTracker } from "../../../../src/orchestration/agent-runtime/turn-hop.js"
+import { trackTurnHop, type TurnHopTracker } from "../../../../src/orchestration/agent-runtime/turn-hop.js"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages.js"
 import { interruptedTurnMessage } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import type { DeliveryOutcome } from "../../../../src/orchestration/session/live-session-control.js"
@@ -52,6 +52,11 @@ function call(id: string, name: string, input: { readonly [key: string]: unknown
 }
 
 const END: ProviderStreamEvent[] = [{ kind: "done", stopReason: "end_turn" }]
+
+/** The hop that a loop which starts or resumes on `history` reads, before it consumes an input. */
+function resumedHop(history: readonly ConversationMessage[]): number {
+  return trackTurnHop(() => history).current()
+}
 
 function fromSession(sessionId: string, hop: number, toolUseId = `${sessionId}-call`): SessionInputProducer {
   return { kind: "session", sessionId, conversationId: `${sessionId}-conversation`, toolUseId, hop }
@@ -207,7 +212,7 @@ test("a person's Resume after an interrupt cut a turn that read a session messag
     history.push({ kind: "user", origin: "system", content: interruptedTurnMessage("runtime", false) }, { kind: "user", origin: "system", content: CONTINUATION_MESSAGES.resumed })
     hop.observe(resumeInput(), true)
     expect(hop.current()).toBe(expected)
-    expect(turnHopOf(history)).toBe(expected)
+    expect(resumedHop(history)).toBe(expected)
   }
 })
 
@@ -215,11 +220,11 @@ test("a peer's message that a turn waiting on background work reads raises the h
   const reader = answeredWhileWorkRuns()
   readMessage(reader, related("other", "b", 2, "b-1"))
   expect(reader.hop.current()).toBe(3)
-  expect(turnHopOf(reader.history)).toBe(3)
+  expect(resumedHop(reader.history)).toBe(3)
   // A peer's message at a lower hop leaves the hop.
   readMessage(reader, related("sibling", "c", 1, "c-1"))
   expect(reader.hop.current()).toBe(3)
-  expect(turnHopOf(reader.history)).toBe(3)
+  expect(resumedHop(reader.history)).toBe(3)
   // A peer's reply to the reader's own wait, from history that holds a wait
   // between peers, leaves the hop.
   reader.history.push(
@@ -228,11 +233,11 @@ test("a peer's message that a turn waiting on background work reads raises the h
   )
   readMessage(reader, related("other", "b", 4, "b-2"))
   expect(reader.hop.current()).toBe(3)
-  expect(turnHopOf(reader.history)).toBe(3)
+  expect(resumedHop(reader.history)).toBe(3)
   // The next message from that peer answers no wait.
   readMessage(reader, related("other", "b", 4, "b-3"))
   expect(reader.hop.current()).toBe(5)
-  expect(turnHopOf(reader.history)).toBe(5)
+  expect(resumedHop(reader.history)).toBe(5)
   // The turn ends. A message from an unrelated chat wakes the reader into a
   // new turn, which joins the chain of that message alone.
   reader.history.push({ kind: "assistant", content: "Done." })
@@ -240,7 +245,7 @@ test("a peer's message that a turn waiting on background work reads raises the h
   reader.history.push({ kind: "user", content: "a question", producer: question })
   reader.hop.observe(messageInput({ text: "a question", producer: question }, { origin: "session" }), true)
   expect(reader.hop.current()).toBe(1)
-  expect(turnHopOf(reader.history)).toBe(1)
+  expect(resumedHop(reader.history)).toBe(1)
 })
 
 test("a parent that talks with its children while it waits on them keeps its hop, and a message with no envelope keeps the hop of the message", () => {
@@ -312,7 +317,7 @@ test("a child that asks its idle parent six questions in one run and waits for e
       outcomes.push(outcome)
       if (input.producer?.kind === "session") hops.push(input.producer.hop)
       if (outcome.status === "delivered" && input.producer) {
-        const sender = { sessionId: parent, conversationId: `${parent}-conversation`, toolUseId: `answer-${outcomes.length}`, hop: turnHopOf([{ kind: "user", content: input.text, producer: input.producer }]) }
+        const sender = { sessionId: parent, conversationId: `${parent}-conversation`, toolUseId: `answer-${outcomes.length}`, hop: resumedHop([{ kind: "user", content: input.text, producer: input.producer }]) }
         answers.push(new Promise((resolve) => { setTimeout(resolve, 0) }).then(() => messaging.send({ sender, target: "session", to: child, text: `answer ${outcomes.length}`, personWords: () => undefined })))
       }
       return outcome
@@ -383,7 +388,7 @@ test("a running chat that wakes an idle peer each round and reads each reply mid
       outcomes.push(outcome)
       if (input.producer?.kind === "session") hops.push(input.producer.hop)
       if (outcome.status === "delivered" && input.producer) {
-        const wokenTurnHop = turnHopOf([{ kind: "user", content: input.text, producer: input.producer }])
+        const wokenTurnHop = resumedHop([{ kind: "user", content: input.text, producer: input.producer }])
         queue.enqueueMessage({ text: `answer ${outcomes.length}`, producer: fromSession(peer, wokenTurnHop, `reply-${outcomes.length}`) })
       }
       return outcome

@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { buildSystemPromptParts, buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOptions, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPromptParts, buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOptions } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { resolveModelInteractionProfile } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { CHALLENGE, CODE_REFERENCES, FOLLOW_UP_WORK, KEEP_GOING, MODEL_GUIDANCE, OPEN_CHOICES } from "../../../../src/orchestration/agent-runtime/model-chat-body.js";
@@ -18,7 +18,7 @@ import { createProjectDefinitionRegistry } from "../../../../src/workflows/defin
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { planPromptRequest, promptParts, type PromptAssembly } from "../../../../scripts/prompt-assembly.js";
 import { testDirectories } from "../../../helpers/directories.js";
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 
 const spec = (name: string, opts: Partial<ToolPromptFields> = {}): ToolPromptFields => ({ action: "ui_meta", description: `${name} tool`, ...opts, name });
 const TOOLS: ToolPromptFields[] = [spec("bash"), spec("read")];

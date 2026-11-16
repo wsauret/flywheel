@@ -3,12 +3,8 @@ import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/to
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  buildSystemPrompt as buildSystemPromptTiers,
-  buildSystemPromptParts,
-  renderToolContext,
-  type ToolPromptFields,
-} from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPrompt as buildSystemPromptTiers, buildSystemPromptParts } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines, type GlobalGuidelineId } from "../../../../src/orchestration/agent-runtime/global-guidelines.js";
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR as SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { createSkillTool } from "../../../../src/orchestration/agent-runtime/tools/skill.js";
@@ -19,7 +15,7 @@ import { testDirectories } from "../../../helpers/directories.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import { testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
-import { promptCapabilities, promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptCapabilities, promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 
 const bashDefinition = createBashDefinition();
 
@@ -57,6 +53,12 @@ const corePrompt = loadSystemPrompt(promptRealm);
 const engineeringDoctrine = loadEngineeringDoctrine(promptRealm);
 const buildSystemPrompt = (...args: Parameters<typeof buildSystemPromptTiers>): string =>
   renderSystemPrompt(buildSystemPromptTiers(...args));
+
+/** The tool context section of a subagent's prompt with `tools`, whose only other guidelines are `globalGuidelineIds`. */
+function toolContextOf(tools: ToolPromptFields[], globalGuidelineIds: readonly GlobalGuidelineId[] = []): string | undefined {
+  return buildSystemPromptParts(promptOptions({ corePrompt, tools, promptKind: "subagent", globalGuidelineIds }))
+    .find((part) => part.label === "tool context")?.text;
+}
 
 // The structural-defect catalog lives in the elegance-review-principles skill,
 // which every reviewer and review synthesizer composes; the always-on doctrine
@@ -361,59 +363,59 @@ describe("buildSystemPrompt -- cross-cutting", () => {
   });
 });
 
-describe("renderToolContext", () => {
+describe("tool context", () => {
   it("produces Guidelines and Examples in one block, with no list of the tools", () => {
-    const result = renderToolContext(
+    const result = toolContextOf(
       [
         spec("bash", { description: "Run shell commands. Supports bash.", promptGuidelines: ["Always quote paths"], promptExamples: "bash ls -la" }),
         spec("read", { description: "Read files from disk. Requires path." }),
       ],
-      ["Be concise in your responses."],
+      [GLOBAL_GUIDELINE_ID.batchIndependentToolCalls],
     );
     expect(result).not.toContain("Available tools");
     expect(result).not.toContain("Read files from disk");
     expect(result).toContain("Guidelines:");
     expect(result).toContain("- Always quote paths");
-    expect(result).toContain("- Be concise in your responses.");
+    expect(result).toContain("- Calls in one turn run concurrently.");
     expect(result).toContain("# Examples");
     expect(result).toContain("## bash");
     expect(result).toContain("bash ls -la");
   });
 
-  it("returns undefined for empty tools array", () => {
-    expect(renderToolContext([], [])).toBeUndefined();
+  it("is left out for empty tools array", () => {
+    expect(toolContextOf([], [GLOBAL_GUIDELINE_ID.batchIndependentToolCalls])).toBeUndefined();
   });
 
-  it("deduplicates identical guidelines", () => {
-    const result = renderToolContext(
+  it("deduplicates identical guidelines across tools and the global guidelines", () => {
+    const [batching] = renderGlobalGuidelines([GLOBAL_GUIDELINE_ID.batchIndependentToolCalls], () => true);
+    const result = toolContextOf(
       [
-        spec("bash", { description: "x", promptGuidelines: ["Be concise."] }),
+        spec("bash", { description: "x", promptGuidelines: ["Be concise.", batching!] }),
         spec("read", { description: "y", promptGuidelines: ["Be concise."] }),
       ],
-      ["Be concise."],
+      [GLOBAL_GUIDELINE_ID.batchIndependentToolCalls],
     );
     expect(result!.match(/Be concise\./g)).toHaveLength(1);
+    expect(result!.split(batching!)).toHaveLength(2);
   });
 
   it("omits Guidelines section when none exist", () => {
-    const result = renderToolContext([spec("custom", { description: "Run shell.", promptExamples: "custom run" })], []);
+    const result = toolContextOf([spec("custom", { description: "Run shell.", promptExamples: "custom run" })]);
     expect(result).toContain("# Examples");
     expect(result).not.toContain("Guidelines:");
   });
 
   it("omits Examples section when no tool has examples", () => {
-    const result = renderToolContext([spec("custom", { description: "Run shell." })], []);
+    const result = toolContextOf([spec("custom", { description: "Run shell.", promptGuidelines: ["Quote paths."] })]);
+    expect(result).toContain("- Quote paths.");
     expect(result).not.toContain("# Examples");
   });
 
   it("omits tools without examples from Examples section", () => {
-    const result = renderToolContext(
-      [
-        spec("bash", { description: "x", promptExamples: "bash ls" }),
-        spec("read", { description: "y" }),
-      ],
-      [],
-    );
+    const result = toolContextOf([
+      spec("bash", { description: "x", promptExamples: "bash ls" }),
+      spec("read", { description: "y" }),
+    ]);
     expect(result).toContain("## bash");
     expect(result).not.toContain("## read");
   });
@@ -573,7 +575,7 @@ describe("always-on kernel carries no package body", () => {
 // Explicit background execution is the one capability-owned half of Bash.
 // Its text is the same for every agent; execution refuses it where it is off.
 describe("bash background-execution guidance", () => {
-  const guidelinesOf = (tool: ToolPromptFields) => renderToolContext([tool], []) ?? "";
+  const guidelinesOf = (tool: ToolPromptFields) => toolContextOf([tool]) ?? "";
 
   it("advertises completion-first foreground and explicit background execution on the shipped definition", () => {
     const rendered = guidelinesOf(bashDefinition);

@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
-import { buildSystemPrompt, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt"
+import { buildSystemPrompt } from "../../../../src/orchestration/agent-runtime/system-prompt"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 
 const read = (path: string) => readFileSync(path, "utf8")
 

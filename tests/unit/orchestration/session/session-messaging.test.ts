@@ -6,7 +6,7 @@ import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agen
 import { createListSessionsTool } from "../../../../src/orchestration/agent-runtime/tools/list-sessions"
 import { createMessageSessionTool } from "../../../../src/orchestration/agent-runtime/tools/message-session"
 import type { ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types"
-import { turnHopOf } from "../../../../src/orchestration/agent-runtime/turn-hop"
+import { trackTurnHop } from "../../../../src/orchestration/agent-runtime/turn-hop"
 import { decodeQueuedUserInputCell, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { registerLiveSessionControl, registerLiveWorkflowControl } from "../../../../src/orchestration/session/live-session-control"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
@@ -45,6 +45,12 @@ function project() {
       return producer?.kind === "session" ? [producer] : []
     })
   return { root, store, manager, reader, messaging, producers, counter }
+}
+
+/** The hop of the turn that `input` starts in an idle chat, as the loop reads it from the history that the input begins. */
+function startedHop(input: ChatInput): number {
+  const history: ConversationMessage[] = [{ kind: "user", content: input.text, ...(input.producer ? { producer: input.producer } : {}) }]
+  return trackTurnHop(() => history).current()
 }
 
 function context(sessionId: string, toolUseId: string, history: readonly ConversationMessage[] = [], hop = 0): ToolContext {
@@ -157,7 +163,7 @@ describe("wake chains", () => {
       state: async () => "idle",
       deliver: async (input: ChatInput, decide) => {
         const outcome = decide("idle")
-        if (outcome.status === "delivered") turnHops.set(sessionId, turnHopOf([{ kind: "user", content: input.text, ...(input.producer ? { producer: input.producer } : {}) }]))
+        if (outcome.status === "delivered") turnHops.set(sessionId, startedHop(input))
         return outcome
       },
       notify: async () => false,
@@ -185,7 +191,7 @@ describe("wake chains", () => {
 
   test("the assignment that launched a subagent starts its first turn at hop 0", () => {
     const launch = { kind: "launch" as const, sessionId: "parent", toolUseId: "call-launch", name: "Root" }
-    expect(turnHopOf([{ kind: "user", content: "Inspect the parser", producer: launch }])).toBe(0)
+    expect(trackTurnHop(() => [{ kind: "user", content: "Inspect the parser", producer: launch }]).current()).toBe(0)
   })
 })
 

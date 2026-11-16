@@ -244,7 +244,7 @@ const PLANNED_CHILD_RECALL: RecallPort = () => Promise.reject(new Error("A capab
 
 /** The options that the first request of a child that `options` start plans from: this run's options with the
  *  child's purpose and grant, and the runtime surfaces that a child gets (`deriveChildRuntimeSurfaces`). */
-export function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRun): RunnableAgentOptions {
+function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRun): RunnableAgentOptions {
   const { toolNames: _names, toolActions: _actions, toolProfile: _profile, toolGrant: _grant, withheldTools: _withheld, readOnly: _readOnly, allowedSubagentTypes: _types, ...run } = options;
   const surfaces = options.runtimeSurfaces;
   return {

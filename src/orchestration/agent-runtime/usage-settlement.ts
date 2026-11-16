@@ -76,16 +76,11 @@ export function decodeUsageSettlementCheckpoint(stored: unknown): UsageSettlemen
   }
   return { kind: "draft", draft: decodeDraft(value) }
 }
-export type UsageSettlementRetirement = Extract<InFlightWrite, { readonly op: "drop" }>
+type UsageSettlementRetirement = Extract<InFlightWrite, { readonly op: "drop" }>
 
 export interface UsageAuthorityGeneration {
   readonly profileId: string
   readonly authorityIncarnation: string
-}
-
-interface UsageSettlementAuthority {
-  append: UsageAuthority["append"]
-  dispose(): void
 }
 
 export interface UsageSettlementAuthorityLease extends UsageAuthorityGeneration {
@@ -97,15 +92,13 @@ interface UsageSettlementReader {
   readonly readInFlight: AsyncEventStateReadSurface["readInFlight"]
 }
 
-type UsageSettlementOptions = {
+interface UsageSettlementOptions {
   putInFlight(kind: string, key: string, payload: unknown): Promise<void>
   retire(retirement: UsageSettlementRetirement): Promise<void>
+  acquireAuthority(profileId: string): Promise<UsageSettlementAuthorityLease>
   /** Atomically publishes idempotent session facts and the supplied retirement. */
   publish(draft: UsageSettlementDraft, retirement: UsageSettlementRetirement): Promise<{ readonly kind: "published" | "duplicate" }>
-} & (
-  | { acquireAuthority(profileId: string): Promise<UsageSettlementAuthorityLease>; openAuthority?: never }
-  | { openAuthority(profileId: string): UsageSettlementAuthority; acquireAuthority?: never }
-)
+}
 
 export interface UsageSettlement {
   /** Persists the attempt's unmeasured record, with its serving attribution, before the provider wire attempt starts. */
@@ -252,31 +245,21 @@ export function isUsageAttemptLive(attemptId: string): boolean {
 }
 
 /** Owns the record-before-act saga from one provider attempt to its exact profile ledger and atomic session publication. */
-export function createUsageSettlement(options: UsageSettlementOptions): UsageSettlement {
+function createUsageSettlement(options: UsageSettlementOptions): UsageSettlement {
   const drafts = new Map<string, UsageSettlementDraft>()
   const retirement = (attemptId: string): UsageSettlementRetirement => ({ op: "drop", kind: USAGE_SETTLEMENT_IN_FLIGHT_KIND, key: attemptId })
 
   const appendAndPublish = async (draft: UsageSettlementDraft): Promise<void> => {
-    if (options.acquireAuthority) {
-      const lease = await options.acquireAuthority(draft.entry.profileId)
-      try {
-        if (lease.profileId !== draft.entry.profileId) {
-          throw new Error(`Usage authority profile mismatch: expected ${draft.entry.profileId}, received ${lease.profileId}`)
-        }
-        lease.append(draft.entry)
-        await options.publish(draft, retirement(draft.entry.attemptId))
-      } finally {
-        await lease.release()
-      }
-      return
-    }
-    const authority = options.openAuthority(draft.entry.profileId)
+    const lease = await options.acquireAuthority(draft.entry.profileId)
     try {
-      authority.append(draft.entry)
+      if (lease.profileId !== draft.entry.profileId) {
+        throw new Error(`Usage authority profile mismatch: expected ${draft.entry.profileId}, received ${lease.profileId}`)
+      }
+      lease.append(draft.entry)
+      await options.publish(draft, retirement(draft.entry.attemptId))
     } finally {
-      authority.dispose()
+      await lease.release()
     }
-    await options.publish(draft, retirement(draft.entry.attemptId))
   }
 
   const record = async (value: UsageSettlementDraft): Promise<void> => {

@@ -2,10 +2,10 @@ import { describe, expect, it } from "bun:test"
 import { agentCapabilityCheck, treeCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js"
 import { Effect, Exit, Scope } from "effect"
 import { requestKernel } from "../../../../src/orchestration/agent-runtime/request-kernel.js"
-import { childRunOptions, openRequestInputs, planRunCapabilities } from "../../../../src/orchestration/agent-runtime/request-inputs.js"
+import { openRequestInputs, planRunCapabilities, type RunCapabilitySource } from "../../../../src/orchestration/agent-runtime/request-inputs.js"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
-import { toolRegistryFromComposition } from "../../../../src/orchestration/agent-runtime/tools/tool-registry.js"
+import { deriveChildRuntimeSurfaces, toolRegistryFromComposition } from "../../../../src/orchestration/agent-runtime/tools/tool-registry.js"
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory.js"
 import type { RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
@@ -20,6 +20,8 @@ import { createBackgroundExecutionOwner } from "../../../../src/orchestration/ag
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js"
 import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
+import { subagentsRuntime } from "../../../../src/orchestration/modules/subagents/execution/runtime-binding.js"
+import { makeDeps as makeSubagentDeps } from "./subagent/_fixtures.js"
 
 const ALL = composeFirstPartyModules()
 const codeModeService = codeModeServices()
@@ -42,7 +44,7 @@ const runSource = (options: RunnableAgentOptions) => ({
 })
 
 /** The logical tools that the first request of the run that `source` describes may call. */
-async function usableTools(source: ReturnType<typeof runSource>, scope: Scope.Scope): Promise<ReadonlySet<string>> {
+async function usableTools(source: RunCapabilitySource, scope: Scope.Scope): Promise<ReadonlySet<string>> {
   const opened = await openRequestInputs({ ...source, providerSessionLifetime: { providerSessionKey: "agent", scope } }, { kind: "prestart", signal: new AbortController().signal })
   return (await (await opened.build()).request.tools.resolve()).usableToolNames
 }
@@ -164,31 +166,54 @@ describe("capability checks", () => {
   })
 
   it("answers a child's check from the child's own first plan, not from the grant of the agent that dispatches it", async () => {
-    // A chat whose grant lacks code and holds the workflow starter dispatches a child that declares both.
+    // A chat whose grant lacks code and holds the workflow starter dispatches a child that declares both. A chat
+    // dispatches only from a durable session with a child-session authority and a persona to dispatch.
+    const shared = {
+      captureRuntimeConfig: testRuntimeConfigCapture, awaitModelAccessSettled: async () => {},
+      conversation: {
+        kind: "durable-tree", sessionId: "parent", conversationId: "parent-conversation", priorMessages: [], append: () => {},
+        reserveMessageId: async () => crypto.randomUUID(), captureCommittedForkMessages: async () => [], resolveLeafId: async () => null,
+        committedTree: async () => ({ leafId: null, entriesById: {} }),
+      },
+      subagentSessions: makeSubagentDeps().subagentSessions,
+      moduleSelection: () => ALL,
+    } satisfies Partial<RunnableAgentOptions>
+    const backgroundOwner = () => createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }))
+    const parentSurfaces: RunnableAgentOptions["runtimeSurfaces"] = {
+      startWorkflow: async () => ({ error: "no launch happens in this test" }), workflowMode: () => "on",
+      moduleServices: composeModuleServices([["code-mode", codeModeService()]]),
+      background: backgroundOwner(),
+    }
     const parent: RunnableAgentOptions = {
       ...makeOptions({ purpose: { kind: "interactive-chat" }, agentRegistry: new Map(), agentsMd: "" }),
-      toolGrant: ["read", "subagent", "workflow"],
-      captureRuntimeConfig: testRuntimeConfigCapture, awaitModelAccessSettled: async () => {},
-      runtimeSurfaces: {
-        startWorkflow: async () => ({ error: "no launch happens in this test" }), workflowMode: () => "on",
-        moduleServices: composeModuleServices([["code-mode", codeModeService()]]),
-        background: createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })),
-      },
-      moduleSelection: () => ALL,
+      ...shared, toolGrant: ["read", "subagent", "workflow"], runtimeSurfaces: parentSurfaces,
     }
-    const child = childRunOptions(parent, {
-      purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call" },
-      toolGrant: ["read", "code", "workflow", "handoff"],
-    })
+    const childRun = { purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call" }, toolGrant: ["read", "code", "workflow", "handoff"] } as const
+    // The options that a dispatch publishes the child with: its own handoff, background owner, and recall over the
+    // surfaces that it inherits from the parent.
+    const child: RunnableAgentOptions = {
+      ...makeOptions({ purpose: childRun.purpose, agentRegistry: new Map(), agentsMd: "" }),
+      ...shared, toolGrant: [...childRun.toolGrant],
+      runtimeSurfaces: {
+        ...deriveChildRuntimeSurfaces(parentSurfaces, { handoff: { onContent: () => {} }, background: backgroundOwner() }),
+        recall: async () => { throw new Error("no recall happens in this test") },
+      },
+    }
     const terms = [...new Set([...toolRegistryFromComposition(ALL).values()].map((registration) => registration.tool))]
+    const source = { ...runSource(parent), personas: definitions.personas }
     const scope = Scope.makeUnsafe("sequential")
     try {
-      const parentCheck = await planRunCapabilities(runSource(parent))
-      const childCheck = await planRunCapabilities(runSource(child))
+      const parentCheck = await planRunCapabilities(source)
+      // The check that a dispatch from the parent's first request renders its child's text from.
+      const opened = await openRequestInputs({ ...source, providerSessionLifetime: { providerSessionKey: "agent", scope } }, { kind: "prestart", signal: new AbortController().signal })
+      const subagents = (await opened.build()).moduleRuntimes.get(subagentsRuntime)
+      if (!subagents) throw new Error("the parent's first request planned no subagent dispatch")
+      const dispatch = subagents.toolDeps({ model: "test", modelFamily: "anthropic" }, definitionAvailabilityOf(definitions, ALL.enabledModuleIds, []))
+      const childCheck = await dispatch.planChildCapabilities({ purpose: childRun.purpose, toolGrant: [...childRun.toolGrant] })
       expect([parentCheck("code"), parentCheck("workflow")]).toEqual([false, true])
       expect([childCheck("code"), childCheck("workflow")]).toEqual([true, false])
-      // The child's real first request, built from the same options, agrees on every tool.
-      const usable = await usableTools(runSource(child), scope)
+      // The child's real first request, built from the options it is published with, agrees on every tool.
+      const usable = await usableTools({ ...runSource(child), personas: definitions.personas }, scope)
       for (const term of terms) expect(childCheck(term), term).toBe(usable.has(term))
       // So a persona whose composed method offers a workflow file route renders no such route for that child.
       const persona = { kind: "persona", name: "planner", description: "Plans.", role: "planner", tools: ["read", "code", "workflow"], requiredSkills: ["design"], maxTurns: 5, systemPrompt: "Plan the work." } as const

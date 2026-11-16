@@ -23,7 +23,7 @@ import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
 import { LIST_SESSIONS_TOOL_NAME } from "./tools/list-sessions.js";
 import type { AgentPurpose } from "./types.js";
 
-export type ToolPromptFields = Pick<RuntimeTool, "name" | "action" | "description" | "promptGuidelines" | "livePromptGuidelines" | "promptExamples">;
+type ToolPromptFields = Pick<RuntimeTool, "name" | "action" | "description" | "promptGuidelines" | "livePromptGuidelines" | "promptExamples">;
 
 export type PromptKind = "chat" | "workflow-agent" | "subagent" | "headless";
 
@@ -32,7 +32,7 @@ export type PromptKind = "chat" | "workflow-agent" | "subagent" | "headless";
 
 /** The guidelines and examples of the request's tools. It lists no tools: the tool definitions of the request are
  *  the one catalog (ARCH-CONTEXT-035). */
-export function renderToolContext(
+function renderToolContext(
   tools: ReadonlyArray<ToolPromptFields>,
   extraGuidelines: readonly string[],
 ): string | undefined {

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { buildSystemPrompt as buildSystemPromptTiers, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPrompt as buildSystemPromptTiers } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { testBaseTools } from "../../../helpers/request-tool-surface.js";
@@ -10,7 +10,7 @@ import { testDirectories } from "../../../helpers/directories.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promptCapabilities, promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptCapabilities, promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 
 const BASE = testBaseTools();
 // The builder takes the universal prompt as an input: production loads it from

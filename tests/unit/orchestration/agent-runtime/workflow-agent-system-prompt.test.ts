@@ -1,12 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import {
-  buildSystemPrompt as buildSystemPromptTiers,
-  type ToolPromptFields,
-} from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPrompt as buildSystemPromptTiers } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js";
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
 
 // The prompt of an agent of a workflow: its unattended finishing section and the stable

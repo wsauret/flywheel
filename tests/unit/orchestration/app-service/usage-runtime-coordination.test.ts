@@ -8,7 +8,7 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/ru
 import { createInertSubscriptionUsageService } from "../../../helpers/subscription-usage-service-fixture.js"
 import { createUsageAuthority, type UsageAuthority } from "../../../../src/infra/llm/usage-authority.js"
 import type { UsageEntry } from "../../../../src/infra/llm/usage-entry.js"
-import { createUsageSettlement } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
+import { createProcessUsageSettlement } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
 import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 
@@ -71,9 +71,7 @@ describe("Usage settlement recovery coordination", () => {
     const pool = createSubscriptionUsageServicePool({ create: () => usageService(authority, "profile-a") })
     const recoveredEntry = entry("profile-a", 2)
     let publications = 0
-    const settlement = createUsageSettlement({
-      putInFlight: async () => {},
-      retire: async () => {},
+    const settlement = createProcessUsageSettlement({
       acquireAuthority: async (profileId) => {
         const lease = await pool.acquireSettlement({ id: profileId, directory: profileRoot })
         const store = lease.service.store()
@@ -85,7 +83,7 @@ describe("Usage settlement recovery coordination", () => {
           release: lease.release,
         }
       },
-      publish: async () => { publications += 1; return { kind: "published" } },
+      onCommitted: () => { publications += 1 },
     })
 
     await settlement.recover({

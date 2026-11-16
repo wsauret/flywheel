@@ -84,7 +84,7 @@ function foldHop(history: readonly ConversationMessage[], from: number, initialH
  *  (`trackTurnHop`), so it keeps the chain of that input and drops a higher
  *  hop that the turn had from another chain. So a resumed loop can hold a
  *  lower hop than the live loop held, never a higher one. */
-export function turnHopOf(history: readonly ConversationMessage[]): number {
+function turnHopOf(history: readonly ConversationMessage[]): number {
   return foldHop(history, 0, 0);
 }
 
