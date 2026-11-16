@@ -1,0 +1,38 @@
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 51,297
+src/orchestration/agent-runtime/llm/chatgpt-client.ts
+  h_4b47e9e4a8b456 60
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 347
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 48,67-68
+src/orchestration/agent-runtime/llm/provider-request-audit.ts
+  h_4b47e9e4a8b456 247
+src/orchestration/agent-runtime/llm/request-timing.ts
+  h_4b47e9e4a8b456 17-30,54-58
+src/orchestration/agent-runtime/llm/stream-attempt.ts
+  h_4b47e9e4a8b456 106
+src/orchestration/modules/provider-github-copilot/clients.ts
+  h_4b47e9e4a8b456 24,81,91-92,122,137,146,151
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 75,88,92,96
+src/orchestration/modules/provider-supergrok/client.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/agent-runtime/llm/anthropic-adapter-config.test.ts
+  h_4b47e9e4a8b456 1,498-522
+tests/unit/orchestration/agent-runtime/llm/request-timing.test.ts
+  h_4b47e9e4a8b456 1-2
+tests/unit/orchestration/agent-runtime/parent-tool-use-id.test.ts
+  h_4b47e9e4a8b456 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4d1dc22b314aca764a4ffb42a2127867ab01bbbc",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
