@@ -1,0 +1,64 @@
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 21,23,27
+src/orchestration/modules/lead/chat-progress.ts
+  h_4b47e9e4a8b456 329-331
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 38-41,48-49
+src/orchestration/modules/lead/protocol.ts
+  h_4b47e9e4a8b456 29-31,40
+src/orchestration/modules/lead/rows.ts
+  h_4b47e9e4a8b456 31-39,81-83,97-98,104-115,148-149,172,220,226,297,315-318,323-324
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 6-7,13,15,64-66,82-83,139-141,165-196,250-254,541-557
+src/protocol/modules/lead.ts
+  h_4b47e9e4a8b456 2-3,7,60-67,169-180,209,218-229,284,289
+src/tui/components/question-input.tsx
+  h_4b47e9e4a8b456 18,26-27,41
+src/tui/context/message-row.tsx
+  h_4b47e9e4a8b456 5-7,12
+src/tui/context/transcript-reveal.ts
+  h_4b47e9e4a8b456 1-14
+src/tui/hooks/create-module-slots.tsx
+  h_4b47e9e4a8b456 232,244,311-319
+src/tui/hooks/create-output-scroll-controller.ts
+  h_4b47e9e4a8b456 1,115-117,774-782,882
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 6,13,29-30,45,78,125-126,130-131,134-137
+src/tui/modules/lead/question-widget.tsx
+  h_4b47e9e4a8b456 1-219
+src/tui/modules/lead/strip.tsx
+  h_4b47e9e4a8b456 2,22-24,27-31,35-44
+src/tui/output-blocks/user-message-block.tsx
+  h_4b47e9e4a8b456 4,10,24,100,103-106,108-121
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 11,255,402
+src/tui/question-dock-form.ts
+  h_4b47e9e4a8b456 57-65,331-339,408-411,414-415,420-422
+src/tui/question-dock.tsx
+  h_4b47e9e4a8b456 11,19,46-52,108-109,111-118,145-146,148-149,235,351-356,378-384,418
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 53-60
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 9,54,62,67,106-156
+tests/unit/tui/components/question-input.test.ts
+  h_4b47e9e4a8b456 8,19,24-25,31
+tests/unit/tui/hooks/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 219,225,234-237,300,302-307
+tests/unit/tui/keyboard-handler.test.ts
+  h_4b47e9e4a8b456 407,445,474
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 8,24-25,107-111,119-133,141,145
+tests/unit/tui/modules/lead/question-widget.test.tsx
+  h_4b47e9e4a8b456 1-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "871c11a919e4701c37b4e1d0001845294d3d569e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
