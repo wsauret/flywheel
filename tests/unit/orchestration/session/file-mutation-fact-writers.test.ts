@@ -9,79 +9,12 @@ import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-ed
 import { reconcilePendingFileMutations } from "../../../../src/orchestration/session/file-mutation-recovery.js"
 import { withStore, mutationFacts, context as mutationContext } from "./file-mutation-recovery-fixture.js"
 import type { ContainedFileSnapshot } from "../../../../src/infra/descriptor-directory-contract.js"
-import { computeLineStats, prepareFileMutationOperation, retireFileMutationNotApplied, settleFileMutation } from "../../../../src/orchestration/session/file-mutation-fact-writers.js"
+import { prepareFileMutationOperation, retireFileMutationNotApplied, settleFileMutation } from "../../../../src/orchestration/session/file-mutation-fact-writers.js"
 import { createGitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 import { settleFileMutationArtifact, takeFileMutationAttribution } from "../../../../src/orchestration/agent-runtime/tools/file-mutation-artifact.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { readFileMutationOperation, snapshotToFileObjectProof } from "../../../../src/orchestration/session/file-mutation-operation.js"
 import { mutationSnapshot } from "./file-mutation-proof-fixture.js"
-
-describe("computeLineStats", () => {
-  it("computes line statistics from unified diffs and omits them without evidence", () => {
-    const stats = computeLineStats(
-      "old 1\nold 2\nold 3\n",
-      "new 1\nnew 2\nnew 3\nnew 4\nnew 5\n",
-      [
-        "Index: src/app.ts",
-        "===================================================================",
-        "--- src/app.ts",
-        "+++ src/app.ts",
-        "@@ -1,3 +1,5 @@",
-        "-old 1",
-        "-old 2",
-        "-old 3",
-        "+new 1",
-        "+new 2",
-        "+new 3",
-        "+new 4",
-        "+new 5",
-      ].join("\n"),
-    )
-
-    expect(stats).toEqual({ added: 2, modified: 3, removed: 0 })
-    expect(computeLineStats("same\n", "same\n")).toBeUndefined()
-  })
-
-  it("counts created-file lines when no diff evidence exists", () => {
-    expect(computeLineStats(null, "one\ntwo\n")).toEqual({ added: 2, modified: 0, removed: 0 })
-  })
-
-  it.each([
-    ["", 0],
-    ["\n", 1],
-    ["one", 1],
-    ["one\ntwo", 2],
-    ["one\r\ntwo\r\n", 2],
-    ["one\rtwo", 1],
-    ["\n\n\n", 3],
-    ["héllo\n日本\n", 2],
-  ])("counts LF-terminated lines of created-file bytes %j", (text, added) => {
-    const backing = new TextEncoder().encode(`x${text}x`)
-    const bytes = backing.subarray(1, -1)
-    expect(computeLineStats(null, bytes)).toEqual({ added, modified: 0, removed: 0 })
-  })
-
-  it("sums line stats per hunk", () => {
-    const diff = [
-      "Index: file.ts",
-      "===================================================================",
-      "--- file.ts",
-      "+++ file.ts",
-      "@@ -1,2 +1,2 @@",
-      "-old 1",
-      "-old 2",
-      "+new 1",
-      "+new 2",
-      "@@ -2,1 +2,4 @@",
-      "-old 3",
-      "+new 3",
-      "+new 4",
-      "+new 5",
-      "+new 6",
-    ].join("\n")
-    expect(computeLineStats("before", "after", diff)).toEqual({ added: 3, modified: 3, removed: 0 })
-  })
-})
 
 describe("file mutation operation evidence", () => {
   it.each(["string", "bytes"] as const)("redacts full %s previews before normalization and truncation without changing byte evidence", async kind => {
@@ -107,7 +40,6 @@ describe("file mutation operation evidence", () => {
         path: "/repo/config.env", displayPath: "config.env", changeKind: "modified",
         beforeContent: kind === "string" ? before : Buffer.from(before),
         afterContent: kind === "string" ? after : Buffer.from(after),
-        diffContent: "@@ -5 +5 @@\n-setting=old\n+setting=new\n",
       },
       evidence: { beforeSnapshot: mutationSnapshot(before) },
     }])
@@ -395,6 +327,22 @@ describe("publication-owned mutation evidence", () => {
       expect(createHash("sha256").update(patch).digest("hex")).toBe(reference.sha256)
       expect(patch.toString("utf8")).toContain(`-${before}\n`)
       expect(patch.toString("utf8")).toContain(`+${after}\n`)
+    })
+  })
+
+  it("editing an existing file records no lineStats on file.changed and records addedLines and removedLines in the artifact evidence", async () => {
+    await withStore(async ({ root, store, writer, sessionId }) => {
+      writeFileSync(join(root, "source.txt"), "one\ntwo\nthree\nfour\n")
+      const outcome = await publishFileEdits({ ...mutationContext(writer), executionCwd: root }, {
+        paths: ["source.txt"],
+        admit: path => RetainedFileEditAuthority.admitWritable(path),
+        plan: admitted => admitted.map(entry => ({ admitted: entry, after: "one\nTWO\nthree\nfour\nfive\n" })),
+      })
+      expect(outcome.status).toBe("completed")
+      const [changed, artifact] = mutationFacts(store, sessionId)
+      expect(changed).toMatchObject({ type: "file.changed", payload: { changeKind: "modified" } })
+      expect(changed!.payload).not.toHaveProperty("lineStats")
+      expect(artifact).toMatchObject({ type: "file.artifact.recorded", version: 4, payload: { evidence: { addedLines: 2, removedLines: 1 } } })
     })
   })
 

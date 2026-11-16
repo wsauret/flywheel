@@ -14,7 +14,7 @@ import { observeReleaseMemoryPhase, startReleaseMemorySampler } from "../../infr
 import { yieldToNextTask as defaultYieldToNextTask } from "../../infra/task-scheduling.js"
 import { budgetSummaryFromState, type BudgetSummary, type UsageTotals } from "./budget-summary.js"
 import { BUDGET_FACT_TYPES, initialBudgetProjectionState, reduceBudgetEvent, reduceBudgetFact, type BudgetProjectionState } from "./budget-projection.js"
-import { DIFF_STAT_FACT_TYPES, foldDiffStatEvent, type DiffStatSummary } from "./diff-stat-summary.js"
+import { carriesDiffStats, DIFF_STAT_FACT_TYPES, foldDiffStatEvent, type DiffStatSummary } from "./diff-stat-summary.js"
 import { decodeSessionMetadataFactForReplay, parseSessionMetadataFact } from "./session-metadata-facts.js"
 import { SESSION_DURATION_FACT_TYPES, reduceSessionDurationEvent, type SessionDurationProjectionState } from "./session-duration-projection.js"
 import { readStreamSummaryGeneration, tokensPerSecond } from "./session-generation-statistics.js"
@@ -422,7 +422,7 @@ function createSessionSummaryIndex(dbFile: string, source: AsyncEventReadSurface
               ? { budget: budgetSummaryFromState(local.budget, readDescendantUsage(readDb, sessionId)) }
               : {}),
             ...(errors.duration === undefined ? { duration: local.duration } : {}),
-            ...(errors.diffStats === undefined ? { diffStats: local.diffStats } : {}),
+            ...(errors.diffStats === undefined ? { diffStats: local.diffStats.stats } : {}),
             ...(speed === null ? {} : { averageGenerationTokensPerSecond: speed }),
             errors,
           })
@@ -508,6 +508,7 @@ function foldSummaryEvent(db: Database, local: ReplayLocalSummaries, storedEvent
       markDescendantsUnknown(db, event.sessionId, event.message)
       return
     }
+    if (scope === "diffStats" && !carriesDiffStats(event.row)) return
     putSummaryError(db, event.sessionId, scope, event.message)
     if (scope === "budget") propagateDescendantError(db, event.sessionId, event.message)
     return
@@ -678,7 +679,7 @@ function emptyStoredSummary(): StoredSessionSummary {
   return {
     budget: initialBudgetProjectionState(),
     duration: { accumulatedActiveMs: 0 },
-    diffStats: null,
+    diffStats: { stats: null, lineStatsMutationId: null },
     generation: { outputTokens: 0, durationMs: 0 },
   }
 }

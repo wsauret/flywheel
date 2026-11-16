@@ -3,19 +3,19 @@ import { Schema } from "effect"
 
 import type { BudgetProjectionState } from "./budget-projection.js"
 import type { UsageTotals } from "./budget-summary.js"
-import type { DiffStatSummary } from "./diff-stat-summary.js"
+import type { DiffStatState } from "./diff-stat-summary.js"
 import type { SessionDurationProjectionState } from "./session-duration-projection.js"
 
 // The index is derived state: raise the generation whenever the fold changes
 // what it derives, so an index of another generation rebuilds from the log.
-const SESSION_SUMMARY_INDEX_GENERATION = 13
+const SESSION_SUMMARY_INDEX_GENERATION = 14
 
 export type SessionSummaryScope = "budget" | "duration" | "diffStats" | "descendants" | "generation"
 
 export interface StoredSessionSummary {
   readonly budget: BudgetProjectionState
   readonly duration: SessionDurationProjectionState
-  readonly diffStats: DiffStatSummary | null
+  readonly diffStats: DiffStatState
   /** The output tokens and the duration of the session's own recorded
    *  generation measurements, pooled. */
   readonly generation: GenerationSums
@@ -95,6 +95,7 @@ export function rebuildSessionSummarySchema(db: Database): void {
       diff_added integer,
       diff_modified integer,
       diff_removed integer,
+      diff_line_stats_mutation_id text,
       generation_output_tokens integer not null,
       generation_duration_ms real not null
     );
@@ -139,7 +140,7 @@ export function rebuildSessionSummarySchema(db: Database): void {
 function sessionSummarySchemaMatches(db: Database): boolean {
   try {
     db.query("select position from session_summary_watermark limit 0").get()
-    db.query("select session_id, budget_json, duration_ms, diff_added, diff_modified, diff_removed, generation_output_tokens, generation_duration_ms from session_summary_local limit 0").get()
+    db.query("select session_id, budget_json, duration_ms, diff_added, diff_modified, diff_removed, diff_line_stats_mutation_id, generation_output_tokens, generation_duration_ms from session_summary_local limit 0").get()
     db.query("select session_id, semantic_id from session_summary_usage limit 0").get()
     db.query("select session_id, total_cost, total_billed_cost, price_unavailable, input_tokens, output_tokens from session_summary_direct limit 0").get()
     db.query("select session_id, kind from session_summary_kind limit 0").get()
@@ -170,22 +171,27 @@ export function readStoredSessionSummary(db: Database, sessionId: string): Store
     diff_added: number | null
     diff_modified: number | null
     diff_removed: number | null
+    diff_line_stats_mutation_id: string | null
     generation_output_tokens: number
     generation_duration_ms: number
-  }, [string]>("select budget_json, duration_ms, diff_added, diff_modified, diff_removed, generation_output_tokens, generation_duration_ms from session_summary_local where session_id = ?").get(sessionId)
+  }, [string]>("select budget_json, duration_ms, diff_added, diff_modified, diff_removed, diff_line_stats_mutation_id, generation_output_tokens, generation_duration_ms from session_summary_local where session_id = ?").get(sessionId)
   if (!row) return undefined
   return {
     budget: { ...decodeBudgetProjectionState(JSON.parse(row.budget_json)), settledUsageEntryIds: {} },
     duration: { accumulatedActiveMs: row.duration_ms },
-    diffStats: row.diff_added === null ? null : { added: row.diff_added, modified: row.diff_modified ?? 0, removed: row.diff_removed ?? 0 },
+    diffStats: {
+      stats: row.diff_added === null ? null : { added: row.diff_added, modified: row.diff_modified ?? 0, removed: row.diff_removed ?? 0 },
+      lineStatsMutationId: row.diff_line_stats_mutation_id,
+    },
     generation: { outputTokens: row.generation_output_tokens, durationMs: row.generation_duration_ms },
   }
 }
 
 export function writeStoredSessionSummary(db: Database, sessionId: string, summary: StoredSessionSummary): void {
-  db.query(`insert into session_summary_local values (?, ?, ?, ?, ?, ?, ?, ?)
+  db.query(`insert into session_summary_local values (?, ?, ?, ?, ?, ?, ?, ?, ?)
     on conflict(session_id) do update set budget_json=excluded.budget_json, duration_ms=excluded.duration_ms,
       diff_added=excluded.diff_added, diff_modified=excluded.diff_modified, diff_removed=excluded.diff_removed,
+      diff_line_stats_mutation_id=excluded.diff_line_stats_mutation_id,
       generation_output_tokens=excluded.generation_output_tokens, generation_duration_ms=excluded.generation_duration_ms`).run(
     sessionId,
     JSON.stringify({
@@ -203,9 +209,10 @@ export function writeStoredSessionSummary(db: Database, sessionId: string, summa
       committedUsageStreams: summary.budget.committedUsageStreams,
     }),
     summary.duration.accumulatedActiveMs,
-    summary.diffStats?.added ?? null,
-    summary.diffStats?.modified ?? null,
-    summary.diffStats?.removed ?? null,
+    summary.diffStats.stats?.added ?? null,
+    summary.diffStats.stats?.modified ?? null,
+    summary.diffStats.stats?.removed ?? null,
+    summary.diffStats.lineStatsMutationId,
     summary.generation.outputTokens,
     summary.generation.durationMs,
   )

@@ -15,7 +15,7 @@ import {
   type FileMutationOperationEvidence,
   type FilePreconditionProof,
 } from "./file-mutation-operation.js"
-import type { FileChangeObservationInput, FileLineStats } from "./file-mutation-types.js"
+import type { FileChangeObservationInput } from "./file-mutation-types.js"
 
 export interface FileMutationFactWriter {
   stageSessionContentNodes?: StageSessionContentNodes
@@ -261,8 +261,6 @@ function preparedFact(
 ): CurrentPreparedFact {
   const before = change.beforeContent === null ? null : contentPolicy(change.beforeContent)
   const after = change.afterContent === null ? null : contentPolicy(change.afterContent)
-  const diff = change.diffContent === undefined ? undefined : contentPolicy(change.diffContent)
-  const lineStats = change.lineStats ?? computeLineStats(change.beforeContent, change.afterContent, change.diffContent)
   const fact: CurrentPreparedFact = {
     type: "file.mutation.prepared",
     version: 2,
@@ -274,8 +272,6 @@ function preparedFact(
       changeKind: change.changeKind,
       before,
       after,
-      ...(diff ? { diff } : {}),
-      ...(lineStats ? { lineStats } : {}),
       operationId,
       origin,
     },
@@ -334,72 +330,6 @@ function artifactFact(prepared: FileMutationPreparedFact): FileMutationFact {
 function mutationText(content: FileMutationContent): string {
   return typeof content === "string" ? content : new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(content)
 }
-
-export function computeLineStats(
-  beforeContent: FileMutationContent | null,
-  afterContent: FileMutationContent | null,
-  diffContent?: string,
-): FileLineStats | undefined {
-  const diffStats = diffContent === undefined ? undefined : lineStatsFromUnifiedDiff(diffContent)
-  if (diffStats) return diffStats
-  if (beforeContent === null && afterContent !== null) {
-    return { added: countContentLines(afterContent), modified: 0, removed: 0 }
-  }
-  return undefined
-}
-
-function lineStatsFromUnifiedDiff(diffContent: string): FileLineStats | undefined {
-  const totals = { added: 0, modified: 0, removed: 0 }
-  let hunkAdded = 0
-  let hunkRemoved = 0
-  let inHunk = false
-  let hasLineStats = false
-  const flushHunk = (): void => {
-    if (hunkAdded === 0 && hunkRemoved === 0) return
-    const modified = Math.min(hunkRemoved, hunkAdded)
-    totals.added += hunkAdded - modified
-    totals.modified += modified
-    totals.removed += hunkRemoved - modified
-    hasLineStats = true
-  }
-  for (const line of diffContent.split(/\r?\n/)) {
-    if (line.startsWith("@@")) {
-      if (inHunk) flushHunk()
-      inHunk = true
-      hunkAdded = 0
-      hunkRemoved = 0
-      continue
-    }
-    if (!inHunk || line.startsWith("\\ No newline")) continue
-    if (line.startsWith("-") && !line.startsWith("---")) {
-      hunkRemoved += 1
-      continue
-    }
-    if (line.startsWith("+") && !line.startsWith("+++")) hunkAdded += 1
-  }
-  if (inHunk) flushHunk()
-  return hasLineStats ? totals : undefined
-}
-
-function countContentLines(content: FileMutationContent): number {
-  if (typeof content === "string") return countStringLines(content)
-  if (content.length === 0) return 0
-  // An indexed loop counts 8 MB in about 4 ms. A for-of loop goes through the
-  // iterator protocol and takes about 70 ms on the executor main thread. A
-  // repeated indexOf(10) is faster for sparse newlines but takes as long as
-  // the for-of loop when most bytes are newlines.
-  let lines = 0
-  for (let index = 0; index < content.length; index += 1) if (content[index] === 10) lines += 1
-  return content[content.length - 1] === 10 ? lines : lines + 1
-}
-
-function countStringLines(content: string): number {
-  const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-  if (normalized.length === 0) return 0
-  const lines = normalized.split("\n")
-  return lines[lines.length - 1] === "" ? lines.length - 1 : lines.length
-}
-
 
 function contentPolicy(content: FileMutationContent): ContentEvidence {
   const evidence = contentEvidence(content)
