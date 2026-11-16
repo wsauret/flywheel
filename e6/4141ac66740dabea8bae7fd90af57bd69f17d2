@@ -1,0 +1,40 @@
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 76-79
+src/orchestration/app-service/module-execution-environment.ts
+  h_4b47e9e4a8b456 1,8,34-43,52,73
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 10,75-78
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 343
+src/orchestration/modules/lead/chat-progress.ts
+  h_4b47e9e4a8b456 1-8,10-13,23-45,47,52-53,70-97,101-111,139,142-148,150-151,163-307,310-312,314-326,343-357,359,361,363,365-388,392-393,397,402,409-411
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 13
+src/orchestration/modules/lead/row.ts
+  h_4b47e9e4a8b456 55,106,127
+src/orchestration/modules/lead/runtime.ts
+  h_4b47e9e4a8b456 37
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 49-51,70,477,481-485,488
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 7,53,64,76,106,152
+tests/unit/orchestration/modules/lead/chat-progress.test.ts
+  h_4b47e9e4a8b456 2-3,5-6,27-29,32-38,51,63-66,85,113-267
+tests/unit/orchestration/modules/lead/row.test.ts
+  h_4b47e9e4a8b456 18,64
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 164
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e64141ac66740dabea8bae7fd90af57bd69f17d2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
