@@ -53,7 +53,7 @@ describe("child reconciliation work", () => {
       const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: async () => { offers += 1; await new Promise<void>(() => {}) } })
       const unregister = registerLiveSessionControl(counter.reader, {
         sessionId: parentSessionId, state: async () => "running", deliver: async () => ({ status: "delivered", startsTurn: false }),
-        ...(parentKind === "chat" ? { backgroundTasks: registry } : { member: { backgroundTasks: registry, modules: async () => undefined, compact: async () => false, interrupt: () => false, releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {}, terminateBackgroundWork: () => {} } }),
+        ...(parentKind === "chat" ? { backgroundTasks: registry } : { member: { workflowId: `parent-workflow-${children}`, backgroundTasks: registry, modules: async () => undefined, compact: async () => false, interrupt: () => false, releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {}, terminateBackgroundWork: () => {} } }),
         notify: async (notification) => { offers += 1; await counter.reader.aggregateSeq(`session:${parentSessionId}`); await writer.putInFlight?.(parentSessionId, "chat.queued_background_notification", notification.key ?? "notice", { conversationId: "conversation", text: notification.text }); writes += 1; return true },
       })
       const input = { parentSessionId, reader: counter.reader, writer, projectRoot, deliverNotification: async () => { callbacks += 1; return false } }
@@ -155,7 +155,7 @@ describe("child reconciliation work", () => {
       await reconcileChildSessionCompletions(input)
       const first = counter.take()
       const { index } = await readChildReconciliationChanges(counter.reader, parentSessionId)
-      costs.push({ requests: first.length, facts: factsRead(first), held: index.getState().facts.length + index.workflowChanges.getState().workflowIds.size })
+      costs.push({ requests: first.length, facts: factsRead(first), held: index.pending.facts.length + index.pending.workflowIds.size })
     }
     expect(costs[1]).toEqual(costs[0])
   })
@@ -211,6 +211,56 @@ describe("child reconciliation work", () => {
     }
     const [base] = costs
     expect(costs).toEqual(costs.map(() => base ?? { first: 0, changed: 0, changedFacts: 0 }))
+  }, scaleSetupTimeoutMs)
+
+  test("sends over sibling parents read only this parent's members, and a send with no change runs no pass", async () => {
+    const children = 2
+    const costs: Array<{ idle: string[][]; changed: number; changedFacts: number }> = []
+    for (const siblings of [2, 20]) {
+      const projectRoot = temporaryDirectory("child-reconciliation-siblings-")
+      const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
+      stores.push(store)
+      const writer = localAsyncWriter(store)
+      const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store })
+      for (let p = 0; p <= siblings; p += 1) {
+        const id = await manager.createChat({ id: `parent-${p}`, conversationId: `parent-conversation-${p}`, name: "Parent" })
+        for (let k = 0; k < children; k += 1) await addSubagentChild(store, writer, projectRoot, id, `parent-conversation-${p}`, p * children + k, "created")
+        if (p > 0) await addWorkflowChild(store, projectRoot, id, `workflow-${p}`, `workflow-tool-${p}`, "Work")
+      }
+      const counter = countStateRequests(asAsyncEventReadSurface(store))
+      const input = { parentSessionId: "parent-0", reader: counter.reader, writer, projectRoot }
+      const release = holdChildReconciliationIndex(counter.reader, "parent-0")
+      try {
+        await reconcileChildSessionCompletions(input)
+        const idle: string[][] = []
+        for (let round = 0; round < 3; round += 1) {
+          for (let p = 1; p <= siblings; p += 1) {
+            store.append({ aggregateId: `session:child-${p * children}`, sessionId: `child-${p * children}`, timestamp: Date.now(), ...buildSubagentCompleted({ childRunId: `run-${p * children}-${round}`, status: "completed", isError: false, content: "Reviewed.", durationMs: 1 }) })
+            store.append({ aggregateId: `workflow:workflow-${p}`, sessionId: `workflow-${p}`, timestamp: Date.now(), type: "queue.mutated", version: 1, actor: "flywheel", payload: { index: round } })
+          }
+          counter.take()
+          expect(await reconcileChildSessionCompletions(input)).toMatchObject({ reconciledCount: 0, workflowAggregateReads: 0 })
+          const requests = counter.take()
+          expect(factsRead(requests)).toBe(0)
+          // The member catch-up of this parent and its own children, the
+          // binding cursor, and one read of the held notifications: no
+          // sibling's member and no per-aggregate read of a pass.
+          expect(requests.filter(({ method }) => method === "readInFlight")).toHaveLength(1)
+          expect(requests.every(({ method, query }) => method === "capturePosition" || method === "readInFlight" || (method === "readPage" && query?.aggregateId === undefined))).toBe(true)
+          expect(requests.flatMap(({ method, query }) => method === "readPage" && query?.aggregateIds ? [query.aggregateIds] : [])).toEqual([["session:parent-0", "session:child-0", "session:child-1"]])
+          idle.push(requests.map(({ method }) => method))
+        }
+        // One of this parent's children completes: the next send settles it.
+        const childWriter = createSessionFactWriter({ sessionId: "child-1", writer })
+        await childWriter.record(buildSubagentCompleted({ childRunId: "run-1", status: "completed", isError: false, content: "Reviewed.", durationMs: 1 }))
+        childWriter.dispose()
+        counter.take()
+        expect((await reconcileChildSessionCompletions(input)).reconciledCount).toBe(1)
+        const changed = counter.take()
+        costs.push({ idle, changed: changed.length, changedFacts: factsRead(changed) })
+      } finally { release() }
+    }
+    expect(costs[1]).toEqual(costs[0])
   }, scaleSetupTimeoutMs)
 
   test("a held parent's index and runs outlive registry churn until its last owner releases them, and an unheld one's do not", async () => {

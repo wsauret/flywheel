@@ -665,5 +665,4 @@ describe("child workflow completion reconciliation", () => {
       { sessionId: parentSessionId, type: "upsert", notice: expect.objectContaining({ scope: CHILD_RESULTS_NOTICE_SCOPE, presentation: "session.child_results_blocked", message: expect.stringContaining("Cause: injected publication failure.") }) },
       { sessionId: parentSessionId, type: "resolve", id: CHILD_RESULTS_NOTICE_SCOPE }])
   })
-
 })
