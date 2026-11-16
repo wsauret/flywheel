@@ -82,9 +82,12 @@ export interface ExecutorBlockerDeps {
   readonly runningWorkflows: () => readonly string[]
   readonly projectRoot: string
   readonly projectLabel: string
-  /** The durable session catalog: metadata only, with no summary totals.
-   *  It reads the project store. */
-  readonly listMetadata: () => Promise<DurableSessionCatalog>
+  /** The durable rows of the sessions whose metadata states them active:
+   *  metadata only, with no summary totals. It reads the project store, and
+   *  its cost follows the active sessions, not the project's history. */
+  readonly listActive: () => Promise<DurableSessionCatalog>
+  /** The durable rows of the sessions asked for. It reads the project store. */
+  readonly listForIds: (sessionIds: readonly string[]) => Promise<DurableSessionCatalog>
   /** The chats whose runner this executor's session store holds, each with
    *  the status its runner holds in memory. It reads neither the project
    *  store nor a background Worker. */
@@ -111,11 +114,14 @@ export interface ExecutorBlockerDeps {
  *  workflow included. One blocker per session names the first of these its
  *  session holds.
  *
- *  The question reads the durable metadata, the store, and the published
- *  statuses only. It never reads the client catalog, because that read admits
- *  summary totals, and a summary read starts the executor's background
- *  Worker. The account's idle reaper asks this question just before it closes
- *  a project, so such a read would start a Worker only to stop it.
+ *  The question reads the durable metadata of the active sessions, of the
+ *  resident chats, and of the running children, and their published
+ *  statuses. The idle reaper asks it on a timer, so it never reads the whole
+ *  catalog: its cost follows live work, not the project's history. It never
+ *  reads the client catalog, because that read admits summary totals, and a
+ *  summary read starts the executor's background Worker. The account's idle
+ *  reaper asks this question just before it closes a project, so such a read
+ *  would start a Worker only to stop it.
  *
  *  A project store that cannot be read, such as one whose folder was deleted
  *  while the project was open, never fails the question. The answer then
@@ -127,22 +133,19 @@ export interface ExecutorBlockerDeps {
 export async function collectReplacementBlockers(deps: ExecutorBlockerDeps): Promise<ReplacementBlocker[]> {
   const project = { projectRoot: deps.projectRoot, projectLabel: deps.projectLabel }
   const blockers: ReplacementBlocker[] = []
-  const stored = await storedChats(deps).then(
-    (chats) => { deps.storeHealth.recovered(); return chats },
-    (error: unknown) => { deps.storeHealth.failed(error); return undefined },
-  )
   // Children are not catalog rows (ARCH-PROTOCOL-048). A child blocks only while an
   // owner in this process holds its run: a durable run left open by a process
   // that is gone is a record, not work, and never keeps a project from going
   // idle.
   const running = deps.runningChildren()
+  const stored = await storedSessions(deps, running).then(
+    (sessions) => { deps.storeHealth.recovered(); return sessions },
+    (error: unknown) => { deps.storeHealth.failed(error); return undefined },
+  )
   for (const workflowId of deps.runningWorkflows()) blockers.push({ ...project, workflowId, reason: "workflow" })
-  if (running.length > 0) {
-    const labels = new Map(stored?.sessions.map((session) => [session.id, session.label]))
-    for (const { sessionId } of running) {
-      const sessionTitle = labels.get(sessionId)
-      blockers.push({ ...project, sessionId, ...(sessionTitle === undefined ? {} : { sessionTitle }), reason: "subagent" })
-    }
+  for (const { sessionId } of running) {
+    const sessionTitle = stored?.labels.get(sessionId)
+    blockers.push({ ...project, sessionId, ...(sessionTitle === undefined ? {} : { sessionTitle }), reason: "subagent" })
   }
   const chats = stored?.chats ?? [...deps.residents()].map(([sessionId, status]) => ({ sessionId, sessionTitle: undefined, status }))
   for (const { sessionId, sessionTitle, status } of chats) {
@@ -156,19 +159,24 @@ export async function collectReplacementBlockers(deps: ExecutorBlockerDeps): Pro
   return blockers
 }
 
-/** The chats the project store names, each with its published status. A
- *  chat is one when its runner is resident here, whatever its metadata
- *  says: some paths attach a runner and start a turn with no lifecycle
- *  write. A chat is also one when its metadata states it active, which
- *  covers a continuation that no resident runner holds yet. */
-async function storedChats(deps: ExecutorBlockerDeps) {
-  const { sessions } = await deps.listMetadata()
+/** The live chats the project store names, each with its published status,
+ *  and the labels of the running children. A chat is live when its runner is
+ *  resident here, whatever its metadata says: some paths attach a runner and
+ *  start a turn with no lifecycle write. A chat is also live when its
+ *  metadata states it active, which covers a continuation that no resident
+ *  runner holds yet. Only the rows that the active read did not return are
+ *  read by id: those of resident chats and of running children. */
+async function storedSessions(deps: ExecutorBlockerDeps, running: readonly { readonly sessionId: string }[]) {
   const residents = deps.residents()
-  const active = sessions.filter((session) => session.kind === "chat" && (session.lifecycleState === "active" || residents.has(session.id)))
-  const statuses = await deps.statuses(active.map((session) => session.id))
+  const { sessions: active } = await deps.listActive()
+  const listed = new Set(active.map((session) => session.id))
+  const unlisted = [...residents.keys(), ...running.map((child) => child.sessionId)].filter((sessionId) => !listed.has(sessionId))
+  const rows = unlisted.length === 0 ? active : [...active, ...(await deps.listForIds(unlisted)).sessions]
+  const chats = rows.filter((session) => session.kind === "chat" && (session.lifecycleState === "active" || residents.has(session.id)))
+  const statuses = await deps.statuses(chats.map((session) => session.id))
   return {
-    sessions,
-    chats: active.map((session) => ({ sessionId: session.id, sessionTitle: session.label, status: statuses.get(session.id) })),
+    labels: new Map(rows.map((session) => [session.id, session.label])),
+    chats: chats.map((session) => ({ sessionId: session.id, sessionTitle: session.label, status: statuses.get(session.id) })),
   }
 }
 
@@ -228,7 +236,8 @@ export interface ReplacementReportDeps {
   /** The account registry's label for this project, carried by every blocker
    *  this executor reports. Defaults to the directory name. */
   readonly projectLabel: string | undefined
-  readonly listMetadata: ExecutorBlockerDeps["listMetadata"]
+  readonly listActive: ExecutorBlockerDeps["listActive"]
+  readonly listForIds: ExecutorBlockerDeps["listForIds"]
   readonly runningChildren: ExecutorBlockerDeps["runningChildren"]
   readonly keptSessions: ExecutorBlockerDeps["keptSessions"]
   /** The executor's session store, whose resident chats the report reads. */
@@ -284,7 +293,7 @@ export function createReplacementReport(deps: ReplacementReportDeps): Replacemen
   return {
     blockers: () => collectReplacementBlockers({
       projectRoot: deps.projectRoot, projectLabel,
-      listMetadata: deps.listMetadata, runningChildren: deps.runningChildren, keptSessions: deps.keptSessions,
+      listActive: deps.listActive, listForIds: deps.listForIds, runningChildren: deps.runningChildren, keptSessions: deps.keptSessions,
       runningWorkflows: deps.runningWorkflows,
       residents: () => residentChats(deps.sessionStore),
       statuses: async (sessionIds) => new Map((await deps.client.query({ type: "statusSnapshot", sessionIds })).views.map((entry) => [entry.sessionId, entry.view ?? undefined])),

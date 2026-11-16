@@ -113,7 +113,7 @@ describe("executor lifecycle commands", () => {
     // The report and the authority as the executor composes them: the
     // authority reads the handoff the frame set.
     const report = createReplacementReport({
-      projectRoot: "/work/app", projectLabel: undefined, listMetadata: async () => ({ sessions: [], errors: [] }), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
+      projectRoot: "/work/app", projectLabel: undefined, listActive: async () => ({ sessions: [], errors: [] }), listForIds: async () => ({ sessions: [], errors: [] }), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
       sessionStore: { allIds: () => [], get: () => undefined },
       client: { query: async () => { throw new Error("no blockers are read") }, admission: createMutationAdmission() },
     })
