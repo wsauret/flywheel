@@ -178,3 +178,9 @@ Not: A retry counter or a cooldown on resets.
 Each context measurement records the context size at which the compaction plan owner would run the next automatic reset, or zero when none can run. Clients show progress against that recorded trigger. They use the configured count only when a measurement records none.
 Because: The trigger depends on the model's window, the fresh-context size, and the run's budget, which no client knows.
 Not: A client that computes the trigger from the configured count.
+
+## ARCH-CONTEXT-040: The fewest tools and the least prompting meet each design goal
+
+Flywheel meets each design goal with the fewest tools and the least prompting that achieve it. A new behavior first reuses an existing tool, and a tool's contract can differ by the kind of agent that calls it. A new tool or prompt rule exists only for a goal that no existing one can meet.
+Because: each added tool or rule competes for the model's attention, and agents confuse tools whose uses overlap.
+Not: a new single-purpose tool for each new behavior.
