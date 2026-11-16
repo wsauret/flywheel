@@ -1,0 +1,16 @@
+bench/harbor/configs/ds-three-off.toml
+  h_4b47e9e4a8b456 1-104
+bench/harbor/configs/luna-three-off.toml
+  h_4b47e9e4a8b456 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6a1252fa87a0847a9cd228bbc34feaf243f77555",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
