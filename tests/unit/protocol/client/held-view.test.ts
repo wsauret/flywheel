@@ -2,14 +2,14 @@ import { describe, expect, jest, spyOn, test } from "bun:test"
 import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
-import { createHeldView } from "../../../../src/protocol/client/held-view.js"
+import { createHeldView, type HeldViewOptions } from "../../../../src/protocol/client/held-view.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { updatesCursor, type UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 
 const update = (revision: number): UpdateStatusView => ({ revision, autoInstall: { persisted: true, forcedOff: false, effective: true }, status: { kind: "idle" } })
 
-function harness(options: { readonly open?: boolean } = {}) {
+function harness(options: { readonly open?: boolean; readonly adopt?: HeldViewOptions<UpdateStatusView>["adopt"] } = {}) {
   const sequencer = createRuntimeUiPatchSequencer()
   const cursor = updatesCursor()
   const lanes = fakeLanes(options)
@@ -25,7 +25,7 @@ function harness(options: { readonly open?: boolean } = {}) {
       reads.push(read)
       return read.promise
     },
-    adopt: (payload) => (payload.kind === "update.changed" ? payload.update : undefined),
+    adopt: options.adopt ?? ((payload) => (payload.kind === "update.changed" ? payload.update : undefined)),
     changed: (view, source) => { changes.push({ revision: view.revision, source }) },
     label: "update status",
     onDiagnostic: (message) => { diagnostics.push(message) },
@@ -56,6 +56,25 @@ describe("held view", () => {
     h.publish(update(2))
     expect(h.held.view).toEqual(update(2))
     expect(h.changes).toEqual([{ revision: 1, source: "read" }, { revision: 2, source: "patch" }])
+  })
+
+  test("adopt receives the previous view and its result becomes the view", async () => {
+    const previous: Array<number | undefined> = []
+    // Each patch folds its revision into the held one, as a module domain's payload does.
+    const h = harness({
+      adopt: (payload, _position, current) => {
+        if (payload.kind !== "update.changed") return undefined
+        previous.push(current?.revision)
+        return { ...payload.update, revision: (current?.revision ?? 0) + payload.update.revision }
+      },
+    })
+    h.reads[0]!.resolve({ view: update(1), position: h.position() })
+    await h.held.ready
+    h.publish(update(10))
+    h.publish(update(100))
+    expect(previous).toEqual([1, 11])
+    expect(h.held.view?.revision).toBe(111)
+    expect(h.changes).toEqual([{ revision: 1, source: "read" }, { revision: 11, source: "patch" }, { revision: 111, source: "patch" }])
   })
 
   test("a lane break reads nothing, and the next lane reads once", async () => {

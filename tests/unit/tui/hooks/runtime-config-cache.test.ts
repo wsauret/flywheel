@@ -4,7 +4,7 @@ import type { RuntimeClient } from "../../../../src/protocol/app-service-types.j
 import type { RuntimeConfigSnapshotResult } from "../../../../src/protocol/runtime-config-protocol-types.js"
 import { createRuntimeConfigCache, mutateRuntimeConfig } from "../../../../src/tui/hooks/shell-state.js"
 import { configValues } from "../modals/_settings-modal-fixtures.js"
-import { fakeLanes } from "../../../helpers/fake-lanes.js"
+import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery, type DispatchAnswers, type QueryAnswers } from "../../../helpers/runtime-dispatch.js"
 
 function configClient(options: {
@@ -25,9 +25,16 @@ describe("runtime config cache mutation settlement", () => {
         snapshotPosition: 2,
         config: { revision: 2, values: { ...configValues(), theme: "twilight" }, status: { kind: "valid" }, warnings: [], diagnostics: [] },
       }))
+      query.mockImplementationOnce(async () => ({
+        snapshotPosition: 1,
+        config: { revision: 1, values: configValues(), status: { kind: "valid" }, warnings: [], diagnostics: [] },
+      }))
       const subscribe: Pick<RuntimeClient, "subscribe">["subscribe"] = () => () => {}
       const dispatch = mock(async () => ({ kind: "committed", revision: 2 } as const))
       const cache = createRuntimeConfigCache({ appService: { ...configClient({ query }), subscribe } })
+      // The lane's read lands before the mutation, and no patch follows it.
+      for (let turn = 0; turn < 10 && cache.view() === undefined; turn++) await Promise.resolve()
+      expect(cache.view()?.revision).toBe(1)
 
       const result = await mutateRuntimeConfig(cache, configClient({ dispatch }), {
         type: "config.mutate",
@@ -36,7 +43,47 @@ describe("runtime config cache mutation settlement", () => {
 
       expect(result).toEqual({ kind: "committed", revision: 2 })
       expect(cache.view()?.values.theme).toBe("twilight")
-      expect(query).toHaveBeenCalledTimes(1)
+      expect(query).toHaveBeenCalledTimes(2)
+      dispose()
+    })
+  })
+
+  it("waits through a failed settlement read and settles when a later read lands the revision", async () => {
+    await createRoot(async (dispose) => {
+      const revision = (number: 1 | 2): RuntimeConfigSnapshotResult => ({
+        snapshotPosition: number,
+        config: { revision: number, values: number === 1 ? configValues() : { ...configValues(), theme: "twilight" }, status: { kind: "valid" }, warnings: [], diagnostics: [] },
+      })
+      const query = mock(async (): Promise<RuntimeConfigSnapshotResult> => revision(2))
+      query.mockImplementationOnce(async () => revision(1))
+      query.mockImplementationOnce(async () => { throw new Error("configuration read timed out") })
+      const listeners = new Set<Parameters<Pick<RuntimeClient, "subscribe">["subscribe"]>[0]>()
+      const subscribe: Pick<RuntimeClient, "subscribe">["subscribe"] = (listener) => {
+        listeners.add(listener)
+        return () => { listeners.delete(listener) }
+      }
+      const lanes = fakeLanes()
+      const cache = createRuntimeConfigCache({ appService: { ...configClient({ query }), subscribe, onLane: lanes.onLane } })
+      for (let turn = 0; turn < 10 && cache.view() === undefined; turn++) await Promise.resolve()
+      expect(cache.view()?.revision).toBe(1)
+
+      let settled = false
+      const mutation = mutateRuntimeConfig(cache, configClient({ dispatch: async () => ({ kind: "committed", revision: 2 }) }), {
+        type: "config.mutate",
+        setting: { id: "theme", expected: { kind: "absent" }, desired: "twilight" },
+      }).finally(() => { settled = true })
+      for (let turn = 0; turn < 20 && query.mock.calls.length < 2; turn++) await Promise.resolve()
+      for (let turn = 0; turn < 20; turn++) await Promise.resolve()
+      // The write committed, so a failed read is no answer: the mutation waits.
+      expect(query).toHaveBeenCalledTimes(2)
+      expect(settled).toBe(false)
+
+      lanes.end()
+      for (const listener of listeners) listener(LANE_BREAK)
+      lanes.open()
+
+      expect(await mutation).toEqual({ kind: "committed", revision: 2 })
+      expect(cache.view()?.values.theme).toBe("twilight")
       dispose()
     })
   })
