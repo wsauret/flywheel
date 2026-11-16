@@ -1,0 +1,24 @@
+src/orchestration/session/live-session-control.ts
+  h_4b47e9e4a8b456 156-157,226-230,233,235-238,242-243,249,252,309,312-318,327,335,338,342
+src/orchestration/session/reply-waits.ts
+  h_4b47e9e4a8b456 10,115-116,122-126,142,144,168-184,186-187,280,282,291,504,522-523,525-533,535,544,553-569,572-576,578,580,590,593,599,601
+src/orchestration/workflow-host/runner.ts
+  h_4b47e9e4a8b456 57,124
+tests/unit/orchestration/session/reply-wait-parks.test.ts
+  h_4b47e9e4a8b456 1-166
+tests/unit/orchestration/session/reply-waits.test.ts
+  h_4b47e9e4a8b456 460
+tests/unit/orchestration/session/subagent-completion-single-delivery.test.ts
+  h_4b47e9e4a8b456 236,247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "518292ad5300ea8cee4654e0938c265e2d31591a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
