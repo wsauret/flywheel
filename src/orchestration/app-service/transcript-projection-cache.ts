@@ -366,12 +366,11 @@ export function createTranscriptProjectionCache(deps: TranscriptProjectionCacheD
     return { ...indexed, readBlock: async (index) => nameTarget(await indexed.readBlock(index)) }
   }
 
+  /** The block as a client shows it: a card states its run, and every row
+   *  names the sessions it reads by their titles. A running subagent card
+   *  names its newest call as it reads it, so each name is read once. */
   async function projectBlock(sessionId: string, block: AnyBlock): Promise<AnyBlock> {
-    return nameSessions(await projectCard(sessionId, block))
-  }
-
-  async function projectCard(sessionId: string, block: AnyBlock): Promise<AnyBlock> {
-    if (block.kind !== "agentGroup" && !(block.kind === "tool" && block.name === "subagent")) return block
+    if (block.kind !== "agentGroup" && !(block.kind === "tool" && block.name === "subagent")) return nameSessions(block)
     const resident = ensureResident(sessionId, deps.projectRoot)
     const [toolSummarySnapshot, meta] = await Promise.all([
       resident.auxiliaryReaders.toolSummaries.replay(),
@@ -394,7 +393,7 @@ export function createTranscriptProjectionCache(deps: TranscriptProjectionCacheD
     // summary's too: no launching call settles a workflow as paused.
     const workflowRun = block.kind === "agentGroup" && block.containerKind === "workflow" && (isAgentInFlight(block.status) || block.status === "paused") ? summaries.get(toolUseId) : undefined
     const run = assignment?.run ?? workflowRun
-    if (block.kind === "tool" && (!assignment || !input)) return block
+    if (block.kind === "tool" && (!assignment || !input)) return nameSessions(block)
     if (assignment && input) {
       // The card states the figures its run's history measures.
       const measured = await toolSummarySnapshot.measure(assignment.run)
@@ -407,14 +406,14 @@ export function createTranscriptProjectionCache(deps: TranscriptProjectionCacheD
       }) ?? false
       group = stateWorkflowCard(block, await toolSummarySnapshot.measure(workflowRun, live), live)
     }
-    if (group.kind !== "agentGroup" || !group.linkUri?.startsWith("flywheel://session/")) return group
+    if (group.kind !== "agentGroup" || !group.linkUri?.startsWith("flywheel://session/")) return nameSessions(group)
     const childSessionId = group.linkUri.slice("flywheel://session/".length)
     if (!isAgentInFlight(group.status)) {
       const linkUri = group.linkUri
       const latest = [...summaries.values()].findLast((summary) => summary.linkUri === linkUri)
-      if (latest !== run) return group
+      if (latest !== run) return nameSessions(group)
       const duration = (await readSessionDurationFromReader(projectionReader, childSessionId)).accumulatedActiveMs
-      return duration > 0 ? { ...group, duration } : group
+      return nameSessions(duration > 0 ? { ...group, duration } : group)
     }
     const child = deps.sessionStore.get(childSessionId)
     resident.children.add(childSessionId)

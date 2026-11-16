@@ -24,7 +24,9 @@ export interface OutputProjection {
   /** States the sessions whose output any client follows (`ShippedOutput.watch`).
    *  An unwatched session's changes are drained and dropped unprojected, so
    *  its card links can be stale; each session the statement adds links its
-   *  current blocks again, so a change of a child reaches its card. */
+   *  current blocks again, so a change of a child reaches its card, and
+   *  projects once each card not yet bound to its child, whose link can have
+   *  landed while no client followed the session. */
   watch(sessionIds: readonly string[]): void
   dispose(): void
 }
@@ -77,8 +79,15 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
   const rowsByNamedSession: RowLinks = new Map()
   // A subagent card projected before its child is bound carries no session
   // link yet, and a child's facts reach only linked cards. Such a card is
-  // re-projected alone on each stored batch until it links or settles.
-  const unlinkedByParent = new Map<string, Set<string>>()
+  // re-projected alone when its session links a child, which the same
+  // commit binds to the card.
+  const unlinkedByParent = new Map<string, RowIndexes>()
+  // The live state of each linked child that its subagent card states: the
+  // child's clock and its tokens. A child's transcript changes many times a
+  // second and leaves its card as it is, so only a change of this state
+  // refreshes the card from the store. The child's committed work reaches
+  // the card through the stored facts that name the child.
+  const childClocks = new Map<string, string | undefined>()
   const { shipped } = deps
   const workBySession = new Map<string, SessionWork>()
   // The state of each workflow agent that its workflow's card reads. An
@@ -92,31 +101,36 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
     unlinkRows(parentsByChild, sessionId, keep)
     unlinkRows(rowsByNamedSession, sessionId, keep)
     const unlinked = unlinkedByParent.get(sessionId)
-    if (unlinked && keep) for (const identity of unlinked) { if (!keep.has(identity)) unlinked.delete(identity) }
+    if (unlinked && keep) for (const identity of unlinked.keys()) { if (!keep.has(identity)) unlinked.delete(identity) }
     if (!keep || unlinked?.size === 0) unlinkedByParent.delete(sessionId)
   }
 
-  /** Records what a block of the session's transcript reads: the child of a
-   *  card, or a card not yet bound to its child, and the sessions it names. */
-  const linkBlock = (sessionId: string, block: AnyBlock, identity = blockIdentity(block)): void => {
-    for (const namedId of namedSessions(block)) linkRow(rowsByNamedSession, namedId, sessionId, identity)
+  /** Records what the block at absolute `index` of the session's transcript
+   *  reads: the child of a card, or a card not yet bound to its child, and
+   *  the sessions it names. */
+  const linkBlock = (sessionId: string, block: AnyBlock, index: number, identity = blockIdentity(block)): void => {
+    for (const namedId of namedSessions(block)) linkRow(rowsByNamedSession, namedId, sessionId, identity, index)
     const child = block.kind === "agentGroup" ? parseSessionLink(block.linkUri)?.sessionId ?? parseWorkflowLink(block.linkUri)?.workflowId : undefined
     if (child !== undefined) {
-      linkRow(parentsByChild, child, sessionId, identity)
+      linkRow(parentsByChild, child, sessionId, identity, index)
       unlinkedByParent.get(sessionId)?.delete(identity)
-    } else if (block.kind === "tool" && block.name === "subagent" && (block.status === "pending" || block.status === "streaming")) {
-      let unlinked = unlinkedByParent.get(sessionId)
-      if (!unlinked) { unlinked = new Set(); unlinkedByParent.set(sessionId, unlinked) }
-      unlinked.add(identity)
+    } else if (isUnboundCard(block)) {
+      markUnbound(sessionId, identity, index)
     } else {
       unlinkedByParent.get(sessionId)?.delete(identity)
     }
   }
 
+  const markUnbound = (sessionId: string, identity: string, index: number): void => {
+    let unlinked = unlinkedByParent.get(sessionId)
+    if (!unlinked) { unlinked = new Map(); unlinkedByParent.set(sessionId, unlinked) }
+    unlinked.set(identity, index)
+  }
+
   /** The synchronous part of a pass before its awaits: it drains the
    *  session's committed changes, or settles a removed or unchanged session
    *  and returns nothing. */
-  const drainSession = (sessionId: string, refreshCards: ReadonlySet<string> | undefined): Drained | undefined => {
+  const drainSession = (sessionId: string, refreshCards: RowIndexes | undefined): Drained | undefined => {
     const entry = deps.sessionStore.get(sessionId)
     if (!entry) {
       observedById.delete(sessionId)
@@ -150,12 +164,22 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
     // with, such as the assignment that launches a subagent, and no change
     // ships those blocks. They are linked here, so they follow their child
     // and the titles they name as a shipped block does.
-    if (rebased && !batch.fullResync) for (const block of baseView.blocks) linkBlock(sessionId, block)
+    if (rebased && !batch.fullResync) for (const [index, block] of baseView.blocks.entries()) linkBlock(sessionId, block, baseView.sequenceStart + index)
     const changes = refreshCards && !batch.fullResync
-      ? { ...batch, changes: [...batch.changes, ...baseView.blocks.flatMap((block, index): OutputBlockChange[] => refreshCards.has(blockIdentity(block)) ? [{ kind: "upsert", index: baseView.sequenceStart + index, block }] : [])] }
+      ? { ...batch, changes: [...batch.changes, ...[...refreshCards].flatMap(([identity, index]): OutputBlockChange[] => {
+        const found = findLinkedBlock(baseView, identity, index)
+        return found ? [{ kind: "upsert", ...found }] : []
+      })] }
       : batch
     const kept = changes.fullResync ? [] : lastCopies(changes.changes)
-    const blocks = changes.fullResync ? baseView.blocks : kept.flatMap((change) => change.kind === "append-content" ? [] : [change.block])
+    const rows = changes.fullResync
+      ? baseView.blocks.map((block, index) => ({ block, index: baseView.sequenceStart + index }))
+      : kept.flatMap((change) => change.kind === "append-content" ? [] : [change])
+    // The link of a card's child can commit while the pass awaits the card's
+    // projection. The card reads as unbound from the drain on, so that link
+    // starts another pass; the ship links the card if its projection was bound.
+    for (const { block, index } of rows) if (isUnboundCard(block)) markUnbound(sessionId, blockIdentity(block), index)
+    const blocks = rows.map((row) => row.block)
     return { baseView, fullResync: changes.fullResync, kept, blocks, changedTools: changes.changedTools, ownStreamingToolText, streamingOutputChars }
   }
 
@@ -163,16 +187,16 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
    *  links of the projected blocks and ships the delta. */
   const shipSession = (sessionId: string, drained: Drained, projectedBlocks: ReadonlyMap<AnyBlock, AnyBlock>): void => {
     const { baseView, kept } = drained
-    const project = (block: AnyBlock): AnyBlock => {
+    const project = (block: AnyBlock, index: number): AnyBlock => {
       const projected = projectedBlocks.get(block) ?? block
-      linkBlock(sessionId, projected, blockIdentity(block))
+      linkBlock(sessionId, projected, index, blockIdentity(block))
       return projected
     }
     shipped.ship(sessionId, {
       visibleMessageCount: baseView.visibleMessageCount,
       blockCount: baseView.sequenceStart + baseView.blocks.length,
       blocks: drained.fullResync
-        ? { kind: "resync", sequenceStart: baseView.sequenceStart, blocks: baseView.blocks.map((block) => projectFrontendOutputBlock(project(block))) }
+        ? { kind: "resync", sequenceStart: baseView.sequenceStart, blocks: baseView.blocks.map((block, index) => projectFrontendOutputBlock(project(block, baseView.sequenceStart + index))) }
         : { kind: "changes", changes: kept.map((change) => toWireBlockChange(project, change)) },
       // The keeper's tails pair with the keeper's own drains, so they are read
       // as this ships: a tail it settled during the awaits above stays gone.
@@ -186,7 +210,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
   // Each synchronous part is one probed loop unit, so an event-loop stall
   // names the output publish that ran across it. The awaits between them
   // yield the loop and are not part of either unit.
-  const syncSession = async (sessionId: string, refreshCards?: ReadonlySet<string>): Promise<void> => {
+  const syncSession = async (sessionId: string, refreshCards?: RowIndexes): Promise<void> => {
     if (disposed) return
     const drained = probeLoopUnit("output-projection", "drain", () => drainSession(sessionId, refreshCards))
     // No client follows the session: its read after a watch holds what this
@@ -205,15 +229,15 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
   /** Starts or extends the session's one publish loop. Each pass drains
    *  every change committed before it began, so a change waits for at most
    *  the pass after the one now running. */
-  const schedule = (sessionId: string, cards?: ReadonlySet<string>): SessionWork | undefined => {
+  const schedule = (sessionId: string, cards?: RowIndexes): SessionWork | undefined => {
     if (disposed) return undefined
     const existing = workBySession.get(sessionId)
     if (existing) {
       existing.pending = true
-      for (const identity of cards ?? []) existing.cards.add(identity)
+      for (const [identity, index] of cards ?? []) existing.cards.set(identity, index)
       return existing
     }
-    const work: SessionWork = { pending: true, cards: new Set(cards), started: 0, waiters: [] }
+    const work: SessionWork = { pending: true, cards: new Map(cards), started: 0, waiters: [] }
     workBySession.set(sessionId, work)
     void Promise.resolve().then(async () => {
       try {
@@ -222,7 +246,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
           work.pending = false
           work.started += 1
           const refresh = work.cards
-          work.cards = new Set()
+          work.cards = new Map()
           try {
             await syncSession(sessionId, refresh.size > 0 ? refresh : undefined)
           } catch (error) {
@@ -264,30 +288,47 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
     agentClocks.set(sessionId, { workflowId: entry.workflowId, running })
     return known?.running === running ? undefined : entry.workflowId
   }
+  /** The child whose subagent cards a runtime change of `sessionId` moves:
+   *  a linked child whose clock or tokens changed, or whose state no earlier
+   *  change has stated. */
+  const movedSubagentCard = (sessionId: string): string | undefined => {
+    if (!parentsByChild.has(sessionId)) {
+      childClocks.delete(sessionId)
+      return undefined
+    }
+    const entry = deps.sessionStore.get(sessionId)
+    const clock = entry && `${entry.streamingStartedAt}:${entry.accumulatedActiveMs}:${entry.tokens}`
+    const moved = !childClocks.has(sessionId) || childClocks.get(sessionId) !== clock
+    childClocks.set(sessionId, clock)
+    return moved ? sessionId : undefined
+  }
   /** The workflow of an agent whose facts were stored: its card reads its
    *  agents' usage and turn ends. */
   const storedWorkflowCard = (sessionId: string): string | undefined => {
     const entry = deps.sessionStore.get(sessionId)
     return entry?.kind === "workflow-agent" ? entry.workflowId : undefined
   }
-  /** Re-projects the rows that read `linked` sessions. A subagent card
-   *  follows every change of its child, a workflow card follows the changes
-   *  that `workflowCard` names, and a row that names a session reads only
-   *  its title, so only a title change of that session refreshes it. */
-  const refreshParents = (children: Iterable<string>, workflowCard: (sessionId: string) => string | undefined, withUnlinked = false, renamed: Iterable<string> = []): void => {
-    const cardsByParent = new Map<string, Set<string>>()
-    if (withUnlinked) for (const [parentId, unlinked] of unlinkedByParent) cardsByParent.set(parentId, new Set(unlinked))
+  /** Re-projects the rows that read the `linked` sessions, the rows that
+   *  name the `renamed` sessions by their titles, and the unbound cards of
+   *  the `relinked` sessions. */
+  const refreshParents = (linked: Iterable<string | undefined>, renamed: Iterable<string> = [], relinked: Iterable<string> = []): void => {
+    const cardsByParent = new Map<string, RowIndexes>()
+    const add = (parentId: string, rows: RowIndexes): void => {
+      let cards = cardsByParent.get(parentId)
+      if (!cards) { cards = new Map(); cardsByParent.set(parentId, cards) }
+      for (const [identity, index] of rows) cards.set(identity, index)
+    }
     const collect = (links: RowLinks, linkedIds: Iterable<string | undefined>): void => {
       for (const linkedId of linkedIds) {
-        for (const [parentId, identities] of (linkedId === undefined ? undefined : links.get(linkedId)) ?? []) {
-          let cards = cardsByParent.get(parentId)
-          if (!cards) { cards = new Set(); cardsByParent.set(parentId, cards) }
-          for (const identity of identities) cards.add(identity)
-        }
+        for (const [parentId, rows] of (linkedId === undefined ? undefined : links.get(linkedId)) ?? []) add(parentId, rows)
       }
     }
-    collect(parentsByChild, [...children].flatMap((id) => [id, workflowCard(id)]))
+    collect(parentsByChild, linked)
     collect(rowsByNamedSession, renamed)
+    for (const parentId of relinked) {
+      const unlinked = unlinkedByParent.get(parentId)
+      if (unlinked) add(parentId, unlinked)
+    }
     for (const [parentId, cards] of cardsByParent) if (shipped.watches(parentId)) schedule(parentId, cards)
   }
 
@@ -295,7 +336,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
     if (disposed) return
     if (changed !== undefined) {
       for (const sessionId of changed) schedule(sessionId)
-      refreshParents(changed, movedWorkflowCard)
+      refreshParents([...changed].flatMap((id) => [movedSubagentCard(id), movedWorkflowCard(id)]))
       return
     }
     const active = new Set<string>()
@@ -313,19 +354,25 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
   sync()
   const unsubscribe = deps.sessionStore.onChange(sync, "output-protocol")
   const unsubscribeStored = deps.onStored?.((events) => {
+    const sessionIds = new Set(events.map((event) => event.sessionId))
     const renamed = new Set(events.flatMap((event) => event.type === SESSION_TITLE_FACT_TYPE ? [event.sessionId] : []))
-    refreshParents(new Set(events.map((event) => event.sessionId)), storedWorkflowCard, true, renamed)
+    const relinked = new Set(events.flatMap((event) => event.type === CHILD_LINKED_FACT_TYPE ? [event.sessionId] : []))
+    refreshParents([...sessionIds].flatMap((id) => [id, storedWorkflowCard(id)]), renamed, relinked)
   })
-  const unsubscribeRetired = deps.onContinuationRetired?.((sessionId) => { refreshParents([sessionId], () => undefined) })
+  const unsubscribeRetired = deps.onContinuationRetired?.((sessionId) => { refreshParents([sessionId]) })
   return {
     flush,
     watch(sessionIds) {
       for (const sessionId of shipped.watch(sessionIds)) {
         const entry = deps.sessionStore.get(sessionId)
         if (!entry) continue
-        const { blocks } = outputView(entry)
+        const { blocks, sequenceStart } = outputView(entry)
         clearParent(sessionId, new Set(blocks.map(blockIdentity)))
-        for (const block of blocks) linkBlock(sessionId, block)
+        for (const [index, block] of blocks.entries()) linkBlock(sessionId, block, sequenceStart + index)
+        // A card can have missed its child's link while no client followed
+        // its session, so each card that reads as unbound projects once.
+        const unlinked = unlinkedByParent.get(sessionId)
+        if (unlinked) schedule(sessionId, unlinked)
       }
     },
     dispose() {
@@ -336,6 +383,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
       parentsByChild.clear()
       rowsByNamedSession.clear()
       unlinkedByParent.clear()
+      childClocks.clear()
       agentClocks.clear()
       observedById.clear()
       workBySession.clear()
@@ -347,6 +395,16 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
  *  session shows. */
 const SESSION_TITLE_FACT_TYPE = "session.label.updated"
 
+/** The fact that places a new child under the session that launched it. It
+ *  commits with the binding of the child's run to the launching call, so a
+ *  card not yet bound reads its child from that commit on. */
+const CHILD_LINKED_FACT_TYPE = "session.child.linked"
+
+/** A subagent call whose card no child is bound to yet. */
+function isUnboundCard(block: AnyBlock): boolean {
+  return block.kind === "tool" && block.name === "subagent" && (block.status === "pending" || block.status === "streaming")
+}
+
 /** The sessions a row names by their titles: the sender of a message, the
  *  recipient of a message call, and the recipients of a card's message calls. */
 function namedSessions(block: AnyBlock): readonly string[] {
@@ -356,26 +414,42 @@ function namedSessions(block: AnyBlock): readonly string[] {
   return []
 }
 
-/** Rows that read another session: by the session read, then by the session
- *  whose transcript holds the row, the identities of those rows. */
-type RowLinks = Map<string, Map<string, Set<string>>>
+/** The rows of one session by identity, each with the absolute index it had
+ *  when it was last linked. */
+type RowIndexes = Map<string, number>
 
-function linkRow(links: RowLinks, linkedId: string, sessionId: string, identity: string): void {
+/** Rows that read another session: by the session read, then by the session
+ *  whose transcript holds the row, those rows. */
+type RowLinks = Map<string, Map<string, RowIndexes>>
+
+function linkRow(links: RowLinks, linkedId: string, sessionId: string, identity: string, index: number): void {
   let sessions = links.get(linkedId)
   if (!sessions) { sessions = new Map(); links.set(linkedId, sessions) }
-  let identities = sessions.get(sessionId)
-  if (!identities) { identities = new Set(); sessions.set(sessionId, identities) }
-  identities.add(identity)
+  let rows = sessions.get(sessionId)
+  if (!rows) { rows = new Map(); sessions.set(sessionId, rows) }
+  rows.set(identity, index)
 }
 
 /** Forgets the rows of `sessionId`, all of them or those not in `keep`. */
 function unlinkRows(links: RowLinks, sessionId: string, keep: ReadonlySet<string> | undefined): void {
   for (const [linkedId, sessions] of links) {
-    const identities = sessions.get(sessionId)
-    if (identities && keep) for (const identity of identities) { if (!keep.has(identity)) identities.delete(identity) }
-    if (!keep || identities?.size === 0) sessions.delete(sessionId)
+    const rows = sessions.get(sessionId)
+    if (rows && keep) for (const identity of rows.keys()) { if (!keep.has(identity)) rows.delete(identity) }
+    if (!keep || rows?.size === 0) sessions.delete(sessionId)
     if (sessions.size === 0) links.delete(linkedId)
   }
+}
+
+/** The linked row `identity` of the view and its absolute index. The row is
+ *  read at the index its link recorded, and the view is searched only when
+ *  a block inserted before the row moved it. A row that left the view gives
+ *  nothing. */
+function findLinkedBlock(view: ReturnType<typeof outputView>, identity: string, index: number): { readonly index: number; readonly block: AnyBlock } | undefined {
+  const recorded = view.blocks[index - view.sequenceStart]
+  if (recorded && blockIdentity(recorded) === identity) return { index, block: recorded }
+  const found = view.blocks.findIndex((block) => blockIdentity(block) === identity)
+  const block = view.blocks[found]
+  return block ? { index: view.sequenceStart + found, block } : undefined
 }
 
 /** One session's publish loop: whether a change waits for another pass, the
@@ -383,7 +457,7 @@ function unlinkRows(links: RowLinks, sessionId: string, keep: ReadonlySet<string
  *  for the pass that drains what it asked for. */
 interface SessionWork {
   pending: boolean
-  cards: Set<string>
+  cards: RowIndexes
   started: number
   waiters: readonly { readonly pass: number; readonly resolve: () => void }[]
 }
@@ -439,9 +513,9 @@ function changeIdentity(change: OutputBlockChange): string {
   return blockIdentity(change.kind === "append-content" ? change.identity : change.block)
 }
 
-function toWireBlockChange(project: (block: AnyBlock) => AnyBlock, change: OutputBlockChange): ProjectedBlockChange {
+function toWireBlockChange(project: (block: AnyBlock, index: number) => AnyBlock, change: OutputBlockChange): ProjectedBlockChange {
   if (change.kind === "insert" || change.kind === "upsert") {
-    const wire = projectFrontendOutputBlock(project(change.block))
+    const wire = projectFrontendOutputBlock(project(change.block, change.index))
     return { kind: change.kind, index: change.index, blockId: blockIdentity(wire), block: wire }
   }
   return { kind: "append-content", index: change.index, blockId: blockIdentity(change.identity), contentOffset: change.contentOffset, text: change.text }

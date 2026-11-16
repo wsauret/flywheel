@@ -49,9 +49,11 @@ export async function readOutputSequence(sessionId: string, session: ReplayedSes
   }
 
   const start = Math.min(durable?.blockCount ?? 0, entry.outputSequenceStart)
-  // Projected together, so the subagent cards of the tail share one snapshot
-  // replay and one batched read of their tool sources.
-  const runtime = indexOutputBlocks(await Promise.all(entry.outputBlocks().map((block) => deps.transcriptCache.projectBlock(sessionId, block))))
+  // Indexed from the runtime blocks as they are, because a projection keeps
+  // each block's identity. A block is projected only when a read asks for
+  // it, and a range reads its blocks together, so the subagent cards of one
+  // range share one snapshot replay and one batched read of their sources.
+  const runtime = indexOutputBlocks(entry.outputBlocks())
   return {
     blockCount: start + runtime.blockCount,
     visibleMessageCount: entry.visibleMessageCountPrefix + entry.visibleMessageCountSuffix,
@@ -67,9 +69,7 @@ export async function readOutputSequence(sessionId: string, session: ReplayedSes
       const liveIndex = runtime.indexOfEntry(entryId)
       return liveIndex >= 0 ? start + liveIndex : -1
     },
-    readBlock: async (index) => index < start && durable
-      ? deps.transcriptCache.projectBlock(sessionId, await durable.readBlock(index))
-      : runtime.readBlock(index - start),
+    readBlock: async (index) => deps.transcriptCache.projectBlock(sessionId, index < start && durable ? await durable.readBlock(index) : runtime.readBlock(index - start)),
     async groupChildren(id) {
       return deps.transcriptCache.projectGroupChildren(await readGroupChildren(id))
     },
@@ -83,7 +83,7 @@ export async function readOutputSequence(sessionId: string, session: ReplayedSes
     if (durable && durableIndex >= 0) return durable.groupChildren(id)
     const liveIndex = runtime.indexOf(id)
     if (liveIndex < 0 && durable) return durable.groupChildren(id)
-    const block = runtime.readBlock(liveIndex)
+    const block = await deps.transcriptCache.projectBlock(sessionId, runtime.readBlock(liveIndex))
     if (block.kind !== "agentGroup") throw new Error(`Output block ${id} is not an agent group`)
     // Live group ids are UUIDs, not conversation-suffixed tool ids. Their
     // children keep raw tool ids, even before the parent conversation commits.
