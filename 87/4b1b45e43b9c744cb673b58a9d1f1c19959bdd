@@ -1,0 +1,392 @@
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 216-218,219,220-229,230
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 224-226,227
+docs/product-intent/README.md
+  h_4b47e9e4a8b456 33
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 123,235,247,259
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 167,567,715
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 1-6,7,8-10,11,12-14,15,16,17,18,19,20,21,22,23,24,25,26,27,28-30,31,32-35,36-46,47,48,49,50,51,52-59,60-67,68-71,72-75
+docs/terminology.md
+  h_4b47e9e4a8b456 86-87
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 4,14-17,36-39,40-41,43,48-49,63-66,67,68-71,72,73-75,80-81,85,86,92,94,101-102,103-108,114,125,133-138,148
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 3,5-6,7,9,12,14-19,33-34,54,58,62,67,72-73,85-189,199-209,213-223,258-281,282,283,284-285,288-289,303,312,313,314-315,316,318-322,326,332,366-367,373-387,389-443,445-449,451,453-457,460-461,464,465-466,467-472,476-496,491,497,499-558,550,552-553,561-565,567-572,573,574-583,584-589,590-606
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 188
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 280,286,287-289
+src/orchestration/app-service/module-execution-environment.ts
+  h_4b47e9e4a8b456 8-30,37,41,47,57-58,59
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 26,32,41-43,54-59,69-73,261-271
+src/orchestration/app-service/session-event-notices.ts
+  h_4b47e9e4a8b456 16,18-20,60-61,64-65,125,127-128,141,143-144
+src/orchestration/modules/lead/facts.ts
+  h_4b47e9e4a8b456 46-74,82-83,84-90,97,98-100
+src/orchestration/modules/lead/journal.ts
+  h_4b47e9e4a8b456 2,9,16-25,27,28,63-65,67,71,77,79-81,83,108-110,111-122,139-142,143-148
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 1,6-7,8,9-10,12,13,18-19,22,23,24,30-31,32-34,35,36,37,38-39,44-45,46-52,53-65,66-70
+src/orchestration/modules/lead/protocol.ts
+  h_4b47e9e4a8b456 29,42
+src/orchestration/modules/lead/row.ts
+  h_4b47e9e4a8b456 5,33-39,48-49,58,66-83,93,104-105,109,122,136,215
+src/orchestration/modules/lead/rows.ts
+  h_4b47e9e4a8b456 8-9,17,21,25,39,43,55-56,61-63,65,67-68,74-77,78,87-88,124-126,131-134,138,139-141,142,143,144-148,150,153-158,159-160,161-171,175-177,180,198,204-205,258,296-300
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 2-3,6-7,10-11,15,22-24,27-32,36-37,39-41,42-44,45,46-47,49,51-53,54-55,57-59,60,67,69,73,75,76-78,79-80,81,83-112,119-120,122-123,125-126,128-129,132-133,134-152,156-159,160-164,165,166,167,168,169-180,181-186,187-188,189,192-236,248,256,258,261,263-264,266,269,271-272,279,280,285-362,367-369,373-376,383-386,387,389,393,400,405-406,407-408,409,410-414,415-422,427-429,433,440,441-445,446-448,481-482,485-491,492-493,497,500-501,504
+src/protocol/modules/lead.ts
+  h_4b47e9e4a8b456 9,18,20-22,23-24,28-29,30,31,38-40,49,72,79,80,84,159,167-168,169-175,177,180,186,187,188,189,190-194,195-198,199-201,202-212,215-218,219-220,221-223,224-226,227,233,249
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 110-111,169,193
+src/tui/context/message-row.tsx
+  h_4b47e9e4a8b456 1-12,13,14-16,17,18-21,22,23,24,25,26
+src/tui/hooks/create-module-slots.tsx
+  h_4b47e9e4a8b456 3,52-57,66-68,281,284-286,289,295-302
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 365-367,451-452,582-583,585-586,588-590
+src/tui/modules.ts
+  h_4b47e9e4a8b456 9-10,27-33
+src/tui/modules/lead/chat-viewer.tsx
+  h_4b47e9e4a8b456 7,25,26-39,40-41,42-49,53,54-56,58-59,65-66,67-68,76,86-93,113,120-121,133,146-148,153,169,175
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 2,5,6,7,22-23,26-27,38-39,40-41,42,43-49,60-61,65-67,72,73,74,102,103,104,105-108,118,120-131,132-133
+src/tui/modules/lead/index.ts
+  h_4b47e9e4a8b456 10
+src/tui/modules/lead/list-model.ts
+  h_4b47e9e4a8b456 2,5,7-8,10-14,15,16,18-20,23,34-36,38,40,44-46,49-64,68-69,72-75,78,84
+src/tui/modules/lead/strip.tsx
+  h_4b47e9e4a8b456 10,13,15,17-20,22-23,51,54,56,60,65-67,70-71,73-77,79,81,86-98,97-98,99,102,105,109,113,114-116,117-120,121,123-124
+src/tui/output-blocks/text-block.tsx
+  h_4b47e9e4a8b456 4-5,23-24,26-30
+src/tui/output-blocks/user-message-block.tsx
+  h_4b47e9e4a8b456 23,96-108,225
+src/tui/output-window/output-window-projection.ts
+  h_4b47e9e4a8b456 2,4,45,85,87,106,110,122,125,138,140,146,150,152,157,161,166,178
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 16,32,33,66-67,96-98,100-101,102,103,104,109,110-112,236-237,256,296-297,397
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 14-15,24,37,165,242-244,314,315-317,335,493,521,572-619
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 12,13,28-29,43-45,57-59,62,63-64,65-68
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 173,175-176
+tests/unit/orchestration/app-service/session-event-notices.test.ts
+  h_4b47e9e4a8b456 48,72,73-75,76-77,78,79-83,84-92,97,114,148,165,183,199
+tests/unit/orchestration/modules/lead/row.test.ts
+  h_4b47e9e4a8b456 18,64,71-75
+tests/unit/orchestration/modules/lead/rows-work-count.test.ts
+  h_4b47e9e4a8b456 21-22,38,48-49,77
+tests/unit/orchestration/modules/lead/rows.test.ts
+  h_4b47e9e4a8b456 74,86-87,96-98,106,110-113,115-116,126,146,169-173,174,175-183,184,185-196,227-228,231-233,239
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 159,160,162-163
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 247,248,250-251
+tests/unit/protocol/modules/lead.test.ts
+  h_4b47e9e4a8b456 3,6,19-20,23-24,31
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 95
+tests/unit/tui/hooks/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 91,111,125-150,246
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 227,306,321
+tests/unit/tui/hooks/shell-state-memos.test.ts
+  h_4b47e9e4a8b456 39,50,53,55,62-83
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 8,17,29,32,41-43,66,81,89,92-93,98-99,101,103-104,108,111-112,122,125
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 6-8,9-10,11,13,26,30-32,37,38-41,42,43-45,46-61,62,63-65,68-80,79-80,81,82-91,93-95,98-119,144,147,160,172,216,218,237,239-242,243-244,245,246-248,249,250,251,252-258,259,260-261,262,263-270,271,272-278
+tests/unit/tui/modules/lead/client.test.tsx
+  h_4b47e9e4a8b456 4,7,15,43,73-82,83-97,98,99-103,205-206,218,227-230
+tests/unit/tui/modules/lead/cover.test.tsx
+  h_4b47e9e4a8b456 27,53-60
+tests/unit/tui/modules/lead/list-model.test.ts
+  h_4b47e9e4a8b456 2,5,8-10,13-19,22-24,27-29,40-45,49-51
+tests/unit/tui/modules/lead/strip.test.tsx
+  h_4b47e9e4a8b456 18,26,28-31,34-37,41,42,43,45,49-102,112,115,116,117-118,122,124-125,129-131,134,136,143-148,153-154,155,156-162,167,170,173
+tests/unit/tui/output-window-projection.test.ts
+  h_4b47e9e4a8b456 69-72
+src/infra/output/turn-start.ts
+  s_0d536ae5637d7f::t_fba61d6d5848e4 1-51
+scripts/uat/harness.ts
+  h_4b47e9e4a8b456 17-20,304
+src/orchestration/modules/development/definitions/skills/flywheel-uat/SKILL.md
+  h_4b47e9e4a8b456 21
+src/tui/components/composer-border-layout.ts
+  h_4b47e9e4a8b456 25-27,84,86,91
+src/tui/components/composer.tsx
+  h_4b47e9e4a8b456 6,517,523
+src/tui/components/tabs-bar.tsx
+  h_4b47e9e4a8b456 8,155-158,278,349-355
+src/tui/context/client-extensions.tsx
+  h_4b47e9e4a8b456 3,7-20
+src/tui/hooks/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 24-25,97
+tests/e2e/lib/e2e-framework.sh
+  h_4b47e9e4a8b456 214-219,226
+tests/e2e/tui-provider-fallback.ts
+  h_4b47e9e4a8b456 122
+tests/integration/local/terminal-reexecution.test.ts
+  h_4b47e9e4a8b456 262,266
+tests/integration/scripts/uat/lifecycle.test.ts
+  h_4b47e9e4a8b456 42,99-102,117,141,242,261
+tests/release/scenarios/chat-runner-reconciliation.ts
+  h_4b47e9e4a8b456 50
+tests/release/scenarios/remote-attach.ts
+  h_4b47e9e4a8b456 89,121
+tests/release/scenarios/scenario-context.ts
+  h_4b47e9e4a8b456 76-79
+tests/release/scenarios/scroll.ts
+  h_4b47e9e4a8b456 36
+tests/release/scenarios/session-modal.ts
+  h_4b47e9e4a8b456 31
+tests/release/scenarios/startup.ts
+  h_4b47e9e4a8b456 43
+tests/unit/tui/components/prompt-area-fixture.ts
+  h_4b47e9e4a8b456 10,18,52-53,82,133
+tests/unit/tui/components/prompt-bar-cursor.test.ts
+  h_4b47e9e4a8b456 4-7,25-45
+tests/unit/tui/components/prompt-border-fixtures.ts
+  h_4b47e9e4a8b456 25
+tests/unit/tui/components/tabs-bar.test.tsx
+  h_4b47e9e4a8b456 1,8,30-33,35,38,40-50,52-53,55-56,79-90,387-429
+tests/unit/tui/hooks/create-composer-border-layout.test.ts
+  h_4b47e9e4a8b456 63,88,100-122
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 280
+src/orchestration/modules/lead/chat-progress.ts
+  h_4b47e9e4a8b456 15,33,73-76,81,90,122-123,138,144,148
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 265-268,370-374
+src/protocol/client/transcript-model.ts
+  h_4b47e9e4a8b456 6,143-145,147,189-192,270-273,285
+src/protocol/client/turn-folds.ts
+  h_4b47e9e4a8b456 11-13,42,45-59,64,67-70,80-81,105,118,120-124,125,127,129,135,137,141,147,164,178,186-195,196-197,198-217,218,219-226,290-292,304
+src/tui/components/modal-copy.ts
+  h_4b47e9e4a8b456 93-95,100
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 329-370
+src/tui/hooks/use-session-modal-types.ts
+  h_4b47e9e4a8b456 70-71
+src/tui/hooks/use-session-modal.ts
+  h_4b47e9e4a8b456 1,6,66-80,85,156,183,196,208,254,313,355,357-359,503
+src/tui/modules/workflows/index.tsx
+  h_4b47e9e4a8b456 11,36-38
+src/tui/output-blocks/visible-output-blocks.ts
+  h_4b47e9e4a8b456 6,32-35,38,52-53,58-59,187-190
+src/tui/session-picker/session-picker-list.tsx
+  h_4b47e9e4a8b456 14,80-83
+src/tui/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 7,70
+tests/unit/orchestration/modules/lead/chat-progress.test.ts
+  h_4b47e9e4a8b456 49-50,84,87-99,101
+tests/unit/protocol/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 3,31-60,49,54-55,61-68,66-68,69-91
+tests/unit/protocol/transcript-model.test.ts
+  h_4b47e9e4a8b456 89-98
+tests/unit/tui/hooks/use-session-modal-catalog.test.ts
+  h_4b47e9e4a8b456 49-71
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 6,7-9,10,11-12,37-40,43-46,48,50,58,62-63,70,73-93,94,96,101,104,107-114,119,123-124,126-129,133-141,142-148,149-159,168-169,171-172,175-179,182-216,217,218-226,227-228,229-234,235,236-238,239,240-253,254
+tests/unit/tui/session-picker/session-picker-footer.test.tsx
+  h_4b47e9e4a8b456 47-52
+src/orchestration/app-service/project-control-client.ts
+  h_4b47e9e4a8b456 20,53-55,672
+src/orchestration/app-service/project-control-runtime.ts
+  h_4b47e9e4a8b456 339-340,354-357,448
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 330,343,351-352
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 42-43,47-49,228-234
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 246-254,261,263,273-274,718
+src/orchestration/modules/lead/control.ts
+  h_4b47e9e4a8b456 17-19,72-83,130
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 5,6,12,18-20,40,41,44-47,49
+src/orchestration/modules/lead/runtime.ts
+  h_4b47e9e4a8b456 6,7,11,14-15,16-17,19,32,33-36,38
+src/orchestration/session/empty-chat.ts
+  h_4b47e9e4a8b456 23,26-30,38,49,55,59,61,68-69
+tests/helpers/module-kernel.ts
+  h_4b47e9e4a8b456 123-124
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 55,371-373
+tests/unit/orchestration/app-service/project-control-client-catalog.test.ts
+  h_4b47e9e4a8b456 198,201-202,206-207,286
+tests/unit/orchestration/app-service/runtime-supervisor-open-hold.test.ts
+  h_4b47e9e4a8b456 9,24-25,38-70,72-83
+tests/unit/orchestration/modules/lead/control.test.ts
+  h_4b47e9e4a8b456 24,26-28,105-130
+tests/unit/orchestration/modules/lead/journal.test.ts
+  h_4b47e9e4a8b456 25-48
+tests/unit/orchestration/modules/lead/profile.test.ts
+  h_4b47e9e4a8b456 13,38-39,41-43,45,46-48,56,82,118,121-122,128-129,131,134-154
+tests/unit/orchestration/modules/lead/route-request.test.ts
+  h_4b47e9e4a8b456 8,15,47-48,77-80,107-108,123-124,131,169,171-172,173,174,175,176-178,179-180,181-184,185,186-187,188-221,222,223-230
+tests/unit/orchestration/modules/remote/service.test.ts
+  h_4b47e9e4a8b456 76
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 591-592
+src/orchestration/agent-runtime/reply-nudge.ts
+  h_4b47e9e4a8b456 21
+src/orchestration/agent-runtime/tools/ask-user.ts
+  h_4b47e9e4a8b456 190
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 180-182
+src/orchestration/modules/lead/route-request.ts
+  h_4b47e9e4a8b456 17,35,73-74,75,79-80,105
+src/tui/modules/lead/transcript.ts
+  h_4b47e9e4a8b456 1,3,4,8-9,10-11,12,13,15,19
+src/tui/output-blocks/block-renderer.tsx
+  h_4b47e9e4a8b456 17,73-74
+src/tui/output-blocks/call-stretch-block.tsx
+  h_4b47e9e4a8b456 10,12-14,18-21,35-46
+src/tui/output-window/call-stretch-projection.ts
+  h_4b47e9e4a8b456 1,5,11-15,17-18,20,25,33-36,41-44,47-48,52,56,63,65,67,69,73-75,77,81-84
+tests/unit/orchestration/agent-runtime/agent-loop-reply-nudge.test.ts
+  h_4b47e9e4a8b456 264-272,275-276,282-283,285
+tests/unit/tui/output-window/call-stretch-projection.test.ts
+  h_4b47e9e4a8b456 4,7-8,12-14,18-19,21-33
+webview/src/app/transcript.tsx
+  h_4b47e9e4a8b456 115
+webview/src/app/turn-features.test.ts
+  h_4b47e9e4a8b456 78,135,153
+src/infra/conversation-recall-search.ts
+  h_4b47e9e4a8b456 93-135
+src/infra/output-blocks.ts
+  h_4b47e9e4a8b456 169-171
+src/infra/output/output-projector.ts
+  h_4b47e9e4a8b456 242
+src/infra/output/output-tool-projector.ts
+  h_4b47e9e4a8b456 406,442
+src/infra/output/response-phase.ts
+  h_4b47e9e4a8b456 1-31
+src/infra/output/structured-event-tool-results.ts
+  h_4b47e9e4a8b456 213-220,236-237,241-242,244-246,260,287,289-300
+src/infra/output/structured-output-builder.ts
+  h_4b47e9e4a8b456 25,465-469,471
+src/infra/tools/displays/find-chat.ts
+  h_4b47e9e4a8b456 1-12
+src/infra/tools/displays/lead.ts
+  h_4b47e9e4a8b456 6-7,9-12,21,30
+src/infra/tools/tool-display-registry.ts
+  h_4b47e9e4a8b456 48,85
+src/infra/tools/types.ts
+  h_4b47e9e4a8b456 67-69
+src/orchestration/app-service/runtime-background-lane.ts
+  h_4b47e9e4a8b456 19,170-171
+src/orchestration/app-service/runtime-background-worker.ts
+  h_4b47e9e4a8b456 25-26,57,164,183,228
+src/orchestration/app-service/transcript-projection-cache.ts
+  h_4b47e9e4a8b456 17,347
+src/orchestration/app-service/worker-background-client.ts
+  h_4b47e9e4a8b456 17,39,142
+src/orchestration/modules/lead/find-chat.ts
+  h_4b47e9e4a8b456 1-42
+src/orchestration/modules/lead/tools.ts
+  h_4b47e9e4a8b456 4,15,57-58
+src/orchestration/session/conversation/conversation-block-projection.ts
+  h_4b47e9e4a8b456 4,9,16,20,30,188,383
+src/orchestration/session/conversation/tool-result-meta.ts
+  h_4b47e9e4a8b456 6,47-48,488,500
+src/orchestration/session/conversation/tool-result-settlement.ts
+  h_4b47e9e4a8b456 1-141
+src/orchestration/session/tool-child-presentation.ts
+  h_4b47e9e4a8b456 39,72
+src/orchestration/session/transcript-search.ts
+  h_4b47e9e4a8b456 3-4,6-8,10-11,19-23,27-31,38-39,44,50-56,97-189
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 275-277,279
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 44,580
+src/protocol/transcript-protocol-schemas.ts
+  h_4b47e9e4a8b456 16-17,89,247-261
+src/protocol/transcript-protocol-types.ts
+  h_4b47e9e4a8b456 154-177
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1044-1060
+tests/unit/infra/output/_tool-result-fixtures.ts
+  h_4b47e9e4a8b456 1-46
+tests/unit/infra/output/structured-event-mutation-artifacts.test.ts
+  h_4b47e9e4a8b456 1-198
+tests/unit/infra/output/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 5,9,36-71
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-contract.test.ts
+  h_4b47e9e4a8b456 30,68
+tests/unit/orchestration/app-service/_project-control-client-fixture.ts
+  h_4b47e9e4a8b456 42
+tests/unit/orchestration/app-service/app-service-background-lane.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/app-service/output-live-derived-equivalence.test.ts
+  h_4b47e9e4a8b456 418-422,600-602
+tests/unit/orchestration/app-service/output-projection-child-cards.test.ts
+  h_4b47e9e4a8b456 335,350-351,354,359,370
+tests/unit/orchestration/app-service/project-control-settlement.test.ts
+  h_4b47e9e4a8b456 102
+tests/unit/orchestration/app-service/project-control-updates.test.ts
+  h_4b47e9e4a8b456 44
+tests/unit/orchestration/app-service/runtime-background-lane.test.ts
+  h_4b47e9e4a8b456 36,176,180-181,187,206-212,250-263
+tests/unit/orchestration/app-service/runtime-worker-imports.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/app-service/worker-background-client.test.ts
+  h_4b47e9e4a8b456 46
+tests/unit/orchestration/session/conversation-block-projection-user-rows.test.ts
+  h_4b47e9e4a8b456 1-96
+tests/unit/orchestration/session/conversation-block-projection.test.ts
+  h_4b47e9e4a8b456 411-432
+tests/unit/orchestration/session/tool-child-presentation.test.ts
+  h_4b47e9e4a8b456 1-18
+tests/unit/orchestration/session/transcript-auxiliary-cursors.test.ts
+  h_4b47e9e4a8b456 155-163
+tests/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 16-17,20,22,27,33-44,47,55,74,137-193
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 181-186
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 27,203-207
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 34,358,360,374-376,382
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 12,107-116,163
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 51-54
+src/orchestration/agent-runtime/tools/message-session.ts
+  h_4b47e9e4a8b456 175-187,197,222-223,226
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 157-159
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 116-125,162
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "874b1b45e43b9c744cb673b58a9d1f1c19959bdd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0d536ae5637d7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "054b86e9-d761-4bd9-a4a3-8c91989e0b7a",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
