@@ -1,0 +1,52 @@
+tests/unit/webview/local-tab.test.ts
+  h_4b47e9e4a8b456 3-25,29-30,34-35,39-43,47-56
+tests/unit/webview/local-token.test.ts
+  h_4b47e9e4a8b456 26-37,42-43,45-54,75,81,106,124-125
+tests/unit/webview/rail-layout.test.ts
+  h_4b47e9e4a8b456 3,14-15,32
+webview/local/tab.ts
+  h_4b47e9e4a8b456 6,11,22,32,41
+webview/local/token.ts
+  h_4b47e9e4a8b456 33,45,55
+webview/src/app/blocks.test.ts
+  h_4b47e9e4a8b456 8,73-77,80-85,92
+webview/src/app/blocks.tsx
+  h_4b47e9e4a8b456 50
+webview/src/app/composer-model.test.ts
+  h_4b47e9e4a8b456 4,6,9-22,26-29,33-48
+webview/src/app/composer-submission-fixture.tsx
+  h_4b47e9e4a8b456 13,32-34,84-88,93,119-121
+webview/src/app/composer.tsx
+  h_4b47e9e4a8b456 63
+webview/src/app/file-diff.test.ts
+  h_4b47e9e4a8b456 170-184,187-209,212-219,222-228
+webview/src/app/file-diff.tsx
+  h_4b47e9e4a8b456 16,27
+webview/src/app/intro-card.tsx
+  h_4b47e9e4a8b456 40
+webview/src/app/module-rows-fixture.ts
+  h_4b47e9e4a8b456 4,6-7,10,29-34,36
+webview/src/app/module-rows.test.tsx
+  h_4b47e9e4a8b456 7,26-40,76
+webview/src/app/rail-layout.ts
+  h_4b47e9e4a8b456 11-12
+webview/src/app/screen-stack.test.ts
+  h_4b47e9e4a8b456 6,42
+webview/src/app/screen-stack.ts
+  h_4b47e9e4a8b456 49
+webview/src/app/scroll-edges.test.ts
+  h_4b47e9e4a8b456 4,11-13,45,49,69-94
+webview/src/app/scroll-edges.ts
+  h_4b47e9e4a8b456 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2658bdb8dbddabdae9f3b37cc5b1d9461b8447dd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
