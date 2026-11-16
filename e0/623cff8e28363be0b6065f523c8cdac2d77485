@@ -1,0 +1,19 @@
+src/orchestration/modules/papercuts/tools.ts
+  s_996230e9e83ba6::t_ab3cefc2603065 53-61,63-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e0623cff8e28363be0b6065f523c8cdac2d77485",
+  "prompts": {},
+  "sessions": {
+    "s_996230e9e83ba6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e356-0de6-74f0-94d6-5998f883e83f",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
