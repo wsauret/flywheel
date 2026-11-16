@@ -1,0 +1,16 @@
+src/orchestration/app-service/background-index-publisher.ts
+  h_4b47e9e4a8b456 10,94-98,222-228,230-231
+tests/unit/orchestration/app-service/background-index-publisher.test.ts
+  h_4b47e9e4a8b456 4-5,8,18-24,34,61-65,73,79,83-84,88-92,222-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3967526aaa6297313055a8318118d49c449141e6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
