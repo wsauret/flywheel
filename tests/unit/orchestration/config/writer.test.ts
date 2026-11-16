@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { updateDefinedSetting } from "../../../../src/orchestration/config/writer.js";
+import { ConfigStaleWriteError, updateDefinedSetting, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
+import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
+import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
 
 async function withConfig(source: string, run: (configPath: string, dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-writer-strict-"));
@@ -46,6 +49,51 @@ describe("updateDefinedSetting", () => {
     await withConfig("", async (configPath) => {
       expect(updateDefinedSetting(id, value, { configPath })).toEqual({ ok: true });
       expect(await readFile(configPath, "utf8")).toBe(expected);
+    });
+  });
+});
+
+// Every model assignment and project binding write states the value it expects
+// to replace, so a write from a stale view of the file changes nothing
+// (ARCH-RUNTIME-060).
+describe("compare-and-swap model assignment and project binding writes", () => {
+  const saved = '[profiles.work.roles.chat]\nmodel = "gpt-5.5"\neffort = "low"\n';
+  const saveChat = (configPath: string, dir: string, expected: { readonly kind: "value"; readonly value: { readonly model: string; readonly effort: "low" | "medium" } }) =>
+    updateModelAssignments({ mutations: [{ slot: roleSlot("chat"), patch: { model: "gpt-5-mini", effort: "high" }, expected }] }, { configPath, userDataRoot: dir, authProfileId: () => "work" });
+
+  test("A model assignment save whose expected value matches writes and publishes one revision", async () => {
+    await withConfig(saved, async (configPath, dir) => {
+      const owner = await createRuntimeConfigOwner({ configPath, userDataRoot: dir, watch: false });
+      try {
+        const before = owner.snapshot().revision;
+        saveChat(configPath, dir, { kind: "value", value: { model: "gpt-5.5", effort: "low" } });
+        expect(Bun.TOML.parse(await readFile(configPath, "utf8"))).toEqual({ profiles: { work: { roles: { chat: { model: "gpt-5-mini", effort: "high" } } } } });
+        expect((await owner.refresh()).revision).toBe(before + 1);
+      } finally {
+        await owner.dispose();
+      }
+    });
+  });
+
+  test("A save whose expected value is stale writes nothing", async () => {
+    await withConfig(saved, async (configPath, dir) => {
+      expect(() => saveChat(configPath, dir, { kind: "value", value: { model: "gpt-5.5", effort: "medium" } })).toThrow(ConfigStaleWriteError);
+      expect(await readFile(configPath, "utf8")).toBe(saved);
+    });
+  });
+
+  test("A project-profile binding whose file changed since the manager read it is refused", async () => {
+    await withConfig("", async (configPath, dir) => {
+      const projectRoot = join(dir, "project");
+      const manager = new AuthProfileManager({ userDataRoot: dir, projectRoot, configPath, env: {}, config: () => ({ auth: { project_profiles: {} } }) });
+      await manager.create("Work");
+      const changed = `[auth.project_profiles]\n${JSON.stringify(projectRoot)} = "other"\n`;
+      await writeFile(configPath, changed);
+      for (const write of [() => manager.bind("work"), () => manager.unbind()]) {
+        const result = await write();
+        expect(result.ok ? undefined : result.error).toBeInstanceOf(ConfigStaleWriteError);
+      }
+      expect(await readFile(configPath, "utf8")).toBe(changed);
     });
   });
 });

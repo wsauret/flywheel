@@ -596,7 +596,7 @@ describe("model modal operation identity", () => {
       expect(harness.saveCalls).toHaveLength(1)
       expect(harness.commands.filter((command) => command.type.startsWith("model."))).toEqual([{
         type: "model.save_effort", scope: { kind: "session", sessionId: "session-1" },
-        slot: roleSlot("chat"), model: "gpt-y", effort: "low",
+        slot: roleSlot("chat"), model: "gpt-y", effort: "low", expected: { kind: "absent" },
       }])
       harness.saveCalls[0]!.resolve({ label: "Chat" })
       await flush()

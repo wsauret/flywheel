@@ -19,6 +19,7 @@ function harness(roleId = "chat") {
     modelAssignments: async (request) => request.slots.some((slot) => slot.roleId === roleId) ? [{
       slot: { kind: "role", roleId }, label: roleId, model: "gpt-6-luna", effort: "low",
       modelSource: "default", matchesInheritedPair: true, savedModel: "lost-model",
+      configured: { kind: "value", value: { model: "lost-model", effort: null } },
     }] : [],
     modelOptions: async (request) => [{
       slot: request.slot, model: "gpt-6-luna", label: "gpt-6-luna", effort: "low", efforts: ["low", "high"],
@@ -83,7 +84,7 @@ describe("model modal global defaults", () => {
       }
       modals.input({ name: "return" })
       for (let turn = 0; turn < 20; turn++) await Promise.resolve()
-      expect(saves).toEqual([{ type: "model.save_effort", scope: { kind: "session", sessionId: "session-a" }, slot: { kind: "role", roleId }, model: "gpt-6-luna", effort: "low" }])
+      expect(saves).toEqual([{ type: "model.save_effort", scope: { kind: "session", sessionId: "session-a" }, slot: { kind: "role", roleId }, model: "gpt-6-luna", effort: "low", expected: { kind: "value", value: { model: "lost-model", effort: null } } }])
       expect(toasts.at(-1)).toBe(roleId === "workflow-agent" ? `Updated ${roleId} for this auth profile` : record ? "Updated Plan for this subagent" : "Updated chat for this tab")
     } finally { dispose() }
   })

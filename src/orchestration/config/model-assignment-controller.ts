@@ -5,6 +5,7 @@ import type { ModelFamily } from "../../infra/llm/model-family.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
 import type {
   EffortOptionRow,
+  ModelAssignmentExpected,
   ModelAssignmentPatch,
   ModelAssignmentRow,
   ModelOptionRow,
@@ -69,10 +70,13 @@ interface ModelAssignmentController {
   loadAssignments(slots: readonly ModelSelectionSlot[]): Promise<readonly ModelAssignmentRow[]>;
   listModelOptions(slot: ModelSelectionSlot): Promise<readonly ModelOptionRow[]>;
   listEffortOptions(slot: ModelSelectionSlot, model: string | null): Promise<readonly EffortOptionRow[]>;
-  saveEffort(slot: ModelSelectionSlot, model: string | null, effort: ModelAssignmentPatch["effort"]): Promise<SaveEffortResult>;
-  /** Resets each role that `resets` names to its detected default and answers for `slots`. A role that `resets`
-   *  does not name keeps its saved value. */
-  resetDefaults(slots: readonly ModelSelectionSlot[], resets: (roleId: string) => boolean): Promise<readonly ModelAssignmentRow[]>;
+  /** A save that writes the profile config refuses an `expected` entry that the file no longer holds. */
+  saveEffort(slot: ModelSelectionSlot, model: string | null, effort: ModelAssignmentPatch["effort"], expected: ModelAssignmentExpected): Promise<SaveEffortResult>;
+  /** Resets roles to their detected defaults and answers for `slots`. A reset of the profile config clears only the
+   *  roles of `slots` that `resets` names, and refuses it when one of them no longer holds its `expected` entry (a
+   *  role that `expected` does not name is expected to hold none). A reset of a session snapshot clears every role
+   *  that `resets` names and compares nothing. A role that `resets` does not name keeps its saved value. */
+  resetDefaults(slots: readonly ModelSelectionSlot[], resets: (roleId: string) => boolean, expected: { readonly [roleId: string]: ModelAssignmentExpected }): Promise<readonly ModelAssignmentRow[]>;
 }
 
 export function createModelAssignmentController(
@@ -110,19 +114,19 @@ function createDefaultsController(deps: ModelAssignmentControllerDeps): ModelAss
     async listEffortOptions(slot, model) {
       return (await listEffortOptionsForSlot(seatOf(slot), model, configDeps)).map((row) => ({ ...row, slot }));
     },
-    async saveEffort(requested, model, effort) {
+    async saveEffort(requested, model, effort, expected) {
       if (requested.roleId.startsWith("brief.")) {
         throw new PerBriefDefaultsRetiredError({
           message: "Per-brief defaults are retired. Set the Workflow Agent default, or set this agent's model in its workflow session.",
         });
       }
       const slot = seatOf(requested);
-      await saveModelAssignment(slot, normalizeAssignmentPatch({ model, effort }), configDeps);
+      await saveModelAssignment(slot, normalizeAssignmentPatch({ model, effort }), expected, configDeps);
       await deps.afterGlobalConfigWrite?.();
       return { label: slotLabel(slot) };
     },
-    async resetDefaults(slots, resets) {
-      await resetRoleAssignmentsToDetectedDefaults(configDeps, resets);
+    async resetDefaults(slots, resets, expected) {
+      await resetRoleAssignmentsToDetectedDefaults(configDeps, slots.filter((slot) => resets(slot.roleId)), expected);
       const config = await deps.afterGlobalConfigWrite?.() ?? configDeps.config;
       return listModelAssignments({ ...configDeps, config, slots });
     },
@@ -180,10 +184,10 @@ function createSessionController(
     async listEffortOptions(slot, model) {
       return listEffortOptionsForSlot(slot, model, await snapshotConfigDeps(await readSnapshot()));
     },
-    async saveEffort(requested, model, effort) {
+    async saveEffort(requested, model, effort, expected) {
       const snapshot = await readSnapshot();
       if (isProfileModelRole(requested.roleId) && !inheritedRoles) {
-        await saveModelAssignment(requested, normalizeAssignmentPatch({ model, effort }), configDeps);
+        await saveModelAssignment(requested, normalizeAssignmentPatch({ model, effort }), expected, configDeps);
         await deps.afterGlobalConfigWrite?.();
         return { label: slotLabel(requested) };
       }

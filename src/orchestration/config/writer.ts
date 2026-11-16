@@ -2,13 +2,13 @@ import { configurationReferenceFile } from "../../infra/paths.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { canonicalModelId, legacyDottedModelId, migrateModelId } from "../../infra/llm/model-id.js";
 import { withConfigOwnership, withConfigOwnershipBlocking, type ConfigOwnership } from "./config-file.js";
-import type { ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
+import type { ModelAssignmentExpected, ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
 import { AGENT_ROLE_IDS, AUX_ROLE_IDS, DEFAULT_ROLES, type RoleId } from "./roles.js";
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { canonicalRoleId, retiredBriefSeatWorkflow, patchRetiredConfigKeys } from "./retired-config-names.js";
 import { retireConfigTables } from "./retired-config-tables.js";
 import { persistedDisabledModuleIds } from "../../protocol/module-ids.js";
-import { CONFIG_DEFAULTS } from "./schema.js";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "./schema.js";
 import { PERSISTED_SETTING_DEFINITIONS, persistedSettingDefinition } from "./setting-definitions.js";
 import { configLines, findFieldIndex, findSectionEnd, patchSemanticAssignment, removeAssignment, removeSection, escapeTomlString, quoteTomlKey, removeSemanticSubtree, replaceAssignment, rootEndIndex, sectionHasKeyLines, upsertSemanticAssignment } from "./config-assignment.js";
 import { installedConfigSections } from "../module-catalog.js";
@@ -59,6 +59,9 @@ interface RoleWriteOptions extends UpdateModelSelectionOptions {
 interface ModelAssignmentMutation {
   slot: ModelSelectionSlot;
   patch: ModelAssignmentPatch;
+  /** The role's profile entry that the person's client showed. A write with
+   *  no client view, such as the setup of a new home, states none. */
+  expected?: ModelAssignmentExpected;
 }
 
 export interface ConfigValidity {
@@ -80,14 +83,16 @@ export function pruneStaleConfig(validity: ConfigValidity, options: RoleWriteOpt
   updateModelAssignments({ validity }, options);
 }
 
-/** Set one canonical project root binding without normalizing unrelated config text. */
-export function setAuthProjectProfile(projectRoot: string, profile: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, profile), options);
+/** Set one canonical project root binding without normalizing unrelated config text. `expected` is the binding
+ *  that the caller read, or undefined for none; a file that binds the project otherwise refuses the write as stale. */
+export function setAuthProjectProfile(projectRoot: string, profile: string, expected: string | undefined, options: UpdateModelSelectionOptions): ConfigWriteResult {
+  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, expected, profile), options);
 }
 
-/** Remove one canonical project root binding without changing the rest of its table. */
-export function removeAuthProjectProfile(projectRoot: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, undefined), options);
+/** Remove one canonical project root binding without changing the rest of its table. `expected` is the binding
+ *  that the caller read; a file that binds the project otherwise refuses the write as stale. */
+export function removeAuthProjectProfile(projectRoot: string, expected: string | undefined, options: UpdateModelSelectionOptions): ConfigWriteResult {
+  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, expected, undefined), options);
 }
 
 /** Transfer only bindings to the retired id and remove its complete settings subtree in one commit. */
@@ -218,13 +223,35 @@ export function updateModelAssignments(
     // A save writes the current role ids, so the file must not keep a
     // retired spelling of the same seat beside them.
     const current = patchRetiredConfigKeys(source);
+    const profileId = options.authProfileId();
+    const stated = (batch.mutations ?? []).flatMap(({ slot, expected }) => expected === undefined ? [] : [{ roleId: slot.roleId, expected }]);
+    if (stated.length > 0) {
+      const config = decodeConfigText(current, options.userDataRoot);
+      if (stated.some(({ roleId, expected }) => !sameExpectation(configuredRoleAssignment(config, profileId, roleId), expected))) throw new ConfigStaleWriteError();
+    }
     let next = batch.validity ? patchModelMigrations(current) : current;
     for (const mutation of batch.mutations ?? []) {
-      next = patchModelAssignment(next, mutation.slot, mutation.patch, options.authProfileId());
+      next = patchModelAssignment(next, mutation.slot, mutation.patch, profileId);
     }
-    if (batch.validity) next = patchPrunedConfig(next, batch.validity, options.authProfileId());
+    if (batch.validity) next = patchPrunedConfig(next, batch.validity, profileId);
     return next;
   }, options));
+}
+
+/** The role's model and effort in one profile of a decoded config. A row that a
+ *  client shows carries this value of the published config, and a write of the
+ *  role compares it with this value of the fresh bytes, so both sides read the
+ *  one decode. */
+export function configuredRoleAssignment(config: FlywheelConfig, profileId: string, roleId: string): ModelAssignmentExpected {
+  const role = config.profiles[profileId]?.roles[canonicalRoleId(roleId)];
+  const model = role?.model ?? null;
+  const effort = role?.effort ?? null;
+  return model === null && effort === null ? { kind: "absent" } : { kind: "value", value: { model, effort } };
+}
+
+function sameExpectation(actual: ModelAssignmentExpected, expected: ModelAssignmentExpected): boolean {
+  if (actual.kind === "absent" || expected.kind === "absent") return actual.kind === expected.kind;
+  return actual.value.model === expected.value.model && actual.value.effort === expected.value.effort;
 }
 
 /** Commits one persisted setting, named by its definition id, at the path its
@@ -278,13 +305,13 @@ export async function updateConfigTextAwaited(
  *  fails to parse or decode is refused before the file is touched. */
 function commitConfigText(config: ConfigOwnership, patch: (source: string) => string, options: UpdateModelSelectionOptions): ConfigWriteResult {
   const { userDataRoot } = options;
-  const read = retireConfigTables(config, (candidate) => loadConfigFromText(candidate, userDataRoot), options);
+  const read = retireConfigTables(config, (candidate) => decodeConfigText(candidate, userDataRoot), options);
   if (read.kind === "failure") throw new ConfigWriteError("Config file was refused or unreadable");
   const source = read.kind === "text" ? read.text : "";
   const next = patch(source);
   if (next === source) return { ok: true };
   Bun.TOML.parse(next);
-  loadConfigFromText(next, userDataRoot);
+  decodeConfigText(next, userDataRoot);
   const durability = config.write(next);
   return durability ? { ok: true, durabilityError: new ConfigWriteError(errorMessage(durability)) } : { ok: true };
 }
@@ -296,11 +323,12 @@ function unwrapConfigWrite(result: ConfigWriteResult): void {
   if (!result.ok) throw result.error;
 }
 
-function loadConfigFromText(text: string, userDataRoot?: string): void {
+function decodeConfigText(text: string, userDataRoot?: string): FlywheelConfig {
   const parsed = Bun.TOML.parse(text);
   if (!isRecord(parsed)) throw new ConfigWriteError("Config file is not a table");
   const decoded = decodeConfigObject(parsed, [], configurationReferenceFile(userDataRoot ?? resolveConfigRoot()));
   if (decoded.moduleError) throw new ConfigWriteError(decoded.moduleError);
+  return decoded.config;
 }
 
 function resolveConfigRoot(): string {
@@ -518,7 +546,8 @@ export function migrateRootProviderSettings(profileIds: readonly string[], optio
   }, options);
 }
 
-function patchAuthProjectProfile(source: string, projectRoot: string, profile: string | undefined): string {
+function patchAuthProjectProfile(source: string, projectRoot: string, expected: string | undefined, profile: string | undefined): string {
+  if (projectBinding(source, projectRoot) !== expected) throw new ConfigStaleWriteError();
   const lines = configLines(source);
   const start = lines.findIndex((line) => line.trim() === "[auth.project_profiles]");
   if (start < 0) return profile === undefined ? source : patchSectionField(source, "auth.project_profiles", quoteTomlKey(projectRoot), profile);
@@ -530,6 +559,15 @@ function patchAuthProjectProfile(source: string, projectRoot: string, profile: s
   return lines.join("\n");
 }
 
+
+/** The profile id that `source` binds to `projectRoot`, if any. */
+function projectBinding(source: string, projectRoot: string): string | undefined {
+  const parsed: unknown = source.length === 0 ? {} : Bun.TOML.parse(source);
+  const auth = isRecord(parsed) ? parsed.auth : undefined;
+  const bindings = isRecord(auth) ? auth.project_profiles : undefined;
+  const bound = isRecord(bindings) ? bindings[projectRoot] : undefined;
+  return typeof bound === "string" ? bound : undefined;
+}
 
 function patchAuthProjectProfileBindings(source: string, profile: string, successorId: string): string {
   const parsed: unknown = source.length === 0 ? {} : Bun.TOML.parse(source);

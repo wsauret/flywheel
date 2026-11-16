@@ -414,7 +414,9 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     const displayLabel = view?.displayLabel
     const op = beginOperation("saving")
     try {
-      const result = await deps.appService.dispatch({ type: "model.save_effort", scope: writeScope(), slot, model, effort })
+      // The save expects the profile entry of the row this modal shows; a row it never read expects none.
+      const expected = state.assignments.find((row) => sameSlot(row.slot, slot))?.configured ?? { kind: "absent" } as const
+      const result = await deps.appService.dispatch({ type: "model.save_effort", scope: writeScope(), slot, model, effort, expected })
       const mirrored = result.mirrored ?? false
       deps.onModelSaved?.()
       if (!settleOperation(op)) return
@@ -436,6 +438,21 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     } catch (err) {
       if (!settleOperation(op)) return
       deps.showToast({ message: `Model selection failed: ${errorMessage(err)}`, variant: "error" })
+      void rereadAssignments([slot])
+    }
+  }
+
+  /** Reads the rows of `slots` again after a failed write, so a retry expects
+   *  the entries that the file holds now. The view and the cursor stay. */
+  async function rereadAssignments(slots: readonly ModelSelectionSlot[]): Promise<void> {
+    const generation = operationCounter
+    const handle = entry
+    try {
+      const rows = await deps.appService.query({ type: "modelAssignments", scope: currentScope(), slots })
+      if (entry !== handle || !handle?.isOpen() || generation !== operationCounter) return
+      setState("assignments", (current) => current.map((row) => rows.find((fresh) => sameSlot(fresh.slot, row.slot)) ?? row))
+    } catch {
+      // The failed write already reported; a failed read keeps the rows shown.
     }
   }
 
@@ -443,7 +460,8 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     const scope = writeScope()
     const op = beginOperation("resetting")
     try {
-      const result = await deps.appService.dispatch({ type: "model.reset_assignments", scope, slots: selectionSlots })
+      const expected = Object.fromEntries(state.assignments.map((row) => [row.slot.roleId, row.configured]))
+      const result = await deps.appService.dispatch({ type: "model.reset_assignments", scope, slots: selectionSlots, expected })
       const mirrored = result.mirrored ?? false
       if (!settleOperation(op)) return
       setState({ assignments: result.rows, view: { kind: "assignments" }, cursor: 0, confirmReset: false })
@@ -455,6 +473,7 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     } catch (err) {
       if (!settleOperation(op)) return
       deps.showToast({ message: `Reset failed: ${errorMessage(err)}`, variant: "error" })
+      void rereadAssignments(selectionSlots)
     }
   }
 

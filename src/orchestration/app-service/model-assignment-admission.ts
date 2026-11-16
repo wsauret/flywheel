@@ -370,7 +370,7 @@ export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmiss
               : { kind: candidate.kind, providerId: candidate.providerId, spendMode: candidate.spendMode, wireModelId }),
           }
         })
-        return { sessionId: query.sessionId, profile, assignments, plans }
+        return { sessionId: query.sessionId, profile, assignments: assignments.map(({ configured: _configured, ...row }) => row), plans }
       })
     },
     loadAssignments: (query) => withReadAdmission(query.scope, () => service.loadAssignments(query)),

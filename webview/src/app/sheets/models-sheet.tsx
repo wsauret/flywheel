@@ -130,19 +130,28 @@ export function ModelsSheet() {
   }
   const openSeat = (seat: SeatRow) => { void client.actions.run(seatKey(seat), () => readSeat(seat)) }
 
-  // Saves to one seat run in order, from this sheet or the chat model sheet,
-  // so the last tap lands last.
+  // Saves to one seat run in order, from this sheet or the chat model sheet.
+  // Each expects the profile entry its seat row showed, so the runtime
+  // refuses a later save as stale if an earlier one changed that entry; a
+  // second tap queued behind a save to the same seat is refused that way.
+  // Either answer returns to the roles and reads them again, so a retry
+  // starts from a row that shows the entry the file holds.
   const save = (source: ScopedPage, seat: SeatRow, option: ModelOptionRow, effort: EffortOptionRow["effort"]): Promise<boolean> =>
     client.actions.runInOrder(actionKey("model-seat", seat.roleId), effortKey(seat, option, effort), () => {
       const read = ++navigation
-      return client.connection.dispatch({ type: "model.save_effort", scope: source.owner.scope, slot: { kind: "role", roleId: seat.roleId }, model: option.model, effort })
+      const settled = () => {
+        if (isCurrent(source.owner) && read === navigation) setPage({ kind: "roles" })
+        reread()
+      }
+      return client.connection.dispatch({ type: "model.save_effort", scope: source.owner.scope, slot: { kind: "role", roleId: seat.roleId }, model: option.model, effort, expected: seat.configured ?? { kind: "absent" } })
         .then((result) => {
           if (result.warning) client.report("warning", result.warning)
           else client.report("info", `${seat.label}: ${result.label}`)
-          if (isCurrent(source.owner) && read === navigation) setPage({ kind: "roles" })
-          reread()
+          settled()
+        }, (cause: unknown) => {
+          failed("change the model")(cause)
+          settled()
         })
-        .catch(failed("change the model"))
     })
 
   const choose = (source: ScopedPage, seat: SeatRow, option: ModelOptionRow) => {
@@ -177,12 +186,17 @@ export function ModelsSheet() {
       })
       if (!confirmed || !isCurrent(owner)) return
       await client.actions.run(resetKey, async () => {
-        const result = await client.connection.dispatch({ type: "model.reset_assignments", scope: owner.scope, slots: current.roleIds.map((roleId) => ({ kind: "role" as const, roleId })) })
+        const expected = Object.fromEntries(current.groups.flatMap((group) => group.rows).flatMap((seat) => seat.configured === undefined ? [] : [[seat.roleId, seat.configured]]))
+        const result = await client.connection.dispatch({ type: "model.reset_assignments", scope: owner.scope, slots: current.roleIds.map((roleId) => ({ kind: "role" as const, roleId })), expected })
         if (!isCurrent(owner)) return
         if (result.warning) client.report("warning", result.warning)
         else client.report("info", session ? "This session's roles inherit the defaults again." : "Every role reset to its default.")
         reread()
-      }, failedFor(owner, "reset the roles"))
+      }, (cause) => {
+        failedFor(owner, "reset the roles")(cause)
+        // A refused reset read rows that are out of date; a retry needs the entries the file holds now.
+        reread()
+      })
     }
     void run().catch(failedFor(owner, "reset the roles"))
   }

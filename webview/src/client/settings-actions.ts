@@ -292,22 +292,33 @@ export async function applyInlineSetting(connection: RuntimeConnection, action: 
         expected: { kind: "value", value: current.compactionThreshold },
         desired: action.tokens,
       })
-    case "set-effort": {
-      if (current.seatModel === undefined) return { kind: "applied" }
-      // Scoped to the session the snapshot was read for: the inline slider
-      // steers this conversation, not the defaults every new session inherits.
-      const scope = current.seatSessionId === undefined ? { kind: "defaults" } as const : { kind: "session", sessionId: current.seatSessionId } as const
-      // Re-read rather than trusting the snapshot: the row names a stop by its
-      // string form, and the typed effort value the mutation wants comes from
-      // the runtime's own current list.
-      const slot = current.seatSlot
-      const efforts = await connection.query({ type: "effortOptions", scope, slot, model: current.seatModel })
-      const picked = efforts.find((entry) => entry.selectable && String(entry.effort) === action.effort)
-      if (!picked) return { kind: "applied" }
-      await connection.dispatch({ type: "model.save_effort", scope, slot, model: current.seatModel, effort: picked.effort })
-      return { kind: "applied" }
-    }
+    case "set-effort":
+      return saveSeatEffort(connection, current, action.effort)
   }
+}
+
+/** Saves the effort stop that the inline slider names for the model of the
+ *  snapshot's seat. */
+async function saveSeatEffort(connection: RuntimeConnection, current: PanelSettings, effort: string): Promise<SettingOutcome> {
+  const model = current.seatModel
+  if (model === undefined) return { kind: "applied" }
+  // Scoped to the session the snapshot was read for: the inline slider
+  // steers this conversation, not the defaults every new session inherits.
+  const scope = current.seatSessionId === undefined ? { kind: "defaults" } as const : { kind: "session", sessionId: current.seatSessionId } as const
+  // Re-read rather than trusting the snapshot: the row names a stop by its
+  // string form, and the typed effort value the mutation wants comes from
+  // the runtime's own current list. The seat's profile entry is read with
+  // it, so the save expects the entry in force when it runs.
+  const slot = current.seatSlot
+  const [efforts, assignments] = await Promise.all([
+    connection.query({ type: "effortOptions", scope, slot, model }),
+    connection.query({ type: "modelAssignments", scope, slots: [slot] }),
+  ])
+  const picked = efforts.find((entry) => entry.selectable && String(entry.effort) === effort)
+  if (!picked) return { kind: "applied" }
+  const expected = assignments[0]?.configured ?? { kind: "absent" } as const
+  await connection.dispatch({ type: "model.save_effort", scope, slot, model, effort: picked.effort, expected })
+  return { kind: "applied" }
 }
 
 /** The module setting as `current` holds it, so a write states the value in

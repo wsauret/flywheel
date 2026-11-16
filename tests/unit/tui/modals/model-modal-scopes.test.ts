@@ -340,6 +340,7 @@ describe("model modal scopes", () => {
         slot: chatSlot,
         model: "sol-5.6",
         effort: "high",
+        expected: { kind: "absent" },
       }])
       expect(modals.stack).toHaveLength(0)
     }, {

@@ -377,8 +377,8 @@ describe("auth project profile persistence", () => {
   test("round-trips quoted and escaped project roots across repeated writes and renames", async () => {
     await withConfig("", async (path) => {
       const projectRoot = 'C:\\work\\project "quoted"';
-      expect(setAuthProjectProfile(projectRoot, "stable-id", { configPath: path })).toEqual({ ok: true });
-      expect(setAuthProjectProfile(projectRoot, "stable-id", { configPath: path })).toEqual({ ok: true });
+      expect(setAuthProjectProfile(projectRoot, "stable-id", undefined, { configPath: path })).toEqual({ ok: true });
+      expect(setAuthProjectProfile(projectRoot, "stable-id", "stable-id", { configPath: path })).toEqual({ ok: true });
 
       const parsed = Bun.TOML.parse(await readFile(path, "utf8"));
       expect(parsed).toEqual({ auth: { project_profiles: { [projectRoot]: "stable-id" } } });

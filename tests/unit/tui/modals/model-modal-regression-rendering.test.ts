@@ -208,6 +208,7 @@ describe("model modal rendering structure", () => {
       effort: "low",
       modelSource: "explicit",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     } as const;
     const content = styledTextContent(modelAssignmentText(matchingPair, false, theme, 12, 32));
 
@@ -224,6 +225,7 @@ describe("model modal rendering structure", () => {
       effort: "low",
       modelSource: "inherited",
       matchesInheritedPair: false,
+      configured: { kind: "absent" },
     } as const;
     const content = styledTextContent(modelAssignmentText(differentPair, false, theme, 12, 32));
 
@@ -363,6 +365,7 @@ describe("model modal rendering structure", () => {
       effort: "low",
       modelSource: "explicit",
       matchesInheritedPair: false,
+      configured: { kind: "absent" },
     } as const;
     const text = modelAssignmentText(row, true, theme, 12, 52, "heading");
     const content = styledTextContent(text);
@@ -386,6 +389,7 @@ describe("model modal rendering structure", () => {
       effort: "medium",
       modelSource: "inherited",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     }, false, theme, 26, 48));
 
     expect(content).toBe("  審査🚀 Implementation ... gpt-6.1-sol Medium ↳");
@@ -400,6 +404,7 @@ describe("model modal rendering structure", () => {
       effort: "medium",
       modelSource: "default",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     }, false, theme, 12, 52));
 
     expect(content).toContain("checking provider models");
@@ -413,6 +418,7 @@ describe("model modal rendering structure", () => {
       slot: roleSlot("chat"), label: "Chat", model: "powerful", effort: "medium",
       modelSource: "default",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     }, false, theme, 12, 52, "heading", {
       providers: [{
         providerId: "chatgpt", kind: "subscription", source: "oauth", expired: false,

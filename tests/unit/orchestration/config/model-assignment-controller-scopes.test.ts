@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createModelAssignmentController } from "../../../../src/orchestration/config/model-assignment-controller.js"
+import { ConfigStaleWriteError } from "../../../../src/orchestration/config/writer.js"
 import type { ModelPickerConfigDeps } from "../../../../src/orchestration/config/model-assignment-types.js"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
@@ -22,6 +23,7 @@ import type { RoleAssignmentSnapshot } from "../../../../src/orchestration/sessi
 
 const models = ["gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna", "claude-opus-5.5"]
 const metadata = makeModelsClient(Object.fromEntries(models.map((model) => [model, modelInfo(model.startsWith("claude") ? "anthropic" : "openai", model, "fixture", 2, 8, "2026-10-01")])))
+const ABSENT = { kind: "absent" } as const
 const stores: EventStore[] = []
 afterEach(() => { for (const store of stores.splice(0)) store.close(); cleanupTmpRoot() })
 
@@ -67,7 +69,7 @@ describe("session assignment settings", () => {
     const { manager, configPath } = setup()
     const api = controller(manager, undefined, configPath)
     for (const roleId of ["brief.plan", "brief.plan.at.worker"]) {
-      await expect(api.saveEffort(roleSlot(roleId), "gpt-6-luna", "low")).rejects.toThrow("Per-brief defaults are retired. Set the Workflow Agent default, or set this agent's model in its workflow session.")
+      await expect(api.saveEffort(roleSlot(roleId), "gpt-6-luna", "low", ABSENT)).rejects.toThrow("Per-brief defaults are retired. Set the Workflow Agent default, or set this agent's model in its workflow session.")
     }
     expect(readFileSync(configPath, "utf8")).toBe("")
   })
@@ -77,7 +79,7 @@ describe("session assignment settings", () => {
     const first = await manager.createChat({ name: "first" })
     const second = await manager.createChat({ name: "second", initialRoles: { chat: { model: "gpt-6.1-sol", effort: "medium" } } })
     const before = (await manager.read(second))?.roleAssignments
-    await controller(manager, first, configPath).saveEffort(roleSlot("chat"), "gpt-6-luna", "low")
+    await controller(manager, first, configPath).saveEffort(roleSlot("chat"), "gpt-6-luna", "low", ABSENT)
     expect((await manager.read(first))?.roleAssignments).toEqual({ defaults: {}, overrides: { chat: { model: "gpt-6-luna", effort: "low" } } })
     expect((await manager.read(second))?.roleAssignments).toEqual(before)
     expect(store.read({ aggregateId: `session:${first}`, types: ["session.roles.updated"] })).toHaveLength(1)
@@ -88,7 +90,7 @@ describe("session assignment settings", () => {
     const { manager, configPath } = setup()
     const id = await manager.createChat({ name: "efforts" })
     const api = controller(manager, id, configPath)
-    await api.saveEffort(roleSlot("explorer"), "gpt-6-luna", "medium")
+    await api.saveEffort(roleSlot("explorer"), "gpt-6-luna", "medium", ABSENT)
     expect((await api.loadAssignments([roleSlot("explorer")]))[0]?.effort).toBe("medium")
     expect((await api.listModelOptions(roleSlot("title-generation"))).find((row) => row.model === "gpt-6-luna")?.effort).toBe("low")
     expect((await api.listModelOptions(roleSlot("chat"))).find((row) => row.model === "gpt-6-luna")?.effort).toBe("medium")
@@ -106,7 +108,7 @@ describe("session assignment settings", () => {
     try {
       const api = controller(manager, id, configPath, { chat: { model: "gpt-6-astra", effort: "high" } })
       expect((await api.loadAssignments([roleSlot("chat")]))[0]).toMatchObject({ model: "gpt-6-luna", effort: "high" })
-      await api.saveEffort(roleSlot("chat"), "gpt-6-astra", "medium")
+      await api.saveEffort(roleSlot("chat"), "gpt-6-astra", "medium", ABSENT)
       expect((await api.loadAssignments([roleSlot("chat")]))[0]).toMatchObject({ model: "gpt-6-astra", effort: "medium" })
     } finally {
       if (previous === undefined) delete process.env.FLYWHEEL_CHAT_MODEL
@@ -120,20 +122,20 @@ describe("session assignment settings", () => {
       model: "gpt-6.1-sol", effort: "medium", providerOptions: { openai: { text_verbosity: "low" } },
     } } })
     const api = controller(manager, id, configPath)
-    expect(await api.saveEffort(roleSlot("chat"), "gpt-6.1-sol", "high")).toEqual({ label: "Chat" })
+    expect(await api.saveEffort(roleSlot("chat"), "gpt-6.1-sol", "high", ABSENT)).toEqual({ label: "Chat" })
     expect((await manager.read(id))?.roleAssignments?.overrides.chat?.providerOptions).toEqual({ openai: { text_verbosity: "low" } })
-    expect(await api.saveEffort(roleSlot("chat"), "claude-opus-5.5", "high")).toEqual({ label: "Chat" })
+    expect(await api.saveEffort(roleSlot("chat"), "claude-opus-5.5", "high", ABSENT)).toEqual({ label: "Chat" })
     expect((await manager.read(id))?.roleAssignments?.overrides.chat?.providerOptions).toBeUndefined()
-    expect(await api.saveEffort(roleSlot("workflow-agent"), "claude-opus-5.5", "high")).toEqual({ label: "Workflow" })
-    expect(await api.saveEffort(roleSlot("workflow-agent"), "gpt-6-astra", "high")).toEqual({ label: "Workflow" })
-    await expect(api.saveEffort(roleSlot("chat"), null, null)).rejects.toThrow("cannot inherit")
+    expect(await api.saveEffort(roleSlot("workflow-agent"), "claude-opus-5.5", "high", ABSENT)).toEqual({ label: "Workflow" })
+    expect(await api.saveEffort(roleSlot("workflow-agent"), "gpt-6-astra", "high", { kind: "value", value: { model: "claude-opus-5.5", effort: "high" } })).toEqual({ label: "Workflow" })
+    await expect(api.saveEffort(roleSlot("chat"), null, null, ABSENT)).rejects.toThrow("cannot inherit")
   })
 
   it("clears a session pair on reset and follows profile policy without changing TOML", async () => {
     const { manager, configPath } = setup()
     const id = await manager.createChat({ name: "reset", initialRoles: { chat: { model: "gpt-6-luna", effort: "low" } } })
     const before = readFileSync(configPath)
-    const rows = await controller(manager, id, configPath, { chat: { model: "gpt-6-astra", effort: "high" } }).resetDefaults([roleSlot("chat")], () => true)
+    const rows = await controller(manager, id, configPath, { chat: { model: "gpt-6-astra", effort: "high" } }).resetDefaults([roleSlot("chat")], () => true, {})
     expect(rows[0]).toMatchObject({ model: "gpt-6-astra", effort: "high" })
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: {} })
     expect(readFileSync(configPath).equals(before)).toBe(true)
@@ -147,11 +149,11 @@ describe("session assignment settings", () => {
     const api = controller(manager, id, configPath, { "workflow-agent": { model, effort: "high" } }, models, {}, inheritedRoles)
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: model === "lost-model" ? "gpt-6.1-sol" : model, effort: "low" })
     expect((await api.listModelOptions(seat)).find((row) => row.current)?.effort).toBe("low")
-    await api.saveEffort(seat, "gpt-6-luna", "high")
+    await api.saveEffort(seat, "gpt-6-luna", "high", ABSENT)
     expect(readFileSync(configPath, "utf8")).toBe("")
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "gpt-6-luna", effort: "high" } } })
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6-luna", effort: "high" })
-    await api.resetDefaults([seat], () => true)
+    await api.resetDefaults([seat], () => true, {})
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: model === "lost-model" ? "gpt-6.1-sol" : model, effort: "low" })
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: {} })
   })
@@ -163,14 +165,14 @@ describe("session assignment settings", () => {
     const other = roleSlot("brief.plan.at.other")
     const api = controller(manager, id, configPath, { "brief.plan": { model: "gpt-6-astra", effort: "high" } }, models, {}, inheritedRoles)
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" })
-    await api.saveEffort(seat, "gpt-6-luna", "low")
+    await api.saveEffort(seat, "gpt-6-luna", "low", ABSENT)
     expect(await api.loadAssignments([seat, other])).toMatchObject([
       { model: "gpt-6-luna", effort: "low" },
       { model: "gpt-6.1-sol", effort: "medium" },
     ])
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "gpt-6-luna", effort: "low" } } })
     expect(readFileSync(configPath, "utf8")).toBe("")
-    await api.saveEffort(seat, null, null)
+    await api.saveEffort(seat, null, null, ABSENT)
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" })
   })
 
@@ -187,12 +189,12 @@ describe("session assignment settings", () => {
     const offered = (await api.listModelOptions(seat)).find((row) => row.model === "custom-low")
     expect(offered).toMatchObject({ selectable: true, effort: "low", efforts: ["low"] })
     expect(await api.listEffortOptions(seat, "custom-low")).toContainEqual(expect.objectContaining({ selectable: true, effort: "low" }))
-    await api.saveEffort(seat, "custom-low", "low")
+    await api.saveEffort(seat, "custom-low", "low", ABSENT)
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "custom-low", effort: "low" } } })
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "custom-low", effort: "low" })
     // The person's pair now serves whole, so its effort is the suggestion.
     expect((await api.listModelOptions(seat)).find((row) => row.model === "gpt-6.1-sol")).toMatchObject({ selectable: true, effort: "low" })
-    await api.saveEffort(seat, "gpt-6.1-sol", "high")
+    await api.saveEffort(seat, "gpt-6.1-sol", "high", ABSENT)
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6.1-sol", effort: "high" })
     expect(readFileSync(configPath, "utf8")).toBe("")
   })
@@ -201,9 +203,9 @@ describe("session assignment settings", () => {
     const { manager, configPath } = setup()
     const id = await manager.createChat({ name: "review", initialRoles: { reviewer: { model: "gpt-6-astra", effort: "high" } } })
     const api = controller(manager, id, configPath)
-    await api.saveEffort(roleSlot("reviewer-design"), "gpt-6-luna", "low")
+    await api.saveEffort(roleSlot("reviewer-design"), "gpt-6-luna", "low", ABSENT)
     expect((await api.loadAssignments([roleSlot("reviewer-design")]))[0]).toMatchObject({ model: "gpt-6-luna", effort: "low" })
-    await api.saveEffort(roleSlot("reviewer-design"), null, null)
+    await api.saveEffort(roleSlot("reviewer-design"), null, null, ABSENT)
     expect((await api.loadAssignments([roleSlot("reviewer-design")]))[0]).toMatchObject({ model: "gpt-6-astra", effort: "high" })
   })
 
@@ -237,11 +239,11 @@ describe("session assignment settings", () => {
     expect(options.find((row) => row.current)).toMatchObject({ model: reachable, effort: authoredPair.effort })
     expect((await api.listEffortOptions(seat, "gpt-6-luna")).every((row) => row.selectable)).toBe(true)
     expect(await serving()).toEqual(authoredPair)
-    await api.saveEffort(seat, "gpt-6-luna", "low")
+    await api.saveEffort(seat, "gpt-6-luna", "low", ABSENT)
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "gpt-6-luna", effort: "low" } } })
     expect(await serving()).toEqual({ model: "gpt-6-luna", effort: "low" })
     expect((await api.listModelOptions(seat)).find((row) => row.current)).toMatchObject({ model: "gpt-6-luna", effort: "low" })
-    await api.saveEffort(seat, null, null)
+    await api.saveEffort(seat, null, null, ABSENT)
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: {} })
     expect(await serving()).toEqual(authoredPair)
     expect((await api.loadAssignments([seat]))[0]).toMatchObject(authoredPair)
@@ -281,7 +283,7 @@ describe("session assignment settings", () => {
     expect(before.slot.roleId).toBe(kind === "persona child" ? "explorer" : "brief.plan.at.worker")
     expect(before.serving).toEqual({ model: "gpt-6-luna", effort: "low" })
     expect(before).toMatchObject({ row: before.serving, option: before.serving, effort: "low" })
-    await api.saveEffort(before.slot, "gpt-6.1-sol", "medium")
+    await api.saveEffort(before.slot, "gpt-6.1-sol", "medium", ABSENT)
     const after = await picked()
     expect(after.slot).toEqual(before.slot)
     expect(after.serving).toEqual({ model: "gpt-6.1-sol", effort: "medium" })
@@ -294,10 +296,64 @@ describe("session assignment settings", () => {
     const api = controller(manager, id, configPath, {}, [])
     expect(await api.loadAssignments([roleSlot("chat")])).toEqual([])
     expect((await manager.read(id))?.roleAssignments?.overrides.chat).toEqual({ model: "lost", effort: "low" })
-    await api.saveEffort(roleSlot("chat"), "gpt-6-luna", "high")
+    await api.saveEffort(roleSlot("chat"), "gpt-6-luna", "high", ABSENT)
     expect((await manager.read(id))?.roleAssignments?.overrides.chat).toEqual({ model: "gpt-6-luna", effort: "high" })
     expect(await api.loadAssignments([roleSlot("chat")])).toEqual([])
     expect((await controller(manager, id, configPath).loadAssignments([roleSlot("chat")]))[0]).toMatchObject({ model: "gpt-6-luna", effort: "high" })
     expect(readFileSync(configPath, "utf8")).toBe("")
+  })
+})
+
+// A defaults write states the profile entry its client showed, so a client
+// that read the file before another client's write changes nothing
+// (ARCH-RUNTIME-060).
+describe("defaults assignment writes compare and swap", () => {
+  const chat = roleSlot("chat")
+  const shown = { chat: { model: "gpt-6-astra", effort: "high" } } as const
+  const twoClients = () => {
+    const { manager, configPath } = setup()
+    writeFileSync(configPath, '[profiles.default.roles.chat]\nmodel = "gpt-6-astra"\neffort = "high"\n')
+    return { configPath, first: controller(manager, undefined, configPath, shown), second: controller(manager, undefined, configPath, shown) }
+  }
+
+  it("Two clients that both showed model A: the first save to B commits, the second save to C is refused as stale", async () => {
+    const { configPath, first, second } = twoClients()
+    const [firstRow] = await first.loadAssignments([chat])
+    const [secondRow] = await second.loadAssignments([chat])
+    expect([firstRow?.configured, secondRow?.configured]).toEqual([
+      { kind: "value", value: { model: "gpt-6-astra", effort: "high" } },
+      { kind: "value", value: { model: "gpt-6-astra", effort: "high" } },
+    ])
+    await first.saveEffort(chat, "gpt-6-luna", "low", firstRow!.configured)
+    await expect(second.saveEffort(chat, "gpt-6.1-sol", "medium", secondRow!.configured)).rejects.toBeInstanceOf(ConfigStaleWriteError)
+    expect(readFileSync(configPath, "utf8")).toBe('[profiles.default.roles.chat]\nmodel = "gpt-6-luna"\neffort = "low"\n')
+  })
+
+  it("A reset to detected defaults whose expected slot values are stale writes nothing", async () => {
+    const { configPath, first, second } = twoClients()
+    const [firstRow] = await first.loadAssignments([chat])
+    const [secondRow] = await second.loadAssignments([chat])
+    await first.saveEffort(chat, "gpt-6-luna", "low", firstRow!.configured)
+    const after = readFileSync(configPath, "utf8")
+    await expect(second.resetDefaults([chat], () => true, { chat: secondRow!.configured })).rejects.toBeInstanceOf(ConfigStaleWriteError)
+    expect(readFileSync(configPath, "utf8")).toBe(after)
+  })
+
+  it("A reset whose map omits a role that holds a value is refused as stale", async () => {
+    const { configPath, first } = twoClients()
+    const before = readFileSync(configPath, "utf8")
+    await expect(first.resetDefaults([chat], () => true, {})).rejects.toBeInstanceOf(ConfigStaleWriteError)
+    expect(readFileSync(configPath, "utf8")).toBe(before)
+  })
+
+  // The web client lists no parent role such as reviewer, so its reset names
+  // only the roles it shows and leaves the parent's saved value.
+  it("A reset that does not name reviewer leaves its saved value", async () => {
+    const { manager, configPath } = setup()
+    writeFileSync(configPath, '[profiles.default.roles.chat]\nmodel = "gpt-6-astra"\neffort = "high"\n\n[profiles.default.roles.reviewer]\nmodel = "gpt-6-luna"\neffort = "low"\n')
+    const api = controller(manager, undefined, configPath, { chat: { model: "gpt-6-astra", effort: "high" }, reviewer: { model: "gpt-6-luna", effort: "low" } })
+    const [row] = await api.loadAssignments([chat])
+    await api.resetDefaults([chat], () => true, { chat: row!.configured })
+    expect(Bun.TOML.parse(readFileSync(configPath, "utf8"))).toEqual({ profiles: { default: { roles: { reviewer: { model: "gpt-6-luna", effort: "low" } } } } })
   })
 })
