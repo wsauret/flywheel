@@ -302,7 +302,6 @@ interface FrontendContainerBase {
   readonly summary?: string
   readonly children: FrontendToolEntry[]
   readonly totalToolCount: number
-  readonly latestChild?: string
   readonly duration?: number
   readonly activeStartedAt?: number
   readonly timestamp: number

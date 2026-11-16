@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test"
-import { parseSessionLink, sessionLink, parseWorkflowLink, workflowLink } from "../../../../src/protocol/client/session-links.js"
+import { parseSessionLink, parseWorkflowLink } from "../../../../src/protocol/client/session-links.js"
 
 describe("session links", () => {
   it("distinguishes a workflow and its agent fragment from an actual session", () => {
-    expect(parseSessionLink(sessionLink("member-1"))).toEqual({ sessionId: "member-1" })
-    expect(parseWorkflowLink(workflowLink("workflow-1"))).toEqual({ workflowId: "workflow-1" })
-    expect(parseWorkflowLink(workflowLink("workflow-1", "a#b c"))).toEqual({ workflowId: "workflow-1", agent: "a#b c" })
-    expect(parseSessionLink(workflowLink("workflow-1"))).toBeUndefined()
-    expect(parseWorkflowLink(sessionLink("member-1"))).toBeUndefined()
+    expect(parseSessionLink("flywheel://session/member-1")).toEqual({ sessionId: "member-1" })
+    expect(parseWorkflowLink("flywheel://workflow/workflow-1")).toEqual({ workflowId: "workflow-1" })
+    expect(parseWorkflowLink("flywheel://workflow/workflow-1#agent=a%23b%20c")).toEqual({ workflowId: "workflow-1", agent: "a#b c" })
+    expect(parseSessionLink("flywheel://workflow/workflow-1")).toBeUndefined()
+    expect(parseWorkflowLink("flywheel://session/member-1")).toBeUndefined()
   })
 
   it("reads the session before any fragment, and nothing from another link", () => {

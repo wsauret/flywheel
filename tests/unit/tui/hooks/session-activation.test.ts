@@ -3,7 +3,6 @@ import type { ChildSessionRow, SessionCatalogRow } from "../../../../src/protoco
 import type { RuntimeSessionDetailView } from "../../../../src/protocol/session-detail-protocol-types.js"
 import { createLinkNavigator, createSessionActivator, createSessionActivatorById } from "../../../../src/tui/hooks/session-activation.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
-import { sessionLink, workflowLink } from "../../../../src/protocol/client/session-links.js"
 import { createOverlayLayers } from "../../../../src/tui/components/modal-stack.js"
 import { runtimeDispatch, runtimeQuery, type DispatchAnswer } from "../../../helpers/runtime-dispatch.js"
 
@@ -317,7 +316,7 @@ describe("link navigation", () => {
     const toasts: Toast[] = []
     const navigate = createLinkNavigator({ openSession: activateById, openModuleUri: async () => false, showToast: (toast) => { toasts.push(toast) } })
 
-    await follow(navigate, sessionLink("child"))
+    await follow(navigate, "flywheel://session/child")
     expect(toasts).toEqual([{ message: `Open failed for child: ${timeout.message}`, variant: "error" }])
   })
 
@@ -328,7 +327,7 @@ describe("link navigation", () => {
       openModuleUri: () => Promise.reject(new Error("workflow read failed")),
       showToast: (toast) => { toasts.push(toast) },
     })
-    const uri = workflowLink("run")
+    const uri = "flywheel://workflow/run"
 
     await follow(navigate, uri)
     expect(toasts).toEqual([{ message: `Open failed for ${uri}: workflow read failed`, variant: "error" }])

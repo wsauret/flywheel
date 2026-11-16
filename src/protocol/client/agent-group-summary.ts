@@ -1,30 +1,13 @@
 /**
- * The one composition of an agent row's header: a subagent run or a workflow.
- *
- * A row must say what ran, what it was asked to do, and what it cost, or it
- * reads as an unexplained tool. A subagent row also names its model. A
- * workflow row names none, because each agent can run on a different model;
- * its glyph marks it as a workflow instead. Every client joins these parts
- * with " · " after the row's label; keeping the selection and order here
- * means the TUI and an editor client describe the same run the same way.
+ * What every client reads alike about an agent row: a subagent run or a
+ * workflow. A workflow row names no model, because each agent can run on a
+ * different model; its glyph marks it as a workflow instead. The parts of a
+ * subagent row's header come from `subagentHeaderParts`.
  */
 
-import { formatElapsed, formatTokens } from "./format.js"
-import { activeTimeMs } from "./session-time.js"
 import { WORKFLOW_GLYPH } from "./glyphs.js"
 import { type AgentGroupBlock, type ContainerKind, isAgentInFlight } from "../../infra/output-blocks.js"
 import { sessionServingLabel, type RoleAssignmentView } from "../role-protocol-types.js"
-
-export interface AgentGroupSummaryInput {
-  readonly label: string
-  readonly description: string
-  readonly containerKind: ContainerKind
-  readonly totalToolCount: number
-  readonly model?: string | undefined
-  readonly totalTokens?: number | undefined
-  readonly duration?: number | undefined
-  readonly activeStartedAt?: number | undefined
-}
 
 /** The glyph a client renders before the row's label, if the kind has one. */
 export function agentGroupGlyph(containerKind: ContainerKind): string | undefined {
@@ -36,19 +19,7 @@ export function agentGroupModelLabel(launchLabel: string | undefined, roles: Rol
   return sessionServingLabel(roles) ?? launchLabel
 }
 
-function pluralizeOperations(n: number): string {
-  return `${n} operation${n === 1 ? "" : "s"}`
-}
-
-/** The goal line: the run's description, unless it merely repeats the label. */
-function agentGroupGoal(block: Pick<AgentGroupSummaryInput, "label" | "description">): string {
-  if (!block.description) return ""
-  if (block.description === block.label) return ""
-  return block.description
-}
-
-/** Whether a row stands for a run that is still going: a client marks it
- *  live and describes it with `agentGroupActiveParts`. */
+/** Whether a row stands for a run that is still going: a client marks it live. */
 export function agentGroupInFlight(block: Pick<AgentGroupBlock, "status">): boolean {
   return isAgentInFlight(block.status)
 }
@@ -66,21 +37,4 @@ export function agentGroupInitializing(block: Pick<AgentGroupBlock, "containerKi
  *  child's clock runs. A client ticks the row only then. */
 export function agentGroupClockRuns(block: Pick<AgentGroupBlock, "status" | "activeStartedAt">): boolean {
   return agentGroupInFlight(block) && block.activeStartedAt !== undefined
-}
-
-/** Summary parts while the run is still going: goal, a subagent's model,
- *  operations, tokens, and the active time at `now` once it is at least a
- *  second. */
-export function agentGroupActiveParts(block: AgentGroupSummaryInput, now: number): string[] {
-  // A row with no open episode states only the settled time, so it never
-  // counts the time since launch and never goes down when the run settles.
-  const elapsedMs = activeTimeMs(block.duration ?? 0, block.activeStartedAt, now)
-  const parts: string[] = []
-  const goal = agentGroupGoal(block)
-  if (goal) parts.push(goal)
-  if (block.containerKind === "subagent" && block.model) parts.push(block.model)
-  if (block.totalToolCount > 0) parts.push(pluralizeOperations(block.totalToolCount))
-  if (block.totalTokens != null) parts.push(`${formatTokens(block.totalTokens)} tokens`)
-  if (elapsedMs >= 1000) parts.push(formatElapsed(elapsedMs))
-  return parts
 }

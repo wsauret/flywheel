@@ -15,7 +15,7 @@ export type FileChangeBody =
   | { readonly kind: "proposed"; readonly proposedDiff: ProvisionalDiff }
   | { readonly kind: "unavailable" }
 
-export type MutationDiffRow =
+type MutationDiffRow =
   | { readonly path: string; readonly kind: "context"; readonly text: string; readonly oldLine: number; readonly newLine: number }
   | { readonly path: string; readonly kind: "remove"; readonly text: string; readonly oldLine: number }
   | { readonly path: string; readonly kind: "add"; readonly text: string; readonly newLine: number }
@@ -104,7 +104,7 @@ export function presentsAsFileChange(tool: Pick<FrontendToolEntry, "declaresMuta
 }
 
 /** The one line a shell mutation's row shows in place of its command until it settles. */
-export const SHELL_MUTATION_RUNNING = "bash command is running…"
+const SHELL_MUTATION_RUNNING = "bash command is running…"
 
 type ShellMutationRow = Pick<FrontendToolEntry, "declaresMutation" | "mutationEvidence" | "presentation" | "status">
 
@@ -209,7 +209,7 @@ export function removedDirectoryGroups(entries: readonly MutationFilesEntry[], f
 const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 
 /** Parses renderer-neutral rows from canonical unified diffs. */
-export function parseMutationDiffRows(mutation: MutationDiff): MutationDiffRow[] {
+function parseMutationDiffRows(mutation: MutationDiff): MutationDiffRow[] {
   const rows: MutationDiffRow[] = []
   for (const file of mutation.files) {
     let oldLine: number | undefined

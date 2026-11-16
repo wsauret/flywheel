@@ -1,6 +1,6 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, jest } from "bun:test"
 import type { AuthProviderStatus } from "../../../../src/protocol/auth-status-protocol-types.js"
-import { PROVIDER_SETUP_WAIT_MS, providerSetup, settledProviderSetup, type ProviderSetup } from "../../../../src/protocol/client/provider-setup.js"
+import { providerSetup, settledProviderSetup, type ProviderSetup } from "../../../../src/protocol/client/provider-setup.js"
 import { runtimeCallPolicies } from "../../../../src/protocol/runtime-client-deadlines.js"
 
 function view(...providers: ReadonlyArray<Pick<AuthProviderStatus, "group" | "source"> & { readonly expired?: boolean }>) {
@@ -28,9 +28,19 @@ describe("providerSetup", () => {
 })
 
 describe("settledProviderSetup", () => {
-  it("waits at most as long as the auth snapshot read itself", () => {
-    const policy = runtimeCallPolicies.authStatusSnapshot
-    expect(policy._tag === "BestEffort" ? policy.deadlineMs : undefined).toBe(PROVIDER_SETUP_WAIT_MS)
+  it("waits at most as long as the auth snapshot read itself", async () => {
+    jest.useFakeTimers()
+    try {
+      let settled = false
+      const waiting = settledProviderSetup(() => "loading", () => new Promise(() => {})).finally(() => { settled = true })
+      jest.advanceTimersByTime(runtimeCallPolicies.authStatusSnapshot.deadlineMs - 1)
+      await Promise.resolve()
+      expect(settled).toBe(false)
+      jest.advanceTimersByTime(1)
+      expect(await waiting).toBe("loading")
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it("answers a known setup without waiting", async () => {

@@ -12,7 +12,7 @@ export interface CommandCatalogReadiness {
 
 /** The longest a slash command waits for the catalog: the deadline of the
  *  catalog read. Past it, that read has failed, so a longer wait cannot help. */
-export const COMMAND_CATALOG_WAIT_MS = runtimeCallPolicies.commandCatalog.deadlineMs
+const COMMAND_CATALOG_WAIT_MS = runtimeCallPolicies.commandCatalog.deadlineMs
 
 const CATALOG_LOADING_NOTICE = "Commands are still loading; your command stays in the prompt"
 

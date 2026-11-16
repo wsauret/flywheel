@@ -5,9 +5,7 @@ import type { FrontendMutation, MutationResult } from "../../../../src/protocol/
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import {
   createAdmissionEdges,
-  agentViewControl,
   dispatchInterrupt,
-  interruptMutationType,
   isInterruptible,
   offeredSessionControls,
   replyWaitLabel,
@@ -16,7 +14,6 @@ import {
   runStatusLabel,
   sessionControls,
   stopMutation,
-  stoppedLabel,
   workflowCardControls,
   workflowStateLabel,
   workflowParked,
@@ -25,16 +22,7 @@ import {
 import { interruptedLabel, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../../src/infra/output/run-labels.js"
 
 describe("session controls", () => {
-  test("agent controls require their address and their own admitted action", () => {
-    const row = { workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.resume"] as const }
-    const address = { target: "json", label: "lane json", placeholder: "Message lane json" }
-    expect(agentViewControl(row, { state: "running" }, address, true)).toEqual({ kind: "interrupt", targets: ["json"] })
-    expect(agentViewControl(row, { state: "parked" }, address, true)).toEqual({ kind: "resume", targets: ["json"] })
-    expect(agentViewControl(row, { state: "running" }, address, false)).toEqual({ kind: "resume", targets: ["json"] })
-    expect(agentViewControl({ workflowId: "w", admittedActions: ["workflow.interrupt"] }, { state: "parked" }, address, true)).toBeNull()
-    expect(agentViewControl(row, { state: "done" }, address, true)).toBeNull()
-    expect(agentViewControl(row, { state: "running" }, undefined, true)).toBeNull()
-    expect(agentViewControl(row, { state: "running" }, { ...address, target: "" }, true)).toBeNull()
+  test("a workflow Resume carries its message targets, and a workflow parks only while something holds it", () => {
     expect(resumeMutation({ workflowId: "w" }, ["json"])).toEqual({ type: "workflow.resume", workflowId: "w", targets: ["json"] })
     expect(resumeMutation({ workflowId: "w" })).toEqual({ type: "workflow.resume", workflowId: "w" })
     expect(resumeMutation({ id: "s", kind: "subagent" }, ["json"])).toEqual({ type: "subagent.resume", sessionId: "s" })
@@ -82,9 +70,10 @@ describe("session controls", () => {
   })
 
   test("the row's kind picks the mutation", () => {
-    expect(interruptMutationType("chat")).toBe("chat.interrupt")
-    expect(interruptMutationType("workflow-agent")).toBe("chat.interrupt")
-    expect(interruptMutationType("subagent")).toBe("subagent.interrupt")
+    expect(sessionControls({ kind: "chat", admittedActions: ["chat.interrupt"] }).interrupt).toBe(true)
+    expect(sessionControls({ kind: "workflow-agent", admittedActions: ["chat.interrupt"] }).interrupt).toBe(true)
+    expect(sessionControls({ kind: "subagent", admittedActions: ["subagent.interrupt"] }).interrupt).toBe(true)
+    expect(sessionControls({ kind: "subagent", admittedActions: ["chat.interrupt"] }).interrupt).toBe(false)
     expect(resumeMutationType("chat")).toBe("chat.resume")
     expect(resumeMutationType("workflow-agent")).toBe("chat.resume")
     expect(resumeMutationType("subagent")).toBe("subagent.resume")
@@ -129,8 +118,8 @@ describe("session controls", () => {
     expect(interruptedLabel("runtime")).toBe("Interrupted by the runtime")
     expect(UNEXPECTED_EXIT_LABEL).toBe("Interrupted by an unexpected exit")
     expect(RESUMED_LABEL).toBe("Resumed")
-    expect(stoppedLabel("person")).toBe("Stopped")
-    expect(stoppedLabel("agent")).toBe("Canceled")
+    expect(workflowStateLabel("running", { stoppedBy: "person" })).toBe("Stopped")
+    expect(workflowStateLabel("running", { stoppedBy: "agent" })).toBe("Canceled")
   })
 
   test("names a child card's run state, and nothing for a state its header does not name", () => {

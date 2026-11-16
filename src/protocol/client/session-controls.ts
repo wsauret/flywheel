@@ -11,8 +11,6 @@ import type { StatusView } from "../status-protocol-types.js"
 import type { LoadedWorkflowView, WorkflowAgentLive } from "../workflow-view-protocol-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { AgentGroupBlock, PausedBy } from "../../infra/output-blocks.js"
-import type { WorkflowAgentModel } from "./workflow-agent.js"
-import type { WorkflowAgentAddress } from "./workflow-addresses.js"
 import { lostToCleanClose } from "./connection-failures.js"
 import { CANCELED_LABEL, interruptedLabel, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
 interface WorkControlOwner {
@@ -135,7 +133,7 @@ export function createAdmissionEdges(): AdmissionEdges {
 }
 
 /** The interrupt mutation a row's kind answers to; one control, three sessions. */
-export function interruptMutationType(kind: SessionRow["kind"]): "chat.interrupt" | "subagent.interrupt" {
+function interruptMutationType(kind: SessionRow["kind"]): "chat.interrupt" | "subagent.interrupt" {
   return kind === "subagent" ? "subagent.interrupt" : "chat.interrupt"
 }
 
@@ -181,16 +179,6 @@ export function resumeMutation(row: Pick<SessionRow, "id" | "kind"> | Pick<WorkC
     : { type: row.kind === "subagent" ? "subagent.resume" : "chat.resume", sessionId: row.id }
 }
 
-/** An agent control always carries its nonempty address and requires the corresponding admitted workflow action. */
-export function agentViewControl(row: ControlRow | null | undefined, model: Pick<WorkflowAgentModel, "state"> | undefined, address: WorkflowAgentAddress | undefined, interruptible: boolean): { readonly kind: "interrupt" | "resume"; readonly targets: readonly [string] } | null {
-  if (!row || !("workflowId" in row) || !address?.target || model === undefined) return null
-  const admitted = sessionControls(row)
-  const kind = model.state === "parked" || (model.state === "running" && !interruptible)
-    ? admitted.resume ? "resume" : null
-    : model.state === "running" && admitted.interrupt ? "interrupt" : null
-  return kind === null ? null : { kind, targets: [address.target] }
-}
-
 /** A park labels the workflow when nothing remains interruptible, which an agent that counts its operations live and that no interrupt holds is, and something holds it: an agent that an interrupt holds in the workflow's `workflow_live` value, or the session row's Resume or Restart admission. Restart is admitted only for saved progress that cannot run, which holds the run as an interrupt does. */
 export function workflowParked(live: readonly WorkflowAgentLive[], row?: ControlRow | null): boolean {
   const controls = sessionControls(row ?? undefined)
@@ -232,7 +220,7 @@ export function stopMutation(row: Pick<SessionRow, "kind" | "admittedActions" | 
 }
 
 /** Who ended a stopped child, in the words its card uses. */
-export function stoppedLabel(by: StoppedBy): string {
+function stoppedLabel(by: StoppedBy): string {
   return by === "person" ? STOPPED_LABEL : CANCELED_LABEL
 }
 
