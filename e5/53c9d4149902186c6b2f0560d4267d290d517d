@@ -1,0 +1,54 @@
+src/protocol/modules.ts
+  h_4b47e9e4a8b456 129-133,143-146
+src/protocol/modules/remote.ts
+  h_4b47e9e4a8b456 150
+src/protocol/modules/subscription-usage.ts
+  h_4b47e9e4a8b456 436-438
+src/protocol/modules/workflows.ts
+  h_4b47e9e4a8b456 180-186
+src/protocol/protocol-module.ts
+  h_4b47e9e4a8b456 89-90
+src/protocol/runtime-client-deadlines.ts
+  h_4b47e9e4a8b456 3-4,18-20,62
+src/protocol/runtime-cursor-schemas.ts
+  h_4b47e9e4a8b456 3
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 264
+src/protocol/runtime-ui-protocol-types.ts
+  h_4b47e9e4a8b456 66,70
+tests/unit/orchestration/app-service/protocol-contract.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/app-service/runtime-ui-patch-contract.test.ts
+  h_4b47e9e4a8b456 5-6,71-81
+tests/unit/orchestration/modules/remote/protocol.test.ts
+  h_4b47e9e4a8b456 53
+tests/unit/orchestration/modules/subscription-usage/module.test.ts
+  h_4b47e9e4a8b456 9,12
+tests/unit/protocol/cursor-intake.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/protocol/module-protocol-registry.test.ts
+  h_4b47e9e4a8b456 82
+tests/unit/protocol/module-rows.test.ts
+  h_4b47e9e4a8b456 4,52,59-64
+tests/unit/protocol/modules/remote-composer.test.ts
+  h_4b47e9e4a8b456 4,32-33,47,56-57,63-67
+tests/unit/tui/components/prompt-border-layout.test.ts
+  h_4b47e9e4a8b456 4-5,21,32
+webview/src/app/composer-status-fixture.ts
+  h_4b47e9e4a8b456 14,22,26
+webview/src/app/composer-status.test.ts
+  h_4b47e9e4a8b456 6,27,30,32-34,39,45,50,52,59,62
+webview/src/app/composer-status.tsx
+  h_4b47e9e4a8b456 7,35,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e553c9d4149902186c6b2f0560d4267d290d517d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
