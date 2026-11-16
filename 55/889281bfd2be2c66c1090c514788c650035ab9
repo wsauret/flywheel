@@ -1,0 +1,174 @@
+scripts/regenerate-output-seam-corpus.ts
+  h_4b47e9e4a8b456 13,334-335,338-344,509
+src/orchestration/app-service/app-service.ts
+  h_4b47e9e4a8b456 138-141,146-151,163-168,247,266,281,285-290,301,305,313,316-322
+src/orchestration/app-service/auth-mutations.ts
+  h_4b47e9e4a8b456 8,23,29-30,32,58
+src/orchestration/app-service/eligibility-preparation.ts
+  h_4b47e9e4a8b456 2,11,43-45,55,209,245
+src/orchestration/app-service/frontend-projections.ts
+  h_4b47e9e4a8b456 84
+src/orchestration/app-service/module-projection.ts
+  h_4b47e9e4a8b456 13,49,53-54,61-62,154-155
+src/orchestration/app-service/output-projection.ts
+  h_4b47e9e4a8b456 35-36,40,42,204,223,356,362,381-382
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 378,567,656,713
+src/orchestration/app-service/provider-model-preference-service.ts
+  h_4b47e9e4a8b456 51-53,55-58,78,86,95,103-106,113-119,154,160-168,170,186,191,200,219,224,233,254,259,272,285,290,304,317,322,332
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 81,88-89,91,102,105-106,108-109,113,117-118,133,137-138
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 42-43,52-53,71,74,78,82-85,104,281,285,287-288,321,333-334,340,352,405,428,430,432,448-449,464,466,476,492-493,497,502,536,550,583-584,586,611,614,641,650
+src/orchestration/app-service/session-background-notifications.ts
+  h_4b47e9e4a8b456 42,62
+src/orchestration/app-service/session-chat-durability.ts
+  h_4b47e9e4a8b456 39,46
+src/orchestration/app-service/session-continuation.ts
+  h_4b47e9e4a8b456 58,104,115
+src/orchestration/app-service/session-detail-projection.ts
+  h_4b47e9e4a8b456 4,17,50-54,56-69,74,77-80,84-85,107-108,111,114-116,121-122,138-139,144,153,167,185,198,210,288-290,295-297,339
+src/orchestration/app-service/session-reactivation.ts
+  h_4b47e9e4a8b456 21-22,44,46,52,63
+src/orchestration/app-service/session-runtime-actor-types.ts
+  h_4b47e9e4a8b456 95,100,103-105
+src/orchestration/app-service/session-runtime-actor.ts
+  h_4b47e9e4a8b456 70,78,188,208,229,444,473,569,630,642-643,663,667,781
+src/orchestration/headless/headless-profile-runtime.ts
+  h_4b47e9e4a8b456 13,168
+tests/fixtures/runtime-supervisor-fixtures.ts
+  h_4b47e9e4a8b456 6,11-12,33,53-59,110-131,136,138-140,166-168,172,178
+tests/helpers/auth-mutation-doubles.ts
+  h_4b47e9e4a8b456 1-28
+tests/helpers/output-projection-deps.ts
+  h_4b47e9e4a8b456 1-14
+tests/helpers/profile-auth-observation.ts
+  h_4b47e9e4a8b456 1-11
+tests/helpers/provider-model-writes.ts
+  h_4b47e9e4a8b456 1-12
+tests/helpers/session-detail-projection.ts
+  h_4b47e9e4a8b456 1-30
+tests/integration/orchestration/config-watch.test.ts
+  h_4b47e9e4a8b456 158-159,162,179-180
+tests/integration/orchestration/modules.test.ts
+  h_4b47e9e4a8b456 34,126-128,131
+tests/integration/output-seam-corpus.test.ts
+  h_4b47e9e4a8b456 11,92,239
+tests/integration/providers/_live-client.ts
+  h_4b47e9e4a8b456 50-51,132,142
+tests/unit/orchestration/app-service/app-service-capability-settings.test.ts
+  h_4b47e9e4a8b456 9,25,28,65,68
+tests/unit/orchestration/app-service/app-service-catalog.test.ts
+  h_4b47e9e4a8b456 11-12,18,25
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 10-12,138-160,164-165,435-439
+tests/unit/orchestration/app-service/app-service-shutdown.test.ts
+  h_4b47e9e4a8b456 81,92,97-98
+tests/unit/orchestration/app-service/auth-login-reconnect.test.ts
+  h_4b47e9e4a8b456 29,134,516
+tests/unit/orchestration/app-service/auth-login-requests.test.ts
+  h_4b47e9e4a8b456 16,38,87,163
+tests/unit/orchestration/app-service/auth-profile-selection-service.test.ts
+  h_4b47e9e4a8b456 22,154
+tests/unit/orchestration/app-service/auth-publication.test.ts
+  h_4b47e9e4a8b456 22,193
+tests/unit/orchestration/app-service/auth-status-projection.test.ts
+  h_4b47e9e4a8b456 13-14,28,298
+tests/unit/orchestration/app-service/eligibility-preparation-background.test.ts
+  h_4b47e9e4a8b456 8-9,16,28
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  h_4b47e9e4a8b456 19-20,34,70,92,137,211,263,280,297,415
+tests/unit/orchestration/app-service/eligibility-preparation-refusal.test.ts
+  h_4b47e9e4a8b456 11-12,19,25,49,55
+tests/unit/orchestration/app-service/eligibility-preparation-settlement.test.ts
+  h_4b47e9e4a8b456 12-13,37,46,93,103,124,137,202,210,255,266,430,442,482,496
+tests/unit/orchestration/app-service/eligibility-preparation.test.ts
+  h_4b47e9e4a8b456 13-14,20,34,73,80,116,124,151,167,212,219,250,256,273,284,318,330,392,402,448,455,479,488,516,522,559,588
+tests/unit/orchestration/app-service/frontend-projection-workflow-launch.test.ts
+  h_4b47e9e4a8b456 12,45
+tests/unit/orchestration/app-service/kept-output-projection.test.ts
+  h_4b47e9e4a8b456 18,253
+tests/unit/orchestration/app-service/model-catalog-auth-eligibility.test.ts
+  h_4b47e9e4a8b456 36-37,183,376,386,470
+tests/unit/orchestration/app-service/module-projection.test.ts
+  h_4b47e9e4a8b456 21,54,82,127-130,132,150
+tests/unit/orchestration/app-service/output-live-derived-equivalence.test.ts
+  h_4b47e9e4a8b456 28,380,489,562,570
+tests/unit/orchestration/app-service/output-live-tool-pipeline.test.ts
+  h_4b47e9e4a8b456 18,81
+tests/unit/orchestration/app-service/output-live-turn-coordinates.test.ts
+  h_4b47e9e4a8b456 18,82,203
+tests/unit/orchestration/app-service/output-projection-cards.test.ts
+  h_4b47e9e4a8b456 19,46,92,135
+tests/unit/orchestration/app-service/output-projection-child-cards.test.ts
+  h_4b47e9e4a8b456 16,31,92,181,245,296,346,394,504
+tests/unit/orchestration/app-service/output-projection-shipped.test.ts
+  h_4b47e9e4a8b456 16-17,50,81,110,130,147,168,183,203,218,237,252,276,293,308,328,348,369,393,416,437,462
+tests/unit/orchestration/app-service/output-projection-watch.test.ts
+  h_4b47e9e4a8b456 8,17,37,66
+tests/unit/orchestration/app-service/output-projection.test.ts
+  h_4b47e9e4a8b456 18,55,84,119,139,156,188,210,234,264,283,301,351,392,411,447,473,495,546,556,579,606
+tests/unit/orchestration/app-service/output-watch-delivery.test.ts
+  h_4b47e9e4a8b456 14,24
+tests/unit/orchestration/app-service/project-execution-runtime.test.ts
+  h_4b47e9e4a8b456 17-18,22,34,36-38,157,159-160
+tests/unit/orchestration/app-service/provider-model-preference-audit.test.ts
+  h_4b47e9e4a8b456 13,29
+tests/unit/orchestration/app-service/provider-model-preference-metadata.test.ts
+  h_4b47e9e4a8b456 10,78
+tests/unit/orchestration/app-service/provider-model-preference-service.test.ts
+  h_4b47e9e4a8b456 9,48,100,143,176,209,232,254,269,280,292,336,363,395,420,445,472,497,507,524,548,553
+tests/unit/orchestration/app-service/runtime-background-lane.test.ts
+  h_4b47e9e4a8b456 85
+tests/unit/orchestration/app-service/runtime-composition-readiness.test.ts
+  h_4b47e9e4a8b456 12-13,81-82
+tests/unit/orchestration/app-service/runtime-session-contract.test.ts
+  h_4b47e9e4a8b456 23,40
+tests/unit/orchestration/app-service/runtime-supervisor-reactivation-seed.test.ts
+  h_4b47e9e4a8b456 217,246,267
+tests/unit/orchestration/app-service/session-detail-messaging.test.ts
+  h_4b47e9e4a8b456 12,18
+tests/unit/orchestration/app-service/session-detail-projection.test.ts
+  h_4b47e9e4a8b456 8,30,32,34,37,97-98,100-104,110,114-127,216-222,226,230,357,366-374
+tests/unit/orchestration/app-service/session-detail-publisher.test.ts
+  h_4b47e9e4a8b456 35,138-143
+tests/unit/orchestration/app-service/session-undo-lifecycle.test.ts
+  h_4b47e9e4a8b456 179
+tests/unit/orchestration/app-service/status-projection.test.ts
+  h_4b47e9e4a8b456 23,236,299,355
+tests/unit/orchestration/app-service/subscription-spend-consent-protocol.test.ts
+  h_4b47e9e4a8b456 93
+tests/unit/orchestration/app-service/transcript-child-index.test.ts
+  h_4b47e9e4a8b456 9,145
+tests/unit/orchestration/app-service/transcript-protocol-content-deferral.test.ts
+  h_4b47e9e4a8b456 13,350,483,494
+tests/unit/orchestration/app-service/transcript-protocol.test.ts
+  h_4b47e9e4a8b456 30,273,366,564,568
+tests/unit/orchestration/migrations/workflow-agent-sessions.test.ts
+  h_4b47e9e4a8b456 22,79
+tests/unit/orchestration/modules/subagents/subagent-child-sessions.test.ts
+  h_4b47e9e4a8b456 30,170,183,210
+tests/unit/orchestration/runner/background-notification-delivery.test.ts
+  h_4b47e9e4a8b456 3,172
+tests/unit/orchestration/session/project-directory-semantics.test.ts
+  h_4b47e9e4a8b456 29,102-103
+tests/unit/orchestration/session/subagent-completion-single-delivery.test.ts
+  h_4b47e9e4a8b456 79,132,260,268,292,297
+tests/unit/orchestration/session/tolerant-reprojection-workspace.test.ts
+  h_4b47e9e4a8b456 12,49,70
+tests/unit/orchestration/session/transcript-projection-child-index.test.ts
+  h_4b47e9e4a8b456 33,339
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 40-41,208,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "55889281bfd2be2c66c1090c514788c650035ab9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
