@@ -1,0 +1,16 @@
+src/tui/modules/lead/strip.tsx
+  h_4b47e9e4a8b456 114-116
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 36,41,45-60,62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d17a85778dad46fe69d7a1818db3b47641ee21c0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
