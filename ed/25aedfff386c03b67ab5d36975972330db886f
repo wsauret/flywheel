@@ -1,0 +1,94 @@
+src/orchestration/agent-runtime/agent-loop-tools.ts
+  h_4b47e9e4a8b456 24,198-211,213-214,217-218,221-223,242,252-254,257,260,313,315,320,322,326,330-331,342,346,348-349,354,358,367,371,376,385-386,391,398,400-401,405,415,417,422,427,431,435,439
+src/orchestration/agent-runtime/agent-resilience.ts
+  h_4b47e9e4a8b456 113
+src/orchestration/agent-runtime/agent-state.ts
+  h_4b47e9e4a8b456 2-4
+src/orchestration/agent-runtime/streamed-edit-turn.ts
+  h_4b47e9e4a8b456 21
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 388-389
+src/orchestration/runner/agent-turn.ts
+  h_4b47e9e4a8b456 51
+src/orchestration/runner/host.ts
+  h_4b47e9e4a8b456 102
+tests/unit/bench/chat-routing-run.test.ts
+  h_4b47e9e4a8b456 70,143,162,199
+tests/unit/bench/persona-run-accounting.test.ts
+  h_4b47e9e4a8b456 111,222
+tests/unit/bench/strategy.test.ts
+  h_4b47e9e4a8b456 5,498,500
+tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+  h_4b47e9e4a8b456 113,424-426,429,433,435,437,439,442-445
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 187,294,345,398
+tests/unit/orchestration/agent-runtime/subagent/durable-conversation.test.ts
+  h_4b47e9e4a8b456 113,192
+tests/unit/orchestration/agent-runtime/subagent/execute-lifecycle.test.ts
+  h_4b47e9e4a8b456 165,357,394
+tests/unit/orchestration/agent-runtime/subagent/execute-validation.test.ts
+  h_4b47e9e4a8b456 167,184,219
+tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
+  h_4b47e9e4a8b456 65
+tests/unit/orchestration/agent-runtime/subagent/reply-wait-keep-alive.test.ts
+  h_4b47e9e4a8b456 28
+tests/unit/orchestration/app-service/_runtime-supervisor-workflow-launch-fixtures.ts
+  h_4b47e9e4a8b456 250
+tests/unit/orchestration/app-service/runtime-supervisor-workflow-launch.test.ts
+  h_4b47e9e4a8b456 48,82,112
+tests/unit/orchestration/app-service/runtime-supervisor-workflow-stop.test.ts
+  h_4b47e9e4a8b456 87,214
+tests/unit/orchestration/chat/_chat-runner-lifecycle-fixtures.ts
+  h_4b47e9e4a8b456 37
+tests/unit/orchestration/chat/chat-session-agent-runtime-reconnect.test.ts
+  h_4b47e9e4a8b456 48
+tests/unit/orchestration/headless/headless-output.test.ts
+  h_4b47e9e4a8b456 132
+tests/unit/orchestration/headless/headless-run.test.ts
+  h_4b47e9e4a8b456 27,56,82,143,210,217,242
+tests/unit/orchestration/modules/side-question/request.test.ts
+  h_4b47e9e4a8b456 27
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 330,370
+tests/unit/orchestration/modules/subagents/subagent-child-controls.test.ts
+  h_4b47e9e4a8b456 250,386
+tests/unit/orchestration/modules/subagents/subagent-child-model.test.ts
+  h_4b47e9e4a8b456 75
+tests/unit/orchestration/modules/subagents/subagent-continuation.test.ts
+  h_4b47e9e4a8b456 339,424
+tests/unit/orchestration/modules/subagents/subagent-process-control.test.ts
+  h_4b47e9e4a8b456 55,85
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 156
+tests/unit/orchestration/modules/subagents/subagent-steering-viewer.test.ts
+  h_4b47e9e4a8b456 78
+tests/unit/orchestration/runner/agent-turn.test.ts
+  h_4b47e9e4a8b456 14,26-31,41-42,47,83,90-91,93,118-119,121,124,127,133,139,144,171,174,180,183,187,190,192,195,210
+tests/unit/orchestration/runner/runner-host.test.ts
+  h_4b47e9e4a8b456 4-5,212-223,226-227,232-233,236-239
+tests/unit/orchestration/workflow-host/historical-worker-task.test.ts
+  h_4b47e9e4a8b456 136
+tests/unit/orchestration/workflow-host/recovery-input.test.ts
+  h_4b47e9e4a8b456 95,194
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 41,435,442,601
+tests/unit/orchestration/workflow-host/worker-conversation-tree.test.ts
+  h_4b47e9e4a8b456 148,177
+tests/unit/orchestration/workflow-host/worker-opening-turn.test.ts
+  h_4b47e9e4a8b456 2,24,52,59
+tests/unit/orchestration/workflow-host/workflow-agent-interruption.test.ts
+  h_4b47e9e4a8b456 2,32,38,93
+tests/unit/orchestration/workflow-host/workflow-interruption.test.ts
+  h_4b47e9e4a8b456 21,40,52,115,138,180,352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ed25aedfff386c03b67ab5d36975972330db886f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
