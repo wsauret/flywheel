@@ -362,7 +362,7 @@ describe("project execution channel", () => {
     await stop()
   })
 
-  test("skips an additive private patch before strict known-frame validation", async () => {
+  test("skips an additive private patch or event type before strict known-frame validation", async () => {
     const [peer, clientEndpoint] = endpointPair()
     const client = connectProjectExecutionChannel(clientEndpoint)
     const events: FrontendEvent[] = []
@@ -384,6 +384,7 @@ describe("project execution channel", () => {
             payload: { kind: "status.future", private: true },
           },
         }),
+        pack({ type: "runtime.future", private: true }),
         // A lane frame is the client lane's own and never crosses this channel.
         pack({ type: "runtime.connected" }),
         pack(markerEvent(1)),

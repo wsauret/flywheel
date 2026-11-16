@@ -2,7 +2,7 @@ import { attemptBrief } from "../../../helpers/attempt-brief"
 import { describe, it, expect, setSystemTime, spyOn } from "bun:test"
 import type { EmitFn } from "../../../../src/infra/event-bus"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory"
-import { parseRuntimeEventPayload } from "../../../../src/infra/runtime-event-types"
+import { decodeRuntimeEvent } from "../../../helpers/runtime-events"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import type { CommandHandoverAuthority } from "../../../../src/orchestration/agent-runtime/command-handover"
@@ -62,7 +62,7 @@ describe("a step's command handover", () => {
     const emit: EmitFn = (type, input) => {
       if (type !== "tool.background_command.recorded") return
       expect(input.sessionId).toBe(sessionId)
-      const event = parseRuntimeEventPayload("tool.background_command.recorded", input.data)
+      const event = decodeRuntimeEvent("tool.background_command.recorded", input.data)
       for (const fact of mapRuntimeEventToSessionRuntimeFacts(event)) writes.push(writer.record(fact))
     }
     let live: readonly ActiveBackgroundCommandDescriptor[] = []
