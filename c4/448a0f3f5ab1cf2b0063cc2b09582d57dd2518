@@ -1,0 +1,24 @@
+bench/harbor/configs/luna-replace-codex.toml
+  h_4b47e9e4a8b456 1-273
+bench/harbor/configs/luna-replace-mini-swe-agent.toml
+  h_4b47e9e4a8b456 1-166
+bench/harbor/configs/luna-replace-zcode.toml
+  h_4b47e9e4a8b456 1-125
+bench/harbor/configs/shipped-replace-codex.toml
+  h_4b47e9e4a8b456 1-299
+bench/harbor/configs/shipped-replace-mini-swe-agent.toml
+  h_4b47e9e4a8b456 1-192
+bench/harbor/configs/shipped-replace-zcode.toml
+  h_4b47e9e4a8b456 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c4448a0f3f5ab1cf2b0063cc2b09582d57dd2518",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
