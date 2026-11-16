@@ -1,0 +1,68 @@
+src/tui/output-blocks/text-block.tsx
+  h_4b47e9e4a8b456 16
+src/tui/output-blocks/visible-output-blocks.ts
+  h_4b47e9e4a8b456 103
+src/tui/output-window/mount-range.ts
+  h_4b47e9e4a8b456 1-44
+src/tui/output-window/output-window-viewport.tsx
+  h_4b47e9e4a8b456 23
+src/tui/output-window/output-window-wheel.ts
+  h_4b47e9e4a8b456 59,65
+src/tui/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 13,31
+src/tui/transcript-store/output-transcript-cache-types.ts
+  h_4b47e9e4a8b456 30
+src/tui/utils/file-chooser.ts
+  h_4b47e9e4a8b456 16
+src/tui/utils/text-attributes.ts
+  h_4b47e9e4a8b456 6
+tests/fixtures/output-scroll-harness.ts
+  h_4b47e9e4a8b456 6,117
+tests/unit/tui/_output-window-transcript.ts
+  h_4b47e9e4a8b456 2,16-17
+tests/unit/tui/output-blocks/agent-group-error-detail.test.ts
+  h_4b47e9e4a8b456 2,120
+tests/unit/tui/output-blocks/bash-output-row.test.ts
+  h_4b47e9e4a8b456 2,592,596
+tests/unit/tui/output-blocks/markdown-streaming-line-model.test.ts
+  h_4b47e9e4a8b456 2-4,8-9,164-204
+tests/unit/tui/output-blocks/tool-run-block.test.ts
+  h_4b47e9e4a8b456 8,113,118,230,233
+tests/unit/tui/output-blocks/visible-output-blocks.test.ts
+  h_4b47e9e4a8b456 4-5,29,38,75,78,81,88,97,183-184
+tests/unit/tui/output-window-bottom-follow.test.tsx
+  h_4b47e9e4a8b456 11-12,16-17,84
+tests/unit/tui/output-window-budgeted-mount.test.tsx
+  h_4b47e9e4a8b456 15,17,27-28
+tests/unit/tui/output-window-duplicate-identity.test.tsx
+  h_4b47e9e4a8b456 7,11-12
+tests/unit/tui/output-window-large-window-virtualization.test.tsx
+  h_4b47e9e4a8b456 8,12-13
+tests/unit/tui/output-window-near-edge.test.tsx
+  h_4b47e9e4a8b456 11,15,20-21,68
+tests/unit/tui/output-window-scroll-anomalies.test.ts
+  h_4b47e9e4a8b456 7,94
+tests/unit/tui/output-window-virtualization.test.tsx
+  h_4b47e9e4a8b456 14,29,224,230
+tests/unit/tui/output-window-wheel.test.ts
+  h_4b47e9e4a8b456 5,134,158-161
+tests/unit/tui/session-picker/session-picker-row.test.ts
+  h_4b47e9e4a8b456 2-4,8,48-64,74,78-79,108-109,125,127-129,138,141,145,148,155,167,182,199,203,213
+tests/unit/tui/utils/file-chooser.test.ts
+  h_4b47e9e4a8b456 4,17-30,32-34
+tests/unit/tui/utils/text-attributes.test.ts
+  h_4b47e9e4a8b456 2-3,11
+tests/unit/tui/utils/text-utils.test.ts
+  h_4b47e9e4a8b456 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b0d83685c7b0a568739e78a4af70cade04b1d998",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
