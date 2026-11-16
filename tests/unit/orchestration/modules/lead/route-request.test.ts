@@ -5,12 +5,14 @@ import { chatInputContent } from "../../../../../src/infra/chat-input.js"
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { createRouteRequestTool } from "../../../../../src/orchestration/modules/lead/route-request.js"
+import { createFindChatTool } from "../../../../../src/orchestration/modules/lead/find-chat.js"
 import { createSessionMessaging } from "../../../../../src/orchestration/session/session-messaging.js"
 import { unusedChildSessionControl } from "../../../../helpers/child-session-control.js"
 import { decodeQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js"
+import { createUnstartedChild } from "../subagents/_subagent-child-fixtures.js"
 import { leadHarness } from "./_lead-harness.js"
 
 let ctx: SupervisorTestContext
@@ -42,6 +44,8 @@ async function routingLead() {
   let calls = 0
   return {
     ...lead, leadSessionId,
+    /** Lets every runner start, as a chat that the person closed starts one to take a message. */
+    startRunners: () => { runnerStartup.resolve() },
     /** Appends `messages` to the lead's conversation and then the assistant entry of a `route_request` call, as the
      *  runtime commits it before the tool runs, and runs the call. */
     async route(turn: readonly ConversationMessage[], input: RuntimeToolInput) {
@@ -116,12 +120,15 @@ test("a new route starts a chat whose first entry is the person's message with i
   expect(rest.filter((entry) => entry.message.kind === "user")).toEqual([])
   const title = (await ctx.manager.read(started))?.name
   expect(textOf(result)).toContain(started)
+  // The route row names the chat that it started from the result's details, as it names the chat of an existing route.
+  expect(result.details).toMatchObject({ targetSessionId: started })
   if (title) expect(textOf(result)).toContain(title)
 
   const factsBefore = leadFacts().length
   const repeated = await lead.again({ kind: "new" })
   expect(repeated.outcome).toBe("ok")
   expect(textOf(repeated)).toContain(`These messages already started chat ${started}`)
+  expect(repeated.details).toMatchObject({ targetSessionId: started })
   expect((await chatIds()).filter((id) => !before.includes(id))).toEqual([started])
   expect(leadFacts()).toHaveLength(factsBefore)
   expect((await userEntries(started)).map((entry) => entry.id)).toEqual([`person:forward:${source.id}`])
@@ -159,27 +166,68 @@ async function commitHeldInput(sessionId: string): Promise<number> {
   return cells.length
 }
 
-test("an existing route reaches a listed chat that the lead did not start, and a chat that the person closed is refused and gets nothing", async () => {
+test("an existing route reaches any chat of the project, also one that the person closed, which joins the list again; a subagent, a deleted chat, and the lead are refused", async () => {
   const lead = await routingLead()
   const listed = await lead.supervisor.openSessionRuntime()
   const closed = await lead.supervisor.openSessionRuntime()
+  const deleted = await lead.supervisor.openSessionRuntime()
   // A chat with no entry is discarded at its close, so each holds the person's earlier work.
-  for (const chat of [listed, closed]) await conversation.appendConversation(chat, [{ kind: "user", content: "Earlier work", origin: "human" }])
+  for (const chat of [listed, closed, deleted]) await conversation.appendConversation(chat, [{ kind: "user", content: "Earlier work", origin: "human" }])
   await settled()
   expect(joins().map((join) => join.sessionId)).toEqual(expect.arrayContaining([listed, closed]))
   await lead.supervisor.closeChat(closed)
+  expect(await lead.supervisor.deleteSession(deleted)).toBe(true)
+  const { childSessionId: subagent } = await createUnstartedChild(ctx.manager, ctx.baseDir, { sessionId: listed, conversationId: await conversation.chatConversationId(listed) })
   await settled()
 
   const routed = await lead.route([{ kind: "user", content: "Continue here", origin: "human" }], { kind: "existing", chat: listed })
   expect(routed.outcome).toBe("ok")
+  expect(routed.details).toMatchObject({ targetSessionId: listed })
   await settled()
   expect((await userEntries(listed)).map((entry) => entry.message.kind === "user" ? entry.message.content : undefined)).toEqual(["Earlier work", "Continue here"])
+  await conversation.appendConversation(lead.leadSessionId, [{ kind: "assistant", content: [{ type: "text", text: "Routed." }] }])
+  // The closed chat opens again, and its runner takes the person's message.
+  lead.startRunners()
+  const reopened = await lead.route([{ kind: "user", content: "Continue there", origin: "human" }], { kind: "existing", chat: closed })
+  expect(reopened.outcome).toBe("ok")
+  await settled()
+  expect(lead.inputs.filter((input) => input.sessionId === closed).map((input) => JSON.stringify(input.message))).toEqual([expect.stringContaining("Continue there")])
+  expect(joins().filter((join) => join.sessionId === closed)).toHaveLength(2)
 
-  const refused = await lead.route([{ kind: "user", content: "Continue there", origin: "human" }], { kind: "existing", chat: closed })
-  expect(refused.outcome).toBe("error")
-  expect(textOf(refused)).toContain(`chat ${closed} is not in your list`)
-  expect((await userEntries(closed)).map((entry) => entry.message.kind === "user" ? entry.message.content : undefined)).toEqual(["Earlier work"])
-  expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated", "lead.chat.closed", "lead.request.forwarded"])
+  for (const chat of [subagent, deleted, lead.leadSessionId]) {
+    const refused = await lead.route([{ kind: "user", content: "Do it there", origin: "human" }], { kind: "existing", chat })
+    expect(refused.outcome).toBe("error")
+    expect(textOf(refused)).toContain(`${chat} is not a chat of this project that you can route to`)
+  }
+  expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated", "lead.chat.closed", "lead.chat.closed", "lead.request.forwarded", "lead.request.forwarded"])
+})
+
+test("find_chat answers the past chats that match, best first, marks the chats in the list, and never answers the lead, a deleted chat, or a subagent", async () => {
+  const lead = await routingLead()
+  const past = await lead.supervisor.openSessionRuntime()
+  const listed = await lead.supervisor.openSessionRuntime()
+  await conversation.appendConversation(past, [{ kind: "user", content: "Build the dim_land model", origin: "human" }, { kind: "assistant", content: [{ type: "text", text: "The dim_land model is built and PR 5132 is open." }] }])
+  await conversation.appendConversation(listed, [{ kind: "user", content: "Review dim_land", origin: "human" }])
+  const deleted = await lead.supervisor.openSessionRuntime()
+  await conversation.appendConversation(deleted, [{ kind: "user", content: "dim_land dim_land", origin: "human" }])
+  expect(await lead.supervisor.deleteSession(deleted)).toBe(true)
+  const { childSessionId: subagent, childConversationId } = await createUnstartedChild(ctx.manager, ctx.baseDir, { sessionId: listed, conversationId: await conversation.chatConversationId(listed) })
+  const childTree = await tryOpenConversationTree({ conversationId: childConversationId, sessionId: subagent, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
+  expect((await childTree?.appendMessages([{ kind: "user", content: "dim_land dim_land", origin: "human" }]))?.kind).toBe("committed")
+  await childTree?.getStorage().dispose()
+  await conversation.appendConversation(lead.leadSessionId, [{ kind: "user", content: "What happened to dim_land?", origin: "human" }])
+  await settled()
+  await lead.supervisor.closeChat(past)
+  await settled()
+
+  const result = await createFindChatTool((query) => lead.service.findChats(query)).execute({ query: "dim_land" }, makeContext({ sessionId: lead.leadSessionId }))
+  expect(result.outcome).toBe("ok")
+  const text = textOf(result)
+  for (const absent of [lead.leadSessionId, deleted, subagent]) expect(text).not.toContain(absent)
+  expect(text.startsWith("Chats that match, best first:\n1. Chat ")).toBe(true)
+  expect(text).toMatch(new RegExp(`\\d\\. Chat ${past} "[^"]*", last active \\d{4}-\\d{2}-\\d{2}, not in your list\\.\\n   Match: Build the \\[dim_land\\] model\\n   Last message: The dim_land model is built and PR 5132 is open\\.`))
+  expect(text).toMatch(new RegExp(`\\d\\. Chat ${listed} "[^"]*", last active \\d{4}-\\d{2}-\\d{2}, in your list\\.`))
+  expect(textOf(await createFindChatTool((query) => lead.service.findChats(query)).execute({ query: "kafka" }, makeContext({ sessionId: lead.leadSessionId })))).toBe('No past chat matches "kafka".')
 })
 
 test("in a turn that a notice started, a route is refused, also with earlier turns", async () => {

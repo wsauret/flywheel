@@ -43,10 +43,7 @@ class InThreadServerWorker extends EventTarget {
       Layer.provide(RuntimeBackgroundRpc.toLayer(Effect.succeed(RuntimeBackgroundRpc.of({
         RuntimeBackgroundRecall: unused,
         RuntimeBackgroundTranscriptSearch: unused,
-        RuntimeBackgroundOutputWindow: unused,
-        RuntimeBackgroundOutputRange: unused,
-        RuntimeBackgroundOutputGroupChildren: unused,
-        RuntimeBackgroundOutputBlockBody: unused,
+        RuntimeBackgroundChatSearch: unused,
         RuntimeBackgroundSessionChangeSummary: unused,
         RuntimeBackgroundSnapshot: unused,
         RuntimeBackgroundSessionSummaryImmediate: () => InThreadServerWorker.summaryRead(InThreadServerWorker.released.promise),
@@ -55,7 +52,6 @@ class InThreadServerWorker extends EventTarget {
           InThreadServerWorker.detailSessions.push(payload.sessionId)
           return { view: null }
         }),
-        RuntimeBackgroundQueueSnapshotBatch: unused,
         RuntimeBackgroundModuleSnapshot: unused,
         RuntimeBackgroundReleaseProject: () => Effect.sync(() => { InThreadServerWorker.released.resolve() }),
         RuntimeBackgroundShutdown: () => Effect.void,

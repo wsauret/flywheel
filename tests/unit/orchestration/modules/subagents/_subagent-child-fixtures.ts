@@ -156,7 +156,7 @@ export function continuationService(harness: SubagentChildHarness, createAgent: 
     directories: { projectRoot: harness.projectRoot, executionCwd: harness.projectRoot, userDataRoot: base.userDataRoot, accountHome: base.accountHome },
     sessionManager: harness.manager, sessionStore: harness.sessionStore, eventStore: harness.reader,
     projectionReader: harness.reader, enabled: () => true,
-    executionEnvironment: () => ({ authAdmission: admission, recall: async () => ({ hits: [] }), attachProjection: childSessionProjectionAttachment(harness.sessionStore), deliverNotification: async () => false,
+    executionEnvironment: () => ({ authAdmission: admission, recall: async () => ({ hits: [] }), findChats: async () => ({ chats: [] }), attachProjection: childSessionProjectionAttachment(harness.sessionStore), deliverNotification: async () => false,
       sendSessionMessage: async () => { throw new Error("A subagent posts no session message") },
       createOpenHold: () => { throw new Error("A subagent holds no chat open") },
       onChatClosed: () => { throw new Error("A subagent follows no close") },

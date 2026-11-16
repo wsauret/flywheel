@@ -12,6 +12,7 @@ import { conversationHoldsMessage } from "../../session/empty-chat.js"
 import { sessionDisplayName } from "../../session/schemas.js"
 import { readChatDetail, readChatRoster, type ChatProgress } from "./chat-progress.js"
 import type { LeadFact } from "./facts.js"
+import type { LeadFoundChat } from "./find-chat.js"
 import { createLeadJournal, type LeadJournal } from "./journal.js"
 import type { RouteInput, RouteOutcome } from "./route-request.js"
 import { createLeadRows, type LeadRowChange, type LeadRows } from "./rows.js"
@@ -38,12 +39,15 @@ export interface LeadService extends ModuleServiceInstance {
   /** The role once the service folded every stored batch that it heard before this call, so a chat's first request
    *  reads the join that its creation recorded. */
   settledRole(sessionId: string): Promise<LeadRole | undefined>
-  /** Forwards the person's entries of the lead chat's newest turns to a new chat or to a chat in the list (section
+  /** Forwards the person's entries of the lead chat's newest turns to a new chat or to an earlier chat (section
    *  "The routing tool" of the lead design): the runtime selects and copies the entries, and the caller names only
    *  the target. A repeated call starts no second chat and records nothing twice. */
   route(input: RouteInput): Promise<RouteOutcome>
   /** The progress of every chat in the list, or of one of them in its own words. */
   progress(chat: string | undefined): Promise<ChatProgress>
+  /** The project's root chats other than the lead whose messages best match `query`, best first, each marked when it
+   *  is in the list (PI-LEAD-001). */
+  findChats(query: string): Promise<readonly LeadFoundChat[]>
   /** Records that the person read a listed chat's result up to `entryId`, so its row no longer holds it. Appends
    *  nothing while the module is off, and refuses a chat that is not in the list. */
   markRead(sessionId: string, entryId: string): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }>
@@ -59,7 +63,7 @@ export const leadService = moduleServiceHandle<LeadService>("lead")
 type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled"> & {
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read" | "listActive" | "listForIds">
   readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
-  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "sessionShown">
+  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "findChats" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "sessionShown">
 }
 
 type NonEmptyIds = readonly [string, ...string[]]
@@ -374,18 +378,17 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     return session?.kind === "chat" ? sessionDisplayName({ id: sessionId, session }) : undefined
   }
 
-  /** Whether a chat is in the list, or the lead started it. */
-  const routable = (sessionId: string): boolean => {
-    const state = journal.state()
-    return sessionId !== state.designated && (state.members.has(sessionId) || state.started.has(sessionId))
-  }
+  /** Whether the lead can route to a chat: any root chat of the project but the lead, also one that left the list or
+   *  never joined it (PI-LEAD-002). A route to it delivers and reopens it, so it joins the list. */
+  const routable = async (sessionId: string): Promise<boolean> =>
+    sessionId !== journal.state().designated && (await services.sessionManager.read(sessionId))?.kind === "chat"
 
   /** The target of a route: the chat that the person's entries already started, or a new chat that this call
    *  records, lists, and watches before anything reaches it, so its first request and its first event find all. */
   const routeTarget = async (input: RouteInput, sourceEntryIds: NonEmptyIds): Promise<{ readonly sessionId: string; readonly started?: "now" | "earlier" } | { readonly refused: string }> => {
     const state = journal.state()
     if (input.kind === "existing") {
-      if (input.chat === undefined || !routable(input.chat)) return { refused: `chat ${input.chat ?? "(none named)"} is not in your list, so the lead routes nothing there` }
+      if (input.chat === undefined || !await routable(input.chat)) return { refused: `${input.chat ?? "(none named)"} is not a chat of this project that you can route to` }
       return { sessionId: input.chat }
     }
     const earlier = state.startedBy(sourceEntryIds)
@@ -471,6 +474,13 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       if (chat === undefined) return readChatRoster(deps, listed())
       if (chat === journal.state().designated || !journal.state().members.has(chat)) return { kind: "refused", reason: `chat ${chat} is not in your list` }
       return readChatDetail(deps, chat)
+    },
+    async findChats(query) {
+      await reconcileJournal()
+      const { designated } = journal.state()
+      const { chats } = await services.executionEnvironment().findChats({ query, exclude: designated === null ? [] : [designated] })
+      const { members } = journal.state()
+      return chats.map((chat) => ({ ...chat, listed: members.has(chat.sessionId) }))
     },
     markRead: (sessionId, entryId) => appendMark(sessionId, { type: "lead.result.read", payload: { sessionId, entryId } }),
     markSeen: (sessionId, state, entryId) => appendMark(sessionId, { type: "lead.chat.seen", payload: { sessionId, state, entryId } }),

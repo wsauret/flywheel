@@ -12,7 +12,7 @@ function lane(overrides: Partial<RuntimeBackgroundLane> = {}): RuntimeBackground
     waitForTotals: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }),
     sessionDetail: async () => ({ view: null }), sessionChangeSummary: async () => ({ fileCount: 0, unknownFileMutationGaps: 0 }),
     moduleSnapshot: async () => { throw new Error("unused") },
-    transcriptSearch: async () => { throw new Error("unused") }, recall: async () => { throw new Error("unused") }, dispose: async () => {},
+    transcriptSearch: async () => { throw new Error("unused") }, findChats: async () => { throw new Error("unused") }, recall: async () => { throw new Error("unused") }, dispose: async () => {},
     ...overrides,
   }
 }

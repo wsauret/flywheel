@@ -64,6 +64,9 @@ interface ToolDisplayBase {
   /** The session a call addresses, which its row names. The transcript
    *  projection names the row by that session's current display name. */
   targetSession?: (input: ToolInput) => string | undefined;
+  /** The row names its session by the bare title, with no session type such
+   *  as "Chat", because the row's own name already says the kind. */
+  targetTitleOnly?: true;
   /** Invocation input rendered either inline or only after row disclosure. */
   invocationBody?: (input: ToolInput) => { content: string; filetype: string; presentation?: "disclosure" } | undefined;
   streamingInput?: ToolStreamingInput;

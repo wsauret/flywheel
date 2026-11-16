@@ -3,7 +3,7 @@ import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact 
 import { heldProjection } from "../../../infra/projection-registry.js"
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js"
 import type { AgentFailureDisplay, ToolEntry } from "../../../infra/output-blocks.js"
-import { extractDisplayMeta, resultReadContract, resultStatusMessage, resultTargetName, type ToolResultIdentity } from "../../../infra/output/structured-event-tool-results.js"
+import { extractDisplayMeta, resultReadContract, resultStatusMessage, resultTargetName, resultTargetSessionId, type ToolResultIdentity } from "../../../infra/output/structured-event-tool-results.js"
 import { hydrateToolContentFact } from "../../../infra/tool-content-hydration.js"
 import type { ContentResolver } from "../../../infra/tool-content.js"
 import type { ToolResultAction } from "../../../infra/tool-result-action.js"
@@ -44,6 +44,8 @@ export interface ToolResultDisplayMeta {
   readonly mutationEvidence?: MutationEvidence
   /** The display name of the session the call addressed, whatever its outcome. */
   readonly targetName?: string
+  /** The session the result names when the call's input names none, such as a chat the call started. */
+  readonly targetSessionId?: string
   /** The line of an ok result whose work now waits, such as a held message:
    *  its row settles as waiting with this line. */
   readonly statusMessage?: string
@@ -483,6 +485,7 @@ function applyToolResultMetaEvents(
     const previous = toolResultMeta.get(fact.payload.toolUseId)
     const identity = { source: fact.type, toolUseId: fact.payload.toolUseId }
     const targetName = resultTargetName(fact.payload.details)
+    const targetSessionId = resultTargetSessionId(fact.payload.details)
     const statusMessage = resultStatusMessage(fact.payload.details)
     const generic: ToolResultDisplayMeta = {
       ...(fact.payload.outcome === "ok"
@@ -494,6 +497,7 @@ function applyToolResultMetaEvents(
           }
         : failedResultEvidence(fact.payload.details, identity)),
       ...(targetName !== undefined ? { targetName } : {}),
+      ...(targetSessionId !== undefined ? { targetSessionId } : {}),
     }
     if (Object.keys(generic).length === 0) continue
     toolResultMeta.set(fact.payload.toolUseId, { ...previous, ...generic })

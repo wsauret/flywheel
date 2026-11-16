@@ -262,6 +262,10 @@ interface FrontendToolEntryBase extends FrontendTurnStart {
    *  that ran on after its launch returned. Absent while that work runs and
    *  when no end was recorded. */
   readonly endedAt?: number
+  /** When the call returned its result, which can be before the agent's next
+   *  row by the time the model takes to reply. Absent while the call runs and
+   *  when no end is known, such as on a row that an older build folded. */
+  readonly settledAt?: number
   readonly resultAction?: ToolResultAction
   readonly fileChangeKind?: "create" | "replace" | "patch"
   /** The call's input declared that it edits project files: it presents as a

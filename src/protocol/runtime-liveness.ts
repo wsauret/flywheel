@@ -272,8 +272,11 @@
  *  Version 86: a tool row may carry `endedAt`, when the work that outlived
  *  its call ended, such as a background command, so every client states how
  *  long the command ran. An older client rejects such a row.
+ *  Version 87: a tool row may carry `settledAt`, when the call returned its
+ *  result, so a heading over calls that end a turn states how long they ran.
+ *  An older client rejects such a row.
  */
-export const RUNTIME_PROTOCOL_VERSION = 86
+export const RUNTIME_PROTOCOL_VERSION = 87
 
 export const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

@@ -1,10 +1,14 @@
 import type { Database } from "bun:sqlite"
 import type { ConversationSearchIndex } from "../../infra/conversation-fts.js"
-import type { AsyncEventReadSurface } from "../../infra/event-store-types.js"
+import { parseProjectionFact } from "../../infra/event-projection.js"
+import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../infra/event-store-types.js"
 
-import { countTranscriptIndex, indexedToolUseId, searchTranscriptIndex, type TranscriptIndexHit } from "../../infra/conversation-recall-search.js"
-import type { TranscriptSearchHit, TranscriptSearchRequest, TranscriptSearchResult } from "../../protocol/transcript-protocol-types.js"
+import { countTranscriptIndex, indexedToolUseId, rankConversationsByBestMessage, searchTranscriptIndex, type TranscriptIndexHit } from "../../infra/conversation-recall-search.js"
+import type { ChatSearchRequest, ChatSearchResult, FoundChat, TranscriptSearchHit, TranscriptSearchRequest, TranscriptSearchResult } from "../../protocol/transcript-protocol-types.js"
+import { sessionDisplayName, type ReplayedSession } from "./schemas.js"
 import { buildFtsMatch } from "./conversation-recall.js"
+import { parseConversationCheckpointFact } from "./conversation-checkpoint-facts.js"
+import { parseConversationTreeFact } from "./conversation/conversation-facts.js"
 
 /** Transcript search for people, over the same index the agent's recall tool
  *  reads: every committed chat entry of every session in the project, kept
@@ -12,23 +16,42 @@ import { buildFtsMatch } from "./conversation-recall.js"
  *  that produced its block, so a client can open the transcript there. */
 
 export const TRANSCRIPT_SEARCH_PAGE_SIZE = 20
+/** The most chats that one chat search answers. */
+const CHAT_SEARCH_LIMIT = 8
+/** The entry batches of a found chat that one read takes, newest first, while its final message is looked for. */
+const CHAT_SEARCH_TAIL_BATCHES = 8
+const EXCERPT_CHARS = 300
 
 export interface TranscriptSearchService {
   search(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
+  /** The root chats whose messages best match the request's keywords (`rankConversationsByBestMessage`), each with
+   *  its title, the time of its newest entry, and an excerpt of where it stands. Work is bounded by the answer: one
+   *  index catch-up, one ranked query, and two reads of the newest facts of the answered chats; an answered chat with
+   *  no checkpoint and no final message in its newest batches pages back through its own history to its newest one. */
+  findChats(request: ChatSearchRequest): Promise<ChatSearchResult>
 }
 
 interface TranscriptSearchSession {
   readonly id: string
   readonly conversationId: string
   readonly name?: string
+  readonly kind: ReplayedSession["kind"]
+  readonly title: string
 }
 
 interface TranscriptSearchDeps {
   readonly index: Pick<ConversationSearchIndex, "through">
-  readonly source: AsyncEventReadSurface
+  readonly source: AsyncEventStateReadSurface
   /** The project's sessions, read per search so a session created since the
    *  last one is searchable at once. */
   readonly sessions: () => Promise<readonly TranscriptSearchSession[]>
+}
+
+/** The sessions of a metadata catalog that a search reads: every session with a conversation. */
+export function searchableSessions(sessions: readonly { readonly id: string; readonly data: ReplayedSession }[]): TranscriptSearchSession[] {
+  return sessions.flatMap(({ id, data }) => data.kind !== "workflow"
+    ? [{ id, conversationId: data.conversationId, kind: data.kind, title: sessionDisplayName({ id, session: data }), ...(data.name === undefined ? {} : { name: data.name }) }]
+    : [])
 }
 
 function hitRole(role: string): TranscriptSearchHit["role"] {
@@ -71,7 +94,99 @@ export function createTranscriptSearch(deps: TranscriptSearchDeps): TranscriptSe
     return { hits, total: countTranscriptIndex(connection, query), page, pageSize: TRANSCRIPT_SEARCH_PAGE_SIZE }
   }
 
-  return { search }
+  async function findChats(request: ChatSearchRequest): Promise<ChatSearchResult> {
+    const match = buildFtsMatch(request.query)
+    if (match.length === 0) return { chats: [] }
+    const upperPosition = await deps.source.capturePosition()
+    const excluded = new Set(request.exclude)
+    // The catalog holds no deleted session, and every root chat, and only a root chat, has kind chat.
+    const chats = new Map((await deps.sessions()).flatMap((row) => row.kind === "chat" && !excluded.has(row.id) ? [[row.conversationId, row] as const] : []))
+    const connection = await deps.index.through(upperPosition)
+    const found = rankConversationsByBestMessage(connection, { upperPosition, match, conversationIds: new Set(chats.keys()), limit: CHAT_SEARCH_LIMIT })
+      .flatMap((hit) => { const chat = chats.get(hit.conversationId); return chat ? [{ chat, snippet: hit.snippet }] : [] })
+    if (found.length === 0) return { chats: [] }
+    const [checkpoints, tails] = await Promise.all([
+      deps.source.readSlice({ aggregateIds: found.map(({ chat }) => `session:${chat.id}`), types: ["conversation.checkpoint.updated"], order: "desc", limitPerAggregate: 1, limit: found.length }, true),
+      deps.source.readSlice({ aggregateIds: found.map(({ chat }) => `conversation:${chat.conversationId}`), types: ["chat.entries.appended"], order: "desc", limitPerAggregate: CHAT_SEARCH_TAIL_BATCHES, limit: found.length * CHAT_SEARCH_TAIL_BATCHES }, true),
+    ])
+    const states = checkpointStates(checkpoints.facts)
+    const batches = Map.groupBy(tails.facts, (fact) => fact instanceof CorruptEventRowError ? fact.row.aggregateId : fact.aggregateId)
+    return {
+      chats: await Promise.all(found.map(async ({ chat, snippet }): Promise<FoundChat> => {
+        const aggregateId = `conversation:${chat.conversationId}`
+        const newest = batches.get(aggregateId) ?? []
+        const lastActivityAt = newest.find((fact): fact is StoredFact => !(fact instanceof CorruptEventRowError))?.timestamp
+        const state = states.get(chat.conversationId)
+        const final = state === undefined ? newestFinalText(newest) ?? await olderFinalText(aggregateId, newest) : undefined
+        const excerpt = state !== undefined ? { source: "checkpoint" as const, text: excerptOf(state) } : final !== undefined ? { source: "final" as const, text: excerptOf(final) } : undefined
+        return { sessionId: chat.id, title: chat.title, ...(lastActivityAt === undefined ? {} : { lastActivityAt }), snippet, ...(excerpt ? { excerpt } : {}) }
+      })),
+    }
+  }
+
+  /** The newest final message before `newest`, the chat's newest batches, read one bounded page at a time until one
+   *  is found or the history ends. */
+  async function olderFinalText(aggregateId: string, newest: readonly (StoredFact | CorruptEventRowError)[]): Promise<string | undefined> {
+    let page = newest
+    while (page.length === CHAT_SEARCH_TAIL_BATCHES) {
+      // SAFETY: the loop guard holds the page length at CHAT_SEARCH_TAIL_BATCHES, which is positive, so the last fact exists.
+      const beforePosition = page[page.length - 1]!.position
+      page = (await deps.source.readSlice({ aggregateId, types: ["chat.entries.appended"], order: "desc", beforePosition, limit: CHAT_SEARCH_TAIL_BATCHES }, true)).facts
+      const final = newestFinalText(page)
+      if (final !== undefined) return final
+    }
+    return undefined
+  }
+
+  return { search, findChats }
+}
+
+/** The current state of each conversation's newest checkpoint that states one. A fact that this release cannot read
+ *  gives no excerpt. */
+function checkpointStates(facts: readonly (StoredFact | CorruptEventRowError)[]): ReadonlyMap<string, string> {
+  const states = new Map<string, string>()
+  for (const fact of facts) {
+    if (fact instanceof CorruptEventRowError) continue
+    try {
+      const { payload } = parseProjectionFact(fact, parseConversationCheckpointFact)
+      if (payload.checkpoint.currentState.trim()) states.set(payload.conversationId, payload.checkpoint.currentState)
+    } catch {
+      continue
+    }
+  }
+  return states
+}
+
+/** The text of the newest model message that calls no tool in these batches, newest batch first. A batch that this
+ *  release cannot read is skipped. */
+function newestFinalText(newestFirst: readonly (StoredFact | CorruptEventRowError)[]): string | undefined {
+  for (const batch of newestFirst) {
+    if (batch instanceof CorruptEventRowError) continue
+    let fact
+    try {
+      fact = parseProjectionFact(batch, parseConversationTreeFact)
+    } catch {
+      continue
+    }
+    if (fact.type !== "chat.entries.appended") continue
+    for (const entry of fact.payload.entries.toReversed()) {
+      if (entry.kind !== "message" || entry.message.kind !== "assistant" || entry.displayOnly === true) continue
+      const { content } = entry.message
+      if (typeof content === "string") {
+        if (content.trim()) return content
+        continue
+      }
+      if (content.some((block) => block.type === "tool_use")) continue
+      const text = content.flatMap((block) => block.type === "text" ? [block.text] : []).join("\n")
+      if (text.trim()) return text
+    }
+  }
+  return undefined
+}
+
+function excerptOf(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim()
+  return flat.length <= EXCERPT_CHARS ? flat : `${flat.slice(0, EXCERPT_CHARS).trimEnd()}...`
 }
 
 /** The id the transcript resolves to a block: the entry's own, except a tool

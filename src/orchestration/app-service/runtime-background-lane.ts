@@ -16,7 +16,7 @@ import { budgetViewsFromSummary } from "./runtime-summary-projection.js"
 
 /** A read-only optimization lane. Its results are unpositioned domain data;
  * the authoritative app-service bus publication boundary owns all positions. */
-export interface RuntimeBackgroundLane extends Pick<RuntimeBackgroundClient, "transcriptSearch">, RuntimeBackgroundConversationSearch {
+export interface RuntimeBackgroundLane extends Pick<RuntimeBackgroundClient, "transcriptSearch" | "findChats">, RuntimeBackgroundConversationSearch {
   start(): void
   snapshot(): Promise<RuntimeBackgroundSummaryResult>
   sessionSummaryImmediate(sessionIds: readonly string[]): Promise<RuntimeBackgroundSummaryResult>
@@ -167,6 +167,8 @@ export function createRuntimeBackgroundLane(
     moduleSnapshot: (domain, sessionId) => call("runtime background module snapshot", { domain, sessionId }, (active) => active.moduleSnapshot(domain, sessionId)),
     ...conversationSearch,
     transcriptSearch: (request) => call("runtime background transcript search", { sessionId: request.sessionId }, (active) => active.transcriptSearch(request)),
+    // Owned, as recall is: the search first catches the index up, and a cold build can outlast any read deadline.
+    findChats: (request) => ownedCall("runtime background chat search", {}, (active) => active.findChats(request), { summarize: (result) => ({ chats: result.chats.length }) }),
     dispose() {
       disposal ??= (async () => {
         disposed = true

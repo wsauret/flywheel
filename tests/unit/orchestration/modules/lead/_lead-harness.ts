@@ -11,6 +11,10 @@ import { createLeadService } from "../../../../../src/orchestration/modules/lead
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import { mockRunner, supervisorBaseDeps, testSessionAuthAdmission, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { catalogRow } from "../../../../helpers/session-catalog.js"
+import { join } from "node:path"
+import { acquireConversationSearchIndex } from "../../../../../src/infra/conversation-fts.js"
+import { createSessionMetadataProjection, sessionsFromProjection } from "../../../../../src/orchestration/session/session-metadata-projection.js"
+import { createTranscriptSearch, searchableSessions } from "../../../../../src/orchestration/session/transcript-search.js"
 
 /** The store surfaces that the lead's control part reads and writes through. */
 interface ControlConnection {
@@ -56,11 +60,16 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     } }),
     sessionViewLoader: { load: (id) => loadSessionView(id, storeReader, storeReader) },
   })
+  // The background lane's search over the project's own conversation index.
+  const searchIndex = acquireConversationSearchIndex(join(ctx.baseDir, "conversation-search.sqlite"), storeReader)
+  const sessionMetadata = createSessionMetadataProjection(storeReader)
+  const chatSearch = createTranscriptSearch({ index: searchIndex, source: storeReader, sessions: async () => searchableSessions(sessionsFromProjection(await sessionMetadata.replay())) })
   const sessionEvents = createSessionEventNotices({ sessionStore: ctx.sessionStore, isShown: (sessionId) => supervisor.isShown(sessionId) })
   // The runtime's own environment, so a message between sessions takes the production delivery.
   const runtime = moduleExecutionEnvironment({
     authAdmission: testSessionAuthAdmission(),
     recall: async () => { throw new Error("the lead service does not recall") },
+    findChats: (request) => chatSearch.findChats(request),
     sessionEvents, sessionStore: ctx.sessionStore, supervisor,
     delivery: { manager: ctx.manager, projectionReader, eventWriter: ctx.store },
   })
@@ -80,6 +89,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     sessionStore: ctx.sessionStore,
     executionEnvironment: () => ({
       openChat: (options) => supervisor.openSessionRuntime(options),
+      findChats: (request) => runtime.findChats(request),
       sessionEvents: {
         watch: (watcher, watched, kinds) => { trace.push(`watch ${watched}`); sessionEvents.watch(watcher, watched, kinds) },
         unwatch: (watcher, watched) => { sessionEvents.unwatch(watcher, watched) },
@@ -135,6 +145,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       await service.dispose()
       sessionEvents.dispose()
       await supervisor.disposeAll()
+      await searchIndex.dispose()
     },
   }
 }

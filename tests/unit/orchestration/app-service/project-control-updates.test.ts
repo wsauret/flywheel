@@ -41,7 +41,7 @@ function options(executor: ProjectControlExecutor, updates: ProjectControlClient
       allocateId: unused, createChat: unused, listForIds: async () => ({ sessions: [], errors: [] }),
       read: unused, updateLabel: unused, updateLifecycleState: unused, subscribe: () => () => {}, interruptOwed: unused,
     } },
-    history: { start() {}, dispose: async () => {}, recall: unused, transcriptSearch: unused, snapshot: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), sessionSummaryImmediate: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), waitForTotals: unused,
+    history: { start() {}, dispose: async () => {}, recall: unused, transcriptSearch: unused, findChats: unused, snapshot: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), sessionSummaryImmediate: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), waitForTotals: unused,
       sessionDetail: unused, sessionChangeSummary: unused, moduleSnapshot: unused },
   }
 }

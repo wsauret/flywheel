@@ -139,6 +139,13 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       expect(frame).toContain("Chat progress")
       expect(frame).not.toContain("Checkpoint")
     } finally { running.dispose() }
+    // A route whose input has not yet said whether it starts a chat adds no phrase.
+    const unknown = await mountTab(LEAD_ID, [person, narration, call("routing", "route_request", "Route", "ui_meta", "pending")], true)
+    try {
+      const frame = await unknown.frame()
+      expect(frame).toContain(`▾ ${formatStartTime(progress.timestamp)} · Working`)
+      expect(frame).not.toContain("Working ·")
+    } finally { unknown.dispose() }
     const answered = await mountTab(LEAD_ID, [...turn, { ...person, id: "next", content: "And the lexer?", timestamp: 9000 }, { ...progress, id: "checking", status: "pending", timestamp: 9500 }], true)
     try {
       const frame = await answered.frame()
@@ -165,6 +172,11 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       expect(frame.indexOf("Report · ")).toBeLessThan(frame.indexOf("Worked 2s"))
       expect(frame).toContain("DAG Failures finished: the build passes.")
     } finally { tab.dispose() }
+    // Calls that end their turn with no words after them last until the last one returned, never until the report.
+    const quiet = await mountTab(LEAD_ID, [person, narration, { ...progress, settledAt: 8900 }, report])
+    try {
+      expect(await quiet.frame()).toContain(`▸ ${formatStartTime(progress.timestamp)} · Worked 6s · checked chats`)
+    } finally { quiet.dispose() }
   })
 
   it("shows each report of a live run as its own line, keeps the words of a turn that ended on a call above its closed heading, and a click opens the report", async () => {
@@ -177,7 +189,8 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       expect(frame).toContain("Report · List Project Root Files · open")
       expect(frame).toContain("Report · Pick a Color · open")
       expect(frame).not.toContain("Message from")
-      // The turn that the question started ended on its call: its words stay in view, and its call sits under a closed heading.
+      // The turn that the question started ended on its call: its words stay in view, and its call sits under a closed
+      // heading. The call returned 5 ms after it started, so the heading truly reads 0s.
       const quietHeading = `▸ ${formatStartTime(Date.parse("2026-11-15T08:18:06.334Z"))} · Worked 0s · checked chats`
       expect(frame).toContain("I’ll check the color chat’s question")
       expect(frame).toContain(quietHeading)

@@ -41,7 +41,7 @@ import {
   RuntimeRoleAssignmentEntrySchema,
   RuntimeSaveModelEffortMutationSchema,
 } from "./model-assignment-protocol-schemas.js"
-import { FrontendOutputBlockSchema, QuestionBlockSchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, HydratedOutputBlockBodySchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema, OutputBlockBodyRequestSchema, TranscriptSearchRequestSchema, TranscriptSearchResultSchema, ProjectFilesRequestSchema, ProjectFilesResultSchema } from "./transcript-protocol-schemas.js"
+import { FrontendOutputBlockSchema, QuestionBlockSchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, HydratedOutputBlockBodySchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema, OutputBlockBodyRequestSchema, TranscriptSearchRequestSchema, TranscriptSearchResultSchema, ChatSearchRequestSchema, ChatSearchResultSchema, ProjectFilesRequestSchema, ProjectFilesResultSchema } from "./transcript-protocol-schemas.js"
 import { ProviderModelViewSchema, RuntimeDeselectAllProviderModelsMutationSchema, RuntimeProviderModelsQuerySchema, RuntimeRecheckProviderModelsMutationSchema, RuntimeSetProviderAutoEnableNewModelsMutationSchema, RuntimeSetProviderFreeRoutesMutationSchema, RuntimeSetProviderModelMutationSchema } from "./provider-model-preference-protocol-schemas.js"
 import { RuntimeConfigMutationSchema, RuntimeConfigPatchPayloadSchema, RuntimeConfigSnapshotResultSchema } from "./runtime-config-protocol-schemas.js"
 import { GitAiAttributionPatchPayloadSchema, RuntimeGitAiAttributionSnapshotResultSchema } from "./git-ai-attribution-protocol-schemas.js"
@@ -577,6 +577,7 @@ const strictParse = { onExcessProperty: "error" } as const
 export const RuntimeBackgroundRpc = RpcGroup.make(
   Rpc.make("RuntimeBackgroundRecall", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, conversationId: Schema.NonEmptyString, contract: RecallInputSchema }), success: RecallResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),
   Rpc.make("RuntimeBackgroundTranscriptSearch", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, request: TranscriptSearchRequestSchema }), success: TranscriptSearchResultSchema, error: RuntimeProtocolError }),
+  Rpc.make("RuntimeBackgroundChatSearch", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, request: ChatSearchRequestSchema }), success: ChatSearchResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),
   Rpc.make("RuntimeBackgroundSessionChangeSummary", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, sessionId: Schema.NonEmptyString }), success: SessionFileChangeCountsSchema, error: RuntimeProtocolError }),
   Rpc.make("RuntimeBackgroundSnapshot", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString }), success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),
   Rpc.make("RuntimeBackgroundSessionSummaryImmediate", { payload: RuntimeBackgroundSummaryRequestSchema, success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),

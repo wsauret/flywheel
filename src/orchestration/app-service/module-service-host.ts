@@ -23,6 +23,7 @@ import type { SettledControlUiAssetState } from "./web-serving/control-ui-assets
 import type { SessionAuthAdmission } from "../session/session-auth-profile.js"
 import type { WorkflowDeps } from "../workflow-host/deps.js"
 import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
+import type { ChatSearchRequest, ChatSearchResult } from "../../protocol/transcript-protocol-types.js"
 import type { AttachChildSessionProjection, ParentNotificationDelivery } from "../module-seams.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import type { RuntimeFaultReporter } from "./runtime-fault-reporting.js"
@@ -37,6 +38,9 @@ export interface ModuleExecutionEnvironment {
   readonly openChatRunner: (sessionId: string) => Promise<ChatRunner | undefined>
   readonly authAdmission: SessionAuthAdmission<WorkflowDeps>
   readonly recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
+  /** The project's root chats whose messages best match some keywords, best first, from the conversation search
+   *  index that `recall` reads (`TranscriptSearchService.findChats`). */
+  readonly findChats: (request: ChatSearchRequest) => Promise<ChatSearchResult>
   readonly attachProjection: AttachChildSessionProjection
   readonly deliverNotification: ParentNotificationDelivery
   readonly personEntries: PersonEntryForward["personEntries"]

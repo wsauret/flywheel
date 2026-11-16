@@ -36,6 +36,7 @@ export function projectHistoricalExecuteChild(tool: ToolExecutionEntry, executio
     timestamp: tool.calledAt ?? tool.validationFailedAt ?? tool.completedAt ?? 0,
     ...(content !== undefined ? { content } : {}),
     ...(meta?.endedAt !== undefined ? { endedAt: meta.endedAt } : {}),
+    ...(tool.resultOutcome !== undefined && tool.completedAt !== undefined ? { settledAt: tool.completedAt } : {}),
   }
   if (tool.status === "validation_failed") return { ...base, status: "error", errorMessage: launderToolError(tool.validationReason ?? "Tool validation failed") }
   switch (tool.resultOutcome) {
@@ -68,6 +69,7 @@ export function projectHistoricalContainerChild(tool: ToolExecutionEntry, execut
     ...resolveToolRowPresentation(name, input, executionCwd, { targetDescription: meta?.targetName }),
     timestamp: tool.calledAt ?? tool.validationFailedAt ?? tool.completedAt ?? 0,
     ...(rawPath ? { linkUri: toFileUri(rawPath, executionCwd) } : {}), ...proposal, ...declaredMutationField(name, input), ...targetSessionField(name, input),
+    ...(tool.resultOutcome !== undefined && tool.completedAt !== undefined ? { settledAt: tool.completedAt } : {}),
   }
   if (tool.status === "validation_failed") return { ...base, status: "error", errorMessage: launderToolError(tool.validationReason ?? "Tool validation failed") }
   // Acknowledgement overwrites execution status, but cannot change the recorded outcome.

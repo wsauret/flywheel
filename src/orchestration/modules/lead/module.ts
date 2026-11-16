@@ -2,19 +2,20 @@ import { LEAD_COMMAND, LEAD_COMMAND_NAME, LEAD_SURFACE, leadChatsProtocol, leadD
 import { moduleProtocol } from "../../app-service/module-protocol-host.js"
 import type { FirstPartyModule } from "../../modules.js"
 import { CHAT_PROGRESS_TOOL_NAME } from "./chat-progress.js"
+import { FIND_CHAT_TOOL_NAME } from "./find-chat.js"
 import { LEAD_PROMPT, LISTED_CHAT_PROMPT, STARTED_CHAT_PROMPT } from "./prompt.js"
 import { createLeadControl, leadControl } from "./control.js"
 import { createLeadChatsProtocol, createLeadControlProtocol } from "./protocol.js"
 import { ROUTE_REQUEST_TOOL_NAME } from "./route-request.js"
 import { createLeadRuntime, leadRuntime } from "./runtime.js"
 import { createLeadService, leadService } from "./service.js"
-import { chatProgressDeclaration, LEAD_TOOLS, routeRequestDeclaration } from "./tools.js"
+import { chatProgressDeclaration, findChatDeclaration, LEAD_TOOLS, routeRequestDeclaration } from "./tools.js"
 
 /** The lead (PI-LEAD-001 to PI-LEAD-008): one always-on chat for each project
  *  that routes the person's requests to other chats. Its facts, the
  *  designation of the lead chat in its control part (ARCH-STRUCTURE-045),
  *  its two workspace domains, the `/lead` command,
- *  the lead chat's prompt and tool list, its two tools, and the prompt
+ *  the lead chat's prompt and tool list, its three tools, and the prompt
  *  addition of a chat that it started or that started while it showed. */
 export const leadModule = {
   id: "lead",
@@ -35,6 +36,7 @@ export const leadModule = {
     } },
     { domain: "tools", id: ROUTE_REQUEST_TOOL_NAME, value: { kind: "tool", name: ROUTE_REQUEST_TOOL_NAME, declaration: routeRequestDeclaration } },
     { domain: "tools", id: CHAT_PROGRESS_TOOL_NAME, value: { kind: "tool", name: CHAT_PROGRESS_TOOL_NAME, declaration: chatProgressDeclaration } },
+    { domain: "tools", id: FIND_CHAT_TOOL_NAME, value: { kind: "tool", name: FIND_CHAT_TOOL_NAME, declaration: findChatDeclaration } },
     // The role is fixed when the chat starts, so a chat's prompt never changes while it lives (PI-LEAD-012).
     { domain: "promptFragments", id: "lead-started-chat", value: {
       order: 3,

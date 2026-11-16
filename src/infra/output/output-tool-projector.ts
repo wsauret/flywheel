@@ -403,6 +403,7 @@ export class OutputToolProjector {
     source: "render" | "conversation" | "availability",
     details?: unknown,
     executionOutputTail?: string,
+    settledAt?: number,
   ): void {
     if (source === "conversation" && this.deferredToolResults.has(toolUseId)) return;
     const streamed = this.streamingInputs.settle(toolUseId);
@@ -438,6 +439,7 @@ export class OutputToolProjector {
       details,
       executionOutputTail ?? recorded?.output,
       recorded,
+      settledAt,
     );
   }
 

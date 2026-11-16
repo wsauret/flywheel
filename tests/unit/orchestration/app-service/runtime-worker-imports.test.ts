@@ -8,6 +8,7 @@ describe("runtime server imports", () => {
     const inputs = new Map<string, object>([
       ["RuntimeBackgroundRecall", { conversationId: "conversation", contract: { scope: "lineage" } }],
       ["RuntimeBackgroundTranscriptSearch", { request: { query: "needle", page: 1 } }],
+      ["RuntimeBackgroundChatSearch", { request: { query: "needle", exclude: ["session"] } }],
       ["RuntimeBackgroundSessionChangeSummary", { sessionId: "session" }],
       ["RuntimeBackgroundSnapshot", {}],
       ["RuntimeBackgroundSessionSummaryImmediate", { sessionIds: ["session"] }],

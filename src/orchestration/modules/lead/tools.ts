@@ -1,6 +1,7 @@
 import type { ToolDeclaration, ToolFactoryResult } from "../../agent-runtime/tools/tool-registry.js"
 import type { KernelToolDeps } from "../../agent-runtime/tools/kernel-tool-deps.js"
 import { CHAT_PROGRESS_TOOL_NAME } from "./chat-progress.js"
+import { FIND_CHAT_TOOL_NAME } from "./find-chat.js"
 import { ROUTE_REQUEST_TOOL_NAME } from "./route-request.js"
 import { leadRuntime, type LeadRuntime } from "./runtime.js"
 
@@ -11,6 +12,7 @@ import { leadRuntime, type LeadRuntime } from "./runtime.js"
 export const LEAD_TOOLS: readonly string[] = [
   ROUTE_REQUEST_TOOL_NAME,
   CHAT_PROGRESS_TOOL_NAME,
+  FIND_CHAT_TOOL_NAME,
   "read",
   "search",
   "list",
@@ -52,3 +54,5 @@ export const routeRequestDeclaration = leadTool(ROUTE_REQUEST_TOOL_NAME, 95, (ru
   : { reason: "no session messaging available" })
 
 export const chatProgressDeclaration = leadTool(CHAT_PROGRESS_TOOL_NAME, 96, (runtime) => ({ tool: runtime.chatProgress }))
+
+export const findChatDeclaration = leadTool(FIND_CHAT_TOOL_NAME, 97, (runtime) => ({ tool: runtime.findChat }))

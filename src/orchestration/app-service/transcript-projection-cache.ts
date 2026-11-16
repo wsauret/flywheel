@@ -14,6 +14,7 @@ import { runsWorkflowClock } from "../session-store/view.js"
 import { createAgentInputCursorReader, type AgentInputCursorReader } from "../session/agent-input-projection.js"
 import { isAgentInFlight, type AgentGroupBlock, type AnyBlock, type ToolEntry } from "../../infra/output-blocks.js"
 import { singleLine } from "../../infra/tools/detail-helpers.js"
+import { getToolDisplay } from "../../infra/tools/tool-display-registry.js"
 import { sessionDisplayName } from "../session/schemas.js"
 import { readSessionMetadata } from "../session/session-metadata-store.js"
 import { projectToolUse, runFigures } from "../session/conversation/conversation-block-projection.js"
@@ -343,7 +344,7 @@ export function createTranscriptProjectionCache(deps: TranscriptProjectionCacheD
   async function nameTarget(row: ToolEntry): Promise<ToolEntry> {
     if (row.targetSessionId === undefined) return row
     const label = await currentSessionLabel(row.targetSessionId, row.presentation.detail)
-    const detail = singleLine(messageSessionLabel(label.name, label.typeLabel)) || row.presentation.detail
+    const detail = singleLine(getToolDisplay(row.name).targetTitleOnly ? label.name : messageSessionLabel(label.name, label.typeLabel)) || row.presentation.detail
     return detail === row.presentation.detail ? row : {
       ...row, presentation: { ...row.presentation, detail },
       ...(row.sentence === undefined ? {} : { sentence: { ...row.sentence, detail } }),

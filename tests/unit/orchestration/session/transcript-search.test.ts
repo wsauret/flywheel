@@ -13,25 +13,38 @@ let store: LocalSqliteEventStore
 let search: TranscriptSearchService
 let index: ConversationSearchIndex
 
-const row = (id: string, conversationId: string, name?: string) => ({
-  id, conversationId,
+const row = (id: string, conversationId: string, name?: string, kind: "chat" | "subagent" | "workflow-agent" = "chat") => ({
+  id, conversationId, kind, title: name ?? id,
   ...(name === undefined ? {} : { name }),
 })
-const sessions = [row("s-alpha", "conv-alpha", "Alpha work"), row("s-beta", "conv-beta")]
+let sessions = [row("s-alpha", "conv-alpha", "Alpha work"), row("s-beta", "conv-beta")]
 
-function append(conversationId: string, entries: ReadonlyArray<{ [key: string]: unknown }>): void {
+function append(conversationId: string, entries: ReadonlyArray<{ [key: string]: unknown }>, timestamp = Date.now()): void {
   store.append({
     aggregateId: `conversation:${conversationId}`,
     type: "chat.entries.appended",
     version: 1,
-    timestamp: Date.now(),
+    timestamp,
     actor: "flywheel",
     sessionId: conversationId,
     payload: { conversationId, entries },
   })
 }
+
+function checkpoint(sessionId: string, conversationId: string, currentState: string): void {
+  store.append({
+    aggregateId: `session:${sessionId}`,
+    type: "conversation.checkpoint.updated",
+    version: 1,
+    timestamp: Date.now(),
+    actor: "flywheel",
+    sessionId,
+    payload: { conversationId, checkpoint: { designIntent: { text: "", approved: false }, decisions: [], currentState, openQuestions: "", nextStep: "", relevantSkills: [], references: [], workingNotes: "" } },
+  })
+}
 const user = (id: string, parentId: string | null, text: string) => ({ kind: "message", id, parentId, timestamp: new Date().toISOString(), message: { kind: "user", content: text } })
 const assistant = (id: string, parentId: string, text: string) => ({ kind: "message", id, parentId, timestamp: new Date().toISOString(), message: { kind: "assistant", content: text } })
+const toolCall = (id: string, parentId: string, text: string) => ({ kind: "message", id, parentId, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text }, { type: "tool_use", id: `call-${id}`, name: "read", input: {} }] } })
 const toolResult = (id: string, parentId: string, toolUseId: string, text: string) => ({ kind: "message", id, parentId, timestamp: new Date().toISOString(), message: { kind: "toolResult", toolUseId, content: [{ type: "text", text }] } })
 
 beforeEach(() => {
@@ -39,6 +52,7 @@ beforeEach(() => {
   const dbFile = path.join(tmpDir, "flywheel.sqlite")
   store = createSqliteEventStore(dbFile)
   index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
+  sessions = [row("s-alpha", "conv-alpha", "Alpha work"), row("s-beta", "conv-beta")]
   search = createTranscriptSearch({ index, source: asAsyncEventReadSurface(store), sessions: async () => sessions })
 })
 
@@ -57,7 +71,7 @@ describe("transcript search for people", () => {
     search = createTranscriptSearch({
       index,
       source: {
-        readPage: source.readPage,
+        ...source,
         async capturePosition() {
           const upper = await source.capturePosition()
           append("conv-alpha", [user("b", "a", "kafka later")])
@@ -118,5 +132,62 @@ describe("transcript search for people", () => {
     expect(first.hits.length).toBe(TRANSCRIPT_SEARCH_PAGE_SIZE)
     expect(second.hits.length).toBe(5)
     expect(new Set([...first.hits, ...second.hits].map((hit) => hit.entryId)).size).toBe(25)
+  })
+})
+
+describe("chat search", () => {
+  test("ranks root chats by their best message, never by tool results, and leaves out other sessions and the excluded chat", async () => {
+    sessions = [
+      row("s-alpha", "conv-alpha", "Alpha work"), row("s-beta", "conv-beta"), row("s-gamma", "conv-gamma"), row("s-lead", "conv-lead"),
+      row("s-sub", "conv-sub", undefined, "subagent"), row("s-agent", "conv-agent", undefined, "workflow-agent"),
+    ]
+    // Many weak hits do not outrank one strong hit.
+    append("conv-alpha", Array.from({ length: 6 }, (_, i) => user(`a${i}`, i === 0 ? null : `a${i - 1}`, `dim_land came up once among many other words about unrelated topics number ${i}`)))
+    append("conv-beta", [user("b1", null, "build dim_land"), assistant("b2", "b1", "dim_land dim_land is built")])
+    append("conv-gamma", [user("g1", null, "run it"), toolResult("g2", "g1", "toolu_1", "dim_land dim_land dim_land")])
+    for (const conversationId of ["conv-lead", "conv-sub", "conv-agent"]) append(conversationId, [user(`${conversationId}-1`, null, "dim_land dim_land")])
+
+    const { chats } = await search.findChats({ query: "dim_land", exclude: ["s-lead"] })
+    expect(chats.map((chat) => chat.sessionId)).toEqual(["s-beta", "s-alpha"])
+    expect(chats[0]?.snippet).toContain("[dim_land]")
+  })
+
+  test("a chat ranks behind any number of stronger hits that cannot answer: tool results, other sessions, or one chat's many messages", async () => {
+    sessions = [row("s-alpha", "conv-alpha"), row("s-beta", "conv-beta"), row("s-gamma", "conv-gamma"), row("s-sub", "conv-sub", undefined, "subagent")]
+    const many = (prefix: string, make: (id: string, parent: string | null) => { [key: string]: unknown }) =>
+      Array.from({ length: 2_100 }, (_, i) => make(`${prefix}${i}`, i === 0 ? null : `${prefix}${i - 1}`))
+    append("conv-gamma", many("g", (id, parent) => toolResult(id, parent ?? "root", `toolu_${id}`, "dim_land dim_land")))
+    append("conv-sub", many("s", (id, parent) => user(id, parent, "dim_land dim_land")))
+    append("conv-alpha", many("a", (id, parent) => user(id, parent, "dim_land dim_land")))
+    append("conv-beta", [user("b1", null, "the dim_land table came up once among many other words about unrelated topics")])
+
+    expect((await search.findChats({ query: "dim_land", exclude: [] })).chats.map((chat) => chat.sessionId)).toEqual(["s-alpha", "s-beta"])
+  })
+
+  test("a word of the query matches alone, and a blank query or no match finds nothing", async () => {
+    append("conv-alpha", [user("a1", null, "open PR 5132 for the graph")])
+    expect((await search.findChats({ query: "5132 kafka", exclude: [] })).chats.map((chat) => chat.sessionId)).toEqual(["s-alpha"])
+    expect(await search.findChats({ query: "  ", exclude: [] })).toEqual({ chats: [] })
+    expect(await search.findChats({ query: "kafka", exclude: [] })).toEqual({ chats: [] })
+  })
+
+  test("answers each chat's title, newest activity, and the current state of its newest checkpoint, or else its newest final message", async () => {
+    append("conv-alpha", [user("a1", null, "fix the graph matcher"), assistant("a2", "a1", "The graph matcher is fixed.")], 1_000)
+    checkpoint("s-alpha", "conv-alpha", "older state")
+    checkpoint("s-alpha", "conv-alpha", `PR 5132 is green and waits on review. ${"x".repeat(400)}`)
+    append("conv-beta", [user("b1", null, "graph review"), assistant("b2", "b1", "The graph review found two issues.")], 2_000)
+    // Later batches whose model messages call tools hold no final message, more of them than one read takes.
+    for (let i = 0; i < 10; i++) {
+      append("conv-beta", [toolCall(`b${i}c`, i === 0 ? "b2" : `b${i - 1}r`, "Reading the graph now.")], 3_000 + 2 * i)
+      append("conv-beta", [toolResult(`b${i}r`, `b${i}c`, `call-b${i}c`, "contents")], 3_001 + 2 * i)
+    }
+
+    const { chats } = await search.findChats({ query: "graph", exclude: [] })
+    const alpha = chats.find((chat) => chat.sessionId === "s-alpha")
+    const beta = chats.find((chat) => chat.sessionId === "s-beta")
+    expect(alpha).toMatchObject({ title: "Alpha work", lastActivityAt: 1_000, excerpt: { source: "checkpoint" } })
+    expect(alpha?.excerpt?.text.startsWith("PR 5132 is green and waits on review.")).toBe(true)
+    expect(alpha?.excerpt?.text.length).toBeLessThanOrEqual(303)
+    expect(beta).toMatchObject({ title: "s-beta", lastActivityAt: 3_019, excerpt: { source: "final", text: "The graph review found two issues." } })
   })
 })

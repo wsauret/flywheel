@@ -151,6 +151,30 @@ export interface TranscriptSearchResult {
   readonly pageSize: number
 }
 
+/** A search for the root chats of the project whose messages best match some keywords. */
+export interface ChatSearchRequest {
+  readonly query: string
+  /** Chats that never rank, such as the one that searches. */
+  readonly exclude: readonly string[]
+}
+
+/** One root chat that a chat search found. */
+export interface FoundChat {
+  readonly sessionId: string
+  readonly title: string
+  /** The time of the chat's newest entry, in milliseconds since the epoch. */
+  readonly lastActivityAt?: number
+  /** The words of the chat's best matching message in context, matches bracketed. */
+  readonly snippet: string
+  /** The start of the current state of the chat's newest checkpoint, or of its newest final message without one. */
+  readonly excerpt?: { readonly source: "checkpoint" | "final"; readonly text: string }
+}
+
+export interface ChatSearchResult {
+  /** Best first. */
+  readonly chats: readonly FoundChat[]
+}
+
 /** A person's search for a project file to mention in a message. */
 export interface ProjectFilesRequest {
   readonly query: string

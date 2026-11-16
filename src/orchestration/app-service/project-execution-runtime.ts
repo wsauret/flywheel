@@ -340,7 +340,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       void (async () => { await listener() })().catch((error: unknown) => log.warn("module selection application failed", { error: errorMessage(error) }))
     }),
     profileAccounting: () => authRuntime, configView: () => configProjection.view(), moduleSelection, notify: (episode) => notify(episode), interactive: options.interactive === true,
-    executionEnvironment: (): ModuleExecutionEnvironment => moduleExecutionEnvironment({ authAdmission: authRuntime.sessionAuthAdmission, recall: backgroundLane.recall, sessionEvents, sessionStore, supervisor: runtimeSupervisor, delivery: { manager, projectionReader, eventWriter } }),
+    executionEnvironment: (): ModuleExecutionEnvironment => moduleExecutionEnvironment({ authAdmission: authRuntime.sessionAuthAdmission, recall: backgroundLane.recall, findChats: backgroundLane.findChats, sessionEvents, sessionStore, supervisor: runtimeSupervisor, delivery: { manager, projectionReader, eventWriter } }),
     // A control part answers here only while no account serves this project, where this runtime opens every chat.
     openChat: async ({ name }): ReturnType<ControlSessionPorts["openChat"]> => {
       const sessionId: string = await runtimeSupervisor.openSessionRuntime({ name })

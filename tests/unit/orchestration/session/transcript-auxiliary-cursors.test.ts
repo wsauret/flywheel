@@ -152,6 +152,15 @@ describe("transcript auxiliary cursor readers", () => {
     expect((await readToolResultDisplayMeta(asAsyncEventReadSurface(store), sessionId)).get("code-1")).toEqual({ executionOutput: "ordinary output" })
   })
 
+  it("reads the chat that a route result states, and no chat from a result recorded before its details stated one", async () => {
+    const sessionId = "route-meta-session"
+    appendSessionFact(sessionId, { type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId: "route-new", outcome: "ok", details: { targetName: "New Chat", targetSessionId: "99b414b85fde" } } })
+    appendSessionFact(sessionId, { type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId: "route-old", outcome: "ok", details: { targetName: "Old Chat" } } })
+    const meta = await readToolResultDisplayMeta(asAsyncEventReadSurface(store), sessionId)
+    expect(meta.get("route-new")).toEqual({ targetName: "New Chat", targetSessionId: "99b414b85fde" })
+    expect(meta.get("route-old")).toEqual({ targetName: "Old Chat" })
+  })
+
   it("uses canonical mutation metadata when a durable fact also has legacy diffs", async () => {
     const sessionId = "dual-tool-meta-session"
     const mutation = { version: 1 as const, files: [], omissions: [{ path: ".env", reason: "sensitive" as const }] }

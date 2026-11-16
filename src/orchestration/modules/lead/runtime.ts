@@ -3,15 +3,17 @@ import type { ModuleRuntimeServices } from "../../agent-runtime/module-runtime-s
 import type { RuntimeTool } from "../../agent-runtime/tools/types.js"
 import type { SessionMessaging } from "../../session/session-messaging.js"
 import { createChatProgressTool } from "./chat-progress.js"
+import { createFindChatTool } from "./find-chat.js"
 import { createRouteRequestTool } from "./route-request.js"
 import { leadService, type LeadRole } from "./service.js"
 
-/** The lead's per-runner runtime: what the runner's chat is to the lead, and the lead's two tools for that chat. */
+/** The lead's per-runner runtime: what the runner's chat is to the lead, and the lead's tools for that chat. */
 export interface LeadRuntime {
   role(): LeadRole | undefined
   /** The role once the service folded what it heard before this call (`LeadService.settledRole`). */
   settledRole(): Promise<LeadRole | undefined>
   readonly chatProgress: RuntimeTool
+  readonly findChat: RuntimeTool
   routeRequest(sessions: SessionMessaging): RuntimeTool
 }
 
@@ -26,6 +28,7 @@ export function createLeadRuntime(services: Pick<ModuleRuntimeServices, "session
     role: () => service.role(sessionId),
     settledRole: () => service.settledRole(sessionId),
     chatProgress: createChatProgressTool((chat) => service.progress(chat)),
+    findChat: createFindChatTool((query) => service.findChats(query)),
     routeRequest: (sessions) => createRouteRequestTool((input) => service.route(input), sessions),
   }
 }

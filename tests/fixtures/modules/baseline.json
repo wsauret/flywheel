@@ -1041,6 +1041,23 @@
           "kind": "omitted",
           "reason": "only the lead chat has this tool"
         }
+      },
+      {
+        "name": "find_chat",
+        "tool": "find_chat",
+        "policy": {
+          "action": "ui_meta",
+          "personaBaseline": false
+        },
+        "category": "ambient",
+        "capabilities": [],
+        "cloneInheritance": "reconstruct",
+        "learningReviewExecutable": false,
+        "semanticBundle": null,
+        "creation": {
+          "kind": "omitted",
+          "reason": "only the lead chat has this tool"
+        }
       }
     ]
   },

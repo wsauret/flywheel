@@ -4,11 +4,11 @@ This document states the current intended experience for the lead chat that star
 
 ## PI-LEAD-001: The lead receives the person's requests
 
-While the lead capability is on, each project has one lead chat. A terminal launch with no earlier tabs to restore opens the lead as its only tab. A launch that restores earlier tabs keeps them and adds the lead as the first tab. The person sends each request to the lead. The lead answers a short question itself, and for that it can read the project's files, the web, and the progress of the chats in its list. It gives every other request to a chat. The lead never changes files, runs commands, or starts subagents or workflows.
+While the lead capability is on, each project has one lead chat. A terminal launch with no earlier tabs to restore opens the lead as its only tab. A launch that restores earlier tabs keeps them and adds the lead as the first tab. The person sends each request to the lead. The lead answers a short question itself, and for that it reads the project's files, the web, its chats' progress, and a search of every past chat. It gives every other request to a chat. The lead never changes files, runs commands, or starts subagents or workflows.
 
 ## PI-LEAD-002: A routed request keeps the person's words
 
-The lead gives a request to a new chat, or to a chat in its list when the request belongs to that chat's work, and tells the person which. The chat receives the person's message unchanged, with its attachments, as a message from the person. The lead can add a note of its own, which the chat shows as a message from the lead. The lead never rewrites a request.
+The lead gives a request to a new chat, or to any chat of the project whose work the request continues, also one that left the list, and tells the person which. That chat joins the list. The chat receives the person's message unchanged, with its attachments, as a message from the person. The lead can add a note of its own, which the chat shows as a message from the lead. The lead never rewrites a request.
 
 ## PI-LEAD-003: A chat that the lead started is an ordinary chat without a tab
 
@@ -69,3 +69,7 @@ The x key on a selected row of the lead's list closes the chat. A click on the c
 ## PI-LEAD-017: The lead's calls gather under headings
 
 In the terminal, the lead's words never fold. Its calls between one message and the next gather, indented, under one muted heading with the time, the duration, and what it did with its chats. While the calls run, the heading is open and says the lead is working. It closes once a message follows or the turn ends, and a click opens or closes it. Bookkeeping calls never show.
+
+## PI-LEAD-018: The lead never leaves a request unrouted
+
+The lead routes every request in the turn that it arrives in, also a question that its own reading cannot fully answer, such as the state of a PR or of earlier work. It never offers to route a request instead. A request that continues earlier work goes to the chat that did that work, which the lead finds by search. Only when no past chat fits does a new chat start.

@@ -110,41 +110,6 @@ describe("tree -> output blocks re-projection", () => {
     ])
   })
 
-  it("renders a message from another session as a row that names its sender and the words of the person", () => {
-    const envelope = { name: "Parser fix", relation: "child" as const, waits: false, personWords: "use the old one" }
-    const message = entry({ kind: "user", content: "Which parser?", producer: { kind: "session", sessionId: "child-1", conversationId: "child-conversation", toolUseId: "call-1", hop: 0, envelope } })
-    expect(project([message])).toEqual([{
-      kind: "userMessage", id: message.id, content: "Which parser?", timestamp: Date.parse(T0), pending: false, injected: false,
-      from: { sessionId: "child-1", name: "Parser fix", relation: "child", personWords: "use the old one" },
-    }])
-  })
-
-  it("renders the assignment that launched a subagent as a row from its parent, not from the person", () => {
-    const message = entry({ kind: "user", content: "Inspect the parser", producer: { kind: "launch", sessionId: "parent-1", toolUseId: "call-launch", name: "Root" } })
-    expect(project([message])).toMatchObject([{ kind: "userMessage", content: "Inspect the parser", from: { sessionId: "parent-1", name: "Root", relation: "parent" } }])
-  })
-
-  it("renders an invocation user entry as a step boundary plus the raw args, hiding the expanded prompt", () => {
-    const invocation = entry({ kind: "user", content: "Step \"Adapt\" is now active.\n<step ...>expanded body</step>", invocation: { label: "Adapt", args: "please adapt this box" }, submissionIds: ["adapt-1"] })
-    const assistant = entry({ kind: "assistant", content: "done" })
-    const blocks = project([invocation, assistant])
-
-    expect(blocks).toEqual([
-      { kind: "divider", id: `${invocation.id}:boundary`, label: "Adapt", timestamp: Date.parse(T0) },
-      { kind: "userMessage", id: invocation.id, content: "please adapt this box", timestamp: Date.parse(T0), pending: false, injected: false, submissionIds: ["adapt-1"] },
-      { kind: "text", id: assistant.id, content: "done", timestamp: Date.parse(T0) },
-    ])
-  })
-
-  it("renders an argument-less invocation as only its step boundary", () => {
-    const invocation = entry({ kind: "user", content: "expanded body", invocation: { label: "Code Review" } })
-    const blocks = project([invocation])
-
-    expect(blocks).toEqual([
-      { kind: "divider", id: `${invocation.id}:boundary`, label: "Code Review", timestamp: Date.parse(T0) },
-    ])
-  })
-
   it("carries the tool's action, so a reopened read folds and abbreviates like a live one", () => {
     const assistant = entry({
       kind: "assistant",
@@ -443,6 +408,28 @@ describe("tree -> output blocks re-projection", () => {
     expect(tool.resultAction).toBe("updated")
   })
 
+  it("states when each call returned from its stored result, and nothing for a call that has not returned", () => {
+    const assistant = entry({ kind: "assistant", content: [
+      { type: "tool_use", id: "toolu_done", name: "read", input: { path: "a.ts" } },
+      { type: "tool_use", id: "toolu_open", name: "read", input: { path: "b.ts" } },
+    ] })
+    const result = entry({ kind: "toolResult", toolUseId: "toolu_done", content: [{ type: "text", text: "a" }] }, { timestamp: "2026-07-02T10:00:04.500Z" })
+    const [done, open] = project([assistant, result])
+    expect(done).toMatchObject({ kind: "tool", timestamp: Date.parse(T0), settledAt: Date.parse("2026-07-02T10:00:04.500Z") })
+    expect(open).not.toHaveProperty("settledAt")
+  })
+
+  it("names the chat that a route started by the session its recorded result states, so the row names that chat by its title now", () => {
+    const assistant = entry({ kind: "assistant", content: [{ type: "tool_use", id: "toolu_route", name: "route_request", input: { kind: "new" } }] })
+    const result = entry({ kind: "toolResult", toolUseId: "toolu_route", content: [{ type: "text", text: "Started chat 99b414b85fde \"New Chat\" with the person's messages.\nThe messages, by their first line:" }] })
+    const meta = new Map([["toolu_route", { targetName: "New Chat", targetSessionId: "99b414b85fde" }]])
+    expect(projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: meta })[0]).toMatchObject({ kind: "tool", presentation: { name: "Route to new chat", detail: "New Chat" }, targetSessionId: "99b414b85fde" })
+    // A result recorded before its details stated the chat keeps its recorded title and names no session.
+    const old = projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map([["toolu_route", { targetName: "New Chat" }]]) })[0]
+    expect(old).toMatchObject({ kind: "tool", presentation: { detail: "New Chat" } })
+    expect(old).not.toHaveProperty("targetSessionId")
+  })
+
   it("names a message's recipient, its wait, or a read of its tool's contract from its recorded result, as the live row does", () => {
     const assistant = entry({
       kind: "assistant",
@@ -580,48 +567,6 @@ describe("tree -> output blocks re-projection", () => {
     expect(blocks).toEqual([
       { kind: "system", id: diagnostic.id, message: "provider hiccup", timestamp: Date.parse(T0) },
     ])
-  })
-
-  it("keeps user attachment markers and ordered image bodies separate from the words", () => {
-    const user = entry({
-      kind: "user",
-      content: [
-        { type: "text", text: "look at this [Image #1] [File #2 rows.csv]" },
-        { type: "image", mediaType: "image/png", data: "aGk=" },
-        { type: "text", text: "<attachment name=\"rows.csv\" type=\"text/csv\">\na,b\n</attachment>" },
-        { type: "image", mediaType: "image/jpeg", data: "Ynll" },
-      ],
-    })
-    const blocks = project([user])
-
-    expect(blocks).toEqual([
-      { kind: "userMessage", id: user.id, content: "look at this [Image #1] [File #2 rows.csv]", timestamp: Date.parse(T0), pending: false, injected: false,
-        images: [{ mediaType: "image/png", data: "aGk=" }, { mediaType: "image/jpeg", data: "Ynll" }] },
-    ])
-  })
-
-  it("flattens user content of another shape with one placeholder per part", () => {
-    const user = entry({
-      kind: "user",
-      content: [
-        { type: "image", mediaType: "image/png", data: "aGk=" },
-        { type: "text", text: "after" },
-      ],
-    })
-    const blocks = project([user])
-
-    expect(blocks).toEqual([
-      { kind: "userMessage", id: user.id, content: "[image: image/png]\nafter", timestamp: Date.parse(T0), pending: false, injected: false,
-        images: [{ mediaType: "image/png", data: "aGk=" }] },
-    ])
-  })
-
-  it("retains image-only user messages", () => {
-    const user = entry({ kind: "user", content: [{ type: "image", mediaType: "image/png", data: "aGk=" }] })
-    expect(project([user])).toEqual([{
-      kind: "userMessage", id: user.id, content: "[image: image/png]", timestamp: Date.parse(T0), pending: false, injected: false,
-      images: [{ mediaType: "image/png", data: "aGk=" }],
-    }])
   })
 
   it("keeps thinking as its own thought row between visible content and skips blank thinking and reasoning", () => {

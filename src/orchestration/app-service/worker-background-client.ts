@@ -14,7 +14,7 @@ import type { SessionFileChangeCounts } from "../../protocol/session-changes-pro
 import { protocolBackgroundSchema, type ProtocolBackgroundDomain, type ProtocolBackgroundSnapshot } from "../../protocol/modules.js"
 import type { RuntimeBackgroundWorkerInit } from "./runtime-background-worker.js"
 import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
-import type { TranscriptSearchRequest, TranscriptSearchResult } from "../../protocol/transcript-protocol-types.js"
+import type { ChatSearchRequest, ChatSearchResult, TranscriptSearchRequest, TranscriptSearchResult } from "../../protocol/transcript-protocol-types.js"
 
 type RuntimeBackgroundProtocolClient = RpcClient.RpcClient<
   RpcGroup.Rpcs<typeof RuntimeBackgroundRpc>,
@@ -36,6 +36,7 @@ export interface RuntimeBackgroundClient {
   moduleSnapshot<Domain extends ProtocolBackgroundDomain>(domain: Domain, sessionId: string): Promise<ProtocolBackgroundSnapshot<Domain>>
   recall(conversationId: string, contract: RecallInput): Promise<RecallResult>
   transcriptSearch(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
+  findChats(request: ChatSearchRequest): Promise<ChatSearchResult>
   close(): Promise<void>
 }
 
@@ -138,6 +139,7 @@ export function createProcessBackgroundClient(options: ProcessBackgroundClientOp
         moduleSnapshot: (domain, sessionId) => projectCall((client) => client.RuntimeBackgroundModuleSnapshot({ projectRoot, domain, sessionId }).pipe(Effect.flatMap(Schema.decodeUnknownEffect(protocolBackgroundSchema(domain))))),
         recall: (conversationId, contract) => projectCall((client) => client.RuntimeBackgroundRecall({ projectRoot, conversationId, contract })),
         transcriptSearch: (request) => projectCall((client) => client.RuntimeBackgroundTranscriptSearch({ projectRoot, request })),
+        findChats: (request) => projectCall((client) => client.RuntimeBackgroundChatSearch({ projectRoot, request })),
         close() {
           if (closed) return releases.settled()
           closed = true

@@ -415,6 +415,11 @@ describe("live/derived output equivalence", () => {
       if (JSON.stringify(liveText) !== JSON.stringify(durableText)) throw new Error(`text coalescing divergence live=${JSON.stringify(liveText)} derived=${JSON.stringify(durableText)}`)
       assertOutputBlocksEquivalent("runtime-events-vs-chat-tree", liveWire, durableWire)
       expect(liveWire.map((block) => block.identity)).toEqual(["userMessage", "text", "tool:write", "tool:edit", "tool:replace", "tool:bash", "tool:code", "tool:memory", "tool:bash", "system"])
+      // Each call that returned states when on both routes, which the equivalence above compares. The times differ by
+      // route: the live row takes the time its result event arrived, and the durable row the time its result entry was
+      // stored, which the save point writes after the batch settles, mostly some ms later and rarely more than 1 s.
+      expect(liveWire.filter((block) => block.identity.startsWith("tool:")).every((block) => "settled" in block)).toBe(true)
+      expect(projectFrontendOutputBlocks(live.getBlocks()).find((block) => block.kind === "tool" && block.id === "write-1")).toMatchObject({ settledAt: 1_000 })
       // The settled background command's end reaches the row on both routes.
       expect(liveWire.at(-2)).toMatchObject({ identity: "tool:bash", status: "completed", endedAt: 46_600 })
       expect(durableWire.at(-2)).toMatchObject({ identity: "tool:bash", status: "completed", endedAt: 46_600 })
@@ -592,8 +597,9 @@ function comparableBlock(block: ReturnType<typeof projectFrontendOutputBlocks>[n
     : block.kind === "agentGroup" || block.kind === "question"
       ? `${block.kind}:${block.kind === "question" ? block.toolUseId : block.id}`
       : block.kind
-  const { id: _id, timestamp: _timestamp, ...wire } = block.kind === "question" ? { ...block, id: undefined } : block
-  return { identity, ...wire }
+  // A time differs by route, so only whether a call states when it returned is compared.
+  const { id: _id, timestamp: _timestamp, settledAt, ...wire } = block.kind === "question" ? { ...block, id: undefined, settledAt: undefined } : block.kind === "tool" ? block : { ...block, settledAt: undefined }
+  return { identity, ...wire, ...(settledAt === undefined ? {} : { settled: true }) }
 }
 
 function isJsonObject(value: JsonValue): value is JsonObject {

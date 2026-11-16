@@ -33,6 +33,7 @@ function backgroundClient(overrides: Partial<RuntimeBackgroundClient> = {}): Run
     waitForTotals: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }),
     sessionDetail: async () => ({ view: null }),
     transcriptSearch: async () => { throw new Error("Transcript search is not used in this fixture") },
+    findChats: async () => { throw new Error("Chat search is not used in this fixture") },
     recall: async () => { throw new Error("Recall is not used in this fixture") },
     moduleSnapshot: async () => { throw new Error("Module background snapshots are not used in this fixture") },
     close: async () => {},
@@ -172,15 +173,18 @@ describe("runtime background Worker lane", () => {
     expect(() => Schema.decodeUnknownSync(rpc.successSchema, served(rpc))({ hits: [{ ...result.hits[0], excess: true }] })).toThrow()
   })
 
-  test("recall outlives the passive history deadline and preserves its result or original error", async () => {
+  test("recall and chat search outlive the passive history deadline and preserve the result or original error", async () => {
     let releaseSuccess!: (value: { hits: [] }) => void
     let releaseFailure!: (error: Error) => void
     const success = new Promise<{ hits: [] }>((resolve) => { releaseSuccess = resolve })
+    let releaseFound!: (value: { chats: [] }) => void
+    const found = new Promise<{ chats: [] }>((resolve) => { releaseFound = resolve })
     const failure = new Promise<never>((_resolve, reject) => { releaseFailure = reject })
     let timerCalls = 0
     const lane = createRuntimeBackgroundLane("/cwd", {
       createClient: () => backgroundClient({
         recall: (conversationId) => conversationId === "ok" ? success : failure,
+        findChats: () => found,
       }),
       setTimer: () => {
         timerCalls++
@@ -199,6 +203,13 @@ describe("runtime background Worker lane", () => {
     releaseFailure(original)
     await expect(heldFailure).rejects.toBe(original)
     expect(timerCalls).toBe(0)
+
+    // The chat search first catches the index up, which a cold build can hold past any read deadline.
+    const heldChats = lane.findChats({ query: "dim_land", exclude: [] })
+    await Promise.resolve()
+    expect(timerCalls).toBe(0)
+    releaseFound({ chats: [] })
+    expect(await heldChats).toEqual({ chats: [] })
   })
 
   test("transcript search uses the bounded Worker lane and preserves failures", async () => {
@@ -234,6 +245,20 @@ describe("runtime background Worker lane", () => {
 
     expect(Schema.decodeUnknownSync(rpc.payloadSchema)(payload)).toEqual(payload)
     expect(Schema.decodeUnknownSync(rpc.successSchema)(result)).toEqual(result)
+  })
+
+  test("chat search RPC strictly roundtrips its request and every result field, and refuses an undeclared key", () => {
+    const rpc = RuntimeBackgroundRpc.requests.get("RuntimeBackgroundChatSearch")!
+    const payload = { projectRoot: "/project", request: { query: "dim_land PR", exclude: ["lead"] } }
+    const result = {
+      chats: [
+        { sessionId: "a", title: "Chat", lastActivityAt: 1_700_000_000_000, snippet: "[dim_land]", excerpt: { source: "checkpoint" as const, text: "PR 5132 is green" } },
+        { sessionId: "b", title: "Other", snippet: "[PR]" },
+      ],
+    }
+    expect(Schema.decodeUnknownSync(rpc.payloadSchema, served(rpc))(payload)).toEqual(payload)
+    expect(Schema.decodeUnknownSync(rpc.successSchema, served(rpc))(result)).toEqual(result)
+    expect(() => Schema.decodeUnknownSync(rpc.successSchema, served(rpc))({ chats: [{ ...result.chats[1], rank: 1 }] })).toThrow()
   })
 
   test("summary RPCs strictly roundtrip requested rows, scoped errors, and loading state", () => {

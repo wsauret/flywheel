@@ -193,7 +193,8 @@ const inStretch = (row: FoldRow) => isCall(row) || row.kind === "thinking"
  *  live and arrives open, and every other stretch arrives closed. `choice` is the person's open or closed choice of a
  *  heading, or undefined without one, and it wins. A heading keys on its stretch's first call, so the choice holds
  *  while the stretch grows. The stretch lasts from its first call to the last start or end of its rows, or to the
- *  agent's next words when they follow it. */
+ *  agent's next words when they follow it. A later row of another kind, such as a chat's report that arrives minutes
+ *  after the turn ended, never extends it: that wait is not work. */
 export function gatherCallStretches<Row extends FoldRow>(view: PresentedRows<Row>, running: boolean, choice: (id: string) => boolean | undefined = () => undefined): PresentedRows<Row | CallStretch<Row>> {
   const rows: (Row | CallStretch<Row>)[] = []
   const boundaryBefore: boolean[] = []
@@ -214,7 +215,7 @@ export function gatherCallStretches<Row extends FoldRow>(view: PresentedRows<Row
     const id = `callStretch:${rowIdentity(first)}`
     const following = view.rows[end]
     const calls = turnCalls({ rows: members })
-    const ends = [...members.map(row => row.timestamp), ...calls.map(call => call.timestamp), ...calls.flatMap(call => call.endedAt ?? []), ...following?.kind === "text" ? [following.timestamp] : []]
+    const ends = [...members.map(row => row.timestamp), ...calls.flatMap(call => [call.timestamp, call.settledAt ?? call.timestamp, call.endedAt ?? call.timestamp]), ...following?.kind === "text" ? [following.timestamp] : []]
     const live = running && following === undefined
     rows.push({ kind: "callStretch", id, rows: members, open: choice(id) ?? live, live, timestamp: first.timestamp, duration: Math.max(0, ...ends) - first.timestamp })
     boundaryBefore.push(view.boundaryBefore[start] ?? false)

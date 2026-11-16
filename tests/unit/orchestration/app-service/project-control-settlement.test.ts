@@ -99,7 +99,7 @@ async function fixture(privateOffset = 99, publicOffset = 0, preAttachment = fal
       allocateId: () => "id", createChat: unused, listForIds: async () => ({ sessions: [], errors: [] }),
       read: unused, updateLabel: unused, updateLifecycleState: unused, subscribe: () => () => {}, interruptOwed: unused,
     } },
-    history: { start() {}, dispose: async () => {}, recall: unused, transcriptSearch: unused, snapshot: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), sessionSummaryImmediate: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), waitForTotals: unused,
+    history: { start() {}, dispose: async () => {}, recall: unused, transcriptSearch: unused, findChats: unused, snapshot: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), sessionSummaryImmediate: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }), waitForTotals: unused,
       sessionDetail: async () => ({ view: null }), sessionChangeSummary: unused, moduleSnapshot: unused },
   }
   const client = createProjectControlClient(options)

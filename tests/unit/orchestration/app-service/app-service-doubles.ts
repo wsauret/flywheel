@@ -52,6 +52,7 @@ export function fakeProjections() {
       outputGroupChildren: async () => { throw new Error("Output children are not used in this fixture") },
       outputBlockBody: async () => { throw new Error("Output body is not used in this fixture") },
       transcriptSearch: async () => { throw new Error("Transcript search is not used in this fixture") },
+      findChats: async () => { throw new Error("Chat search is not used in this fixture") },
       recall: async () => { throw new Error("Conversation recall is not used in this fixture") },
       sessionChangeSummary: async () => { throw new Error("Session change summary is not used in this fixture") },
       workflowViewSnapshotBatch: async () => ({ workflowViews: [] }),

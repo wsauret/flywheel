@@ -58,6 +58,14 @@ describe("the stretches of calls under their headings", () => {
     expect(gatherCallStretches({ rows: [narration, run], boundaryBefore: [false, false] }, false).rows.at(-1)).toMatchObject({ kind: "callStretch", duration: 60_000 })
   })
 
+  it("measures calls that end their turn to when the last call returned, never to a report that arrives later", () => {
+    const checked: FrontendToolEntry = { ...progress, id: "checked", turnStart: undefined, timestamp: 2200, settledAt: 2900 }
+    const quiet = [person, narration, { ...route, settledAt: 2400 }, checked, report]
+    expect(stretchNames(gatherCallStretches(presented(quiet), false).rows)).toEqual([
+      "userMessage:person", "text:narration", "closed(tool:route,tool:checked; 900ms)", "userMessage:msg:done:lead-report:final",
+    ])
+  })
+
   it("opens the stretch that runs at the end of the transcript, and closes it once a row follows or the turn settles", () => {
     const pending: FrontendToolEntry = { ...route, status: "pending" }
     expect(stretchNames(gatherCallStretches(presented([person, narration, pending]), true).rows)).toEqual(["userMessage:person", "text:narration", "open(tool:route; 0ms)"])

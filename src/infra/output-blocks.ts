@@ -166,6 +166,9 @@ const ToolEntryBaseSchema = Schema.Struct({
    *  that ran on after its launch returned. Absent while that work runs and
    *  when no end was recorded. */
   endedAt: Schema.optionalKey(Schema.Number),
+  /** When the call returned its result. Absent while the call runs, and on a
+   *  row that an older build folded, where the end is unknown. */
+  settledAt: Schema.optionalKey(Schema.Number),
   diffOmission: Schema.optionalKey(DiffOmissionSchema),
   invocationBodyOmittedBytes: Schema.optionalKey(Schema.Number),
   contentOmittedLines: Schema.optionalKey(Schema.Number),

@@ -210,6 +210,14 @@ export function resultTargetName(details: unknown): string | undefined {
   return typeof name === "string" ? singleLine(sanitizeExternalText(name)) || undefined : undefined;
 }
 
+/** The session a call's result states under `details.targetSessionId` when
+ *  its input names none, such as a chat that the call started. Exported for
+ *  the derived-history tool-result meta reader. */
+export function resultTargetSessionId(details: unknown): string | undefined {
+  const id = asRecord(details)?.targetSessionId;
+  return typeof id === "string" && id !== "" ? id : undefined;
+}
+
 /** The line an ok result states when its work now waits instead of being
  *  done, such as a message its recipient holds, under `details.statusMessage`.
  *  Its row settles as waiting with that line, not as completed. Exported for
@@ -225,16 +233,17 @@ export function resultReadContract(details: unknown): boolean {
   return asRecord(details)?.contractRead === true;
 }
 
-/** Patches the presentation of a row from what its result states. */
-function presentResult(builder: StructuredOutputBuilder, tracked: PlacedTool, toolUseId: string, patch: (row: ToolEntry) => Partial<ToolEntry>): void {
+/** Patches a row from what its result states; a patch of undefined leaves the row as it is. */
+function presentResult(builder: StructuredOutputBuilder, tracked: PlacedTool, toolUseId: string, patch: (row: ToolEntry) => Partial<ToolEntry> | undefined): void {
   if (tracked.kind === "standalone") {
     const index = builder.toolBlockIndex(toolUseId);
     const block = index === undefined ? undefined : builder.getBlocks()[index];
-    if (index !== undefined && block?.kind === "tool") builder.patchTool(index, patch(block));
+    const fields = block?.kind === "tool" ? patch(block) : undefined;
+    if (index !== undefined && fields !== undefined) builder.patchTool(index, fields);
   } else if (tracked.kind === "row") {
-    const group = builder.getBlocks().find((block) => block.kind === "agentGroup" && block.id === tracked.agentId);
-    const child = group?.kind === "agentGroup" ? group.children[tracked.childIndex] : undefined;
-    if (child) builder.patchAgentChild(tracked.agentId, tracked.childIndex, patch(child));
+    const child = builder.agentChildTool(tracked.agentId, tracked.childIndex);
+    const fields = child ? patch(child) : undefined;
+    if (fields !== undefined) builder.patchAgentChild(tracked.agentId, tracked.childIndex, fields);
   }
 }
 
@@ -248,6 +257,7 @@ export function resolveTrackedToolResult(
   details?: unknown,
   executionOutputTail?: string,
   settled?: SettledExecution,
+  settledAt?: number,
 ): void {
   const rawMeta: ToolResultDisplayFields = {
     ...extractDisplayMeta(details, { source: tracked.toolName, toolUseId }),
@@ -274,12 +284,20 @@ export function resolveTrackedToolResult(
       resolveStandaloneResult(builder, tracked, toolUseId, outcome, rawContent, displayMeta, executionOutputTail, waiting);
       break;
   }
+  const resultTarget = resultTargetSessionId(details);
   const targetName = resultTargetName(details);
-  if (targetName !== undefined) presentResult(builder, tracked, toolUseId, (row) => ({ presentation: { ...row.presentation, detail: targetName } }));
-  if (outcome === "ok" && resultReadContract(details)) {
-    const read = contractReadRow(tracked.toolName);
-    presentResult(builder, tracked, toolUseId, () => read);
-  }
+  const readContract = outcome === "ok" && resultReadContract(details);
+  // One indexed patch adds what the result states beyond the row's status.
+  presentResult(builder, tracked, toolUseId, (row) => {
+    const fields: Partial<ToolEntry> = {
+      ...(resultTarget !== undefined && row.targetSessionId === undefined ? { targetSessionId: resultTarget } : {}),
+      ...(targetName !== undefined ? { presentation: { ...row.presentation, detail: targetName } } : {}),
+      ...(readContract ? contractReadRow(tracked.toolName) : {}),
+      // The first result to settle the row states when the call returned; a later copy of the same result keeps that time.
+      ...(settledAt !== undefined && row.settledAt === undefined && row.status !== "pending" && row.status !== "streaming" ? { settledAt } : {}),
+    };
+    return Object.keys(fields).length === 0 ? undefined : fields;
+  });
 }
 
 function resolveAgentResult(

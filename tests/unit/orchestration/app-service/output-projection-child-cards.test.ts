@@ -332,7 +332,7 @@ describe("output projection child cards", () => {
     }
   })
 
-  test("a message call names its recipient as the recipient's own title does, follows a rename, and keeps the recorded name of a deleted recipient", async () => {
+  test("a message call names its recipient as the recipient's own title does, a route names its chat by the bare title, both follow a rename, and a deleted recipient keeps its recorded name", async () => {
     const events = createSqliteEventStore(resolveEventStoreDbFile(directory("fw-message-recipient-")))
     events.append(buildSessionMetadataAppend("recipient", buildSessionCreatedFact({
       kind: "chat", command: "chat", conversationId: "conv-recipient", label: "Plan the release", executionCwd: SCRATCH, lifecycleState: "active", lastUpdated: "2026-10-04T14:11:21.164Z",
@@ -347,13 +347,16 @@ describe("output projection child cards", () => {
     // second recipient was deleted since, so no metadata names it now.
     const toRecipient: AnyBlock = { kind: "tool", id: "to-recipient", name: "message_session", presentation: { name: "Message to", detail: "Draft plan" }, action: "ui_meta", status: "completed", timestamp: 1, targetSessionId: "recipient" }
     const toDeleted: AnyBlock = { kind: "tool", id: "to-deleted", name: "message_session", presentation: { name: "Message to", detail: "Old helper" }, action: "ui_meta", status: "completed", timestamp: 2, targetSessionId: "deleted" }
+    // A route row's own name says that it addresses a chat, so its detail is the chat's title alone.
+    const route: AnyBlock = { kind: "tool", id: "route", name: "route_request", presentation: { name: "Route to new chat", detail: "New Chat" }, action: "ui_meta", status: "completed", timestamp: 3, targetSessionId: "recipient" }
     try {
       store.openSessionRuntime({ sessionId: "parent", conversationId: "conv-parent" })
-      store.updateChatEntry("parent", { outputBlocks: [toRecipient, toDeleted], visibleMessageCountSuffix: 0, outputChanges: batch([upsertChange(0, toRecipient), upsertChange(1, toDeleted)]) })
+      store.updateChatEntry("parent", { outputBlocks: [toRecipient, toDeleted, route], visibleMessageCountSuffix: 0, outputChanges: batch([upsertChange(0, toRecipient), upsertChange(1, toDeleted), upsertChange(2, route)]) })
       await projection.flush("parent")
       expect(deltas(s.patches, "parent").flatMap((delta) => delta.blocks).map((change) => change.kind === "upsert" ? change.block : undefined)).toEqual([
         { kind: "tool", id: "to-recipient", name: "message_session", presentation: { name: "Message to", detail: "Chat · Plan the release" }, action: "ui_meta", status: "completed", timestamp: 1 },
         { kind: "tool", id: "to-deleted", name: "message_session", presentation: { name: "Message to", detail: "Old helper" }, action: "ui_meta", status: "completed", timestamp: 2 },
+        { kind: "tool", id: "route", name: "route_request", presentation: { name: "Route to new chat", detail: "Plan the release" }, action: "ui_meta", status: "completed", timestamp: 3 },
       ])
       s.patches.length = 0
 
@@ -364,6 +367,7 @@ describe("output projection child cards", () => {
 
       expect(deltas(s.patches, "parent").flatMap((delta) => delta.blocks)).toEqual([
         { kind: "edit", index: 0, blockId: "tool:to-recipient", edits: [{ kind: "assign", path: ["presentation", "detail"], value: "Chat · Ship the release" }] },
+        { kind: "edit", index: 2, blockId: "tool:route", edits: [{ kind: "assign", path: ["presentation", "detail"], value: "Ship the release" }] },
       ])
     } finally {
       projection.dispose()

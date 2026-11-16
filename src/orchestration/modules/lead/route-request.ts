@@ -14,7 +14,7 @@ export interface RouteInput {
 }
 
 /** What one route did. `started` is `now` when this call started the chat, `earlier` when the same entries started
- *  it before, and absent for a route to a chat in the lead's list. `recorded` is false when
+ *  it before, and absent for a route to an earlier chat. `recorded` is false when
  *  the journal already held this forward, as after a repeated call. */
 export type RouteOutcome =
   | { readonly ok: false; readonly reason: string }
@@ -32,7 +32,7 @@ function parseInput(input: RuntimeToolInput): { readonly kind: "new" | "existing
   if (kind !== "new" && kind !== "existing") return 'route_request requires kind "new" or "existing".'
   if (typeof earlierTurns !== "number" || !Number.isInteger(earlierTurns) || earlierTurns < 0) return "route_request `earlier_turns` must be a whole number, 0 or more."
   const target = typeof chat === "string" ? chat.trim() : ""
-  if (kind === "existing" && !target) return 'route_request with kind "existing" requires `chat`, the id of a chat in your list.'
+  if (kind === "existing" && !target) return 'route_request with kind "existing" requires `chat`, the id of a chat.'
   if (kind === "new" && target) return 'route_request with kind "new" takes no `chat`.'
   const text = typeof note === "string" ? note.trim() : ""
   return { kind, ...(target ? { chat: target } : {}), ...(text ? { note: text } : {}), earlierTurns }
@@ -72,12 +72,12 @@ export function createRouteRequestTool(route: (input: RouteInput) => Promise<Rou
     action: "ui_meta",
     // The lead's transcript shows the route's heading and row, so a silent route answers the person.
     answersPerson: true,
-    description: "Give the person's request to a chat. The runtime sends the person's own messages of your newest turn to that chat unchanged, with their attachments, as messages from the person; you never write the request yourself. With kind \"new\", a new chat starts with them. With kind \"existing\", they go to a chat in your list, named by `chat`, when the request belongs to that chat's work. `earlier_turns` adds the person's messages of that many earlier turns, for a request that the person stated over several turns. `note` is your own optional message to the chat, which it shows as a message from you after the person's messages: use it only for what the person's words do not hold, never to restate them. Call it only when the person asked for work, never in reaction to a chat's event. The result names the chat.",
+    description: "Give the person's request to a chat. The runtime sends the person's own messages of your newest turn to that chat unchanged, with their attachments, as messages from the person; you never write the request yourself. With kind \"new\", a new chat starts with them. With kind \"existing\", they go to the chat named by `chat`, any chat of this project whose work the request continues, also one that find_chat found. `earlier_turns` adds the person's messages of that many earlier turns, for a request that the person stated over several turns. `note` is your own optional message to the chat, which it shows as a message from you after the person's messages: use it only for what the person's words do not hold, never to restate them. Call it only when the person asked for work, never in reaction to a chat's event. The result names the chat.",
     inputSchema: {
       type: "object",
       properties: {
-        kind: { type: "string", enum: ["new", "existing"], description: "\"new\" starts a new chat; \"existing\" gives the request to a chat in your list." },
-        chat: { type: "string", description: "Only with kind \"existing\": the id of a chat in your list." },
+        kind: { type: "string", enum: ["new", "existing"], description: "\"new\" starts a new chat; \"existing\" gives the request to an earlier chat." },
+        chat: { type: "string", description: "Only with kind \"existing\": the id of the chat." },
         note: { type: "string", description: "Optional: your own short message to the chat, sent after the person's messages. Never a restatement of the request." },
         earlier_turns: { type: "integer", minimum: 0, description: "How many earlier turns of the person to send too, oldest first. Default 0: the person's messages of your newest turn only." },
       },
@@ -102,7 +102,7 @@ export function createRouteRequestTool(route: (input: RouteInput) => Promise<Rou
           : "skipped"
         note = noteLine(sent)
       }
-      return { content: outcomeText(outcome, note), outcome: "ok", details: { targetName: outcome.title } }
+      return { content: outcomeText(outcome, note), outcome: "ok", details: { targetName: outcome.title, targetSessionId: outcome.sessionId } }
     },
   }
 }

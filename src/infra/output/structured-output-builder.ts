@@ -22,6 +22,7 @@ import { createTurnStartGate, keepTurnStart, withoutTurnStart } from "./turn-sta
 import { contentKey, definedProps, rebuildBlockIndexes } from "./structured-output-helpers.js";
 import { resetFailedFileChange } from "./file-change-settlement.js";
 import { resolveToolRowPresentation } from "../tools/tool-display-registry.js";
+import { anchorOf, nextResponsePhase, type ResponsePhase } from "./response-phase.js";
 import {
   type AgentBlockIdentity,
   type CompleteAgentMeta,
@@ -61,36 +62,6 @@ type QuestionAnswers = { [questionId in string]: string };
 /** The fields a call's input settles on its row as the input streams or
  *  completes. An absent field keeps the row's current value. */
 export type ToolInputFields = Partial<Pick<ToolEntry, "presentation" | "sentence" | "invocationBody" | "linkUri" | "diff" | "content" | "filetype" | "fileChangeKind" | "declaresMutation" | "targetSessionId" | "proposedDiff">>;
-
-/** The live phase of the current model response. `since` is when the work
- *  that the next new thinking block shows began: the start of the model call
- *  or of thinking. The first thinking block claims it (null), and every move
- *  to another phase ends it with the phase. */
-type ResponsePhase =
-  | { readonly kind: "waiting" | "thinking"; readonly since: number | null }
-  | { readonly kind: "generating" | "tool_executing" };
-
-/** What moves the response phase. `entered` is a phase the projector drives,
- *  `ended` closes the response, and `claimed` is a new block that takes the
- *  anchor, so the next new thinking block starts at its own time. */
-type ResponsePhaseEvent =
-  | { readonly kind: "entered"; readonly phase: StreamPhase; readonly at: number }
-  | { readonly kind: "ended" }
-  | { readonly kind: "claimed" };
-
-const anchorOf = (phase: ResponsePhase | null): number | null =>
-  phase !== null && "since" in phase ? phase.since : null;
-
-/** The one transition of the response phase. */
-function nextResponsePhase(current: ResponsePhase | null, event: ResponsePhaseEvent): ResponsePhase | null {
-  if (event.kind === "ended") return null;
-  if (event.kind === "claimed") return current !== null && "since" in current ? { kind: current.kind, since: null } : current;
-  switch (event.phase) {
-    case "waiting": return { kind: "waiting", since: event.at };
-    case "thinking": return { kind: "thinking", since: anchorOf(current) ?? event.at };
-    default: return { kind: event.phase };
-  }
-}
 
 export class StructuredOutputBuilder {
   // blocksCap is a test seam: eviction wiring is identical at any cap, and
@@ -491,9 +462,13 @@ export class StructuredOutputBuilder {
     const idx = queueAgentBlock(this.indexes(), id);
     if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
   }
+  /** The child row at its indexed position in its agent's card. */
+  agentChildTool(agentId: string, childIndex: number): ToolEntry | undefined {
+    const group = this.blocks[this.agentIndexById.get(agentId) ?? -1];
+    return group?.kind === "agentGroup" ? group.children[childIndex] : undefined;
+  }
   finalizeAgentChildTool(agentId: string, childIndex: number, fields: ToolInputFields, inputComplete = false): void {
-    const child = this.blocks[this.agentIndexById.get(agentId) ?? -1];
-    const currentStatus = child?.kind === "agentGroup" ? child.children[childIndex]?.status : undefined;
+    const currentStatus = this.agentChildTool(agentId, childIndex)?.status;
     if (currentStatus === "error") return;
     const status = inputComplete || fields.content !== undefined || fields.diff !== undefined ? "pending" : currentStatus ?? "pending";
     this.patchAgentChild(agentId, childIndex, { status, ...definedProps(fields) });

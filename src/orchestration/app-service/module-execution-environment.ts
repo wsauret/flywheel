@@ -34,6 +34,7 @@ async function sendRuntimeSessionMessage(delivery: SessionInputDeliveryDeps, { f
 export function moduleExecutionEnvironment(owners: {
   readonly authAdmission: ModuleExecutionEnvironment["authAdmission"]
   readonly recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
+  readonly findChats: ModuleExecutionEnvironment["findChats"]
   readonly sessionEvents: ModuleExecutionEnvironment["sessionEvents"]
   readonly sessionStore: SessionStore
   readonly supervisor: RuntimeSupervisor
@@ -43,6 +44,7 @@ export function moduleExecutionEnvironment(owners: {
   return {
     authAdmission: owners.authAdmission,
     recall: owners.recall,
+    findChats: owners.findChats,
     attachProjection: childSessionProjectionAttachment(owners.sessionStore),
     deliverNotification: attachedRunnerDelivery(owners.sessionStore),
     openChatRunner: async (sessionId): Promise<ChatRunner | undefined> => await supervisor.activateSession(sessionId) ? supervisor.ensureChatRunner(sessionId) : undefined,

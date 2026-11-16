@@ -239,7 +239,7 @@ export class OutputProjector {
   }
 
   private handleToolResult(event: Extract<OutputProjectionEvent, { type: "tool-result" }>): void {
-    this.tools.resolveToolResult(event.toolUseId, event.outcome, event.content, event.source ?? "render", event.details, event.executionOutputTail);
+    this.tools.resolveToolResult(event.toolUseId, event.outcome, event.content, event.source ?? "render", event.details, event.executionOutputTail, event.timestamp);
     // Exit condition: last in-flight top-level tool resolved. The model is now
     // processing tool results but hasn't emitted a delta yet; UI should
     // read "Idle", not stale "Executing". Only override when phase

@@ -13,6 +13,8 @@ import type {
   OutputRangeRequest,
   TranscriptSearchRequest,
   TranscriptSearchResult,
+  ChatSearchRequest,
+  ChatSearchResult,
   ProjectFilesRequest,
   ProjectFilesResult,
 } from "./transcript-protocol-types.js"
@@ -84,6 +86,7 @@ const ToolEntryBaseSchema = Schema.Struct({
   mutationEvidence: Schema.optionalKey(MutationEvidenceSchema),
   background: Schema.optionalKey(Schema.Boolean),
   endedAt: Schema.optionalKey(Schema.Number),
+  settledAt: Schema.optionalKey(Schema.Number),
   diffOmission: Schema.optionalKey(DiffOmissionSchema),
   invocationBodyOmittedBytes: Schema.optionalKey(Schema.Number),
   contentOmittedLines: Schema.optionalKey(Schema.Number),
@@ -239,6 +242,21 @@ export const TranscriptSearchResultSchema: Schema.Codec<TranscriptSearchResult> 
   total: Schema.Number,
   page: Schema.Number,
   pageSize: Schema.Number,
+})
+
+export const ChatSearchRequestSchema: Schema.Codec<ChatSearchRequest> = Schema.Struct({
+  query: Schema.String,
+  exclude: Schema.Array(Schema.String),
+})
+
+export const ChatSearchResultSchema: Schema.Codec<ChatSearchResult> = Schema.Struct({
+  chats: Schema.Array(Schema.Struct({
+    sessionId: Schema.String,
+    title: Schema.String,
+    lastActivityAt: Schema.optional(Schema.Number),
+    snippet: Schema.String,
+    excerpt: Schema.optional(Schema.Struct({ source: Schema.Literals(["checkpoint", "final"]), text: Schema.String })),
+  })),
 })
 
 export const ProjectFilesRequestSchema: Schema.Codec<ProjectFilesRequest> = Schema.Struct({ query: Schema.String, limit: PositiveInt })
