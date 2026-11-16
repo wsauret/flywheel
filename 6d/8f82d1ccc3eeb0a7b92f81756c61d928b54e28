@@ -1,0 +1,56 @@
+src/cli/event-search-format.ts
+  h_4b47e9e4a8b456 3,494-553
+src/cli/event-search.ts
+  h_4b47e9e4a8b456 7,206
+src/cli/fatal-exit.ts
+  h_4b47e9e4a8b456 15-25,28-36,43,55
+src/cli/serve-address.ts
+  h_4b47e9e4a8b456 1-53
+src/cli/serve-next-service.ts
+  h_4b47e9e4a8b456 6,14-20
+src/cli/serve-retirement.ts
+  h_4b47e9e4a8b456 1-199
+src/cli/serve.ts
+  h_4b47e9e4a8b456 8,16,27,39-41,43,106-110,247,553-556,562,573
+src/cli/service-error-log.ts
+  h_4b47e9e4a8b456 1-48
+src/cli/startup-directories.ts
+  h_4b47e9e4a8b456 1-79
+src/cli/startup.ts
+  h_4b47e9e4a8b456 1,4,21-22,125
+src/cli/subcommands.ts
+  h_4b47e9e4a8b456 217-221,229,235-238,240,276
+src/cli/update.ts
+  h_4b47e9e4a8b456 52,57
+tests/integration/local/_launchd-error-log-job.ts
+  h_4b47e9e4a8b456 15,21
+tests/unit/cli/event-search-reconstruct.test.ts
+  h_4b47e9e4a8b456 4-7,25,28-46,126,128,138,145-146,153,196-197
+tests/unit/cli/module-nouns.test.ts
+  h_4b47e9e4a8b456 1-7,10,12,15-16,18,22-26,28,45-59,95,97,107,109-110,118,120,126,139
+tests/unit/cli/serve-address.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/cli/serve-operations.test.ts
+  h_4b47e9e4a8b456 3,23
+tests/unit/cli/serve-residency.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/cli/serve-start-failure.test.ts
+  h_4b47e9e4a8b456 1,214-240,266,291,313,329-332
+tests/unit/cli/serve.test.ts
+  h_4b47e9e4a8b456 8-11,323,361
+tests/unit/cli/startup.test.ts
+  h_4b47e9e4a8b456 6-8,293-294,297-322,348,358-363
+tests/unit/cli/update.test.ts
+  h_4b47e9e4a8b456 4-6,8,11-12,77-94,96-97,103-104,107-108,114-115,123-124,132-133,139-140,143-144,150-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6d8f82d1ccc3eeb0a7b92f81756c61d928b54e28",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
