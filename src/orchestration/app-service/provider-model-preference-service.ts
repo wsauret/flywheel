@@ -48,8 +48,14 @@ export interface ProviderModelEligibilityState extends ProviderModelEligibilityI
 
 export type RuntimeProviderModelEligibilityState = Pick<ProviderModelEligibilityState, "profileId" | "revision" | "catalogs" | "picker" | "worker" | "enabledCandidates">
 
-export interface ProviderModelPreferenceServiceDeps {
+/** What the owner of a profile's eligibility snapshots needs: the names its
+ *  rows show, and where a committed snapshot publishes. */
+export interface ProviderModelEligibilitySnapshotDeps {
   readonly displayName: (providerId: string) => string
+  readonly publish?: (state: ProviderModelEligibilityState) => void
+}
+
+export interface ProviderModelPreferenceServiceDeps extends ProviderModelEligibilitySnapshotDeps {
   readonly allowTrainingRoutes: (profileId: string) => boolean
   readonly persist: (mutation: {
     readonly profileId: string
@@ -69,7 +75,7 @@ export interface ProviderModelPreferenceServiceDeps {
     readonly expectedPreferenceRevision: string
     readonly modelIds: readonly string[]
   }) => Promise<string>
-  readonly persistAutoEnableNewModels?: (mutation: {
+  readonly persistAutoEnableNewModels: (mutation: {
     readonly profileId: string
     readonly currentAccounts: readonly AccessProviderAccountIdentity[]
     readonly expectedAuthRevision: string
@@ -77,7 +83,7 @@ export interface ProviderModelPreferenceServiceDeps {
     readonly enabled: boolean
     readonly accountCatalogs: ReadonlyMap<string, { readonly account: AccessProviderAccountIdentity; readonly effectiveModelIds: readonly string[]; readonly catalogModelIds: readonly string[] }>
   }) => Promise<string>
-  readonly persistFreeRoutes?: (mutation: {
+  readonly persistFreeRoutes: (mutation: {
     readonly profileId: string
     readonly account: AccessProviderAccountIdentity
     readonly currentAccounts: readonly AccessProviderAccountIdentity[]
@@ -86,31 +92,35 @@ export interface ProviderModelPreferenceServiceDeps {
     readonly enabled: boolean
   }) => Promise<string>
   /** Called after the request is validated against the current snapshot. Queues the owned recheck of the exact account and returns without waiting for probes. Throws on stale inputs. */
-  readonly recheckAccount?: (request: {
+  readonly recheckAccount: (request: {
     readonly profileId: string
     readonly account: AccessProviderAccountIdentity
     readonly expectedAuthRevision: string
     readonly expectedPreferenceRevision: string
   }) => void
-  readonly publish?: (state: ProviderModelEligibilityState) => void
 }
 
-export interface ProfileBoundProviderModelPreferenceService extends ProviderModelPreferenceService {
-  /** Validates the queried revision and the audited account under the mutation tail, queues the owned recheck, and resolves with the unchanged current view. Saved preferences and prior verified routing stay as they are until a probe result publishes. Rejects a stale revision, an unknown or unaudited account, and an unwired service. */
-  recheck(mutation: RuntimeRecheckProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
+/** The profile-bound eligibility snapshots alone: a host that prepares and
+ *  publishes eligibility but serves no person's preference change, such as a
+ *  headless run, owns only these. */
+export interface ProviderModelEligibilitySnapshots {
   prepare(input: ProviderModelEligibilityInput): ProviderModelEligibilityState
   publish(state: ProviderModelEligibilityState): void
   state(profileId?: string): ProviderModelEligibilityState | undefined
   dispose(): Promise<void>
 }
 
-/** Owns immutable profile-bound eligibility snapshots. Preparation performs all catalog membership work before publication; queries perform no I/O. */
-export function createProviderModelPreferenceService(deps: ProviderModelPreferenceServiceDeps): ProfileBoundProviderModelPreferenceService {
+export interface ProfileBoundProviderModelPreferenceService extends ProviderModelPreferenceService, ProviderModelEligibilitySnapshots {
+  /** Validates the queried revision and the audited account under the mutation tail, queues the owned recheck, and resolves with the unchanged current view. Saved preferences and prior verified routing stay as they are until a probe result publishes. Rejects a stale revision and an unknown or unaudited account. */
+  recheck(mutation: RuntimeRecheckProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult>
+}
+
+/** Owns immutable profile-bound eligibility snapshots. Preparation performs all catalog membership work before publication. */
+export function createProviderModelEligibilitySnapshots(deps: ProviderModelEligibilitySnapshotDeps): ProviderModelEligibilitySnapshots {
   const runtime = createProfileRuntimeStateOwner<ProviderModelEligibilityState>({
     publish: (snapshot) => { deps.publish?.(snapshot.snapshot) },
   })
   const preparedSnapshots = new WeakMap<ProviderModelEligibilityState, ProfileRuntimeSnapshot<ProviderModelEligibilityState>>()
-  const mutations = createOrderedLane()
 
   const prepare = (input: ProviderModelEligibilityInput): ProviderModelEligibilityState => {
     const prepared = runtime.create(input.profileId, (revision) => {
@@ -141,14 +151,23 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
     return prepared.snapshot
   }
 
-  const commit = (state: ProviderModelEligibilityState): void => {
+  const publish = (state: ProviderModelEligibilityState): void => {
     const prepared = preparedSnapshots.get(state)
     if (!prepared) throw new Error("provider-model state was not prepared by this service")
     runtime.publish(prepared)
   }
 
+  return { prepare, publish, state: (profileId) => runtime.current(profileId)?.snapshot, dispose: () => runtime.dispose() }
+}
+
+/** Owns immutable profile-bound eligibility snapshots and every person's change of the preferences they derive from. Queries perform no I/O. */
+export function createProviderModelPreferenceService(deps: ProviderModelPreferenceServiceDeps): ProfileBoundProviderModelPreferenceService {
+  const snapshots = createProviderModelEligibilitySnapshots(deps)
+  const { prepare, publish: commit, state: current } = snapshots
+  const mutations = createOrderedLane()
+
   const query = async (profileId: string, target: ProviderModelTarget): Promise<ProviderModelView> => {
-    const state = requireState(runtime.current(profileId)?.snapshot)
+    const state = requireState(current(profileId))
     const view = state.membership.get(targetKey(target))
     if (view) return projectTrainingRouteAvailability(state, target, view, deps.allowTrainingRoutes(profileId))
     if (target.kind === "subscription") throw new Error("provider-model target is unavailable")
@@ -164,12 +183,12 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
 
   const set = (mutation: RuntimeSetProviderModelMutation): Promise<RuntimeSetProviderModelResult> => {
     try {
-      requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      requireCurrentMutation(current(mutation.queriedProfileId), mutation)
     } catch (error) {
       return Promise.reject(error)
     }
     return mutations.run(async () => {
-      const before = requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      const before = requireCurrentMutation(current(mutation.queriedProfileId), mutation)
       const account = before.targetAccounts.get(targetKey(mutation.target))
       if (!account) throw new Error("provider-model target is unavailable")
       if (!accountPreferenceAvailable(before, account)) throw new Error("provider-model target is unavailable")
@@ -178,7 +197,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       const preference = preferenceState(models, mutation.modelId, mutation.checked, before.autoEnableNewModels)
       const preferenceRevision = await deps.persist({ profileId: before.profileId, account, currentAccounts: [...before.targetAccounts.values()], expectedAuthRevision: before.authRevision, expectedPreferenceRevision: before.preferenceRevision, modelId: mutation.modelId, checked: mutation.checked, state: preference })
 
-      const live = requireState(runtime.current(mutation.queriedProfileId)?.snapshot)
+      const live = requireState(current(mutation.queriedProfileId))
       const accountCatalogs = withAccountPreference(live.accountCatalogs, account, mutation.modelId, preference, live.autoEnableNewModels)
       const inventoryCandidates = withCandidatePreference(live.inventoryCandidates, account, accountCatalogs.get(accessProviderAccountKey(account)))
       const catalogs = deriveProviderCatalogs(inventoryCandidates)
@@ -197,12 +216,12 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
 
   const deselectAll = (mutation: RuntimeDeselectAllProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult> => {
     try {
-      requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      requireCurrentMutation(current(mutation.queriedProfileId), mutation)
     } catch (error) {
       return Promise.reject(error)
     }
     return mutations.run(async () => {
-      const before = requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      const before = requireCurrentMutation(current(mutation.queriedProfileId), mutation)
       const account = before.targetAccounts.get(targetKey(mutation.target))
       if (!account) throw new Error("provider-model target is unavailable")
       if (!accountPreferenceAvailable(before, account)) throw new Error("provider-model target is unavailable")
@@ -211,7 +230,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       if (!models) throw new Error("provider account catalog is unavailable")
       const modelIds = [...models.catalog]
       const preferenceRevision = await deps.persistAllDeselected({ profileId: before.profileId, account, currentAccounts: [...before.targetAccounts.values()], expectedAuthRevision: before.authRevision, expectedPreferenceRevision: before.preferenceRevision, modelIds })
-      const live = requireState(runtime.current(mutation.queriedProfileId)?.snapshot)
+      const live = requireState(current(mutation.queriedProfileId))
       const accountCatalogs = new Map(live.accountCatalogs)
       const currentModels = accountCatalogs.get(key)
       if (currentModels !== undefined) {
@@ -232,17 +251,16 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
 
   const setFreeRoutes = (mutation: RuntimeSetProviderFreeRoutesMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult> => {
     try {
-      requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      requireCurrentMutation(current(mutation.queriedProfileId), mutation)
     } catch (error) {
       return Promise.reject(error)
     }
     return mutations.run(async () => {
-      const before = requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      const before = requireCurrentMutation(current(mutation.queriedProfileId), mutation)
       const account = before.targetAccounts.get(targetKey(mutation.target))
       if (!account || !freeRoutePreferenceAvailable(before, account)) {
         throw new Error("free-route target is unavailable")
       }
-      if (deps.persistFreeRoutes === undefined) throw new Error("free-route persistence is unavailable")
       const preferenceRevision = await deps.persistFreeRoutes({
         profileId: before.profileId,
         account,
@@ -251,7 +269,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
         expectedPreferenceRevision: before.preferenceRevision,
         enabled: mutation.enabled,
       })
-      const live = requireState(runtime.current(mutation.queriedProfileId)?.snapshot)
+      const live = requireState(current(mutation.queriedProfileId))
       const inventoryCandidates = withFreeRoutePreference(live.inventoryCandidates, account, mutation.enabled, live.accountCatalogs.get(accessProviderAccountKey(account)))
       const catalogs = deriveProviderCatalogs(inventoryCandidates)
       const next = prepare({ profileId: live.profileId, autoEnableNewModels: live.autoEnableNewModels, authRevision: live.authRevision, preferenceRevision, catalogs, accountCatalogs: live.accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
@@ -264,13 +282,12 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
 
   const setAutoEnableNewModels = (mutation: RuntimeSetProviderAutoEnableNewModelsMutation): Promise<RuntimeSetProviderAutoEnableNewModelsResult> => {
     try {
-      requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      requireCurrentMutation(current(mutation.queriedProfileId), mutation)
     } catch (error) {
       return Promise.reject(error)
     }
     return mutations.run(async () => {
-      const before = requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
-      if (deps.persistAutoEnableNewModels === undefined) throw new Error("automatic model enablement persistence is unavailable")
+      const before = requireCurrentMutation(current(mutation.queriedProfileId), mutation)
       const accountSnapshots = new Map([...before.targetAccounts.values()].flatMap((account) => {
         const key = accessProviderAccountKey(account)
         const models = before.accountCatalogs.get(key)
@@ -284,7 +301,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
         enabled: mutation.enabled,
         accountCatalogs: accountSnapshots,
       })
-      const live = requireState(runtime.current(mutation.queriedProfileId)?.snapshot)
+      const live = requireState(current(mutation.queriedProfileId))
       const accountCatalogs = withAutoEnableNewModels(live.accountCatalogs, live.targetAccounts.values(), mutation.enabled)
       let inventoryCandidates = live.inventoryCandidates
       for (const account of live.targetAccounts.values()) inventoryCandidates = withCandidatePreference(inventoryCandidates, account, accountCatalogs.get(accessProviderAccountKey(account)))
@@ -297,23 +314,22 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
 
   const recheck = (mutation: RuntimeRecheckProviderModelsMutation): Promise<ProviderModelView | RuntimeProviderModelHiddenResult> => {
     try {
-      requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      requireCurrentMutation(current(mutation.queriedProfileId), mutation)
     } catch (error) {
       return Promise.reject(error)
     }
     return mutations.run(() => {
-      const before = requireCurrentMutation(runtime.current(mutation.queriedProfileId)?.snapshot, mutation)
+      const before = requireCurrentMutation(current(mutation.queriedProfileId), mutation)
       const account = before.targetAccounts.get(targetKey(mutation.target))
       const candidate = account === undefined ? undefined : before.inventoryCandidates.get(accessProviderAccountKey(account))
       if (account === undefined || candidate?.audit === undefined) throw new Error("provider-model recheck target is unavailable")
-      if (deps.recheckAccount === undefined) throw new Error("provider-model recheck is unavailable")
       deps.recheckAccount({ profileId: before.profileId, account, expectedAuthRevision: before.authRevision, expectedPreferenceRevision: before.preferenceRevision })
       const view = before.membership.get(targetKey(mutation.target))
       return view === undefined ? hiddenMutationResult(before, mutation.target) : projectTrainingRouteAvailability(before, mutation.target, view, deps.allowTrainingRoutes(before.profileId))
     })
   }
 
-  return { prepare, publish: commit, query, set, deselectAll, setAutoEnableNewModels, setFreeRoutes, recheck, state: (profileId) => runtime.current(profileId)?.snapshot, dispose: () => runtime.dispose() }
+  return { ...snapshots, query, set, deselectAll, setAutoEnableNewModels, setFreeRoutes, recheck }
 }
 
 function requireState(state: ProviderModelEligibilityState | undefined): ProviderModelEligibilityState {

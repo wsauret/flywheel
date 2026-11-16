@@ -78,7 +78,7 @@ describe("FlywheelAppService shutdown", () => {
     expect(events).toEqual([])
   })
 
-  test("a durable flush that ends unsafely blocks the client-stream teardown", async () => {
+  test("a runner stop that ends unsafely blocks the client-stream teardown", async () => {
     const store = fakeSessionStore(new Map([["chat-1", chatEntry()]]))
     const manager = managerWithSessions([durableRow("chat-1")])
     const projections = fakeProjections()
@@ -89,14 +89,13 @@ describe("FlywheelAppService shutdown", () => {
       projection: { ...projection, dispose: () => { projectionDisposals += 1 } },
       bus: createRuntimeUiBus(),
       ...projections,
-      historyProjection: { ...projections.historyProjection, dispose: async () => { throw new Error("durable flush boom") } },
-      runtimeSupervisor: runtimeSupervisor(),
+      runtimeSupervisor: runtimeSupervisor({ disposeAll: async () => { throw new Error("runner stop boom") } }),
     })
 
     const result = await runRuntimeShutdownBarrier(service.shutdown)
 
-    expect(result).toMatchObject({ kind: "blocked", phase: "flush-durable-state" })
-    // Unwritten durable state is not a state to tear the client streams down over:
+    expect(result).toMatchObject({ kind: "blocked", phase: "stop-runners" })
+    // A runner that may still write is not a state to tear the client streams down over:
     // every later phase, up to the state release, is left unasked.
     expect(projectionDisposals).toBe(0)
   })

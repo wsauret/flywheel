@@ -76,7 +76,7 @@ describe("subagent completion delivery", () => {
         const tree = await tryOpenConversationTree({ conversationId: "parent-conversation", sessionId: parentSessionId, store: counter.reader, writer })
         if (!tree) throw new Error("missing parent conversation")
         for (let index = 0; index < siblings * 2; index++) await tree.appendMessage({ kind: "user", content: `retained ${index}` })
-        const input = { parentSessionId, reader: counter.reader, writer, projectRoot }
+        const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer, projectRoot }
         await reconcileChildSessionCompletions(input)
         const validated = await readChildCompletionConversation({ input }, parentSessionId, "parent-conversation")
         counter.take()
@@ -129,7 +129,7 @@ describe("subagent completion delivery", () => {
       } finally {
         db.close()
       }
-      const input = { parentSessionId, reader: asAsyncEventReadSurface(store), writer, projectRoot }
+      const input = { parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, projectRoot }
       expect((await reconcileChildSessionCompletions(input)).reconciledCount).toBe(1)
       const results = loadToolExecutionTimelineFromEvents(store.read({ aggregateId: `session:${parentSessionId}`, types: ["tool.input.completed", "tool.result.recorded"] }))
       expect(results.filter((tool) => tool.resultEventId !== undefined).map((tool) => tool.toolUseId)).toEqual(["tool-1"])
@@ -257,7 +257,7 @@ describe("subagent completion delivery", () => {
     // the durable notification, and hands it to the live registry.
     await reconcileChildSessionCompletions({
       parentSessionId,
-      reader: asAsyncEventReadSurface(store),
+      reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store),
       writer,
       // An attached-chat lookup cannot find a nested parent's runner. Its
       // live session input is still the delivery owner.
@@ -265,7 +265,7 @@ describe("subagent completion delivery", () => {
     })
     await liveDelivery.settle()
     expect(registry.assertHandoffReady()).not.toBeNull()
-    await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), writer, deliverNotification: async () => false })
+    await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, deliverNotification: async () => false })
     await liveDelivery.settle()
     await treeWriter.commitSystemTurn("Resume")
     expect((await treeWriter.buildContext()).messages.filter((message) =>
@@ -289,12 +289,12 @@ describe("subagent completion delivery", () => {
 
     // The durable path: a later drain of held notifications and a later
     // reconciliation see the same completion again.
-    const delivery = createBackgroundNotificationDelivery({ sessionId: parentSessionId, projectRoot, eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter: writer, admitsDelivery: () => true, sweepAfterCommit: () => {} })
+    const delivery = createBackgroundNotificationDelivery({ sessionId: parentSessionId, projectRoot, projectionReader: asAsyncEventReadSurface(store), eventWriter: writer, admitsDelivery: () => true, sweepAfterCommit: () => {} })
     const entry = chatEntry({ conversationId, runner: null })
     await delivery.drainHeld(entry)
     await reconcileChildSessionCompletions({
       parentSessionId,
-      reader: asAsyncEventReadSurface(store),
+      reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store),
       writer,
       deliverNotification: (notification) => delivery.deliver(entry, notification),
     })

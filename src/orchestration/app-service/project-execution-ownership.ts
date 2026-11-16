@@ -13,7 +13,6 @@ export function completeProjectExecutionOwnership(scope: RuntimeOwnership, input
   // admission, which settles inside the runtime-supervisor step, so it stops first.
   scope.sequence("session-runtime", "stop-runners", ["role-projection", "workflow-held-messages", "child-result-notices", "runtime-supervisor", "workflow-hosts", "session-store", "capacity-waits", "auth-session-admission"])
   scope.sequence("durable-state", "flush-durable-state", [
-    "history-projection",
     "transcript-cache",
     "subscription-spend-consent-notification-materializer",
     "auth-attention-publisher",

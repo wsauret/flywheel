@@ -90,6 +90,7 @@ describe("subscription spend consent protocol", () => {
     const bus = createRuntimeUiBus();
     let mutationCalls = 0;
     const deps = {
+      ...projections,
       projection: createFrontendProjection({ sessionStore, manager, projectRoot: "/scratch" }),
       projectRoot: "/scratch",
       runtimeSupervisor: runtimeSupervisor(),
@@ -100,7 +101,6 @@ describe("subscription spend consent protocol", () => {
           return { kind: "committed", consent };
         },
       },
-      ...projections,
     } satisfies Parameters<typeof createFlywheelAppService>[0];
     const service = createFlywheelAppService(deps);
     bus.publish({ cursor: { scope: "workspace", domain: "auth" }, payload: { kind: "auth.changed", auth: { providers: [], warnings: [], profile: { id: "work", displayName: "Work", source: "default", availableProfiles: [] }, subscriptionSpendConsent: consent } } });

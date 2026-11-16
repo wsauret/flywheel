@@ -9,6 +9,8 @@ import { createProviderModelPreferenceService, type ProviderModelEligibilityStat
 import type { ResolvedProviderModelCatalogs } from "../../../../src/orchestration/config/model-assignment-providers.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { testDirectories } from "../../../helpers/directories.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
+import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
 
 const DIRECTORIES = testDirectories(process.cwd())
 const PROFILE = { id: "work", directory: authDir(DIRECTORIES.userDataRoot, "work") }
@@ -32,7 +34,7 @@ interface AuditedOptions {
 /** One account whose listing leaves two models for the audit; each probe waits for its resolver. `modes` records
  *  each catalog resolution's discovery mode as it starts. */
 const audited = (options: AuditedOptions = {}) => {
-  const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+  const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
   const probes = grokIds.map(() => Promise.withResolvers<void>())
   const modes: string[] = []
   let listed = false
@@ -41,7 +43,7 @@ const audited = (options: AuditedOptions = {}) => {
     userDataRoot: DIRECTORIES.userDataRoot,
     allowTrainingRoutes: () => false,
     resolveKey: async () => undefined,
-    moduleSelection: () => composeFirstPartyModules([]),
+    moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
     prepare: service.prepare,
     publish: service.publish,
     current: service.state,
@@ -88,7 +90,7 @@ describe("eligibility preparation settlement", () => {
     const captured = composeFirstPartyModules(undefined, []);
     const live = composeFirstPartyModules();
     const seen: boolean[] = [];
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: () => false,
       persist: async () => "next",
@@ -98,7 +100,7 @@ describe("eligibility preparation settlement", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => live,
+      moduleSelection: () => live, observeAuth: diskAuthObservation(() => live),
       prepare: service.prepare,
       publish: service.publish,
       current: service.state,
@@ -119,7 +121,7 @@ describe("eligibility preparation settlement", () => {
 
   test.each(["cached-first", "saved-only"] as const)("publishes the discovery that resolves a pending account after a %s read", async (mode) => {
     const publications: ProviderModelEligibilityState[] = []
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: () => false,
       persist: async () => "next",
@@ -132,7 +134,7 @@ describe("eligibility preparation settlement", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: service.publish,
       current: service.state,
@@ -197,7 +199,7 @@ describe("eligibility preparation settlement", () => {
   })
 
   test("an account that stays pending discovers again only after the cooldown, though each discovery reaches the sessions", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const modes: string[] = []
     let clock = 0
     let applied = 0
@@ -205,7 +207,7 @@ describe("eligibility preparation settlement", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: service.publish,
       current: service.state,
@@ -250,7 +252,7 @@ describe("eligibility preparation settlement", () => {
     const contributor = ending.startsWith("a contributor")
     const otherAccount = ending === "another account serves" || contributor
     const allowTrainingRoutes = () => ending === "a contributor account is permitted"
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes, persist: async () => "next", persistAllDeselected: async () => "next" })
     const offering: CatalogModelOffering = { ...OFFERING, dataUse: contributor ? "contributor" : "standard" }
     const anthropicOfferings = new Map([["claude-fable-5.1", [offering] as const]])
     const probes = grokIds.map(() => Promise.withResolvers<void>())
@@ -261,7 +263,7 @@ describe("eligibility preparation settlement", () => {
       userDataRoot: DIRECTORIES.userDataRoot,
       allowTrainingRoutes,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: service.publish,
       current: service.state,
@@ -425,7 +427,7 @@ describe("eligibility preparation settlement", () => {
 
   test("publishes a failed discovery and preserves the waiter error", async () => {
     const publications: ProviderModelEligibilityState[] = []
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: () => false,
       persist: async () => "next",
@@ -437,7 +439,7 @@ describe("eligibility preparation settlement", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: service.publish,
       current: service.state,
@@ -477,7 +479,7 @@ describe("eligibility preparation settlement", () => {
     const availableOfferings = new Map([["gpt-5", [availableOffering] as const]])
     const availableModels: ResolvedProviderModels = { catalog: new Set(["gpt-5"]), curatedDefault: new Set(["gpt-5"]), enabled: new Set(), disabled: new Set(), effective: new Set(["gpt-5"]) }
     let preferenceRevision = "preferences-v1"
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: () => false,
       persist: async () => {
@@ -491,7 +493,7 @@ describe("eligibility preparation settlement", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: service.publish,
       current: service.state,

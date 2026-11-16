@@ -18,8 +18,8 @@ const log = Log.create({ service: "session-reactivation" })
 // scroll pages; older history is served by derived history queries.
 const REACTIVATION_SEED_BLOCKS = 64
 
-type ReactivationDeps = Pick<SessionRuntimeActorContext, "sessionStore" | "manager" | "eventStore" | "projectionReader" | "eventWriter" | "sessionViewLoader" | "directories" | "transcriptCache" | "reconcileChildSessionCompletions">
-type DisplaySeedDeps = Pick<SessionRuntimeActorContext, "eventStore"> & {
+type ReactivationDeps = Pick<SessionRuntimeActorContext, "sessionStore" | "manager" | "projectionReader" | "eventWriter" | "sessionViewLoader" | "directories" | "transcriptCache" | "reconcileChildSessionCompletions">
+type DisplaySeedDeps = Pick<SessionRuntimeActorContext, "projectionReader"> & {
   readonly transcriptCache: Pick<SessionRuntimeActorContext["transcriptCache"], "read">
 }
 type OpenDisplayDeps = DisplaySeedDeps & Pick<SessionRuntimeActorContext, "sessionStore" | "manager" | "directories">
@@ -41,16 +41,15 @@ export async function activateDurableChat(deps: ReactivationDeps, sessionId: str
   // this one projection, so a reopen folds the chat's tool history once even
   // when other sessions churn the registry's tool-execution family between them.
   const parentTools = createToolExecutionProjection(deps.projectionReader, sessionId)
-  const childWorkflows = await deps.reconcileChildSessionCompletions?.(sessionId, { parentTools })
-    ?? { reconciledCount: 0, workflowAggregateReads: 0 }
+  const childWorkflows = await deps.reconcileChildSessionCompletions(sessionId, { parentTools })
   const reconciliationDurationMs = durationMs(start)
-  const view = await deps.sessionViewLoader?.load(sessionId)
+  const view = await deps.sessionViewLoader.load(sessionId)
   if (!view || view.kind !== "chat") return { status: "unavailable" }
   const executionCwd = recordedExecutionCwd(await deps.manager.read(sessionId), deps.directories.projectRoot)
   const treeOptions = {
     conversationId: view.conversationId,
     sessionId: view.id,
-    store: deps.eventStore,
+    store: deps.projectionReader,
     writer: deps.eventWriter,
     projectRoot: deps.directories.projectRoot,
   }
@@ -61,7 +60,7 @@ export async function activateDurableChat(deps: ReactivationDeps, sessionId: str
   ])
   await recoverSessionHistory({
     sessionId,
-    reader: deps.eventStore,
+    reader: deps.projectionReader,
     projectionReader: deps.projectionReader,
     writer: deps.eventWriter,
     projectRoot: deps.directories.projectRoot,

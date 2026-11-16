@@ -32,14 +32,14 @@ export interface OutputProjection {
 }
 
 export interface OutputProjectionDeps {
-  readonly projectBlock?: (sessionId: string, block: AnyBlock) => Promise<AnyBlock>
-  readonly onStored?: (listener: (events: readonly StoredFact[]) => void) => () => void
+  readonly projectBlock: (sessionId: string, block: AnyBlock) => Promise<AnyBlock>
+  readonly onStored: (listener: (events: readonly StoredFact[]) => void) => () => void
   /** Each retirement of a session's continuation row
    *  (`onPlannedContinuationRetired`), which commits no fact: a card that
    *  read its child as owed reads it again. */
-  readonly onContinuationRetired?: (listener: (sessionId: string) => void) => () => void
+  readonly onContinuationRetired: (listener: (sessionId: string) => void) => () => void
   readonly sessionStore: SessionStore
-  readonly keptOutput?: Pick<CommandKeeper, "liveOutput">
+  readonly keptOutput: Pick<CommandKeeper, "liveOutput">
   /** The one publisher of the output cursor and owner of what the session's
    *  clients hold, shared with every other output publisher. */
   readonly shipped: Pick<ShippedOutput, "ship" | "rebase" | "forget" | "watches" | "watch">
@@ -201,7 +201,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
       // The keeper's tails pair with the keeper's own drains, so they are read
       // as this ships: a tail it settled during the awaits above stays gone.
       // The session's own entries win.
-      streamingToolText: { ...deps.keptOutput?.liveOutput(sessionId), ...drained.ownStreamingToolText },
+      streamingToolText: { ...deps.keptOutput.liveOutput(sessionId), ...drained.ownStreamingToolText },
       streamingOutputChars: drained.streamingOutputChars,
       changedTools: drained.changedTools,
     })
@@ -220,7 +220,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
     // Key by the actual copy, since an insert and a later upsert can share an id.
     const projectedBlocks = new Map<AnyBlock, AnyBlock>()
     for (const block of drained.blocks) {
-      projectedBlocks.set(block, await deps.projectBlock?.(sessionId, block) ?? block)
+      projectedBlocks.set(block, await deps.projectBlock(sessionId, block))
     }
     if (disposed) return
     probeLoopUnit("output-projection", "ship", () => shipSession(sessionId, drained, projectedBlocks))
@@ -353,13 +353,13 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
 
   sync()
   const unsubscribe = deps.sessionStore.onChange(sync, "output-protocol")
-  const unsubscribeStored = deps.onStored?.((events) => {
+  const unsubscribeStored = deps.onStored((events) => {
     const sessionIds = new Set(events.map((event) => event.sessionId))
     const renamed = new Set(events.flatMap((event) => event.type === SESSION_TITLE_FACT_TYPE ? [event.sessionId] : []))
     const relinked = new Set(events.flatMap((event) => event.type === CHILD_LINKED_FACT_TYPE ? [event.sessionId] : []))
     refreshParents([...sessionIds].flatMap((id) => [id, storedWorkflowCard(id)]), renamed, relinked)
   })
-  const unsubscribeRetired = deps.onContinuationRetired?.((sessionId) => { refreshParents([sessionId]) })
+  const unsubscribeRetired = deps.onContinuationRetired((sessionId) => { refreshParents([sessionId]) })
   return {
     flush,
     watch(sessionIds) {
@@ -378,8 +378,8 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
     dispose() {
       disposed = true
       unsubscribe()
-      unsubscribeStored?.()
-      unsubscribeRetired?.()
+      unsubscribeStored()
+      unsubscribeRetired()
       parentsByChild.clear()
       rowsByNamedSession.clear()
       unlinkedByParent.clear()

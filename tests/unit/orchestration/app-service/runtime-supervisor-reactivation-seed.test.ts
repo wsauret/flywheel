@@ -214,9 +214,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
       },
     }
     const supervisor = createRuntimeSupervisor({
-      ...supervisorBaseDeps(ctx),
-      store: asAsyncEventReadSurface(reader),
-      projectionReader: asAsyncEventReadSurface(reader),
+      ...supervisorBaseDeps(ctx, ctx.sessionStore, { reader: asAsyncEventReadSurface(reader) }),
       sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader)) },
     })
 
@@ -245,6 +243,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     const projectionReader = asAsyncEventReadSurface(reader)
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, ctx.sessionStore, {
+        reader: projectionReader,
         reconcileChildSessionCompletions: async (parentSessionId, options) => {
           const swept = await reconcileChildSessionCompletions({ parentSessionId, reader: projectionReader, projectionReader, writer: asAsyncEventWriter(ctx.store), ...options })
           // Other sessions open their tool stores while this chat activates.
@@ -252,8 +251,6 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
           return swept
         },
       }),
-      store: projectionReader,
-      projectionReader,
       sessionViewLoader: { load: (id) => loadSessionView(id, projectionReader, projectionReader) },
     })
 
@@ -267,11 +264,10 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     const counter = countStateRequests({ ...asAsyncEventReadSurface(ctx.store), settleBefore: async () => {} })
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, ctx.sessionStore, {
+        reader: counter.reader,
         reconcileChildSessionCompletions: (parentSessionId, options) =>
           reconcileChildSessionCompletions({ parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer: asAsyncEventWriter(ctx.store), ...options }),
       }),
-      store: counter.reader,
-      projectionReader: counter.reader,
       sessionViewLoader: { load: (id) => loadSessionView(id, counter.reader, counter.reader) },
     })
     const reactivation = async (children: number, firstChild: number) => {

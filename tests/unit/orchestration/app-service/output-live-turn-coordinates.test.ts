@@ -4,7 +4,6 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
 import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { tailRequest } from "./_output-projection-fixtures.js"
@@ -16,6 +15,7 @@ import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runt
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js"
 import { RequestToolMap } from "../../../helpers/request-tool-surface.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 describe("live/derived output equivalence", () => {
   it("numbers a streamed turn with thinking, a progress update, and tools the same live and durable", async () => {
@@ -79,7 +79,7 @@ describe("live/derived output equivalence", () => {
       if (appended.kind !== "committed") throw new Error("expected durable coordinate messages")
       tree.getStorage().dispose()
 
-      const projection = createSessionDetailProjection({
+      const projection = testSessionDetailProjection({
         projectRoot: tmpDir,
         sessionStore: { get: () => undefined },
         manager: { read: async () => ({ label: "Coordinates", lastUpdated: "2026-01-01T00:00:00.000Z", lifecycleState: "inactive" as const, name: "Coordinates", kind: "chat" as const, command: "chat" as const, conversationId, executionCwd: realpathSync(tmpDir) }) },
@@ -200,7 +200,7 @@ describe("live/derived output equivalence", () => {
       if (appended.kind !== "committed") throw new Error("expected durable reasoning messages")
       tree.getStorage().dispose()
 
-      const projection = createSessionDetailProjection({
+      const projection = testSessionDetailProjection({
         projectRoot: tmpDir,
         sessionStore: { get: () => undefined },
         manager: { read: async () => ({ label: "Reasoning", lastUpdated: "2026-01-01T00:00:00.000Z", lifecycleState: "inactive" as const, name: "Reasoning", kind: "chat" as const, command: "chat" as const, conversationId, executionCwd: realpathSync(tmpDir) }) },

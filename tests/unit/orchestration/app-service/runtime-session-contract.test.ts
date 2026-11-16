@@ -13,7 +13,6 @@ import { temporaryDirectories } from "../../../helpers/directories.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
@@ -21,6 +20,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 describe("runtime session protocol contract", () => {
   const tmp = temporaryDirectories()
@@ -37,7 +37,7 @@ describe("runtime session protocol contract", () => {
     if (child?.kind !== "workflow-agent") throw new Error("Missing workflow member")
     f.metadata.set("parent", durableRow("parent", { conversationId: "conversation", childSessionIds: [childId] }))
     f.metadata.set(childId, { ...durableRow(childId), ...child, kind: "workflow-agent", conversationId: child.conversationId, workflowMembership: child.workflowMembership })
-    const history = createSessionDetailProjection({
+    const history = testSessionDetailProjection({
       projectRoot, manager: f.options.state.sessions,
       sessionStore: { get: () => undefined }, reader, projectionReader: reader,
     })

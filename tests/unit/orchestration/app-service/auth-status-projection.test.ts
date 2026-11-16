@@ -10,7 +10,8 @@ import { disconnectProviderInstance, loginWithApiKey, logoutProvider, renameProv
 import { plainApiKey } from "../../../helpers/auth-context.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js"
-import { customProviderRejections, installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js"
+import { customProviderRejections } from "../../../../src/infra/llm/custom-provider-registry.js"
+import { installCustomProviders } from "../../../helpers/custom-providers.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 import { processLoginObservations } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js"
 import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../src/infra/notification-episode.js"
@@ -24,6 +25,7 @@ import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.
 import { openExistingContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { capturedIntervals, HOLDS_DIRECTORY_VALUES } from "../../../helpers/held-directory-values.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 
 const completeModuleSelection = () => composeFirstPartyModules()
 const emptyConsent = (profileId: string) => ({ kind: "available", profileId, authorityIncarnation: "test-authority", authorityRevision: 0, usageGeneration: 0, accounts: [] }) as const
@@ -293,7 +295,7 @@ describe("auth status projection", () => {
     const credential = { type: "oauth" as const, access: "at", refresh: "rt", expires: Date.now() + 60_000 }
     await appendCredentialInstanceWithReceipt("chatgpt", { id: "11111111-0000-4000-8000-00000000000a", identity: "paid@example.com", credential }, directory, installedCredentialSlotClassifier())
     await appendCredentialInstanceWithReceipt("chatgpt", { id: "11111111-0000-4000-8000-00000000000b", identity: "free@example.com", credential }, directory, installedCredentialSlotClassifier())
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const candidate = (instanceId: string) => ({ kind: "subscription", providerId: "chatgpt", instanceId, spendMode: "included" }) as const
     const entry = (instanceId: string, idle: boolean): [string, ProviderModelInventoryCandidate] => [accessProviderAccountKey(candidate(instanceId)), {
       candidate: candidate(instanceId), configured: true, currentConnection: true, enabledOfferings: new Map(), inventoryOfferings: new Map(),

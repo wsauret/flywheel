@@ -6,6 +6,7 @@ import { createProviderModelPreferenceService } from "../../../../src/orchestrat
 import type { ResolvedProviderModels } from "../../../../src/infra/llm/provider-model-preferences.js"
 import type { ProviderModelInventoryCandidate, ProviderModelPreferenceServiceDeps } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
 import { subscriptionSpendAccountCorrelationId } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 
 function catalog(effective = new Set(["gpt-5"])): ReadonlyMap<string, ResolvedProviderModels> {
   return new Map([["openai_api", {
@@ -44,7 +45,7 @@ function input(profileId: string, catalogs: ReadonlyMap<string, ResolvedProvider
 describe("provider-model preference service", () => {
   test("edits and persists fallback preferences for an auth-rejected exact account without making it eligible", async () => {
     const persisted: string[] = []
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: () => false,
       persist: async ({ modelId, checked }) => { persisted.push(`${modelId}:${checked}`); return "next" },
@@ -96,7 +97,7 @@ describe("provider-model preference service", () => {
     const writeStarted = Promise.withResolvers<void>()
     const writes: string[] = []
     const publications: string[] = []
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (providerId) => providerId === "openai_api" ? "OpenAI" : providerId,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: async ({ profileId, account, expectedAuthRevision, expectedPreferenceRevision, modelId, checked }) => {
@@ -139,7 +140,7 @@ describe("provider-model preference service", () => {
     const paid = { wireModelId: "vendor/model", metadata: null, dataUse: "standard" as const }
     const free = { wireModelId: "vendor/model:free", metadata: null, dataUse: "standard" as const, routeKind: "free" as const }
     const writes: boolean[] = []
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: persistRevision,
@@ -172,7 +173,7 @@ describe("provider-model preference service", () => {
 
   test("changes the exact account new-model policy without changing current checks", async () => {
     const writes: Array<{ enabled: boolean; effective: readonly string[]; catalog: readonly string[] }> = []
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: persistRevision,
@@ -205,7 +206,7 @@ describe("provider-model preference service", () => {
   test("reports success after a concurrent eligibility publication follows durable persistence", async () => {
     const writeStarted = Promise.withResolvers<void>()
     const releaseWrite = Promise.withResolvers<void>()
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: async () => {
@@ -228,7 +229,7 @@ describe("provider-model preference service", () => {
   test("reports a committed mutation as hidden when a concurrent refresh removes its account", async () => {
     const writeStarted = Promise.withResolvers<void>()
     const releaseWrite = Promise.withResolvers<void>()
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: async () => {
@@ -250,7 +251,7 @@ describe("provider-model preference service", () => {
 
   test("rejects stale identity and revision before persistence", async () => {
     let writes = 0
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: async () => { writes += 1; return "preference-revision-next" },
@@ -265,7 +266,7 @@ describe("provider-model preference service", () => {
   })
 
   test("precomputes membership and refuses publication from an older preparation", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
     const old = service.prepare(input("work", catalog()))
     const current = service.prepare(input("work", catalog(new Set(["gpt-5-mini"]))))
     service.publish(current)
@@ -276,7 +277,7 @@ describe("provider-model preference service", () => {
   })
 
   test("removes the live delta when a model returns to its curated default", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
     service.publish(service.prepare(input("work", catalog())))
 
     await service.set({ queriedProfileId: "work", queriedEligibilityRevision: 1, target: { kind: "singleton", providerId: "openai_api" }, modelId: "gpt-5", checked: false })
@@ -288,7 +289,7 @@ describe("provider-model preference service", () => {
   })
 
   test("recomputes picker eligibility after enabling a catalog model", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
     const candidate = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
     const catalogs = catalog()
     const candidateCatalogs = new Map([[accessProviderAccountKey(candidate), {
@@ -332,7 +333,7 @@ describe("provider-model preference service", () => {
       inventoryOfferings: new Map([["gpt-5", standardOffering("gpt-5")], ["gpt-5-mini", standardOffering("gpt-5-mini")]]),
       catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } as const,
     }]])
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: persistRevision,
@@ -359,7 +360,7 @@ describe("provider-model preference service", () => {
       inventoryOfferings: new Map([["gpt-5", standardOffering("gpt-5")], ["gpt-5-mini", standardOffering("gpt-5-mini")]]),
       catalog: { kind: "available", provenance: "static", liveOutcome: "valid" } as const,
     }]])
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision })
     service.publish(service.prepare(input("work", catalog(), inventoryCandidates)))
 
     await service.deselectAll({ queriedProfileId: "work", queriedEligibilityRevision: 1, target: { kind: "singleton", providerId: "openai_api" } })
@@ -391,7 +392,7 @@ describe("provider-model preference service", () => {
       inventoryOfferings,
       catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } as const,
     }]])
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: persistRevision,
@@ -416,7 +417,7 @@ describe("provider-model preference service", () => {
 
   test("exposes exact opaque subscription targets and rejects foreign targets before persistence", async () => {
     const writes: string[] = []
-    const service = createProviderModelPreferenceService({
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: async ({ account }) => { writes.push(account.kind === "subscription" ? account.instanceId : account.providerId); return "preference-revision-next" },
@@ -441,7 +442,7 @@ describe("provider-model preference service", () => {
   })
 
   test("orders rows by release date descending, undated last, ties alphabetical", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
     const models: ResolvedProviderModels = {
       catalog: new Set(["gpt-4.1", "gpt-5", "gpt-5-mini", "gpt-3.5-turbo", "babbage-002"]),
       curatedDefault: new Set(["gpt-5"]),
@@ -468,7 +469,7 @@ describe("provider-model preference service", () => {
 
   test("groups contributor routes under one canonical selectable membership row", async () => {
     let allowTrainingRoutes = false
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => allowTrainingRoutes, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => allowTrainingRoutes, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
     const candidate = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
     const contributor = { wireModelId: "gpt-5-contributor", metadata: null, dataUse: "contributor" as const }
     const candidateCatalogs = new Map([[accessProviderAccountKey(candidate), {
@@ -493,7 +494,7 @@ describe("provider-model preference service", () => {
     expect((await service.query("work", { kind: "singleton", providerId: "openai_api" })).rows[0]?.unavailableReason).toBeUndefined()
   })
   test("allocates one monotonic revision sequence across toggles and refreshes", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} })
     const initial = service.prepare(input("work", catalog()))
     service.publish(initial)
     const toggled = await service.set({ queriedProfileId: "work", queriedEligibilityRevision: initial.revision, target: { kind: "singleton", providerId: "openai_api" }, modelId: "gpt-5", checked: false })
@@ -503,7 +504,7 @@ describe("provider-model preference service", () => {
   })
 
   test("keeps the latest immutable snapshot for each profile", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} });
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: persistRevision, persistAllDeselected: persistRevision, publish: () => {} });
     const work = service.prepare(input("work", catalog()));
     const personal = service.prepare(input("personal", catalog(new Set(["gpt-5-mini"]))));
     service.publish(work);
@@ -520,7 +521,7 @@ describe("provider-model preference service", () => {
     const models = { ...catalog().get("openai_api")! }
     const candidates = new Map([accountA, accountB].map((candidate) => [accessProviderAccountKey(candidate), { candidate, configured: true, currentConnection: true, enabledOfferings: new Map([["gpt-5", standardOffering("gpt-5")]]), inventoryOfferings: new Map([["gpt-5", standardOffering("gpt-5")], ["gpt-5-mini", standardOffering("gpt-5-mini")]]), catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } as const }]))
     let revision = 0
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: async () => `preference-${++revision}`, persistAllDeselected: async () => `preference-${++revision}` })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: trainingRoutesDisabled, persist: async () => `preference-${++revision}`, persistAllDeselected: async () => `preference-${++revision}` })
     service.publish(service.prepare({ ...INPUT_REVISIONS, profileId: "work", catalogs: new Map([["chatgpt", models]]), accountCatalogs: new Map([[accessProviderAccountKey(accountA), models], [accessProviderAccountKey(accountB), models]]), inventoryCandidates: candidates, releaseDates: NO_DATES }))
     const targetA = { kind: "subscription", providerId: "chatgpt", accountCorrelationId: subscriptionSpendAccountCorrelationId("work", "chatgpt", "a") } as const
     const targetB = { kind: "subscription", providerId: "chatgpt", accountCorrelationId: subscriptionSpendAccountCorrelationId("work", "chatgpt", "b") } as const
@@ -544,12 +545,12 @@ describe("provider-model preference service", () => {
     }]))
     const requests: unknown[] = []
     const writes: string[] = []
-    const build = (recheckAccount?: ProviderModelPreferenceServiceDeps["recheckAccount"]) => createProviderModelPreferenceService({
+    const build = (recheckAccount: ProviderModelPreferenceServiceDeps["recheckAccount"]) => createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id,
       allowTrainingRoutes: trainingRoutesDisabled,
       persist: async () => { writes.push("persist"); return "next" },
       persistAllDeselected: async () => { writes.push("deselect"); return "next" },
-      ...(recheckAccount === undefined ? {} : { recheckAccount }),
+      recheckAccount,
     })
     const service = build((request) => { requests.push(request) })
     const state = service.prepare({ ...INPUT_REVISIONS, profileId: "work", catalogs: new Map([["supergrok", models], ["chatgpt", models]]), accountCatalogs: new Map([[accessProviderAccountKey(audited), models], [accessProviderAccountKey(unaudited), models]]), inventoryCandidates: candidates, releaseDates: NO_DATES })
@@ -568,11 +569,6 @@ describe("provider-model preference service", () => {
     expect(requests).toEqual([{ profileId: "work", account: { kind: "subscription", providerId: "supergrok", instanceId: "a" }, expectedAuthRevision: "auth-revision", expectedPreferenceRevision: "preference-revision" }])
     expect(service.state("work")).toBe(state)
     expect(writes).toEqual([])
-
-    const unwired = build()
-    const unwiredState = unwired.prepare({ ...INPUT_REVISIONS, profileId: "work", catalogs: new Map([["supergrok", models]]), accountCatalogs: new Map([[accessProviderAccountKey(audited), models]]), inventoryCandidates: new Map([[accessProviderAccountKey(audited), candidates.get(accessProviderAccountKey(audited))!]]), releaseDates: NO_DATES })
-    unwired.publish(unwiredState)
-    await expect(unwired.recheck({ queriedProfileId: "work", queriedEligibilityRevision: unwiredState.revision, target: target("supergrok", "a") })).rejects.toThrow("unavailable")
 
     const clean = build((request) => { requests.push(request) })
     const cleanCandidate = { ...candidates.get(accessProviderAccountKey(audited))!, audit: { remaining: 0, refused: 0 }, verifiedModelIds: new Set(["gpt-5"]) }

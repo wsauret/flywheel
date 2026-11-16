@@ -5,7 +5,6 @@ import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { applyOutputDelta, buildBlockIndex, type MutableOutputView } from "../../../../src/protocol/client/transcript-delta.js"
 import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import type { FrontendOutputBlock, FrontendToolStreamingText } from "../../../../src/protocol/app-service-types.js"
@@ -14,6 +13,8 @@ import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import { chatEntry } from "./app-service-doubles.js"
 import type { CommandKeeper } from "../../../../src/orchestration/app-service/command-keeper.js"
 import { appendChange, batch, deltas, fakeOutputStore, insertChange, outputProjectionRuntime, sink, textBlock, upsertChange } from "./_output-projection-fixtures.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 const runtime = outputProjectionRuntime()
 
@@ -46,7 +47,7 @@ describe("output projection shipped copies", () => {
     const answer = textBlock("answer")
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     s.patches.length = 0
     const client: MutableOutputView = { blocks: [], streamingToolText: {} }
     const blockIndex = new Map<string, number>()
@@ -77,7 +78,7 @@ describe("output projection shipped copies", () => {
   test("the streamed character count ships with a change only when it changed, and a count change alone ships with no block coordinates", async () => {
     const fake = fakeOutputStore([textBlock("a")])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.streamChars(1)
     await projection.flush("chat-long")
     s.patches.length = 0
@@ -106,7 +107,7 @@ describe("output projection shipped copies", () => {
   test("a count change during a read ships though it equals the copy, and the first change after the read restates the count", async () => {
     const fake = fakeOutputStore([textBlock("a")])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.streamChars(4)
     await projection.flush("chat-long")
     s.patches.length = 0
@@ -126,7 +127,7 @@ describe("output projection shipped copies", () => {
   test("a streaming bash command ships its growing header as appends, never the whole block", async () => {
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     const bash = (detail: string): AnyBlock => ({ kind: "tool", id: "call-1", name: "bash", presentation: { name: "Bash", detail }, status: "streaming", timestamp: 1 })
     fake.changeBlocks([bash("cat")], [insertChange(0, bash("cat"))])
     await projection.flush("chat-long")
@@ -143,7 +144,7 @@ describe("output projection shipped copies", () => {
   test("an upsert identical to the copy clients hold is not sent again, for every block kind", async () => {
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     const blocks: AnyBlock[] = [
       textBlock("said"),
       { kind: "thinking", id: "th-1", content: "pondered", status: "completed", timestamp: 1 },
@@ -164,7 +165,7 @@ describe("output projection shipped copies", () => {
   test("an agent group change ships whole, never as edits", async () => {
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     const group = (totalToolCount: number): AnyBlock => ({ kind: "agentGroup", containerKind: "subagent", id: "agent-1", toolUseId: "tu-agent-1", label: "Explorer", description: "Searching", status: "active", children: [], totalToolCount, timestamp: 1 })
     fake.changeBlocks([group(0)], [insertChange(0, group(0))])
     await projection.flush("chat-long")
@@ -179,7 +180,7 @@ describe("output projection shipped copies", () => {
   test("a settled tool a client installed from a read changes whole, so no hybrid fields remain", async () => {
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     const settled = (resultAction?: "created"): ToolEntry => ({ kind: "tool", id: "call-1", name: "bash", presentation: { name: "Bash", detail: "ls" }, status: "completed", content: "a\nb\n", timestamp: 1, ...(resultAction ? { resultAction } : {}) })
     fake.changeBlocks([settled()], [insertChange(0, settled())])
     await projection.flush("chat-long")
@@ -199,7 +200,7 @@ describe("output projection shipped copies", () => {
     const said = textBlock("said")
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeBlocks([said], [insertChange(0, said)])
     await projection.flush("chat-long")
     s.patches.length = 0
@@ -214,7 +215,7 @@ describe("output projection shipped copies", () => {
     const tool = (status: "streaming" | "completed"): AnyBlock => ({ kind: "tool", id: "call-1", name: "bash", presentation: { name: "Bash", detail: "ls" }, status, timestamp: 1 })
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeBlocks([tool("streaming")], [insertChange(0, tool("streaming"))])
     fake.changeStreamingToolText({ "call-1": { content: "a\n" } }, ["call-1"])
     await projection.flush("chat-long")
@@ -233,7 +234,7 @@ describe("output projection shipped copies", () => {
     const [a, b] = [textBlock("a"), textBlock("b")]
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeBlocks([a, b], [insertChange(0, a), insertChange(1, b)])
     await projection.flush("chat-long")
     s.patches.length = 0
@@ -248,7 +249,7 @@ describe("output projection shipped copies", () => {
     const [a, b, c, x] = [textBlock("a"), textBlock("b"), textBlock("c"), textBlock("x")]
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeBlocks([a, b, c], [insertChange(0, a), insertChange(1, b), insertChange(2, c)])
     await projection.flush("chat-long")
     s.patches.length = 0
@@ -272,7 +273,7 @@ describe("output projection shipped copies", () => {
     const [seed, live] = [textBlock("seed"), textBlock("live")]
     const fake = fakeOutputStore([seed])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeBlocks([seed, live], [insertChange(1, live)])
     await projection.flush("chat-long")
     s.patches.length = 0
@@ -289,7 +290,7 @@ describe("output projection shipped copies", () => {
   test("a reseed that matches every block but changes the message count still publishes the count", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     store.openSessionRuntime({ sessionId: "chat-reseed", conversationId: "conv-reseed" })
     store.updateChatEntry("chat-reseed", { outputBlocks: [textBlock("a")], visibleMessageCountSuffix: 1, outputChanges: batch([insertChange(0, textBlock("a"))]) })
     await projection.flush("chat-reseed")
@@ -304,7 +305,7 @@ describe("output projection shipped copies", () => {
   test("a full resync after a runner replacement removes the old runner's streaming entries", async () => {
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeStreamingToolText({ old: { content: "old runner" } }, ["old"])
     await projection.flush("chat-long")
     s.patches.length = 0
@@ -324,7 +325,7 @@ describe("output projection shipped copies", () => {
     for (const read of [[a, b, x], [a, x, b]]) {
       const fake = fakeOutputStore([])
       const s = sink()
-      const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+      const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
       fake.changeBlocks([a, b], [insertChange(0, a), insertChange(1, b)])
       await projection.flush("chat-long")
 
@@ -344,7 +345,7 @@ describe("output projection shipped copies", () => {
     const [a, b, x] = [textBlock("a"), textBlock("b"), textBlock("x")]
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeBlocks([a, b], [insertChange(0, a), insertChange(1, b)])
     await projection.flush("chat-long")
 
@@ -365,7 +366,7 @@ describe("output projection shipped copies", () => {
     for (const inFlight of [false, true]) {
       const fake = fakeOutputStore([])
       const s = sink()
-      const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+      const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
       fake.changeBlocks([tool("ls")], [insertChange(0, tool("ls"))])
       await projection.flush("chat-long")
 
@@ -389,7 +390,7 @@ describe("output projection shipped copies", () => {
     for (const inFlight of [false, true]) {
       const fake = fakeOutputStore([])
       const s = sink()
-      const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+      const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
       fake.changeStreamingToolText({ w: { content: "ab" } }, ["w"])
       await projection.flush("chat-long")
 
@@ -412,7 +413,7 @@ describe("output projection shipped copies", () => {
     const tool = (detail: string): AnyBlock => ({ kind: "tool", id: "call-1", name: "bash", presentation: { name: "Bash", detail }, status: "streaming", timestamp: 1 })
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     fake.changeBlocks([a, b, tool("ls")], [insertChange(0, a), insertChange(1, b), insertChange(2, tool("ls"))])
     await projection.flush("chat-long")
 
@@ -433,7 +434,7 @@ describe("output projection shipped copies", () => {
     const s = sink()
     s.shipped.ship("chat-long", { visibleMessageCount: 0, blockCount: 2, blocks: { kind: "changes", changes: [a, b].map((block, index) => ({ kind: "insert", index, blockId: `text:${block.id}`, block })) }, streamingToolText: {}, changedTools: new Set() })
     const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
-    const detail = createSessionDetailProjection({
+    const detail = testSessionDetailProjection({
       projectRoot: FIXTURE_EXECUTION_CWD,
       // The store holds `x`, which no delta has shipped yet.
       sessionStore: { get: () => chatEntry({ outputBlocks: () => [a, b, x], visibleMessageCountSuffix: 0 }) },
@@ -458,7 +459,7 @@ describe("output projection shipped copies", () => {
     let kept: ReturnType<CommandKeeper["liveOutput"]> = { k: { content: "tail" } }
     const entered = Promise.withResolvers<void>()
     const projected = Promise.withResolvers<void>()
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: fake.store,
       shipped: s.shipped,
       keptOutput: { liveOutput: () => kept },

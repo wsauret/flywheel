@@ -375,7 +375,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // The runtime's one capability publication and mutation owner: the config file
   // is the authority, the policy is its live projection, and this is the protocol
   // face of both. Nothing copies a selection out of it.
-  const moduleProjection = scope.own("module-projection", await createModuleProjection({
+  const moduleProjection = scope.own("module-projection", createModuleProjection({
     preparePublication: moduleServices.reconcile,
     location: { userDataRoot },
     capabilities,
@@ -564,7 +564,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     undoChanges: async (request, signal) => (await sessionChanges()).undo(request, signal),
     transcriptCache, sessionStore, manager, workflowHosts,
     directories,
-    runtime, projectionReader, sessionViewLoader,
+    runtime, projectionReader, writer: eventWriter, sessionViewLoader,
     runnerCapabilities: () => runnerCapabilities,
     authProfileId: authRuntime.newSessionProfileId,
     onRunnerError,
@@ -653,7 +653,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // The startup summary is the composition's one default-level record.
   log.debug("runtime composition done", { projectRoot })
 
-  const { "stop-runners": runnerOwners = [], "flush-durable-state": durableStateOwners = [], "close-client-streams": clientStreamOwners = [] } = client.shutdown.owners
+  const { "stop-runners": runnerOwners = [], "close-client-streams": clientStreamOwners = [] } = client.shutdown.owners
 
   const ownershipOwners = completeProjectExecutionOwnership(scope, {
     hasAttributionService: Boolean(gitAiAttributionService),
@@ -710,10 +710,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
         ...runnerOwners.filter((owner) => owner.owner !== "session-runners"),
         ...(ownershipOwners["stop-runners"] ?? []),
       ],
-      "flush-durable-state": [
-        ...durableStateOwners.filter((owner) => owner.owner !== "history-projection"),
-        ...(ownershipOwners["flush-durable-state"] ?? []),
-      ],
+      "flush-durable-state": ownershipOwners["flush-durable-state"] ?? [],
       "dispose-availability": ownershipOwners["dispose-availability"] ?? [],
       "close-client-streams": [
         ...clientStreamOwners.filter((owner) => owner.owner !== "frontend-projection"),

@@ -15,6 +15,7 @@ import { createChatSubmissions } from "../../../../src/protocol/client/chat-subm
 import { handleSessionSend } from "../../../../src/orchestration/app-service/session-send.js"
 import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-dispatch-result-schemas.js"
 import { Schema } from "effect"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 const runtime = outputProjectionRuntime()
 
@@ -51,7 +52,7 @@ describe("output projection", () => {
   test.each(["x".repeat(4096), "😀é".repeat(682) + "abcd"])("partitions live execution output losslessly after preview (%#. case)", async (content) => {
     const f = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: f.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: f.store, shipped: s.shipped })
     await flush()
     let state: SessionEntry["streamingToolText"] = {}
     const maps: SessionEntry["streamingToolText"][] = [{ tool: { content: "preview" } }, { tool: { content } }, {}, { tool: { content } }]
@@ -80,7 +81,7 @@ describe("output projection", () => {
     const s = sink()
     const held = Promise.withResolvers<void>()
     const entered = Promise.withResolvers<void>()
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store, shipped: s.shipped,
       projectBlock: async (sessionId, block) => {
         if (sessionId === "a") { entered.resolve(); await held.promise }
@@ -115,7 +116,7 @@ describe("output projection", () => {
   test("mints an output.delta on the session's output cursor when store output mutates", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     store.openSessionRuntime({ sessionId: "chat-1", conversationId: "conv-1" })
     await flush()
     s.patches.length = 0 // drop the initial empty-view mount publish
@@ -135,7 +136,7 @@ describe("output projection", () => {
   test("text growth publishes append-content instead of a whole view", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     store.openSessionRuntime({ sessionId: "chat-append", conversationId: "conv-append" })
     store.updateChatEntry("chat-append", { outputBlocks: [textBlock("h")], visibleMessageCountSuffix: 1, outputChanges: batch([upsertChange(0, textBlock("h"))]) })
     await flush()
@@ -152,7 +153,7 @@ describe("output projection", () => {
   test.each([3, 30])("a burst of stream deltas ships one patch per session that ends at the final text (%i sessions)", async (sessionCount) => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     const ids = Array.from({ length: sessionCount }, (_, index) => `burst-${index}`)
     for (const id of ids) {
       store.openSessionRuntime({ sessionId: id, conversationId: `conv-${id}` })
@@ -184,7 +185,7 @@ describe("output projection", () => {
   test("a mid-list insert ships as one insert change, kind and order preserved", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     store.openSessionRuntime({ sessionId: "chat-insert", conversationId: "conv-insert" })
     store.updateChatEntry("chat-insert", { outputBlocks: [textBlock("a"), textBlock("queued")], visibleMessageCountSuffix: 2, outputChanges: batch([upsertChange(0, textBlock("a")), upsertChange(1, textBlock("queued"))]) })
     await flush()
@@ -206,7 +207,7 @@ describe("output projection", () => {
   test("reactivated durable base seeds without reset/truncate and live changes keep absolute indexes", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     const base = [textBlock("old")]
 
     store.openSessionRuntime({ sessionId: "chat-reactivated", conversationId: "conv-reactivated", priorBlocks: base, outputSequenceStart: 0 })
@@ -230,7 +231,7 @@ describe("output projection", () => {
   test("a newly resident session publishes a rebase invalidation before its first delta", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     const base = [textBlock("old")]
 
     // Reactivation: the shell rebases absolute indexes onto the durable fold,
@@ -260,7 +261,7 @@ describe("output projection", () => {
     // carries the rebase; id residency and revision cannot.
     const fake = fakeOutputStore([textBlock("old")])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     await projection.flush("chat-long")
     s.patches.length = 0
 
@@ -279,7 +280,7 @@ describe("output projection", () => {
   test("a metric-only mutation does not republish output", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     store.openSessionRuntime({ sessionId: "chat-2", conversationId: "conv-2" })
     store.updateChatEntry("chat-2", { outputBlocks: [textBlock("a")], visibleMessageCountSuffix: 1, outputChanges: batch([upsertChange(0, textBlock("a"))]) })
     await flush()
@@ -297,7 +298,7 @@ describe("output projection", () => {
   test("stops publishing after dispose", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     store.openSessionRuntime({ sessionId: "chat-3", conversationId: "conv-3" })
     await flush()
     projection.dispose()
@@ -347,7 +348,7 @@ describe("output projection", () => {
       },
     }
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     await projection.flush("first")
     s.patches.length = 0
     calls.allIds = 0
@@ -388,7 +389,7 @@ describe("output projection", () => {
     const blocks = Array.from({ length: 5_000 }, (_, index) => textBlock(`block-${index}`))
     const fake = fakeOutputStore(blocks)
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     await projection.flush("chat-long")
     s.patches.length = 0
     fake.resetReads()
@@ -407,7 +408,7 @@ describe("output projection", () => {
     const started = Promise.withResolvers<void>()
     const release = Promise.withResolvers<void>()
     const projected: string[] = []
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: fake.store,
       shipped: s.shipped,
       projectBlock: async (_sessionId, block) => {
@@ -443,7 +444,7 @@ describe("output projection", () => {
   test("a failed projection resolves flush, invalidates the session's output, and later changes still publish", async () => {
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: fake.store,
       shipped: s.shipped,
       projectBlock: async (_sessionId, block) => {
@@ -469,7 +470,7 @@ describe("output projection", () => {
   test("a structural rewrite (fullResync) truncates to the base offset and re-upserts the tail", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     store.openSessionRuntime({ sessionId: "chat-rewrite", conversationId: "conv-rewrite" })
     store.updateChatEntry("chat-rewrite", { outputBlocks: [textBlock("a"), textBlock("b")], visibleMessageCountSuffix: 2, outputChanges: batch([upsertChange(0, textBlock("a")), upsertChange(1, textBlock("b"))]) })
     await flush()
@@ -491,7 +492,7 @@ describe("output projection", () => {
   test("queued text append keeps its identity when context inserts before the ask row", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     const builder = new StructuredOutputBuilder()
     builder.onChange = () => {}
     store.openSessionRuntime({ sessionId: "chat-ask-context", conversationId: "conv-ask-context" })
@@ -542,7 +543,7 @@ describe("output projection", () => {
   test("does not reconstruct an initial delta without write-site changes", async () => {
     const fake = fakeOutputStore([textBlock("hi")])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     await projection.flush("chat-long")
 
     expect(deltas(s.patches, "chat-long")).toEqual([])
@@ -552,7 +553,7 @@ describe("output projection", () => {
   test("publishes streaming tool text as the changes from the entry clients hold", async () => {
     const fake = fakeOutputStore([])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     s.patches.length = 0
 
     fake.changeStreamingToolText({ "tool-call-1": { content: "partial" } }, ["tool-call-1"])
@@ -575,7 +576,7 @@ describe("output projection", () => {
     const first = { kind: "text", id: "t-first", content: "first", timestamp: 1 } as const satisfies AnyBlock
     const fake = fakeOutputStore([first])
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     s.patches.length = 0
     const tool = (detail: string): AnyBlock => ({ kind: "tool", id: "call-1", name: "bash", presentation: { name: "Bash", detail }, status: "streaming", timestamp: 1 })
     const grown = { ...first, content: "first and more" }
@@ -602,7 +603,7 @@ describe("output projection", () => {
     const live = textBlock("live")
     const fake = fakeOutputStore([seed, live], { sequenceStart: 40 })
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: fake.store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: fake.store, shipped: s.shipped })
     await projection.flush("chat-long")
 
     expect(deltas(s.patches, "chat-long")).toEqual([])

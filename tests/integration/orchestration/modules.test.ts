@@ -31,6 +31,7 @@ import type { SkillManageToolDeps } from "../../../src/orchestration/modules/lea
 import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import type { AskUserController } from "../../../src/orchestration/runner/ask-user-controller.js";
 import { createModuleProjection } from "../../../src/orchestration/app-service/module-projection.js";
+import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/command-catalog-projection.js";
 import { createDefinitionAvailability } from "../../../src/orchestration/app-service/definition-availability.js";
 import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definition-root-watcher.js";
@@ -122,9 +123,12 @@ async function startHarness(configSource = ""): Promise<Harness> {
   disposals.push(unsubscribe);
 
   const patches: RuntimeUiPatchInput[] = [];
-  const moduleProjection = await createModuleProjection({
+  const runtimeConfig = await createRuntimeConfigOwner({ configPath, watch: false });
+  disposals.push(() => runtimeConfig.dispose());
+  const moduleProjection = createModuleProjection({
     location: { configPath },
     capabilities,
+    runtimeConfig,
     publish: (patch) => { patches.push(patch) },
     persistentProcesses,
     settlePublication: async () => { await availability.refresh() },

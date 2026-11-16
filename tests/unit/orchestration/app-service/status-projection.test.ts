@@ -20,6 +20,7 @@ import { entry, flush, NOTHING_OWED, sink, store, until } from "./_status-projec
 import { createProcessorClaims } from "../../../../src/orchestration/agent-runtime/tools/processor-claims.js"
 import { makeMockOwnedProcess } from "../agent-runtime/tools/_bash-fixtures.js"
 import { processSettled } from "../../../helpers/process-settled.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 const dbDirectory = mkdtempSync(join(tmpdir(), "fw-status-projection-"))
 const dbFile = join(dbDirectory, "flywheel.sqlite")
@@ -232,7 +233,7 @@ describe("status projection", () => {
     const release = Promise.withResolvers<void>()
     const published = Promise.withResolvers<void>()
     const initialized = Promise.withResolvers<void>()
-    const outputProjection = createOutputProjection({
+    const outputProjection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore, shipped: createShippedOutput({ publish: out.publish }),
       projectBlock: async (_sessionId, block) => {
         started.resolve()
@@ -295,7 +296,7 @@ describe("status projection", () => {
     const childFact: StoredFact = { id: "child-fact", position: 1, seq: 0, timestamp: 1, actor: "flywheel", aggregateId: "session:child", sessionId: "child", type: "chat.entries.appended", version: 3, payload: {} }
     const childStreams = { now: true }
     let cardProjections = 0
-    const outputProjection = createOutputProjection({
+    const outputProjection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore, shipped: createShippedOutput({ publish: out.publish }),
       onStored: (listener) => { storedListeners.add(listener); return () => { storedListeners.delete(listener) } },
       // A projection of the child's card takes longer than the child takes
@@ -351,7 +352,7 @@ describe("status projection", () => {
   test("a session whose output cannot be projected still shows idle, after its output cursor is invalidated", async () => {
     const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const out = sink()
-    const outputProjection = createOutputProjection({
+    const outputProjection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore, shipped: createShippedOutput({ publish: out.publish }),
       projectBlock: async () => { throw new Error("state read refused") },
     })

@@ -10,6 +10,7 @@ import { authDir } from "../../../../src/infra/paths.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 
 const temporaryDirectory = temporaryDirectories()
 
@@ -25,7 +26,7 @@ test("preserves pending selections through policy changes and audit publications
   }]
   const visible = new Map(["verified", "pending", "unselected"].map((id) => [id, offering(id)]))
   let verified = new Map([["verified", offering("verified")]])
-  const service = createProviderModelPreferenceService({
+  const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id,
     allowTrainingRoutes: () => false,
     persist: ({ account, modelId, state, currentAccounts, expectedAuthRevision, expectedPreferenceRevision }) =>

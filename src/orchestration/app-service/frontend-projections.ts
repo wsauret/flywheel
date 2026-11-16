@@ -81,7 +81,7 @@ export async function createFrontendProjections(scope: RuntimeOwnership, deps: F
     publish: bus.publish,
   }), (owned) => { owned.dispose() })
   const questionProjection = scope.own("question-projection", await createQuestionProtocolProjection({ sessionStore, reader: projectionReader, onStored: eventStore.onStored, publish: bus.publish }), (owned) => { owned.dispose() })
-  const historyProjection = scope.own("history-projection", createSessionDetailProjection({ sessionStore, keptOutput: deps.keeper, manager, reader: eventReader, projectionReader, projectRoot, transcriptCache, summaries, shipped: shippedOutput, processorHolds: sharedProcessorClaims() }), (owned) => owned.dispose())
+  const historyProjection = createSessionDetailProjection({ sessionStore, keptOutput: deps.keeper, manager, reader: eventReader, projectionReader, projectRoot, transcriptCache, summaries, shipped: shippedOutput, processorHolds: sharedProcessorClaims() })
   scope.own("kept-output-projection", createKeptOutputProjection({
     keeper: deps.keeper,
     projectSettled: (sessionId, change) => { sessionStore.get(sessionId)?.runner?.applyProjectionEvent(change.event) },

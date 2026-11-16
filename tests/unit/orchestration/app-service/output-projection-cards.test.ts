@@ -16,6 +16,7 @@ import { temporaryDirectories } from "../../../helpers/directories.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { chatEntry, fakeSessionStore } from "./app-service-doubles.js"
 import { batch, deltas, insertChange, outputProjectionRuntime, sink, textBlock, upsertChange } from "./_output-projection-fixtures.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 const runtime = outputProjectionRuntime()
 const directory = temporaryDirectories()
@@ -42,7 +43,7 @@ describe("output projection of subagent cards and live ranges", () => {
     const cache = createTranscriptProjectionCache({ reader: counter.reader, projectionReader: counter.reader, sessionStore: store, projectRoot: SCRATCH })
     const s = sink()
     let cardProjections = 0
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store, shipped: s.shipped,
       projectBlock: (sessionId, block) => {
         if (sessionId === "parent") cardProjections += 1
@@ -88,7 +89,7 @@ describe("output projection of subagent cards and live ranges", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let cardProjections = 0
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store, shipped: s.shipped,
       projectBlock: async (sessionId, block) => {
         if (sessionId !== "parent" || block.kind !== "tool") return block
@@ -131,7 +132,7 @@ describe("output projection of subagent cards and live ranges", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let tokens = 0
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store, shipped: s.shipped,
       projectBlock: async (sessionId, block) => {
         if (sessionId !== "parent" || block.kind !== "tool") return block

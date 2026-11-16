@@ -47,6 +47,8 @@ import { createSubscriptionSpendConsentCaptureCache } from "../../../src/orchest
 import type { SubscriptionSpendConsentCapture } from "../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
 import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { unusedProviderModelWrites } from "../../helpers/provider-model-writes.js";
+import { diskAuthObservation } from "../../helpers/profile-auth-observation.js";
 
 /** The auth profile every live test resolves its routes from: the one that
  *  `LIVE_AUTH_PROFILE_SETTING` names. The active profile is never consulted,
@@ -127,7 +129,7 @@ export async function withLiveClient<T>(label: string, use: (run: LiveRun) => Pr
     acquireSharedProviderAvailability(liveDirectories.userDataRoot, installedAccessProviderIds());
     releases.push(() => disposeSharedProviderAvailability());
 
-    const providerModels = createProviderModelPreferenceService({
+    const providerModels = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (providerId) => providers.selection.displayName(providerId),
       allowTrainingRoutes: () => requestConfig.allowTrainingRoutes,
       ...providerModelPreferencePersistence(() => profile.directory),
@@ -137,7 +139,7 @@ export async function withLiveClient<T>(label: string, use: (run: LiveRun) => Pr
       allowTrainingRoutes: () => requestConfig.allowTrainingRoutes,
       userDataRoot: liveDirectories.userDataRoot,
       resolveKey,
-      moduleSelection: () => composition,
+      moduleSelection: () => composition, observeAuth: diskAuthObservation(() => composition),
       prepare: providerModels.prepare,
       publish: providerModels.publish,
       current: providerModels.state,

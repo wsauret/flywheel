@@ -13,6 +13,7 @@ import { buildSessionCreatedFact } from "../../../../src/orchestration/session/s
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { batch, deltas, outputProjectionRuntime, sink, textBlock, upsertChange } from "./_output-projection-fixtures.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 /** A canonical absolute directory on every host; a bare `/scratch` is not one on Windows. */
 const SCRATCH = resolve("/scratch")
@@ -27,7 +28,7 @@ describe("output projection child cards", () => {
     const projectedIds: string[] = []
     const childToolCounts = new Map<string, number>()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -88,7 +89,7 @@ describe("output projection child cards", () => {
     let duration = 0
     let stored: (events: readonly StoredFact[]) => void = () => {}
     let retired: (sessionId: string) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -177,7 +178,7 @@ describe("output projection child cards", () => {
     const cache = createTranscriptProjectionCache({ reader, projectionReader: local, sessionStore: store, projectRoot: SCRATCH })
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -241,7 +242,7 @@ describe("output projection child cards", () => {
     const projectedIds: string[] = []
     const bound = new Set<string>(["a"])
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -292,7 +293,7 @@ describe("output projection child cards", () => {
     const firstProjection = Promise.withResolvers<void>()
     const projecting = Promise.withResolvers<void>()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -342,7 +343,7 @@ describe("output projection child cards", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
     // The envelope keeps the name the sender had when it sent: the quick title
     // that a workflow carries until its generated title arrives.
     const message: AnyBlock = { kind: "userMessage", id: "msg:wf:call", content: "Which file should I check?", timestamp: 1, pending: false, injected: false, from: { sessionId: "wf", name: quickTitle, relation: "child" } }
@@ -390,7 +391,7 @@ describe("output projection child cards", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
     // Each row was built with the name its result recorded at sending. The
     // second recipient was deleted since, so no metadata names it now.
     const toRecipient: AnyBlock = { kind: "tool", id: "to-recipient", name: "message_session", presentation: { name: "Message to", detail: "Draft plan" }, action: "ui_meta", status: "completed", timestamp: 1, targetSessionId: "recipient" }
@@ -500,7 +501,7 @@ describe("output projection child cards", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
     const card: AnyBlock = { kind: "tool", id: "dispatch", name: "subagent", presentation: { name: "Agent", detail: "Alpha waiter" }, status: "pending", timestamp: 1 }
     const activity = () => {
       const shipped = deltas(s.patches, "parent").flatMap((delta) => delta.blocks).findLast((change) => change.kind === "upsert")

@@ -8,19 +8,21 @@ import { createProviderModelPreferenceService } from "../../../../src/orchestrat
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { testDirectories } from "../../../helpers/directories.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
+import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
 
 const DIRECTORIES = testDirectories(process.cwd())
 const PROFILE = { id: "work", directory: authDir(DIRECTORIES.userDataRoot, "work") }
 
 describe("eligibility preparation after a refusal", () => {
   test("republishes saved evidence after the owned discovery, with unchanged inputs, at a new revision", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const modes: string[] = []
     const held = Promise.withResolvers<void>()
     const prepare = createEligibilityPreparation({
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot, resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]), prepare: service.prepare, publish: service.publish, current: service.state,
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: service.prepare, publish: service.publish, current: service.state,
       inputRevision: () => ({ auth: "auth-v1", preferences: "preferences-v1" }),
       resolveAuth: async () => testAuthContext(),
       resolveCatalog: async ({ discoveryMode }) => {
@@ -44,13 +46,13 @@ describe("eligibility preparation after a refusal", () => {
   })
 
   test.each([true, false])("a refusal that a request proved republishes the profile and then applies it only when it was saved (saved=%p)", async (saved) => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const order: string[] = []
     const applied = Promise.withResolvers<string>()
     const prepare = createEligibilityPreparation({
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot, resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]), prepare: service.prepare, publish: (state) => { order.push("publish"); service.publish(state) }, current: service.state,
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: service.prepare, publish: (state) => { order.push("publish"); service.publish(state) }, current: service.state,
       inputRevision: () => ({ auth: "auth-v1", preferences: "preferences-v1" }),
       resolveAuth: async () => testAuthContext(),
       resolveCatalog: async () => ({ providers: new Map(), accounts: new Map(), inventoryCandidates: new Map(), modelInfos: new Map(), enabledModels: new Map() }),
