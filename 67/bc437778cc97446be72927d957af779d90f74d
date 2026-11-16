@@ -1,0 +1,36 @@
+src/orchestration/app-service/auth-owner-subscription.ts
+  h_4b47e9e4a8b456 1,4,7-9,14-17,34,42-48
+src/orchestration/app-service/auth-resident-scopes.ts
+  h_4b47e9e4a8b456 8,18-19,78,85-88,90-91,93-96
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 6,85-86,147,149,151,219,225,568,584
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 438,673
+src/orchestration/modules/workflows/run-record.ts
+  h_4b47e9e4a8b456 1,24-33,41,49-51,57-60,64,66-71,76,81-83,85,89,92,95,97,100
+src/orchestration/workflow-host/auth-owner.ts
+  h_4b47e9e4a8b456 13-16,18-21,47-48,50-61,79-80,83-85,89-92
+src/orchestration/workflow-host/run-record.ts
+  h_4b47e9e4a8b456 1,27-29,38-42
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 157,174
+tests/unit/orchestration/app-service/auth-profile-watcher-owner.test.ts
+  h_4b47e9e4a8b456 8-27,166-168,194-281
+tests/unit/orchestration/app-service/auth-resident-scopes.test.ts
+  h_4b47e9e4a8b456 27
+tests/unit/orchestration/workflow-host/_workflow-host-fixtures.ts
+  h_4b47e9e4a8b456 16-18,70-86
+tests/unit/orchestration/workflow-host/auth-owner.test.ts
+  h_4b47e9e4a8b456 9,29,52-53,58,82-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "67bc437778cc97446be72927d957af779d90f74d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
