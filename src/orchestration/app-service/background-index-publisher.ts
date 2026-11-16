@@ -7,6 +7,7 @@ import type { RuntimePosition, RuntimeUiPatchInput } from "../../protocol/runtim
 import { workflowAggregateId } from "../../workflows/vm/session-facts.js"
 import { workflowPlacements } from "../module-catalog.js"
 import type { WorkflowPlacements } from "../module-seams.js"
+import type { ActiveBackgroundCommandDescriptor } from "../agent-runtime/background-work.js"
 import type { SessionStore } from "../session-store/types.js"
 import { installedChildSessionHistory } from "../session/module-session-operations.js"
 import { onReplyWaitsChanged, readReplyWaitViews } from "../session/reply-waits.js"
@@ -90,9 +91,11 @@ interface HeldIndex {
 export function createBackgroundIndexOwner(deps: BackgroundIndexOwnerDeps): BackgroundIndexOwner {
   const held = new Map<string, HeldIndex>()
   const childRunFacts = new Set(deps.childRunFactTypes)
-  // The live commands each session showed last, by tool use id, so a store
-  // change that leaves them alone reads nothing.
-  const liveCommands = new Map<string, ReadonlyMap<string, string>>()
+  // The live commands each session with any showed last: the store's array,
+  // which a change of the commands replaces, and its commands by tool use id.
+  // Every session's commands are kept, held or not, because the end of a
+  // command that started while no index was held routes against them.
+  const liveCommands = new Map<string, { readonly source: readonly ActiveBackgroundCommandDescriptor[]; readonly byToolUseId: ReadonlyMap<string, string> }>()
 
   function current(index: HeldIndex): boolean {
     return held.get(index.rootId) === index
@@ -216,13 +219,16 @@ export function createBackgroundIndexOwner(deps: BackgroundIndexOwnerDeps): Back
   })
   const stopStore = deps.sessionStore.onChange((changed) => {
     for (const sessionId of changed ?? deps.sessionStore.allIds()) {
-      const commands = new Map((deps.sessionStore.get(sessionId)?.activeBackgroundCommands ?? []).map((command) => [command.toolUseId, `${command.id}\n${command.model ?? ""}\n${command.effort ?? ""}\n${command.roleSessionId ?? ""}`]))
-      const previous = liveCommands.get(sessionId) ?? new Map<string, string>()
-      const toolUseIds = new Set([...commands.keys(), ...previous.keys()].filter((toolUseId) => commands.get(toolUseId) !== previous.get(toolUseId)))
-      if (toolUseIds.size === 0) continue
+      const source = deps.sessionStore.get(sessionId)?.activeBackgroundCommands ?? []
+      const previous = liveCommands.get(sessionId)
+      // Most store changes, such as a streamed delta, leave the array alone.
+      if (source === previous?.source || (source.length === 0 && previous === undefined)) continue
+      const commands = new Map(source.map((command) => [command.toolUseId, `${command.id}\n${command.model ?? ""}\n${command.effort ?? ""}\n${command.roleSessionId ?? ""}`]))
+      const before = previous?.byToolUseId ?? new Map<string, string>()
+      const toolUseIds = new Set([...commands.keys(), ...before.keys()].filter((toolUseId) => commands.get(toolUseId) !== before.get(toolUseId)))
       if (commands.size === 0) liveCommands.delete(sessionId)
-      else liveCommands.set(sessionId, commands)
-      routeAll({ kind: "live", sessionId, toolUseIds })
+      else liveCommands.set(sessionId, { source, byToolUseId: commands })
+      if (toolUseIds.size > 0) routeAll({ kind: "live", sessionId, toolUseIds })
     }
   }, "background-index")
   const stopKept = deps.onKeptChange((sessionId) => { routeAll({ kind: "kept", sessionId }) })
