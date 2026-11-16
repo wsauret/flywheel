@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { Schema } from "effect"
 import { createSideQuestionHost, sideQuestionHost, type SideQuestionHost } from "../../../../../src/orchestration/modules/side-question/host.js"
 import { createSideQuestionProtocol } from "../../../../../src/orchestration/modules/side-question/protocol.js"
-import { sideQuestionCursor, sideQuestionDomain, sideQuestionRequestCursor, sideQuestionRequestDomain, readSideQuestionView } from "../../../../../src/protocol/modules/side-question.js"
+import { readSideQuestionView, sideQuestionCursor, sideQuestionProtocol, sideQuestionRequestCursor } from "../../../../../src/protocol/modules/side-question.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
@@ -20,6 +20,8 @@ import type { FirstPartyModule } from "../../../../../src/orchestration/modules.
 import { makeLifecycle } from "../../chat/_chat-runner-lifecycle-fixtures.js"
 
 type Runner = { readonly chatModuleHosts: ReturnType<typeof composeModuleRuntimes> }
+
+const [sideQuestionDomain, sideQuestionRequestDomain] = sideQuestionProtocol.domains
 
 /** A session store holding resident sessions; `attach` notifies like the real store. */
 function residentStore(sessions: { readonly [sessionId: string]: ConversationSessionEntry["kind"] }) {
@@ -145,7 +147,7 @@ test("session snapshot and whole patches share history, keep captured context, a
   const module = {
     id: "side-question", dependencies: [], availability: { kind: "available" },
     contributions: [{ domain: "chatHosts", id: "side-question", value: contribution }],
-    observers: [], transformers: [], gates: [],
+    observers: [], gates: [],
   } as const satisfies FirstPartyModule
   // The real chat lifecycle owns the hosts and retires one whose module the selection no longer includes.
   const { lifecycle } = makeLifecycle({ moduleSelection: () => composeModules([module], { disabledModuleIds: enabled ? [] : ["side-question"] }) })

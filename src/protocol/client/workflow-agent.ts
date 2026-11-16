@@ -30,7 +30,7 @@ export interface WorkflowAgentTarget {
  *  full-size card, which lists every agent of the workflow. The workflow's
  *  own name stands beside it in the workflow band. The full-size card's own
  *  back names the chat. */
-export function workflowBackLabel(origin: "chat" | "card", names: { readonly chat: string }): string {
+function workflowBackLabel(origin: "chat" | "card", names: { readonly chat: string }): string {
   return origin === "card" ? "All agents" : names.chat
 }
 

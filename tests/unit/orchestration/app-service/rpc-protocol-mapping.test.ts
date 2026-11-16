@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { InvariantViolation } from "../../../../src/infra/invariant.js"
 import type { FrontendMutation, RuntimeQueryResult } from "../../../../src/protocol/app-service-types.js"
 import type { RuntimeModuleSnapshotResult } from "../../../../src/protocol/module-protocol-types.js"
-import { PapercutPatchPayloadSchema, RuntimePapercutCountSnapshotResultSchema, type RuntimePapercutCountSnapshotResult } from "../../../../src/protocol/modules/papercuts.js"
+import { papercutsProtocol, type RuntimePapercutCountView } from "../../../../src/protocol/modules/papercuts.js"
 import type { ProjectNotificationEpisode } from "../../../../src/protocol/modules/project-notifications.js"
 import type { OutputWindowSnapshot } from "../../../../src/protocol/transcript-protocol-types.js"
 import { cursorKey, sessionDomainCursor, type RuntimeDomainIntakeBindings } from "../../../../src/protocol/runtime-ui-protocol-types.js"
@@ -21,28 +21,26 @@ import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-di
 import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/runtime-cursor-schemas.js"
 import { RuntimeAuthStatusSnapshotResultSchema } from "../../../../src/protocol/auth-status-protocol-schemas.js"
 import { WorkflowRowsSchema, WorkflowTreeSchema, WorkflowTreeV1Schema, WorkflowViewSchema } from "../../../../src/workflows/view/schemas.js"
-import {
-  ExperimentViewPatchPayloadSchema,
-  RuntimeBackgroundExperimentViewSnapshotSchema,
-  RuntimeExperimentViewSnapshotResultSchema,
-  type FrontendExperimentView,
-  type RuntimeExperimentViewSnapshotResult,
-} from "../../../../src/protocol/modules/experiments.js"
+import { experimentViewDomain, type FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
 
 const experimentViewCursor = (sessionId: string) => sessionDomainCursor("experiment_view", sessionId)
-const isExperimentViewPayload = Schema.is(ExperimentViewPatchPayloadSchema)
+const isExperimentViewPayload = Schema.is(experimentViewDomain.patch)
 const workflowDomain = workflowsProtocol.domains[1]
+const papercutsDomain = papercutsProtocol.domains[0]
+const experimentBackground = experimentViewDomain.snapshot.background
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
 type Assert<T extends true> = T
 type SnapshotCorrelation = Assert<Equal<RuntimeQueryResult<{ readonly type: "moduleSnapshot" }>, RuntimeModuleSnapshotResult>>
-type PapercutCorrelation = Assert<Equal<RuntimeQueryResult<{ readonly type: "papercutCountSnapshot" }>, RuntimePapercutCountSnapshotResult>>
+type PapercutSnapshot = { readonly snapshotPosition: number; readonly papercuts: RuntimePapercutCountView }
+type PapercutCorrelation = Assert<Equal<RuntimeQueryResult<{ readonly type: "papercutCountSnapshot" }>, PapercutSnapshot>>
 type PapercutIntakeObligation = Assert<Equal<Pick<RuntimeDomainIntakeBindings, "papercuts">, { readonly papercuts: object }>>
 type NotificationSnapshot = { readonly snapshotPosition: number; readonly notifications: readonly ProjectNotificationEpisode[] }
 type NotificationCorrelation = Assert<Equal<RuntimeQueryResult<{ readonly type: "projectNotificationSnapshot" }>, NotificationSnapshot>>
 type NotificationIntakeObligation = Assert<Equal<Pick<RuntimeDomainIntakeBindings, "project_notifications">, { readonly project_notifications: object }>>
 type WindowCorrelation = Assert<Equal<RuntimeQueryResult<{ readonly type: "outputWindow"; readonly sessionId: string; readonly request: never }>, OutputWindowSnapshot>>
-type ExperimentViewCorrelation = Assert<Equal<RuntimeQueryResult<{ readonly type: "experimentViewSnapshot"; readonly sessionId: string }>, RuntimeExperimentViewSnapshotResult>>
+type ExperimentViewSnapshot = { readonly snapshotPosition: number; readonly experimentView: FrontendExperimentView | null }
+type ExperimentViewCorrelation = Assert<Equal<RuntimeQueryResult<{ readonly type: "experimentViewSnapshot"; readonly sessionId: string }>, ExperimentViewSnapshot>>
 type ExperimentViewIntakeObligation = Assert<Equal<Pick<RuntimeDomainIntakeBindings, "experiment_view">, { readonly experiment_view: object }>>
 
 const experimentView: FrontendExperimentView = {
@@ -97,12 +95,12 @@ describe("Runtime protocol RPC mapping", () => {
 
   test("experiment view snapshot and patch payloads round-trip through schemas", () => {
     const snapshot = { snapshotPosition: 7, experimentView }
-    expect(Schema.decodeUnknownSync(RuntimeExperimentViewSnapshotResultSchema)(snapshot)).toEqual(snapshot)
-    expect(Schema.decodeUnknownSync(RuntimeExperimentViewSnapshotResultSchema)({ snapshotPosition: 8, experimentView: null })).toEqual({ snapshotPosition: 8, experimentView: null })
-    expect(Schema.decodeUnknownSync(RuntimeBackgroundExperimentViewSnapshotSchema)({ experimentView })).toEqual({ experimentView })
+    expect(Schema.decodeUnknownSync(experimentViewDomain.snapshot.result)(snapshot)).toEqual(snapshot)
+    expect(Schema.decodeUnknownSync(experimentViewDomain.snapshot.result)({ snapshotPosition: 8, experimentView: null })).toEqual({ snapshotPosition: 8, experimentView: null })
+    expect(Schema.decodeUnknownSync(experimentBackground)({ experimentView })).toEqual({ experimentView })
     const updated = { kind: "experiment_view.updated", experimentView } as const
-    expect(Schema.decodeUnknownSync(ExperimentViewPatchPayloadSchema)(updated)).toEqual(updated)
-    expect(Schema.decodeUnknownSync(ExperimentViewPatchPayloadSchema)({ kind: "experiment_view.removed" })).toEqual({ kind: "experiment_view.removed" })
+    expect(Schema.decodeUnknownSync(experimentViewDomain.patch)(updated)).toEqual(updated)
+    expect(Schema.decodeUnknownSync(experimentViewDomain.patch)({ kind: "experiment_view.removed" })).toEqual({ kind: "experiment_view.removed" })
     expect(isExperimentViewPayload(updated)).toBe(true)
     expect(isExperimentViewPayload({ kind: "workflow_view.removed" })).toBe(false)
   })
@@ -128,7 +126,7 @@ describe("Runtime protocol RPC mapping", () => {
   })
 
   test("experiment view wire values reject malformed rows and mismatched kinds", () => {
-    const decode = (wire: unknown) => Schema.decodeUnknownSync(RuntimeExperimentViewSnapshotResultSchema)(wire)
+    const decode = (wire: unknown) => Schema.decodeUnknownSync(experimentViewDomain.snapshot.result)(wire)
     const [first] = experimentView.runs
     if (first === undefined) throw new Error("fixture has no runs")
     const withRun = (run: { readonly [field: string]: unknown }) => ({ snapshotPosition: 1, experimentView: { ...experimentView, runs: [run] } })
@@ -140,8 +138,8 @@ describe("Runtime protocol RPC mapping", () => {
     expect(() => decode({ snapshotPosition: 1, experimentView: { ...experimentView, direction: "up" } })).toThrow()
     expect(() => decode({ snapshotPosition: 1, experimentView: { ...experimentView, runCounts: { ...experimentView.runCounts, kept: -1 } } })).toThrow()
     expect(() => decode({ snapshotPosition: 1, experimentView: { ...experimentView, running: "yes" } })).toThrow()
-    expect(() => Schema.decodeUnknownSync(ExperimentViewPatchPayloadSchema)({ kind: "experiment_view.updated" })).toThrow()
-    expect(() => Schema.decodeUnknownSync(ExperimentViewPatchPayloadSchema)({ kind: "workflow_view.updated", experimentView })).toThrow()
+    expect(() => Schema.decodeUnknownSync(experimentViewDomain.patch)({ kind: "experiment_view.updated" })).toThrow()
+    expect(() => Schema.decodeUnknownSync(experimentViewDomain.patch)({ kind: "workflow_view.updated", experimentView })).toThrow()
   })
 
   test("papercut snapshot and full-view patch round-trip with a workspace cursor", () => {
@@ -149,7 +147,7 @@ describe("Runtime protocol RPC mapping", () => {
     expect(query).toBeDefined()
     const snapshot = { snapshotPosition: 8, papercuts: { undisposedCount: 3 } }
     expect(Schema.decodeUnknownSync(query!.payloadSchema)({ type: "papercutCountSnapshot" })).toEqual({ type: "papercutCountSnapshot" })
-    expect(Schema.decodeUnknownSync(RuntimePapercutCountSnapshotResultSchema)(snapshot)).toEqual(snapshot)
+    expect(Schema.decodeUnknownSync(papercutsDomain.snapshot.result)(snapshot)).toEqual(snapshot)
 
     const patch = {
       cursor: { scope: "workspace", domain: "papercuts" },
@@ -158,13 +156,15 @@ describe("Runtime protocol RPC mapping", () => {
       payload: { kind: "papercuts.changed", papercuts: { undisposedCount: 4 } },
     }
     expect<unknown>(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    // A papercut count patch decodes and applies to the count view.
+    expect(papercutsDomain.view.patch(Schema.decodeUnknownSync(papercutsDomain.patch)(patch.payload), { undisposedCount: 3 })).toEqual({ undisposedCount: 4 })
   })
 
   test("papercut wire values reject malformed counts and mismatched kinds", () => {
     for (const undisposedCount of [-1, 1.5, "3"]) {
-      expect(() => Schema.decodeUnknownSync(RuntimePapercutCountSnapshotResultSchema)({ snapshotPosition: 8, papercuts: { undisposedCount } })).toThrow()
+      expect(() => Schema.decodeUnknownSync(papercutsDomain.snapshot.result)({ snapshotPosition: 8, papercuts: { undisposedCount } })).toThrow()
     }
-    expect(() => Schema.decodeUnknownSync(PapercutPatchPayloadSchema)({ kind: "papercut.changed", papercuts: { undisposedCount: 4 } })).toThrow()
+    expect(() => Schema.decodeUnknownSync(papercutsDomain.patch)({ kind: "papercut.changed", papercuts: { undisposedCount: 4 } })).toThrow()
   })
 
   test("stream patch and command result payloads are schema-backed", () => {

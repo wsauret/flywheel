@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { expect, test } from "bun:test"
-import { sideQuestionDomain, sideQuestionRequestDomain, type SideQuestionView } from "../../../../../src/protocol/modules/side-question.js"
+import { sideQuestionProtocol, type SideQuestionView } from "../../../../../src/protocol/modules/side-question.js"
 import type { DomainReader } from "../../../../../src/protocol/protocol-module.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import { runtimeDispatch } from "../../../../helpers/runtime-dispatch.js"
@@ -18,6 +18,7 @@ const { createTextAttributes, ScrollBoxRenderable } = await import("@opentui/cor
 const { ComposerBody } = await import("../../../../../src/tui/components/composer-frame.js")
 const { createComposerFocus } = await import("../../../../../src/tui/hooks/create-composer-focus.js")
 
+const [sideQuestionDomain, sideQuestionRequestDomain] = sideQuestionProtocol.domains
 const query: TuiControllerHost["client"]["query"] = async () => { throw new Error("side question must not query") }
 
 function sideQuestionReader(view: () => SideQuestionView | null | undefined): DomainReader {

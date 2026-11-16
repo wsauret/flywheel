@@ -78,7 +78,7 @@ function addressDetail(agent: WorkflowPhaseAgent, cut: string | undefined): stri
  *  phases in run order, the items of a list in list order with the agents
  *  of every phase of its stream, the named agents of a phase in file order,
  *  and the agent of a phase of one agent by its record id. */
-export function workflowAddresses(view: View, cut?: string): readonly WorkflowAddress[] {
+function workflowAddresses(view: View, cut?: string): readonly WorkflowAddress[] {
   const { byId } = workflowTreeIndex(view.tree)
   const outline = workflowOutline(view, cut)
   const streams = new Set<string>()

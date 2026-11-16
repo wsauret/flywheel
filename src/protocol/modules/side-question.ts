@@ -25,8 +25,8 @@ export interface SideQuestionView {
   readonly current: SideQuestionRequest | null
 }
 
-export type SideQuestionHistoryView = Pick<SideQuestionView, "revision" | "exchanges">
-export type SideQuestionRequestView = Pick<SideQuestionView, "current">
+type SideQuestionHistoryView = Pick<SideQuestionView, "revision" | "exchanges">
+type SideQuestionRequestView = Pick<SideQuestionView, "current">
 
 /** One change to the request a client holds: the whole request, or text that
  *  the running answer gained. */
@@ -55,7 +55,7 @@ const resultSchema: Schema.Codec<SideQuestionResult> = Schema.Union([
   Schema.Struct({ ok: Schema.Literal(false), error: Schema.String }),
 ])
 
-export const sideQuestionDomain = defineProtocolDomain({
+const sideQuestionDomain = defineProtocolDomain({
   domain: "side-question",
   scope: "session",
   delivery: "latest-collapsible",
@@ -79,7 +79,7 @@ function foldRequestPatch(payload: SideQuestionRequestPatch, held: SideQuestionR
   return current ? { current: { ...current, answer: current.answer + payload.text } } : held ?? null
 }
 
-export const sideQuestionRequestDomain = defineProtocolDomain({
+const sideQuestionRequestDomain = defineProtocolDomain({
   domain: "side-question-request",
   scope: "session",
   // A running answer ships as appended text, so each patch is a change and a

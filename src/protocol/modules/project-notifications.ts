@@ -34,7 +34,7 @@ export interface ProjectNotificationProjection {
   readonly lastSeq: number
 }
 
-export interface RuntimeProjectNotificationSnapshotResult {
+interface RuntimeProjectNotificationSnapshotResult {
   readonly snapshotPosition: RuntimePosition
   readonly notifications: readonly ProjectNotificationEpisode[]
 }
@@ -64,7 +64,7 @@ const ProjectNotificationPatchPayloadSchema: Schema.Codec<ProjectNotificationPat
   Schema.Struct({ kind: Schema.Literal("project_notifications.resolved"), sourceId: Schema.NonEmptyString, episodeId: Schema.NonEmptyString, resolvedAt: NonNegativeInt }),
   Schema.Struct({ kind: Schema.Literal("project_notifications.dismissed"), sourceId: Schema.NonEmptyString, episodeId: Schema.NonEmptyString, dismissedAt: NonNegativeInt }),
 ])
-export const RuntimeProjectNotificationSnapshotResultSchema: Schema.Codec<RuntimeProjectNotificationSnapshotResult> = Schema.Struct({
+const RuntimeProjectNotificationSnapshotResultSchema: Schema.Codec<RuntimeProjectNotificationSnapshotResult> = Schema.Struct({
   snapshotPosition: Schema.Number,
   notifications: Schema.Array(ProjectNotificationEpisodeSchema),
 })

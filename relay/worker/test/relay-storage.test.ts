@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
 import { join } from "node:path"
 
-import { decodeRelayControlFrame, decodeRelayDeviceFrame, RELAY_MIN_STATED_HEARTBEAT_MS, RELAY_MISSED_HEARTBEATS, RELAY_PROTOCOL_VERSION, runtimeAttachSigningBytes } from "../../../src/protocol/modules/remote/relay-protocol.js"
+import { decodeRelayControlFrame, decodeRelayDeviceFrame, RELAY_PROTOCOL_VERSION, runtimeAttachSigningBytes } from "../../../src/protocol/modules/remote/relay-protocol.js"
 import type { Invocation } from "./counting-relay.js"
 import { startLocalRelay } from "./local-relay.js"
-import { attachRuntime, closedEvent, openChannel, pinging, relayIdentity, testRoute, textFrames } from "./relay-sockets.js"
+import { attachRuntime, closedEvent, openChannel, pinging, relayIdentity, statedHeartbeat, testRoute, textFrames } from "./relay-sockets.js"
 
 /** The storage work the relay's object does. Every storage write is a moment
  *  in which a storage fault resets the object and ends every socket of the
@@ -13,9 +13,7 @@ import { attachRuntime, closedEvent, openChannel, pinging, relayIdentity, testRo
  *  is connected. Everything a socket stands for rides in its attachment. */
 
 const COUNTING_RELAY = join(import.meta.dir, "counting-relay.ts")
-const HEARTBEAT_MS = RELAY_MIN_STATED_HEARTBEAT_MS
-const DEADLINE_MS = HEARTBEAT_MS * RELAY_MISSED_HEARTBEATS
-const STATED = `?heartbeatMs=${HEARTBEAT_MS}`
+const { heartbeatMs: HEARTBEAT_MS, deadlineMs: DEADLINE_MS, query: STATED } = statedHeartbeat()
 const READS = new Set(["get", "list", "getAlarm"])
 
 const writesOf = (invocation: Invocation) => invocation.calls.filter((call) => !READS.has(call))

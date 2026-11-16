@@ -66,8 +66,6 @@ export interface ProtocolDomain<
    *  whose view claims what holds right now, such as an attachment, states
    *  here what of it no reader may claim until the runtime answers again. */
   unanswered?(view: View): View
-  /** The editor host omits this domain from its client when set. Default exposed. */
-  readonly editor?: "omitted"
 }
 
 export type AnyProtocolDomain = ProtocolDomain<string, "session" | "workspace" | "workflow", ProtocolSnapshotSpec<string, Schema.Struct.Fields, ProtocolSnapshotResult>, ProtocolSnapshotResult, { readonly kind: string }, unknown>
@@ -80,8 +78,6 @@ export interface ProtocolQuery<Query extends string, Input extends Schema.Struct
   readonly input?: Input
   readonly result: Schema.Codec<Result>
   readonly deadline: "control" | "output"
-  /** The editor host omits this query from its client when set. Default exposed. */
-  readonly editor?: "omitted"
 }
 
 type AnyProtocolQuery = ProtocolQuery<string, Schema.Struct.Fields, unknown>
@@ -229,7 +225,6 @@ export interface ProtocolRead<Query extends string> {
   readonly input?: Schema.Struct.Fields
   readonly result: Schema.Codec<unknown>
   readonly deadline: "control" | "output"
-  readonly editor?: "omitted"
   /** A session-scoped snapshot carries the session id beside its declared input. */
   readonly session: boolean
   readonly workflow?: boolean
@@ -261,7 +256,7 @@ export function protocolMutations<const Modules extends readonly ProtocolModule[
 /** Every read of a registry: each domain's snapshot query, then each module query. */
 export function protocolReads<const Modules extends readonly ProtocolModule[]>(modules: Modules): readonly ProtocolRead<ProtocolDomainOf<Modules>["snapshot"]["query"] | ProtocolQueryOf<Modules>["query"]>[] {
   return [
-    ...protocolDomains(modules).map((domain) => ({ ...domain.snapshot, ...(domain.editor === undefined ? {} : { editor: domain.editor }), session: domain.scope === "session", workflow: domain.scope === "workflow" })),
+    ...protocolDomains(modules).map((domain) => ({ ...domain.snapshot, session: domain.scope === "session", workflow: domain.scope === "workflow" })),
     ...protocolQueries(modules).map((query) => ({ ...query, session: false })),
   ]
 }

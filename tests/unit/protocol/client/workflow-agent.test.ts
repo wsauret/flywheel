@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 import { workflowAgentFigures } from "../../../../src/protocol/client/workflow-card.js"
-import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentLine, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowAgentTitle, workflowBackLabel, workflowBriefLine, workflowNextAgentLabel, workflowSeatRoleText, type WorkflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
+import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentLine, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowAgentTitle, workflowBriefLine, workflowNextAgentLabel, workflowSeatRoleText, type WorkflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import { attemptOf, inputStage as wideStage, stage } from "../../workflows/vm/_map-fixtures.js"
 import { completeAttempt } from "../../../../src/workflows/vm/attempt-transitions.js"
@@ -94,8 +94,8 @@ describe("the agent view of one agent", () => {
 
   it("names the way back by the place that the view opened from, the workflow apart from it every time, and the whole workflow's progress in the words of its plan bar", () => {
     const names = { chat: "Fanout-fail", workflow: "Fanout Ui" }
-    expect(workflowBackLabel("chat", names)).toBe("Fanout-fail")
-    expect(workflowBackLabel("card", names)).toBe("All agents")
+    expect(workflowAgentBand("chat", names, undefined).back).toBe("Fanout-fail")
+    expect(workflowAgentBand("card", names, undefined).back).toBe("All agents")
     const view = failedBranch()
     // From the full-size card the way back names the card, so the
     // workflow's name stands apart from it, as it does from the chat.
