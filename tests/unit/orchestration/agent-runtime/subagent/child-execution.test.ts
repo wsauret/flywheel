@@ -205,7 +205,7 @@ describe("child execution liveness and interruption", () => {
       await delay(25);
       expect(bumps).toBe(0);
 
-      background!.track({ done: work.promise, meta: { id: "awaited-child", type: "subagent", description: "awaited work" } });
+      background!.track({ done: work.promise, meta: { id: "awaited-child", type: "background_command", description: "awaited work" } });
       bumps = 0;
       const backgroundBumpedThrice = () => bumps >= 3;
       for (let attempt = 0; attempt < 500 && !backgroundBumpedThrice(); attempt++) await delay(5);

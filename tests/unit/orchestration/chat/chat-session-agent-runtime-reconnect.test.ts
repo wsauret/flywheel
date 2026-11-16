@@ -497,7 +497,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
       if (!background) throw new Error("expected session background owner")
       background.tasks.track({
         done: Promise.resolve({ status: "completed", content: "background result" }),
-        meta: { id: "task-after-stall", type: "subagent", description: "Late background work" },
+        meta: { id: "task-after-stall", type: "background_command", description: "Late background work" },
       })
       const backgroundDeadline = Date.now() + 3000
       while (backgroundTurns.length < 1 && Date.now() < backgroundDeadline) await Bun.sleep(10)

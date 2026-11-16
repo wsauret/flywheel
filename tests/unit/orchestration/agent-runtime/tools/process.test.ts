@@ -152,7 +152,6 @@ describe("process tool", () => {
     await done.promise;
     expect(registry.processRecord("cancelled-child")?.status).toBe("cancelled");
     expect((await tool.execute({ action: "list" }, context)).content).toContain("cancelled");
-    expect(await registry.waitProcess("cancelled-child", { signal: AbortSignal.abort() })).toBe(true);
   });
 
   it("keeps list and direct lookup bounded after settled history eviction", async () => {

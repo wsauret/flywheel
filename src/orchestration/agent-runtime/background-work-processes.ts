@@ -1,14 +1,14 @@
 /**
  * The session process records of one background-work registry. A record
- * starts with a task of a process kind and outlives it, so a stop, a read of
- * its output, or a wait still finds a process after it settled. The most
- * recent settled records stay, up to a bounded history. A command's process
+ * derives from a live task of a process kind while it runs and outlives it,
+ * so a stop or a read of its output still finds a process after it settled.
+ * The most recent settled records stay, up to a bounded history. A command's process
  * also has one durable background index record when it starts and one when
  * it settles (`commandIndexRecord`).
  */
 
 import type { BackgroundCommandRecord } from "../../infra/runtime-fact-types.js";
-import type { BackgroundWorkMeta, BackgroundWorkResult } from "./background-work.js";
+import type { BackgroundKillSource, BackgroundWorkMeta, BackgroundWorkResult } from "./background-work.js";
 import type { ManagedCommand } from "./tools/managed-command.js";
 
 const SETTLED_PROCESS_HISTORY_LIMIT = 100;
@@ -89,132 +89,94 @@ type OutputReader = (request: BackgroundOutputRequest) => Promise<string>;
 
 type SettledProcessStatus = Exclude<BackgroundProcessRecord["status"], "running" | "stopping">;
 
-/** A live process reads whether a stop of it is under way from its task,
- *  the one owner of that request; a settled one holds how it ended. */
-type ProcessState =
-  | { readonly kind: "live"; readonly stopRequested: () => boolean }
-  | { readonly kind: "settled"; readonly status: SettledProcessStatus; readonly settledAtMs: number; readonly exitCode?: number };
-
-interface ProcessEntry {
-  identity: Pick<BackgroundProcessRecord, "id" | "kind" | "description" | "startedAtMs">;
-  state: ProcessState;
-  readOutput: OutputReader | undefined;
-  toolUseId: string | undefined;
-  command: ManagedCommand | undefined;
-  settled: Promise<void>;
+/** The registry's one record of a live task, from which its process record
+ *  derives while it runs. A stop under way shows as `stopping`. */
+export interface LiveProcessTask {
+  readonly meta: Pick<BackgroundWorkMeta, "id" | "type" | "description" | "toolUseId">;
+  readonly startedAtMs: number;
+  readonly stopRequestedBy: BackgroundKillSource | undefined;
+  readonly readOutput: OutputReader | undefined;
+  readonly command: ManagedCommand | undefined;
 }
 
-/** What a task that starts tells its record. */
-interface ProcessAdmission {
-  readonly id: string;
-  readonly type: string;
-  readonly description: string;
-  readonly startedAtMs: number;
+/** What the settled history reads of a process after its task left. */
+interface SettledProcess {
+  readonly record: BackgroundProcessRecord;
   readonly toolUseId: string | undefined;
   readonly readOutput: OutputReader | undefined;
   readonly command: ManagedCommand | undefined;
-  readonly done: Promise<unknown>;
-  /** Whether a stop of the task is under way, which the record shows as `stopping`. */
-  readonly stopRequested: () => boolean;
 }
 
 export interface BackgroundProcessTable {
-  /** Starts the record of a task whose type is a process kind. */
-  admit(task: ProcessAdmission): void;
-  /** Records how a process ended. Resolves to the tool use of a settled
-   *  record that the bounded history evicted, whose retained output the
-   *  caller forgets with it. */
-  settle(id: string, end: { readonly status: SettledProcessStatus; readonly exit?: CommandExit | undefined }): string | undefined;
-  /** Forgets one record. Resolves to its tool use, whose retained output the
-   *  caller forgets with it. */
+  /** Records how a live task of a process kind ended. Returns the tool use
+   *  of a settled record that the bounded history evicted, whose retained
+   *  output the caller forgets with it. */
+  settle(task: LiveProcessTask, end: { readonly status: SettledProcessStatus; readonly exit?: CommandExit | undefined }): string | undefined;
+  /** Forgets one settled record. Returns its tool use, whose retained output
+   *  the caller forgets with it. */
   forget(id: string): string | undefined;
   clear(): void;
   records(): BackgroundProcessRecord[];
   record(id: string): BackgroundProcessRecord | undefined;
   command(id: string): ManagedCommand | undefined;
   readOutput(id: string, request: BackgroundOutputRequest): Promise<BackgroundWorkOutput>;
-  /** Awaits the end of one process. The wait is event-driven and bounded;
-   *  false means unknown, aborted, or timed out. */
-  wait(id: string, options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<boolean>;
 }
 
-function view({ identity, state }: ProcessEntry): BackgroundProcessRecord {
-  if (state.kind === "live") return { ...identity, status: state.stopRequested() ? "stopping" : "running" };
-  return { ...identity, status: state.status, settledAtMs: state.settledAtMs, ...(state.exitCode === undefined ? {} : { exitCode: state.exitCode }) };
+function liveRecord({ meta, startedAtMs, stopRequestedBy }: LiveProcessTask & { readonly meta: { readonly type: BackgroundProcessKind } }): BackgroundProcessRecord {
+  return { id: meta.id, kind: meta.type, description: meta.description, startedAtMs, status: stopRequestedBy === undefined ? "running" : "stopping" };
 }
 
-export function createBackgroundProcessTable(): BackgroundProcessTable {
-  const processes = new Map<string, ProcessEntry>();
-  const settledIds = new Set<string>();
+function isLiveProcess(task: LiveProcessTask | undefined): task is LiveProcessTask & { readonly meta: { readonly type: BackgroundProcessKind } } {
+  return task !== undefined && isProcessKind(task.meta.type);
+}
+
+/** The process view of `live`, the registry's map of live tasks by id, and
+ *  the settled history. A live id and a settled id never coincide: a task
+ *  that tracks again under a settled id forgets that record first. */
+export function createBackgroundProcessTable(live: ReadonlyMap<string, LiveProcessTask>): BackgroundProcessTable {
+  const settled = new Map<string, SettledProcess>();
+  const find = (id: string): Pick<SettledProcess, "readOutput" | "command"> | undefined => {
+    const task = live.get(id);
+    return isLiveProcess(task) ? task : settled.get(id);
+  };
 
   function forget(id: string): string | undefined {
-    const process = processes.get(id);
-    processes.delete(id);
-    settledIds.delete(id);
+    const process = settled.get(id);
+    settled.delete(id);
     return process?.toolUseId;
   }
 
   return {
-    admit(task) {
-      if (!isProcessKind(task.type)) return;
-      processes.set(task.id, {
-        identity: { id: task.id, kind: task.type, description: task.description, startedAtMs: task.startedAtMs },
-        state: { kind: "live", stopRequested: task.stopRequested },
-        readOutput: task.readOutput,
-        toolUseId: task.toolUseId,
-        command: task.command,
-        settled: task.done.then(() => undefined, () => undefined),
-      });
-    },
-    settle(id, end) {
-      const process = processes.get(id);
-      if (!process) return undefined;
+    settle(task, end) {
+      if (!isLiveProcess(task)) return undefined;
       const exitCode = exitCodeOf(end.exit);
-      process.state = { kind: "settled", status: end.status, settledAtMs: Date.now(), ...(exitCode === undefined ? {} : { exitCode }) };
-      settledIds.add(id);
-      if (settledIds.size <= SETTLED_PROCESS_HISTORY_LIMIT) return undefined;
-      const oldest = settledIds.values().next().value;
+      const { meta } = task;
+      settled.set(meta.id, {
+        record: { id: meta.id, kind: meta.type, description: meta.description, startedAtMs: task.startedAtMs, status: end.status, settledAtMs: Date.now(), ...(exitCode === undefined ? {} : { exitCode }) },
+        toolUseId: meta.toolUseId,
+        readOutput: task.readOutput,
+        command: task.command,
+      });
+      if (settled.size <= SETTLED_PROCESS_HISTORY_LIMIT) return undefined;
+      const oldest = settled.keys().next().value;
       return oldest === undefined ? undefined : forget(oldest);
     },
     forget,
-    clear() {
-      processes.clear();
-      settledIds.clear();
-    },
-    records: () => [...processes.values()].map(view),
+    clear: () => { settled.clear(); },
+    records: () => [
+      ...[...settled.values()].map(({ record }) => record),
+      ...[...live.values()].filter(isLiveProcess).map(liveRecord),
+    ],
     record(id) {
-      const process = processes.get(id);
-      return process ? view(process) : undefined;
+      const task = live.get(id);
+      return isLiveProcess(task) ? liveRecord(task) : settled.get(id)?.record;
     },
-    command: (id) => processes.get(id)?.command,
+    command: (id) => find(id)?.command,
     async readOutput(id, request) {
-      const process = processes.get(id);
+      const process = find(id);
       if (!process) return { ok: false, reason: "unknown" };
       if (!process.readOutput) return { ok: false, reason: "unsupported" };
       return { ok: true, text: await process.readOutput(request) };
-    },
-    async wait(id, options) {
-      const process = processes.get(id);
-      if (!process) return false;
-      if (process.state.kind === "settled") return true;
-      const signal = options?.signal;
-      if (signal?.aborted) return false;
-
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      let abort: (() => void) | undefined;
-      const bounded = new Promise<boolean>((resolve) => {
-        if (options?.timeoutMs !== undefined) timer = setTimeout(() => resolve(false), options.timeoutMs);
-        if (signal) {
-          abort = () => resolve(false);
-          signal.addEventListener("abort", abort, { once: true });
-        }
-      });
-      try {
-        return await Promise.race([process.settled.then(() => true), bounded]);
-      } finally {
-        if (timer !== undefined) clearTimeout(timer);
-        if (abort) signal?.removeEventListener("abort", abort);
-      }
     },
   };
 }

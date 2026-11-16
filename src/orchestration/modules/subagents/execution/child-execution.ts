@@ -169,7 +169,6 @@ export function createChildExecution(options: {
   const backgroundMeta = {
     id: childRunId,
     type: "subagent",
-    settlementOwner: "child_session" as const,
     description: descriptionText,
     ...(toolUseId ? { toolUseId } : {}),
     ...(context.parentToolUseId ? { parentToolUseId: context.parentToolUseId } : {}),

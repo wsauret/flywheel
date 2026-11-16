@@ -24,6 +24,7 @@ import { temporaryDirectories } from "../../../helpers/directories"
 import type { SessionMessaging } from "../../../../src/orchestration/session/session-messaging"
 import type { SessionYield } from "../../../../src/orchestration/session/reply-waits"
 import { unusedChildSessionControl } from "../../../helpers/child-session-control.js"
+import { durableSubagentCompletionNotification } from "../../../../src/orchestration/agent-runtime/background-work-notifications"
 
 const temporary = temporaryDirectories()
 
@@ -684,10 +685,14 @@ describe("chat session with agent runtime — interrupt + resume", () => {
     }
     expect(runnerOptions).toHaveLength(1)
 
+    const audit = Promise.resolve({ status: "completed", content: "background result" } as const)
     background?.tasks.track({
-      done: Promise.resolve({ status: "completed", content: "background result" }),
+      done: audit,
       meta: { id: "task-1", type: "subagent", description: "Background audit" },
     })
+    // The child's completion reaches its parent through reconciliation, which
+    // delivers the durable notification after the child's run settles.
+    void audit.then((result) => background?.tasks.deliverDurableSubagentNotification(durableSubagentCompletionNotification([{ type: "subagent", childRunId: "task-1", description: "Background audit", result }], 0)))
 
     const secondDeadline = Date.now() + 500
     while (runnerOptions.length < 2 && Date.now() < secondDeadline) {

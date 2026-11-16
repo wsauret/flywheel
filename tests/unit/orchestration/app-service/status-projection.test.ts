@@ -19,6 +19,7 @@ import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../.
 import { entry, flush, NOTHING_OWED, sink, store, until } from "./_status-projection-fixtures.js"
 import { createProcessorClaims } from "../../../../src/orchestration/agent-runtime/tools/processor-claims.js"
 import { makeMockOwnedProcess } from "../agent-runtime/tools/_bash-fixtures.js"
+import { processSettled } from "../../../helpers/process-settled.js"
 
 const dbDirectory = mkdtempSync(join(tmpdir(), "fw-status-projection-"))
 const dbFile = join(dbDirectory, "flywheel.sqlite")
@@ -85,12 +86,12 @@ describe("status projection", () => {
       await Promise.resolve()
       tasks.track({
         done: done.promise, hostClose: "detach", kill: { run: () => {} },
-        meta: { id: "child", type: "workflow", toolUseId: "launch", description: "Surviving child", settlementOwner: "child_session" },
+        meta: { id: "child", type: "workflow", toolUseId: "launch", description: "Surviving child" },
       })
       const snapshot = projection.snapshot("chat-1").then(async (status) => {
         expect(status?.activeBackgroundCommands).toHaveLength(1)
         done.resolve({ status: "completed", content: "" })
-        expect(await tasks.waitProcess("child")).toBe(true)
+        expect(await processSettled(tasks, "child")).toBe(true)
         return status
       })
       await flush()

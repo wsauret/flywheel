@@ -19,6 +19,7 @@ import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surfa
 import { authProviders } from "../../../../helpers/auth-context.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js";
+import { processSettled } from "../../../../helpers/process-settled.js";
 
 const temporaryDirectory = temporaryDirectories();
 
@@ -436,7 +437,7 @@ describe("benchmark tool launch", () => {
     expect(resumedLaunch.resultId).toBe(launch.resultId);
     expect(resumedLaunch.taskId).not.toBe(launch.taskId);
     expect(tasks.processRecord(String(resumedLaunch.taskId))?.kind).toBe("benchmark");
-    expect(await tasks.waitProcess(String(resumedLaunch.taskId))).toBe(true);
+    expect(await processSettled(tasks, String(resumedLaunch.taskId))).toBe(true);
   });
 
   it("refuses a dry-run resume of a results directory that does not exist, and creates nothing", async () => {
