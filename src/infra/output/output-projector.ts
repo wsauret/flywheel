@@ -107,11 +107,6 @@ export class OutputProjector {
         return;
       case "complete-thinking":
         this.builder.completeThinking(event.timestamp);
-        // Exit condition: thinking ended. Fall back to "no phase" (Idle)
-        // unless something else has already moved phase forward.
-        if (this.builder.streamPhase === "thinking") {
-          this.builder.setStreamPhase(null, event.timestamp);
-        }
         return;
       case "complete-text":
         if (this.builder.streamPhase === "generating") {
@@ -317,12 +312,20 @@ export class OutputProjector {
     return this.builder.getBlocks();
   }
 
+  /** The text that row `blockKey` of `kind` holds: the one copy of a
+   *  streamed draft. */
+  contentOf(kind: "text" | "thinking", blockKey: string): string | undefined {
+    return this.builder.contentOf(kind, blockKey);
+  }
+
   drainChanges(): OutputChangeBatch {
     return this.builder.drainChanges();
   }
 
-  seedBlocks(prior: readonly AnyBlock[]): void {
-    this.builder.seedBlocks(prior);
+  /** Seeds the session's output window; its first block sits at absolute
+   *  index `sequenceStart`, and every change is minted from there. */
+  seedBlocks(prior: readonly AnyBlock[], sequenceStart: number): void {
+    this.builder.seedBlocks(prior, sequenceStart);
     this.tools.seedAgentBlocks(prior);
   }
 

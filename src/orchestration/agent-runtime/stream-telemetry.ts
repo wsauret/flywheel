@@ -3,7 +3,7 @@ import { maxEventLoopLagBetween } from "../../infra/event-loop-lag.js";
 import type { ProviderRequestOutcome, ProviderStreamSummary, ProviderStreamTelemetryEvent } from "../session/provider-request-audit-types.js";
 import type { ProviderStreamEvent, StreamTelemetryObservation, StreamTelemetryObserveResult, StreamTelemetrySink } from "./llm/types.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
-import { createGenerationMeasurement, type GenerationMeasurementTokenizer } from "./generation-measurement.js";
+import { createGenerationMeasurement, type GenerationMeasurementTokenizer, type SettledTextOf } from "./generation-measurement.js";
 
 interface TelemetryMetadata {
   [key: string]: unknown;
@@ -35,7 +35,8 @@ const BIG_GAP_MS = 5_000;
 
 interface RequestStreamTelemetry extends StreamTelemetrySink {
   observeNormalized(event: ProviderStreamEvent): Promise<void>;
-  complete(outcome: ProviderRequestOutcome): Promise<void>;
+  /** Records the stream summary once. `textOf` reads the settled text of each streamed text block. */
+  complete(outcome: ProviderRequestOutcome, textOf: SettledTextOf): Promise<void>;
 }
 
 // Stream telemetry is raw audit data. It records provider/normalized facts for
@@ -125,13 +126,13 @@ function createTelemetry(writer: ProviderRequestAuditWriter, handle: ProviderReq
     });
   }
 
-  async function complete(outcome: ProviderRequestOutcome): Promise<void> {
+  async function complete(outcome: ProviderRequestOutcome, textOf: SettledTextOf): Promise<void> {
     if (completed) return;
     completed = true;
     const completedAt = Date.now();
     const durationMs = Math.round(performance.now() - startedAt);
     const loopLagMs = maxEventLoopLagBetween(startedAt, performance.now());
-    const measurement = await generation.complete();
+    const measurement = await generation.complete(textOf);
     await pendingStart;
     await writer.recordStreamSummary?.(handle, {
       rawEventCount: sequence,
@@ -300,13 +301,7 @@ function noticeMetadata(event: NoticeMetadataEvent): TelemetryMetadata {
 function retryMetadata(event: RetryMetadataEvent): TelemetryMetadata {
   switch (event.kind) {
     case "stream_attempt_start":
-      return {
-        attempt: event.attempt,
-        isRetry: event.isRetry,
-        isFinalAttempt: event.isFinalAttempt,
-        sawThinkingStall: event.sawThinkingStall,
-        disableReasoning: event.disableReasoning,
-      };
+      return { disableReasoning: event.disableReasoning };
     case "stream_retry":
       return {
         attempt: event.attempt,

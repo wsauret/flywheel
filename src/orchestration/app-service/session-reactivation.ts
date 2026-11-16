@@ -142,7 +142,7 @@ export async function refreshOpenChatDisplay(deps: OpenDisplayDeps, sessionId: s
     log.debug("open display refresh", { sessionId, keep: options.keep, runner: current.runner !== null, runnerState: current.runnerState, waitingOnBackgroundWork: current.waitingOnBackgroundWork, refreshed: !kept })
     if (kept) return
   }
-  current.runner?.seedDisplayBlocks(refreshed.tail)
+  current.runner?.seedDisplayBlocks(refreshed.tail, refreshed.blockCount - refreshed.tail.length)
   replaceDisplaySeed(deps, sessionId, refreshed)
 }
 

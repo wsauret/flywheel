@@ -124,7 +124,7 @@ describe("history query status projection", () => {
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage("person", true), origin: "system" }, turnEndEntryId(interruptedTurnEnd("person"), "cut"))
     await tree.appendMessage({ kind: "user", content: CONTINUATION_MESSAGES.resumed, origin: "system" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "Durable answer." }] })
-    const live = createOutputSession({ updateEntry: () => {}, sessionId: memberId, executionCwd: projectRoot, priorBlocks: projectBlocksFromEntries(await tree.getBranch(), { executionCwd: projectRoot }) })
+    const live = createOutputSession({ updateEntry: () => {}, sessionId: memberId, executionCwd: projectRoot, prior: { blocks: projectBlocksFromEntries(await tree.getBranch(), { executionCwd: projectRoot }), sequenceStart: 0 } })
     tree.getStorage().dispose()
     live.pushSystemMessage("Background work still runs.", 2)
     live.pushUserMessage("Wrap up.", 3, { queued: true })

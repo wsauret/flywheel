@@ -34,6 +34,11 @@ function associateRun(result: AssistantTurnResult, block: ContentBlock): void {
   runs.set(block, run);
 }
 
+/** The settled text of the result's text block that streamed under `blockKey`, or undefined when it holds none. */
+export function settledTextOf(result: AssistantTurnResult, blockKey: string): string | undefined {
+  return textBlocksByResult.get(result)?.get(blockKey)?.text;
+}
+
 function keyedTextBlock(result: AssistantTurnResult, blockKey: string): Extract<ContentBlock, { type: "text" }> {
   let blocks = textBlocksByResult.get(result);
   if (!blocks) {
@@ -177,9 +182,9 @@ export function handleStreamEvent(event: ProviderStreamEvent, result: AssistantT
       result.terminalEvent = event;
       return event;
     case "stream_retry":
-      // The evidence gate in withRetryStream stops in-stream retries once the
-      // attempt has produced content, so a retry can only discard an empty
-      // accumulator (plus provisional metadata).
+      // The failover walk retries a candidate with a new attempt, which folds
+      // into its own fresh result, so a reset here cannot discard the partial
+      // of the attempt that failed.
       log.warn("stream retry, resetting empty turn accumulator", {
         droppedContentBlocks: result.assistantContent.length,
         droppedToolCalls: result.toolCalls.length,

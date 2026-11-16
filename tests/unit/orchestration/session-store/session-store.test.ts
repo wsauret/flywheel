@@ -17,6 +17,7 @@ import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime"
 import { DebugLog, type DebugLogRecordInput } from "../../../../src/infra/debug-log"
 import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/event-store-effect"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store"
+import { createOutputSession } from "../../../../src/orchestration/runner/output-session"
 import { createSessionStoreTestContext } from "./_session-store-fixtures"
 import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control.js"
 import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
@@ -144,7 +145,7 @@ describe("Reactive SessionStore — store-backed", () => {
     const unregister = registerLiveSessionControl(reader, {
       sessionId, state: async () => "running", deliver: async (_input, decide) => decide("running"), notify: async () => false,
       member: {
-        modules: async () => NO_MODULE_RUNTIMES, backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
+        workflowId: "workflow", modules: async () => NO_MODULE_RUNTIMES, backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
         compact: async () => false, interrupt: () => false, terminateBackgroundWork: () => {},
         releaseForegroundBash: id => controller.release(id), transferForegroundForReplacement: () => controller.transferForReplacement(),
       },
@@ -410,6 +411,26 @@ describe("Reactive SessionStore — store-backed", () => {
       expect(batch.fullResync).toBe(false)
       expect(batch.changes).toEqual([{ kind: "upsert", index: 8, block }])
       expect(sessionStore.get("pre-runner-001")?.visibleMessageCountSuffix).toBe(1)
+      dispose()
+    })
+  })
+
+  it("forwards unchanged the absolute indexes that a runner seeded with its window start mints", () => {
+    createRoot((dispose) => {
+      const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
+      const prior = [0, 1, 2].map((index): AnyBlock => ({ kind: "text", id: `seed-${index}`, content: "history", timestamp: index }))
+      sessionStore.openSessionRuntime({ sessionId: "window-500", conversationId: "conv-1", priorBlocks: prior, outputSequenceStart: 500 })
+      const output = createOutputSession({ executionCwd: "/workspace", updateEntry: (patch) => sessionStore.updateChatEntry("window-500", patch) })
+      const runner: ChatRunner = { ...createMockChatRunner("window-500"), seedDisplayBlocks: (blocks, sequenceStart) => output.seedBlocks(blocks, sequenceStart) }
+      expect(sessionStore.attachChatRunner("window-500", runner)).toBe(true)
+      output.flush()
+      sessionStore.drainOutputChanges("window-500")
+
+      output.applyProjectionEvent({ type: "push-text", text: "fourth", timestamp: 4, blockKey: "fourth" })
+      output.flush()
+
+      expect(sessionStore.drainOutputChanges("window-500").changes).toEqual([{ kind: "insert", index: 503, block: expect.objectContaining({ id: "fourth" }) }])
+      output.dispose()
       dispose()
     })
   })

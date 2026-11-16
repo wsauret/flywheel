@@ -96,7 +96,6 @@ function makeLifecycle(setup: {
     askUser: askUserStub(),
     setConnectionState() {},
     awaitDurableFacts: async () => {},
-    installModuleObserver: (observer) => { observer?.onEvent?.({ type: "text" }) },
   })
   return { lifecycle, phases, runnerOptions, experimentObserverInstalled }
 }

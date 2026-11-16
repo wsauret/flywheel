@@ -11,7 +11,7 @@ import { tailRequest } from "./_output-projection-fixtures.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js"
 import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner-stream-events.js"
-import { createThinkingAccumulator, emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js"
+import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js"
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js"
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js"
@@ -120,7 +120,7 @@ describe("live/derived output equivalence", () => {
         costTracker: createTurnUsageTracker({ emit: () => {}, budgetStreamId: "reasoning-coordinates" }),
         providerSessionKey: "reasoning-coordinates",
         parentToolUseId: undefined,
-        thinking: createThinkingAccumulator(),
+        thinking: { sawDelta: false },
         tools: new RequestToolMap(),
       }
       // One provider response as the Responses adapter yields it: the runner

@@ -1,22 +1,15 @@
-// ---------------------------------------------------------------------------
-// RuntimeEvent-to-AgentStreamEvent Mapper — Unit Tests
-// ---------------------------------------------------------------------------
-
 import { describe, it, expect } from "bun:test";
 
-import { mapRuntimeEventToAgentStreamEvents } from "../../../../src/orchestration/agent-runtime/runtime-event-mapper.js";
 import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner-stream-events.js";
-import { createThinkingAccumulator, emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js";
+import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js";
 import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js";
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js";
-import { parseRuntimeEventPayload, type RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
+import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
 import { RequestToolMap } from "../../../helpers/request-tool-surface.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
 import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js";
-
-interface UnknownRecord { [key: string]: unknown }
 
 function streamEventContext(onEvent: (event: RuntimeEvent) => void): Parameters<typeof emitAgentStreamEvent>[1] {
   return {
@@ -25,165 +18,10 @@ function streamEventContext(onEvent: (event: RuntimeEvent) => void): Parameters<
     costTracker: createTurnUsageTracker({ emit: onEvent, budgetStreamId: "test" }),
     providerSessionKey: "test",
     parentToolUseId: undefined,
-    thinking: createThinkingAccumulator(),
+    thinking: { sawDelta: false },
     tools: new RequestToolMap(),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Decodes untyped event data through the runtime event schema, as a stored
- *  or streamed event is read. */
-function makeEvent(type: RuntimeEvent["type"], data: UnknownRecord = {}): RuntimeEvent {
-  return parseRuntimeEventPayload(type, data);
-}
-
-function assistantWithToolUse(tools: Array<{ name: string; input: UnknownRecord; id?: string }>): RuntimeEvent {
-  return makeEvent("model.assistant_message.recorded", {
-    message: {
-      content: tools.map((t) => ({
-        type: "tool_use",
-        id: t.id ?? "tool_1",
-        name: t.name,
-        input: t.input,
-      })),
-    },
-  });
-}
-
-function toolInputCompleted(tool: { name: string; input: UnknownRecord; id?: string }): RuntimeEvent {
-  return makeEvent("tool.input.completed", {
-    tool_use: { id: tool.id ?? "tool_1", name: tool.name, input: tool.input },
-  });
-}
-
-function assistantMixed(text: string, tools: Array<{ name: string; input: UnknownRecord; id?: string }>): RuntimeEvent {
-  return makeEvent("model.assistant_message.recorded", {
-    message: {
-      content: [
-        { type: "text", text },
-        ...tools.map((t) => ({
-          type: "tool_use",
-          id: t.id ?? "tool_1",
-          name: t.name,
-          input: t.input,
-        })),
-      ],
-    },
-  });
-}
-
-function userWithToolResults(results: Array<{ id: string; isError?: boolean; interrupted?: boolean; content?: string }>): RuntimeEvent {
-  return makeEvent("model.user_message.recorded", {
-    message: {
-      content: results.map((result) => ({
-        type: "tool.result.recorded",
-        tool_use_id: result.id,
-        is_error: result.isError,
-        interrupted: result.interrupted,
-        content: result.content ? [{ type: "text", text: result.content }] : undefined,
-      })),
-    },
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-describe("mapRuntimeEventToAgentStreamEvents", () => {
-  it("maps tool.input.completed to a tool_use event with real arguments", () => {
-    const event = toolInputCompleted({ name: "Read", input: { file_path: "/a.ts" }, id: "t1" });
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toEqual([{
-      type: "tool_use",
-      toolUseId: "t1",
-      toolName: "Read",
-      toolInput: { file_path: "/a.ts" },
-    }]);
-  });
-
-  it("ignores placeholder tool_use blocks on assistant messages", () => {
-    // tool_input_start emits an assistant message with input: {} before the
-    // arguments have streamed; mapping it would collapse every call of a tool
-    // to one empty repetition-guard signature. The real call arrives as
-    // tool.input.completed.
-    const event = assistantWithToolUse([{ name: "Read", input: {}, id: "t1" }]);
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toEqual([]);
-  });
-
-  it("maps assistant event with mixed text + tool placeholders to text", () => {
-    const event = assistantMixed("thinking...", [{ name: "Bash", input: { command: "ls" } }]);
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toEqual([{ type: "text" }]);
-  });
-
-  it("maps tool_result event (success)", () => {
-    const event = makeEvent("tool.result.recorded", {
-      tool_use_id: "t1",
-      is_error: false,
-      content: [{ type: "text", text: "file contents here" }],
-    });
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: "tool_result", toolUseId: "t1", outcome: "ok" });
-  });
-
-  it("maps tool_result event (error)", () => {
-    const event = makeEvent("tool.result.recorded", {
-      tool_use_id: "t1",
-      is_error: true,
-      content: [{ type: "text", text: "permission denied" }],
-    });
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: "tool_result", toolUseId: "t1", outcome: "error" });
-  });
-
-  it("maps interrupted tool_result events distinctly from generic errors", () => {
-    const event = makeEvent("tool.result.recorded", {
-      tool_use_id: "t1",
-      is_error: true,
-      interrupted: true,
-      content: [{ type: "text", text: "terminated by user" }],
-    });
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: "tool_result", toolUseId: "t1", outcome: "interrupted" });
-  });
-
-  it("maps user-wrapped tool_result blocks", () => {
-    const event = userWithToolResults([
-      { id: "t1", content: "ok" },
-      { id: "t2", isError: true, content: "permission denied" },
-    ]);
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toEqual([
-      { type: "tool_result", toolUseId: "t1", outcome: "ok" },
-      { type: "tool_result", toolUseId: "t2", outcome: "error" },
-    ]);
-  });
-
-  it("maps result event", () => {
-    const event = makeEvent("model.turn.completed", { total_cost_usd: 0.05 });
-    const result = mapRuntimeEventToAgentStreamEvents(event);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: "result" });
-  });
-
-  it("maps assistant events with no content to nothing", () => {
-    const event = makeEvent("model.assistant_message.recorded", { message: {} });
-    expect(mapRuntimeEventToAgentStreamEvents(event)).toEqual([]);
-  });
-
-  it("maps streamed deltas to nothing", () => {
-    const event = makeEvent("model.content.delta", { delta: { type: "text_delta", text: "x" }, block_key: "answer" });
-    expect(mapRuntimeEventToAgentStreamEvents(event)).toEqual([]);
-  });
-});
 
 // The turn coordinator publishes one call's execution-output tail and its
 // terminal result as a single settled projection. Nothing may split that pair,
@@ -262,7 +100,6 @@ describe("provider progress presentation", () => {
     publishThinking({ kind: "thinking_complete", ...narration, blockKey: "narration" });
     expect(projector.getBlocks().filter(block => block.kind === "text")).toMatchObject([{ id: "entry:1", content: publicText }]);
     expect(projector.snapshot().streamingOutputChars).toBe(thinking.thinking.length + publicText.length);
-    context.thinking.take();
     emitTurnAssistant(context.options.onEvent, turn.assistantContent, context.costTracker, undefined, "entry");
     const published = emitted.find(event => event.type === "model.assistant_message.recorded");
     expect(JSON.stringify(published)).not.toContain(secret);

@@ -236,7 +236,7 @@ describe("RuntimeEventProjector — subagent", () => {
       projector.apply({ type: "end-turn", timestamp: 1002, finalStatus: "completed" });
       expect(toolRow(projector.getBlocks()[0]).status).toBe("pending");
       const reopened = new OutputProjector({ executionCwd: "/workspace" });
-      reopened.seedBlocks(projector.getBlocks());
+      reopened.seedBlocks(projector.getBlocks(), 0);
       reopened.apply({ type: "tool-result", toolUseId: "retry", outcome: "error", content: [{ type: "text", text: "Provider failed" }], timestamp: 1002 });
       expect(toolRow(reopened.getBlocks()[0])).toMatchObject({ status: "error", errorMessage: "Provider failed", linkUri: "flywheel://session/child" });
     });
@@ -252,7 +252,7 @@ describe("RuntimeEventProjector — subagent", () => {
         : { status: "blocked", statusMessage: status === "paused" ? "Interrupted" : "Partial" });
       if (status === "paused") {
         const reopened = new OutputProjector({ executionCwd: "/workspace" });
-        reopened.seedBlocks(projector.getBlocks());
+        reopened.seedBlocks(projector.getBlocks(), 0);
         reopened.apply({ type: "agent-dispatched", toolUseId: "retry", timestamp: 1002 });
         expect(toolRow(reopened.getBlocks()[0]).status).toBe("pending");
         reopened.apply({ type: "tool-result", toolUseId: "retry", outcome: "ok", timestamp: 1003 });

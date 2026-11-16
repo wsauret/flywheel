@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import type { AnyBlock } from "../../../../src/infra/output-blocks";
+import { AssistantDraftProjector } from "../../../../src/infra/output/assistant-draft-projector";
+import { OutputProjector } from "../../../../src/infra/output/output-projector";
 import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder";
 import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta";
 import { askUserDisplay } from "../../../../src/infra/tools/displays/ask-user";
@@ -192,7 +195,7 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
   });
 
   it("visible suffix counts inserts and delivery once while preserving nonmessages and appends", () => {
-    builder.seedBlocks([{ kind: "text", id: "durable", content: "history", timestamp: 0 }]);
+    builder.seedBlocks([{ kind: "text", id: "durable", content: "history", timestamp: 0 }], 0);
     expect(builder.visibleMessageCountSuffix).toBe(1);
 
     builder.pushText("answer", 1, "answer");
@@ -210,7 +213,7 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
   it("visible suffix tracks seeded messages, retraction, and cap eviction", () => {
     const capped = new StructuredOutputBuilder(4);
     capped.onChange = () => {};
-    capped.seedBlocks([{ kind: "text", id: "durable", content: "history", timestamp: 0 }]);
+    capped.seedBlocks([{ kind: "text", id: "durable", content: "history", timestamp: 0 }], 0);
     capped.pushText("first", 1, "first");
     expect(capped.visibleMessageCountSuffix).toBe(2);
 
@@ -234,10 +237,95 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
       presentation: { name: "Read", detail: "file.ts" },
       timestamp: 0,
       status: "pending",
-    }]);
+    }], 0);
 
     builder.insertTextBeforeTool("tool-1", "answer", 1, "answer");
 
     expect(builder.visibleMessageCountSuffix).toBe(1);
+  });
+});
+
+describe("StructuredOutputBuilder: open thoughts and absolute indexes", () => {
+  /** A settled transcript of `count` completed thoughts and text runs whose
+   *  kind reads are counted: a step that walks the transcript reads each. */
+  function countedHistory(count: number) {
+    const blocks: AnyBlock[] = [];
+    const history = { blocks, reads: 0 };
+    for (let index = 0; index < count; index++) {
+      const block: AnyBlock = index % 2 === 0
+        ? { kind: "thinking", id: `thought-${index}`, content: "done", status: "completed", timestamp: index }
+        : { kind: "text", id: `text-${index}`, content: "said", timestamp: index };
+      history.blocks.push(new Proxy(block, {
+        get(target, property, receiver) {
+          if (property === "kind") history.reads++;
+          // oxlint-disable-next-line anti-slop/no-reflect-get -- boundary: a Proxy trap forwards an arbitrary property key to its target
+          return Reflect.get(target, property, receiver);
+        },
+      }));
+    }
+    return history;
+  }
+
+  it("one text token after an open thought completes only that thought and reads none of the history", () => {
+    const readsPerToken: number[] = [];
+    for (const count of [1, 100, 1_000]) {
+      const projector = new OutputProjector({ executionCwd: "/workspace", onChange: () => {} });
+      const drafts = new AssistantDraftProjector(projector);
+      const history = countedHistory(count);
+      projector.seedBlocks(history.blocks, 0);
+      drafts.streamThinking("open", "plan", 1, undefined);
+      projector.drainChanges();
+      history.reads = 0;
+
+      drafts.streamText("answer", "token", 2);
+
+      expect(projector.drainChanges().changes).toEqual([
+        { kind: "upsert", index: count, block: expect.objectContaining({ kind: "thinking", id: "open", status: "completed", completedAt: 2 }) },
+        { kind: "insert", index: count + 1, block: expect.objectContaining({ kind: "text", id: "answer", content: "token" }) },
+      ]);
+      readsPerToken.push(history.reads);
+    }
+    expect(readsPerToken).toEqual([0, 0, 0]);
+  });
+
+  it("a thought followed by text closes the thought once", () => {
+    const builder = new StructuredOutputBuilder();
+    builder.onChange = () => {};
+    builder.pushThinking("plan", 1, "thought");
+    builder.drainChanges();
+
+    builder.pushText("a", 2, "text-1");
+    builder.pushText("b", 3, "text-1");
+
+    expect(builder.drainChanges().changes).toEqual([
+      { kind: "upsert", index: 0, block: expect.objectContaining({ kind: "thinking", id: "thought", status: "completed", completedAt: 2 }) },
+      { kind: "insert", index: 1, block: expect.objectContaining({ kind: "text", content: "a" }) },
+      { kind: "append-content", index: 1, identity: { kind: "text", id: "text-1" }, contentOffset: 1, text: "b" },
+    ]);
+  });
+
+  it("a seeded thought that still streams completes with the next text", () => {
+    const builder = new StructuredOutputBuilder();
+    builder.onChange = () => {};
+    builder.seedBlocks([{ kind: "thinking", id: "seeded", content: "plan", status: "streaming", timestamp: 0 }], 0);
+    builder.drainChanges();
+
+    builder.pushText("answer", 5, "text-1");
+
+    expect(builder.getBlocks()[0]).toMatchObject({ kind: "thinking", id: "seeded", status: "completed", completedAt: 5 });
+  });
+
+  it("a builder seeded at sequenceStart 500 reports index 503 for its fourth block", () => {
+    const builder = new StructuredOutputBuilder();
+    builder.onChange = () => {};
+    builder.seedBlocks([0, 1, 2].map((index): AnyBlock => ({ kind: "text", id: `seed-${index}`, content: "history", timestamp: index })), 500);
+
+    builder.pushText("four", 3, "fourth");
+    builder.pushText("th", 4, "fourth");
+
+    expect(builder.drainChanges().changes).toEqual([
+      { kind: "insert", index: 503, block: expect.objectContaining({ id: "fourth" }) },
+      { kind: "append-content", index: 503, identity: { kind: "text", id: "fourth" }, contentOffset: 4, text: "th" },
+    ]);
   });
 });

@@ -8,7 +8,7 @@ import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
 import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { createThinkingAccumulator, emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js"
+import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js"
 import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner-stream-events.js"
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
@@ -35,7 +35,7 @@ describe("live/derived tool pipeline equivalence", () => {
         options: { onEvent },
         tools: new RequestToolMap(),
         costTracker,
-        thinking: createThinkingAccumulator(),
+        thinking: { sawDelta: false },
         parentToolUseId: undefined,
         contextWindow: 200_000,
         providerSessionKey: "test",

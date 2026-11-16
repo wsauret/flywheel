@@ -110,6 +110,14 @@ export class StructuredOutputBuilder {
   // resolves without scanning the whole block array. Kept local to this class
   // because insertOutputBlock only shifts the helper-owned maps.
   private toolIndexById = new Map<string, number>();
+  // The ids of the thinking rows that still stream. Only pushThinking opens
+  // one and a seed can carry one, so completing thinking visits these rows
+  // and never the transcript.
+  private openThoughts = new Set<string>();
+  // The absolute index of blocks[0] in the session's output sequence. Every
+  // change is minted in that coordinate (ARCH-PROTOCOL-054), so no consumer
+  // translates it.
+  private sequenceStart = 0;
   private phase: ResponsePhase | null = null;
   private _streamingOutputChars = 0;
   // Changes are recorded at the write site instead of reconstructed later by
@@ -154,17 +162,10 @@ export class StructuredOutputBuilder {
   // this, an unwired builder (e.g. a stress test pushing tens of thousands
   // of blocks with no consumer) pays real GC pressure retaining a full-batch
   // worth of block references for nothing.
-  private recordUpsert(index: number): void {
+  private recordBlock(kind: "upsert" | "insert", index: number): void {
     if (!this.onChange || this.needsFullResync) return;
     const block = this.blocks[index];
-    if (!block) return;
-    this.pendingChanges.push({ kind: "upsert", index, block });
-  }
-  private recordInsert(index: number): void {
-    if (!this.onChange || this.needsFullResync) return;
-    const block = this.blocks[index];
-    if (!block) return;
-    this.pendingChanges.push({ kind: "insert", index, block });
+    if (block) this.pendingChanges.push({ kind, index: this.sequenceStart + index, block });
   }
   private recordAppend(index: number, text: string): void {
     if (!this.onChange || this.needsFullResync) return;
@@ -172,7 +173,7 @@ export class StructuredOutputBuilder {
     if (!block || (block.kind !== "text" && block.kind !== "thinking")) return;
     this.pendingChanges.push({
       kind: "append-content",
-      index,
+      index: this.sequenceStart + index,
       identity: { kind: block.kind, id: block.id },
       contentOffset: block.content.length - text.length,
       text,
@@ -221,8 +222,20 @@ export class StructuredOutputBuilder {
     this._streamingOutputChars = 0;
     this.notifyChange();
   }
+  /** Completes every thinking row that still streams. */
   completeThinking(timestamp = Date.now()): void {
-    this.completeStreamingThinkingBlocks(timestamp);
+    if (this.openThoughts.size === 0) return;
+    let changed = false;
+    for (const id of this.openThoughts) {
+      const index = this.contentIndexById.get(contentKey("thinking", id));
+      const block = index === undefined ? undefined : this.blocks[index];
+      if (index === undefined || block?.kind !== "thinking" || block.status !== "streaming") continue;
+      this.blocks[index] = { ...block, status: "completed", completedAt: timestamp };
+      this.recordBlock("upsert", index);
+      changed = true;
+    }
+    this.openThoughts.clear();
+    if (changed) this.notifyChange();
   }
   /** Appends `text` to thought row `blockKey`. Blank text never creates a
    *  row, but it is part of the thought once the row exists, so the row
@@ -240,7 +253,8 @@ export class StructuredOutputBuilder {
       (id, content) => ({ kind: "thinking", id, content, status: "streaming", timestamp: blockTimestamp }),
       (block) => this.insertBlock(block),
     );
-    if (result && !result.created) this.recordAppend(result.index, text);
+    if (result?.created) this.openThoughts.add(blockKey);
+    else if (result) this.recordAppend(result.index, text);
     this.notifyChange();
   }
   pushUserMessage(text: string, timestamp: number, pending = false, injected = false, submissionIds?: readonly string[], images?: readonly UserMessageImage[], from?: MessageSender, dispatchIds?: readonly string[], entryId?: string): void {
@@ -258,7 +272,7 @@ export class StructuredOutputBuilder {
     if (drained.length === 0) return [];
     for (const { index } of drained) {
       this._visibleMessageCountSuffix++;
-      this.recordUpsert(index);
+      this.recordBlock("upsert", index);
     }
     this.notifyChange();
     return drained.filter(({ person }) => person).map(({ text }) => text);
@@ -314,7 +328,7 @@ export class StructuredOutputBuilder {
     this._visibleMessageCountSuffix++;
     rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
     this.rebuildToolIndex();
-    this.recordInsert(toolIndex);
+    this.recordBlock("insert", toolIndex);
     this.notifyChange();
   }
   /** Corrects one public run without changing its identity or position. */
@@ -326,13 +340,20 @@ export class StructuredOutputBuilder {
   replaceThinking(blockKey: string, content: string): void {
     this.replaceContent("thinking", blockKey, content);
   }
+  /** The text that row `blockKey` of `kind` holds, or undefined when the
+   *  builder has no such row. */
+  contentOf(kind: "text" | "thinking", blockKey: string): string | undefined {
+    const index = this.contentIndexById.get(contentKey(kind, blockKey));
+    const block = index === undefined ? undefined : this.blocks[index];
+    return block?.kind === kind ? block.content : undefined;
+  }
   private replaceContent(kind: "text" | "thinking", blockKey: string, content: string): void {
     const index = this.contentIndexById.get(contentKey(kind, blockKey));
     const block = index === undefined ? undefined : this.blocks[index];
     if (index === undefined || block?.kind !== kind || block.content === content) return;
     this._streamingOutputChars += content.length - block.content.length;
     this.blocks[index] = { ...block, content };
-    this.recordUpsert(index);
+    this.recordBlock("upsert", index);
     this.notifyChange();
   }
   pushSystemMessage(message: string, timestamp: number, options?: SystemMessageOptions): void {
@@ -369,7 +390,7 @@ export class StructuredOutputBuilder {
     const result = appendAgentChild(this.indexes(), agentId, tool);
     if (result >= 0) {
       const agentIdx = this.agentIndexById.get(agentId);
-      if (agentIdx !== undefined) this.recordUpsert(agentIdx);
+      if (agentIdx !== undefined) this.recordBlock("upsert", agentIdx);
       this.notifyChange();
     }
     return result;
@@ -381,31 +402,31 @@ export class StructuredOutputBuilder {
     const idx = this.agentIndexById.get(id);
     if (replaceIndex !== undefined) {
       this.toolIndexById.delete(toolUseId);
-      this.recordUpsert(replaceIndex);
-    } else if (idx !== undefined) { this.shiftToolIndexesFrom(idx); this.recordInsert(idx); }
+      this.recordBlock("upsert", replaceIndex);
+    } else if (idx !== undefined) { this.shiftToolIndexesFrom(idx); this.recordBlock("insert", idx); }
     this.enforceBlocksCap();
     this.notifyChange();
   }
   completeAgent(id: string, duration: number, meta?: CompleteAgentMeta): void {
     const idx = completeAgentBlock(this.indexes(), id, duration, meta);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   interruptAgent(id: string, duration: number): void {
     const idx = interruptAgentBlock(this.indexes(), id, duration);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   pauseAgent(id: string, pausedBy: PausedBy): void {
     const idx = pauseAgentBlock(this.indexes(), id, pausedBy);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   cancelAgent(id: string, duration: number, status: "cancelled" | "stopped"): void {
     const idx = cancelAgentBlock(this.indexes(), id, duration, status);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   errorAgent(id: string, error: string | AgentFailureDisplay, duration?: number): void {
     const failure = typeof error === "string" ? formatAgentFailureDisplay(error) : error;
     const idx = errorAgentBlock(this.indexes(), id, failure, duration);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   completeAgentChildTool(agentId: string, childIndex: number, extra?: Partial<ToolEntry>): void {
     this.patchAgentChild(agentId, childIndex, { status: "completed", ...extra });
@@ -418,7 +439,7 @@ export class StructuredOutputBuilder {
     const children = [...group.children];
     children[childIndex] = resetFailedFileChange({ ...child, ...extra, status: "error", errorMessage: message });
     this.blocks[groupIndex] = { ...group, children };
-    this.recordUpsert(groupIndex);
+    this.recordBlock("upsert", groupIndex);
     this.notifyChange();
   }
   blockAgentChildTool(agentId: string, childIndex: number, statusMessage: string): void {
@@ -427,31 +448,31 @@ export class StructuredOutputBuilder {
   interruptAgentChildTool(agentId: string, childIndex: number): void { this.patchAgentChild(agentId, childIndex, { status: "interrupted" }); }
   patchAgentChild(agentId: string, childIndex: number, patch: Partial<ToolEntry>): void {
     const idx = patchAgentChildTool(this.blocks, this.agentIndexById, agentId, childIndex, patch);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   errorTool(blockIndex: number, message: string, extra?: Partial<ToolEntry>): void {
     const block = this.blocks[blockIndex];
     if (!block || block.kind !== "tool") return;
     this.blocks[blockIndex] = resetFailedFileChange({ ...block, ...extra, status: "error", errorMessage: message });
-    this.recordUpsert(blockIndex);
+    this.recordBlock("upsert", blockIndex);
     this.notifyChange();
   }
   blockTool(blockIndex: number, statusMessage: string): void {
     const idx = patchStandaloneTool(this.blocks, blockIndex, { status: "blocked", statusMessage });
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   interruptTool(blockIndex: number): void {
     const idx = patchStandaloneTool(this.blocks, blockIndex, { status: "interrupted" });
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   completeTool(blockIndex: number, extra?: Partial<ToolEntry>): void {
     const idx = patchStandaloneTool(this.blocks, blockIndex, { status: "completed", ...extra });
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   /** Patch an existing row at its indexed position. */
   patchTool(blockIndex: number, patch: Partial<ToolEntry>): void {
     const idx = patchStandaloneTool(this.blocks, blockIndex, patch);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   finalizeStandaloneTool(blockIndex: number, fields: ToolInputFields, inputComplete = false): void {
     const block = this.blocks[blockIndex];
@@ -461,28 +482,28 @@ export class StructuredOutputBuilder {
       ? block.status
       : inputComplete || fields.content !== undefined || fields.diff !== undefined ? "pending" : block.status;
     const idx = patchStandaloneTool(this.blocks, blockIndex, { status, ...definedProps(fields) });
-    if (idx !== null) this.recordUpsert(idx);
+    if (idx !== null) this.recordBlock("upsert", idx);
     this.notifyChange();
   }
   updateAgentMeta(id: string, label?: string, description?: string, agentType?: string, sentence?: ToolPresentation): void {
     const idx = updateAgentMetaBlock(this.indexes(), id, label, description, agentType, sentence);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   setAgentModel(id: string, model: string): void {
     const idx = setAgentModelBlock(this.indexes(), id, model);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   setAgentLink(id: string, linkUri: string): void {
     const idx = setAgentLinkBlock(this.indexes(), id, linkUri);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   dispatchAgent(id: string): void {
     const idx = dispatchAgentBlock(this.indexes(), id);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   queueAgent(id: string): void {
     const idx = queueAgentBlock(this.indexes(), id);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   finalizeAgentChildTool(agentId: string, childIndex: number, fields: ToolInputFields, inputComplete = false): void {
     const child = this.blocks[this.agentIndexById.get(agentId) ?? -1];
@@ -502,14 +523,14 @@ export class StructuredOutputBuilder {
       const sentence = provisional?.kind === "tool" ? provisional.sentence : undefined;
       this.blocks[provisionalIndex] = { kind: "question", toolUseId, questions, timestamp, ...(sentence === undefined ? {} : { sentence }) };
       this.rebuildToolIndex();
-      this.recordUpsert(provisionalIndex);
+      this.recordBlock("upsert", provisionalIndex);
       this.notifyChange();
       return provisionalIndex;
     }
     const idx = pushQuestionBlock(this.indexes(), toolUseId, questions, timestamp);
     this.blocks[idx] = { kind: "question", toolUseId, questions, timestamp, sentence: resolveToolRowPresentation("ask_user", {}, "").sentence };
     this.shiftToolIndexesFrom(idx);
-    this.recordInsert(idx);
+    this.recordBlock("insert", idx);
     this.enforceBlocksCap();
     this.notifyChange();
     return idx;
@@ -522,23 +543,23 @@ export class StructuredOutputBuilder {
   }
   private updateQuestion(toolUseId: string, patch: { answers?: QuestionAnswers; cancelled?: true }): void {
     const idx = updateQuestionBlock(this.blocks, toolUseId, patch);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   updateAgentLatestChild(id: string, childDisplay: string): void {
     const idx = updateAgentLatestChildBlock(this.indexes(), id, childDisplay);
-    if (idx !== null) { this.recordUpsert(idx); this.notifyChange(); }
+    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   closePendingAgentBlocks(timestamp: number): void {
     const changed = transitionOpenAgentBlocks(this.indexes(), null, timestamp, "complete");
-    if (changed.length > 0) { for (const idx of changed) this.recordUpsert(idx); this.notifyChange(); }
+    if (changed.length > 0) { for (const idx of changed) this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   interruptPendingAgentBlocks(timestamp: number): void {
     const changed = transitionOpenAgentBlocks(this.indexes(), null, timestamp, "pause");
-    if (changed.length > 0) { for (const idx of changed) this.recordUpsert(idx); this.notifyChange(); }
+    if (changed.length > 0) { for (const idx of changed) this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   interruptOpenAgentBlocks(timestamp: number): void {
     const changed = transitionOpenAgentBlocks(this.indexes(), null, timestamp, "teardown");
-    if (changed.length > 0) { for (const idx of changed) this.recordUpsert(idx); this.notifyChange(); }
+    if (changed.length > 0) { for (const idx of changed) this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   // Returns the live array, not a copy: every element-level mutation replaces
   // the element reference, so consumers diff by identity; delivery forces
@@ -553,16 +574,20 @@ export class StructuredOutputBuilder {
   toolBlockIndex(id: string): number | undefined {
     return this.toolIndexById.get(id);
   }
-  // Startup seed: a later durable fold supersedes an optimistic pre-runner
-  // seed before model output begins. Replacing in place preserves the live
-  // array identity held by store readers.
-  seedBlocks(prior: readonly AnyBlock[]): void {
+  /** Startup seed: the session's output window, whose first block sits at
+   *  absolute index `sequenceStart`. A later durable fold supersedes an
+   *  optimistic pre-runner seed before model output begins. Replacing in
+   *  place preserves the live array identity held by store readers. */
+  seedBlocks(prior: readonly AnyBlock[], sequenceStart: number): void {
     if (this.blocks.length > 0) this.recordStructuralChange();
     this.blocks.splice(0, this.blocks.length, ...prior);
-    this._visibleMessageCountSuffix = prior.reduce(
-      (count, block) => count + (isVisibleMessageBlock(block) ? 1 : 0),
-      0,
-    );
+    this.sequenceStart = sequenceStart;
+    this._visibleMessageCountSuffix = 0;
+    this.openThoughts.clear();
+    for (const block of prior) {
+      if (isVisibleMessageBlock(block)) this._visibleMessageCountSuffix++;
+      if (block.kind === "thinking" && block.status === "streaming") this.openThoughts.add(block.id);
+    }
     rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
     this.rebuildToolIndex();
     this.notifyChange();
@@ -627,7 +652,7 @@ export class StructuredOutputBuilder {
     if (isVisibleMessageBlock(block)) this._visibleMessageCountSuffix++;
     this.shiftToolIndexesFrom(idx);
     if (block.kind === "tool") this.toolIndexById.set(block.id, idx);
-    this.recordInsert(idx);
+    this.recordBlock("insert", idx);
     return idx;
   }
   // A splice before the pinned tail shifts every later block up one index;
@@ -654,18 +679,6 @@ export class StructuredOutputBuilder {
     for (const [i, block] of this.blocks.entries()) {
       if (block.kind === "tool") this.toolIndexById.set(block.id, i);
     }
-  }
-  private completeStreamingThinkingBlocks(timestamp: number): void {
-    let changed = false;
-    for (let index = 0; index < this.blocks.length; index++) {
-      const block = this.blocks[index];
-      if (block?.kind === "thinking" && block.status === "streaming") {
-        this.blocks[index] = { ...block, status: "completed", completedAt: timestamp };
-        this.recordUpsert(index);
-        changed = true;
-      }
-    }
-    if (changed) this.notifyChange();
   }
   // Why mutable refs: indexes() is private; the refs go only to extracted
   // helper functions in structured-output-state.ts, not to external consumers.

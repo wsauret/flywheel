@@ -33,7 +33,7 @@ import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { PromptHistoryLowering, PromptStaleMasking, ProviderRequestIdentity } from "../session/provider-request-audit-types.js";
 import { applyHistoryLowering, imageLimitCut, planHistoryLowering, type ProviderHistoryTarget } from "./llm/provider-history.js";
 import type { PreparedRequestAttempt } from "./request-tool-surface.js";
-import { type AssistantTurnResult, handleStreamEvent, type TurnOutcome } from "./assistant-turn-result.js";
+import { type AssistantTurnResult, handleStreamEvent, settledTextOf, type TurnOutcome } from "./assistant-turn-result.js";
 import { hasAssistantOutput } from "./assistant-output.js";
 import { createRequestStreamTelemetry } from "./stream-telemetry.js";
 import type { UsageSettlement } from "./usage-settlement.js";
@@ -350,7 +350,7 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
   } finally {
     await settleUsage();
     try {
-      await streamTelemetry?.complete(auditOutcome(result.outcome));
+      await streamTelemetry?.complete(auditOutcome(result.outcome), (blockKey) => settledTextOf(result, blockKey));
     } catch (error) {
       localFailure ??= { error };
     }

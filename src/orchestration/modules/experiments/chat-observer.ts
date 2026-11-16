@@ -1,5 +1,5 @@
 import { formatRuntimeNotification } from "../../agent-runtime/runtime-notifications.js"
-import type { AgentStreamEvent } from "../../agent-runtime/types.js"
+import type { ToolCallEventData } from "../../../infra/runtime-event-payload-types.js"
 import type { ExperimentFact } from "./facts.js"
 import type { ExperimentSnapshot } from "./projection.js"
 import { autoResumeStopReasonFor } from "./auto-resume-guards.js"
@@ -28,7 +28,7 @@ export interface ExperimentChatObserverContext {
 }
 
 export interface ExperimentChatObserver {
-  onEvent(event: AgentStreamEvent): void
+  onToolInput(toolUse: ToolCallEventData["tool_use"]): void
   onTurnComplete(reason: "turn_end"): Promise<void>
   onCompactionContinuation(): Promise<void>
 }
@@ -89,10 +89,8 @@ export function createExperimentChatObserver(
   }
 
   return {
-    onEvent(event): void {
-      if (event.type === "tool_use" && event.toolName === "run_experiment") {
-        ranExperimentThisTurn = true
-      }
+    onToolInput(toolUse): void {
+      if (toolUse.name === "run_experiment") ranExperimentThisTurn = true
     },
     async onTurnComplete(reason): Promise<void> {
       const shouldContinue = ranExperimentThisTurn
