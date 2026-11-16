@@ -1,0 +1,60 @@
+src/tui/hooks/create-session-catalog.ts
+  h_4b47e9e4a8b456 284
+src/tui/hooks/create-tabs.ts
+  h_4b47e9e4a8b456 57
+src/tui/hooks/create-terminal-background.ts
+  h_4b47e9e4a8b456 7
+src/tui/hooks/use-session-controls.ts
+  h_4b47e9e4a8b456 10
+src/tui/hooks/use-session-modal.ts
+  h_4b47e9e4a8b456 607
+src/tui/keymap/keymap.ts
+  h_4b47e9e4a8b456 58,86
+src/tui/keymap/text-entry.ts
+  h_4b47e9e4a8b456 112
+src/tui/modals/model-modal-cost.ts
+  h_4b47e9e4a8b456 5,19,31
+src/tui/modules/experiments/dashboard-lines.ts
+  h_4b47e9e4a8b456 38-40
+src/tui/modules/subscription-usage/modal.tsx
+  h_4b47e9e4a8b456 62-63
+src/tui/output-blocks/markdown/markdown-table-helpers.ts
+  h_4b47e9e4a8b456 15-17
+tests/unit/tui/hooks/create-session-catalog.test.ts
+  h_4b47e9e4a8b456 7,446-450,452-455
+tests/unit/tui/hooks/create-tabs.test.ts
+  h_4b47e9e4a8b456 10,49-55,66,97,99,114,116,134,136,160,167,186
+tests/unit/tui/hooks/terminal-background.test.ts
+  h_4b47e9e4a8b456 2,8-12,191-211,214-215
+tests/unit/tui/hooks/use-session-controls.test.ts
+  h_4b47e9e4a8b456 6,11-13
+tests/unit/tui/keymap.test.ts
+  h_4b47e9e4a8b456 3,10-17,19-22,26-28,31,33-39
+tests/unit/tui/modals/model-modal-cost.test.ts
+  h_4b47e9e4a8b456 3,5,8-17,20,29-32,47
+tests/unit/tui/modals/session-modal-open-warning.test.ts
+  h_4b47e9e4a8b456 105-118
+tests/unit/tui/modules/experiment-dashboard-lines.test.ts
+  h_4b47e9e4a8b456 6,64,104,107
+tests/unit/tui/modules/experiments.test.tsx
+  h_4b47e9e4a8b456 206-207
+tests/unit/tui/modules/subscription-usage/modal.test.tsx
+  h_4b47e9e4a8b456 6,239-247
+tests/unit/tui/output-blocks/markdown-table-helpers.test.ts
+  h_4b47e9e4a8b456 4,63-64,163-164,170-172
+tests/unit/tui/text-entry-native-contract.test.tsx
+  h_4b47e9e4a8b456 6-7,10,13-20,23-31,33-34,43
+tests/unit/tui/text-entry.test.ts
+  h_4b47e9e4a8b456 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a6f88fb47108a931d9a28fe53cc5f63543320f21",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
