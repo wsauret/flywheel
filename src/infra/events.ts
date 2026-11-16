@@ -26,14 +26,6 @@ function defineEvent<const T extends string, const S extends { readonly Type: un
   return definition;
 }
 
-type EventCausality = {
-  readonly runId?: string;
-  readonly parentEventId?: EventId;
-  readonly causedByEventId?: EventId;
-  readonly traceparent?: string;
-  readonly tracestate?: string;
-};
-
 type FlywheelEventEnvelope<T extends string, D> = {
   readonly id: EventId;
   readonly type: T;
@@ -41,7 +33,6 @@ type FlywheelEventEnvelope<T extends string, D> = {
   readonly sessionId: SessionId;
   readonly timestamp: number;
   readonly data: D;
-  readonly causality?: EventCausality;
 };
 
 const EmptyDataSchema = Schema.Struct({});

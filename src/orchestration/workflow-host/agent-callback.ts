@@ -2,6 +2,7 @@ import type { AuthContext } from "../../infra/auth/auth-context.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../agent-runtime/emit.js"
 import type { EmitFn } from "../../infra/event-bus.js"
+import type { ConnectionState } from "../../infra/output-blocks.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import type { ModelFamily } from "../../infra/llm/model-family.js"
 import type { ControlInterruption, PlannedCutInterrupt, TurnInterruption } from "../session/conversation/turn-end-record.js"
@@ -24,7 +25,6 @@ import { readAuthorizedRestoredWait, readChatTurnEndEvidence } from "../session/
 import type { SessionFactWriter } from "../session/session-fact-writer.js"
 import { personaRoleChain, resolveWorkflowAgentRole } from "../config/role-selection.js"
 import type { RoleResolver } from "../config/roles.js"
-import { createReconnectNoticeConnectionStateHandler } from "../agent-runtime/agent-resilience.js"
 import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
 import { capacityWaitAuthority } from "../session/capacity-wait.js"
 import { workerOutcome } from "./worker-outcome.js"
@@ -272,8 +272,8 @@ export function createWorkerCallback(
     // The parked count of the live view reads the same rule.
     const toolUseIds = conversationToolUseIds(await resources.conversation.getState())
     // The agent's own input and its own events: every event it emits names
-    // its attempt (`causality.runId`), so a client tells the agents that run
-    // at the same time apart.
+    // the agent's own session, so a client tells the agents that run at the
+    // same time apart.
     const agentInput = opts.agentInputs.open({ attemptId: attempt.id, conversationId })
     let settlePrivateInput = true
     const injectionQueue = agentInput.queue
@@ -281,10 +281,7 @@ export function createWorkerCallback(
       const timestamp = type === "agent.turn.parked" && "park" in event.data && event.data.park === "interrupted" ? agentInput.cut?.timestamp : event.timestamp
       resources.emit<typeof type>(type, { sessionId, data: event.data, ...(timestamp === undefined ? {} : { timestamp }) })
     }
-    const setRecoveredConnectionState = createReconnectNoticeConnectionStateHandler(
-      (state) => resources.projection?.lifecycle.onConnectionState?.(state),
-      (operation) => { emitAgent("agent.notice.changed", { sessionId, data: { operation } }) },
-    )
+    const setConnectionState = (state: ConnectionState): void => { resources.projection?.lifecycle.onConnectionState?.(state) }
     const observerChain = opts.createObserverChain?.()
     const countToolUses = createToolUseCounter(toolUseIds)
     // The agent's live entry carries the same count, so the workflow's live
@@ -509,7 +506,7 @@ export function createWorkerCallback(
           kind: "parkable", ...(restoredWait ? { restoredWait } : {}), ...(continuedWait ? { continuedWait } : {}),
           ...busBridge.lifecycle,
           signal, inputSource: observers.inputSource,
-          onConnectionState: setRecoveredConnectionState,
+          onConnectionState: setConnectionState,
           onTurnEnded: observers.onTurnEnded,
           onToolBatchSettled: observers.onToolBatchSettled,
           onHandoffStarted: () => { injectionQueue.handoffStarted() },
@@ -598,6 +595,7 @@ export function createWorkerCallback(
     const unregister = registerLiveSessionControl(eventStore, {
       sessionId,
       member: {
+        workflowId,
         modules: async () => slot.modules,
         backgroundTasks: background.tasks,
         compact: async () => { if (injectionQueue.isHandingOff) return false; injectionQueue.enqueueCompact(); return true },
@@ -646,7 +644,7 @@ export function createWorkerCallback(
         },
         message: userPrompt,
         resilience: {
-          setConnectionState: setRecoveredConnectionState,
+          setConnectionState,
           pushSystemMessage: (msg, level) => {
             emitAgent("agent.system_message.recorded", { sessionId, data: { message: msg, level } })
           },

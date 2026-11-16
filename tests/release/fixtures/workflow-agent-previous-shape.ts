@@ -67,6 +67,7 @@ export async function generateUpgradeFixture(directory: string, sourceRoot: stri
     const fact = parseConversationTreeFact({ type: "chat.tree.created", version: 1, actor: "flywheel", payload: { conversationId, createdAt: lastUpdated } })
     store.append({ sessionId, aggregateId: `conversation:${conversationId}`, timestamp, ...fact })
   }
+  const causalLinks: [eventId: string, parentEventId: string][] = []
   let calls = 0
   let contentWritten = 0
   let nested = 0
@@ -173,7 +174,8 @@ export async function generateUpgradeFixture(directory: string, sourceRoot: stri
       store.putInFlight("upgrade-parent", "session.reply_wait", `${id}:wait`, { openedAtMs: timestamp, readKey: `msg:upgrade-parent:${id}` })
       const question = append(id, "agent_input.requested", 3, { interactionId: `${id}-question`, conversationId: first, toolUseId: `${id}-ask`, request: [] })
       append(id, "agent_input.answered", 3, { interactionId: `${id}-question`, damagedAnswer: "Retained historical bytes" })
-      store.append({ sessionId: id, aggregateId: `session:${id}`, type: "tool.execution_output.recorded", version: 1, actor: "agent", timestamp, parentEventId: question.id, payload: { damaged: "Retained linked output" } })
+      const linkedOutput = store.append({ sessionId: id, aggregateId: `session:${id}`, type: "tool.execution_output.recorded", version: 1, actor: "agent", timestamp, payload: { damaged: "Retained linked output" } })
+      causalLinks.push([linkedOutput.id, question.id])
       const stage = async (nodes: Parameters<typeof store.stageSessionContentNodes>[1]) => { store.stageSessionContentNodes(id, nodes) }
       const file = await buildMutationFileEvidence({
         mutationId: `${id}-mutation`, path: join(directory, `${id}.txt`), displayPath: `${id}.txt`,
@@ -199,7 +201,12 @@ export async function generateUpgradeFixture(directory: string, sourceRoot: stri
     }
   } finally { store.close() }
   const generation = new Database(dbFile)
-  try { generation.exec(`PRAGMA user_version = ${WORKSPACE_STATE_EPOCH}`) } finally { generation.close() }
+  try {
+    // Releases before 2026-11-15 wrote these links; no append sets them now.
+    const link = generation.query("update event set parent_event_id = ? where id = ?")
+    for (const [eventId, parentEventId] of causalLinks) link.run(parentEventId, eventId)
+    generation.exec(`PRAGMA user_version = ${WORKSPACE_STATE_EPOCH}`)
+  } finally { generation.close() }
   copyFileSync(dbFile, join(directory, "deletion.sqlite"))
   const deletion = createSqliteEventStore(join(directory, "deletion.sqlite"))
   try {

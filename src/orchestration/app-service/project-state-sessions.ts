@@ -132,8 +132,6 @@ export const EventStoreAppendSchema = Schema.Struct({
   sessionId: Schema.String,
   payload: Schema.Record(Schema.String, Schema.Unknown),
   runId: Schema.optionalKey(Schema.String),
-  parentEventId: Schema.optionalKey(Schema.String),
-  causedByEventId: Schema.optionalKey(Schema.String),
   expectedSeq: Schema.optionalKey(Natural),
   aggregateGuards: Schema.optionalKey(Schema.Array(Schema.Struct({ aggregateId: Id, expectedSeq: Natural }))),
   payloadJson: Schema.optionalKey(Schema.String),

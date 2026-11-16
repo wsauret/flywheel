@@ -601,8 +601,6 @@ function eventBytes(event: GuardedEventStoreAppend, payloadJson: string): number
     + Buffer.byteLength(event.actor)
     + Buffer.byteLength(event.sessionId)
     + Buffer.byteLength(event.runId ?? "")
-    + Buffer.byteLength(event.parentEventId ?? "")
-    + Buffer.byteLength(event.causedByEventId ?? "")
     + (event.contentRows ?? []).reduce((sum, row) => sum + Buffer.byteLength(row.content) + Buffer.byteLength(row.sha256), 0)
     + (event.inFlight ?? []).reduce((sum, write) => sum + inFlightBytes(write), 0)
 }

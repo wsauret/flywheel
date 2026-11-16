@@ -48,22 +48,6 @@ export function resolveProviderNotices(): SessionNoticeOperation {
   return { type: "resolve-scope", scope: PROVIDER_NOTICE_SCOPE }
 }
 
-export function createReconnectNoticeConnectionStateHandler(
-  setConnectionState: (state: ConnectionState) => void,
-  onNotice?: (operation: SessionNoticeOperation) => void,
-): (state: ConnectionState) => void {
-  let reconnecting = false
-  return (state) => {
-    if (state === "reconnecting") reconnecting = true
-    setConnectionState(state)
-    if (state === "connected" && reconnecting) {
-      onNotice?.(resolveProviderNotices())
-      reconnecting = false
-    }
-    if (state === "down") reconnecting = false
-  }
-}
-
 // Invariant: every terminal exit resolves the provider notice scope, so no
 // transient reconnect notice outlives the turn it narrated. The failure
 // itself then renders on the one channel its copy registered.

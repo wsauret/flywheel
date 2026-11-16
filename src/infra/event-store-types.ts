@@ -16,8 +16,6 @@ export interface EventStoreAppend {
   sessionId: string
   payload: EventPayload
   runId?: string
-  parentEventId?: string
-  causedByEventId?: string
   /** Pre-serialized `payload`, exactly `JSON.stringify(payload)`. The writer
    *  lane serializes once at enqueue for true byte accounting and the store
    *  inserts this string verbatim instead of serializing again; other writers
@@ -179,6 +177,11 @@ export interface StoredFact extends Omit<EventStoreAppend, "payloadJson" | "cont
   position: number
   id: EventId
   seq: number
+  /** Causal links that only rows from releases before 2026-11-15 hold. No
+   *  append writes them, and the row read shows them so that a historical
+   *  row reads as it was stored. */
+  parentEventId?: string
+  causedByEventId?: string
 }
 
 /** What the store assigns to an appended fact. Every other field of the
