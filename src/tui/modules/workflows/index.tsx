@@ -63,7 +63,7 @@ function createWorkflowClient(host: TuiModuleClientHost): TuiModuleClient {
       }
       return provide(() => <NavigationProvider value={navigate}><WorkflowAgentViewer {...shared()} workflowId={workflowId} target={target} origin={card ? "card" : "chat"}
         body={host.viewer} createSurface={(id) => (surface = body.createSurface(id))} input={input} active={() => handle()?.isActive() ?? false} focused={() => handle()?.isFocused() ?? false}
-        onBack={back} onClose={() => { back(); card?.close() }} showToast={host.showToast} showThinking={body.showThinking} diffColors={body.diffColors}
+        onBack={back} onClose={() => { back(); card?.close() }} showToast={host.showToast}
         onShown={(shown) => { route = { ...route, workflowId, agentNodeId: shown.agentNodeId, follow: shown.follow } }}
         onHistoryShown={(historySessionId) => { const { historySessionId: _previous, ...current } = route; route = { ...current, ...(historySessionId ? { historySessionId } : {}) } }} /></NavigationProvider>)
     }, { onKey: input.onKey, onPaste: input.onPaste, route: () => ({ kind: "module", moduleId: "workflows", route }) })

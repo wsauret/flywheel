@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { usePaste, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { createContext, createEffect, For, Show, type ParentProps, untrack, useContext } from "solid-js"
+import { createContext, createEffect, For, Show, type JSX, type ParentProps, untrack, useContext } from "solid-js"
 import { createOverlayLayers, type ModalContext, type OverlayLayers } from "./modal-stack.js"
 import { useQuestionInput } from "./question-input.js"
 import { useCopySelection } from "../hooks/use-copy-selection.js"
@@ -63,6 +63,14 @@ function Backdrop(props: ParentProps<{ clipboard: Clipboard; anchor: (() => { le
   )
 }
 
+/** Builds an entry's element outside the backdrop's tracked insert. A
+ *  builder that reads a signal while it builds must not subscribe its own
+ *  mount: the entry would remount on each change and lose its local state.
+ *  Values that change while the entry is open reach it as accessors. */
+function renderEntry(element: JSX.Element | (() => JSX.Element)): JSX.Element {
+  return typeof element === "function" ? untrack(element) : element
+}
+
 export function ModalProvider(props: ParentProps<{ clipboard: Clipboard }>) {
   const overlay = createOverlayLayers()
   const questionInput = useQuestionInput()
@@ -101,14 +109,14 @@ export function ModalProvider(props: ParentProps<{ clipboard: Clipboard }>) {
           <For each={overlay.viewer.stack}>{(entry) =>
             <AttachmentImagesProvider value={{ visible: () => overlay.viewer.stack.at(-1) === entry && overlay.dialog.stack.length === 0, open: openImage }}>
             <Backdrop clipboard={props.clipboard} anchor={entry.anchor} onDismiss={() => { if (overlay.viewer.stack.at(-1) === entry) overlay.viewer.pop() }}>
-              {typeof entry.element === "function" ? entry.element() : entry.element}
+              {renderEntry(entry.element)}
             </Backdrop>
             </AttachmentImagesProvider>
           }</For>
           <Show when={overlay.dialog.stack.at(-1)} keyed>{(entry) =>
             <AttachmentImagesProvider value={{ visible: () => true, open: openImage }}>
             <Backdrop clipboard={props.clipboard} anchor={entry.anchor} onDismiss={() => { if (overlay.dialog.stack.at(-1) === entry) overlay.dialog.pop() }}>
-              {typeof entry.element === "function" ? entry.element() : entry.element}
+              {renderEntry(entry.element)}
             </Backdrop>
             </AttachmentImagesProvider>
           }</Show>

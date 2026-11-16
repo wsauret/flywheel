@@ -47,7 +47,7 @@ async function renderViewer(surface: SessionSurface, input: ReturnType<typeof cr
       sessionIntro={{ runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
         branchName: () => undefined, modelLabel: () => "Child model", profileName: () => undefined,
         fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] }}
-      showThinking={false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
+      showThinking={() => false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
       roleView={() => undefined} childStatus={() => ({ waitingOn: undefined })} ensureChildViews={() => {}}
       modelLabel={() => "Child model"} onOpenModel={() => {}} transcriptInView={{ show: () => {} }} onOpenBackground={() => {}} followBackground={() => () => {}} compactionThreshold={() => 40_000} {...props} />
   </TickPoolProvider></ThemeProvider>, size)
@@ -67,7 +67,7 @@ function openerViewerProps(overrides: Partial<ReturnType<Parameters<typeof creat
     sessionIntro: { runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
       branchName: () => undefined, modelLabel: () => "Child model", profileName: () => undefined,
       fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] },
-    showThinking: false, diffColors: () => "theme",
+    showThinking: () => false, diffColors: () => "theme",
     roleView: () => undefined, childStatus: () => ({ waitingOn: undefined }), ensureChildViews: () => {},
     modelLabel: () => "Child model", onOpenModel: () => {}, transcriptInView: { show: () => {} }, onOpenBackground: () => {}, followBackground: () => () => {}, compactionThreshold: () => undefined,
     ...overrides,
