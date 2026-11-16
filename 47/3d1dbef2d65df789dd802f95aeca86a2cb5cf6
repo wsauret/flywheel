@@ -1,0 +1,28 @@
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 56,151
+src/tui/components/modal.tsx
+  h_4b47e9e4a8b456 4,66-73,112,119
+src/tui/modules/workflows/index.tsx
+  h_4b47e9e4a8b456 66
+tests/unit/tui/components/_child-session-viewer-fixtures.ts
+  h_4b47e9e4a8b456 43
+tests/unit/tui/components/child-session-viewer-background.test.tsx
+  h_4b47e9e4a8b456 39
+tests/unit/tui/components/child-session-viewer.test.tsx
+  h_4b47e9e4a8b456 50,70
+tests/unit/tui/components/modal.test.tsx
+  h_4b47e9e4a8b456 11,38-51,71-72,127-176
+tests/unit/tui/components/workflow-agent-viewer.test.tsx
+  h_4b47e9e4a8b456 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "473d1dbef2d65df789dd802f95aeca86a2cb5cf6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
