@@ -1,0 +1,90 @@
+src/orchestration/agent-runtime/agent-loop-tools.ts
+  h_4b47e9e4a8b456 35,68,285,420
+src/orchestration/agent-runtime/budget-exhaust.ts
+  h_4b47e9e4a8b456 76,259
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 25,163
+src/orchestration/agent-runtime/tools/coerce-input.ts
+  h_4b47e9e4a8b456 22,77-110
+src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts
+  h_4b47e9e4a8b456 20,162,196
+src/orchestration/agent-runtime/tools/search-paths.ts
+  h_4b47e9e4a8b456 11,141-143,146-152
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 9-12,25,28,49-50,53-55,61-62,67-68,103,222-226,229,236,248,259,261,263-264,271-280,286,289-290,293,356-358
+src/orchestration/agent-runtime/tools/validate-input.ts
+  h_4b47e9e4a8b456 35-50,58,92
+tests/helpers/request-tool-surface.ts
+  h_4b47e9e4a8b456 16-17,95-114
+tests/integration/local/bash-outside-writes.test.ts
+  h_4b47e9e4a8b456 10,43
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-conformance.test.ts
+  h_4b47e9e4a8b456 28,457
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 17,296-297,301-368
+tests/unit/orchestration/agent-runtime/budget-exhaust.test.ts
+  h_4b47e9e4a8b456 9,80,119,161,233,283,348,424
+tests/unit/orchestration/agent-runtime/context/notes-only-compaction.test.ts
+  h_4b47e9e4a8b456 13,86,88,92
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 87,342
+tests/unit/orchestration/agent-runtime/streaming-tool-validation.test.ts
+  h_4b47e9e4a8b456 14,158
+tests/unit/orchestration/agent-runtime/tool-lifecycle-diagnostics.test.ts
+  h_4b47e9e4a8b456 11,33
+tests/unit/orchestration/agent-runtime/tools/ask-user.test.ts
+  h_4b47e9e4a8b456 12,144,167
+tests/unit/orchestration/agent-runtime/tools/coerce-input.test.ts
+  h_4b47e9e4a8b456 3,7-37
+tests/unit/orchestration/agent-runtime/tools/nested-tool-dispatch.test.ts
+  h_4b47e9e4a8b456 10,191-204
+tests/unit/orchestration/agent-runtime/tools/search-paths.test.ts
+  h_4b47e9e4a8b456 7-9,28,178-193
+tests/unit/orchestration/agent-runtime/tools/session-note-tools.test.ts
+  h_4b47e9e4a8b456 11,46,58,74,87,131
+tests/unit/orchestration/agent-runtime/tools/tool-concurrency-gate.test.ts
+  h_4b47e9e4a8b456 8,111,117,131,135,155-156
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-background.test.ts
+  h_4b47e9e4a8b456 6,137,150
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 9,468
+tests/unit/orchestration/agent-runtime/tools/tool-name-repair.test.ts
+  h_4b47e9e4a8b456 3,85,100,109,115,120,124,132,139,143,149
+tests/unit/orchestration/agent-runtime/tools/tools-apply-patch.test.ts
+  h_4b47e9e4a8b456 8,20,27,51,130,170,193,216,267
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 19-21,35,180,216,223,442,457,521-523,525-526,530-531,533-535,537-539,542-544,548,550
+tests/unit/orchestration/agent-runtime/tools/tools-edit.test.ts
+  h_4b47e9e4a8b456 9,72
+tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
+  h_4b47e9e4a8b456 10,60,561,563,635
+tests/unit/orchestration/agent-runtime/tools/tools-list.test.ts
+  h_4b47e9e4a8b456 8,28,105
+tests/unit/orchestration/agent-runtime/tools/tools-read.test.ts
+  h_4b47e9e4a8b456 13,33,67
+tests/unit/orchestration/agent-runtime/tools/tools-search.test.ts
+  h_4b47e9e4a8b456 11,319,328,338,346
+tests/unit/orchestration/agent-runtime/tools/tools-write.test.ts
+  h_4b47e9e4a8b456 12,23
+tests/unit/orchestration/agent-runtime/tools/workflow-tool.test.ts
+  h_4b47e9e4a8b456 21,401
+tests/unit/orchestration/modules/code-mode/code-interruption.test.ts
+  h_4b47e9e4a8b456 6,292
+tests/unit/orchestration/modules/experiments/tool-execution-gate.test.ts
+  h_4b47e9e4a8b456 18,64
+tests/unit/orchestration/modules/learning/tools/memory-tool.test.ts
+  h_4b47e9e4a8b456 16-17,235,575-576,578,582-583,585,590-591
+tests/unit/orchestration/modules/learning/tools/skill-manage-tool.test.ts
+  h_4b47e9e4a8b456 13-14,401-402,404,408-409,412,417-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f1c2b6c7b51a1a7022babc198562e6d759abb063",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
