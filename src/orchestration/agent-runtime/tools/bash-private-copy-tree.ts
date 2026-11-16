@@ -68,6 +68,8 @@ export interface CopyTreeRequest {
     readonly gitDir: string; readonly commonDir: string; readonly privateGitDir: string; readonly treeRoot: string;
     readonly refs: string; readonly head: string; readonly format: string; readonly workTrees: readonly string[]; readonly topLevel: string; readonly worktreeListing: string;
     readonly excludesFile: string; readonly projectInTree: string;
+    /** The private Git directory keeps the refs and protected trees of an earlier take of the same real state, so only its configuration files and index are written again. */
+    readonly kept: boolean;
   } | undefined;
   /** What the previous take into this home left, so that only drifted entries are written again. */
   readonly prior?: CopyTreeState;
@@ -287,7 +289,9 @@ export function finalizePrivateCopy(job: Extract<PrivateCopyJob, { readonly kind
  *  effective one's patterns and ignores each link by exact path.
  *  The home is writable by the command, so every file is created exclusively:
  *  a create fails on any entry already there, a link included, and never
- *  writes through one. */
+ *  writes through one. A kept private Git directory (`git.kept`) gets only its
+ *  configuration, excludes, hooks, alternates, index, and the `.git` pointer
+ *  again; its protected linked trees stay. */
 function writePrivateGitFiles(git: NonNullable<CopyTreeRequest["git"]>, home: string, sharedRoots: readonly string[]): void {
   const privateGit = git.privateGitDir;
   mkdirSync(join(privateGit, "objects", "info"), { recursive: true });
@@ -320,14 +324,15 @@ function writePrivateGitFiles(git: NonNullable<CopyTreeRequest["git"]>, home: st
   // never run; leaving them out saves each take a file to create and remove.
   if (lstatSync(hooks, { throwIfNoEntry: false })) cpSync(hooks, join(privateGit, "hooks"), { recursive: true, errorOnExist: true, force: false, filter: source => !source.endsWith(".sample") });
   writeFileSync(join(git.treeRoot, ".git"), `gitdir: ${privateGit}\n`, { flag: "wx" });
+  const inherited = observeFileState(git.excludesFile).kind === "file" ? readFileSync(git.excludesFile, "utf8") : "";
+  const linked = sharedRoots.map(path => `/${join(git.projectInTree, path).split(sep).join("/")}`);
+  writeFileSync(join(home, "exclude"), [inherited, ...linked].join("\n"), { flag: "wx" });
   const index = join(git.gitDir, "index");
   if (observeFileState(index).kind === "file") {
     copyFileSync(index, join(privateGit, PRIVATE_INDEX), constants.COPYFILE_EXCL);
     for (const entry of readdirSync(git.gitDir)) if (entry.startsWith("sharedindex.")) copyFileSync(join(git.gitDir, entry), join(privateGit, entry), constants.COPYFILE_EXCL);
   }
-  const inherited = observeFileState(git.excludesFile).kind === "file" ? readFileSync(git.excludesFile, "utf8") : "";
-  const linked = sharedRoots.map(path => `/${join(git.projectInTree, path).split(sep).join("/")}`);
-  writeFileSync(join(home, "exclude"), [inherited, ...linked].join("\n"), { flag: "wx" });
+  if (git.kept) return;
   const others = git.worktreeListing.split("\0\0").filter(row => !row.startsWith(`worktree ${git.topLevel}\0`));
   for (const [i, row] of others.entries()) {
     const branch = row.split("\0").find(field => field.startsWith("branch "))?.slice(7);

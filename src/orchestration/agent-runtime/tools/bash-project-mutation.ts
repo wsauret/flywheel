@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { PersistenceWriteRefused } from "../../../infra/event-store-types.js";
 import { join, sep } from "node:path";
-import type { ContainedFileMetadata } from "../../../infra/descriptor-directory.js";
+import type { ContainedFileMetadata } from "../../../infra/descriptor-directory-contract.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
@@ -538,13 +538,15 @@ interface MutationSummary {
 }
 
 /** What became of a landed copy. `copy` and the refresh counts describe a copy
- *  this build took; `retire` names why an otherwise reusable copy was discarded,
- *  so the rate of each retirement can be measured. */
+ *  this build took, and `reseeded` whether its refresh seeded its private Git
+ *  directory again; `retire` names why an otherwise reusable copy was
+ *  discarded, so the rate of each retirement can be measured. */
 interface CopyFate {
   readonly copy?: "taken" | "refreshed";
   readonly recloned?: number;
   readonly removed?: number;
   readonly refreshMs?: number;
+  readonly reseeded?: boolean;
   readonly fate: "pooled" | "discarded" | "retained";
   readonly retire?: CopyRetirement;
 }
