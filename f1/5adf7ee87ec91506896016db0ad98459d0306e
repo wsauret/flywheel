@@ -1,0 +1,66 @@
+src/orchestration/modules/definition-overrides/protocol.ts
+  h_4b47e9e4a8b456 2-3,10-19,22,28,31-37,39
+src/orchestration/modules/development/benchmark/benchmark-records.ts
+  h_4b47e9e4a8b456 111,173
+src/orchestration/modules/development/benchmark/catalog.ts
+  h_4b47e9e4a8b456 13,71,269
+src/orchestration/modules/development/benchmark/chat-routing-run.ts
+  h_4b47e9e4a8b456 106
+src/orchestration/modules/development/benchmark/headless-execution-contract.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/development/benchmark/json-lines.ts
+  h_4b47e9e4a8b456 145
+src/orchestration/modules/development/benchmark/research-scoring.ts
+  h_4b47e9e4a8b456 65
+src/orchestration/modules/development/ios-simulator-backend.ts
+  h_4b47e9e4a8b456 30
+src/orchestration/modules/development/ios-simulator-service.ts
+  h_4b47e9e4a8b456 4,14,68,80-84,124-127,251
+src/orchestration/modules/development/ios-simulator-tool.ts
+  h_4b47e9e4a8b456 143
+tests/helpers/json-lines-fixture.ts
+  h_4b47e9e4a8b456 1-8
+tests/unit/bench/benchmark-ranking.test.ts
+  h_4b47e9e4a8b456 2,6-7
+tests/unit/bench/benchmark-records.test.ts
+  h_4b47e9e4a8b456 3,38-42,50,72,94,100
+tests/unit/bench/benchmark-regrade.test.ts
+  h_4b47e9e4a8b456 5,83
+tests/unit/bench/catalog.test.ts
+  h_4b47e9e4a8b456 7,43-44
+tests/unit/bench/chat-routing-cli.test.ts
+  h_4b47e9e4a8b456 7,120,301-313
+tests/unit/bench/compare.test.ts
+  h_4b47e9e4a8b456 10,493
+tests/unit/bench/implement-task.test.ts
+  h_4b47e9e4a8b456 6,24-25,91,190
+tests/unit/bench/json-lines.test.ts
+  h_4b47e9e4a8b456 4-5,13-17,54,62,66
+tests/unit/bench/persona-benchmark-stored-records.test.ts
+  h_4b47e9e4a8b456 7,108-109,122,133,147,159,169,190,200
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 16,19,376,494-502,512,514,518,523,530
+tests/unit/bench/persona-native-benchmark.test.ts
+  h_4b47e9e4a8b456 12,195
+tests/unit/bench/review-fixtures.test.ts
+  h_4b47e9e4a8b456 2-5,8,10-25,30-31,36-37
+tests/unit/orchestration/modules/definition-overrides-protocol.test.ts
+  h_4b47e9e4a8b456 2-3,5,13-14,17,22-40,57,59,81,92-93
+tests/unit/orchestration/modules/development/benchmark/headless-execution.test.ts
+  h_4b47e9e4a8b456 12,200
+tests/unit/orchestration/modules/development/ios-simulator-service.test.ts
+  h_4b47e9e4a8b456 2-4,6-9,15-16,19-22,25-27,30-125,140-145,160-162,174,179-183,237-240,276-282,308,315-316,328,348,356-363,371,378,386-392,403,406,410,414,418,421,431,436
+tests/unit/orchestration/modules/development/ios-simulator-tool.test.ts
+  h_4b47e9e4a8b456 3,7,14-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f15adf7ee87ec91506896016db0ad98459d0306e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
