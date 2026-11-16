@@ -1,0 +1,28 @@
+src/orchestration/agent-runtime/tools/bash-copy-repository-state.ts
+  h_4b47e9e4a8b456 21-34,37,54
+src/orchestration/agent-runtime/tools/bash-private-copy-pool.ts
+  h_4b47e9e4a8b456 13,25-27,43-48
+src/orchestration/agent-runtime/tools/bash-private-copy-tree.ts
+  h_4b47e9e4a8b456 71-72,292-294,327-329,335
+src/orchestration/agent-runtime/tools/bash-private-copy.ts
+  h_4b47e9e4a8b456 20,53-55,60,75-80,93,96,102,104,119-130,136,143,145-146,148-154,164-165,180-184,210,220,229-242,300-306,311,320-358
+src/orchestration/agent-runtime/tools/bash-project-mutation.ts
+  h_4b47e9e4a8b456 21,541-543,549
+tests/integration/local/_bash-mutation-repository.ts
+  h_4b47e9e4a8b456 11,33-34,88,91,95-96
+tests/integration/local/bash-mutations-reuse.test.ts
+  h_4b47e9e4a8b456 1,4-6,8-10,162-314
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy-reuse.test.ts
+  h_4b47e9e4a8b456 48-58,61-65,75-76,78,82,85-91,93-94,101-104,109,111-113,115,117,137,153-154,162-165,176-179,182,184-190,193-204,210-215,218-268,355,361-362,370-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0d30ca8dd539ac3f8d21dab9dd7e93bbb3038001",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
