@@ -1,0 +1,30 @@
+src/infra/code-mode/VENDOR.md
+  h_4b47e9e4a8b456 20
+src/infra/code-mode/tool-runtime.ts
+  h_4b47e9e4a8b456 62-63,123-130,135-136,490
+src/orchestration/agent-runtime/tools/nested-tool-dispatch.ts
+  h_4b47e9e4a8b456 38-45,47,193-194,205,221-222,226-231,261
+src/orchestration/modules/code-mode/descriptors.ts
+  h_4b47e9e4a8b456 5,109
+src/orchestration/modules/code-mode/invocation-guest.ts
+  h_4b47e9e4a8b456 4,35,37,89,121,123,167
+src/orchestration/modules/code-mode/invocation-protocol.ts
+  h_4b47e9e4a8b456 30-32
+src/orchestration/modules/code-mode/invocation-runner.ts
+  h_4b47e9e4a8b456 129-135,149,151,232
+tests/unit/orchestration/agent-runtime/tools/nested-tool-dispatch.test.ts
+  h_4b47e9e4a8b456 64,97,149-150,171-172,177,183,187,202,269,360
+tests/unit/orchestration/modules/code-mode/code.test.ts
+  h_4b47e9e4a8b456 244-247,249-250,252-254,440,451-455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1afcbc91832182d16aa346157b5d567bd2ce7c4c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
