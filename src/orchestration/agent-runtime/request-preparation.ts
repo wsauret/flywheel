@@ -93,7 +93,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
   const requestContext = createActiveRequestContext({
     messages: () => preparation.messages, attempt: () => preparation.planned, onEvent: sinks.onEvent,
     initialStaleMasking: await readStaleMaskSeed({
-      reader: inputs.sessionEventReader ?? inputs.sessionEventStore, tree: inputs.persistence.committedTree,
+      reader: inputs.sessionEventReader, tree: inputs.persistence.committedTree,
       conversationId: inputs.conversationId, sessionId: inputs.sessionId, messageCount: preparation.messages.length,
     }),
   });

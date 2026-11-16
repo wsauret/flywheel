@@ -385,7 +385,8 @@ export interface ToolContext {
   /** Generic live execution-output channel. Tools may report ephemeral,
    *  accumulated, tail-capped output here while work is still running. */
   onExecutionOutput?: (text: string) => void;
-  /** Execution-scoped nested dispatch factory. Present only while a foreground call owns the attempt gate. */
+  /** Execution-scoped nested dispatch factory. The turn dispatcher sets it on every call that it runs, in the
+   *  foreground and in the background, and a nested batch passes its context on to each nested call. */
   createNestedToolDispatchBatch?: (options: {
     readonly tools: ReadonlyMap<string, RuntimeTool>;
     readonly parentToolUseId: string;

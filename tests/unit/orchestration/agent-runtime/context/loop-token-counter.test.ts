@@ -3,7 +3,6 @@ import { beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";
 import {
   createTokenEstimationCache,
-  createTokenCounter,
   estimateConversationTokens,
   estimateMessageTokensWithPolicy,
   imageTokensForModel,
@@ -13,22 +12,25 @@ import { maskStaleToolResults } from "../../../../../src/orchestration/agent-run
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 const IMAGE_TOKEN_ESTIMATE = imageTokensForModel("anthropic");
+/** The character heuristic of a model with no local tokenizer. */
+const HEURISTIC = tokenCountingPolicy("unmapped-model", "anthropic");
 
 beforeAll(async () => {
   await prepareLocalTokenizer();
 });
 
-describe("token counter", () => {
-  test("maintains running total (no recomputation)", () => {
-    const counter = createTokenCounter({ provider: "anthropic" });
-    counter.addMessage({ kind: "user", content: "abcd" }); // 4 chars -> 1 token
-    expect(counter.total).toBe(1);
-
-    counter.addMessage({ kind: "assistant", content: "efghijkl" }); // 8 chars -> 2 tokens
-    expect(counter.total).toBe(3); // running total: 1 + 2
-
-    counter.addToolResult([{ type: "text", text: "mnopqrstuvwx" }]); // 12 chars -> 3 tokens
-    expect(counter.total).toBe(6); // running total: 3 + 3
+describe("token estimation", () => {
+  test("the estimate for a history equals the sum of per-message estimates under one policy, as before", () => {
+    const history: ConversationMessage[] = [
+      { kind: "user", content: "abcd" }, // 4 chars -> 1 token
+      { kind: "assistant", content: "efghijkl" }, // 8 chars -> 2 tokens
+      { kind: "toolResult", toolUseId: "tool", content: [{ type: "text", text: "mnopqrstuvwx" }] }, // 12 chars -> 3 tokens
+    ];
+    expect(estimateConversationTokens(history, HEURISTIC)).toBe(6);
+    for (const policy of [HEURISTIC, tokenCountingPolicy("gpt-5.4", "openai")]) {
+      const perMessage = history.reduce((total, message) => total + estimateConversationTokens([message], policy), 0);
+      expect(estimateConversationTokens(history, policy, createTokenEstimationCache())).toBe(perMessage);
+    }
   });
 
   test("caches immutable message costs across appends and recalculates replaced or masked messages", () => {
@@ -46,52 +48,44 @@ describe("token counter", () => {
     });
 
     try {
-      const counter = createTokenCounter({ provider: "anthropic" });
-      counter.resetFor([oldMessage]);
-      const oldTotal = counter.total;
-      counter.resetFor([oldMessage, appended]);
+      const cache = createTokenEstimationCache();
+      const oldTotal = estimateConversationTokens([oldMessage], HEURISTIC, cache);
+      const appendedTotal = estimateConversationTokens([oldMessage, appended], HEURISTIC, cache);
       expect(oldInputCalls).toBe(1);
-      expect(counter.total).toBe(oldTotal + Math.ceil("next turn".length / 4));
+      expect(appendedTotal).toBe(oldTotal + Math.ceil("next turn".length / 4));
 
       const replacement = structuredClone(oldMessage);
-      counter.resetFor([replacement, appended]);
+      expect(estimateConversationTokens([replacement, appended], HEURISTIC, cache)).toBe(appendedTotal);
       expect(oldInputCalls).toBe(1);
-      expect(counter.total).toBe(oldTotal + Math.ceil("next turn".length / 4));
 
       const masked = maskStaleToolResults([oldMessage, appended], 1);
       expect(masked).not.toBeNull();
-      counter.resetFor(masked!.messages);
-      expect(counter.total).toBe(estimateConversationTokens(masked!.messages, "anthropic"));
+      expect(estimateConversationTokens(masked!.messages, HEURISTIC, cache)).toBe(estimateConversationTokens(masked!.messages, HEURISTIC));
     } finally {
       stringifySpy.mockRestore();
     }
   });
 
-  test("addToolResult image part costs exactly IMAGE_TOKEN_ESTIMATE regardless of base64 length", () => {
-    const counter = createTokenCounter({ provider: "anthropic" });
+  test("a tool result image part costs exactly IMAGE_TOKEN_ESTIMATE regardless of base64 length", () => {
     const longData = "A".repeat(100_000);
-    counter.addToolResult([{ type: "image", mediaType: "image/png", data: longData }]);
-    expect(counter.total).toBe(IMAGE_TOKEN_ESTIMATE);
+    expect(estimateConversationTokens([
+      { kind: "toolResult", toolUseId: "tool", content: [{ type: "image", mediaType: "image/png", data: longData }] },
+    ], HEURISTIC)).toBe(IMAGE_TOKEN_ESTIMATE);
   });
 
-  test("addToolResult mixed parts sums text chars and image estimate", () => {
-    const counter = createTokenCounter({ provider: "anthropic" });
-    counter.addToolResult([
+  test("a tool result with mixed parts sums text chars and image estimate", () => {
+    expect(estimateConversationTokens([{ kind: "toolResult", toolUseId: "tool", content: [
       { type: "text", text: "abcdefgh" }, // 8 chars -> contributes 8 chars
       { type: "image", mediaType: "image/png", data: "Z".repeat(50_000) }, // contributes IMAGE_TOKEN_ESTIMATE * 4 chars
-    ]);
-    // Total chars = 8 + IMAGE_TOKEN_ESTIMATE * 4; tokens = ceil(chars / 4)
-    expect(counter.total).toBe(Math.ceil((8 + IMAGE_TOKEN_ESTIMATE * 4) / 4));
+    ] }], HEURISTIC)).toBe(Math.ceil((8 + IMAGE_TOKEN_ESTIMATE * 4) / 4));
   });
 
   test("counts inline image blocks at the provider image policy regardless of base64 length", () => {
-    const counter = createTokenCounter({ provider: "anthropic" });
     const imageData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYA"; // 36 chars
-    counter.addMessage({
+    expect(estimateConversationTokens([{
       kind: "user",
       content: [{ type: "image", mediaType: "image/png", data: imageData }],
-    });
-    expect(counter.total).toBe(IMAGE_TOKEN_ESTIMATE);
+    }], HEURISTIC)).toBe(IMAGE_TOKEN_ESTIMATE);
   });
 
   test("identifies mapped local tokenizers and preserves the exact heuristic fallback", () => {
@@ -130,9 +124,7 @@ describe("token counter", () => {
     expect(estimateMessageTokensWithPolicy(message, policy)).toBe(
       policy.countText(semanticText) + policy.countText("opaque chain of thought"),
     );
-    const counter = createTokenCounter({ provider: "openai", tokenPolicy: policy });
-    counter.addMessage(message);
-    expect(counter.total).toBe(policy.countText(semanticText) + policy.countText("opaque chain of thought"));
+    expect(estimateConversationTokens([message], policy)).toBe(policy.countText(semanticText) + policy.countText("opaque chain of thought"));
   });
 
   test("another model's thinking counts only as the progress updates that its request sends as text", () => {
@@ -217,13 +209,10 @@ describe("token counter", () => {
       // A later user message opens a new turn.
       const later = (answer: ConversationMessage): ConversationMessage[] => [request, answer, result, reply, { kind: "user", content: "next" }];
       expect(thinking(later)).toBe(keepsEarlier ? reported : visibleOnly);
-      // A shared cache and the running counter see the same position.
+      // A shared cache keeps each message's count by its position.
       const cache = createTokenEstimationCache();
       expect(estimateConversationTokens([request, counted, result], policy, cache)).toBe(estimateConversationTokens([request, counted, result], policy));
       expect(estimateConversationTokens(later(counted), policy, cache)).toBe(estimateConversationTokens(later(keepsEarlier ? counted : plain), policy));
-      const counter = createTokenCounter({ provider: "anthropic", tokenPolicy: policy, cache });
-      counter.resetFor(later(counted));
-      expect(counter.total).toBe(estimateConversationTokens(later(counted), policy));
     }
   });
 

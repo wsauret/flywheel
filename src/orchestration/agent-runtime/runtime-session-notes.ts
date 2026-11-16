@@ -14,7 +14,7 @@ export function createRuntimeSessionNotes(
   conversationId: string | undefined,
   owner: DurableOwner | undefined,
 ): AgentLoopOptions["checkpoint"] {
-  const reader = options.sessionEventReader ?? options.sessionEventStore;
+  const reader = options.sessionEventReader;
   const writer = options.sessionEventWriter;
   if (!conversationId || !owner || !reader || !writer) return undefined;
   return createConversationCheckpointOwner(reader, writer, owner, conversationId);
@@ -28,7 +28,7 @@ export async function importLegacyRuntimeSessionNotes(
   conversationId: string | undefined,
   owner: DurableOwner | undefined,
 ): Promise<void> {
-  const reader = options.sessionEventReader ?? options.sessionEventStore;
+  const reader = options.sessionEventReader;
   const writer = options.sessionEventWriter;
   if (!conversationId || !owner || !reader || !writer || !resources.notesDirectory) return;
   await importLegacyCheckpointNotes(reader, writer, owner, conversationId, resources.notesDirectory);

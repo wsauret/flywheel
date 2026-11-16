@@ -217,7 +217,7 @@ async function fixture(scenario: Scenario) {
     moduleSelection: testCapabilityModules, awaitModelAccessSettled: async () => {}, captureRuntimeConfig: testRuntimeConfigCapture,
     lifecycle: { kind: "one-shot" },
     conversation: { kind: "durable-tree", reserveMessageId: async () => crypto.randomUUID(), sessionId: "session", conversationId: "conversation", priorMessages: [{ kind: "user", content: "work" }], append: (message, entryId) => { history.push(message); leafId = entryId ?? null; order.push(`canonical:${message.kind}`) }, captureCommittedForkMessages: async () => [], resolveLeafId: async () => leafId, committedTree: async () => ({ leafId: null, entriesById: {} }) },
-    sessionEventStore: asAsyncEventReadSurface(store), sessionEventWriter: writer,
+    sessionEventStore: asAsyncEventReadSurface(store), sessionEventReader: asAsyncEventReadSurface(store), sessionEventWriter: writer,
     auditObserver: (fact) => { audit.push(fact); order.push(`audit:${fact.type}`) },
     usageProfile: { profileId: "default", authorityIncarnation: "test-authority", acquireAuthority: async () => ({ profileId: "default", authorityIncarnation: "test-authority", append: (entry) => {
       if (entry.attribution.kind !== "candidate") throw new Error("Expected candidate usage attribution")

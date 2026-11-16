@@ -223,18 +223,13 @@ export function decideCutoff(messageCount: number, usageRatio: number, state: Cu
     }
   }
 
-  // Defense in depth: a history rewrite the caller failed to reset on shrinks
-  // messages.length below a stale cutoff; clamp so at worst everything before
-  // the rewrite boundary is masked rather than everything in the conversation.
-  const clampedPrevious = Math.min(state.previousCutoff, messageCount);
-
   if (activeZone <= state.zoneEntered) {
-    return { cutoffIndex: clampedPrevious, activeZone, zoneAdvanced: false };
+    return { cutoffIndex: state.previousCutoff, activeZone, zoneAdvanced: false };
   }
   // SAFETY: activeZone > zoneEntered >= -1 implies activeZone indexes ZONE_COVERAGE.
   const newCutoff = Math.floor(messageCount * ZONE_COVERAGE[activeZone]!);
   return {
-    cutoffIndex: Math.max(clampedPrevious, newCutoff),
+    cutoffIndex: Math.max(state.previousCutoff, newCutoff),
     activeZone,
     zoneAdvanced: true,
   };

@@ -80,11 +80,6 @@ describe("decideCutoff (static, frozen between zone advances)", () => {
     expect(decision.zoneAdvanced).toBe(true);
     expect(decision.cutoffIndex).toBe(160);
   });
-
-  test("stale cutoff is clamped to the current message count", () => {
-    const decision = decideCutoff(10, 0.1, { previousCutoff: 60, zoneEntered: 0 });
-    expect(decision.cutoffIndex).toBe(10);
-  });
 });
 
 describe("maskStaleToolResults", () => {

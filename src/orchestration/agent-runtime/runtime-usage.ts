@@ -5,7 +5,7 @@ import type { AgentOptions } from "./types.js";
 import { createProcessUsageSettlement, createSessionUsageSettlement, recoverSessionUsageSettlements, type UsageSettlement } from "./usage-settlement.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
 
-type RuntimeUsageOptions = Pick<AgentOptions, "onEvent" | "usageObserver" | "usageProfile" | "sessionEventReader" | "sessionEventStore" | "sessionEventWriter">;
+type RuntimeUsageOptions = Pick<AgentOptions, "onEvent" | "usageObserver" | "usageProfile" | "sessionEventReader" | "sessionEventWriter">;
 type RuntimeUsageConversation = Pick<RuntimeConversation, "requestAccounting" | "sessionId" | "aggregateId" | "artifactScopeId">;
 
 /** The usage stream that a conversation's requests charge: its request accounting's, else its session's, else its
@@ -32,7 +32,7 @@ export async function prepareRuntimeUsage(
   const commitPublishedUsage = (entry: UsageEntry): boolean => commitUsage(entry, true);
   const commitProcessUsage = (entry: UsageEntry): boolean => commitUsage(entry, false);
   const usageProfile = options.usageProfile;
-  const usageReader = requestAccounting?.reader ?? options.sessionEventReader ?? options.sessionEventStore;
+  const usageReader = requestAccounting?.reader ?? options.sessionEventReader;
   const usageWriter = requestAccounting?.writer ?? options.sessionEventWriter;
   const owner: DurableOwner | undefined = requestAccounting?.owner ?? (sessionId && aggregateId ? { kind: "session", sessionId } : undefined);
   const usageSettlement = usageProfile

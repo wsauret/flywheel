@@ -7,7 +7,6 @@ import { readProviderRequestAuditFact } from "../session/provider-request-audit-
 import { providerRequestIdentityFromPayload } from "../session/provider-request-audit-types.js";
 import type { AgentLoopPersistence } from "./agent-loop-types.js";
 import {
-  createTokenCounter,
   createTokenEstimationCache,
   estimateConversationTokens,
   tokenCountingPolicy,
@@ -135,7 +134,6 @@ export function createActiveRequestContext(input: {
     accessProvider: attempt.accessProvider, model: attempt.candidateAttribution?.wireModelId ?? attempt.model,
   });
   let policy = attemptPolicy(input.attempt());
-  let counter = createTokenCounter({ provider: input.attempt().modelFamily, tokenPolicy: policy, cache: estimationCache });
 
   const requestKey = (attempt: ServingAttempt, prepared: PreparedRequestAttempt): string =>
     JSON.stringify([attempt.accessProvider, attempt.model, prepared.systemPrompt, prepared.tools]);
@@ -158,7 +156,7 @@ export function createActiveRequestContext(input: {
       ? activeMessages
       : [...activeMessages, { kind: "user" as const, content: requestContext, requestOnly: true as const }];
     const presentation = selected.attempt.toolPresentation;
-    counter.resetFor(messages.map((message) => {
+    const messageTokens = estimateConversationTokens(messages.map((message) => {
       let variants = presentedMessages.get(message);
       const prior = variants?.get(presentation);
       if (prior) return prior;
@@ -168,11 +166,11 @@ export function createActiveRequestContext(input: {
       variants.set(presentation, presented);
       presentedMessages.set(message, variants);
       return presented;
-    }));
+    }), policy, estimationCache);
     return {
       history, length: history.length, mask, toolHistoryProjection: projected.projection, messages, requestContext,
       snapshot: {
-        messageTokens: counter.total,
+        messageTokens,
         staticTokens: prepared.attemptStaticTokens,
         anchorKey: requestKey(selected.attempt, prepared),
       },
@@ -194,12 +192,7 @@ export function createActiveRequestContext(input: {
 
   function materialize(surface: Surface, attempt: ServingAttempt): void {
     const prepared = surface.prepareAttempt(attempt);
-    const nextPolicy = attemptPolicy(attempt);
-    if (policy.identity !== nextPolicy.identity || policy.imageTokens !== nextPolicy.imageTokens
-      || policy.replayTarget?.accessProvider !== nextPolicy.replayTarget?.accessProvider || policy.replayTarget?.model !== nextPolicy.replayTarget?.model) {
-      policy = nextPolicy;
-      counter = createTokenCounter({ provider: attempt.modelFamily, tokenPolicy: policy, cache: estimationCache });
-    }
+    policy = attemptPolicy(attempt);
     selected = {
       surface,
       attempt,
