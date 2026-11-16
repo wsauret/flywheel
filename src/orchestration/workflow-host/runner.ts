@@ -54,7 +54,7 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
   let resources: SessionResources | null = null
   const agentInputs = createWorkflowAgentInputs({
     store: opts.projectionReader, sessionId, wake: opts.wake, restore: opts.startMode !== "launch",
-    onChange: () => { publishInterruption(); notifyLiveWorkChanged(opts.projectionReader) },
+    onChange: () => { publishInterruption(); notifyLiveWorkChanged(opts.projectionReader, `workflow:${sessionId}`) },
     runningAgents: () => {
       const started = startedAgents(committedQueue)
       const ids = new Set(started.map(({ agent }) => agent.id))
@@ -121,7 +121,7 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
   const subscribeToAttemptEvents = (): void => {
     for (const type of ["workflow.attempt.started", "workflow.attempt.completed", "workflow.attempt.failed", "workflow.attempt.interrupted"] as const) eventBus.subscribeToType(type, async () => {
       await readQueue()
-      notifyLiveWorkChanged(opts.projectionReader)
+      notifyLiveWorkChanged(opts.projectionReader, `workflow:${sessionId}`)
     }, { delivery: "direct", deliveryClass: "critical", label: "workflow-committed-attempt-projection" })
   }
 

@@ -457,7 +457,7 @@ describe("children and parents", () => {
     siblingState = "interrupted"
     runnable = false
     command.resolve({ status: "completed", content: "Checked" })
-    if (independent === "none" || independent === "sibling" || independent === "frontier") notifyLiveWorkChanged(here.reader)
+    if (independent === "none" || independent === "sibling" || independent === "frontier") notifyLiveWorkChanged(here.reader, `workflow:${workflowId}`)
     await settle()
     if (independent === "sibling") {
       expect(agentTasks.holdsWait("ask-parent")).toBe(true)

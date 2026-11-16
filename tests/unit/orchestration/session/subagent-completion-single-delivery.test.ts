@@ -233,7 +233,7 @@ describe("subagent completion delivery", () => {
     const unregister = registerLiveSessionControl(asAsyncEventReadSurface(store), {
       sessionId: parentSessionId, state: async () => "running",
       deliver: async () => ({ status: "delivered", startsTurn: false }),
-      member: { backgroundTasks: registry, modules: async () => undefined, compact: async () => false, interrupt: () => false, releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {}, terminateBackgroundWork: () => {} },
+      member: { workflowId: "workflow", backgroundTasks: registry, modules: async () => undefined, compact: async () => false, interrupt: () => false, releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {}, terminateBackgroundWork: () => {} },
       ...(parentKind.endsWith("subagent") ? { child: {
         runId: "parent-run", parentSessionId: "root", parentConversationId: "root-conversation", parentToolCallId: "parent-call",
         backgroundTasks: registry, modules: async () => undefined, stop: () => {}, interrupt: async () => true,
@@ -244,7 +244,7 @@ describe("subagent completion delivery", () => {
     const childResult: BackgroundWorkResult = { status: "completed", content: "One P3 finding." }
     registry.track({
       done: Promise.resolve(parentKind.startsWith("stopped") ? { status: "interrupted", content: "", interruptedBy: "person" } : childResult),
-      meta: { id: childRunId, type: "subagent", description, toolUseId, settlementOwner: "child_session" },
+      meta: { id: childRunId, type: "subagent", description, toolUseId },
     })
     await Promise.resolve()
     if (parentKind.startsWith("stopped")) expect(registry.awaitedTaskCount()).toBe(1)
