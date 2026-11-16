@@ -1,0 +1,70 @@
+bench/ab-persona/chat-routing-bench.ts
+  h_4b47e9e4a8b456 9,151
+bench/ab-persona/strategy-bench.ts
+  h_4b47e9e4a8b456 31,53,175,414-416
+src/cli/font.ts
+  h_4b47e9e4a8b456 11,32-36,38
+src/orchestration/config/custom-providers.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/config/schema.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/config/writer.ts
+  h_4b47e9e4a8b456 11,230-233,292-294
+src/orchestration/modules/development/benchmark/chat-routing-store.ts
+  h_4b47e9e4a8b456 1-113
+src/orchestration/modules/development/benchmark/persona-store.ts
+  h_4b47e9e4a8b456 35,41
+src/orchestration/modules/development/benchmark/run-store.ts
+  h_4b47e9e4a8b456 5-6,258-259,298-301
+tests/helpers/split-ledger.ts
+  h_4b47e9e4a8b456 1-30
+tests/integration/cli/mcp-import-concurrency.test.ts
+  h_4b47e9e4a8b456 24
+tests/integration/orchestration/update/update-concurrency.test.ts
+  h_4b47e9e4a8b456 182
+tests/unit/bench/chat-routing-cli.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/bench/compare.test.ts
+  h_4b47e9e4a8b456 11-12,96-97,120-121,135
+tests/unit/bench/run-store.test.ts
+  h_4b47e9e4a8b456 15,54-65,133,140-151,156-162,166,173-174,183-186,190-192,196-205,207,210-215,218-223,227-230,233-237,244-246,250-252,257,262,270-276,282-287,292,295-300,307-315,325-326,332,339,351-352,377,381,389
+tests/unit/bench/strategy.test.ts
+  h_4b47e9e4a8b456 5-6,239-241,244,388,393,482-484,495-497,499,501
+tests/unit/cli/headless-args.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/config/config-models-roles.test.ts
+  h_4b47e9e4a8b456 12,356-357,366-367
+tests/unit/orchestration/config/config-reference.test.ts
+  h_4b47e9e4a8b456 5,61
+tests/unit/orchestration/config/config-settings-persistence.test.ts
+  h_4b47e9e4a8b456 10-11,25-35,127,134,151,155,162,177,189,238,248,264,274-276,330,341,349,409,453,468,478
+tests/unit/orchestration/config/custom-providers-config.test.ts
+  h_4b47e9e4a8b456 2,14-15,18
+tests/unit/orchestration/config/model-brief-pruning.test.ts
+  h_4b47e9e4a8b456 6,51,182-183
+tests/unit/orchestration/config/model-tiers.test.ts
+  h_4b47e9e4a8b456 3,15,19-23,34-36,46-47,49-50,61,63,72-76,138-142,187-190
+tests/unit/orchestration/config/persistent-process-policy.test.ts
+  h_4b47e9e4a8b456 10,83,85,103
+tests/unit/orchestration/config/retired-workflow-seats.test.ts
+  h_4b47e9e4a8b456 6,192
+tests/unit/orchestration/config/setting-definitions.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/config/writer.test.ts
+  h_4b47e9e4a8b456 5,7,10,12-20,25,35-51
+tests/unit/orchestration/modules/config-contribution.test.ts
+  h_4b47e9e4a8b456 14,65
+tests/unit/orchestration/modules/learning/skill-corpus-cleanup-host.test.ts
+  h_4b47e9e4a8b456 13,165,181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "abf0eb402a763704e540e87efccac1ac4c579b7e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
