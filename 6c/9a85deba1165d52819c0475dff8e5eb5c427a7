@@ -1,0 +1,26 @@
+src/protocol/client/held-view.ts
+  h_4b47e9e4a8b456 8-9,32-36,56,95-96
+src/tui/hooks/create-command-catalog.ts
+  h_4b47e9e4a8b456 1,10,40,42-45,47-49,51,58
+src/tui/hooks/create-module-domain-intakes.ts
+  h_4b47e9e4a8b456 1,3,6-7,101,103-106,108-111,113
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 3,19-21,25,28-29,261-263,265-268,270-277,283-293,301,303-306,308-310,312,318,320-323,325-327,329,335,337-340,342-344,346
+tests/unit/protocol/client/held-view.test.ts
+  h_4b47e9e4a8b456 5,12,28,61-79
+tests/unit/tui/hooks/runtime-config-cache.test.ts
+  h_4b47e9e4a8b456 7,28-31,35-37,46-86
+tests/unit/tui/hooks/shell-state-migrated-signals.test.ts
+  h_4b47e9e4a8b456 1,5-14,17-20,169-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6c9a85deba1165d52819c0475dff8e5eb5c427a7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
