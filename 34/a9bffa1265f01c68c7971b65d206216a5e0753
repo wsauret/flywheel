@@ -1,0 +1,40 @@
+bench/harbor/configs/luna-b1-one-check.toml
+  h_4b47e9e4a8b456 1-81
+bench/harbor/configs/luna-b2-scope.toml
+  h_4b47e9e4a8b456 1-81
+bench/harbor/configs/luna-b3-behavior.toml
+  h_4b47e9e4a8b456 1-81
+bench/harbor/configs/luna-b4-read-once.toml
+  h_4b47e9e4a8b456 1-81
+bench/harbor/configs/luna-t5-b1-b2.toml
+  h_4b47e9e4a8b456 1-91
+bench/harbor/configs/luna-t5-b1.toml
+  h_4b47e9e4a8b456 1-86
+bench/harbor/configs/luna-t5-b2.toml
+  h_4b47e9e4a8b456 1-86
+bench/harbor/configs/shipped-first-b1-one-check.toml
+  h_4b47e9e4a8b456 1-107
+bench/harbor/configs/shipped-first-b2-scope.toml
+  h_4b47e9e4a8b456 1-107
+bench/harbor/configs/shipped-first-b3-behavior.toml
+  h_4b47e9e4a8b456 1-107
+bench/harbor/configs/shipped-first-b4-read-once.toml
+  h_4b47e9e4a8b456 1-107
+bench/harbor/configs/shipped-first-t5-b1-b2.toml
+  h_4b47e9e4a8b456 1-117
+bench/harbor/configs/shipped-first-t5-b1.toml
+  h_4b47e9e4a8b456 1-112
+bench/harbor/configs/shipped-first-t5-b2.toml
+  h_4b47e9e4a8b456 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "34a9bffa1265f01c68c7971b65d206216a5e0753",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
