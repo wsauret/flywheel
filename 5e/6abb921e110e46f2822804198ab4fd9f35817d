@@ -1,0 +1,16 @@
+src/orchestration/workflow-host/member-totals.ts
+  h_4b47e9e4a8b456 11,119,122,186,213-217,220,236-237,275
+tests/unit/orchestration/workflow-host/member-totals.test.ts
+  h_4b47e9e4a8b456 6,8,65,90-93,157-158,161-164,167-168,172,177-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5e6abb921e110e46f2822804198ab4fd9f35817d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
