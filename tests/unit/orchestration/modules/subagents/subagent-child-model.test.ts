@@ -10,6 +10,7 @@ import { loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "../../../..
 import { createSessionToolSummaryReader } from "../../../../../src/orchestration/modules.js"
 import { subagentsModule } from "../../../../../src/orchestration/modules/subagents.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { processSettled } from "../../../../helpers/process-settled.js"
 
 const createHarness = subagentChildHarnesses()
 
@@ -71,7 +72,7 @@ test("child role revisions switch the next admitted model, survive resume and re
     await nextAttempt.promise
     expect(attempts[1]!.options.model).toBe("claude-opus-4.6")
     attempts[1]!.done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: "provider failed", recovery: { kind: "none" } } })
-    expect(await harness.backgroundTasks.waitProcess(harness.backgroundTasks.processRecords()[0]!.id)).toBe(true)
+    expect(await processSettled(harness.backgroundTasks, harness.backgroundTasks.processRecords()[0]!.id)).toBe(true)
     await reconcileChildSessionCompletions({ parentSessionId: parent, reader: harness.reader, writer: harness.writer })
     nextAttempt = Promise.withResolvers<void>()
     const retry = await tool.processResume(child, { ...context, toolUseId: "retry-tool" })

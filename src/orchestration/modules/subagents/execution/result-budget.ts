@@ -26,7 +26,7 @@ const log = Log.create({ service: "subagent-result-budget" });
 
 // Hard per-result character ceiling layered on top of the dynamic headroom
 // budget. Belt-and-suspenders for models that ignore concision instructions.
-export const MAX_RESULT_CHARS = 24_000;
+const MAX_RESULT_CHARS = 24_000;
 // Fraction of the parent's remaining admission budget that the whole batch of
 // subagent results may consume. The per-result budget is this slice divided
 // across the batch, so N children cannot collectively overflow the parent.

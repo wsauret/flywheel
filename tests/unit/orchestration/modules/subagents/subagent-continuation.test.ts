@@ -23,6 +23,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import { fakeModelInfos, tierAvailableModels } from "../../../../helpers/model-tier-fixtures.js"
 import { roleCapture } from "../../../../helpers/role-capture.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"
+import { processSettled } from "../../../../helpers/process-settled.js"
 const createHarness = subagentChildHarnesses()
 
 function localClient(model: string) {
@@ -188,7 +189,7 @@ describe("explicit child Resume", () => {
       const childRunId = runs(harness.store, child).at(-1)!.childRunId
       expect(tasks.activeBackgroundCommands()).toMatchObject([{ id: childRunId, roleSessionId: child }])
       expect(tasks.awaitedTaskCount()).toBe(1)
-      const waiting = tasks.waitProcess(childRunId)
+      const waiting = processSettled(tasks, childRunId)
       if (ending === "stop") {
         expect((await createProcessTool(tasks).execute({ action: "stop", process_id: childRunId }, { ...context, userDataRoot: `${harness.projectRoot}/.test-account`, retrievalSessionId: root.sessionId })).outcome).toBe("ok")
       } else {

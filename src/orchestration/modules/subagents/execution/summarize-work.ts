@@ -37,7 +37,7 @@ const log = Log.create({ service: "subagent-failure-summary" });
 
 /** Short logs do not justify an extra LLM round-trip, so fewer than three
  *  recorded tool calls use the deterministic fallback directly. */
-export const MIN_RECORDS_FOR_LLM_SUMMARY = 3;
+const MIN_RECORDS_FOR_LLM_SUMMARY = 3;
 
 const SUMMARY_TIMEOUT_MS = 8_000;
 

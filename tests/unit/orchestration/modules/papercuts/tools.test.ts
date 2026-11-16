@@ -8,8 +8,8 @@ import { composeModuleServices } from "../../../../../src/infra/module-service.j
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
 import { papercutsModule } from "../../../../../src/orchestration/modules/papercuts.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
-import { createPapercutDisposeTool, papercutDisposeDefinition, papercutLogDefinition } from "../../../../../src/orchestration/modules/papercuts/tools.js"
-import { createPapercutDispositionWriter } from "../../../../../src/orchestration/modules/papercuts/disposition-writer.js"
+import { papercutDisposeDefinition, papercutLogDefinition } from "../../../../../src/orchestration/modules/papercuts/tools.js"
+import { createPapercutDispositionWriter, type PapercutDispositionWriter } from "../../../../../src/orchestration/modules/papercuts/disposition-writer.js"
 import type { PapercutRecordedFact } from "../../../../../src/orchestration/modules/papercuts/facts.js"
 
 const directories: string[] = []
@@ -61,6 +61,11 @@ function storeFixture() {
   const store = createSqliteEventStore(join(directory, "events.sqlite"))
   openStores.push(store)
   return { store, writer: createPapercutDispositionWriter({ store: asAsyncEventReadSurface(store), writer: asAsyncEventAppender(store) }) }
+}
+
+/** The disposition tool's context when the module's runtime writer is `writer`. */
+function disposingContext(writer: PapercutDispositionWriter, overrides: ContextOverrides = {}) {
+  return context({ moduleRuntimes: composeModuleRuntimes([["papercuts", writer]]), ...overrides })
 }
 
 function appendRecorded(store: ReturnType<typeof createSqliteEventStore>, sessionId: string, observation = "A papercut") {
@@ -129,9 +134,8 @@ describe("papercut disposition tool", () => {
   it("offers only evidence-backed terminal outcomes", async () => {
     const { store, writer } = storeFixture()
     const target = appendRecorded(store, "owner")
-    const tool = createPapercutDisposeTool(writer)
 
-    expect(tool.inputSchema).toEqual({
+    expect(papercutDisposeDefinition.inputSchema).toEqual({
       type: "object",
       properties: {
         recorded_fact_id: { type: "string", minLength: 1 },
@@ -141,7 +145,7 @@ describe("papercut disposition tool", () => {
       additionalProperties: false,
     })
 
-    expect(await tool.execute({ recorded_fact_id: target.id, disposition: "promoted" }, context())).toEqual({
+    expect(await papercutDisposeDefinition.execute({ recorded_fact_id: target.id, disposition: "promoted" }, disposingContext(writer))).toEqual({
       content: "Papercut disposition input was invalid. Tell the user that the runtime could not persist the papercut operation.",
       outcome: "error",
     })
@@ -199,9 +203,8 @@ describe("papercut disposition writer", () => {
   it("dismisses a live papercut observed by another session", async () => {
     const { store, writer } = storeFixture()
     const target = appendRecorded(store, "other-session", "Harness friction outside this task")
-    const tool = createPapercutDisposeTool(writer)
 
-    const result = await tool.execute({ recorded_fact_id: target.id, disposition: "dismissed" }, context({ sessionId: "disposing-session" }))
+    const result = await papercutDisposeDefinition.execute({ recorded_fact_id: target.id, disposition: "dismissed" }, disposingContext(writer, { sessionId: "disposing-session" }))
 
     expect(result.outcome).toBe("ok")
     expect(store.read({ aggregateId: "project:papercuts" })[0]?.payload).toEqual({

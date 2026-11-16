@@ -32,6 +32,7 @@ import { createUnstartedChild, subagentChildHarnesses, type SubagentChildHarness
 import { finalizeTestSessionDeletion } from "../../session/_session-manager-fixtures";
 import { executeChildSessionDeletionPlan } from "../../../../../src/orchestration/session/child-session-deletion";
 import { unusedChildSessionControl } from "../../../../helpers/child-session-control.js";
+import { processSettled } from "../../../../helpers/process-settled.js";
 
 const createHarness = subagentChildHarnesses();
 
@@ -343,7 +344,7 @@ describe("live child messages", () => {
       }
       runs[0].done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: "provider broke", recovery: { kind: "none" } } });
       await summaryStarted.promise;
-      const finished = Promise.all(harness.backgroundTasks.processRecords().map((process) => harness.backgroundTasks.waitProcess(process.id)));
+      const finished = Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)));
       let stopped: Promise<void> | undefined;
       if (cut === "deadline") deadline.abort();
       else stopped = stopSubagentSession({
@@ -381,7 +382,7 @@ describe("live child messages", () => {
       expect(await deliverSessionInput(delivery, child, { text: "the sibling's question", producer: fromSession(sibling, "sibling-conversation", "ask-2") })).toEqual({ status: "delivered", startsTurn: false });
 
       runs[0]?.done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: "provider broke", recovery: { kind: "none" } } });
-      await Promise.all(harness.backgroundTasks.processRecords().map((process) => harness.backgroundTasks.waitProcess(process.id)));
+      await Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)));
       await reconcileChildSessionCompletions({ parentSessionId: parent, reader: harness.reader, writer: harness.writer });
 
       const failed = (await readSubagentRuns(harness.reader, child)).at(-1);
@@ -447,7 +448,7 @@ describe("live child messages", () => {
       await holdQueuedBackgroundNotification(harness.writer, child, childSession.conversationId, "a notice for the child", "notice-1");
 
       run.done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } });
-      await Promise.all(harness.backgroundTasks.processRecords().map((process) => harness.backgroundTasks.waitProcess(process.id)));
+      await Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)));
 
       expect(harness.store.readInFlight(child, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toEqual([]);
       expect(JSON.stringify(harness.store.read({ aggregateId: `conversation:${childSession.conversationId}` }))).toContain("a notice for the child");
@@ -545,7 +546,7 @@ describe("live child messages", () => {
         .toEqual({ status: "held", reason: "interrupted" });
       await limaRun.options.conversation.append({ kind: "assistant", content: [{ type: "text", text: "Done." }] });
       limaRun.done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } });
-      await Promise.all(harness.backgroundTasks.processRecords().map((process) => harness.backgroundTasks.waitProcess(process.id)));
+      await Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)));
       // The run settles: its loop returned, so it reads nothing more.
       expect(liveChildRun(harness.reader, lima)).toBeUndefined();
       expect(["completed", "failed"]).toContain((await readSubagentRuns(harness.reader, lima)).at(-1)?.status ?? "none");
