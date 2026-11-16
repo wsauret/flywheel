@@ -1,7 +1,6 @@
 import type { Socket as BunSocket } from "bun"
-import { Effect, Fiber, FiberSet, Layer, Scope } from "effect"
-import { NetAddress } from "effect/net"
-import { Socket, SocketServer } from "effect/socket"
+import { Effect, Layer, Scope } from "effect"
+import { Socket } from "effect/socket"
 import { ACCOUNT_ATTACH_LATER_MAX_BYTES, createAccountAttachResponseReader } from "../../protocol/account-attach.js"
 import type { RuntimeStartupPhase } from "../../protocol/app-service-types.js"
 import { AccountAttachFailedError } from "../../protocol/app-service-types.js"
@@ -11,11 +10,11 @@ import { AccountAttachFailedError } from "../../protocol/app-service-types.js"
 type ClientSocket = BunSocket<undefined>
 
 /** Bun adapters for Effect's socket RPC transport, one per side of the
- *  channel. Effect core ships the platform-neutral `Socket` and `SocketServer`
- *  contracts and the RPC protocol over them, but no Bun implementation; the
- *  server layer is that implementation over `Bun.listen` and the client layer
- *  over `Bun.connect`, the same way `bun-worker-rpc.ts` is that implementation
- *  over the Web Worker API. One stream adapter serves both sides, so a
+ *  channel. Effect core ships the platform-neutral `Socket` contract and the
+ *  RPC protocol over it, but no Bun implementation; the raw server is that
+ *  implementation over `Bun.listen` and the client layer over `Bun.connect`,
+ *  the same way `bun-worker-rpc.ts` is that implementation over the Web Worker
+ *  API. One stream adapter serves both sides, so a
  *  connection reads and writes with the same backpressure whichever end of it
  *  this process holds.
  *
@@ -52,11 +51,6 @@ interface AcceptedConnection {
   readonly onData: (chunk: Uint8Array) => void
   readonly onDrain: () => void
   readonly onClose: (cause?: unknown) => void
-}
-
-interface LiveConnection {
-  readonly transport: AcceptedConnection
-  readonly handler: Fiber.Fiber<unknown, unknown>
 }
 
 /** One accepted connection as the two web streams `Socket.fromTransformStream`
@@ -328,89 +322,6 @@ export function bunSocketClientLayer(
   return Layer.effect(Socket.Socket)(Socket.fromTransformStream(connectBunSocket(path, before, initialBytes, onStartupPhase)))
 }
 
-export interface BunSocketServerOptions {
-  /** Filesystem path to bind. On Windows this is a named pipe path, which Bun
-   *  accepts through the same option. */
-  readonly path: string
-  /** Called once the listener is bound, before any connection is accepted. The
-   *  endpoint is only advertised after this, so a client that finds the socket
-   *  always finds something listening on it. */
-  readonly onListening?: () => void
-  /** Called as each connection opens and closes, so the host can decide when it
-   *  has been unused long enough to exit. */
-  readonly onConnectionCountChanged?: (open: number) => void
-}
-
-/** Server side: a `SocketServer` over one bound Bun unix socket. Each accepted
- *  connection becomes an Effect `Socket` handed to the RPC protocol's handler,
- *  and every connection fiber belongs to this server's scope, so closing the
- *  server settles them rather than leaving orphaned readers on dead sockets. */
-export function bunSocketServerLayer(options: BunSocketServerOptions): Layer.Layer<SocketServer.SocketServer> {
-  return Layer.effect(SocketServer.SocketServer)(Effect.sync(() =>
-    SocketServer.SocketServer.of({
-      address: NetAddress.unixPathAddress(options.path),
-      run: <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
-        Effect.scopedWith((scope) =>
-          Effect.gen(function*() {
-            const fiberSet = yield* FiberSet.make<unknown, unknown>().pipe(Scope.provide(scope))
-            const runFork = yield* FiberSet.runtime(fiberSet)<R>()
-            let open = 0
-
-            const connections = new WeakMap<ClientSocket, LiveConnection>()
-            /** Releases a connection exactly once, whichever handler reports it
-             *  first. Map membership is the count's authority rather than a
-             *  second tally: `error` used to tear the transport down without
-             *  decrementing, and `close` decremented whether or not the socket
-             *  was still held, so the two could disagree about how many
-             *  clients were attached. The idle reaper arms on that number
-             *  reaching zero, and a runtime that never sees zero never reaps. */
-            const release = (socket: ClientSocket, cause?: Error): void => {
-              const connection = connections.get(socket)
-              if (!connection) return
-              connection.transport.onClose(cause)
-              Effect.runFork(Fiber.interrupt(connection.handler))
-              connections.delete(socket)
-              open -= 1
-              options.onConnectionCountChanged?.(open)
-            }
-            const server = Bun.listen<undefined>({
-              unix: options.path,
-              socket: {
-                open(socket) {
-                  const transport = connectionStreams(socket)
-                  const handlerFiber = runFork(Effect.flatMap(
-                    Socket.fromTransformStream(Effect.succeed(transport.streams)),
-                    (accepted) => handler(accepted),
-                  ))
-                  connections.set(socket, { transport, handler: handlerFiber })
-                  open += 1
-                  options.onConnectionCountChanged?.(open)
-                },
-                data(socket, chunk) {
-                  connections.get(socket)?.transport.onData(chunk)
-                },
-                drain(socket) {
-                  connections.get(socket)?.transport.onDrain()
-                },
-                close(socket) {
-                  release(socket)
-                },
-                error(socket, cause) {
-                  release(socket, cause)
-                },
-              },
-            })
-            yield* Scope.addFinalizer(scope, Effect.sync(() => server.stop(true)))
-            options.onListening?.()
-            // The server runs until its scope closes; the RPC protocol forks
-            // this and owns that scope.
-            return yield* Effect.never
-          })
-        ),
-    })
-  ))
-}
-
 export interface BunRawSocketConnection {
   readonly socketLayer: Layer.Layer<Socket.Socket>
   readonly receive: (bytes: Uint8Array) => void
@@ -433,8 +344,8 @@ export interface BunRawSocketServer {
 }
 
 /** Owns one Bun unix listener while leaving admission and per-connection RPC
- * composition to the account service. The stream adapter is the same bounded,
- * backpressured transport used by the legacy socket server. Input awaiting
+ * composition to the account service. Each accepted connection gets the
+ * bounded, backpressured stream adapter of `connectionStreams`. Input awaiting
  * dispatch is bounded before copying while an earlier callback is pending. */
 export function createBunRawSocketServer(options: {
   readonly path: string

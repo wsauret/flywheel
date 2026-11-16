@@ -1,9 +1,9 @@
 import { realpath, stat } from "node:fs/promises"
 import { extname, isAbsolute, posix, relative, resolve, win32 } from "node:path"
+import { CLIENT_IDENTITY_PATTERN } from "../../../protocol/client-identity.js"
 import type { ControlUiAssetState } from "./control-ui-assets"
 import { applyControlUiSecurityHeaders } from "./control-ui-csp"
-import { respondNotFound, respondPlainText } from "./control-ui-http-utils"
-import { classifyControlUiRequest } from "./control-ui-routing"
+import { acceptsControlUiHtmlResponse, isReadHttpMethod, respondNotFound, respondPlainText } from "./control-ui-http-utils"
 import { escapeHtml, renderFlywheelPage, renderLoadingCard } from "./flywheel-page"
 
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable"
@@ -126,6 +126,28 @@ function fileResponse(request: Request, pathname: string, file: { path: string; 
   }
   if (request.method === "HEAD") return new Response(null, { status: 200, headers })
   return new Response(Bun.file(file.path), { status: 200, headers })
+}
+
+type ControlUiRequestClassification =
+  | { kind: "not-control-ui" }
+  /** `/client/<identity>/<path>`: one file of the client build, named by the
+   *  identity of the build it belongs to. `path` is still URL-encoded. */
+  | { kind: "client"; identity: string; path: string }
+  /** The page, a file at the root, or a page address the client routes. */
+  | { kind: "serve"; spaFallback: boolean }
+
+/** Classifies requests for the fixed root Control UI mount. */
+function classifyControlUiRequest(params: {
+  pathname: string
+  method: string | undefined
+  accept?: string | null
+}): ControlUiRequestClassification {
+  if (!isReadHttpMethod(params.method)) return { kind: "not-control-ui" }
+  const [, prefix, identity, ...rest] = params.pathname.split("/")
+  if (prefix === "client" && identity !== undefined && CLIENT_IDENTITY_PATTERN.test(identity) && rest.length > 0) {
+    return { kind: "client", identity, path: rest.join("/") }
+  }
+  return { kind: "serve", spaFallback: acceptsControlUiHtmlResponse(params.accept) }
 }
 
 function decodePathname(pathname: string): string | undefined {

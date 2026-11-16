@@ -12,7 +12,7 @@ import { join } from "node:path"
 import type { FrontendEvent } from "../../../src/protocol/app-service-types.js"
 import { RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS } from "../../../src/protocol/runtime-liveness.js"
 import { RuntimeProtocolRpc } from "../../../src/protocol/runtime-protocol-schemas.js"
-import { bunSocketServerLayer } from "../../../src/orchestration/app-service/bun-socket-rpc.js"
+import { socketRpcServerLayer } from "../../helpers/socket-rpc-server.js"
 import { runtimeHandlers } from "../../../src/orchestration/app-service/runtime-protocol-handlers.js"
 import { createOutputWatches } from "../../../src/orchestration/app-service/output-watches.js"
 import { runtimeProtocolSocketServer } from "../../../src/orchestration/app-service/runtime-protocol-socket-server.js"
@@ -100,7 +100,7 @@ test("the event lane stays attached when request-level pings are never answered"
       Layer.provide(runtimeHandlers({ client: idleService(), outputWatches: createOutputWatches({ onUnionChange: () => {} }) }, log, { version: "0.1.0" })),
       Layer.provide(runtimeProtocolSocketServer),
       Layer.provide(layerMsgPack),
-      Layer.provide(bunSocketServerLayer({ path: socketPath, onListening: () => listening.resolve() })),
+      Layer.provide(socketRpcServerLayer({ path: socketPath, onListening: () => listening.resolve() })),
     ),
   )
 

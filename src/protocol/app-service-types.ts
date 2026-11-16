@@ -517,9 +517,9 @@ export type MutationResult<C extends FrontendMutation | void = void> =
                         : BasicMutationResult
 
 /** Workflow control whose outcome reports whether work was interrupted. */
-export type WorkflowOperation = Extract<ProtocolModuleMutation, { readonly type: "workflow.interrupt" }>
+type WorkflowOperation = Extract<ProtocolModuleMutation, { readonly type: "workflow.interrupt" }>
 
-export type WorkflowOperationResult =
+type WorkflowOperationResult =
   /** `reason` says, in the runtime's words, why an interrupt that was asked
    *  for could not be done; an interrupt with nothing to cut has none. */
   | { kind: "interrupt"; interrupted: boolean; reason?: string }

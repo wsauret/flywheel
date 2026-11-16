@@ -3,7 +3,7 @@
  *  nothing inline, remote, or framed is allowed. `connect-src 'self'` covers
  *  the `/socket` upgrade: CSP3 matches a `ws:` URL on the same host and port
  *  to `'self'`, so no scheme wildcard is needed and none is granted. */
-export function buildControlUiCspHeader(): string {
+function buildControlUiCspHeader(): string {
   return [
     "default-src 'self'",
     "base-uri 'none'",
