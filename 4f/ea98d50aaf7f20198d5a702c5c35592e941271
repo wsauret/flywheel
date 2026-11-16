@@ -1,0 +1,142 @@
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 7,11,72-75
+src/infra/conversation-recall-search.ts
+  h_4b47e9e4a8b456 93-135
+src/infra/output-blocks.ts
+  h_4b47e9e4a8b456 169-171
+src/infra/output/output-projector.ts
+  h_4b47e9e4a8b456 242
+src/infra/output/output-tool-projector.ts
+  h_4b47e9e4a8b456 406,442
+src/infra/output/response-phase.ts
+  h_4b47e9e4a8b456 1-31
+src/infra/output/structured-event-tool-results.ts
+  h_4b47e9e4a8b456 213-220,236-237,241-242,244-246,260,287,289-300
+src/infra/output/structured-output-builder.ts
+  h_4b47e9e4a8b456 25,465-469,471
+src/infra/tools/displays/find-chat.ts
+  h_4b47e9e4a8b456 1-12
+src/infra/tools/displays/lead.ts
+  h_4b47e9e4a8b456 6-7,9-12,21,30
+src/infra/tools/tool-display-registry.ts
+  h_4b47e9e4a8b456 48,85
+src/infra/tools/types.ts
+  h_4b47e9e4a8b456 67-69
+src/orchestration/app-service/module-execution-environment.ts
+  h_4b47e9e4a8b456 37,47
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 26,41-43
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 343
+src/orchestration/app-service/runtime-background-lane.ts
+  h_4b47e9e4a8b456 19,170-171
+src/orchestration/app-service/runtime-background-worker.ts
+  h_4b47e9e4a8b456 25-26,57,164,183,228
+src/orchestration/app-service/transcript-projection-cache.ts
+  h_4b47e9e4a8b456 17,347
+src/orchestration/app-service/worker-background-client.ts
+  h_4b47e9e4a8b456 17,39,142
+src/orchestration/modules/lead/find-chat.ts
+  h_4b47e9e4a8b456 1-42
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 5,12,18,39
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 1,13,18-19,23
+src/orchestration/modules/lead/route-request.ts
+  h_4b47e9e4a8b456 17,35,75,79-80,105
+src/orchestration/modules/lead/runtime.ts
+  h_4b47e9e4a8b456 6,10,16,31
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 15,42,48-50,66,381-384,391,478-484
+src/orchestration/modules/lead/tools.ts
+  h_4b47e9e4a8b456 4,15,57-58
+src/orchestration/session/conversation/conversation-block-projection.ts
+  h_4b47e9e4a8b456 4,9,16,20,30,188,383
+src/orchestration/session/conversation/tool-result-meta.ts
+  h_4b47e9e4a8b456 6,47-48,488,500
+src/orchestration/session/conversation/tool-result-settlement.ts
+  h_4b47e9e4a8b456 1-141
+src/orchestration/session/tool-child-presentation.ts
+  h_4b47e9e4a8b456 39,72
+src/orchestration/session/transcript-search.ts
+  h_4b47e9e4a8b456 3-4,6-8,10-11,19-23,27-31,38-39,44,50-56,97-189
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 265-268
+src/protocol/client/turn-folds.ts
+  h_4b47e9e4a8b456 196-197,218
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 275-277,279
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 44,580
+src/protocol/transcript-protocol-schemas.ts
+  h_4b47e9e4a8b456 16-17,89,247-261
+src/protocol/transcript-protocol-types.ts
+  h_4b47e9e4a8b456 154-177
+src/tui/modules/lead/transcript.ts
+  h_4b47e9e4a8b456 4,11-12,19
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1044-1060
+tests/unit/infra/output/_tool-result-fixtures.ts
+  h_4b47e9e4a8b456 1-46
+tests/unit/infra/output/structured-event-mutation-artifacts.test.ts
+  h_4b47e9e4a8b456 1-198
+tests/unit/infra/output/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 5,9,36-71
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-contract.test.ts
+  h_4b47e9e4a8b456 30,68
+tests/unit/orchestration/app-service/_project-control-client-fixture.ts
+  h_4b47e9e4a8b456 42
+tests/unit/orchestration/app-service/app-service-background-lane.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 55
+tests/unit/orchestration/app-service/output-live-derived-equivalence.test.ts
+  h_4b47e9e4a8b456 418-422,600-602
+tests/unit/orchestration/app-service/output-projection-child-cards.test.ts
+  h_4b47e9e4a8b456 335,350-351,354,359,370
+tests/unit/orchestration/app-service/project-control-settlement.test.ts
+  h_4b47e9e4a8b456 102
+tests/unit/orchestration/app-service/project-control-updates.test.ts
+  h_4b47e9e4a8b456 44
+tests/unit/orchestration/app-service/runtime-background-lane.test.ts
+  h_4b47e9e4a8b456 36,176,180-181,187,206-212,250-263
+tests/unit/orchestration/app-service/runtime-worker-imports.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/app-service/worker-background-client.test.ts
+  h_4b47e9e4a8b456 46
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 14-17,63-66,72,92,148
+tests/unit/orchestration/modules/lead/route-request.test.ts
+  h_4b47e9e4a8b456 8,15,47-48,123-124,131,169,173,175,179-180,185,188-221,223-230
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 159
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 247
+tests/unit/orchestration/session/conversation-block-projection-user-rows.test.ts
+  h_4b47e9e4a8b456 1-96
+tests/unit/orchestration/session/conversation-block-projection.test.ts
+  h_4b47e9e4a8b456 411-432
+tests/unit/orchestration/session/tool-child-presentation.test.ts
+  h_4b47e9e4a8b456 1-18
+tests/unit/orchestration/session/transcript-auxiliary-cursors.test.ts
+  h_4b47e9e4a8b456 155-163
+tests/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 16-17,20,22,27,33-44,47,55,74,137-193
+tests/unit/protocol/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 61-68
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 227
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 142-148,175-179,192-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4fea98d50aaf7f20198d5a702c5c35592e941271",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}

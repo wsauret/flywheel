@@ -1,0 +1,80 @@
+src/orchestration/modules/lead/chat-progress.ts
+  h_4b47e9e4a8b456 73-76
+src/orchestration/modules/lead/rows.ts
+  h_4b47e9e4a8b456 122-124
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 366-370
+src/protocol/client/transcript-model.ts
+  h_4b47e9e4a8b456 6,143-145,147,189-192,270-273,285
+src/protocol/client/turn-folds.ts
+  h_4b47e9e4a8b456 41-45,57-59,64,67-69,100-101,117-126,128,130,135,137-139,141,145,151,168,182
+src/tui/components/modal-copy.ts
+  h_4b47e9e4a8b456 93-95,100
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 329-370
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 451-452
+src/tui/hooks/use-session-modal-types.ts
+  h_4b47e9e4a8b456 70-71
+src/tui/hooks/use-session-modal.ts
+  h_4b47e9e4a8b456 1,6,66-80,85,156,183,196,208,254,313,355,357-359,503
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 5,41,59-60,101
+src/tui/modules/lead/transcript.ts
+  h_4b47e9e4a8b456 10,14-15
+src/tui/modules/workflows/index.tsx
+  h_4b47e9e4a8b456 11,36-38
+src/tui/output-blocks/visible-output-blocks.ts
+  h_4b47e9e4a8b456 6,188-191
+src/tui/output-window/output-window-projection.ts
+  h_4b47e9e4a8b456 4,85,87,106,110,122,125,138,140,146,150,152,157,161,166,178
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 32,95-97,99-103,108,293-294
+src/tui/output-window/turn-fold-projection.ts
+  h_4b47e9e4a8b456 1,43,102
+src/tui/session-picker/session-picker-list.tsx
+  h_4b47e9e4a8b456 14,80-83
+src/tui/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 7,70
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 24,242-244,314,333
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 27-28
+tests/unit/orchestration/modules/lead/chat-progress.test.ts
+  h_4b47e9e4a8b456 49-50
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 389-415
+tests/unit/protocol/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 24-44
+tests/unit/protocol/transcript-model.test.ts
+  h_4b47e9e4a8b456 89-98
+tests/unit/tui/hooks/shell-state-memos.test.ts
+  h_4b47e9e4a8b456 39,50,53,55
+tests/unit/tui/hooks/use-session-modal-catalog.test.ts
+  h_4b47e9e4a8b456 49-71
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 17,66,92
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 46-58,199-200,204,214-215
+tests/unit/tui/modules/lead/client.test.tsx
+  h_4b47e9e4a8b456 205-206,218,227-230
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 7-12,43-46,48,50,58,62-63,70,73-93,145-176
+tests/unit/tui/session-picker/session-picker-footer.test.tsx
+  h_4b47e9e4a8b456 47-52
+webview/src/app/transcript.tsx
+  h_4b47e9e4a8b456 115
+webview/src/app/turn-features.test.ts
+  h_4b47e9e4a8b456 78,135,153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c982548d6eb7c77aef387a137e7626215dc543ab",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}

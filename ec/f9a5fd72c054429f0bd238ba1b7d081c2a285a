@@ -1,0 +1,18 @@
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 29-34,36,53,71
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 3,5,24-25,86-96,100-110,145-168,170-171,174-175,198-202,204-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ecf9a5fd72c054429f0bd238ba1b7d081c2a285a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}

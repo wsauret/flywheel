@@ -1,0 +1,58 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 567
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 23,47,68-71
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 591-592
+src/orchestration/agent-runtime/reply-nudge.ts
+  h_4b47e9e4a8b456 21
+src/orchestration/agent-runtime/tools/ask-user.ts
+  h_4b47e9e4a8b456 190
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 180-182
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 8,20-21,33
+src/orchestration/modules/lead/route-request.ts
+  h_4b47e9e4a8b456 73-74
+src/protocol/client/turn-folds.ts
+  h_4b47e9e4a8b456 11-13,42,45-59,64,67-70,80-81,105,118,120-124,129,135,137,141,147,164,178,186-225,289-291,303
+src/tui/modules/lead/transcript.ts
+  h_4b47e9e4a8b456 1,8-12
+src/tui/output-blocks/block-renderer.tsx
+  h_4b47e9e4a8b456 17,73-74
+src/tui/output-blocks/call-stretch-block.tsx
+  h_4b47e9e4a8b456 10,12-14,18-21,35-46
+src/tui/output-blocks/visible-output-blocks.ts
+  h_4b47e9e4a8b456 32-35,38,52-53,58-59
+src/tui/output-window/call-stretch-projection.ts
+  h_4b47e9e4a8b456 1,5,11-15,17-18,20,25,33-36,41-44,47-48,52,56,63,65,67,69,73-75,77,81-84
+src/tui/output-window/output-window-projection.ts
+  h_4b47e9e4a8b456 45
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 31,101,103,109-111
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 12,61
+tests/unit/orchestration/agent-runtime/agent-loop-reply-nudge.test.ts
+  h_4b47e9e4a8b456 264-272,275-276,282-283,285
+tests/unit/protocol/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 3,31-83
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 6,37-40,94,96,101,104,107-114,119,123-124,126-129,133-152,161-162,164-165,170,180-186,206
+tests/unit/tui/output-window/call-stretch-projection.test.ts
+  h_4b47e9e4a8b456 4,7-8,12-14,18-19,21-33
+webview/src/app/transcript.tsx
+  h_4b47e9e4a8b456 115
+webview/src/app/turn-features.test.ts
+  h_4b47e9e4a8b456 78,135,153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "241db7b0d28bb5138358e64148b6433b4465ada0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}

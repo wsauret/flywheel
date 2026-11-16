@@ -1,0 +1,116 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 188
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 15,19,21,23,25,27,31,36-51
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 280,286
+src/orchestration/app-service/module-execution-environment.ts
+  h_4b47e9e4a8b456 8-30,40,54
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 31,49-54
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 343
+src/orchestration/app-service/session-event-notices.ts
+  h_4b47e9e4a8b456 18-20,62-63,123,125-126,141-142
+src/orchestration/modules/lead/facts.ts
+  h_4b47e9e4a8b456 54-62,69
+src/orchestration/modules/lead/journal.ts
+  h_4b47e9e4a8b456 2,18-19,55,66,91-93,110-113
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 1,6-10,20-22,28-34,39,45-51
+src/orchestration/modules/lead/protocol.ts
+  h_4b47e9e4a8b456 29,42
+src/orchestration/modules/lead/row.ts
+  h_4b47e9e4a8b456 5,33-39,48-49,58,66-83,93,104-105,109,122,136,215
+src/orchestration/modules/lead/rows.ts
+  h_4b47e9e4a8b456 8-9,17,21,39,43,55-56,72-75,85-86,127-128,133-141,146-163,167-169,172,204-205,295-299
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 5-6,42-45,54,59-62,64,83-106,131,150,155,160,163-164,182,218-227,281-282
+src/protocol/modules/lead.ts
+  h_4b47e9e4a8b456 20-22,28-31,38-40,80,84,167-175,186-212,219,235
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 110-111,193
+src/tui/context/message-row.tsx
+  h_4b47e9e4a8b456 1-29
+src/tui/hooks/create-module-slots.tsx
+  h_4b47e9e4a8b456 3,52-57,66-68,281,284-286,289,295-302
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 366-368,583-584,586-587,589-591
+src/tui/modules.ts
+  h_4b47e9e4a8b456 32-38
+src/tui/modules/lead/chat-viewer.tsx
+  h_4b47e9e4a8b456 2,7,25-49,53-56,65-66,71,81-88,106,115-116,135-137,142,158
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 2,5-7,21-22,35-46,65-66,94-105,115
+src/tui/modules/lead/index.ts
+  h_4b47e9e4a8b456 10
+src/tui/modules/lead/list-model.ts
+  h_4b47e9e4a8b456 2,5,7-8,10-15,17-19,22,33-35,37,39,43-45,48-63,67-68,71-74,77,83
+src/tui/modules/lead/strip.tsx
+  h_4b47e9e4a8b456 10,13,15,17,19,49,52,54,58,63-65,68-69,71-75,77,83-89,93,96,100,104-107,109-110
+src/tui/output-blocks/text-block.tsx
+  h_4b47e9e4a8b456 4-5,23-24,26-30
+src/tui/output-blocks/user-message-block.tsx
+  h_4b47e9e4a8b456 23,96-108,225
+src/tui/output-window/output-window-projection.ts
+  h_4b47e9e4a8b456 2,43
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 63-64,218-219
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 15,165,577-624
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 48-50
+src/tui/tui-module.ts
+  h_4b47e9e4a8b456 173,175-176
+tests/unit/orchestration/app-service/session-event-notices.test.ts
+  h_4b47e9e4a8b456 72-86
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 4,10,34-35,40-41,48-54,62,70,76-81,104
+tests/unit/orchestration/modules/lead/row.test.ts
+  h_4b47e9e4a8b456 18,64,71-75
+tests/unit/orchestration/modules/lead/rows-work-count.test.ts
+  h_4b47e9e4a8b456 21-22,38,48-49,77
+tests/unit/orchestration/modules/lead/rows.test.ts
+  h_4b47e9e4a8b456 86-87,96-98,106,122,142,165-192
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 3,5,8,46,54,59,64-65,77-181
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 160
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 248
+tests/unit/protocol/modules/lead.test.ts
+  h_4b47e9e4a8b456 3,6
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 95
+tests/unit/tui/hooks/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 91,111,125-150,246
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 305,320
+tests/unit/tui/hooks/shell-state-memos.test.ts
+  h_4b47e9e4a8b456 64-85
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 8,28,31,40-42,63,74,82,85-86,90-91,93,95-96,100,103-104,114,117
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 6-10,24,28-30,35-56,58-60,87,90,103,115,159,161,169,171-207
+tests/unit/tui/modules/lead/client.test.tsx
+  h_4b47e9e4a8b456 4,10,13,41,71-91
+tests/unit/tui/modules/lead/cover.test.tsx
+  h_4b47e9e4a8b456 27,53-60
+tests/unit/tui/modules/lead/list-model.test.ts
+  h_4b47e9e4a8b456 2,5,8-10,13-19,22-24,27-29,40-45,49-51
+tests/unit/tui/modules/lead/strip.test.tsx
+  h_4b47e9e4a8b456 18,26,28-31,34-37,41,43,45,58,61-64,68,70-71,75-77,80,82,89-94,99-108,113,116,119
+tests/unit/tui/output-window-projection.test.ts
+  h_4b47e9e4a8b456 69-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6fb352483b9119e58a2c20c422ee34188986038a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}

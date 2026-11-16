@@ -1,0 +1,74 @@
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 52-59
+scripts/uat/harness.ts
+  h_4b47e9e4a8b456 17-20,304
+src/orchestration/modules/development/definitions/skills/flywheel-uat/SKILL.md
+  h_4b47e9e4a8b456 21
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 169
+src/tui/components/composer-border-layout.ts
+  h_4b47e9e4a8b456 25-27,84,86,91
+src/tui/components/composer.tsx
+  h_4b47e9e4a8b456 6,517,523
+src/tui/components/tabs-bar.tsx
+  h_4b47e9e4a8b456 8,155-158,278,349-355
+src/tui/context/client-extensions.tsx
+  h_4b47e9e4a8b456 3,7-20
+src/tui/hooks/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 24-25,97
+src/tui/modules.ts
+  h_4b47e9e4a8b456 9-10
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 118-119
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 32,95,98
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 14-15,37,494,522
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 58-61
+tests/e2e/lib/e2e-framework.sh
+  h_4b47e9e4a8b456 214-219,226
+tests/e2e/tui-provider-fallback.ts
+  h_4b47e9e4a8b456 122
+tests/integration/local/terminal-reexecution.test.ts
+  h_4b47e9e4a8b456 262,266
+tests/integration/scripts/uat/lifecycle.test.ts
+  h_4b47e9e4a8b456 42,99-102,117,141,242,261
+tests/release/scenarios/chat-runner-reconciliation.ts
+  h_4b47e9e4a8b456 50
+tests/release/scenarios/remote-attach.ts
+  h_4b47e9e4a8b456 89,121
+tests/release/scenarios/scenario-context.ts
+  h_4b47e9e4a8b456 76-79
+tests/release/scenarios/scroll.ts
+  h_4b47e9e4a8b456 36
+tests/release/scenarios/session-modal.ts
+  h_4b47e9e4a8b456 31
+tests/release/scenarios/startup.ts
+  h_4b47e9e4a8b456 43
+tests/unit/tui/components/prompt-area-fixture.ts
+  h_4b47e9e4a8b456 10,18,52-53,82,133
+tests/unit/tui/components/prompt-bar-cursor.test.ts
+  h_4b47e9e4a8b456 4-7,25-45
+tests/unit/tui/components/prompt-border-fixtures.ts
+  h_4b47e9e4a8b456 25
+tests/unit/tui/components/tabs-bar.test.tsx
+  h_4b47e9e4a8b456 1,8,30-33,35,38,40-50,52-53,55-56,79-90,387-429
+tests/unit/tui/hooks/create-composer-border-layout.test.ts
+  h_4b47e9e4a8b456 63,88,100-122
+tests/unit/tui/modules/lead/client.test.tsx
+  h_4b47e9e4a8b456 7,73-82
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "184347c4a7c24d58b8e6d5f3892061a3cbf75773",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
