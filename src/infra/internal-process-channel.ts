@@ -22,7 +22,7 @@ export interface InternalProcessEndpoint<Outgoing, Incoming> {
   close(reason?: string): void
 }
 
-export interface InternalProcessFrameDecoder {
+interface InternalProcessFrameDecoder {
   /** Accepts retained transport bytes. False means the frame stream is invalid and must be closed. */
   push(bytes: Uint8Array): boolean
 }
@@ -41,7 +41,7 @@ export interface InternalProcessChannelLimits {
  *  body length and one flag byte that says whether the body completes the
  *  message. Splitting at this layer is what lets callers send a message of any
  *  size up to `maxMessageBytes` without knowing the wire's frame size. */
-export function encodeInternalProcessFrames(
+function encodeInternalProcessFrames(
   message: unknown,
   maxFrameBytes = DEFAULT_MAX_FRAME_BYTES,
   maxMessageBytes = DEFAULT_MAX_MESSAGE_BYTES,
@@ -65,7 +65,7 @@ export function encodeInternalProcessFrames(
 
 /** Creates a streaming decoder that enforces the frame size before allocating
  *  a body and the message size before retaining another fragment. */
-export function createInternalProcessFrameDecoder<Message>(options: {
+function createInternalProcessFrameDecoder<Message>(options: {
   readonly maxFrameBytes?: number
   readonly maxMessageBytes?: number
   readonly decode: InternalProcessDecoder<Message>
@@ -227,12 +227,12 @@ export function createMessagePortProcessEndpoint<Outgoing = unknown, Incoming = 
   )
 }
 
-export interface SocketWriter {
+interface SocketWriter {
   write(bytes: Uint8Array): number
   end(): void
 }
 
-export interface SocketConnection<Outgoing, Incoming> {
+interface SocketConnection<Outgoing, Incoming> {
   readonly endpoint: InternalProcessEndpoint<Outgoing, Incoming>
   receive(bytes: Uint8Array): boolean
   drain(): void
@@ -245,7 +245,7 @@ export interface SocketConnection<Outgoing, Incoming> {
  *  reach the wire in the order they were sent, whatever their sizes. Only an
  *  oversize frame, a failed write, or a closed endpoint rejects a send, and a
  *  lost peer releases every waiter through the closed state. */
-export function createSocketProcessEndpoint<Outgoing, Incoming>(options: {
+function createSocketProcessEndpoint<Outgoing, Incoming>(options: {
   readonly socket: SocketWriter
   readonly decode: InternalProcessDecoder<Incoming>
   readonly maxFrameBytes: number

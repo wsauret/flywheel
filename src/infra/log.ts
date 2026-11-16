@@ -180,14 +180,6 @@ export namespace Log {
     unconfigured = "none"
   }
 
-  /** Whether a record at `input` from this realm reaches a destination: it
-   *  passes the level, and the realm has a sink or a stderr fallback. For a
-   *  caller that durably records that a person was shown a record. The debug
-   *  log stays non-durable, so true does not prove that a file write landed. */
-  export const delivers = (input: Level): boolean => {
-    return shouldLog(input) && (DebugLog.isOpen() || openAccountLog() || unconfigured === "stderr")
-  }
-
   const sessionContext = new AsyncLocalStorage<string>()
 
   export const runWithSession = <T>(sessionId: string, fn: () => T): T => {

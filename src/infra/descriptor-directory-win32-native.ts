@@ -25,11 +25,11 @@ export interface NativeWindowsFileSnapshot {
   readonly dacl: Buffer;
 }
 
-export type NativeWindowsMutationAttemptResult =
+type NativeWindowsMutationAttemptResult =
   | { readonly status: "published" }
   | { readonly status: "not_applied" | "indeterminate"; readonly error: string };
 
-export interface NativeWindowsDirectoryEntry {
+interface NativeWindowsDirectoryEntry {
   readonly name: string;
   readonly kind: "file" | "directory" | "reparse";
   readonly createdAt: number;
@@ -76,7 +76,7 @@ export interface Advapi32FileSymbols {
   SetSecurityInfo(handle: bigint, objectType: number, information: number, owner: null, group: null, dacl: Pointer, sacl: null): number;
 }
 
-export interface Win32FileLibraries {
+interface Win32FileLibraries {
   readonly kernel32: Kernel32FileSymbols;
   readonly ntdll: NtdllFileSymbols;
   readonly advapi32: Advapi32FileSymbols;
