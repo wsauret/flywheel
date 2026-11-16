@@ -1,0 +1,60 @@
+src/orchestration/agent-runtime/agent-loop-input-consumer.ts
+  h_4b47e9e4a8b456 124
+src/orchestration/agent-runtime/background-work-notifications.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/background-work-processes.ts
+  h_4b47e9e4a8b456 3-5,11,92-99,102-104,111-116,125-126,129-141,144-145,150-156,160-161,165-169,171-172,174,176
+src/orchestration/agent-runtime/background-work.ts
+  h_4b47e9e4a8b456 26,250,256,271-272,335-340,357,359,392,397,400,413,441,447-449,454,543-548,590-591,603,656-657,661,670,675-677,687-742,751,762,769,776
+src/orchestration/workflow-host/launch-lifecycle.ts
+  h_4b47e9e4a8b456 104
+tests/helpers/process-settled.ts
+  h_4b47e9e4a8b456 1-25
+tests/unit/orchestration/agent-runtime/agent-loop-input-consumer.test.ts
+  h_4b47e9e4a8b456 137,164,381
+tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts
+  h_4b47e9e4a8b456 485
+tests/unit/orchestration/agent-runtime/background-task-registry.test.ts
+  h_4b47e9e4a8b456 21,27,33-34,41-42,91,454,472-474,483-484,509,512-513,515,518-520,531-548,554,584,586,613,617,625-626,639-640,648
+tests/unit/orchestration/agent-runtime/context/loop-handoff-invariant.test.ts
+  h_4b47e9e4a8b456 74,158-159,454-455
+tests/unit/orchestration/agent-runtime/context/loop-wait-placeholder.test.ts
+  h_4b47e9e4a8b456 8,127-132,175-176,190-191,342,380,398
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 208
+tests/unit/orchestration/agent-runtime/subagent/execute-lifecycle.test.ts
+  h_4b47e9e4a8b456 17,188
+tests/unit/orchestration/agent-runtime/tools/shell-runtime.test.ts
+  h_4b47e9e4a8b456 11,67,78,81
+tests/unit/orchestration/app-service/status-projection.test.ts
+  h_4b47e9e4a8b456 22,89,94
+tests/unit/orchestration/chat/chat-session-agent-runtime-background-notification.test.ts
+  h_4b47e9e4a8b456 14-15,42-46,134,136,139,171,259
+tests/unit/orchestration/chat/chat-session-agent-runtime-reconnect.test.ts
+  h_4b47e9e4a8b456 500
+tests/unit/orchestration/chat/chat-session-agent-runtime-resume.test.ts
+  h_4b47e9e4a8b456 27,688,690,693-695
+tests/unit/orchestration/chat/chat-session.test.ts
+  h_4b47e9e4a8b456 144,146,154
+tests/unit/orchestration/modules/development/benchmark-tool.test.ts
+  h_4b47e9e4a8b456 22,440
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 43,367
+tests/unit/orchestration/session/_reply-wait-fixtures.ts
+  h_4b47e9e4a8b456 120
+tests/unit/orchestration/session/chat-workflow-completion-recovery.test.ts
+  h_4b47e9e4a8b456 323
+tests/unit/orchestration/workflow-host/workflow-parent-restoration.test.ts
+  h_4b47e9e4a8b456 22,95,106,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3574731fc453b9be591036b9370af52fd99b487b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
