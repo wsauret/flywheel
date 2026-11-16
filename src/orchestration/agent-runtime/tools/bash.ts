@@ -9,9 +9,9 @@ import { NotAppliedFilesSchema } from "../../../infra/not-applied-files.js";
 import { Log } from "../../../infra/log.js";
 import { processLoginShellPath } from "../../../infra/login-shell-path.js";
 import { SCRATCH_MUTATIONS_DIR } from "../../../infra/paths.js";
-import { interceptBashCommand, type BashPolicyOptions } from "./bash-command-policy.js";
+import { interceptBashCommand, type BashPolicyOptions, type ResolvedShellCommands } from "./bash-command-policy.js";
 import { recordShellFileReads } from "./bash-file-reads.js";
-import { classifyShellDetachment } from "./bash-parser.js";
+import { hasShellBackgroundJob } from "./bash-parser.js";
 import { bashToolSurface, type BashSurfaceOptions, type FileEditToolName } from "./bash-guidance.js";
 import { resolveToolPath, sessionPathInput } from "./tool-paths.js";
 import { checkNumericRange } from "./numeric-input.js";
@@ -197,7 +197,11 @@ export function createBashDefinition(options?: {
   });
 
 
-  async function runCommandInner(command: string, background: boolean, persistence: "required" | "when-admitted" | false, context: ToolContext, timeoutSec: number | undefined, raw: boolean, mutates: boolean): Promise<ToolResult> {
+  // The policy's parse of each call, which execution reads for the file-read ledger. The dispatcher passes one
+  // input object to `executionPolicy` and then to `execute`, and an entry lives only as long as that object.
+  const resolvedCommands = new WeakMap<Readonly<RuntimeToolInput>, ResolvedShellCommands>();
+
+  async function runCommandInner(command: string, background: boolean, persistence: "required" | "when-admitted" | false, context: ToolContext, timeoutSec: number | undefined, raw: boolean, mutates: boolean, resolved: ResolvedShellCommands | undefined): Promise<ToolResult> {
     if (context.signal?.aborted) {
       return { content: "The bash invocation was aborted before it started. The signal was already triggered; likely the user interrupted the previous turn. Wait for the user's next instruction before retrying.", outcome: "interrupted" };
     }
@@ -207,8 +211,7 @@ export function createBashDefinition(options?: {
 
     // Detachment and persistence admission happen before environment, scratch,
     // script, spool, log, launch, registry, or success-audit effects.
-    const detachment = classifyShellDetachment(command, background);
-    if (detachment !== "none") {
+    if (hasShellBackgroundJob(command)) {
       return {
         content: backgroundCommands
           ? `Shell-level backgrounding was not executed.\nSubmit only the command with background=true. It keeps the session working until it ends or is stopped.${persistentProcesses ? " Add persist_after_exit=true for a server that must keep running after the runtime exits; otherwise the runtime's exit ends it." : ""} After it starts as a managed process, use the process tool for lifecycle operations.`
@@ -296,11 +299,11 @@ export function createBashDefinition(options?: {
       ? await runInPrivateCopy({ context, spawnOwned, command, env, platform, execPath, pool: context.shell?.privateCopies, scratchDir, home: join(scratchDir, SCRATCH_MUTATIONS_DIR, randomUUID()), run: launch })
       : await launch();
     // A private copy's reads are of the copy, not the project file.
-    if (!mutates) await recordShellFileReads(command, parseBashResultDetails(result.details ?? {}).exitCode, context);
+    if (!mutates) await recordShellFileReads(resolved, parseBashResultDetails(result.details ?? {}).exitCode, context);
     return { ...result, content: `${result.content}${handoffCommandCitation(context, result.details)}` };
   }
 
-  return withShellInputRepair({
+  return {
     name: "bash",
     action: "shell_exec",
     ...bashToolSurface({ ...options?.advertised, ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard, platform }),
@@ -319,8 +322,6 @@ export function createBashDefinition(options?: {
       if (typeof input.command !== "string" || input.command.trim().length === 0) {
         return { content: "bash was called without a 'command' string. Provide the shell command you want to run as the 'command' parameter, e.g. { command: \"bun run test\" }.", outcome: "error" };
       }
-      if (input.mutates !== undefined && typeof input.mutates !== "boolean") return { content: "Error: 'mutates' must be a boolean", outcome: "error" };
-      if (input.persist_after_exit !== undefined && typeof input.persist_after_exit !== "boolean") return { content: "Error: 'persist_after_exit' must be a boolean", outcome: "error" };
       const mutates = input.mutates === true;
       if (mutates && readOnly) return { content: "Error: this agent is read-only and may not change project files, so it cannot run a command with 'mutates=true'.", outcome: "error" };
       if (mutates && input.persist_after_exit === true) return { content: "Error: 'mutates=true' cannot be combined with 'persist_after_exit=true': a command that outlives the runtime has no exit at which its changes could land in the project. Run the edit as its own foreground command.", outcome: "error" };
@@ -339,13 +340,16 @@ export function createBashDefinition(options?: {
         ...(options?.foregroundBashHold ? { foregroundBashHold: options.foregroundBashHold } : {}),
         executionCwd: bashCommandCwd(input, context.executionCwd),
       };
-      return runCommandInner(input.command, background, persistent ? "required" : false, effectiveContext, timeout, input.raw_output === true, mutates);
+      return runCommandInner(input.command, background, persistent ? "required" : false, effectiveContext, timeout, input.raw_output === true, mutates, resolvedCommands.get(input));
     },
     async executionPolicy(input, context) {
       const shell = bashShellCommand(input, context.executionCwd);
-      return shell ? (await interceptBashCommand(shell.command, shellPolicyOptions(context, shell.cwd, platform, readOnly, await enforcedWriteGuard())))?.message : undefined;
+      if (!shell) return undefined;
+      const policy = shellPolicyOptions(context, shell.cwd, platform, readOnly, await enforcedWriteGuard());
+      return (await interceptBashCommand(shell.command, { ...policy, onResolved: resolved => resolvedCommands.set(input, resolved) }))?.message;
     },
-  });
+    prepareAdmission: async (input, context) => ({ repair: repairShellInput(input, context) }),
+  };
 }
 
 function bashCommandCwd(input: Readonly<BashInput>, executionCwd: string): string {
@@ -385,18 +389,4 @@ function repairShellInput(input: Readonly<RuntimeToolInput>, context: ToolAdmiss
   if (implicitBackground) notices.push("Note: persist_after_exit=true implies a background launch.");
   if (notices.length === 0) return undefined;
   return { input: { ...input, ...paths, ...(timeout !== input.timeout ? { timeout } : {}), ...(implicitBackground ? { background: true } : {}) }, notice: notices.join("\n") };
-}
-
-/** Repairs scheduling before dispatch policy. Direct callers get the same notes and admission. */
-function withShellInputRepair(tool: RuntimeTool): RuntimeTool {
-  return {
-    ...tool,
-    prepareAdmission: async (input, context) => ({ repair: repairShellInput(input, context) }),
-    async execute(input, context) {
-      const repair = repairShellInput(input, context);
-      const result = await tool.execute(repair?.input ?? input, context);
-      if (!repair) return result;
-      return { ...result, content: typeof result.content === "string" ? `${repair.notice}\n${result.content}` : [{ type: "text", text: repair.notice }, ...result.content] };
-    },
-  };
 }

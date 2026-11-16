@@ -1,8 +1,9 @@
-import type { Tree } from "web-tree-sitter";
+import type { Node, Tree } from "web-tree-sitter";
 import type { ToolCall } from "../llm/types.js";
 import { bashCommandNodes, loadBashParser } from "./bash-parser.js";
 import { extractShellCommand, type ParsedCommand } from "./bash-command-parts.js";
 import { scopeAdmission, shellWriteViolation, type WriteScope } from "./bash-write-targets.js";
+import { resolveShellWrappers } from "./bash-write-wrappers.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { WORKTREE_LIFECYCLE_SKILL_ID } from "../../../infra/directory-authorities.js";
@@ -161,44 +162,14 @@ function isStateChangingGit(args: readonly string[], subcommand: keyof typeof RE
   return args[index] === subcommand && !READ_ONLY_GIT_ACTIONS[subcommand].has(args[index + 1] ?? "");
 }
 
-function executableName(name: string): string {
-  return name.replace(/\\/g, "/").split("/").at(-1) ?? name;
-}
-
-function unwrapExecutable(name: string, args: readonly string[]): { name: string; args: readonly string[] } | null {
-  let currentName = executableName(name);
-  const currentArgs = [...args];
-  for (let depth = 0; depth < 8; depth++) {
-    if (["command", "exec"].includes(currentName)) {
-      while (currentArgs[0]?.startsWith("-")) currentArgs.shift();
-    } else if (currentName === "env") {
-      while (currentArgs[0]?.startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/.test(currentArgs[0] ?? "")) {
-        const option = currentArgs.shift();
-        if (["-u", "--unset", "-C", "--chdir", "-S", "--split-string"].includes(option ?? "")) currentArgs.shift();
-      }
-    } else if (currentName === "sudo") {
-      while (currentArgs[0]?.startsWith("-")) {
-        const option = currentArgs.shift();
-        if (["-u", "-g", "-h", "-p", "-C", "-T", "-R", "-D"].includes(option ?? "")) currentArgs.shift();
-      }
-      while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(currentArgs[0] ?? "")) currentArgs.shift();
-    } else {
-      return { name: currentName, args: currentArgs };
-    }
-    const next = currentArgs.shift();
-    if (!next) return null;
-    currentName = executableName(next);
-  }
-  return null;
-}
-
-function isGitWorktreeCommand(cmd: ParsedCommand): boolean {
-  const executable = unwrapExecutable(cmd.name, cmd.args);
-  if (!executable) return GIT_WORKTREE_FALLBACK_PATTERN.test([cmd.name, ...cmd.rawArgs].join(" "));
-  if (executable.name === "git") return isStateChangingGit(executable.args, "worktree");
-  if (["sh", "bash", "zsh"].includes(executable.name)) {
-    const c = executable.args.indexOf("-c");
-    return c >= 0 && GIT_WORKTREE_FALLBACK_PATTERN.test(executable.args[c + 1] ?? "");
+/** The worktree rule reads the program that runs. A command whose wrappers cannot be resolved, or a nested
+ *  shell string, is matched by text, which cannot tell a listing from a change. */
+function isGitWorktreeCommand({ written, effective }: ResolvedShellCommand): boolean {
+  if (!effective) return GIT_WORKTREE_FALLBACK_PATTERN.test([written.name, ...written.rawArgs].join(" "));
+  if (effective.name === "git") return isStateChangingGit(effective.args, "worktree");
+  if (["sh", "bash", "zsh"].includes(effective.name)) {
+    const c = effective.args.indexOf("-c");
+    return c >= 0 && GIT_WORKTREE_FALLBACK_PATTERN.test(effective.args[c + 1] ?? "");
   }
   return false;
 }
@@ -278,10 +249,55 @@ const SLEEP_RULE: ForbiddenRule = {
     "Command blocked: sleeping longer than 30s is disallowed, foreground or backgrounded. A sleep guesses how long to wait; wait on the event instead. To wait for work to finish, run that command itself in the foreground: it blocks until it exits or reaches the runtime cap, which moves it to managed execution, also when its timeout is longer; then wait for it with `process`. To wait for a condition, loop on a check with short sleeps, such as `until <check>; do sleep 5; done`, bounded by the timeout parameter. To wait for managed work, use `process` with `{ action: \"wait\" }` and a soft_timeout: its completion wakes you. Never use shell-level &, nohup, or disown.",
 };
 
+/** One simple command of a parsed shell command. */
+interface ResolvedShellCommand {
+  /** The command as written. */
+  readonly written: ParsedCommand;
+  /** The program that runs and its arguments once every supported wrapper is removed, or undefined when a
+   *  wrapper cannot be resolved: an option the wrapper grammar does not know, or an `env -S` split string. */
+  readonly effective: ParsedCommand | undefined;
+  /** The literal words of a command that is a statement of its own in a list (no pipe, redirect, or
+   *  substitution around it) and that needs no shell expansion, or undefined. */
+  readonly literalWords: readonly string[] | undefined;
+}
+
+/** Every simple command of one parse, in source order, which every bash rule reads. */
+export interface ResolvedShellCommands {
+  readonly hasError: boolean;
+  readonly commands: readonly ResolvedShellCommand[];
+}
+
 interface BashCommandInspection {
   readonly tree: Tree;
-  readonly commands: readonly ParsedCommand[];
+  readonly resolved: ResolvedShellCommands;
   close(): void;
+}
+
+const GLOB = /[*?[]/;
+
+function literalWords(node: Node): string[] | undefined {
+  if (node.parent?.type !== "program" && node.parent?.type !== "list") return undefined;
+  const words: string[] = [];
+  for (const child of node.children) {
+    if (!child) return undefined;
+    const part = child.type === "command_name" ? child.firstChild : child;
+    if (!part) return undefined;
+    if (part.type === "raw_string") words.push(part.text.slice(1, -1));
+    else if (part.type === "string" && part.namedChildCount === 0) words.push(part.text.slice(1, -1).replace(/\\(["\\$`])/g, "$1"));
+    else if ((part.type === "word" || part.type === "number") && !GLOB.test(part.text) && !part.text.startsWith("~")) words.push(part.text.replace(/\\(.)/g, "$1"));
+    else return undefined;
+  }
+  return words;
+}
+
+function resolveShellCommand(node: Node): ResolvedShellCommand {
+  const written = extractShellCommand(node);
+  const resolution = resolveShellWrappers(written, "bash");
+  // Wrappers only remove leading words, so the effective arguments are a suffix of the written ones.
+  const effective = resolution.kind === "command"
+    ? { ...written, name: resolution.name, rawArgs: resolution.rawArgs, args: written.args.slice(written.args.length - resolution.rawArgs.length) }
+    : undefined;
+  return { written, effective, literalWords: literalWords(node) };
 }
 
 const log = Log.create({ service: "bash-command-policy" });
@@ -305,10 +321,8 @@ async function inspectBashCommand(command: string): Promise<BashCommandInspectio
     if (!tree) throw new Error("bash parse produced no tree");
     phase = "extract";
     const parsed = tree;
-    const commands = bashCommandNodes(parsed.rootNode)
-      .map((node) => extractShellCommand(node))
-      .filter((extracted) => extracted.name.length > 0);
-    return { tree: parsed, commands, close: () => parsed.delete() };
+    const resolved = { hasError: parsed.rootNode.hasError, commands: bashCommandNodes(parsed.rootNode).map(resolveShellCommand) };
+    return { tree: parsed, resolved, close: () => parsed.delete() };
   } catch {
     tree?.delete();
     analysisFailures.observe(phase, undefined);
@@ -333,12 +347,20 @@ export interface BashPolicyOptions {
   scope?: WriteScope;
   /** Content-free correlation for the one refusal diagnostic. */
   ids?: { readonly sessionId?: string; readonly toolUseId?: string; readonly modelRequestId?: string };
+  /** Receives the resolved commands of a command that parsed, so the caller reads this one parse. */
+  onResolved?: (resolved: ResolvedShellCommands) => void;
+}
+
+/** The command that each rule other than the worktree rule judges: the program that runs, or the command as
+ *  written when its wrappers cannot be resolved. */
+function judged({ written, effective }: ResolvedShellCommand): ParsedCommand {
+  return effective ?? written;
 }
 
 // Without parsed commands (analysis unavailable), the text patterns decide.
-function treeSafetyBlock(command: string, commands: readonly ParsedCommand[] | undefined, options: Pick<BashPolicyOptions, "effectiveBundledSkillIds" | "capabilities"> | undefined): BashInterception | null {
+function treeSafetyBlock(command: string, commands: readonly ResolvedShellCommand[] | undefined, options: Pick<BashPolicyOptions, "effectiveBundledSkillIds" | "capabilities"> | undefined): BashInterception | null {
   for (const rule of TREE_SAFETY_RULES) {
-    if (commands ? commands.some((cmd) => rule.matches(cmd)) : rule.fallbackPattern.test(command)) return { message: rule.message };
+    if (commands ? commands.some((cmd) => rule.matches(judged(cmd))) : rule.fallbackPattern.test(command)) return { message: rule.message };
   }
   if (options?.capabilities?.(`skill:${WORKTREE_LIFECYCLE_SKILL_ID}`) === false || options?.effectiveBundledSkillIds?.has(WORKTREE_LIFECYCLE_SKILL_ID)) return null;
   const worktree = commands ? commands.some((cmd) => isGitWorktreeCommand(cmd)) : GIT_WORKTREE_FALLBACK_PATTERN.test(command);
@@ -385,11 +407,12 @@ export async function interceptBashCommand(command: string, options?: BashPolicy
   }
 
   try {
-    const commands = inspection.commands;
+    options?.onResolved?.(inspection.resolved);
+    const commands = inspection.resolved.commands;
     const unsafe = treeSafetyBlock(command, commands, options);
     if (unsafe) return unsafe;
-    if (commands.some((cmd) => SLEEP_RULE.matches(cmd))) return { message: SLEEP_RULE.message };
-    for (const cmd of commands) {
+    if (commands.some((cmd) => SLEEP_RULE.matches(judged(cmd)))) return { message: SLEEP_RULE.message };
+    for (const cmd of commands.map(judged)) {
       for (const rule of INTERACTIVE_RULES) {
         if (rule.matches(cmd)) return interactiveBlock([cmd.name, ...cmd.rawArgs].join(" "), rule.guidance(options?.capabilities ?? EVERY_CAPABILITY));
       }
