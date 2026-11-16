@@ -12,7 +12,7 @@ import { accountServeDir, accountServeRecordPath, accountServeSocketPath } from 
 import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
 import * as sourceSnapshot from "../../../src/infra/source-snapshot.js"
 import { readOrCreateAccountAttachToken } from "../../../src/orchestration/app-service/account-attach-token.js"
-import { checkoutProtocolVersion, sourceBuildId } from "../../../src/orchestration/app-service/runtime-executable.js"
+import { installedBuildId } from "../../../src/orchestration/app-service/runtime-executable.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
 import { ServeLifetime } from "../../../src/orchestration/app-service/serve-lifetime.js"
 import { IDLE_SERVE, shortAccountHomes, unusedLauncher } from "./_serve-fixtures.js"
@@ -115,9 +115,10 @@ describe("a dev service's source snapshot", () => {
     // under every running session (2026-10-02). The service runs an earlier
     // protocol than this checkout declares, and it reads the checkout with
     // the production reader, not a seam's build.
-    expect(checkoutProtocolVersion()).toBe(RUNTIME_PROTOCOL_VERSION)
-    const { answers, exitCode, requests } = await cutoverOf(devHome(), UNCHANGED, "cutover", {
-      ownBuildId: () => sourceBuildId(RUNTIME_PROTOCOL_VERSION - 1),
+    const home = devHome()
+    expect(installedBuildId({ ...home, projectRoot: home.accountHome, executionCwd: home.accountHome }, { execPath: process.execPath })).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION}`)
+    const { answers, exitCode, requests } = await cutoverOf(home, UNCHANGED, "cutover", {
+      ownBuildId: () => `source:protocol-${RUNTIME_PROTOCOL_VERSION - 1}`,
       installedBuild: undefined,
       buildCheckMs: 5,
     })

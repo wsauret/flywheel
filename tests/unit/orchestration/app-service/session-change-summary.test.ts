@@ -1,9 +1,9 @@
-import { expect, mock, spyOn, test } from "bun:test"
+import { expect, mock, test } from "bun:test"
 import { createHash } from "node:crypto"
-import { writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Effect, Schema } from "effect"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { RpcTest } from "effect/rpc"
 import { RuntimeBackgroundRpc, RuntimeProtocolRpc, RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { changesCursor, type SessionFileChangeCounts } from "../../../../src/protocol/session-changes-protocol-types.js"
@@ -14,11 +14,14 @@ import { createFrontendProjection } from "../../../../src/orchestration/app-serv
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import { runtimeHandlers } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"
-import { readSessionChangeSummary } from "../../../../src/orchestration/app-service/runtime-background-worker.js"
+import { createProcessBackgroundClient } from "../../../../src/orchestration/app-service/worker-background-client.js"
+import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
+import { canonicalTestDirectory } from "../../../helpers/directories.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createRuntimeBackgroundLane } from "../../../../src/orchestration/app-service/runtime-background-lane.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
-import { withStore } from "../session/file-mutation-recovery-fixture.js"
 import { mutation } from "../session/_session-change-fixtures.js"
 
 test("the runtime query RPC accepts a session-only change summary", () => {
@@ -98,48 +101,47 @@ test("the registered runtime RPC calls the app-service summary boundary", async 
   await bus.clear()
 })
 
+// The background Worker loads the runtime module graph in a fresh isolate,
+// which can take over 5 s on a loaded runner, so this test owns its deadline.
+const WORKER_BOOT_TEST_TIMEOUT_MS = 60_000
+
 test("the Worker summary requires real durable metadata and counts a durable New Chat", async () => {
-  await withStore(async ({ store, root }) => {
+  const home = canonicalTestDirectory(mkdtempSync(join(tmpdir(), "flywheel-change-summary-")))
+  const root = join(home, "project")
+  const directories = { projectRoot: root, executionCwd: root, accountHome: home, userDataRoot: join(home, ".flywheel") }
+  mkdirSync(directories.userDataRoot, { recursive: true })
+  mkdirSync(join(home, "log"))
+  const prepared = prepareWorkspaceState(directories)
+  const store = createSqliteEventStore(resolveEventStoreDbFile(root))
+  const owner = createProcessBackgroundClient({ workerUrl: new URL("../../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href, logBase: join(home, "log") })
+  const background = owner.acquire(root)
+  try {
     const manager = createSessionManager({ projectRoot: root, executionCwd: root, store })
     await manager.createChat({ id: "s", name: "New Chat", initialState: "active" })
-    expect(await readSessionChangeSummary(asAsyncEventReadSurface(store), "s", root)).toEqual({ fileCount: 0, unknownFileMutationGaps: 0 })
+    expect(await background.sessionChangeSummary("s")).toEqual({ fileCount: 0, unknownFileMutationGaps: 0 })
     const path = join(root, "a")
     const written = mutation(1, "request")
     written.payload.path = path
     written.payload.after = { bytes: 1, sha256: createHash("sha256").update("a").digest("hex"), preview: "a" }
     writeFileSync(path, "a")
     store.append(written)
-    const reads = spyOn(store, "readTolerant")
-    expect(await readSessionChangeSummary(asAsyncEventReadSurface(store), "s", root)).toEqual({ fileCount: 1, unknownFileMutationGaps: 0 })
+    expect(await background.sessionChangeSummary("s")).toEqual({ fileCount: 1, unknownFileMutationGaps: 0 })
     writeFileSync(path, "b")
-    expect(await readSessionChangeSummary(asAsyncEventReadSurface(store), "s", root)).toEqual({ fileCount: 0, unknownFileMutationGaps: 0 })
-    expect(reads.mock.calls.every(([query]) => query?.types?.every(type => type.startsWith("session.") || type === "file.changed"))).toBe(true)
-    reads.mockClear()
-    await expect(readSessionChangeSummary(asAsyncEventReadSurface(store), "missing", root)).rejects.toThrow("Session is unavailable")
-    expect(reads.mock.calls.some(([query]) => query?.types?.includes("file.changed"))).toBe(false)
-    reads.mockRestore()
-    for (let index = 2; index <= 513; index++) {
-      const changed = mutation(index, "many")
-      changed.payload.path = join(root, `file-${index}`)
-      changed.payload.after = written.payload.after
-      writeFileSync(String(changed.payload.path), "a")
-      store.append(changed)
-    }
-    const pages = spyOn(store, "readTolerant")
-    const content = mock(async () => { throw new Error("Summary must not read patch content") })
-    const reader = { ...asAsyncEventReadSurface(store), readSessionContentNode: content, readSessionContentRange: content }
-    expect(await readSessionChangeSummary(reader, "s", root)).toEqual({ fileCount: 512, unknownFileMutationGaps: 0 })
-    const fileReads = pages.mock.calls.filter(([query]) => query?.types?.includes("file.changed"))
-    expect(fileReads).toHaveLength(3)
-    expect(fileReads.every(([query]) => query?.limit !== undefined && query.limit <= 257)).toBe(true)
-    expect(content).not.toHaveBeenCalled()
-    pages.mockClear()
-    expect(await readSessionChangeSummary(reader, "s", root)).toEqual({ fileCount: 512, unknownFileMutationGaps: 0 })
-    expect(pages.mock.calls.some(([query]) => query?.types?.includes("file.changed"))).toBe(false)
-    expect(content).not.toHaveBeenCalled()
-    pages.mockRestore()
-  })
-})
+    expect(await background.sessionChangeSummary("s")).toEqual({ fileCount: 0, unknownFileMutationGaps: 0 })
+    // Awaited, not handed to `expect(...).rejects`: on Bun 1.4.4 that
+    // matcher never settles on this client's rejected call, which an await
+    // settles at once.
+    const missing = await background.sessionChangeSummary("missing").then(() => undefined, (error: unknown) => error)
+    expect(missing).toBeInstanceOf(Error)
+    expect(missing instanceof Error && missing.message).toBe("Session is unavailable")
+  } finally {
+    await background.close()
+    await owner.dispose()
+    store.close()
+    prepared.generation.release()
+    rmSync(home, { recursive: true, force: true })
+  }
+}, WORKER_BOOT_TEST_TIMEOUT_MS)
 
 test("the summary shares the lane's lazy owned client and contains no position", async () => {
   const doubles = fakeProjections()

@@ -1,7 +1,7 @@
 import type { RuntimeFaultReportOutcome } from "../../protocol/app-service-types.js"
 
 /** A report that was not sent keeps its assembled text for an explicit Copy. */
-export type RuntimeFaultReport =
+type RuntimeFaultReport =
   | Extract<RuntimeFaultReportOutcome, { readonly kind: "sent" }>
   | { readonly kind: "failed" | "not-release"; readonly reportText?: string }
 export type RuntimeFaultReporter = (error: Error, projectRoot?: string) => Promise<RuntimeFaultReport | undefined>

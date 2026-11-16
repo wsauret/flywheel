@@ -1,13 +1,15 @@
 import { expect, test } from "bun:test"
 import type { RuntimeExecutorState, RuntimeServiceState } from "../../../../src/protocol/app-service-types.js"
-import { createRuntimeFaultReporting, type RuntimeFaultReport } from "../../../../src/orchestration/app-service/runtime-fault-reporting.js"
+import { createRuntimeFaultReporting, type RuntimeFaultReporter } from "../../../../src/orchestration/app-service/runtime-fault-reporting.js"
+
+type FaultReportResult = Awaited<ReturnType<RuntimeFaultReporter>>
 
 test("a fault reports once per episode, preserves its receipt, and ignores late results after recovery", async () => {
-  const reports: Array<ReturnType<typeof Promise.withResolvers<RuntimeFaultReport | undefined>>> = []
+  const reports: Array<ReturnType<typeof Promise.withResolvers<FaultReportResult>>> = []
   const published: RuntimeServiceState[] = []
   const reporting = createRuntimeFaultReporting<RuntimeServiceState>({
     initial: { kind: "serving" },
-    report: async () => { const result = Promise.withResolvers<RuntimeFaultReport | undefined>(); reports.push(result); return result.promise },
+    report: async () => { const result = Promise.withResolvers<FaultReportResult>(); reports.push(result); return result.promise },
     publish: (state) => published.push(state),
   })
   reporting.update({ kind: "crash_loop", cause: "code 1" })
