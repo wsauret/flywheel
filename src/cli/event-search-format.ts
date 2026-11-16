@@ -1,5 +1,6 @@
 import { asRecord } from "../infra/record.js"
 import { rowTimestamp, type EventSearchRow, type MergedEventTypeSummary } from "../infra/event-search.js"
+import type { ProviderRequestPromptReconstruction } from "../orchestration/session/provider-request-audit-reconstruction.js"
 
 interface Payload {
   [key: string]: unknown
@@ -489,4 +490,64 @@ function stringifyPreview(value: unknown): string {
   } catch {
     return String(value)
   }
+}
+
+export function formatReconstruction(
+  requestId: string,
+  result: ProviderRequestPromptReconstruction,
+  options: { json: boolean },
+): string {
+  if (options.json) return JSON.stringify({ requestId, ...result })
+  return result.kind === "reconstructed"
+    ? formatReconstructed(requestId, result)
+    : formatUnavailable(requestId, result)
+}
+
+// Reports exactly the evidence the substrate holds. A request without durable
+// message history is never dressed up as a reconstruction.
+function formatUnavailable(
+  requestId: string,
+  result: Extract<ProviderRequestPromptReconstruction, { kind: "unavailable" }>,
+): string {
+  return [
+    `request=${requestId} reconstruction=unavailable reason=${result.reason} sha256=${result.promptSha256}`,
+    result.detail,
+    "",
+    "systemPrompt:",
+    result.systemPrompt ?? "(not durably recorded)",
+    "",
+    `tools (${result.tools?.length ?? 0}):`,
+    result.tools ? JSON.stringify(result.tools, null, 2) : "(not durably recorded)",
+  ].join("\n")
+}
+
+function formatReconstructed(
+  requestId: string,
+  result: Extract<ProviderRequestPromptReconstruction, { kind: "reconstructed" }>,
+): string {
+  const lines = [
+    `request=${requestId} verified=${result.verified} sha256=${result.computedSha256}`,
+    "",
+    "systemPrompt:",
+    result.systemPrompt,
+    "",
+    `messages (${result.messages.length}):`,
+    JSON.stringify(result.messages, null, 2),
+    "",
+    `tools (${result.tools.length}):`,
+    JSON.stringify(result.tools, null, 2),
+  ]
+  // Mid-turn requests share the pre-turn leaf pointer because the durable leaf
+  // only advances at the turn-end save point, so their sha legitimately differs
+  // from the first-of-turn assembly. Flag it so a reader does not read drift.
+  if (!result.verified) {
+    lines.push(
+      "",
+      "Note: verified=false is expected for mid-turn requests (additional LLM",
+      "calls within a tool-using turn). The durable conversation leaf advances",
+      "only at the turn-end save point, so mid-turn requests reconstruct from",
+      "the pre-turn leaf rather than the exact bytes that were sent.",
+    )
+  }
+  return lines.join("\n")
 }

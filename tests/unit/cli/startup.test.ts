@@ -3,7 +3,9 @@ import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { keepServiceErrorLogBounded, opensProject, opensTerminal, prepareCliStartup, publishFailedHeadlessTerminal, selectRunDirectories, shouldSelectStartupInteractively, type DirectorySelectionIo, type StartupBoundaries } from "../../../src/cli/startup.js"
+import { prepareCliStartup, publishFailedHeadlessTerminal, type StartupBoundaries } from "../../../src/cli/startup.js"
+import { keepServiceErrorLogBounded } from "../../../src/cli/service-error-log.js"
+import { selectRunDirectories, shouldSelectStartupInteractively } from "../../../src/cli/startup-directories.js"
 import { createHeadlessOutputObserver } from "../../../src/orchestration/headless/headless-output.js"
 import type { AccountRuntimeAttach } from "../../../src/cli/runtime-attach.js"
 import type { StartupDirectories } from "../../../src/infra/directory-authorities.js"
@@ -288,15 +290,36 @@ describe("the account service's error log under launchd", () => {
 })
 
 describe("which runs open a project", () => {
+  const temporary = temporaryDirectories()
+
   // The account home is a project only through an exact selection (PI-INTERACTION-069),
   // so startup tells selection which runs would open the project it selects.
-  test("a launch and flywheel web open a project, and account subcommands do not", () => {
-    expect(opensProject([])).toBe(true)
-    expect(opensProject(["--headless", "--task", "ship it"])).toBe(true)
-    expect(opensProject(["web"])).toBe(true)
-    expect(opensProject(["serve"])).toBe(false)
-    expect(opensProject(["kill"])).toBe(false)
-    expect(opensProject(["auth", "status"])).toBe(false)
+  test("a launch and flywheel web open a project, and account subcommands do not", async () => {
+    const home = realpathSync(temporary("fw-startup-home-"))
+    mkdirSync(join(home, ".flywheel"))
+    const select = (args: readonly string[]) => selectRunDirectories({ kind: "run", args }, {
+      env: { HOME: home },
+      cwd: home,
+      interactive: false,
+      choose: async () => { throw new Error("a run that does not ask the person chooses nothing") },
+      pairedMachines: async () => { throw new Error("a run that does not ask the person reads no device store") },
+    })
+    const opensProject = async (args: readonly string[]): Promise<boolean> => {
+      try {
+        await select(args)
+        return false
+      } catch (error) {
+        if (error instanceof AccountHomeRefusal) return true
+        throw error
+      }
+    }
+
+    expect(await opensProject([])).toBe(true)
+    expect(await opensProject(["--headless", "--task", "ship it"])).toBe(true)
+    expect(await opensProject(["web"])).toBe(true)
+    expect(await opensProject(["serve"])).toBe(false)
+    expect(await opensProject(["kill"])).toBe(false)
+    expect(await opensProject(["auth", "status"])).toBe(false)
   })
 
   test("asks for the project root only when a terminal run opens a project", () => {
@@ -322,7 +345,7 @@ describe("a terminal paired with another machine", () => {
     return realpathSync(home)
   }
 
-  function io(home: string, pairedMachines: number, asked: string[] = []): DirectorySelectionIo {
+  function io(home: string, pairedMachines: number, asked: string[] = []): Parameters<typeof selectRunDirectories>[1] {
     return {
       env: { HOME: home },
       cwd: home,
@@ -332,10 +355,12 @@ describe("a terminal paired with another machine", () => {
     }
   }
 
-  test("only the terminal opens a project on another machine; flywheel web does not", () => {
-    expect(opensTerminal([])).toBe(true)
-    expect(opensTerminal(["--print-logs"])).toBe(true)
-    expect(opensTerminal(["web"])).toBe(false)
+  test("only the terminal opens a project on another machine; flywheel web does not", async () => {
+    const home = accountHome()
+    const another = { kind: "another-machine" as const, account: { accountHome: home, userDataRoot: join(home, ".flywheel") } }
+    expect(await selectRunDirectories({ kind: "run", args: [] }, io(home, 1))).toEqual(another)
+    expect(await selectRunDirectories({ kind: "run", args: ["--print-logs"] }, io(home, 1))).toEqual(another)
+    await expect(selectRunDirectories({ kind: "run", args: ["web"] }, io(home, 1))).rejects.toBeInstanceOf(AccountHomeRefusal)
   })
 
   test("the terminal in the account home opens the remote picker once the terminal is paired, and is refused before", async () => {

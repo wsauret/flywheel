@@ -5,7 +5,10 @@ import * as os from "node:os"
 import * as path from "node:path"
 
 import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
-import { accountHomeWatch, createRegistrationRetirement, createSupersededRetirementDecision, releaseHarnessRuntimeOptions, runServe, serveExitCode } from "../../../src/cli/serve.js"
+import { releaseHarnessRuntimeOptions, runServe } from "../../../src/cli/serve.js"
+import { serveExitCode } from "../../../src/cli/serve-next-service.js"
+import { accountHomeWatch, createRegistrationRetirement, createSupersededRetirementDecision } from "../../../src/cli/serve-retirement.js"
+import { installationOf } from "../orchestration/app-service/_account-service-fixtures.js"
 import { SERVICE_NAMES } from "../../../src/orchestration/app-service/account-service-registration.js"
 import type { ReplacementTrigger } from "../../../src/orchestration/app-service/replacement-owner.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
@@ -317,7 +320,7 @@ describe("flywheel serve", () => {
           atBuildTick: async () => false,
           startedByManager: () => false,
         }),
-        serviceInstallation: () => ({
+        serviceInstallation: () => installationOf({
           registered: async () => { registrationCalls.push("registered"); return true },
           start: async () => { registrationCalls.push("start"); return true },
         }),
@@ -355,7 +358,7 @@ describe("flywheel serve", () => {
         buildCheckMs: 20,
         installedBuild: () => undefined,
         registrationRefresh: () => ({ atStart: async () => "serve", afterListening: async () => {}, atBuildTick: async () => false, startedByManager: () => false }),
-        serviceInstallation: () => ({
+        serviceInstallation: () => installationOf({
           registered: async () => true,
           start: async () => {
             events.push(`registered job started with the address ${addressHeld() ? "held" : "free"}`)

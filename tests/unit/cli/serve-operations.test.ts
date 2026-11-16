@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 
-import { runServe, runServeOperation } from "../../../src/cli/serve.js"
+import { runServe } from "../../../src/cli/serve.js"
 import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
 import type { AccountServiceInstallation } from "../../../src/orchestration/app-service/account-service-installation.js"
 import { AccountServiceInstallationError } from "../../../src/orchestration/app-service/service-manager-command.js"
@@ -20,7 +20,7 @@ async function printed(
   const stdout = spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array) => { out.push(String(chunk)); return true })
   const stderr = spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array) => { err.push(String(chunk)); return true })
   try {
-    const code = await runServeOperation(args[0] ?? "", args, DIRECTORIES, unusedLauncher(), false, installationOf(installation))
+    const code = await runServe(args, DIRECTORIES, unusedLauncher(), createPersistentProcessManager(), false, { serviceInstallation: () => installationOf(installation) })
     return { code, stdout: out.join(""), stderr: err.join("") }
   } finally {
     stdout.mockRestore()
