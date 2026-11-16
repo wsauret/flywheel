@@ -2,6 +2,8 @@ type SequenceState = "text" | "escape" | "escape_intermediate" | "csi" | "contro
 
 interface SequenceConsumer {
   push(text: string): void;
+  /** Whether no escape sequence or control string is open. */
+  inText(): boolean;
 }
 
 function createSequenceConsumer(emit: (char: string) => void): SequenceConsumer {
@@ -47,7 +49,7 @@ function createSequenceConsumer(emit: (char: string) => void): SequenceConsumer 
       } else emit(char);
     }
   };
-  return { push };
+  return { push, inText: () => state === "text" };
 }
 
 function isControlCharacter(char: string): boolean {
@@ -81,6 +83,12 @@ export function stripAnsiEscapes(raw: string): string {
   return clean.join("");
 }
 
+/** Every character the streaming sanitizer does not pass through unchanged:
+ *  C0 controls except tab and newline (carriage return and escape included),
+ *  DEL, and the C1 controls. */
+// oxlint-disable-next-line no-control-regex -- boundary: this pattern exists to find the control characters that external text carries
+const SANITIZED_CHARACTER = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u;
+
 export interface StreamingSanitizer {
   push(text: string): void;
   finish(): void;
@@ -109,8 +117,18 @@ export function createStreamingSanitizer(emit: (text: string) => void): Streamin
     output.length = 0;
   };
   return {
+    // Almost all external text holds no control character, so a chunk read
+    // in the text state with no carriage return pending passes through whole,
+    // and only the part from its first control character walks the state
+    // machine one character at a time.
     push: (text) => {
-      consumer.push(text);
+      const first = pendingCarriageReturn || !consumer.inText() ? 0 : text.search(SANITIZED_CHARACTER);
+      if (first === -1) {
+        if (text.length > 0) emit(text);
+        return;
+      }
+      if (first > 0) output.push(text.slice(0, first));
+      consumer.push(first > 0 ? text.slice(first) : text);
       flush();
     },
     finish: () => {

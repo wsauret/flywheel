@@ -107,6 +107,10 @@ export const RUNTIME_UI_PATCH_FIXTURES = {
       current: { id: "request-1", question: "Next question", answer: "", state: "running" },
     } },
   },
+  "side-question-request.appended": {
+    cursor: sideQuestionRequestCursor("session-1"), position: 18, prevPosition: 17,
+    payload: { kind: "side-question-request.appended", text: "Partial" },
+  },
 } satisfies { readonly [Kind in RuntimeUiPatchPayload["kind"]]: RuntimeUiPatch & { readonly payload: Extract<RuntimeUiPatchPayload, { readonly kind: Kind }> } }
 
 export const runtimeUiPatchFixtures = Object.values(RUNTIME_UI_PATCH_FIXTURES)

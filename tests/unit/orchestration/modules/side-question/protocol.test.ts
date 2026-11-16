@@ -221,6 +221,55 @@ test("session snapshot and whole patches share history, keep captured context, a
   runtime.dispose()
 })
 
+test("a running answer ships appended text, and a snapshot folded with the later patches rebuilds the answer the host holds", async () => {
+  const { lifecycle, runnerOptions, resolvers } = makeLifecycle()
+  const { chatModuleHosts } = lifecycle
+  const host = chatModuleHosts.get(sideQuestionHost)!
+  const store = residentStore({ parent: "chat" })
+  store.attach("parent", { chatModuleHosts })
+  const patches: RuntimeUiPatchInput[] = []
+  const runtime = createSideQuestionProtocol({
+    enabled: () => true,
+    sessionStore: store,
+    publish: (patch) => { patches.push(patch); return undefined },
+    snapshotPosition: () => 0,
+    manager: { read: async () => null, createChatFromContext: async () => "unused" },
+  })
+  await host.ask("question")
+  for (let turn = 0; turn < 100 && runnerOptions.length === 0; turn++) await Bun.sleep(0)
+  const side = runnerOptions[0]!
+  const snapshot = await runtime.serve.sideQuestionRequestSnapshot({ type: "sideQuestionRequestSnapshot", sessionId: "parent" })
+  const after = patches.length
+  const delta = (blockKey: string, text: string) => side.onEvent({ type: "model.content.delta", data: { block_key: blockKey, delta: { type: "text_delta", text } } })
+  /** The client's view: the snapshot folded with every request patch after it. */
+  const folded = () => patches.slice(after).filter((patch) => patch.cursor.domain === sideQuestionRequestDomain.domain).reduce(
+    (view, patch) => sideQuestionRequestDomain.view.patch(Schema.decodeUnknownSync(sideQuestionRequestDomain.patch)(patch.payload), view ?? undefined),
+    snapshot.view,
+  )?.current?.answer
+
+  for (const text of ["a", "b", "c"]) delta("first", text)
+  expect(patches.slice(after).map((patch) => patch.payload)).toEqual([
+    { kind: "side-question-request.appended", text: "a" },
+    { kind: "side-question-request.appended", text: "b" },
+    { kind: "side-question-request.appended", text: "c" },
+  ])
+  expect(folded()).toBe("abc")
+  // A second text block joins with a blank line, as the answer always has.
+  delta("second", "x")
+  delta("second", "y")
+  expect(folded()).toBe("abc\n\nxy")
+  side.onEvent({ type: "model.text.reconciled", data: { block_key: "first", content: "settled" } })
+  expect(folded()).toBe("settled\n\nxy")
+  expect(host.snapshot().current?.answer).toBe("settled\n\nxy")
+
+  resolvers[0]!({ servedRequests: 1, durationMs: 0, terminal: { kind: "completed" } })
+  await host.settled()
+  expect(folded()).toBe("settled\n\nxy")
+  expect(host.snapshot().exchanges.at(-1)?.answer).toBe("settled\n\nxy")
+  await lifecycle.terminateBackgroundWorks()
+  runtime.dispose()
+})
+
 test("bare /btw opens the resident surface without a parent turn; an argument starts its owned request", async () => {
   let requests = 0
   const host = createSideQuestionHost({

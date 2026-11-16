@@ -1,5 +1,4 @@
 import type { StreamingToolTextOp, ValueEdit } from "../../infra/output/output-block-delta.js"
-import { frontendUtf8Bytes } from "../../protocol/frontend-output-block-metrics.js"
 import type { OutputDelta } from "../../protocol/output-protocol-types.js"
 
 /** The wire bytes of one published group of streaming text changes. A large
@@ -17,7 +16,7 @@ export function partitionStreamingTextDelta(delta: OutputDelta): readonly Output
   let bytes = 0
   for (const original of delta.streamingToolTextOps) {
     for (const op of splitStreamingOp(original)) {
-      const size = frontendUtf8Bytes(JSON.stringify(op))
+      const size = jsonBytes(op)
       if (group.length > 0 && bytes + size > STREAMING_TEXT_CHUNK_BYTES) {
         groups.push(group)
         group = []
@@ -34,33 +33,45 @@ export function partitionStreamingTextDelta(delta: OutputDelta): readonly Output
 }
 
 function* splitStreamingOp(op: StreamingToolTextOp): Generator<StreamingToolTextOp> {
-  if (op.kind === "set" && typeof op.entry.content === "string" && frontendUtf8Bytes(JSON.stringify(op.entry.content)) > STREAMING_TEXT_CHUNK_BYTES) {
-    let offset = 0
-    for (const text of textChunks(op.entry.content)) {
-      yield offset === 0
-        ? { ...op, entry: { ...op.entry, content: text } }
-        : { kind: "edit", toolUseId: op.toolUseId, edits: [{ kind: "append", path: ["content"], offset, text }] }
-      offset += text.length
+  if (op.kind === "set" && typeof op.entry.content === "string") {
+    const content = op.entry.content
+    const cuts = textCuts(content)
+    if (cuts.length === 0) {
+      yield op
+      return
     }
-  } else if (op.kind === "edit" && op.edits.some((edit) => editableText(edit) !== undefined && frontendUtf8Bytes(JSON.stringify(editableText(edit))) > STREAMING_TEXT_CHUNK_BYTES)) {
-    for (const edit of op.edits) {
+    yield { ...op, entry: { ...op.entry, content: content.slice(0, cuts[0]) } }
+    for (const [index, offset] of cuts.entries()) {
+      yield { kind: "edit", toolUseId: op.toolUseId, edits: [{ kind: "append", path: ["content"], offset, text: content.slice(offset, cuts[index + 1]) }] }
+    }
+  } else if (op.kind === "edit") {
+    const cutEdits = op.edits.map((edit) => {
       const value = editableText(edit)
-      if (value === undefined || (edit.kind !== "assign" && edit.kind !== "append" && edit.kind !== "window") || frontendUtf8Bytes(JSON.stringify(value)) <= STREAMING_TEXT_CHUNK_BYTES) {
+      return { edit, value, cuts: value === undefined ? [] : textCuts(value) }
+    })
+    if (cutEdits.every(({ cuts }) => cuts.length === 0)) {
+      yield op
+      return
+    }
+    for (const { edit, value, cuts } of cutEdits) {
+      if (value === undefined || cuts.length === 0) {
         yield { ...op, edits: [edit] }
         continue
       }
-      let offset = edit.kind === "append" ? edit.offset : edit.kind === "window" ? edit.offset - edit.drop : 0
-      let first = true
-      for (const text of textChunks(value)) {
-        const part: ValueEdit = first
-          ? edit.kind === "assign" ? { ...edit, value: text } : { ...edit, text }
-          : { kind: "append", path: edit.path, offset, text }
-        yield { ...op, edits: [part] }
-        offset += text.length
-        first = false
+      const base = edit.kind === "append" ? edit.offset : edit.kind === "window" ? edit.offset - edit.drop : 0
+      const first = value.slice(0, cuts[0])
+      yield { ...op, edits: [withText(edit, first)] }
+      for (const [index, cut] of cuts.entries()) {
+        yield { ...op, edits: [{ kind: "append", path: edit.path, offset: base + cut, text: value.slice(cut, cuts[index + 1]) }] }
       }
     }
   } else yield op
+}
+
+/** The edit with its text replaced; only an edit that `editableText` reads
+ *  has text. */
+function withText(edit: ValueEdit, text: string): ValueEdit {
+  return edit.kind === "assign" ? { ...edit, value: text } : edit.kind === "append" || edit.kind === "window" ? { ...edit, text } : edit
 }
 
 function editableText(edit: ValueEdit): string | undefined {
@@ -68,19 +79,59 @@ function editableText(edit: ValueEdit): string | undefined {
     : edit.kind === "append" || edit.kind === "window" ? edit.text : undefined
 }
 
-function* textChunks(value: string): Generator<string> {
-  let start = 0
-  let end = 0
+/** The offsets that cut `value` into pieces whose JSON strings each hold at
+ *  most STREAMING_TEXT_CHUNK_BYTES. A cut never parts a surrogate pair. None
+ *  when the whole value fits. */
+function textCuts(value: string): number[] {
+  const cuts: number[] = []
   let bytes = 2
-  for (const character of value) {
-    const size = frontendUtf8Bytes(JSON.stringify(character)) - 2
+  for (let index = 0, size = 0; index < value.length; index += characterWidth(size)) {
+    size = jsonCharacterBytes(value, index)
     if (bytes + size > STREAMING_TEXT_CHUNK_BYTES) {
-      yield value.slice(start, end)
-      start = end
+      cuts.push(index)
       bytes = 2
     }
-    end += character.length
     bytes += size
   }
-  if (end > start) yield value.slice(start, end)
+  return cuts
+}
+
+/** The UTF-8 size of `JSON.stringify(value)`, counted from the structure
+ *  without building the text. */
+function jsonBytes(value: unknown): number {
+  if (typeof value === "string") {
+    let bytes = 2
+    for (let index = 0, size = 0; index < value.length; index += characterWidth(size)) {
+      size = jsonCharacterBytes(value, index)
+      bytes += size
+    }
+    return bytes
+  }
+  // Numbers, booleans, and null: a partitioned op carries no other scalar.
+  if (value === null || typeof value !== "object") return String(value).length
+  if (Array.isArray(value)) return value.reduce<number>((bytes, item) => bytes + jsonBytes(item), Math.max(2, value.length + 1))
+  let bytes = 1
+  for (const [key, item] of Object.entries(value)) {
+    if (item !== undefined) bytes += jsonBytes(key) + jsonBytes(item) + 2
+  }
+  return Math.max(2, bytes)
+}
+
+/** The UTF-8 bytes that the character at `index` takes inside a JSON string.
+ *  Quote and backslash take a short escape, controls a short or a `\u`
+ *  escape, and a lone surrogate a `\u` escape. Only a surrogate pair takes
+ *  four bytes, which is how `characterWidth` knows it spans two code units. */
+function jsonCharacterBytes(value: string, index: number): number {
+  const code = value.charCodeAt(index)
+  if (code === 0x22 || code === 0x5c) return 2
+  if (code < 0x20) return code === 0x08 || code === 0x09 || code === 0x0a || code === 0x0c || code === 0x0d ? 2 : 6
+  if (code < 0x80) return 1
+  if (code < 0x800) return 2
+  if (code < 0xd800 || code > 0xdfff) return 3
+  const next = value.charCodeAt(index + 1)
+  return code <= 0xdbff && next >= 0xdc00 && next <= 0xdfff ? 4 : 6
+}
+
+function characterWidth(jsonCharacterSize: number): number {
+  return jsonCharacterSize === 4 ? 2 : 1
 }
