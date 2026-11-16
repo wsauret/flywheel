@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
 import { fileDiffFiles, type FileChangeBody } from "../../../src/protocol/client/file-change-body.js"
-import { renderFileDiffLine, renderFileDiffRows } from "./file-diff.js"
 import { createBlockDisclosure } from "./block-disclosure.js"
 import type { FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
 import { createMutationEvidenceReader } from "../../../src/protocol/client/mutation-evidence.js"
@@ -168,34 +167,65 @@ describe("shared file diff model", () => {
   })
 
   test("highlights known path languages while escaping partial markup immediately", () => {
-    const html = renderFileDiffLine("const node = <tag>", "src/live.ts", true)
-    assert.match(html, /hljs-keyword/)
-    assert.match(html, /&lt;tag&gt;/)
-    assert.doesNotMatch(html, /<tag>/)
+    const write: FrontendToolEntry = {
+      kind: "tool", id: "write-live", name: "write", presentation: { name: "Write", detail: "src/live.ts" },
+      timestamp: 0, status: "streaming", fileChangeKind: "create",
+      proposedDiff: { files: [{ id: "live", path: "src/live.ts", action: "add", hunks: [{ id: "h", oldStart: 0, newStart: 1, omittedBefore: 0, omittedAfter: 0, lines: [
+        { id: "line", kind: "add", text: "const node = <tag>", partial: true },
+      ] }] }] },
+    }
+    const row = mountToolRow(write)
+    try {
+      row.open()
+      const html = row.text()
+      assert.match(html, /hljs-keyword/)
+      assert.match(html, /&lt;tag&gt;/)
+      assert.doesNotMatch(html, /<tag>/)
+    } finally { row.dispose() }
   })
   test("renders the rows of a file as one static markup string", () => {
-    const rows = fileDiffFiles(actual, false, "none", actualView)[0]?.rows ?? []
-    const html = renderFileDiffRows(rows, "src/a.ts", false)
-    assert.equal(html, [
-      "<div class=\"diff-line diff-del\"><span class=\"diff-line-number\">1</span><span class=\"diff-line-number\"></span><span class=\"diff-marker\">-</span><span>old</span></div>",
-      "<div class=\"diff-line diff-add\"><span class=\"diff-line-number\"></span><span class=\"diff-line-number\">1</span><span class=\"diff-marker\">+</span><span>new</span></div>",
-      "<div class=\"diff-line diff-context\"><span class=\"diff-line-number\">2</span><span class=\"diff-line-number\">2</span><span class=\"diff-marker\"> </span><span>same</span></div>",
-    ].join(""))
-    const separated = renderFileDiffRows([
-      ...rows,
-      { id: "later-remove", kind: "remove", text: "later", oldLine: 12, partial: false },
-      { id: "later-add", kind: "add", text: "replacement", newLine: 12, partial: false },
-    ], "src/a.ts", false)
-    assert.equal((separated.match(/class="diff-gap"/g) ?? []).length, 1)
-    assert.match(separated, /9 unchanged lines/)
+    const hunk = (id: string, start: number, lines: readonly { id: string; kind: "add" | "remove" | "context"; text: string }[]) =>
+      ({ id, oldStart: start, newStart: start, omittedBefore: 0, omittedAfter: 0, lines: lines.map(line => ({ ...line, partial: false })) })
+    const first = hunk("hunk-1", 1, [
+      { id: "line-1", kind: "remove", text: "old" },
+      { id: "line-2", kind: "add", text: "new" },
+      { id: "line-3", kind: "context", text: "same" },
+    ])
+    const body = (hunks: readonly ReturnType<typeof hunk>[]): FileChangeBody => ({ kind: "proposed", proposedDiff: { files: [{ id: "file-1", path: "src/a.ts", action: "update", hunks: [...hunks] }] } })
+    const mounted = mountFileDiff(body([first]))
+    try {
+      assert.ok(mounted.text().endsWith([
+        "<div class=\"diff-line diff-del\"><span class=\"diff-line-number\">1</span><span class=\"diff-line-number\"></span><span class=\"diff-marker\">-</span><span>old</span></div>",
+        "<div class=\"diff-line diff-add\"><span class=\"diff-line-number\"></span><span class=\"diff-line-number\">1</span><span class=\"diff-marker\">+</span><span>new</span></div>",
+        "<div class=\"diff-line diff-context\"><span class=\"diff-line-number\">2</span><span class=\"diff-line-number\">2</span><span class=\"diff-marker\"> </span><span>same</span></div>",
+      ].join("")))
+      mounted.publish(body([first, hunk("hunk-2", 12, [
+        { id: "later-remove", kind: "remove", text: "later" },
+        { id: "later-add", kind: "add", text: "replacement" },
+      ])]))
+      const separated = mounted.text()
+      assert.equal((separated.match(/class="diff-gap"/g) ?? []).length, 1)
+      assert.match(separated, /9 unchanged lines/)
+    } finally { mounted.dispose() }
   })
   test("marks a partial streamed row and escapes its text", () => {
-    const rows = fileDiffFiles(proposed)[0]?.rows ?? []
-    const html = renderFileDiffRows(rows.map((row) => ({ ...row, text: "<b>" })), "src/a.ts", false)
-    assert.match(html, /<span>&lt;b&gt;<\/span><\/div><div class="diff-line diff-add">.*<span class="diff-partial">&lt;b&gt;<\/span>/)
+    const escaped: FileChangeBody = { kind: "proposed", proposedDiff: { files: [{ id: "file-1", path: "src/a.ts", action: "update", hunks: [{ id: "hunk-1", oldStart: 1, newStart: 1, omittedBefore: 0, omittedAfter: 0, lines: [
+      { id: "line-1", kind: "remove", text: "<b>", partial: false },
+      { id: "line-2", kind: "add", text: "<b>", partial: true },
+    ] }] }] } }
+    const mounted = mountFileDiff(escaped)
+    try {
+      assert.match(mounted.text(), /<span>&lt;b&gt;<\/span><\/div><div class="diff-line diff-add">.*<span class="diff-partial">&lt;b&gt;<\/span>/)
+    } finally { mounted.dispose() }
   })
   test("escapes edit code without syntax coloring", () => {
-    assert.equal(renderFileDiffLine("const node = <tag>", "src/live.ts"), "const node = &lt;tag&gt;")
+    const mounted = mountFileDiff({ kind: "proposed", proposedDiff: { files: [{ id: "live", path: "src/live.ts", action: "update", hunks: [{ id: "h", oldStart: 1, newStart: 1, omittedBefore: 0, omittedAfter: 0, lines: [
+      { id: "line", kind: "add", text: "const node = <tag>", partial: false },
+    ] }] }] } })
+    try {
+      assert.match(mounted.text(), /<span>const node = &lt;tag&gt;<\/span>/)
+      assert.doesNotMatch(mounted.text(), /hljs/)
+    } finally { mounted.dispose() }
   })
   test("keeps disclosure attached through path arrival, canonical omissions, and reordering", () => {
     const disclosure = createBlockDisclosure()

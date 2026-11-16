@@ -5,8 +5,7 @@ import type { FrontendToolEntry } from "../../../src/protocol/app-service-types.
 import { applyNamedText, resolveQuestionAnswer } from "../client/question-answer.js"
 import { blockIdentity } from "../../../src/protocol/block-identity.js"
 import { createBlockDisclosure } from "./block-disclosure.js"
-import { toolFileBodyMode } from "./blocks.js"
-import { selectFileChangeBody, type FileChangeBody } from "../../../src/protocol/client/file-change-body.js"
+import { rendered } from "./blocks-render-loader-fixture.js"
 
 const question = {
   question: "Changes?",
@@ -71,20 +70,26 @@ describe("web transcript tool rows", () => {
       content: "stale raw body",
       diffOmission: { kind: "aggregate", omittedLines: 12 },
     }
-    const advisory = selectFileChangeBody(entry, { previewCheck: "Expected a closing brace" })
-    assert.deepEqual(toolFileBodyMode(entry, advisory), { bodyAvailable: false, advisory: "Expected a closing brace" })
+    // Each row renders opened, so a body that the row offers shows at once.
+    const advised = rendered.renderBlock(entry, { streaming: { previewCheck: "Expected a closing brace" } })
+    assert.match(advised, /class="tool-advisory">Preview check: (<!--[^>]*-->)*Expected a closing brace/)
+    assert.doesNotMatch(advised, /class="tool-body/)
+    assert.doesNotMatch(advised, /stale raw body/)
 
     const failed: FrontendToolEntry = { ...entry, status: "error", errorMessage: "write failed" }
-    assert.deepEqual(toolFileBodyMode(failed, selectFileChangeBody(failed, undefined)), { bodyAvailable: false })
-    const settled: FileChangeBody = {
-      kind: "actual",
+    const failedHtml = rendered.renderBlock(failed)
+    assert.doesNotMatch(failedHtml, /class="tool-body/)
+    assert.doesNotMatch(failedHtml, /class="tool-advisory/)
+
+    const settled: FrontendToolEntry = {
+      ...failed,
       mutationEvidence: {
         version: 2, manifest: { version: 1, root: "a".repeat(64), bytes: 1, entries: 1 },
         applied: 1, retainedFiles: 1, omissions: 0, notApplied: 0, added: 1, modified: 0, removed: 0,
         addedLines: 1, removedLines: 0, conflictMarkers: 0, samples: [{ kind: "applied", path: "src/example.ts" }],
       },
     }
-    assert.deepEqual(toolFileBodyMode(failed, settled), { bodyAvailable: true })
+    assert.match(rendered.renderBlock(settled), /class="tool-body/)
   })
 
   test("a row arrives collapsed whatever its status and opens only for the person", () => {

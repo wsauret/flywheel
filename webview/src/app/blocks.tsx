@@ -47,7 +47,7 @@ interface ToolFileBodyMode {
   readonly advisory?: string
 }
 
-export function toolFileBodyMode(
+function toolFileBodyMode(
   entry: FrontendToolEntry,
   body: FileChangeBody,
 ): ToolFileBodyMode {

@@ -1,37 +1,59 @@
 import { describe, expect, test } from "bun:test"
 
-import { faviconHref, faviconSvg, reloadWhenRestoredFromCache, tabState, tabTitle } from "../../../webview/local/tab.js"
+import type { ClientSummary } from "../../../src/protocol/client/host-contract.js"
+import { applyTabIdentity, reloadWhenRestoredFromCache } from "../../../webview/local/tab.js"
+
+const ICON_PREFIX = "data:image/svg+xml;utf8,"
+
+function memoryDocument(value: unknown): Document {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: applyTabIdentity paints a Document, and bun test has no DOM to build one.
+  return value as Document
+}
+
+/** The tab's title and icon after `applyTabIdentity` paints one summary onto
+ *  a page with an icon link. */
+function paintedTab(summary: Pick<ClientSummary, "health" | "busy" | "sessionTitle">) {
+  let href = ""
+  const page = {
+    title: "",
+    querySelector: (selector: string) => selector === 'link[rel="icon"]' ? { setAttribute: (name: string, value: string) => { if (name === "href") href = value } } : null,
+  }
+  applyTabIdentity(memoryDocument(page), summary)
+  return { title: page.title, href, svg: href.startsWith(ICON_PREFIX) ? decodeURIComponent(href.slice(ICON_PREFIX.length)) : "" }
+}
+
+const healthy = { kind: "healthy" } as const
 
 describe("local browser tab identity", () => {
   test("reads the tab's state from the runtime's health first, then the session", () => {
-    expect(tabState({ health: { kind: "healthy" }, busy: false })).toBe("idle")
-    expect(tabState({ health: { kind: "healthy" }, busy: true })).toBe("working")
+    expect(paintedTab({ health: healthy, busy: false, sessionTitle: "Fix" }).title).toBe("Fix · Flywheel")
+    expect(paintedTab({ health: healthy, busy: true, sessionTitle: "Fix" }).title).toBe("Working · Fix · Flywheel")
     // Away outranks working: a busy session behind a lost runtime is a page
     // that cannot show it. A drop that is healing is not a loss: the client
     // stays healthy while it reattaches, so the tab says nothing.
-    expect(tabState({ health: { kind: "faulted", since: 1 }, busy: true })).toBe("away")
-    expect(tabState({ health: { kind: "faulted", since: 1, cause: "gone" }, busy: false })).toBe("away")
+    expect(paintedTab({ health: { kind: "faulted", since: 1 }, busy: true, sessionTitle: "Fix" }).title).toBe("Runtime lost · Fix · Flywheel")
+    expect(paintedTab({ health: { kind: "faulted", since: 1, cause: "gone" }, busy: false, sessionTitle: "Fix" }).title).toBe("Runtime lost · Fix · Flywheel")
   })
 
   test("titles the tab session first, product last, state up front", () => {
-    expect(tabTitle("Fix the parser", "idle")).toBe("Fix the parser · Flywheel")
-    expect(tabTitle("Fix the parser", "working")).toBe("Working · Fix the parser · Flywheel")
-    expect(tabTitle("Fix the parser", "away")).toBe("Runtime lost · Fix the parser · Flywheel")
-    expect(tabTitle(undefined, "idle")).toBe("Flywheel")
-    expect(tabTitle("", "working")).toBe("Working · Flywheel")
+    expect(paintedTab({ health: healthy, busy: false, sessionTitle: "Fix the parser" }).title).toBe("Fix the parser · Flywheel")
+    expect(paintedTab({ health: healthy, busy: true, sessionTitle: "Fix the parser" }).title).toBe("Working · Fix the parser · Flywheel")
+    expect(paintedTab({ health: { kind: "faulted", since: 1 }, busy: false, sessionTitle: "Fix the parser" }).title).toBe("Runtime lost · Fix the parser · Flywheel")
+    expect(paintedTab({ health: healthy, busy: false, sessionTitle: undefined }).title).toBe("Flywheel")
+    expect(paintedTab({ health: healthy, busy: true, sessionTitle: "" }).title).toBe("Working · Flywheel")
   })
 
   test("badges the icon while working and dims it while away", () => {
-    const idle = faviconSvg("idle")
-    const working = faviconSvg("working")
-    const away = faviconSvg("away")
-    expect(idle).toContain("<svg")
-    expect(idle).not.toContain("#89d185")
-    expect(working).toContain("#89d185")
-    expect(working).not.toContain("fill-opacity=\"0.55\"")
-    expect(away).toContain("fill-opacity=\"0.55\"")
-    expect(away).toContain("#8b8b8b")
-    expect(faviconHref("working").startsWith("data:image/svg+xml;utf8,")).toBe(true)
+    const idle = paintedTab({ health: healthy, busy: false, sessionTitle: undefined })
+    const working = paintedTab({ health: healthy, busy: true, sessionTitle: undefined })
+    const away = paintedTab({ health: { kind: "faulted", since: 1 }, busy: false, sessionTitle: undefined })
+    expect(idle.href.startsWith(ICON_PREFIX)).toBe(true)
+    expect(idle.svg).toContain("<svg")
+    expect(idle.svg).not.toContain("#89d185")
+    expect(working.svg).toContain("#89d185")
+    expect(working.svg).not.toContain("fill-opacity=\"0.55\"")
+    expect(away.svg).toContain("fill-opacity=\"0.55\"")
+    expect(away.svg).toContain("#8b8b8b")
   })
 })
 

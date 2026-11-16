@@ -60,7 +60,7 @@ export interface ComposerHandle {
 }
 
 /** Child viewers name the runtime's serving reading, never a sibling or Chat role. */
-export function composerModel(kind: SessionRow["kind"] | undefined, childRoles: RoleAssignmentView | undefined, activeModel: ActiveModel | undefined): ActiveModel | undefined {
+function composerModel(kind: SessionRow["kind"] | undefined, childRoles: RoleAssignmentView | undefined, activeModel: ActiveModel | undefined): ActiveModel | undefined {
   return kind === "subagent" || kind === "workflow-agent" ? sessionServingSelection(childRoles) : activeModel
 }
 

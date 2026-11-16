@@ -46,7 +46,7 @@ export interface ScreenStack {
 }
 
 /** The members of the element the screens fill that the swipe gesture reads. */
-export interface SwipeRoot extends Pick<HTMLElement, "clientWidth" | "addEventListener" | "removeEventListener"> {
+interface SwipeRoot extends Pick<HTMLElement, "clientWidth" | "addEventListener" | "removeEventListener"> {
   readonly ownerDocument: Pick<Document, "addEventListener" | "removeEventListener"> & {
     getSelection(): Pick<Selection, "isCollapsed"> | null
   }

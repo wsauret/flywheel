@@ -8,7 +8,7 @@ interface ScrollMetrics {
 }
 
 /** Marks the visible edges; CSS pixel rounding counts a fractional last pixel as the end. */
-export function updateScrollEdges(element: ScrollMetrics): void {
+function updateScrollEdges(element: ScrollMetrics): void {
   element.classList.toggle("scroll-above", element.scrollTop > 0)
   element.classList.toggle("scroll-below", Math.ceil(element.scrollTop + element.clientHeight) < element.scrollHeight)
 }

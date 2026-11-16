@@ -1,32 +1,16 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createRoot } from "solid-js"
-import { scrollEdges, updateScrollEdges } from "./scroll-edges.js"
+import { scrollEdges } from "./scroll-edges.js"
 
 function memoryViewport(value: unknown): HTMLElement {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: scrollEdges passes the element and its children to ResizeObserver.observe, which requires a full Element, and bun test has no DOM to build one.
   return value as HTMLElement
 }
 
-test("scroll edges mark only content beyond the viewport", () => {
-  for (const [scrollTop, scrollHeight, clientHeight, above, below] of [
-    [0, 400, 100, false, true],
-    [150, 400, 100, true, true],
-    [300, 400, 100, true, false],
-    [0, 100, 100, false, false],
-    [299.6, 400, 100, true, false],
-  ] as const) {
-    const classes = new Set<string>()
-    updateScrollEdges({
-      scrollTop, scrollHeight, clientHeight,
-      classList: { toggle(name: string, enabled: boolean) { if (enabled) classes.add(name); else classes.delete(name) } },
-    })
-    assert.equal(classes.has("scroll-above"), above)
-    assert.equal(classes.has("scroll-below"), below)
-  }
-})
-
-test("owned scroll edges coalesce, observe content, share resources, and remount after teardown", async () => {
+/** A page with no DOM: a controlled resize observer, animation frames that
+ *  run only on `flush`, and a capturing scroll listener that `scroll` drives. */
+function memoryPage() {
   const frames = new Map<number, FrameRequestCallback>()
   const listeners = new Set<EventListener>()
   const observers: ControlledObserver[] = []
@@ -58,11 +42,11 @@ test("owned scroll edges coalesce, observe content, share resources, and remount
       cancelAnimationFrame(id: number) { cancelled.push(id); frames.delete(id) },
     },
   }
-  const viewport = () => {
+  const viewport = (metrics: { readonly scrollTop: number; readonly scrollHeight: number; readonly clientHeight: number } = { scrollTop: 0, scrollHeight: 400, clientHeight: 100 }) => {
     const classes = new Set<string>()
     let updates = 0
     const element = memoryViewport({
-      ownerDocument: document, children: [{}], scrollTop: 0, scrollHeight: 400, clientHeight: 100,
+      ownerDocument: document, children: [{}], ...metrics,
       classList: { toggle(name: string, enabled: boolean) { updates++; if (enabled) classes.add(name); else classes.delete(name) } },
     })
     return { element, classes, updates: () => updates }
@@ -82,6 +66,32 @@ test("owned scroll edges coalesce, observe content, share resources, and remount
     Object.defineProperty(event, "target", { value: target })
     for (const listener of listeners) listener(event)
   }
+  return { frames, listeners, observers, removed, cancelled, viewport, mount, flush, scroll }
+}
+
+test("scroll edges mark only content beyond the viewport", async () => {
+  for (const [scrollTop, scrollHeight, clientHeight, above, below] of [
+    [0, 400, 100, false, true],
+    [150, 400, 100, true, true],
+    [300, 400, 100, true, false],
+    [0, 100, 100, false, false],
+    [299.6, 400, 100, true, false],
+  ] as const) {
+    const page = memoryPage()
+    const shown = page.viewport({ scrollTop, scrollHeight, clientHeight })
+    const dispose = await page.mount(shown.element)
+    try {
+      page.flush()
+      assert.equal(shown.classes.has("scroll-above"), above)
+      assert.equal(shown.classes.has("scroll-below"), below)
+    } finally {
+      dispose()
+    }
+  }
+})
+
+test("owned scroll edges coalesce, observe content, share resources, and remount after teardown", async () => {
+  const { frames, listeners, observers, removed, cancelled, viewport, mount, flush, scroll } = memoryPage()
   const first = viewport()
   const second = viewport()
   const disposeFirst = await mount(first.element)

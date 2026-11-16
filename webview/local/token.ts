@@ -30,7 +30,7 @@ function normalizeOptionalString(value: unknown): string | undefined {
  *  the origin serves, so it is keyed by origin and kept in the browser's
  *  durable storage: a new tab, a bookmark, and a tab left open across a
  *  runtime restart all reach the project again without the link. */
-export function tokenKeyForOrigin(origin: string): string {
+function tokenKeyForOrigin(origin: string): string {
   return `${TOKEN_KEY_PREFIX}${new URL(origin).origin}`
 }
 
@@ -42,7 +42,7 @@ export function localSocketUrl(host: string): string {
 }
 
 /** Reads the stored token for an origin. Storage failures return no token. */
-export function loadToken(origin: string, storage: TokenStorage = localStorage): string {
+function loadToken(origin: string, storage: TokenStorage = localStorage): string {
   try {
     const token = storage.getItem(tokenKeyForOrigin(origin))
     return normalizeOptionalString(token) ?? ""
@@ -52,7 +52,7 @@ export function loadToken(origin: string, storage: TokenStorage = localStorage):
 }
 
 /** Writes or clears the stored token for an origin. Storage failures are ignored. */
-export function persistToken(
+function persistToken(
   origin: string,
   token: string,
   storage: TokenStorage = localStorage,
