@@ -39,6 +39,9 @@ export interface LeadService extends ModuleServiceInstance {
   /** The role once the service folded every stored batch that it heard before this call, so a chat's first request
    *  reads the join that its creation recorded. */
   settledRole(sessionId: string): Promise<LeadRole | undefined>
+  /** The shown lead chat when `sessionId` is a chat in its list, once the service folded every stored batch that it
+   *  heard before this call; null otherwise. */
+  settledListingLead(sessionId: string): Promise<string | null>
   /** Forwards the person's entries of the lead chat's newest turns to a new chat or to an earlier chat (section
    *  "The routing tool" of the lead design): the runtime selects and copies the entries, and the caller names only
    *  the target. A repeated call starts no second chat and records nothing twice. */
@@ -128,7 +131,6 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   let endings: Promise<unknown> = Promise.resolve()
   let unsubscribeClosed: (() => void) | undefined
 
-  /** The lead chat while the module is on and the person has not dismissed it; null otherwise. */
   const shownLead = (): string | null => {
     const state = journal.state()
     return !disposed && services.enabled() && !state.dismissed ? state.designated : null
@@ -436,6 +438,11 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       return services.enabled() ? { rows: rows?.rows() ?? [] } : EMPTY_LEAD_CHATS
     },
     role,
+    async settledListingLead(sessionId) {
+      await background
+      const lead = shownLead()
+      return lead !== null && sessionId !== lead && journal.state().members.has(sessionId) ? lead : null
+    },
     async settledRole(sessionId) {
       await background
       return role(sessionId)

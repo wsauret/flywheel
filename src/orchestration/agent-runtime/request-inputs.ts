@@ -31,7 +31,7 @@ import { callerToolGrant, planToolExposure, type ToolGrant } from "./tools/tool-
 import { deriveChildRuntimeSurfaces, learningReviewToolNames, toolRegistryFromComposition } from "./tools/tool-registry.js";
 import type { RecallPort } from "../../protocol/conversation-recall.js";
 import type { KernelToolDeps, ServingModel } from "./tools/kernel-tool-deps.js";
-import { defaultCacheRetention, requestKernel, sharesTreeHost, type KernelRequestFacts, type KernelRunFacts } from "./request-kernel.js";
+import { defaultCacheRetention, moduleMessageUses, requestKernel, sharesTreeHost, type KernelRequestFacts, type KernelRunFacts } from "./request-kernel.js";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { createModuleRuntimeServices, type ChildCapabilityRun } from "./module-runtime-services.js";
 import { createRequestToolSurface, requestCapabilities, requestModelSelectionKey, type PlannedRequest, type RequestModelSelection, type RequestProviderRuntime } from "./request-tool-surface.js";
@@ -355,9 +355,9 @@ function runToolPlanner(source: RunToolsSource) {
     runtimeConfig: RuntimeConfigRequestCapture,
     providerRuntime: RequestProviderRuntime | undefined,
     definitionRevision: ProjectDefinitionRegistryRevision,
-    live: FirstPartyModuleComposition = liveModules(requestModuleSnapshot),
+    { live = liveModules(requestModuleSnapshot), messageUses }: { readonly live?: FirstPartyModuleComposition; readonly messageUses?: readonly string[] } = {},
   ): KernelToolDeps => requestKernel(kernelRun, {
-    moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, definitions: definitionRevision,
+    moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, definitions: definitionRevision, ...(messageUses ? { messageUses } : {}),
     shellWriteGuard: tree?.shellWriteGuard ?? runtimeConfig.shellWriteGuard,
     persistentProcessesAdvertised: tree?.allowPersistentProcesses ?? runtimeConfig.allowPersistentProcesses,
     treeDisabledTypes: tree?.disabledTypes ?? disabledAgentTypes(runtimeConfig.moduleSections),
@@ -371,13 +371,15 @@ function runToolPlanner(source: RunToolsSource) {
     const live = liveModules(requestModuleSnapshot);
     // Read now, not captured at assembly: the skill tool must observe the
     // revision published when this request is planned.
-    const kernel = kernelOf(requestModuleSnapshot, runtimeConfig, providerRuntime, definitions.captureRevision(), live);
+    const modules = await moduleRuntimesFor(requestModuleSnapshot);
+    const messageUses = await moduleMessageUses(kernelRun, requestModuleSnapshot, modules);
+    const kernel = kernelOf(requestModuleSnapshot, runtimeConfig, providerRuntime, definitions.captureRevision(), { live, messageUses });
     // Asked for each request, so a profile ends with the capability that gives it, also in a parked loop.
     const chatProfile = options.chatProfile?.(requestModuleSnapshot);
     const profile = chatProfile ? { only: new Set(chatProfile.tools) } : options.toolProfile;
     const plan = await planToolExposure({
       kernel,
-      modules: await moduleRuntimesFor(requestModuleSnapshot),
+      modules,
       registry: toolRegistryFromComposition(requestModuleSnapshot),
       ...(live === requestModuleSnapshot ? {} : { live }),
       ...(selected ? { selected } : {}),

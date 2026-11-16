@@ -15,8 +15,9 @@ import { chatProgressDeclaration, findChatDeclaration, LEAD_TOOLS, routeRequestD
  *  that routes the person's requests to other chats. Its facts, the
  *  designation of the lead chat in its control part (ARCH-STRUCTURE-045),
  *  its two workspace domains, the `/lead` command,
- *  the lead chat's prompt and tool list, its three tools, and the prompt
- *  addition of a chat that it started or that started while it showed. */
+ *  the lead chat's prompt and tool list, its three tools, the prompt
+ *  addition of a chat that it started or that started while it showed, and
+ *  the `message_session` use of a chat in its list. */
 export const leadModule = {
   id: "lead",
   dependencies: [],
@@ -45,6 +46,7 @@ export const leadModule = {
         return role === "started" ? STARTED_CHAT_PROMPT : role === "briefed" ? LISTED_CHAT_PROMPT : undefined
       },
     } },
+    { domain: "messageUses", id: "lead-milestones", value: { use: async (modules) => modules.get(leadRuntime)?.milestoneUse() } },
     { domain: "commands", id: LEAD_COMMAND, value: {
       id: LEAD_COMMAND,
       title: LEAD_COMMAND_NAME,

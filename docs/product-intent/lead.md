@@ -24,7 +24,7 @@ From the list, Enter or a click opens the chat's full conversation over the lead
 
 ## PI-LEAD-006: The lead summarizes reports and never speaks for a chat
 
-The lead learns when a chat in its list that no client shows asks a question, finishes a turn, fails, or is cut. For a finished turn, the lead's transcript shows a line that names the chat and opens it at the final message, and the report counts as read. A turn that ends while a client shows the chat is read there. The lead then summarizes the report and can add a recommendation. It never rewords or answers a chat's question. It routes work only at the person's request, never in response to a chat.
+The lead learns when a chat in its list that no client shows asks a question, finishes a turn, fails, or is cut, and of a listed chat's milestone message. A report or milestone shows in the lead's transcript as a line that names the chat and opens it at that message. A report counts as read, as does a turn that ends while a client shows the chat. The lead summarizes the message and can add a recommendation. It never rewords or answers a chat's question, never replies to a chat, and routes work only at the person's request.
 
 ## PI-LEAD-007: Every chat is one step from the lead
 
@@ -48,7 +48,7 @@ The lead speaks as the person's assistant, and its own words lead its transcript
 
 ## PI-LEAD-012: Every chat reports in one shape
 
-While the lead is on, every new chat writes each question to the person for a reader who has not read the chat, and ends each turn with a report in one shape. It states its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, its open questions with a recommendation, and what it noticed along the way. The lead's summary names what the chat found and presents the chat's claims as the chat's, not as facts that the lead checked.
+While the lead is on, every new chat writes each question for a reader new to the chat, and ends each turn with a report in one shape. It states its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, open questions with a recommendation, and what it noticed. Every chat in the lead's list messages the lead mid-turn at each milestone, such as a PR opened. The lead's summary names what the chat found and presents its claims as the chat's.
 
 ## PI-LEAD-013: The lead's tab shows only beside other tabs
 

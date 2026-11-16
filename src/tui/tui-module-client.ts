@@ -10,6 +10,7 @@ import type { AgentGroupBlockProps } from "./output-blocks/agent-group-block.js"
 import type { ChildPlaces } from "./hooks/create-child-viewer-opener.js"
 import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
 import type { CallStretchPresentation } from "../protocol/client/turn-folds.js"
+import type { MessageRowReader } from "./context/message-row.js"
 import type { ChatModeHook } from "./hooks/use-chat-mode.js"
 import type { QuestionDraftNamespace } from "./hooks/create-draft-cache.js"
 import type { SessionShows } from "./hooks/use-open-session-runners.js"
@@ -59,6 +60,8 @@ export interface TuiFirstTab {
   /** How the tab presents this session's transcript; every other session and every other view of this one keep the
    *  ordinary rows. */
   readonly transcript?: CallStretchPresentation
+  /** How a message from another session presents in this session's transcript, where `transcript` applies. */
+  readonly messageRow?: MessageRowReader
   /** True when this tab stands for the whole window, so the window does not teach tabs: while it is the only tab, the
    *  tab bar shows no tab and no new-tab control, only the stats and the divider; while it is in front, the composer
    *  names no new-tab, close-tab, or tab-switch key. Every tab key still works. */

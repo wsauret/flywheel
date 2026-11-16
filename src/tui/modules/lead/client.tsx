@@ -3,8 +3,7 @@ import { basename } from "node:path"
 import { createContext, createMemo, createSignal, useContext, type Accessor } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { sessionListTitle } from "../../../protocol/app-service-types.js"
-import { leadReportEntry, leadReportLink, leadRowOrder, parseLeadReportLink, type LeadRow } from "../../../protocol/modules/lead.js"
-import { MessageRowProvider } from "../../context/message-row.js"
+import { leadEntryLink, leadReportEntry, leadRowOrder, parseLeadEntryLink, sessionMessageCall, type LeadRow } from "../../../protocol/modules/lead.js"
 import { truncateToWidth } from "../../utils/text.js"
 import type { ModalHandle } from "../../components/modal-stack.js"
 import type { ModuleDomainIntakes } from "../../hooks/create-module-domain-intakes.js"
@@ -36,8 +35,8 @@ export function useLeadScreen(): LeadScreen {
   return screen
 }
 
-/** The widest chat title that a report line shows, so the line stays one row with its open action on a terminal of 80
- *  columns. */
+/** The widest chat title that a report or update line shows, so the line stays one row with its open action on a
+ *  terminal of 80 columns. */
 const REPORT_TITLE_COLUMNS = 40
 
 type LeadClientHost = LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "sessionTitles" | "closeChat"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
@@ -100,14 +99,9 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
   }
 
   return {
-    // A report is a message from a chat that the runtime posted to the lead (PI-LEAD-006): its row is one line that
-    // opens the chat at the final message.
-    provide: (children) => <LeadScreenContext.Provider value={screen}><MessageRowProvider present={(message) => {
-      const entryId = leadReportEntry(message)
-      return entryId === undefined ? undefined : { name: "Report", detail: `· ${truncateToWidth(title(message.from.sessionId) || message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`, linkUri: leadReportLink(message.from.sessionId, entryId) }
-    }}>{children()}</MessageRowProvider></LeadScreenContext.Provider>,
+    provide: (children) => <LeadScreenContext.Provider value={screen}>{children()}</LeadScreenContext.Provider>,
     openUri: async (uri) => {
-      const opened = parseLeadReportLink(uri)
+      const opened = parseLeadEntryLink(uri)
       if (!opened) return false
       screen.openChat(opened.sessionId, opened.entryId)
       return true
@@ -123,6 +117,18 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
       current,
       terminalTitle: leadTerminalTitle,
       transcript: LEAD_TRANSCRIPT,
+      // A message from a chat is one line that opens the chat where it sent it (PI-LEAD-006): a report, which the
+      // runtime posted, at the final message, and a message that the chat sent itself, such as a milestone, at its call.
+      messageRow: (message) => {
+        const call = sessionMessageCall(message)
+        if (call === undefined) return undefined
+        const reportEntry = leadReportEntry(message)
+        return {
+          name: reportEntry === undefined ? "Update" : "Report",
+          detail: `· ${truncateToWidth(title(message.from.sessionId) || message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`,
+          linkUri: leadEntryLink(message.from.sessionId, reportEntry ?? call),
+        }
+      },
       // The lead is the happy path and tabs the divergent one (PI-LEAD-013, PI-LEAD-014).
       hidesTabControls: true,
     },

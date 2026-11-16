@@ -10,20 +10,17 @@ interface MessageRowPresentation {
 }
 
 /** A message row from another session: its entry id, `msg:<sender>:<call>` (see `blockEntryKeys`), and its sender. */
-type MessageRowReader = (message: { readonly id: string; readonly from: MessageSender }) => MessageRowPresentation | undefined
+export type MessageRowReader = (message: { readonly id: string; readonly from: MessageSender }) => MessageRowPresentation | undefined
 
 const MessageRowContext = createContext<MessageRowReader>(() => undefined)
 
-/** The presentation that a module gives a message row from another session, or undefined for the ordinary row. */
+/** The presentation that the transcript gives a message row from another session, or undefined for the ordinary row. */
 export function useMessageRow(): MessageRowReader {
   return useContext(MessageRowContext)
 }
 
-/** Gives the message rows below it the presentation that `present` answers; a row it answers nothing for keeps the
- *  presentation of the providers above. */
+/** Gives the message rows of one transcript below it the presentation that `present` answers. */
 export function MessageRowProvider(props: { readonly present: MessageRowReader; readonly children: JSX.Element }): JSX.Element {
-  const outer = useMessageRow()
   // A provider's presentation is fixed for its life, as a context value is.
-  const present = untrack(() => props.present)
-  return <MessageRowContext.Provider value={(message) => present(message) ?? outer(message)}>{props.children}</MessageRowContext.Provider>
+  return <MessageRowContext.Provider value={untrack(() => props.present)}>{props.children}</MessageRowContext.Provider>
 }

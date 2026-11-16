@@ -6,7 +6,8 @@ import { textBlock } from "../../_output-window-transcript.js"
 import { testRender } from "@opentui/solid"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import { UserMessageBlock } from "../../../../../src/tui/output-blocks/user-message-block.js"
-import { leadReportLink } from "../../../../../src/protocol/modules/lead.js"
+import { MessageRowProvider } from "../../../../../src/tui/context/message-row.js"
+import { leadEntryLink } from "../../../../../src/protocol/modules/lead.js"
 import { choiceQuestion, leadHarness, leadRow, mountStrip } from "./_lead-fixtures.js"
 
 const theme = resolveTheme(flywheelTheme, "dark")
@@ -242,10 +243,12 @@ describe("the lead's full-chat viewer", () => {
     // The line names each chat by its title now, as the Sessions list does.
     const lead = leadHarness([], {}, undefined, { done: "DAG Failures", long: "Investigate why the nightly DAG failures started after the warehouse migration" })
     cleanups.push(lead.dispose)
-    const row = await testRender(() => <ThemeProvider mode="dark">{lead.client.provide?.(() => <UserMessageBlock block={{
+    // The rows of the lead's transcript, as the output window presents them for the first tab.
+    const leadMessageRow = (block: Parameters<typeof UserMessageBlock>[0]["block"]) => <ThemeProvider mode="dark"><MessageRowProvider present={lead.client.firstTab!.messageRow!}><UserMessageBlock block={block} /></MessageRowProvider></ThemeProvider>
+    const row = await testRender(() => leadMessageRow({
       kind: "userMessage", id: "msg:done:lead-report:final", content: "The build passes now.\nAll 40 tests ran.", timestamp: 1, pending: false, injected: false,
       from: { sessionId: "done", name: "New Chat", relation: "other" },
-    }} />)}</ThemeProvider>, { width: 80, height: 4 })
+    }), { width: 80, height: 4 })
     cleanups.push(() => { row.renderer.destroy() })
     await row.renderOnce()
     const frame = row.captureCharFrame()
@@ -253,10 +256,10 @@ describe("the lead's full-chat viewer", () => {
     expect(frame).not.toContain("The build passes now.")
 
     // A long title is cut, so the line stays one row with its open action.
-    const long = await testRender(() => <ThemeProvider mode="dark">{lead.client.provide?.(() => <UserMessageBlock block={{
+    const long = await testRender(() => leadMessageRow({
       kind: "userMessage", id: "msg:long:lead-report:final", content: "Done.", timestamp: 1, pending: false, injected: false,
       from: { sessionId: "long", name: "New Chat", relation: "other" },
-    }} />)}</ThemeProvider>, { width: 80, height: 4 })
+    }), { width: 80, height: 4 })
     cleanups.push(() => { long.renderer.destroy() })
     await long.renderOnce()
     const lines = long.captureCharFrame().split("\n").filter((line) => line.trim().length > 0)
@@ -265,7 +268,7 @@ describe("the lead's full-chat viewer", () => {
 
     const strip = await mountStrip([], { width: 100, height: 40, transcripts: { done: [textBlock("other", "Earlier work."), textBlock("final", "The build passes now.")] } })
     cleanups.push(strip.dispose)
-    expect(await strip.client.openUri(leadReportLink("done", "final"))).toBe(true)
+    expect(await strip.client.openUri(leadEntryLink("done", "final"))).toBe(true)
     await strip.viewerKey("pagedown")
     expect(title(strip.rendered.captureCharFrame())).toBe("done")
     const marked = strip.rendered.captureSpans().lines.flatMap((line) => line.spans).filter((span) => span.text.includes("The build passes now."))

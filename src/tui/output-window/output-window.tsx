@@ -13,6 +13,7 @@ import { TranscriptViewportHeightProvider } from "@tui/context/transcript-viewpo
 import { ImageClipBottomProvider } from "@tui/context/attachment-images.js"
 import { BlockDisclosureProvider } from "@tui/context/block-disclosure.js"
 import { LandingTargetProvider } from "@tui/context/landing-highlight.js"
+import { MessageRowProvider } from "@tui/context/message-row.js"
 import { MutationEvidenceProvider } from "../context/mutation-evidence.js"
 import { parseSessionLink } from "../../protocol/client/session-links.js"
 import { useTheme } from "@tui/context/theme"
@@ -252,6 +253,7 @@ export function OutputWindow(props: OutputWindowProps) {
     <ScrollPreserveProvider value={scroll.preserveScroll}>
     <TranscriptViewportHeightProvider value={transcriptRows}>
     <LandingTargetProvider value={landingTarget}>
+    <MessageRowProvider present={(message) => presentation() ? firstTab.messageRow?.(message) : undefined}>
       <box flexDirection="column" flexGrow={1}>
         <box paddingLeft={1} paddingRight={0} flexDirection="column" flexGrow={1} position="relative">
           <scrollbox
@@ -392,6 +394,7 @@ export function OutputWindow(props: OutputWindowProps) {
           </box>
         </box>
       </box>
+    </MessageRowProvider>
     </LandingTargetProvider>
     </TranscriptViewportHeightProvider>
     </ScrollPreserveProvider>

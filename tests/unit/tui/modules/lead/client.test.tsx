@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { EMPTY_LEAD_CHATS, EMPTY_LEAD_VIEW, leadReportLink, type LeadView } from "../../../../../src/protocol/modules/lead.js"
+import { EMPTY_LEAD_CHATS, EMPTY_LEAD_VIEW, leadEntryLink, type LeadView } from "../../../../../src/protocol/modules/lead.js"
 import type { MutationResult } from "../../../../../src/protocol/app-service-types.js"
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
 import { hidesTabControls } from "../../../../../src/tui/context/client-extensions.js"
@@ -95,7 +95,7 @@ describe("the lead's terminal client", () => {
     const h = harness()
     try {
       expect(await h.client.openUri("flywheel://session/chat-2")).toBe(false)
-      expect(await h.client.openUri(leadReportLink("chat-2", "final-1"))).toBe(true)
+      expect(await h.client.openUri(leadEntryLink("chat-2", "final-1"))).toBe(true)
     } finally {
       h.dispose()
     }

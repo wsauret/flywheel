@@ -184,7 +184,7 @@ export function leadRowOrder(rows: readonly LeadRow[]): readonly LeadRow[] {
 }
 
 const REPORT_CALL_PREFIX = "lead-report:"
-const REPORT_LINK_PREFIX = "flywheel://lead/report/"
+const ENTRY_LINK_PREFIX = "flywheel://lead/chat/"
 
 /** The sending id of the message by which the runtime posts a listed chat's report, its final message `entryId`, to
  *  the lead (PI-LEAD-006). The lead's clients know a report by it. */
@@ -192,26 +192,35 @@ export function leadReportCall(entryId: string): string {
   return `${REPORT_CALL_PREFIX}${entryId}`
 }
 
-/** The final message entry that a report names, read from the entry id `msg:<sender>:<call>` that a message from
- *  another session holds; undefined for any other message. */
-export function leadReportEntry(message: { readonly id: string; readonly from: { readonly sessionId: string } }): string | undefined {
-  const prefix = `msg:${message.from.sessionId}:${REPORT_CALL_PREFIX}`
+/** The sending call of a message from another session, read from the entry id `msg:<sender>:<call>` that the message
+ *  holds; undefined for any other message. A chat's own `message_session` call is its tool use. */
+export function sessionMessageCall(message: { readonly id: string; readonly from: { readonly sessionId: string } }): string | undefined {
+  const prefix = `msg:${message.from.sessionId}:`
   return message.id.startsWith(prefix) ? message.id.slice(prefix.length) || undefined : undefined
 }
 
-/** Whether an entry id names a report, `msg:<sender>:<call>` with a report's sending id, from any sender. */
-export function isLeadReportEntry(entryId: string): boolean {
-  return entryId.startsWith("msg:") && entryId.includes(`:${REPORT_CALL_PREFIX}`)
+/** The final message entry that a report names; undefined for any other message. */
+export function leadReportEntry(message: { readonly id: string; readonly from: { readonly sessionId: string } }): string | undefined {
+  const call = sessionMessageCall(message)
+  return call?.startsWith(REPORT_CALL_PREFIX) ? call.slice(REPORT_CALL_PREFIX.length) || undefined : undefined
 }
 
-/** The link of a report's line, which opens the chat at its final message. */
-export function leadReportLink(sessionId: string, entryId: string): string {
-  return `${REPORT_LINK_PREFIX}${encodeURIComponent(sessionId)}/${encodeURIComponent(entryId)}`
+/** Whether an entry id names a message from another session, `msg:<sender>:<call>`: a report, or a message that a
+ *  chat sent with `message_session`, such as a milestone (PI-LEAD-006). No person asked for it, so it starts a turn of
+ *  its own in the lead's transcript. */
+export function isSessionMessageEntry(entryId: string): boolean {
+  return entryId.startsWith("msg:")
 }
 
-export function parseLeadReportLink(uri: string): { readonly sessionId: string; readonly entryId: string } | undefined {
-  if (!uri.startsWith(REPORT_LINK_PREFIX)) return undefined
-  const [sessionId, entryId, ...rest] = uri.slice(REPORT_LINK_PREFIX.length).split("/")
+/** The link of a line that opens a chat at one entry, such as a report's final message or the call that sent a
+ *  message. */
+export function leadEntryLink(sessionId: string, entryId: string): string {
+  return `${ENTRY_LINK_PREFIX}${encodeURIComponent(sessionId)}/${encodeURIComponent(entryId)}`
+}
+
+export function parseLeadEntryLink(uri: string): { readonly sessionId: string; readonly entryId: string } | undefined {
+  if (!uri.startsWith(ENTRY_LINK_PREFIX)) return undefined
+  const [sessionId, entryId, ...rest] = uri.slice(ENTRY_LINK_PREFIX.length).split("/")
   return sessionId && entryId && rest.length === 0 ? { sessionId: decodeURIComponent(sessionId), entryId: decodeURIComponent(entryId) } : undefined
 }
 

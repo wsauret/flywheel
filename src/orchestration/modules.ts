@@ -113,6 +113,16 @@ interface ToolExposureGateInput {
 }
 export type ToolExposureGate = (input: ToolExposureGateInput) => Promise<ReadonlyMap<string, string>> | ReadonlyMap<string, string>
 
+/** A use of `message_session` that a module adds for one chat beyond the kernel's own, so the tool's contract differs
+ *  by the kind of agent that calls it with no new tool (ARCH-CONTEXT-040). The kernel reads it only for an agent with
+ *  its own engine (`KernelToolDeps.messageUses`). */
+interface MessageUseContribution {
+  /** The clause for this runner's chat, worded to follow "Use it only to:", or undefined when the chat has none. The
+   *  answer changes only with the module's own state, such as a turn-off, because the tool's bytes lead the chat's
+   *  cached requests. */
+  readonly use: (modules: ModuleRuntimes) => Promise<string | undefined>
+}
+
 interface PromptRosterContribution {
   readonly definition: "skills" | "web"
   readonly visibility: "model-invocable"
@@ -149,6 +159,7 @@ interface FirstPartyContributionMap {
     { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/llm/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/provider-availability-types.js").ProviderAllowanceFactory }
   readonly tools: { readonly kind: "tool"; readonly name: string; readonly declaration: ToolDeclaration<string>; readonly associatedPromptRosterIds?: readonly PromptRosterContribution["definition"][] }
   readonly promptFragments: PromptFragmentContribution
+  readonly messageUses: MessageUseContribution
   readonly turnReminders: TurnReminderContribution
   readonly promptRosters: PromptRosterContribution
   readonly definitions: DefinitionContribution

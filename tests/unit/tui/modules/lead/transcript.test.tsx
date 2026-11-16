@@ -7,7 +7,7 @@ import { gatherCallStretches, turnFoldSummary } from "../../../../../src/protoco
 import { projectFrontendOutputBlocks } from "../../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { projectBlocksFromEntries } from "../../../../../src/orchestration/session/conversation/conversation-block-projection.js"
 import type { ConversationTreeTranscriptEntry } from "../../../../../src/orchestration/session/conversation/conversation-projection.js"
-import { leadReportLink } from "../../../../../src/protocol/modules/lead.js"
+import { leadEntryLink } from "../../../../../src/protocol/modules/lead.js"
 import { ClientExtensionProviders, ClientExtensionsProvider } from "../../../../../src/tui/context/client-extensions.js"
 import { NavigationProvider } from "../../../../../src/tui/context/navigation.js"
 import { createBlockDisclosureChannel } from "../../../../../src/tui/context/block-disclosure.js"
@@ -179,6 +179,41 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     } finally { quiet.dispose() }
   })
 
+  it("shows a chat's own message as one Update line that ends the stretch before it and opens the chat at its call", async () => {
+    const update: FrontendOutputBlock = {
+      kind: "userMessage", id: "msg:done:call-7", content: "Done: PR 42 is open, and I wait on its CI.", timestamp: 6000, pending: false, injected: false,
+      from: { sessionId: "done", name: "DAG Failures", relation: "other" },
+    }
+    const reply: FrontendOutputBlock = { kind: "text", id: "reply", content: "DAG Failures opened PR 42 and waits on CI.", timestamp: 9000 }
+    const tab = await mountTab(LEAD_ID, [...turn, update, { ...progress, id: "after", timestamp: 7000 }, reply])
+    try {
+      const frame = await tab.frame()
+      expect(frame).toContain("Worked 3s · checked chats, started 1 chat")
+      expect(frame).toContain(`▸ ${formatStartTime(7000)} · Worked 2s · checked chats`)
+      expect(frame).toContain("Update · Chat done · open")
+      expect(frame).not.toContain("PR 42 is open")
+      expect(frame.indexOf("Update · ")).toBeLessThan(frame.indexOf("Worked 2s"))
+      expect(frame).toContain("DAG Failures opened PR 42 and waits on CI.")
+      const rows = frame.split("\n")
+      const y = rows.findIndex((row) => row.includes("Update · Chat done · open"))
+      await tab.result.mockMouse.click(rows[y]!.lastIndexOf("open") + 1, y)
+      expect(tab.navigated).toEqual([leadEntryLink("done", "call-7")])
+    } finally { tab.dispose() }
+  })
+
+  it("keeps the ordinary disclosure for a message from another session on any tab but the lead's", async () => {
+    const queued: FrontendOutputBlock = {
+      kind: "userMessage", id: "msg:peer:call-3", content: "The header check fails in your file.", timestamp: 6000, pending: true, injected: false,
+      from: { sessionId: "peer", name: "Header Fix", relation: "other" },
+    }
+    const tab = await mountTab("other-chat", [person, queued], false, 30, "chat")
+    try {
+      const frame = await tab.frame()
+      expect(frame).toContain("Message from")
+      expect(frame).not.toContain("Update ·")
+    } finally { tab.dispose() }
+  })
+
   it("shows each report of a live run as its own line, keeps the words of a turn that ended on a call above its closed heading, and a click opens the report", async () => {
     // The rows that a reload reads: the runtime's own projection of the stored entries.
     const blocks = projectFrontendOutputBlocks(projectBlocksFromEntries(LIVE_LEAD_ENTRIES, { executionCwd: "/project" }))
@@ -201,7 +236,7 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       const rows = frame.split("\n")
       const y = rows.findIndex((row) => row.includes("Report · Pick a Color · open"))
       await tab.result.mockMouse.click(rows[y]!.lastIndexOf("open") + 1, y)
-      expect(tab.navigated).toEqual([leadReportLink("e1c82693293b", "166f9bae")])
+      expect(tab.navigated).toEqual([leadEntryLink("e1c82693293b", "166f9bae")])
     } finally { tab.dispose() }
   })
 

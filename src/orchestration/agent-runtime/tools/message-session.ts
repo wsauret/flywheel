@@ -172,11 +172,19 @@ function launchToolUseIdOf(recipient: Pick<ReplayedSession, "launchedFrom">, sen
  *  targets that it can reach and leaves out the rules about the person.
  *  `workflowTargets` is false only for a tree that no person reads and whose
  *  capture has no workflow tool: no workflow address or workflow child exists
- *  there, so the form names no workflow (ARCH-CONTEXT-033). */
-export function messageSessionToolDefinition(unattendedChat: boolean, workflowTargets: boolean): AdvertisedTool {
-  const uses = unattendedChat
-    ? "answer a question that a session asked you; or revise the instructions of your own child"
-    : "answer a question that a session asked you; revise the instructions of your own child; deliver what your person asked you to send; or tell another root chat once that a check fails in a file that it owns";
+ *  there, so the form names no workflow (ARCH-CONTEXT-033). `extraUses` are
+ *  the uses that modules add for this chat (`KernelToolDeps.messageUses`):
+ *  each joins the list of uses, and the rule against status messages then
+ *  covers only what the list does not allow (ARCH-CONTEXT-040). */
+export function messageSessionToolDefinition(unattendedChat: boolean, workflowTargets: boolean, extraUses: readonly string[] = []): AdvertisedTool {
+  const uses = [
+    "answer a question that a session asked you",
+    "revise the instructions of your own child",
+    ...unattendedChat ? [] : ["deliver what your person asked you to send", "tell another root chat once that a check fails in a file that it owns"],
+    ...extraUses,
+  ];
+  const useList = `${uses.slice(0, -1).join("; ")}; or ${uses.at(-1)}`;
+  const forbidden = extraUses.length > 0 ? "Beyond these uses, do not send" : "Do not send";
   const askUp = unattendedChat
     ? "When you cannot answer a question that your child asked, ask your parent only that question, in your own words."
     : "Your person sees every message that you send or receive, so do not quote or restate one to your person unless your person asks. When you cannot answer a question that your child asked, ask only that question, in your own words, of your parent, or of your person if you have no parent.";
@@ -186,7 +194,7 @@ export function messageSessionToolDefinition(unattendedChat: boolean, workflowTa
   return {
     name: MESSAGE_SESSION_TOOL_NAME,
     action: "ui_meta",
-    description: `Send one message to another session${workflowTargets ? " or a workflow" : ""} of this project. Use it only to: ask a question that blocks your work and that your own tools cannot answer; ${uses}. A message is not a conversation. Put everything the recipient needs in one message. A question gets one answer, and an answer ends the exchange: do not reply to it unless it asks you a new question. Do not send acknowledgements, thanks, confirmations, status or progress reports, promises such as "I will notify you when", requests such as "tell me when it lands", "are you done?" checks, or news that you finished: a completion notice tells your parent. Do not pass on a message to a session that already has it, or send one message to several sessions other than your own children. ${askUp} Peers are not your workers: never ask a session that is not your own child to fix, commit, publish, or revert its files for you. A message to your own interrupted child continues its work, unless a person made its latest interrupt.${workflowRules} With wait true, your turn parks until the reply arrives or a notice ends the wait; with no text, you wait without sending anything. A session that does not reply has not agreed to anything, so do not act as if it had.`,
+    description: `Send one message to another session${workflowTargets ? " or a workflow" : ""} of this project. Use it only to: ask a question that blocks your work and that your own tools cannot answer; ${useList}. A message is not a conversation. Put everything the recipient needs in one message. A question gets one answer, and an answer ends the exchange: do not reply to it unless it asks you a new question. ${forbidden} acknowledgements, thanks, confirmations, status or progress reports, promises such as "I will notify you when", requests such as "tell me when it lands", "are you done?" checks, or news that you finished: a completion notice tells your parent. Do not pass on a message to a session that already has it, or send one message to several sessions other than your own children. ${askUp} Peers are not your workers: never ask a session that is not your own child to fix, commit, publish, or revert its files for you. A message to your own interrupted child continues its work, unless a person made its latest interrupt.${workflowRules} With wait true, your turn parks until the reply arrives or a notice ends the wait; with no text, you wait without sending anything. A session that does not reply has not agreed to anything, so do not act as if it had.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -211,11 +219,11 @@ export function messageSessionToolDefinition(unattendedChat: boolean, workflowTa
 /** `tasks` is the background work of the caller's run, which holds each
  *  reply wait; a run without one cannot wait. `unattendedChat` selects the
  *  form and the result text of an unattended chat, which name no list_sessions.
- *  `workflowTargets` is described at `messageSessionToolDefinition`. */
-export function createMessageSessionTool(sessions: SessionMessaging, tasks?: ReplyWaitTasks, unattendedChat = false, workflowTargets = true): RuntimeTool {
+ *  `workflowTargets` and `extraUses` are described at `messageSessionToolDefinition`. */
+export function createMessageSessionTool(sessions: SessionMessaging, tasks?: ReplyWaitTasks, unattendedChat = false, workflowTargets = true, extraUses: readonly string[] = []): RuntimeTool {
   const reasons = unattendedChat ? UNATTENDED_REASON_TEXT : REASON_TEXT;
   return {
-    ...messageSessionToolDefinition(unattendedChat, workflowTargets),
+    ...messageSessionToolDefinition(unattendedChat, workflowTargets, extraUses),
     async execute(input, context): Promise<ToolResult> {
       const to = typeof input.to === "string" ? input.to.trim() : "";
       const text = typeof input.text === "string" ? input.text.trim() : "";

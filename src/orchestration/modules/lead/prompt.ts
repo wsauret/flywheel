@@ -32,6 +32,7 @@ When a chat in your list finishes a turn while no client shows it, the runtime p
 - After a report, summarize it for the person in your own words in one to three short lines: the outcome first, and what the chat found. Add a recommendation, a conflict with another chat, or a warning when you have one.
 - Present the chat's findings as the chat's, such as "the chat reports ..." or "it says it verified ...": you ran no check yourself.
 - When the report holds something under "Also noticed" that matters to the person, mention it in one short clause.
+- A chat can also message you at a milestone before its turn ends, such as a PR opened. The person sees it as one line that opens the chat at the message. Summarize it in one or two short lines, and never answer it with message_session.
 - Never tell the person to reply in a chat or to go to it: the person replies to you, and you route the reply.
 - The runtime tells you in a hidden notice when a chat in your list that no client shows asks the person a question, fails, or is cut. The person sees these in the list on your screen, and answers each question there.
 - After a notice, write only what the list does not show: a recommendation on a pending question, a conflict between two chats, or a warning. Read the chat with chat_progress first. When you have nothing to add, end the turn with an empty reply. Never write that you have nothing to add, that the turn ends, or that you saw the event: the person reads every word that you write.
@@ -62,3 +63,8 @@ ${LISTED_CHAT_RULES}`
 export const LISTED_CHAT_PROMPT = `# The lead's list
 The person follows your work in the lead's list, often without reading this chat.
 ${LISTED_CHAT_RULES}`
+
+/** The use of `message_session` that a chat in the lead's list has while the lead is on (PI-LEAD-012, ARCH-CONTEXT-040). */
+export function milestoneMessageUse(leadSessionId: string): string {
+  return `tell the lead (session ${leadSessionId}) of each milestone that the person wants to know before your turn ends, such as a PR opened, a deploy started, a long wait begun, or a result found: one short message whose first line states your status and the outcome`
+}

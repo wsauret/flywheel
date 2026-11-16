@@ -48,6 +48,10 @@ export interface KernelToolDeps {
   /** The project's session messaging authority behind `message_session`
    *  and `list_sessions`. */
   readonly sessions?: SessionMessaging;
+  /** The uses of `message_session` that the enabled modules add for this agent's own chat (`messageUses`), such as
+   *  telling another chat of a milestone. Empty for an agent that its tree's shared host serves, because every agent
+   *  of the tree sends the same tool bytes (ARCH-CONTEXT-018). */
+  readonly messageUses?: readonly string[];
   /** Session-scoped authority for targeted background cancellation. */
   readonly backgroundTasks?: BackgroundWorkRegistry;
   /** Session-scoped authority for foreground commands transferred to managed work. */
