@@ -66,5 +66,5 @@ ${LISTED_CHAT_RULES}`
 
 /** The use of `message_session` that a chat in the lead's list has while the lead is on (PI-LEAD-012, ARCH-CONTEXT-040). */
 export function milestoneMessageUse(leadSessionId: string): string {
-  return `tell the lead (session ${leadSessionId}) of each milestone that the person wants to know before your turn ends, such as a PR opened, a deploy started, a long wait begun, or a result found: one short message whose first line states your status and the outcome`
+  return `tell the lead (session ${leadSessionId}) of each milestone that the person wants to know before your turn ends, such as a PR opened, a deploy started, a long wait begun, or a result found: one short message whose first line states your status and the outcome, and never one when your turn ends, because the lead gets your final message then`
 }
