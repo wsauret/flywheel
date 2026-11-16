@@ -1,0 +1,38 @@
+src/tui/app.tsx
+  h_4b47e9e4a8b456 148
+src/tui/components/modal.tsx
+  h_4b47e9e4a8b456 74-77,107,114-138
+src/tui/context/client-extensions.tsx
+  h_4b47e9e4a8b456 1
+src/tui/hooks/create-child-viewer-opener.tsx
+  h_4b47e9e4a8b456 2,6,19-20,26-48,53,62,65,68
+src/tui/modules.ts
+  h_4b47e9e4a8b456 12-15,27-44
+src/tui/modules/workflows/index.tsx
+  h_4b47e9e4a8b456 9,11,32,40,43,54,57,61,86
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 8,14-15,149,276-277,303,332-333,338,502,632-633
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 32
+tests/unit/tui/components/child-session-viewer.test.tsx
+  h_4b47e9e4a8b456 29,35-44,235,244-247,253-255,259,271,289-298,305-306,322,329-330
+tests/unit/tui/components/context-control.test.tsx
+  h_4b47e9e4a8b456 7,32,55
+tests/unit/tui/components/modal.test.tsx
+  h_4b47e9e4a8b456 13-14,51-62,84,95-97,108-113,197-208
+tests/unit/tui/module-navigation.test.ts
+  h_4b47e9e4a8b456 1-33
+tests/unit/tui/output-blocks/user-message-block.test.tsx
+  h_4b47e9e4a8b456 15,304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a7360aec46045dd6a8fedc7da99331a5565d0d47",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
