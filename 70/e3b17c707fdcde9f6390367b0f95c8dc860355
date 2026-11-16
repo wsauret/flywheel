@@ -1,0 +1,22 @@
+src/orchestration/app-service/replacement-blockers.ts
+  h_4b47e9e4a8b456 85-90,117-124,141-144,146-148,162-169,171-176,178-179,239-240,296
+tests/unit/orchestration/app-service/app-service-replacement-admission.test.ts
+  h_4b47e9e4a8b456 37,85,118
+tests/unit/orchestration/app-service/project-executor-lifecycle.test.ts
+  h_4b47e9e4a8b456 116
+tests/unit/orchestration/app-service/replacement-blockers.test.ts
+  h_4b47e9e4a8b456 2,8-14,22-27,46,66-69,71-74,77-81,84-88,90-143,148,166,211,219
+tests/unit/orchestration/app-service/replacement-owner.test.ts
+  h_4b47e9e4a8b456 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "70e3b17c707fdcde9f6390367b0f95c8dc860355",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
