@@ -9,6 +9,7 @@ import { normalizeAskUserInput } from "../../../../../src/infra/tools/displays/a
 import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentInputAnswer } from "../../../../../src/protocol/question-protocol-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { asRecord, isRecord } from "../../../../../src/infra/record.js";
 
@@ -140,7 +141,7 @@ describe("ask_user tool", () => {
     const result = await executePreparedTool(prepareToolCall({ id: "ask", name: "ask_user", input: {
       question: "Which mode?", context: "Choose a mode.",
       options: ["Fast", "Safe"],
-    } }, new Map([[tool.name, tool]]), { ok: true }), makeContext());
+    } }, new Map([[tool.name, tool]]), admitEveryTool), makeContext());
 
     expect(result).toEqual({
       content: "Note: string options were read as option labels.\nUser answered:\n- Which mode?: Safe",
@@ -163,7 +164,7 @@ describe("ask_user tool", () => {
         { question: "Option?", options: ["A", "B"] },
         { question: "Filename?", options: ["one.txt", "two.txt"] },
       ],
-    } }, new Map([[tool.name, tool]]), { ok: true }), makeContext());
+    } }, new Map([[tool.name, tool]]), admitEveryTool), makeContext());
 
     expect(result).toEqual({
       content: "Note: string options were read as option labels.\nUser answered:\n- Option?: A\n- Filename?: (cancelled by the user)",

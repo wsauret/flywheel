@@ -73,7 +73,7 @@ interface BudgetRequestCapture {
   providerOptions: ProviderRequestOptions | undefined;
   cacheRetentionPolicies?: StreamOptions["cacheRetentionPolicies"];
   tools: ReadonlyMap<string, RuntimeTool>;
-  executionAdmission?: (toolName: string) => import("./tools/tool-dispatch.js").PreparedCallCapabilityAdmission;
+  executionAdmission: import("./tools/tool-dispatch.js").ExecutionAdmission;
   toolExecutionGate?: import("./tools/tool-dispatch.js").ToolExecutionGate;
 }
 
@@ -256,7 +256,7 @@ async function attemptExhaustionTurn(input: ExhaustionStreamInput & BudgetReques
       const registrationIds = new Map(outgoing.prepared.auditTools.map(({ executableId, registrationId }) => [executableId, registrationId]));
       const dispatcher = createTurnDispatcher({
         tools: input.tools,
-        ...(input.executionAdmission ? { executionAdmission: input.executionAdmission } : {}),
+        executionAdmission: input.executionAdmission,
         toolContext: input.toolContext,
         signal: input.signal,
         background: input.background,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { prepareToolCall, preparedToolAdmission, repairToolCall, repairToolName } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 import { applyPatchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/apply-patch.js";
@@ -81,7 +82,7 @@ describe("repairToolCall and prepareToolCall integration", () => {
   });
 
   it("prepareToolCall resolves the repaired tool instead of rejecting", () => {
-    const prepared = prepareToolCall({ id: "t3", name: "Write_tool", input: {} }, tools);
+    const prepared = prepareToolCall({ id: "t3", name: "Write_tool", input: {} }, tools, admitEveryTool);
     expect(prepared.validationResult).toBeUndefined();
     expect(prepared.tool?.name).toBe("write");
     expect(prepared.call.name).toBe("write");
@@ -96,7 +97,7 @@ describe("repairToolCall and prepareToolCall integration", () => {
         inputSchema: { type: "object", properties: { urls: { type: "array", items: { type: "string" } } } },
       },
     ]]);
-    const prepared = prepareToolCall({ id: "t5", name: "fetch", input: { urls: "https://a.com" } }, wrapTools);
+    const prepared = prepareToolCall({ id: "t5", name: "fetch", input: { urls: "https://a.com" } }, wrapTools, admitEveryTool);
     expect(prepared.validationResult).toBeUndefined();
     expect(prepared.input).toEqual({ urls: ["https://a.com"] });
     expect(prepared.call.inputRepairs).toEqual([{ kind: "wrapped_in_array", path: "urls" }]);
@@ -105,22 +106,22 @@ describe("repairToolCall and prepareToolCall integration", () => {
   it("prepareToolCall repairs the arguments real tools refused, and still refuses a key that could change meaning", async () => {
     const realTools = new Map<string, RuntimeTool>([["bash", createBashDefinition({ operations: makeMockOps() })], ["edit", editDefinition], ["search", searchDefinition]]);
 
-    const bash = prepareToolCall({ id: "r1", name: "bash", input: { command: "ls", timeout: null, windowsHide: true } }, realTools);
+    const bash = prepareToolCall({ id: "r1", name: "bash", input: { command: "ls", timeout: null, windowsHide: true } }, realTools, admitEveryTool);
     await preparedToolAdmission(bash, makeContext());
     expect(bash.validationResult).toBeUndefined();
     expect(bash.input).toEqual({ command: "ls" });
     expect(bash.call.inputRepairs).toEqual([{ kind: "dropped_null", path: "timeout" }, { kind: "dropped_key", path: "windowsHide" }]);
 
-    const edit = prepareToolCall({ id: "r2", name: "edit", input: { file_path: "a.ts", old_text: "x", new_string: "y" } }, realTools);
+    const edit = prepareToolCall({ id: "r2", name: "edit", input: { file_path: "a.ts", old_text: "x", new_string: "y" } }, realTools, admitEveryTool);
     await preparedToolAdmission(edit, makeContext());
     expect(edit.validationResult).toBeUndefined();
     expect(edit.input).toEqual({ path: "a.ts", edits: [{ old_string: "x", new_string: "y" }] });
     expect(edit.repairNotice).toBe("Note: `file_path` was read as `path`.\nNote: `old_text` was read as `old_string`.\nNote: `old_string`, `new_string` were read as the one entry of `edits`.");
-    const replaceAll = prepareToolCall({ id: "r2b", name: "edit", input: { path: "a.ts", old_string: "x", new_string: "y", replace_all: "true" } }, realTools);
+    const replaceAll = prepareToolCall({ id: "r2b", name: "edit", input: { path: "a.ts", old_string: "x", new_string: "y", replace_all: "true" } }, realTools, admitEveryTool);
     await preparedToolAdmission(replaceAll, makeContext());
     expect(replaceAll.validationResult).toBeUndefined();
     expect(replaceAll.input).toEqual({ path: "a.ts", edits: [{ old_string: "x", new_string: "y", replace_all: true }] });
-    const batch = prepareToolCall({ id: "r2c", name: "edit", input: { file_path: "a.ts", edits: [{ old_text: "x", new_string: "y" }] } }, realTools);
+    const batch = prepareToolCall({ id: "r2c", name: "edit", input: { file_path: "a.ts", edits: [{ old_text: "x", new_string: "y" }] } }, realTools, admitEveryTool);
     await preparedToolAdmission(batch, makeContext());
     expect(batch.input).toEqual({ path: "a.ts", edits: [{ old_string: "x", new_string: "y" }] });
     expect(batch.call.inputRepairs).toEqual([
@@ -128,24 +129,24 @@ describe("repairToolCall and prepareToolCall integration", () => {
       { kind: "renamed_key", path: "edits.0.old_string", from: "old_text" },
     ]);
 
-    const search = prepareToolCall({ id: "r3", name: "search", input: { pattern: "x", output_mode: "files_with_matches" } }, realTools);
+    const search = prepareToolCall({ id: "r3", name: "search", input: { pattern: "x", output_mode: "files_with_matches" } }, realTools, admitEveryTool);
     await preparedToolAdmission(search, makeContext());
     expect(search.validationResult).toBeUndefined();
     expect(search.input).toEqual({ pattern: "x", output_mode: "matching_files" });
 
     // apply_patch takes raw patch text, so an escape in it stays as written.
     const patch = "*** Begin Patch\n*** Update File: a.ts\n@@\n-const s = \"caf\\u00e9\";\n+const s = \"cafe\";\n*** End Patch";
-    const applyPatch = prepareToolCall({ id: "r5", name: "apply_patch", input: { input: patch } }, new Map([["apply_patch", applyPatchDefinition]]));
+    const applyPatch = prepareToolCall({ id: "r5", name: "apply_patch", input: { input: patch } }, new Map([["apply_patch", applyPatchDefinition]]), admitEveryTool);
     expect(applyPatch.input).toEqual({ input: patch });
     expect(applyPatch.call.inputRepairs).toBeUndefined();
 
-    const unknown = prepareToolCall({ id: "r4", name: "search", input: { pattern: "x", respect_gitignore: true } }, realTools);
+    const unknown = prepareToolCall({ id: "r4", name: "search", input: { pattern: "x", respect_gitignore: true } }, realTools, admitEveryTool);
     await preparedToolAdmission(unknown, makeContext());
     expect(unknown.validationResult?.content).toContain("An unexpected parameter `respect_gitignore` was provided");
   });
 
   it("prepareToolCall still rejects unrepairable names with the available list", () => {
-    const prepared = prepareToolCall({ id: "t4", name: "launch_missiles", input: {} }, tools);
+    const prepared = prepareToolCall({ id: "t4", name: "launch_missiles", input: {} }, tools, admitEveryTool);
     expect(prepared.validationResult?.outcome).toBe("error");
     expect(prepared.validationResult?.content).toContain("Unknown tool");
   });

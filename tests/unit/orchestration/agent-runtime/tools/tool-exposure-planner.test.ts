@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { KernelToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { callerToolGrant, planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import { testBaseTools, testCapabilityModules, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
+import { testBaseTools, testCapabilityModules, testRuntimeConfigCapture, plannedRequest, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { HandoffToolSchema } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
@@ -465,7 +465,7 @@ describe("planToolExposure", () => {
 
     const refused = (await plan(kernel, [["subagents", subagentsRuntime()]], { granted: callerToolGrant(["read"]) })).tools.get("subagent");
     expect([refused?.description, refused?.inputSchema, refused?.contract]).toEqual([granted?.description, granted?.inputSchema, undefined]);
-    const result = await executePreparedTool(prepareToolCall({ id: "c", name: "subagent", input: {} }, new Map([["subagent", refused!]]), { ok: true }), makeContext());
+    const result = await executePreparedTool(prepareToolCall({ id: "c", name: "subagent", input: {} }, new Map([["subagent", refused!]]), admitEveryTool), makeContext());
     expect([result.outcome, String(result.content).includes("Contract of the subagent tool.")]).toEqual(["error", false]);
   });
 

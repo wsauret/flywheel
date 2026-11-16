@@ -22,7 +22,7 @@ import type { KernelToolDeps } from "./tools/kernel-tool-deps.js";
 import type { RuntimeTool } from "./tools/types.js";
 import { moduleDisabledReason } from "../../protocol/module-ids.js";
 import { exposedToolName, toolRegistryFromComposition } from "./tools/tool-registry.js";
-import type { PreparedCallCapabilityAdmission } from "./tools/tool-dispatch.js";
+import type { ExecutionAdmission } from "./tools/tool-dispatch.js";
 import type { AdmittedModelRequest, ModelClient, ModelRequestRoute, ServingAttempt, StreamOptions, ToolPresentation } from "./llm/types.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
@@ -160,7 +160,7 @@ interface RequestToolSurface {
   /** Next-request policy captured at the same admission boundary as tools and providers. */
   readonly runtimeConfig: RuntimeConfigRequestCapture;
   /** Capability admission fixed with the advertised tool surface. */
-  executionAdmission(toolName: string): PreparedCallCapabilityAdmission;
+  readonly executionAdmission: ExecutionAdmission;
   /** Provider planning, factories, and billing derived from this exact request composition. */
   readonly providerRegistry: AccessProviderRegistry;
   /** Main and auxiliary provider clients prepared from `moduleSnapshot`. */

@@ -7,7 +7,7 @@ import { createToolConcurrencyGate } from "../../../../../src/orchestration/agen
 import type { RuntimeTool, ToolContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import type { EventPayload, StoredFact } from "../../../../../src/infra/event-store-types.js";
-import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
+import { RequestToolMap, requestAdmission } from "../../../../helpers/request-tool-surface.js";
 import { SLOW_UNIT_BUDGET_MS } from "../../../../../src/infra/event-loop-lag.js";
 import { Log } from "../../../../../src/infra/log.js";
 import { createHandoffTracker } from "../../../../../src/orchestration/agent-runtime/agent-loop-handoff.js";
@@ -186,6 +186,20 @@ describe("nested tool dispatch batch", () => {
     for (const rawInput of ['{"count":', [], null, 2]) expect((await Effect.runPromise(batch.execute("read", rawInput))).outcome).toBe("error");
     await Effect.runPromise(batch.close());
     expect(received).toHaveLength(1);
+  });
+
+  it("admits a nested call named 'Bash' through the request surface's admission and runs bash", async () => {
+    const received: unknown[] = [];
+    const bash: RuntimeTool = { ...tool("bash", async (input) => { received.push(input); return { content: "ran", outcome: "ok" }; }), inputSchema: { type: "object", properties: { command: { type: "string" } } } };
+    const tools = new Map([[bash.name, bash]]);
+    const batch = createNestedToolDispatchBatch({
+      executionAdmission: await requestAdmission(tools),
+      tools, context: context(), gate: createToolConcurrencyGate(10), parentToolUseId: "outer", publisher: publisher([]),
+    });
+    const result = await Effect.runPromise(batch.execute("Bash", { command: "pwd" }));
+    await Effect.runPromise(batch.close());
+    expect(result).toEqual({ content: "Note: tool 'Bash' was read as 'bash'.\nran", outcome: "ok" });
+    expect(received).toEqual([{ command: "pwd" }]);
   });
 
   it("does not emit a breadcrumb when validation fails", async () => {

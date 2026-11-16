@@ -15,7 +15,7 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { MANDATORY_PROTECTED_PATHS } from "../../../../../src/orchestration/modules/experiments/charter.js"
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js"
-import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js"
+import { testKernelToolDeps, admitEveryTool } from "../../../../helpers/request-tool-surface.js"
 
 const snapshot = { active: true, initialized: true, workDir: "/repo", protectedPaths: ["tests/**"], sealedPaths: ["secret/**"] } as const
 /** The experiments runtime as the gates see it: only the charter guard. */
@@ -61,7 +61,7 @@ describe("experiment gate through tool dispatch", () => {
   const guard: ExperimentGuardSnapshot = { active: true, initialized: true, workDir, protectedPaths: [...MANDATORY_PROTECTED_PATHS], sealedPaths: ["secret/**"] }
   const dispatch = (name: string, args: RuntimeToolInput, experimentGuard?: () => ExperimentGuardSnapshot | undefined) =>
     executePreparedTool(
-      prepareToolCall({ id: `call-${name}`, name, input: args }, tools, { ok: true }),
+      prepareToolCall({ id: `call-${name}`, name, input: args }, tools, admitEveryTool),
       makeContext({
         executionCwd: workDir, projectRoot: workDir,
         // As the exposure planner maps them: each registration to the tool it serves.

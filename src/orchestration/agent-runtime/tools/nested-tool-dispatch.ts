@@ -17,7 +17,7 @@ import { readJsonValue } from "../../../infra/llm/json-parse.js";
 import { asRecord } from "../../../infra/record.js";
 import { describeInputRepair } from "./coerce-input.js";
 import type { ExecutionWhitelist } from "./tool-policy.js";
-import { executePreparedTool, prepareToolCall, preparedToolAdmission, withInputRepairNotice, type PreparedToolCall, type ToolExecutionGate } from "./tool-dispatch.js";
+import { executePreparedTool, prepareToolCall, preparedToolAdmission, withInputRepairNotice, type ExecutionAdmission, type PreparedToolCall, type ToolExecutionGate } from "./tool-dispatch.js";
 import type { ToolConcurrencyGate } from "./tool-concurrency-gate.js";
 import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
 import type { ToolCall } from "../llm/types.js";
@@ -159,7 +159,7 @@ export function createNestedToolDispatchBatch(options: {
   readonly executionWhitelist?: ExecutionWhitelist;
   readonly onNestedStart?: (breadcrumb: string) => void;
   readonly toolExecutionGate?: ToolExecutionGate;
-  readonly executionAdmission?: (toolName: string) => import("./tool-dispatch.js").PreparedCallCapabilityAdmission;
+  readonly executionAdmission: ExecutionAdmission;
 }): NestedToolDispatchBatch {
   if (options.parentToolUseId.length === 0 || options.parentToolUseId.includes("#")) {
     throw new Error("Nested tool parent ID must be non-empty and cannot contain '#'.");
@@ -193,8 +193,7 @@ export function createNestedToolDispatchBatch(options: {
       ...(input ? {} : { inputParseError: `Tool '${name}' received an input that is not an object.` }),
       ...(options.modelRequestId ? { modelRequestId: options.modelRequestId } : {}),
     };
-    const prepared = prepareToolCall(call, options.tools);
-    prepared.capabilityAdmission = options.executionAdmission?.(prepared.call.name);
+    const prepared = prepareToolCall(call, options.tools, options.executionAdmission);
     const notices = [
       ...(typeof rawInput === "string" && input ? [describeInputRepair({ kind: "parsed_value", path: "input", type: "object" })] : []),
       ...(prepared.call.repairedFrom ? [`Note: tool '${prepared.call.repairedFrom}' was read as '${prepared.call.name}'.`] : []),

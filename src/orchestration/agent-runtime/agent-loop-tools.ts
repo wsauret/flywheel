@@ -32,7 +32,7 @@ import type { StreamEvent, ToolCall } from "./llm/types.js";
 import { toTextParts } from "../../infra/llm/tool-output-part-schema.js";
 import type { LlmToolOutputPart } from "../../infra/llm/tool-output-part-schema.js";
 import { interruptedToolText } from "./llm/heal-messages.js";
-import { prepareToolCall, type PreparedToolCall, type ToolExecutionGate } from "./tools/tool-dispatch.js";
+import { prepareToolCall, type ExecutionAdmission, type PreparedToolCall, type ToolExecutionGate } from "./tools/tool-dispatch.js";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher, executeDispatchedTool } from "./tools/nested-tool-dispatch.js";
 import { runtimeToolExecution, type RuntimeTool, type ToolAttributionIdentity, type ToolContext, type ToolResult } from "./tools/types.js";
 import { writeToolLifecycleDiagnostic } from "./tools/tool-lifecycle-diagnostics.js";
@@ -65,7 +65,7 @@ export type ToolBatchEvent = Extract<StreamEvent, {
 
 interface TurnDispatcherDeps {
   tools: ReadonlyMap<string, RuntimeTool>;
-  executionAdmission?: (toolName: string) => import("./tools/tool-dispatch.js").PreparedCallCapabilityAdmission;
+  executionAdmission: ExecutionAdmission;
   toolContext: ToolContext;
   /** Turn-scoped signal: aborts on turn interrupt or run disposal. Governs
    *  foreground tools, which live and die within the turn. */
@@ -282,7 +282,7 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
       publisher: createNestedToolFactPublisher(context),
       ...(deps.executionWhitelist ? { executionWhitelist: deps.executionWhitelist } : {}),
       ...(deps.toolExecutionGate ? { toolExecutionGate: deps.toolExecutionGate } : {}),
-      ...(deps.executionAdmission ? { executionAdmission: deps.executionAdmission } : {}),
+      executionAdmission: deps.executionAdmission,
     });
     return context;
   }
@@ -417,7 +417,7 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
     if (attempt.submittedIds.has(tc.id)) return tc;
 
     const attemptCtx = attempt;
-    const prepared = prepareToolCall(tc, deps.tools, deps.executionAdmission?.(tc.name));
+    const prepared = prepareToolCall(tc, deps.tools, deps.executionAdmission);
     // Publish the call immediately. Async preparation finalizes repairs before
     // policy and execution; its durable result carries their notices.
     const call = prepared.call;

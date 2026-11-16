@@ -3,7 +3,7 @@ import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
 import type { KernelToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { testKernelToolDeps, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { withCapabilityGrant, type CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
@@ -134,7 +134,7 @@ describe("background management under capability policy", () => {
       foregroundBashHold,
     });
     const dispatch = (tools: typeof disabled.tools, input: { [key: string]: unknown }, admitted: boolean) =>
-      executePreparedTool(prepareToolCall({ id: "call-bash", name: "bash", input }, tools, { ok: true }), context(admitted));
+      executePreparedTool(prepareToolCall({ id: "call-bash", name: "bash", input }, tools, admitEveryTool), context(admitted));
 
     expect(await dispatch(disabled.tools, { command: "bun server.ts", background: true, persist_after_exit: true }, false)).toEqual({
       content: "The persist_after_exit input of bash is unavailable to this agent now. Do not send it again.",
@@ -147,7 +147,7 @@ describe("background management under capability policy", () => {
       [{ command: { script: "bun server.ts" } }, "`command` type is expected as `string`"],
     ] as const) {
       const malformed = await executePreparedTool(
-        prepareToolCall({ id: "call-bash", name: "bash", input }, disabled.tools, { ok: true }),
+        prepareToolCall({ id: "call-bash", name: "bash", input }, disabled.tools, admitEveryTool),
         context(false),
         { gate: () => {
           effects.push("gate");

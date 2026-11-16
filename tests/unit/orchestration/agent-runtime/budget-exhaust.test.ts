@@ -6,7 +6,7 @@
 
 import { afterEach, describe, expect, it } from "bun:test";
 import { openStandaloneTurn, RunLifecycle } from "../../../../src/orchestration/agent-runtime/run-lifecycle.js";
-import { RequestToolMap } from "../../../helpers/request-tool-surface.js";
+import { RequestToolMap, admitEveryTool } from "../../../helpers/request-tool-surface.js";
 import { runBudgetExhaustionTurn } from "../../../../src/orchestration/agent-runtime/budget-exhaust.js";
 import { resolveModelInteractionProfile } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import {
@@ -77,7 +77,7 @@ describe("budget exhaust turn under failover", () => {
         captures++;
         return {
           client: fixture.client, request: await fixture.client.admitRequest(), interactionProfile,
-          providerOptions: undefined, tools, appendEntries: async () => {}, materializeCandidatePolicy: () => {},
+          providerOptions: undefined, executionAdmission: admitEveryTool, tools, appendEntries: async () => {}, materializeCandidatePolicy: () => {},
           prepareOutgoing: () => ({
             messages: [], prepared: { systemPrompt: stableSystemPrompt("test"), tools: [], auditTools: [], attemptStaticTokens: 0, contextApplication: { identity: "test", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] },
             staleMasking: undefined, toolHistoryProjection: undefined, messageCount: 0, estimatedContextTokens: 0,
@@ -116,7 +116,7 @@ describe("budget exhaust turn under failover", () => {
             lifecycle.interrupt();
             return {
               client, request: await client.admitRequest(), interactionProfile,
-              providerOptions: undefined, tools: new RequestToolMap(), appendEntries: async () => {}, materializeCandidatePolicy: () => {},
+              providerOptions: undefined, executionAdmission: admitEveryTool, tools: new RequestToolMap(), appendEntries: async () => {}, materializeCandidatePolicy: () => {},
               prepareOutgoing: () => ({
                 messages: [], prepared: { systemPrompt: stableSystemPrompt("test"), tools: [], auditTools: [], attemptStaticTokens: 0, contextApplication: { identity: "test", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] },
                 staleMasking: undefined, toolHistoryProjection: undefined, messageCount: 0, estimatedContextTokens: 0,
@@ -158,7 +158,7 @@ describe("budget exhaust turn under failover", () => {
       handoffTracker: createHandoffTracker(),
       captureRequest: async () => ({
         client, request: await client.admitRequest(),
-        providerOptions: undefined, tools: new RequestToolMap(),
+        providerOptions: undefined, executionAdmission: admitEveryTool, tools: new RequestToolMap(),
         cacheRetentionPolicies: { anthropic_api: "5m" },
         interactionProfile,
         appendEntries: async () => {}, materializeCandidatePolicy: () => {},
@@ -230,7 +230,7 @@ describe("budget exhaust turn under failover", () => {
       handoffTracker: createHandoffTracker(),
       captureRequest: async () => ({
         client, request: await client.admitRequest(), interactionProfile,
-        providerOptions: undefined, tools: new RequestToolMap(),
+        providerOptions: undefined, executionAdmission: admitEveryTool, tools: new RequestToolMap(),
         appendEntries: async () => {}, materializeCandidatePolicy: () => {},
         prepareOutgoing: () => ({ messages: [...messages], prepared: { systemPrompt: stableSystemPrompt("sys"), tools: [], auditTools: [], attemptStaticTokens: 1, contextApplication: { identity: "strict", applications: [] }, interactionProfileId: interactionProfile.id, omittedTools: [] }, staleMasking: undefined, toolHistoryProjection: undefined, messageCount: messages.length, estimatedContextTokens: 1 }),
       }),
@@ -280,7 +280,7 @@ describe("budget exhaust turn under failover", () => {
       handoffTracker: createHandoffTracker({ onStarted: () => { fenced = true; } }),
       captureRequest: async () => ({
         client, request: await client.admitRequest(), interactionProfile, appendEntries: async () => {}, materializeCandidatePolicy: () => {},
-        providerOptions: undefined, tools,
+        providerOptions: undefined, executionAdmission: admitEveryTool, tools,
         cacheRetentionPolicies: { anthropic_api: "5m" },
         prepareOutgoing: (servingAttempt) => {
           const selected = [...tools.values()];
@@ -345,7 +345,7 @@ describe("budget exhaust turn under failover", () => {
       handoffTracker: createHandoffTracker(),
       captureRequest: async () => ({
         client, request: await client.admitRequest(), interactionProfile, appendEntries: async () => {}, materializeCandidatePolicy: () => {},
-        providerOptions: undefined, tools,
+        providerOptions: undefined, executionAdmission: admitEveryTool, tools,
         prepareOutgoing: () => {
           const definitions = [...tools.values()].map(({ name, description, inputSchema }) => ({ name, description, input_schema: inputSchema }));
           return {
@@ -421,7 +421,7 @@ describe("budget exhaust turn under failover", () => {
       handoffTracker: createHandoffTracker(),
       captureRequest: async () => ({
         client, request: await client.admitRequest(), interactionProfile,
-        providerOptions: undefined, tools: new RequestToolMap(),
+        providerOptions: undefined, executionAdmission: admitEveryTool, tools: new RequestToolMap(),
         appendEntries: async () => {}, materializeCandidatePolicy: (attempt) => {
           policy = tokenCountingPolicy(attempt.model, attempt.modelFamily, attempt.tokenizerIdentity);
           materializedPolicies.push(policy.identity);

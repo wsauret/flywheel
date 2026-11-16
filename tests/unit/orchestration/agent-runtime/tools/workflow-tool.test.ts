@@ -18,6 +18,7 @@ import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext as makeToolContext } from "./_fixtures.js";
 import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
@@ -397,7 +398,7 @@ describe("createWorkflowTool", () => {
 
     const input = { source: SOURCE, summary: "s", description: "d", confirmation_id: "q-7" };
     const refused = await executePreparedTool(
-      prepareToolCall({ id: "tc_wf_1", name: "workflow", input }, new Map([[tool.name, tool]])),
+      prepareToolCall({ id: "tc_wf_1", name: "workflow", input }, new Map([[tool.name, tool]]), admitEveryTool),
       makeToolContext({ toolUseId: "tc_wf_1", modelRequestId: "req-wf-1", conversationId: "conv-1", capabilityAccess: capabilityAccessHolding(["workflows"]) }),
     );
 

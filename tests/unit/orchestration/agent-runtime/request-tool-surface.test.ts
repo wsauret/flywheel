@@ -84,7 +84,7 @@ describe("request tool surface", () => {
     try {
       for (const name of ["diagnostic-shell", shell.name, "process", "skill"]) {
         const prepared = prepareToolCall(
-          { id: `denied-${name}`, name, input: {} }, restricted.tools, restricted.executionAdmission(name),
+          { id: `denied-${name}`, name, input: {} }, restricted.tools, restricted.executionAdmission,
         );
         const result = await executePreparedTool(prepared, {
           executionCwd: process.cwd(), userDataRoot: "/scratch/test-account", projectRoot: process.cwd(), capabilityAccess: NO_CAPABILITY_ACCESS,
@@ -339,7 +339,7 @@ describe("request tool surface", () => {
     const prepared = prepareToolCall(
       { id: "memory-call", name: "memory", input: {} },
       admitted.tools,
-      admitted.executionAdmission("memory"),
+      admitted.executionAdmission,
     );
     const result = await executePreparedTool(prepared, {
       executionCwd: process.cwd(),

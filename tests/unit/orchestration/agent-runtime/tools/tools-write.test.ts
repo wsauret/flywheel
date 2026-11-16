@@ -9,7 +9,7 @@ import { MutationEvidenceSchema } from "../../../../../src/infra/mutation-eviden
 import { parseFileMutationOperationHeader, readFileMutationOperation } from "../../../../../src/orchestration/session/file-mutation-operation.js";
 
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import { testBaseTools } from "../../../../helpers/request-tool-surface.js";
+import { testBaseTools, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { MAX_FILE_EDIT_BYTES } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
@@ -20,7 +20,7 @@ const runTool = (
   ctx: Parameters<typeof executePreparedTool>[1],
   tools: Parameters<typeof prepareToolCall>[1],
   options?: Parameters<typeof executePreparedTool>[2],
-) => executePreparedTool(prepareToolCall(call, tools), ctx, options);
+) => executePreparedTool(prepareToolCall(call, tools, admitEveryTool), ctx, options);
 
 
 describe("write tool", () => {

@@ -5,7 +5,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
-import { createToolRegistry } from "../../../../../src/orchestration/tool-catalog.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { createHandoffTool, handoffDefinition } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
 import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
@@ -17,9 +16,9 @@ import type { AgentOptions } from "../../../../../src/orchestration/agent-runtim
 import { createSkillTool } from "../../../../../src/orchestration/agent-runtime/tools/skill.js";
 import type { SkillDefinition } from "../../../../../src/workflows/skill-schema.js";
 import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js";
-import type { CapabilityGrant } from "../../../../../src/orchestration/config/module-policy.js";
-import { testBaseTools } from "../../../../helpers/request-tool-surface.js";
-import { capabilityAccessHolding, makeContext, testGrant } from "./_fixtures.js";
+import { admitEveryTool, requestAdmission, testBaseTools } from "../../../../helpers/request-tool-surface.js";
+import { capabilityAccessHolding, makeContext } from "./_fixtures.js";
+import { composeFirstPartyModules, type ModuleId } from "../../../../../src/orchestration/modules.js";
 import { executeDispatchedTool } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { shortFormTool } from "../../../../../src/orchestration/agent-runtime/tools/short-form.js";
 import type { ToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
@@ -27,14 +26,13 @@ import type { ToolConcurrencyGate } from "../../../../../src/orchestration/agent
 const bashDefinition = createBashDefinition();
 
 beforeAll(loadBashParser);
-const registeredToolNames = new Set(createToolRegistry().keys());
 // Compose prepare + execute exactly as the agent loop's dispatcher does.
 const runTool = (
   call: Parameters<typeof prepareToolCall>[0],
   ctx: Parameters<typeof executePreparedTool>[1],
   tools: Parameters<typeof prepareToolCall>[1],
   options?: Parameters<typeof executePreparedTool>[2],
-) => executePreparedTool(prepareToolCall(call, tools, registeredToolNames.has(call.name) ? undefined : { ok: true }), ctx, options);
+) => executePreparedTool(prepareToolCall(call, tools, admitEveryTool), ctx, options);
 
 function toolCall(name: string, input: { [key: string]: unknown }) {
   return { id: `test-${name}`, name, input };
@@ -179,7 +177,7 @@ describe("tool dispatch", () => {
     expect(received).toEqual({ path: "a.txt" });
     expect(repaired).toEqual({ content: "Note: `file_path` was read as `path`.\nNote: `limit` was null, so it was left out.\nran", outcome: "ok" });
 
-    const invalid = prepareToolCall(toolCall("notes", { file_path: "a.txt", lmit: 5 }), tools, { ok: true });
+    const invalid = prepareToolCall(toolCall("notes", { file_path: "a.txt", lmit: 5 }), tools, admitEveryTool);
     expect(invalid.call.inputRepairs).toBeUndefined();
     expect(invalid.input).toEqual({ file_path: "a.txt", lmit: 5 });
     expect(invalid.validationResult?.content).toContain("The required parameter `path` is missing");
@@ -215,14 +213,14 @@ describe("tool dispatch", () => {
     };
     const tools = new Map([[tool.name, tool]]);
     for (const gated of [false, true]) {
-      const prepared = prepareToolCall(toolCall(tool.name, { model_value: 2, limit: "3" }), tools, { ok: true });
+      const prepared = prepareToolCall(toolCall(tool.name, { model_value: 2, limit: "3" }), tools, admitEveryTool);
       if (gated) expect(await preparedToolAdmission(prepared, makeContext())).toEqual({ kind: "safe" });
       expect(await executePreparedTool(prepared, makeContext())).toEqual({ content: "Note: the text value of `limit` was read as a number.\nNote: model_value was read as value.\nran", outcome: "ok" });
       expect(prepared.call.inputRepairs).toEqual([{ kind: "parsed_value", path: "limit", type: "number" }]);
     }
     expect(preparations).toBe(2);
     expect(received).toEqual([{ value: 2, limit: 3 }, { value: 2, limit: 3 }]);
-    const invalid = prepareToolCall(toolCall(tool.name, { model_value: "bad" }), tools, { ok: true });
+    const invalid = prepareToolCall(toolCall(tool.name, { model_value: "bad" }), tools, admitEveryTool);
     const result = await executePreparedTool(invalid, makeContext());
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("The required parameter `value` is missing");
@@ -441,7 +439,7 @@ describe("tool dispatch", () => {
       acquire: async () => { events.push("permit"); return () => { events.push("release"); }; },
     };
     const executionGate: ToolExecutionGate = () => { events.push("module-gate"); return { kind: "veto", reason: "vetoed" }; };
-    const prepared = prepareToolCall(toolCall(tool.name, {}), new Map([[tool.name, tool]]), { ok: true });
+    const prepared = prepareToolCall(toolCall(tool.name, {}), new Map([[tool.name, tool]]), admitEveryTool);
 
     const result = await Effect.runPromise(executeDispatchedTool({
       prepared,
@@ -456,7 +454,7 @@ describe("tool dispatch", () => {
     // The shell's own policy refuses before any permit or gate,
     // and the result still carries the input repair note.
     events.length = 0;
-    const wrapped = prepareToolCall(toolCall(bashDefinition.name, { parameters: { command: "git stash" } }), new Map([[bashDefinition.name, bashDefinition]]), { ok: true });
+    const wrapped = prepareToolCall(toolCall(bashDefinition.name, { parameters: { command: "git stash" } }), new Map([[bashDefinition.name, bashDefinition]]), admitEveryTool);
     const refused = await Effect.runPromise(executeDispatchedTool({
       prepared: wrapped, context: makeContext(), gate, toolExecutionGate: executionGate,
     }));
@@ -520,93 +518,36 @@ describe("capability admission of a model tool call", () => {
       .set("skill", createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: new Map() }, revision }));
   };
 
-  it("admits a call whose capability is enabled", async () => {
-    const wired = capabilityAccessHolding(["skills"]);
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
+  /** Dispatches under a request whose captured module set turns `disabled` off. */
+  const dispatch = async (call: ReturnType<typeof toolCall>, disabled: readonly ModuleId[], tools: ReadonlyMap<string, RuntimeTool>) =>
+    executePreparedTool(prepareToolCall(call, tools, await requestAdmission(tools, composeFirstPartyModules(undefined, disabled))), makeContext({ capabilities: () => true }));
+
+  it("admits a call whose capability the request enabled", async () => {
+    const result = await dispatch(toolCall("skill", { action: "load", skill_id: "gated-skill" }), [], skillTools());
     expect(result.outcome).toBe("ok");
-    expect(wired.admissions).toEqual(["the skill tool"]);
   });
 
-  it("refuses a stale call before the tool body runs", async () => {
-    const wired = capabilityAccessHolding([]);
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
-    expect(result.outcome).toBe("error");
-    expect(result.content).toContain("skills is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml");
-    expect(result.content).not.toContain("gated-skill");
-  });
-
-  it("refuses an optional tool where no capability policy is wired, before the tool body runs", async () => {
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilities: () => true }), skillTools());
-
-    expect(result.outcome).toBe("error");
-    expect(result.content).toContain("holds no capability policy");
-    expect(result.content).not.toContain("gated-skill");
-  });
-
-  it("uses a matching grant for an admitted operation's own continuation", async () => {
-    const wired = capabilityAccessHolding([], testGrant("learning review", ["learning", "skills"]));
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
-    expect(result.outcome).toBe("ok");
-    expect(wired.admissions).toEqual([]);
-  });
-
-  it("runs an admitted Learning continuation after Learning was disabled under it", async () => {
-    // The grant authorizes learning; the live selection no longer holds it.
-    const wired = capabilityAccessHolding([], testGrant("the learning review", ["learning"], ["learning", "skills"]));
-    let written = false;
+  it("refuses a call whose registration needs a module that the request turned off, before the tool body runs", async () => {
+    let executed = false;
     const probe: RuntimeTool = {
-      name: "memory",
-      action: "ui_meta",
-      description: "records that the durable write was reached",
-      inputSchema: { type: "object", properties: {}, additionalProperties: false },
-      isConcurrencySafe: true,
-      execute: async () => {
-        written = true;
-        return { content: "ok", outcome: "ok" };
-      },
+      name: "skill_manage", action: "ui_meta", description: "records that the body ran",
+      inputSchema: { type: "object", properties: {} }, isConcurrencySafe: true,
+      execute: async () => { executed = true; return { content: "ok", outcome: "ok" }; },
     };
-
-    const result = await runTool(toolCall("memory", {}), makeContext({ capabilityAccess: wired }), new Map([["memory", probe]]));
-
-    expect(result.outcome).toBe("ok");
-    expect(written).toBe(true);
-    expect(wired.admissions).toEqual([]);
+    const result = await dispatch(toolCall("skill_manage", {}), ["skills"], new Map([[probe.name, probe]]));
+    expect(result).toEqual({ content: "skills is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml", outcome: "error" });
+    expect(executed).toBe(false);
   });
 
-  it("refuses a call whose requirement the grant does not authorize, whatever the grant recorded", async () => {
-    // Evidence of a full selection, authority over Learning alone: an unrelated
-    // Skills call still admits, and is refused.
-    const wired = capabilityAccessHolding([], testGrant("the learning review", ["learning"], ["learning", "skills"]));
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
-    expect(result.outcome).toBe("error");
-    expect(wired.admissions).toEqual(["the skill tool"]);
+  it("refuses a call to a tool that the request's captured module set does not hold", async () => {
+    const result = await dispatch(toolCall("skill", { action: "load", skill_id: "gated-skill" }), ["skills"], skillTools());
+    expect(result).toEqual({ content: "Tool 'skill' is not registered in this request capability snapshot", outcome: "error" });
   });
 
   it("leaves a core tool alone", async () => {
-    const wired = capabilityAccessHolding([]);
-    const result = await runTool(toolCall("read", { path: "/nonexistent-capability-probe" }), makeContext({ capabilityAccess: wired }), new Map(testBaseTools()));
-    expect(wired.admissions).toEqual([]);
+    const result = await dispatch(toolCall("read", { path: "/nonexistent-capability-probe" }), ["skills", "learning", "subagents", "workflows"], new Map(testBaseTools()));
     expect(result.outcome).toBe("error");
-  });
-
-  it("forwards the minted grant to the tool body so its deep callee admits once", async () => {
-    const wired = capabilityAccessHolding(["subagents"]);
-    let seen: CapabilityGrant | undefined;
-    const probe: RuntimeTool = {
-      name: "subagent",
-      action: "task_subagent",
-      description: "records the grant its body was handed",
-      inputSchema: { type: "object", properties: {}, additionalProperties: false },
-      isConcurrencySafe: true,
-      execute: async (_input, ctx) => {
-        seen = ctx.capabilityAccess?.grant;
-        return { content: "ok", outcome: "ok" };
-      },
-    };
-    const result = await runTool(toolCall("subagent", {}), makeContext({ capabilityAccess: wired }), new Map([["subagent", probe]]));
-    expect(result.outcome).toBe("ok");
-    expect(wired.admissions).toEqual(["the subagent tool"]);
-    expect(seen).toEqual(testGrant("the subagent tool", ["subagents"], ["subagents"]));
+    expect(result.content).toContain("Failed to read");
   });
 });
 

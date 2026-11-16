@@ -11,6 +11,7 @@ import { emitAssistant, emitToolInputComplete, emitToolInputDelta, emitToolResul
 import type { ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createApplyPatchDefinition } from "../../../../src/orchestration/agent-runtime/tools/apply-patch.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission } from "../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../helpers/request-tool-surface.js";
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js";
 import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
@@ -154,7 +155,7 @@ describe("streaming tool validation and failure", () => {
     const patch = "*** Begin Patch\n*** Update File: first.txt\n@@\n-before first\n+after first\n*** Update File: second.txt\n@@\n-before second\n+after second\n*** End Patch\n";
     const tool = createApplyPatchDefinition();
     const call: ToolCall = { id: "partial-patch", name: "apply_patch", input: { input: patch }, modelRequestId: "partial-request" };
-    const prepared = prepareToolCall(call, new Map([[tool.name, tool]]));
+    const prepared = prepareToolCall(call, new Map([[tool.name, tool]]), admitEveryTool);
     try {
       expect(await preparedToolAdmission(prepared, { executionCwd: root })).toMatchObject({ kind: "paths" });
       emitAssistant(output.dispatchRuntimeEvent, [{ type: "tool_use", id: call.id, name: call.name, input: {} }]);

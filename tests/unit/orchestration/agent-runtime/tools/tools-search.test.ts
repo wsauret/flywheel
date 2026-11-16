@@ -8,6 +8,7 @@ import { handleSearchError, searchDefinition } from "../../../../../src/orchestr
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { canonicalMutationPath } from "../../../../../src/infra/file-mutation-queue.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { makeContext } from "./_fixtures.js";
 
 type GrepInput = Omit<Parameters<typeof ripgrep.grep>[0], "cpuLimitMs" | "timeoutMs">;
@@ -315,7 +316,7 @@ describe("search tool", () => {
     const tools = new Map([["search", searchDefinition]]);
     const context = makeContext({ executionCwd: tmpDir });
     for (const limit of [undefined, 2]) {
-      const prepared = prepareToolCall({ id: "tail", name: "search", input: { pattern: "needle", path: "app.log", tail: 2, ...(limit === undefined ? {} : { limit }) } }, tools, { ok: true });
+      const prepared = prepareToolCall({ id: "tail", name: "search", input: { pattern: "needle", path: "app.log", tail: 2, ...(limit === undefined ? {} : { limit }) } }, tools, admitEveryTool);
       const result = await executePreparedTool(prepared, context);
       expect(result.outcome).toBe("ok");
       expect(result.content).toStartWith("Note:");
@@ -324,7 +325,7 @@ describe("search tool", () => {
       expect(result.content).not.toContain("needle one");
       expect(result.content).toContain("needle three");
     }
-    const conflict = prepareToolCall({ id: "tail-conflict", name: "search", input: { pattern: "needle", tail: 2, limit: 3 } }, tools, { ok: true });
+    const conflict = prepareToolCall({ id: "tail-conflict", name: "search", input: { pattern: "needle", tail: 2, limit: 3 } }, tools, admitEveryTool);
     expect((await executePreparedTool(conflict, context)).outcome).toBe("error");
   });
 
@@ -334,7 +335,7 @@ describe("search tool", () => {
     const tools = new Map([["search", searchDefinition]]);
     const context = makeContext({ executionCwd: tmpDir });
     const pattern = "a.b [x] (y) {z} ^$ *+? | \\";
-    const prepared = prepareToolCall({ id: "literal", name: "search", input: { pattern, literal: true, path: "src/*.txt", output_mode: "content" } }, tools, { ok: true });
+    const prepared = prepareToolCall({ id: "literal", name: "search", input: { pattern, literal: true, path: "src/*.txt", output_mode: "content" } }, tools, admitEveryTool);
     const result = await executePreparedTool(prepared, context);
     expect(result.outcome).toBe("ok");
     expect(result.content).toStartWith("Note:");
@@ -342,7 +343,7 @@ describe("search tool", () => {
     expect(result.content).toContain("glob");
     expect(result.content).toContain(`*1|${pattern}`);
     expect(result.content).not.toContain("axb");
-    const regex = prepareToolCall({ id: "regex", name: "search", input: { pattern: "a.b", literal: false, path: "src/one.txt", output_mode: "count" } }, tools, { ok: true });
+    const regex = prepareToolCall({ id: "regex", name: "search", input: { pattern: "a.b", literal: false, path: "src/one.txt", output_mode: "count" } }, tools, admitEveryTool);
     const regexResult = await executePreparedTool(regex, context);
     expect(regexResult.outcome).toBe("ok");
     expect(regexResult.content).toStartWith("Note:");
