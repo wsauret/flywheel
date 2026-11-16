@@ -7,7 +7,7 @@ import type { DurableSessionCatalogError, DurableSessionCatalogRow, SessionMetad
 import type { SessionDurationProjectionState } from "./session-duration-projection.js"
 import type { SessionForkRecord } from "./session-fork-projection.js"
 import { readForks } from "./session-fork-summary.js"
-import { recoverSessionMetadata, sessionsFromProjection, type SessionMetadataProjectionState } from "./session-metadata-projection.js"
+import { recoverSessionMetadata, sessionMetadataErrors, sessionsFromProjection, type PerSessionMetadataState } from "./session-metadata-projection.js"
 import type { SessionSummaryRead } from "./session-summary-index.js"
 import type { ReplayedSession } from "./schemas.js"
 import { recordedExecutionCwd } from "./session-execution-directory.js"
@@ -106,15 +106,16 @@ export function buildDurableSessionMetadataCatalog(metadataResult: SessionMetada
 
 /** Converts strict projection state and recovers only its quarantined
  * aggregates. Recovered rows follow normal rows so strict ordering is stable. */
-export async function sessionMetadataCatalogFromState(state: SessionMetadataProjectionState, reader: AsyncEventStateReadSurface): Promise<SessionMetadataCatalog> {
-  const recovered = (await Promise.all(Object.keys(state.errors).map(async (sessionId) => {
+export async function sessionMetadataCatalogFromState(state: PerSessionMetadataState, reader: AsyncEventStateReadSurface): Promise<SessionMetadataCatalog> {
+  const errors = [...sessionMetadataErrors(state)].map(([sessionId, reason]) => ({ sessionId, reason }))
+  const recovered = (await Promise.all(errors.map(async ({ sessionId }) => {
     const data = await recoverSessionMetadata(reader, sessionId)
     return data ? { id: sessionId, data, degraded: true as const, unavailableFields: ["metadata"] as const } : null
   }))).filter((entry): entry is NonNullable<typeof entry> => entry !== null)
     .sort((a, b) => Date.parse(b.data.lastUpdated) - Date.parse(a.data.lastUpdated))
   return {
     entries: [...sessionsFromProjection(state), ...recovered],
-    errors: Object.entries(state.errors).map(([sessionId, reason]) => ({ sessionId, reason })),
+    errors,
   }
 }
 

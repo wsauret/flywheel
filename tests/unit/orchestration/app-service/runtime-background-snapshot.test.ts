@@ -10,7 +10,37 @@ import { createSessionBudgetStore } from "../../../../src/orchestration/session/
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/session-summary-index.js"
+import { buildSessionCreatedFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
+import { createSessionMetadataProjection } from "../../../../src/orchestration/session/session-metadata-projection.js"
+import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { historicalSessionCreatedFacts } from "../../../fixtures/tolerant-reprojection-fixtures.js"
+import { temporaryDirectories } from "../../../helpers/directories.js"
+import { entriesVisited } from "../../../helpers/entries-visited.js"
+import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
+import { minimalSession } from "../session/_session-persistence-fixtures.js"
+
+const temporary = temporaryDirectories()
+
+/** A store of `count` chat sessions `s0`, `s1`, ..., each updated one second after the one before. */
+function storeOfSessions(count: number) {
+  const root = temporary("runtime-background-scoped-")
+  const store = createSqliteEventStore(resolveEventStoreDbFile(root))
+  store.appendBatch(Array.from({ length: count }, (_, index) => buildSessionMetadataAppend(`s${index}`, buildSessionCreatedFact(minimalSession({
+    label: `s${index}`,
+    lifecycleState: "inactive",
+    lastUpdated: new Date(Date.UTC(2026, 0, 1) + index * 1_000).toISOString(),
+  })))))
+  const index = acquireSessionSummaryIndex(resolveSessionSummaryDbFile(root), asAsyncEventReadSurface(store), { shared: false })
+  return {
+    root,
+    store,
+    index,
+    async close() {
+      await index.dispose()
+      store.close()
+    },
+  }
+}
 
 describe("createRuntimeBackgroundSnapshotProjector", () => {
   test("returns cold metadata immediately, then exact summary totals after joined replay", async () => {
@@ -169,6 +199,46 @@ describe("createRuntimeBackgroundSnapshotProjector", () => {
       await index.dispose()
       store.close()
       fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  test("a scoped refresh of 3 ids over 100 or 5,000 sessions issues the same state requests and builds 3 rows", async () => {
+    // The summary projection refreshes the few held sessions that a commit
+    // touched, about once per model response; building the whole catalog to
+    // pick them made each refresh cost the workspace.
+    const scopedRefresh = async (sessions: number) => {
+      const workspace = storeOfSessions(sessions)
+      try {
+        const { reader, take } = countStateRequests(asAsyncEventReadSurface(workspace.store))
+        const projector = createRuntimeBackgroundSnapshotProjector(reader, workspace.index, workspace.root)
+        const requested = ["s2", "s0", "s1"]
+        await projector.waitForTotals(requested)
+        workspace.store.append(buildSessionMetadataAppend("s1", { type: "session.label.updated", version: 1, actor: "flywheel", payload: { label: "changed", shortLabel: "changed", name: "changed", lastUpdated: "2026-01-01T00:00:00.000Z" } }))
+        take()
+        let rows: readonly { readonly id: string; readonly title: string }[] = []
+        const visits = await entriesVisited(async () => {
+          rows = (await projector.readImmediate(requested)).rows
+          rows = (await projector.waitForTotals(requested)).rows
+        }, { state: createSessionMetadataProjection(reader).getState() })
+        expect(rows.map((row) => row.id).toSorted()).toEqual(["s0", "s1", "s2"])
+        expect(rows.find((row) => row.id === "s1")?.title).toBe("changed")
+        const requests = take()
+        return { visits, requests: requests.map((request) => request.method), facts: factsRead(requests) }
+      } finally {
+        await workspace.close()
+      }
+    }
+    expect(await scopedRefresh(5_000)).toEqual(await scopedRefresh(100))
+  })
+
+  test("an unscoped refresh still returns the full catalog, the most recently updated first", async () => {
+    const workspace = storeOfSessions(3)
+    try {
+      const projector = createRuntimeBackgroundSnapshotProjector(asAsyncEventReadSurface(workspace.store), workspace.index, workspace.root)
+      expect((await projector.readImmediate()).rows.map((row) => row.id)).toEqual(["s2", "s1", "s0"])
+      expect((await projector.waitForTotals()).rows.map((row) => row.id)).toEqual(["s2", "s1", "s0"])
+    } finally {
+      await workspace.close()
     }
   })
 

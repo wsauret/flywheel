@@ -2,7 +2,7 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createSessionMetadataProjection, createSingleSessionMetadataProjection } from "../../../../src/orchestration/session/session-metadata-projection.js"
+import { createSessionMetadataProjection, createSingleSessionMetadataProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { createSessionAuthAdmission, ensureSessionAuthProfile, resolveSessionAuthProfile } from "../../../../src/orchestration/session/session-auth-profile.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
@@ -265,7 +265,7 @@ describe("session auth profile authority", () => {
       payload: { authProfileId: "default", extra: true },
     })
 
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const state = sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "broken")
     expect(state.sessions.broken).toBeUndefined()
     expect(state.errors.broken).toContain("unrecoverable session metadata")
   })

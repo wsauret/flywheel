@@ -3,8 +3,8 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { buildSessionMetadataAppend, createSessionMetadataStore, createSessionPlacements } from "../../../../src/orchestration/session/session-metadata-store.js"
-import { buildSessionOwnershipAdoptedFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
-import { createSessionPlacementProjection } from "../../../../src/orchestration/session/session-metadata-projection.js"
+import { buildSessionCreatedFact, buildSessionOwnershipAdoptedFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
+import { createSessionMetadataProjection, createSessionPlacementProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { entriesVisited } from "../../../helpers/entries-visited.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
@@ -97,6 +97,33 @@ describe("SessionMetadataStore targeted reads", () => {
       }
     }
     expect(await visitsPerChange(40)).toBe(await visitsPerChange(4))
+  })
+
+  it("a catch-up that changes 1 of 5,000 sessions visits the entries of 1 of 4 and leaves the other 4,999 identical by reference", async () => {
+    // The workspace catalog folds on every metadata commit of any session; a
+    // catch-up that copied every session made each label change cost the
+    // whole workspace.
+    const catchUp = async (sessions: number) => {
+      const root = temporary("metadata-catalog-copy-")
+      const store = createSqliteEventStore(resolveEventStoreDbFile(root))
+      try {
+        const ids = Array.from({ length: sessions }, (_, index) => `s${index}`)
+        store.appendBatch(ids.map((id) => buildSessionMetadataAppend(id, buildSessionCreatedFact(minimalSession({ label: id })))))
+        const catalog = createSessionMetadataProjection(asAsyncEventReadSurface(store))
+        const before = await catalog.replay()
+        const visits = await entriesVisited(async () => {
+          store.append(buildSessionMetadataAppend("s0", { type: "session.label.updated", version: 1, actor: "flywheel", payload: { label: "changed", shortLabel: "changed", name: "changed", lastUpdated: "2026-01-01T00:00:00.000Z" } }))
+          await catalog.replay()
+        }, { state: before })
+        const after = catalog.getState()
+        expect(sessionMetadataStateOf(after, "s0").sessions.s0?.label).toBe("changed")
+        expect(ids.slice(1).filter((id) => sessionMetadataStateOf(after, id) !== sessionMetadataStateOf(before, id))).toEqual([])
+        return visits
+      } finally {
+        store.close()
+      }
+    }
+    expect(await catchUp(5_000)).toBe(await catchUp(4))
   })
 
   it("sees a placement that another process committed once it observes a later batch", async () => {

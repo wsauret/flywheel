@@ -8,7 +8,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreAppend, typ
 import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
-import { createSessionMetadataProjection } from "../../../../src/orchestration/session/session-metadata-projection.js"
+import { createSessionMetadataProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { parseSessionMetadataFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { parseConversationTreeFact, salvageConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
@@ -68,7 +68,7 @@ const strictAgreementFamilies = ["session_metadata", "chat_tree"] as const
 const strictAgreementRoutes: StrictAgreementRoutes = {
   session_metadata: {
     owningDirectStrictParser: (event: StoredFact) => asJson(parseSessionMetadataFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload }).payload),
-    productionProjectionBoundary: async (event: StoredFact, store: ReturnType<typeof createSqliteEventStore>) => asJson((await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()).sessions[event.sessionId]),
+    productionProjectionBoundary: async (event: StoredFact, store: ReturnType<typeof createSqliteEventStore>) => asJson(sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), event.sessionId).sessions[event.sessionId]),
   },
   chat_tree: {
     owningDirectStrictParser: (event: StoredFact) => asJson(parseConversationTreeFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload }).payload),
