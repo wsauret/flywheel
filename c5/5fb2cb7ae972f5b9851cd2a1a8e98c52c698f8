@@ -1,0 +1,90 @@
+src/infra/auth/auth-profile-retirements.ts
+  h_4b47e9e4a8b456 15
+src/infra/auth/auth-store.ts
+  h_4b47e9e4a8b456 8
+src/infra/auth/provider-model-catalog-store.ts
+  h_4b47e9e4a8b456 41
+src/infra/auth/subscription-spend-consent-store.ts
+  h_4b47e9e4a8b456 23
+src/infra/llm/custom-provider-registry.ts
+  h_4b47e9e4a8b456 38
+src/infra/llm/model-catalog-diagnostics.ts
+  h_4b47e9e4a8b456 21,33,46
+src/infra/llm/model-catalog-resolution.ts
+  h_4b47e9e4a8b456 237,244-246,383
+src/infra/llm/model-family.ts
+  h_4b47e9e4a8b456 29
+src/infra/llm/model-id.ts
+  h_4b47e9e4a8b456 70
+src/infra/llm/model-listing.ts
+  h_4b47e9e4a8b456 233
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1356
+tests/helpers/custom-providers.ts
+  h_4b47e9e4a8b456 1-6
+tests/unit/cli/cli-auth.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/cli/headless-snapshot-auth.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/infra/auth/auth-profile-normalization.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/infra/auth/auth-profile-store.test.ts
+  h_4b47e9e4a8b456 28-30
+tests/unit/infra/auth/auth-store-loading.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/infra/auth/auth-store.test.ts
+  h_4b47e9e4a8b456 17-18,473-474
+tests/unit/infra/auth/provider-model-catalog-store.test.ts
+  h_4b47e9e4a8b456 7,18-20,282,285-288
+tests/unit/infra/llm/auth-error.test.ts
+  h_4b47e9e4a8b456 2,4-6,8-10,14-23,27-29,34-37,41-43,47-49
+tests/unit/infra/llm/custom-provider-registry.test.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/infra/llm/model-catalog-diagnostics.test.ts
+  h_4b47e9e4a8b456 5,10,14,36-39,42-43,47,49-55,110,134
+tests/unit/infra/llm/model-catalog-resolution.test.ts
+  h_4b47e9e4a8b456 5,19-20,43,50-59,63,81,190,219-220,225-226,232,239-240,243-244,282,298,302,311,350-353,357-359
+tests/unit/infra/llm/model-id.test.ts
+  h_4b47e9e4a8b456 2,32-33
+tests/unit/infra/llm/model-listing-custom-provider.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/llm/model-listing-persistence.test.ts
+  h_4b47e9e4a8b456 6,19-21,307,321,324,340
+tests/unit/infra/llm/model-listing-supergrok.test.ts
+  h_4b47e9e4a8b456 9,127
+tests/unit/infra/llm/models-fetch.test.ts
+  h_4b47e9e4a8b456 7,297
+tests/unit/infra/llm/models-index.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/infra/llm/openrouter-model-support.test.ts
+  h_4b47e9e4a8b456 2,15-17
+tests/unit/orchestration/app-service/held-profile-revisions.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/config/custom-provider-composition.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/config/custom-providers-config.test.ts
+  h_4b47e9e4a8b456 3-4,27,35,43
+tests/unit/orchestration/config/provider-model-catalog-contracts.test.ts
+  h_4b47e9e4a8b456 9,159-160,254-255,552,569
+tests/unit/orchestration/config/provider-model-eligibility.test.ts
+  h_4b47e9e4a8b456 276-277
+tests/unit/orchestration/config/runtime-config-owner.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/module-composition-identity.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/synthetic-provider.test.ts
+  h_4b47e9e4a8b456 111-115
+tests/unit/orchestration/subscription-spend-consent/subscription-spend-consent-service.test.ts
+  h_4b47e9e4a8b456 5,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c55fb2cb7ae972f5b9851cd2a1a8e98c52c698f8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
