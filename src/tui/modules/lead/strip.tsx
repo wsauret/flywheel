@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { createMemo, createSignal, For, Show, untrack } from "solid-js"
+import { createMemo, createSignal, For, onCleanup, Show, untrack } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { bg as stBg, fg as stFg, StyledText, type RGBA } from "@opentui/core"
 import type { LeadRow } from "../../../protocol/modules/lead.js"
@@ -19,13 +19,27 @@ const HINT = "↑↓ move · enter open · ctrl+t tab · x close · esc input"
  *  text never moves when the mark shows. */
 const CLOSE_MARK = " ×"
 
-/** The list of the chats in use, below the lead's input (PI-LEAD-004). It
- *  shows only on the lead's own screen and only while a chat has a row. */
+/** The list of the chats in use, below the lead's input (PI-LEAD-004), and the keys of the question widgets in the
+ *  lead's transcript (PI-LEAD-005). Both act only on the lead's own screen, and the list shows only while a chat has a
+ *  row. */
 export function LeadStrip(props: TuiStripProps) {
   const screen = useLeadScreen()
-  return <Show when={props.sessionId === screen.leadSessionId() && screen.rows().length > 0}>
-    <LeadList strip={props} screen={screen} />
+  return <Show when={props.sessionId === screen.leadSessionId()}>
+    <LeadQuestionKeys strip={props} screen={screen} />
+    <Show when={screen.rows().length > 0}>
+      <LeadList strip={props} screen={screen} />
+    </Show>
   </Show>
+}
+
+/** Lends the question widgets a key claim of their own for the lead screen's lifetime. It renders nothing. */
+function LeadQuestionKeys(props: { readonly strip: TuiStripProps; readonly screen: LeadScreen }) {
+  // The claim lasts for the screen's lifetime, so it is taken once.
+  const questions = untrack(() => props.screen.questions)
+  const claim = untrack(() => props.strip.keys).claim({ chords: ["shift+up", "shift+down"], onKey: questions.onKey, onPaste: questions.paste })
+  questions.bind({ claim, composerEmpty: untrack(() => props.strip.composer.empty) })
+  onCleanup(() => { questions.bind(undefined) })
+  return null
 }
 
 function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadScreen }) {

@@ -5,7 +5,7 @@ describe("question input registry", () => {
   test("input returns the registered key handler's handled verdict", () => {
     const registry = createQuestionInputRegistry()
     const onKey = mock((_evt: { name: string }) => true)
-    registry.register({ onKey, onPaste: () => {} })
+    registry.register({ onKey, onPaste: () => true })
 
     expect(registry.input({ name: "escape" })).toBe(true)
     expect(onKey).toHaveBeenCalledTimes(1)
@@ -16,17 +16,19 @@ describe("question input registry", () => {
 
   test("paste routes to the registered paste handler", () => {
     const registry = createQuestionInputRegistry()
-    const onPaste = mock(() => {})
+    const onPaste = mock((_text: string) => true)
     registry.register({ onKey: () => true, onPaste })
 
     expect(registry.paste("pasted text")).toBe(true)
     expect(onPaste).toHaveBeenCalledWith("pasted text")
+    onPaste.mockReturnValue(false)
+    expect(registry.paste("text")).toBe(false)
   })
 
   test("clear stops routing to the previously registered handlers", () => {
     const registry = createQuestionInputRegistry()
     const onKey = mock(() => true)
-    const onPaste = mock(() => {})
+    const onPaste = mock(() => true)
     registry.register({ onKey, onPaste })
     registry.clear()
 

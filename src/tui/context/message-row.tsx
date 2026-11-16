@@ -2,11 +2,14 @@
 import { createContext, untrack, useContext, type JSX } from "solid-js"
 import type { MessageSender } from "../../infra/output-blocks.js"
 
-/** How a message row from another session presents instead of its disclosure: one line that opens `linkUri`. */
+/** How a message row from another session presents instead of its disclosure: one line that opens `linkUri`, and
+ *  what shows under that line, such as a form that answers the message. The row mounts `below` once and keeps it while
+ *  the presentation names one. */
 interface MessageRowPresentation {
   readonly name: string
   readonly detail: string
   readonly linkUri: string
+  readonly below?: () => JSX.Element
 }
 
 /** A message row from another session: its entry id, `msg:<sender>:<call>` (see `blockEntryKeys`), and its sender. */

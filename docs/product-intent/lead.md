@@ -18,13 +18,13 @@ A chat that the lead started opens no tab and is otherwise an ordinary chat. It 
 
 In the terminal, the lead's screen lists every chat of the project that is in use below its input. This includes every chat, whoever started it and on whichever client. It excludes the lead and the subagents and workflow agents of a chat. A chat joins the list when it starts, opens, or receives a message. It leaves only when the person closes it or deletes it. While the lead is on, closing a chat's tab returns the chat to the list. A restart or a project sleep keeps the list.
 
-## PI-LEAD-005: The person opens a chat from the lead's screen
+## PI-LEAD-005: The person answers and opens chats from the lead's screen
 
-Enter or a click on a list row opens the chat over the lead and selects no row. The chat shows exactly as in its tab, with its question in its own words. Only the frame, with the chat's title and controls, differs, and tab keys do nothing there. Closing returns focus where it was. Escape returns to the lead and leaves a question pending; a separate action skips it. A question never opens on its own or interrupts typing. A shown result is read, and opening a failed or cut chat marks that state seen.
+A listed chat's question enters the lead's transcript as a widget that shows it in the chat's own words with every option. The person answers or skips it there by key or click. Several can wait at once. A widget never takes focus by itself. Once the question is settled anywhere, it shows the answer. Enter or a click on a list row opens the chat over the lead, as in its tab, where tab keys do nothing. Closing returns focus where it was. A shown result is read, and opening a failed or cut chat marks that state seen.
 
 ## PI-LEAD-006: The lead summarizes reports and never speaks for a chat
 
-The lead learns when a chat in its list that no client shows asks a question, finishes a turn, fails, or is cut, and of a listed chat's milestone message. A report or milestone shows in the lead's transcript as a line that names the chat and opens it at that message. A report counts as read, as does a turn that ends while a client shows the chat. The lead summarizes the message and can add a recommendation. It never rewords or answers a chat's question, never replies to a chat, and routes work only at the person's request.
+The lead learns each question and milestone message of a listed chat, and when one that no client shows finishes a turn, fails, or is cut. A report or milestone shows in its transcript as a line that names the chat and opens it there. A shown report and a turn that ends while a client shows the chat count as read. The lead summarizes a report. After a question it adds at most a short recommendation and never restates it. It never answers a chat's question, never replies to a chat, and routes work only at the person's request.
 
 ## PI-LEAD-007: Every chat is one step from the lead
 

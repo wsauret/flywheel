@@ -6,7 +6,7 @@ import { decodeQueuedUserInputCell, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../
 import { EventReaderService } from "../../../../../src/infra/event-store-effect.js"
 import { LEAD_AGGREGATE_ID } from "../../../../../src/orchestration/modules/lead/facts.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
-import { leadChatsCursor, leadReportCall } from "../../../../../src/protocol/modules/lead.js"
+import { leadChatsCursor, leadQuestionCall, leadReportCall } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
 import { createUnstartedChild } from "../subagents/_subagent-child-fixtures.js"
@@ -51,7 +51,7 @@ test("dispose settles the startup replay, and nothing is published after it reso
   expect(patches.filter((patch) => patch.cursor.domain === leadChatsCursor().domain)).toEqual([])
 })
 
-test("while the module is off a listed chat's question gives no notice, and after it turns on a question gives one", async () => {
+test("while the module is off a listed chat's failure gives no notice, and after it turns on a failure gives one", async () => {
   const { service, openLead, sessionEvents, notices, setEnabled } = harness()
   const lead = await openLead()
   expect(lead).not.toBeNull()
@@ -59,12 +59,12 @@ test("while the module is off a listed chat's question gives no notice, and afte
   await supervisor.ensureChatRunner(lead!)
 
   await setEnabled(false)
-  sessionEvents.report("c", "asked")
+  sessionEvents.report("c", "failed")
   await Bun.sleep(1)
   expect(notices).toEqual([])
 
   await setEnabled(true)
-  sessionEvents.report("c", "asked")
+  sessionEvents.report("c", "failed")
   await Bun.sleep(1)
   expect(notices).toEqual([lead!])
 })
@@ -101,6 +101,57 @@ test("a chat that the lead started posts its report to the lead once, as a messa
   // Reading the rows again posts nothing more.
   await Bun.sleep(20)
   expect(trace.filter((line) => line.startsWith("report"))).toHaveLength(1)
+})
+
+test("a listed chat's question posts to the lead once, word for word, as a question message instead of a notice, and its query follows it to its answer", async () => {
+  const lead = harness()
+  const { leadId, chat } = await routedChat(lead)
+  const context = "The login page has two forms."
+  const question = { question: "Which form should change?", header: "Form", multiSelect: false, choices: [
+    { kind: "option" as const, choiceId: "a", label: "Sign-in form", description: "The form on the start page", recommended: true },
+    { kind: "option" as const, choiceId: "b", label: "Sign-up form" },
+  ] }
+  await conversation.appendConversation(chat, [{ kind: "assistant", content: [{ type: "tool_use", id: "ask-1", name: "ask_user", input: { context, questions: [] } }] }])
+  await ctx.store.append({
+    aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.requested", version: 3, actor: "agent", timestamp: 1_000,
+    payload: { interactionId: "ask-1", conversationId: await conversation.chatConversationId(chat), toolUseId: "ask-1", request: [question] },
+  })
+  lead.sessionEvents.report(chat, "asked")
+  await settle(() => lead.reports.some((report) => report.call === leadQuestionCall("ask-1")))
+  expect(lead.reports.filter((report) => report.call === leadQuestionCall("ask-1"))).toEqual([{
+    fromSessionId: chat, toSessionId: leadId, call: leadQuestionCall("ask-1"), status: expect.stringMatching(/^(delivered|held)$/),
+    text: `Context:\n${context}\nQuestion (Form): Which form should change?\nOptions:\n- Sign-in form: The form on the start page (recommended)\n- Sign-up form`,
+  }])
+  // The message replaces the hidden notice of a question.
+  expect(lead.notices).toEqual([])
+  expect(await lead.service.question(chat, "ask-1")).toEqual({
+    state: "pending", context, question: { kind: "question", toolUseId: "ask-1", questions: [question], timestamp: 1_000 },
+  })
+
+  await ctx.store.append({
+    aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.answered", version: 3, actor: "user", timestamp: 2_000,
+    payload: { interactionId: "ask-1", answers: { [question.question]: { kind: "choice", selections: [{ choiceId: "a" }], text: "Sign-in form" } } },
+  })
+  expect(await lead.service.question(chat, "ask-1")).toEqual({ state: "answered", answers: { [question.question]: "Sign-in form" } })
+  expect(await lead.service.question(chat, "ask-2")).toEqual({ state: "unknown" })
+  // The rows that change after it post nothing more.
+  await Bun.sleep(20)
+  expect(lead.reports.filter((report) => report.call === leadQuestionCall("ask-1"))).toHaveLength(1)
+})
+
+test("a chat that asks two questions in one batch posts both to the lead, oldest first", async () => {
+  const lead = harness()
+  const { chat } = await routedChat(lead)
+  const conversationId = await conversation.chatConversationId(chat)
+  const ask = (id: string, text: string, timestamp: number) => ({
+    aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.requested", version: 3, actor: "agent" as const, timestamp,
+    payload: { interactionId: id, conversationId, toolUseId: id, request: [{ question: text, multiSelect: false, choices: [{ kind: "option" as const, choiceId: "a", label: "Yes" }] }] },
+  })
+  await ctx.store.appendBatch([ask("ask-1", "First?", 1_000), ask("ask-2", "Second?", 2_000)])
+  lead.sessionEvents.report(chat, "asked")
+  const posted = () => lead.reports.flatMap((report) => report.call.startsWith(leadQuestionCall("")) ? [report.call] : [])
+  await settle(() => posted().length === 2)
+  expect(posted()).toEqual([leadQuestionCall("ask-1"), leadQuestionCall("ask-2")])
 })
 
 /** Routes one request from a new lead to a new chat, with the lead's runner started, and answers both ids. */

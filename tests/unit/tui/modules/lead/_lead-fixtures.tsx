@@ -5,7 +5,7 @@ import type { QuestionBlock } from "../../../../../src/infra/output-blocks.js"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
 import { createChatSubmissions } from "../../../../../src/protocol/client/chat-submissions.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
-import { leadProtocol, type LeadRow, type LeadChatsView, type LeadRowState } from "../../../../../src/protocol/modules/lead.js"
+import { leadProtocol, type LeadRow, type LeadChatsView, type LeadQuestionOutcome, type LeadRowState } from "../../../../../src/protocol/modules/lead.js"
 import { ThemeProvider } from "../../../../../src/tui/context/theme.js"
 import { TickPoolProvider } from "../../../../../src/tui/context/tick-pool-context.js"
 import { LeadStrip } from "../../../../../src/tui/modules/lead/strip.js"
@@ -21,6 +21,8 @@ import { ModalProvider } from "../../../../../src/tui/components/modal.js"
 import { QuestionInputProvider } from "../../../../../src/tui/components/question-input.js"
 import { ToastProvider } from "../../../../../src/tui/context/toast.js"
 import type { SessionSurface } from "../../../../../src/tui/hooks/create-session-surface.js"
+import { createDraftCache } from "../../../../../src/tui/hooks/create-draft-cache.js"
+import type { LeadQuestionHost } from "../../../../../src/tui/modules/lead/question-widget.js"
 
 export const LEAD_ID = "lead-1"
 
@@ -102,7 +104,11 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
     },
     chatPane: () => pane,
     closeChat: async (sessionId: string) => { sent.push(`session.close ${sessionId}`) },
-  } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & Pick<TuiModuleClientHost, "sessionTitles" | "closeChat">
+    question: (sessionId: string) => questions()[sessionId],
+    answerQuestion: pane.composer.onAnswerQuestion,
+    cancelQuestion: pane.composer.onCancelQuestion,
+    questionDrafts: createDraftCache().questions,
+  } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & Omit<LeadQuestionHost, "client"> & Pick<TuiModuleClientHost, "sessionTitles" | "closeChat">
   return { host, overlay, setQuestions, sent, shows, holdSends }
 }
 
@@ -110,6 +116,21 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
  *  (`view`), with every mutation the list and the viewer send recorded in `sent`. */
 export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [sessionId: string]: readonly FrontendOutputBlock[] } = {}, overlay?: OverlayLayers, chats: ViewerChats = {}) {
   const [view, setView] = createSignal<LeadChatsView>({ rows })
+  // Where each question stands, as `lead.question` answers it, keyed `<sessionId> <toolUseId>`. Each read is recorded
+  // in `questionReads`, and a key in `failingReads` fails that many reads before it answers.
+  const outcomes = new Map<string, LeadQuestionOutcome>()
+  const questionReads: string[] = []
+  const failingReads = new Map<string, number>()
+  const readQuestion = ({ sessionId, toolUseId }: { readonly sessionId: string; readonly toolUseId: string }): LeadQuestionOutcome => {
+    const key = `${sessionId} ${toolUseId}`
+    questionReads.push(key)
+    const failures = failingReads.get(key) ?? 0
+    if (failures > 0) {
+      failingReads.set(key, failures - 1)
+      throw new Error("the read failed")
+    }
+    return outcomes.get(key) ?? { state: "unknown" }
+  }
   const viewer = viewerHost({ transcripts, view, ...(overlay ? { overlay } : {}), ...chats })
   const dispatch = runtimeDispatch({
     "lead.result.mark_read": async (command) => { viewer.sent.push(`lead.result.mark_read ${command.sessionId} ${command.entryId}`); return { ok: true } },
@@ -117,11 +138,11 @@ export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [s
   })
   const built = createRoot((dispose) => ({
     dispose,
-    client: createLeadClient({ ...viewer.host, domains: { lead: { scope: "workspace", view: () => ({ leadSessionId: LEAD_ID, dismissed: false }) }, leadChats: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({}) }, dialog: viewer.overlay.dialog, showToast: () => {} }),
+    client: createLeadClient({ ...viewer.host, domains: { lead: { scope: "workspace", view: () => ({ leadSessionId: LEAD_ID, dismissed: false }) }, leadChats: { scope: "workspace", view } }, client: { dispatch, query: runtimeQuery({ "lead.question": readQuestion }) }, dialog: viewer.overlay.dialog, showToast: () => {} }),
   }))
   /** The open viewers, as the shell's overlay renders them. */
   const Viewers = (): JSX.Element => <For each={viewer.overlay.viewer.stack}>{(entry) => typeof entry.element === "function" ? entry.element() : entry.element}</For>
-  return { ...built, ...viewer, view, setView, Viewers }
+  return { ...built, ...viewer, view, setView, Viewers, outcomes, questionReads, failingReads }
 }
 
 /** The shell's keyboard listener, in its first step: an open overlay takes the key. */

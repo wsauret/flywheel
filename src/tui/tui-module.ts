@@ -50,8 +50,14 @@ export interface TuiStripKeys {
    *  the handler takes; a chord the effective keymap binds stays with the
    *  keymap and is reported as a config issue. `onKey` answers whether it
    *  took the key; the kernel then prevents the key's default. The handler is
-   *  asked also while the strip holds no focus. */
-  claim(input: { readonly chords: readonly string[]; readonly onKey: (event: TuiStripKeyEvent) => boolean }): TuiStripKeyClaim
+   *  asked also while the strip holds no focus. `onPaste` is offered a paste
+   *  while the strip holds focus and answers whether it took the text; an
+   *  untaken paste ends the strip's focus and goes to the composer draft. */
+  claim(input: {
+    readonly chords: readonly string[]
+    readonly onKey: (event: TuiStripKeyEvent) => boolean
+    readonly onPaste?: (text: string) => boolean
+  }): TuiStripKeyClaim
 }
 
 export interface TuiStripProps extends TuiSlotProps {

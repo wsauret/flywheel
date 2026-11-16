@@ -15,7 +15,7 @@
 import { createContext, type ParentProps, useContext } from "solid-js"
 
 type KeyHandler = (evt: { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }) => boolean
-type PasteHandler = (text: string) => void
+type PasteHandler = (text: string) => boolean
 
 export interface QuestionInputContext {
   register(handlers: { onKey: KeyHandler; onPaste: PasteHandler }): void
@@ -23,7 +23,8 @@ export interface QuestionInputContext {
   input(evt: Parameters<KeyHandler>[0]): boolean
   /** While a question is pending, the prompt textarea (the only other paste
    *  receiver) is unmounted - a paste with no modal on top and no active
-   *  question form previously vanished with no feedback. */
+   *  question form previously vanished with no feedback. True when the form
+   *  took the text: false while no form waits or its cursor is on no field. */
   paste(text: string): boolean
 }
 
@@ -37,9 +38,7 @@ export function createQuestionInputRegistry(): QuestionInputContext {
       return active.onKey(evt)
     },
     paste(text) {
-      if (!active) return false
-      active.onPaste(text)
-      return true
+      return active?.onPaste(text) ?? false
     },
   }
 }

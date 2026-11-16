@@ -3,13 +3,14 @@ import { basename } from "node:path"
 import { createContext, createMemo, createSignal, useContext, type Accessor } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { sessionListTitle } from "../../../protocol/app-service-types.js"
-import { leadEntryLink, leadReportEntry, leadRowOrder, parseLeadEntryLink, sessionMessageCall, type LeadRow } from "../../../protocol/modules/lead.js"
+import { leadEntryLink, leadQuestionEntry, leadReportEntry, leadRowOrder, parseLeadEntryLink, sessionMessageCall, type LeadRow } from "../../../protocol/modules/lead.js"
 import { truncateToWidth } from "../../utils/text.js"
 import type { ModalHandle } from "../../components/modal-stack.js"
 import type { ModuleDomainIntakes } from "../../hooks/create-module-domain-intakes.js"
 import type { TuiModuleClient, TuiModuleClientHost } from "../../tui-module-client.js"
 import { LeadCloseConfirm, type LeadCloseFocus } from "./close-confirm.js"
 import { openLeadChatTab, openLeadChatViewer, type LeadChatViewerHost } from "./chat-viewer.js"
+import { createLeadQuestionFocus, LeadQuestionWidget, type LeadQuestionFocus, type LeadQuestionHost } from "./question-widget.js"
 import { LEAD_TRANSCRIPT } from "./transcript.js"
 
 /** What the lead's strip reads and opens, shared through the client's provider. */
@@ -25,6 +26,8 @@ export interface LeadScreen {
   readonly openTab: (sessionId: string) => void
   /** Closes a chat as the Sessions list's close chat does, with no question first; its row leaves the list. */
   readonly closeChat: (sessionId: string) => void
+  /** The key focus of the question widgets in the lead's transcript. */
+  readonly questions: LeadQuestionFocus
 }
 
 const LeadScreenContext = createContext<LeadScreen>()
@@ -39,7 +42,7 @@ export function useLeadScreen(): LeadScreen {
  *  terminal of 80 columns. */
 const REPORT_TITLE_COLUMNS = 40
 
-type LeadClientHost = LeadChatViewerHost & Pick<TuiModuleClientHost, "dialog" | "sessionTitles" | "closeChat"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
+type LeadClientHost = LeadChatViewerHost & LeadQuestionHost & Pick<TuiModuleClientHost, "dialog" | "sessionTitles" | "closeChat"> & { readonly domains: Pick<ModuleDomainIntakes, "lead" | "leadChats"> }
 
 /** The terminal title of the lead's tab (PI-LEAD-009): Flywheel and the project's directory name, such as
  *  "Flywheel | Data", because the lead chat's own title names no project. */
@@ -72,6 +75,7 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
     openChat: (sessionId, landing) => { openLeadChatViewer(host, { sessionId, order, row: rowOf, title, closeChat, ...(landing === undefined ? {} : { landing }) }) },
     openTab: (sessionId) => { openLeadChatTab(host, sessionId, rowOf(sessionId)) },
     closeChat,
+    questions: createLeadQuestionFocus(),
   }
 
   /** Answers true once the person confirms, after it starts the dismissal and
@@ -118,15 +122,19 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
       terminalTitle: leadTerminalTitle,
       transcript: LEAD_TRANSCRIPT,
       // A message from a chat is one line that opens the chat where it sent it (PI-LEAD-006): a report, which the
-      // runtime posted, at the final message, and a message that the chat sent itself, such as a milestone, at its call.
+      // runtime posted, at the final message, a question, which the runtime posted, at its call with the question's
+      // widget below the line (PI-LEAD-005), and a message that the chat sent itself, such as a milestone, at its call.
       messageRow: (message) => {
         const call = sessionMessageCall(message)
         if (call === undefined) return undefined
+        const chat = message.from.sessionId
+        const question = leadQuestionEntry(message)
         const reportEntry = leadReportEntry(message)
         return {
-          name: reportEntry === undefined ? "Update" : "Report",
-          detail: `· ${truncateToWidth(title(message.from.sessionId) || message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`,
-          linkUri: leadEntryLink(message.from.sessionId, reportEntry ?? call),
+          name: question !== undefined ? "Question" : reportEntry === undefined ? "Update" : "Report",
+          detail: `· ${truncateToWidth(title(chat) || message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`,
+          linkUri: leadEntryLink(chat, reportEntry ?? question ?? call),
+          ...(question === undefined ? {} : { below: () => <LeadQuestionWidget sessionId={chat} toolUseId={question} host={host} focus={screen.questions} /> }),
         }
       },
       // The lead is the happy path and tabs the divergent one (PI-LEAD-013, PI-LEAD-014).

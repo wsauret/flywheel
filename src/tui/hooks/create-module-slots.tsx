@@ -229,7 +229,7 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
     return (request = {}) => { open(request); return true }
   }
 
-  interface StripClaim { readonly onKey: (event: TuiStripKeyEvent) => boolean }
+  interface StripClaim { readonly onKey: (event: TuiStripKeyEvent) => boolean; readonly onPaste?: (text: string) => boolean }
   // Claims in mount order, which is registry order; read only when a key arrives.
   const claims: StripClaim[] = []
   const [focusedClaim, setFocusedClaim] = createSignal<StripClaim>()
@@ -241,7 +241,7 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
   function stripKeys(module: TuiModule): TuiStripKeys {
     return {
       claim(input) {
-        const claim: StripClaim = { onKey: input.onKey }
+        const claim: StripClaim = { onKey: input.onKey, ...(input.onPaste ? { onPaste: input.onPaste } : {}) }
         claims.push(claim)
         onCleanup(() => {
           claims.splice(claims.indexOf(claim), 1)
@@ -308,9 +308,15 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
   }
 
   function Strips(props: StripsProps): JSX.Element {
-    // A paste that no overlay or question took goes to the prompt, which has
-    // no focus while a strip holds it.
-    usePaste((event) => { if (!event.defaultPrevented && !(deps.overlayOpen?.() ?? false) && untrack(focusedClaim)) releaseStripFocus() })
+    // A paste that no overlay or question took goes to the focused strip, and
+    // one that the strip does not take goes to the prompt, which has no focus
+    // while a strip holds it.
+    usePaste((event) => {
+      const holder = untrack(focusedClaim)
+      if (event.defaultPrevented || (deps.overlayOpen?.() ?? false) || !holder) return
+      if (holder.onPaste?.(new TextDecoder().decode(event.bytes))) event.preventDefault()
+      else releaseStripFocus()
+    })
     const side = (placement: NonNullable<TuiModule["stripPlacement"]>): JSX.Element => <Show when={props.sessionId()} keyed>{(sessionId) => placedStrips(sessionId, placement, props.width)}</Show>
     return <>{side("above")}{props.children}{side("below")}</>
   }

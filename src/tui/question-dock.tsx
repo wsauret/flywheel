@@ -8,7 +8,7 @@ import { OpaqueBox } from "@tui/components/opaque-box"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/utils/border"
 import { createMeasuredWidth } from "@tui/hooks/create-measured-width"
-import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, untrack } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import type { AgentInputAnswer } from "../protocol/question-protocol-types.js"
 import type { QuestionDraftNamespace } from "./hooks/create-draft-cache.js"
@@ -16,6 +16,7 @@ import { MarkdownBody } from "./output-blocks/markdown/markdown-body.js"
 import { createQuestionForm } from "./question-dock-form.js"
 import { layoutQuestionDockEditor } from "./question-dock-editor-layout.js"
 import { createModalScrollController } from "./components/modal-scroll-controller.js"
+import { Button } from "./components/button.js"
 
 interface QuestionAnswers {
   [question: string]: AgentInputAnswer
@@ -42,6 +43,13 @@ interface QuestionDockBaseProps {
   /** Warnings of the composer border that the dock covers, such as the count
    *  of chats that need the person, at the right of the header row. */
   notices?: () => readonly string[]
+  /** Given, a click on an option picks it as its number key does, and Next
+   *  or Submit and Skip buttons follow the choices, for a dock that the
+   *  person answers with the pointer. */
+  pointer?: boolean
+  /** Called first on every press in the dock, before the press acts, so an owner that lends the dock its keys can
+   *  give it focus on any click. */
+  onPointer?: () => void
 }
 
 /** `skip`, the default: Escape skips the question. `leave`: Escape calls
@@ -97,9 +105,17 @@ export function QuestionDock(props: QuestionDockProps) {
   // The editable row under the dock cursor places the terminal cursor while it
   // renders, as the prompt textarea does. Nothing renders a caret elsewhere, so
   // the dock hides the cursor when the caret leaves the editable rows.
+  // A dock that never held focus leaves the cursor alone, so a dock that shows
+  // while the person types elsewhere never hides that caret.
   const caretShown = () => props.captureFocus() && form.isOnEditable()
-  createEffect(() => { if (!caretShown()) renderer.setCursorPosition(0, 0, false) })
-  onCleanup(() => renderer.setCursorPosition(0, 0, false))
+  // Cleanup reads the last value the effect saw, not the accessors: they can
+  // read a <Show> that is tearing down with the dock, which Solid rejects.
+  let caretWasShown = false
+  createEffect(on(caretShown, (shown, shownBefore) => {
+    caretWasShown = shown
+    if (!shown && (shownBefore === true || props.captureFocus())) renderer.setCursorPosition(0, 0, false)
+  }))
+  onCleanup(() => { if (caretWasShown) renderer.setCursorPosition(0, 0, false) })
 
   function chipChunks(index: number): TextChunk[] {
     const q = form.questions()[index]
@@ -126,8 +142,11 @@ export function QuestionDock(props: QuestionDockProps) {
 
   const questionText = () => form.currentQuestion()?.question ?? ""
 
+  // A dock shows that it holds the keys by its accent rail and its cursor row; a dock that does not hold them keeps
+  // both muted. Only colors change, so focus never moves a row.
   function rowStyle(choiceIndex: number) {
-    const isCursor = form.cursor() === choiceIndex
+    // A pointer dock shares its screen with other docks, so it marks its cursor only while it holds the keys.
+    const isCursor = (!props.pointer || props.captureFocus()) && form.cursor() === choiceIndex
     const picked = form.isPicked(choiceIndex)
     const glyph = form.multi()
       ? (picked ? "\u25A3" : "\u25A1")
@@ -213,6 +232,7 @@ export function QuestionDock(props: QuestionDockProps) {
     }
     const placeCursor = (event: MouseEvent) => {
       if (event.button !== MouseButton.LEFT || !textElement) return
+      props.onPointer?.()
       event.preventDefault()
       event.stopPropagation()
       form.focusEditor(rowProps.choiceIndex, layout().cursorOffsetAt(event.x - textElement.x, event.y - textElement.y))
@@ -328,6 +348,12 @@ export function QuestionDock(props: QuestionDockProps) {
                 ? <EditableRow choice={choice()} choiceIndex={i()} />
                 : (
                     <text
+                      onMouseDown={props.pointer ? (event: MouseEvent) => {
+                        if (event.button !== MouseButton.LEFT) return
+                        props.onPointer?.()
+                        event.preventDefault()
+                        form.choose(i())
+                      } : undefined}
                       ref={(element: TextRenderable) => {
                         createEffect(() => {
                           const current = choice()
@@ -348,6 +374,13 @@ export function QuestionDock(props: QuestionDockProps) {
           {(error) => <text fg={theme.error}>{`  ${error().message}`}</text>}
         </Show>
       </box>
+
+      <Show when={props.pointer}>
+        <box flexDirection="row" gap={1} paddingBottom={1}>
+          <Button label={form.tab() < form.total() - 1 ? "Next" : "Submit"} onPress={() => { props.onPointer?.(); form.next() }} />
+          <Button label="Skip" muted={true} onPress={() => { props.onPointer?.(); form.skip() }} />
+        </box>
+      </Show>
 
       <text ref={(el: TextRenderable) => { createEffect(() => { el.content = hintsContent() }) }} />
     </box>
@@ -382,7 +415,7 @@ export function QuestionDock(props: QuestionDockProps) {
       // The left divider acts as an attachment point to the transcript above:
       // this dock is the active input surface, not a passive status card.
       border={["left"]}
-      borderColor={theme.primary}
+      borderColor={!props.pointer || props.captureFocus() ? theme.primary : theme.border}
       customBorderChars={VerticalBarBorder}
     >
       <Show when={notices()}>{(text) => <text flexShrink={0} alignSelf="flex-end" fg={theme.warning} wrapMode="none">{text()}</text>}</Show>

@@ -54,7 +54,15 @@ export interface QuestionForm {
   setEditorVisualLines(choiceIndex: number, lines: readonly TextEntryVisualLine[]): void
   setCurrentFreeformVisualLines(lines: readonly TextEntryVisualLine[]): void
   handleKey(evt: KeyEvent): boolean
-  handlePaste(text: string): void
+  /** Gives the text to the choice editor under the cursor; false when no editor takes it. */
+  handlePaste(text: string): boolean
+  /** A click on a choice: moves to it and picks it, or toggles it in a multi-select question. Unlike its number key,
+   *  it never moves on or submits: the next or submit action does. */
+  choose(choiceIndex: number): void
+  /** A click on the next or submit action: what Enter does past the current question's choices. */
+  next(): void
+  /** A click on the skip action: what the skip key does. */
+  skip(): void
 }
 
 export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
@@ -320,6 +328,15 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
     return false
   }
 
+  function choose(choiceIndex: number): void {
+    const choice = currentChoices()[choiceIndex]
+    if (settlement() !== "idle" || !choice) return
+    setEditorError(undefined)
+    setCursor(choiceIndex)
+    if (choice.kind === "option") pickOption(choiceIndex)
+    else persistDraft()
+  }
+
   function activate(choiceIndex: number): void {
     const choice = currentChoices()[choiceIndex]
     if (!choice) return
@@ -388,15 +405,21 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
     return handleSelection(evt)
   }
 
-  function handlePaste(text: string): void {
-    if (settlement() !== "idle" || !isOnEditable()) return
-    editors[tab()]?.[cursor()]?.handlePaste(text)
+  function handlePaste(text: string): boolean {
+    const editor = settlement() === "idle" && isOnEditable() ? editors[tab()]?.[cursor()] : undefined
+    editor?.handlePaste(text)
+    return editor !== undefined
   }
+
+  const whileIdle = (action: () => void): void => { if (settlement() === "idle") action() }
 
   return {
     questions, total, tab, cursor, currentQuestion, currentChoices, currentFreeform, currentFreeformPresentation,
     editorError, multi, settlement, isOnFreeform, isOnEditable, isPicked, isAnswered,
     editorPresentation, focusEditor, focusFreeform, setEditorVisualLines, setCurrentFreeformVisualLines, handleKey, handlePaste,
+    choose,
+    next: () => { whileIdle(advance) },
+    skip: () => { whileIdle(cancel) },
   }
 }
 

@@ -216,12 +216,13 @@ describe("createModuleSlots", () => {
 })
 
 describe("module strip keys", () => {
-  it("takes the prompt's focus for a claiming strip, gives it back on a key it does not take, a paste, or a press on the prompt, and ends it on a question or a foreground change", async () => {
+  it("takes the prompt's focus for a claiming strip, gives it back on a key or a paste it does not take, or a press on the prompt, and ends it on a question or a foreground change", async () => {
     const [foregroundId, setForegroundId] = createSignal<string | undefined>("chat-1")
     const [question, setQuestion] = createSignal(false)
     const [overrides, setOverrides] = createSignal<{ readonly [command: string]: string }>({})
     const issues: string[] = []
     const taken: string[] = []
+    const pasted: string[] = []
     let claim: TuiStripKeyClaim | undefined
     let empty: (() => boolean) | undefined
     const strip: TuiModule["strip"] = (props) => {
@@ -230,6 +231,10 @@ describe("module strip keys", () => {
         const own = event.name === "down" || event.name === "escape"
         if (own) taken.push(event.name)
         return own
+      }, onPaste: (text) => {
+        if (text !== "mine") return false
+        pasted.push(text)
+        return true
       } })
       return <text>strip</text>
     }
@@ -292,7 +297,14 @@ describe("module strip keys", () => {
       await rendered.renderOnce()
       expect(rendered.captureCharFrame()).toContain("abcd")
 
+      // A paste that the focused strip takes stays with it.
       await focusStrip()
+      await rendered.mockInput.pasteBracketedText("mine")
+      expect(slots.stripFocused()).toBe(true)
+      expect(pasted).toEqual(["mine"])
+      await rendered.renderOnce()
+      expect(rendered.captureCharFrame()).not.toContain("mine")
+
       const promptRow = rendered.captureCharFrame().split("\n").findIndex((line) => line.includes("abcd"))
       await rendered.mockMouse.click(10, promptRow)
       expect(slots.stripFocused()).toBe(false)

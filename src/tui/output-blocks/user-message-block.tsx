@@ -1,13 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { UserMessageBlock as UserMessageBlockType, UserMessageImage } from "@infra/output-blocks"
-import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
+import { StyledText, bold as stBold, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/utils/border"
 import { bindSelectableStyledTextContent, bindStyledTextContent } from "@tui/utils/reactive-text.js"
 import { ITALIC } from "@tui/utils/text-attributes"
 import { useBodyToggle, useHeaderToggle, useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
-import { createContext, createEffect, createMemo, createSignal, For, on, Show, useContext, type Accessor } from "solid-js"
+import { createContext, createEffect, createMemo, createSignal, For, on, Show, untrack, useContext, type Accessor } from "solid-js"
 import { useBlockDisclosure } from "../context/block-disclosure.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { useRowWidth } from "@tui/context/row-width.js"
@@ -21,6 +21,7 @@ import { useAttachmentImages } from "@tui/context/attachment-images.js"
 import { messageDisclosureEntry, messageSenderLabel, PERSON_WORDS_LABEL } from "../../protocol/client/message-sender.js"
 import { ToolEntry } from "./tool-entry.js"
 import { useMessageRow } from "@tui/context/message-row.js"
+import { TranscriptRevealProvider, useRevealInTranscript, type RevealInTranscript } from "@tui/context/transcript-reveal.js"
 
 interface UserMessageBlockProps {
   block: UserMessageBlockType & { imageCount?: number }
@@ -96,14 +97,28 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
 /** A message from another session: the module's one-line presentation when one claims it, else the disclosure. */
 function SessionMessageRow(props: UserMessageBlockProps & { readonly from: NonNullable<UserMessageBlockType["from"]> }) {
   const present = useMessageRow()
+  const custom = createMemo(() => present({ id: props.block.id, from: props.from }))
   const entry = () => {
     const disclosure = messageDisclosureEntry(props.block, props.from)
-    const custom = present({ id: props.block.id, from: props.from })
-    if (!custom) return disclosure
-    const { invocationBody: _body, ...line } = disclosure
-    return { ...line, presentation: { name: custom.name, detail: custom.detail }, linkUri: custom.linkUri }
+    const line = custom()
+    if (!line) return disclosure
+    const { invocationBody: _body, ...rest } = disclosure
+    return { ...rest, presentation: { name: line.name, detail: line.detail }, linkUri: line.linkUri }
   }
-  return <ToolEntry block={entry()} disclosureId={`userMessage:${props.block.id}`} onHydrateBody={props.onHydrateBody} />
+  // A presentation is a fresh object at each read, so the part below mounts once while one is named.
+  const below = createMemo(() => custom()?.below !== undefined)
+  const revealInTranscript = useRevealInTranscript()
+  let row: BoxRenderable | undefined
+  // The part below belongs to this row's line, so revealing it shows the line too.
+  const revealRow: RevealInTranscript = (element) => { revealInTranscript(row ?? element) }
+  const line = () => <ToolEntry block={entry()} disclosureId={`userMessage:${props.block.id}`} onHydrateBody={props.onHydrateBody} />
+  // Only a row with a part below takes a box, so every other message row keeps its layout.
+  return <Show when={below()} fallback={line()}>
+    <box ref={(box: BoxRenderable) => { row = box }} flexDirection="column" flexShrink={0}>
+      {line()}
+      <TranscriptRevealProvider value={revealRow}>{untrack(() => custom()?.below?.())}</TranscriptRevealProvider>
+    </box>
+  </Show>
 }
 
 function UserMessageContent(props: UserMessageBlockProps) {

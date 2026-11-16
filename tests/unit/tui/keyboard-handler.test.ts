@@ -404,7 +404,7 @@ describe("createKeyboardHandler", () => {
     // the keystroke, exactly like a modal stack entry would.
     const handleQuestionKey = mock(() => true)
     const questionInput = createQuestionInputRegistry()
-    questionInput.register({ onKey: handleQuestionKey, onPaste: () => {} })
+    questionInput.register({ onKey: handleQuestionKey, onPaste: () => false })
     const deps = createDeps({
       tabs: () => [
         tab("chat-1", true),
@@ -442,7 +442,7 @@ describe("createKeyboardHandler", () => {
       overlay.dialog.replace("modal-content", { onKey: handleModalKey })
       const handleQuestionKey = mock(() => true)
       const questionInput = createQuestionInputRegistry()
-      questionInput.register({ onKey: handleQuestionKey, onPaste: () => {} })
+      questionInput.register({ onKey: handleQuestionKey, onPaste: () => false })
       const deps = createDeps({ overlay, questionInput })
 
       const { handleKey } = createKeyboardHandler(deps)
@@ -471,7 +471,7 @@ describe("createKeyboardHandler", () => {
     const raw = { name: "", sequence: "\u000f", raw: "\u000f" }
     const seen: unknown[] = []
     const questionInput = createQuestionInputRegistry()
-    questionInput.register({ onKey: (event) => { seen.push(event); return false }, onPaste: () => {} })
+    questionInput.register({ onKey: (event) => { seen.push(event); return false }, onPaste: () => false })
     const stripInput = mock((event: { name: string; ctrl?: boolean }) => event.name === "o" && event.ctrl === true)
     const { handleKey } = createKeyboardHandler(createDeps({ questionInput, promptPopup: { input: (event) => { seen.push(event); return false } }, strips: { stripInput } }))
 

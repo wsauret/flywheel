@@ -1,8 +1,10 @@
 import { Schema } from "effect"
-import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, type ModuleComposerStatus } from "../protocol-module.js"
+import type { QuestionBlock } from "../../infra/output-blocks.js"
+import { defineProtocolDomain, defineProtocolModule, defineProtocolMutation, defineProtocolQuery, type ModuleComposerStatus } from "../protocol-module.js"
 import type { RuntimeCursorIdentity } from "../runtime-ui-protocol-types.js"
 import type { SessionCatalogRow } from "../app-service-types.js"
 import { SessionCatalogRowSchema } from "../session-catalog-protocol-schemas.js"
+import { QuestionBlockSchema } from "../transcript-protocol-schemas.js"
 
 /** The workspace-scoped `lead` contract: the project's one lead chat and
  *  whether the person dismissed it, which the control placement serves, and
@@ -54,6 +56,14 @@ export interface LeadChatsView {
 type LeadChatsPatchPayload =
   | { readonly kind: "lead.row.updated"; readonly row: LeadRow }
   | { readonly kind: "lead.row.removed"; readonly sessionId: string }
+
+/** Where one question of a listed chat stands, as the lead's question widget shows it (PI-LEAD-005): pending with the
+ *  form and the leading context of its call, answered with each answer as the chat's transcript states it, skipped
+ *  by the person, withdrawn by the chat, or unknown to the lead. */
+export type LeadQuestionOutcome =
+  | { readonly state: "pending"; readonly question: QuestionBlock; readonly context: string | null }
+  | { readonly state: "answered"; readonly answers: { readonly [question: string]: string } }
+  | { readonly state: "skipped" | "withdrawn" | "unknown" }
 
 /** The answer of `lead.open`: the lead chat with its catalog row and whether this open created it, or no chat while
  *  the lead is dismissed or off. The refusal is the runtime's answer when it admits no mutation, as at a stop. */
@@ -156,6 +166,18 @@ const leadDismiss = defineProtocolMutation({
   policy: "lossless",
 })
 
+/** Where one question of a chat stands (`LeadQuestionOutcome`). */
+const leadQuestion = defineProtocolQuery({
+  query: "lead.question",
+  input: { sessionId: Schema.NonEmptyString, toolUseId: Schema.NonEmptyString },
+  result: Schema.Union([
+    Schema.Struct({ state: Schema.Literal("pending"), question: QuestionBlockSchema, context: Schema.NullOr(Schema.String) }),
+    Schema.Struct({ state: Schema.Literal("answered"), answers: Schema.Record(Schema.String, Schema.String) }),
+    Schema.Struct({ state: Schema.Literals(["skipped", "withdrawn", "unknown"]) }),
+  ]) satisfies Schema.Codec<LeadQuestionOutcome>,
+  deadline: "control",
+})
+
 /** The person read a listed chat's result up to `entryId`, so its row no longer holds that result. */
 const leadResultMarkRead = defineProtocolMutation({
   type: "lead.result.mark_read",
@@ -184,12 +206,25 @@ export function leadRowOrder(rows: readonly LeadRow[]): readonly LeadRow[] {
 }
 
 const REPORT_CALL_PREFIX = "lead-report:"
+const QUESTION_CALL_PREFIX = "lead-question:"
 const ENTRY_LINK_PREFIX = "flywheel://lead/chat/"
 
 /** The sending id of the message by which the runtime posts a listed chat's report, its final message `entryId`, to
  *  the lead (PI-LEAD-006). The lead's clients know a report by it. */
 export function leadReportCall(entryId: string): string {
   return `${REPORT_CALL_PREFIX}${entryId}`
+}
+
+/** The sending id of the message by which the runtime posts a listed chat's question, its ask_user call `toolUseId`,
+ *  to the lead (PI-LEAD-005). The lead's clients show a question widget for it. */
+export function leadQuestionCall(toolUseId: string): string {
+  return `${QUESTION_CALL_PREFIX}${toolUseId}`
+}
+
+/** The ask_user call that a question message names; undefined for any other message. */
+export function leadQuestionEntry(message: { readonly id: string; readonly from: { readonly sessionId: string } }): string | undefined {
+  const call = sessionMessageCall(message)
+  return call?.startsWith(QUESTION_CALL_PREFIX) ? call.slice(QUESTION_CALL_PREFIX.length) || undefined : undefined
 }
 
 /** The sending call of a message from another session, read from the entry id `msg:<sender>:<call>` that the message
@@ -246,11 +281,12 @@ function leadComposerStatus(view: LeadChatsView | undefined): readonly ModuleCom
 export const leadDesignationProtocol = defineProtocolModule({ id: "lead", domains: [leadDomain], mutations: [leadOpen, leadDismiss] })
 
 /** The part of the contract that the module's execution service answers. */
-export const leadChatsProtocol = defineProtocolModule({ id: "lead", domains: [leadChatsDomain], mutations: [leadResultMarkRead, leadChatMarkSeen] })
+export const leadChatsProtocol = defineProtocolModule({ id: "lead", domains: [leadChatsDomain], queries: [leadQuestion], mutations: [leadResultMarkRead, leadChatMarkSeen] })
 
 export const leadProtocol = defineProtocolModule({
   id: "lead",
   domains: [...leadDesignationProtocol.domains, ...leadChatsProtocol.domains],
+  queries: leadChatsProtocol.queries,
   mutations: [...leadDesignationProtocol.mutations, ...leadChatsProtocol.mutations],
   composer: { status: (read) => leadComposerStatus(read(leadChatsDomain)) },
 })

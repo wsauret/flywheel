@@ -8,6 +8,7 @@ import { OpaqueBox } from "@tui/components/opaque-box"
 import { ShimmerText } from "@tui/components/shimmer-text"
 import { Spinner } from "@tui/components/spinner"
 import { ScrollPreserveProvider } from "@tui/context/scroll-preserve.js"
+import { TranscriptRevealProvider } from "@tui/context/transcript-reveal.js"
 import { RowWidthProvider } from "@tui/context/row-width.js"
 import { TranscriptViewportHeightProvider } from "@tui/context/transcript-viewport.js"
 import { ImageClipBottomProvider } from "@tui/context/attachment-images.js"
@@ -251,6 +252,7 @@ export function OutputWindow(props: OutputWindowProps) {
     <BlockDisclosureProvider value={{ disclosure: transcript.disclosure, setDisclosure: transcript.setDisclosure }}>
     <RowWidthProvider value={{ width: rowWidth, report: setRowWidth }}>
     <ScrollPreserveProvider value={scroll.preserveScroll}>
+    <TranscriptRevealProvider value={scroll.reveal}>
     <TranscriptViewportHeightProvider value={transcriptRows}>
     <LandingTargetProvider value={landingTarget}>
     <MessageRowProvider present={(message) => presentation() ? firstTab.messageRow?.(message) : undefined}>
@@ -397,6 +399,7 @@ export function OutputWindow(props: OutputWindowProps) {
     </MessageRowProvider>
     </LandingTargetProvider>
     </TranscriptViewportHeightProvider>
+    </TranscriptRevealProvider>
     </ScrollPreserveProvider>
     </RowWidthProvider>
     </BlockDisclosureProvider>

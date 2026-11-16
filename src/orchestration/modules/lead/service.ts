@@ -3,14 +3,16 @@ import { parseProjectionFact } from "../../../infra/event-projection.js"
 import { requireGuardedEventAppender, type StoredFact } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
-import { EMPTY_LEAD_CHATS, leadChatsCursor, leadReportCall, type LeadChatsView, type LeadSeenState } from "../../../protocol/modules/lead.js"
+import { EMPTY_LEAD_CHATS, leadChatsCursor, leadQuestionCall, leadReportCall, type LeadChatsView, type LeadQuestionOutcome, type LeadSeenState } from "../../../protocol/modules/lead.js"
+import { formatAgentInputAnswers } from "../../../protocol/question-protocol-types.js"
 import type { SessionEventKind } from "../../chat/runner-types.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import type { SessionOpenHold } from "../../app-service/runtime-supervisor-types.js"
 import { parseSessionMetadataFact } from "../../session/session-metadata-facts.js"
 import { conversationHoldsMessage } from "../../session/empty-chat.js"
+import { loadAgentInputProjection } from "../../session/agent-input-projection.js"
 import { sessionDisplayName } from "../../session/schemas.js"
-import { readChatDetail, readChatRoster, type ChatProgress } from "./chat-progress.js"
+import { questionText, readChatDetail, readChatRoster, type ChatProgress } from "./chat-progress.js"
 import type { LeadFact } from "./facts.js"
 import type { LeadFoundChat } from "./find-chat.js"
 import { createLeadJournal, type LeadJournal } from "./journal.js"
@@ -59,6 +61,9 @@ export interface LeadService extends ModuleServiceInstance {
    *  state no more until the chat changes state again. Appends nothing while the module is off, and refuses a chat
    *  that is not in the list. */
   markSeen(sessionId: string, state: LeadSeenState, entryId: string): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: string }>
+  /** Where the question of a chat's ask_user call `toolUseId` stands, from the chat's own question facts, with the
+   *  leading context of the call while the question waits in a listed chat. Unknown while the module is off. */
+  question(sessionId: string, toolUseId: string): Promise<LeadQuestionOutcome>
   readonly journal: LeadJournal
 }
 
@@ -74,8 +79,8 @@ type NonEmptyIds = readonly [string, ...string[]]
 type MarkOutcome = { readonly ok: true } | { readonly ok: false; readonly error: string }
 
 /** The events of a listed chat that reach the lead as a hidden notice. A finished turn reaches it as the chat's
- *  report instead (PI-LEAD-006). */
-const NOTICE_KINDS: readonly SessionEventKind[] = ["asked", "failed", "cut"]
+ *  report, and a question as the chat's question message, instead (PI-LEAD-005, PI-LEAD-006). */
+const NOTICE_KINDS: readonly SessionEventKind[] = ["failed", "cut"]
 
 const joinedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.joined" ? [fact.payload.sessionId] : [])
 const closedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.closed" ? [fact.payload.sessionId] : [])
@@ -131,6 +136,9 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   // The disposals of the rows owners that a turn-off ended; dispose settles them.
   let endings: Promise<unknown> = Promise.resolve()
   let unsubscribeClosed: (() => void) | undefined
+  // The questions that this process posted or posts, each as `<lead>:<toolUseId>`, so a row that publishes again posts
+  // nothing more. A restart posts each pending question again, and the delivery records nothing for one the lead holds.
+  const postedQuestions = new Set<string>()
 
   const shownLead = (): string | null => {
     const state = journal.state()
@@ -154,7 +162,38 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
 
   const publishRow = (change: LeadRowChange): void => {
     services.publish({ cursor: leadChatsCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
-    if (change.kind === "updated") postReport(change.row.sessionId)
+    if (change.kind === "updated") {
+      postReport(change.row.sessionId)
+      postQuestions(change.row.sessionId)
+    }
+  }
+
+  /** Posts each pending question of a chat to the shown lead, oldest first, as a message from the chat, which the
+   *  lead's transcript shows as the question's widget at this point (PI-LEAD-005). The text holds the question word for
+   *  word, so the lead can add a recommendation. Every question posts, also one of a chat that a client shows: the
+   *  widget settles wherever the person answers. */
+  function postQuestions(sessionId: string): void {
+    const lead = watched?.lead
+    if (lead === undefined) return
+    for (const question of rows?.questions(sessionId) ?? []) {
+      const key = `${lead}:${question.toolUseId}`
+      if (postedQuestions.has(key)) continue
+      postedQuestions.add(key)
+      const call = leadQuestionCall(question.toolUseId)
+      const text = questionText(question)
+      posting = posting.then(async () => {
+        const outcome = await services.executionEnvironment().sendSessionMessage({ fromSessionId: sessionId, toSessionId: lead, call, text })
+        if (outcome.status === "refused") {
+          postedQuestions.delete(key)
+          log.warn("lead could not post a question", { leadSessionId: lead, sessionId, toolUseId: question.toolUseId, reason: outcome.reason })
+          return
+        }
+        log.info("lead posted a question", { leadSessionId: lead, sessionId, toolUseId: question.toolUseId, status: outcome.status, bytes: Buffer.byteLength(text) })
+      }).catch((error: unknown) => {
+        postedQuestions.delete(key)
+        log.warn("lead could not post a question", { leadSessionId: lead, sessionId, toolUseId: question.toolUseId, error: errorMessage(error) })
+      })
+    }
   }
 
   /** Posts a chat's unread result to the shown lead as its report: the chat's final message in full, as a message
@@ -208,8 +247,11 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       watched = { lead, chats: new Set() }
       opened = services.executionEnvironment().createOpenHold()
       watch(listed())
-      // The results that waited while no lead showed go to the lead that shows now.
-      for (const row of rows?.rows() ?? []) postReport(row.sessionId)
+      // The results and questions that waited while no lead showed go to the lead that shows now.
+      for (const row of rows?.rows() ?? []) {
+        postReport(row.sessionId)
+        postQuestions(row.sessionId)
+      }
       return
     }
     if (!watched) return
@@ -496,6 +538,23 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     },
     markRead: (sessionId, entryId) => appendMark(sessionId, { type: "lead.result.read", payload: { sessionId, entryId } }),
     markSeen: (sessionId, state, entryId) => appendMark(sessionId, { type: "lead.chat.seen", payload: { sessionId, state, entryId } }),
+    async question(sessionId, toolUseId) {
+      if (!services.enabled()) return { state: "unknown" }
+      // One keyed lookup in a held fold, at a pending widget's mount or at a change of its chat's question, never per
+      // stored batch. An ask_user call's interaction id is its call id.
+      const entry = (await loadAgentInputProjection(services.projectionReader, sessionId)).get(toolUseId)
+      switch (entry?.kind) {
+        case "pending": return {
+          state: "pending",
+          question: { kind: "question", toolUseId, questions: [...entry.request], timestamp: entry.openedAt },
+          context: rows?.questions(sessionId).find((waiting) => waiting.toolUseId === toolUseId)?.context ?? null,
+        }
+        case "answered": return { state: "answered", answers: formatAgentInputAnswers(entry.answers) }
+        case "cancelled": return { state: "skipped" }
+        case "withdrawn": return { state: "withdrawn" }
+        default: return { state: "unknown" }
+      }
+    },
     async dispose() {
       disposed = true
       unsubscribeStored()

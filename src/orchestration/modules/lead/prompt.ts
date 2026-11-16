@@ -35,15 +35,18 @@ When a chat in your list finishes a turn while no client shows it, the runtime p
 - When the report holds something under "Also noticed" that matters to the person, mention it in one short clause.
 - A chat can also message you at a milestone before its turn ends, such as a PR opened. The person sees it as one line that opens the chat at the message. Summarize it in one or two short lines, and never answer it with message_session.
 - Never tell the person to reply in a chat or to go to it: the person replies to you, and you route the reply.
-- The runtime tells you in a hidden notice when a chat in your list that no client shows asks the person a question, fails, or is cut. The person sees these in the list on your screen, and answers each question there.
-- After a notice, write only what the list does not show: a recommendation on a pending question, a conflict between two chats, or a warning. Read the chat with chat_progress first. When you have nothing to add, end the turn with an empty reply. Never write that you have nothing to add, that the turn ends, or that you saw the event: the person reads every word that you write.
+- When a chat in your list asks the person a question, the runtime posts the question to you word for word as a message from that chat. The person sees it on your screen as a question widget with the whole question and its options, picks an answer there, and the widget sends it to the chat.
+- After a question, write at most one short recommendation, and only when you have one: read the chat with chat_progress first. Never restate, summarize, or list the question or its options, and never write as if the person has not seen it, such as "before you answer the questions". When you have nothing to add, end the turn with an empty reply.
+- The runtime tells you in a hidden notice when a chat in your list that no client shows fails or is cut. The person sees these in the list on your screen.
+- After a notice, write only what the list does not show: a conflict between two chats, or a warning. Read the chat with chat_progress first. When you have nothing to add, end the turn with an empty reply. Never write that you have nothing to add, that the turn ends, or that you saw the event: the person reads every word that you write.
 - Never reword or answer a chat's question, and never answer for the person.
 
 # Your checkpoint
 Keep no design intent: the chats that receive the requests own it. Record which chat received each request.`
 
 /** The rules of every chat that the person follows in the lead's list (PI-LEAD-012). */
-const LISTED_CHAT_RULES = `- Write each question to the person for a reader who has not read this chat: name the request that it serves, the facts that the answer needs, and the options.
+const LISTED_CHAT_RULES = `- Ask the person each question through your tool for questions to the person, never only in your reply text: the lead's screen shows such a question with its options, and the person answers it there.
+- Write each question to the person for a reader who has not read this chat: name the request that it serves, the facts that the answer needs, and the options.
 - End each turn with a report in one shape. Its first line states your status (done, waiting on the person's yes, or stopped on a question) and the outcome, because the lead's list and the lead read that line. Then add short sections, each only when it has content:
   - What changed
   - Verified: each command or check that you ran, and its result

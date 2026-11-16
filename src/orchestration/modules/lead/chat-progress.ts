@@ -326,7 +326,9 @@ export async function readChatDetail(deps: ChatProgressDeps, sessionId: string, 
   return { kind: "detail", ...head, calls: callsLine(calls), conversation }
 }
 
-function questionText({ context, questions }: PendingQuestion): string {
+/** A pending question word for word as the lead reads it: its context, each question with its header, and every
+ *  option with its description and marks. */
+export function questionText({ context, questions }: PendingQuestion): string {
   const lines = context === null ? [] : ["Context:", context]
   for (const question of questions) {
     lines.push(`Question${question.header ? ` (${question.header})` : ""}: ${question.question}`, question.multiSelect ? "Options (more than one can be picked):" : "Options:")

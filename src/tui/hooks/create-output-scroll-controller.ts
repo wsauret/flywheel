@@ -1,4 +1,4 @@
-import type { BaseRenderable, MouseEvent, ScrollBoxRenderable } from "@opentui/core"
+import type { BaseRenderable, MouseEvent, Renderable, ScrollBoxRenderable } from "@opentui/core"
 import { type Accessor, batch, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js"
 import type { HeightIndex } from "./create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
@@ -112,6 +112,9 @@ export interface OutputScrollController {
   readonly toTop: () => void
   readonly toBottom: () => void
   readonly toBlock: (blockIndex: number) => void
+  /** Scrolls the least distance that shows all of a mounted row's descendant, or its top when it is taller than the
+   *  viewport, as explicit navigation does. A descendant that the viewport already shows in full leaves the view. */
+  readonly reveal: (element: Renderable) => void
   readonly wheel: (event: MouseEvent) => void
   readonly preserveScroll: (mutate: () => void) => void
   readonly selectionAutoScroll: TranscriptSelectionAutoScroll
@@ -768,6 +771,15 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     e.requestRender()
   }
 
+  function reveal(element: Renderable): void {
+    const e = el
+    if (!e || element.isDestroyed) return
+    // Both screen rows stand on the last layout, which the caller has not changed.
+    const top = element.screenY - e.viewport.screenY
+    const rows = top < 0 || element.height > e.viewport.height ? top : Math.max(0, top + element.height - e.viewport.height)
+    if (rows !== 0) captureUserOffset(e, state.offset + rows, "command.reveal")
+  }
+
   /** Centres the landing block on its laid-out rows, before paint: the middle
    *  of the block at the middle of the viewport, a block taller than the
    *  viewport from its top, both clamped to the content. The reading anchor
@@ -867,6 +879,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     toTop,
     toBottom,
     toBlock,
+    reveal,
     wheel,
     preserveScroll,
     selectionAutoScroll: { contains: containsSelectionStart, update: updateSelectionDrag, stop: stopSelectionDrag },

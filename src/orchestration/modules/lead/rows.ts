@@ -28,8 +28,15 @@ export interface LeadChatReading {
   /** Whether the chat works: the live store shows an active turn or a wait on background work, or a runner starts for its open turn. */
   readonly working: boolean
   readonly turnEnd: ChatTurnEnd | undefined
-  /** The pending question: its call, the leading context of that call, and the form. */
-  readonly question: { readonly toolUseId: string; readonly context: string | null; readonly questions: readonly QuestionEntry[] } | undefined
+  readonly question: LeadPendingQuestion | undefined
+}
+
+/** A listed chat's pending question: its call, the leading context of that call, the form, and when it opened. */
+interface LeadPendingQuestion {
+  readonly toolUseId: string
+  readonly context: string | null
+  readonly questions: readonly QuestionEntry[]
+  readonly openedAt: number
 }
 
 /** A row's state, the time its evidence names, and for a failure or a cut the entry that the person sees it at. */
@@ -71,6 +78,9 @@ export interface LeadRows {
    *  as the fold holds them now. A caller that acts on the result later keeps this pair, because a later batch can
    *  bring a newer final message. */
   result(sessionId: string): { readonly entryId: string; readonly text: string } | undefined
+  /** Every pending question of a chat whose fold is built, oldest first, as the fold holds them now. A chat can wait
+   *  on several calls at once. */
+  questions(sessionId: string): readonly LeadPendingQuestion[]
   /** A followed chat that exists, once its fold is built; undefined for any other chat. */
   chat(sessionId: string): Promise<LeadChatReading | undefined>
   /** Releases every fold and listener, and settles the builds that run. Publishes nothing. */
@@ -84,18 +94,25 @@ interface Member {
   readonly cwd: string
   readonly fold: PositionedEventProjection<RowFold>
   readonly release: readonly (() => void)[]
-  question: Extract<AgentInputEntry, { kind: "pending" }> | undefined
+  /** The chat's pending questions, oldest first. */
+  questions: readonly PendingEntry[]
   /** The row's state and the time the chat entered it. */
   entered: { readonly state: LeadRowState; readonly at: number } | undefined
   row: LeadRow | undefined
 }
 
-async function pendingQuestion(reader: AsyncEventReadSurface, sessionId: string): Promise<Member["question"]> {
-  let newest: Member["question"]
-  for (const entry of (await loadAgentInputProjection(reader, sessionId)).values()) {
-    if (entry.kind === "pending" && (newest === undefined || entry.openedAt >= newest.openedAt)) newest = entry
-  }
-  return newest
+type PendingEntry = Extract<AgentInputEntry, { kind: "pending" }>
+
+async function pendingQuestions(reader: AsyncEventReadSurface, sessionId: string): Promise<readonly PendingEntry[]> {
+  const pending = [...(await loadAgentInputProjection(reader, sessionId)).values()].filter((entry): entry is PendingEntry => entry.kind === "pending")
+  return pending.toSorted((left, right) => left.openedAt - right.openedAt)
+}
+
+/** The question that the row and the lead's reading show: the newest that waits. */
+const newestQuestion = (member: Member): PendingEntry | undefined => member.questions.at(-1)
+
+function pendingOf(member: Member, question: PendingEntry): LeadPendingQuestion {
+  return { toolUseId: question.toolUseId, context: member.fold.getState().contexts[question.toolUseId] ?? null, questions: question.request, openedAt: question.openedAt }
 }
 
 export function createLeadRows(deps: LeadRowsDeps): LeadRows {
@@ -128,7 +145,8 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
    *  such as a read result or a failure or a cut that the person saw at the same entry, is done since its newest
    *  output. */
   function stateOf(member: Member, fold: RowFold, live: "failed" | "working" | undefined): RowState {
-    if (member.question) return { state: "question", at: member.question.openedAt }
+    const question = newestQuestion(member)
+    if (question) return { state: "question", at: question.openedAt }
     if (live === "working") return { state: "working", at: undefined }
     const end = fold.turnEnd
     const newest = fold.tail.at(-1)?.id
@@ -151,7 +169,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     switch (state) {
       case "failed": return "failed"
       case "cut": return "interrupted"
-      case "question": return firstLine(member.question?.request[0]?.question ?? "")
+      case "question": return firstLine(newestQuestion(member)?.request[0]?.question ?? "")
       case "result":
       case "done": return firstLine(fold.final?.text ?? "")
       case "working": {
@@ -199,13 +217,13 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     const member: Member = {
       // The type admits a row written before sessions recorded a directory; such a row shows its paths whole.
       sessionId, conversation: `conversation:${session.conversationId}`, cwd: session.executionCwd ?? "", release,
-      fold: leadRowFold(deps.reader, sessionId, session.conversationId), question: undefined, entered: undefined, row: undefined,
+      fold: leadRowFold(deps.reader, sessionId, session.conversationId), questions: [], entered: undefined, row: undefined,
     }
     pinned.set(sessionId, member)
     byConversation.set(member.conversation, member)
     try {
       await member.fold.replay()
-      member.question = await pendingQuestion(deps.reader, sessionId)
+      member.questions = await pendingQuestions(deps.reader, sessionId)
     } catch (error) {
       remove(sessionId)
       throw error
@@ -276,7 +294,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
         try {
           const batch = batches.get(member)
           if (batch) await member.fold.apply(batch)
-          if (questions.has(member)) member.question = await pendingQuestion(deps.reader, member.sessionId)
+          if (questions.has(member)) member.questions = await pendingQuestions(deps.reader, member.sessionId)
         } catch (error) {
           recordBackgroundFailure(log, "lead row update", { sessionId: member.sessionId }, error)
           return
@@ -294,17 +312,16 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       const final = member?.row?.state === "result" ? member.fold.getState().final : null
       return final && final.entryId === member?.row?.result?.entryId ? { entryId: final.entryId, text: final.text } : undefined
     },
+    questions(sessionId) {
+      const member = members.get(sessionId)
+      return member ? member.questions.map((question) => pendingOf(member, question)) : []
+    },
     async chat(sessionId) {
       const member = await builds.get(sessionId)?.catch(() => undefined)
       if (!member || members.get(sessionId) !== member) return undefined
       const fold = member.fold.getState()
-      const { question } = member
-      return {
-        row: member.row,
-        working: liveState(sessionId, fold) === "working",
-        turnEnd: fold.turnEnd?.reading,
-        question: question && { toolUseId: question.toolUseId, context: fold.contexts[question.toolUseId] ?? null, questions: question.request },
-      }
+      const question = newestQuestion(member)
+      return { row: member.row, working: liveState(sessionId, fold) === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(member, question) }
     },
     async dispose() {
       disposed = true

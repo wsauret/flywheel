@@ -26,8 +26,9 @@ export function createLeadControlProtocol(services: AccountModuleProtocolService
   }
 }
 
-/** The lead's execution protocol: the rows of the started chats and the person's read and seen marks. While the
- *  module is off the snapshot holds no row and no mutation records a read. */
+/** The lead's execution protocol: the rows of the started chats, where a chat's question stands, and the person's read
+ *  and seen marks. While the module is off the snapshot holds no row, every question is unknown, and no mutation
+ *  records a read. */
 export function createLeadChatsProtocol(services: AccountModuleProtocolServices): ModuleProtocolRuntime<typeof leadChatsProtocol> {
   const service = () => (services.enabled() ? services.modules.get(leadService) : undefined)
   return {
@@ -36,6 +37,7 @@ export function createLeadChatsProtocol(services: AccountModuleProtocolServices)
         const view = await service()?.view() ?? EMPTY_LEAD_CHATS
         return { view, snapshotPosition: services.snapshotPosition({ kind: "cursor", cursor: leadChatsCursor() }) }
       },
+      "lead.question": async ({ sessionId, toolUseId }) => await service()?.question(sessionId, toolUseId) ?? { state: "unknown" },
     },
     mutate: {
       "lead.result.mark_read": async (mutation) => await service()?.markRead(mutation.sessionId, mutation.entryId) ?? { ok: true },
