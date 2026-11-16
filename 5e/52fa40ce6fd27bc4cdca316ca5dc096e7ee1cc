@@ -1,0 +1,84 @@
+src/orchestration/app-service/model-assignment-admission.ts
+  h_4b47e9e4a8b456 373
+src/orchestration/app-service/model-assignment-service.ts
+  h_4b47e9e4a8b456 171,174,177,180,182,188,199,202,204,206
+src/orchestration/auth/auth-profile-manager.ts
+  h_4b47e9e4a8b456 148,153,243,267-272
+src/orchestration/config/model-assignment-controller.ts
+  h_4b47e9e4a8b456 8,73-79,117,124,128-129,187,190
+src/orchestration/config/model-assignments.ts
+  h_4b47e9e4a8b456 9,29,32-42,46-48,88
+src/orchestration/config/model-selection.ts
+  h_4b47e9e4a8b456 5,8-9,13,17
+src/orchestration/config/writer.ts
+  h_4b47e9e4a8b456 5,11,62-64,86-89,92-95,226-231,234,236,241-256,308,314,326,331,549-550,563-571
+src/orchestration/modules/development/benchmark/headless-execution.ts
+  h_4b47e9e4a8b456 129-130,133
+src/protocol/model-assignment-protocol-schemas.ts
+  h_4b47e9e4a8b456 20-23,43-48,51,59-61,66
+src/protocol/model-assignment-protocol-types.ts
+  h_4b47e9e4a8b456 3,15-16,20,29-40,59-61,141-143,149-153
+src/protocol/runtime-config-protocol-types.ts
+  h_4b47e9e4a8b456 92-95
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 279-282,284
+src/tui/hooks/use-model-modal.ts
+  h_4b47e9e4a8b456 417-419,441-455,463-464,476
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 37-38,59,73,134,158,325,372-374,377,395,487
+tests/unit/orchestration/app-service/model-assignment-service.test.ts
+  h_4b47e9e4a8b456 52-54,191,194,357,374,391,397,431,449,466,476,490,506,525,547,566,583,587,606,620,635,642,665
+tests/unit/orchestration/app-service/model-assignment-session.test.ts
+  h_4b47e9e4a8b456 80,88,108
+tests/unit/orchestration/config/config-settings-persistence.test.ts
+  h_4b47e9e4a8b456 380-381
+tests/unit/orchestration/config/default-pin-normalization.test.ts
+  h_4b47e9e4a8b456 190,192,198
+tests/unit/orchestration/config/model-assignment-controller-scopes.test.ts
+  h_4b47e9e4a8b456 5,26,72,82,93,111,125,127,129-131,138,152,156,168,175,192,197,206,208,242,246,286,299,306-359
+tests/unit/orchestration/config/model-assignment-reset.test.ts
+  h_4b47e9e4a8b456 52-55
+tests/unit/orchestration/config/model-assignment-save.test.ts
+  h_4b47e9e4a8b456 42,60,77,93-94,101,104
+tests/unit/orchestration/config/writer.test.ts
+  h_4b47e9e4a8b456 5-8,55-99
+tests/unit/protocol/model-assignment-protocol-schemas.test.ts
+  h_4b47e9e4a8b456 19,36
+tests/unit/tui/hooks/use-model-modal-defaults.test.ts
+  h_4b47e9e4a8b456 22,87
+tests/unit/tui/modals/_model-modal-fixtures.ts
+  h_4b47e9e4a8b456 15
+tests/unit/tui/modals/model-modal-operations.test.ts
+  h_4b47e9e4a8b456 599
+tests/unit/tui/modals/model-modal-regression-rendering.test.ts
+  h_4b47e9e4a8b456 211,228,368,392,407,421
+tests/unit/tui/modals/model-modal-scopes.test.ts
+  h_4b47e9e4a8b456 343
+webview/src/app/models-sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 36,64
+webview/src/app/models-sheet-interaction.test.ts
+  h_4b47e9e4a8b456 357-358
+webview/src/app/sheets/model-sheet.tsx
+  h_4b47e9e4a8b456 65,99-104,106,116-118
+webview/src/app/sheets/models-sheet.tsx
+  h_4b47e9e4a8b456 133-138,142-146,150-153,189-190,195-199
+webview/src/client/model-roles.test.ts
+  h_4b47e9e4a8b456 12
+webview/src/client/model-roles.ts
+  h_4b47e9e4a8b456 1,29-31,68
+webview/src/client/session-residency.test.ts
+  h_4b47e9e4a8b456 77
+webview/src/client/settings-actions.ts
+  h_4b47e9e4a8b456 295-296,300-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5e52fa40ce6fd27bc4cdca316ca5dc096e7ee1cc",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
