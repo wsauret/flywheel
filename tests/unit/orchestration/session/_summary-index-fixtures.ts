@@ -3,6 +3,8 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/session-summary-index.js"
+import type { GenerationMeasurement } from "../../../../src/orchestration/session/provider-request-audit-types.js"
+import { sessionSummaryFact } from "../../../fixtures/session-summary-history.js"
 
 type HistoricalRow = StoredFact | CorruptEventRowError
 
@@ -59,4 +61,22 @@ export async function readyBudget(file: string, facts: readonly HistoricalRow[],
   } finally {
     await index.dispose()
   }
+}
+
+/** A retirement of session `sessionId`'s representation at `position`. */
+export const retired = (position: number, sessionId: string): StoredFact =>
+  sessionSummaryFact(position, sessionId, "session.representation.retired", 1, { migrationId: "workflow-agent-session-ownership", aggregateId: `workflow:${sessionId}`, recovery: [] })
+
+/** A recorded generation measurement. */
+export const recorded = (outputTokens: number, durationMs: number): GenerationMeasurement => ({
+  kind: "recorded", basis: "O200kBase", outputTokens, durationMs, measuredBlocks: 1, excludedBlocks: 0,
+})
+
+/** The stored summary of one provider stream that measured `generation`. */
+export function streamSummaryFact(position: number, sessionId: string, generation: GenerationMeasurement): StoredFact {
+  return { ...sessionSummaryFact(position, sessionId, "model.stream.summary.recorded", 3, {
+    requestId: `request-${position}`, identity: { providerSessionKey: sessionId }, turn: 1, rawEventCount: 2, countsBySource: {}, countsByKind: {},
+    interDelta: { count: 0, meanMs: 0, p50Ms: 0, p90Ms: 0, p99Ms: 0, maxMs: 0, ge1s: 0, ge2s: 0, ge5s: 0, ge10s: 0 },
+    watchdog: { thinkingStallCount: 0 }, recovery: { streamRetryCount: 0, reasoningDisabledRetryCount: 0 }, bigGapTransitions: [], generation,
+  }), actor: "flywheel" }
 }

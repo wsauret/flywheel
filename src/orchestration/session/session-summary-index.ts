@@ -266,11 +266,19 @@ function createSessionSummaryIndex(dbFile: string, source: AsyncEventReadSurface
     }
   }
 
+  const retirements = createRetiredRepresentations(source)
+
   async function sourceHeads(): Promise<{ source: number; relevant: number }> {
     const end = initial ? timeline.begin("sourceHeads") : undefined
     try {
       const latestPosition = source.latestPosition
       if (!latestPosition) throw new Error("Session summary source must support descending LIMIT 1 head probes")
+      // These durable probes run on every read because no owner can tell this
+      // index that a summary fact committed: the index lives in a read-only
+      // Worker that no store push reaches, and local, headless, and direct CLI
+      // runtimes commit summary facts without a broadcast. Each probe is one
+      // indexed descending LIMIT 1 query, so the cost stays constant as
+      // history grows.
       const [sourcePosition, ...heads] = await Promise.all([
         source.capturePosition(),
         ...sessionSummaryFactTypes().map((type) => latestPosition.call(source, type)),
@@ -316,17 +324,16 @@ function createSessionSummaryIndex(dbFile: string, source: AsyncEventReadSurface
     const heads = await sourceHeads()
     const upper = heads.source
     let position = await validatedWatermark(upper)
-    const dispositions = await retiredRepresentations(source, upper)
-    const residuals = new Map<string, string>()
-    for (const event of dispositions) {
-      const fact = parseSessionMetadataFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload })
-      if (fact.type === "session.representation.retired") residuals.set(event.sessionId, fact.payload.aggregateId)
-    }
-    if (dispositions.some(event => event.position > position)) {
+    // A retirement is itself a summary fact type, so a current index has none
+    // after its watermark and needs no residuals.
+    if (heads.relevant <= position) return
+    const { residuals, latest } = await retirements.through(upper)
+    // A retirement moves the session's earlier facts to its residual
+    // aggregate, so facts folded before it was known fold again.
+    if (latest > position) {
       await commitPage(db, () => { rebuildSessionSummarySchema(db); return 0 })
       position = 0
     }
-    if (heads.relevant <= position) return
     if (initial && !measuringRebuild) {
       measuringRebuild = true
       observeReleaseMemoryPhase("summary.begin")
@@ -446,21 +453,35 @@ function createSessionSummaryIndex(dbFile: string, source: AsyncEventReadSurface
   }
 }
 
-async function retiredRepresentations(source: AsyncEventReadSurface, upper: number): Promise<StoredFact[]> {
-  const facts: StoredFact[] = []
-  let position = 0
-  while (position < upper) {
-    const page = await source.readPage({ types: ["session.representation.retired"] }, upper, position, true, "deferred")
-    for (const fact of page.facts) {
-      if (fact instanceof CorruptEventRowError) {
-        // oxlint-disable-next-line eslint/no-throw-literal -- boundary: preserve the narrowed durable-row error and its evidence.
-        if (fact.row.type === "session.representation.retired") throw fact
-      } else if (fact.type === "session.representation.retired") facts.push(fact)
-    }
-    if (page.continuationPosition === null) break
-    position = page.continuationPosition
+/** The residual aggregate of each retired workflow representation, folded
+ *  forward from the source. The first fold reads every retirement once; each
+ *  later fold reads only the retirements after the last one it read. */
+function createRetiredRepresentations(source: AsyncEventReadSurface) {
+  const residuals = new Map<string, string>()
+  let readThrough = 0
+  let latest = 0
+  return {
+    /** Folds every retirement at or below `upper`. `latest` is the position
+     *  of the last retirement, or 0 when there is none. */
+    async through(upper: number): Promise<{ residuals: ReadonlyMap<string, string>; latest: number }> {
+      while (readThrough < upper) {
+        const page = await source.readPage({ types: ["session.representation.retired"] }, upper, readThrough, true, "deferred")
+        for (const event of page.facts) {
+          if (event instanceof CorruptEventRowError) {
+            // oxlint-disable-next-line eslint/no-throw-literal -- boundary: preserve the narrowed durable-row error and its evidence.
+            if (event.row.type === "session.representation.retired") throw event
+            continue
+          }
+          const fact = parseSessionMetadataFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload })
+          if (fact.type !== "session.representation.retired") continue
+          residuals.set(event.sessionId, fact.payload.aggregateId)
+          latest = event.position
+        }
+        readThrough = page.continuationPosition ?? upper
+      }
+      return { residuals, latest }
+    },
   }
-  return facts
 }
 
 /** A retired workflow representation keeps its historical accounting
