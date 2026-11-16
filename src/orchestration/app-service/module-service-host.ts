@@ -7,6 +7,7 @@ import type { StartupDirectories } from "../../infra/directory-authorities.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter, StoredFact } from "../../infra/event-store-types.js"
 import { composeModuleServices, moduleServiceKey, type ModuleServices } from "../../infra/module-service.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
+import type { AgentGroupBlock } from "../../infra/output-blocks.js"
 import { Log } from "../../infra/log.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { LauncherContext, LauncherScope } from "../../infra/process-supervisor.js"
@@ -71,6 +72,10 @@ export interface ModuleExecutionEnvironment {
   readonly onChatClosed: (listener: (sessionId: string) => void) => () => void
   /** Whether a client shows the chat now (`RuntimeSupervisor.isShown`). */
   readonly sessionShown: (sessionId: string) => boolean
+  /** The subagent and workflow cards of a session's live transcript that have not finished, each as its transcript
+   *  shows it (`TranscriptProjectionCache.projectBlock`): with the child's own clock and the workflow's progress.
+   *  None for a session that the session store does not hold. */
+  readonly liveAgentCards: (sessionId: string) => Promise<readonly AgentGroupBlock[]>
 }
 
 /** What the runtime hands a module that declares a process-scoped service:

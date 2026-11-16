@@ -28,10 +28,6 @@ export interface LeadChatReading {
   /** Whether the chat works: the live store shows an active turn or a wait on background work, or a runner starts for its open turn. */
   readonly working: boolean
   readonly turnEnd: ChatTurnEnd | undefined
-  /** The full first text block of the person's newest message. */
-  readonly request: string | null
-  /** The full text of the newest assistant message that holds no tool call. */
-  readonly final: string | null
   /** The pending question: its call, the leading context of that call, and the form. */
   readonly question: { readonly toolUseId: string; readonly context: string | null; readonly questions: readonly QuestionEntry[] } | undefined
 }
@@ -307,8 +303,6 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
         row: member.row,
         working: liveState(sessionId, fold) === "working",
         turnEnd: fold.turnEnd?.reading,
-        request: fold.request?.text ?? null,
-        final: fold.final?.text ?? null,
         question: question && { toolUseId: question.toolUseId, context: fold.contexts[question.toolUseId] ?? null, questions: question.request },
       }
     },

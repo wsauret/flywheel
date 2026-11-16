@@ -4,6 +4,7 @@ import { createSessionEventNotices } from "../../../../../src/orchestration/app-
 import { moduleExecutionEnvironment } from "../../../../../src/orchestration/app-service/module-execution-environment.js"
 import type { ControlSessionPorts } from "../../../../../src/orchestration/app-service/module-service-host.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
+import { createTranscriptProjectionCache } from "../../../../../src/orchestration/app-service/transcript-projection-cache.js"
 import { createRuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { loadSessionView } from "../../../../../src/orchestration/session-store/view.js"
 import { createLeadControl } from "../../../../../src/orchestration/modules/lead/control.js"
@@ -49,6 +50,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   const reports: { readonly fromSessionId: string; readonly toSessionId: string; readonly call: string; readonly text: string; readonly status: string }[] = []
   const patches: RuntimeUiPatchInput[] = []
   const storeReader = asAsyncEventReadSurface(ctx.store)
+  const transcriptCache = createTranscriptProjectionCache({ sessionStore: ctx.sessionStore, reader: storeReader, projectionReader: storeReader, projectRoot: ctx.baseDir })
   // It opens a closed chat again, as the executor does.
   const supervisor: RuntimeSupervisor = createRuntimeSupervisor({
     ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => {
@@ -59,6 +61,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       })
     } }),
     sessionViewLoader: { load: (id) => loadSessionView(id, storeReader, storeReader) },
+    transcriptCache,
   })
   // The background lane's search over the project's own conversation index.
   const searchIndex = acquireConversationSearchIndex(join(ctx.baseDir, "conversation-search.sqlite"), storeReader)
@@ -70,7 +73,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     authAdmission: testSessionAuthAdmission(),
     recall: async () => { throw new Error("the lead service does not recall") },
     findChats: (request) => chatSearch.findChats(request),
-    sessionEvents, sessionStore: ctx.sessionStore, supervisor,
+    sessionEvents, sessionStore: ctx.sessionStore, transcriptCache, supervisor,
     delivery: { manager: ctx.manager, projectionReader, eventWriter: ctx.store },
   })
   let enabled = true
@@ -100,6 +103,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       createOpenHold: () => supervisor.createOpenHold(),
       onChatClosed: (listener) => supervisor.onChatClosed(listener),
       sessionShown: (sessionId) => supervisor.isShown(sessionId),
+      liveAgentCards: (sessionId) => runtime.liveAgentCards(sessionId),
       sendSessionMessage: async (input) => {
         trace.push(`report ${input.fromSessionId} ${input.call}`)
         const outcome = await runtime.sendSessionMessage(input)
@@ -145,6 +149,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       await service.dispose()
       sessionEvents.dispose()
       await supervisor.disposeAll()
+      await transcriptCache.dispose()
       await searchIndex.dispose()
     },
   }

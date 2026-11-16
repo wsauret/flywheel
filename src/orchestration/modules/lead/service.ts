@@ -46,8 +46,9 @@ export interface LeadService extends ModuleServiceInstance {
    *  "The routing tool" of the lead design): the runtime selects and copies the entries, and the caller names only
    *  the target. A repeated call starts no second chat and records nothing twice. */
   route(input: RouteInput): Promise<RouteOutcome>
-  /** The progress of every chat in the list, or of one of them in its own words. */
-  progress(chat: string | undefined): Promise<ChatProgress>
+  /** The progress of every chat in the list, or where one of them stands; with `before`, a page of that chat's
+   *  conversation before a cursor that an earlier answer named. */
+  progress(chat: string | undefined, before?: string): Promise<ChatProgress>
   /** The project's root chats other than the lead whose messages best match `query`, best first, each marked when it
    *  is in the list (PI-LEAD-001). */
   findChats(query: string): Promise<readonly LeadFoundChat[]>
@@ -66,7 +67,7 @@ export const leadService = moduleServiceHandle<LeadService>("lead")
 type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled"> & {
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read" | "listActive" | "listForIds">
   readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
-  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "findChats" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "sessionShown">
+  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "findChats" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "sessionShown" | "liveAgentCards">
 }
 
 type NonEmptyIds = readonly [string, ...string[]]
@@ -473,14 +474,18 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         ...(target.started ? { started: target.started } : {}), entries, recorded,
       }
     },
-    async progress(chat) {
+    async progress(chat, before) {
       await reconcileJournal()
       const current = rows
       if (!current) return { kind: "refused", reason: "the lead is off" }
-      const deps = { sessionManager: services.sessionManager, sessionStore: services.sessionStore, chat: (sessionId: string) => current.chat(sessionId) }
+      const deps = {
+        reader: services.projectionReader, sessionManager: services.sessionManager, sessionStore: services.sessionStore,
+        chat: (sessionId: string) => current.chat(sessionId),
+        agentCards: (sessionId: string) => services.executionEnvironment().liveAgentCards(sessionId),
+      }
       if (chat === undefined) return readChatRoster(deps, listed())
       if (chat === journal.state().designated || !journal.state().members.has(chat)) return { kind: "refused", reason: `chat ${chat} is not in your list` }
-      return readChatDetail(deps, chat)
+      return readChatDetail(deps, chat, before)
     },
     async findChats(query) {
       await reconcileJournal()

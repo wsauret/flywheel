@@ -34,7 +34,7 @@ export function createLeadRuntime(services: Pick<ModuleRuntimeServices, "session
       const lead = await service.settledListingLead(sessionId)
       return lead === null ? undefined : milestoneMessageUse(lead)
     },
-    chatProgress: createChatProgressTool((chat) => service.progress(chat)),
+    chatProgress: createChatProgressTool((chat, before) => service.progress(chat, before)),
     findChat: createFindChatTool((query) => service.findChats(query)),
     routeRequest: (sessions) => createRouteRequestTool((input) => service.route(input), sessions),
   }

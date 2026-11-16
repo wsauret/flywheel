@@ -73,3 +73,7 @@ In the terminal, the lead's words never fold. Its calls between one message and 
 ## PI-LEAD-018: The lead never leaves a request unrouted
 
 The lead routes every request in the turn that it arrives in, also a question that its own reading cannot fully answer, such as the state of a PR or of earlier work. It never offers to route a request instead. A request that continues earlier work goes to the chat that did that work, which the lead finds by search. Only when no past chat fits does a new chat start.
+
+## PI-LEAD-019: The lead reads how each chat stands
+
+When the person asks how the chats go, the lead reads each chat in its list and summarizes from what it read, because a list row alone does not tell. For one chat, the lead reads where the chat's checkpoint says it stands and its next step. It also reads the person's messages and the chat's replies, newest first and earlier on request, without tool output. It reads the chat's subagents and workflows that have not finished, with their goal, state, and time, and the chat's newest calls.

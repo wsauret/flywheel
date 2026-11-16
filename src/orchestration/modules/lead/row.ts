@@ -5,7 +5,6 @@ import { askUserLeadingContext } from "../../../infra/tools/displays/ask-user.js
 import { getToolDisplay, isHiddenFromTranscript } from "../../../infra/tools/tool-display-registry.js"
 import type { StoredTailEntry } from "../../session/chat-session-run-evidence.js"
 import { parseConversationTreeFact } from "../../session/conversation/conversation-facts.js"
-import { isPersonEntry } from "../../session/conversation/person-entries.js"
 import { chatTurnEndOf, isProducedInput, restoredWaitReadsOlder, turnEndOfEntry, type ChatTurnEnd, type TurnEndEntry } from "../../session/conversation/turn-end-record.js"
 import { WAIT_EXPIRED_TAG } from "../../agent-runtime/agent-loop-wait.js"
 import { CONTINUATION_MESSAGES } from "../../agent-runtime/continuation-messages.js"
@@ -47,15 +46,13 @@ export interface RowFold {
   readonly turnEnd: { readonly reading: ChatTurnEnd; readonly recordId: string | null; readonly at: number } | undefined
   /** The newest output of the chat's assistant messages, null before the first. */
   readonly latest: RowLatest | null
-  /** The person's newest message: its first text block. */
-  readonly request: Said | null
   /** The newest assistant message that holds no tool call. */
   readonly final: Said | null
   /** The leading context of each tool call of the newest assistant message that called a tool, by its id. */
   readonly contexts: { readonly [toolUseId: string]: string | null }
 }
 
-const EMPTY_ROW_FOLD: RowFold = { tail: [], truncated: false, turnEnd: undefined, latest: null, request: null, final: null, contexts: {} }
+const EMPTY_ROW_FOLD: RowFold = { tail: [], truncated: false, turnEnd: undefined, latest: null, final: null, contexts: {} }
 
 type StoredMessage = Extract<StoredTailEntry, { readonly kind: "message" }>["message"]
 
@@ -106,17 +103,11 @@ export const firstLine = (text: string): string => text.split("\n").find((line) 
 
 /** Advances the fold by the entries of one stored batch. */
 export function foldRowBatch(fold: RowFold, entries: readonly StoredTailEntry[], at: number): RowFold {
-  let { latest, request, final, contexts } = fold
+  let { latest, final, contexts } = fold
   const added: RowTailEntry[] = []
   for (const entry of entries) {
     added.push(reducedEntry(entry, at))
     if (entry.kind !== "message") continue
-    if (isPersonEntry(entry)) {
-      const content = entry.message.content
-      const first = typeof content === "string" ? content : content[0]?.type === "text" ? content[0].text ?? "" : ""
-      request = { entryId: entry.id, text: first, at }
-      continue
-    }
     const { message } = entry
     if (message.kind !== "assistant" || entry.displayOnly === true) continue
     latest = latestOf(blocksOf(message.content), at) ?? latest
@@ -133,7 +124,7 @@ export function foldRowBatch(fold: RowFold, entries: readonly StoredTailEntry[],
   const carried = truncated && reading?.recordId != null && reading.recordId === fold.turnEnd?.recordId && fold.turnEnd.reading.backgroundWait === true
     && reading.reading.backgroundWait === undefined && restoredWaitReadsOlder(tail)
   const turnEnd = carried && reading ? { ...reading, reading: { ...reading.reading, backgroundWait: true as const } } : reading
-  return { tail, truncated, turnEnd, latest, request, final, contexts }
+  return { tail, truncated, turnEnd, latest, final, contexts }
 }
 
 const CONTINUATIONS: ReadonlySet<string> = new Set(Object.values(CONTINUATION_MESSAGES).map((text) => text.slice(0, KEPT_TEXT)))

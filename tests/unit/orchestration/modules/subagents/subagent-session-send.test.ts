@@ -249,6 +249,7 @@ describe("the registered Resume route", () => {
       createOpenHold: () => { throw new Error("A subagent holds no chat open") },
       onChatClosed: () => { throw new Error("A subagent follows no close") },
       sessionShown: () => { throw new Error("A subagent reads no shown chat") },
+      liveAgentCards: () => { throw new Error("A subagent reads no agent cards") },
           openChatRunner: async () => { attached += 1; return parentHost.runner },
           personEntries: async () => { throw new Error("A subagent reads no person entries") },
           forwardPersonEntries: async () => { throw new Error("A subagent forwards no person entries") },
