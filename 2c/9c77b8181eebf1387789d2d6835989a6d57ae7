@@ -1,0 +1,20 @@
+bench/harbor/configs/shipped-first-codex-brevity-a.toml
+  h_4b47e9e4a8b456 1-135
+bench/harbor/configs/shipped-first-codex-brevity-b.toml
+  h_4b47e9e4a8b456 1-179
+bench/harbor/configs/shipped-first-t5-codex-brevity.toml
+  h_4b47e9e4a8b456 1-217
+bench/harbor/configs/shipped-first-t5-codex-intro.toml
+  h_4b47e9e4a8b456 1-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2c9c77b8181eebf1387789d2d6835989a6d57ae7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
