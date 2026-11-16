@@ -1,0 +1,24 @@
+src/orchestration/session/diff-stat-summary.ts
+  h_4b47e9e4a8b456 5,7-27,29-41,43-62,64-66
+src/orchestration/session/file-mutation-fact-writers.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/session/session-summary-index-sql.ts
+  h_4b47e9e4a8b456 6,11,18,98,143,174,177,182-185,191,194,212-215
+src/orchestration/session/session-summary-index.ts
+  h_4b47e9e4a8b456 17,425,511,682
+tests/unit/orchestration/session/file-mutation-fact-writers.test.ts
+  h_4b47e9e4a8b456 12,333-348
+tests/unit/orchestration/session/session-summary-index-diff-stats.test.ts
+  h_4b47e9e4a8b456 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3c648512287a4aa12005ebe394090dda9e6e4fbd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
