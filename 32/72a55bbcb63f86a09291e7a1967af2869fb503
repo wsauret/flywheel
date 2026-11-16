@@ -1,0 +1,60 @@
+src/orchestration/agent-runtime/prompt-prefix-hold.ts
+  h_4b47e9e4a8b456 33,37
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 247
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 26,35
+src/orchestration/agent-runtime/turn-hop.ts
+  h_4b47e9e4a8b456 87
+src/orchestration/agent-runtime/unattended-recovery.ts
+  h_4b47e9e4a8b456 82
+src/orchestration/agent-runtime/usage-settlement.ts
+  h_4b47e9e4a8b456 79,95,98,101,248,253,255-259,261
+src/orchestration/agent-runtime/web-search/types.ts
+  h_4b47e9e4a8b456 46
+tests/helpers/prompt-capabilities.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/orchestration/agent-runtime/agent-loop-turn-hop.test.ts
+  h_4b47e9e4a8b456 15,56-60,215,223,227,236,240,248,320,391
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 2,13
+tests/unit/orchestration/agent-runtime/capability-checks.test.ts
+  h_4b47e9e4a8b456 5,8,23-24,47,169-186,189-196,198-199,203,206-212,215-216
+tests/unit/orchestration/agent-runtime/context/_loop-fixtures.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 3,5
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 6,21
+tests/unit/orchestration/agent-runtime/prompt-prefix-hold.test.ts
+  h_4b47e9e4a8b456 10,37-42,90-92,101,104,108
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 6-7,18,57-62,366,368,373,379,385-386,389-391,393,396,399,403,409-410,415-418,578
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 2,11
+tests/unit/orchestration/agent-runtime/tools/web.test.ts
+  h_4b47e9e4a8b456 5,15,85,195
+tests/unit/orchestration/agent-runtime/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 9,383-384
+tests/unit/orchestration/agent-runtime/usage-settlement.test.ts
+  h_4b47e9e4a8b456 1,18-19,52-54,58,60-62,65-83,85,88-96,99-105,216,218,220,222,224,228,231-233,237,240-249,265,286,299,301-304
+tests/unit/orchestration/agent-runtime/workflow-agent-system-prompt.test.ts
+  h_4b47e9e4a8b456 2,6
+tests/unit/orchestration/app-service/usage-authority-lifecycle.test.ts
+  h_4b47e9e4a8b456 3,6-8,12,36-52,79-80,82,96-110,112,123,128,136,148-167,169-174,176-181
+tests/unit/orchestration/app-service/usage-runtime-coordination.test.ts
+  h_4b47e9e4a8b456 11,74,86
+tests/unit/orchestration/session/session-messaging.test.ts
+  h_4b47e9e4a8b456 9,50-55,166,194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3272a55bbcb63f86a09291e7a1967af2869fb503",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
