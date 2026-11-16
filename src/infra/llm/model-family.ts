@@ -26,7 +26,7 @@ function normalizeModelId(modelId: string): string {
  *  first-party form at its own boundary. */
 const VENDOR_SCOPED_MODEL_ID = /^[\w.-]+\/[\w.:-]+$/;
 
-export function isVendorScopedModelId(model: string): boolean {
+function isVendorScopedModelId(model: string): boolean {
   return VENDOR_SCOPED_MODEL_ID.test(canonicalize(model));
 }
 
@@ -52,22 +52,6 @@ export function detectModelFamily(modelId: string): ModelFamily | null { // prov
   // regardless of which vendor trained it.
   if (isCustomProviderModel(normalized)) return "openai";
   return null;
-}
-
-/** Whether only a config-declared custom provider can serve `modelId`: a
- *  declared custom id that no base family pattern or provider wire shape
- *  claims. Ids a base pattern claims stay shared (a custom proxy may declare
- *  gpt-4o and serve it beside the first-party OpenAI providers); ids that
- *  exist in Flywheel's universe only through a [custom_providers] entry must
- *  be rejected by every other provider rather than falsely admitted to an
- *  API that does not know them. */
-export function isCustomProviderOnlyModel(modelId: string): boolean {
-  const normalized = normalizeModelId(modelId);
-  return (
-    isCustomProviderModel(normalized) &&
-    !MODEL_FAMILY_PATTERNS.some(({ pattern }) => pattern.test(normalized)) &&
-    !isVendorScopedModelId(normalized)
-  );
 }
 
 export function inferModelFamilyFromProvider(providerId: string): ModelFamily | null {

@@ -2,15 +2,16 @@ import { expect, spyOn, test } from "bun:test";
 import { DebugLog } from "../../../../src/infra/debug-log.js";
 import { Log } from "../../../../src/infra/log.js";
 import {
-  CatalogSemanticDigestAccumulator,
+  CatalogDiscoveryDiagnosticAccumulator,
   recordCatalogDiscoveryDiagnostics,
   recordProviderCatalogFailure,
-  type CatalogCollisionSample,
   type CatalogDiscoveryDiagnostics,
 } from "../../../../src/infra/llm/model-catalog-diagnostics.js";
+import type { CatalogDataUse } from "../../../../src/infra/llm/model-id.js";
 
 const ACCOUNT_COUNT = 128;
 const ROW_COUNT = 10_000;
+const MODEL_ID_LENGTH = 512;
 
 test("provider HTTP diagnostics contain only the provider, status, and serving fallback", () => {
   const warning = spyOn(Log.create({ service: "model-listing" }), "warn").mockImplementation(() => {});
@@ -32,27 +33,26 @@ test("provider HTTP diagnostics contain only the provider, status, and serving f
   }
 });
 
-function digest(values: readonly string[]) {
-  const accumulator = new CatalogSemanticDigestAccumulator();
-  for (const value of values) accumulator.add(value);
-  return accumulator.snapshot();
+interface Collision {
+  readonly modelId: string;
+  readonly dataUse: CatalogDataUse;
+  readonly wireModelIds: readonly string[];
 }
 
+/** One account's discovery diagnostics, built by the production accumulator. Unknown ids past the
+ *  named ones sort after them, so the named ids stay the retained sample. */
 function diagnostics(
   unknownValues: readonly string[],
   unknownTotal = unknownValues.length,
-  collisions: readonly CatalogCollisionSample[] = [],
+  collisions: readonly Collision[] = [],
 ): CatalogDiscoveryDiagnostics {
-  return {
-    baselineGeneration: "baseline",
-    unknownWireModelIds: { total: unknownTotal, values: unknownValues, digest: digest(unknownValues) },
-    collisions: {
-      total: collisions.length,
-      values: collisions,
-      digest: digest(collisions.flatMap((collision) =>
-        collision.wireModelIds.map((wireModelId) => `${collision.modelId}\0${collision.dataUse}\0${wireModelId}`))),
-    },
-  };
+  const accumulator = new CatalogDiscoveryDiagnosticAccumulator(MODEL_ID_LENGTH);
+  for (const wireModelId of unknownValues) accumulator.addUnknown(wireModelId);
+  for (let index = unknownValues.length; index < unknownTotal; index += 1) accumulator.addUnknown(`~unretained-${index}`);
+  for (const { modelId, dataUse, wireModelIds } of collisions) {
+    for (const wireModelId of wireModelIds) accumulator.addResolved({ modelId, dataUse, wireModelId, metadata: null });
+  }
+  return { baselineGeneration: "baseline", ...accumulator.snapshot() };
 }
 
 test("bounds cross-account diagnostics and retains only the latest digest per family", () => {
@@ -62,7 +62,6 @@ test("bounds cross-account diagnostics and retains only the latest digest per fa
     modelId: "shared",
     dataUse: "standard" as const,
     wireModelIds: Object.freeze(["route-a", "route-b"]),
-    total: 2,
   });
   const observation = diagnostics(unknownWireModelIds, ROW_COUNT, [collision]);
   const observations = Array.from({ length: ACCOUNT_COUNT }, () => ({ providerId: "aggregator", diagnostics: observation }));
@@ -108,11 +107,10 @@ test("a clean observation resets latest-state deduplication", () => {
 test("collision deduplication includes per-account group totals", () => {
   const record = spyOn(DebugLog, "record").mockImplementation(() => {});
   const latest = new Map<string, string>();
-  const collision = (wireModelIds: readonly string[]): CatalogCollisionSample => ({
+  const collision = (wireModelIds: readonly string[]): Collision => ({
     modelId: "shared",
     dataUse: "standard",
     wireModelIds,
-    total: wireModelIds.length,
   });
   try {
     recordCatalogDiscoveryDiagnostics(latest, [
@@ -133,14 +131,7 @@ test("omits oversized and terminal-control IDs from bounded payloads", () => {
   const record = spyOn(DebugLog, "record").mockImplementation(() => {});
   const latest = new Map<string, string>();
   try {
-    recordCatalogDiscoveryDiagnostics(latest, [{
-      providerId: "provider",
-      diagnostics: {
-        baselineGeneration: "baseline",
-        unknownWireModelIds: { total: 2, values: [], digest: digest(["x".repeat(10_000), "bad\u001B"]) },
-        collisions: { total: 0, values: [], digest: digest([]) },
-      },
-    }]);
+    recordCatalogDiscoveryDiagnostics(latest, [{ providerId: "provider", diagnostics: diagnostics(["x".repeat(10_000), "bad\u001B"]) }]);
     const diagnostic = record.mock.calls[0]?.[0];
     expect(diagnostic).toMatchObject({
       type: "model.catalog.relationship_unresolved",

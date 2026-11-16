@@ -14,8 +14,8 @@ import {
   replaceCredentialInstance,
   setMeteredCredentialWithReceipt,
 } from "../../../../src/infra/auth/auth-store-mutations.js";
-import { getCredential, loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
-import type { Credential } from "../../../../src/infra/auth/auth-store-types.js";
+import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
+import { isCredentialCollection, type Credential } from "../../../../src/infra/auth/auth-store-types.js";
 import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory } from "../../../../src/infra/auth/auth-profile-store.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 
@@ -435,21 +435,6 @@ describe("metered credential lineages", () => {
   });
 });
 
-describe("getCredential", () => {
-  test("returns credential for existing provider", () => {
-    const dir = makeTmpDir();
-    const cred = { type: "api_key" as const, key: "sk-x" };
-    writeAuthJson(dir, { anthropic_api: metered(cred) });
-    expect(getCredential("anthropic_api", dir)).toEqual(cred);
-  });
-
-  test("returns undefined for missing provider", () => {
-    const dir = makeTmpDir();
-    writeAuthJson(dir, {});
-    expect(getCredential("anthropic_api", dir)).toBeUndefined();
-  });
-});
-
 describe("deleteProviderCredentials", () => {
   test("removes a provider and preserves others", async () => {
     const dir = makeTmpDir();
@@ -485,9 +470,8 @@ describe("concurrent writes", () => {
       setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: `sk-${i}` }, dir, slots),
     );
     await Promise.all(writes);
-    const credential = getCredential("anthropic_api", dir);
-    expect(credential?.type).toBe("api_key");
-    if (credential?.type !== "api_key") throw new Error("Expected an API key credential");
+    const credential = loadAuthStoreWithDiagnostics(dir).store.anthropic_api;
+    if (isCredentialCollection(credential) || credential?.type !== "api_key") throw new Error("Expected an API key credential");
     expect(credential.key).toMatch(/^sk-\d$/);
   });
 });

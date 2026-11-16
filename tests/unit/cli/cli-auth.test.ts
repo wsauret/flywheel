@@ -12,7 +12,7 @@ import { testDirectories } from "../../helpers/directories.js"
 import { refusingLauncher } from "../../helpers/launcher-fake.js"
 import { authDir } from "../../../src/infra/paths.js"
 import type { AuthContext } from "../../../src/infra/auth/auth-context.js"
-import { installCustomProviders } from "../../../src/infra/llm/custom-provider-registry.js"
+import { installCustomProviders } from "../../helpers/custom-providers.js"
 import { composeRealmModuleSnapshot } from "../../../src/orchestration/modules.js"
 import { authProviders } from "../../helpers/auth-context.js"
 

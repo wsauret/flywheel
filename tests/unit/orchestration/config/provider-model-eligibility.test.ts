@@ -273,8 +273,8 @@ describe("worker provider model eligibility", () => {
       ]),
     })
     const definitions: AccessProviderDefinition[] = [
-      { id: "provider-a", displayName: "A", shortName: "A", rank: 1, supportedFamilies: ["openai"], defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "metered", spendMode: "direct_api" },
-      { id: "provider-b", displayName: "B", shortName: "B", rank: 2, supportedFamilies: ["openai"], defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "subscription" },
+      { id: "provider-a", displayName: "A", shortName: "A", rank: 1, defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "metered", spendMode: "direct_api" },
+      { id: "provider-b", displayName: "B", shortName: "B", rank: 2, defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "subscription" },
     ]
     providerBRows.set(model, Object.freeze({ modelId: model, offerings: standard("wire-b", Object.freeze({ price: 99 })) }))
     const auth: AuthContext = {

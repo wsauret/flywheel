@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { createModelsClient } from "../../../../src/infra/llm/models.js";
 import { admitCurrentModelsDocument } from "../../../../src/infra/llm/models-document.js";
-import { normalizeDecodedCatalogRows } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import { normalizeResolvedCatalogRows } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { combinedModelsDevJson, combinedModelsDevProviders, modelsDevDocument, modelsDevJson } from "../../../helpers/model-catalog-fixtures.js";
 
 const ANTHROPIC_JSON = combinedModelsDevJson({ cost: { input: 3, output: 15, cache_read: 0.3, cache_write: 3.75, reasoning: 15 } });
@@ -294,7 +294,7 @@ describe("createModelsClient fetch path", () => {
 
     expect(rows).toHaveLength(4);
     expect(rows.map((row) => row.wireModelId)).toEqual(["claude-limit-0", "claude-limit-1", "claude-limit-2", "claude-limit-3"]);
-    expect(normalizeDecodedCatalogRows(rows.map((row) => ({
+    expect(normalizeResolvedCatalogRows(rows.map((row) => ({
       modelId: row.wireModelId,
       wireModelId: row.wireModelId,
       metadata: null,

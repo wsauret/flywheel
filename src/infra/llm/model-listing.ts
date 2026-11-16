@@ -230,7 +230,7 @@ export interface ModelListingClientOptions {
 }
 
 /** One conclusive probe result, reported after its durable commit. `remaining` counts the probes still due. */
-export interface AccessAuditProgress {
+interface AccessAuditProgress {
   readonly account: AccessProviderAccountIdentity;
   readonly remaining: number;
   readonly modelId: string;

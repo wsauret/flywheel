@@ -6,7 +6,7 @@ import { temporaryDirectories } from "../../../helpers/directories.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import type { AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import { normalizeCatalogRows, normalizeDecodedCatalogRows, resolveModelCatalog, type CatalogSourceRow } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import { normalizeResolvedCatalogRows, resolveModelCatalog, type CatalogSourceRow } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { testProviderSelection } from "../../../helpers/provider-authority.js";
 import { OPENCODE_GO_API_BASE } from "../../../../src/orchestration/modules/provider-opencode-go/wire.js";
 import { openAiPricingFromMetadata, refreshOpenAiStandardPricing } from "../../../../src/infra/llm/openai-pricing.js";
@@ -156,9 +156,8 @@ describe("first-party provider model catalog contracts", () => {
     const contribution = catalog("google_api");
     const result = await contribution.fetch(input());
     expect(result.discovery.kind).toBe("rows");
-    if (result.discovery.kind !== "rows") throw new Error("Expected rows");
-    const normalized = normalizeCatalogRows(result.discovery.rows, contribution);
-    expect(normalized).toMatchObject({ kind: "valid", rows: [
+    const resolved = resolveModelCatalog({ authenticated: true, live: result.discovery, canonicalFallback: undefined, contribution });
+    expect(resolved).toMatchObject({ kind: "catalog", provenance: "first-party", rows: [
       { modelId: "gemini-first", offerings: [{ wireModelId: "gemini-first", metadata: { sourceWireModelId: "models/gemini-first", displayName: "First" }, dataUse: "standard", resolvedMetadata: { provider: "google", name: "First" } }] },
       { modelId: "gemini-second", offerings: [{ wireModelId: "gemini-second", metadata: { sourceWireModelId: "models/gemini-second", displayName: "Second" }, dataUse: "standard", resolvedMetadata: { provider: "google", name: "Second" } }] },
     ] });
@@ -252,10 +251,8 @@ describe("first-party provider model catalog contracts", () => {
       const result = await contribution.fetch({ ...input(), credential, instance: providerId === "github_copilot" ? { instanceId: "copilot", identity: "person", credential } : undefined });
       expect(["rows", "decoded-rows"]).toContain(result.discovery.kind);
       if (result.discovery.kind !== "rows" && result.discovery.kind !== "decoded-rows") throw new Error("Expected rows");
-      const catalogRows = result.discovery.kind === "decoded-rows"
-        ? normalizeDecodedCatalogRows(result.discovery.rows, contribution.limits)
-        : normalizeCatalogRows(result.discovery.rows, contribution);
-      if (catalogRows.kind !== "valid") throw new Error("Expected valid rows");
+      const catalogRows = resolveModelCatalog({ authenticated: true, live: result.discovery, canonicalFallback: undefined, contribution });
+      if (catalogRows.kind !== "catalog") throw new Error("Expected a catalog");
       expect(catalogRows.rows[0]?.offerings[0]?.wireModelId).toBe(responses[providerId].data[0].id);
       expect(catalogRows.rows[0]?.offerings[0]?.metadata).toEqual(providerId === "github_copilot"
         ? {
@@ -552,7 +549,7 @@ describe("first-party provider model catalog contracts", () => {
     const fallback = [{
       modelId: "fallback-model",
       wireModelId: "fallback-model",
-      metadata: { transport: { npm: "@ai-sdk/openai" } },
+      metadata: null,
     }] satisfies readonly CatalogSourceRow[];
     for (const providerId of ["anthropic_api", "chatgpt", "github_copilot", "google_api", "openai_api", "opencode_go", "openrouter", "supergrok"] as const) {
       const contribution = catalog(providerId);
@@ -569,12 +566,7 @@ describe("first-party provider model catalog contracts", () => {
           : {}),
       });
       expect(result.discovery).toEqual({ kind: "failed", reason: "http", status: 503 });
-      const canonicalFallback = normalizeCatalogRows(fallback, {
-        ...contribution,
-        canonicalize: (row) => typeof row === "object" && row !== null && "wireModelId" in row && typeof row.wireModelId === "string"
-          ? { modelId: row.wireModelId, wireModelId: row.wireModelId, metadata: null }
-          : undefined,
-      });
+      const canonicalFallback = normalizeResolvedCatalogRows(fallback, contribution.limits);
       const resolved = resolveModelCatalog({
         authenticated: true,
         live: result.discovery,

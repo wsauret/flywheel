@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { isVendorScopedModelId } from "../../../../src/infra/llm/model-family.js";
+import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
 import {
   normalizeOpenRouterModelMetadata,
   openRouterModelPricing,
@@ -12,9 +12,9 @@ import { canonicalizeGoogleVertexWireId } from "../../../../src/orchestration/mo
 
 describe("OpenRouter catalog resolution", () => {
   it("recognizes slash ids by shape", () => {
-    expect(isVendorScopedModelId("anthropic/claude-sonnet-4.5")).toBe(true);
-    expect(isVendorScopedModelId("openai/gpt-4o:free")).toBe(true);
-    expect(isVendorScopedModelId("gpt-4o")).toBe(false);
+    expect(detectModelFamily("anthropic/claude-sonnet-4.5")).toBe("openai");
+    expect(detectModelFamily("openai/gpt-4o:free")).toBe("openai");
+    expect(detectModelFamily("mystery-model")).toBeNull();
   });
 
   it("derives one aggregation key while preserving paid and free wire routes", () => {

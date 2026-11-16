@@ -234,25 +234,17 @@ interface ResolveModelCatalogOptions {
   readonly cachedFirstParty?: readonly CatalogCanonicalRow[];
 }
 
-export function normalizeCatalogRows(rows: readonly unknown[], contribution: ModelCatalogContribution): NormalizedCatalog {
+function normalizeCatalogRows(rows: readonly unknown[], contribution: ModelCatalogContribution): NormalizedCatalog {
   return normalizeResolvedCatalogRows(rows.flatMap((row) => {
     const decoded = contribution.canonicalize(row);
     return decoded === undefined ? [] : [decoded];
   }), contribution.limits, contribution.isFreeWire);
 }
 
-/** Normalizes rows that already crossed a provider decoder or the typed ModelsClient boundary. */
-export function normalizeDecodedCatalogRows(rows: readonly CatalogSourceRow[], limits: CatalogLimits, isFreeWire?: (wireModelId: string) => boolean): NormalizedCatalog {
-  return normalizeResolvedCatalogRows(rows, limits, isFreeWire);
-}
-
-/** Normalizes resolved rows without emitting source-owned diagnostics. `isFreeWire` is the contribution's free-wire
- *  predicate: when present, it alone decides which of the provider's wires are free routes. */
+/** Normalizes rows that already crossed a provider decoder or the typed ModelsClient boundary, without emitting
+ *  source-owned diagnostics. `isFreeWire` is the contribution's free-wire predicate: when present, it alone decides
+ *  which of the provider's wires are free routes. */
 export function normalizeResolvedCatalogRows(rows: readonly CatalogSourceRow[], limits: CatalogLimits, isFreeWire?: (wireModelId: string) => boolean): NormalizedCatalog {
-  return normalizeDecodedRows(rows, limits, isFreeWire);
-}
-
-function normalizeDecodedRows(rows: readonly CatalogSourceRow[], limits: CatalogLimits, isFreeWire: ((wireModelId: string) => boolean) | undefined): NormalizedCatalog {
   requireCatalogLimits(limits);
   const routes = rows.map((source) => {
     const canonical = canonicalCatalogModelId(source.modelId);
@@ -388,7 +380,7 @@ export function resolveModelCatalog(options: ResolveModelCatalogOptions): Resolv
     : options.live.kind === "rows"
     ? normalizeCatalogRows(options.live.rows, options.contribution)
     : options.live.kind === "decoded-rows"
-      ? normalizeDecodedCatalogRows(options.live.rows, options.contribution.limits, options.contribution.isFreeWire)
+      ? normalizeResolvedCatalogRows(options.live.rows, options.contribution.limits, options.contribution.isFreeWire)
       : options.live.kind === "resolved-rows"
         ? validateCanonicalRows(options.live.rows, options.contribution.limits)
       : undefined;

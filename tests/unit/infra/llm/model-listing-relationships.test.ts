@@ -26,7 +26,6 @@ function provider(fetch: NonNullable<AccessProviderDefinition["dynamicCatalog"]>
     displayName: "Delayed",
     shortName: "Delayed",
     rank: 1,
-    supportedFamilies: ["openai"],
     configHints: [],
     catalogId: undefined,
     dynamicCatalog: {

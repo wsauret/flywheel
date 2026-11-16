@@ -20,7 +20,7 @@ export type SubscriptionSpendConsentRevision =
   | { readonly kind: "missing" }
   | { readonly kind: "content"; readonly digest: string };
 
-export interface SubscriptionSpendConsentSnapshot {
+interface SubscriptionSpendConsentSnapshot {
   readonly profileId: string;
   readonly incarnation: string;
   readonly revision: number;

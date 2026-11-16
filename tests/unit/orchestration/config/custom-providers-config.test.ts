@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js";
-import { customProviderById, customProviderIds, customProviderModelUnavailableReason, customProviderOwning, installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js";
+import { customProviderById, customProviderIds, customProviderModelUnavailableReason, isCustomProviderModel } from "../../../../src/infra/llm/custom-provider-registry.js";
+import { installCustomProviders } from "../../../helpers/custom-providers.js";
 import { staticOfferingMap } from "../../../../src/infra/llm/model-listing-rows.js";
 
 // Validation of the [custom_providers] config section: an invalid entry is
@@ -23,7 +24,7 @@ describe("publishCustomProvidersFromConfig", () => {
     expect(entry?.displayName).toBe("local_llama");
     expect(entry?.baseUrl).toBe("http://localhost:8080/v1");
     expect([...entry?.modelIds ?? []]).toEqual(["Llama-3.3-70B"]);
-    expect(customProviderOwning("llama-3.3-70b")?.id).toBe("local_llama");
+    expect(customProviderModelUnavailableReason("local_llama", "llama-3.3-70b")).toBeUndefined();
     expect(entry?.contextLimit).toBe(128_000);
     expect(entry?.catalogId).toBeUndefined();
   });
@@ -31,7 +32,7 @@ describe("publishCustomProvidersFromConfig", () => {
   it("retains ownership of a contributor wire under its canonical model identity", () => {
     install({ local: { base_url: "http://localhost:8080/v1", models: ["local-contributor"] } });
 
-    expect(customProviderOwning("local")?.id).toBe("local");
+    expect(isCustomProviderModel("local")).toBe(true);
     expect(customProviderModelUnavailableReason("local", "local")).toBeUndefined();
   });
 
@@ -39,7 +40,7 @@ describe("publishCustomProvidersFromConfig", () => {
     install({ hosted: { base_url: "https://hosted.example/v1", models: ["Vendor/Model-Contributor"] } });
     const entry = customProviderById("hosted");
 
-    expect(customProviderOwning("vendor/model")?.id).toBe("hosted");
+    expect(isCustomProviderModel("vendor/model")).toBe(true);
     expect(customProviderModelUnavailableReason("hosted", "vendor/model")).toBeUndefined();
     expect(staticOfferingMap(entry?.modelIds ?? [], "openai-completions", [])).toEqual(new Map([
       ["vendor/model", [{ wireModelId: "Vendor/Model-Contributor", metadata: null, dataUse: "contributor", transport: "openai-completions" }]],

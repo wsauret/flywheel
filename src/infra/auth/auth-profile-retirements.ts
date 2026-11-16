@@ -12,7 +12,7 @@ interface AuthProfileSuccessors {
 export type AuthProfileRetirements = Readonly<AuthProfileSuccessors>;
 
 /** The ledger is authoritative. An unreadable ledger must never mean no transfers. */
-export class AuthProfileRetirementsError extends Error {
+class AuthProfileRetirementsError extends Error {
   readonly _tag = "AuthProfileRetirementsError" as const;
   constructor(readonly path: string, cause: unknown) {
     super(`Cannot read auth profile transfers at ${path}. Repair the file or restore it from backup before changing profiles.`, { cause });

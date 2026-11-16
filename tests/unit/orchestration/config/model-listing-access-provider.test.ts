@@ -9,11 +9,6 @@ import { authProviders } from "../../../helpers/auth-context.js";
 // Access provider — family chains and model compatibility
 // ---------------------------------------------------------------------------
 
-const AUTH_EVERYTHING = {
-  providers: authProviders({ apiKeys: { anthropic_api: "[redacted secret]", openai_api: "[redacted secret]", google_api: "[redacted secret]" }, oauth: ["github_copilot", "chatgpt"] }),
-  credentialLineages: {}, droppedCredentials: [],
-};
-
 type ExactOffering = { readonly wireModelId: string; readonly transport: "anthropic-messages" | "openai-responses" | "openai-completions" | "google" };
 function exactEligibility(offerings: ReadonlyMap<string, ReadonlyMap<string, ExactOffering>>): AccessProviderModelEligibility {
   return testEligibility({
@@ -34,44 +29,6 @@ it("exposes definition-owned provider presentation metadata", () => {
 });
 
 describe("access provider family chains", () => {
-  it("orders the openai chain ChatGPT, Copilot, OpenAI API", async () => {
-    expect(testProviderSelection().getConfiguredForFamily("openai", AUTH_EVERYTHING)).toEqual([
-      "chatgpt",
-      "github_copilot",
-      "openai_api",
-    ]);
-  });
-
-  it("orders the anthropic chain Copilot, Anthropic API", async () => {
-    expect(testProviderSelection().getConfiguredForFamily("anthropic", AUTH_EVERYTHING)).toEqual([
-      "github_copilot",
-      "anthropic_api",
-    ]);
-  });
-
-  it("puts the Copilot subscription ahead of the Google API key for google models", async () => {
-    expect(testProviderSelection().getConfiguredForFamily("google", AUTH_EVERYTHING)).toEqual([
-      "github_copilot",
-      "google_api",
-    ]);
-  });
-
-  it("keeps chain order independent of which credentials exist", async () => {
-    const providers = testProviderSelection().getConfiguredForFamily("openai", {
-      ...AUTH_EVERYTHING,
-      providers: authProviders({ base: AUTH_EVERYTHING.providers, without: ["github_copilot"] }),
-    });
-    expect(providers).toEqual(["chatgpt", "openai_api"]);
-  });
-
-  it("appends OpenRouter to the openai chain when its key is configured", async () => {
-    const providers = testProviderSelection().getConfiguredForFamily("openai", {
-      ...AUTH_EVERYTHING,
-      providers: authProviders({ base: AUTH_EVERYTHING.providers, apiKeys: { openrouter: "openrouter-test-key" } }),
-    });
-    expect(providers).toEqual(["chatgpt", "github_copilot", "openai_api", "openrouter"]);
-  });
-
   it("plans exact eligible offerings in provider order and preserves wire relationships", () => {
     const auth = {
       ...AUTH_NONE,

@@ -150,11 +150,6 @@ async function renderCapabilityModuleBaseline(): Promise<string> {
       ids: providerIds,
       definitions: providerIds.map((id) => ({ id, displayName: providers.displayName(id), shortName: providers.shortName(id), billing: providers.billing(id), catalogId: providers.catalogId(id) ?? null })),
       configuredOrder: providers.getConfigured(allAuth),
-      familyOrder: {
-        anthropic: providers.getConfiguredForFamily("anthropic", allAuth),
-        openai: providers.getConfiguredForFamily("openai", allAuth),
-        google: providers.getConfiguredForFamily("google", allAuth),
-      },
     },
     webProviders: await webRouting(),
     workflowObservers: ["doom-loop", "budget-awareness", "context-pressure"],

@@ -3,7 +3,6 @@ import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { AuthProfileRetirementsError } from "../../../../src/infra/auth/auth-profile-retirements.js";
 import { ContainedPathError } from "../../../../src/infra/descriptor-directory-contract.js";
 import * as containedDirectories from "../../../../src/infra/descriptor-directory.js";
 import { authDir } from "../../../../src/infra/paths.js";
@@ -26,8 +25,9 @@ describe("AuthProfileStore", () => {
     (await store.create("work")).close();
     const file = join(root, "auth", ".profile-retirements.json");
     writeFileSync(file, bytes);
-    expect(() => store.inspect()).toThrow(AuthProfileRetirementsError);
-    await expect(store.create("other")).rejects.toThrow(AuthProfileRetirementsError);
+    const unreadableLedger = /^Cannot read auth profile transfers at .+\/auth\/\.profile-retirements\.json\./;
+    expect(() => store.inspect()).toThrow(unreadableLedger);
+    await expect(store.create("other")).rejects.toThrow(unreadableLedger);
     expect(readFileSync(file, "utf8")).toBe(bytes);
     expect(existsSync(authDir(root, "work"))).toBe(true);
   });

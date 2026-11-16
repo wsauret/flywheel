@@ -409,7 +409,6 @@ interface AccessProviderDefinitionBase {
   readonly shortName: string;
   readonly billingUrl?: string;
   readonly rank: number;
-  readonly supportedFamilies: readonly ModelFamily[];
   /** Chat transport for first-party rows that predate their models.dev metadata. */
   readonly defaultChatTransport?: OfferingTransport;
   /** Configurable cache policies accepted by this provider's request protocol.
@@ -488,7 +487,6 @@ export type FailoverPlan =
 
 export interface AccessProviderSelection {
   readonly definitions: readonly AccessProviderDefinition[];
-  readonly getConfiguredForFamily: (family: ModelFamily, auth: AuthContext) => AccessProviderId[];
   readonly getConfigured: (auth: AuthContext) => AccessProviderId[];
   readonly displayName: (id: AccessProviderId) => string;
   readonly shortName: (id: AccessProviderId) => string;
@@ -520,23 +518,10 @@ function orderedDefinitions(): AccessProviderDefinition[] {
     .sort((a, b) => Number(a.billing === "metered") - Number(b.billing === "metered") || a.rank - b.rank);
 }
 
-function definitionsForFamily(family: ModelFamily): AccessProviderDefinition[] {
-  return orderedDefinitions().filter((definition) => definition.supportedFamilies.includes(family));
-}
-
 function definitionForProvider(id: AccessProviderId): AccessProviderDefinition {
   const definition = providerDefinitions().find((entry) => entry.id === id);
   if (!definition) throw new Error(`Missing access provider definition: ${id}`);
   return definition;
-}
-
-function getConfiguredAccessProvidersForFamily(
-  family: ModelFamily,
-  auth: AuthContext,
-): AccessProviderId[] {
-  return definitionsForFamily(family)
-    .filter((definition) => isProviderConfigured(definition, auth))
-    .map((definition) => definition.id);
 }
 
 
@@ -647,7 +632,6 @@ function planProviderChain(model: string, connection: ProviderConnection, eligib
 }
   return Object.freeze({
     definitions: accessProviderDefinitions,
-    getConfiguredForFamily: getConfiguredAccessProvidersForFamily,
     getConfigured: getConfiguredAccessProviders,
     displayName: accessProviderDisplayName,
     shortName: accessProviderShortName,

@@ -1353,27 +1353,7 @@
       "google_api",
       "google_vertex",
       "openrouter"
-    ],
-    "familyOrder": {
-      "anthropic": [
-        "github_copilot",
-        "anthropic_api",
-        "openrouter"
-      ],
-      "openai": [
-        "chatgpt",
-        "github_copilot",
-        "supergrok",
-        "openai_api",
-        "openrouter"
-      ],
-      "google": [
-        "github_copilot",
-        "google_api",
-        "google_vertex",
-        "openrouter"
-      ]
-    }
+    ]
   },
   "webProviders": {
     "providerIds": [
