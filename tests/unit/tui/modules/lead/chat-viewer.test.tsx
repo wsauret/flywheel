@@ -33,15 +33,35 @@ const chatSends = (strip: { readonly sent: readonly string[] }): readonly string
 const title = (frame: string): string | undefined => /│\s+Chat (\w+)\s+x\s+│/.exec(frame)?.[1]
 
 describe("the lead's full-chat viewer", () => {
-  it("opens on a click on a row, with the list focused on that row for Escape", async () => {
+  it("opens on a click on a row without focusing the list, and Escape goes back to the input that had focus", async () => {
     const strip = await mountStrip([leadRow("busy", "working"), leadRow("asks", "question")], { width: 100, height: 40 })
     cleanups.push(strip.dispose)
     const row = strip.lines().findIndex((line) => line.includes("Chat busy"))
     await strip.rendered.mockMouse.click(10, row)
+    expect(strip.focused()).toBe(false)
     await strip.viewerKey("pagedown")
     expect(title(strip.rendered.captureCharFrame())).toBe("busy")
     await strip.viewerKey("escape")
+    expect(strip.overlay.viewer.stack).toHaveLength(0)
+    expect(strip.focused()).toBe(false)
+  })
+
+  it("opens on a click on another row without moving the list's cursor, and goes back to the list on the row it was on", async () => {
+    // List order: `asks`, then `busy`.
+    const strip = await mountStrip([leadRow("busy", "working"), leadRow("asks", "question")], { width: 100, height: 40 })
+    cleanups.push(strip.dispose)
+    await strip.key("down")
+    const row = strip.lines().findIndex((line) => line.includes("Chat busy"))
+    await strip.rendered.mockMouse.click(10, row)
+    await strip.viewerKey("pagedown")
+    expect(title(strip.rendered.captureCharFrame())).toBe("busy")
+    await strip.viewerKey("tab", { shift: true })
+    await strip.viewerKey("escape")
+    expect(strip.overlay.viewer.stack).toHaveLength(0)
     expect(strip.focused()).toBe(true)
+    // The cursor is on the row it was on before the click.
+    await strip.key("return")
+    expect(title(strip.rendered.captureCharFrame())).toBe("asks")
   })
 
   it("names a chat by the title that the Sessions list shows, in its row and in the view's header, never by its short title", async () => {

@@ -96,13 +96,6 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     props.screen.closeChat(sessionId)
   }
 
-  /** A press on a row selects it, gives the list focus, and opens the chat, so Escape comes back to that row. */
-  function press(sessionId: string): void {
-    setChosen({ id: sessionId })
-    claim.setFocused(true)
-    props.screen.openChat(sessionId)
-  }
-
   const width = () => Math.max(1, props.strip.width() - 2 * SIDE_INSET - CLOSE_MARK.length)
   function rowContent(row: LeadRow, age: string): StyledText {
     const look = LEAD_STATE_LOOK[row.state]
@@ -118,7 +111,9 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
       // The clock ticks each second, and a row's text changes only when its age does.
       const age = createMemo(() => leadAge(row.since, now()))
       const hover = useHoverHighlight()
-      return <box flexDirection="row" selectable={false} backgroundColor={hover.background()} {...hover.handlers} onMouseDown={() => { press(row.sessionId) }}>
+      // A press opens the chat and leaves focus and the selection as they were, so closing the chat goes back to the
+      // input or the row that had focus before (PI-LEAD-005).
+      return <box flexDirection="row" selectable={false} backgroundColor={hover.background()} {...hover.handlers} onMouseDown={() => { props.screen.openChat(row.sessionId) }}>
         <text selectable={false} flexGrow={1} ref={bindStyledTextContent(() => rowContent(row, age()))} wrapMode="none" overflow="hidden" />
         <box selectable={false} flexShrink={0} width={CLOSE_MARK.length} onMouseDown={(event) => { event.stopPropagation(); close(row.sessionId) }}>
           <text selectable={false} fg={theme.textMuted} wrapMode="none">{hover.hovered() ? CLOSE_MARK : " ".repeat(CLOSE_MARK.length)}</text>
