@@ -1,0 +1,18 @@
+src/infra/tools/detail-helpers.ts
+  h_4b47e9e4a8b456 3,69-75,77-80,82,91
+src/infra/tools/shell-words.ts
+  h_4b47e9e4a8b456 18-19,27,86,91-94,125,128,132,139,142,147,330,338
+tests/unit/infra/tools/detail-helpers.test.ts
+  h_4b47e9e4a8b456 70-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "74864c0eb8a744dc7e4e0acb5336e86fb7655939",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
