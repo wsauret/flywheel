@@ -1,0 +1,66 @@
+src/orchestration/app-service/runtime-background-projects.ts
+  h_4b47e9e4a8b456 1-77
+src/orchestration/app-service/runtime-background-worker.ts
+  h_4b47e9e4a8b456 29,84,176
+src/orchestration/app-service/runtime-config-projection.ts
+  h_4b47e9e4a8b456 60,62
+src/orchestration/app-service/runtime-executable.ts
+  h_4b47e9e4a8b456 48,58,105-108,114-119
+src/orchestration/app-service/runtime-fault-reporting.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/app-service/runtime-maintenance-owner.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/app-service/runtime-maintenance-worker.ts
+  h_4b47e9e4a8b456 73,86,111
+src/orchestration/app-service/runtime-protocol-handlers.ts
+  h_4b47e9e4a8b456 40
+src/orchestration/app-service/session-auto-delete.ts
+  h_4b47e9e4a8b456 19
+src/orchestration/app-service/web-serving/hub.ts
+  h_4b47e9e4a8b456 41-43,64
+tests/helpers/runtime-config-view.ts
+  h_4b47e9e4a8b456 1-27
+tests/unit/cli/runtime-attach-protocol-boundary.test.ts
+  h_4b47e9e4a8b456 8,11,64-65,68,83
+tests/unit/cli/serve-source-snapshot.test.ts
+  h_4b47e9e4a8b456 15,118-121
+tests/unit/cli/serve.test.ts
+  h_4b47e9e4a8b456 25,248
+tests/unit/orchestration/app-service/_served-project-state-fixture.ts
+  h_4b47e9e4a8b456 1-79
+tests/unit/orchestration/app-service/runtime-background-worker-lifecycle.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/app-service/runtime-config-projection.test.ts
+  h_4b47e9e4a8b456 8,11,14
+tests/unit/orchestration/app-service/runtime-executable.test.ts
+  h_4b47e9e4a8b456 8-9,17-27,30-32,41-43,120,131,139-142
+tests/unit/orchestration/app-service/runtime-fault-reporting.test.ts
+  h_4b47e9e4a8b456 3-5,8,12
+tests/unit/orchestration/app-service/runtime-maintenance-owner.test.ts
+  h_4b47e9e4a8b456 6,68
+tests/unit/orchestration/app-service/runtime-maintenance-worker.test.ts
+  h_4b47e9e4a8b456 6-12,26-53,55,57-71,73-83,85-143
+tests/unit/orchestration/app-service/runtime-worker-resilience.test.ts
+  h_4b47e9e4a8b456 16-20,349-366,372-373
+tests/unit/orchestration/app-service/session-auto-delete.test.ts
+  h_4b47e9e4a8b456 3,7,17-47,81,84-88,92,94-96,114,119
+tests/unit/orchestration/app-service/session-change-summary.test.ts
+  h_4b47e9e4a8b456 1,3-4,17-21,104-107,109-118,121,128,130-144
+tests/unit/orchestration/app-service/web-hub.test.ts
+  h_4b47e9e4a8b456 319-333,335-336,339
+tests/unit/orchestration/modules/config-contribution.test.ts
+  h_4b47e9e4a8b456 18,72
+tests/unit/orchestration/modules/subscription-usage/service.test.ts
+  h_4b47e9e4a8b456 7,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c4c3bc0eeaf16fab280f5b47d33c9589c656f94d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
