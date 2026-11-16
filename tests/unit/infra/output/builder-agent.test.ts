@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder";
-import type { AnyBlock, ToolEntry, AgentGroupBlock } from "../../../../src/infra/output-blocks";
-
-function resolvedTool(name: string, detail: string, timestamp: number): ToolEntry {
-  return { kind: "tool", id: `${name}-${timestamp}`, name, presentation: { name, detail }, timestamp, status: "completed" };
-}
+import type { AnyBlock, AgentGroupBlock } from "../../../../src/infra/output-blocks";
+import { OutputProjector } from "../../../../src/infra/output/output-projector";
+import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks";
 
 function agentGroup(block: AnyBlock | undefined): AgentGroupBlock {
   if (block === undefined) throw new Error("Expected agentGroup block, got none");
@@ -47,22 +45,6 @@ describe("StructuredOutputBuilder — agent lifecycle", () => {
       expect(blocks[1]?.kind).toBe("tool");
     });
 
-    it("agent children grow without eviction so tracked indices stay valid", () => {
-      const now = Date.now();
-      builder.startAgent("agent-1", { containerKind: "subagent", label: "Explore", description: "Heavy search" }, now, "tu-agent-1");
-      for (let i = 0; i < 60; i++) {
-        builder.pushToolRowToAgent("agent-1", resolvedTool(`Tool${i}`, `detail-${i}`, now + i));
-      }
-      const agent = agentGroup(builder.getBlocks()[0]);
-      expect(agent.children).toHaveLength(60);
-      // The first child's stored index (0) must still point to the first tool —
-      // otherwise a tool_result patch arriving later for that child would land
-      // on the wrong slot and leave it stuck "pending".
-      expect(agent.children[0]?.name).toBe("Tool0");
-      expect(agent.children[59]?.name).toBe("Tool59");
-      expect(agent.totalToolCount).toBe(60);
-    });
-
     it("completeAgent marks a budget-capped run partial", () => {
       builder.startAgent("agent-1", { containerKind: "subagent", label: "Explore", description: "Searching" }, Date.now(), "tu-agent-1");
       builder.completeAgent("agent-1", 1500, { partial: true, totalTokens: 10 });
@@ -82,15 +64,6 @@ describe("StructuredOutputBuilder — agent lifecycle", () => {
       expect(agent.failure.message).toBe("Timeout exceeded");
     });
 
-    it("updateAgentLatestChild sets latestChild string", () => {
-      const now = Date.now();
-      builder.startAgent("agent-1", { containerKind: "subagent", label: "Explore", description: "Searching" }, now, "tu-agent-1");
-      builder.updateAgentLatestChild("agent-1", "Reading src/index.ts");
-
-      const agent = agentGroup(builder.getBlocks()[0]);
-      expect(agent.latestChild).toBe("Reading src/index.ts");
-    });
-
     it("completeAgent is no-op for unknown agent id", () => {
       builder.pushText("some text", Date.now(), "text-1");
       builder.completeAgent("unknown-id", 100);
@@ -98,32 +71,6 @@ describe("StructuredOutputBuilder — agent lifecycle", () => {
       expect(builder.getBlocks()).toHaveLength(1);
     });
 
-  });
-
-  describe("multiple agents", () => {
-    it("pushToolRowToAgent returns -1 for unknown agent ID", () => {
-      const routed = builder.pushToolRowToAgent("unknown", resolvedTool("Read", "file.ts", Date.now()));
-      expect(routed).toBe(-1);
-    });
-
-    it("second agent gets its own tools", () => {
-      const now = Date.now();
-      builder.startAgent("a1", { containerKind: "subagent", label: "Explore", description: "First" }, now, "tu-a1");
-      builder.pushToolRowToAgent("a1", resolvedTool("Read", "inside-a1.ts", now + 100));
-      builder.completeAgent("a1", 500);
-
-      builder.startAgent("a2", { containerKind: "subagent", label: "Plan", description: "Second" }, now + 200, "tu-a2");
-      builder.pushToolRowToAgent("a2", resolvedTool("Grep", "inside-a2.ts", now + 300));
-
-      const blocks = builder.getBlocks();
-      expect(blocks).toHaveLength(2);
-      const agent1 = agentGroup(blocks[0]);
-      const agent2 = agentGroup(blocks[1]);
-      expect(agent1.children).toHaveLength(1);
-      expect(agent1.children[0]?.name).toBe("Read");
-      expect(agent2.children).toHaveLength(1);
-      expect(agent2.children[0]?.name).toBe("Grep");
-    });
   });
 
   describe("closePendingAgentBlocks", () => {
@@ -238,52 +185,39 @@ describe("StructuredOutputBuilder — agent lifecycle", () => {
       builder.completeAgent("a1", 3000);
       expect(builder.getBlocks()[0]).toMatchObject({ kind: "agentGroup", status: "completed", duration: 3000 });
     });
-
-    it("reactivates a completed agent when new children arrive", () => {
-      const now = Date.now();
-      builder.startAgent("a1", { containerKind: "subagent", label: "Explore", description: "Searching" }, now, "tu-a1");
-      builder.completeAgent("a1", 1000);
-
-      const agent1 = agentGroup(builder.getBlocks()[0]);
-      expect(agent1.status).toBe("completed");
-      expect(agent1.duration).toBe(1000);
-
-      // New child arrives — agent should reactivate
-      builder.pushToolRowToAgent("a1", resolvedTool("Read", "file.ts", now + 2000));
-
-      const agent2 = agentGroup(builder.getBlocks()[0]);
-      expect(agent2.status).toBe("active");
-      expect(agent2.duration).toBeUndefined();
-      expect(agent2.children).toHaveLength(1);
-    });
-
-    it("does not reactivate an errored agent", () => {
-      const now = Date.now();
-      builder.startAgent("a1", { containerKind: "subagent", label: "Explore", description: "Searching" }, now, "tu-a1");
-      builder.errorAgent("a1", "something broke");
-
-      builder.pushToolRowToAgent("a1", resolvedTool("Read", "file.ts", now + 2000));
-
-      const agent = agentGroup(builder.getBlocks()[0]);
-      expect(agent.status).toBe("error");
-    });
-
-    it("reactivated agent can be completed again with correct duration", () => {
-      const now = Date.now();
-      builder.startAgent("a1", { containerKind: "subagent", label: "Explore", description: "Searching" }, now, "tu-a1");
-      builder.completeAgent("a1", 500);
-
-      builder.pushToolRowToAgent("a1", resolvedTool("Read", "file.ts", now + 1000));
-
-      const active = agentGroup(builder.getBlocks()[0]);
-      expect(active.status).toBe("active");
-
-      builder.completeAgent("a1", 3000);
-
-      const done = agentGroup(builder.getBlocks()[0]);
-      expect(done.status).toBe("completed");
-      expect(done.duration).toBe(3000);
-    });
   });
 
+  describe("subagent and code-nested calls in the parent projector", () => {
+    it("A subagent tool call in the parent produces one agent card whose activity comes from its own activity field", () => {
+      const projector = new OutputProjector({ executionCwd: "/workspace" });
+      projector.apply({ type: "tool-use", toolUseId: "dispatch", name: "subagent", input: { kind: "dispatch", description: "Explore" }, timestamp: 1 });
+      // The subagent's own calls belong to its session; a nested event that
+      // reaches the parent adds no row to the card.
+      projector.apply({ type: "tool-use", toolUseId: "inner", parentToolUseId: "dispatch", name: "read", input: { path: "a.ts" }, timestamp: 2 });
+      projector.apply({ type: "tool-result", toolUseId: "inner", parentToolUseId: "dispatch", outcome: "ok", content: [{ type: "text", text: "x" }], timestamp: 3 });
+
+      const blocks = projector.getBlocks();
+      expect(blocks).toHaveLength(1);
+      const card = agentGroup(blocks[0]);
+      expect(card.toolUseId).toBe("dispatch");
+      expect(card.children).toEqual([]);
+
+      // The wire card states the activity its transcript projection selected,
+      // never one derived from the rows it carries.
+      const activity = { name: "Read", detail: "b.ts" };
+      const hydrated = { ...card, activity, children: [{ kind: "tool" as const, id: "c", name: "grep", presentation: { name: "Grep", detail: "x" }, sentence: { name: "Searched", detail: "x" }, timestamp: 2, status: "completed" as const }] };
+      const wire = projectFrontendOutputBlock(hydrated);
+      expect(wire).toMatchObject({ kind: "agentGroup", activity, children: [] });
+    });
+
+    it("A code-nested fact is placed standalone with nestedInCode", () => {
+      const projector = new OutputProjector({ executionCwd: "/workspace" });
+      projector.apply({ type: "tool-use", toolUseId: "nested", parentToolUseId: "script", nestedInCode: true, name: "read", input: { path: "a.ts" }, timestamp: 1 });
+      projector.apply({ type: "tool-result", toolUseId: "nested", parentToolUseId: "script", outcome: "ok", content: [{ type: "text", text: "x" }], timestamp: 2 });
+
+      const blocks = projector.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]).toMatchObject({ kind: "tool", id: "nested", name: "read", runCategoryOverride: "execute", status: "completed" });
+    });
+  });
 });

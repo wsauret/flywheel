@@ -93,13 +93,11 @@ export class RuntimeEventProjector {
       },
       "model.stream.retried": (event, now) => {
         if (!this.parentToolUseId(event)) this.assistantDraft.endResponse(now);
-        this.projector.apply({ type: "abandon-tool-inputs", reason: "retry", ...this.parentToolUseIdFields(event) });
+        this.projector.apply({ type: "abandon-tool-inputs", ...this.parentToolUseIdFields(event) });
       },
       "model.stream.abandoned": (event, now) => {
         if (!this.parentToolUseId(event)) this.assistantDraft.endResponse(now);
-        this.projector.apply({
-          type: "abandon-tool-inputs", reason: event.data.reason, ...this.parentToolUseIdFields(event),
-        });
+        this.projector.apply({ type: "abandon-tool-inputs", ...this.parentToolUseIdFields(event) });
       },
       "workflow.step.started": (event, now) => { if (typeof event.data.label === "string") this.projector.apply({ type: "push-divider", label: event.data.label, timestamp: now }); },
     };

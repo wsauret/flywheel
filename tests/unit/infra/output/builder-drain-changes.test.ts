@@ -59,15 +59,6 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
     expect(change.block).toMatchObject({ kind: "agentGroup", status: "completed" });
   });
 
-  it("a child tool appended to an agent mints an upsert on the parent agent's index, not a child index", () => {
-    builder.startAgent("agent-1", { containerKind: "subagent", label: "Explore", description: "Searching" }, 1, "tu-agent-1");
-    builder.drainChanges();
-
-    builder.pushToolRowToAgent("agent-1", { kind: "tool", id: "t1", name: "Read", presentation: { name: "Read", detail: "file.ts" }, timestamp: 2, status: "completed" });
-    const batch = builder.drainChanges();
-    expect(batch.changes).toEqual([{ kind: "upsert", index: 0, block: expect.objectContaining({ kind: "agentGroup", id: "agent-1" }) }]);
-  });
-
   it("retraction degrades to a full resync and drops any changes queued this batch", () => {
     builder.pushText("partial", 1, "text-1");
     builder.pushThinking("thinking...", 2, "think-1");

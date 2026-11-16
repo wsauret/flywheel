@@ -26,8 +26,8 @@ import { SessionRelationSchema } from "./chat-input-schema.js"
 //     The derived-history edge (transcript-queries.ts) sets all three; the live edge (frontend-output-blocks.ts)
 //     sets contentOmittedLines for a tool body larger than its inline limit. Both edges serve the omitted body
 //     through the outputBlockBody query.
-//   - AgentGroupBlock.{agentType,latestChild,duration,errorMessage,model,linkUri,totalTokens}: agentType exists only for
-//     subagent-backed groups; the remaining fields are populated as children arrive / agent completes.
+//   - AgentGroupBlock.{agentType,duration,errorMessage,model,linkUri,totalTokens}: agentType exists only for
+//     subagent-backed groups; the remaining fields are populated as the agent runs and completes.
 //   - SystemBlock.level: defaults to "info" by omission; only set on "error".
 //   - SystemBlock.mutationEvidence: set only for a learning review notice, which carries
 //     the skill writes the notice reports; both the live event and chat-tree re-projection set it.
@@ -190,7 +190,6 @@ const ContainerBaseSchema = Schema.Struct({
   sentence: Schema.optionalKey(ToolPresentationSchema),
   children: Schema.mutable(Schema.Array(ToolEntrySchema)),
   totalToolCount: Schema.Number,
-  latestChild: Schema.optionalKey(Schema.String),
   /** The child's settled active time. It never includes an open episode, so
    *  a client adds only `now - activeStartedAt` to it while the clock runs. */
   duration: Schema.optionalKey(Schema.Number),

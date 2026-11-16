@@ -38,13 +38,13 @@ describe("TopLevelJsonStringDecoder", () => {
     expect(decoder.field("replace_all")).toBeUndefined();
   });
 
-  test("streams the declared string fields of each object item of a declared list and exposes the list whole", () => {
+  test.each([1, 4, 1000])("streams the declared string fields of each object item of a declared list and exposes the list whole, %i characters per append", (appendLength) => {
     const decoder = new TopLevelJsonStringDecoder(["path", "edits", "edits.*.old_string"]);
     const source = JSON.stringify({ path: "a", edits: [{ old_string: "x\"}]", other: { old_string: "nested" }, new_string: "y" }, { old_string: "\uD83D\uDE00" }] });
     const additions: { [field: string]: string } = {};
     const completed: string[] = [];
-    for (const char of source) {
-      const decoded = decoder.append(char);
+    for (let at = 0; at < source.length; at += appendLength) {
+      const decoded = decoder.append(source.slice(at, at + appendLength));
       for (const [field, text] of Object.entries(decoded.additions)) additions[field] = (additions[field] ?? "") + text;
       completed.push(...decoded.completedFields);
     }
@@ -104,6 +104,34 @@ describe("TopLevelJsonStringDecoder", () => {
     expect(decoder.acceptedBytes).toBe(Buffer.byteLength(source));
     expect(store.acceptedBytes("large")).toBe(Buffer.byteLength(body));
     expect(store.snapshot().large?.content).toHaveLength(body.length);
+  });
+
+  test("a 20 KB string field fed one character per delta returns the same value as one feed, and each read returns the held string without joining", () => {
+    const value = Array.from({ length: 20 * 1024 }, (_, index) => "ab\u00e9\n\"\\"[index % 6]).join("");
+    const source = JSON.stringify({ command: value });
+    const whole = new TopLevelJsonStringDecoder(["command"]);
+    whole.append(source);
+    const streamed = new TopLevelJsonStringDecoder(["command"]);
+    const join = Array.prototype.join;
+    let joins = 0;
+    Array.prototype.join = function (this: unknown[], separator?: string) {
+      joins++;
+      return join.call(this, separator);
+    };
+    try {
+      for (const char of source.slice(0, -2)) {
+        streamed.append(char);
+        streamed.field("command");
+      }
+      expect(joins).toBe(0);
+    } finally {
+      Array.prototype.join = join;
+    }
+    expect(streamed.field("command")).toBe(value);
+    streamed.append(source.slice(-2));
+    expect(streamed.fields).toEqual({ command: value });
+    expect(streamed.field("command")).toBe(value);
+    expect(whole.field("command")).toBe(value);
   });
 
   test("fails closed when cumulative canonical input exceeds the bound", () => {

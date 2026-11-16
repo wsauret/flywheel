@@ -132,9 +132,6 @@ export class OutputProjector {
         if (!event.parentToolUseId) this.builder.setStreamPhase("generating", event.timestamp);
         this.tools.handleToolUse(event);
         return;
-      case "agent-tool-use":
-        this.tools.handleAgentToolUse(event);
-        return;
       case "tool-input-delta":
         if (!event.parentToolUseId) this.builder.addStreamingChars(event.partialJson.length);
         this.tools.handleToolInputDelta(event.toolUseId, event.partialJson);
@@ -143,11 +140,11 @@ export class OutputProjector {
         this.tools.handleToolPreviewCheck(event.toolUseId, event.operation);
         return;
       case "abandon-tool-inputs":
-        if (this.isNestedInterior(event.parentToolUseId)) return;
-        this.tools.abandonToolInputs(event.reason, event.parentToolUseId);
+        if (event.parentToolUseId) return;
+        this.tools.abandonToolInputs();
         return;
       case "tool-execution-output":
-        if (this.isNestedInterior(event.parentToolUseId)) return;
+        if (event.parentToolUseId) return;
         this.tools.handleToolExecutionOutput(event.toolUseId, event.output);
         return;
       case "tool-execution-output-recorded":
@@ -164,7 +161,7 @@ export class OutputProjector {
         this.handleToolResult(event);
         return;
       case "tool-result-ack":
-        if (this.isNestedInterior(event.parentToolUseId)) return;
+        if (event.parentToolUseId) return;
         this.tools.ackToolResult(event.toolUseId);
         return;
       case "push-question":
@@ -176,24 +173,6 @@ export class OutputProjector {
         return;
       case "cancel-question":
         this.builder.cancelQuestion(event.toolUseId);
-        return;
-      case "complete-agent":
-        this.builder.completeAgent(event.agentId, event.durationMs, { description: event.description, label: event.label });
-        return;
-      case "fail-agent":
-        this.builder.errorAgent(event.agentId, event.message);
-        return;
-      case "interrupt-agent":
-        this.builder.interruptAgent(event.agentId, event.durationMs);
-        return;
-      case "pause-agent":
-        this.builder.pauseAgent(event.agentId, event.pausedBy);
-        return;
-      case "update-agent-meta":
-        this.builder.updateAgentMeta(event.agentId, event.label, event.description);
-        return;
-      case "update-agent-latest-child":
-        this.builder.updateAgentLatestChild(event.agentId, event.text);
         return;
       case "agent-dispatched": {
         if (this.tools.dispatchChild(event.toolUseId)) return;
@@ -285,19 +264,9 @@ export class OutputProjector {
     if (event.retractedChars !== undefined) this.builder.addStreamingChars(-event.retractedChars);
   }
 
-  /** True when the event's parent tool use does not resolve to an agent
-   *  block: the interior of a nested subagent dispatch, which renders as a
-   *  single row, so its inner events are dropped. */
-  private isNestedInterior(parentToolUseId: string | undefined): boolean {
-    return parentToolUseId !== undefined && this.tools.parentAgentId(parentToolUseId) === undefined;
-  }
-
   private findParentAgentId(toolUseId: string, operation: string, meta: LogMetadata = {}): string | undefined {
     const agentId = this.tools.parentAgentId(toolUseId);
     if (!agentId) {
-      // A nested subagent dispatch renders as a single child row, not an agent
-      // block; its lifecycle events (dispatched/queued/model) are no-ops here.
-      if (this.tools.isNestedDispatchRow(toolUseId)) return undefined;
       log.warn(`${operation}: parentAgentId not found`, {
         sessionId: this.tools.sessionId,
         toolUseId,

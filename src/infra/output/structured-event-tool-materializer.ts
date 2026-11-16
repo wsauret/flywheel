@@ -2,11 +2,11 @@ import { Log } from "../log.js";
 import type { ProvisionalDiff, ToolEntry, ToolPresentation } from "../output-blocks.js";
 import { toFileUri } from "../paths.js";
 import { declaredMutationField, getToolDisplay, resolveToolRowPresentation, targetSessionField } from "../tools/tool-display-registry.js";
-import type { ToolDiffInfo, ToolDisplay } from "../tools/types.js";
+import type { ToolDiffInfo, ToolDisplay, ToolRowPresentation } from "../tools/types.js";
 import { getFiletype } from "../tools/filetype.js";
 import { deferredAgentMeta, deferredAgentMetaPatch } from "./deferred-agent-meta.js";
 import { stringField, type JsonFields } from "./json-field.js";
-import type { PendingToolInfo, PlacedTool, TrackedTool } from "./output-tool-projection-types.js";
+import type { PendingToolInfo, PlacedTool } from "./output-tool-projection-types.js";
 import type { StructuredOutputBuilder, ToolInputFields } from "./structured-output-builder.js";
 import { createProvisionalDiffInput } from "./provisional-diff-input.js";
 import { provisionalDiffDisplayPaths } from "./display-paths.js";
@@ -15,11 +15,10 @@ const log = Log.create({ service: "output-tool-materializer" });
 
 export interface ToolMaterializerOptions {
   builder: StructuredOutputBuilder;
-  trackedTools: Map<string, TrackedTool>;
+  trackedTools: Map<string, PlacedTool>;
   // Membership only: "this tracked tool is still streaming input". The tool
   // itself lives solely in trackedTools.
   streamingToolIds: Set<string>;
-  subagentAgentIds: Set<string>;
   executionCwd: string;
   sessionId?: string;
   targetDescription?: (input: JsonFields | undefined) => string | undefined;
@@ -48,7 +47,6 @@ export function materializeImmediateTool(
   name: string,
   input: JsonFields | undefined,
   toolUseId: string,
-  parentAgentId: string | undefined,
   timestamp: number,
   presentationOverride?: ToolEntry["presentation"],
   runCategoryOverride?: ToolEntry["runCategoryOverride"],
@@ -56,8 +54,8 @@ export function materializeImmediateTool(
   const contract = getToolDisplay(name);
   const derived = toolEntryFields(name, contract, input, options.executionCwd, {
     targetDescription: options.targetDescription?.(input),
-    includeDiff: !parentAgentId && contract.streamingInput === undefined,
-    includeProposal: !parentAgentId || !options.subagentAgentIds.has(parentAgentId),
+    includeDiff: contract.streamingInput === undefined,
+    includeProposal: true,
   });
   const entry: ToolEntry = {
     kind: "tool",
@@ -69,7 +67,7 @@ export function materializeImmediateTool(
     ...(runCategoryOverride ? { runCategoryOverride } : {}),
     status: contract.isOptimistic ? "completed" : "pending",
   };
-  const tracked = trackToolRow(options.builder, entry, name, parentAgentId, contract.streamingInput !== undefined, options.subagentAgentIds, options.sessionId);
+  const tracked = placeToolRow(options.builder, entry, name, contract.streamingInput !== undefined);
   if (tracked) options.trackedTools.set(toolUseId, tracked);
 }
 
@@ -79,11 +77,10 @@ function materializeSubagent(
   toolUseId: string,
   input: JsonFields,
 ): void {
-  const { builder, trackedTools, subagentAgentIds } = options;
+  const { builder, trackedTools } = options;
   const agentId = toolUseId;
   const contract = getToolDisplay(pending.name);
   builder.startAgent(agentId, deferredAgentMeta(pending.name, input, contract.displayName), pending.timestamp, toolUseId);
-  subagentAgentIds.add(agentId);
   trackedTools.set(toolUseId, { kind: "agent", agentId, spawnedAt: pending.timestamp, toolName: pending.name });
   log.debug("agent block materialized", {
     sessionId: options.sessionId,
@@ -103,7 +100,7 @@ function materializeStandaloneMutation(
   const { builder, trackedTools, streamingToolIds } = options;
   const { name, timestamp } = pending;
   const contract = getToolDisplay(name);
-  const derived = toolEntryFields(name, contract, input, options.executionCwd, { includeDiff: !streaming && !pending.parentAgentId, includeProposal: !streaming, targetDescription: options.targetDescription?.(input) });
+  const derived = toolEntryFields(name, contract, input, options.executionCwd, { includeDiff: !streaming, includeProposal: !streaming, targetDescription: options.targetDescription?.(input) });
   const entryProps = derived.entryProps;
   const idx = builder.pushStandaloneToolEntry({
     kind: "tool",
@@ -127,12 +124,12 @@ function materializeToolRow(
   streaming: boolean,
 ): void {
   const { builder, trackedTools, streamingToolIds } = options;
-  const { name, timestamp, parentAgentId } = pending;
+  const { name, timestamp } = pending;
   const contract = getToolDisplay(name);
   const derived = toolEntryFields(pending.name, contract, input, options.executionCwd, {
     targetDescription: options.targetDescription?.(input),
-    includeDiff: !streaming && !parentAgentId,
-    includeProposal: !streaming && (!parentAgentId || !options.subagentAgentIds.has(parentAgentId)),
+    includeDiff: !streaming,
+    includeProposal: !streaming,
   });
   const entryProps = derived.entryProps;
 
@@ -147,7 +144,7 @@ function materializeToolRow(
     ...(pending.runCategoryOverride ? { runCategoryOverride: pending.runCategoryOverride } : {}),
   };
 
-  const tracked = trackToolRow(builder, entry, name, parentAgentId, contract.streamingInput !== undefined, options.subagentAgentIds, options.sessionId);
+  const tracked = placeToolRow(builder, entry, name, contract.streamingInput !== undefined);
   if (tracked) {
     trackedTools.set(toolUseId, tracked);
     if (streaming) streamingToolIds.add(toolUseId);
@@ -191,13 +188,8 @@ export function finalizeStreamingTool(
     targetSessionId: entryProps.targetSessionId,
     proposedDiff: proposal?.proposedDiff ?? entryProps.proposedDiff,
   };
-  if (tracked.kind === "standalone") {
-    const index = builder.toolBlockIndex(toolUseId);
-    if (index === undefined) return;
-    builder.finalizeStandaloneTool(index, fields, true);
-  } else if (tracked.kind === "row") {
-    builder.finalizeAgentChildTool(tracked.agentId, tracked.childIndex, fields, !tracked.inSubagent);
-  }
+  const index = builder.toolBlockIndex(toolUseId);
+  if (index !== undefined) builder.finalizeStandaloneTool(index, fields, true);
 }
 
 export function retainStreamingProposal(
@@ -207,14 +199,9 @@ export function retainStreamingProposal(
   proposedDiff: ProvisionalDiff,
 ): void {
   const tracked = options.trackedTools.get(toolUseId);
-  if (!tracked || tracked.kind === "agent") return;
-  if (tracked.kind === "standalone") {
-    const index = options.builder.toolBlockIndex(toolUseId);
-    if (index === undefined) return;
-    options.builder.finalizeStandaloneTool(index, { fileChangeKind, proposedDiff });
-  } else {
-    options.builder.finalizeAgentChildTool(tracked.agentId, tracked.childIndex, { fileChangeKind, proposedDiff });
-  }
+  if (tracked?.kind !== "standalone") return;
+  const index = options.builder.toolBlockIndex(toolUseId);
+  if (index !== undefined) options.builder.finalizeStandaloneTool(index, { fileChangeKind, proposedDiff });
 }
 
 function streamingInputBody(
@@ -230,10 +217,14 @@ function streamingInputBody(
   return undefined;
 }
 
+/** Refines a streaming row from the input decoded so far. `row` is the row
+ *  that the display derived from the deltas, when it derives one; the row is
+ *  then not resolved again from the whole partial input. */
 export function refineStreamingTool(
   options: ToolMaterializerOptions,
   toolUseId: string,
   parsed: JsonFields,
+  row?: ToolRowPresentation,
 ): void {
   const tracked = options.trackedTools.get(toolUseId);
   if (!tracked) return;
@@ -243,9 +234,12 @@ export function refineStreamingTool(
     return;
   }
   const contract = getToolDisplay(tracked.toolName);
-  const { presentation, linkUri, entryProps } = toolEntryFields(tracked.toolName, contract, parsed, options.executionCwd, { includeDiff: false, includeProposal: false, targetDescription: options.targetDescription?.(parsed) });
+  const { presentation, linkUri, entryProps } = toolEntryFields(tracked.toolName, contract, parsed, options.executionCwd, { includeDiff: false, includeProposal: false, targetDescription: options.targetDescription?.(parsed), row });
   const fields: ToolInputFields = { presentation, sentence: entryProps.sentence, linkUri, fileChangeKind: entryProps.fileChangeKind, declaresMutation: entryProps.declaresMutation, targetSessionId: entryProps.targetSessionId };
-  const unchanged = (current: ToolEntry | undefined) => current !== undefined
+  const index = options.builder.toolBlockIndex(toolUseId);
+  if (index === undefined) return;
+  const current = options.builder.getBlocks()[index];
+  const unchanged = current?.kind === "tool"
     && current.presentation.name === presentation.name
     && current.presentation.detail === presentation.detail
     && current.sentence?.name === fields.sentence?.name
@@ -254,17 +248,7 @@ export function refineStreamingTool(
     && current.fileChangeKind === fields.fileChangeKind
     && current.declaresMutation === fields.declaresMutation
     && current.targetSessionId === fields.targetSessionId;
-  if (tracked.kind === "standalone") {
-    const index = options.builder.toolBlockIndex(toolUseId);
-    if (index === undefined) return;
-    const current = options.builder.getBlocks()[index];
-    if (current?.kind === "tool" && unchanged(current)) return;
-    options.builder.finalizeStandaloneTool(index, fields);
-  } else {
-    const parent = options.builder.getBlocks().find((block) => block.kind === "agentGroup" && block.id === tracked.agentId);
-    if (unchanged(parent?.kind === "agentGroup" ? parent.children[tracked.childIndex] : undefined)) return;
-    options.builder.finalizeAgentChildTool(tracked.agentId, tracked.childIndex, fields);
-  }
+  if (!unchanged) options.builder.finalizeStandaloneTool(index, fields);
 }
 
 export function extractFilePath(input: JsonFields): string | undefined {
@@ -276,15 +260,19 @@ function extractLinkUri(input: JsonFields, executionCwd: string): string | undef
   return filePath ? toFileUri(filePath, executionCwd) : undefined;
 }
 
-/** Shared presentation/link/diff derivation for one invocation. The resolver is
- * the only presentation producer, so a live row, its streaming refinement, and
- * its historical reconstruction read the same name. `includeDiff` carries each
- * call site's genuine guard (streaming, parent agent, subagent row);
+/** Shared presentation/link/diff derivation for one invocation. The resolver
+ * produces the presentation, so a live row, its streaming refinement, and its
+ * historical reconstruction read the same name; a streaming row that its
+ * display derives from each delta equals the resolver's once its presentation
+ * fields complete. `includeDiff` and
+ * `includeProposal` carry each call site's guard (a streaming input);
  * `entryProps` is the conditional ToolEntry fragment the materializers spread. */
 interface DiffOptions {
   targetDescription?: string;
   includeDiff: boolean;
   includeProposal: boolean;
+  /** A row the display already derived, used in place of resolving one. */
+  row?: ToolRowPresentation | undefined;
 }
 
 interface ToolEntryDerivation {
@@ -301,7 +289,7 @@ function toolEntryFields(
   executionCwd: string,
   opts: DiffOptions,
 ): ToolEntryDerivation {
-  const { presentation, sentence } = resolveToolRowPresentation(toolName, input, executionCwd, { targetDescription: opts.targetDescription });
+  const { presentation, sentence } = opts.row ?? resolveToolRowPresentation(toolName, input, executionCwd, { targetDescription: opts.targetDescription });
   const linkUri = input ? extractLinkUri(input, executionCwd) : undefined;
   const diffInfo = opts.includeDiff && input ? contract.extractDiff?.(input, executionCwd) : undefined;
   const fileChangeKind = input && contract.fileChangeKind
@@ -331,31 +319,8 @@ function toolEntryFields(
   };
 }
 
-/** Track one visible tool row at its stable tree location. */
-export function trackToolRow(
-  builder: StructuredOutputBuilder, entry: ToolEntry, name: string, parentAgentId: string | undefined, streamsInput: boolean, subagentAgentIds: Set<string>, sessionId?: string,
-): TrackedTool | null {
-  return placeToolRow(builder, entry, name, parentAgentId, streamsInput, subagentAgentIds, sessionId);
-}
-
-/** Place one tool row where it belongs: inside its agent group, or standalone
- *  when the call has no parent agent. */
-function placeToolRow(
-  builder: StructuredOutputBuilder, entry: ToolEntry, name: string, parentAgentId: string | undefined, streamsInput: boolean, subagentAgentIds: Set<string>, sessionId?: string,
-): PlacedTool | null {
-  if (parentAgentId) {
-    const inSubagent = subagentAgentIds.has(parentAgentId);
-    const childIndex = builder.pushToolRowToAgent(parentAgentId, entry);
-    if (childIndex >= 0) return { kind: "row", agentId: parentAgentId, childIndex, toolName: name, streamsInput, inSubagent };
-    log.warn("placeToolRow: agent block not found in builder, falling back to standalone", {
-      sessionId,
-      parentAgentId,
-      toolName: name,
-      detail: entry.presentation.detail,
-    });
-    const index = builder.pushStandaloneToolEntry(entry);
-    return index >= 0 ? { kind: "standalone", toolName: name, streamsInput } : null;
-  }
+/** Place one tool row as its own transcript block. */
+function placeToolRow(builder: StructuredOutputBuilder, entry: ToolEntry, name: string, streamsInput: boolean): PlacedTool | null {
   const index = builder.pushStandaloneToolEntry(entry);
   return index >= 0 ? { kind: "standalone", toolName: name, streamsInput } : null;
 }

@@ -114,14 +114,13 @@ describe("streaming tool validation and failure", () => {
       output.applyProjectionEvent({ type: "tool-input-delta", toolUseId: "grouped", partialJson: '{"path":"private.ts","old_string":"before","new_string":"after', parentToolUseId: "agent" });
       output.applyProjectionEvent({ type: "tool-preview-check", toolUseId: "grouped", operation: { type: "set", advice: "private advisory" } });
       output.applyProjectionEvent({ type: "tool-result", toolUseId: "grouped", outcome: "error", content: [{ type: "text", text: "private failure" }], timestamp: 2, parentToolUseId: "agent" });
+      // A child's own calls never become rows of the parent: its card shows only its summary.
       const group = output.getBlocks().find(block => block.kind === "agentGroup");
-      expect(group?.kind === "agentGroup" ? group.children : []).toEqual([
-        expect.objectContaining({ id: "grouped", status: "error", errorMessage: "Private failure" }),
-      ]);
-      const grouped = group?.kind === "agentGroup" ? group.children[0] : undefined;
-      expect(grouped).not.toHaveProperty("content");
-      expect(grouped).not.toHaveProperty("proposedDiff");
-      expect(JSON.stringify(grouped)).not.toContain("private advisory");
+      expect(group).toMatchObject({ kind: "agentGroup", children: [] });
+      expect(toolBlock(output.getBlocks(), "grouped")).toBeUndefined();
+      expect(JSON.stringify(output.getBlocks())).not.toMatch(/private/i);
+      output.flush();
+      expect(streamingToolText).not.toHaveProperty("grouped");
       emitAssistant(output.dispatchRuntimeEvent, [{ type: "tool_use", id: "standalone", name: "edit", input: {} }]);
       emitToolInputDelta(output.dispatchRuntimeEvent, "standalone", '{"path":"visible.ts","old_string":"before","new_string":"after');
       output.applyProjectionEvent({ type: "tool-preview-check", toolUseId: "standalone", operation: { type: "set", advice: "visible advisory" } });

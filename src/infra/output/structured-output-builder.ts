@@ -35,17 +35,14 @@ import {
   setAgentModelBlock,
   startAgentBlock,
   transitionOpenAgentBlocks,
-  updateAgentLatestChildBlock,
   updateAgentMetaBlock,
 } from "./structured-output-agents.js";
 import {
-  appendAgentChild,
   drainQueuedUserMessages,
   enforceOutputBlockCap,
   hasQueuedUserMessage,
   insertOutputBlock,
   type OutputBuilderIndexes,
-  patchAgentChildTool,
   patchStandaloneTool,
   pushQuestionBlock,
   updateQuestionBlock,
@@ -386,15 +383,6 @@ export class StructuredOutputBuilder {
     this.notifyChange();
     return idx;
   }
-  pushToolRowToAgent(agentId: string, tool: ToolEntry): number {
-    const result = appendAgentChild(this.indexes(), agentId, tool);
-    if (result >= 0) {
-      const agentIdx = this.agentIndexById.get(agentId);
-      if (agentIdx !== undefined) this.recordBlock("upsert", agentIdx);
-      this.notifyChange();
-    }
-    return result;
-  }
   startAgent(id: string, identity: AgentBlockIdentity, timestamp: number, toolUseId: string): void {
     this.completeThinking(timestamp);
     const replaceIndex = this.toolIndexById.get(toolUseId);
@@ -426,28 +414,6 @@ export class StructuredOutputBuilder {
   errorAgent(id: string, error: string | AgentFailureDisplay, duration?: number): void {
     const failure = typeof error === "string" ? formatAgentFailureDisplay(error) : error;
     const idx = errorAgentBlock(this.indexes(), id, failure, duration);
-    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
-  }
-  completeAgentChildTool(agentId: string, childIndex: number, extra?: Partial<ToolEntry>): void {
-    this.patchAgentChild(agentId, childIndex, { status: "completed", ...extra });
-  }
-  errorAgentChildTool(agentId: string, childIndex: number, message: string, extra?: Partial<ToolEntry>): void {
-    const groupIndex = this.agentIndexById.get(agentId);
-    const group = groupIndex === undefined ? undefined : this.blocks[groupIndex];
-    const child = group?.kind === "agentGroup" ? group.children[childIndex] : undefined;
-    if (groupIndex === undefined || group?.kind !== "agentGroup" || !child) return;
-    const children = [...group.children];
-    children[childIndex] = resetFailedFileChange({ ...child, ...extra, status: "error", errorMessage: message });
-    this.blocks[groupIndex] = { ...group, children };
-    this.recordBlock("upsert", groupIndex);
-    this.notifyChange();
-  }
-  blockAgentChildTool(agentId: string, childIndex: number, statusMessage: string): void {
-    this.patchAgentChild(agentId, childIndex, { status: "blocked", statusMessage });
-  }
-  interruptAgentChildTool(agentId: string, childIndex: number): void { this.patchAgentChild(agentId, childIndex, { status: "interrupted" }); }
-  patchAgentChild(agentId: string, childIndex: number, patch: Partial<ToolEntry>): void {
-    const idx = patchAgentChildTool(this.blocks, this.agentIndexById, agentId, childIndex, patch);
     if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   errorTool(blockIndex: number, message: string, extra?: Partial<ToolEntry>): void {
@@ -505,13 +471,6 @@ export class StructuredOutputBuilder {
     const idx = queueAgentBlock(this.indexes(), id);
     if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
-  finalizeAgentChildTool(agentId: string, childIndex: number, fields: ToolInputFields, inputComplete = false): void {
-    const child = this.blocks[this.agentIndexById.get(agentId) ?? -1];
-    const currentStatus = child?.kind === "agentGroup" ? child.children[childIndex]?.status : undefined;
-    if (currentStatus === "error") return;
-    const status = inputComplete || fields.content !== undefined || fields.diff !== undefined ? "pending" : currentStatus ?? "pending";
-    this.patchAgentChild(agentId, childIndex, { status, ...definedProps(fields) });
-  }
   pushQuestion(toolUseId: string, questions: QuestionEntry[], timestamp: number): number {
     this.completeThinking(timestamp);
     // The question shares the provisional row's identity (blockIdentity keys
@@ -543,10 +502,6 @@ export class StructuredOutputBuilder {
   }
   private updateQuestion(toolUseId: string, patch: { answers?: QuestionAnswers; cancelled?: true }): void {
     const idx = updateQuestionBlock(this.blocks, toolUseId, patch);
-    if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
-  }
-  updateAgentLatestChild(id: string, childDisplay: string): void {
-    const idx = updateAgentLatestChildBlock(this.indexes(), id, childDisplay);
     if (idx !== null) { this.recordBlock("upsert", idx); this.notifyChange(); }
   }
   closePendingAgentBlocks(timestamp: number): void {
@@ -621,31 +576,17 @@ export class StructuredOutputBuilder {
     this.recordStructuralChange();
     this.notifyChange();
   }
-  removeToolPreview(toolUseId: string): { agentId: string; childIndex: number } | null {
-    const topLevelIndex = this.blocks.findIndex((block) => (
+  removeToolPreview(toolUseId: string): void {
+    const index = this.blocks.findIndex((block) => (
       (block.kind === "tool" && block.id === toolUseId)
       || (block.kind === "agentGroup" && block.toolUseId === toolUseId && block.status === "pending")
     ));
-    if (topLevelIndex >= 0) {
-      this.blocks.splice(topLevelIndex, 1);
-      rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
-      this.rebuildToolIndex();
-      this.recordStructuralChange();
-      this.notifyChange();
-      return null;
-    }
-    for (const [blockIndex, block] of this.blocks.entries()) {
-      if (block.kind !== "agentGroup") continue;
-      const childIndex = block.children.findIndex((child) => child.id === toolUseId);
-      if (childIndex < 0) continue;
-      const children = [...block.children];
-      children.splice(childIndex, 1);
-      this.blocks[blockIndex] = { ...block, children };
-      this.recordStructuralChange();
-      this.notifyChange();
-      return { agentId: block.id, childIndex };
-    }
-    return null;
+    if (index < 0) return;
+    this.blocks.splice(index, 1);
+    rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
+    this.rebuildToolIndex();
+    this.recordStructuralChange();
+    this.notifyChange();
   }
   private insertBlock(block: AnyBlock): number {
     const idx = insertOutputBlock(this.indexes(), block);

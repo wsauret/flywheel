@@ -11,7 +11,6 @@ import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../../../src/infra
 import {
   makeAssistantEvent,
   makeToolResultEvent,
-  makeUserToolResultEvent,
 } from "./_parser-fixtures";
 
 function agentGroup(block: AnyBlock | undefined): AgentGroupBlock {
@@ -162,7 +161,7 @@ describe("RuntimeEventProjector — subagent", () => {
       expect(agentGroup(projector.getBlocks()[0]).id).toBe("dispatch");
     });
 
-    it("preserves the streamed dispatch card and its activity until the actual child completes", () => {
+    it("preserves the streamed dispatch card until the actual child completes", () => {
       projector.apply({ type: "tool-use", toolUseId: "dispatch", name: "subagent", input: {}, timestamp: 1000 });
       const identity = blockIdentity(toolRow(projector.getBlocks()[0]));
       projector.apply({ type: "tool-input-delta", toolUseId: "dispatch", partialJson: '{"kind":"dispatch","description":"Inspect' });
@@ -175,14 +174,9 @@ describe("RuntimeEventProjector — subagent", () => {
       projector.apply({ type: "set-subagent-model", toolUseId: "dispatch", model: "recorded-model" });
       projector.apply({ type: "agent-dispatched", toolUseId: "dispatch", timestamp: 1002 });
       projector.apply({ type: "tool-result-ack", toolUseId: "dispatch" });
-      for (let i = 0; i < 5; i++) {
-        projector.apply({ type: "tool-use", toolUseId: `read-${i}`, parentToolUseId: "dispatch", name: "read", input: { path: `/workspace/file-${i}.ts` }, timestamp: 1003 + i });
-        projector.apply({ type: "tool-result", toolUseId: `read-${i}`, parentToolUseId: "dispatch", outcome: "ok", timestamp: 1004 + i });
-      }
       projector.apply({ type: "end-turn", timestamp: 1010, finalStatus: "completed" });
       const active = agentGroup(projector.getBlocks()[0]);
-      expect(active).toMatchObject({ id: "dispatch", status: "active", description: "Inspect files", linkUri: "flywheel://session/child", model: "recorded-model", totalToolCount: 5 });
-      expect(active.children.slice(-4).map(child => child.id)).toEqual(["read-1", "read-2", "read-3", "read-4"]);
+      expect(active).toMatchObject({ id: "dispatch", status: "active", description: "Inspect files", linkUri: "flywheel://session/child", model: "recorded-model" });
       projector.apply({ type: "tool-result", toolUseId: "dispatch", outcome: "ok", details: { totalTokens: 1234 }, timestamp: 1020 });
       expect(agentGroup(projector.getBlocks()[0])).toMatchObject({ id: "dispatch", status: "completed", totalTokens: 1234, linkUri: "flywheel://session/child", description: "Inspect files" });
       expect(agentGroup(projector.getBlocks()[0]).duration).toBeDefined();
@@ -362,56 +356,6 @@ describe("RuntimeEventProjector — subagent", () => {
       if (textBlocks[0]!.kind === "text") {
         expect(textBlocks[0]!.content).toBe("Parent text.");
       }
-    });
-  });
-
-  describe("subagent-child tool resolution", () => {
-    it("sets errorMessage on agent child tool for error tool_result", () => {
-      // Spawn agent
-      const agentEvent = makeAssistantEvent([
-        { type: "tool_use", id: "agent_tool", name: "subagent", input: { description: "work" } },
-      ]);
-      parser.dispatch(agentEvent, 1000);
-
-      const childEvent = makeAssistantEvent(
-        [{ type: "tool_use", id: "child_1", name: "Edit", input: { path: "test.ts", old_string: "a", new_string: "b" } }],
-        "agent_tool",
-      );
-      parser.dispatch(childEvent, 1500);
-
-      const userEvent = makeUserToolResultEvent([
-        { tool_use_id: "child_1", is_error: true, content: "<tool_use_error>File not found: test.ts</tool_use_error>" },
-      ]);
-      parser.dispatch(userEvent, 2000);
-
-      const blocks = projector.getBlocks();
-      const agent = agentGroup(blocks[0]);
-      expect(agent.children).toHaveLength(1);
-      expect(agent.children[0]).toMatchObject({ status: "error", errorMessage: "File not found: test.ts" });
-    });
-
-    it("routes deferred bash (no streaming start) into the agent block, not a top-level Ran group", () => {
-      // Bash tool_input_start/delta events are deferred in the assistant turn
-      // stream, so a subagent's bash arrives only as a tool_input_complete with
-      // no prior pending entry. It must still group under its agent block via
-      // parent_tool_use_id rather than falling back to a top-level exec group.
-      const agentEvent = makeAssistantEvent([
-        { type: "tool_use", id: "agent_tool_3", name: "subagent", input: { description: "work" } },
-      ]);
-      parser.dispatch(agentEvent, 1000);
-
-      const bashComplete = createRuntimeEvent("tool.input.completed", {
-        type: "tool.input.completed",
-        tool_use: { id: "bash_1", name: "bash", input: { command: "bash tests/e2e/tui-chat.sh" } },
-        parent_tool_use_id: "agent_tool_3",
-      });
-      parser.dispatch(bashComplete, 1500);
-
-      const blocks = projector.getBlocks();
-      expect(blocks).toHaveLength(1);
-      const agent = agentGroup(blocks[0]);
-      expect(agent.children).toHaveLength(1);
-      expect(agent.children[0]?.name).toBe("bash");
     });
   });
 

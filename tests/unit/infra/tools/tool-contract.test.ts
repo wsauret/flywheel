@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { defaultDetailFromInput } from "../../../../src/infra/tools/build-display.js";
-import { getToolDisplay, getToolDisplayName } from "../../../../src/infra/tools/tool-display-registry.js";
+import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js";
 
 describe("defaultDetailFromInput", () => {
   it("returns input.subject when present", () => {
@@ -30,10 +30,9 @@ describe("registry", () => {
     expect(display.displayName).toBe("Read");
   });
 
-  it("getToolDisplayName handles handoff path for write/edit", () => {
+  it("names a write of a handoff path Write Handoff", () => {
     const handoffPath = "/project/.flywheel/sessions/abc-123/worker_1.json";
-    expect(getToolDisplayName("Write", { path: handoffPath })).toBe("Write Handoff");
-    expect(getToolDisplayName("Edit", { path: handoffPath })).toBe("Write Handoff");
+    expect(resolveToolRowPresentation("Write", { path: handoffPath }, "/project").presentation.name).toBe("Write Handoff");
   });
 
 

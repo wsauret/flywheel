@@ -1,5 +1,6 @@
 import type { ProvisionalDiff } from "../output-blocks.js";
 import { getToolDisplay } from "../tools/tool-display-registry.js";
+import type { StreamingRowDerivation, ToolRowPresentation } from "../tools/types.js";
 import type { ToolInput } from "./output-projection-events.js";
 import { declaredFieldName, MAX_STREAMING_TOOL_INPUT_BYTES, TopLevelJsonStringDecoder, type DecodedStringAppend } from "./partial-json.js";
 import { createProvisionalDiffInput, type ProvisionalDiffInput, type ProvisionalDiffInputKind } from "./provisional-diff-input.js";
@@ -9,6 +10,8 @@ interface StreamingInput {
   /** The canonical tool name the stream started under. */
   readonly name: string;
   readonly decoder: TopLevelJsonStringDecoder;
+  /** The row derivation of a display whose presentation fields can grow long. */
+  readonly row?: StreamingRowDerivation;
   proposal?: { readonly kind: ProvisionalDiffInputKind; readonly input: ProvisionalDiffInput };
 }
 
@@ -31,34 +34,38 @@ export type StreamingInputUpdate =
     readonly fields: TopLevelJsonStringDecoder["fields"];
     /** Present when a declared presentation field changed: the partial input a row header refines from. */
     readonly presentationInput: ToolInput | undefined;
+    /** Present with `presentationInput` when the display derives its row from
+     *  each delta, at a cost bounded by the delta. It equals what
+     *  `resolveToolRowPresentation` gives for `presentationInput` once the
+     *  presentation fields complete; see `StreamingRowDerivation.advance`. */
+    readonly row: ToolRowPresentation | undefined;
   };
 
 /**
  * Owns the incremental decoding of streamed tool-call arguments and the
  * provisional diffs a file change proposes while its arguments stream. It
- * keeps no row state: callers apply the updates it returns to their rows, and
- * say for each call whether it streams inside a subagent, where no proposal is
- * shown.
+ * keeps no row state: callers apply the updates it returns to their rows.
  */
 export class StreamingToolInputs {
   private readonly inputs = new Map<string, StreamingInput>();
 
   constructor(private readonly executionCwd: string) {}
 
-  /** Begins decoding a call whose arguments stream. `body` decodes the
-   *  declared body fields as well as the presentation fields; `inSubagent`
-   *  suppresses the proposal a fixed-kind file change streams. */
-  start(toolUseId: string, name: string, options: { readonly body: boolean; readonly inSubagent: boolean }): void {
+  /** Begins decoding a call whose arguments stream: its declared body and
+   *  presentation fields. */
+  start(toolUseId: string, name: string): void {
     const contract = getToolDisplay(name);
     const declaration = contract.streamingInput;
     const decoder = new TopLevelJsonStringDecoder(declaration
-      ? [...(options.body ? Object.keys(declaration.bodyFields) : []), ...declaration.presentationFields]
+      ? [...Object.keys(declaration.bodyFields), ...declaration.presentationFields]
       : []);
     const fileChangeKind = contract.fileChangeKind;
+    const row = declaration?.row?.(this.executionCwd);
     this.inputs.set(toolUseId, {
       name,
       decoder,
-      ...(!options.inSubagent && typeof fileChangeKind === "string" ? { proposal: { kind: fileChangeKind, input: createProvisionalDiffInput(fileChangeKind) } } : {}),
+      ...(row ? { row } : {}),
+      ...(typeof fileChangeKind === "string" ? { proposal: { kind: fileChangeKind, input: createProvisionalDiffInput(fileChangeKind) } } : {}),
     });
   }
 
@@ -68,12 +75,12 @@ export class StreamingToolInputs {
   }
 
   /** Decodes one argument delta. Undefined when the call's arguments do not stream. */
-  append(toolUseId: string, delta: string, inSubagent: boolean): StreamingInputUpdate | undefined {
+  append(toolUseId: string, delta: string): StreamingInputUpdate | undefined {
     const entry = this.inputs.get(toolUseId);
     if (!entry) return undefined;
     const { decoder } = entry;
     const decoded = decoder.append(delta);
-    const proposal = inSubagent ? undefined : this.proposal(entry, decoded);
+    const proposal = this.proposal(entry, decoded);
     if (decoder.failed) {
       proposal?.input.markUnavailable(decoder.acceptedBytes + Buffer.byteLength(delta) > MAX_STREAMING_TOOL_INPUT_BYTES ? "over-bound" : "malformed");
       return { kind: "failed", proposedDiff: proposal ? this.displayed(proposal.input) : undefined };
@@ -83,12 +90,14 @@ export class StreamingToolInputs {
     const presentationChanged = declaration?.presentationFields.some((field) =>
       decoded.additions[field] !== undefined || decoded.completedFields.includes(field));
     let presentationInput: ToolInput | undefined;
+    let row: ToolRowPresentation | undefined;
     if (declaration && presentationChanged) {
       presentationInput = { ...decoder.fields };
       for (const field of declaration.presentationFields) {
         const value = decoder.field(field);
         if (value !== undefined) presentationInput[field] = value;
       }
+      row = entry.row?.advance(decoded.additions, decoder.fields);
     }
     return {
       kind: "decoded",
@@ -96,16 +105,16 @@ export class StreamingToolInputs {
       additions: decoded.additions,
       fields: decoder.fields,
       presentationInput,
+      row,
     };
   }
 
   /** Ends a call's stream with its complete input, returning the proposal a
    *  file change shows until its result lands. A call that never streamed
    *  still gets one built from the complete input. */
-  complete(toolUseId: string, name: string, input: ToolInput, inSubagent: boolean): StreamingProposal | undefined {
+  complete(toolUseId: string, name: string, input: ToolInput): StreamingProposal | undefined {
     const current = this.inputs.get(toolUseId)?.proposal;
     this.inputs.delete(toolUseId);
-    if (inSubagent) return undefined;
     const contract = getToolDisplay(name);
     if (!contract.fileChangeKind) return undefined;
     const kind = typeof contract.fileChangeKind === "function" ? contract.fileChangeKind(input) : contract.fileChangeKind;

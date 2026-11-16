@@ -9,7 +9,7 @@ import { extractDisplayMeta, resolveTrackedToolResult as resolveTrackedToolResul
 import type { PlacedTool } from "../../../../src/infra/output/output-tool-projection-types.js";
 import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder.js";
 import { formatToolInputProblems } from "../../../../src/orchestration/agent-runtime/tools/validate-input.js";
-import { RuntimeEventFrameSchema, RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
+import { RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
 import type { ToolOutcome } from "../../../../src/infra/tool-outcome.js";
 
 function textContent(text: string): LlmToolOutputPart[] {
@@ -94,18 +94,11 @@ describe("resolveTrackedToolResult", () => {
     expect(settle("list", "ok").presentation).toEqual({ name: "Neutral", detail: "" });
   });
 
-  it("settles a message that its recipient holds as waiting, with the line its result states, in a standalone row and in a subagent card", () => {
+  it("settles a message that its recipient holds as waiting, with the line its result states", () => {
     const builder = new StructuredOutputBuilder();
     builder.pushStandaloneToolEntry({ kind: "tool", id: "message-1", name: "message_session", presentation: { name: "Message to", detail: "3f2a-parent" }, timestamp: Date.now(), status: "pending" });
     resolveTrackedToolResult(builder, { kind: "standalone", toolName: "message_session", streamsInput: false }, "message-1", "ok", textContent("Held for 3f2a-parent."), { targetName: "Plan", statusMessage: "Held: nothing runs it now." });
     expect(toolBlock(builder)).toMatchObject({ status: "blocked", statusMessage: "Held: nothing runs it now.", presentation: { detail: "Plan" } });
-
-    const card = new StructuredOutputBuilder();
-    card.startAgent("agent-1", { containerKind: "subagent", label: "Explorer", description: "Look" }, 1, "tu-agent-1");
-    const childIndex = card.pushToolRowToAgent("agent-1", { kind: "tool", id: "child-message", name: "message_session", presentation: { name: "Message to", detail: "3f2a-parent" }, timestamp: 1, status: "pending" });
-    resolveTrackedToolResult(card, { kind: "row", toolName: "message_session", agentId: "agent-1", childIndex, streamsInput: false, inSubagent: true }, "child-message", "ok", textContent("Held for 3f2a-parent."), { statusMessage: "Held: nothing runs it now." });
-    const group = card.getBlocks().find((block) => block.kind === "agentGroup");
-    expect(group?.kind === "agentGroup" ? group.children[childIndex] : undefined).toMatchObject({ status: "blocked", statusMessage: "Held: nothing runs it now." });
   });
 
   it("keeps background shell management text out of the row until command output is recorded", () => {
@@ -440,29 +433,6 @@ describe("resolveTrackedToolResult", () => {
     expect(notice.content).toBe(message);
   });
 
-  it("settles a blocked child row inside an agent group without a system notice", () => {
-    const builder = new StructuredOutputBuilder();
-    const now = Date.now();
-    builder.startAgent("agent-1", { containerKind: "subagent", label: "Subagent", description: "Working" }, now, "tu-agent-1");
-    const childIndex = builder.pushToolRowToAgent("agent-1", { kind: "tool", id: "toolu_h", name: "handoff", presentation: { name: "Handoff", detail: "" }, timestamp: now, status: "pending" });
-
-    resolveTrackedToolResult(
-      builder,
-      { kind: "row", agentId: "agent-1", childIndex, toolName: "handoff", streamsInput: false, inSubagent: true },
-      "toolu_h",
-      "blocked",
-      textContent("handoff blocked: you called handoff before incorporating every subagent you dispatched.\nDetails follow."),
-    );
-
-    const blocks = builder.getBlocks();
-    expect(blocks).toHaveLength(1);
-    const group = agentBlock(builder);
-    const child = group.children[0];
-    if (child?.status !== "blocked") throw new Error("expected blocked child");
-    expect(child.statusMessage).toBe("handoff blocked: you called handoff before incorporating every subagent you dispatched.");
-  });
-
-
   it("preserves Code result content before settling every ordinary terminal outcome", () => {
     for (const outcome of ["error", "blocked", "interrupted", "cancelled"] as const) {
       const builder = new StructuredOutputBuilder();
@@ -544,33 +514,6 @@ describe("canonical mutation artifacts", () => {
     expect(tool.diff).toBeUndefined();
   });
 
-  it("keeps the artifact of a nested learning write expandable on the child row", () => {
-    const builder = new StructuredOutputBuilder();
-    const now = Date.now();
-    builder.startAgent("agent-1", { containerKind: "subagent", label: "Subagent", description: "Working" }, now, "tu-agent-1");
-    const childIndex = builder.pushToolRowToAgent("agent-1", { kind: "tool", id: "toolu_m", name: "skill_manage", presentation: { name: "Save Skill", detail: "example" }, timestamp: now, status: "pending" });
-
-    resolveTrackedToolResult(
-      builder,
-      { kind: "row", agentId: "agent-1", childIndex, toolName: "skill_manage", streamsInput: false, inSubagent: true },
-      "toolu_m",
-      "ok",
-      textContent("{\"success\":true}"),
-      { mutationEvidence: EVIDENCE, resultAction: "created", diff: "-a\n+b", filetype: "typescript" },
-    );
-
-    const group = agentBlock(builder);
-    const child = group.children[0];
-    expect(child?.status).toBe("completed");
-    expect(child?.mutationEvidence).toEqual({ ...EVIDENCE, samples: [{ kind: "applied", path: "src/a.ts" }] });
-    expect(child?.resultAction).toBe("created");
-    // Preview-bearing fields still stay out of a compact child row.
-    expect(child?.diff).toBeUndefined();
-    expect(child?.filetype).toBeUndefined();
-    expect(Object.hasOwn(child ?? {}, "diff")).toBe(false);
-    expect(Object.hasOwn(child ?? {}, "filetype")).toBe(false);
-  });
-
   it("recognizes only the canonical artifact contract, and refuses a present shape that is not it", () => {
     const identity = { source: "skill_manage", toolUseId: "toolu_m" } as const;
     expect(extractDisplayMeta({ mutationEvidence: EVIDENCE }, identity).mutationEvidence).toEqual(EVIDENCE);
@@ -629,43 +572,6 @@ describe("canonical mutation artifacts", () => {
 
     const patch = outputPatch(tool);
     expect(Schema.encodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch);
-  });
-
-  it("deletes explicitly cleared child preview keys while preserving absent patch fields", () => {
-    const builder = new StructuredOutputBuilder();
-    const now = Date.now();
-    builder.startAgent("agent-1", { containerKind: "subagent", label: "Subagent", description: "Working" }, now, "tu-agent-1");
-    const childIndex = builder.pushToolRowToAgent("agent-1", {
-      kind: "tool",
-      id: "toolu_m",
-      name: "skill_manage",
-      presentation: { name: "Save Skill", detail: "example" },
-      timestamp: now,
-      status: "pending",
-      diff: "-unverified\n+preview",
-      filetype: "diff",
-    });
-
-    const completion = {
-      mutationEvidence: EVIDENCE,
-      diff: undefined,
-      filetype: undefined,
-    };
-    expect(Object.hasOwn(completion, "diff")).toBe(true);
-    expect(Object.hasOwn(completion, "presentation")).toBe(false);
-    builder.completeAgentChildTool("agent-1", childIndex, completion);
-
-    const group = agentBlock(builder);
-    const child = group.children[0];
-    expect(child?.status).toBe("completed");
-    expect(child?.presentation).toEqual({ name: "Save Skill", detail: "example" });
-    expect(child?.diff).toBeUndefined();
-    expect(child?.filetype).toBeUndefined();
-    expect(Object.hasOwn(child ?? {}, "diff")).toBe(false);
-    expect(Object.hasOwn(child ?? {}, "filetype")).toBe(false);
-
-    const frame = { type: "patch", patch: outputPatch(group) } as const;
-    expect(Schema.encodeUnknownSync(RuntimeEventFrameSchema)(frame)).toEqual(frame);
   });
 
   it("keeps the legacy per-file diff of an edit alongside an artifact-free result", () => {

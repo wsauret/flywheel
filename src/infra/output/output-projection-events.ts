@@ -34,10 +34,9 @@ export type OutputProjectionEvent =
   | { type: "push-system-message"; id?: string; message: string; timestamp: number; level?: "info" | "error"; mutationEvidence?: MutationEvidence }
   | { type: "push-divider"; label: string; timestamp: number }
   | { type: "tool-use"; toolUseId?: string; name: string; input?: ToolInput; timestamp: number; parentToolUseId?: string; nestedInCode?: true; leadingTextId?: string }
-  | { type: "agent-tool-use"; agentId: string; toolUseId?: string; name: string; input?: ToolInput; timestamp: number }
   | { type: "tool-input-delta"; toolUseId: string; partialJson: string; parentToolUseId?: string }
   | { type: "tool-preview-check"; toolUseId: string; operation: { type: "set"; advice: string } | { type: "clear" } }
-  | { type: "abandon-tool-inputs"; reason: "failed" | "interrupted" | "retry"; parentToolUseId?: string }
+  | { type: "abandon-tool-inputs"; parentToolUseId?: string }
   | { type: "tool-execution-output"; toolUseId: string; output: string; parentToolUseId?: string }
   | { type: "tool-execution-output-recorded"; toolUseId: string; output: string; mutationEvidence?: MutationEvidence; parentToolUseId?: string }
   // The work a call left running in the background ended.
@@ -48,13 +47,7 @@ export type OutputProjectionEvent =
   | { type: "push-question"; toolUseId: string; questions: QuestionEntry[]; timestamp: number }
   | { type: "answer-question"; toolUseId: string; answers: QuestionAnswers }
   | { type: "cancel-question"; toolUseId: string }
-  | { type: "complete-agent"; agentId: string; durationMs: number; description?: string; label?: string }
-  | { type: "fail-agent"; agentId: string; message: string }
-  | { type: "interrupt-agent"; agentId: string; durationMs: number }
-  | { type: "pause-agent"; agentId: string; timestamp: number; pausedBy: PausedBy }
   | { type: "agent-paused"; toolUseId: string; timestamp: number; pausedBy: PausedBy }
-  | { type: "update-agent-meta"; agentId: string; label?: string; description?: string }
-  | { type: "update-agent-latest-child"; agentId: string; text: string }
   | { type: "set-subagent-model"; toolUseId: string; model: string }
   | { type: "set-agent-link"; toolUseId: string; linkUri: string }
   | { type: "agent-dispatched"; toolUseId: string; timestamp: number }

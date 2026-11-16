@@ -1,4 +1,3 @@
-import type { MutationDiff } from "../mutation-diff.js";
 import type { ProvisionalDiff } from "../output-blocks.js";
 import type { MutationEvidence, MutationEvidenceEntry } from "../mutation-evidence.js";
 import { formatRelativePath } from "../tools/detail-helpers.js";
@@ -17,15 +16,6 @@ export function mutationEvidenceDisplayPaths(entry: MutationEvidenceEntry, execu
 /** Only the capped samples are presentation paths. The manifest identity stays unchanged. */
 export function mutationEvidenceSummaryDisplayPaths(evidence: MutationEvidence, executionCwd: string): MutationEvidence {
   return { ...evidence, samples: evidence.samples.map(sample => ({ ...sample, path: relativePath(sample.path, executionCwd) })) };
-}
-
-/** Project canonical mutation evidence into the path form shown to a user. */
-export function mutationDisplayPaths(mutation: MutationDiff, executionCwd: string): MutationDiff {
-  return {
-    ...mutation,
-    files: mutation.files.map(file => ({ ...file, path: relativePath(file.path, executionCwd) })),
-    omissions: mutation.omissions.map(omission => ({ ...omission, path: relativePath(omission.path, executionCwd) })),
-  };
 }
 
 /** Project streamed or settled proposal paths without changing their file ids. */

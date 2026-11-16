@@ -135,7 +135,7 @@ describe("RuntimeEventProjector — tool rendering", () => {
       expect(agent.description).toBe("");
     });
 
-    it("routes child tools to parent agent via parent_tool_use_id as pending rows", () => {
+    it("leaves a subagent's own calls and results out of the parent's transcript", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "agent_tool", name: "subagent", input: { description: "agent work" } },
       ]);
@@ -146,21 +146,14 @@ describe("RuntimeEventProjector — tool rendering", () => {
         "agent_tool",
       );
       parser.dispatch(childEvent, 1000);
-
-      // Child appears immediately as pending in the subagent's children.
-      let blocks = projector.getBlocks();
-      let agent = blocks[0];
-      if (agent?.kind !== "agentGroup") throw new Error("expected agent group block");
-      expect(agent.children).toHaveLength(1);
-      expect(agent.children[0]?.name).toBe("bash");
-      expect(agent.children[0]?.status).toBe("pending");
-
       parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "child_tool" }]), 2000);
 
-      blocks = projector.getBlocks();
-      agent = blocks[0];
+      const blocks = projector.getBlocks();
+      expect(blocks).toHaveLength(1);
+      const agent = blocks[0];
       if (agent?.kind !== "agentGroup") throw new Error("expected agent group block");
-      expect(agent.children[0]?.status).toBe("completed");
+      expect(agent.children).toEqual([]);
+      expect(agent.status).toBe("pending");
     });
 
     it("does not surface subagent thinking in output blocks", () => {
@@ -180,8 +173,7 @@ describe("RuntimeEventProjector — tool rendering", () => {
 
       const blocks = projector.getBlocks();
       const agent = blocks.find((block): block is AgentGroupBlock => block.kind === "agentGroup")!;
-      expect(agent.children).toHaveLength(1);
-      expect(agent.children[0]?.name).toBe("search");
+      expect(agent.children).toEqual([]);
       expect(blocks.some((block) => block.kind === "thinking")).toBe(false);
     });
 

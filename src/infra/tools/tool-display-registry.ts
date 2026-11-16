@@ -12,7 +12,7 @@
 
 import { canonicalize } from "../canonical-name.js";
 import type { ToolAction } from "../workflow-types.js";
-import { stripAnsiEscapes } from "../control-characters.js";
+import { sanitizePresentationText } from "../control-characters.js";
 import { isRecord } from "../record.js";
 import { isHandoffPath } from "../paths.js";
 import { buildDisplay, defaultDetailFromInput } from "./build-display.js";
@@ -46,7 +46,7 @@ import { processDisplay } from "./displays/process.js";
 import { listSessionsDisplay, messageSessionDisplay } from "./displays/message-session.js";
 import { modelsDisplay } from "./displays/models.js";
 import { benchmarkDisplay } from "./displays/benchmark.js";
-import type { ToolDisplay, ToolPresentation, ToolPresentationContext } from "./types.js";
+import type { ToolDisplay, ToolPresentation, ToolPresentationContext, ToolRowPresentation } from "./types.js";
 
 const BUILT_IN: readonly ToolDisplay[] = [
   readDisplay,
@@ -90,11 +90,6 @@ const displays = new Map<string, ToolDisplay>([
 ]);
 const fallbacks = new Map<string, ToolDisplay>();
 
-interface ToolRowPresentation {
-  readonly presentation: ToolPresentation;
-  readonly sentence: ToolPresentation;
-}
-
 /** How a call that read a short-form tool's contract presents (PI-AGENT-131). Its result decides this, never its
  *  input: the same empty input runs a full-form tool. The row takes a lookup action, not its tool's own, so every
  *  client groups it under Explored even when the tool itself runs commands or bookkeeping; a lookup is not a file
@@ -109,7 +104,7 @@ export function getToolDisplay(name: string): ToolDisplay {
   return displays.get(cn) ?? fallbacks.get(cn) ?? synthesizeFallback(cn, name);
 }
 
-export function getToolDisplayName(name: string, input?: unknown): string {
+function getToolDisplayName(name: string, input?: unknown): string {
   const cn = canonicalize(name);
   if ((cn === "write" || cn === "edit") && isRecord(input) && isHandoffPath(strField(input, "path"))) return "Write Handoff";
   // mcp__* names get their "MCP <server>" label from synthesizeFallback.
@@ -160,7 +155,7 @@ export function resolveToolRowPresentation(toolName: string, input: unknown, exe
 
 /** Resolve declared fields when available. Callers must not use absence to
  * decide whether a transcript row exists. */
-export function resolvePresentationIfReady(toolName: string, input: unknown, executionCwd: string, context?: ToolPresentationContext): ToolPresentation | null {
+function resolvePresentationIfReady(toolName: string, input: unknown, executionCwd: string, context?: ToolPresentationContext): ToolPresentation | null {
   const record = isRecord(input) ? input : {};
   const display = getToolDisplay(toolName);
   if (display.getPresentation) {
@@ -169,23 +164,6 @@ export function resolvePresentationIfReady(toolName: string, input: unknown, exe
   }
   const detail = display.getDetail(record, executionCwd);
   return detail ? sanitizePresentation({ name: getToolDisplayName(toolName, record), detail }) : null;
-}
-
-/** Bidi formatting controls: they reorder the rest of a row's text around them,
- *  so a name or detail carrying one can present as text it does not contain.
- *  Other `Cf` characters stay: a zero-width joiner is part of an emoji. */
-const BIDI_CONTROLS = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
-
-/** Reduce one presentation string to a single logical display line. ANSI, OSC,
- *  and C1 escape sequences go first, because their bytes only read as controls
- *  as a sequence; the remaining C0/C1 controls, line and paragraph separators,
- *  and every other whitespace run then fold to one space. Ordinary punctuation
- *  is untouched, so a search-style detail still reads exactly as written. */
-function sanitizePresentationText(raw: string): string {
-  return stripAnsiEscapes(raw)
-    .replace(BIDI_CONTROLS, "")
-    .replace(/[\p{Cc}\p{Zl}\p{Zp}\s]+/gu, " ")
-    .trim();
 }
 
 function sanitizePresentation(presentation: ToolPresentation): ToolPresentation {

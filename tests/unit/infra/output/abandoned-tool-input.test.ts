@@ -20,29 +20,27 @@ describe("abandoned tool input", () => {
     expect(output.getBlocks().at(-1)).toMatchObject({ status: name === "workflow" ? "pending" : "streaming" });
   });
 
-  test("retry does not settle dispatched workflow or another child's incomplete input", () => {
+  test("retry does not settle a dispatched workflow", () => {
     const { output, runtime } = setup();
     output.apply({ type: "tool-use", toolUseId: "live", name: "workflow", input: {}, timestamp: 1000 });
     output.apply({ type: "tool-input-complete", toolUseId: "live", name: "workflow", input: { summary: "Live workflow" }, timestamp: 1001 });
     output.apply({ type: "agent-dispatched", toolUseId: "live", timestamp: 1002 });
-    output.apply({ type: "tool-use", toolUseId: "child-preview", parentToolUseId: "live", name: "read", input: {}, timestamp: 1003 });
     output.apply({ type: "tool-use", toolUseId: "abandoned", name: "workflow", input: {}, timestamp: 1004 });
     runtime.dispatch({ type: "model.stream.abandoned", data: { reason: "retry" } }, 2000);
     const live = output.getBlocks().find(block => block.kind === "agentGroup" && block.toolUseId === "live");
-    expect(live).toMatchObject({ status: "active", children: [{ status: "streaming" }] });
+    expect(live).toMatchObject({ status: "active" });
     expect(output.getBlocks()).toHaveLength(1);
   });
 
-  test.each(["failed", "interrupted"] as const)("stream %s settles only the affected child and writes no tool result", (reason) => {
+  test.each(["failed", "interrupted"] as const)("stream %s of a subagent leaves the parent's own previews and writes no tool result", (reason) => {
     const { output, runtime } = setup();
     output.apply({ type: "tool-use", toolUseId: "live", name: "subagent", input: { description: "Live child" }, timestamp: 1000 });
     output.apply({ type: "agent-dispatched", toolUseId: "live", timestamp: 1001 });
-    output.apply({ type: "tool-use", toolUseId: "child-preview", parentToolUseId: "live", name: "read", input: {}, timestamp: 1002 });
     output.apply({ type: "tool-use", toolUseId: "root-preview", name: "workflow", input: {}, timestamp: 1003 });
     const event = { type: "model.stream.abandoned", data: { reason, parent_tool_use_id: "live" } } as const;
     runtime.dispatch(event, 2000);
     expect(mapRuntimeEventToSessionRuntimeFacts(event)).toEqual([]);
-    expect(output.getBlocks()[0]).toMatchObject({ status: "active", children: [{ status: reason === "failed" ? "error" : "interrupted" }] });
+    expect(output.getBlocks()[0]).toMatchObject({ status: "active", children: [] });
     expect(output.getBlocks().at(-1)).toMatchObject({ status: "pending" });
   });
 

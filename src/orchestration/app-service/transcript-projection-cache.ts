@@ -433,7 +433,7 @@ export function createTranscriptProjectionCache(deps: TranscriptProjectionCacheD
       ...card,
       totalToolCount: indexed.totalCount,
       // The publisher indexes the newest call's named-session dependency here.
-      // The wire projection removes this row after it selects the activity.
+      // The wire projection removes this row; the card carries the activity selected above.
       children: newest === undefined ? [] : [newest],
       ...(activity === undefined ? {} : { activity }),
       ...live,

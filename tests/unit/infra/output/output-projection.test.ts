@@ -610,19 +610,6 @@ describe("OutputProjector", () => {
       projector.apply({ type: "end-turn", timestamp: 3, finalStatus: "completed" });
       expect(projector.getBlocks()[0]).toBe(tool);
     });
-
-    it("stale fail-agent against an interrupted pending block leaves status at interrupted (no resurrection)", () => {
-      const projector = new OutputProjector({ executionCwd: "/workspace" });
-      projector.apply({ type: "tool-use", toolUseId: "agent-x", name: "subagent", input: { persona: "Worker", description: "do work" }, timestamp: 1 });
-      projector.apply({ type: "end-turn", timestamp: 2, finalStatus: "paused" });
-      const interrupted = projector.getBlocks().find((b) => b.kind === "agentGroup");
-      if (interrupted?.kind !== "agentGroup") { expect.unreachable(); return; }
-      expect(interrupted.status).toBe("interrupted");
-      projector.apply({ type: "fail-agent", agentId: interrupted.id, message: "stale failure" });
-      const group = projector.getBlocks().find((b) => b.kind === "agentGroup");
-      if (group?.kind !== "agentGroup") { expect.unreachable(); return; }
-      expect(group.status).toBe("interrupted");
-    });
   });
 });
 

@@ -29,6 +29,26 @@ interface ToolStreamingBodyFields {
   readonly [field: string]: "content" | "diff";
 }
 
+/** A call's transcript row presentation and its workflow sentence. */
+export interface ToolRowPresentation {
+  readonly presentation: ToolPresentation;
+  readonly sentence: ToolPresentation;
+}
+
+/** The row of one call whose presentation fields stream, advanced by what
+ *  each delta adds, so the work of a delta is bounded by the delta and not by
+ *  the input streamed before it. */
+export interface StreamingRowDerivation {
+  /** Reads the text that the string presentation fields gained in one delta
+   *  (`additions`, by field) and the fields that completed so far (`fields`),
+   *  and returns the row of the input streamed so far. Once the presentation
+   *  fields complete, the row equals what `resolveToolRowPresentation` gives
+   *  for the input. Before that, the row can differ from it: the display
+   *  holds back text that a later delta can still change, and changes its
+   *  sentence only when it reads a new whole unit, such as a shell command. */
+  advance(additions: Readonly<{ [field: string]: string }>, fields: Readonly<ToolInput>): ToolRowPresentation;
+}
+
 interface ToolStreamingInput {
   /** String fields that can own the live row body: top-level fields, or
    *  `list.*.field` for a field of each item of a top-level list. Field
@@ -37,6 +57,10 @@ interface ToolStreamingInput {
   /** Top-level fields whose values can refine the row presentation: a string
    *  field as it streams, and a boolean or object field once it completes. */
   presentationFields: readonly string[];
+  /** Starts the row derivation of one streaming call. A display without one
+   *  resolves its row again from the whole partial input on each change, so
+   *  it declares only short presentation fields. */
+  row?: (executionCwd: string) => StreamingRowDerivation;
 }
 
 /** Presentation contract for a tool: verbs, detail formatting, and render-path hints the output layer and TUI need without consulting orchestration. */
