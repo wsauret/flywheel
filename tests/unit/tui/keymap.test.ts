@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test"
+import { createComponent, createMemo, createRoot, createSignal } from "solid-js"
 import { createKeymap, DEFAULT_BINDINGS, parseChord } from "../../../src/tui/keymap/keymap.js"
+import { createToastPresenter } from "../../../src/tui/utils/toast-presenter.js"
+import type { RuntimeConfigView } from "../../../src/protocol/runtime-config-protocol-types.js"
+import { configView } from "../../helpers/runtime-views.js"
+
+const { KeymapProvider, presentKeymapIssues, useKeymap } = await import("../../../src/tui/context/keymap.js")
 
 describe("parseChord", () => {
   it("canonicalizes simple and modified chords", () => {
@@ -123,5 +129,75 @@ describe("createKeymap overrides", () => {
     for (const binding of DEFAULT_BINDINGS) {
       expect(typeof keymap.chordFor(binding.commandId)).toBe("string")
     }
+  })
+})
+
+describe("KeymapProvider config publications", () => {
+  function mountKeymap(initial: RuntimeConfigView | undefined) {
+    const [config, publish] = createSignal(initial)
+    const toasts: string[] = []
+    const presenter = createToastPresenter((toast) => { toasts.push(toast.message) })
+    let helpChordComputations = 0
+    let helpChord!: () => string
+    const dispose = createRoot((disposeRoot) => {
+      createComponent(KeymapProvider, {
+        config,
+        get children() {
+          const { keymap } = useKeymap()
+          helpChord = createMemo(() => { helpChordComputations += 1; return keymap.chordFor("help") })
+          presentKeymapIssues(presenter)
+          return undefined
+        },
+      })
+      return disposeRoot
+    })
+    return { publish, toasts, presenter, helpChord, helpChordComputations: () => helpChordComputations, dispose }
+  }
+
+  it("a theme-only publication leaves the keymap as it was, and a keybinding change rebuilds it", () => {
+    const shell = mountKeymap(configView({ keybindings: { help: "ctrl+g" } }))
+    try {
+      expect(shell.helpChord()).toBe("ctrl+g")
+      const computations = shell.helpChordComputations()
+      shell.publish(configView({ keybindings: { help: "ctrl+g" }, writeSyntaxTheme: "slate" }))
+      expect(shell.helpChordComputations()).toBe(computations)
+      shell.publish(configView({ keybindings: { help: "ctrl+e" } }))
+      expect(shell.helpChord()).toBe("ctrl+e")
+      expect(shell.helpChordComputations()).toBe(computations + 1)
+    } finally { shell.dispose() }
+  })
+
+  it("shows an invalid override that arrives after startup once, and a repeat publication of it never", () => {
+    const shell = mountKeymap(undefined)
+    try {
+      expect(shell.toasts).toEqual([])
+      shell.publish(configView({ keybindings: { help: "ctrl+bogus" } }))
+      expect(shell.toasts).toHaveLength(1)
+      expect(shell.toasts[0]).toContain('"ctrl+bogus"')
+      shell.publish(configView({ keybindings: { help: "ctrl+bogus" } }))
+      shell.publish(configView({ keybindings: { help: "ctrl+bogus" }, showThinking: false }))
+      expect(shell.toasts).toHaveLength(1)
+    } finally { shell.dispose() }
+  })
+
+  it("shows two invalid overrides once each, and an unrelated publication after another config toast shows neither again", () => {
+    const shell = mountKeymap(configView({ keybindings: { palete: "ctrl+g", help: "ctrl+bogus" } }))
+    try {
+      expect(shell.toasts).toHaveLength(2)
+      // Another fact in the same family, such as the config status toast, moves the family's last shown key.
+      shell.presenter.present("config.invalid", { message: "config.toml is invalid", variant: "warning" })
+      shell.publish(configView({ keybindings: { palete: "ctrl+g", help: "ctrl+bogus" }, showThinking: false }))
+      expect(shell.toasts).toHaveLength(3)
+    } finally { shell.dispose() }
+  })
+
+  it("shows an invalid override again when it returns after a fix", () => {
+    const shell = mountKeymap(configView({ keybindings: { help: "ctrl+bogus" } }))
+    try {
+      shell.publish(configView())
+      shell.publish(configView({ keybindings: { help: "ctrl+bogus" } }))
+      expect(shell.toasts).toHaveLength(2)
+      expect(shell.toasts[1]).toBe(shell.toasts[0])
+    } finally { shell.dispose() }
   })
 })

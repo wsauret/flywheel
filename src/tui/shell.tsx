@@ -8,7 +8,7 @@ import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { useModal, useOverlay } from "@tui/components/modal"
 import { useQuestionInput } from "@tui/components/question-input"
 import { ToastDisplay } from "@tui/components/toast-display"
-import { useKeymap } from "@tui/context/keymap"
+import { presentKeymapIssues, useKeymap } from "@tui/context/keymap"
 import { NavigationProvider } from "@tui/context/navigation.js"
 import { SubagentControlsProvider } from "@tui/context/subagent-controls.js"
 import { ClientExtensionProviders, ClientExtensionsProvider } from "@tui/context/client-extensions.js"
@@ -97,7 +97,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   startupTrace("flywheel shell setup start")
   const themeContext = useTheme()
   const theme = themeContext.theme
-  const { keymap, issues: keymapIssues } = useKeymap()
+  const { keymap } = useKeymap()
   const toast = useToast()
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
@@ -264,7 +264,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
         branchName: () => signals.branch(sessionId),
         modelLabel: () => undefined,
       },
-      showThinking: runtimeConfig.view()?.values.showThinking ?? false,
+      showThinking: () => runtimeConfig.view()?.values.showThinking ?? false,
       inputReady: () => services.transcripts.isCurrent(sessionId),
       diffColors: () => runtimeConfig.view()?.values.diffColors ?? "theme",
     })
@@ -410,11 +410,11 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     if (!config || config.status.kind === "valid") return
     configToasts.present("config.invalid", { message: config.status.message, variant: config.status.kind === "disposed" ? "error" : "warning", duration: 15000 })
   })
+  // Rejected [keybindings] overrides are actionable config mistakes; surface
+  // them rather than silently falling back to defaults.
+  presentKeymapIssues(configToasts)
   onMount(() => {
     traceShellMount(renderer)
-    // Rejected [keybindings] overrides are actionable config mistakes; surface
-    // them rather than silently falling back to defaults.
-    for (const issue of keymapIssues) configToasts.present("config.invalid", { message: issue, variant: "error", duration: 10000 })
     void place.restore().catch((cause: unknown) => services.showToast({ message: errorMessage(cause), variant: "error" }))
   })
   const commandContext = Object.freeze({
