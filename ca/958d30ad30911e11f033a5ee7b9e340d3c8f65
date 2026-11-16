@@ -1,0 +1,66 @@
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 181-186
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 227
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 247,259
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 27,51
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 27,203-207
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 34,358,360,374-376,382
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 12,107-116,163
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 51-54
+src/orchestration/agent-runtime/tools/message-session.ts
+  h_4b47e9e4a8b456 175-187,197,222-223,226
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 157-159
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 116-125,162
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 18-20,49
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 35,66-70
+src/orchestration/modules/lead/runtime.ts
+  h_4b47e9e4a8b456 7,16-17,33-36
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 42-44,441-445
+src/protocol/modules/lead.ts
+  h_4b47e9e4a8b456 187,195-198,202-212,215-218,221-223
+src/tui/context/message-row.tsx
+  h_4b47e9e4a8b456 13,17,22,25
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 6,38-39,102,104,120-131
+src/tui/modules/lead/transcript.ts
+  h_4b47e9e4a8b456 3,10-11,15
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 16,256,397
+src/tui/tui-module-client.ts
+  h_4b47e9e4a8b456 13,63-64
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 99
+tests/unit/orchestration/modules/lead/profile.test.ts
+  h_4b47e9e4a8b456 13,38-39,41-43,46-48,56,82,134-154
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 5-6,14-19,476-496,573,584-589
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 9-10,246-248,251,259,262,271
+tests/unit/tui/modules/lead/client.test.tsx
+  h_4b47e9e4a8b456 4,98
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 10,182-216,239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ca958d30ad30911e11f033a5ee7b9e340d3c8f65",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
