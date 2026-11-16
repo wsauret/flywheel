@@ -4,8 +4,6 @@ import { join } from "node:path";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { executeClaudeCodeBenchmark } from "../../../../../../src/orchestration/modules/development/benchmark/claude-code-execution.js";
-import { HeadlessBenchmarkExecutionSchema } from "../../../../../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
-import { Schema } from "effect";
 
 const temporary = temporaryDirectories();
 // Selected fields from the real 2.1.296 stream, including its auxiliary Haiku usage.
@@ -64,7 +62,6 @@ async function subject(patch: ResultPatch = {}, exitCode = 0, malformed?: string
 test("runs the resolved binary normally and retains stream, stderr, transcript tree, and modelUsage accounting", async () => {
   const fixture = await subject();
   const execution = await executeClaudeCodeBenchmark({ ...fixture.input, sessionId: "session" });
-  Schema.decodeUnknownSync(HeadlessBenchmarkExecutionSchema, { onExcessProperty: "error" })(execution);
   expect(execution.outcome).toBe("complete");
   expect(execution.handoff).toEqual({ summary: result.result });
   expect(fixture.launches).toEqual([{ command: ["sandbox", "/scratch/claude-real", "-p", "fix", "--output-format", "stream-json", "--verbose", "--model", "claude-sonnet-5-5", "--effort", "medium", "--permission-mode", "bypassPermissions", "--session-id", "session", "--settings", '{"plansDirectory":".claude/plans"}'], env: fixture.input.env, stopHold: { path: join(fixture.input.env.HOME, ".claude", ".oauth_refresh.lock"), boundMs: 35_000 } }]);

@@ -7,7 +7,7 @@ import { createBenchmarkCatalog } from "../../../src/orchestration/modules/devel
 import { benchmarkTaskIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/admission.js";
 import { dryRunBenchmarkAdmission, dryRunBenchmarkRuntime } from "../../helpers/benchmark-admission.js";
-import { appendJsonLine } from "../../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
 import type { ImplementRunRecord, RunConfig, ScoreRecord } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
 import { writeSplitLedger } from "../../helpers/split-ledger.js";
 import {
@@ -490,7 +490,7 @@ describe("cross-run comparison store", () => {
     const currentTaskIdentity = benchmarkTaskIdentity(tasks);
     await writeSource("source-a", tasks, currentTaskIdentity);
     await writeSource("source-b", tasks, currentTaskIdentity);
-    await appendJsonLine(join(root, "source-a", "judge-attempts.jsonl"), { malformed: true });
+    await appendFixtureLine(join(root, "source-a", "judge-attempts.jsonl"), { malformed: true });
     let judgeCalls = 0;
 
     await expect(compareRuns([

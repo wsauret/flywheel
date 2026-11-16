@@ -4,7 +4,7 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createRoutingConfig, executeRoutingBenchmark, main, planRoutingMatrix, ROUTING_FIXTURES, writeChatRoutingFatal } from "../../../bench/ab-persona/chat-routing-bench.js";
 import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, type RoutingRunRecord } from "../../../src/orchestration/modules/development/benchmark/chat-routing-store.js";
-import { ChatRoutingFailure, chatRoutingGuidance, failureFromTerminal } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
+import { chatRoutingGuidance, runChatRoutingTask } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
 import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
 import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/admission.js";
@@ -117,7 +117,7 @@ describe("Chat routing benchmark CLI", () => {
       const done = Promise.withResolvers<AgentRunResult>();
       return {
         send: () => done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
-        abort: () => {}, end: () => {}, done: done.promise,
+        abort: () => {}, done: done.promise,
       };
     };
     const exitCode = process.exitCode;
@@ -298,9 +298,19 @@ describe("Chat routing benchmark CLI", () => {
       groups: cells.map((cell) => [cell]), completed: new Set(), fixtures: boundaryConfig.fixtures, store,
       run: async () => {
         if (call++ === 0) {
-          const terminal = failureFromTerminal({ kind: "api_error", message: providerSentinel, recovery: { kind: "none" } });
-          if (!terminal) throw new Error("Expected provider failure conversion");
-          throw new ChatRoutingFailure(terminal, 1, ACCOUNTING);
+          // The production runner ends with a provider error whose message carries the sentinel.
+          const createAgent = () => {
+            const done = Promise.withResolvers<AgentRunResult>();
+            return {
+              send: () => done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: providerSentinel, recovery: { kind: "none" } } }),
+              abort: () => {}, done: done.promise,
+            };
+          };
+          return await runChatRoutingTask({ createAgent }, {
+            model: "model", effort: "medium", prompt: "route", deadlineMs: 1_000,
+            workspace: root, userDataRoot: join(root, "user"), accountHome: join(root, "home"),
+            agentRegistry: new Map(), skills: publishSkillRevision(1, new Map()), moduleSelection: () => composeFirstPartyModules(), runtimeSurfaces: {},
+          });
         }
         throw new Error(thrownSentinel);
       },

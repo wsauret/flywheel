@@ -1,34 +1,128 @@
 import { describe, expect, test } from "bun:test"
-import type { OwnedCommandResult } from "../../../../../src/infra/owned-command.js"
-import { createLauncherScope } from "../../../../../src/infra/process-supervisor.js"
+import type { FileSink } from "bun"
+import type { OwnedProcess, OwnedProcessExit } from "../../../../../src/infra/owned-subprocess.js"
+import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js"
 import type { McpCallResult } from "../../../../../src/orchestration/agent-runtime/mcp-result.js"
-import {
-  createIosSimulatorService,
-} from "../../../../../src/orchestration/modules/development/ios-simulator-service.js"
-import {
-  connectOwnedIosSimulatorBackend,
-  type IosSimulatorBackendConnectionInput,
-} from "../../../../../src/orchestration/modules/development/ios-simulator-backend.js"
+import { createDevelopmentIosSimulatorService } from "../../../../../src/orchestration/modules/development/ios-simulator-service.js"
+import { REQUIRED_IOS_SIMULATOR_MCP_TOOLS } from "../../../../../src/orchestration/modules/development/ios-simulator-tool.js"
+import { connectOwnedIosSimulatorBackend } from "../../../../../src/orchestration/modules/development/ios-simulator-backend.js"
+import { moduleProcessServices } from "../../../../helpers/module-kernel.js"
 
 function result(overrides: Partial<McpCallResult> = {}): McpCallResult {
   return { content: [{ type: "text", text: "ok" }], isError: false, ...overrides }
 }
 
-function commandResult(): OwnedCommandResult {
-  const stdout = "tap complete\n"
-  return { exitCode: 0, stdout, stdoutBytes: new TextEncoder().encode(stdout), stderr: "", timedOut: false }
-}
-
-function unusedLauncher() {
-  return createLauncherScope({ spawnOwned: async () => { throw new Error("connect test double owns launch") }, adoptOwned: () => Promise.reject(new Error("no command is adopted here")) })
-}
-
-function tools(names: readonly string[]): ReadonlyMap<string, unknown> {
-  return new Map(names.map((name) => [name, { type: "object", properties: { simulatorId: { type: "string" } } }]))
-}
-
 interface ToolArguments {
   readonly [key: string]: unknown
+}
+
+/** What the fake XcodeBuildMCP server lists and answers. */
+interface FakeServer {
+  readonly tools?: readonly string[]
+  call(name: string, arguments_: ToolArguments): Promise<McpCallResult>
+}
+
+interface Launch {
+  readonly command: readonly string[]
+  readonly env: { readonly [key: string]: string | undefined } | undefined
+}
+
+/** The development service over a launcher whose every MCP launch is an
+ *  in-process XcodeBuildMCP server speaking JSON-RPC over the owned pipes, and
+ *  whose AXe launch is one successful point tap. */
+function simulator(server: FakeServer) {
+  const launches: Launch[] = []
+  const servers: Array<{ exit(): void }> = []
+  let closes = 0
+  let pointTaps = 0
+  const encoder = new TextEncoder()
+  const scope: LauncherScope = {
+    open: () => scope,
+    adoptOwned: async () => { throw new Error("no command is adopted here") },
+    close: async () => ({ settled: true }),
+    spawnOwned: async (command, options) => {
+      if (command[0]?.endsWith("axe")) {
+        pointTaps += 1
+        return exitedProcess("tap complete\n")
+      }
+      launches.push({ command, env: options?.env })
+      let stdout!: ReadableStreamDefaultController<Uint8Array>
+      const exited = Promise.withResolvers<OwnedProcessExit>()
+      let running = true
+      const exit = (): void => {
+        if (!running) return
+        running = false
+        stdout.close()
+        exited.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" })
+      }
+      const reply = (id: unknown, outcome: { result: unknown } | { error: { code: number; message: string } }): void => {
+        if (running) stdout.enqueue(encoder.encode(`${JSON.stringify({ jsonrpc: "2.0", id, ...outcome })}\n`))
+      }
+      const listed = (server.tools ?? REQUIRED_IOS_SIMULATOR_MCP_TOOLS).map((name) => ({
+        name, inputSchema: { type: "object", properties: { simulatorId: { type: "string" } } },
+      }))
+      const receive = (message: { id?: unknown; method?: string; params?: { protocolVersion?: string; name?: string; arguments?: ToolArguments } }): void => {
+        if (message.method === "initialize") {
+          reply(message.id, { result: { protocolVersion: message.params?.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "fake-xcodebuildmcp", version: "1" } } })
+        } else if (message.method === "tools/list") {
+          reply(message.id, { result: { tools: listed } })
+        } else if (message.method === "tools/call") {
+          server.call(message.params?.name ?? "", message.params?.arguments ?? {}).then(
+            ({ content, isError, structuredContent }) => reply(message.id, { result: { content, isError, ...(structuredContent === undefined ? {} : { structuredContent }) } }),
+            (error: unknown) => reply(message.id, { error: { code: -32603, message: String(error) } }),
+          )
+        }
+      }
+      // Stdin EOF is how the client asks an MCP server to stop.
+      const stdin: FileSink = {
+        write(chunk) {
+          if (typeof chunk !== "string") throw new Error("the MCP client writes JSON-RPC text")
+          for (const line of chunk.split("\n").filter(Boolean)) receive(JSON.parse(line))
+          return chunk.length
+        },
+        flush: () => 0,
+        end() {
+          if (running) closes += 1
+          exit()
+          return 0
+        },
+        start: () => {},
+        ref: () => {},
+        unref: () => {},
+      }
+      servers.push({ exit })
+      return {
+        pid: 1, token: `mcp-${launches.length}`, stdin,
+        stdout: new ReadableStream<Uint8Array>({ start(controller) { stdout = controller } }),
+        stderr: new ReadableStream<Uint8Array>({ start(controller) { controller.close() } }),
+        exited: exited.promise,
+        terminate: async () => { exit(); return exited.promise },
+      }
+    },
+  }
+  return {
+    service: createDevelopmentIosSimulatorService(moduleProcessServices({ launcher: scope })),
+    launches,
+    closes: () => closes,
+    pointTaps: () => pointTaps,
+    /** The latest MCP server exits on its own, as a crashed backend does, and
+     *  the client has observed the exit once this settles. */
+    async exitLatest() {
+      servers.at(-1)?.exit()
+      await Bun.sleep(0)
+    },
+  }
+}
+
+function exitedProcess(output: string): OwnedProcess {
+  const exit: OwnedProcessExit = { code: 0, signal: null, statusOf: "payload", ownership: "surrendered" }
+  return {
+    pid: 2, token: "axe", stdin: undefined,
+    stdout: new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode(output)); controller.close() } }),
+    stderr: new ReadableStream<Uint8Array>({ start(controller) { controller.close() } }),
+    exited: Promise.resolve(exit),
+    terminate: async () => exit,
+  }
 }
 
 function snapshotToken(result_: McpCallResult): string {
@@ -43,24 +137,12 @@ function snapshotToken(result_: McpCallResult): string {
 describe("iOS simulator service", () => {
   test("shares one MCP-mode backend across snapshot and token-bound tap with the pinned environment", async () => {
     const calls: Array<{ name: string; arguments: ToolArguments }> = []
-    const starts: IosSimulatorBackendConnectionInput[] = []
-    let closes = 0
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => {
-        starts.push(input)
-        return {
-          tools: tools(input.requiredTools),
-          call: async (name, arguments_) => {
-            calls.push({ name, arguments: arguments_ })
-            return name === "snapshot_ui"
-              ? result({ structuredContent: { capture: { screenHash: "screen-a" } } })
-              : result()
-          },
-          close: async () => { closes += 1 },
-          onClose: () => {},
-        }
+    const { service, launches, closes } = simulator({
+      call: async (name, arguments_) => {
+        calls.push({ name, arguments: arguments_ })
+        return name === "snapshot_ui"
+          ? result({ structuredContent: { capture: { screenHash: "screen-a" } } })
+          : result()
       },
     })
 
@@ -75,10 +157,9 @@ describe("iOS simulator service", () => {
       arguments: { simulatorId: "device-1", elementRef: "e1" },
     })
 
-    expect(starts).toHaveLength(1)
-    expect(starts[0]).toMatchObject({
-      command: process.execPath,
-      args: [expect.stringContaining("xcodebuildmcp"), "mcp"],
+    expect(launches).toHaveLength(1)
+    expect(launches[0]).toMatchObject({
+      command: [process.execPath, expect.stringContaining("xcodebuildmcp"), "mcp"],
       env: expect.objectContaining({
         XCODEBUILDMCP_SENTRY_DISABLED: "true",
         XCODEBUILDMCP_ENABLED_WORKFLOWS: "simulator,simulator-management,ui-automation",
@@ -90,23 +171,16 @@ describe("iOS simulator service", () => {
       { name: "tap", arguments: { simulatorId: "device-1", elementRef: "e1" } },
     ])
     await service.dispose()
-    expect(closes).toBe(1)
+    expect(closes()).toBe(1)
   })
 
   test("discovers public schemas and rejects superseded snapshot tokens across callers", async () => {
     const calls: string[] = []
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => ({
-        tools: tools(input.requiredTools),
-        call: async (name) => {
-          calls.push(name)
-          return result({ structuredContent: { capture: { screenHash: name } } })
-        },
-        close: async () => {},
-        onClose: () => {},
-      }),
+    const { service } = simulator({
+      call: async (name) => {
+        calls.push(name)
+        return result({ structuredContent: { capture: { screenHash: name } } })
+      },
     })
 
     const contracts = await service.execute({ kind: "schema", workflow: "ui-automation", action: "schema" })
@@ -160,17 +234,10 @@ describe("iOS simulator service", () => {
   })
 
   test("coordinate, key, and simulator display actions invalidate the current snapshot token", async () => {
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => ({
-        tools: tools(input.requiredTools),
-        call: async (name) => name === "snapshot_ui"
-          ? result({ structuredContent: { capture: { screenHash: "screen" } } })
-          : result(),
-        close: async () => {},
-        onClose: () => {},
-      }),
+    const { service } = simulator({
+      call: async (name) => name === "snapshot_ui"
+        ? result({ structuredContent: { capture: { screenHash: "screen" } } })
+        : result(),
     })
     const snapshot = await service.execute({ kind: "call", workflow: "ui-automation", action: "snapshot-ui", mcpName: "snapshot_ui", arguments: {} })
     const token = snapshotToken(snapshot)
@@ -206,22 +273,13 @@ describe("iOS simulator service", () => {
 
   test("device-point taps invalidate the current semantic snapshot token", async () => {
     const calls: string[] = []
-    let pointTaps = 0
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      runOwnedCommand: async () => { pointTaps += 1; return commandResult() },
-      connect: async (input) => ({
-        tools: tools(input.requiredTools),
-        call: async (name) => {
-          calls.push(name)
-          return name === "snapshot_ui"
-            ? result({ structuredContent: { capture: { screenHash: "screen" } } })
-            : result()
-        },
-        close: async () => {},
-        onClose: () => {},
-      }),
+    const { service, pointTaps } = simulator({
+      call: async (name) => {
+        calls.push(name)
+        return name === "snapshot_ui"
+          ? result({ structuredContent: { capture: { screenHash: "screen" } } })
+          : result()
+      },
     })
 
     const snapshot = await service.execute({
@@ -247,26 +305,15 @@ describe("iOS simulator service", () => {
       snapshotToken: token,
       arguments: { elementRef: "e1" },
     })).rejects.toThrow("fresh snapshot")
-    expect(pointTaps).toBe(1)
+    expect(pointTaps()).toBe(1)
     expect(calls).toEqual(["snapshot_ui"])
     await service.dispose()
   })
 
   test("pre-aborted and immediately cancelled operations do not start or wedge the service", async () => {
-    let starts = 0
     let calls = 0
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => {
-        starts += 1
-        return {
-          tools: tools(input.requiredTools),
-          call: async () => { calls += 1; return result() },
-          close: async () => {},
-          onClose: () => {},
-        }
-      },
+    const { service, launches } = simulator({
+      call: async () => { calls += 1; return result() },
     })
 
     const preAborted = new AbortController()
@@ -278,7 +325,7 @@ describe("iOS simulator service", () => {
       mcpName: "list_sims",
       arguments: {},
     }, preAborted.signal)).rejects.toThrow("already cancelled")
-    expect(starts).toBe(0)
+    expect(launches).toHaveLength(0)
 
     const immediate = new AbortController()
     const cancelled = service.execute({
@@ -298,7 +345,7 @@ describe("iOS simulator service", () => {
       mcpName: "list_sims",
       arguments: {},
     })
-    expect(starts).toBe(1)
+    expect(launches).toHaveLength(1)
     expect(calls).toBe(1)
     await service.dispose()
   })
@@ -306,29 +353,14 @@ describe("iOS simulator service", () => {
   test("cancellation closes the active backend and a later call starts fresh", async () => {
     const started = Promise.withResolvers<void>()
     const restarted = Promise.withResolvers<void>()
-    let starts = 0
-    let closes = 0
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => {
-        starts += 1
-        if (starts === 2) restarted.resolve()
-        let close = () => {}
-        const closed = new Promise<void>((resolve) => { close = resolve })
-        return {
-          tools: tools(input.requiredTools),
-          async call() {
-            started.resolve()
-            await closed
-            throw new Error("backend closed")
-          },
-          async close() {
-            closes += 1
-            close()
-          },
-          onClose: () => {},
-        }
+    let calls = 0
+    // Every call stays unanswered until its backend ends.
+    const { service, launches, closes } = simulator({
+      call: () => {
+        calls += 1
+        if (calls === 1) started.resolve()
+        else restarted.resolve()
+        return new Promise<McpCallResult>(() => {})
       },
     })
     const abort = new AbortController()
@@ -336,14 +368,14 @@ describe("iOS simulator service", () => {
     await started.promise
     abort.abort(new Error("cancelled"))
     await expect(first).rejects.toThrow("cancelled")
-    expect(closes).toBe(1)
+    expect(closes()).toBe(1)
 
     const secondAbort = new AbortController()
     const second = service.execute({ kind: "call", workflow: "simulator", action: "list", mcpName: "list_sims", arguments: {} }, secondAbort.signal)
     await restarted.promise
     secondAbort.abort(new Error("second cancelled"))
     await expect(second).rejects.toThrow("second cancelled")
-    expect(starts).toBe(2)
+    expect(launches).toHaveLength(2)
     await service.dispose()
   })
 
@@ -351,21 +383,13 @@ describe("iOS simulator service", () => {
     const activeStarted = Promise.withResolvers<void>()
     const releaseActive = Promise.withResolvers<void>()
     let calls = 0
-    let closes = 0
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => ({
-        tools: tools(input.requiredTools),
-        async call() {
-          calls += 1
-          activeStarted.resolve()
-          await releaseActive.promise
-          return result()
-        },
-        async close() { closes += 1 },
-        onClose: () => {},
-      }),
+    const { service, closes } = simulator({
+      async call() {
+        calls += 1
+        activeStarted.resolve()
+        await releaseActive.promise
+        return result()
+      },
     })
     const first = service.execute({ kind: "call", workflow: "simulator", action: "list", mcpName: "list_sims", arguments: {} })
     await activeStarted.promise
@@ -376,54 +400,25 @@ describe("iOS simulator service", () => {
 
     const disposing = service.dispose()
     releaseActive.resolve()
-    await first
+    await expect(first).rejects.toThrow("closing")
     await disposing
     expect(calls).toBe(1)
-    expect(closes).toBe(1)
+    expect(closes()).toBe(1)
   })
 
   test("immediate disposal prevents an admitted operation from starting", async () => {
-    let starts = 0
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => {
-        starts += 1
-        return {
-          tools: tools(input.requiredTools),
-          call: async () => result(),
-          close: async () => {},
-          onClose: () => {},
-        }
-      },
-    })
+    const { service, launches } = simulator({ call: async () => result() })
     const operation = service.execute({ kind: "call", workflow: "simulator", action: "list", mcpName: "list_sims", arguments: {} })
     await service.dispose()
     await expect(operation).rejects.toThrow("closing")
-    expect(starts).toBe(0)
+    expect(launches).toHaveLength(0)
   })
 
   test("backend exit clears it so the next operation starts a fresh process", async () => {
-    const exits: Array<() => void> = []
-    let starts = 0
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async (input) => {
-        starts += 1
-        let notify = () => {}
-        exits.push(() => notify())
-        return {
-          tools: tools(input.requiredTools),
-          call: async () => result(),
-          close: async () => {},
-          onClose(callback) { notify = callback },
-        }
-      },
-    })
+    const { service, launches, exitLatest } = simulator({ call: async () => result() })
     const snapshot = await service.execute({ kind: "call", workflow: "ui-automation", action: "snapshot-ui", mcpName: "snapshot_ui", arguments: {} })
     const staleToken = snapshotToken(snapshot)
-    exits[0]?.()
+    await exitLatest()
     await expect(service.execute({
       kind: "call",
       workflow: "ui-automation",
@@ -433,21 +428,12 @@ describe("iOS simulator service", () => {
       arguments: { elementRef: "e1" },
     })).rejects.toThrow("fresh snapshot")
     await service.execute({ kind: "call", workflow: "simulator", action: "list", mcpName: "list_sims", arguments: {} })
-    expect(starts).toBe(2)
+    expect(launches).toHaveLength(2)
     await service.dispose()
   })
 
   test("refuses a backend whose pinned required tools are incomplete", async () => {
-    const service = createIosSimulatorService({
-      launcher: unusedLauncher(),
-      executionCwd: "/repo",
-      connect: async () => ({
-        tools: tools(["snapshot_ui"]),
-        call: async () => result(),
-        close: async () => {},
-        onClose: () => {},
-      }),
-    })
+    const { service } = simulator({ tools: ["snapshot_ui"], call: async () => result() })
     await expect(service.execute({ kind: "call", workflow: "ui-automation", action: "snapshot-ui", mcpName: "snapshot_ui", arguments: {} })).rejects.toThrow("missing required tools")
     await service.dispose()
   })

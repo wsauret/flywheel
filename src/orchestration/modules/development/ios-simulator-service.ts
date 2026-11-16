@@ -1,8 +1,7 @@
 import { fileURLToPath } from "node:url"
 import { randomUUID } from "node:crypto"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
-import { ownedCommandRunner, type OwnedCommandRunner } from "../../../infra/owned-command.js"
-import type { LauncherScope } from "../../../infra/process-supervisor.js"
+import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import type { McpCallResult } from "../../agent-runtime/mcp-result.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import {
@@ -12,11 +11,7 @@ import {
   type IosSimulatorRequest,
   type SimulatorWorkflow,
 } from "./ios-simulator-tool.js"
-import {
-  connectOwnedIosSimulatorBackend,
-  type IosSimulatorBackend,
-  type IosSimulatorBackendConnectionInput,
-} from "./ios-simulator-backend.js"
+import { connectOwnedIosSimulatorBackend, type IosSimulatorBackend } from "./ios-simulator-backend.js"
 import {
   executeIosSimulatorPointTap,
   IOS_SIMULATOR_POINT_TAP_SCHEMA,
@@ -70,16 +65,7 @@ interface Waiter {
   forget(): void
 }
 
-export interface IosSimulatorServiceDeps {
-  readonly launcher: LauncherScope
-  readonly executionCwd: string
-  readonly resolveCli?: () => string
-  readonly executable?: string
-  readonly connect?: (input: IosSimulatorBackendConnectionInput) => Promise<IosSimulatorBackend>
-  readonly runOwnedCommand?: OwnedCommandRunner
-}
-
-function defaultCliPath(): string {
+function cliPath(): string {
   return fileURLToPath(import.meta.resolve("xcodebuildmcp"))
 }
 
@@ -91,14 +77,12 @@ function abortError(signal: AbortSignal): Error {
   return signal.reason instanceof Error ? signal.reason : new Error("iOS Simulator operation was cancelled")
 }
 
-/** Owns one lazy XcodeBuildMCP MCP process and serializes calls that share semantic snapshot state. */
-export function createIosSimulatorService(deps: IosSimulatorServiceDeps): IosSimulatorService {
-  const scope = deps.launcher.open()
-  const runOwnedCommand = deps.runOwnedCommand ?? ownedCommandRunner(scope)
-  const connect = deps.connect ?? connectOwnedIosSimulatorBackend
+/** Owns one lazy XcodeBuildMCP MCP process, launched through the module's
+ *  launcher, and serializes calls that share semantic snapshot state. */
+export function createDevelopmentIosSimulatorService(services: ModuleProcessServices): IosSimulatorService {
+  const scope = services.launcher.open()
+  const runOwnedCommand = ownedCommandRunner(scope)
   const requiredTools = REQUIRED_IOS_SIMULATOR_MCP_TOOLS
-  const command = deps.executable ?? process.execPath
-  const resolveCli = deps.resolveCli ?? defaultCliPath
   const environment = () => ({
     ...definedEnvironment(),
     XCODEBUILDMCP_SENTRY_DISABLED: "true",
@@ -137,10 +121,10 @@ export function createIosSimulatorService(deps: IosSimulatorServiceDeps): IosSim
     signal?.addEventListener("abort", onAbort, { once: true })
     let connection: IosSimulatorBackend
     try {
-      connection = await connect({
-        command,
-        args: [resolveCli(), "mcp"],
-        cwd: deps.executionCwd,
+      connection = await connectOwnedIosSimulatorBackend({
+        command: process.execPath,
+        args: [cliPath(), "mcp"],
+        cwd: services.directories.executionCwd,
         env: environment(),
         signal: lifecycle.signal,
         requiredTools,
@@ -264,7 +248,7 @@ export function createIosSimulatorService(deps: IosSimulatorServiceDeps): IosSim
         snapshotToken = undefined
         return await executeIosSimulatorPointTap({
           runOwnedCommand,
-          cliPath: resolveCli(),
+          cliPath: cliPath(),
           arguments: request.arguments,
           signal: operationSignal,
         })
@@ -338,8 +322,4 @@ export function createIosSimulatorService(deps: IosSimulatorServiceDeps): IosSim
 
 function isRecord(value: unknown): value is UnknownObject {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-export function createDevelopmentIosSimulatorService(services: ModuleProcessServices): IosSimulatorService {
-  return createIosSimulatorService({ launcher: services.launcher, executionCwd: services.directories.executionCwd })
 }

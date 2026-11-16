@@ -108,7 +108,7 @@ export type CampaignHeader = typeof CampaignHeaderSchema.Type;
 export type CellLine = typeof CellLineSchema.Type;
 export type ScoreLine = typeof ScoreLineSchema.Type;
 export type GradeLine = typeof GradeLineSchema.Type;
-export type FailureLine = typeof FailureLineSchema.Type;
+type FailureLine = typeof FailureLineSchema.Type;
 
 /** The identities of a planned task that a record line keeps: an implementation task adds what its candidate answers. */
 type RecordedTask = Pick<ResearchTask | ReviewTask, "id" | "contentIdentity"> | Pick<ImplementTask, "id" | "contentIdentity" | "candidateIdentity">;
@@ -170,7 +170,7 @@ function sameHeader(a: CampaignHeader, b: CampaignHeader): boolean {
  *  header that is not the first line or appears twice, a second line for one
  *  cell, score key, or failed attempt, a score of no recorded cell, or a scorer
  *  that is not the header mode's. */
-export async function loadCampaignRecords(file: string): Promise<CampaignRecords | undefined> {
+async function loadCampaignRecords(file: string): Promise<CampaignRecords | undefined> {
   const lines = await ledger(file).load();
   if (lines.length === 0) return undefined;
   const [header, ...rest] = lines;

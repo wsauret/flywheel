@@ -13,10 +13,10 @@ import {
   type BenchmarkEvent,
 } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
 import { runGroups } from "../../../src/orchestration/modules/development/benchmark/matrix-runner.js";
-import { checkCitations } from "../../../src/orchestration/modules/development/benchmark/research-scoring.js";
+import { scoreResearch, type SnapshotLines } from "../../../src/orchestration/modules/development/benchmark/research-scoring.js";
 import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
-import { loadCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
 import type { BenchmarkRuntime } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
 import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { runPersonaTask } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
@@ -260,7 +260,6 @@ describe("persona benchmark service", () => {
         running++;
         return {
           send: () => { controller.abort(); },
-          end: () => {},
           // A real runner settles only after its own teardown; the terminal
           // event must wait for that, not for the abort call.
           abort: () => { setTimeout(() => { running--; settleDone({ servedRequests: 0, durationMs: 1, terminal: { kind: "interrupted" } }); }, 5); },
@@ -320,14 +319,12 @@ describe("persona benchmark service", () => {
               controller.abort();
             },
             abort: () => {},
-            end: () => {},
             done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
           };
         }
         const settled = Promise.withResolvers<{ servedRequests: 0, durationMs: number; terminal: { kind: "interrupted" } }>();
         return {
           send: () => {},
-          end: () => {},
           abort: () => { setTimeout(() => settled.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "interrupted" } }), 5); },
           done: settled.promise,
         };
@@ -376,7 +373,7 @@ describe("persona benchmark service", () => {
     expect(outcome.report).toContain(`- ${"a".repeat(64)}: ${plan.tasks.length} cells`);
     expect(outcome.report).toContain(`- ${"b".repeat(64)}: ${plan.tasks.length} cells`);
     // The failed run published nothing; the completed resume publishes every cell with the source that ran it.
-    const records = await loadCampaignRecords(catalog.recordsFile(plan.persona, plan.stamp));
+    const records = (await loadAllCampaignRecords(catalog.recordsRoot)).find(({ file }) => file === catalog.recordsFile(plan.persona, plan.stamp));
     expect(records?.cells.map((cell) => cell.sourceIdentity).sort()).toEqual(runs.map((run) => run.sourceIdentity).sort());
   });
 
@@ -494,6 +491,15 @@ describe("persona benchmark service", () => {
   });
 });
 
+/** The citation check of one research answer, as answer-key scoring records it. */
+async function scoredCitations(text: string, lines: SnapshotLines) {
+  const judge = { complete: async () => ({ text: '{"caught":[],"uncertain":[],"traps_asserted":[]}', accounting: unavailableJudgeAccounting("the test judge measured nothing") }) };
+  const task = { id: "cited", prompt: "Cite the code.", snapshot: RESEARCH_SNAPSHOT, answerKey: { facts: [{ id: "fact", claim: "A claim.", catch_criteria: "Names the claim", files: ["src/a.ts"] }] as const, traps: [] } };
+  const [score] = await scoreResearch([{ variant: "v", task: task.id, repeat: 0, summary: text }], [task], async () => lines, judge);
+  if (!score) throw new Error("expected one research score");
+  return score.citations;
+}
+
 describe("research answer keys", () => {
   const answerKey = {
     facts: [
@@ -503,25 +509,25 @@ describe("research answer keys", () => {
     traps: [{ id: "thinking-end", wrong_answer: "The bound starts when thinking ends." }],
   };
 
-  it("checks each distinct citation against exactly one file and line of the pin", () => {
+  it("checks each distinct citation against exactly one file and line of the pin", async () => {
     const lines = new Map([["src/a.ts", 3], ["src/x/index.ts", 9], ["src/y/index.ts", 9]]);
-    expect(checkCitations("`/tmp/flywheel-bench-trial-1/src/a.ts:3`, a.ts:2-3, src/a.ts:4, index.ts:1, src/x/index.ts:9, src/a.ts:4", lines)).toEqual({
+    expect(await scoredCitations("`/tmp/flywheel-bench-trial-1/src/a.ts:3`, a.ts:2-3, src/a.ts:4, index.ts:1, src/x/index.ts:9, src/a.ts:4", lines)).toEqual({
       total: 5, invalid: ["src/a.ts:4", "index.ts:1"],
     });
     // Only an absolute path loses its leading parts; a relative path keeps every part it states, and a range runs forward from line 1.
-    expect(checkCitations("nonexistent/src/a.ts:1, x/index.ts:2, src/a.ts:0, src/a.ts:3-0, src/a.ts:3-2, C:\\trial\\src\\a.ts:1", lines)).toEqual({
+    expect(await scoredCitations("nonexistent/src/a.ts:1, x/index.ts:2, src/a.ts:0, src/a.ts:3-0, src/a.ts:3-2, C:\\trial\\src\\a.ts:1", lines)).toEqual({
       total: 6, invalid: ["nonexistent/src/a.ts:1", "src/a.ts:0", "src/a.ts:3-0", "src/a.ts:3-2"],
     });
   });
 
-  it("reads the complete path of a citation, with filename punctuation and spaces", () => {
+  it("reads the complete path of a citation, with filename punctuation and spaces", async () => {
     const lines = new Map([["src/a.ts", 3], ["docs/my notes.md", 2]]);
     const text = [
       "invented$/src/a.ts:1, invented+/src/a.ts:1",
       "C:\\Users\\Jane Doe\\AppData\\Local\\Temp\\flywheel-bench-trial-X\\src\\a.ts:1",
       "`docs/my notes.md`:2 and \"docs/my notes.md:3\"",
     ].join("\n");
-    expect(checkCitations(text, lines)).toEqual({
+    expect(await scoredCitations(text, lines)).toEqual({
       total: 5, invalid: ["invented$/src/a.ts:1", "invented+/src/a.ts:1", "docs/my notes.md:3"],
     });
   });
@@ -543,7 +549,6 @@ describe("research answer keys", () => {
       createAgent: (options: AgentOptions) => ({
         send: () => { options.runtimeSurfaces?.handoff?.onContent({ summary: "It starts at the stop item, as in Acmebot:\nC:\\trial\\src\\a.ts:2\nsrc/a.ts:1\nsrc/a.ts:40" }); },
         abort: () => {},
-        end: () => {},
         done: Promise.resolve({ durationMs: 1, servedRequests: 0, terminal: { kind: "completed" as const } }),
       }),
     };
