@@ -1,0 +1,36 @@
+src/orchestration/agent-runtime/active-request-context.ts
+  h_4b47e9e4a8b456 159,169,173,195
+src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+  h_4b47e9e4a8b456 227,232
+src/orchestration/agent-runtime/compaction/token-counter.ts
+  h_4b47e9e4a8b456 3,12,78,164,235-236,311-314,317,321,326-327,331
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 96
+src/orchestration/agent-runtime/runtime-session-notes.ts
+  h_4b47e9e4a8b456 17,31
+src/orchestration/agent-runtime/runtime-usage.ts
+  h_4b47e9e4a8b456 8,35
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 388-389
+tests/unit/orchestration/agent-runtime/context/loop-outgoing-context.test.ts
+  h_4b47e9e4a8b456 21,161-183,212
+tests/unit/orchestration/agent-runtime/context/loop-token-counter.test.ts
+  h_4b47e9e4a8b456 15-16,22-33,51-53,55,58,63,69,71-73,76-77,80,85,88,127,212
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 220
+tests/unit/orchestration/agent-runtime/runtime-assembly-usage-settlement.test.ts
+  h_4b47e9e4a8b456 139,434
+tests/unit/orchestration/session/session-save-point-compaction.test.ts
+  h_4b47e9e4a8b456 7,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b3c8352c34daefab55e03ebf89258eb88aee1af2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
