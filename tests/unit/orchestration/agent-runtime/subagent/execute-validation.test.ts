@@ -164,7 +164,7 @@ describe("subagent tool — execute validation", () => {
     const deps = makeDeps({
       createRunner: (options) => {
         runnerCalls.push(String(options.model));
-        return { send: () => {}, end: () => {}, abort: () => {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" as const } }) };
+        return { send: () => {}, abort: () => {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" as const } }) };
       },
     });
     const tool = createSubagentDispatch(deps);
@@ -181,7 +181,7 @@ describe("subagent tool — execute validation", () => {
     // dispatch continues, and admits nothing.
     const capabilityAccess = makeCapabilityAccess({ grant: grantOf([]) });
     const deps = makeDeps({
-      createRunner: () => ({ send: () => {}, end: () => {}, abort: () => {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" as const } }) }),
+      createRunner: () => ({ send: () => {}, abort: () => {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" as const } }) }),
     });
     const tool = createSubagentDispatch(deps);
 
@@ -216,7 +216,7 @@ describe("subagent tool — execute validation", () => {
     const deps = makeDeps({
       createRunner: (options) => {
         childAccess.push(options.capabilityAccess);
-        return { send: () => {}, end: () => {}, abort: () => {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" as const } }) };
+        return { send: () => {}, abort: () => {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" as const } }) };
       },
     });
     const tool = createSubagentDispatch(deps);

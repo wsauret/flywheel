@@ -483,7 +483,6 @@ test("assembled subagent retains the parent runtime's captured Usage authority",
         childCreated.resolve()
         return {
           send() {},
-          end() {},
           abort() {},
           done: Promise.resolve({ servedRequests: 0, durationMs: 1, providerSessionKey: "child", terminal: { kind: "completed" } }),
         }

@@ -92,7 +92,7 @@ function factory(observe: (options: AgentOptions) => AgentRunTerminal): AgentFac
   return (options) => {
     let terminal: AgentRunTerminal
     try { terminal = observe(options) } catch (error) { factoryErrors.push(error); throw error }
-    return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }) }
+    return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }) }
   }
 }
 function worker(createAgent: AgentFactory, eventWriter = writer) {
@@ -191,7 +191,7 @@ test("an active worker leaves later cells for the next idle invocation", async (
 test("an agent in its own session that commits a live message its workflow held retires the workflow's cell", async () => {
   // Held while the agent runs, so the agent's loop reads it live and its
   // append carries the cell key as its dispatch id.
-  const createAgent: AgentFactory = (options) => ({ send() {}, end() {}, abort() {}, done: (async () => {
+  const createAgent: AgentFactory = (options) => ({ send() {}, abort() {}, done: (async () => {
     hold("live-delivery", { text: "read while running" })
     await conversation(options).append({ kind: "user", origin: "human", content: "read while running", dispatchIds: ["live-delivery"] })
     return { servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" as const } }

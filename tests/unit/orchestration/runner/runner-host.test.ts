@@ -1,12 +1,13 @@
 import { describe, expect, it } from "bun:test"
 import type { Agent, AgentRunResult } from "../../../../src/orchestration/agent-runtime/types.js"
 import { createAgentHost } from "../../../../src/orchestration/runner/host.js"
+import { newTestRunner } from "../../../helpers/agent-runner.js"
+import { makeOptions } from "../agent-runtime/_runner-options.js"
 
 function completedRunner(messages: string[]): Agent {
   return {
     send(message): void { if (typeof message === "string") messages.push(message) },
     abort(): void {},
-    end(): void {},
     done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
   }
 }
@@ -18,7 +19,6 @@ function createPreparingHost() {
     createRunner: () => ({
       send(): void {},
       abort(): void {},
-      end(): void {},
       interruptGeneration(): boolean { return false },
       done: Promise.resolve({ servedRequests: 0, durationMs: ++attempts, terminal: { kind: "completed" as const } }),
     }),
@@ -62,7 +62,6 @@ describe("runner host", () => {
       return {
         send(): void {},
         abort(): void {},
-        end(): void {},
         done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }),
       }
     }
@@ -87,7 +86,6 @@ describe("runner host", () => {
       return {
         send(): void {},
         abort(): void { calls.push("abort") },
-        end(): void {},
         interruptGeneration(): boolean { calls.push("interrupt"); return true },
         done: new Promise((resolve) => { resolveDone = resolve }),
       }
@@ -152,7 +150,6 @@ describe("runner host", () => {
         return {
           send(): void {},
           abort(): void {},
-          end(): void {},
           done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
         }
       },
@@ -188,7 +185,6 @@ describe("runner host", () => {
         return {
           send(): void {},
           abort(): void {},
-          end(): void {},
           interruptGeneration(): boolean { return true },
           done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }),
         }
@@ -213,31 +209,33 @@ describe("runner host", () => {
     expect(attempts).toBe(1)
   })
 
-  it("ends a runner and keeps settlement ownership when onContextCreated throws", async () => {
-    const done = Promise.withResolvers<AgentRunResult>()
-    let endCalls = 0
-    const host = createAgentHost<{ model: string }>({
-      createRunner: () => ({
-        send(): void {},
-        abort(): void {},
-        end(): void { endCalls += 1; done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "input_closed" } }) },
-        done: done.promise,
-      }),
+  it("A real LiveAgent that was never sent anything settles done after abort, and the host can start the next generation", async () => {
+    const options = { model: "test", executionCwd: "/scratch", projectRoot: "/scratch", userDataRoot: "/scratch", accountHome: "/scratch", promptKind: "chat" }
+    const messages: string[] = []
+    const runners: Agent[] = []
+    const host = createAgentHost<typeof options>({
+      createRunner: () => {
+        const runner = runners.length === 0
+          ? newTestRunner(makeOptions(), () => { throw new Error("no model request is expected") })
+          : completedRunner(messages)
+        runners.push(runner)
+        return runner
+      },
     })
 
-    const running = host.runTurn({
-      createContextOptions: () => ({ model: "test", executionCwd: "/scratch", projectRoot: "/scratch", userDataRoot: "/scratch", accountHome: "/scratch", promptKind: "chat" }),
+    const failed = await host.runTurn({
+      createContextOptions: () => options,
       onContextCreated: () => { throw new Error("callback failed") },
       message: "hello",
       resilience: {},
     })
-    let settled = false
-    void host.settle().then(() => { settled = true })
-
-    await expect(running).resolves.toMatchObject({ terminal: { kind: "api_error", message: "callback failed", recovery: { kind: "retry" } } })
+    expect(failed).toMatchObject({ terminal: { kind: "api_error", message: "callback failed", recovery: { kind: "retry" } } })
+    expect(await runners[0]!.done).toMatchObject({ terminal: { kind: "aborted" } })
     await host.settle()
-    expect(endCalls).toBe(1)
-    expect(settled).toBe(true)
     expect(host.generationState).toBe("idle")
+
+    const next = await host.runTurn({ createContextOptions: () => options, message: "again", resilience: {} })
+    expect(next.terminal).toEqual({ kind: "completed" })
+    expect(messages).toEqual(["again"])
   })
 })

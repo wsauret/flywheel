@@ -1,5 +1,4 @@
 export const CONTINUATION_MESSAGES = {
-  reset_session: "Your conversation was compacted due to context limits. Continue from where you stopped.",
   unexpected_exit: "Your process exited unexpectedly. Continue where you left off.",
   // A Resume of an interrupted turn. The turn-end record before it says who
   // interrupted the turn; this message is the only one that asks to continue.

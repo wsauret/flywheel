@@ -51,7 +51,6 @@ export function fakeRuntime(settle: (options: AgentOptions) => Pick<AgentRunResu
     createAgent: (options: AgentOptions) => ({
       send: () => { options.runtimeSurfaces?.handoff?.onContent({ summary: `${options.model} answered` }); },
       abort: () => {},
-      end: () => {},
       done: Promise.resolve(settle(options)).then((result) => ({ durationMs: 1, servedRequests: 0, ...result })),
     }),
   };

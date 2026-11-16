@@ -327,7 +327,7 @@ export function heldRunner() {
     options.push(input)
     const done = Promise.withResolvers<AgentRunResult>()
     results.push(done)
-    return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+    return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
   }
   return { options, results, createAgent }
 }
@@ -341,7 +341,6 @@ export function completedRunner(calls: AgentOptions[]): (options: AgentOptions) 
         options.runtimeSurfaces?.handoff?.onContent({ summary: "completed" })
         done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
       },
-      end() {},
       abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }
@@ -368,7 +367,7 @@ export async function waitForSettled(harness: SubagentChildHarness, parentSessio
   expect(running()).toEqual([])
   await reconcileChildSessionCompletions({
     parentSessionId,
-    reader: harness.reader,
+    reader: harness.reader, projectionReader: harness.reader,
     writer: harness.writer,
   })
 }

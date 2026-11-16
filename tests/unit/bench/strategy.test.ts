@@ -2,7 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { appendJsonLine } from "../../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
 import { createPersonaStore, type PersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import {
   assertSameVariants,
@@ -151,7 +151,6 @@ function fakeRuntime(options: {
                     });
                   },
                   abort: () => {},
-                  end: () => {},
                   done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: options.terminalFor?.(agent, call) ?? { kind: "completed" as const } }),
                 };
               },
@@ -496,9 +495,9 @@ describe("strategy main", () => {
         const { directory } = await storedStrategyRun(root);
         const events = join(directory, "events.jsonl");
         if (ledger === "attempt") {
-          await appendJsonLine(events, failedAttempt({ model: "wrong-model" }));
+          await appendFixtureLine(events, failedAttempt({ model: "wrong-model" }));
         } else {
-          await appendJsonLine(events, {
+          await appendFixtureLine(events, {
             kind: "judge-attempt",
             attemptId: crypto.randomUUID(),
             at: "2026-09-02T00:00:00.000Z",

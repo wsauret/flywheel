@@ -99,7 +99,7 @@ export function createAgentHost<O = AgentHostContextOptions>(options: AgentHostO
           turn.onContextCreated?.(context)
           return context
         } catch (error) {
-          context.end()
+          context.abort()
           await context.done.catch(() => undefined)
           throw error
         }

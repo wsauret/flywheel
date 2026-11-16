@@ -209,7 +209,6 @@ describe("chat title from a command's turn", () => {
     const createAgent: AgentFactory = (): Agent => ({
       done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
       send() {},
-      end() {},
       abort() {},
     })
     const titles: Array<{ label: string; shortLabel: string }> = []
@@ -239,7 +238,6 @@ describe("chat title from a command's turn", () => {
       return {
         done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
         send() {},
-        end() {},
         abort() {},
       }
     }
@@ -280,7 +278,6 @@ describe("chat title environment refresh", () => {
         return {
           done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
           send() {},
-          end() {},
           abort() {},
         }
       }
@@ -302,7 +299,6 @@ describe("chat title environment refresh", () => {
             : { kind: "api_error", message: "Authentication requires attention", recovery: { kind: "none" } },
         }),
         send() {},
-        end() {},
         abort() {},
       }
     }

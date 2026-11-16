@@ -409,7 +409,6 @@ export type AgentOptions = AgentBaseOptions & {
 
 export interface Agent {
   send(input: string | AgentLoopWakeInput): void;
-  end(): void;
   abort(): void;
   interruptGeneration?(): boolean;
   readonly done: Promise<AgentRunResult>;

@@ -66,7 +66,6 @@ function deps(calls: AgentOptions[], allowedSubagentTypes?: ReadonlySet<string>)
       const { promise, resolve } = Promise.withResolvers<AgentRunResult>();
       return {
         send() { resolve({ servedRequests: 0, durationMs: 1, providerSessionKey: "mock", terminal: { kind: "completed" } }); },
-        end() {},
         abort() {},
         done: promise,
       };

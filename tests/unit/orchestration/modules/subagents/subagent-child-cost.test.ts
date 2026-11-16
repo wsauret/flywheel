@@ -20,7 +20,6 @@ test("child live cost counts each settled request once before and after terminal
   const started = Promise.withResolvers<AgentOptions>()
   const harness = createHarness((options) => ({
     send() { started.resolve(options) },
-    end() {},
     abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
     done: done.promise,
   }))

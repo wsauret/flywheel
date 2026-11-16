@@ -129,7 +129,6 @@ describe("generateSessionTitle — LLM model selection", () => {
         send() {
           options.onEvent(assistantEvent)
         },
-        end() {},
         abort() {},
       }
     }
@@ -162,7 +161,6 @@ describe("generateSessionTitle — LLM model selection", () => {
       return {
         done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "context_overflow" } }),
         send() {},
-        end() {},
         abort() {},
       }
     }

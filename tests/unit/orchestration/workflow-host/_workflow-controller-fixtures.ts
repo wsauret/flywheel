@@ -513,7 +513,6 @@ export function makeWorkflowDeps(): WorkflowDeps {
   const providers = testProviderRegistry()
   const createAgent: WorkflowDeps["createAgent"] = () => ({
     send: () => {},
-    end: () => {},
     abort: () => {},
     done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
   })

@@ -24,7 +24,7 @@ test("an attached side host outlives turns, streams through the shared fold, and
       runners.push({ options, finish: done.resolve })
       options.lifecycle.signal?.addEventListener("abort", () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), { once: true })
       started[runners.length - 1]?.resolve()
-      return { send() {}, end() {}, abort: () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), done: done.promise }
+      return { send() {}, abort: () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), done: done.promise }
     },
   })
   const bus = new EventBus()

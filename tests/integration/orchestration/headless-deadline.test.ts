@@ -84,7 +84,6 @@ describe("runHeadlessTask deadline", () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "flywheel-headless-deadline-"));
     const completedRunner: AgentFactory = () => ({
       send() {},
-      end() {},
       abort() {},
       done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
     });
@@ -101,7 +100,6 @@ describe("runHeadlessTask deadline", () => {
       const done = new Promise<{ servedRequests: 0, durationMs: number; terminal: { kind: "aborted" } }>((resolve) => { resolveDone = resolve; });
       return {
         send() {},
-        end() {},
         abort() {
           aborted = true;
           setTimeout(() => {

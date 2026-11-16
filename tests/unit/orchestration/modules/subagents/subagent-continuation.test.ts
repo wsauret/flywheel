@@ -336,7 +336,7 @@ describe("explicit child Resume", () => {
       calls.push(options)
       const done = Promise.withResolvers<AgentRunResult>()
       results.push(done)
-      return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 7, terminal: { kind: "aborted" } }) }, done: done.promise }
+      return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 7, terminal: { kind: "aborted" } }) }, done: done.promise }
     })
     try {
       const root = await createRoot(harness.manager)
@@ -421,7 +421,7 @@ describe("explicit child Resume", () => {
       calls.at(-1)!.runtimeSurfaces?.handoff?.onContent({ summary: "finished remaining work" })
       results.at(-1)!.resolve({ servedRequests: 0, durationMs: 11, terminal: { kind: "completed" } })
       await waitForSettled(harness, root.sessionId)
-      await reconcileChildSessionCompletions({ parentSessionId: root.sessionId, reader: harness.reader, writer: harness.writer })
+      await reconcileChildSessionCompletions({ parentSessionId: root.sessionId, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer })
       expect(originalCallResults()).toEqual(parentResults)
       const attemptCount = status === "stopped" ? 3 : 2
       expect(await harness.reader.readInFlight(root.sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toHaveLength(attemptCount)

@@ -77,7 +77,6 @@ function harness(input: {
   return {
     events,
     onToolUse: (tc: ToolCall) => dispatcher.onToolUse(tc),
-    onStreamRetry: () => dispatcher.onStreamRetry(),
     settle: async (calls: readonly ToolCall[]) => {
       try {
         const settled = await Effect.runPromise(settleTurn({
@@ -111,7 +110,7 @@ function backgroundOwner(): BackgroundExecutionOwner {
 }
 
 describe("createTurnDispatcher", () => {
-  it("passes user interrupts into foreground tool execution", async () => {
+  it("An aborted turn aborts its running tool calls through the turn signal", async () => {
     const turnAbort = new AbortController()
     const toolStarted = Promise.withResolvers<AbortSignal>()
     const toolCall: ToolCall = { id: "tool_wait", name: "waiter", input: {} }
@@ -422,32 +421,28 @@ describe("createTurnDispatcher", () => {
     expect(commitStatesSeenByDeferred).toEqual([true])
   })
 
-  it("releases a deferred waiter on stream retry without executing the abandoned call", async () => {
-    let runs = 0
+  it("A call deferred until the assistant commit never runs once its turn aborted", async () => {
+    const turnAbort = new AbortController()
+    let deferredRuns = 0
     const deferred: RuntimeTool = {
       ...makeTool(async (): Promise<ToolResult> => {
-        runs += 1
+        deferredRuns += 1
         return { content: "deferred", outcome: "ok" }
       }, "deferred"),
       deferUntilAssistantCommitted: true,
+      isConcurrencySafe: true,
     }
+    const turn = harness({ tools: new RequestToolMap([[deferred.name, deferred]]), signal: turnAbort.signal })
 
-    const turn = harness({ tools: new RequestToolMap([[deferred.name, deferred]]) })
-
-    const call: ToolCall = { id: "tool_deferred_retry", name: "deferred", input: {} }
+    const call: ToolCall = { id: "tool_deferred", name: "deferred", input: {} }
     turn.onToolUse(call)
-    // Abandons the attempt: the queued deferred waiter must wake through the
-    // opened gates and bail on the aborted attempt, never running the tool.
-    turn.onStreamRetry()
-
-    // The re-stream re-emits the same call on the fresh attempt.
-    turn.onToolUse(call)
+    turnAbort.abort()
     const batch = await turn.settle([call])
 
-    expect(runs).toBe(1)
-    expect(batch.published).toHaveLength(1)
-    expect(batch.published[0]?.content).toEqual([{ type: "text", text: "deferred" }])
-    expect(batch.published[0]?.outcome).toBe("ok")
+    expect(deferredRuns).toBe(0)
+    expect(batch.toolResults.map(({ toolUseId, outcome }) => ({ toolUseId, outcome }))).toEqual([
+      { toolUseId: "tool_deferred", outcome: "interrupted" },
+    ])
   })
 
   it("uses one normalized input object for dynamic admission and execution", async () => {

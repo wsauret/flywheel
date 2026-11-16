@@ -105,11 +105,6 @@ export class LiveAgent implements Agent {
     if (!started) log.warn("concurrent send() on a running runner; discarded (already enqueued)", { providerSessionKey: this.providerSessionKey });
   }
 
-  end(): void {
-    // Caller's pledge not to call send() again; the loop exits naturally once
-    // the queue drains and the model yields with no tool calls.
-  }
-
   abort(): void {
     this.lifecycle.abort({
       durationMs: 0,

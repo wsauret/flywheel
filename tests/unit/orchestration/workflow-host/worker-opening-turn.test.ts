@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { Effect, Exit, Schema, Scope } from "effect"
+import { Effect, Exit, Scope } from "effect"
 import { asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import type { CapabilityCheck } from "../../../../src/infra/capability-text"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types"
@@ -13,7 +13,6 @@ import { composeFirstPartyModules } from "../../../../src/orchestration/modules.
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
 import type { createWorkerCallback } from "../../../../src/orchestration/workflow-host/agent-callback"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema"
 import { planEveryCapability } from "../../../helpers/attempt-brief"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { repoDefinitions } from "../../../helpers/project-definitions"
@@ -22,6 +21,7 @@ import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { handoverAuthority } from "../agent-runtime/_command-handover-fixtures"
 import { asModelClient } from "../agent-runtime/_model-client"
 import { CONVERSATION, handoverWorker, publishStep, STEP, WORKFLOW } from "./_worker-step-fixtures"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const temporary = temporaryDirectories()
 
@@ -49,14 +49,14 @@ describe("a step's opening turn", () => {
     const scope = Scope.makeUnsafe("sequential")
     try {
       const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
-      const resolved = resolveWorkflowAgents(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      const resolved = resolveWorkflowAgents(loadedWorkflow({
         id: "wf", name: "Workflow", phases: [{ phase: "work", persona, brief: "Do the work.", name: "Work" }],
       }))
       let agentOptions: AgentOptions | undefined
       let opening: CapabilityCheck | undefined
       const worker = handoverWorker(dir, (options) => {
         agentOptions = options
-        return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }) }
+        return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }) }
       }, authority, undefined, workflowAgentInputs(authority.projectionReader, WORKFLOW), resolved, definitions.personas(), undefined, WORKFLOW, { planCapabilities })
       await worker(STEP, async (has) => { opening = has; return { userPrompt: "Do the work.", task: "" } }, undefined, CONVERSATION)
       if (!agentOptions || !opening) throw new Error("the step built no agent")

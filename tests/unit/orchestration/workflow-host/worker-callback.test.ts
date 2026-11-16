@@ -19,8 +19,6 @@ import type { ActiveBackgroundCommandDescriptor, BackgroundWorkResult } from "..
 import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/errors"
 import { HandoffInvalidError } from "../../../../src/workflows/context-bundle/handoff-errors"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema"
-import { Schema } from "effect"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { fakeContainer, handedOverRow, handoverAuthority } from "../agent-runtime/_command-handover-fixtures"
@@ -40,6 +38,7 @@ import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversati
 import { registerCapacityWaits } from "../../../../src/orchestration/session/capacity-wait"
 import { liveSessionControl, messageDisposition } from "../../../../src/orchestration/session/live-session-control"
 import type { RestoredAgentWait } from "../../../../src/orchestration/agent-runtime/agent-loop-types"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const temporary = temporaryDirectories()
 let sessionId: string
@@ -85,7 +84,6 @@ describe("a step's command handover", () => {
         })
         launched.resolve()
       },
-      end() {},
       abort() { done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }), authority, emit, undefined, undefined, undefined, (commands) => { live = commands })
@@ -133,7 +131,6 @@ describe("a step's command handover", () => {
             done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
           })
         },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }) },
         done: done.promise,
       }
@@ -173,7 +170,6 @@ describe("a step's command handover", () => {
             rawOutput: false,
           }).then(() => done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }))
         },
-        end() {},
         abort() {},
         done: done.promise,
       }
@@ -303,7 +299,6 @@ describe("a step's loop notices", () => {
             (error) => { stopped = error; done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
           )
         },
-        end() {},
         abort() {},
         done: done.promise,
       }
@@ -357,7 +352,6 @@ describe("a step's loop notices", () => {
           await options.conversation.flush?.()
           done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: invocation === 1 ? "aborted" : "completed" } })
         },
-        end() {},
         abort() {},
         get done() { return done.promise },
       }
@@ -391,7 +385,6 @@ describe("a step's loop notices", () => {
           options.onEvent?.(createRuntimeEvent("tool.input.completed", { type: "tool.input.completed", model_request_id: "request-1", tool_use: { id: "call-1", name: "read", provider_call_id: "call-1", provider_tool_name: "read", executable_tool_name: "read", input: {}, execution: { mode: "foreground", trace_kind: "tool" } } }))
           done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } })
         },
-        end() {},
         abort() {},
         get done() { return done.promise },
       }
@@ -439,14 +432,14 @@ describe("a step's persona grant", () => {
       const personas = new Map<string, AgentDefinition>(["reviewer", "editor", "advisor"].map((name) => [name, {
         kind: "persona", name, description: name, systemPrompt: name, tools: ["read"], role: name, maxTurns: 10,
       }]))
-      const resolved = resolveWorkflowAgents(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      const resolved = resolveWorkflowAgents(loadedWorkflow({
         id: "wf", name: "Workflow",
         phases: [{ phase: "work", brief: "Review the work.", subagents, name: "Work" }],
       }))
       let visible: string[] | undefined
       const worker = handoverWorker(dir, (options) => {
         visible = [...scopedAgentRegistry(options.agentRegistry ?? new Map(), options.allowedSubagentTypes).keys()]
-        return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }) }
+        return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }) }
       }, authority, undefined, workflowAgentInputs(authority.projectionReader, WORKFLOW), resolved, personas)
 
       await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
@@ -586,7 +579,6 @@ describe("a step whose handoff corrections run out", () => {
     const exhausted = new HandoffCorrectionExhausted({ message: "handoff failed 3 consecutive attempts; last error: Handoff rejected" })
     const worker = handoverWorker(dir, () => ({
       send() {},
-      end() {},
       abort() {},
       done: Promise.reject(exhausted),
     }), authority)
@@ -606,7 +598,7 @@ describe("a step whose handoff corrections run out", () => {
     const worker = handoverWorker(dir, (options) => {
       options.runtimeSurfaces?.handoff?.onRejected?.({ payload: { summary: "First try." }, issues: [{ path: "summary", message: "too short" }] })
       options.runtimeSurfaces?.handoff?.onRejected?.(refused)
-      return { send() {}, end() {}, abort() {}, done: Promise.reject(new HandoffCorrectionExhausted({ message: "handoff failed 3 consecutive attempts" })) }
+      return { send() {}, abort() {}, done: Promise.reject(new HandoffCorrectionExhausted({ message: "handoff failed 3 consecutive attempts" })) }
     }, authority)
 
     const output = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)

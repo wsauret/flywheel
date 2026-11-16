@@ -84,7 +84,7 @@ describe("a person's Stop of a workflow child", () => {
     const runsWorkflows: AgentFactory = (options) => {
       if (options.purpose.kind !== "workflow-agent" || step === "fails") {
         if (options.purpose.kind === "workflow-agent") stepRuns.resolve()
-        return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: options.purpose.kind === "workflow-agent" ? { kind: "api_error", message: "the provider failed", recovery: { kind: "none" } } : { kind: "completed" } }) }
+        return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: options.purpose.kind === "workflow-agent" ? { kind: "api_error", message: "the provider failed", recovery: { kind: "none" } } : { kind: "completed" } }) }
       }
       return newTestRunner({ ...options, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
         accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
@@ -211,7 +211,7 @@ describe("a person's Stop of a workflow child", () => {
     let stepAgents = 0
     const runsWorkflows: AgentFactory = (options) => {
       if (options.purpose.kind === "workflow-agent") stepAgents += 1
-      return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: options.purpose.kind === "workflow-agent" ? { kind: "api_error", message: "the provider failed", recovery: { kind: "none" } } : { kind: "completed" } }) }
+      return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: options.purpose.kind === "workflow-agent" ? { kind: "api_error", message: "the provider failed", recovery: { kind: "none" } } : { kind: "completed" } }) }
     }
     const ctx = context()
     const composition = compose(ctx, { runsWorkflows, runtimePreflight: async () => { preflightRuns.resolve(); await preflight.promise } })

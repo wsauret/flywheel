@@ -362,7 +362,6 @@ describe("chat session with agent runtime — interrupt + resume", () => {
         return {
           done: done.promise,
           send() { void park().catch(() => {}) },
-          end() {},
           abort() {
             runAbort.abort()
             done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } })
@@ -662,7 +661,6 @@ describe("chat session with agent runtime — interrupt + resume", () => {
           options.lifecycle.onTurnEnded?.({ handoffWritten: false, turnCount: 1 })
           finish()
         },
-        end() {},
         abort() { finish() },
       }
     }

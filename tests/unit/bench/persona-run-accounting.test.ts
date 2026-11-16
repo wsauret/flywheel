@@ -108,7 +108,7 @@ describe("direct persona timeout", () => {
     const deps = runtimeOf((options) => {
       runnerOptions = options;
       started.resolve();
-      return { send: (input) => { sent = input; }, abort: () => { aborted = true; }, end: () => {}, done };
+      return { send: (input) => { sent = input; }, abort: () => { aborted = true; }, done };
     });
     const persona = { kind: "persona", name: "implementer", description: "implement", role: "implementer", systemPrompt: "prompt", tools: [], maxTurns: 1, subagentRoles: ["explorer"] } satisfies PersonaDefinition;
     const registry = new Map<string, AgentDefinition>([["researcher", { kind: "persona", name: "researcher", description: "research", role: "explorer", systemPrompt: "research", tools: [], maxTurns: 1 }]]);
@@ -133,7 +133,6 @@ describe("direct persona timeout", () => {
     const deps = runtimeOf((options) => ({
       send: () => { options.runtimeSurfaces?.handoff?.onContent({ summary: "partial work" }); },
       abort: () => {},
-      end: () => {},
       done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error" as const, message: "provider failed", recovery: { kind: "none" } } }),
     }));
     const persona = { kind: "persona", name: "implementer", description: "implement", role: "implementer", systemPrompt: "prompt", tools: [], maxTurns: 1 } satisfies PersonaDefinition;
@@ -145,7 +144,6 @@ describe("direct persona timeout", () => {
 interface FakeRunner {
   send: (input: unknown) => void;
   abort: () => void;
-  end: () => void;
   done: Promise<Pick<AgentRunResult, "terminal">>;
 }
 
@@ -221,7 +219,7 @@ describe("persona cell accounting", () => {
   it("refuses a persona whose agent type the runtime's configuration turns off, and builds no runner", async () => {
     let built = 0;
     const implementer: PersonaDefinition = { ...PERSONA, name: "implementer", role: "implementer" };
-    const runtime = runtimeOf(() => { built += 1; return { send: () => {}, abort: () => {}, end: () => {}, done: Promise.resolve({ terminal: { kind: "completed" } }) }; });
+    const runtime = runtimeOf(() => { built += 1; return { send: () => {}, abort: () => {}, done: Promise.resolve({ terminal: { kind: "completed" } }) }; });
     const config = { ...CONFIG_DEFAULTS, subagents: { disabled_types: ["implementer"] } };
     const off = {
       ...runtime,
@@ -245,7 +243,6 @@ describe("persona cell accounting", () => {
           message: { content: [{ type: "text", text: "Exact completed answer." }] },
         })); },
         abort: () => {},
-        end: () => {},
         done: Promise.resolve({ terminal: { kind: "completed" } }),
       };
     });
@@ -263,7 +260,6 @@ describe("persona cell accounting", () => {
         options.onEvent(usageEvent(0.05, 300, 40, 2));
       },
       abort: () => {},
-      end: () => {},
       done: Promise.resolve({ terminal: { kind: "api_error", message: "provider failed", recovery: { kind: "none" } } }),
     })));
 
@@ -281,7 +277,6 @@ describe("persona cell accounting", () => {
       return {
         send: () => {},
         abort: () => {},
-        end: () => {},
         done: Promise.resolve({ terminal: { kind: "api_error", message: "stop", recovery: { kind: "none" } } }),
       };
     }));
@@ -301,7 +296,6 @@ describe("persona cell accounting", () => {
           controller.abort();
         },
         abort: () => { settled.resolve({ terminal: { kind: "interrupted" } }); },
-        end: () => {},
         done: settled.promise,
       };
     }), controller.signal);
@@ -316,7 +310,6 @@ describe("persona cell accounting", () => {
     const failure = await failureOf(runtimeOf(() => ({
       send: () => {},
       abort: () => {},
-      end: () => {},
       done: Promise.resolve({ terminal: { kind: "api_error", message: "provider failed", recovery: { kind: "none" } } }),
     })));
 

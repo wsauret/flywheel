@@ -247,7 +247,7 @@ function heldRuns() {
   const harness = createHarness((options) => {
     const done = Promise.withResolvers<AgentRunResult>();
     runs.push({ options, done });
-    return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); }, done: done.promise };
+    return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); }, done: done.promise };
   });
   return { harness, runs };
 }
@@ -383,7 +383,7 @@ describe("live child messages", () => {
 
       runs[0]?.done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: "provider broke", recovery: { kind: "none" } } });
       await Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)));
-      await reconcileChildSessionCompletions({ parentSessionId: parent, reader: harness.reader, writer: harness.writer });
+      await reconcileChildSessionCompletions({ parentSessionId: parent, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer });
 
       const failed = (await readSubagentRuns(harness.reader, child)).at(-1);
       expect(failed?.status).toBe("failed");

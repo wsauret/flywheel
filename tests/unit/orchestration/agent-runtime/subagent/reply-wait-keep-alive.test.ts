@@ -25,7 +25,7 @@ describe("subagent reply-wait keep-alive", () => {
     let options: AgentOptions | undefined;
     const factory = (agentOptions: AgentOptions): Agent => {
       options = agentOptions;
-      return { send() {}, end() {}, abort() {}, done: promise };
+      return { send() {}, abort() {}, done: promise };
     };
     const sessionDir = mkdtempSync(path.join(os.tmpdir(), "subagent-test-"));
     const store = createSqliteEventStore(path.join(sessionDir, "events.sqlite"));

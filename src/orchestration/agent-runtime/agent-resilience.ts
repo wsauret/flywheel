@@ -19,8 +19,6 @@ export interface ResilienceDeps {
   onNotice?: (operation: SessionNoticeOperation) => void
   signal?: AbortSignal
   originalProviderSessionKey?: string
-  /** Context for an explicit user retry after terminal stall exhaustion. */
-  initialRequestContext?: string
   /** The caller's recovery policy (`unattended-recovery.ts`). It receives
    *  each failed run with the requests the run served and the turn's
    *  effective cancellation (`signal`), and resolves to the request context
@@ -112,11 +110,7 @@ async function runRecovered(run: RunFn, deps: ResilienceDeps): Promise<AgentRunR
     return { durationMs: 0, servedRequests: 0, terminal: { kind: "aborted" } }
   }
   const session = originalProviderSessionKey ? { providerSessionKey: originalProviderSessionKey } : {}
-  let result = await run({
-    isRetry: false,
-    ...(deps.initialRequestContext ? { requestContext: deps.initialRequestContext } : {}),
-    ...session,
-  })
+  let result = await run({ isRetry: false, ...session })
   let failure = failureTerminal(result.terminal)
   // Each run rebuilds its context from the conversation the failed run
   // recorded, so a recovered run continues it.

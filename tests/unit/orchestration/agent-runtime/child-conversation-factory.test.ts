@@ -46,7 +46,6 @@ describe("child conversation factory", () => {
           options.conversation.append({ kind: "assistant", content: [{ type: "text", text: "done" }] })
           options.lifecycle.onTurnEnded?.({ handoffWritten: true, turnCount: 1 })
         },
-        end() {},
         abort() {},
         done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
       }

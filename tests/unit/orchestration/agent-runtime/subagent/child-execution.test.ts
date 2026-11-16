@@ -54,7 +54,6 @@ describe("child execution liveness and interruption", () => {
               (error) => { rejected = error; requestFinished.resolve(); done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
             );
           },
-          end() {},
           abort() { aborts += 1; firstAbort.resolve(); controller.abort(stop); done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
           done: done.promise,
         }),
@@ -133,7 +132,6 @@ describe("child execution liveness and interruption", () => {
               reject(abortError);
             }, 0);
           },
-          end() {},
           abort() {},
           done: promise,
         };
@@ -186,7 +184,7 @@ describe("child execution liveness and interruption", () => {
         childOptions = options;
         onEvent = options.onEvent;
         background = options.runtimeSurfaces?.background?.tasks;
-        return { send() {}, end() {}, abort() {}, done: promise };
+        return { send() {}, abort() {}, done: promise };
       };
       const sessionDir = path.join(os.tmpdir(), `subagent-test-${Date.now()}`);
       const deps = makeDeps({
@@ -293,7 +291,7 @@ describe("child execution liveness and interruption", () => {
       const sessionDir = temporary("child-command-wait-");
       const deps = makeDeps({
         sessionDir,
-        createRunner: (agentOptions) => { options = agentOptions; return { send() {}, end() {}, abort() {}, done: promise }; },
+        createRunner: (agentOptions) => { options = agentOptions; return { send() {}, abort() {}, done: promise }; },
         backgroundTasks: fakeRegistry,
         keepAliveIntervalMs: 5,
       });
@@ -344,7 +342,7 @@ describe("child execution liveness and interruption", () => {
         const done = new Promise<AgentRunResult>((resolve) => {
           finishChild = () => resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } });
         });
-        return { send() {}, end() {}, abort() {}, done };
+        return { send() {}, abort() {}, done };
       };
       const deps = makeDeps({
         sessionDir,
@@ -397,7 +395,7 @@ describe("child execution liveness and interruption", () => {
         createRunner: (options) => {
           childOptions = options;
           const done = new Promise<AgentRunResult>((resolve) => { finishChild = () => resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }); });
-          return { send() {}, end() {}, abort() {}, done };
+          return { send() {}, abort() {}, done };
         },
         onRenderEvent: (event) => parentEvents.push(event),
         onChildRenderEvent: (childSessionId, event) => childEvents.push({ childSessionId, event }),
@@ -476,7 +474,6 @@ function scriptedDispatch(script: ReadonlyArray<AgentRunResult["terminal"] | "ho
             done.resolve({ servedRequests: 0, durationMs: 1, terminal: step === "complete" ? { kind: "completed" } : step });
           }, 0);
         },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
         done: done.promise,
       };

@@ -61,7 +61,6 @@ function makeLifecycle(setup: {
         if (setup.exitBeforeLifecycle) resolvers.at(-1)?.({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
         else void park().catch(() => {})
       },
-      end() {},
       abort() {
         runAbort.abort()
         resolvers.at(-1)?.({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } })

@@ -45,7 +45,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
       sessionId: "local-refusal",
       createAgent: () => {
         launched = true
-        return { send() {}, abort() {}, end() {}, done: Promise.resolve({ servedRequests: 0,
+        return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0,
           durationMs: 0,
           terminal: source === "terminal" ? { kind: "local_persistence_error", error } : { kind: "completed" },
         }) }
@@ -460,7 +460,6 @@ describe("chat session with agent runtime request-owned recovery", () => {
           : { servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
         send() {},
         abort() {},
-        end() {},
       }
     }
 
@@ -540,7 +539,6 @@ describe("chat session with agent runtime request-owned recovery", () => {
         send(text: string) { sends.push(text) },
         interruptGeneration() { this.interruptCalls++; return true },
         abort() { resolve({ servedRequests: 0, durationMs: 1, providerSessionKey: "agent-test", terminal: { kind: "aborted" } }) },
-        end() {},
       }
       runners.push(runner)
       return runner

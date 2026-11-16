@@ -105,8 +105,6 @@ class FakeCellRunner implements Agent {
     this.#settle({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } });
   }
 
-  end(): void {}
-
   abort(): void {
     this.aborted = true;
     if (this.options.purpose.kind === "headless-task") return;

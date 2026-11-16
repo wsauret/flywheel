@@ -17,12 +17,11 @@
 
 import { Cause, Deferred, Effect, Exit, Fiber, Schema, type Scope } from "effect";
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js";
-import { mergeAbortSignals } from "../../infra/abort.js";
 import { errorDetail, errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
 import { shouldTerminateToolBatch } from "./tools/tool-batch-termination.js";
-import { createToolConcurrencyGate, type ToolConcurrencyGate } from "./tools/tool-concurrency-gate.js";
+import { createToolConcurrencyGate } from "./tools/tool-concurrency-gate.js";
 import type { ExecutionWhitelist } from "./tools/tool-policy.js";
 import type { ToolResultEntry } from "./agent-state.js";
 import { enforceTurnBudget, limitOutput, textChars, type TurnBudgetEntry } from "./compaction/truncation.js";
@@ -127,12 +126,6 @@ export interface TurnDispatcher {
    *  (name repaired, input coercions stamped) so the caller can emit the
    *  runtime event that matches what actually ran. */
   onToolUse(tc: ToolCall): ToolCall;
-  /** Called when the provider stream retries mid-turn. Abandons the attempt:
-   *  in-flight background tools see the aborted attempt signal, queued
-   *  foreground tools wake and bail, and retained fibers are interrupted. The
-   *  abandoned entries hold no settlement authority, so no stale result
-   *  surfaces once the re-stream re-emits the same tool_use. */
-  onStreamRetry(): void;
   /** Registers any reported call that was never dispatched, releases the
    *  stream gate so ordinary queued foreground tools run, then, when a call
    *  defers on the assistant commit, waits for canonical assistant durability
@@ -179,26 +172,6 @@ interface ToolEntry {
   context?: ToolContext;
 }
 
-interface AttemptState {
-  entries: ToolEntry[];
-  submittedIds: Set<string>;
-  /** Released by `releaseCalls` to fire queued foreground tools;
-   *  `onStreamRetry` aborts `attemptAbort` first, so woken tools see the
-   *  aborted signal and return cleanly. */
-  streamGate: Deferred.Deferred<void>;
-  /** Gate for `deferUntilAssistantCommitted` calls. Only `releaseCalls` opens
-   *  it, after the canonical assistant append is acknowledged, so an ordinary
-   *  call's eager stream-gate open never wakes a deferred call before the
-   *  turn's assistant message (and the loop state derived from it) is
-   *  committed. */
-  commitGate: Deferred.Deferred<void>;
-  /** Aborted on stream retry to cancel in-flight background tool runners. */
-  attemptAbort: AbortController;
-  /** Fresh per attempt: an abandoned attempt's gate is simply discarded, no
-   *  cleanup needed for whatever was mid-acquire on it. */
-  concurrencyGate: ToolConcurrencyGate;
-}
-
 interface FinalizeContext {
   tools: ReadonlyMap<string, RuntimeTool>;
   executionCwd: string;
@@ -222,44 +195,32 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
     onEvent: deps.onEvent,
   };
 
-  function newAttempt(): AttemptState {
-    return {
-      entries: [],
-      submittedIds: new Set(),
-      streamGate: Deferred.makeUnsafe<void>(),
-      commitGate: Deferred.makeUnsafe<void>(),
-      attemptAbort: new AbortController(),
-      concurrencyGate: createToolConcurrencyGate(MAX_CONCURRENT_TOOLS),
-    };
+  const entries: ToolEntry[] = [];
+  /** Calls already dispatched during the stream, so `releaseCalls` and a
+   *  repeated `onToolUse` never dispatch one twice. */
+  const submittedIds = new Set<string>();
+  /** Released by `releaseCalls`, or eagerly by an ordinary call, to fire
+   *  queued foreground tools. */
+  const streamGate = Deferred.makeUnsafe<void>();
+  /** Gate for `deferUntilAssistantCommitted` calls. Only `releaseCalls` opens
+   *  it, after the canonical assistant append is acknowledged, so an ordinary
+   *  call's eager stream-gate open never wakes a deferred call before the
+   *  turn's assistant message (and the loop state derived from it) is
+   *  committed. */
+  const commitGate = Deferred.makeUnsafe<void>();
+  const concurrencyGate = createToolConcurrencyGate(MAX_CONCURRENT_TOOLS);
+
+  function openStreamGate(): void {
+    Effect.runSync(Deferred.succeed(streamGate, undefined));
   }
 
-  let attempt = newAttempt();
-
-  function openStreamGate(attemptCtx: AttemptState): void {
-    Effect.runSync(Deferred.succeed(attemptCtx.streamGate, undefined));
+  function openCommitGate(): void {
+    Effect.runSync(Deferred.succeed(commitGate, undefined));
   }
 
-  function openCommitGate(attemptCtx: AttemptState): void {
-    Effect.runSync(Deferred.succeed(attemptCtx.commitGate, undefined));
-  }
-
-  // Both modes merge `attemptAbort` so a stream retry kills the in-flight
-  // dispatch before the re-stream re-emits the same tool_use (dedup). They
-  // differ only in their base scope: foreground rides the turn signal,
-  // background rides the durable signal so turn-end does not kill it.
-  function attemptSignal(attemptCtx: AttemptState): AbortSignal {
-    return mergeAbortSignals(deps.signal, attemptCtx.attemptAbort.signal);
-  }
-
-  function backgroundCallSignal(ownerSignal: AbortSignal, attemptCtx: AttemptState): AbortSignal {
-    return mergeAbortSignals(ownerSignal, attemptCtx.attemptAbort.signal);
-  }
-
-  function stopped(attemptCtx: AttemptState): boolean {
-    return attemptCtx.attemptAbort.signal.aborted || deps.signal?.aborted === true;
-  }
-
-  function callContext(call: ToolCall, signal: AbortSignal, attemptCtx: AttemptState, attributionIdentity?: ToolAttributionIdentity): ToolContext {
+  // A foreground call rides the turn signal; a background call rides its
+  // owner's durable signal, so a turn end does not stop it.
+  function callContext(call: ToolCall, signal: AbortSignal | undefined, attributionIdentity?: ToolAttributionIdentity): ToolContext {
     const context: ToolContext = {
       ...deps.toolContext,
       signal,
@@ -278,7 +239,7 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
     context.createNestedToolDispatchBatch = (options) => createNestedToolDispatchBatch({
       ...options,
       context,
-      gate: attemptCtx.concurrencyGate,
+      gate: concurrencyGate,
       publisher: createNestedToolFactPublisher(context),
       ...(deps.executionWhitelist ? { executionWhitelist: deps.executionWhitelist } : {}),
       ...(deps.toolExecutionGate ? { toolExecutionGate: deps.toolExecutionGate } : {}),
@@ -288,15 +249,15 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
   }
 
 
-  function record(entry: ToolEntry, attemptCtx: AttemptState): void {
-    attemptCtx.entries.push(entry);
-    attemptCtx.submittedIds.add(entry.tc.id);
+  function record(entry: ToolEntry): void {
+    entries.push(entry);
+    submittedIds.add(entry.tc.id);
   }
 
-  function registeredEntry(call: ToolCall, attemptCtx: AttemptState): ToolEntry {
+  function registeredEntry(call: ToolCall): ToolEntry {
     return {
       tc: call,
-      registrationOrdinal: attemptCtx.entries.length,
+      registrationOrdinal: entries.length,
       fiber: null,
       drain: Effect.void,
       attributionIdentity: call.modelRequestId ? deps.requestAttribution?.resolve(call.modelRequestId) : undefined,
@@ -349,26 +310,25 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
     };
   }
 
-  function startForeground(prepared: PreparedToolCall, attemptCtx: AttemptState): void {
+  function startForeground(prepared: PreparedToolCall): void {
     const call = prepared.call;
-    const entry = registeredEntry(call, attemptCtx);
+    const entry = registeredEntry(call);
     const deferred = deps.tools.get(call.name)?.deferUntilAssistantCommitted === true;
 
     const body = Effect.gen(function* () {
       writeToolLifecycleDiagnostic(call, "fiber-entered");
-      yield* Deferred.await(deferred ? attemptCtx.commitGate : attemptCtx.streamGate);
+      yield* Deferred.await(deferred ? commitGate : streamGate);
       writeToolLifecycleDiagnostic(call, "stream-gate-released");
-      if (stopped(attemptCtx)) {
+      if (deps.signal?.aborted === true) {
         settle(entry, interruptedByInput(call));
         return;
       }
-      const signal = attemptSignal(attemptCtx);
-      entry.context = callContext(call, signal, attemptCtx, entry.attributionIdentity);
+      entry.context = callContext(call, deps.signal, entry.attributionIdentity);
       yield* executeDispatchedTool({
         prepared,
         context: entry.context,
-        gate: attemptCtx.concurrencyGate,
-        signal,
+        gate: concurrencyGate,
+        signal: deps.signal,
         ...(deps.executionWhitelist ? { executionWhitelist: deps.executionWhitelist } : {}),
         ...(deps.toolExecutionGate ? { toolExecutionGate: deps.toolExecutionGate } : {}),
         onSettled: (result) => settle(entry, result),
@@ -379,24 +339,23 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
     const fiber = Effect.runSync(Effect.forkIn(body, deps.turnScope));
     entry.fiber = fiber;
     entry.drain = drainEntry(entry, fiber);
-    record(entry, attemptCtx);
+    record(entry);
     writeToolLifecycleDiagnostic(call, "registered");
   }
 
-  function startBackground(prepared: PreparedToolCall, attemptCtx: AttemptState): void {
+  function startBackground(prepared: PreparedToolCall): void {
     const call = prepared.call;
-    const entry = registeredEntry(call, attemptCtx);
-    const fiber = deps.background?.run((ownerSignal) => Effect.gen(function* () {
-      const signal = backgroundCallSignal(ownerSignal, attemptCtx);
+    const entry = registeredEntry(call);
+    const fiber = deps.background?.run((signal) => Effect.gen(function* () {
       if (signal.aborted) {
         settle(entry, backgroundNotStarted(call));
         return;
       }
-      entry.context = callContext(call, signal, attemptCtx, entry.attributionIdentity);
+      entry.context = callContext(call, signal, entry.attributionIdentity);
       yield* executeDispatchedTool({
         prepared,
         context: entry.context,
-        gate: attemptCtx.concurrencyGate,
+        gate: concurrencyGate,
         signal,
         ...(deps.executionWhitelist ? { executionWhitelist: deps.executionWhitelist } : {}),
         ...(deps.toolExecutionGate ? { toolExecutionGate: deps.toolExecutionGate } : {}),
@@ -405,18 +364,17 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
     })) ?? null;
     if (fiber === null) {
       settle(entry, backgroundNotStarted(call));
-      record(entry, attemptCtx);
+      record(entry);
       return;
     }
     entry.drain = drainEntry(entry, fiber);
-    record(entry, attemptCtx);
+    record(entry);
   }
 
 
   function onToolUse(tc: ToolCall): ToolCall {
-    if (attempt.submittedIds.has(tc.id)) return tc;
+    if (submittedIds.has(tc.id)) return tc;
 
-    const attemptCtx = attempt;
     const prepared = prepareToolCall(tc, deps.tools, deps.executionAdmission);
     // Publish the call immediately. Async preparation finalizes repairs before
     // policy and execution; its durable result carries their notices.
@@ -424,72 +382,61 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
 
     const refusal = deps.toolContext.refuseAfterHandoff?.(call);
     if (refusal) {
-      const entry = registeredEntry(call, attemptCtx);
-      record(entry, attemptCtx);
+      const entry = registeredEntry(call);
+      record(entry);
       settle(entry, refusal);
       return call;
     }
     if (runtimeToolExecution(deps.tools.get(call.name)).mode === "background") {
-      startBackground(prepared, attemptCtx);
+      startBackground(prepared);
       return call;
     }
     // Open eagerly per tool call (idempotent) instead of waiting for
     // settlement: a tool_use event already means the model's full JSON input
     // for that call parsed (content_block_stop-equivalent), so there is nothing
     // left to wait for. The settlement open remains as a safety net for an
-    // attempt with zero tool_use events. Deferred calls wait on the commit
+    // turn with zero tool_use events. Deferred calls wait on the commit
     // gate instead, so this eager open never releases them.
-    if (deps.tools.get(call.name)?.deferUntilAssistantCommitted !== true) openStreamGate(attemptCtx);
-    startForeground(prepared, attemptCtx);
+    if (deps.tools.get(call.name)?.deferUntilAssistantCommitted !== true) openStreamGate();
+    startForeground(prepared);
     return call;
   }
 
-  function unresolvedFibers(entries: readonly ToolEntry[]): Fiber.Fiber<void, PersistenceWriteRefused>[] {
+  function unresolvedFibers(): Fiber.Fiber<void, PersistenceWriteRefused>[] {
     return entries.flatMap((entry) => entry.result || entry.error || !entry.fiber ? [] : [entry.fiber]);
   }
 
   return {
     onToolUse,
 
-    onStreamRetry(): void {
-      const abandoned = attempt;
-      attempt = newAttempt();
-      abandoned.attemptAbort.abort();
-      openStreamGate(abandoned);
-      openCommitGate(abandoned);
-      // Detached: the abandoned entries hold no settlement authority, and the
-      // turn scope owns the wait for whatever is still unwinding.
-      Effect.runFork(Fiber.interruptAll(unresolvedFibers(abandoned.entries)));
-    },
-
     releaseCalls(allToolCalls: readonly ToolCall[]): Effect.Effect<void> {
       return Effect.gen(function* () {
         for (const tc of allToolCalls) {
-          if (!attempt.submittedIds.has(tc.id)) onToolUse(tc);
+          if (!submittedIds.has(tc.id)) onToolUse(tc);
         }
-        openStreamGate(attempt);
+        openStreamGate();
         const hasDeferredCall = allToolCalls.some((tc) => deps.tools.get(tc.name)?.deferUntilAssistantCommitted === true);
         if (hasDeferredCall) {
           yield* Effect.promise(() => deps.toolContext.flushCanonicalMessages?.(new Set(allToolCalls.map((tc) => tc.id))) ?? Promise.resolve());
         }
-        openCommitGate(attempt);
+        openCommitGate();
       });
     },
 
     interruptUnresolved(): Effect.Effect<void> {
-      return Effect.suspend(() => Fiber.interruptAll(unresolvedFibers(attempt.entries)));
+      return Effect.suspend(() => Fiber.interruptAll(unresolvedFibers()));
     },
 
     joinAll(): Effect.Effect<void> {
-      return Effect.suspend(() => Fiber.awaitAll(attempt.entries.flatMap((entry) => entry.fiber ? [entry.fiber] : []))).pipe(Effect.asVoid);
+      return Effect.suspend(() => Fiber.awaitAll(entries.flatMap((entry) => entry.fiber ? [entry.fiber] : []))).pipe(Effect.asVoid);
     },
 
     drain(): Effect.Effect<void, PersistenceWriteRefused> {
-      return Effect.suspend(() => Effect.forEach(attempt.entries, (entry) => entry.drain, { discard: true }));
+      return Effect.suspend(() => Effect.forEach(entries, (entry) => entry.drain, { discard: true }));
     },
 
     collect(allToolCalls: readonly ToolCall[]): Effect.Effect<SettledToolBatch> {
-      return Effect.suspend(() => Effect.promise(() => collectSettledBatch(attempt.entries, allToolCalls, finalizeCtx)));
+      return Effect.suspend(() => Effect.promise(() => collectSettledBatch(entries, allToolCalls, finalizeCtx)));
     },
   };
 }

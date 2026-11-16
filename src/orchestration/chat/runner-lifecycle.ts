@@ -385,10 +385,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
           createContextOptions: async ({ providerSessionKey }: RetryState) =>
             buildRunnerContextOptions(turn, providerSessionKey ?? providerConversationId, opts.purpose),
           onContextCreated: (ctx) => {
-            if (!isLiveTurn(turn)) {
-              ctx.end()
-              throw new AgentTurnAborted()
-            }
+            // The host aborts the context when this callback throws.
+            if (!isLiveTurn(turn)) throw new AgentTurnAborted()
             state.attachRunner(ctx)
             deps.treeWriter.beginTurn()
           },
