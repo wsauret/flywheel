@@ -1,0 +1,14 @@
+bench/harbor/configs/luna-oc-parity.toml
+  h_4b47e9e4a8b456 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1123045037d28345455043a966d7ab969c9781b4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
