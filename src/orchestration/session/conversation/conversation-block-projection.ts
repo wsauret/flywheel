@@ -108,7 +108,6 @@ export class TreeBlockProjection {
       case "branch_summary":
         this.append({ kind: "system", id: entry.id, message: `Branch summary: ${entry.summary}`, timestamp: entryTimestamp(entry) });
         return;
-      case "label":
       case "session_info":
       case "leaf":
         return;

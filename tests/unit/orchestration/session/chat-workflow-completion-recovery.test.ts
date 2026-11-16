@@ -194,6 +194,7 @@ function createSupervisor(
         return reconcileChildSessionCompletions({
           parentSessionId,
           reader: liveRegistry ? projectionReader : asAsyncEventReadSurface(cycle.store),
+          projectionReader: liveRegistry ? projectionReader : asAsyncEventReadSurface(cycle.store),
           writer: {
             append: async (event) => cycle.store.append(event),
             appendBatch: async (events) => cycle.store.appendBatch(events),

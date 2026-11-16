@@ -12,6 +12,9 @@ import type { BudgetLimits } from "../../../../src/workflows/budget";
 import type { EmitFn } from "../../../../src/infra/event-bus";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
 import type { SessionBudgetStore } from "../../../../src/orchestration/session/budget-store-types.js";
+import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js";
+import type { StoredFact } from "../../../../src/infra/event-store-types.js";
+import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js";
 
 /** No-op emitter for tests that exercise budget APIs but ignore emissions. */
 export const noopEmitter: EmitFn = () => {};
@@ -133,6 +136,34 @@ export function committedUsageEvent(options: { attemptId: string; classification
   }
 }
 
+/** Build a main-thread context measurement. */
+export function contextEvent(promptTokens: number, contextWindow: number): RuntimeEvent {
+  return {
+    type: "model.context.measured",
+    data: { type: "model.context.measured", context_prompt_tokens: promptTokens, context_window: contextWindow },
+  };
+}
+
+/** Records `event` as a session runtime does: each durable fact it maps to
+ *  goes through `record`. With `budget`, each stored fact also reaches it, as
+ *  the session writer's `onStored` hook delivers it. */
+export async function recordRuntimeEvent(
+  record: (fact: SessionRuntimeFact) => Promise<StoredFact | null>,
+  event: RuntimeEvent,
+  budget?: Pick<SessionBudgetStore, "applyStoredFact">,
+): Promise<void> {
+  for (const fact of mapRuntimeEventToSessionRuntimeFacts(event)) {
+    const stored = await record(fact);
+    if (stored && budget) await budget.applyStoredFact(stored);
+  }
+}
+
+/** A budget store over a real session writer, with the runtime-event write
+ *  that the session's owners make (`recordRuntimeEvent`). */
+export interface BudgetStoreHarness extends SessionBudgetStore {
+  recordRuntimeEvent(event: RuntimeEvent): Promise<void>;
+}
+
 /** Build an assistant event (non-cost, should be ignored by the budget store). */
 export function assistantEvent(text: string): RuntimeEvent {
   return {
@@ -166,7 +197,7 @@ export function makeSessionStores(baseDir: string, sessionId: string) {
   return { store, projectionReader: asAsyncEventReadSurface(store), writer, record: writer.record, close: () => store.close() };
 }
 
-export function makeSessionBudgetStore(baseDir: string, sessionId: string, opts: { emitter?: EmitFn; budgetLimits?: BudgetLimits } = {}): SessionBudgetStore {
+export function makeSessionBudgetStore(baseDir: string, sessionId: string, opts: { emitter?: EmitFn; budgetLimits?: BudgetLimits } = {}): BudgetStoreHarness {
   const stores = makeSessionStores(baseDir, sessionId);
   const budgetStore = createSessionBudgetStore({
     sessionId,
@@ -178,6 +209,7 @@ export function makeSessionBudgetStore(baseDir: string, sessionId: string, opts:
   const dispose = budgetStore.dispose;
   return {
     ...budgetStore,
+    recordRuntimeEvent: (event) => recordRuntimeEvent(stores.record, event, budgetStore),
     dispose(): void {
       dispose();
       stores.writer.dispose();

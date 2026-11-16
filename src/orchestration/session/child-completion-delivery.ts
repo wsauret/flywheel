@@ -7,7 +7,7 @@ import { retryChildResults } from "./child-reconciliation-fault.js"
 interface CompletionDeliveryInput {
   readonly parentSessionId: string
   readonly reader: AsyncEventStateReadSurface
-  readonly projectionReader?: AsyncEventStateReadSurface
+  readonly projectionReader: AsyncEventStateReadSurface
   readonly deliverNotification?: (notification: HeldBackgroundNotification) => Promise<boolean>
 }
 
@@ -45,7 +45,7 @@ export async function offerChildCompletion(input: CompletionDeliveryInput, notif
  * recovery responsibility across runner replacement. Returns the keys still
  * held. */
 export async function reofferChildCompletions(input: CompletionDeliveryInput, previous: readonly InFlightRecord[], passesWrote: boolean, retry: () => Promise<void>): Promise<ReadonlySet<string>> {
-  const reader = input.projectionReader ?? input.reader
+  const reader = input.projectionReader
   const read = () => reader.readInFlight(input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)
   const previousKeys = new Set(previous.map(({ key }) => key))
   const held = passesWrote ? await read() : previous

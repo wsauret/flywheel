@@ -68,7 +68,6 @@ const catalogFields = {
   branch: OptionalString,
   conversationId: OptionalString,
   providerConversationId: OptionalString,
-  workflowState: Schema.optionalKey(Schema.Literals(["idle", "running", "paused", "completed", "failed"])),
   parentSessionId: OptionalString,
   childSessionIds: Schema.optionalKey(Schema.Array(Schema.String)),
   launchedFrom: Schema.optionalKey(LaunchedFromSchema),

@@ -568,13 +568,13 @@ describe("tree -> output blocks re-projection", () => {
     }
   })
 
-  it("includes displayOnly entries and skips label/leaf bookkeeping entries", () => {
+  it("includes displayOnly entries and skips topology and leaf bookkeeping entries", () => {
     const diagnostic = entry({ kind: "system", content: "provider hiccup" }, { displayOnly: true })
     seq += 1
-    const label: ConversationEntry = { id: `e${seq}`, parentId: diagnostic.id, timestamp: T0, kind: "label", targetId: diagnostic.id, label: "x" }
+    const topology: ConversationEntry = { id: `e${seq}`, parentId: diagnostic.id, timestamp: T0, kind: "session_info" }
     seq += 1
-    const leaf: ConversationEntry = { id: `e${seq}`, parentId: label.id, timestamp: T0, kind: "leaf", targetId: diagnostic.id }
-    const blocks = project([diagnostic, label, leaf])
+    const leaf: ConversationEntry = { id: `e${seq}`, parentId: topology.id, timestamp: T0, kind: "leaf", targetId: diagnostic.id }
+    const blocks = project([diagnostic, topology, leaf])
 
     expect(blocks).toEqual([
       { kind: "system", id: diagnostic.id, message: "provider hiccup", timestamp: Date.parse(T0) },

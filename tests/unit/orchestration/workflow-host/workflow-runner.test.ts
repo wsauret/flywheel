@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { Schema } from "effect"
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/child-session-reconciliation.js"
@@ -15,7 +14,7 @@ import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps.js"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js"
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js"
@@ -27,6 +26,7 @@ import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-ru
 import { newTestRunner } from "../../../helpers/agent-runner"
 import { refusingLauncher } from "../../../helpers/launcher-fake"
 import { asModelClient } from "../agent-runtime/_model-client"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const contexts: ReturnType<typeof createSupervisorTestContext>[] = []
 const hosts: WorkflowHosts[] = []
@@ -48,7 +48,7 @@ async function workflowRun(firstReport: "pending" | "fails" | "delayed", resumeS
   const parentSessionId = await ctx.manager.createChat({ id: "parent", name: "Parent" })
   const parent = await ctx.manager.read(parentSessionId)
   if (parent?.kind !== "chat") throw new Error("missing parent")
-  const workflow = options.workflow ?? Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = options.workflow ?? loadedWorkflow({
     id: "empty-list", name: "Empty list",
     input: { fields: { items: { type: "list", description: "Targets", max: 1, unique: "id", of: { type: "object", fields: { id: { type: "string", description: "Target" } } } } } },
     phases: [{ phase: "work", over: "input.items", brief: "Do the work.", writes: [] }],
@@ -88,7 +88,7 @@ async function workflowRun(firstReport: "pending" | "fails" | "delayed", resumeS
     return true
   }
   const reconcile = () => reconcileChildSessionCompletions({
-    parentSessionId, reader, writer: ctx.store,
+    parentSessionId, reader, projectionReader: reader, writer: ctx.store,
     deliverNotification: (notification) => {
       const committed = commits.then(() => commitNotification(notification))
       commits = committed.then(() => {}, () => {})
@@ -97,7 +97,7 @@ async function workflowRun(firstReport: "pending" | "fails" | "delayed", resumeS
   })
   if (resumeStartFailure) {
     await recordChildWorkflowStartFailure({
-      parentSessionId, reader, writer: ctx.store, toolUseId: "launch", childSessionId: "child", workflowDefinitionId: workflow.id,
+      parentSessionId, reader, projectionReader: reader, writer: ctx.store, toolUseId: "launch", childSessionId: "child", workflowDefinitionId: workflow.id,
     })
     // The parent reads the start failure before the person resumes the run.
     await reconcile()
@@ -263,7 +263,7 @@ describe("workflow agents and agent types", () => {
   // The run is published with every agent type on; the live configuration turns the reviewer type off before the
   // host starts the agent, as a person's change after launch admission does.
   it("never starts an agent as a persona whose type was turned off after launch", async () => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "review", name: "Review", phases: [{ phase: "review", persona: "reviewer-code-quality", brief: "Review the change.", writes: [] }],
     })
     const base = makeWorkflowDeps()
@@ -292,7 +292,7 @@ describe("a workflow agent's learning", () => {
   // The run admits every module, learning included, under a capability boundary, and the live configuration
   // keeps the default review interval of 10 model calls, which the agent passes before its handoff.
   it("starts no learning review for an agent that completes after more model calls than the review interval", async () => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "work", name: "Work", phases: [{ phase: "work", brief: "Do the work.", writes: [] }],
     })
     const base = makeWorkflowDeps()

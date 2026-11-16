@@ -32,7 +32,7 @@ test("a parent that a settling reader cannot read before the sweep shows the fau
   const notices: unknown[] = []
   const unroute = routeChildResultNotices(reader, (sessionId, operation) => { notices.push({ sessionId, ...operation }) })
   try {
-    await expect(reconcileChildSessionCompletions({ parentSessionId, reader, writer })).rejects.toThrow("injected parent read failure")
+    await expect(reconcileChildSessionCompletions({ parentSessionId, reader, projectionReader: reader, writer })).rejects.toThrow("injected parent read failure")
     expect(settled).toEqual([])
     expect(notices).toEqual([{ sessionId: parentSessionId, type: "upsert", notice: expect.objectContaining({ message: expect.stringContaining("Cause: injected parent read failure.") }) }])
   } finally { unroute() }

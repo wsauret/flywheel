@@ -87,7 +87,7 @@ describe("child completion membership", () => {
       await manager.createChat({ id, conversationId: `${id}-conversation`, name: id })
       await addSubagentChild(store, writer, tmpDir, id, `${id}-conversation`, index, "created")
     }
-    const reconcile = (parentSessionId: string) => reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), writer })
+    const reconcile = (parentSessionId: string) => reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer })
     const complete = async (index: number) => {
       const childWriter = createSessionFactWriter({ sessionId: `child-${index}`, writer })
       await childWriter.record(buildSubagentCompleted({ childRunId: `run-${index}`, status: "completed", isError: false, content: "Reviewed.", durationMs: 1 }))
@@ -123,7 +123,7 @@ describe("child completion membership", () => {
       sessionId: parentSessionId, state: async () => state, deliver: async () => ({ status: "delivered", startsTurn: false }),
       backgroundTasks: registry, notify: async () => false,
     })
-    const input = { parentSessionId, reader: counter.reader, writer }
+    const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer }
     try {
       // The first sweep holds the completion and offers it, which the hand-off
       // refuses; the second reads the result it wrote and offers it again.

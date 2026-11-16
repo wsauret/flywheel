@@ -170,7 +170,7 @@ export function interruptedTurnMessage(by: TurnInterruption, cutToolCall: boolea
 export function cutRunningToolCall(tail: readonly TurnEndEntry[]): boolean {
   for (let index = tail.length - 1; index >= 0; index -= 1) {
     const entry = tail[index]
-    if (!entry || entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)) continue
+    if (!entry || isSkippedByWalk(entry)) continue
     if (entry.kind !== "message" || !entry.message || turnEndOfEntry(entry)) return false
     const { message } = entry
     if (message.kind === "toolResult") {
@@ -206,7 +206,7 @@ export function turnEndOfEntry(entry: TurnEndEntry): TurnEnd | undefined {
 
 /** Whether an entry is a `settled` record, which every reader of how the
  *  model's turn ended reads past: it answered only its own exchange. */
-export function isSettledRecord(entry: TurnEndEntry): boolean {
+function isSettledRecord(entry: TurnEndEntry): boolean {
   return turnEndOfEntry(entry)?.reason === "settled"
 }
 
@@ -453,9 +453,10 @@ function continuesPlannedCut(tail: readonly TurnEndEntry[], index: number): bool
   return false
 }
 
-/** Entries that no restore walk reads: labels, notices, settled records. */
-function isSkippedByWalk(entry: TurnEndEntry): boolean {
-  return entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)
+/** Entries that no restore walk reads: topology entries, notices, settled
+ *  records. Recovery reads a historical label as a topology entry. */
+export function isSkippedByWalk(entry: TurnEndEntry): boolean {
+  return entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)
 }
 
 /** The open wait that the history before `end` still holds, read by the
@@ -544,7 +545,7 @@ function chatTurnEndDecision<Entry extends TurnEndEntry>(tail: readonly Entry[],
   for (let index = tail.length - 1; index >= 0; index -= 1) {
     const entry = tail[index]
     if (!entry) continue
-    if (entry.kind === "label" || entry.kind === "session_info") continue
+    if (entry.kind === "session_info") continue
     if (entry.kind !== "message" || !entry.message) return nothingOlderWaits()
     const end = turnEndOfEntry(entry)
     if (end?.reason === "settled") {
@@ -578,7 +579,7 @@ function acceptedHandoffInBatch(tail: readonly TurnEndEntry[], lastIndex: number
   const successful = new Set<string>()
   for (let index = lastIndex; index >= 0; index -= 1) {
     const entry = tail[index]
-    if (!entry || entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)) continue
+    if (!entry || isSkippedByWalk(entry)) continue
     if (entry.kind !== "message" || !entry.message || turnEndOfEntry(entry)) return false
     const message = entry.message
     if (message.kind === "toolResult") {
@@ -625,7 +626,7 @@ export function pendingTurnEndEntry(tail: readonly TurnEndEntry[]): TurnEndEntry
   return tail.findLast((entry) => {
     const end = turnEndOfEntry(entry)
     if (end) return end.reason !== "settled"
-    return !(entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || entry.message?.kind === "user")
+    return !(entry.kind === "session_info" || entry.displayOnly === true || entry.message?.kind === "user")
   })
 }
 
@@ -640,7 +641,7 @@ export function questionExchangeOf(tail: readonly TurnEndEntry[]): "waiting" | "
   const results = new Set<string>()
   for (let index = tail.length - 1; index >= 0; index -= 1) {
     const entry = tail[index]
-    if (!entry || entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)) continue
+    if (!entry || isSkippedByWalk(entry)) continue
     const message = entry.message
     if (entry.kind !== "message" || !message) return undefined
     if (message.kind === "toolResult" && message.toolUseId !== undefined) {
@@ -662,7 +663,7 @@ export function questionExchangeOf(tail: readonly TurnEndEntry[]): "waiting" | "
 export function endsAtTurnEnd(tail: readonly TurnEndEntry[]): boolean {
   for (let index = tail.length - 1; index >= 0; index -= 1) {
     const entry = tail[index]
-    if (!entry || entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)) continue
+    if (!entry || isSkippedByWalk(entry)) continue
     return turnEndOfEntry(entry) !== undefined
   }
   return false

@@ -191,7 +191,7 @@ export function holdChildReconciliationIndex(reader: AsyncEventStateReadSurface,
 export interface ChildReconciliationReadContext {
   readonly input: {
     readonly reader: AsyncEventStateReadSurface
-    readonly projectionReader?: AsyncEventStateReadSurface
+    readonly projectionReader: AsyncEventStateReadSurface
     readonly parentSessionId: string
   }
   readonly index: ChildReconciliationIndex

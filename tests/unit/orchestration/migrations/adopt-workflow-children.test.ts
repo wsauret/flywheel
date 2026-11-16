@@ -343,7 +343,7 @@ test.each(["stopped", "cancelled"] as const)("mirrors %s provenance onto the ado
     expect(branch(store, parent.conversationId).map((entry) => entry.id).at(-1)).toBe(historicalCompletionEntryId("stopped-child"))
     // The parent's next start owes no Stop notification either.
     const position = store.currentPosition()
-    await reconcileChildSessionCompletions({ parentSessionId: binding.parentSessionId, reader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
+    await reconcileChildSessionCompletions({ parentSessionId: binding.parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
     expect(store.currentPosition()).toBe(position)
     expect(store.readInFlight(binding.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toEqual([])
   } finally { store.close() }
@@ -440,7 +440,7 @@ test.each([
     // The parent's next start finds the completion delivered: no held
     // notification, and nothing more written.
     const position = store.currentPosition()
-    await reconcileChildSessionCompletions({ parentSessionId: binding.parentSessionId, reader, writer: asAsyncEventWriter(store) })
+    await reconcileChildSessionCompletions({ parentSessionId: binding.parentSessionId, reader, projectionReader: reader, writer: asAsyncEventWriter(store) })
     expect(store.currentPosition()).toBe(position)
     expect(store.readInFlight(binding.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toEqual([])
   } finally { store.close() }

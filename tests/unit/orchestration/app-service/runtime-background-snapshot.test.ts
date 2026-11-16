@@ -6,7 +6,6 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { resolveEventStoreDbFile, resolveSessionSummaryDbFile } from "../../../../src/infra/paths.js"
 import { createRuntimeBackgroundSnapshotProjector } from "../../../../src/orchestration/app-service/runtime-background-snapshot.js"
-import { createSessionBudgetStore } from "../../../../src/orchestration/session/budget-store.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/session-summary-index.js"
@@ -18,6 +17,7 @@ import { temporaryDirectories } from "../../../helpers/directories.js"
 import { entriesVisited } from "../../../helpers/entries-visited.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
 import { minimalSession } from "../session/_session-persistence-fixtures.js"
+import { contextEvent, recordRuntimeEvent } from "../session/_budget-store-fixtures.js"
 
 const temporary = temporaryDirectories()
 
@@ -51,28 +51,20 @@ describe("createRuntimeBackgroundSnapshotProjector", () => {
       const manager = createSessionManager({ projectRoot: tmpDir, executionCwd: tmpDir, store })
       const sessionId = await manager.createChat({ name: "Session bug", initialState: "inactive" })
       const writer = createSessionFactWriter({ sessionId, writer: asAsyncEventWriter(store) })
-      const budget = createSessionBudgetStore({
-        sessionId,
-        emitter: () => {},
-        reader: asAsyncEventReadSurface(store),
-        recorder: writer.record,
-      })
-
-      await budget.recordRuntimeEvent({
+      await recordRuntimeEvent(writer.record, {
         type: "model.turn.completed",
         data: {
           total_cost_usd: 8.24,
           usage: { input_tokens: 550_000, output_tokens: 1_900 },
         },
       })
-      await budget.recordContextUtilization(20, 100)
+      await recordRuntimeEvent(writer.record, contextEvent(20, 100))
       await writer.record({
         type: "session.duration.recorded",
         version: 1,
         actor: "flywheel",
         payload: { accumulatedActiveMs: 524_000 },
       })
-      budget.dispose()
       writer.dispose()
 
       const projector = createRuntimeBackgroundSnapshotProjector(asAsyncEventReadSurface(store), index, tmpDir)
@@ -110,9 +102,7 @@ describe("createRuntimeBackgroundSnapshotProjector", () => {
       const manager = createSessionManager({ projectRoot: tmpDir, executionCwd: tmpDir, store })
       const sessionId = await manager.createChat({ name: "Damaged speed", initialState: "inactive" })
       const writer = createSessionFactWriter({ sessionId, writer: asAsyncEventWriter(store) })
-      const budget = createSessionBudgetStore({ sessionId, emitter: () => {}, reader: asAsyncEventReadSurface(store), recorder: writer.record })
-      await budget.recordRuntimeEvent({ type: "model.turn.completed", data: { total_cost_usd: 1.5, usage: { input_tokens: 1_000, output_tokens: 200 } } })
-      budget.dispose()
+      await recordRuntimeEvent(writer.record, { type: "model.turn.completed", data: { total_cost_usd: 1.5, usage: { input_tokens: 1_000, output_tokens: 200 } } })
       writer.dispose()
       store.append({ aggregateId: `session:${sessionId}`, sessionId, type: "model.stream.summary.recorded", version: 3, actor: "flywheel", timestamp: Date.now(), payload: {}, payloadJson: "{{not-json" })
 
@@ -169,13 +159,7 @@ describe("createRuntimeBackgroundSnapshotProjector", () => {
       expect(first.rows[0]?.totalCost).toBe(0)
 
       const writer = createSessionFactWriter({ sessionId, writer: asAsyncEventWriter(store) })
-      const budget = createSessionBudgetStore({
-        sessionId,
-        emitter: () => {},
-        reader: asAsyncEventReadSurface(store),
-        recorder: writer.record,
-      })
-      await budget.recordRuntimeEvent({
+      await recordRuntimeEvent(writer.record, {
         type: "model.turn.completed",
         data: { total_cost_usd: 1.5, usage: { input_tokens: 1_000, output_tokens: 200 } },
       })
@@ -185,7 +169,6 @@ describe("createRuntimeBackgroundSnapshotProjector", () => {
         actor: "flywheel",
         payload: { accumulatedActiveMs: 12_000 },
       })
-      budget.dispose()
       writer.dispose()
 
       const second = await projector.waitForTotals()

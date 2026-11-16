@@ -56,7 +56,7 @@ describe("child reconciliation work", () => {
         ...(parentKind === "chat" ? { backgroundTasks: registry } : { member: { workflowId: `parent-workflow-${children}`, backgroundTasks: registry, modules: async () => undefined, compact: async () => false, interrupt: () => false, releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {}, terminateBackgroundWork: () => {} } }),
         notify: async (notification) => { offers += 1; await counter.reader.aggregateSeq(`session:${parentSessionId}`); await writer.putInFlight?.(parentSessionId, "chat.queued_background_notification", notification.key ?? "notice", { conversationId: "conversation", text: notification.text }); writes += 1; return true },
       })
-      const input = { parentSessionId, reader: counter.reader, writer, projectRoot, deliverNotification: async () => { callbacks += 1; return false } }
+      const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer, projectRoot, deliverNotification: async () => { callbacks += 1; return false } }
       try {
         for (let i = 0; i < children; i += 1) {
           await addSubagentChild(store, writer, projectRoot, parentSessionId, `conversation-held-${children}`, i, "completed")
@@ -128,7 +128,7 @@ describe("child reconciliation work", () => {
       if (!tree) throw new Error("missing parent")
       for (let i = 0; i < length; i += 1) await tree.appendMessage({ kind: "user", content: `message ${i}` })
       const counter = countStateRequests(asAsyncEventReadSurface(store))
-      const input = { reader: counter.reader, writer }
+      const input = { reader: counter.reader, projectionReader: counter.reader, writer }
       const first = await readChildCompletionConversation({ input }, parentSessionId, conversationId)
       first?.getStorage().dispose()
       counter.take()
@@ -151,7 +151,7 @@ describe("child reconciliation work", () => {
         store.append({ aggregateId: `workflow:unrelated-${unrelated}`, sessionId: `unrelated-${unrelated}`, timestamp: Date.now(), type: "queue.mutated", version: 1, actor: "flywheel", payload: { index: i } })
       }
       const counter = countStateRequests(asAsyncEventReadSurface(store))
-      const input = { parentSessionId, reader: counter.reader, writer, projectRoot }
+      const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer, projectRoot }
       await reconcileChildSessionCompletions(input)
       const first = counter.take()
       const { index } = await readChildReconciliationChanges(counter.reader, parentSessionId)
@@ -164,7 +164,7 @@ describe("child reconciliation work", () => {
   // version 4 when its text moves to content rows.
   test.each([1, 3] as const)("advances past a version-%i parent result whose text is stored in content rows", async (version) => {
     const { store, writer, parentSessionId, projectRoot } = await setup("completed", `-reference-${version}`)
-    const input = { parentSessionId, reader: asAsyncEventReadSurface(store), writer, projectRoot }
+    const input = { parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, projectRoot }
     await reconcileChildSessionCompletions(input)
     const large = extractToolContentFact(parseSessionRuntimeFact({
       type: "tool.result.recorded", version, actor: "flywheel",
@@ -194,10 +194,10 @@ describe("child reconciliation work", () => {
         const statuses = ["paused", "created", "completed", "completed"] as const
         for (let i = 0; i < children; i += 1) await addSubagentChild(store, writer, projectRoot, parentSessionId, "parent-conversation", i, statuses[i % statuses.length] ?? "completed", history)
         // The parent's earlier owner settled every finished child.
-        await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), writer })
+        await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer })
         // A reopen in a new process: nothing is held for this reader yet.
         const counter = countStateRequests(asAsyncEventReadSurface(store))
-        const input = { parentSessionId, reader: counter.reader, writer, projectRoot }
+        const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer, projectRoot }
         await reconcileChildSessionCompletions(input)
         const first = counter.take().length
         const childWriter = createSessionFactWriter({ sessionId: "child-1", writer: asAsyncEventWriter(store) })
@@ -228,7 +228,7 @@ describe("child reconciliation work", () => {
         if (p > 0) await addWorkflowChild(store, projectRoot, id, `workflow-${p}`, `workflow-tool-${p}`, "Work")
       }
       const counter = countStateRequests(asAsyncEventReadSurface(store))
-      const input = { parentSessionId: "parent-0", reader: counter.reader, writer, projectRoot }
+      const input = { parentSessionId: "parent-0", reader: counter.reader, projectionReader: counter.reader, writer, projectRoot }
       const release = holdChildReconciliationIndex(counter.reader, "parent-0")
       try {
         await reconcileChildSessionCompletions(input)
@@ -276,7 +276,7 @@ describe("child reconciliation work", () => {
       const parentSessionId = await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent" })
       for (let i = 0; i < children; i += 1) await addSubagentChild(store, writer, projectRoot, parentSessionId, "parent-conversation", i, "created")
       const counter = countStateRequests(asAsyncEventReadSurface(store))
-      const input = { parentSessionId, reader: counter.reader, writer, projectRoot }
+      const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer, projectRoot }
       /** Whether the parent's next sweep is a first sweep after a finished
        *  sweep and the owners of many other parents that pass through the
        *  registry's families. */
@@ -334,7 +334,7 @@ describe("child reconciliation work", () => {
     const counter = countStateRequests(asAsyncEventReadSurface(store))
     await prepare(fixture, counter.reader)
     counter.take()
-    const result = await reconcileChildSessionCompletions({ parentSessionId, reader: counter.reader, writer })
+    const result = await reconcileChildSessionCompletions({ parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer })
     return { result, workflowFacts: factsRead(counter.take().filter((request) => request.aggregateId === `workflow:child${suffix}`)) }
   }
 
@@ -372,7 +372,7 @@ describe("child reconciliation work", () => {
       if (suffix === "-resumed") await replaceWorkflowState(store, `child${suffix}`, description, "completed")
       if (suffix === "-stopped") {
         await recordChildWorkflowStop({
-          parentSessionId, reader: asAsyncEventReadSurface(store), writer, childSessionId: `child${suffix}`, toolUseId,
+          parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, childSessionId: `child${suffix}`, toolUseId,
           workflowDefinitionId: "workflow", stoppedBy: "person", correctPriorResult: true,
         })
       }
@@ -388,7 +388,7 @@ describe("child reconciliation work", () => {
         await addWorkflowChild(store, projectRoot, parentSessionId, `cost-${siblings}-${i}`, `cost-tool-${siblings}-${i}`, "Work")
       }
       const counter = countStateRequests(asAsyncEventReadSurface(store))
-      const input = { parentSessionId, reader: counter.reader, writer, projectRoot }
+      const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer, projectRoot }
       await reconcileChildSessionCompletions(input)
       await reconcileChildSessionCompletions(input)
       counter.take()

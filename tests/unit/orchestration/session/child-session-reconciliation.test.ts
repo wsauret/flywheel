@@ -62,12 +62,12 @@ describe("child workflow completion reconciliation", () => {
     const reader = asAsyncEventReadSurface(store)
     let notifications = 0
     await reconcileChildSessionCompletions({
-      parentSessionId, reader, writer,
+      parentSessionId, reader, projectionReader: reader, writer,
       deliverNotification: async () => {
         notifications += 1
         if (notifications === 1) {
           expect(await recordChildWorkflowStop({
-            parentSessionId, reader, writer, childSessionId: "child-2",
+            parentSessionId, reader, projectionReader: reader, writer, childSessionId: "child-2",
             toolUseId: "workflow-tool-2", workflowDefinitionId: "workflow", stoppedBy: "person",
           })).toBe(true)
         }
@@ -90,13 +90,13 @@ describe("child workflow completion reconciliation", () => {
         const slice = await reader.readSlice(query)
         if (query.aggregateId === `session:${parentSessionId}` && query.toolUseIds?.includes(toolUseId) && !completionPublished) {
           completionPublished = true
-          await reconcileChildSessionCompletions({ parentSessionId, reader, writer })
+          await reconcileChildSessionCompletions({ parentSessionId, reader, projectionReader: reader, writer })
         }
         return slice
       },
     }
     expect(await recordChildWorkflowStop({
-      parentSessionId, reader: stopReader, writer, childSessionId: "child",
+      parentSessionId, reader: stopReader, projectionReader: stopReader, writer, childSessionId: "child",
       toolUseId, workflowDefinitionId: "workflow", stoppedBy: "person", correctPriorResult,
     })).toBe(correctPriorResult)
     expect(completionPublished).toBe(true)
