@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect"
 import { CONTROL_RPC_DEADLINE_MS, MODEL_CONFIG_RPC_DEADLINE_MS, OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../infra/with-deadline.js"
-import { PROTOCOL_MODULE_MUTATIONS, PROTOCOL_MODULE_READS } from "./modules.js"
-import { protocolMutationTable, protocolQueryTable } from "./protocol-module.js"
+import { PROTOCOL_MODULE_READS } from "./modules.js"
+import { protocolQueryTable } from "./protocol-module.js"
 
 export type RuntimeCallPolicy =
   | { readonly _tag: "Lossless" }
@@ -15,14 +15,14 @@ const modelConfigRead = { _tag: "BestEffort", deadlineMs: MODEL_CONFIG_RPC_DEADL
 interface RuntimeCallPolicyByOperation {
   [operation: string]: RuntimeCallPolicy
 }
-/** Runtime mutations are lossless because a client deadline can report failure
- *  after delivery or silently discard a user action before delivery. In
+/** Every runtime mutation travels through `dispatch`, which is lossless (ARCH-PROTOCOL-020),
+ *  because a client deadline can report failure after delivery or silently
+ *  discard a user action before delivery. In
  *  particular, a message to a cold chat once exceeded its deadline and dropped
  *  the user's message. Lossless calls therefore rely on worker failure routing
  *  and the process watchdog for liveness; retryable reads remain best-effort. */
 export const runtimeCallPolicies = {
   dispatch: LOSSLESS,
-  dispatchWorkflow: LOSSLESS,
   clientDiagnostic: controlRead,
   snapshot: controlRead,
   outputWindow: outputRead,
@@ -53,21 +53,14 @@ export const runtimeCallPolicies = {
   sessionBackgroundWork: outputRead,
   recallQueuedMessage: LOSSLESS,
   commandCatalog: controlRead,
-  invokeCommand: LOSSLESS,
   modelAssignments: modelConfigRead,
   sessionModelPlan: modelConfigRead,
   modelOptions: modelConfigRead,
   effortOptions: modelConfigRead,
-  saveModelEffort: LOSSLESS,
-  resetModelAssignments: LOSSLESS,
   modelRoles: modelConfigRead,
   "provider_models.query": modelConfigRead,
-  "command_usage.record": LOSSLESS,
-  warmBackground: controlRead,
-  // A module read takes the tier its protocol home declares, and a module
-  // mutation the call class it declares.
+  // A module read takes the tier its protocol home declares.
   ...protocolQueryTable(PROTOCOL_MODULE_READS, (read) => read.deadline === "control" ? controlRead : outputRead),
-  ...protocolMutationTable(PROTOCOL_MODULE_MUTATIONS, (mutation) => mutation.policy === "lossless" ? LOSSLESS : controlRead),
 } as const satisfies RuntimeCallPolicyByOperation
 
 export function applyRuntimeCallPolicy<A, E, R>(

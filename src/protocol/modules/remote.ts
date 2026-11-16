@@ -147,7 +147,7 @@ export const EMPTY_REMOTE_VIEW: RuntimeRemoteView = {
   relayUrl: "", connection: "off", devices: [], attachedClients: 0,
   pairing: null, lastError: null, pushPublicKey: null, projects: [],
 }
-const mutation = { result: RemoteMutationResultSchema, policy: "lossless", editor: "omitted", refuse: (message: string): RemoteMutationResult => ({ kind: "rejected", message }) } as const
+const mutation = { result: RemoteMutationResultSchema, editor: "omitted", refuse: (message: string): RemoteMutationResult => ({ kind: "rejected", message }) } as const
 const open = { kind: "surface", id: REMOTE_SURFACE } as const
 export const remoteProtocol = defineProtocolModule({
   id: "remote",

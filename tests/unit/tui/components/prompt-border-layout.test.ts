@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { RGBA } from "@opentui/core"
 import type { ModuleComposerStatus } from "../../../../src/protocol/protocol-module.js"
-import { protocolModuleComposerStatus, defineProtocolModule } from "../../../../src/protocol/protocol-module.js"
+import { defineProtocolModule } from "../../../../src/protocol/protocol-module.js"
+import { moduleComposerStatus } from "../../../../src/protocol/modules.js"
 import { computeComposerBorderLayout } from "../../../../src/tui/components/composer-border-layout.js"
 import { statusLineParts, type SpinnerStatus } from "../../../../src/tui/hooks/spinner-status-animation.js"
 import { noticeSpinnerStatus } from "../../../../src/tui/hooks/spinner-status-notice.js"
@@ -17,7 +18,7 @@ describe("computeComposerBorderLayout", () => {
     const module = defineProtocolModule({ id: "development", domains: [], composer: { status: () => [
       { id: "synthetic", text: "Peer ready", suffix: { text: "verified", tone: "success" as const } },
     ] } })
-    const labels = protocolModuleComposerStatus([module], () => undefined)
+    const labels = moduleComposerStatus(() => undefined, undefined, "terminal", [module])
     let actions = 0
     const result = await renderPromptLabelsFrame({ theme: resolvedTheme, modelLabel: "model-x", hints: [], composerStatus: labels, onModuleAction: () => { actions++ } })
     try {
@@ -28,7 +29,7 @@ describe("computeComposerBorderLayout", () => {
       const line = result.captureCharFrame().split("\n")[0]!
       await result.mockMouse.click(line.indexOf("Peer ready"), 0)
       expect(actions).toBe(0)
-      expect(protocolModuleComposerStatus([module], () => undefined, [])).toEqual([])
+      expect(moduleComposerStatus(() => undefined, [], "terminal", [module])).toEqual([])
     } finally { result.renderer.destroy() }
   })
 

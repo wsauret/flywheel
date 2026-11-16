@@ -50,7 +50,7 @@ describe("Remote protocol registration", () => {
     for (const request of requests) expect(await f.routes.mutate(request)).toEqual({ kind: "committed" })
     expect(f.calls).toEqual([["pair"], ["cancel"], ["revoke", "phone"], ["rename", "phone", "New name"], ["push", "phone", subscription], ["push", "phone", undefined], ["forget", "placement"], ["initiation", true]])
     expect(remoteProtocol.mutations.map(({ type }) => type)).toEqual(requests.map(({ type }) => type))
-    expect(remoteProtocol.mutations.every(({ editor, policy }) => editor === "omitted" && policy === "lossless")).toBe(true)
+    expect(remoteProtocol.mutations.every(({ editor }) => editor === "omitted")).toBe(true)
     f.routes.dispose()
   })
 

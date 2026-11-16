@@ -101,7 +101,6 @@ const projectNotificationDismiss = defineProtocolMutation({
   type: "project_notifications.dismiss",
   fields: { sourceId: Schema.NonEmptyString, episodeId: Schema.NonEmptyString },
   result: Schema.Union([Schema.Struct({ ok: Schema.Literal(true) }), Schema.Struct({ ok: Schema.Literal(false), error: Schema.String })]),
-  policy: "lossless",
 })
 
 

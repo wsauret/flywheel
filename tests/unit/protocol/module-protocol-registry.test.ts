@@ -79,7 +79,7 @@ const LedgerPatchSchema: Schema.Codec<LedgerPatch> = Schema.Union([
 
 /** A read that is not a snapshot, and one user mutation, beside the domains. */
 const tallyHistory = defineProtocolQuery({ query: "tallyHistory", input: { limit: Schema.Number }, result: Schema.Struct({ totals: Schema.Array(Schema.Number) }), deadline: "output", editor: "omitted" })
-const tallyReset = defineProtocolMutation({ type: "tally.reset", fields: { reason: Schema.String }, result: Schema.Struct({ ok: Schema.Literal(true), total: Schema.Number }), policy: "lossless" })
+const tallyReset = defineProtocolMutation({ type: "tally.reset", fields: { reason: Schema.String }, result: Schema.Struct({ ok: Schema.Literal(true), total: Schema.Number }) })
 
 const syntheticProtocol = defineProtocolModule({
   id: "development",
@@ -167,7 +167,6 @@ describe("protocol module registry composition", () => {
     expect(Schema.decodeUnknownSync(results.ledgerSnapshot)(ledger)).toEqual(ledger)
     expect(Schema.decodeUnknownSync(results.tallyHistory)({ totals: [1, 2] })).toEqual({ totals: [1, 2] })
     expect(() => Schema.decodeUnknownSync(results.tallySnapshot)(ledger)).toThrow()
-    expect(protocolMutationTable(mutations, (mutation) => mutation.policy)).toEqual({ "tally.reset": "lossless" })
 
     const PatchSchema = Schema.Union(domains.map((domain) => domain.patch))
     expect(Schema.decodeUnknownSync(PatchSchema)({ kind: "tally.changed", tally: { total: 1 } })).toEqual({ kind: "tally.changed", tally: { total: 1 } })

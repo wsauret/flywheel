@@ -261,7 +261,7 @@ export const RuntimeUiPatchPayloadSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("changes.changed") }),
   Schema.Struct({ kind: Schema.Literal("background.row.updated"), row: BackgroundWorkRowSchema }),
   Schema.Struct({ kind: Schema.Literal("background.row.removed"), rowId: Schema.NonEmptyString }),
-  Schema.Struct({ kind: Schema.Literal("runtime.invalidate"), reason: Schema.Union([Schema.Literal("overflow"), Schema.Literal("reconnect_required"), Schema.Literal("protocol_violation"), Schema.Literal("rebase")]) }),
+  Schema.Struct({ kind: Schema.Literal("runtime.invalidate"), reason: Schema.Union([Schema.Literal("overflow"), Schema.Literal("reconnect_required"), Schema.Literal("rebase")]) }),
   Schema.Struct({ kind: Schema.Literal("session.added"), row: SessionCatalogRowSchema }),
   Schema.Struct({ kind: Schema.Literal("session.updated"), row: SessionCatalogRowSchema }),
   Schema.Struct({ kind: Schema.Literal("session.removed") }),

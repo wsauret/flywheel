@@ -86,14 +86,12 @@ export interface ProtocolQuery<Query extends string, Input extends Schema.Struct
 
 type AnyProtocolQuery = ProtocolQuery<string, Schema.Struct.Fields, unknown>
 
-/** A user mutation the module answers. `policy` is the call class of ARCH-PROTOCOL-020:
- *  a user action is lossless, and a call a client may repeat is retryable
- *  under the control deadline. */
+/** A user mutation the module answers. Every mutation is lossless
+ *  (ARCH-PROTOCOL-020), so a declaration states no call class. */
 export interface ProtocolMutation<Type extends string, Fields extends Schema.Struct.Fields, Result> {
   readonly type: Type
   readonly fields: Fields
   readonly result: Schema.Codec<Result>
-  readonly policy: "lossless" | "retryable"
   /** Closed admission answers through the module's result codec when its
    *  refusal differs from the standard { ok: false, error } result. */
   readonly refuse?: (message: string) => Result
@@ -268,11 +266,6 @@ export function protocolReads<const Modules extends readonly ProtocolModule[]>(m
   ]
 }
 
-/** The rows every module of a registry contributes to one slot, in registry order. */
-export function protocolModuleRows(modules: readonly ProtocolModule[], slot: ModuleRowSlot, read: DomainReader, enabled?: readonly ModuleId[]): readonly ModuleRow[] {
-  return modules.flatMap((module) => enabled === undefined || enabled.includes(module.id) ? module.rows?.[slot]?.(read) ?? [] : [])
-}
-
 /** The names of a registry's domains with one scope. */
 export function protocolDomainNames<D extends AnyProtocolDomain, Scope extends "session" | "workspace" | "workflow">(domains: readonly D[], scope: Scope): readonly Extract<D, { readonly scope: Scope }>["domain"][] {
   return domains
@@ -321,9 +314,4 @@ export function protocolDomainTable<D extends AnyProtocolDomain, Value>(domains:
   // SAFETY: one entry per domain under its own name is exactly the mapped type; `Object.fromEntries` erases the key set.
   // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: registry-composed table
   return Object.fromEntries(domains.map((domain) => [domain.domain, select(domain)])) as { readonly [Name in D["domain"]]: Value }
-}
-
-/** Composer chrome from enabled modules, preserving registry order. */
-export function protocolModuleComposerStatus(modules: readonly ProtocolModule[], read: DomainReader, enabled?: readonly ModuleId[], surface: "terminal" | "webview" = "terminal"): readonly ModuleComposerStatus[] {
-  return modules.flatMap((module) => enabled === undefined || enabled.includes(module.id) ? module.composer?.status(read, surface) ?? [] : [])
 }

@@ -7,15 +7,9 @@ describe("runtimeCallPolicies", () => {
   test("all user-action and mutation calls are lossless", () => {
     expect({
       dispatch: runtimeCallPolicies.dispatch,
-      dispatchWorkflow: runtimeCallPolicies.dispatchWorkflow,
-      saveModelEffort: runtimeCallPolicies.saveModelEffort,
-      resetModelAssignments: runtimeCallPolicies.resetModelAssignments,
       recallQueuedMessage: runtimeCallPolicies.recallQueuedMessage,
     }).toEqual({
       dispatch: { _tag: "Lossless" },
-      dispatchWorkflow: { _tag: "Lossless" },
-      saveModelEffort: { _tag: "Lossless" },
-      resetModelAssignments: { _tag: "Lossless" },
       recallQueuedMessage: { _tag: "Lossless" },
     })
   })
