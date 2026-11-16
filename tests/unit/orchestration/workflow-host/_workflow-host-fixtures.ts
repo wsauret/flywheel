@@ -13,7 +13,9 @@ import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolutio
 import { Schema } from "effect"
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { authoredGuardrailLimits, compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/session-facts.js"
@@ -63,6 +65,23 @@ export async function publishWorkerAttempt(input: {
   const member = await workflowMembershipReader(input.reader).attempt(input.workflowId, input.attemptId)
   if (!member) throw new Error("Expected committed workflow member")
   return { manager, member, workflow }
+}
+
+/** Opens a store in `dir`, publishes `wf-0` with the default profile, then
+ *  registers `wf-<n>` for each later entry of `profileIds` from wf-0's
+ *  registration. The caller closes the store. */
+export async function seedWorkflowRuns(dir: string, profileIds: readonly string[]) {
+  const store = createSqliteEventStore(resolveEventStoreDbFile(dir))
+  const base = asAsyncEventReadSurface(store)
+  const { manager, workflow } = await publishWorkerAttempt({ projectRoot: dir, reader: base, writer: asAsyncEventWriter(store), workflowId: "wf-0", attemptId: "a", conversationId: "conv-0" })
+  const [registration] = (await base.readSlice({ aggregateId: "workflow:wf-0", types: ["workflow.run.registered"] })).facts
+  if (!registration || registration instanceof Error) throw new Error("the published workflow has no registration")
+  const { type, version, actor, payload } = registration
+  if (typeof payload !== "object" || payload === null || !("settings" in payload) || typeof payload.settings !== "object") throw new Error("the registration has no settings")
+  for (let index = 1; index < profileIds.length; index++) {
+    store.append({ type, version, actor, payload: { ...payload, settings: { ...payload.settings, authProfileId: profileIds[index] } }, aggregateId: `workflow:wf-${index}`, sessionId: `wf-${index}`, timestamp: 10 })
+  }
+  return { store, base, manager, workflow }
 }
 
 const resolvedAgents = new WeakMap<WorkflowDefinition, ReturnType<typeof resolveWorkflowAgents>>()

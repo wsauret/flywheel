@@ -154,7 +154,7 @@ export function workflowController(_sessionStore: SessionStore, _manager: Sessio
 export function workflowProtocol(options: {
   readonly controller: WorkflowController
   readonly supervisor?: RuntimeSupervisor
-  readonly store?: EventStore | RuntimeEventStore
+  readonly store?: EventStore | RuntimeEventStore | ReturnType<typeof createMemoryStore>
   readonly sessions?: SessionStore
   readonly manager?: SessionManager
   readonly hosts?: Pick<WorkflowHosts, "isRunning" | "onChange" | "abort">
@@ -171,7 +171,7 @@ export function workflowProtocol(options: {
     background: async () => { throw new Error("Workflow protocol fixture reads its own aggregate") },
     modules: workflowProtocolServices({
       modules: NO_MODULE_SERVICES, projectRoot: "/workspace", controller: options.controller,
-      auth: { snapshot: async () => { throw new Error("Auth read not requested") }, select: async () => false, list: async () => [] },
+      auth: { snapshot: async () => { throw new Error("Auth read not requested") }, select: async () => false, list: async () => [], resident: async () => undefined },
       authStatus: projections.authStatusProjection, supervisor: options.supervisor ?? runtimeSupervisor(), bus,
       deletion: options.manager ?? fakeManager(),
       hosts: options.hosts ?? { isRunning: () => false, onChange: () => () => {}, abort: async () => false },

@@ -435,7 +435,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     own: (name, resource, dispose) => scope.own(name, resource, dispose),
     subscriptionUsageThresholds: () => [],
     interactive: options.interactive === true,
-    sessionStore, workflowHosts, eventReader, eventWriter, availability, runtimeConfig,
+    sessionStore, workflowHosts, eventReader, eventWriter, onStored: eventStore.onStored, availability, runtimeConfig,
     chatDefault: options.chatDefault ?? { kind: "pending" },
     persistentProcessesForcedByCli: options.allowPersistentProcesses,
     ...(options.headlessAuth === undefined ? {} : { headlessAuth: options.headlessAuth }),
@@ -670,7 +670,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
 
   const replacement = createReplacementReport({
     projectRoot, projectLabel: options.projectLabel, client, sessionStore, runningWorkflows: workflowHosts.allIds,
-    listMetadata: () => manager.listMetadata(), runningChildren: () => liveChildRuns(eventReader), keptSessions: keeper.sessions,
+    listActive: () => manager.listActive(), listForIds: (sessionIds) => manager.listForIds(sessionIds), runningChildren: () => liveChildRuns(eventReader), keptSessions: keeper.sessions,
   })
   const workSettlement = createRuntimeWorkSettlement({
     client, ...workflowSettlementOwners(workflowHosts, eventReader),
