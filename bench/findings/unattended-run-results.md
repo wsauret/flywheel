@@ -1,8 +1,8 @@
 # Unattended run rules: prompt rules, tool descriptions, and a bounded review
 
-Dates: 2026-11-11 (E4 and E2) and 2026-11-14 (E5 and E5 on Haiku). Harness: `bench/harbor/` on Harbor Hub (hosted trials, launcher guide in `bench/harbor/README.md`). The raw rounds, trial stores, and analysis scripts are not in the repository. They stay in local spike worktrees and session scratch directories on the machine that ran them. This page names each run by its round name and run id only.
+Dates: 2026-11-11 (E4 and E2), 2026-11-14 (E5 and E5 on Haiku), and 2026-11-15 to 2026-11-16 (E6). Harness: `bench/harbor/` on Harbor Hub (hosted trials, launcher guide in `bench/harbor/README.md`). The raw rounds, trial stores, and analysis scripts are not in the repository. They stay in local spike worktrees and session scratch directories on the machine that ran them. This page names each run by its round name and run id only.
 
-Three experiments test changes to an unattended chat, the purpose that a benchmark trial runs (`flywheel --headless --acp --unattended`). E4 asks whether one prompt rule or shorter tool descriptions make Haiku do the same work with fewer model requests. E2 asks whether a self-review rule or one bounded reviewer subagent makes Haiku pass more repository tasks, and at what cost. E5 asks, on GPT-6 Luna and with an A/A control, whether a narrower probe rule or E4's deliverable-first rule cuts requests, and E5 on Haiku asks the probe question again on Haiku 5.5. Each arm is one change against a control that runs at the same time from the same base commit. A decision rule was fixed before any trial of each experiment ran.
+Four experiments test changes to an unattended chat, the purpose that a benchmark trial runs (`flywheel --headless --acp --unattended`). E4 asks whether one prompt rule or shorter tool descriptions make Haiku do the same work with fewer model requests. E2 asks whether a self-review rule or one bounded reviewer subagent makes Haiku pass more repository tasks, and at what cost. E5 asks, on GPT-6 Luna and with an A/A control, whether a narrower probe rule or E4's deliverable-first rule cuts requests, and E5 on Haiku asks the probe question again on Haiku 5.5. E6 searches, on DeepSeek-V4.1-Flash and GPT-6 Luna, for text in the system prompt that cuts the cost of a trial without a loss of passes, and tests the one text that passed the screen on harder tasks. Each arm is one change against a control that runs at the same time from the same base commit. A decision rule was fixed before any trial of each experiment ran. E6 is the exception to both: it is a sequential search whose arms ran over two days against pooled baseline rounds, and its rule is given as it was applied.
 
 ## Decisions
 
@@ -20,6 +20,13 @@ Results (2026-11-14), with the adoption decision left to the maintainer:
 - E5 deliverable-first rule: does not pass stage 1. Requests did not change (ratio 0.997).
 - Because neither treatment passed, stage 2 on DeepSWE did not run.
 - E5 on Haiku probe-scoped rule: does not pass stage 1 on `claude-haiku-5.5` either. Requests fell 4.6% [0.878, 1.022], below the bar of 13.2% that the A/A gap of 6.6% sets.
+
+Decisions (2026-11-16):
+
+- E6 finishing rule: not adopted. On the easy set it cut cost to x0.70 on DeepSeek and to x0.80 on Luna with no detectable loss of passes. On the Luna hard set it passed 66 of 168 trials against 80 of 168 for the baseline (p = 0.027) at a cost of x0.73.
+- E6 own-words additions to the rule and repair variants of the rule: none is adopted. No addition beat the rule alone on DeepSeek. Among repair variants B, C, D, and E, more passes generally went with less saving, with one reversal: variant D costs less than variant E and passes more. Variant F does not fit that trend. In two hard rounds it passed 41 of 84 trials against 80 of 168 for the baseline (p = 0.83) at a cost of x0.82. Its easy-set savings are small and not significant alone (x0.86 on DeepSeek, p = 0.11, and x0.91 on Luna, p = 0.14), and two rounds of 42 trials do not establish that it keeps both the passes and the saving. No variant is shown to keep both.
+- E6 donor text: cannot ship, because it is the system prompt of another agent. It was the ceiling of the search (x0.55 on DeepSeek), and on Luna it did not cut cost (x0.97).
+- The wording search stops. The next work is on structural levers, not on the wording of the prompt.
 
 ## E4: prompt rules and tool descriptions on Terminal-Bench
 
@@ -295,3 +302,272 @@ All three rounds finalized with 84 of 84 trials scored. `hill.ts rerun` listed o
 - The noise floor is larger on Haiku than on Luna: two identical arms differ by 6.6% in requests and 7.3% in cost. A reduction smaller than about 13% is not detectable at 14 tasks x 6 trials on this model.
 - The probe measure counts 1.35 probe scripts per Haiku control trial before the first deliverable, against the audit's 4.05 with a different counting rule. A hand check of the 776 shell commands that came before the first `write` or `edit` call in the control trials flagged 170. Most of the missed probes are scripts that a shell heredoc writes into the scratch directory and that the next command runs by a relative path or a shell variable (`cd $S && python3 resid.py`). The pattern does not see these, so the probe ratio covers only part of the probing on Haiku. The rule's effect on that unseen part shows only in the request and D1 ratios, which did not move.
 - The result covers Claude Haiku 5.5 at high effort on 14 Terminal-Bench tasks only. It says nothing about other models, repository tasks, interactive chat, or the deliverable-first rule on Haiku.
+
+## E6: wording of the finish, added to the system prompt, on DeepSeek-V4.1-Flash and GPT-6 Luna
+
+### Question
+
+Can text in the system prompt of an unattended chat cut the cost of a trial without a loss of passes? The search had three parts: add sections of the system prompt of another agent (donor text), find the part of that text that has the effect, and write that part in our own words. One candidate survived the screen, a "Finishing" rule of four lines. Does that rule keep its passes on harder tasks?
+
+### Setup
+
+- Models: `deepseek-v4.1-flash-1017` at max effort and `gpt-6-luna` at high effort, each for every role. Subagents on, with the advisor, reviewer, and ship types off. Baseline configs on the experiment branch: `bench/harbor/configs/fh-deepseek-1017-max.toml` (sha256 `d515266e6c62e5e4594720b2c297fc8f4fcbbc0cd30f95762bd6fd5370629294`) and `bench/harbor/configs/tb-luna-high-agent-types.toml` (sha256 `b16cc5a50a0cd9b82c6777cd0cd5ef08094ffc0697bd4b343e91cf4a7e6213e1`).
+- Routes. DeepSeek ran through an aggregator route that is pinned to one upstream provider with no fallback, and through a subscription route. One donor round ran on the DeepSeek API. When a route refused a request, the next route served it: the 29 easy rounds record 3,000 refusals with HTTP 429 and 865 with HTTP 402, and 46 of their 1,160 trials have model calls from two routes. Luna ran on the ChatGPT subscription of the maintainer's auth profile.
+- Cost measures. The routes cache prompts differently, so a DeepSeek cost in USD is comparable only between rounds on one route. The DeepSeek tables use three measures that do not depend on the route: model calls with measured usage per trial, completion tokens per trial (reasoning plus visible output), and a neutral cost. The neutral cost of a trial is its completion tokens at $1.20 per million plus all its input tokens, cached and uncached, at one blended price. The blended price is the price that charges the input of the baseline pool at $0.30 per million uncached and $0.007 per million cached, which is $0.0333 per million. The Luna tables use the launcher's list-equivalent cost of each trial.
+- Tasks: benchmark `frontier-harness-1.1`. Easy set: `fix-git`, `log-summary-date-ranges`, `kv-store-grpc`, `regex-log`, and `cancel-async-tasks`, 8 attempts per task, 40 trials per round. Hard set: `schemelike-metacircular-eval`, `adaptive-rejection-sampler`, `mteb-leaderboard`, `chess-best-move`, `embedding-drift-monitor`, `intrastat-meldung`, and `large-scale-text-editing`, 6 attempts per task, 42 trials per round. All trials of a round start together.
+- Arm mechanism: each arm is the baseline config plus a `[diagnostic]` table whose `first_block_text` key holds the tested text. The runtime puts that text before every part of the shipped system prompt. The key exists only on the experiment branch. A diagnostic arm never ships: a text that passes is written into the product prompt in a separate change. The tested text is byte-identical in the DeepSeek and the Luna config of each arm, and the sha256 of every arm config equals the sha256 in its round record.
+- Baseline pools: three DeepSeek easy rounds (`screen-shipped-3`, `-4`, `-5`, 120 trials), three Luna easy rounds (`luna-screen-shipped-1`, `-2`, `-3`, 120 trials), four Luna hard rounds (`luna-hard-shipped-1` to `-4`, 168 trials), and one DeepSeek hard round (`ds-hard-shipped-1`, 42 trials). Baseline rounds and arm rounds ran at different times over two days, not side by side.
+- Screen size and noise: one easy round is 40 trials. Each of the three DeepSeek baseline rounds is within about 3.4% of their pool on neutral cost (x0.983, x0.984, x1.033). An arm round varies more: the same text measured x0.63 and x0.81 in two rounds (the notes block), and the rule measured x0.76 and x0.64.
+- Accounting: the launcher's cost figures total at least $34.96 for the 29 DeepSeek easy rounds, at least $10.00 for the two DeepSeek hard rounds, at least $4.62 for the 25 Luna easy rounds, and at least $25.32 for the 22 Luna hard rounds. "At least" because a timed-out trial is priced from its last snapshot. The Luna figures are list-equivalent. Billed spend and Harbor Hub compute charges were not read.
+- Uptake: in every scored trial of every round on this page (3,166 trials), the first assembled system prompt starts with the arm's text, and no baseline trial holds the rule.
+- Source archives: each run manifest records the sha256 of the source archive of its run (`source_archive_sha256`), which is the runtime archive in the agent package. The 78 runs hold two digests. Archive A is `5ae56638ce5f951eb333e273a2f05661976edf7ebcae2860e64605502a538444`, in 70 runs. Archive B is `fd3e7145c9dae8fb3abf6c14d7453d318f6d47bfba7a1915d80376ab2693a177`, in 8 runs: donor round 1 on the DeepSeek easy set, and the 7 Luna easy rounds at source commits `c8e7db830`, `54dc1f2ee`, and `889b9efe7`. The run list below names the archive of each group.
+
+The texts. The rule, 380 bytes:
+
+```
+# Finishing
+Decide once that the work is finished. The moment you begin to plan your final message, the work is finished: write the message and stop.
+After that moment, start no new test, edge case, cleanup edit, refactor, or record-keeping step. The only reason to go back is a check that you have just seen fail.
+A new doubt at that moment is one sentence in the final message.
+```
+
+| Text | Bytes of the first block | Content |
+|---|---|---|
+| The rule | 380 | The four lines above |
+| Role sentence, then the rule | 581 | One paragraph that states the role of the agent, then the rule |
+| Whole donor prompt | 17,119 | The whole system prompt of another agent, 13 sections |
+| Donor style sections A | 3,179 | Its sections on personality, on short notes before tool calls, and on progress updates |
+| Donor style sections B | 6,056 | Its sections on the final message and on the format of the final answer |
+| The rule, then donor style sections A and B | 9,617 | |
+| The rule, then donor style sections A | 3,560 | |
+| The rule, then One check | 902 | One check script holds a case for each named requirement; no one-off command tests a further case |
+| The rule, then Scope of the result | 853 | The words of the request set the scope; no edit for a case, caller, or environment that the request does not name |
+| The rule, then Questions about behavior | 864 | No reading of library source and no throwaway experiment; the check of the first draft answers the question |
+| The rule, then Read once | 782 | No read of a file only to confirm a write that reported success |
+| Finishing, second version | 480 | Replaces the rule. Finished means that the result exists and a check of each named thing has passed; a check that passed closes its question |
+| The rule, then Open readings | 772 | Choose the reading that the words of the request state, write it as one line, and decide each such question once |
+| The rule, then Final message | 640 | The final message has at most six lines and is written with no draft |
+| Finishing, second version, then Open readings and Final message | 1,132 | |
+| The rule, then Notes while you work | 726 | One sentence of at most 12 words before each group of tool calls; related commands go in one group in the same turn; one sentence at each milestone |
+| The rule, then Notes while you work and Final message | 986 | |
+| The rule, then notes without the grouping sentence | 633 | |
+| The rule, then Grouped tool calls | 604 | Commands that do not depend on each other go in the same turn; a check stays in its own turn after its change |
+| Repair variant B | 550 | Replaces the rule. Finished means that every requirement has a check that ran and passed; while a check fails, continue the repair |
+| Repair variant C | 561 | The rule after a new first sentence: while a check that you ran still fails, continue the repair until it passes or you have tried every cause that you can name |
+| Repair variant D | 581 | The rule and a new last line: the rule is for work that passes, and a check that still fails is not finished work |
+| Repair variant E | 566 | The rule with the condition "and no check of your work still fails" in its second sentence, and a last line that asks for a different approach before a failure is reported |
+| Repair variant F | 717 | Variant E, and: when the cause is a limit that you cannot change, change the work to fit inside the limit; report a failing check only after two different approaches have failed |
+
+Runs. All source commits are on the experiment branch. Each run id is `flywheel-frontier-harness-1.1-deepseek-v4.1-flash-1017-2026-` or `flywheel-frontier-harness-1.1-gpt-6-luna-2026-` and the suffix below. Seven rounds have a name that holds the name of the donor agent. This page gives each of them a label and its run id only.
+
+- DeepSeek easy set, source commit `4a74708da`, archive A: `screen-shipped-3` `11-15T23-06-35.280Z`; `screen-shipped-4` `11-15T23-43-32.262Z`; `screen-shipped-5` `11-16T00-49-34.519Z`; `screen-t5-finish-once-1` `11-15T23-19-03.587Z`; `screen-t5-finish-once-2` `11-15T23-47-25.596Z`; `screen-t1t5-role-finish-1` `11-16T00-40-59.003Z`; donor round 2 `11-16T00-45-20.894Z`; `screen-t5d-1` `11-15T23-14-56.001Z`.
+- DeepSeek easy set, source commit `031304ef0`, archive B: donor round 1 `11-15T16-44-34.590Z`.
+- DeepSeek easy set, source commit `2c9c77b81`, archive A: style A round `11-16T02-25-43.374Z`; style B round `11-16T02-17-21.617Z`; rule and style round `11-16T02-13-11.238Z`; `screen-t5-r2-1` `11-16T02-34-09.665Z`; `screen-t5-r3-2` `11-16T02-29-57.453Z`.
+- DeepSeek easy set, source commit `714b53b52`, archive A: rule and style A round `11-16T02-45-05.259Z`; `screen-t5-p1-1` `11-16T02-40-50.358Z`; `screen-t5-p1-2` `11-16T03-03-37.608Z`; `screen-t5-p1-r3-1` `11-16T02-57-49.452Z`.
+- DeepSeek easy set, source commit `34a9bffa1`, archive A: `screen-t5-b1-1` `11-16T01-03-08.986Z`; `screen-t5-b2-1` `11-16T01-15-55.725Z`.
+- DeepSeek easy set, source commit `6f0eb3492`, archive A: `screen-t5-b3-1` `11-16T01-26-56.814Z`; `screen-t5-b4-1` `11-16T01-31-10.115Z`.
+- DeepSeek easy set, source commit `e265b95e8`, archive A: `screen-r1-finish-v2-1` `11-16T01-52-10.296Z`; `screen-t5-r3-1` `11-16T02-04-43.380Z`; `screen-r1-r2-r3-1` `11-16T01-47-57.717Z`.
+- DeepSeek easy set, source commit `4b58aec98`, archive A: `screen-t5-p1a-1` `11-16T03-11-45.483Z`; `screen-t5-p1b-1` `11-16T03-07-35.190Z`.
+- DeepSeek easy set, source commit `35005a413`, archive A: `screen-t5e-1` `11-16T05-00-44.230Z`; `screen-t5f-1` `11-16T04-42-28.265Z`.
+- Luna easy set, source commit `c8e7db830`, archive B: `luna-screen-shipped-1` `11-15T18-55-35.173Z`; `luna-screen-shipped-2` `11-15T18-59-47.875Z`; Luna donor round `11-15T19-24-54.403Z`.
+- Luna easy set, source commit `54dc1f2ee`, archive B: `luna-screen-shipped-3` `11-15T20-01-37.411Z`; `luna-screen-t1t5-role-finish-1` `11-15T20-05-51.713Z`.
+- Luna easy set, source commit `889b9efe7`, archive B: `luna-screen-t5-finish-once-1` `11-15T19-40-29.814Z`; `luna-screen-t5-finish-once-2` `11-15T19-57-45.125Z`.
+- Luna easy set, source commit `34a9bffa1`, archive A: `luna-screen-t5-b1-1` `11-16T01-07-23.428Z`; `luna-screen-t5-b2-1` `11-16T01-11-37.130Z`.
+- Luna easy set, source commit `6f0eb3492`, archive A: `luna-screen-t5-b3-1` `11-16T01-35-22.464Z`; `luna-screen-t5-b4-1` `11-16T01-39-31.437Z`.
+- Luna easy set, source commit `e265b95e8`, archive A: `luna-screen-r1-finish-v2-1` `11-16T02-00-34.177Z`; `luna-screen-t5-r2-1` `11-16T02-08-55.150Z`; `luna-screen-t5-r3-1` `11-16T01-43-45.384Z`; `luna-screen-r1-r2-r3-1` `11-16T01-56-22.868Z`.
+- Luna easy set, source commit `714b53b52`, archive A: `luna-screen-t5-p1-1` `11-16T02-49-19.177Z`; `luna-screen-t5-p1-r3-1` `11-16T02-53-37.650Z`.
+- Luna easy set, source commit `4b58aec98`, archive A: `luna-screen-t5-p1a-1` `11-16T03-15-59.151Z`; `luna-screen-t5-p1b-1` `11-16T03-20-18.780Z`.
+- Luna easy set, source commit `836d88c93`, archive A: `luna-screen-t5b-1` `11-15T22-07-23.526Z`.
+- Luna easy set, source commit `7d71cff13`, archive A: `luna-screen-t5c-1` `11-15T22-17-53.050Z`.
+- Luna easy set, source commit `4a74708da`, archive A: `luna-screen-t5d-1` `11-15T22-40-01.298Z`; `luna-screen-t5d-2` `11-15T22-48-04.478Z`.
+- Luna easy set, source commit `35005a413`, archive A: `luna-screen-t5e-1` `11-16T04-56-29.074Z`; `luna-screen-t5f-1` `11-16T05-05-46.530Z`.
+- Hard set, source commit `4e3634443`, archive A: `luna-hard-shipped-1` `11-15T20-35-10.969Z`; `luna-hard-shipped-2` `11-15T21-15-51.536Z`; `luna-hard-t5-finish-once-1` `11-15T20-43-38.208Z`; `luna-hard-t5-finish-once-2` `11-15T21-19-50.213Z`.
+- Hard set, source commit `4b58aec98`, archive A: `luna-hard-shipped-3` `11-16T03-25-53.712Z`; `luna-hard-shipped-4` `11-16T03-38-23.464Z`; `luna-hard-t5-finish-once-3` `11-16T03-34-24.553Z`; `luna-hard-t5-finish-once-4` `11-16T03-30-11.646Z`; `luna-hard-t5c-3` `11-16T04-15-21.170Z`; `luna-hard-t5c-4` `11-16T04-27-50.767Z`; `luna-hard-t5d-3` `11-16T04-23-56.854Z`; `luna-hard-t5d-4` `11-16T04-19-44.366Z`.
+- Hard set, source commit `836d88c93`, archive A: `luna-hard-t5b-1` `11-15T21-59-07.102Z`; `luna-hard-t5b-2` `11-15T22-03-31.103Z`.
+- Hard set, source commit `7d71cff13`, archive A: `luna-hard-t5c-1` `11-15T22-22-01.973Z`; `luna-hard-t5c-2` `11-15T22-25-55.075Z`.
+- Hard set, source commit `4a74708da`, archive A: `luna-hard-t5d-1` `11-15T22-51-57.672Z`; `luna-hard-t5d-2` `11-15T22-44-11.040Z`; `ds-hard-shipped-1` `11-15T23-39-28.221Z`; `ds-hard-t5-1` `11-15T23-51-18.706Z`.
+- Hard set, source commit `35005a413`, archive A: `luna-hard-t5e-1` `11-16T04-38-08.763Z`; `luna-hard-t5e-2` `11-16T04-47-51.842Z`; `luna-hard-t5f-1` `11-16T05-15-00.699Z`; `luna-hard-t5f-2` `11-16T04-51-55.570Z`.
+
+Measures. Every ratio is task-balanced: the sum over tasks of the arm's mean per trial, divided by the same sum of the baseline pool. Every p value is a two-sided permutation test with 20,000 relabellings inside each task. No p value is adjusted for the number of comparisons on this page, which is more than 100, so a single p near 0.05 is weak evidence.
+
+### Decision rule (as it was applied)
+
+The search was sequential, so this is the rule as it was applied to each candidate, not one rule that was fixed before the first trial:
+
+1. Screen on the easy set: a block is kept only if the rule plus the block beats the rule alone on DeepSeek and loses no passes on Luna.
+2. A text that passes the screen runs on the hard set, on both models.
+3. A text is published only if it shows no clear loss of passes on the Luna hard set.
+4. The repair variants came after the rule failed step 3, and they did not follow steps 1 and 2. They ran on the Luna hard set first, and variants B and C never ran on the DeepSeek easy set.
+
+### Results
+
+Easy set, DeepSeek. Ratios and p values are against the baseline pool, except the last column. A "pooled" row joins the rounds of one text. Each baseline round is compared with the pool that holds it.
+
+| Text | Round | Route | Passes | Calls per trial | Calls ratio (p) | Token ratio (p) | Neutral cost ratio (p) | Neutral cost against the rule alone (p) |
+|---|---|---|---|---|---|---|---|---|
+| Baseline (no first block) | `screen-shipped-3` | aggregator | 40/40 | 16.1 | x0.99 (0.831) | x0.99 (0.866) | x0.98 (0.859) |  |
+| Baseline (no first block) | `screen-shipped-4` | aggregator and subscription | 38/40 | 16.0 | x0.98 (0.760) | x1.02 (0.765) | x0.98 (0.853) |  |
+| Baseline (no first block) | `screen-shipped-5` | subscription | 40/40 | 16.8 | x1.03 (0.594) | x0.99 (0.890) | x1.03 (0.701) |  |
+| Baseline (no first block) | pooled |  | 118/120 | 16.3 | 1 | 1 | 1 |  |
+| The rule | `screen-t5-finish-once-1` | aggregator | 40/40 | 14.3 | x0.88 (0.042) | x0.75 (0.002) | x0.76 (0.010) | x1.08 (0.571) |
+| The rule | `screen-t5-finish-once-2` | aggregator and subscription | 40/40 | 12.8 | x0.79 (<0.001) | x0.68 (<0.001) | x0.64 (<0.001) | x0.92 (0.505) |
+| The rule | pooled |  | 80/80 | 13.6 | x0.83 (<0.001) | x0.71 (<0.001) | x0.70 (<0.001) |  |
+| Role sentence, then the rule | `screen-t1t5-role-finish-1` | subscription | 40/40 | 14.2 | x0.87 (0.050) | x0.73 (0.001) | x0.75 (0.008) | x1.07 (0.621) |
+| Whole donor prompt | donor round 1 | DeepSeek API | 40/40 | 12.1 | x0.74 (<0.001) | x0.55 (<0.001) | x0.57 (<0.001) | x0.81 (0.125) |
+| Whole donor prompt | donor round 2 | subscription | 39/40 | 11.7 | x0.72 (<0.001) | x0.52 (<0.001) | x0.52 (<0.001) | x0.75 (0.022) |
+| Whole donor prompt | pooled |  | 79/80 | 11.9 | x0.73 (<0.001) | x0.54 (<0.001) | x0.55 (<0.001) | x0.78 (0.008) |
+| Donor style sections A | style A round | aggregator | 40/40 | 13.7 | x0.84 (0.004) | x0.82 (0.021) | x0.79 (0.014) | x1.13 (0.287) |
+| Donor style sections B | style B round | aggregator | 40/40 | 15.7 | x0.96 (0.555) | x0.90 (0.281) | x0.97 (0.801) | x1.39 (0.023) |
+| The rule, then donor style sections A and B | rule and style round | aggregator | 39/40 | 11.8 | x0.72 (<0.001) | x0.63 (<0.001) | x0.60 (<0.001) | x0.86 (0.271) |
+| The rule, then donor style sections A | rule and style A round | aggregator | 39/40 | 11.2 | x0.68 (<0.001) | x0.61 (<0.001) | x0.58 (<0.001) | x0.83 (0.211) |
+| The rule, then One check | `screen-t5-b1-1` | subscription | 40/40 | 15.6 | x0.96 (0.488) | x1.08 (0.320) | x1.03 (0.725) | x1.47 (0.001) |
+| The rule, then Scope of the result | `screen-t5-b2-1` | subscription | 39/40 | 15.4 | x0.95 (0.382) | x0.94 (0.419) | x0.93 (0.415) | x1.33 (0.008) |
+| The rule, then Questions about behavior | `screen-t5-b3-1` | subscription | 40/40 | 17.7 | x1.09 (0.178) | x1.12 (0.119) | x1.18 (0.057) | x1.68 (<0.001) |
+| The rule, then Read once | `screen-t5-b4-1` | subscription | 40/40 | 13.6 | x0.84 (0.008) | x0.81 (0.021) | x0.79 (0.026) | x1.13 (0.376) |
+| Finishing, second version | `screen-r1-finish-v2-1` | aggregator and subscription | 40/40 | 16.1 | x0.99 (0.819) | x1.01 (0.905) | x0.99 (0.936) | x1.42 (0.004) |
+| The rule, then Open readings | `screen-t5-r2-1` | aggregator | 40/40 | 14.1 | x0.86 (0.020) | x0.83 (0.070) | x0.82 (0.068) | x1.17 (0.268) |
+| The rule, then Final message | `screen-t5-r3-1` | aggregator | 39/40 | 14.3 | x0.88 (0.041) | x0.62 (<0.001) | x0.63 (<0.001) | x0.90 (0.399) |
+| The rule, then Final message | `screen-t5-r3-2` | aggregator | 39/40 | 14.1 | x0.86 (0.018) | x0.70 (<0.001) | x0.70 (0.001) | x0.99 (0.970) |
+| The rule, then Final message | pooled |  | 78/80 | 14.2 | x0.87 (0.005) | x0.66 (<0.001) | x0.66 (<0.001) | x0.95 (0.569) |
+| Finishing, second version, then Open readings and Final message | `screen-r1-r2-r3-1` | subscription and aggregator | 39/40 | 13.3 | x0.82 (0.004) | x0.83 (0.037) | x0.76 (0.009) | x1.08 (0.577) |
+| The rule, then Notes while you work | `screen-t5-p1-1` | aggregator | 40/40 | 12.3 | x0.76 (<0.001) | x0.67 (<0.001) | x0.63 (<0.001) | x0.90 (0.447) |
+| The rule, then Notes while you work | `screen-t5-p1-2` | aggregator | 40/40 | 13.4 | x0.82 (0.003) | x0.81 (0.028) | x0.81 (0.040) | x1.15 (0.296) |
+| The rule, then Notes while you work | pooled |  | 80/80 | 12.9 | x0.79 (<0.001) | x0.74 (<0.001) | x0.72 (<0.001) | x1.03 (0.796) |
+| The rule, then Notes while you work and Final message | `screen-t5-p1-r3-1` | aggregator | 40/40 | 12.8 | x0.78 (<0.001) | x0.65 (<0.001) | x0.64 (<0.001) | x0.91 (0.512) |
+| The rule, then notes without the grouping sentence | `screen-t5-p1a-1` | aggregator | 39/40 | 12.2 | x0.75 (<0.001) | x0.82 (0.025) | x0.75 (0.005) | x1.07 (0.584) |
+| The rule, then Grouped tool calls | `screen-t5-p1b-1` | aggregator | 40/40 | 13.5 | x0.83 (0.021) | x0.75 (0.003) | x0.74 (0.010) | x1.05 (0.753) |
+| Repair variant D | `screen-t5d-1` | aggregator | 40/40 | 14.7 | x0.90 (0.094) | x0.89 (0.197) | x0.88 (0.192) | x1.25 (0.075) |
+| Repair variant E | `screen-t5e-1` | subscription | 40/40 | 16.5 | x1.01 (0.834) | x1.02 (0.823) | x1.06 (0.554) | x1.51 (<0.001) |
+| Repair variant F | `screen-t5f-1` | aggregator | 40/40 | 15.3 | x0.94 (0.318) | x0.85 (0.048) | x0.86 (0.114) | x1.23 (0.080) |
+
+Easy set, Luna. Ratios and p values are against the baseline pool. `cancel-async-tasks` is the task with the most failures.
+
+| Text | Rounds | Passes | `cancel-async-tasks` passes | Calls per trial | Cost ratio (p) | Calls ratio (p) | Completion token ratio (p) | Passes against the baseline (p) |
+|---|---|---|---|---|---|---|---|---|
+| Baseline (no first block) | `luna-screen-shipped-1`, `luna-screen-shipped-2`, `luna-screen-shipped-3` | 115/120 | 21/24 | 11.9 | 1 | 1 | 1 |  |
+| The rule | `luna-screen-t5-finish-once-1`, `luna-screen-t5-finish-once-2` | 75/80 | 14/16 | 9.9 | x0.80 (<0.001) | x0.84 (<0.001) | x0.85 (0.001) | 0.736 |
+| Role sentence, then the rule | `luna-screen-t1t5-role-finish-1` | 36/40 | 5/8 | 10.5 | x0.84 (0.007) | x0.89 (0.014) | x0.89 (0.058) | 0.215 |
+| Whole donor prompt | Luna donor round | 37/40 | 7/8 | 9.3 | x0.97 (0.572) | x0.79 (<0.001) | x0.95 (0.449) | 0.676 |
+| The rule, then One check | `luna-screen-t5-b1-1` | 39/40 | 7/8 | 11.0 | x0.99 (0.934) | x0.93 (0.141) | x0.91 (0.136) | 1.000 |
+| The rule, then Scope of the result | `luna-screen-t5-b2-1` | 37/40 | 6/8 | 9.8 | x0.87 (0.022) | x0.82 (<0.001) | x0.85 (0.008) | 0.675 |
+| The rule, then Questions about behavior | `luna-screen-t5-b3-1` | 35/40 | 4/8 | 10.3 | x0.95 (0.409) | x0.87 (0.006) | x0.87 (0.022) | 0.101 |
+| The rule, then Read once | `luna-screen-t5-b4-1` | 37/40 | 6/8 | 9.9 | x0.92 (0.224) | x0.83 (<0.001) | x0.88 (0.054) | 0.668 |
+| Finishing, second version | `luna-screen-r1-finish-v2-1` | 36/40 | 6/8 | 10.2 | x0.98 (0.792) | x0.86 (0.001) | x0.92 (0.149) | 0.223 |
+| The rule, then Open readings | `luna-screen-t5-r2-1` | 37/40 | 7/8 | 10.0 | x0.98 (0.745) | x0.84 (0.001) | x0.92 (0.157) | 0.676 |
+| The rule, then Final message | `luna-screen-t5-r3-1` | 39/40 | 7/8 | 9.4 | x0.86 (0.018) | x0.79 (<0.001) | x0.80 (<0.001) | 1.000 |
+| Finishing, second version, then Open readings and Final message | `luna-screen-r1-r2-r3-1` | 38/40 | 7/8 | 10.1 | x0.95 (0.427) | x0.85 (0.001) | x0.87 (0.029) | 1.000 |
+| The rule, then Notes while you work | `luna-screen-t5-p1-1` | 34/40 | 5/8 | 8.8 | x0.89 (0.059) | x0.74 (<0.001) | x0.90 (0.065) | 0.026 |
+| The rule, then Notes while you work and Final message | `luna-screen-t5-p1-r3-1` | 35/40 | 6/8 | 9.0 | x0.89 (0.065) | x0.76 (<0.001) | x0.91 (0.125) | 0.115 |
+| The rule, then notes without the grouping sentence | `luna-screen-t5-p1a-1` | 35/40 | 4/8 | 9.3 | x0.94 (0.323) | x0.78 (<0.001) | x0.91 (0.128) | 0.108 |
+| The rule, then Grouped tool calls | `luna-screen-t5-p1b-1` | 39/40 | 8/8 | 9.4 | x0.85 (0.008) | x0.80 (<0.001) | x0.87 (0.027) | 1.000 |
+| Repair variant B | `luna-screen-t5b-1` | 37/40 | 7/8 | 11.1 | x0.97 (0.609) | x0.94 (0.182) | x1.09 (0.153) | 0.681 |
+| Repair variant C | `luna-screen-t5c-1` | 36/40 | 6/8 | 10.8 | x0.92 (0.143) | x0.91 (0.041) | x0.96 (0.482) | 0.217 |
+| Repair variant D | `luna-screen-t5d-1`, `luna-screen-t5d-2` | 77/80 | 14/16 | 10.1 | x0.78 (<0.001) | x0.85 (<0.001) | x0.84 (<0.001) | 1.000 |
+| Repair variant E | `luna-screen-t5e-1` | 36/40 | 5/8 | 11.1 | x0.92 (0.158) | x0.93 (0.159) | x0.88 (0.031) | 0.217 |
+| Repair variant F | `luna-screen-t5f-1` | 36/40 | 6/8 | 10.3 | x0.91 (0.136) | x0.87 (0.005) | x0.89 (0.069) | 0.224 |
+
+Hard set, per round. A cost that starts with "at least" holds one or more trials that are priced from a snapshot.
+
+| Text | Round | Scored trials | Passes | Cost of the round | `schemelike-metacircular-eval` | `adaptive-rejection-sampler` | `mteb-leaderboard` | `chess-best-move` | `embedding-drift-monitor` | `intrastat-meldung` | `large-scale-text-editing` |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Baseline | `luna-hard-shipped-1` | 42/42 | 21 | $1.379 | 4/6 | 6/6 | 1/6 | 4/6 | 0/6 | 0/6 | 6/6 |
+| Baseline | `luna-hard-shipped-2` | 42/42 | 20 | at least $1.222 | 6/6 | 6/6 | 0/6 | 1/6 | 0/6 | 1/6 | 6/6 |
+| Baseline | `luna-hard-shipped-3` | 42/42 | 19 | at least $1.398 | 4/6 | 6/6 | 0/6 | 3/6 | 0/6 | 0/6 | 6/6 |
+| Baseline | `luna-hard-shipped-4` | 42/42 | 20 | at least $1.405 | 4/6 | 5/6 | 2/6 | 3/6 | 0/6 | 0/6 | 6/6 |
+| The rule | `luna-hard-t5-finish-once-1` | 42/42 | 18 | $1.124 | 3/6 | 6/6 | 1/6 | 2/6 | 0/6 | 0/6 | 6/6 |
+| The rule | `luna-hard-t5-finish-once-2` | 42/42 | 17 | at least $0.963 | 4/6 | 4/6 | 0/6 | 2/6 | 0/6 | 1/6 | 6/6 |
+| The rule | `luna-hard-t5-finish-once-3` | 42/42 | 14 | at least $0.961 | 2/6 | 4/6 | 0/6 | 2/6 | 0/6 | 0/6 | 6/6 |
+| The rule | `luna-hard-t5-finish-once-4` | 42/42 | 17 | $0.922 | 3/6 | 5/6 | 0/6 | 3/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant B | `luna-hard-t5b-1` | 42/42 | 17 | $1.193 | 4/6 | 6/6 | 1/6 | 0/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant B | `luna-hard-t5b-2` | 42/42 | 21 | at least $1.328 | 4/6 | 6/6 | 1/6 | 4/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant C | `luna-hard-t5c-1` | 42/42 | 20 | at least $1.299 | 4/6 | 5/6 | 1/6 | 4/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant C | `luna-hard-t5c-2` | 42/42 | 19 | at least $1.114 | 4/6 | 6/6 | 0/6 | 2/6 | 0/6 | 1/6 | 6/6 |
+| Repair variant C | `luna-hard-t5c-3` | 42/42 | 19 | at least $1.120 | 6/6 | 5/6 | 1/6 | 1/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant C | `luna-hard-t5c-4` | 42/42 | 17 | at least $1.287 | 5/6 | 3/6 | 1/6 | 1/6 | 0/6 | 1/6 | 6/6 |
+| Repair variant D | `luna-hard-t5d-1` | 42/42 | 18 | $1.096 | 4/6 | 5/6 | 1/6 | 2/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant D | `luna-hard-t5d-2` | 41/42 | 18 | at least $0.961 | 3/6 | 6/6 | 2/6 | 1/6 | 0/6 | 0/5 | 6/6 |
+| Repair variant D | `luna-hard-t5d-3` | 42/42 | 19 | $1.041 | 5/6 | 6/6 | 1/6 | 2/6 | 0/6 | 0/6 | 5/6 |
+| Repair variant D | `luna-hard-t5d-4` | 41/42 | 16 | at least $0.930 | 3/6 | 5/6 | 0/5 | 2/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant E | `luna-hard-t5e-1` | 42/42 | 17 | at least $1.185 | 5/6 | 4/6 | 0/6 | 2/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant E | `luna-hard-t5e-2` | 42/42 | 18 | at least $1.185 | 3/6 | 6/6 | 0/6 | 3/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant F | `luna-hard-t5f-1` | 42/42 | 19 | $1.088 | 5/6 | 6/6 | 1/6 | 1/6 | 0/6 | 0/6 | 6/6 |
+| Repair variant F | `luna-hard-t5f-2` | 42/42 | 22 | $1.123 | 4/6 | 6/6 | 3/6 | 2/6 | 0/6 | 1/6 | 6/6 |
+| DeepSeek baseline | `ds-hard-shipped-1` | 42/42 | 27 | at least $5.348 | 5/6 | 1/6 | 6/6 | 5/6 | 3/6 | 4/6 | 3/6 |
+| DeepSeek, the rule | `ds-hard-t5-1` | 42/42 | 30 | at least $4.656 | 5/6 | 3/6 | 6/6 | 6/6 | 6/6 | 1/6 | 3/6 |
+
+Hard set, pooled per task. "Four tasks" are the four tasks on which the baseline and the rule differ in passes. The cost ratio is task-balanced. For Luna it is on the launcher's cost. For DeepSeek it is on the neutral cost, because the launcher's cost of a DeepSeek round depends on the route.
+
+| Text | Rounds | `schemelike-metacircular-eval` | `adaptive-rejection-sampler` | `mteb-leaderboard` | `chess-best-move` | `embedding-drift-monitor` | `intrastat-meldung` | `large-scale-text-editing` | Four tasks that differ | All 7 tasks | Cost ratio | p against the baseline, four tasks | p against the baseline, all 7 | p against the rule, all 7 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Baseline | 4 | 18/24 | 23/24 | 3/24 | 11/24 | 0/24 | 1/24 | 24/24 | 55/96 | 80/168 (47.6%) | 1 |  |  |  |
+| The rule | 4 | 12/24 | 19/24 | 1/24 | 9/24 | 0/24 | 1/24 | 24/24 | 41/96 | 66/168 (39.3%) | x0.73 | 0.020 | 0.027 |  |
+| Repair variant B | 2 | 8/12 | 12/12 | 2/12 | 4/12 | 0/12 | 0/12 | 12/12 | 26/48 | 38/84 (45.2%) | x0.93 | 0.819 | 0.657 | 0.210 |
+| Repair variant C | 4 | 19/24 | 19/24 | 3/24 | 8/24 | 0/24 | 2/24 | 24/24 | 49/96 | 75/168 (44.6%) | x0.89 | 0.371 | 0.490 | 0.193 |
+| Repair variant D | 4 | 15/24 | 22/24 | 4/23 | 7/24 | 0/24 | 0/23 | 23/24 | 48/95 | 71/166 (42.8%) | x0.77 | 0.278 | 0.166 | 0.410 |
+| Repair variant E | 2 | 8/12 | 10/12 | 0/12 | 5/12 | 0/12 | 0/12 | 12/12 | 23/48 | 35/84 (41.7%) | x0.88 | 0.259 | 0.185 | 0.675 |
+| Repair variant F | 2 | 9/12 | 12/12 | 4/12 | 3/12 | 0/12 | 1/12 | 12/12 | 28/48 | 41/84 (48.8%) | x0.82 | 1.000 | 0.830 | 0.044 |
+| DeepSeek baseline | 1 | 5/6 | 1/6 | 6/6 | 5/6 | 3/6 | 4/6 | 3/6 | 17/24 | 27/42 (64.3%) | 1 |  |  |  |
+| DeepSeek, the rule | 1 | 5/6 | 3/6 | 6/6 | 6/6 | 6/6 | 1/6 | 3/6 | 20/24 | 30/42 (71.4%) | x0.98 (neutral cost) | 0.396 | 0.593 |  |
+
+The trade, per text. Each row pairs the cost ratio with the pass rate.
+
+| Text | DeepSeek easy set: neutral cost ratio | Luna easy set: cost ratio | Luna easy set: passes | Luna hard set: cost ratio | Luna hard set: passes |
+|---|---|---|---|---|---|
+| Baseline | 1 | 1 | 115/120 (95.8%) | 1 | 80/168 (47.6%) |
+| The rule | x0.70 | x0.80 | 75/80 (93.8%) | x0.73 | 66/168 (39.3%) |
+| Repair variant D | x0.88 | x0.78 | 77/80 (96.2%) | x0.77 | 71/166 (42.8%) |
+| Repair variant F | x0.86 | x0.91 | 36/40 (90.0%) | x0.82 | 41/84 (48.8%) |
+| Repair variant E | x1.06 | x0.92 | 36/40 (90.0%) | x0.88 | 35/84 (41.7%) |
+| Repair variant C | not run | x0.92 | 36/40 (90.0%) | x0.89 | 75/168 (44.6%) |
+| Repair variant B | not run | x0.97 | 37/40 (92.5%) | x0.93 | 38/84 (45.2%) |
+
+- The rule on the easy set: neutral cost x0.70 on DeepSeek (80 of 80 passes) and cost x0.80 on Luna (75 of 80 against 115 of 120, p = 0.74). It became the candidate, and no later text beat it under the decision rule.
+- The rule on the Luna hard set: 66 of 168 passes against 80 of 168 (p = 0.027), and 41 of 96 against 55 of 96 on the four tasks that differ (p = 0.020). Every rule round (14 to 18 passes) is below every baseline round (19 to 21). No single task is significant alone (p = 0.14, 0.18, 0.61, and 0.77).
+- Where the hard-set saving is: the rule saves $0.36 per round of 42 trials. `intrastat-meldung` gives 49% of that saving with passes equal at 1 of 24, and `schemelike-metacircular-eval` gives 34% with 12 of 24 passes against 18 of 24.
+- The rule on the DeepSeek hard set, one round against one round: 30 of 42 passes against 27 of 42 (p = 0.59), calls x0.97 (p = 0.67), completion tokens x1.03, and neutral cost x0.98 (p = 0.80). The rule did not save there. The agent time limit ended 16 rule trials and 14 baseline trials, and 7 and 8 of them failed.
+- The donor ceiling: the whole donor prompt gives x0.55 on DeepSeek (79 of 80 passes), which is x0.78 of the rule alone (p = 0.008). On Luna it does not cut cost (x0.97, p = 0.57) and passes 37 of 40.
+- The style-section split: sections A alone give x0.79 (p = 0.014) and sections B alone give x0.97 (p = 0.80). The rule with A and B gives x0.60, and the rule with A only gives x0.58, so sections B add nothing (x0.97 between these two rounds, p = 0.84). The two rule-and-style rounds pooled are x0.85 of the rule alone on neutral cost (p = 0.13) and x0.84 on calls (p = 0.005).
+- The own-words additions: no added block beats the rule alone on DeepSeek. The lowest single rounds are x0.90 of the rule alone (p = 0.40 and 0.45), and the two texts with a second round are x0.95 (Final message, p = 0.57) and x1.03 (Notes while you work, p = 0.80) when pooled. Four additions cost more than the rule alone (One check x1.47, Scope of the result x1.33, Questions about behavior x1.68, and the second version of Finishing x1.42, each with p below 0.01).
+- The notes block on Luna: calls fall to x0.74, but the round passes 34 of 40 (p = 0.026 against the baseline). The two rounds that hold the block pass 69 of 80 against 75 of 80 for the rule alone (p = 0.17).
+- The repair variants on the Luna hard set: none differs from the baseline in passes (p = 0.17 to 0.83), and only variant F differs from the rule (p = 0.044). Variants B, C, D, and E order by cost almost as they order by passes (the trade table gives each pair): more passes generally go with less saving, with one reversal, because variant D costs less than variant E and passes more.
+- Variant F does not fit that trend. Its two hard rounds pass 19 and 22 of 42 trials. Together that is 41 of 84 against 80 of 168 for the baseline (p = 0.83), at a cost of x0.82, and each of the two rounds costs less than every baseline round ($1.088 and $1.123 against $1.222 to $1.405). On the easy set its savings are small and not significant alone: x0.86 on DeepSeek (p = 0.11) and x0.91 on Luna (p = 0.14). Two rounds of 42 trials do not establish that it keeps both the passes and the saving.
+- The repair variants on the DeepSeek easy set: variants D, E, and F cost x1.25, x1.51, and x1.23 of the rule alone (p = 0.075, below 0.001, and 0.080). The repair sentences give back part of the saving.
+
+Mechanism. These counts come from readings of the recorded trials and from text patterns over the reasoning and the tool calls. They are approximate.
+
+- Where the rule saves, DeepSeek easy set: the rule cuts the work after the first plan of the final message. Model calls after the first call whose reasoning turns to the final message fall to x0.54 (p = 0.006), and the calls up to that call do not change (x0.96, p = 0.62). The comparison is the two rule rounds against `screen-shipped-3` and `-4`.
+- What the donor text adds to the rule, DeepSeek easy set: the three rounds with the rule use 17,902 completion tokens per trial against 13,329 for the two donor rounds (p below 0.001), and `cancel-async-tasks` and `regex-log` hold 95% of that gap. The gap is in the calls after the first draft: 2.00 calls per trial with 1,000 or more reasoning tokens against 1.23 (p = 0.001). In those calls a check has just passed, and the agent argues again about a choice that it already made. Trials that go back on a new doubt after the first plan of the final message are equally frequent (7 of 120 against 5 of 80).
+- Which part of the donor text has the effect: its sections on short notes before grouped tool calls (sections A). Its rules for the format of the final answer (sections B) add nothing. In our own words the notes block does group more: tool calls per model call rise from 1.29 to 1.43 on Luna. It does not beat the rule alone on DeepSeek, and on `kv-store-grpc` 4 of 16 Luna trials with the block ended at the agent time limit, against 0 of 16 with the rule alone.
+- Why the rule loses hard-task passes: of the 14 passes lost on the four tasks, 9 are give-ups and 5 are trials that ended in the belief that the work was correct. A give-up is a trial that ends while a check that it ran still fails: 13 rule trials against 4 baseline trials. In `schemelike-metacircular-eval` 10 of 24 rule trials end 1 to 3 calls after a failing check, against 4 of 24. The rule trials stop the repair a mean of 17.6 calls after the first failing check, and the baseline trials continue for 39.2 calls.
+- The second cause is speed: in `adaptive-rejection-sampler` 4 rule trials end with their own test green, but that test ran 63 to 147 seconds and the verifier stops it at 60 seconds. A slow test phase occurred in 9 of 24 rule trials and was removed in 3, and in 7 of 24 baseline trials and was removed in 5.
+- The failures that the rule does not explain are equal in both arms (36 and 36 on the four tasks).
+- Work after the first plan of the final message did not make the baseline pass: in the 31 passing baseline trials that were read on `schemelike-metacircular-eval` and `adaptive-rejection-sampler`, no edit after that point fixed a defect that the verifier tests. The baseline passes because of earlier work: the repair between the first failing check and the first passing check, and the work between the first green run and the final message. The saving of the rule and its loss of passes are the same work: on `schemelike-metacircular-eval` the rule uses 27.6 model calls per trial against 50.8.
+
+### Validity
+
+- Final rounds only. All 29 DeepSeek easy rounds and all 25 Luna easy rounds finalized with 40 of 40 trials scored, and both DeepSeek hard rounds with 42 of 42.
+- All hard rounds of the baseline, the rule, and the repair variants are included: 22 on Luna and 2 on DeepSeek.
+- Four of the 22 Luna hard rounds ended with the launcher outcome `trials_unverified`, which is fail-closed: `luna-hard-t5b-2` and `luna-hard-t5c-2` with 42 of 42 trials scored, and `luna-hard-t5d-2` and `luna-hard-t5d-4` with 41 of 42. Their ledgers are used here as they are. Variant D therefore has 166 trials.
+- No separate A/A arm ran. The baseline rounds of each set are the noise reference.
+- The arms and the baseline pools ran at different times, on 15 source commits. Outside the arm configs, those commits differ only in the diagnostic code that reads the configs, its setting definitions, its test, and its documentation. A change of provider load or behavior during the two days is not separated from an arm effect.
+- The agent time limit ended 17 trials of the DeepSeek easy rounds, 21 of the Luna easy rounds, 11 of the Luna hard rounds, and 30 of the two DeepSeek hard rounds. A timed-out trial has fewer calls than it would have had, and its cost is a lower bound.
+- The mechanism counts rest on hand readings and on text patterns. Luna records reasoning summaries only, so the Luna readings rest on visible text, tool calls, and tool results.
+
+### Verdicts
+
+- The rule is not adopted. It was approved for publication subject to the hard-set check, and it failed that check: on the Luna hard set it loses passes (66 of 168 against 80 of 168, p = 0.027) for a cost of x0.73.
+- No own-words addition is adopted. None beats the rule alone on DeepSeek, and the round with the notes block passes 34 of 40 on Luna.
+- No repair variant is adopted. Among variants B, C, D, and E, more passes generally go with less saving, with one reversal: variant D costs less than variant E and passes more. Variant F does not fit that trend. In two hard rounds it passes about as many trials as the baseline (41 of 84 against 80 of 168, p = 0.83) at a lower cost (x0.82). Its easy-set savings are small and not significant alone (x0.86 on DeepSeek and x0.91 on Luna), and two rounds of 42 trials do not establish it. No variant is shown to keep both the passes and the saving.
+- The donor text cannot ship, because it is the text of another agent. On Luna it also gives no saving (x0.97) at 37 of 40 passes.
+- The result is the trade. On these tasks the text that cuts cost cuts the repair of a failing check, and the passes of the hard set come from that repair. No tested wording is shown to separate the two.
+- The maintainer's decision of 2026-11-16: do not ship the rule, stop the wording search, and work on structural levers.
+
+### What the result cannot show
+
+- Two models only, each at one effort.
+- 5 easy tasks and 7 hard tasks. Two of the hard tasks pass almost never on Luna and one passes always, so four tasks carry the pass result.
+- One DeepSeek hard pair only, and it went the other way: 30 of 42 with the rule against 27 of 42, with time-limit failures in both arms (7 and 8). The two rounds also overlapped on the same provider accounts while one route was out of quota: the baseline trials waited 16,626 seconds in total for provider capacity and the rule trials 2,702 seconds, so the pair does not compare the texts alone. Whether the rule loses hard-task passes on DeepSeek is not known.
+- One screening round gives an uncertain estimate of an effect: two rounds of one text measured x0.63 and x0.81.
+- Variant F has two hard rounds. Its 41 of 84 is not different from the baseline (p = 0.83), and its cost is x0.82. Two rounds of 42 trials cannot show that a text keeps both the passes and the saving.
+- Interactive chat and child agents were not tested. Every trial is an unattended chat.
+- Which sentence of the donor text has the effect, and whether its position, its length, or its voice has it. The own-words blocks did not reproduce the effect on DeepSeek.
