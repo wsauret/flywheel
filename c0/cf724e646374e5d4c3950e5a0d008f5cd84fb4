@@ -1,0 +1,256 @@
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 192,197
+bench/tasks/implement/astropy__astropy-14598/adapter.ts
+  h_4b47e9e4a8b456 4,34
+bench/tasks/implement/ds1000-298/adapter.ts
+  h_4b47e9e4a8b456 4,39
+bench/tasks/implement/ds1000-298/qualify.ts
+  h_4b47e9e4a8b456 5,41
+bench/tasks/implement/getmoto__moto-7365/adapter.ts
+  h_4b47e9e4a8b456 4,59
+bench/tasks/implement/getmoto__moto-7365/qualify.ts
+  h_4b47e9e4a8b456 5,35
+bench/tasks/implement/httpx-streaming-json-iteration/adapter.ts
+  h_4b47e9e4a8b456 4,62
+bench/tasks/implement/httpx-streaming-json-iteration/qualify.ts
+  h_4b47e9e4a8b456 5,61
+bench/tasks/implement/jquense__yup-2305/adapter.ts
+  h_4b47e9e4a8b456 4,59
+bench/tasks/implement/jquense__yup-2305/qualify.ts
+  h_4b47e9e4a8b456 6,46
+bench/tasks/implement/psf__requests-6028/adapter.ts
+  h_4b47e9e4a8b456 4,54
+bench/tasks/implement/psf__requests-6028/qualify.ts
+  h_4b47e9e4a8b456 5,37
+bench/tasks/implement/redis__redis-10068/adapter.ts
+  h_4b47e9e4a8b456 4,46
+bench/tasks/implement/redis__redis-10068/qualify.ts
+  h_4b47e9e4a8b456 6,40
+bench/tasks/implement/regex-chess/adapter.ts
+  h_4b47e9e4a8b456 5,41
+bench/tasks/implement/regex-chess/qualify.ts
+  h_4b47e9e4a8b456 5,25
+bench/tasks/implement/rust-react/adapter.ts
+  h_4b47e9e4a8b456 4,30
+bench/tasks/implement/scheme-metacircular/adapter.ts
+  h_4b47e9e4a8b456 5,42
+bench/tasks/implement/scheme-metacircular/qualify.ts
+  h_4b47e9e4a8b456 5,21
+bench/tasks/qualify.ts
+  h_4b47e9e4a8b456 5,96
+scripts/readiness-login.ts
+  h_4b47e9e4a8b456 36,183
+scripts/release-contract-checks.ts
+  h_4b47e9e4a8b456 27,130
+scripts/uat/harness.ts
+  h_4b47e9e4a8b456 11,127,133,158
+src/cli/event-maintain.ts
+  h_4b47e9e4a8b456 21,107
+src/cli/runtime-launch.ts
+  h_4b47e9e4a8b456 5
+src/infra/auth/auth-profile-retirements.ts
+  h_4b47e9e4a8b456 1
+src/infra/auth/auth-profile-store.ts
+  h_4b47e9e4a8b456 6-7,131,133,303,568
+src/infra/auth/auth-store-mutations.ts
+  h_4b47e9e4a8b456 3,10,69,94-95,102-103,326
+src/infra/auth/locked-json-store.ts
+  h_4b47e9e4a8b456 15-16,135
+src/infra/auth/provider-model-catalog-store.ts
+  h_4b47e9e4a8b456 5
+src/infra/descriptor-directory-contract.ts
+  h_4b47e9e4a8b456 56-58,76,97,104-105
+src/infra/descriptor-directory-posix.ts
+  h_4b47e9e4a8b456 11,197,594
+src/infra/descriptor-directory-win32-path.ts
+  h_4b47e9e4a8b456 5
+src/infra/descriptor-directory-win32.ts
+  h_4b47e9e4a8b456 12,75,535
+src/infra/descriptor-directory.ts
+  h_4b47e9e4a8b456 1-3,9,28-31,33-35,45,51
+src/infra/package-directory-lock.ts
+  h_4b47e9e4a8b456 12-13,113
+src/infra/process-supervisor.ts
+  h_4b47e9e4a8b456 4,8,166,175-193,446,451,502,507
+src/infra/source-snapshot.ts
+  h_4b47e9e4a8b456 48-49,383,460,559
+src/infra/update/active-build.ts
+  h_4b47e9e4a8b456 19-20,88
+src/infra/update/build-retention.ts
+  h_4b47e9e4a8b456 72-73,474,489,499
+src/infra/update/live-builds.ts
+  h_4b47e9e4a8b456 28-29,74,191,209
+src/infra/update/update-authority.ts
+  h_4b47e9e4a8b456 54-55,387
+src/infra/write-file-under.ts
+  h_4b47e9e4a8b456 13-14,42,49,59,75,92,105,120
+src/orchestration/agent-runtime/tools/apply-patch.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/tools/bash-copy-rebase.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/app-service/project-serving-lane.ts
+  h_4b47e9e4a8b456 4-5,26,34
+src/orchestration/config/config-file.ts
+  h_4b47e9e4a8b456 23-24,107,189
+src/orchestration/file-edits/file-edit-operation.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/file-edits/retained-file-edit-host.ts
+  h_4b47e9e4a8b456 3-4,69,203
+src/orchestration/file-edits/session-file-restoration.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/development/benchmark/implement-task.ts
+  h_4b47e9e4a8b456 5-6,249
+src/orchestration/modules/development/benchmark/snapshot-workspace.ts
+  h_4b47e9e4a8b456 4-5,25
+src/orchestration/modules/learning/memory-store.ts
+  h_4b47e9e4a8b456 40-41
+src/orchestration/modules/learning/skill-operation-manifest.ts
+  h_4b47e9e4a8b456 25,518,521
+src/orchestration/modules/learning/skill-store.ts
+  h_4b47e9e4a8b456 22
+src/orchestration/modules/provider-claude-agent-sdk/cli-login.ts
+  h_4b47e9e4a8b456 5,154,171,208
+src/orchestration/modules/workflows/migrations/legacy-step-catalog-filesystem.ts
+  h_4b47e9e4a8b456 33
+src/orchestration/modules/workflows/migrations/legacy-step-catalog.ts
+  h_4b47e9e4a8b456 27
+src/orchestration/project-state-lease.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/session/child-execution-resources.ts
+  h_4b47e9e4a8b456 2,41
+src/orchestration/session/file-mutation-access.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/session/file-mutation-operation.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/session/file-mutation-recovery.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/session/session-artifacts.ts
+  h_4b47e9e4a8b456 26-27,130,141,298,424
+src/orchestration/update/archive-spool.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/update/install-engine.ts
+  h_4b47e9e4a8b456 59-60,191,271,534,785
+src/orchestration/update/refused-build.ts
+  h_4b47e9e4a8b456 16-17,50
+src/orchestration/update/update-install.ts
+  h_4b47e9e4a8b456 46-47,173
+src/orchestration/update/windows-install.ts
+  h_4b47e9e4a8b456 40-41,418
+src/orchestration/workflow-host/path-workflow.ts
+  h_4b47e9e4a8b456 20-21,79,198
+src/orchestration/workspace-state-retirement.ts
+  h_4b47e9e4a8b456 30
+src/orchestration/workspace-state.ts
+  h_4b47e9e4a8b456 3,46,93
+src/workflows/skill-context.ts
+  h_4b47e9e4a8b456 3-4,32,44,70,86,117,119,127,399,401,403,407,437,441-442,458,462-463,482,505,516,540,620,646
+tests/e2e/seed-subscription-spend-consent.ts
+  h_4b47e9e4a8b456 5,28,30
+tests/e2e/seed-usage.ts
+  h_4b47e9e4a8b456 3,40,42-44,47,50-51
+tests/helpers/contained-directory-spies.ts
+  h_4b47e9e4a8b456 1-14
+tests/helpers/contained-writes.ts
+  h_4b47e9e4a8b456 5-6,13-14
+tests/helpers/placed-build.ts
+  h_4b47e9e4a8b456 3,35,49
+tests/integration/local/dev-source-snapshot.test.ts
+  h_4b47e9e4a8b456 13,207
+tests/integration/local/owned-subprocess-guardian-loss.test.ts
+  h_4b47e9e4a8b456 5,34
+tests/integration/local/owned-subprocess-guardian.test.ts
+  h_4b47e9e4a8b456 7,14,68,71,133,170,189,204,264-265,285,356,416,584,612
+tests/integration/local/owned-subprocess-handover.test.ts
+  h_4b47e9e4a8b456 10,59,61,82
+tests/integration/local/owned-subprocess-stop-hold.test.ts
+  h_4b47e9e4a8b456 6,38-39,67
+tests/integration/local/owned-subprocess-termination.test.ts
+  h_4b47e9e4a8b456 6,29,47,69,93,114,138,170,198,220
+tests/integration/local/replacement-continuation.test.ts
+  h_4b47e9e4a8b456 7,569
+tests/integration/local/replacement-recovery.test.ts
+  h_4b47e9e4a8b456 7,211
+tests/integration/local/runtime-generation-ownership.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/integration/orchestration/modules.test.ts
+  h_4b47e9e4a8b456 21-22,497,502
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.ts
+  h_4b47e9e4a8b456 15,151
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-separation.test.ts
+  h_4b47e9e4a8b456 15,148
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-wire.test.ts
+  h_4b47e9e4a8b456 16,64,90
+tests/integration/providers/_live-client.ts
+  h_4b47e9e4a8b456 24,114
+tests/integration/providers/claude-sdk-subscription-real.test.ts
+  h_4b47e9e4a8b456 25,239
+tests/unit/cli/event-maintain-project-root.test.ts
+  h_4b47e9e4a8b456 9,109
+tests/unit/cli/index.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/infra/agent-assets-loader.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/infra/auth/auth-context.test.ts
+  h_4b47e9e4a8b456 7,71,77,87,95,100,106-107,157,161
+tests/unit/infra/auth/auth-lock.test.ts
+  h_4b47e9e4a8b456 5-6,301,427
+tests/unit/infra/auth/auth-profile-store.test.ts
+  h_4b47e9e4a8b456 7-8,313,362
+tests/unit/infra/auth/auth-store.test.ts
+  h_4b47e9e4a8b456 9,57,71,83,104,111,120,180,227,236,238,261,272-273,322,331,335,345,353,365,377,386,398,419,428,431,453,460,469,476,482,485
+tests/unit/infra/auth/locked-json-store.test.ts
+  h_4b47e9e4a8b456 13-14,91-92,94,100
+tests/unit/infra/descriptor-directory-posix.test.ts
+  h_4b47e9e4a8b456 8,21
+tests/unit/infra/descriptor-directory-win32.test.ts
+  h_4b47e9e4a8b456 10,36
+tests/unit/infra/descriptor-directory.test.ts
+  h_4b47e9e4a8b456 16-17,34,106,116,131-132,279,352,365,374,434-435,523
+tests/unit/infra/file-mutation-queue.test.ts
+  h_4b47e9e4a8b456 5,7,16,22,42,47,66,71,86,92,128,134
+tests/unit/infra/local-tokenizer.test.ts
+  h_4b47e9e4a8b456 12-13,44,55,73,81
+tests/unit/infra/source-snapshot.test.ts
+  h_4b47e9e4a8b456 7,196,372
+tests/unit/infra/update/active-build.test.ts
+  h_4b47e9e4a8b456 9-10,28
+tests/unit/infra/web-push.test.ts
+  h_4b47e9e4a8b456 4-14
+tests/unit/infra/write-file-under.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/agent-runtime/llm/copilot-token-persistence.test.ts
+  h_4b47e9e4a8b456 6,10,22-23,64-66,109,115-116
+tests/unit/orchestration/agent-runtime/session-notes-prompts.test.ts
+  h_4b47e9e4a8b456 13,114,120-121
+tests/unit/orchestration/agent-runtime/tools/file-edit-operation.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/app-service/project-executor-generations.test.ts
+  h_4b47e9e4a8b456 8,592
+tests/unit/orchestration/app-service/project-serving-lane.test.ts
+  h_4b47e9e4a8b456 8,56,243
+tests/unit/orchestration/auth/auth-profile-manager.test.ts
+  h_4b47e9e4a8b456 7-8,401-402,420-421,431
+tests/unit/orchestration/auth/login-abort.test.ts
+  h_4b47e9e4a8b456 6,145,157,169,182,208
+tests/unit/orchestration/config/config-ownership.test.ts
+  h_4b47e9e4a8b456 4,27,46
+tests/unit/orchestration/session/file-mutation-fact-writers.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/session/file-mutation-proof-fixture.ts
+  h_4b47e9e4a8b456 1
+tests/unit/workflows/definitions/skill-loader-roots.test.ts
+  h_4b47e9e4a8b456 5,24,67,97
+tests/unit/workflows/skill-context.test.ts
+  h_4b47e9e4a8b456 5,43,326,341,412,426,443,454,499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c0cf724e646374e5d4c3950e5a0d008f5cd84fb4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
