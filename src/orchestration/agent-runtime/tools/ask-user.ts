@@ -187,6 +187,7 @@ export const ASK_USER_TOOL_DEFINITION: AdvertisedTool = { ...ASK_USER_BASE, inpu
 export function createAskUserTool(controller: AskUserController, deps: AskUserToolDeps): RuntimeTool {
   return {
     ...ASK_USER_BASE,
+    answersPerson: true,
     inputSchema: askUserInputSchema(deps),
     prepareAdmission: async input => {
       let changed = false;

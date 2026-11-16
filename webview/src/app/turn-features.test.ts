@@ -75,7 +75,7 @@ test("folded answers load unique file metadata only and disclose one file's orde
   const connection: Pick<RuntimeConnection, "query"> = { query }
   const reader = createMutationEvidenceReader({ connection, sessionId: SESSION })
   const calls = evidence.map((mutationEvidence, index) => rendered.tool({ id: `edit-${index}`, status: "completed", mutationEvidence }))
-  const fold: TurnFold = { kind: "turnFold", id: "turn", answerId: "answer", held: 0, open: false, timestamp: 0, duration: 1, rows: calls }
+  const fold: TurnFold = { kind: "turnFold", id: "turn", answerId: "answer", open: false, timestamp: 0, duration: 1, rows: calls }
   const mounted = mountTurnChanges(fold, undefined, reader)
   try {
     await settle()
@@ -132,7 +132,7 @@ test("turn cards do not recount for unrelated folds, bodies, or token publicatio
   const fixture = await mutationEvidenceFixture({ version: 1, files: [{ path: "a.ts", change: "modified", unifiedDiff: "@@ -1 +1 @@\n-old\n+new" }], omissions: [] })
   const call = { ...rendered.tool({ status: "completed" }), get mutationEvidence() { reads++; return fixture.evidence } }
   await fixture.reader.open(`tool:${call.id}`, fixture.evidence.manifest).loadFiles()
-  const fold: TurnFold = { kind: "turnFold", id: "turn", answerId: "answer", held: 0, open: false, timestamp: 0, duration: 1, rows: [call] }
+  const fold: TurnFold = { kind: "turnFold", id: "turn", answerId: "answer", open: false, timestamp: 0, duration: 1, rows: [call] }
   const mounted = mountTurnChanges(fold, undefined, fixture.reader)
   try {
     assert.match(mounted.text(), /Changed 1 file/)
@@ -150,7 +150,7 @@ test("turn cards do not recount for unrelated folds, bodies, or token publicatio
 
 test("turn cards never request whole-body hydration for absent mutation evidence", async () => {
   const call = { ...rendered.tool({ status: "completed" }), diffOmission: { kind: "aggregate" as const, omittedLines: 40 } }
-  const fold: TurnFold = { kind: "turnFold", id: "turn", answerId: "answer", held: 0, open: false, timestamp: 0, duration: 1, rows: [call] }
+  const fold: TurnFold = { kind: "turnFold", id: "turn", answerId: "answer", open: false, timestamp: 0, duration: 1, rows: [call] }
   const mounted = mountTurnChanges(fold)
   try {
     await settle()

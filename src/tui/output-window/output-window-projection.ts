@@ -42,7 +42,7 @@ export function targetTimelineBlockIndex(
 
 function holdsEntry(block: TimelineRow, entryId: string): boolean {
   if (block.kind === "toolRun") return block.children.some((child) => child.id === entryId)
-  if (block.kind === "turnFold") return block.rows.some((row) => holdsEntry(row, entryId))
+  if (block.kind === "callStretch") return block.rows.some((row) => holdsEntry(row, entryId))
   if (block.kind === "tool") return block.id === entryId
   if (block.kind === "agentGroup") return block.id === entryId || block.toolUseId === entryId
   if (block.kind === "question") return block.toolUseId === entryId

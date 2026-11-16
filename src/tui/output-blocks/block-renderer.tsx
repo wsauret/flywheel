@@ -14,7 +14,7 @@ import { ThinkingBlock } from "./thinking-block.js"
 import { ToolEntry } from "./tool-entry.js"
 import { AgentGroupBlock } from "./agent-group-block.js"
 import { ToolRunBlock } from "./tool-run-block.js"
-import { TurnFoldBlock } from "./turn-fold-block.js"
+import { CallStretchBlock } from "./call-stretch-block.js"
 import { UserMessageBlock } from "./user-message-block.js"
 import type { TimelineRow } from "./visible-output-blocks.js"
 import type { RowProcessControls } from "./stop-affordance.js"
@@ -70,8 +70,8 @@ export function BlockRenderer(props: BlockRendererProps) {
           <Match when={props.block.kind === "toolRun" ? props.block : undefined}>
             {(block) => <ToolRunBlock block={block()} streamingToolText={props.streamingToolText} onHydrateBody={props.onHydrateBody} processControls={props.processControls} />}
           </Match>
-          <Match when={props.block.kind === "turnFold" ? props.block : undefined}>
-            {(block) => <TurnFoldBlock block={block()} row={(row) => <BlockRenderer {...props} block={row} />} />}
+          <Match when={props.block.kind === "callStretch" ? props.block : undefined}>
+            {(block) => <CallStretchBlock block={block()} row={(row) => <BlockRenderer {...props} block={row} />} />}
           </Match>
           <Match when={props.block.kind === "system" ? props.block : undefined}>
             {(block) => <SystemBlock block={block()} diffColors={props.diffColors} onHydrateBody={props.onHydrateBody} />}

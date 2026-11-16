@@ -20,7 +20,7 @@ In the terminal, the lead's screen lists every chat of the project that is in us
 
 ## PI-LEAD-005: The person opens a chat from the lead's screen
 
-From the list, Enter or a click opens the chat's full conversation over the lead. A pending question shows in place of the chat's input, in the chat's own words, and the answer goes directly to that chat. Escape returns to the lead and leaves a question pending, and a separate action skips it. A question never opens on its own and never interrupts typing. Showing a result marks it as read, and opening a failed or cut chat marks that state as seen.
+From the list, Enter or a click opens the chat's full conversation over the lead, and a click selects no row. Closing it returns focus to the input or row that had it. A pending question shows in place of the chat's input, in the chat's own words, and the answer goes to that chat. Escape returns to the lead and leaves a question pending, and a separate action skips it. A question never opens on its own and never interrupts typing. Showing a result marks it read, and opening a failed or cut chat marks that state seen.
 
 ## PI-LEAD-006: The lead summarizes reports and never speaks for a chat
 
@@ -44,7 +44,7 @@ The Sessions list does not show the lead, because the lead is always the first t
 
 ## PI-LEAD-011: The lead speaks as the person's assistant
 
-The lead speaks as the person's assistant, and its own words lead its transcript. It talks to the person while it works. Before it checks chats or routes a request, it says in one short line what it does and why. After a route, it says which chat has the request and that the chat reports back when it finishes. In the terminal, a finished turn of the lead folds to its answer as on the web client (PI-INTERACTION-053), and its bookkeeping calls do not show.
+The lead speaks as the person's assistant, and its own words lead its transcript. Before it checks chats or routes a request, it says in one short line what it does and why. After a route, it says which chat has the request and that the chat reports back when it finishes. A message that clearly responds to the content of one chat's report or question goes to that chat without either line. The lead never tells the person to reply in a chat. In the terminal, its calls gather under headings (PI-LEAD-017).
 
 ## PI-LEAD-012: Every chat reports in one shape
 
@@ -65,3 +65,7 @@ A row in the lead's list shows the chat's state as a mark, its title, one short 
 ## PI-LEAD-016: The person closes a chat from the lead's screen
 
 The x key on a selected row of the lead's list closes the chat. A click on the close mark of the row under the pointer does the same, and so does the close action of the chat's conversation over the lead. Each closes the chat as Close chat does: its work ends now, and a tab that shows it closes. Its row leaves the list.
+
+## PI-LEAD-017: The lead's calls gather under headings
+
+In the terminal, the lead's words never fold. Its calls between one message and the next gather, indented, under one muted heading with the time, the duration, and what it did with its chats. While the calls run, the heading is open and says the lead is working. It closes once a message follows or the turn ends, and a click opens or closes it. Bookkeeping calls never show.

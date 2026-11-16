@@ -177,6 +177,9 @@ export interface RuntimeTool {
   name: string;
   action: ToolAction;
   description: string;
+  /** A successful result is visible to the person and settles the reply that a person's message is owed, so a
+   *  human-facing loop that ends silently after it gets no silent-reply nudge. */
+  answersPerson?: true;
   promptGuidelines?: readonly string[];
   /** Guidelines resolved while each request assembles its system prompt. */
   livePromptGuidelines?: () => readonly string[];

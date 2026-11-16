@@ -49,7 +49,6 @@ function outcomeText(outcome: Extract<RouteOutcome, { ok: true }>, note: string 
     ...outcome.entries.map((entry) => `- ${entry.firstLine || "(no text)"}`),
   ]
   if (note) lines.push(note)
-  lines.push("Tell the person which chat has the request. Do not restate the request.")
   return lines.join("\n")
 }
 
@@ -71,6 +70,8 @@ export function createRouteRequestTool(route: (input: RouteInput) => Promise<Rou
   return {
     name: ROUTE_REQUEST_TOOL_NAME,
     action: "ui_meta",
+    // The lead's transcript shows the route's heading and row, so a silent route answers the person.
+    answersPerson: true,
     description: "Give the person's request to a chat. The runtime sends the person's own messages of your newest turn to that chat unchanged, with their attachments, as messages from the person; you never write the request yourself. With kind \"new\", a new chat starts with them. With kind \"existing\", they go to a chat in your list, named by `chat`, when the request belongs to that chat's work. `earlier_turns` adds the person's messages of that many earlier turns, for a request that the person stated over several turns. `note` is your own optional message to the chat, which it shows as a message from you after the person's messages: use it only for what the person's words do not hold, never to restate them. Call it only when the person asked for work, never in reaction to a chat's event. The result names the chat.",
     inputSchema: {
       type: "object",

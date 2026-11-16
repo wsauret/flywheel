@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../../src/protocol/app-service-types.js"
 import { formatStartTime } from "../../../../../src/protocol/client/format.js"
-import { foldTurns, turnFoldSummary } from "../../../../../src/protocol/client/turn-folds.js"
+import { gatherCallStretches, turnFoldSummary } from "../../../../../src/protocol/client/turn-folds.js"
 import { projectFrontendOutputBlocks } from "../../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { projectBlocksFromEntries } from "../../../../../src/orchestration/session/conversation/conversation-block-projection.js"
 import type { ConversationTreeTranscriptEntry } from "../../../../../src/orchestration/session/conversation/conversation-projection.js"
@@ -34,10 +34,10 @@ const checkpoint = call("checkpoint", "checkpoint_replace", "Update Checkpoint")
 const turn = [person, narration, progress, route, checkpoint, answer]
 
 function labelOf(work: readonly FrontendOutputBlock[]): string {
-  const rows = [person, ...work, answer]
-  const fold = foldTurns({ rows, boundaryBefore: rows.map(() => false) }, true).rows[1]
-  if (fold?.kind !== "turnFold") throw new Error("the turn did not fold")
-  return turnFoldSummary(fold, undefined, LEAD_TRANSCRIPT.phrases).label
+  const rows = [...work, answer]
+  const stretch = gatherCallStretches({ rows, boundaryBefore: rows.map(() => false) }, false).rows[0]
+  if (stretch?.kind !== "callStretch") throw new Error("the calls gathered under no heading")
+  return turnFoldSummary(stretch, undefined, LEAD_TRANSCRIPT.phrases).label
 }
 
 /** The tab of `sessionId` over `blocks`, under the real lead client and its providers, whose first tab is `LEAD_ID`.
@@ -91,41 +91,65 @@ const LIVE_LEAD_ENTRIES: readonly ConversationTreeTranscriptEntry[] = [
   { id: "9b39c6c8", parentId: "msg:e1c82693293b:lead-report:166f9bae", timestamp: "2026-11-15T08:18:38.209Z", kind: "message", message: { kind: "assistant", content: [{ type: "text", text: "The chat reports you picked blue." }], stopReason: "end_turn" } },
 ]
 
-describe("the lead's tab folds its finished turns to their answers (PI-LEAD-011)", () => {
+describe("the lead's tab gathers its calls under one heading per stretch (PI-LEAD-017)", () => {
   it("says what the lead did with its chats in place of a tool count", () => {
-    expect(labelOf([progress, route])).toBe("Worked 4s · checked chats, started 1 chat")
+    expect(labelOf([progress, route])).toBe("Worked 3s · checked chats, started 1 chat")
     expect(labelOf([
       progress, { ...progress, id: "again" },
       call("one", "route_request", "Route to"), call("two", "route_request", "Route to"), route, { ...route, id: "new-2" },
       call("ls", "bash", "Bash", "shell_exec"), call("read", "read", "Read", "file_read"),
-    ])).toBe("Worked 4s · checked chats, started 2 chats, sent to 2 chats, ran 1 command, used 1 tool")
+    ])).toBe("Worked 3s · checked chats, started 2 chats, sent to 2 chats, ran 1 command, used 1 tool")
   })
 
-  it("shows one muted line above the answer, and a click opens every row but the bookkeeping", async () => {
+  it("keeps the narration and the answer in view around one closed muted heading, and a click opens the calls indented beneath it, without the bookkeeping", async () => {
     const tab = await mountTab(LEAD_ID, turn)
     try {
-      const folded = await tab.frame()
-      const line = "Worked 4s · checked chats, started 1 chat"
-      // The line opens with the time the person's message arrived, as on the web client.
-      expect(folded).toContain(`▸ ${formatStartTime(person.timestamp)} · ${line}`)
-      expect(folded.indexOf(line)).toBeLessThan(folded.indexOf("A new chat investigates it"))
-      expect(folded).toContain("Look into the flaky test")
-      for (const hidden of ["No chat works on this yet", "Chat progress", "Route to new chat", "Checkpoint"]) expect(folded).not.toContain(hidden)
+      const closed = await tab.frame()
+      const line = "Worked 3s · checked chats, started 1 chat"
+      // The heading opens with the time the first call of the stretch started.
+      expect(closed).toContain(`▸ ${formatStartTime(progress.timestamp)} · ${line}`)
+      expect(closed.indexOf("No chat works on this yet")).toBeLessThan(closed.indexOf(line))
+      expect(closed.indexOf(line)).toBeLessThan(closed.indexOf("A new chat investigates it"))
+      expect(closed).toContain("Look into the flaky test")
+      for (const hidden of ["Chat progress", "Route to new chat", "Checkpoint"]) expect(closed).not.toContain(hidden)
       const theme = resolveTheme(flywheelTheme, "dark")
       const span = tab.result.captureSpans().lines.flatMap((row) => row.spans).find((candidate) => candidate.text.includes("Worked"))
       expect(span?.fg.equals(theme.textMuted)).toBe(true)
 
-      const rows = folded.split("\n")
+      const rows = closed.split("\n")
       const y = rows.findIndex((row) => row.includes(line))
       await tab.result.mockMouse.click(rows[y]!.indexOf("Worked") + 2, y)
       const opened = await tab.frame()
-      expect(opened).toContain(line)
-      for (const shown of ["No chat works on this yet", "Chat progress", "Route to new chat"]) expect(opened).toContain(shown)
+      expect(opened).toContain(`▾ ${formatStartTime(progress.timestamp)} · ${line}`)
+      for (const shown of ["No chat works on this yet", "Chat progress", "Route to new chat", "A new chat investigates it"]) expect(opened).toContain(shown)
       expect(opened).not.toContain("Checkpoint")
+      // The calls' run sits two columns in from the heading.
+      const openedRows = opened.split("\n")
+      const headingColumn = openedRows.find((row) => row.includes(line))!.indexOf("▾")
+      expect(openedRows.find((row) => row.includes("Ran ·"))!.search(/\S/)).toBe(headingColumn + 2)
     } finally { tab.dispose() }
   })
 
-  it("ends a turn at a chat's report, which stays in view with the lead's reply to it", async () => {
+  it("shows the running stretch open with its calls beneath, and closes it once the lead's next words follow", async () => {
+    const running = await mountTab(LEAD_ID, [person, narration, progress, checkpoint, { ...route, status: "pending" }], true)
+    try {
+      const frame = await running.frame()
+      expect(frame).toContain(`▾ ${formatStartTime(progress.timestamp)} · Working · checked chats, started 1 chat`)
+      expect(frame).toContain("No chat works on this yet")
+      expect(frame).toContain("Chat progress")
+      expect(frame).not.toContain("Checkpoint")
+    } finally { running.dispose() }
+    const answered = await mountTab(LEAD_ID, [...turn, { ...person, id: "next", content: "And the lexer?", timestamp: 9000 }, { ...progress, id: "checking", status: "pending", timestamp: 9500 }], true)
+    try {
+      const frame = await answered.frame()
+      expect(frame).toContain(`▸ ${formatStartTime(progress.timestamp)} · Worked 3s · checked chats, started 1 chat`)
+      expect(frame).toContain(`▾ ${formatStartTime(9500)} · Working · checked chats`)
+      expect(frame).toContain("A new chat investigates it")
+      expect(frame.split("Chat progress").length - 1).toBe(1)
+    } finally { answered.dispose() }
+  })
+
+  it("ends a stretch at a chat's report, which stays in view with the lead's reply to it", async () => {
     const report: FrontendOutputBlock = {
       kind: "userMessage", id: "msg:done:lead-report:final", content: "The build passes now.", timestamp: 6000, pending: false, injected: false,
       from: { sessionId: "done", name: "DAG Failures", relation: "other" },
@@ -134,15 +158,16 @@ describe("the lead's tab folds its finished turns to their answers (PI-LEAD-011)
     const tab = await mountTab(LEAD_ID, [...turn, report, { ...progress, id: "after", timestamp: 7000 }, reply])
     try {
       const frame = await tab.frame()
-      expect(frame).toContain("Worked 4s · checked chats, started 1 chat")
-      expect(frame).not.toContain("Worked 8s")
+      expect(frame).toContain("Worked 3s · checked chats, started 1 chat")
+      expect(frame).toContain(`▸ ${formatStartTime(7000)} · Worked 2s · checked chats`)
       expect(frame).toContain("DAG Failures")
-      expect(frame).toContain("Chat progress")
+      expect(frame).not.toContain("Chat progress")
+      expect(frame.indexOf("Report · ")).toBeLessThan(frame.indexOf("Worked 2s"))
       expect(frame).toContain("DAG Failures finished: the build passes.")
     } finally { tab.dispose() }
   })
 
-  it("shows each report of a live run as its own line outside every fold, folds the quiet turn to its line, and a click opens the report", async () => {
+  it("shows each report of a live run as its own line, keeps the words of a turn that ended on a call above its closed heading, and a click opens the report", async () => {
     // The rows that a reload reads: the runtime's own projection of the stored entries.
     const blocks = projectFrontendOutputBlocks(projectBlocksFromEntries(LIVE_LEAD_ENTRIES, { executionCwd: "/project" }))
     // The second chat was renamed after its report: the line names it as the Sessions list does now.
@@ -152,10 +177,14 @@ describe("the lead's tab folds its finished turns to their answers (PI-LEAD-011)
       expect(frame).toContain("Report · List Project Root Files · open")
       expect(frame).toContain("Report · Pick a Color · open")
       expect(frame).not.toContain("Message from")
-      // The turn that the question started ended without an answer: it folds to its line, its words with it.
-      expect(frame).not.toContain("I’ll check the color chat’s question")
+      // The turn that the question started ended on its call: its words stay in view, and its call sits under a closed heading.
+      const quietHeading = `▸ ${formatStartTime(Date.parse("2026-11-15T08:18:06.334Z"))} · Worked 0s · checked chats`
+      expect(frame).toContain("I’ll check the color chat’s question")
+      expect(frame).toContain(quietHeading)
+      expect(frame.indexOf("I’ll check the color chat’s question")).toBeLessThan(frame.indexOf(quietHeading))
+      expect(frame).toContain("I’ll start a chat to list the root files")
+      expect(frame).toContain("Worked 1s · started 1 chat")
       expect(frame).not.toContain("Chat progress")
-      expect(frame).toContain(`▸ ${formatStartTime(Date.parse("2026-11-15T08:18:06.334Z"))} · Worked 0s · checked chats `)
       const rows = frame.split("\n")
       const y = rows.findIndex((row) => row.includes("Report · Pick a Color · open"))
       await tab.result.mockMouse.click(rows[y]!.lastIndexOf("open") + 1, y)
@@ -174,34 +203,7 @@ describe("the lead's tab folds its finished turns to their answers (PI-LEAD-011)
     }
   })
 
-  it("keeps a settled fold folded when the tab mounts again while the next turn runs", async () => {
-    const asked: FrontendOutputBlock = { ...person, id: "asked", content: "Which chat owns the parser?" }
-    const thought: FrontendOutputBlock = { ...narration, id: "thought", content: "I will check my chats first." }
-    const replied: FrontendOutputBlock = { ...answer, id: "replied", content: "The parser chat owns it." }
-    const settled = [asked, thought, { ...progress, id: "checked" }, replied]
-    const first = await mountTab(LEAD_ID, settled)
-    try { expect(await first.frame()).toContain("Worked 4s · checked chats") } finally { first.dispose() }
-    const next: FrontendOutputBlock = { ...person, id: "next", content: "And the lexer?", timestamp: 9000 }
-    const second = await mountTab(LEAD_ID, [...settled, next, { ...progress, id: "checking", status: "pending", timestamp: 9500 }], true)
-    try {
-      const frame = await second.frame()
-      expect(frame).toContain("Worked 4s · checked chats")
-      expect(frame).not.toContain("I will check my chats first.")
-      expect(frame).toContain("The parser chat owns it.")
-    } finally { second.dispose() }
-  })
-
-  it("folds nothing while a turn runs", async () => {
-    const tab = await mountTab(LEAD_ID, [person, narration, progress, checkpoint, { ...route, status: "pending" }], true)
-    try {
-      const frame = await tab.frame()
-      expect(frame).not.toContain("Worked")
-      expect(frame).toContain("Chat progress")
-      expect(frame).not.toContain("Checkpoint")
-    } finally { tab.dispose() }
-  })
-
-  it("leaves an ordinary chat's finished turn and its bookkeeping in view", async () => {
+  it("leaves an ordinary chat's calls and bookkeeping in view, with no heading", async () => {
     const tab = await mountTab("chat-2", turn)
     try {
       const frame = await tab.frame()

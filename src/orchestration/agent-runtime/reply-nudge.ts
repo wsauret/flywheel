@@ -18,7 +18,7 @@ export interface ReplyNudge {
    * a visible reply is owed. */
   visibleReplyRequired(): void;
   /** A committed turn delivered visible text (or an equivalent user-facing
-   *  surface such as a successful ask_user): the debt is settled. */
+   *  surface: a successful call of a tool that declares `answersPerson`): the debt is settled. */
   visibleTextDelivered(): void;
   /** Starts one assistant turn with no delivered text. */
   assistantTurnStarted(): void;

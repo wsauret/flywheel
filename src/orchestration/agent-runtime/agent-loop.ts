@@ -588,8 +588,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         const batchWaits = await batchObservation.observe(toolCalls, batch.toolResults, attemptSettled.turn.outcome.kind);
         tallyToolResults(tally, batch.toolResults);
         const handoffWritten = handoffTracker.recordBatch(toolCalls, batch.toolResults, attemptSettled.turn.outcome.kind);
-        const askUserIds = new Set(toolCalls.filter((call) => call.name === "ask_user").map((call) => call.id));
-        if (batch.toolResults.some((result) => askUserIds.has(result.toolUseId) && result.outcome === "ok")) replyNudge.visibleTextDelivered();
+        const answeringIds = new Set(toolCalls.filter((call) => requestSurface.tools.get(call.name)?.answersPerson).map((call) => call.id));
+        if (batch.toolResults.some((result) => answeringIds.has(result.toolUseId) && result.outcome === "ok")) replyNudge.visibleTextDelivered();
         if (handoffTracker.isHandingOff) compactionState.discard();
         if (handoffWritten) policy = { kind: "completed" };
         else if (!handoffTracker.isHandingOff) {

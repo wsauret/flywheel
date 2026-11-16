@@ -261,26 +261,28 @@ describe("silent-reply nudge", () => {
     expect(nudgeCount(history)).toBe(0)
   })
 
-  it("treats a successful ask_user as a delivered reply", async () => {
-    const askUser: RuntimeTool = {
-      name: "ask_user",
-      action: "ask_user",
-      description: "Stub ask_user",
+  it.each([
+    { name: "a tool that answers the person", answersPerson: true, outcome: "ok", nudges: 0 },
+    { name: "a tool that answers the person but failed", answersPerson: true, outcome: "error", nudges: 1 },
+    { name: "a tool that does not answer the person", answersPerson: false, outcome: "ok", nudges: 1 },
+  ] as const)("settles the owed reply only through a successful call of a tool that answers the person: $name", async ({ answersPerson, outcome, nudges }) => {
+    const tool: RuntimeTool = {
+      name: "reply_tool",
+      action: "ui_meta",
+      description: "Stub tool",
       inputSchema: { type: "object" },
       isConcurrencySafe: true,
-      execute: async (): Promise<ToolResult> => ({ content: "answered: option A", outcome: "ok" }),
+      ...(answersPerson ? { answersPerson } : {}),
+      execute: async (): Promise<ToolResult> => ({ content: "done", outcome }),
     }
     const history: ConversationMessage[] = []
     await runLoop({
       history,
       humanFacing: true,
-      tools: new RequestToolMap([["ask_user", askUser]]),
-      responses: [
-        { events: [{ kind: "tool_use", toolCall: { id: "tc_ask", name: "ask_user", input: {} } }, { kind: "done", stopReason: "tool_use" }] },
-        silentTurn,
-      ],
+      tools: new RequestToolMap([["reply_tool", tool]]),
+      responses: [toolTurn(1, undefined, "reply_tool"), silentTurn, silentTurn],
     })
-    expect(nudgeCount(history)).toBe(0)
+    expect(nudgeCount(history)).toBe(nudges)
   })
 
   it("adds a request-only progress reminder after five silent tool turns", async () => {

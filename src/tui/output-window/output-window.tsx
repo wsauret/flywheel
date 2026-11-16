@@ -28,7 +28,7 @@ import { BlockRenderer } from "../output-blocks/block-renderer.js"
 import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import { createOutputWindowRenderDiagnostics } from "./output-window-diagnostics.js"
 import { createTranscriptWindowProjector, targetTimelineBlockIndex, type TranscriptWindowProjection } from "./output-window-projection.js"
-import { turnFoldProjector } from "./turn-fold-projection.js"
+import { createCallStretchProjector } from "./call-stretch-projection.js"
 import { hidesTabControls, moduleFirstTab, useClientExtensions } from "../context/client-extensions.js"
 import { TranscriptViewport } from "./output-window-viewport.js"
 import { createMountedRowRegistry, createSlotSignal, type EdgeDirection, type TranscriptLayoutSlot } from "./output-window-scroll.js"
@@ -98,16 +98,17 @@ export function OutputWindow(props: OutputWindowProps) {
     const sessionId = layoutSlot.sessionId
     return sessionId !== undefined && firstTab.current() === sessionId ? firstTab.transcript : undefined
   })
-  const foldTurns = createMemo(() => {
+  const gatherStretches = createMemo(() => {
     const shown = presentation()
-    return shown && layoutSlot.sessionId !== undefined ? turnFoldProjector(shown, layoutSlot.sessionId) : undefined
+    return shown ? createCallStretchProjector(shown) : undefined
   })
   const projection = createMemo<TranscriptWindowProjection>(() => {
     probe("ow.timeline")
     try {
       const window = projectWindow(snapshot(), props.showThinking, presentation()?.startsTurn)
-      const fold = foldTurns()
-      return fold ? fold(window, !props.running, transcript.disclosure) : window
+      const gather = gatherStretches()
+      // A stretch runs only at the transcript's tail: a window paged back from it ends on finished work.
+      return gather ? gather(window, props.running && snapshot()?.window.hasAfter !== true, transcript.disclosure) : window
     } catch (error) {
       return untrack(() => transcript.reportProjectionFailure(error))
     }

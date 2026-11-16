@@ -29,14 +29,13 @@ export interface ToolRun {
 
 export type ToolRunStatus = "active" | "paused" | "completed"
 
-/** A finished turn folded to one line on a tab whose module asks for it (`TuiFirstTab.transcript`). It is one mounted
- *  row: its line, then the rows that render under the line, which are the rows that stay in view after a closed fold
- *  or every row of the work of an open one. */
-export interface TerminalTurnFold {
-  readonly kind: "turnFold"
+/** A stretch of calls under one heading on a tab whose module asks for it (`TuiFirstTab.transcript`). It is one mounted
+ *  row: its heading, then, while it is open, the rows of the stretch. */
+export interface TerminalCallStretch {
+  readonly kind: "callStretch"
   readonly id: string
   readonly open: boolean
-  /** When the person's message that started the turn arrived. */
+  /** When the first row of the stretch started. */
   readonly timestamp: number
   readonly label: string
   readonly failed: number
@@ -50,14 +49,14 @@ export type VisibleBlock = FrontendOutputBlock | ToolRun
 declare const presented: unique symbol
 export type PresentedTerminalRow = VisibleBlock & { readonly [presented]: true }
 
-/** A row of a tab's timeline: a presented row, or a turn fold on a tab that folds its turns. */
-export type TimelineRow = PresentedTerminalRow | (TerminalTurnFold & { readonly [presented]: true })
+/** A row of a tab's timeline: a presented row, or a stretch of calls on a tab that gathers them under headings. */
+export type TimelineRow = PresentedTerminalRow | (TerminalCallStretch & { readonly [presented]: true })
 
 /** blockIdentity extended over the renderer's row vocabulary: a display fold
  *  keys by its window-stable synthetic id; every durable block keeps the shared
  *  identity so live and derived rows reconcile identically. */
-export function visibleBlockIdentity(block: VisibleBlock | TerminalTurnFold): string {
-  return block.kind === "toolRun" ? `toolRun:${block.id}` : block.kind === "turnFold" ? block.id : blockIdentity(block)
+export function visibleBlockIdentity(block: VisibleBlock | TerminalCallStretch): string {
+  return block.kind === "toolRun" ? `toolRun:${block.id}` : block.kind === "callStretch" ? block.id : blockIdentity(block)
 }
 
 /** The terminal rows of one model window, parallel arrays the way the output
