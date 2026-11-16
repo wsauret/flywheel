@@ -24,7 +24,10 @@ export interface FontCommandContext {
 }
 
 export interface BuiltInCommandContext extends FontCommandContext {
-  signals: Pick<ShellSignals, "sessionInputMode" | "foregroundId" | "commandCatalogRevision">
+  signals: Pick<ShellSignals, "commandCatalogRevision">
+  /** The chat a command acts on: the chat that a view over the tab in front
+   *  shows, else the chat in front; undefined with no chat in view. */
+  chatSessionId: () => string | undefined
   startClearedChat: () => Promise<void>
   exit: () => void
   /** Restarts the account service and this terminal in place. */
@@ -37,9 +40,8 @@ export interface BuiltInCommandContext extends FontCommandContext {
   /** Brings a session the runtime created or named to the front. */
   focusSession: (sessionId: string) => void
   refreshCommandCatalog: () => Promise<void>
-  /** The kind of session whose view is in front of the foreground chat, or
-   *  undefined while that chat itself is in view. */
-  agentInView: () => AgentViewKind | undefined
+  /** The kind of agent whose view is in front, or undefined while a chat is in view. */
+  agentInView: () => Exclude<AgentViewKind, "chat"> | undefined
 }
 
 export async function handleFontCommand(context: FontCommandContext, action: string | undefined): Promise<void> {

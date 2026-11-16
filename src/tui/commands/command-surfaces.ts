@@ -5,6 +5,9 @@ import type { SurfaceOpening } from "../../protocol/client/surface-presentation.
  *  on the runtime, whether the opening is still wanted. */
 export interface SurfaceRequest extends SurfaceOpening {
   readonly isCurrent?: () => boolean
+  /** The session a session's surface opens for, such as the session of the
+   *  strip that opened it; the session in view when absent. */
+  readonly sessionId?: string
 }
 
 export type OpenSurface = (surface: string, request?: SurfaceRequest) => boolean | Promise<boolean>

@@ -1,3 +1,4 @@
+import type { ChatPaneHost } from "./components/chat-pane.js"
 import type { Accessor, JSX } from "solid-js"
 import type { LaunchModalRoute } from "../infra/launch-state.js"
 import type { AgentGroupBlock } from "../infra/output-blocks.js"
@@ -43,6 +44,8 @@ export interface TuiModuleClientHost {
   /** Closes a chat as the Sessions list's close chat does: its work ends now as an interrupt the person can resume,
    *  and a tab that shows it goes. Rejects when the close fails. */
   readonly closeChat: (sessionId: string) => Promise<void>
+  /** What a view mounts to show a chat exactly as its tab does (`ChatViewPane`); read when the view opens. */
+  readonly chatPane: () => ChatPaneHost
 }
 /** The session a module keeps as the first tab (ARCH-PROTOCOL-034). */
 export interface TuiFirstTab {

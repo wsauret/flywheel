@@ -1,21 +1,22 @@
 /** @jsxImportSource @opentui/solid */
 import { createEffect, createMemo, createSignal, onCleanup, Show, untrack, type Accessor } from "solid-js"
-import { useTerminalDimensions } from "@opentui/solid"
+import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { errorMessage } from "../../../infra/error-message.js"
 import { blockEntryKeys, blockIdentity } from "../../../protocol/block-identity.js"
-import { sessionControls } from "../../../protocol/client/session-controls.js"
 import type { LeadRow, LeadSeenState } from "../../../protocol/modules/lead.js"
 import { Button } from "../../components/button.js"
-import { ChildSessionBody } from "../../components/child-session-body.js"
-import { createChildSessionViewerInput, type ChildSessionViewerInput } from "../../components/child-session-viewer.js"
+import { ChatViewPane, createChatPaneInput, routeChatPaneKey, type ChatPaneHost, type ChatPaneInput, type PaneKeyEvent } from "../../components/chat-pane.js"
 import { ModalFrame, MODAL_FRAME_HORIZONTAL_INSET, sessionViewerBodyHeight, sessionViewerWidth } from "../../components/modal-frame.js"
+import { SessionHeaderStats } from "../../components/session-header-stats.js"
+import { useTheme } from "../../context/theme.js"
+import { createHeaderDisplay } from "../../hooks/create-header-display.js"
 import type { ViewerHandle } from "../../components/modal-stack.js"
+import { createTranscriptSelectionDrag } from "../../hooks/create-transcript-selection-drag.js"
 import type { TuiStripKeyEvent } from "../../tui-module.js"
 import type { TuiModuleClientHost } from "../../tui-module-client.js"
-import { useTheme } from "../../context/theme.js"
 import { LeadViewCover } from "./cover.js"
 
-export type LeadChatViewerHost = Pick<TuiModuleClientHost, "client" | "viewer" | "viewerLayer" | "question" | "answerQuestion" | "cancelQuestion" | "questionDrafts" | "navigateSession" | "dispatchCommand" | "showToast" | "showSession">
+export type LeadChatViewerHost = Pick<TuiModuleClientHost, "client" | "chatPane" | "viewerLayer" | "navigateSession" | "showToast" | "showSession">
 
 /** True for `ctrl+<letter>` with no other modifier. */
 export function isCtrlChord(event: Pick<TuiStripKeyEvent, "name" | "ctrl" | "meta" | "shift">, letter: string): boolean {
@@ -50,13 +51,12 @@ export function openLeadChatTab(host: Pick<TuiModuleClientHost, "client" | "navi
   void host.navigateSession(sessionId).catch((cause: unknown) => { host.showToast({ message: `Open failed: ${errorMessage(cause)}`, variant: "error" }) })
 }
 
-/** Opens one listed chat's full conversation over the lead (PI-LEAD-005,
- *  PI-LEAD-007). The person reads it, types to that chat, and answers its
- *  question there; a result it shows is read, and a failure or a cut is seen
- *  once the chat shows. Tab and Shift+Tab move through
- *  the chats in the list's order and stay at the ends, `ctrl+t` opens the
- *  chat as a tab, Close chat closes it and goes back to the lead, and Escape
- *  goes back to the lead, where the list keeps its selection. */
+/** Opens one listed chat over the lead, exactly as its tab shows it (PI-LEAD-005, PI-LEAD-007): the kernel's chat
+ *  pane in a frame. The person reads it, types to that chat, and answers its question there; a result it shows is
+ *  read, and a failure or a cut is seen once the chat shows. Only the frame and its controls differ from a tab: Tab
+ *  and Shift+Tab move through the chats in the list's order and stay at the ends, `ctrl+t` opens the chat as a tab,
+ *  Close chat closes it and goes back to the lead, and Escape goes back to the lead, where the list keeps its
+ *  selection. The lead's tab stays in front throughout. */
 export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   readonly sessionId: string
   readonly order: Accessor<readonly string[]>
@@ -67,6 +67,7 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   /** An entry of the first chat shown, such as its final message, that the view opens at and marks. */
   readonly landing?: string
 }): void {
+  const pane = host.chatPane()
   const [handle, setHandle] = createSignal<ViewerHandle>()
   const [shown, setShown] = createSignal(input.sessionId)
   const close = (): void => { handle()?.close() }
@@ -80,10 +81,10 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
     const order = input.order()
     const at = order.indexOf(shown())
     if (at >= 0) lastAt = at
-    // Once the shown chat left the list, as a read result does, the chat now in its place is the next one.
+    // Once the shown chat left the list, as a closed chat does, the chat now in its place is the next one.
     return at >= 0 ? order[at + direction] : order[direction === 1 ? lastAt : lastAt - 1]
   }
-  // The landing is spent on the first body that shows the first chat, so a return to it by Tab opens it unlanded.
+  // The landing is spent on the first pane that shows the first chat, so a return to it by Tab opens it unlanded.
   let landing = input.landing
   const takeLanding = (sessionId: string): string | undefined => {
     if (sessionId !== input.sessionId) return undefined
@@ -92,36 +93,44 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
     return once
   }
   const move = (direction: 1 | -1): void => { const next = untrack(() => neighbour(direction)); if (next !== undefined) setShown(next) }
-  // Each chat keeps its own draft and its own pending send while Tab moves between chats.
-  const inputs = new Map<string, ChildSessionViewerInput>()
-  const inputFor = (sessionId: string): ChildSessionViewerInput => {
+  // Each chat keeps its own keys and transcript commands while Tab moves between chats; its draft lives in the
+  // shell's draft cache under its own id, as a tab's does.
+  const inputs = new Map<string, ChatPaneInput>()
+  const inputFor = (sessionId: string): ChatPaneInput => {
     const held = inputs.get(sessionId)
     if (held) return held
-    const created = createChildSessionViewerInput({ onClose: close, dispatchCommand: host.dispatchCommand })
-    // Tab never types into the composer here, also at either end of the list.
-    created.bindAgentMove((direction) => { move(direction); return true })
-    // The question dock owns Left and Right for its options.
-    created.bindBack(() => untrack(() => host.question(sessionId)) === undefined ? "close" : "none")
+    const created = createChatPaneInput()
     inputs.set(sessionId, created)
     return created
   }
-  const onKey = (event: Parameters<ChildSessionViewerInput["onKey"]>[0]): void => {
-    if (isCtrlChord(event, "t")) { event.preventDefault?.(); openAsTab() } else inputFor(untrack(shown)).onKey(event)
+  /** The view's own keys, after the chat's question and composer popups had them. */
+  const viewKey = (event: PaneKeyEvent): boolean => {
+    if (isCtrlChord(event, "t")) openAsTab()
+    else if (event.name === "escape" && !event.ctrl && !event.meta) close()
+    else if (event.name === "tab" && !event.ctrl && !event.meta) move(event.shift ? -1 : 1)
+    else return false
+    event.preventDefault?.()
+    return true
   }
-  setHandle(host.viewerLayer.push(() => <LeadViewCover><LeadChatViewer host={host} shown={shown} landing={takeLanding} row={input.row} title={input.title} inputFor={inputFor} toTab={(sessionId) => sessionId === toTab}
+  setHandle(host.viewerLayer.push(() => <LeadViewCover><LeadChatViewer host={host} pane={pane} shown={shown} landing={takeLanding} row={input.row} title={input.title} inputFor={inputFor} toTab={(sessionId) => sessionId === toTab}
     active={() => handle()?.isActive() ?? false} focused={() => handle()?.isFocused() ?? false}
     canMove={(direction) => neighbour(direction) !== undefined} move={move} close={close} openAsTab={openAsTab} closeChat={closeChat} /></LeadViewCover>,
-  { onKey, onPaste: (text) => { inputFor(untrack(shown)).onPaste(text) } }))
+  {
+    onKey: (event) => { routeChatPaneKey(pane, inputFor(untrack(shown)), event, viewKey) },
+    // The chat's question takes a paste while it shows; every other paste reaches the focused composer, as in a tab.
+    onPaste: (text) => inputFor(untrack(shown)).questionInput.paste(text),
+  }))
 }
 
 function LeadChatViewer(props: {
   readonly host: LeadChatViewerHost
+  readonly pane: ChatPaneHost
   readonly shown: Accessor<string>
-  /** The entry a body of this chat lands on; it answers an entry once at most. */
+  /** The entry a pane of this chat lands on; it answers an entry once at most. */
   readonly landing: (sessionId: string) => string | undefined
   readonly row: (sessionId: string) => LeadRow | undefined
   readonly title: (sessionId: string) => string
-  readonly inputFor: (sessionId: string) => ChildSessionViewerInput
+  readonly inputFor: (sessionId: string) => ChatPaneInput
   /** Whether the chat leaves the view for its own tab. */
   readonly toTab: (sessionId: string) => boolean
   readonly active: Accessor<boolean>
@@ -132,50 +141,47 @@ function LeadChatViewer(props: {
   readonly openAsTab: () => void
   readonly closeChat: () => void
 }) {
-  const { theme } = useTheme()
   const dimensions = useTerminalDimensions()
   const width = createMemo(() => sessionViewerWidth(dimensions().width))
-  return <ModalFrame title={props.title(props.shown())} width={width()} onClose={props.close}>
-    {/* One body for each chat, so the surface and its transcript follow the chat the view shows. */}
+  const paneWidth = createMemo(() => width() - MODAL_FRAME_HORIZONTAL_INSET)
+  // A selection that leaves the transcript over the frame's title or controls scrolls it, as over a tab's bar.
+  const selectionDrag = createTranscriptSelectionDrag(useRenderer())
+  const { theme } = useTheme()
+  return <box onMouseDown={selectionDrag.onMouseDown} onMouseDrag={selectionDrag.onMouseDrag} onMouseUp={selectionDrag.onMouseUp}>
+    {/* One frame for each chat, so its surface, its statistics, and its transcript follow the chat the view shows. */}
     <Show when={props.shown()} keyed>{(sessionId) => {
       // The view holds the chat open as a tab does, and its end closes it as a closed tab does (PI-LEAD-003).
       const release = props.host.showSession(sessionId)
       onCleanup(() => { release(props.toTab(sessionId)) })
-      const body = props.host.viewer(sessionId)
-      const surface = body.createSurface(() => sessionId)
       const row = untrack(() => props.row(sessionId))
-      const landing = props.landing(sessionId)
       const result = row?.state === "result" ? row.result : undefined
+      const surface = props.pane.createSurface(() => sessionId)
       if (result) {
         createResultReadMark(props.host, sessionId, result.entryId,
           () => surface.transcript.visibleRange()?.blocks.some((block) => blockEntryKeys(blockIdentity(block)).includes(result.entryId)) ?? false)
       }
       markOpened(props.host, row)
-      const admits = () => sessionControls(surface.summary() ?? undefined).message
-      const send = async (text: string): Promise<boolean> => {
-        try {
-          const outcome = await body.submissions.send(sessionId, { text })
-          if (outcome.kind === "draft_kept") props.host.showToast({ message: outcome.error, variant: "warning" })
-          else if (outcome.kind === "failed") props.host.showToast({ message: outcome.error, variant: "error" })
-          return outcome.kind === "sent" || outcome.kind === "waiting"
-        } catch (cause) {
-          props.host.showToast({ message: `Message failed: ${errorMessage(cause)}`, variant: "error" })
-          return false
-        }
-      }
-      return <ChildSessionBody {...body} agentKind="chat" sessionId={sessionId} surface={surface} input={props.inputFor(sessionId)}
-        active={props.active} focused={props.focused} width={width() - MODAL_FRAME_HORIZONTAL_INSET} height={sessionViewerBodyHeight(dimensions().height)}
-        messaging={{ admits, shown: admits, send, sessionId: () => sessionId }} placeholder="Message this chat" controls={() => ({})}
-        {...(landing === undefined ? {} : { landing })}
-        question={{ view: () => props.host.question(sessionId), answer: props.host.answerQuestion, cancel: props.host.cancelQuestion, leave: props.close, drafts: props.host.questionDrafts }}
-        header={<text fg={theme.textMuted} flexShrink={0}>{sessionId}</text>}
-        navigation={<box flexDirection="row" gap={1} flexShrink={0}>
-          <Button label="Back" hotkey="esc" muted onPress={props.close} />
-          <Button label="Open as tab" hotkey="ctrl+t" muted onPress={props.openAsTab} />
-          <Button label="Close chat" muted onPress={props.closeChat} />
-          <Show when={props.canMove(-1)}><Button label="Previous chat" hotkey="shift+tab" muted onPress={() => props.move(-1)} /></Show>
-          <Show when={props.canMove(1)}><Button label="Next chat" hotkey="tab" muted onPress={() => props.move(1)} /></Show>
-        </box>} />
+      // The chat's statistics line, as the tab bar shows it for the chat in front: on the title row, at its right.
+      const header = createHeaderDisplay({ surface, dimensions, compactionThreshold: props.pane.compactionThreshold, theme })
+      return <ModalFrame title={props.title(sessionId)} width={width()} onClose={props.close}
+        titleAccessory={<SessionHeaderStats header={header} surface={surface} compact={props.pane.compact} />}>
+        <box flexDirection="column" width={paneWidth()} height={sessionViewerBodyHeight(dimensions().height)}>
+          <ChatViewPane host={props.pane} surface={surface} input={props.inputFor(sessionId)}
+            view={{ active: props.active, leave: props.close, closeChat: props.closeChat }} width={paneWidth} focused={props.focused}
+            selectionDrag={selectionDrag} {...withLanding(props.landing(sessionId))} />
+          <box flexDirection="row" gap={1} flexShrink={0}>
+            <Button label="Back" hotkey="esc" muted onPress={props.close} />
+            <Button label="Open as tab" hotkey="ctrl+t" muted onPress={props.openAsTab} />
+            <Button label="Close chat" muted onPress={props.closeChat} />
+            <Show when={props.canMove(-1)}><Button label="Previous chat" hotkey="shift+tab" muted onPress={() => props.move(-1)} /></Show>
+            <Show when={props.canMove(1)}><Button label="Next chat" hotkey="tab" muted onPress={() => props.move(1)} /></Show>
+          </box>
+        </box>
+      </ModalFrame>
     }}</Show>
-  </ModalFrame>
+  </box>
+}
+
+function withLanding(landing: string | undefined): { readonly landing?: string } {
+  return landing === undefined ? {} : { landing }
 }

@@ -163,7 +163,7 @@ export function createModalModals(deps: ModalsDeps) {
   const { modal, signals, services, switchForeground, startChat, clipboard } = deps
   const sessionChangesModal = useSessionChangesModal({
     modal, view: signals.sessionChanges,
-    renderModal: () => <LazySessionChangesModal view={signals.sessionChanges()} controls={sessionChangesModal} projectRoot={signals.projectRoot()} diffColors={() => signals.runtimeConfig()?.values.diffColors ?? "theme"} />,
+    renderModal: () => <LazySessionChangesModal view={sessionChangesModal.view()} controls={sessionChangesModal} projectRoot={signals.projectRoot()} diffColors={() => signals.runtimeConfig()?.values.diffColors ?? "theme"} />,
   })
   // The launch-derived capability this modal layer needs, narrowed at its own
   // boundary rather than handed the launcher itself.
@@ -483,6 +483,6 @@ export function createModalModals(deps: ModalsDeps) {
     modelModal, commandPalette, themeModal, profileModal, sessionModal, settingsModal, authModal, openSettingsDestination, openSubscriptionSpendReview, reviewCachedActiveProfile,
     statusModal, helpModal, backgroundModal,
     findModal,
-    activeSessionCount, sessionCount, activeModelLabel,
+    activeSessionCount, sessionCount,
   }
 }

@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js"
+import type { Accessor, JSX } from "solid-js"
 import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
 import type { ModuleComposerStatus } from "../../../../src/protocol/protocol-module.js"
@@ -49,6 +49,8 @@ interface MountOptions {
   readonly above?: () => JSX.Element
   /** The module statuses on the composer border. */
   readonly composerStatus?: readonly ModuleComposerStatus[]
+  /** Whether the tab keys act where the composer shows; true when absent. */
+  readonly tabHints?: Accessor<boolean>
   /** The installed module clients, as the shell provides them. */
   readonly clients?: readonly TuiModuleClient[]
 }
@@ -92,6 +94,7 @@ export async function mountPrompt(options: MountOptions) {
                   clipboard,
                   agentState: options.agentState ?? (() => "idle"),
                   interruptible: () => (options.agentState?.() ?? "idle") === "active",
+                  tabHints: options.tabHints ?? (() => true),
                   pendingQuestion: options.pendingQuestion ?? (() => undefined),
                   inChat: () => true,
                   lineWidth: () => 80,
@@ -100,7 +103,7 @@ export async function mountPrompt(options: MountOptions) {
                   get slashCatalog() { return options.slashCatalog?.() ?? [] },
                   projectFiles: async () => [],
                   promptPopupKeySlot: options.promptPopupKeySlot ?? { register: () => {}, input: () => false },
-                  promptAttachSlot: { register: () => {}, capture: () => undefined },
+                  promptAttachSlot: { register: () => () => {}, capture: () => undefined },
                   spinnerSource: options.spinnerSource ?? idleSpinnerSource(),
                   promptBorderLayout: () => ({ modelLabel: undefined, update: undefined, composerStatus: options.composerStatus ?? [], hints: [], sessionsClickHint: null }),
                   onDismissUpdate: () => {},

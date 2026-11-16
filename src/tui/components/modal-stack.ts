@@ -3,7 +3,8 @@ import { createStore } from "solid-js/store"
 import type { LaunchModalRoute } from "../../infra/launch-state.js"
 
 type KeyHandler = (evt: { name: string; ctrl?: boolean; meta?: boolean; super?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }) => void
-type PasteHandler = (text: string) => void
+/** False when the entry leaves the paste to the element that has focus, such as a composer inside it. */
+type PasteHandler = (text: string) => boolean | void
 type ModalElement = JSX.Element | (() => JSX.Element)
 /** A modal's route, or a reader of it for a modal whose place moves while
  *  it is open, such as a workflow agent's view that moves to a sibling. */
@@ -119,11 +120,11 @@ export function createModalStack() {
       return true
     },
 
+    /** True when the top entry takes the paste: an entry with no paste handler takes it so nothing under it does. */
     paste(text: string): boolean {
       const top = store.stack.at(-1)
-      if (!top?.onPaste) return false
-      top.onPaste(text)
-      return true
+      if (!top) return false
+      return top.onPaste?.(text) !== false
     },
   }
 }
@@ -189,16 +190,14 @@ export function createOverlayLayers() {
       return false
     },
 
+    /** Offers a paste to the top layer. A dialog takes every paste; a viewer
+     *  takes what its handler takes, and the rest reaches its focused element. */
     paste(text: string): boolean {
       if (dialog.stack.length > 0) {
         dialog.paste(text)
         return true
       }
-      if (viewer.stack.length > 0) {
-        viewer.paste(text)
-        return true
-      }
-      return false
+      return viewer.stack.length > 0 && viewer.paste(text)
     },
 
     isOpen(): boolean {

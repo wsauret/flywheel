@@ -15,29 +15,39 @@ import type { SessionModalHook } from "./use-session-modal-types.js"
 
 type KeyboardEventLike = { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }
 
+/** What the keymap acts on in a chat pane: its transcript's paging and its session's Resume. */
+export interface KeymapPane {
+  /** True while the pane's question shows; its dock then owns the keys, and Resume names no hint. */
+  readonly pendingQuestion: Accessor<boolean>
+  readonly sessionControls: Pick<SessionControlsHook, "offered" | "resume">
+  output(command: OutputWindowCommandType): void
+}
+
+type BindingAction = (evt: KeyboardEventLike, pane: KeymapPane) => void
+
 interface BindingActions {
-  help: (evt: KeyboardEventLike) => void
-  new: (evt: KeyboardEventLike) => void
-  sessions: (evt: KeyboardEventLike) => void
-  "tab.close": (evt: KeyboardEventLike) => void
-  resume: (evt: KeyboardEventLike) => void
-  "tab.next": (evt: KeyboardEventLike) => void
-  "tab.previous": (evt: KeyboardEventLike) => void
-  "tab.1": (evt: KeyboardEventLike) => void
-  "tab.2": (evt: KeyboardEventLike) => void
-  "tab.3": (evt: KeyboardEventLike) => void
-  "tab.4": (evt: KeyboardEventLike) => void
-  "tab.5": (evt: KeyboardEventLike) => void
-  "tab.6": (evt: KeyboardEventLike) => void
-  "tab.7": (evt: KeyboardEventLike) => void
-  "tab.8": (evt: KeyboardEventLike) => void
-  "tab.9": (evt: KeyboardEventLike) => void
-  "output.page-up": (evt: KeyboardEventLike) => void
-  "output.page-down": (evt: KeyboardEventLike) => void
-  "output.half-page-up": (evt: KeyboardEventLike) => void
-  "output.half-page-down": (evt: KeyboardEventLike) => void
-  "output.top": (evt: KeyboardEventLike) => void
-  "output.bottom": (evt: KeyboardEventLike) => void
+  help: BindingAction
+  new: BindingAction
+  sessions: BindingAction
+  "tab.close": BindingAction
+  resume: BindingAction
+  "tab.next": BindingAction
+  "tab.previous": BindingAction
+  "tab.1": BindingAction
+  "tab.2": BindingAction
+  "tab.3": BindingAction
+  "tab.4": BindingAction
+  "tab.5": BindingAction
+  "tab.6": BindingAction
+  "tab.7": BindingAction
+  "tab.8": BindingAction
+  "tab.9": BindingAction
+  "output.page-up": BindingAction
+  "output.page-down": BindingAction
+  "output.half-page-up": BindingAction
+  "output.half-page-down": BindingAction
+  "output.top": BindingAction
+  "output.bottom": BindingAction
 }
 
 interface KeyboardHandlerDeps {
@@ -130,14 +140,14 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     return evt
   }
 
-  function outputCommand(command: OutputWindowCommandType): (evt: KeyboardEventLike) => void {
-    return (evt) => {
+  function outputCommand(command: OutputWindowCommandType): BindingAction {
+    return (evt, pane) => {
       evt.preventDefault?.()
-      deps.dispatchOutputCommand(command)
+      pane.output(command)
     }
   }
 
-  function tabActivation(index: number): (evt: KeyboardEventLike) => void {
+  function tabActivation(index: number): BindingAction {
     return (evt) => {
       evt.preventDefault?.()
       activateTabByIndex(index)
@@ -163,12 +173,12 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     // border layout reads; otherwise the key passes to the focused textarea.
     // An open modal gets the key first (the model modal binds its own Ctrl+r
     // reset), because overlay input routes before the keymap.
-    resume: (evt) => {
-      const hintShown = deps.sessionControls.offered().primary === "resume"
-        && shouldShowGlobalHints({ hasPendingQuestion: signals.pendingQuestion() !== undefined })
+    resume: (evt, pane) => {
+      const hintShown = pane.sessionControls.offered().primary === "resume"
+        && shouldShowGlobalHints({ hasPendingQuestion: pane.pendingQuestion() })
       if (!hintShown) return
       evt.preventDefault?.()
-      deps.sessionControls.resume()
+      pane.sessionControls.resume()
     },
     "tab.next": promptBarActions.nextTab,
     "tab.previous": () => cycleSession(-1),
@@ -189,9 +199,24 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     "output.bottom": outputCommand("bottom"),
   }
 
+  // The pane of the tab in front.
+  const tabPane: KeymapPane = {
+    pendingQuestion: () => signals.pendingQuestion() !== undefined,
+    sessionControls: deps.sessionControls,
+    output: deps.dispatchOutputCommand,
+  }
+
+  /** Exits on ctrl+c; true when it did. */
+  function exitKey(evt: KeyboardEventLike): boolean {
+    if (!(evt.ctrl && evt.name === "c")) return false
+    evt.preventDefault?.()
+    deps.exit()
+    return true
+  }
+
   const handleKey = function handleKey(evt: KeyboardEventLike): void {
     if (overlay.input(evt)) return
-    if (evt.ctrl && evt.name === "c") { evt.preventDefault?.(); deps.exit(); return }
+    if (exitKey(evt)) return
     if (deps.questionInput.input(evt)) return
     // The prompt's popups (slash suggestions, history) claim escape (dismiss,
     // not interrupt), plain tab (complete, not session-cycle), and their
@@ -204,11 +229,28 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     // Escape is interrupt/mode semantics owned by the escape-mode stack,
     // not a remappable app command.
     const commandId = evt.name === "escape" ? null : deps.keymap.resolve(normalized)
-    if (commandId) { bindingActions[commandId](normalized); return }
+    if (commandId) { bindingActions[commandId](normalized, tabPane); return }
     // A keymap binding wins over a chord a module strip declares.
     if (deps.strips.stripInput(normalized)) return
     if (evt.name === "escape") handleEscape()
   }
 
-  return { handleKey, activeEscapeMode, promptBarActions }
+  /** A key for a chat pane that a view over the tab in front shows, such as
+   *  the lead's chat view, after the view's own keys and the pane's question
+   *  and popups had it: the keymap acts on that pane as on the tab's pane,
+   *  except the tab commands, which act on the tab bar and do nothing here.
+   *  A key that no binding takes reaches the pane's focused composer. */
+  function paneKey(evt: KeyboardEventLike, pane: KeymapPane): void {
+    if (exitKey(evt)) return
+    const normalized = normalizeTerminalQuirks(evt)
+    const commandId = evt.name === "escape" ? null : deps.keymap.resolve(normalized)
+    if (!commandId) return
+    if (TAB_COMMANDS.has(commandId)) { evt.preventDefault?.(); return }
+    bindingActions[commandId](normalized, pane)
+  }
+
+  return { handleKey, paneKey, activeEscapeMode, promptBarActions }
 }
+
+/** The commands that act on the tab bar. */
+const TAB_COMMANDS: ReadonlySet<keyof BindingActions> = new Set(["new", "tab.close", "tab.next", "tab.previous", "tab.1", "tab.2", "tab.3", "tab.4", "tab.5", "tab.6", "tab.7", "tab.8", "tab.9"])

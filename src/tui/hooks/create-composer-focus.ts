@@ -1,5 +1,5 @@
 import type { TextareaRenderable } from "@opentui/core"
-import { type Accessor, createEffect, on } from "solid-js"
+import { type Accessor, createEffect, on, onCleanup } from "solid-js"
 
 /**
  * Owns the prompt textarea's cursor.
@@ -37,6 +37,10 @@ export function createComposerFocus(shouldHold: Accessor<boolean>, refocusKey: A
   // focus without changing the ownership rule. Deferred so it lands after the
   // modal's renderables mount or tear down.
   createEffect(on([shouldHold, refocusKey], () => queueMicrotask(sync)))
+  // A composer that unmounts lets go of its textarea at once. Its blur hook
+  // would otherwise take the cursor back from the composer that replaced it,
+  // such as the next chat's in a view, and the two would trade it forever.
+  onCleanup(() => { prompt = null })
 
   // A remount doesn't change shouldHold, so the fresh textarea syncs on attach
   // to reclaim (or correctly decline) the cursor. The blurred hook enforces the

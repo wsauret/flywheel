@@ -28,7 +28,7 @@ async function presentCommandOutcome(context: OutcomePresenter, outcome: Command
 /** Binds every runtime-published built-in descriptor to one invocation. The
  *  runtime executes the command in the composition that published the
  *  descriptor (ARCH-PROTOCOL-037); this client sends the id, the argument, the catalog
- *  revision it rendered, and the chat in front, then presents the outcome. A
+ *  revision it rendered, and the chat in view, then presents the outcome. A
  *  descriptor that publishes the surface it opens needs no runtime: the
  *  surface opens at once at the descriptor's target, with the argument, also
  *  while the runtime does not answer, and a surface that refuses the opening
@@ -51,7 +51,7 @@ export function bindRuntimeCommandDefinitions(
         if (command.opens !== undefined) return await context.openSurface(command.opens, { ...(argument === undefined ? {} : { argument }), ...(command.target === undefined ? {} : { target: command.target }) })
         const agent = context.agentInView()
         if (agent !== undefined) { context.showToast({ message: chatOnlyCommandNotice(command.id, agent), variant: "warning" }); return false }
-        const sessionId = context.signals.sessionInputMode()?.kind === "chat" ? context.signals.foregroundId() : undefined
+        const sessionId = context.chatSessionId()
         const openSurface = context.captureSurfaceOpener()
         const outcome = await context.appService.dispatch({
           type: "command.invoke",

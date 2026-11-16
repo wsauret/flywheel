@@ -54,7 +54,7 @@ function harness() {
   const server = runtime()
   const owner = createRoot(dispose => {
     const [foregroundId, setForeground] = createSignal<string | undefined>("cold")
-    const intake = createSessionChangesIntake({ client: server.client, foregroundId })
+    const intake = createSessionChangesIntake({ client: server.client, sessionId: foregroundId })
     const modal = createModalStack()
     const controls = useSessionChangesModal({ modal, view: intake.view, renderModal: () => undefined })
     return { dispose, intake, modal, controls, setForeground }
@@ -68,7 +68,7 @@ function startupHarness(initialPhase: string | null = "loading") {
     const [firstFrame, setFirstFrame] = createSignal(false)
     const [startupPhase, setStartupPhase] = createSignal<string | null>(initialPhase)
     const [foregroundId] = createSignal<string | undefined>("cold")
-    const intake = createSessionChangesIntake({ client: server.client, foregroundId })
+    const intake = createSessionChangesIntake({ client: server.client, sessionId: foregroundId })
     startSessionChangesWhenReady(
       () => firstFrame() && startupPhase() === null,
       intake.start,

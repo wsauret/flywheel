@@ -25,6 +25,10 @@ interface ModuleSlotDeps {
   readonly modules: readonly TuiModule[]
   readonly intakes: ModuleDomainIntakes
   readonly foregroundId: Accessor<string | undefined>
+  /** The session a component surface opens for when its opening names none:
+   *  the chat that a view over the tab in front shows, else the session in
+   *  front, which it is when absent. */
+  readonly surfaceSession?: Accessor<string | undefined>
   readonly modal: Pick<ModalContext, "replace">
   readonly showToast: (toast: ToastInput) => void
   readonly client: Pick<RuntimeClient, "query" | "dispatch">
@@ -45,6 +49,8 @@ interface ModuleSlotDeps {
   readonly composer?: { readonly hasDraft: (sessionId: string) => boolean; readonly syncFocus: () => void }
   /** Whether the foreground's own question shows; its dock then owns the keys. */
   readonly foregroundQuestion?: Accessor<boolean>
+  /** Whether an overlay covers the strips; a paste then belongs to the overlay. */
+  readonly overlayOpen?: Accessor<boolean>
 }
 
 interface StripKeyEventLike extends TuiStripKeyEvent { readonly preventDefault?: () => void }
@@ -60,6 +66,9 @@ export interface ModuleSlots {
    *  modal, and Settings, for the foreground session, in registry order. */
   readonly composerStatus: Accessor<readonly ModuleComposerStatus[]>
   readonly introRows: Accessor<readonly ModuleRow[]>
+  /** The composer labels and welcome rows of one session, for a chat pane
+   *  that shows it; created under the caller's owner. */
+  readonly sessionRows: (sessionId: Accessor<string | undefined>) => { readonly composerStatus: Accessor<readonly ModuleComposerStatus[]>; readonly introRows: Accessor<readonly ModuleRow[]> }
   readonly statusRows: Accessor<readonly ModuleRow[]>
   readonly settingsRows: Accessor<readonly ModuleRow[]>
   readonly refreshStatus: () => void
@@ -85,9 +94,14 @@ export interface ModuleSlots {
  *  no module. A render failure in one module's slot is contained to that slot
  *  and reported once, so a broken module never takes the composer with it. */
 export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
+  function sessionRows(sessionId: Accessor<string | undefined>) {
+    const read = createDomainReader(deps.intakes, sessionId, deps.answering)
+    const composerStatus = createMemo(() => moduleComposerStatus(read, deps.enabled?.()))
+    const introRows = createMemo(() => moduleRows("intro", read, deps.enabled?.()))
+    return { composerStatus, introRows }
+  }
   const foreground = createDomainReader(deps.intakes, deps.foregroundId, deps.answering)
-  const composerStatus = createMemo(() => moduleComposerStatus(foreground, deps.enabled?.()))
-  const introRows = createMemo(() => moduleRows("intro", foreground, deps.enabled?.()))
+  const { composerStatus, introRows } = sessionRows(deps.foregroundId)
   const settingsRows = createMemo(() => moduleRows("settings", foreground, deps.enabled?.()))
   const enabled = (module: TuiModule): boolean => deps.enabled?.()?.includes(module.id) ?? true
   const statusScope = createMemo<ModuleStatusScope, undefined>(() => ({ sessionId: deps.foregroundId(), profileId: deps.auth?.()?.profile.id, moduleIds: deps.enabled?.() ?? deps.modules.map((module) => module.id) }), undefined, { equals: sameModuleStatusScope })
@@ -122,8 +136,8 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
     }
   }
 
+  const surfaceSession = deps.surfaceSession ?? deps.foregroundId
   const surfaces = new Map(deps.modules.flatMap((module) => (module.surfaces ?? []).map((surface) => [surface.id, createSurfaceOpener(module, surface)] as const)))
-  const openSurface = (id: string): void => { surfaces.get(id)?.() }
 
   function createSurfaceOpener(module: TuiModule, surface: TuiSurface): (request?: SurfaceRequest) => boolean | Promise<boolean> {
     if ("loadController" in surface) return controlledSurfaceOpener(module, surface)
@@ -172,7 +186,7 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
     }
   }
 
-  function componentSurfaceOpener(module: TuiModule, surface: TuiComponentSurface): () => boolean {
+  function componentSurfaceOpener(module: TuiModule, surface: TuiComponentSurface): (request?: SurfaceRequest) => boolean {
     const [sessionId, setSessionId] = createSignal<string | undefined>()
     const scroll = createModalScrollController()
     // The reader follows the session captured at open, so the surface and its
@@ -192,10 +206,11 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
       queueMicrotask(close)
       return null
     })
-    // The surface shows the session that was in front when it opened and
-    // closes when the foreground moves, so it never shows another session's rows.
-    function open(): void {
-      const id = deps.foregroundId()
+    // The surface shows the session it opened for, the one its opening names or
+    // the one in view, and closes when the session in view moves, so it never
+    // shows another session's rows.
+    function open(request: SurfaceRequest): void {
+      const id = request.sessionId ?? surfaceSession()
       if (id === undefined || !enabled(module)) return
       close()
       scroll.reset()
@@ -205,13 +220,13 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
         onClose: () => { scroll.detach(); setSessionId(undefined) },
       })
     }
-    createEffect(on(deps.foregroundId, (current) => {
+    createEffect(on(surfaceSession, (current) => {
       const captured = sessionId()
       if (captured !== undefined && current !== captured) close()
     }, { defer: true }))
     createEffect(on(() => enabled(module), (active) => { if (!active) close() }))
     onCleanup(close)
-    return () => { open(); return true }
+    return (request = {}) => { open(request); return true }
   }
 
   interface StripClaim { readonly onKey: (event: TuiStripKeyEvent) => boolean }
@@ -286,7 +301,7 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
       const composer = { empty: () => !(deps.composer?.hasDraft(sessionId) ?? false) }
       return [(
         <ErrorBoundary fallback={(error: unknown) => { contain(module, "strip", error); return null }}>
-          {createComponent(strip, { sessionId, read, width, openSurface, keys: stripKeys(module), composer })}
+          {createComponent(strip, { sessionId, read, width, openSurface: (id: string) => { void surfaces.get(id)?.({ sessionId }) }, keys: stripKeys(module), composer })}
         </ErrorBoundary>
       )]
     })
@@ -295,12 +310,12 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
   function Strips(props: StripsProps): JSX.Element {
     // A paste that no overlay or question took goes to the prompt, which has
     // no focus while a strip holds it.
-    usePaste((event) => { if (!event.defaultPrevented && untrack(focusedClaim)) releaseStripFocus() })
+    usePaste((event) => { if (!event.defaultPrevented && !(deps.overlayOpen?.() ?? false) && untrack(focusedClaim)) releaseStripFocus() })
     const side = (placement: NonNullable<TuiModule["stripPlacement"]>): JSX.Element => <Show when={props.sessionId()} keyed>{(sessionId) => placedStrips(sessionId, placement, props.width)}</Show>
     return <>{side("above")}{props.children}{side("below")}</>
   }
 
-  return { composerStatus, introRows, statusRows, settingsRows, refreshStatus, Strips, surfaces, stripFocused, stripInput, releaseStripFocus }
+  return { composerStatus, introRows, sessionRows, statusRows, settingsRows, refreshStatus, Strips, surfaces, stripFocused, stripInput, releaseStripFocus }
 }
 
 /** The keys every surface answers: the surface's own handler first, then

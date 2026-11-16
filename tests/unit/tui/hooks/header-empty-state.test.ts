@@ -33,11 +33,10 @@ const unused: BudgetView = { totalsLoading: false, tokens: 0, cost: 0, billedCos
 function renderHeader(blocks: readonly FrontendOutputBlock[], budget: BudgetView = unused, row: SessionCatalogRow = summary): string {
   return createRoot((dispose) => {
     const header = createHeaderDisplay({
-      signals: {
-        budgetView: () => budget,
+      surface: {
+        budget: () => budget,
         elapsed: () => 0,
-        foregroundId: () => summary.id,
-        foregroundSummary: () => row,
+        summary: () => row,
         outputView: () => ({ blocks, streamingToolText: {} }),
         sessionState: () => "active",
       },

@@ -20,10 +20,12 @@ export function startSessionChangesWhenReady(ready: Accessor<boolean>, start: ()
   })
 }
 
-/** Adapts the shared controller to Solid. The shell enables acquisition only after its first frame and runtime readiness. */
+/** Adapts the shared controller to Solid for the session that `sessionId`
+ *  names: the chat in front, or a chat that a view over it shows. The shell
+ *  enables acquisition only after its first frame and runtime readiness. */
 export function createSessionChangesIntake(deps: {
   readonly client: Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe" | "onLane">
-  readonly foregroundId: Accessor<string | undefined>
+  readonly sessionId: Accessor<string | undefined>
 }) {
   const [view, setView] = createSignal<SessionChangesView>()
   const [enabled, setEnabled] = createSignal(false)
@@ -33,7 +35,7 @@ export function createSessionChangesIntake(deps: {
     disposeOwner = undefined
     setView(undefined)
   }
-  createEffect(on(deps.foregroundId, (sessionId) => {
+  createEffect(on(deps.sessionId, (sessionId) => {
     removeOwner()
     if (!sessionId) return
     const controller = createSessionChangesController({ client: deps.client, sessionId })

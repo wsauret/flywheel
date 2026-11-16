@@ -9,7 +9,7 @@ import type { OutputTranscriptCache, OutputTranscriptView } from "../transcript-
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import type { BudgetView } from "../../protocol/budget-protocol-types.js"
 import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
-import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../infra/session-notice.js"
+import { noticeText, sessionNoticeChannel, type SessionNotice } from "../../infra/session-notice.js"
 import { createToastPresenter } from "../utils/toast-presenter.js"
 import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus, FrontendOutputBlock } from "../../protocol/app-service-types.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
@@ -52,7 +52,6 @@ import { createTranscriptVisibilityRefresh } from "./create-transcript-visibilit
 import { createSessionChangesIntake, type SessionChangesView } from "./create-session-changes.js"
 import { createSessionDetailCache, createSessionSurface, type SessionDetailCache, type SessionSurface, type SessionSurfaceOptions } from "./create-session-surface.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
-import type { SpinnerStatusSource } from "./create-spinner-status.js"
 
 // The terminal-title prefix is a TUI concern with exactly one consumer.
 const TERMINAL_TITLE_BASE = "flywheel"
@@ -69,7 +68,9 @@ export type ForegroundTarget =
 
 /** Pure reactive state: signals and derived memos. */
 export interface ShellSignals {
-  spinnerStatusSource: SpinnerStatusSource
+  /** The foreground session's surface: the per-session source that the tab's
+   *  chat pane reads, of the same shape as every other view's surface. */
+  foregroundSurface: SessionSurface
   sessionChanges: Accessor<SessionChangesView | undefined>
   /** The background indexes of the foreground session and of the child
    *  session whose work a child viewer lists. */
@@ -110,6 +111,8 @@ export interface ShellSignals {
   roleView: (sessionId: string) => RoleAssignmentView | undefined
   /** Starts following ordered role cursors in one batched snapshot. */
   ensureRoleViews: (sessionIds: readonly string[]) => void
+  /** Follows the role and module readings of a session that a client shows. */
+  followSession: (sessionId: string) => void
   /** Starts following the role and status cursors of the children that
    *  cards show, each in one batched snapshot. */
   ensureChildViews: (sessionIds: readonly string[]) => void
@@ -158,8 +161,6 @@ export interface ShellSignals {
   catalogReady: Accessor<boolean>
   streamingToolText: Accessor<Readonly<StreamingToolTextById>>
   sessionNotices: Accessor<readonly SessionNotice[]>
-  /** Progress notices for the spinner status line. */
-  statusNotice: Accessor<SessionNotice | null>
   sessionShortTitle: Accessor<string>
   foregroundId: Accessor<string | undefined>
   foregroundTarget: Accessor<ForegroundTarget | undefined>
@@ -186,7 +187,6 @@ export interface ShellSignals {
    *  session is selected: the shell never substitutes its own directory. */
   sessionExecutionCwd: Accessor<string | null>
   pendingQuestion: Accessor<PendingQuestionView | undefined>
-  compactionStartedAt: Accessor<number | null>
   /** Wall-clock now, ticked every second. Drives elapsed-time displays. */
   now: Accessor<number>
   /** Cumulative active time of the foreground session. Ticks while the
@@ -197,8 +197,11 @@ export interface ShellSignals {
 
 export interface ShellServices {
   /** Starts the readings that wait for the first frame and runtime
-   *  readiness: the foreground session's changes and background index. */
+   *  readiness: each shown session's changes and the foreground's background index. */
   startDeferredReadings: () => void
+  /** The changes of a session that a view over the tab in front shows, read
+   *  under the caller's owner from the time the deferred readings start. */
+  createSessionChanges: (sessionId: Accessor<string | undefined>) => Accessor<SessionChangesView | undefined>
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
   seedSessionCatalogRow: (row: SessionCatalogRow) => void
   startKnownEmptyTranscript: OutputTranscriptCache["startKnownEmpty"]
@@ -402,7 +405,7 @@ export function createShellState(deps: {
   const moduleIntakes = createModuleDomainIntakes({ appService: deps.appService, hydration })
   const sessionCatalog = createSessionCatalog({ appService: deps.appService, projectRoot: deps.projectRoot, attachedIdentity: deps.attachedIdentity })
   const intake = {
-    changes: createSessionChangesIntake({ client: deps.appService, foregroundId }),
+    changes: createSessionChangesIntake({ client: deps.appService, sessionId: foregroundId }),
     background: createBackgroundIndexFollower({ client: deps.appService, foregroundId }),
     session: sessionCatalog,
     // ONE output store: the same transcript cache owns the live delta intake and the
@@ -499,13 +502,16 @@ export function createShellState(deps: {
   const foregroundSummary = foregroundSurface.summary
   const foregroundStatus = foregroundSurface.status
 
+  function followSession(sessionId: string): void {
+    ensureModuleSessionDomains(moduleIntakes, sessionId)
+    roleCache.ensure(sessionId)
+  }
   createEffect(() => {
     const rows = sessionCatalog.rows()
     const activeIds = rows.filter((summary) => summary.lifecycleState === "active").map((summary) => summary.id)
     for (const cache of [statusCache, budgetCache, questionCache, roleCache]) cache.ensureMany(activeIds)
     const fgId = foregroundId()
-    if (fgId) ensureModuleSessionDomains(moduleIntakes, fgId)
-    if (fgId) roleCache.ensure(fgId)
+    if (fgId) followSession(fgId)
   })
 
   // The desktop switch exists only while the module that claims it is in
@@ -541,7 +547,6 @@ export function createShellState(deps: {
   const sessionNotices = () => foregroundSummary()?.notices ?? []
   const noticesOn = (channel: ReturnType<typeof sessionNoticeChannel>) =>
     sessionNotices().filter((notice) => sessionNoticeChannel(notice) === channel)
-  const statusNotice = () => selectPrimarySessionNotice(noticesOn("status"))
   const toastNotices = () => noticesOn("toast")
   // A toast-channel notice is fire-once: showing it consumes it from the
   // store, so it cannot re-toast, linger, or reach a second surface.
@@ -602,20 +607,9 @@ export function createShellState(deps: {
   const sessionExecutionCwd = () => foregroundSummary()?.executionCwd ?? null
 
 
-  const compactionStartedAt = () => foregroundStatus()?.compactionStartedAt ?? null
-  const spinnerStatusSource: SpinnerStatusSource = {
-    sessionId: foregroundId,
-    status: foregroundStatus,
-    streamingOutputChars: foregroundSurface.streamingOutputChars,
-    agentState,
-    waitingOnBackgroundWork,
-    parentSessionId: () => foregroundSummary()?.parentSessionId,
-    compactionStartedAt,
-    notice: statusNotice,
-  }
 
   const signals = {
-    spinnerStatusSource,
+    foregroundSurface,
     agentState,
     interruptible: foregroundSurface.interruptible,
     activeSubagentCount,
@@ -630,6 +624,7 @@ export function createShellState(deps: {
     followQuestion: (sessionId: string) => { questionCache.ensure(sessionId); return questionCache.view(sessionId) },
     roleView: roleCache.view,
     ensureRoleViews: roleCache.ensureMany,
+    followSession,
     ensureChildViews: (sessionIds: readonly string[]) => {
       roleCache.ensureMany(sessionIds)
       statusCache.ensureMany(sessionIds)
@@ -660,7 +655,6 @@ export function createShellState(deps: {
     catalogReady: sessionCatalog.catalogReady,
     streamingToolText,
     sessionNotices,
-    statusNotice,
     sessionShortTitle,
     foregroundId, setForegroundId, foregroundTarget, setForegroundTarget, foregroundRevision,
     foregroundSummary,
@@ -671,11 +665,11 @@ export function createShellState(deps: {
     projectRoot: sessionCatalog.projectRoot,
     sessionExecutionCwd,
     pendingQuestion,
-    compactionStartedAt,
     now,
     elapsed,
   }
 
+  const [deferredReadingsStarted, setDeferredReadingsStarted] = createSignal(false)
   const services = {
     showToast: deps.showToast,
     seedSessionCatalogRow: sessionCatalog.seed,
@@ -684,8 +678,14 @@ export function createShellState(deps: {
     refreshCommandCatalog: commandCatalog.refresh,
     commandCatalogReadiness: commandCatalog,
     startDeferredReadings: () => {
+      setDeferredReadingsStarted(true)
       intake.changes.start()
       intake.background.start()
+    },
+    createSessionChanges: (sessionId: Accessor<string | undefined>) => {
+      const changes = createSessionChangesIntake({ client: deps.appService, sessionId })
+      createEffect(() => { if (deferredReadingsStarted()) changes.start() })
+      return changes.view
     },
     appService: deps.appService,
     transcripts: transcriptCache,

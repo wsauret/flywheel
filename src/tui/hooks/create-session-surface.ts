@@ -14,7 +14,9 @@ import type { RuntimeSessionDetailView } from "../../protocol/session-detail-pro
 import type { ActiveBackgroundCommandView, StatusView } from "../../protocol/status-protocol-types.js"
 import type { SessionLifecycleState } from "../../orchestration/session/types.js"
 import type { OutputTranscriptCache, OutputTranscriptView } from "../transcript-store/output-transcript-cache-types.js"
+import { selectPrimarySessionNotice, sessionNoticeChannel } from "../../infra/session-notice.js"
 import type { BudgetCache } from "./create-budget-cache.js"
+import type { SpinnerStatusSource } from "./create-spinner-status.js"
 import { createForegroundOutputPager } from "./create-foreground-output-pager.js"
 import type { QuestionCache } from "./create-question-cache.js"
 import type { StatusCache } from "./create-status-cache.js"
@@ -50,6 +52,21 @@ export interface SessionSurface {
   readonly sessionState: Accessor<SessionLifecycleState | null>
   readonly elapsed: Accessor<number>
   readonly pageOutput: (direction: "older" | "newer") => void
+}
+
+/** What a session's status line folds, read from its surface: the one source
+ *  every chat composer and agent view reads its own line from. */
+export function sessionSpinnerSource(surface: SessionSurface): SpinnerStatusSource {
+  return {
+    sessionId: surface.sessionId,
+    status: surface.status,
+    streamingOutputChars: surface.streamingOutputChars,
+    agentState: surface.agentState,
+    waitingOnBackgroundWork: surface.waitingOnBackgroundWork,
+    parentSessionId: () => surface.summary()?.parentSessionId,
+    compactionStartedAt: () => surface.status()?.compactionStartedAt ?? null,
+    notice: () => selectPrimarySessionNotice((surface.summary()?.notices ?? []).filter((notice) => sessionNoticeChannel(notice) === "status")),
+  }
 }
 
 /** The held detail a surface reads, counted per surface that holds it. */

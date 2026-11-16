@@ -3,7 +3,6 @@ import type { TextareaRenderable, TextRenderable } from "@opentui/core"
 import { StyledText, fg as stFg } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { useKeymap } from "@tui/context/keymap"
-import { hidesTabControls, useClientExtensions } from "@tui/context/client-extensions.js"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, untrack } from "solid-js"
 import { normalizeChatInput, type ChatInput, type ChatInputLike } from "../../infra/chat-input.js"
@@ -82,6 +81,11 @@ export function Composer(props: ComposerProps) {
       },
     },
   )
+  // `/attach` lands here: the picked files become markers in this prompt's
+  // textarea, the same way a pasted image does. The composer registers once
+  // for its whole life, so the newest mounted composer stays the destination
+  // when an older one's textarea mounts again.
+  onCleanup(untrack(() => props.promptAttachSlot).register(promptAttachments.captureAppender))
   const pasteBurst = createPasteBurstController({
     insertTyped(text) {
       const prompt = promptRef.current()
@@ -514,13 +518,12 @@ export function Composer(props: ComposerProps) {
     if (key.name === "right" && !key.ctrl && !key.meta && !key.shift) handleGhostAccept(key)
   }
 
-  const clients = useClientExtensions()
   const placeholder = createMemo(() => {
     const active = props.agentState() === "active"
     const text = props.inChat()
       ? active
         ? "Send a message to the running turn"
-        : hidesTabControls(clients, props.foregroundId()) ? "Send a message" : `Send a message (${keymap.chordFor("new")} for fresh chat)`
+        : props.tabHints() ? `Send a message (${keymap.chordFor("new")} for fresh chat)` : "Send a message"
       : "Send a message..."
     return props.interruptible() ? `${text} · esc to interrupt` : text
   })
@@ -611,9 +614,6 @@ export function Composer(props: ComposerProps) {
                   const pc = createPasteCollapse(r, () => themeCtx.syntax)
                   pasteCollapse = pc
                   promptAttachments.attach(r)
-                  // `/attach` lands here: the picked files become markers in this
-                  // textarea, the same way a pasted image does.
-                  props.promptAttachSlot.register(promptAttachments.captureAppender)
                   commandTypeId = r.extmarks.registerType("command")
                   createEffect(() => {
                     r.syntaxStyle = themeCtx.syntax
@@ -663,6 +663,8 @@ export function Composer(props: ComposerProps) {
             sessionId={pq().sessionId}
             question={pq().question}
             drafts={props.draftCache.questions}
+            {...(props.questionInput ? { input: props.questionInput } : {})}
+            {...questionEscape(props.onLeaveQuestion)}
             width={props.lineWidth()}
             onAnswer={(answers) => props.onAnswerQuestion(pq().sessionId, pq().question.toolUseId, answers)}
             onCancel={() => props.onCancelQuestion(pq().sessionId, pq().question.toolUseId)}
@@ -673,4 +675,10 @@ export function Composer(props: ComposerProps) {
       </Show>
     </box>
   )
+}
+
+/** How Escape acts in the question dock: it skips the question, or, where `leave` is set, leaves the view and the
+ *  question stays pending. */
+function questionEscape(leave: (() => void) | undefined): { readonly escape: "skip" } | { readonly escape: "leave"; readonly onLeave: () => void } {
+  return leave ? { escape: "leave", onLeave: leave } : { escape: "skip" }
 }

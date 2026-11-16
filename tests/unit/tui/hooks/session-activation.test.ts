@@ -221,13 +221,13 @@ describe("session activation by id", () => {
     })
     return { query, queried }
   }
-  function activator(views: { readonly [sessionId: string]: RuntimeSessionDetailView | null }, rows: readonly SessionCatalogRow[] = []) {
+  function activator(views: { readonly [sessionId: string]: RuntimeSessionDetailView | null }, rows: readonly SessionCatalogRow[] = [], shown: (sessionId: string) => boolean = () => false) {
     const client = detailClient(views)
     const activateSession = mock(async (_session: SessionCatalogRow) => ({ ok: true as const }))
     const openChild = mock((_child: { readonly id: string; readonly kind: "chat" | "subagent" | "workflow-agent" }) => {})
     const seedSessionCatalogRow = mock((_row: SessionCatalogRow) => {})
     const showToast = mock((_toast: { message: string; variant: "info" | "warning" | "error" | "success" }) => {})
-    const activate = createSessionActivatorById({ rows: () => rows, appService: client, activateSession, openChild, seedSessionCatalogRow, showToast })
+    const activate = createSessionActivatorById({ rows: () => rows, appService: client, shown, activateSession, openChild, seedSessionCatalogRow, showToast })
     return { activate, activateSession, openChild, seedSessionCatalogRow, showToast, queried: client.queried }
   }
 
@@ -247,6 +247,14 @@ describe("session activation by id", () => {
     expect(a.openChild).toHaveBeenCalledWith({ id: "child", kind: "subagent" })
     expect(a.activateSession).toHaveBeenCalledWith(parent)
     expect(a.showToast).not.toHaveBeenCalled()
+  })
+
+  it("opens a child over its chat where a view over the tab in front shows that chat, and brings nothing to the front", async () => {
+    const parent = session("parent", "chat")
+    const a = activator({ child: { source: "durable", id: "child", kind: "subagent", conversationId: "conv", budget: null, row: childRow, status } }, [parent], (sessionId) => sessionId === "parent")
+    await a.activate("child")
+    expect(a.openChild).toHaveBeenCalledWith({ id: "child", kind: "subagent" })
+    expect(a.activateSession).not.toHaveBeenCalled()
   })
 
   it("activates a listed session whose row has not reached this window from the row its detail carries", async () => {
@@ -308,6 +316,7 @@ describe("link navigation", () => {
     const timeout = RuntimeCallTimeout.forDeadline(5_000)
     const activateById = createSessionActivatorById({
       rows: () => [],
+      shown: () => false,
       appService: { query: () => Promise.reject(timeout) },
       activateSession: mock(async () => ({ ok: true as const })),
       openChild: () => {},

@@ -53,7 +53,7 @@ const pending: QuestionBlock = { kind: "question", toolUseId: "question-1", time
 /** A root chat's body over another chat, as a module's viewer composes it. */
 async function renderChatBody(input: ReturnType<typeof createInput>, props: Partial<ChildSessionBodyProps> = {}) {
   const render = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
-    <ChildSessionBody {...childBodyProps()} agentKind="chat" sessionId="child" surface={viewerSurface("chat")} input={input}
+    <ChildSessionBody {...childBodyProps()} agentKind="subagent" sessionId="child" surface={viewerSurface("chat")} input={input}
       active={() => true} focused={() => true} width={90} height={28} header={<text>Chat header</text>} navigation={<text>Back</text>}
       messaging={{ admits: () => true, shown: () => true, send: async () => true }} placeholder="Message this chat" controls={() => ({})} {...props} />
   </TickPoolProvider></ThemeProvider>, { width: 90, height: 30 })
@@ -95,14 +95,14 @@ describe("a root chat's body", () => {
     expect(render.captureCharFrame()).toContain("Message this chat")
   })
 
-  it("sends the person's text as one message to that chat, and puts a chat's view in front for commands", async () => {
+  it("sends the person's text as one message to that chat, and puts its view in front for commands", async () => {
     const sent: unknown[] = []
     const submissions = createChatSubmissions({ lanes: { onLane: () => () => {} }, dispatch: async (sessionId, message) => { sent.push({ type: "session.send", sessionId, input: message }); return { ok: true } } })
     const transcriptInView = createTranscriptInView(() => {})
     const input = createInput({ onClose: () => {}, dispatchCommand: async () => false })
     await renderChatBody(input, { transcriptInView, messaging: { admits: () => true, shown: () => true,
       send: async (text) => (await submissions.send("child", { text })).kind === "sent" } })
-    expect(transcriptInView.agentInView()).toBe("chat")
+    expect(transcriptInView.agentInView()).toBe("subagent")
     input.onPaste("look at the logs")
     input.onKey({ name: "return" })
     await Bun.sleep(0)

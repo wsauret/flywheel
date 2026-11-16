@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { testRender } from "@opentui/solid"
+import { testRender, useKeyboard } from "@opentui/solid"
 import { createRoot, createSignal, For, type Accessor, type JSX } from "solid-js"
 import type { QuestionBlock } from "../../../../../src/infra/output-blocks.js"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
@@ -11,14 +11,16 @@ import { TickPoolProvider } from "../../../../../src/tui/context/tick-pool-conte
 import { LeadStrip } from "../../../../../src/tui/modules/lead/strip.js"
 import type { TuiStripKeyEvent } from "../../../../../src/tui/tui-module.js"
 import { createOverlayLayers, type OverlayLayers } from "../../../../../src/tui/components/modal-stack.js"
-import { createDraftCache } from "../../../../../src/tui/hooks/create-draft-cache.js"
 import { createLeadClient } from "../../../../../src/tui/modules/lead/client.js"
 import type { LeadChatViewerHost } from "../../../../../src/tui/modules/lead/chat-viewer.js"
 import type { TuiModuleClientHost } from "../../../../../src/tui/tui-module-client.js"
 import { runtimeDispatch, runtimeQuery } from "../../../../helpers/runtime-dispatch.js"
-import { heightEstimatesFromBlocks } from "../../../../../src/tui/hooks/output-height-estimates.js"
-import { transcriptOf } from "../../_output-window-transcript.js"
-import { childBodyProps, viewerSurface } from "../../components/_child-session-viewer-fixtures.js"
+import { chatPaneHost, chatSurface } from "../../components/_chat-pane-fixtures.js"
+import type { ChatPaneHost } from "../../../../../src/tui/components/chat-pane.js"
+import { ModalProvider } from "../../../../../src/tui/components/modal.js"
+import { QuestionInputProvider } from "../../../../../src/tui/components/question-input.js"
+import { ToastProvider } from "../../../../../src/tui/context/toast.js"
+import type { SessionSurface } from "../../../../../src/tui/hooks/create-session-surface.js"
 
 export const LEAD_ID = "lead-1"
 
@@ -38,9 +40,16 @@ export function choiceQuestion(toolUseId: string): QuestionBlock {
   return { kind: "question", toolUseId, questions: [{ question: "Which provider?", choices: [{ kind: "option", choiceId: "a", label: "Alpha" }, { kind: "freeform", label: "Other" }], multiSelect: false }], timestamp: 1 }
 }
 
+/** What the viewer shows of each chat beyond its transcript: the title that the Sessions list shows, and its surface's
+ *  own readings, such as its statistics. */
+interface ViewerChats {
+  readonly titles?: { readonly [sessionId: string]: string }
+  readonly surfaces?: { readonly [sessionId: string]: Partial<SessionSurface> }
+}
+
 /** The host capabilities the chat viewer uses beyond the client and the
  *  toasts, each recording what it was asked. */
-export function viewerHost(input: { readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }; readonly titles?: { readonly [sessionId: string]: string }; readonly view?: Accessor<LeadChatsView>; readonly overlay?: OverlayLayers } = {}) {
+export function viewerHost(input: { readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }; readonly view?: Accessor<LeadChatsView>; readonly overlay?: OverlayLayers } & ViewerChats = {}) {
   const overlay = input.overlay ?? createOverlayLayers()
   const [questions, setQuestions] = createSignal<{ readonly [sessionId: string]: QuestionBlock }>({})
   const sent: string[] = []
@@ -59,36 +68,39 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
     sent.push(`session.send ${sessionId} ${message.text}`)
     return { ok: true }
   } })
+  // The shell's chat pane host: the production command routing sends through the terminal's submissions owner,
+  // and each chat's question and the lead's count on every composer border come from the scripted state.
+  const shellPane = chatPaneHost({
+    transcripts: input.transcripts ?? {},
+    send: async (sessionId, message) => { await submissions.send(sessionId, message) },
+    slashCatalog: [{ id: "status", title: "/status", value: "/status", description: "Show status" }],
+    projectFiles: [{ path: "src/shell.tsx", directory: false }],
+    over: {
+      createSurface: (sessionId) => {
+        const id = sessionId() ?? ""
+        return chatSurface(id, input.transcripts?.[id] ?? [], { pendingQuestion: () => questions()[id], ...input.surfaces?.[id] })
+      },
+      compact: async (sessionId) => { sent.push(`chat.compact ${sessionId}`); return true },
+      sessionRows: () => ({
+        composerStatus: () => leadProtocol.composer.status(moduleDomainReader((domain) => domain.domain === "leadChats" ? input.view?.() : undefined)),
+        introRows: () => [],
+      }),
+    },
+  })
+  const pane: ChatPaneHost = { ...shellPane, composer: {
+    ...shellPane.composer,
+    onAnswerQuestion: async (sessionId, toolUseId) => { sent.push(`question.answer ${sessionId} ${toolUseId}`); return true },
+    onCancelQuestion: async (sessionId, toolUseId) => { sent.push(`question.cancel ${sessionId} ${toolUseId}`); return true },
+  } }
   const host = {
     navigateSession: async (sessionId: string) => { sent.push(`navigate ${sessionId}`) },
-    dispatchCommand: async () => false,
     viewerLayer: overlay.viewer,
     sessionTitles: (sessionId: string) => ({ id: sessionId, title: input.titles?.[sessionId] ?? `Chat ${sessionId}`, shortTitle: "Short" }),
-    question: (sessionId: string) => questions()[sessionId],
-    answerQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.answer ${sessionId} ${toolUseId}`); return true },
-    cancelQuestion: async (sessionId: string, toolUseId: string) => { sent.push(`question.cancel ${sessionId} ${toolUseId}`); return true },
-    questionDrafts: createDraftCache().questions,
     showSession: (sessionId: string) => {
       shows.push(`show ${sessionId}`)
       return (toTab?: boolean) => { shows.push(`${toTab ? "to tab" : "end"} ${sessionId}`) }
     },
-    viewer: () => ({
-      ...childBodyProps(),
-      appService: { dispatch: runtimeDispatch({}), query: runtimeQuery({}) },
-      submissions: { send: submissions.send, recallQueued: submissions.recallQueued },
-      compactionThreshold: () => undefined,
-      // The shell's module slots: the lead's count on every composer border.
-      composerStatus: () => leadProtocol.composer.status(moduleDomainReader((domain) => domain.domain === "leadChats" ? input.view?.() : undefined)),
-      createSurface: (sessionId: () => string | undefined) => {
-        const id = sessionId() ?? ""
-        const blocks = input.transcripts?.[id] ?? []
-        const transcript = transcriptOf(blocks)
-        // The store's own estimates, so a place by block index lands where it would in the product.
-        const snapshot = transcript.visibleRange()
-        const estimated = snapshot && { ...snapshot, heightEstimates: heightEstimatesFromBlocks(blocks, 0, false) }
-        return viewerSurface("chat", { sessionId, transcript: { ...transcript, visibleRange: () => estimated } })
-      },
-    }),
+    chatPane: () => pane,
     closeChat: async (sessionId: string) => { sent.push(`session.close ${sessionId}`) },
   } satisfies Omit<LeadChatViewerHost, "client" | "showToast"> & Pick<TuiModuleClientHost, "sessionTitles" | "closeChat">
   return { host, overlay, setQuestions, sent, shows, holdSends }
@@ -96,9 +108,9 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
 
 /** The lead client over a scripted designation of `LEAD_ID` and scripted rows
  *  (`view`), with every mutation the list and the viewer send recorded in `sent`. */
-export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [sessionId: string]: readonly FrontendOutputBlock[] } = {}, overlay?: OverlayLayers, titles?: { readonly [sessionId: string]: string }) {
+export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [sessionId: string]: readonly FrontendOutputBlock[] } = {}, overlay?: OverlayLayers, chats: ViewerChats = {}) {
   const [view, setView] = createSignal<LeadChatsView>({ rows })
-  const viewer = viewerHost({ transcripts, view, ...(overlay ? { overlay } : {}), ...(titles ? { titles } : {}) })
+  const viewer = viewerHost({ transcripts, view, ...(overlay ? { overlay } : {}), ...chats })
   const dispatch = runtimeDispatch({
     "lead.result.mark_read": async (command) => { viewer.sent.push(`lead.result.mark_read ${command.sessionId} ${command.entryId}`); return { ok: true } },
     "lead.chat.mark_seen": async (command) => { viewer.sent.push(`lead.chat.mark_seen ${command.sessionId} ${command.state} ${command.entryId}`); return { ok: true } },
@@ -112,6 +124,12 @@ export function leadHarness(rows: readonly LeadRow[], transcripts: { readonly [s
   return { ...built, ...viewer, view, setView, Viewers }
 }
 
+/** The shell's keyboard listener, in its first step: an open overlay takes the key. */
+function OverlayKeys(props: { readonly overlay: OverlayLayers }): JSX.Element {
+  useKeyboard((event) => { props.overlay.input(event) })
+  return null
+}
+
 /** The strip on a screen, with the kernel's key claim in its simplest form: a
  *  key reaches the strip's handler, and the focus is one signal. `viewerKey`
  *  sends a key to the top viewer, as the shell routes keys while one shows. */
@@ -119,26 +137,28 @@ export async function mountStrip(rows: readonly LeadRow[], options: {
   readonly width?: number
   readonly height?: number
   readonly sessionId?: string
-  readonly titles?: { readonly [sessionId: string]: string }
   readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }
-} = {}) {
-  const lead = leadHarness(rows, options.transcripts, undefined, options.titles)
+} & ViewerChats = {}) {
+  const lead = leadHarness(rows, options.transcripts, undefined, { ...(options.titles ? { titles: options.titles } : {}), ...(options.surfaces ? { surfaces: options.surfaces } : {}) })
   const [focused, setFocused] = createSignal(false)
   const [composerEmpty, setComposerEmpty] = createSignal(true)
   const [sessionId, setSessionId] = createSignal(options.sessionId ?? LEAD_ID)
   let handler: ((event: TuiStripKeyEvent) => boolean) | undefined
   let chords: readonly string[] = []
   const width = options.width ?? 80
-  const rendered = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
+  // The shell's modal provider, under which a viewer's own dialogs, such as a chat's context reading, open.
+  const rendered = await testRender(() => <ToastProvider><ThemeProvider mode="dark"><QuestionInputProvider><ModalProvider clipboard={{ copy: async () => {}, readImage: async () => null }}><TickPoolProvider>
+    <OverlayKeys overlay={lead.overlay} />
     {lead.client.provide?.(() => <box flexDirection="column">
       <LeadStrip sessionId={sessionId()} read={moduleDomainReader(() => undefined)} width={() => width} openSurface={() => {}} composer={{ empty: composerEmpty }}
         keys={{ claim: (input) => { handler = input.onKey; chords = input.chords; return { focused, setFocused } } }} />
       <lead.Viewers />
     </box>)}
-  </TickPoolProvider></ThemeProvider>, { width, height: options.height ?? 24 })
+  </TickPoolProvider></ModalProvider></QuestionInputProvider></ThemeProvider></ToastProvider>, { width, height: options.height ?? 24 })
   const settle = async (): Promise<void> => {
-    for (let frame = 0; frame < 3; frame += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 0))
+    // A send goes through the command routing and the submissions owner, which take a few turns of the event loop.
+    for (let frame = 0; frame < 5; frame += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1))
       await rendered.renderOnce()
     }
   }
@@ -147,11 +167,20 @@ export async function mountStrip(rows: readonly LeadRow[], options: {
     await settle()
     return taken
   }
+  // A key reaches the renderer as the terminal's parser hands it on: the shell's keyboard listener offers it to the
+  // top viewer, and a key that no handler prevents reaches the focused composer.
+  const pressKey = (name: string, modifiers: { readonly ctrl?: boolean; readonly shift?: boolean } = {}): void => {
+    const sequence = name === "space" ? " " : name.length === 1 ? name : ""
+    rendered.renderer.keyInput.processParsedKey({
+      name, ctrl: modifiers.ctrl ?? false, shift: modifiers.shift ?? false, meta: false, option: false, number: false,
+      sequence, raw: sequence, eventType: "press", source: "raw",
+    })
+  }
   const viewerKey = async (name: string, modifiers: { readonly ctrl?: boolean; readonly shift?: boolean } = {}): Promise<void> => {
-    lead.overlay.viewer.input({ name, sequence: name.length === 1 ? name : undefined, ...modifiers, preventDefault: () => {} })
+    pressKey(name, modifiers)
     await settle()
   }
   await rendered.renderOnce()
   const lines = () => rendered.captureCharFrame().split("\n").map((line) => line.trimEnd()).filter((line) => line.length > 0)
-  return { ...lead, rendered, focused, setComposerEmpty, setSessionId, key, viewerKey, lines, chords: () => chords, dispose: () => { rendered.renderer.destroy(); lead.dispose() } }
+  return { ...lead, rendered, focused, setComposerEmpty, setSessionId, key, viewerKey, pressKey, settle, lines, chords: () => chords, dispose: () => { rendered.renderer.destroy(); lead.dispose() } }
 }

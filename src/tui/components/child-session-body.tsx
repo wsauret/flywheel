@@ -3,7 +3,6 @@
 import type { AgentViewKind } from "../../protocol/client/slash-route.js"
 import { createEffect, createSignal, onCleanup, Show, untrack, type Accessor, type JSX } from "solid-js"
 import type { TextareaRenderable } from "@opentui/core"
-import { selectPrimarySessionNotice, sessionNoticeChannel } from "../../infra/session-notice.js"
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 import type { ChildCardStatus } from "../../protocol/client/session-controls.js"
@@ -11,7 +10,7 @@ import { OutputWindow, type OutputWindowCommand, type OutputWindowCommandType } 
 import type { TranscriptLayoutSlot } from "../output-window/output-window-scroll.js"
 import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import type { SessionIntroProps } from "../welcome-notice.js"
-import type { SessionSurface } from "../hooks/create-session-surface.js"
+import { sessionSpinnerSource, type SessionSurface } from "../hooks/create-session-surface.js"
 import type { BackgroundModalTarget } from "../hooks/use-background-modal.js"
 import type { TranscriptInView } from "../hooks/transcript-in-view.js"
 import { useTheme } from "../context/theme.js"
@@ -83,8 +82,8 @@ export interface ChildSessionBodyProps {
   /** Where this view registers as a transcript the person may see, so Model
    *  and effort reaches this agent while its view is in front. */
   readonly transcriptInView: Pick<TranscriptInView, "show">
-  /** The kind of session this view shows, which a command refused here names. */
-  readonly agentKind: AgentViewKind
+  /** The kind of agent this view shows, which a command refused here names. */
+  readonly agentKind: Exclude<AgentViewKind, "chat">
   /** A root chat's question. While it is pending, its dock takes the place
    *  of the composer. An agent's view has none, because an agent asks its
    *  parent (PI-AGENT-024). */
@@ -137,17 +136,7 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
     props.transcriptInView.show({ active: props.active, openModel, kind: props.agentKind })
     onCleanup(props.followBackground(props.sessionId))
   })
-  const statusNotice = () => selectPrimarySessionNotice((surface.summary()?.notices ?? []).filter((notice) => sessionNoticeChannel(notice) === "status"))
-  const spinnerSource = {
-    sessionId: surface.sessionId,
-    status: surface.status,
-    streamingOutputChars: surface.streamingOutputChars,
-    agentState: surface.agentState,
-    waitingOnBackgroundWork: surface.waitingOnBackgroundWork,
-    parentSessionId: () => surface.summary()?.parentSessionId,
-    compactionStartedAt: () => surface.status()?.compactionStartedAt ?? null,
-    notice: statusNotice,
-  }
+  const spinnerSource = sessionSpinnerSource(surface)
   const spinnerTick = useTickPool().createSharedTick(50, () => props.active() && spinnerAnimates(spinnerSource))
   const { status: spinnerStatus } = createSpinnerStatus({ source: spinnerSource, terminalWidth: () => props.width, tick: spinnerTick })
   const modelReading = () => surface.sessionKind() === null ? undefined : props.modelLabel()

@@ -3,14 +3,13 @@ import { normalizeChatInput, type ChatInput, type ChatInputLike } from "../../in
 import type { CommandDispatch } from "../commands/command-dispatch.js"
 import { createAsyncReporter } from "./report-async.js"
 import type { ComposerSubmitResult } from "../components/composer-types.js"
-import type { ShellServices, ShellSignals } from "./shell-state.js"
+import type { ForegroundTarget, ShellServices } from "./shell-state.js"
 import type { OpenSettingsDestination } from "../settings-destination.js"
 import { automaticDialogsEnabled } from "./automatic-dialogs.js"
 import type { SessionCreator } from "./create-session-creator.js"
 import { NO_PROVIDER_READY, settledProviderSetup, type ProviderSetup } from "../../protocol/client/provider-setup.js"
 
 export interface CommandDeps {
-  signals: Pick<ShellSignals, "foregroundId" | "foregroundTarget">
   dispatch: CommandDispatch
   showToast: ShellServices["showToast"]
   sendMessage: (sessionId: string, input: ChatInput) => Promise<void>
@@ -23,10 +22,12 @@ export interface CommandDeps {
 }
 
 export interface CommandsHook {
-  /** Answers false when no command or session delivery path took the input,
-   *  so local routing cannot swallow it. A command answers with its pending
-   *  acceptance, and the prompt gets the input back when the command refuses it. */
-  handleComposerSubmit: (rawInput: ChatInputLike) => ComposerSubmitResult
+  /** Routes what a composer submits for its chat, `target`: the tab's chat in
+   *  front, or the chat a view over it shows. Answers false when no command
+   *  or session delivery path took the input, so local routing cannot swallow
+   *  it. A command answers with its pending acceptance, and the prompt gets
+   *  the input back when the command refuses it. */
+  handleComposerSubmit: (rawInput: ChatInputLike, target: ForegroundTarget | undefined) => ComposerSubmitResult
 }
 
 /** Owns prompt-submission routing after built-in execution is bound by definitions. */
@@ -47,16 +48,10 @@ export function useCommands(deps: CommandDeps): CommandsHook {
     })
   }
 
-  function contextSessionId(): string | undefined {
-    return deps.signals.foregroundId()
-  }
-
-
   /** Paid-use review and the provider check both read the auth view, so a
    *  send made before the runtime publishes it is decided when it arrives.
    *  Deciding early would treat "not known yet" as "usable". */
-  function handleChatInput(input: ChatInput): ComposerSubmitResult {
-    const sessionId = contextSessionId()
+  function handleChatInput(input: ChatInput, sessionId: string | undefined): ComposerSubmitResult {
     if (deps.providerSetup() !== "loading") return deliverChatInput(input, sessionId)
     return { accepted: settledProviderSetup(deps.providerSetup, providerSetupKnown).then(() => deliverChatInput(input, sessionId)) }
   }
@@ -79,20 +74,20 @@ export function useCommands(deps: CommandDeps): CommandsHook {
     return true
   }
 
-  function handleComposerSubmit(rawInput: ChatInputLike): ComposerSubmitResult {
+  function handleComposerSubmit(rawInput: ChatInputLike, target: ForegroundTarget | undefined): ComposerSubmitResult {
     const input = normalizeChatInput(rawInput)
     const trimmed = input.text.trim()
     if (!trimmed && !input.attachments?.length) return false
     const isSlashCommand = trimmed.startsWith("/") && !input.attachments?.length
 
-    if (!isSlashCommand && deps.signals.foregroundTarget()?.kind === "pending") {
+    if (!isSlashCommand && target?.kind === "pending") {
       deps.showToast({ message: "Chat is still opening; your message stays in the prompt", variant: "warning" })
       return false
     }
 
     if (isSlashCommand) return { accepted: deps.dispatch.dispatch(trimmed) }
 
-    return handleChatInput(input)
+    return handleChatInput(input, target?.kind === "session" ? target.sessionId : undefined)
   }
 
   return { handleComposerSubmit }

@@ -18,7 +18,8 @@ export interface ChatModeHook {
   /** Settle the pending question of any chat, not only the foreground's. */
   answerQuestion(sessionId: string, toolUseId: string, answers: QuestionAnswers): Promise<boolean>
   cancelQuestion(sessionId: string, toolUseId: string): Promise<boolean>
-  compactConversation(): Promise<boolean>
+  /** Compacts any chat's conversation, as the context control of the chat that a tab or a view shows asks. */
+  compactConversation(sessionId: string): Promise<boolean>
 }
 
 export function useChatMode(deps: ChatModeDeps): ChatModeHook {
@@ -58,9 +59,7 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     }
   }
 
-  async function compactConversation(): Promise<boolean> {
-    const sessionId = signals.foregroundId()
-    if (!sessionId) return false
+  async function compactConversation(sessionId: string): Promise<boolean> {
     const result = await appService.dispatch({ type: "chat.compact", sessionId })
     if (!result.ok && result.error !== "No active context to compact yet") showToast({ message: result.error, variant: "error" })
     return result.ok

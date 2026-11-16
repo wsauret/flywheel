@@ -7,7 +7,6 @@ import {
   updateBorderStatus,
 } from "../../../../src/tui/hooks/create-composer-border-layout.js"
 import { createKeymap } from "../../../../src/tui/keymap/keymap.js"
-import { createSignals } from "./_session-modal-fixtures.js"
 
 const AUTO_INSTALL_ON = { persisted: true, forcedOff: false, effective: true } as const
 
@@ -47,27 +46,35 @@ describe("update border status", () => {
   })
 })
 
-describe("composer border hints", () => {
-  it("names no Escape action while a module strip holds key focus, and dismiss for an inactive chat without it", () => {
-    createRoot((dispose) => {
-      const [stripFocused, setStripFocused] = createSignal(true)
-      const signals = { ...createSignals(), agentState: () => "idle" as const, sessionState: () => "inactive" as const }
-      const { layout } = createComposerBorderLayout({
-        signals,
-        terminalWidth: () => 200,
-        activeModelLabel: () => undefined,
-        chordFor: createKeymap().keymap.chordFor,
-        resumeOffered: () => false,
-        activeSessionCount: () => 1,
-        sessionCount: () => 2,
-        hidesTabControls: () => false,
-        stripFocused,
-      })
-      const escapeHints = () => layout().hints.filter((hint) => hint.key === "esc").map((hint) => `${hint.key} ${hint.label}`)
+/** A border of an idle composer on a wide terminal, with every field overridable. */
+function border(over: Partial<Parameters<typeof createComposerBorderLayout>[0]> = {}) {
+  return createComposerBorderLayout({
+    terminalWidth: () => 200,
+    modelLabel: () => undefined,
+    update: createDismissibleUpdateStatus(() => undefined),
+    pendingQuestion: () => false,
+    agentState: () => "idle",
+    sessionState: () => "active",
+    chordFor: createKeymap().keymap.chordFor,
+    resumeOffered: () => false,
+    activeSessionCount: () => 1,
+    sessionCount: () => 2,
+    tabHints: () => true,
+    escapeHints: () => true,
+    ...over,
+  })
+}
 
-      expect(escapeHints()).toEqual([])
-      setStripFocused(false)
-      expect(escapeHints()).toEqual(["esc dismiss"])
+describe("composer border hints", () => {
+  it("names no Escape action where Escape does none of them, and dismiss for an inactive chat elsewhere", () => {
+    createRoot((dispose) => {
+      const [escapeHints, setEscapeHints] = createSignal(false)
+      const layout = border({ sessionState: () => "inactive", escapeHints })
+      const escapes = () => layout().hints.filter((hint) => hint.key === "esc").map((hint) => `${hint.key} ${hint.label}`)
+
+      expect(escapes()).toEqual([])
+      setEscapeHints(true)
+      expect(escapes()).toEqual(["esc dismiss"])
       dispose()
     })
   })
@@ -76,17 +83,7 @@ describe("composer border hints", () => {
     createRoot((dispose) => {
       const [overrides, setOverrides] = createSignal<{ readonly [command: string]: string }>({})
       const keymap = (): ReturnType<typeof createKeymap>["keymap"] => createKeymap(overrides()).keymap
-      const signals = createSignals()
-      const { layout } = createComposerBorderLayout({
-        signals,
-        terminalWidth: () => 200,
-        activeModelLabel: () => undefined,
-        chordFor: (commandId) => keymap().chordFor(commandId),
-        resumeOffered: () => false,
-        activeSessionCount: () => 1,
-        sessionCount: () => 2,
-        hidesTabControls: () => false,
-      })
+      const layout = border({ chordFor: (commandId) => keymap().chordFor(commandId) })
       const keys = (): readonly string[] => [...layout().hints, ...(layout().sessionsClickHint ? [layout().sessionsClickHint] : [])].map((hint) => hint?.key ?? "")
 
       expect(keys()).toEqual(expect.arrayContaining(["ctrl+n", "ctrl+s"]))
@@ -98,24 +95,15 @@ describe("composer border hints", () => {
     })
   })
 
-  it("names no new, close, or switch key while a tab that hides the tab controls is in front, keeps esc, resume, and sessions with its target, and names every key on the other tab", () => {
+  it("names no new, close, or switch key where the tab keys do not act, keeps esc, resume, and sessions with its target, and names every key elsewhere", () => {
     createRoot((dispose) => {
-      const signals = { ...createSignals({}, "lead-1"), agentState: () => "idle" as const, sessionState: () => "inactive" as const }
-      const { layout } = createComposerBorderLayout({
-        signals,
-        terminalWidth: () => 200,
-        activeModelLabel: () => undefined,
-        chordFor: createKeymap().keymap.chordFor,
-        resumeOffered: () => true,
-        activeSessionCount: () => 2,
-        sessionCount: () => 2,
-        hidesTabControls: (sessionId) => sessionId === "lead-1",
-      })
+      const [tabHints, setTabHints] = createSignal(false)
+      const layout = border({ sessionState: () => "inactive", resumeOffered: () => true, activeSessionCount: () => 2, tabHints })
       const hints = (): readonly string[] => layout().hints.map((hint) => `${hint.key} ${hint.label}`)
 
       expect(hints()).toEqual(["esc dismiss", "ctrl+r resume", "ctrl+s 2 sessions"])
       expect(layout().sessionsClickHint?.key).toBe("ctrl+s")
-      signals.setForegroundId("chat-2")
+      setTabHints(true)
       expect(hints()).toEqual(["esc dismiss", "ctrl+r resume", "ctrl+n new", "ctrl+w close tab", "tab switch", "ctrl+s 2 sessions"])
       dispose()
     })

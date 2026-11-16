@@ -230,12 +230,12 @@ function commandContext(outcome: CommandOutcome, overrides: { sessionKind?: "cha
     focusSession: mock(() => {}),
     refreshCommandCatalog: mock(async () => {}),
   }
-  const signals = { sessionInputMode: () => ({ kind: overrides.sessionKind ?? "chat" }), foregroundId: () => "chat-1", commandCatalogRevision: () => 4 }
+  const chatSessionId = (): string | undefined => overrides.sessionKind === "message" ? undefined : "chat-1"
   const context = testCommandContext({
     ...fakes,
-    signals,
+    chatSessionId,
     appService: { dispatch: runtimeDispatch({ "command.invoke": dispatch }) },
-    captureSurfaceOpener: createSurfaceOpener({ sessionId: signals.foregroundId, placement: () => 0, surfaces: () => [], openSurface: (surface, isCurrent) => fakes.openSurface(surface, { isCurrent }) }),
+    captureSurfaceOpener: createSurfaceOpener({ sessionId: chatSessionId, placement: () => 0, surfaces: () => [], openSurface: (surface, isCurrent) => fakes.openSurface(surface, { isCurrent }) }),
   })
   return { context, dispatch, ...fakes }
 }

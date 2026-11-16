@@ -46,8 +46,7 @@ function harness(options: HarnessOptions = {}) {
     dispatch: options.slashHandled ?? (async () => false),
   }
 
-  const commands = useCommands({
-    signals,
+  const hook = useCommands({
     dispatch,
     showToast,
     sendMessage: async (_sessionId, input) => { messages.push(input) },
@@ -57,6 +56,8 @@ function harness(options: HarnessOptions = {}) {
     openSubscriptionSpendReview: () => false,
   })
 
+  // The tab's composer submits for the chat in front.
+  const commands = { handleComposerSubmit: (input: ChatInputLike) => hook.handleComposerSubmit(input, signals.foregroundTarget()) }
   return { commands, state, toasts, messages, startChat }
 }
 

@@ -12,6 +12,7 @@ import type { ComposerPopupKeySlot } from "../hooks/create-composer-popup-key-sl
 import type { ComposerAttachSlot } from "../hooks/create-composer-attach-slot.js"
 import type { SpinnerStatusSource } from "../hooks/create-spinner-status.js"
 import type { ModalSelectOption } from "./modal-select-types.js"
+import type { QuestionInputContext } from "./question-input.js"
 import type { ComposerBorderLayout } from "./composer-border-layout.js"
 
 interface QuestionAnswers {
@@ -41,7 +42,14 @@ export interface ComposerProps {
   agentState: Accessor<"idle" | "active">
   /** Whether Escape interrupts now (`isInterruptible`), which the placeholder names. */
   interruptible: Accessor<boolean>
+  /** Whether the tab keys act where this composer shows, so the placeholder names the new-chat key. */
+  tabHints: Accessor<boolean>
   pendingQuestion: Accessor<QuestionBlock | undefined>
+  /** The key registry of the question dock; the shell's one question slot when absent. */
+  questionInput?: QuestionInputContext
+  /** Set where Escape leaves the view instead of skipping the question: the dock then names Escape back and
+   *  `ctrl+x` skip, and the question stays pending. */
+  onLeaveQuestion?: () => void
   inChat: Accessor<boolean>
   lineWidth: Accessor<number>
   completableNames: () => string[]

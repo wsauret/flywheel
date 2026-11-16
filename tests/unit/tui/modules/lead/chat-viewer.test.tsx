@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it, spyOn } from "bun:test"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
 import { textBlock } from "../../_output-window-transcript.js"
@@ -9,6 +9,9 @@ import { UserMessageBlock } from "../../../../../src/tui/output-blocks/user-mess
 import { MessageRowProvider } from "../../../../../src/tui/context/message-row.js"
 import { leadEntryLink } from "../../../../../src/protocol/modules/lead.js"
 import { choiceQuestion, leadHarness, leadRow, mountStrip } from "./_lead-fixtures.js"
+
+/** How long the composer waits after typing stops before it looks up project files. */
+const MENTION_PAUSE_MS = 100
 
 const theme = resolveTheme(flywheelTheme, "dark")
 const cleanups: (() => void)[] = []
@@ -30,8 +33,12 @@ async function openViewer() {
 /** What the viewer sent to the chats, without the seen marks that opening a failed chat sends. */
 const chatSends = (strip: { readonly sent: readonly string[] }): readonly string[] => strip.sent.filter((line) => !line.startsWith("lead.chat.mark_seen"))
 
-/** The chat the viewer's own title names, not a row of the list under it. */
-const title = (frame: string): string | undefined => /│\s+Chat (\w+)\s+x\s+│/.exec(frame)?.[1]
+/** The chat the viewer's own title names, not a row of the list under it. The title row ends with the chat's
+ *  statistics, then the close mark. */
+const title = (frame: string): string | undefined => /│\s+Chat (\w+)\s.*\sx\s+│/.exec(frame)?.[1]
+
+/** The viewer's title row. */
+const titleRow = (frame: string): string | undefined => frame.split("\n").find((line) => /│\s+Chat \w+\s.*\sx\s+│/.test(line))
 
 describe("the lead's full-chat viewer", () => {
   it("opens on a click on a row without focusing the list, and Escape goes back to the input that had focus", async () => {
@@ -74,7 +81,7 @@ describe("the lead's full-chat viewer", () => {
     await strip.rendered.mockMouse.click(10, row)
     await strip.viewerKey("pagedown")
     const frame = strip.rendered.captureCharFrame()
-    expect(frame).toMatch(/│\s+List Project Root Files\s+x\s+│/)
+    expect(frame).toMatch(/│\s+List Project Root Files\s.*\sx\s+│/)
     expect(frame).not.toContain("Short")
   })
 
@@ -115,6 +122,34 @@ describe("the lead's full-chat viewer", () => {
     expect(strip.overlay.dialog.stack).toHaveLength(0)
     // The view's end comes first, so the chat no view shows closes.
     expect(strip.shows).toEqual(["show asks", "end asks"])
+  })
+
+  it("shows the shown chat's statistics on its title row as its tab does, and its context control compacts that chat", async () => {
+    // List order: `asks`, then `busy`. Each chat has its own elapsed time and context reading.
+    const reading = (contextPromptTokens: number) => ({ totalsLoading: false as const, tokens: 1_000, cost: 0.07, billedCost: 0.07, priceUnavailable: false, contextPercent: 5, contextPromptTokens })
+    const strip = await mountStrip([leadRow("busy", "working"), leadRow("asks", "question")], { width: 100, height: 40, surfaces: {
+      asks: { elapsed: () => 15_000, budget: () => reading(18_900) },
+      busy: { elapsed: () => 125_000, budget: () => reading(135_000) },
+    } })
+    cleanups.push(strip.dispose)
+    await strip.key("down")
+    await strip.key("return")
+    expect(titleRow(strip.rendered.captureCharFrame())).toMatch(/Chat asks\s+15s · 7% ctx · ~?\$0\.07\s+x/)
+    await strip.viewerKey("tab")
+    expect(titleRow(strip.rendered.captureCharFrame())).toMatch(/Chat busy\s+2m 5s · 50% ctx · ~?\$0\.07\s+x/)
+
+    // The context reading opens over the view, and its Compact now compacts the chat that the view shows.
+    const frame = strip.rendered.captureCharFrame().split("\n")
+    const y = frame.findIndex((line) => line.includes("Chat busy") && line.includes("50% ctx"))
+    await strip.rendered.mockMouse.click(frame[y]!.indexOf("50% ctx") + 1, y)
+    await strip.settle()
+    const dialog = strip.rendered.captureCharFrame().split("\n")
+    const compactAt = dialog.findIndex((line) => line.includes("Compact now"))
+    expect(compactAt).toBeGreaterThanOrEqual(0)
+    await strip.rendered.mockMouse.click(dialog[compactAt]!.indexOf("Compact now") + 1, compactAt)
+    await strip.settle()
+    expect(chatSends(strip)).toEqual(["chat.compact busy"])
+    expect(strip.overlay.viewer.stack).toHaveLength(1)
   })
 
   it("shows the row's chat over the lead, moves through the list order on Tab and Shift+Tab, and stays at the ends", async () => {
@@ -193,6 +228,33 @@ describe("the lead's full-chat viewer", () => {
     expect(strip.sent).toEqual(["question.answer asks asks-ask"])
   })
 
+  it("completes slash commands and project files in its composer as a tab's composer does", async () => {
+    const strip = await openViewer()
+    await strip.viewerKey("/")
+    await strip.viewerKey("s")
+    // The prompt offers the one command that starts so, as a tab's prompt does, and Tab takes it.
+    expect(strip.rendered.captureCharFrame()).toContain("Show status")
+    await strip.viewerKey("tab")
+    expect(strip.overlay.viewer.stack).toHaveLength(1)
+    expect(strip.rendered.captureCharFrame()).toMatch(/> \/status /)
+    await strip.viewerKey("@")
+    // The file lookup waits for typing to pause. The test does not wait out that pause: it runs the lookup that the
+    // pause would start at once.
+    const timers = spyOn(globalThis, "setTimeout")
+    try {
+      await strip.viewerKey("s")
+      const lookup = timers.mock.calls.findLast((call) => call[1] === MENTION_PAUSE_MS)?.[0]
+      if (typeof lookup !== "function") throw new Error("the composer started no file lookup")
+      lookup()
+    } finally {
+      timers.mockRestore()
+    }
+    await strip.settle()
+    expect(strip.rendered.captureCharFrame()).toContain("src/shell.tsx")
+    await strip.viewerKey("tab")
+    expect(strip.rendered.captureCharFrame()).toMatch(/> \/status @src\/shell\.tsx/)
+  })
+
   it("sends typed text to the chat it shows", async () => {
     const strip = await openViewer()
     for (const letter of "ok") await strip.viewerKey(letter)
@@ -241,7 +303,7 @@ describe("the lead's full-chat viewer", () => {
 
   it("shows a report in the lead's transcript as one line, and its link opens the chat at the final message, marked", async () => {
     // The line names each chat by its title now, as the Sessions list does.
-    const lead = leadHarness([], {}, undefined, { done: "DAG Failures", long: "Investigate why the nightly DAG failures started after the warehouse migration" })
+    const lead = leadHarness([], {}, undefined, { titles: { done: "DAG Failures", long: "Investigate why the nightly DAG failures started after the warehouse migration" } })
     cleanups.push(lead.dispose)
     // The rows of the lead's transcript, as the output window presents them for the first tab.
     const leadMessageRow = (block: Parameters<typeof UserMessageBlock>[0]["block"]) => <ThemeProvider mode="dark"><MessageRowProvider present={lead.client.firstTab!.messageRow!}><UserMessageBlock block={block} /></MessageRowProvider></ThemeProvider>

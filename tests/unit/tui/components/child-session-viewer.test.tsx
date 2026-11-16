@@ -127,7 +127,7 @@ describe("child session viewer", () => {
   it("shows the composer status labels beside the model label on its border", async () => {
     const input = createInput({ onClose: () => {}, dispatchCommand: async () => false })
     const render = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
-      <ChildSessionBody {...openerViewerProps()} agentKind="chat" sessionId="child" surface={viewerSurface("chat")} input={input} active={() => true} focused={() => true}
+      <ChildSessionBody {...openerViewerProps()} agentKind="subagent" sessionId="child" surface={viewerSurface("chat")} input={input} active={() => true} focused={() => true}
         width={90} height={24} header={<text>Header</text>} navigation={<text>Back</text>} placeholder="Message this chat" controls={() => ({})}
         messaging={{ admits: () => true, shown: () => true, send: async () => false }} composerStatus={() => [{ id: "count", text: "2 need you", tone: "warning" }]} />
     </TickPoolProvider></ThemeProvider>, { width: 100, height: 30 })

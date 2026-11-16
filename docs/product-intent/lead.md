@@ -20,7 +20,7 @@ In the terminal, the lead's screen lists every chat of the project that is in us
 
 ## PI-LEAD-005: The person opens a chat from the lead's screen
 
-From the list, Enter or a click opens the chat's full conversation over the lead, and a click selects no row. Closing it returns focus to the input or row that had it. A pending question shows in place of the chat's input, in the chat's own words, and the answer goes to that chat. Escape returns to the lead and leaves a question pending, and a separate action skips it. A question never opens on its own and never interrupts typing. Showing a result marks it read, and opening a failed or cut chat marks that state seen.
+Enter or a click on a list row opens the chat over the lead and selects no row. The chat shows exactly as in its tab, with its question in its own words. Only the frame, with the chat's title and controls, differs, and tab keys do nothing there. Closing returns focus where it was. Escape returns to the lead and leaves a question pending; a separate action skips it. A question never opens on its own or interrupts typing. A shown result is read, and opening a failed or cut chat marks that state seen.
 
 ## PI-LEAD-006: The lead summarizes reports and never speaks for a chat
 

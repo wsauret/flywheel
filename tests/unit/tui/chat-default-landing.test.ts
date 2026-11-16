@@ -15,7 +15,7 @@ import { buildCommandDefinitions } from "../../../src/tui/commands/command-defin
 import { createCommandDispatch } from "../../../src/tui/commands/command-dispatch.js"
 import { useCommands, type CommandDeps } from "../../../src/tui/hooks/use-commands.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor, RuntimeCommandInvocation } from "../../../src/protocol/command-catalog-protocol-types.js"
-import type { ChatInput } from "../../../src/infra/chat-input.js"
+import type { ChatInput, ChatInputLike } from "../../../src/infra/chat-input.js"
 import { createSessionCreator, type SessionCreator } from "../../../src/tui/hooks/create-session-creator.js"
 import { createDraftCache } from "../../../src/tui/hooks/create-draft-cache.js"
 import { createTabState } from "../../../src/tui/hooks/create-tabs.js"
@@ -53,6 +53,8 @@ function createHarness(overrides: HarnessOverrides = {}) {
   const dispatch = recordedDispatch(runtimeMutations, runtimeDispatch(overrides.invoke ? { "command.invoke": overrides.invoke } : {}))
   const context = testCommandContext({
     signals,
+    // The shell's chat in view with no view over the tab: the chat in front.
+    chatSessionId: () => signals.sessionInputMode()?.kind === "chat" ? signals.foregroundId() : undefined,
     appService: { dispatch },
     showToast: overrides.showToast ?? mock(() => {}),
   })
@@ -77,7 +79,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
   return {
     deps,
     runtimeMutations,
-    handleComposerSubmit: commands.handleComposerSubmit,
+    handleComposerSubmit: (input: ChatInputLike) => commands.handleComposerSubmit(input, signals.foregroundTarget()),
     dispatchSlashCommand: (text: string) => { void commandDispatch.dispatch(text) },
     completableNames: commandDispatch.completableNames,
   }

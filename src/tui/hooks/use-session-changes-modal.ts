@@ -8,12 +8,16 @@ import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
 import type { SessionChangesView } from "./create-session-changes.js"
 import { patchScrollBoxLayoutHooks } from "../components/scrollbox-layout-hooks.js"
 
-/** Modal navigation and disclosure only. Undo eligibility, confirmation, and dispatch belong to the shared session controller. */
+/** Modal navigation and disclosure only. Undo eligibility, confirmation, and dispatch belong to the shared session controller.
+ *  `view` is the changes of the chat in front; an opening may name the changes of another chat that shows. */
 export function useSessionChangesModal(deps: {
   readonly modal: Pick<ModalContext, "replace">
   readonly view: Accessor<SessionChangesView | undefined>
   readonly renderModal: () => JSX.Element
 }) {
+  // The changes the review shows: the chat in front's, or those its last opening named.
+  const [source, setSource] = createSignal<Accessor<SessionChangesView | undefined>>(deps.view)
+  const view = (): SessionChangesView | undefined => source()()
   const [cursor, writeCursor] = createSignal(0)
   const [expanded, setExpanded] = createSignal<ReadonlySet<string>>(new Set())
   const listScroll = createModalScrollController()
@@ -26,7 +30,7 @@ export function useSessionChangesModal(deps: {
   let handle: ModalHandle | undefined
   let stopViewport: (() => void) | undefined
   let scrollbox: ScrollBoxRenderable | undefined
-  const snapshot = () => deps.view()?.snapshot()
+  const snapshot = () => view()?.snapshot()
   const files = createMemo<readonly SessionChangeFile[]>(() => {
     const list = snapshot()?.list
     return list && "data" in list && list.data ? list.data.files : []
@@ -56,7 +60,7 @@ export function useSessionChangesModal(deps: {
     const shownFiles = shown.flatMap(row => row.kind === "file" ? [row.file] : [])
     const ids = new Set(shownFiles.map(file => file.fileId))
     if (selected) ids.add(selected.fileId)
-    const controller = deps.view()?.controller
+    const controller = view()?.controller
     controller?.setVisibleFiles([...ids])
     if (current.length > 0 && (currentCursor() >= current.length - 3 || shown.some(row => current.indexOf(row) >= current.length - 3))) void controller?.loadMoreFiles()
     for (const file of shownFiles) {
@@ -89,17 +93,17 @@ export function useSessionChangesModal(deps: {
       if (!next.delete(key)) next.add(key)
       return next
     })
-    if (isExpanded(key)) deps.view()?.controller.continueDiff(key)
+    if (isExpanded(key)) view()?.controller.continueDiff(key)
   }
   const requestUndo = (fileId = currentFile()?.fileId): void => {
-    if (fileId !== undefined) deps.view()?.controller.requestUndo(fileId)
+    if (fileId !== undefined) view()?.controller.requestUndo(fileId)
   }
   const toggleViewed = (file = currentFile()): void => {
     if (!file || file.review.status === "unknown") return
-    void deps.view()?.controller.setViewed(file.fileId, file.review.status !== "viewed")
+    void view()?.controller.setViewed(file.fileId, file.review.status !== "viewed")
   }
-  const confirmUndo = (): void => { void deps.view()?.controller.confirmUndo() }
-  const cancelUndo = (): void => { deps.view()?.controller.cancelUndo() }
+  const confirmUndo = (): void => { void view()?.controller.confirmUndo() }
+  const cancelUndo = (): void => { view()?.controller.cancelUndo() }
   const handleKey = createListModalKeys({
     rows, cursor: currentCursor, setCursor, selectable: () => true,
     onSelect: index => {
@@ -127,8 +131,11 @@ export function useSessionChangesModal(deps: {
       return true
     },
   })
-  function openSessionChangesModal(): void {
-    const owner = deps.view()
+  /** Opens the review of the chat in front, or of `changes`, the changes of another chat that shows. */
+  function openSessionChangesModal(changes: Accessor<SessionChangesView | undefined> = deps.view): void {
+    // A new source closes the review of the old one first, through the effect below.
+    setSource(() => changes)
+    const owner = view()
     if (!owner) return
     close()
     listScroll.reset()
@@ -173,9 +180,9 @@ export function useSessionChangesModal(deps: {
     previousSelectionRows = next
     if (next.length > 0) setCursor(Math.max(0, index), false)
   }))
-  createEffect(on(deps.view, () => close(), { defer: true }))
+  createEffect(on(view, () => close(), { defer: true }))
   onCleanup(close)
-  return { openSessionChangesModal, close, snapshot, rows, cursor: currentCursor, setCursor, isExpanded, toggleExpanded, toggleViewed, registerHeader, registerSection, requestUndo, confirmUndo, cancelUndo, listScroll, attachScroll }
+  return { openSessionChangesModal, close, view, snapshot, rows, cursor: currentCursor, setCursor, isExpanded, toggleExpanded, toggleViewed, registerHeader, registerSection, requestUndo, confirmUndo, cancelUndo, listScroll, attachScroll }
 }
 
 export type SessionChangesModalHook = ReturnType<typeof useSessionChangesModal>

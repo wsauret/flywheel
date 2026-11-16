@@ -190,10 +190,14 @@ describe("createModuleSlots", () => {
     }
   })
 
-  it("hands a surface the session it opened for and a reader over that session's domains", async () => {
+  it.each([
+    [undefined, "chat-1"],
+    // A strip in a view over the tab in front opens its surface for the chat that the view shows.
+    ["shown", "shown"],
+  ])("hands a surface the session it opened for, %p named, and a reader over that session's domains", async (named, expected) => {
     let seen: { sessionId: string; view: unknown } | undefined
     const h = harness([{ id: "development", surfaces: [{ ...SURFACE, load: async () => (props) => { seen = { sessionId: props.sessionId, view: props.read(experimentViewDomain) }; return <text>ok</text> } }] }])
-    h.slots.surfaces.get("synthetic-board")?.()
+    h.slots.surfaces.get("synthetic-board")?.(named === undefined ? {} : { sessionId: named })
     const entry = h.modal.stack[0]
     if (entry === undefined) throw new Error("the surface did not open")
     const element = entry.element
@@ -202,7 +206,7 @@ describe("createModuleSlots", () => {
       await rendered.renderOnce()
       await Bun.sleep(0)
       await rendered.renderOnce()
-      expect(seen).toEqual({ sessionId: "chat-1", view: undefined })
+      expect(seen).toEqual({ sessionId: expected, view: undefined })
       expect(rendered.captureCharFrame()).toContain("ok")
     } finally {
       rendered.renderer.destroy()

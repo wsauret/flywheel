@@ -28,14 +28,13 @@ interface HarnessOverrides {
   openSurface?: OpenSurface
   builtInCommands?: readonly BuiltInCommandDescriptor[]
   agentInView?: BuiltInCommandContext["agentInView"]
+  chatSessionId?: BuiltInCommandContext["chatSessionId"]
 }
 
 /** Builds command routing with the same immutable context used by definitions. */
 function createHarness(overrides: HarnessOverrides = {}) {
-  const signals: Pick<ShellSignals, "foregroundId" | "foregroundTarget" | "sessionInputMode" | "commandCatalogRevision"> = {
-    foregroundId: () => "chat-1",
+  const signals: Pick<ShellSignals, "foregroundTarget" | "commandCatalogRevision"> = {
     foregroundTarget: () => ({ kind: "session", sessionId: "chat-1" }),
-    sessionInputMode: () => ({ kind: "chat" }),
     commandCatalogRevision: () => 1,
   }
   const showToast = overrides.showToast ?? mock(() => {})
@@ -48,6 +47,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
     runtimeConfig: { view: () => undefined, settlePublication: async () => false },
     showToast,
     signals,
+    chatSessionId: overrides.chatSessionId ?? (() => "chat-1"),
     startClearedChat: mock(async () => {}),
     exit: mock(() => {}),
     restart: async () => { throw new Error("restart is not exercised") },
@@ -67,7 +67,6 @@ function createHarness(overrides: HarnessOverrides = {}) {
     catalog: { known: () => true, arrived: Promise.resolve() },
   })
   const commands = useCommands({
-    signals,
     dispatch,
     showToast,
     sendMessage: overrides.sendMessage ?? mock(async () => {}),
@@ -77,7 +76,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
     openSubscriptionSpendReview: () => false,
   })
   return {
-    submit: commands.handleComposerSubmit,
+    submit: (input: string) => commands.handleComposerSubmit(input, signals.foregroundTarget()),
     dispatchSlashCommand: (text: string) => { void dispatch.dispatch(text) },
     completableNames: dispatch.completableNames,
   }
@@ -105,7 +104,6 @@ describe("slash dispatch", () => {
   it.each([
     ["subagent", "/bg works in a chat, not in this subagent"],
     ["workflow-agent", "/bg works in a chat, not in this workflow agent"],
-    ["chat", "/bg works in a chat's own tab. Open this chat as a tab first"],
   ] as const)("in a %s view, refuses a chat command before dispatch, opens a surface, and calls a stray token unknown", async (view, refusal) => {
     const invoked: FrontendMutation[] = []
     const answers: DispatchAnswers = {
@@ -133,6 +131,14 @@ describe("/bg dispatch", () => {
 
     expect(dispatch).toHaveBeenCalledWith({ type: "command.invoke", id: "bg", revision: 1, sessionId: "chat-1" })
     expect(openSurface).toHaveBeenCalledWith("background")
+  })
+
+  it("invokes the runtime for the chat that a view over the tab in front shows, as in its tab", async () => {
+    const dispatch = mock(async (_command: FrontendMutation) => ({ kind: "none" as const }))
+    createHarness({ answers: { "command.invoke": dispatch }, chatSessionId: () => "shown" }).dispatchSlashCommand("/bg")
+    await flush()
+
+    expect(dispatch).toHaveBeenCalledWith({ type: "command.invoke", id: "bg", revision: 1, sessionId: "shown" })
   })
 
   it("omits bg from slash completion without its runtime descriptor", () => {

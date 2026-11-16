@@ -5,7 +5,6 @@ import { compactionTrigger, contextGaugeCopy, type ContextGaugeCopy } from "../.
 import { sessionHeaderElapsedMs } from "../../protocol/client/session-time.js"
 import { displayWidth } from "../utils/text.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
-import type { ShellSignals } from "./shell-state.js"
 import type { SessionSurface } from "./create-session-surface.js"
 
 type HeaderTarget = Pick<SessionSurface, "budget" | "summary" | "elapsed">
@@ -55,19 +54,15 @@ export function sessionHeaderParts(target: HeaderTarget, width: number, threshol
   return { before, context, after: after ? `${before || context ? " · " : ""}${after}` : "" }
 }
 
-type HeaderDisplaySignals = Pick<
-  ShellSignals,
-  "budgetView" | "elapsed" | "foregroundId" | "foregroundSummary" | "outputView" | "sessionState"
->
-
 interface HeaderDisplayDeps {
-  signals: HeaderDisplaySignals
+  /** The chat whose header this is: the tab in front's surface, or the surface of a view of a chat. */
+  surface: Pick<SessionSurface, "budget" | "summary" | "elapsed" | "outputView" | "sessionState">
   dimensions: Accessor<{ width: number; height: number }>
   compactionThreshold: Accessor<number | undefined>
   theme: { text: RGBA }
 }
 
-interface HeaderDisplay {
+export interface HeaderDisplay {
   headerStats: Accessor<{
     content: StyledText
     width: number
@@ -76,32 +71,26 @@ interface HeaderDisplay {
   contextCopy: Accessor<ContextGaugeCopy | null>
 }
 
-/** The foreground chat's header: its statistics and its context gauge. A
- *  workflow's phases belong to its viewer. */
+/** A chat's header: its statistics and its context gauge, read from the
+ *  chat's own surface, so the tab in front and every view of a chat show
+ *  the same line for the chat they show. A workflow's phases belong to its
+ *  viewer. */
 export function createHeaderDisplay(deps: HeaderDisplayDeps): HeaderDisplay {
-  const { signals, dimensions, theme } = deps
+  const { surface, dimensions, theme } = deps
 
-  const foregroundBudget = () => {
-    const sessionId = signals.foregroundId()
-    return sessionId ? signals.budgetView(sessionId) : undefined
-  }
-
-  const target = { budget: foregroundBudget, summary: signals.foregroundSummary, elapsed: signals.elapsed }
-  const contextCopy = createMemo(() => sessionContext(target, deps.compactionThreshold())?.copy ?? null)
+  const contextCopy = createMemo(() => sessionContext(surface, deps.compactionThreshold())?.copy ?? null)
 
   const headerParts = createMemo(() => {
-    const state = signals.sessionState()
-    if (state === null) return { before: "", context: "", after: "" }
-    const sessionId = signals.foregroundId()
+    if (surface.sessionState() === null) return { before: "", context: "", after: "" }
     // A side question adds usage but no transcript block, so a chat stays an
     // empty new chat with known statistics; those stay visible (PI-INTERACTION-006).
-    const budget = foregroundBudget()
+    const budget = surface.budget()
     const recordedUsage = budget !== undefined && !budget.totalsLoading && (budget.tokens > 0 || budget.cost > 0)
-    if (!recordedUsage && isEmptyNewChat(signals.foregroundSummary(), sessionId ? signals.outputView(sessionId) : undefined)) {
+    if (!recordedUsage && isEmptyNewChat(surface.summary(), surface.outputView())) {
       return { before: "", context: "", after: "" }
     }
 
-    return sessionHeaderParts(target, dimensions().width, deps.compactionThreshold())
+    return sessionHeaderParts(surface, dimensions().width, deps.compactionThreshold())
   })
 
   const headerStats = createMemo(() => {

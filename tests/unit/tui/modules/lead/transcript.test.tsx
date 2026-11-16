@@ -43,7 +43,7 @@ function labelOf(work: readonly FrontendOutputBlock[]): string {
 /** The tab of `sessionId` over `blocks`, under the real lead client and its providers, whose first tab is `LEAD_ID`.
  *  `navigated` records each link that a click opens. */
 async function mountTab(sessionId: string, blocks: readonly FrontendOutputBlock[], running = false, height = 30, sessionKind: "chat" | "subagent" = "subagent", titles?: { readonly [sessionId: string]: string }) {
-  const lead = leadHarness([], {}, undefined, titles)
+  const lead = leadHarness([], {}, undefined, { titles })
   const disclosure = createBlockDisclosureChannel()
   const navigated: string[] = []
   const result = await testRender(() => (

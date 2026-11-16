@@ -22,6 +22,9 @@ export type SessionActivationResult = { readonly ok: true } | { readonly ok: fal
 
 interface SessionActivatorByIdDeps {
   rows: () => readonly SessionCatalogRow[]
+  /** Whether a view over the tab in front shows this chat now, as its tab
+   *  would: the chat then stays where it shows, and its children open over it. */
+  shown: (sessionId: string) => boolean
   appService: Pick<RuntimeClient, "query">
   activateSession: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   openChild: ChildPlaces["openChild"]
@@ -46,7 +49,9 @@ export function readSessionRoute(
  *  its root chat, a subagent in its viewer and a workflow as its full-size
  *  card, with the agent that `agent` names over the card; a listed session
  *  whose row has not reached this window activates from the row its detail
- *  carries, and only a session the runtime no longer has is reported. */
+ *  carries, and only a session the runtime no longer has is reported. A
+ *  root that a view over the tab in front shows stays there: nothing comes
+ *  to the front and no view closes, and its children open over that view. */
 export function createSessionActivatorById(deps: SessionActivatorByIdDeps): (sessionId: string) => Promise<void> {
   return async function activateSessionById(sessionId: string): Promise<void> {
     const route = await readSessionRoute(deps.appService, deps.rows(), sessionId)
@@ -55,11 +60,13 @@ export function createSessionActivatorById(deps: SessionActivatorByIdDeps): (ses
       return
     }
     const { root, children } = route
-    if (!deps.rows().some((row) => row.id === root.id)) deps.seedSessionCatalogRow(root)
-    const result = await deps.activateSession(root)
-    if (!result.ok) {
-      if (result.error) deps.showToast({ message: `Open failed for ${root.title || root.id}: ${result.error}`, variant: "error" })
-      return
+    if (!deps.shown(root.id)) {
+      if (!deps.rows().some((row) => row.id === root.id)) deps.seedSessionCatalogRow(root)
+      const result = await deps.activateSession(root)
+      if (!result.ok) {
+        if (result.error) deps.showToast({ message: `Open failed for ${root.title || root.id}: ${result.error}`, variant: "error" })
+        return
+      }
     }
     for (const child of children) deps.openChild(child)
   }

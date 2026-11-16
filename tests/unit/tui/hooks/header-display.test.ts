@@ -35,7 +35,7 @@ function sameColor(a: RGBA, b: RGBA): boolean {
     && Math.round(a.b * 255) === Math.round(b.b * 255)
 }
 
-function buildSignals(overrides: {
+function buildSurface(overrides: {
   title?: string
   sessionState?: "active" | "inactive" | null
   elapsedMs?: number
@@ -50,12 +50,9 @@ function buildSignals(overrides: {
   totalsLoading?: boolean
   summary?: SessionCatalogRow | ChildSessionRow
 } = {}) {
-  const [sessionTitle] = createSignal(overrides.title ?? "")
   const [sessionState] = createSignal<"active" | "inactive" | null>(overrides.sessionState ?? "active")
-  const [errorMessage] = createSignal("")
-  const [foregroundId] = createSignal("session-1")
   const elapsed = overrides.elapsed ?? (() => overrides.elapsedMs ?? 0)
-  const budgetView = () => overrides.liveBudget === false ? undefined : overrides.totalsLoading ? {
+  const budget = (): BudgetView | undefined => overrides.liveBudget === false ? undefined : overrides.totalsLoading ? {
     totalsLoading: true as const,
   } : ({
     totalsLoading: false as const,
@@ -67,11 +64,8 @@ function buildSignals(overrides: {
     contextPromptTokens: overrides.contextPromptTokens ?? (overrides.contextPercent ?? 0) * 2700,
     ...(overrides.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: overrides.compactionTriggerTokens }),
   })
-  const foregroundSummary = () => overrides.summary ?? null
-  return {
-    sessionTitle, activeSubagentCount: () => 0, sessionState, errorMessage,
-    foregroundId, foregroundSummary, elapsed, budgetView, outputView: () => undefined,
-  }
+  const summary = () => overrides.summary ?? null
+  return { sessionState, summary, elapsed, budget, outputView: () => undefined }
 }
 
 describe("header display", () => {
@@ -86,7 +80,7 @@ describe("header display", () => {
     createRoot((d) => {
       dispose = d
       const header = createHeaderDisplay({
-        signals: buildSignals({ contextPercent: 38, contextPromptTokens: 270_000 }),
+        surface: buildSurface({ contextPercent: 38, contextPromptTokens: 270_000 }),
         dimensions: () => ({ width: 120, height: 24 }),
         theme,
       })
@@ -99,7 +93,7 @@ describe("header display", () => {
       dispose = d
       // Configured 270k on a 200k window: the runtime resets at the window share.
       const header = createHeaderDisplay({
-        signals: buildSignals({ contextPercent: 43, contextPromptTokens: 85_000, compactionTriggerTokens: 170_000 }),
+        surface: buildSurface({ contextPercent: 43, contextPromptTokens: 85_000, compactionTriggerTokens: 170_000 }),
         dimensions: () => ({ width: 120, height: 24 }),
         theme,
       })
@@ -115,7 +109,7 @@ describe("header display", () => {
     createRoot((d) => {
       dispose = d
       const header = buildHeaderDisplay({
-        signals: buildSignals({ contextPercent: 43, contextPromptTokens: 85_000, compactionTriggerTokens: 170_000 }),
+        surface: buildSurface({ contextPercent: 43, contextPromptTokens: 85_000, compactionTriggerTokens: 170_000 }),
         dimensions: () => ({ width: 120, height: 24 }),
         theme,
         compactionThreshold: () => 0,
@@ -129,7 +123,7 @@ describe("header display", () => {
     createRoot((d) => {
       dispose = d
       const header = createHeaderDisplay({
-        signals: buildSignals({ contextPercent: 90, contextPromptTokens: 900_000, compactionTriggerTokens: 0 }),
+        surface: buildSurface({ contextPercent: 90, contextPromptTokens: 900_000, compactionTriggerTokens: 0 }),
         dimensions: () => ({ width: 120, height: 24 }),
         theme,
       })
@@ -146,7 +140,7 @@ describe("header display", () => {
       dispose = d
       const [threshold, setThreshold] = createSignal(350_000)
       const header = buildHeaderDisplay({
-        signals: buildSignals({ contextPercent: 95, contextPromptTokens: 256_700 }),
+        surface: buildSurface({ contextPercent: 95, contextPromptTokens: 256_700 }),
         dimensions: () => ({ width: 120, height: 24 }),
         compactionThreshold: threshold,
         theme,
@@ -163,7 +157,7 @@ describe("header display", () => {
     createRoot((d) => {
       dispose = d
       const header = buildHeaderDisplay({
-        signals: buildSignals({ contextPromptTokens: tokens }),
+        surface: buildSurface({ contextPromptTokens: tokens }),
         dimensions: () => ({ width: 120, height: 24 }),
         compactionThreshold: () => 0,
         theme,
@@ -178,7 +172,7 @@ describe("header display", () => {
       const [dims] = createSignal({ width: 120, height: 24 })
 
       const header = createHeaderDisplay({
-        signals: buildSignals({ elapsedMs: 0, contextPercent: 0, cost: 0 }),
+        surface: buildSurface({ elapsedMs: 0, contextPercent: 0, cost: 0 }),
         dimensions: dims,
         theme,
       })
@@ -194,7 +188,7 @@ describe("header display", () => {
     for (const sessionState of ["active", "inactive"] as const) {
       createRoot((disposeRoot) => {
         const header = createHeaderDisplay({
-          signals: buildSignals({ elapsedMs: 60_000, contextPercent, cost: 0.0345, sessionState }),
+          surface: buildSurface({ elapsedMs: 60_000, contextPercent, cost: 0.0345, sessionState }),
           dimensions: () => ({ width: 120, height: 24 }),
           theme,
         })
@@ -215,7 +209,7 @@ describe("header display", () => {
       const [dims] = createSignal({ width: 120, height: 24 })
 
       const header = createHeaderDisplay({
-        signals: buildSignals({ elapsedMs: 60_000, contextPercent: 24, cost: 0.0098 }),
+        surface: buildSurface({ elapsedMs: 60_000, contextPercent: 24, cost: 0.0098 }),
         dimensions: dims,
         theme,
       })
@@ -241,9 +235,9 @@ describe("header display", () => {
         contextPromptTokens: 64_800,
         averageGenerationTokensPerSecond: undefined,
       })
-      const signals = buildSignals({ liveBudget: false, elapsedMs: 60_000 })
+      const surface = buildSurface({ liveBudget: false, elapsedMs: 60_000 })
       const header = createHeaderDisplay({
-        signals: { ...signals, budgetView: () => budget() },
+        surface: { ...surface, budget: () => budget() },
         dimensions: () => ({ width: 120, height: 24 }),
         theme,
       })
@@ -279,9 +273,9 @@ describe("header display", () => {
       const [loading, setLoading] = createSignal(false)
       const [width, setWidth] = createSignal(80)
       const header = createHeaderDisplay({
-        signals: { ...buildSignals(), foregroundId: selected,
-          budgetView: (id: string) => id === "parent" ? ready : { ...ready, averageGenerationTokensPerSecond: undefined },
-          foregroundSummary: () => loading() ? { id: selected(), kind: "chat", title: "Existing chat", executionCwd: "/repo", lifecycleState: "active", notices: [], inputMode: { kind: "chat" }, lastUpdated: "", totalsLoading: true } : null },
+        surface: { ...buildSurface(),
+          budget: () => selected() === "parent" ? ready : { ...ready, averageGenerationTokensPerSecond: undefined },
+          summary: () => loading() ? { id: selected(), kind: "chat", title: "Existing chat", executionCwd: "/repo", lifecycleState: "active", notices: [], inputMode: { kind: "chat" }, lastUpdated: "", totalsLoading: true } : null },
         dimensions: () => ({ width: width(), height: 24 }), theme,
       })
       expect(headerText(header)).toBe("24% ctx · $1.00 · 18 tok/s")
@@ -307,7 +301,7 @@ describe("header display", () => {
       dispose = d
       const [width, setWidth] = createSignal(80)
       const header = createHeaderDisplay({
-        signals: buildSignals({
+        surface: buildSurface({
           sessionState: "inactive",
           totalsLoading: true,
           elapsedMs: 60_000,
@@ -342,9 +336,9 @@ describe("header display", () => {
     createRoot((d) => {
       dispose = d
       const [budget, setBudget] = createSignal<BudgetView>({ totalsLoading: true })
-      const signals = buildSignals({ liveBudget: false })
+      const surface = buildSurface({ liveBudget: false })
       const header = createHeaderDisplay({
-        signals: { ...signals, budgetView: () => budget() },
+        surface: { ...surface, budget: () => budget() },
         dimensions: () => ({ width: 120, height: 24 }),
         theme,
       })
@@ -372,7 +366,7 @@ describe("header display", () => {
       const [dims] = createSignal({ width: 120, height: 24 })
 
       const header = createHeaderDisplay({
-        signals: buildSignals({
+        surface: buildSurface({
           sessionState: "inactive",
           liveBudget: false,
           summary: {
@@ -412,7 +406,7 @@ describe("header display", () => {
       const [dims] = createSignal({ width: 120, height: 24 })
 
       const header = createHeaderDisplay({
-        signals: buildSignals({
+        surface: buildSurface({
           sessionState: "active",
           elapsedMs: 60_000,
           summary: {
@@ -451,7 +445,7 @@ describe("header display", () => {
       dispose = d
       const [dims] = createSignal({ width: 120, height: 24 })
       const header = createHeaderDisplay({
-        signals: buildSignals({ cost: 38.21875235, billedCost: 5.64677735, priceUnavailable: true }),
+        surface: buildSurface({ cost: 38.21875235, billedCost: 5.64677735, priceUnavailable: true }),
         dimensions: dims,
         theme,
       })
@@ -466,7 +460,7 @@ describe("header display", () => {
       const [dims] = createSignal({ width: 50, height: 24 })
 
       const header = createHeaderDisplay({
-        signals: buildSignals({ elapsedMs: 60_000, contextPercent: 24 }),
+        surface: buildSurface({ elapsedMs: 60_000, contextPercent: 24 }),
         dimensions: dims,
         theme,
       })
@@ -483,7 +477,7 @@ describe("header display", () => {
       const [dims] = createSignal({ width: 120, height: 24 })
 
       const header = createHeaderDisplay({
-        signals: buildSignals({ title: "Resumed workflow", elapsedMs: 60_000, contextPercent: 0.9949523809523809 }),
+        surface: buildSurface({ title: "Resumed workflow", elapsedMs: 60_000, contextPercent: 0.9949523809523809 }),
         dimensions: dims,
         theme,
       })

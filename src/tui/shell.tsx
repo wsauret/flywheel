@@ -16,8 +16,7 @@ import { createTuiModuleClients, moduleCloseGuards, moduleSessionNavigation, mod
 import { useTheme } from "@tui/context/theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
 import { useToast } from "@tui/context/toast"
-import { bindStyledTextContent } from "@tui/utils/reactive-text"
-import { createEffect, createMemo, createSignal, from, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, from, onCleanup, onMount } from "solid-js"
 import { startupTrace, traceShellMount } from "../infra/startup-trace.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
@@ -30,14 +29,12 @@ import { commandSpecs, commandsToOptions } from "./commands/command-catalog.js"
 import { buildCommandDefinitions } from "./commands/command-definitions.js"
 import { createCommandDispatch, createCommandUsageRecorder } from "./commands/command-dispatch.js"
 import { exitTUI } from "./exit.js"
-import { Composer } from "./components/composer.js"
-import { RuntimeNotice } from "./components/runtime-notice.js"
+import { ChatPane, createChatPaneInput, type ChatPaneHost } from "./components/chat-pane.js"
 import type { ComposerHandle } from "./components/composer-types.js"
 import { StartupViewport } from "./components/startup-viewport.js"
 import { TabsBar, TabsBarDivider } from "./components/tabs-bar.js"
-import { ContextControl } from "./components/context-control.js"
+import { SessionHeaderStats } from "./components/session-header-stats.js"
 import { createTabCloser } from "./hooks/create-tab-closer.js"
-import { createComposerPopupKeySlot } from "./hooks/create-composer-popup-key-slot.js"
 import { createComposerAttachSlot } from "./hooks/create-composer-attach-slot.js"
 import { createAttachFilesCommand } from "./hooks/create-attach-files-command.js"
 import { createSessionCreator } from "./hooks/create-session-creator.js"
@@ -75,10 +72,11 @@ import { createTabState } from "./hooks/create-tabs.js"
 import { usePromptHistoryPersistence } from "./hooks/use-composer-history-persistence.js"
 import { createFocusedSessionReadiness, useOpenSessionRunners } from "./hooks/use-open-session-runners.js"
 import { createOpenSessionKeeper } from "../protocol/client/open-session-keeper.js"
-import { OutputWindow, type OutputWindowCommand, type OutputWindowCommandType } from "./output-window/output-window.js"
 import { createTranscriptSelectionDrag } from "./hooks/create-transcript-selection-drag.js"
 import { createTranscriptLayoutCache } from "./output-window/output-window-scroll.js"
-import { createComposerBorderLayout } from "./hooks/create-composer-border-layout.js"
+import { createDismissibleUpdateStatus } from "./hooks/create-composer-border-layout.js"
+import { roleSlot } from "../orchestration/config/role-selection.js"
+import { effectiveSessionShortTitle } from "../protocol/app-service-types.js"
 import { createToastPresenter } from "./utils/toast-presenter.js"
 import { providerSetup } from "../protocol/client/provider-setup.js"
 import { createTerminalBackground, type TerminalBackgroundWriter } from "./hooks/create-terminal-background.js"
@@ -121,10 +119,8 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   }
   const directories = { userDataRoot, accountHome }
   const tabsHint = useTabsHint(runtimeConfig, appService, toast.show)
-  const [outputCommand, setOutputCommand] = createSignal<OutputWindowCommand | undefined>()
-  let outputCommandId = 0
-  const dispatchOutputCommand = (type: OutputWindowCommandType) => setOutputCommand({ id: ++outputCommandId, type })
-  const navigateToProcess = (entryId: string) => setOutputCommand({ id: ++outputCommandId, type: "block", entryId })
+  // The keys and transcript commands of the tab's chat pane; its question dock takes keys through the shell's one slot.
+  const tabPane = createChatPaneInput(questionInput)
   /* eslint-enable solid/reactivity */
   const promptHistory = usePromptHistoryPersistence(stateRoot)
   // A predecessor terminal's drafts are in place before the composer mounts.
@@ -173,17 +169,22 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     renderer.off("frame", submissions.frame)
     submissions.dispose()
   })
+  const transcriptInView = createTranscriptInView(() => { void modelModal.openActiveModelPicker() })
+  // The session a command or a surface acts on: the chat that a view over the
+  // tab in front shows, as in its own tab, else the session in front.
+  const sessionInView = (): string | undefined => { const shown = transcriptInView.chatInView(); return shown ? shown.sessionId() : signals.foregroundId() }
+  const chatInFront = (): string | undefined => signals.sessionInputMode()?.kind === "chat" ? signals.foregroundId() : undefined
   // The kernel destinations are built by the modals below; a surface reaches
   // them only after the shell has mounted, so the closures resolve in time.
   const slots = createModuleSlots({
-    modules: TUI_MODULES, intakes: signals.modules, foregroundId: signals.foregroundId, modal, showToast: toast.show, client: appService, enabled: () => signals.moduleSelection()?.moduleIds, auth: signals.auth,
+    modules: TUI_MODULES, intakes: signals.modules, foregroundId: signals.foregroundId, surfaceSession: sessionInView, modal, showToast: toast.show, client: appService, enabled: () => signals.moduleSelection()?.moduleIds, auth: signals.auth,
     answering: () => signals.runtimeHealth().kind !== "faulted",
     projectRoot: signals.projectRoot,
     clipboard,
     appVersion, keymap, reportIssue: (message) => configToasts.present("config.invalid", { message, variant: "error", duration: 10000 }), composer: { hasDraft: draftCache.hasDraft, syncFocus: () => composer.syncFocus() }, foregroundQuestion: () => signals.pendingQuestion() !== undefined,
+    overlayOpen: () => overlay.isOpen(),
     navigate: { openSettings: (destination) => openSettingsDestination(destination), openSurface: (id) => slots.surfaces.get(id)?.(), navigateSession: (sessionId) => focusSession(sessionId) },
   })
-  const ModuleStrips = slots.Strips
   const commonSessionIntro = {
     runtimeIdentity: signals.runtimeIdentity,
     showBuild: () => runtimeConfig.view()?.values.showBuild ?? false,
@@ -242,7 +243,6 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   // A session's catalog row, also for a session that only a detail read names.
   const sessionTitles = (sessionId: string) =>
     signals.sessionCatalogRows().find(({ id }) => id === sessionId) ?? services.sessionDetails.view(sessionId)?.row
-  const transcriptInView = createTranscriptInView(() => { void modelModal.openActiveModelPicker() })
   const viewerProps: Parameters<typeof createChildViewerOpener>[0]["viewer"] = (sessionId) => ({
       createSurface: services.createSessionSurface,
       appService, submissions: { send: submissions.sendWithReceipt, recallQueued: submissions.recallQueued },
@@ -301,6 +301,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   })
   const activateSessionById = createSessionActivatorById({
     rows: signals.sessionCatalogRows,
+    shown: (sessionId) => transcriptInView.chatInView()?.sessionId() === sessionId,
     appService,
     activateSession,
     openChild: childPlaces.openChild,
@@ -314,7 +315,9 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     sessionTitles, navigateUri, navigateSession: activateSessionById, showToast: services.showToast, dispatchCommand: (text) => commandDispatch.dispatch(text),
     question: signals.followQuestion, answerQuestion: chat.answerQuestion, cancelQuestion: chat.cancelQuestion, questionDrafts: draftCache.questions, showSession: sessionShows.show,
     // The tab closer takes the module clients' close guards, so it is read when a module closes a chat.
-    closeChat: (sessionId) => closeChat(sessionId) })
+    closeChat: (sessionId) => closeChat(sessionId),
+    // Built after the clients, at the end of setup; a view reads it when it opens.
+    chatPane: () => chatPaneHost })
   const commandDefinitions = createMemo(() => buildCommandDefinitions(keymap.chordFor, signals.builtInCommands()))
   const commandCatalog = createMemo(() => commandSpecs(commandDefinitions()))
   function dispatchPaletteCommand(text: string): void {
@@ -330,7 +333,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   })
   const {
     commandPalette, themeModal, profileModal, sessionModal, authModal, openSettingsDestination, openSubscriptionSpendReview, reviewCachedActiveProfile,
-    statusModal, helpModal, backgroundModal, modelModal, findModal, sessionChangesModal, activeSessionCount, sessionCount, activeModelLabel,
+    statusModal, helpModal, backgroundModal, modelModal, findModal, sessionChangesModal, activeSessionCount, sessionCount,
   } = createModalModals({
     directories, launcher, clipboard, modal, signals, services, appService, sessions: signals.sessionCatalogRows, sessionCatalogErrors: signals.sessionCatalogErrors, tabs, appVersion, chat, startChat, switchForeground,
     activateSession, activateSessionById, closeSessionTab, closeChat, sessionNavigation: moduleSessionNavigation(moduleClients), settings, runtimeConfig, settingsOperations,
@@ -341,7 +344,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     moduleSettingsRows: slots.settingsRows,
     refreshModuleStatus: slots.refreshStatus,
     activateModuleRow,
-    navigateToProcess,
+    navigateToProcess: tabPane.land,
     openTarget: async (target) => {
       if (target.kind === "session") { await activateSessionById(target.sessionId); return }
       for (const client of moduleClients) if (await client.openTarget?.(target)) return
@@ -366,7 +369,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   // Where this terminal opens every surface a command names: the kernel's own
   // by this table, and every module surface by its terminal home.
   const kernelSurfaces: KernelSurfaceTable = {
-    "background": () => backgroundModal.openBackgroundModal(),
+    "background": () => { const shown = transcriptInView.chatInView(); if (shown) shown.openBackground(); else backgroundModal.openBackgroundModal() },
     "models": ({ target }) => target?.kind === "transcript-in-view" ? transcriptInView.openModel() : openSettingsDestination({ kind: "models" }),
     "settings": ({ target }) => openSettingsDestination(target?.kind === "place" ? settingsPlace(target.place) : { kind: "root" }),
     "auth-profiles": ({ argument }) => profileModal.openProfileSwitcher(argument),
@@ -375,16 +378,16 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     "commands": () => commandPalette.openCommandPalette(),
     "new-chat": () => startNewChat(),
     "sessions": () => sessionModal.openSessionsModal(),
-    "changes": () => sessionChangesModal.openSessionChangesModal(),
-    "resume": () => sessionControlsHook.resume(),
+    "changes": () => { const shown = transcriptInView.chatInView(); if (shown) shown.openChanges(); else sessionChangesModal.openSessionChangesModal() },
+    "resume": () => { const shown = transcriptInView.chatInView(); if (shown) shown.resume(); else sessionControlsHook.resume() },
     "attach-files": createAttachFilesCommand({ launcher, showToast: services.showToast, slot: promptAttachSlot }),
     "find": ({ argument }) => findModal.openFindModal(argument),
-    "close-chat": closeChatSurface({ agentInView: transcriptInView.agentInView, chatInFront: () => signals.sessionInputMode()?.kind === "chat" ? signals.foregroundId() : undefined, closeChat, showToast: services.showToast }),
+    "close-chat": closeChatSurface({ agentInView: transcriptInView.agentInView, chatInView: transcriptInView.chatInView, chatInFront, closeChat, showToast: services.showToast }),
   }
   const openSurface = createSurfaceRouter({ kernel: kernelSurfaces, modules: slots.surfaces, report: createAsyncReporter(services.showToast),
     missing: (surface) => services.showToast({ message: `This client has no "${surface}" surface`, variant: "warning" }) })
   const captureSurfaceOpener = createSurfaceOpener({
-    sessionId: signals.foregroundId,
+    sessionId: sessionInView,
     placement: signals.foregroundRevision,
     surfaces: () => [modal.stack, overlay.viewer.stack],
     openSurface: (surface, isCurrent, opening) => openSurface(surface, { ...opening, isCurrent }),
@@ -413,6 +416,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     captureSurfaceOpener,
     focusSession,
     refreshCommandCatalog: services.refreshCommandCatalog, agentInView: transcriptInView.agentInView,
+    chatSessionId: () => { const shown = transcriptInView.chatInView(); return shown ? shown.sessionId() : chatInFront() },
   })
   const commandDispatch = createCommandDispatch({
     definitions: commandDefinitions,
@@ -425,7 +429,6 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     recordUsage: createCommandUsageRecorder(appService),
   })
   const commands = useCommands({
-    signals,
     showToast: services.showToast,
     openSettingsDestination,
     dispatch: commandDispatch,
@@ -437,8 +440,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   const slashCatalog = createMemo(() => commandsToOptions(commandCatalog()))
   // The popup ranks one row per command, so an alias's uses count toward it.
   const commandUses = createMemo(() => usesPerCommand(signals.commandUsage(), commandCatalog().map((spec) => ({ id: spec.id, aliases: spec.aliases ?? [] }))))
-  const promptPopupKeySlot = createComposerPopupKeySlot()
-  const { handleKey, promptBarActions } = createKeyboardHandler({
+  const { handleKey, paneKey, promptBarActions } = createKeyboardHandler({
     signals,
     keymap,
     showToast: services.showToast,
@@ -450,24 +452,25 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     sessionControls: sessionControlsHook,
     overlay,
     questionInput,
-    promptPopup: promptPopupKeySlot, strips: slots,
+    promptPopup: tabPane.promptPopup, strips: slots,
     openCommandPalette: commandPalette.openCommandPalette,
     switchForeground,
-    dispatchOutputCommand,
+    dispatchOutputCommand: tabPane.output,
     closeTab,
   })
   useKeyboard(handleKey)
   onCleanup(() => { if (!renderer.isDestroyed) renderer.setTerminalTitle("") })
 
   const lineWidth = createMemo(() => Math.max(dimensions().width, 40))
-  const { headerStats, contextCopy } = createHeaderDisplay({
-    signals,
+  const compactionThreshold = () => signals.runtimeConfig()?.values.proactiveCompactionThreshold
+  const header = createHeaderDisplay({
+    surface: signals.foregroundSurface,
     dimensions,
-    compactionThreshold: () => signals.runtimeConfig()?.values.proactiveCompactionThreshold,
+    compactionThreshold,
     theme,
   })
   const tabsAvailableWidth = createMemo(() =>
-    Math.max(0, dimensions().width - headerStats().width - 2)
+    Math.max(0, dimensions().width - header.headerStats().width - 2)
   )
   const showPrompt = createMemo(() => !overlay.isOpen())
   // The one notice a runtime that is not healthy gets: never a recovery in
@@ -478,21 +481,70 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   // and says why when it could not (PI-REMOTE-016).
   const releaseInstall = attach.kind === "relay" ? from<ReleaseInstall | undefined>((set) => attach.install.subscribe((install) => set(install))) : () => undefined
   const runtimeFault = createMemo(() => { const health = signals.runtimeHealth(); return health.kind === "healthy" ? null : tuiFaultNotice(runtimeFaultCopy(health, faultReach(attach, releaseInstall())), health, { client: appService, clipboard, showToast: toast.show }) })
-  const composerDraftKey = () => {
-    const target = signals.foregroundTarget()
-    return target?.kind === "pending" ? target.key : target?.sessionId
+  const updateStatus = createDismissibleUpdateStatus(signals.updateStatus)
+  const diffColors = () => runtimeConfig.view()?.values.diffColors ?? "theme"
+  const showThinking = () => runtimeConfig.view()?.values.showThinking ?? false
+  // What every chat pane takes from the window: the tab in front and every view of a chat over it (PI-LEAD-005).
+  const chatPaneHost: ChatPaneHost = {
+    client: appService, showToast: services.showToast,
+    provide: (children) => <SubagentControlsProvider value={subagentControls}><NavigationProvider value={navigateUri}>
+      <ClientExtensionsProvider value={moduleClients}><ClientExtensionProviders>{children()}</ClientExtensionProviders></ClientExtensionsProvider>
+    </NavigationProvider></SubagentControlsProvider>,
+    createSurface: (sessionId) => services.createSessionSurface(sessionId),
+    follow: signals.followSession,
+    runtimeFault, update: updateStatus, chordFor: (commandId) => keymap.chordFor(commandId),
+    activeSessionCount, sessionCount, chatDefault: signals.chatDefault,
+    hidesTabControls: (sessionId) => hidesTabControls(moduleClients, sessionId),
+    roleView: signals.roleView, childStatus: signals.childStatus, ensureChildViews: signals.ensureChildViews,
+    branch: (sessionId) => signals.branch(sessionId),
+    createChanges: services.createSessionChanges,
+    openChanges: (changes) => sessionChangesModal.openSessionChangesModal(changes),
+    layoutSlot: transcriptLayout,
+    pendingSubmissions: (sessionId) => submissions.pending(sessionId),
+    processControls,
+    showThinking, diffColors,
+    compactionThreshold, compact: chat.compactConversation,
+    sessionIntro: {
+      ...commonSessionIntro,
+      noProviderReady: () => setup() === "none",
+      releaseNotice: { notice: releaseNotice, dismiss: () => { void releaseNoticeActions.dismiss() } },
+    },
+    Strips: slots.Strips, sessionRows: slots.sessionRows, stripFocused: slots.stripFocused, releaseStripFocus: slots.releaseStripFocus,
+    composer: {
+      completableNames: commandDispatch.completableNames,
+      dispatchableNames: commandDispatch.dispatchableNames,
+      slashCatalog,
+      projectFiles: (query) => appService.query({ type: "projectFiles", request: { query, limit: 10 } }).then((result) => result.entries),
+      promptAttachSlot,
+      history: promptHistory,
+      commandFrequency: commandUses,
+      clipboard,
+      onAttachmentWarning: (message) => services.showToast({ message, variant: "warning" }),
+      draftCache,
+      onAnswerQuestion: chat.answerQuestion,
+      onCancelQuestion: chat.cancelQuestion,
+      onOpenSessions: sessionModal.openSessionsModal,
+      onModuleAction: activateModuleRow,
+      onNew: promptBarActions.newChat,
+      onClose: promptBarActions.closeTab,
+      onNextTab: promptBarActions.nextTab,
+    },
+    submit: commands.handleComposerSubmit,
+    recallLocal: (sessionId) => submissions.recallLocal(sessionId),
+    recallQueued: (sessionId) => submissions.recallQueued(sessionId, () => appService.query({ type: "recallQueuedMessage", sessionId })),
+    openModel: (sessionId) => {
+      if (sessionId === undefined || sessionId === signals.foregroundId()) { void modelModal.openActiveModelPicker(); return }
+      // Another chat's own seat under its title, and never the chat in front's: its serving seat once its role view
+      // is read, else the chat seat that serves every chat.
+      const row = sessionTitles(sessionId)
+      void modelModal.openActiveModelPicker({ sessionId, slot: signals.roleView(sessionId)?.serving?.slot ?? roleSlot("chat"),
+        label: row ? effectiveSessionShortTitle(row.title, row.shortTitle) : "Chat" })
+    },
+    openBackground: (target) => backgroundModal.openBackgroundModal(target),
+    transcriptInView,
+    followBackground: signals.backgroundIndex.follow,
+    paneKey,
   }
-  const { layout: promptBorderLayout, dismissUpdate: dismissUpdateStatus } = createComposerBorderLayout({
-    signals,
-    terminalWidth: lineWidth,
-    activeModelLabel,
-    composerStatus: slots.composerStatus,
-    chordFor: keymap.chordFor,
-    resumeOffered: () => sessionControlsHook.offered().primary === "resume",
-    activeSessionCount,
-    sessionCount, stripFocused: slots.stripFocused, hidesTabControls: (sessionId) => hidesTabControls(moduleClients, sessionId),
-  })
-
   return (
     <SubagentControlsProvider value={subagentControls}><NavigationProvider value={navigateUri}>
     <ClientExtensionsProvider value={moduleClients}><ClientExtensionProviders>
@@ -507,117 +559,19 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
           </box>
           <box flexDirection="column">
             <box height={1} />
-            <box position="relative" height={1}>
-              <text ref={bindStyledTextContent(() => headerStats().content)} overflow="hidden" wrapMode="none" />
-              <Show when={headerStats().context}>
-                {(context) =>
-                <Show when={signals.foregroundId()} keyed>
-                  <ContextControl overlayLeft={context().left} label={context().label} color={context().color} copy={contextCopy()}
-                    compacting={signals.compactionStartedAt() !== null} onCompact={chat.compactConversation} />
-                </Show>
-                }
-              </Show>
-            </box>
-            <TabsBarDivider tabs={tabs} width={() => headerStats().width} theme={theme} />
+            <SessionHeaderStats header={header} surface={signals.foregroundSurface} compact={chat.compactConversation} />
+            <TabsBarDivider tabs={tabs} width={() => header.headerStats().width} theme={theme} />
           </box>
           <box width={1} flexShrink={0} />
         </box>
       </box>
 
-      {/* The transcript takes the rows the prompt area leaves. A tall pending
-          question shrinks the prompt area instead of pushing its choices out of
-          the frame, and the question dock scrolls inside the rows it gets. */}
-      <box flexGrow={1} flexBasis={0} minHeight={0} flexDirection="column" paddingLeft={2} paddingRight={1} paddingBottom={1} gap={1}>
-        <StartupViewport
-          foregroundKind={signals.foregroundTarget()?.kind}
-          status={signals.startupStatus()}
-          fault={runtimeFault()}
-        />
-        <Show when={signals.sessionState() !== null && signals.foregroundId()} keyed>
-          {(id) => {
-            // One controls object for the session this mount shows: a call in
-            // the attribute would run again on every read of the prop.
-            const controls = processControls(id)
-            return <OutputWindow
-              localSubmissions={submissions.pending(id)}
-              layoutSlot={transcriptLayout(id)}
-              transcript={signals.outputTranscript()} running={signals.agentState() === "active"}
-              showThinking={runtimeConfig.view()?.values.showThinking ?? false}
-              streamingToolText={signals.streamingToolText()}
-              diffColors={() => runtimeConfig.view()?.values.diffColors ?? "theme"} command={outputCommand()}
-              onNearEdge={services.pageForegroundOutput}
-              registerSelectionAutoScroll={transcriptSelectionDrag.register}
-              processControls={controls}
-              roleView={signals.roleView}
-              childStatus={(childSessionId) => signals.childStatus(childSessionId, id)}
-              ensureChildViews={signals.ensureChildViews}
-              sessionIntro={{
-                ...commonSessionIntro,
-                branchName: () => signals.branch(id),
-                sessionKind: () => "chat",
-                modelLabel: activeModelLabel,
-                availableWidth: () => Math.max(1, dimensions().width - 4),
-                noProviderReady: () => setup() === "none",
-                releaseNotice: { notice: releaseNotice, dismiss: () => { void releaseNoticeActions.dismiss() }}
-              }}
-            />
-          }}
-        </Show>
-
-      </box>
-      <box flexShrink={1} minHeight={0}>
-        <Show when={signals.foregroundId() ? runtimeFault() : null}>
-          {(fault) => <RuntimeNotice notice={fault()} placement="composer" />}
-        </Show>
-        <ModuleStrips sessionId={() => signals.sessionState() !== null ? signals.foregroundId() : undefined} width={lineWidth}>
-          <Composer
-            ref={(handle) => { composer = handle }}
-            foregroundId={composerDraftKey}
-            agentState={signals.agentState}
-            interruptible={() => signals.interruptible() && !slots.stripFocused()}
-            pendingQuestion={signals.pendingQuestion}
-            inChat={inChat}
-            lineWidth={lineWidth}
-            completableNames={commandDispatch.completableNames}
-            dispatchableNames={commandDispatch.dispatchableNames}
-            slashCatalog={slashCatalog()}
-            projectFiles={(query) => appService.query({ type: "projectFiles", request: { query, limit: 10 } }).then((result) => result.entries)}
-            promptPopupKeySlot={promptPopupKeySlot}
-            promptAttachSlot={promptAttachSlot}
-            spinnerSource={signals.spinnerStatusSource}
-            promptBorderLayout={promptBorderLayout}
-            onDismissUpdate={dismissUpdateStatus}
-            onOpenChanges={sessionChangesModal.openSessionChangesModal}
-            history={promptHistory}
-            commandFrequency={commandUses}
-            clipboard={clipboard}
-            onAttachmentWarning={(message) => services.showToast({ message, variant: "warning" })}
-            onSubmit={commands.handleComposerSubmit}
-            onRecallLocal={() => {
-              const sessionId = signals.foregroundId()
-              const local = sessionId ? submissions.recallLocal(sessionId) : null
-              const failedChat = local ? null : recallFailedChat()
-              return local ?? (failedChat ? { kind: "input", input: failedChat } : null)
-            }}
-            onRecallQueued={() => {
-              const sessionId = signals.foregroundId()
-              return sessionId ? submissions.recallQueued(sessionId, () => appService.query({ type: "recallQueuedMessage", sessionId })) : null
-            }}
-            onAnswerQuestion={chat.answerQuestion}
-            onCancelQuestion={chat.cancelQuestion}
-            draftCache={draftCache}
-            onOpenSessions={sessionModal.openSessionsModal}
-            onModuleAction={activateModuleRow}
-            onOpenModel={() => { void modelModal.openActiveModelPicker() }}
-            onNew={promptBarActions.newChat}
-            onClose={promptBarActions.closeTab}
-            onNextTab={promptBarActions.nextTab}
-            onOpenBackground={backgroundModal.openBackgroundModal}
-            onResume={sessionControlsHook.resume}
-            captureFocus={() => showPrompt() && !slots.stripFocused()} onPromptPress={slots.releaseStripFocus}
-          />
-        </ModuleStrips>
-      </box>
+      <ChatPane host={chatPaneHost} surface={signals.foregroundSurface} changes={signals.sessionChanges} controls={sessionControlsHook} input={tabPane}
+        target={signals.foregroundTarget} width={lineWidth} focused={showPrompt}
+        above={<StartupViewport foregroundKind={signals.foregroundTarget()?.kind} status={signals.startupStatus()} fault={runtimeFault()} />}
+        recallFailed={() => { const failedChat = recallFailedChat(); return failedChat ? { kind: "input", input: failedChat } : null }}
+        selectionDrag={transcriptSelectionDrag}
+        ref={(handle) => { composer = handle }} />
       <ToastDisplay headerHeight={showPrompt() ? 3 : 0} />
     </box>
     </ClientExtensionProviders></ClientExtensionsProvider>

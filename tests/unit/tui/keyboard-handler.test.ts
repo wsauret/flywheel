@@ -63,6 +63,31 @@ function createDeps(overrides: KeyboardDepsOverrides = {}): KeyboardDeps {
 }
 
 describe("createKeyboardHandler", () => {
+  it("pages and resumes a view's pane through the keymap, and leaves the tab keys without effect there", () => {
+    createRoot((dispose) => {
+      const tabs = () => [tab("lead", true), tab("other", false)]
+      const deps = createDeps({ tabs })
+      const output = mock((_command: string) => {})
+      const resume = mock(() => {})
+      const pane = { pendingQuestion: () => false, sessionControls: { offered: () => ({ primary: "resume" as const, stop: false }), resume }, output }
+      const { paneKey } = createKeyboardHandler(deps)
+      let prevented = 0
+      const prevent = () => { prevented += 1 }
+      for (const key of [{ name: "n", ctrl: true }, { name: "w", ctrl: true }, { name: "tab" }, { name: "2", ctrl: true }]) paneKey({ ...key, preventDefault: prevent }, pane)
+      paneKey({ name: "pagedown" }, pane)
+      paneKey({ name: "r", ctrl: true }, pane)
+
+      expect(prevented).toBe(4)
+      expect(deps.startNewChat).not.toHaveBeenCalled()
+      expect(deps.closeTab).not.toHaveBeenCalled()
+      expect(deps.switchForeground).not.toHaveBeenCalled()
+      expect(output.mock.calls).toEqual([["page-down"]])
+      expect(resume).toHaveBeenCalledTimes(1)
+      expect(deps.dispatchOutputCommand).not.toHaveBeenCalled()
+      dispose()
+    })
+  })
+
   it("cycles, indexes, and closes mixed local targets without using pending keys as durable IDs", () => {
     createRoot((dispose) => {
       let target: ForegroundTarget = { kind: "session", sessionId: "durable" }

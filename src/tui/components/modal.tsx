@@ -82,10 +82,11 @@ export function ModalProvider(props: ParentProps<{ clipboard: Clipboard }>) {
   // auth modal's API-key field, then to a pending question's freeform field
   // (whose prompt textarea - the only other paste receiver - is unmounted
   // while the question is showing). Untaken paste falls through to the
-  // prompt's own onPaste, so only consume when one of the two claims it.
+  // focused prompt's own onPaste, so only consume when one of the two claims
+  // it; under an open overlay the tab's question never takes it.
   usePaste((event) => {
     const text = new TextDecoder().decode(event.bytes)
-    if (overlay.paste(text) || questionInput.paste(text)) event.preventDefault()
+    if (overlay.isOpen() ? overlay.paste(text) : questionInput.paste(text)) event.preventDefault()
   })
 
   // Pure overlay provider. The prompt owns its own cursor (createComposerFocus),

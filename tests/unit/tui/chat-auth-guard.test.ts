@@ -34,7 +34,6 @@ function createHarness(overrides: { showToast?: CommandDeps["showToast"]; openAu
     catalog: { known: () => true, arrived: Promise.resolve() },
   })
   const deps: CommandDeps = {
-    signals,
     dispatch,
     showToast,
     sendMessage: overrides.sendMessage ?? mock(async () => {}),
@@ -43,7 +42,8 @@ function createHarness(overrides: { showToast?: CommandDeps["showToast"]; openAu
     providerSetup: overrides.providerSetup ?? (() => "usable"),
     openSubscriptionSpendReview: overrides.openSubscriptionSpendReview ?? (() => false),
   }
-  return useCommands(deps)
+  const commands = useCommands(deps)
+  return { handleComposerSubmit: (input: string) => commands.handleComposerSubmit(input, signals.foregroundTarget()) }
 }
 
 describe("chat input — auth guard", () => {
