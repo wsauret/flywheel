@@ -1,0 +1,28 @@
+bench/harbor/configs/luna-r1-finish-v2.toml
+  h_4b47e9e4a8b456 1-81
+bench/harbor/configs/luna-r1-r2-r3.toml
+  h_4b47e9e4a8b456 1-90
+bench/harbor/configs/luna-t5-r2.toml
+  h_4b47e9e4a8b456 1-86
+bench/harbor/configs/luna-t5-r3.toml
+  h_4b47e9e4a8b456 1-85
+bench/harbor/configs/shipped-first-r1-finish-v2.toml
+  h_4b47e9e4a8b456 1-107
+bench/harbor/configs/shipped-first-r1-r2-r3.toml
+  h_4b47e9e4a8b456 1-116
+bench/harbor/configs/shipped-first-t5-r2.toml
+  h_4b47e9e4a8b456 1-112
+bench/harbor/configs/shipped-first-t5-r3.toml
+  h_4b47e9e4a8b456 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e265b95e8c568457060b3a5c638dafac58906955",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
