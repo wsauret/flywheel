@@ -1,9 +1,11 @@
 import { describe, expect, jest, test } from "bun:test"
 import type { RuntimeClient, SessionRow } from "../../../../src/protocol/app-service-types.js"
+import { backgroundReads, type ReadTimers } from "../../../../src/protocol/client/background-reads.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { createHeldSessionDetails, resolveSessionRoute } from "../../../../src/protocol/client/held-session-details.js"
 import type { RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import type { RuntimeSessionDetailSnapshotResult, RuntimeSessionDetailView } from "../../../../src/protocol/session-detail-protocol-types.js"
+import { LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
 const kindOf = (id: string): SessionRow["kind"] => id === "root" ? "chat" : id === "workflow" ? "workflow-agent" : "subagent"
@@ -64,6 +66,43 @@ function fixture() {
   }
 }
 const settled = () => new Promise<void>((resolve) => { setTimeout(resolve, 0) })
+
+/** A retry clock whose timers fire only when the test runs them, so a timer
+ *  that other work in the same process starts never reaches this test. */
+function manualClock() {
+  const live = new Map<ReturnType<typeof setTimeout>, () => void>()
+  const timers: ReadTimers = {
+    setTimeout(fire) {
+      // A real handle, already cleared, stands in for each manual timer.
+      const handle = setTimeout(() => {}, 0)
+      clearTimeout(handle)
+      live.set(handle, fire)
+      return handle
+    },
+    clearTimeout(handle) { live.delete(handle) },
+  }
+  return {
+    timers,
+    get pending() { return live.size },
+    runAll() {
+      const due = [...live.values()]
+      live.clear()
+      for (const fire of due) fire()
+    },
+  }
+}
+
+/** A detail client whose reads fail while `failing` is true. */
+function failingClient() {
+  const reads: string[] = []
+  const control = { failing: true }
+  const client = detailClient(async (sessionIds) => {
+    reads.push(...sessionIds)
+    if (control.failing) throw new Error("unavailable")
+    return { snapshotPosition: 0, views: sessionIds.map(sessionId => ({ sessionId, view: view(sessionId) })) }
+  })
+  return { reads, client, control }
+}
 
 describe("held session details", () => {
   test("targeted refresh reads only named held sessions, not their healthy parents or unknown ids", async () => {
@@ -253,7 +292,8 @@ describe("held session details", () => {
       if (lose) { lose = false; throw new RuntimeLaneLost(new Error("the runtime event lane ended")) }
       return { snapshotPosition: 0, views: sessionIds.map(sessionId => ({ sessionId, view: view("leaf", "leaf", row("leaf", "leaf", "subagent", null)) })) }
     })
-    const held = createHeldSessionDetails({ client, onChange() {}, onDiagnostic: (message) => { diagnostics.push(message) } })
+    const held = createHeldSessionDetails({ client, onChange() {} })
+    backgroundReads(client).diagnose((message) => { diagnostics.push(message) })
     try {
       const opening = held.hold("leaf")
       await settled()
@@ -261,9 +301,61 @@ describe("held session details", () => {
       held.refresh()
       expect(await opening).toEqual({ kind: "held" })
       expect(diagnostics).toEqual([])
+      expect(backgroundReads(client).failing).toBe(false)
     } finally {
       held.dispose()
     }
+  })
+
+  test("a held read that fails retries after the backoff and its error clears when the read answers", async () => {
+    const clock = manualClock()
+    const runtime = failingClient()
+    const held = createHeldSessionDetails({ client: runtime.client, onChange() {}, timers: clock.timers })
+    try {
+      expect((await held.holdSession("leaf")).kind).toBe("failed")
+      expect(held.state("leaf")).toEqual({ loaded: false, error: "unavailable" })
+      expect(backgroundReads(runtime.client).failing).toBe(true)
+      expect(clock.pending).toBe(1)
+      runtime.control.failing = false
+      clock.runAll()
+      await settled()
+      expect(runtime.reads).toEqual(["leaf", "leaf"])
+      expect(held.state("leaf")).toEqual({ loaded: true })
+      expect(held.detail("leaf")?.id).toBe("leaf")
+      expect(backgroundReads(runtime.client).failing).toBe(false)
+      expect(clock.pending).toBe(0)
+    } finally { held.dispose() }
+  })
+
+  test("a lane break cancels the pending retry", async () => {
+    const clock = manualClock()
+    const runtime = failingClient()
+    const held = createHeldSessionDetails({ client: runtime.client, onChange() {}, timers: clock.timers })
+    try {
+      await held.holdSession("leaf")
+      expect(clock.pending).toBe(1)
+      if (LANE_BREAK.type !== "patch") throw new Error("the lane break is a patch")
+      held.accept(LANE_BREAK.patch)
+      expect(clock.pending).toBe(0)
+      // The connection's health explains a broken lane, not the notice.
+      expect(backgroundReads(runtime.client).failing).toBe(false)
+      clock.runAll()
+      await settled()
+      expect(runtime.reads).toEqual(["leaf"])
+    } finally { held.dispose() }
+  })
+
+  test("disposing cancels the pending retry and releases the notice", async () => {
+    const clock = manualClock()
+    const runtime = failingClient()
+    const held = createHeldSessionDetails({ client: runtime.client, onChange() {}, timers: clock.timers })
+    await held.holdSession("leaf")
+    expect(clock.pending).toBe(1)
+    held.dispose()
+    expect(clock.pending).toBe(0)
+    expect(backgroundReads(runtime.client).failing).toBe(false)
+    await settled()
+    expect(runtime.reads).toEqual(["leaf"])
   })
 })
 
