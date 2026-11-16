@@ -51,7 +51,7 @@ export interface SettlementEvidence {
   readonly unreadBlockType?: string;
 }
 
-export type AssemblyStep =
+type AssemblyStep =
   | { readonly kind: "continue" }
   /** The stop of a tool block whose input is not JSON, which the assembler holds. The CLI also closes an open block
    *  when the connection drops, so only a stop reason after it shows that the service sent it. */

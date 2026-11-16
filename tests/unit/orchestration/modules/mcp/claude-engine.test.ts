@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createMcpClaudeEngine, engineServerName } from "../../../../../src/orchestration/modules/mcp/claude-engine.js";
+import { processClaudeEngine } from "../../../../../src/orchestration/modules/mcp/claude-engine.js";
 import { EngineServerAnswer, type CapturedTool, type ClaudeEngineSession, type EngineServerConfig, type EngineServerStatus } from "../../../../../src/orchestration/modules/mcp/claude-engine-session.js";
 import type { McpServerRegistry } from "../../../../../src/orchestration/modules/mcp/config.js";
 import type { McpConnectionOptions } from "../../../../../src/orchestration/modules/mcp/connection.js";
@@ -53,13 +53,10 @@ function fakeEngine(behaviors: { readonly [url: string]: ServerBehavior }) {
     async close() { closes += 1; ended.resolve(); },
   };
   return {
-    engine: (options: { readonly fail?: boolean } = {}) => createMcpClaudeEngine({
-      launch: async () => {
-        launches += 1;
-        if (options.fail === true) throw new Error("engine missing");
-        return session;
-      },
-      pollMs: 5,
+    engine: (options: { readonly fail?: boolean } = {}) => processClaudeEngine(async () => {
+      launches += 1;
+      if (options.fail === true) throw new Error("engine missing");
+      return session;
     }),
     sets,
     calls,
@@ -104,12 +101,15 @@ describe("MCP servers that use Claude as their client", () => {
     try {
       await Promise.all(["slack", "slackTemplate", "slackOwn", "slackFlywheel", "notes", "plain"].map((name) => manager.acquire(name)));
       expect(flywheel.toSorted()).toEqual(["plain", "slackFlywheel"]);
-      expect(fake.sets.at(-1)).toEqual({
-        [engineServerName("slack", SLACK)]: { type: "http", url: SLACK, headers: {}, oauth: { clientId: "1601185624273.8899143856786", callbackPort: 3118 } },
-        [engineServerName("slackTemplate", SLACK)]: { type: "http", url: SLACK, headers: {}, oauth: { clientId: "1601185624273.8899143856786", callbackPort: 3118 } },
-        [engineServerName("slackOwn", `${SLACK}/`)]: { type: "http", url: `${SLACK}/`, headers: {}, oauth: { clientId: "own-client", callbackPort: 3118 } },
-        [engineServerName("notes", "https://notes.example/mcp")]: { type: "http", url: "https://notes.example/mcp", headers: {}, oauth: { clientId: "notes-client", callbackPort: 4000, scopes: "read write" } },
-      });
+      // Each server has its own engine name, also two servers at one URL.
+      const set = fake.sets.at(-1) ?? {};
+      expect(Object.keys(set).filter((name) => /^fw_[0-9a-f]{16}$/u.test(name))).toHaveLength(4);
+      expect(Object.values(set).toSorted((left, right) => left.url.localeCompare(right.url))).toEqual([
+        { type: "http", url: SLACK, headers: {}, oauth: { clientId: "1601185624273.8899143856786", callbackPort: 3118 } },
+        { type: "http", url: SLACK, headers: {}, oauth: { clientId: "1601185624273.8899143856786", callbackPort: 3118 } },
+        { type: "http", url: `${SLACK}/`, headers: {}, oauth: { clientId: "own-client", callbackPort: 3118 } },
+        { type: "http", url: "https://notes.example/mcp", headers: {}, oauth: { clientId: "notes-client", callbackPort: 4000, scopes: "read write" } },
+      ]);
       expect(fake.launches()).toBe(1);
     } finally {
       await manager.dispose();
@@ -142,9 +142,9 @@ describe("MCP servers that use Claude as their client", () => {
     const fake = fakeEngine({ "https://slack.example/mcp?key=sekrit-url-key": { status: "connected", tools: [{ name: "read.channel", description: "d", schema: {} }] } });
     const engine = fake.engine();
     const manager = managerOver({ slack: http(keyed, { client: "claude" }) }, engine, [], { SLACK_KEY: "sekrit-url-key" });
-    const engineName = engineServerName("slack", "https://slack.example/mcp?key=sekrit-url-key");
     try {
       await manager.acquire("slack");
+      const [engineName] = Object.keys(fake.sets.at(-1) ?? {});
       expect(await manager.call({ server: "slack", name: "read.channel", arguments: { channel: "c1" } })).toMatchObject({ content: [{ type: "text", text: "ok" }], isError: false });
       expect(fake.calls).toEqual([{ tool: `mcp__${engineName}__read_channel`, args: { channel: "c1" } }]);
 
@@ -170,7 +170,7 @@ describe("MCP servers that use Claude as their client", () => {
     const engine = fake.engine();
     const manager = managerOver({ slack: http(SLACK, { headers: { "X-Team": "old" } }) }, engine);
     const team = (set: { readonly [name: string]: EngineServerConfig }) => {
-      const server = set[engineServerName("slack", SLACK)];
+      const [server] = Object.values(set);
       return server?.type === "http" ? server.headers["X-Team"] : undefined;
     };
     try {

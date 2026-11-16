@@ -88,7 +88,7 @@ export function credentialKey(server: string, url: string): string {
   return `${server}:${createHash("sha256").update(url).digest("hex")}`;
 }
 
-export function fromDiskCredential(value: DiskCredential): McpCredential {
+function fromDiskCredential(value: DiskCredential): McpCredential {
   return {
     ...(value.tokens === undefined ? {} : {
       tokens: {
@@ -123,7 +123,7 @@ export function fromDiskCredential(value: DiskCredential): McpCredential {
   };
 }
 
-export function toDiskCredential(value: McpCredential): DiskCredential {
+function toDiskCredential(value: McpCredential): DiskCredential {
   return {
     ...(value.tokens === undefined ? {} : {
       tokens: {

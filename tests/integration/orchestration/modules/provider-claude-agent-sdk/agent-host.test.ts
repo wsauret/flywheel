@@ -8,17 +8,18 @@ import { readFileSync } from "node:fs";
 import { Effect, Schema } from "effect";
 import { agentFilePath } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.js";
 import type { LaunchedHost } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
-import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry, DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
-import { createHostRegistry, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
+import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
+import { processAgentHosts } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { createHostLauncher, describeCliLogin } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { engineShell } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine-environment.js";
 import { cliLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { canonicalShell, parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { agentLoop, dispatchedIds, effortOf, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, registryProxy, SYSTEM, systemTexts, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
+import { agentLoop, dispatchedIds, effortOf, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, SYSTEM, systemTexts, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes, streamedText, streamedToolCalls, until, type StagedSdkClient, type StreamResult } from "./_claude-sdk-client.js";
 import { declaredTools, ENGINE_NATIVE_1M_MODELS, type FakeReply, type RecordedRequest } from "./_fake-host.js";
 
@@ -26,9 +27,7 @@ const temporary = temporaryDirectories();
 removeEngineProbes();
 const diagnostics = captureDiagnostics();
 
-let registry: HostRegistry;
-afterEach(async () => { await registry.drain(); });
-const agentHosts = registryProxy(() => registry);
+afterEach(async () => { await processAgentHosts.drain(); });
 
 /** The fields of an agent file row that the cases read: the type and tool name of each block of its message. */
 const AgentFileRow = Schema.Struct({
@@ -37,7 +36,6 @@ const AgentFileRow = Schema.Struct({
 
 describe("the shared agent host on a fake host", () => {
   test("a hosted agent starts by a dispatch, extends its turn through its tool calls, and resumes under its id on a steer", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       const first = await agent.request();
@@ -73,11 +71,10 @@ describe("the shared agent host on a fake host", () => {
       // The steer resumed the same agent from its file: the earlier turn is in its request, in the same order.
       expect(wireMessages(agentRequests[2]!).length).toBeGreaterThan(wireMessages(agentRequests[1]!).length);
       expect(new Set(host.requests.map((request) => request.sessionId)).size).toBe(1);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("parallel agents of one tree share one engine process, a cancel ends only its agent, and the end of a parked agent's lifetime is no failure", async () => {
-    registry = createHostRegistry();
     let launches = 0;
     const slow = (request: RecordedRequest): FakeReply => lastUserTexts(request).some((text) => text.startsWith("Hang")) ? { blocks: [{ text: "partial" }], open: true } : lookupThenAnswer(request);
     await onFakeHost(temporary, hostScript(slow), async ({ host, stage, projectRoot }) => {
@@ -100,7 +97,7 @@ describe("the shared agent host on a fake host", () => {
       await clients[4]!.stop();
       expect(launches).toBe(1);
       expect(new Set(host.requests.map((request) => request.sessionId)).size).toBe(1);
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
     // The cancel stops its task with the abort's reason, and the stop of the agent that waits on its tool names the
     // abort with no failure. The agents that answered ended their own tasks, and the end of each other parked agent's
     // lifetime stops its task with no failure. Each stop has one record.
@@ -114,7 +111,6 @@ describe("the shared agent host on a fake host", () => {
 
 describe("the shared agent host's own decisions", () => {
   test("siblings with different conversation tiers send byte-identical system blocks, and each one's first message holds its own tier", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(() => ({ blocks: [{ thinking: "Done." }, { text: "Done." }] })), async ({ host, stage, projectRoot }) => {
       const tiers = ["# Session identity\n\nYou are session one.", "# Session identity\n\nYou are session two."];
       const agents = await Promise.all(tiers.map(async (conversation, index) => agentLoop(await stage({ sharedHost: TREE }), projectRoot, `Report ${index}.`, { ...SYSTEM, conversation })));
@@ -135,7 +131,7 @@ describe("the shared agent host's own decisions", () => {
         // History records the entry with the bytes that the model reads.
         expect(agents[index]!.history.some((message) => textOf(message) === conversationTierEntry(tier))).toBe(true);
       }
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("a result that the engine rewrites by a fixed rule extends the agent's turn, and the record names the rewrite", async () => {
@@ -145,7 +141,6 @@ describe("the shared agent host's own decisions", () => {
       { content: [], sent: "(mcp__runtime__lookup completed with no output)", rewrite: "no-output" },
     ];
     for (const { content, isError, sent, rewrite } of cases) {
-      registry = createHostRegistry();
       await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ host, stage, projectRoot }) => {
         const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
         const [call] = streamedToolCalls(await agent.request());
@@ -162,13 +157,12 @@ describe("the shared agent host's own decisions", () => {
         expect(text).toBe(sent);
         const recorded = second.events.flatMap((event) => event.kind === "transport_context" ? event.context.additions.filter(({ kind }) => kind.startsWith("tool-result:")) : []);
         expect(recorded).toEqual(rewrite === undefined ? [] : [{ part: "message", kind: `tool-result:${rewrite}`, at: 2, value: call?.id ?? "" }]);
-      }, { seams: { agentHosts } });
-      await registry.drain();
+      });
+      await processAgentHosts.drain();
     }
   }, 180_000);
 
   test("a stop while the dispatcher answers ends the request at once, and the agent never sends a request", async () => {
-    registry = createHostRegistry();
     let dispatcherAsked = false;
     await onFakeHost(temporary, (request, index) => {
       if (isDispatcher(request)) {
@@ -186,11 +180,10 @@ describe("the shared agent host's own decisions", () => {
       expect(result.error?.message).toBe("stopped by the test");
       await Bun.sleep(500);
       expect(host.requests.filter((request) => !isDispatcher(request))).toHaveLength(0);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("the close of a host while an agent streams fails the agent's request, and its one record is the host's close", async () => {
-    registry = createHostRegistry();
     let engineStops = 0;
     const createCountingLauncher = (config: Parameters<typeof createHostLauncher>[0]) => {
       const launch = createHostLauncher(config);
@@ -201,16 +194,15 @@ describe("the shared agent host's own decisions", () => {
     };
     await onFakeHost(temporary, hostScript(() => ({ blocks: [{ text: "partial" }], open: true })), async ({ stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Hang.");
-      const result = await agent.request(undefined, (event) => { if (event.kind === "text_delta") void registry.drain(); });
+      const result = await agent.request(undefined, (event) => { if (event.kind === "text_delta") void processAgentHosts.drain(); });
       expect(result.error).toBeDefined();
       await until(() => diagnostics.payloads("provider.claude_sdk.host.closed").length === 1, "the host's close");
-    }, { seams: { agentHosts, createHostLauncher: createCountingLauncher } });
+    }, { seams: { createHostLauncher: createCountingLauncher } });
     expect(diagnostics.payloads("provider.claude_sdk.host.task_stopped")).toEqual([]);
     expect(engineStops).toBe(0);
   }, 120_000);
 
   test("a dispatcher message whose text the dispatcher changed is denied, so the agent never reads it, and the dispatch fails after its tries", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, (request, index) => {
       if (!isDispatcher(request)) return lookupThenAnswer(request);
       const reply = hostScript(lookupThenAnswer)(request, index);
@@ -222,11 +214,10 @@ describe("the shared agent host's own decisions", () => {
       expect(diagnostics.payloads("provider.claude_sdk.host.dispatch_denied").map(({ fault }) => fault)).toEqual(["changed", "changed", "changed"]);
       await Bun.sleep(1_000);
       expect(host.requests.filter((request) => !isDispatcher(request))).toHaveLength(0);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("a dispatcher that repeats a denied message on every step sends three requests a frame, the dispatch fails after its tries, and the host starts the next agent", async () => {
-    registry = createHostRegistry();
     let repeating = true;
     await onFakeHost(temporary, (request, index) => {
       if (!isDispatcher(request) || !repeating) return hostScript(lookupThenAnswer)(request, index);
@@ -245,11 +236,10 @@ describe("the shared agent host's own decisions", () => {
       expect(streamedToolCalls(await next.request())).toHaveLength(1);
       expect(host.requests.filter((request) => !isDispatcher(request))).toHaveLength(1);
       expect(diagnostics.payloads("provider.claude_sdk.host.closed")).toEqual([]);
-    }, { seams: { agentHosts } });
+    });
   }, 180_000);
 
   test("the plugin drops an agent's completion notice before the dispatcher's model could read it", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(() => ({ blocks: [{ text: "Done." }] })), async ({ host, stage, projectRoot }) => {
       const agents = await Promise.all(Array.from({ length: 3 }, async (_, index) => agentLoop(await stage({ sharedHost: TREE }), projectRoot, `Task ${index}.`)));
       for (const agent of agents) expect((await agent.request()).error).toBeUndefined();
@@ -257,13 +247,12 @@ describe("the shared agent host's own decisions", () => {
       const dispatcher = host.requests.filter(isDispatcher);
       expect(dispatcher.length).toBe(6);
       expect(dispatcher.some((request) => JSON.stringify(request.body["messages"]).includes("task-notification"))).toBe(false);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 });
 
 describe("the shared agent host's history and records", () => {
   test("a compaction rewrite starts the agent again from the compacted history, with the engine's text once per context", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       const [call] = streamedToolCalls(await agent.request());
@@ -285,11 +274,10 @@ describe("the shared agent host's history and records", () => {
       expect(JSON.stringify(wireMessages(sent))).toContain("Summary: the value is VALUE.");
       expect(new Set(host.requests.map((request) => request.sessionId)).size).toBe(1);
       expect(new Set(dispatchedIds(host.requests)).size).toBe(2);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("a parked agent whose next request changes its tools starts on the host of its new tools in one attempt, from its history with Flywheel's tool ids", async () => {
-    registry = createHostRegistry();
     let launches = 0;
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
@@ -307,11 +295,10 @@ describe("the shared agent host's history and records", () => {
       expect(blocks.some((block) => block.type === "tool_use" && JSON.stringify(block).includes(call?.id ?? "?"))).toBe(true);
       expect(blocks.some((block) => block.type === "tool_result" && block.tool_use_id === call?.id)).toBe(true);
       expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched").map(({ moved: hostMoved }) => hostMoved)).toEqual([false, true]);
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
   }, 120_000);
 
   test("a parked agent whose next request crosses a mask zone starts again with the wrapper on its first attempt", async () => {
-    registry = createHostRegistry();
     const lookups = (request: RecordedRequest): FakeReply => {
       const results = wireMessages(request).flatMap((message) => typeof message.content === "string" ? [] : message.content.filter((block) => block.type === "tool_result")).length;
       return results < 2 ? { blocks: [{ thinking: "I need a value." }, { tool: "lookup", input: { key: `k${results}` } }] } : { blocks: [{ thinking: "Done." }, { text: "Both values are ready." }] };
@@ -332,11 +319,10 @@ describe("the shared agent host's history and records", () => {
       expect(lastUserTexts(sent[2]!).at(-1)).toBe(DISPATCH_TEXT);
       expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched").map(({ trigger }) => trigger)).toEqual(["first-request", "history"]);
       expect(agent.history.filter((message) => textOf(message) === DISPATCH_TEXT)).toHaveLength(2);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("the dispatcher declares only SendMessage, runs on the cheap model, and each of its requests is recorded once by a later record", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       const first = await agent.request();
@@ -348,11 +334,10 @@ describe("the shared agent host's history and records", () => {
       expect(dispatcher.map((request) => request.body["model"])).toEqual(dispatcher.map(() => "claude-haiku-5-5"));
       expect(host.requests.filter((request) => !isDispatcher(request)).map((request) => request.body["model"])).toEqual(["claude-sonnet-5-5", "claude-sonnet-5-5"]);
       expect([...hiddenRequests(first), ...hiddenRequests(second)]).toHaveLength(dispatcher.length);
-    }, { model: "claude-sonnet-5-5", seams: { agentHosts } });
+    }, { model: "claude-sonnet-5-5" });
   }, 120_000);
 
   test("one host serves agents of several Claude models: each request runs on its agent's model and reads that model's line, its answer is priced on that model, and a model change dispatches again on the same host", async () => {
-    registry = createHostRegistry();
     let launches = 0;
     const haiku = { wireModelId: "claude-haiku-5-5", contextLimit: 200_000 };
     const opus = { wireModelId: "claude-opus-5-5", contextLimit: 1_000_000 };
@@ -418,13 +403,12 @@ describe("the shared agent host's history and records", () => {
       }
       // The dispatcher runs on the host's launch model, with no rewrite.
       expect(host.requests.filter(isDispatcher).map((request) => request.body["model"])).toEqual(host.requests.filter(isDispatcher).map(() => "claude-haiku-5-5"));
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
   }, 120_000);
 
   // The engine (CLI 2.1.321) places no effort message after a user message that holds only tool results, so the effort
   // that the gate states for a step cannot reach a running turn; the agent starts again from its history instead.
   test("a parked agent whose next request changes its effort starts again from its history at that effort", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       const [call] = streamedToolCalls(await agent.request());
@@ -440,11 +424,10 @@ describe("the shared agent host's history and records", () => {
       // The new agent reads the parked turn: its call and the call's result.
       expect(JSON.stringify(agentRequests[1]?.body["messages"])).toContain("VALUE");
       expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched")).toMatchObject([{ resumed: false }, { resumed: false, trigger: "identity", field: "effort" }]);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("a hosted request ends while the dispatcher's request of its frame still runs", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, (request, index) => {
       // The dispatcher's answer after its SendMessage results never ends, so its frame stays open.
       if (isDispatcher(request) && wireMessages(request).at(-1)?.role === "user" && JSON.stringify(wireMessages(request).at(-1)).includes("tool_result")) return { blocks: [{ text: "Sen" }], open: true };
@@ -454,11 +437,10 @@ describe("the shared agent host's history and records", () => {
       const result = await agent.request();
       expect(result.error).toBeUndefined();
       expect(streamedText(result)).toBe("Done.");
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("an agent's rows that the engine writes before it reports the task's start reach the request", async () => {
-    registry = createHostRegistry();
     // The host reads the engine's task start a second late, after the agent's step streamed and its row was written.
     const lateStart = (launched: LaunchedHost): LaunchedHost => ({
       ...launched,
@@ -474,11 +456,10 @@ describe("the shared agent host's history and records", () => {
       const result = await agent.request();
       expect(result.error).toBeUndefined();
       expect(streamedText(result)).toBe("Done.");
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => lateStart(launch(input)); } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => lateStart(launch(input)); } } });
   }, 120_000);
 
   test("the host cuts the dispatcher's conversation after each frame, and no frame goes out while the cut runs", async () => {
-    registry = createHostRegistry();
     const cut = Promise.withResolvers<void>();
     let cuts = 0;
     let dispatcherAtCut = 0;
@@ -502,11 +483,10 @@ describe("the shared agent host's history and records", () => {
       // The cut emptied the conversation, so the second frame's first request holds only that frame.
       expect(wireMessages(after[0]!).filter((message) => message.role === "assistant")).toEqual([]);
       await until(() => cuts === 2, "the cut after the second frame");
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => heldCut(launch(input)); } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => heldCut(launch(input)); } } });
   }, 120_000);
 
   test("an agent that answered keeps its host while its lifetime lasts, and the host closes when the last lifetime that uses it ends", async () => {
-    registry = createHostRegistry();
     let launches = 0;
     await onFakeHost(temporary, hostScript(() => ({ blocks: [{ thinking: "Done." }, { text: "Done." }] })), async ({ stage, projectRoot }) => {
       const staged = await stage({ sharedHost: TREE });
@@ -518,11 +498,10 @@ describe("the shared agent host's history and records", () => {
       expect(diagnostics.payloads("provider.claude_sdk.host.closed")).toEqual([]);
       await staged.replace();
       await until(() => diagnostics.payloads("provider.claude_sdk.host.closed").length === 1, "the unused host's close");
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
   }, 120_000);
 
   test("a second message of the dispatcher to one agent is denied, in its first step or after its results, and the agent runs once under its id", async () => {
-    registry = createHostRegistry();
     // The dispatcher sends the agent's message twice in one response, sends it a third time after the results, and
     // answers after that denial in a third step.
     await onFakeHost(temporary, (request) => {
@@ -554,11 +533,10 @@ describe("the shared agent host's history and records", () => {
       expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched")).toHaveLength(1);
       expect(diagnostics.payloads("provider.claude_sdk.host.task_stopped")).toEqual([]);
       expect(diagnostics.payloads("provider.claude_sdk.host.closed")).toEqual([]);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("an agent that moves to another provider while it waits on a tool result and back starts under a new id, and reads only what it said and did", async () => {
-    registry = createHostRegistry();
     const patchResult = "Success. Updated value.txt with VALUE.";
     const reasoningSummary = "Private plan of the other model: check the value twice.";
     const encryptedReasoning = "gAAAAB-encrypted-reasoning-of-the-other-model";
@@ -620,7 +598,7 @@ describe("the shared agent host's history and records", () => {
         // What the agent said and did is: its progress update, its replies, and its lookup with its result.
         for (const kept of ["I need the value.", "The value is VALUE; I will write it to value.txt.", lookup?.id ?? "?"]) expect(read).toContain(kept);
       }
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 });
 
@@ -628,7 +606,7 @@ describe("the engine text that Flywheel records for a hosted agent", () => {
   test("equals what the bundled engine sends, for every model of the engine's lineup", async () => {
     let lineup: readonly string[] = [];
     await onFakeHost(temporary, () => ({ blocks: [] }), async ({ configDir, seams }) => {
-      const supervisor = createProcessSupervisor();
+      const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
       const launcher = createLauncherScope(supervisor);
       try {
         const launch = cliLaunch({ type: "external", configDir }, launcher, seams);
@@ -641,7 +619,6 @@ describe("the engine text that Flywheel records for a hosted agent", () => {
     });
     expect(lineup.length).toBeGreaterThan(0);
     for (const model of lineup) {
-      registry = createHostRegistry();
       await onFakeHost(temporary, hostScript(() => ({ blocks: [{ thinking: "Done." }, { text: "Done." }] })), async ({ host, stage, projectRoot }) => {
         const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Report.");
         expect((await agent.request()).error).toBeUndefined();
@@ -667,8 +644,8 @@ describe("the engine text that Flywheel records for a hosted agent", () => {
             : reminder.kind === "environment" ? [reminder.workingDirectory, reminder.platform, shell ?? reminder.shell ?? canonicalShell(), reminder.osVersion] : [];
           expect({ model, reminder: reminder.kind, stated: texts.some((text) => facts.every((value) => text.includes(value))) }).toEqual({ model, reminder: reminder.kind, stated: true });
         }
-      }, { model, seams: { agentHosts } });
-      await registry.drain();
+      }, { model });
+      await processAgentHosts.drain();
     }
   }, 300_000);
 });

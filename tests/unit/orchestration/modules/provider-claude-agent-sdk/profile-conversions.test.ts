@@ -13,7 +13,6 @@ import { accessProviderRegistry } from "../../../../../src/orchestration/agent-r
 import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { composeFirstPartyModules, type FirstPartyModule } from "../../../../../src/orchestration/modules.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
-import { usageReadings } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionSpendConsentService } from "../../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
 import { createSubscriptionSpendConsentNotificationMaterializer } from "../../../../../src/orchestration/subscription-spend-consent/notification-materializer.js";
@@ -221,7 +220,7 @@ describe("the Agent SDK provider's profile conversions", () => {
     test("a paid-use decision that the person declined for a native account keeps paid use off for the account's Flywheel login, and the question does not return", async () => {
       const home = temporaryDirectory("auth-declined-");
       const composition = composeFirstPartyModules([createClaudeAgentSdkModule({
-        account: () => ({ home, user: "tester" }), enginePath: "/scratch/bin/claude", usageReadings: usageReadings(),
+        account: () => ({ home, user: "tester" }), enginePath: "/scratch/bin/claude",
         readUsage: async () => ({ loggedIn: true, reply: { rate_limits_available: true, rate_limits: { five_hour: { utilization: 12, resets_at: null } } } }),
       })], []);
       const registry = accessProviderRegistry(composition);

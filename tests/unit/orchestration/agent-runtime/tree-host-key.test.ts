@@ -13,13 +13,15 @@ import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { HOST_SPLIT_EXCEPTIONS, hostKey, hostPlaceDifference, type HostPlace, type HostRegistry } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js"
+import type { AgentHost } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js"
+import { processAgentHosts, type HostPlace, type HostRegistry } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js"
 import { createClaudeAgentSdkClient } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js"
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../src/orchestration/modules/subagents/execution/prompts.js"
 import { unusedSessionMessaging } from "../../../helpers/child-session-control.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
+import { forwardDiagnostics, payloads } from "../modules/provider-claude-agent-sdk/_bridge-harness.js"
 import { asModelClient } from "./_model-client.js"
 import { fakeAvailability } from "./llm/_provider-chain-harness.js"
 import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
@@ -30,8 +32,10 @@ import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/ses
  * agent and side call here runs its first request through the production path: runtime assembly, the agent loop, the
  * Claude Agent SDK client, and the hosted agent's placement, which leases the host. When this test fails, a value of
  * the place differs for one kind, and that kind starts another engine process. Make the value the same. Add the
- * field to HOST_SPLIT_EXCEPTIONS only when the difference is absolutely necessary.
+ * field to HOST_SPLIT_EXCEPTIONS (host-registry.ts) only when the difference is absolutely necessary.
  */
+
+forwardDiagnostics()
 
 const directory = temporaryDirectories()
 const ROOT = "tree-root"
@@ -48,6 +52,30 @@ const MODELS = new Map<string, ReturnType<typeof providerModelInfo>>(([
 ] as const).map(([id, contextLimit, outputLimit]) => [id, providerModelInfo({
   provider: "anthropic", id, contextLimit, outputLimit, reasoning: true, reasoningEfforts: ["low", "medium", "high"],
 })]))
+
+/** A host that the hosts of this process open for a place; the registry reads only its session, end, and close. */
+function placedHost(sessionId: string): AgentHost {
+  const ended = Promise.withResolvers<Error>()
+  const unused = (): never => { throw new Error("the registry reads only sessionId, ended, and close") }
+  return {
+    sessionId, folder: { configDir: "/scratch", cwd: "/scratch", sessionId }, get toolGate() { return unused() },
+    definition: unused, admit: unused, dispatch: unused, settled: unused, stopTask: unused, takeHiddenRequests: unused, released: unused, requestFailure: unused,
+    ended: ended.promise, served: false,
+    close: async (reason: string) => { ended.resolve(new Error(reason)) },
+  }
+}
+
+/** Leases `reference` and then `place` from the hosts of this process. `key`: both share one host. `split`: the split
+ *  record that the second host opened, which names each field that differs and whether every one is a listed
+ *  exception. */
+async function hostsOf(reference: HostPlace, place: HostPlace) {
+  const before = payloads("provider.claude_sdk.host.split").length
+  const first = processAgentHosts.lease(reference, () => placedHost("reference"))
+  const second = processAgentHosts.lease(place, () => placedHost("other"))
+  const split = payloads("provider.claude_sdk.host.split").slice(before)
+  await processAgentHosts.drain()
+  return { key: first.host === second.host, split }
+}
 
 /** A host registry that records the place of each lease and then fails the request, so that no engine starts. */
 function recordingHosts(places: HostPlace[]): HostRegistry {
@@ -229,13 +257,13 @@ describe("the host key of a chat tree", () => {
       // The place holds the request values that the path prepared, not an empty shape.
       expect(reference.values.tools.map(({ name }) => name)).toEqual(expect.arrayContaining(GENERAL_GRANT))
       expect(reference.values).toMatchObject({ thinking: { type: "adaptive" }, statesEffort: true })
-      // The key decides which host serves an agent; the difference names why two keys differ.
-      const sameHost = (place: HostPlace) => ({ key: hostKey(place) === hostKey(reference), differs: hostPlaceDifference(reference, place) })
+      // The key decides which host serves an agent; the split record names why two keys differ.
+      const sameHost = (place: HostPlace) => hostsOf(reference, place)
       for (const name of KINDS.keys()) {
-        expect({ name, ...sameHost(await hostPlace(name, cwd)) }).toEqual({ name, key: true, differs: [] })
+        expect({ name, ...await sameHost(await hostPlace(name, cwd)) }).toEqual({ name, key: true, split: [] })
       }
       // Two directories of one git status share the host: the agent's directory travels in its meta file.
-      expect(sameHost(await hostPlace("persona subagent", directory("tree-host-other-")))).toEqual({ key: true, differs: [] })
+      expect(await sameHost(await hostPlace("persona subagent", directory("tree-host-other-")))).toEqual({ key: true, split: [] })
 
       const repository = directory("tree-host-repository-")
       mkdirSync(join(repository, ".git"))
@@ -249,17 +277,15 @@ describe("the host key of a chat tree", () => {
         ["a model that the bundled engine does not know", { model: "claude-fable-5-3" }],
       ]
       for (const [why, variation] of splits) {
-        const { key, differs } = sameHost(await hostPlace("persona subagent", cwd, variation))
-        expect({ why, key, split: differs.length > 0, unlisted: differs.filter((field) => !HOST_SPLIT_EXCEPTIONS.has(field)) }).toEqual({ why, key: false, split: true, unlisted: [] })
+        expect({ why, ...await sameHost(await hostPlace("persona subagent", cwd, variation)) }).toEqual({ why, key: false, split: [expect.objectContaining({ fields: expect.arrayContaining([expect.any(String)]), exception: true })] })
       }
       // An empty object is a value of the key, so the difference names it.
       const emptyBodyField: HostPlace = { ...reference, values: { ...reference.values, extraBody: { ...reference.values.extraBody, context_management: {} } } }
-      expect(sameHost(emptyBodyField)).toEqual({ key: false, differs: ["values.extraBody"] })
+      expect(await sameHost(emptyBodyField)).toEqual({ key: false, split: [expect.objectContaining({ fields: ["values.extraBody"], exception: true })] })
 
       // A difference outside the list, such as another tool list, is a defect that this guard names.
       const otherTools: HostPlace = { ...reference, values: { ...reference.values, tools: reference.values.tools.slice(1) } }
-      expect(hostPlaceDifference(reference, otherTools)).toEqual(["values.tools"])
-      expect(HOST_SPLIT_EXCEPTIONS.has("values.tools")).toBe(false)
+      expect(await sameHost(otherTools)).toEqual({ key: false, split: [expect.objectContaining({ fields: ["values.tools"], exception: false })] })
     } finally {
       release()
     }

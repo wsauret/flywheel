@@ -273,7 +273,7 @@ function registrationRefused(error: unknown): boolean {
   return error instanceof OAuthError || error instanceof Error && error.message.includes("does not support dynamic client registration");
 }
 
-export function toSdkTokens(tokens: McpOAuthTokens): OAuthTokens {
+function toSdkTokens(tokens: McpOAuthTokens): OAuthTokens {
   return {
     access_token: Redacted.value(tokens.accessToken),
     token_type: tokens.tokenType,
@@ -286,7 +286,7 @@ export function toSdkTokens(tokens: McpOAuthTokens): OAuthTokens {
   };
 }
 
-export function fromSdkTokens(tokens: OAuthTokens): McpOAuthTokens {
+function fromSdkTokens(tokens: OAuthTokens): McpOAuthTokens {
   return {
     accessToken: Redacted.make(tokens.access_token),
     tokenType: tokens.token_type,
@@ -297,7 +297,7 @@ export function fromSdkTokens(tokens: OAuthTokens): McpOAuthTokens {
   };
 }
 
-export function toSdkClientInformation(info: McpOAuthClientInformation): OAuthClientInformationMixed {
+function toSdkClientInformation(info: McpOAuthClientInformation): OAuthClientInformationMixed {
   return {
     client_id: info.clientId,
     ...(info.clientSecret === undefined ? {} : { client_secret: Redacted.value(info.clientSecret) }),
@@ -307,7 +307,7 @@ export function toSdkClientInformation(info: McpOAuthClientInformation): OAuthCl
   };
 }
 
-export function fromSdkClientInformation(info: OAuthClientInformationMixed): McpOAuthClientInformation {
+function fromSdkClientInformation(info: OAuthClientInformationMixed): McpOAuthClientInformation {
   return {
     clientId: info.client_id,
     ...(info.client_secret === undefined ? {} : { clientSecret: Redacted.make(info.client_secret) }),

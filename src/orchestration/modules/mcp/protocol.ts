@@ -82,7 +82,7 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
 }
 
 /** What a person reads when a sign-in fails: the repair, never the cause, which can hold a provider URL. */
-export function mcpSignInFailure(error: unknown): string {
+function mcpSignInFailure(error: unknown): string {
   if (error instanceof McpSignInPortBusyError) return error.message
   if (error instanceof McpRegistrationRefusedError) return `MCP authentication failed. ${MCP_REGISTRATION_HINT}`
   return "MCP authentication failed. Try again."

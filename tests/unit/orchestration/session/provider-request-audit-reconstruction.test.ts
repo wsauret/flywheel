@@ -15,7 +15,8 @@ import { lowerToolHistoryById } from "../../../../src/orchestration/agent-runtim
 import { applyHistoryLowering, planHistoryLowering } from "../../../../src/orchestration/agent-runtime/llm/provider-history"
 import { openAIResponsesTarget } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers"
 import type { ProviderRequestAuditEntry } from "../../../../src/orchestration/session/provider-request-audit-types"
-import { conversationTierEntry, DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text"
+import { DISPATCH_TEXT } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text"
+import { conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../helpers/hosted-engine-text.js"
 
 let tmpDir: string
 

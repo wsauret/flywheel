@@ -58,7 +58,7 @@ export interface AgentAdmission {
 }
 
 /** A step that the gate refused, for the host's record. */
-export interface RefusedHostStep {
+interface RefusedHostStep {
   readonly turnId: string;
   readonly index: number;
   readonly agentId: string | undefined;

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { BetaRawMessageStreamEvent, BetaStopReason } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
-import { createAssistantAssembler, type AssemblyStep } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/assistant-assembler.js";
+import { createAssistantAssembler, type AssistantAssembler } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/assistant-assembler.js";
 
 /** Each name by which the CLI hands a call to a handler, with the tool's input schema. */
 const DECLARED = new Map([["mcp__runtime__read", { type: "object", properties: { path: { type: "string" }, paths: { type: "array", items: { type: "string" } } } }]]);
@@ -30,7 +30,7 @@ const stop: BetaRawMessageStreamEvent = { type: "message_stop" };
 function run(events: BetaRawMessageStreamEvent[], declared = DECLARED) {
   const assembler = createAssistantAssembler(declared);
   const steps = events.map((event) => assembler.add(event));
-  return { assembler, steps, end: steps.find((step): step is Extract<AssemblyStep, { kind: "end" }> => step.kind === "end") };
+  return { assembler, steps, end: steps.find((step): step is Extract<ReturnType<AssistantAssembler["add"]>, { kind: "end" }> => step.kind === "end") };
 }
 
 describe("the assistant assembler", () => {
