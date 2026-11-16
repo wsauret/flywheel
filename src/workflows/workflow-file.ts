@@ -23,6 +23,7 @@ import {
   topNodeId,
   walkPhases,
   WorkflowDefinitionSchema,
+  type AuthoredWorkflow,
   type WorkflowDefinition,
   type WorkflowPhase,
 } from "./workflow-schema.js";
@@ -38,9 +39,6 @@ export interface WorkflowFileDiagnostic {
   readonly keyPath: string;
   readonly message: string;
 }
-
-/** The authored definition of one file, decoded strictly. */
-export type AuthoredWorkflowDefinition = typeof WorkflowDefinitionSchema.Type;
 
 /** One diagnostic without its file: the phase, agent, or repeat, the key
  *  path, and the message. */
@@ -262,7 +260,7 @@ function locatedMessage(file: string, message: string, locations: WorkflowPhaseL
 
 /** A file that decoded, with what the loader's boundary rules changed. */
 export interface DecodedWorkflowFile {
-  readonly definition: AuthoredWorkflowDefinition;
+  readonly definition: AuthoredWorkflow;
   /** The step-grammar conversion, when the file states the retired step
    *  grammar. */
   readonly stepGrammar?: StepGrammarConversion;
@@ -337,7 +335,7 @@ export function decodeWorkflowFile(input: { readonly file: string; readonly cont
   const decoded = decodeStrictly(WorkflowDefinitionSchema)(normalized.document);
   if (Result.isFailure(decoded)) {
     const diagnostics = narrowPhaseEntries(file, normalized.document, issueDiagnostics(file, normalized.document, decoded.failure.issue));
-    let recovered: AuthoredWorkflowDefinition | undefined;
+    let recovered: AuthoredWorkflow | undefined;
     try {
       recovered = Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "ignore", errors: "all" })(isNode(normalized.document) ? recoverAuthoredEntries(normalized.document) : normalized.document);
     } catch {

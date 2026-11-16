@@ -5,6 +5,7 @@ import { WorkflowDefinitionDriftError } from "../../../../src/workflows/vm/defin
 import { currentDefinitionDriftRejection } from "../../../../src/workflows/vm/recovery.js"
 import { WorkflowDefinitionSchema, type WorkflowDefinition, type WorkflowPhase } from "../../../../src/workflows/workflow-schema.js"
 import { acceptanceWorkflow, SqliteVmDriver } from "./_sqlite-vm-driver.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const drivers: SqliteVmDriver[] = []
 const evidenceDir = process.env.FLYWHEEL_VM_DRIFT_EVIDENCE_DIR
@@ -62,7 +63,7 @@ async function expectDrift(
 /** The acceptance workflow with its work phase changed by `revise`. */
 function revisedWork(revise: (phase: WorkflowPhase) => WorkflowPhase): WorkflowDefinition {
   const encoded = Schema.encodeSync(WorkflowDefinitionSchema)(acceptanceWorkflow)
-  return Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  return loadedWorkflow({
     ...encoded,
     phases: acceptanceWorkflow.phases.map((entry) => "phase" in entry && entry.phase === "work" ? revise(entry) : entry),
   })

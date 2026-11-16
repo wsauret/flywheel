@@ -33,7 +33,7 @@ import { HandoffInvalidError } from "../../workflows/context-bundle/handoff-erro
 import { workflowAgentSubagents } from "../../workflows/agents/subagent-reachability.js"
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
 import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
-import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor, type BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import { createBackgroundWorkRegistry, type BackgroundWorkTracking } from "../agent-runtime/background-work.js"
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
 import type { FirstPartyModuleComposition } from "../modules.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
@@ -101,8 +101,6 @@ export interface WorkerCallbackDeps {
   sessionEventWriter: SessionFactWriter
   /** Workflow session barrier shared by every production worker and nested child. */
   applyNestedStoredFact?: AgentOptions["applyNestedStoredFact"]
-  onNotification?: AgentOptions["onNotification"]
-  onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void
   /** Admitted agents keyed by definition id. Each owns its output contract,
    *  the personas its worker may dispatch, and the persona it runs as. */
   resolvedAgents: ReadonlyMap<string, ResolvedAgent>
@@ -224,17 +222,6 @@ export function createWorkerCallback(
   // The workers that run now, by attempt id, in the order they started.
   const slots = new Map<string, WorkerSlot>()
   const moduleWaiters = new Map<string, Set<(modules: ModuleRuntimes | undefined) => void>>()
-  // The background commands of each running agent; the session shows them
-  // all.
-  const backgroundCommands = new Map<string, readonly ActiveBackgroundCommandDescriptor[]>()
-  const publishBackgroundCommands = (attemptId: string, commands: readonly ActiveBackgroundCommandDescriptor[] | undefined): void => {
-    if (commands === undefined || commands.length === 0) {
-      if (!backgroundCommands.delete(attemptId)) return
-    } else {
-      backgroundCommands.set(attemptId, commands)
-    }
-    opts.onBackgroundCommandsChanged?.([...backgroundCommands.values()].flat())
-  }
   // One captured prefix for all workers in this admitted workflow.
   const memorySnapshot = opts.moduleSelection.contributions.flatMap((entry) => entry.domain === "memory" ? [entry.value.snapshot({ projectRoot, accountHome: opts.accountHome })] : []).filter((value): value is string => value !== null).join("\n\n") || null
 
@@ -308,7 +295,7 @@ export function createWorkerCallback(
     const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({
       kind: "workflow",
       enqueueNotification: notifications.enqueue,
-      onChange: (commands) => { resources.projection?.updateBackgroundCommands(commands); publishBackgroundCommands(attempt.id, commands) },
+      onChange: (commands) => { resources.projection?.updateBackgroundCommands(commands) },
       onExecutionOutput: (toolUseId, output, identity) => {
         emitToolExecutionOutput(forward, toolUseId, output, identity)
       },
@@ -497,7 +484,6 @@ export function createWorkerCallback(
         },
         ...busBridge,
         onEvent: forward,
-        onNotification: opts.onNotification,
         onSystemMessage: (message, level) => {
           emitAgent("agent.system_message.recorded", { sessionId, data: { message, level } })
         },
@@ -692,7 +678,6 @@ export function createWorkerCallback(
       releaseConversation()
       slots.delete(attempt.id)
       for (const resolve of moduleWaiters.get(conversationId) ?? []) resolve(undefined)
-      publishBackgroundCommands(attempt.id, undefined)
     }
     } finally {
       // Close producers, flush buffered writes, and dispose the tree in order.

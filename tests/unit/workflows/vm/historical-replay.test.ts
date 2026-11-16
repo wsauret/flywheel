@@ -14,7 +14,7 @@ import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js";
 import { continueWorkflowReplay } from "../../../../src/workflows/vm/replay.js";
-import { continueCommittedWorkflow, replayWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { replayWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-facts.js";
 import type { AsyncEventWriter, AsyncGuardedEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js";
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js";
@@ -44,11 +44,10 @@ describe("historical committed v2 replay", () => {
     expect(recoverWorkflowControl(histories.repeated)).toMatchObject({ executable: true, control });
   });
 
-  it("continues a historical pending request with current commits and a later identified request", () => {
+  it("replays a historical pending request through a current recovery and its recorded settlement, and runs nothing for it", () => {
     const facts: unknown[] = [...histories.retry];
     const control = replayWorkflowControl(facts);
     expect(control.followUp).toEqual({ conversationId: "follow-up", requestSequence: 1, identity: { kind: "historical" }, pendingInput: { text: "explain" } });
-    expect(continueCommittedWorkflow(control).command).toMatchObject({ kind: "run_follow_up", input: { identity: { kind: "historical" }, input: { text: "explain" } } });
     let state = replayWorkflow(control);
     for (const event of [
       { type: "RECOVER", progressed: [] },
@@ -56,10 +55,12 @@ describe("historical committed v2 replay", () => {
       { type: "FOLLOW_UP_SUCCEEDED", conversationId: "follow-up", requestSequence: 1 },
       { type: "FOLLOW_UP_REQUESTED", input: { text: "next" }, identity: { kind: "identified", inputID: "next" }, conversationId: "follow-up", requestSequence: 2 },
     ] as const) {
-      const proposed = transitionWorkflow(state, event);
+      // A follow-up run settles at encoding 13, the last that holds one, so
+      // the whole recorded sequence replays there.
+      const proposed = transitionDecodedWorkflow(state, event, 13);
       const pending = proposed.state.context.pending;
-      if (!pending) throw new Error("Expected current proposal");
-      expect(pending.facts.at(-1)?.version).toBe(14);
+      if (!pending) throw new Error("Expected proposal");
+      expect(pending.facts.at(-1)?.version).toBe(13);
       facts.push(...pending.facts);
       state = acknowledge(proposed).state;
       expect(replayWorkflowControl(facts)).toEqual(state.context.committed);

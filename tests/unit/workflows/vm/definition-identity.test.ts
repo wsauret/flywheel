@@ -61,13 +61,14 @@ import { StepGrammarWorkflowSchema, type StepGrammarWorkflow } from "../../../..
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import type { WorkflowDefinition, WorkflowPhase } from "../../../../src/workflows/workflow-schema.js"
 import { nonEmpty } from "../../../helpers/non-empty.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
-const workflow: WorkflowDefinition = {
+const workflow = loadedWorkflow({
   id: "workflow",
   name: "Workflow",
   phases: [{ phase: "zeta", brief: "Do the zeta work.", name: "zeta", writes: [] }, { phase: "alpha", brief: "Follow the alpha method.", name: "alpha", dependencies: ["alpha"], output: { summary: "Result", fields: { plan_path: { type: "string", description: "The plan." } } }, writes: [] }],
   provenance: { layer: "project", filePath: "/one/workflow.yaml", id: "workflow" },
-}
+})
 
 const skills = testSkillRevision([testSkill("alpha"), testSkill("zeta")])
 
@@ -78,7 +79,7 @@ function identityOf(definition: WorkflowDefinition = workflow): StepDefinitionId
 
 /** `workflow` with its alpha phase changed by `revise`. */
 function withAlpha(revise: (phase: WorkflowPhase) => WorkflowPhase): WorkflowDefinition {
-  return { ...workflow, phases: nonEmpty(workflow.phases.map((entry) => "phase" in entry && entry.phase === "alpha" ? revise(entry) : entry)) }
+  return loadedWorkflow({ ...workflow, phases: workflow.phases.map((entry) => "phase" in entry && entry.phase === "alpha" ? revise(entry) : entry) })
 }
 
 /** The step hashes of one step id. */
@@ -266,12 +267,12 @@ describe("a recorded step policy that held the retired toolScoping and kind keys
 })
 
 describe("workflow persona identity", () => {
-  const personaWorkflow: WorkflowDefinition = {
+  const personaWorkflow = loadedWorkflow({
     id: "workflow",
     name: "Workflow",
     phases: [{ phase: "alpha", brief: "Follow the alpha method.", name: "alpha", dependencies: ["alpha"], subagents: ["lead"], writes: [] }],
     provenance: { layer: "project", filePath: "/one/workflow.yaml", id: "workflow" },
-  }
+  })
   const personaSkills = testSkillRevision([testSkill("alpha"), testSkill("implementation")])
 
   function persona(overrides: Partial<Extract<AgentDefinition, { kind: "persona" }>> & { name: string }): Extract<AgentDefinition, { kind: "persona" }> {

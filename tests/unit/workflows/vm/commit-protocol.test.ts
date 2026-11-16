@@ -6,9 +6,8 @@ import { WorkflowCommitStorageError } from "../../../../src/workflows/vm/commit-
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { blockedSkills, blockedWorkflow, closedSqliteWriter, SqliteVmDriver } from "./_sqlite-vm-driver.js"
 import { asThenChain } from "../../../helpers/control-before-phases.js"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -27,7 +26,7 @@ const record = (id: string) => ({ brief: `Do the ${id} work.`, name: id, writes:
 
 /** A workflow whose phase build has the named agents left and right, and
  *  whose phase ship runs after it. */
-const phaseWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const phaseWorkflow = loadedWorkflow({
   id: "sqlite-phases",
   name: "SQLite phases",
   phases: [{ phase: "build", agents: [{ agent: "left", ...record("left") }, { agent: "right", ...record("right") }] }, { phase: "ship", ...record("ship") }],
@@ -54,7 +53,7 @@ describe("SQLite workflow VM commit protocol", () => {
     await vm.initialize()
     const before = vm.committed
     const beforeQueue = vm.queue()
-    const beforeContext = vm.context()
+    const beforeContext = await vm.context()
     const attempt = before.attempts[0]
     if (!attempt) throw new Error("Fixture requires an attempt")
 
@@ -66,7 +65,7 @@ describe("SQLite workflow VM commit protocol", () => {
     expect(vm.state.lifecycle).toBe("ready")
     expect(vm.events()).toHaveLength(before.aggregateSeq)
     expect(vm.queue()).toEqual(beforeQueue)
-    expect(vm.context()).toEqual(beforeContext)
+    expect(await vm.context()).toEqual(beforeContext)
     expect(vm.handoffs()).toEqual([])
   })
 
@@ -76,7 +75,7 @@ describe("SQLite workflow VM commit protocol", () => {
     const beforeEvents = vm.events()
     const beforeControl = vm.committed
     const beforeQueue = vm.queue()
-    const beforeContext = vm.context()
+    const beforeContext = await vm.context()
     const attempt = beforeControl.attempts[0]
     if (!attempt) throw new Error("Fixture requires an attempt")
     const event = { type: "ATTEMPT_STARTED", attemptId: attempt.id, conversationId: "conversation-work" } as const
@@ -88,7 +87,7 @@ describe("SQLite workflow VM commit protocol", () => {
     expect(replayWorkflowControl(vm.events())).toEqual(beforeControl)
     expect(vm.committed).toBe(beforeControl)
     expect(vm.queue()).toEqual(beforeQueue)
-    expect(vm.context()).toEqual(beforeContext)
+    expect(await vm.context()).toEqual(beforeContext)
     expect(vm.handoffs()).toEqual([])
     expect(vm.state.lifecycle).toBe("ready")
     expect(vm.events().some(({ type }) => type.includes("proposal") || type.includes("failed"))).toBe(false)
@@ -142,7 +141,7 @@ describe("SQLite workflow VM commit protocol", () => {
     expect(vm.committed.attempts[1]?.state._tag).toBe("pending")
     expect(vm.committed.guardrails.insertsUsed).toBe(0)
     expect(vm.committed.guardrails.attemptMutationsUsed[0]?.used).toBe(0)
-    expect(vm.context()?.entries[0]?.handoff).toEqual({ summary: "accepted" })
+    expect((await vm.context())?.entries[0]?.handoff).toEqual({ summary: "accepted" })
     expect(vm.handoffs()[0]).toMatchObject({ validationStatus: "passed", content: { summary: "accepted" } })
     expect(vm.queue()?.attempts.map(({ status }) => status)).toEqual(["completed", "pending"])
     expect(committed.command).toMatchObject({
@@ -281,7 +280,7 @@ describe("SQLite workflow VM commit protocol", () => {
     expect(vm.handoffs()[0]).toMatchObject({ validationStatus: "passed", content: handoff })
     const corrective = vm.committed.attempts.find(({ definitionId }) => definitionId === "reassess")
     if (!corrective) throw new Error("The block must insert its corrective attempt")
-    expect(vm.context()?.entries[0]).toMatchObject({
+    expect((await vm.context())?.entries[0]).toMatchObject({
       recipientAttemptId: corrective.id,
       writes: [{ id: "blocked_work", lifetime: "transient" }],
       handoff,
@@ -291,9 +290,7 @@ describe("SQLite workflow VM commit protocol", () => {
     expect(vm.committed.attempts[0]?.handoff).toEqual(handoff)
     expect(vm.queue()?.attempts.map(({ status }) => status)).toEqual(["blocked", "pending"])
     expect(blocked.command).toMatchObject({ kind: "prepare_attempt", attempt: { definitionId: "reassess" } })
-    const replayed = vm.freshViews()
-    expect(replayed.control).toEqual(vm.committed)
-    expect(replayed.context).toEqual(vm.context())
+    expect(vm.freshViews().control).toEqual(vm.committed)
   })
 
   it("rejects a stored blocked event whose handoff is not blocked work before any fact is written", async () => {

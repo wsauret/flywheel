@@ -140,13 +140,13 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
     if (deps.startMode === "operator_resume") {
       const command = nextWorkflowCommand(result)
       if (command.kind === "prepare_attempt") {
-        const reason = await deps.preAttemptPolicy?.(command.attempt)
+        const reason = await deps.preAttemptPolicy(command.attempt)
         if (reason) throw new WorkflowAttemptRefusedError({ attemptId: command.attempt.attemptId, message: reason })
       }
     }
     await queue()
     try {
-      await deps.onPostPreflight?.()
+      await deps.onPostPreflight()
     } catch (error) {
       if (error instanceof WorkflowMalformedStateError) throw error
       throw lifecycleError("post_preflight", errorMessage(error))
@@ -159,15 +159,13 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
   async function prepareAttempt(transition: DrivenTransition): Promise<DrivenTransition> {
     const command = transition.result.command
     if (command.kind !== "prepare_attempt") throw lifecycleError("protocol", "Expected prepare_attempt command")
-    const pauseReason = await deps.preAttemptPolicy?.(command.attempt)
+    const pauseReason = await deps.preAttemptPolicy(command.attempt)
     if (pauseReason) {
       // The refusal stops admission; the attempts in flight still finish.
       stops.push({ type: "PAUSE", reason: pauseReason })
       return { event: transition.event, result: { state: transition.result.state, command: { kind: "none" } } }
     }
-    const conversationId = command.attempt.conversationId
-      ?? deps.conversationId?.(command.attempt)
-      ?? `agent-${crypto.randomUUID()}`
+    const conversationId = command.attempt.conversationId ?? deps.conversationId(command.attempt)
     return drive(transition.result, {
       type: "ATTEMPT_STARTED",
       attemptId: command.attempt.attemptId,
@@ -328,11 +326,7 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
           interruptStoppedChildren()
         } else if (command.kind === "prepare_attempt" && stops.length === 0) current = await prepareAttempt(current)
         else if (command.kind === "run_attempts") current = startAttempt(current)
-        else if (command.kind === "run_follow_up") {
-          // Preflight refuses committed follow-up input, and no host input
-          // requests a follow-up, so this command cannot arise in a run.
-          throw lifecycleError("protocol", "Workflow host met follow-up input that preflight refuses")
-        } else if (children.inFlight().size > 0) {
+        else if (children.inFlight().size > 0) {
           // Every attempt that can start runs; wait for the first to end.
           recordAdmission()
           const next = await settleChild(await children.next())

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test"
-import { Schema } from "effect"
 import { agentPersonaRun } from "../../../../src/orchestration/workflow-host/agent-persona.js"
 import { agentPersonas, frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts.js"
 import { parentRoleId } from "../../../../src/orchestration/config/roles.js"
@@ -7,12 +6,12 @@ import type { DefinitionLineageView } from "../../../../src/workflows/definition
 import type { AttemptRow } from "../../../../src/workflows/view/types.js"
 import { prepareSubagentTools } from "../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { composeFirstPartyModules, type ModuleId } from "../../../../src/orchestration/modules.js"
 import { definitionAvailabilityOf } from "../../../../src/orchestration/app-service/definition-availability.js"
 import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js"
 import { makeContext, makeDeps } from "../agent-runtime/subagent/_fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 // A workflow agent whose record names a persona gets what a dispatch of
 // that persona as a subagent gets: the persona's instructions with the
@@ -40,7 +39,7 @@ async function subagentRun(name: string) {
 }
 
 function workflowRun(name: string, disabledModuleIds: readonly ModuleId[] = [], planRuns: (tool: string) => boolean = () => true, disabledTypes: readonly string[] = [], subagents: readonly string[] = []) {
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = loadedWorkflow({
     id: "review", name: "Review",
     phases: [{ phase: "review", persona: name, brief: "Review the change.", name: "Review", writes: [], ...subagents.length > 0 ? { subagents } : {} }],
   })

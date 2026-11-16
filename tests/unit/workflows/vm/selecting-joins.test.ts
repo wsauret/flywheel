@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import { agentReads, isRepeat, WorkflowDefinitionSchema, type WorkflowPhase } from "../../../../src/workflows/workflow-schema.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import type { AccumulatedContext } from "../../../../src/workflows/context-bundle/context.js";
@@ -16,6 +15,7 @@ import { attemptOf, FINDINGS_CHECKS, FINDINGS_FILES, FINDINGS_REPORT, FINDINGS_R
 import { mapHost, SqliteVmDriver } from "./_sqlite-vm-driver.js";
 import { listJoin } from "./_tree-fixtures.js";
 import { buildAttemptContextBundle } from "../../../../src/workflows/context-bundle/attempt-artifacts.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const drivers: SqliteVmDriver[] = [];
 
@@ -151,7 +151,7 @@ describe("joins of named agents through the production host", () => {
   const findings = { type: "list", max: 5, optional: true, description: "The findings.", of: { type: "object", fields: { site: { type: "string", description: "The site." } } } };
   /** A phase of named agents that share the phase's one brief, joined by
    *  `join`, and a phase after it. */
-  const reviewWorkflow = (join?: { readonly [key: string]: unknown }) => Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const reviewWorkflow = (join?: { readonly [key: string]: unknown }) => loadedWorkflow({
     id: "shared",
     name: "Shared",
     phases: [
@@ -188,7 +188,7 @@ describe("joins of named agents through the production host", () => {
 
   it("keeps authored durable artifacts past an automatic named join with the same name", async () => {
     const ids = ["review", "review:join", "review:join:join"];
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "retained",
       name: "Retained",
       phases: [
@@ -264,7 +264,7 @@ describe("the Resume of a run whose item agent failed", () => {
    *  `keep` reads no prior and nothing it declares; `transitive` declares a
    *  read of `direct`; `recheck` is another list whose items read the
    *  context that their list froze. */
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = loadedWorkflow({
     id: "resumed",
     name: "Resumed",
     input: { fields: { items: itemFields } },
@@ -403,7 +403,7 @@ describe("the Resume of a run whose repeats read a refolded join", () => {
   /** `plan` reads the review join and names the items of the `each`
    *  repeat; each round of the `while` repeat's `probe` declares a read of
    *  the review join; `report` declares a read of `probe`. */
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = loadedWorkflow({
     id: "rounds",
     name: "Rounds",
     // The new runs fit this limit only when the earlier runs count toward it
@@ -472,7 +472,7 @@ describe("the Resume of a run whose repeats read a refolded join", () => {
    *  and the control after it. */
   async function resumeAfterRound2Failure(repeat: (typeof WorkflowDefinitionSchema.Encoded)["phases"][number]) {
     const vm = new SqliteVmDriver({
-      workflow: Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      workflow: loadedWorkflow({
         id: "later",
         name: "Later",
         input: { fields: { items: itemFields } },

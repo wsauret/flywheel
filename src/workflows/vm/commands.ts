@@ -1,6 +1,4 @@
 import { Schema } from "effect";
-import { DurableFollowUpInputSchema } from "../../infra/chat-input-schema.js";
-import { FollowUpIdentitySchema } from "./committed-control.js";
 import { AttemptProvenanceSchema } from "./graph-types.js";
 import { RecipientScopeSchema } from "../context-bundle/context-facts.js";
 import { WorkflowMachineStateSchema } from "./control-types.js";
@@ -39,14 +37,6 @@ const AttemptExecutionInputSchema = Schema.Struct({
   scope: RecipientScopeSchema,
 });
 
-const FollowUpRunInputSchema = Schema.Struct({
-  workflowDefinitionId: IdSchema,
-  input: DurableFollowUpInputSchema,
-  identity: FollowUpIdentitySchema,
-  requestSequence: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-  conversationId: IdSchema,
-});
-
 const WorkflowCommandSchema = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("commit"),
@@ -59,10 +49,6 @@ const WorkflowCommandSchema = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("run_attempts"),
     attempts: Schema.Array(AttemptExecutionInputSchema),
-  }),
-  Schema.Struct({
-    kind: Schema.Literal("run_follow_up"),
-    input: FollowUpRunInputSchema,
   }),
   Schema.Struct({ kind: Schema.Literal("none") }),
 ]);

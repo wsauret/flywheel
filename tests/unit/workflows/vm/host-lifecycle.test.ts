@@ -2,6 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test"
 import {
   createMemoryStore,
   initialFacts,
+  quietHostDeps,
   testHost,
   waitFor,
   workflow,
@@ -10,6 +11,7 @@ import { WorkflowHostLifecycleError } from "../../../../src/workflows/vm/host-ty
 import * as factFold from "../../../../src/workflows/vm/fact-fold.js"
 import { parseWorkflowControlFact } from "../../../../src/workflows/vm/session-facts.js"
 import type { StoredFact } from "../../../../src/infra/event-store-types.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** The machine event type of each committed control proposal, in commit order. */
 function committedEventTypes(events: readonly StoredFact[]): string[] {
@@ -117,7 +119,7 @@ describe("workflow VM host lifecycle and preflight", () => {
           throw new Error("unreachable")
         },
       },
-      lifecycle: { flushConversation: () => { order.push("dispose") } },
+      lifecycle: { ...quietHostDeps(store).lifecycle, settleBackground: () => { order.push("dispose") } },
       emit: (event) => {
         if (event.type === "workflow.run.paused") order.push("abort-published")
       },
@@ -150,7 +152,7 @@ describe("workflow VM host lifecycle and preflight", () => {
           throw new DOMException("Aborted", "AbortError")
         },
       },
-      lifecycle: { flushConversation: () => { order.push("conversation") } },
+      lifecycle: { ...quietHostDeps(store).lifecycle, settleBackground: () => { order.push("background") } },
     })
 
     const running = host.run()
@@ -168,7 +170,7 @@ describe("workflow VM host lifecycle and preflight", () => {
 
     releaseWorker?.()
     expect(await disposing).toEqual({ kind: "disposed" })
-    expect(order).toEqual(["worker", "conversation"])
+    expect(order).toEqual(["worker", "background"])
   })
 
   it("preserves runtime publication operation through abort", async () => {
@@ -209,7 +211,7 @@ describe("workflow VM host lifecycle and preflight", () => {
     let preflight = 0
     let workers = 0
     const host = testHost(store, {
-      workflow: { ...workflow, phases: [...workflow.phases, { phase: "again", runs: "work", writes: [] }] },
+      workflow: loadedWorkflow({ ...workflow, phases: [...workflow.phases, { phase: "again", runs: "work", writes: [] }] }),
       onPostPreflight: () => { preflight += 1 },
       attemptRunner: { run: async () => { workers += 1; throw new Error("must not run") } },
     })
@@ -311,24 +313,23 @@ describe("workflow VM host lifecycle and preflight", () => {
     const order: string[] = []
     const host = testHost(store, {
       lifecycle: {
-        flushConversation: () => { order.push("conversation"); throw new Error("flush failed") },
+        settleBackground: () => { order.push("background"); throw new Error("settle failed") },
         drainEventBus: () => { order.push("bus") },
         drainWriter: () => { order.push("writer") },
         disposeProjections: () => { order.push("projections") },
-        disposeAdapters: () => { order.push("adapters") },
         disposeRemaining: () => { order.push("remaining"); throw new Error("scope failed") },
       },
     })
 
     const result = await host.dispose()
 
-    expect(order).toEqual(["conversation", "bus", "writer", "projections", "adapters", "remaining"])
+    expect(order).toEqual(["background", "bus", "writer", "projections", "remaining"])
     expect(result).toMatchObject({
       kind: "failed",
       failure: {
         kind: "lifecycle",
         operation: "dispose",
-        failures: ["conversation flush: flush failed", "remaining handles: scope failed"],
+        failures: ["background settlement: settle failed", "remaining handles: scope failed"],
       },
     })
   })

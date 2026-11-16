@@ -10,6 +10,7 @@ import { retainedDefinitions, retainedProject } from "../../../fixtures/retired-
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js";
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
 import { FINDINGS_CHECKS, FINDINGS_REVIEWS, findingsWorkflow, INPUT_GROUP, INPUT_TAIL, inputBranch, inputMapWorkflow, inputStage, itemList, items, MAP_GROUP, mapSkills, mapWorkflow, PLAN, reviewFindingsFields, SURVEY_GROUP, surveyInventoryFields, surveyWorkflow } from "./_map-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const skills = testSkillRevision(["work", "follow", "residual", "review", "fix", "other", "source", "reassess"].map((id) => testSkill(id)));
 
@@ -36,7 +37,7 @@ const isPhase = <Phase>(id: string, value: unknown): value is Phase & { readonly
 
 /** One authored workflow of `phases` and its resolved agents. */
 function authored(phases: readonly unknown[]) {
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ id: "test-workflow", name: "Test Workflow", phases });
+  const workflow = loadedWorkflow({ id: "test-workflow", name: "Test Workflow", phases });
   return { workflow, agents: resolveWorkflowAgents(workflow) };
 }
 
@@ -263,7 +264,7 @@ describe("workflow list compilation", () => {
   type Encoded = typeof encoded;
   type Phase = Encoded["phases"][number];
   const compileChanged = (change: (definition: Encoded) => object) => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)(change(encoded));
+    const workflow = loadedWorkflow(change(encoded));
     return compileWorkflowControl(workflow, resolveWorkflowAgents(workflow), { skills: mapSkills });
   };
   /** The definition with the phase of id `id` changed. */
@@ -313,7 +314,7 @@ describe("coverage join compilation", () => {
   type Phase = Encoded["phases"][number];
   type Fields = { readonly [key: string]: unknown };
   const compileChanged = (change: (definition: Encoded) => object) => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)(change(encoded));
+    const workflow = loadedWorkflow(change(encoded));
     return compileWorkflowControl(workflow, resolveWorkflowAgents(workflow), { skills: mapSkills });
   };
   const withPhase = (id: string, change: (phase: Phase & { readonly [key: string]: unknown }) => object) => (definition: Draft) => ({
@@ -370,7 +371,7 @@ describe("coverage join compilation", () => {
   it("refuses exclusions over a workflow file's list without a unique key, whose targets have no key to exclude", () => {
     const { unique: _unique, ...unkeyed } = inventoryFields.targets;
     const encodedFile = withInventory({ ...inventoryFields, targets: unkeyed, exclusions: { type: "list", description: "Excluded.", of: { type: "string" } } })(encoded);
-    const workflow = { ...Schema.decodeUnknownSync(WorkflowDefinitionSchema)(encodedFile), provenance: { layer: "session" as const, filePath: "/s/scratch/workflows/survey.workflow.yaml", id: "survey" } };
+    const workflow = { ...loadedWorkflow(encodedFile), provenance: { layer: "session" as const, filePath: "/s/scratch/workflows/survey.workflow.yaml", id: "survey" } };
 
     expect(() => compileWorkflowControl(workflow, resolveWorkflowAgents(workflow), { skills: mapSkills }))
       .toThrow(/exclusions "exclusions" names targets by their unique key, and the source list declares none/);
@@ -383,7 +384,7 @@ describe("selecting join compilation", () => {
   type Phase = Encoded["phases"][number];
   type Fields = { readonly [key: string]: unknown };
   const compileChanged = (change: (definition: Encoded) => object) => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)(change(encoded));
+    const workflow = loadedWorkflow(change(encoded));
     return compileWorkflowControl(workflow, resolveWorkflowAgents(workflow), { skills: mapSkills });
   };
   const withPhase = (id: string, change: (phase: Phase & { readonly [key: string]: unknown }) => object) => (definition: Draft) => ({
@@ -445,7 +446,7 @@ describe("workflow input list compilation", () => {
     compileWorkflowControl(inputMapWorkflow, agents, { skills: mapSkills }, limits(maxAttempts), input === null ? null : { goal: "Ship.", ...input });
   const encoded = Schema.encodeSync(WorkflowDefinitionSchema)(inputMapWorkflow);
   const compileChanged = (change: (definition: typeof encoded) => object) => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)(change(encoded));
+    const workflow = loadedWorkflow(change(encoded));
     return compileWorkflowControl(workflow, resolveWorkflowAgents(workflow), { skills: mapSkills });
   };
 
@@ -474,7 +475,7 @@ describe("workflow input list compilation", () => {
   it("runs a workflow file that declares no attempt limit with the worst case of its real input, up to the ceiling", () => {
     // Up to 400 items, and the first agent of an item tries up to 10 times.
     const file = (guardrails?: { readonly max_attempts: number }): WorkflowDefinition => ({
-      ...Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      ...loadedWorkflow({
         ...encoded,
         input: { fields: { items: itemList(400) } },
         phases: encoded.phases.map((phase, index) => index === 0 ? { ...phase, retry: { max: 10 } } : phase),

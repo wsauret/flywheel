@@ -10,8 +10,6 @@ import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
@@ -23,6 +21,7 @@ import { buildContextInputSeededFact } from "../../../../src/workflows/context-b
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** Admits one callback test's attempt without bypassing member publication. */
 export async function publishWorkerAttempt(input: {
@@ -33,7 +32,7 @@ export async function publishWorkerAttempt(input: {
   retry?: { readonly max: number; readonly stuck: boolean };
 }) {
   const manager = createSessionManager({ projectRoot: input.projectRoot, executionCwd: input.projectRoot, projectionReader: input.reader, writer: input.writer })
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = loadedWorkflow({
     id: "worker-fixture", name: "Worker fixture",
     // A wide fan-out runs past the default attempt limit of 50.
     ...(input.siblings && input.siblings.length >= 50 ? { guardrails: { max_attempts: 4096 } } : {}),

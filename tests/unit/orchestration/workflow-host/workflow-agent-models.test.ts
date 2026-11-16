@@ -1,6 +1,4 @@
 import { expect, test } from "bun:test"
-import { parseSchema } from "../../../helpers/schema-assertions.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { bindWorkflowAgentModels } from "../../../../src/orchestration/config/workflow-agent-models.js"
 import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
@@ -11,6 +9,7 @@ import type { WorkflowLaunchAgentModels } from "../../../../src/infra/workflow-t
 import { createRoleAssignmentReader } from "../../../../src/orchestration/app-service/role-assignment-projection.js"
 import { createRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection.js"
 import { sessionServingSelection } from "../../../../src/protocol/role-protocol-types.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 async function publishedRoles(snapshot: RoleAssignmentSnapshot, capture: ReturnType<typeof roleCapture>, local: RoleAssignmentSnapshot = { defaults: {}, overrides: {} }) {
   const projection = createRoleProtocolProjection({
@@ -29,7 +28,7 @@ async function publishedRoles(snapshot: RoleAssignmentSnapshot, capture: ReturnT
   try { return await projection.snapshot("workflow") } finally { await projection.dispose() }
 }
 
-const workflow = parseSchema(WorkflowDefinitionSchema, {
+const workflow = loadedWorkflow({
   id: "demo", name: "Demo", description: "One agent.",
   phases: [{ phase: "build", name: "Build", brief: "Build the task." }],
 })
@@ -83,7 +82,7 @@ test("resolves profile edits at resume, while an authored effort-only field stay
 })
 
 test("previews an unauthored persona seat with the same coded pair as its worker", async () => {
-  const definition = parseSchema(WorkflowDefinitionSchema, {
+  const definition = loadedWorkflow({
     id: "demo", name: "Demo", description: "One explorer.",
     phases: [{ phase: "explore", name: "Explore", brief: "Explore the task.", persona: "explorer" }],
   })

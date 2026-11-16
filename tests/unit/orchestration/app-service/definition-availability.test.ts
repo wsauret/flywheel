@@ -12,10 +12,10 @@ import type { SkillRegistryRevision } from "../../../../src/workflows/skill-sche
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
-import { nonEmpty } from "../../../helpers/non-empty.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const temporaryDirectory = temporaryDirectories()
 
@@ -55,11 +55,10 @@ const revision = testSkillRevision([plain, codeReview, withAgents, dependsOnDele
 
 /** A workflow with one phase for each named skill, each with an inline brief
  *  that composes that skill. */
-const workflow = (id: string, skills: readonly string[], overrides: Partial<WorkflowDefinition> = {}): WorkflowDefinition => ({
+const workflow = (id: string, skills: readonly string[]): WorkflowDefinition => loadedWorkflow({
   id,
   name: id,
-  phases: nonEmpty(skills.map((skill) => ({ phase: skill, brief: `Do the ${skill} work.`, name: skill, dependencies: [skill], writes: [] }))),
-  ...overrides,
+  phases: skills.map((skill) => ({ phase: skill, brief: `Do the ${skill} work.`, name: skill, dependencies: [skill], writes: [] })),
 })
 
 /** One persona revision, identified by the names it holds: a test that edits

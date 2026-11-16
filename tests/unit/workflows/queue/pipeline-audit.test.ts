@@ -13,6 +13,7 @@ import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runn
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js";
 import { SqliteVmDriver } from "../vm/_sqlite-vm-driver.js";
+import { quietHostDeps } from "../vm/host-test-support.js";
 
 interface HandoffData {
   [key: string]: unknown;
@@ -190,6 +191,7 @@ describe("named workflow context bundles", () => {
         recordInvocation: async () => {},
       });
       const host = createWorkflowVmHost({
+        ...quietHostDeps(asAsyncEventWriter(vm.store)),
         servedConversations: async () => new Set(),
         requestAddenda: async () => [],
         startMode: "launch",

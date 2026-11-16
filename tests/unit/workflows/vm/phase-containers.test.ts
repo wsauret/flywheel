@@ -14,6 +14,7 @@ import { acknowledge } from "./_machine-semantics-fixtures.js";
 import { attemptOf, branch, completePlan, itemList, items, MAP_GROUP, mapSkills, mapWorkflow, PLAN, runPrepared, stage, TAIL } from "./_map-fixtures.js";
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js";
 import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/session-facts.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 // Production machine semantics of phase, list, and item containers:
 // preparation sweeps that open, expand, and settle them, graph-order attempt
@@ -38,7 +39,7 @@ const record = (id: string) => ({ brief: `Do the ${id} work.`, name: id, writes:
 /** Real compiled control of a workflow whose phase outer has the named
  *  agents one and two, and whose phase three runs after it. */
 function phaseControl(join?: { readonly reducer: string; readonly write: string }): CommittedWorkflowControl {
-  const definition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const definition = loadedWorkflow({
     id: "phased",
     name: "Phased",
     phases: [{ phase: "outer", agents: [{ agent: "one", ...record("one") }, { agent: "two", ...record("two") }], ...(join === undefined ? {} : { join }) }, { phase: "three", ...record("three") }],
@@ -126,7 +127,7 @@ describe("workflow machine phase containers", () => {
   });
 
   it("selects the next attempt by graph order, not attempt array order", () => {
-    const definition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const definition = loadedWorkflow({
       id: "siblings",
       name: "Siblings",
       phases: [{ phase: "both", agents: [{ agent: "one", ...record("one") }, { agent: "two", ...record("two") }] }],
@@ -218,7 +219,7 @@ describe("workflow machine lists", () => {
   it("runs a list over the join output of another list", async () => {
     const encoded = Schema.encodeSync(WorkflowDefinitionSchema)(mapWorkflow);
     const [plan, implement, review] = encoded.phases;
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       ...encoded,
       phases: [plan, implement, { ...review, join: { reducer: "collect" } }, { phase: "recheck", over: "review.items", brief: "Recheck one result.", name: "Recheck", writes: [], join: { reducer: "collect" } }],
     });
@@ -240,7 +241,7 @@ describe("workflow machine lists", () => {
     const encoded = Schema.encodeSync(WorkflowDefinitionSchema)(mapWorkflow);
     const [plan, implement, review, tail] = encoded.phases;
     // Plan, 24 items of two phases, and the tail fill the attempt limit of 50.
-    const vm = mapDriver(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const vm = mapDriver(loadedWorkflow({
       ...encoded,
       phases: [{ ...plan, output: { summary: "The plan.", fields: { items: itemList(24) } } }, { ...implement, retry: { max: 2 } }, review, tail],
     }));
@@ -264,7 +265,7 @@ describe("workflow machine lists", () => {
   });
 
   it("settles a transition of a wide list in work linear in its graph, not in its graph times its items", () => {
-    const wide = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const wide = loadedWorkflow({
       id: "wide",
       name: "Wide",
       input: { fields: { items: itemList(256) } },

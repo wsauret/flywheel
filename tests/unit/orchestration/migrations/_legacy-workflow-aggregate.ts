@@ -4,14 +4,15 @@
  *  legacy aggregate staged the way a pre-catalog build staged one. */
 
 import { Database } from "bun:sqlite"
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import type { EventPayload } from "../../../../src/infra/event-store-types.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
 import { hashDefinition } from "../../../../src/workflows/definition-hash.js"
-import { parseLegacyStepRecord, type LegacyStepRecord } from "../../../../src/workflows/legacy-step-migration.js"
+import { ToolScopingSchema } from "../../../../src/infra/workflow-types.js"
+import { ArtifactContractsFrontmatterSchema } from "../../../../src/workflows/artifact-contracts.js"
 import type { SkillDefinition } from "../../../../src/workflows/skill-schema.js"
 import type { RetiredBinding } from "../../../../src/workflows/retired-bindings.js"
 import { legacyCaptureOf, legacyIdentityOf, type LegacyCapture } from "../../../../src/orchestration/modules/workflows/migrations/legacy-identity-view.js"
@@ -30,6 +31,28 @@ import { prePhaseControl, prePhaseHistory, type PrePhaseControl } from "./_pre-p
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js"
 import { retainedProject } from "../../../fixtures/retired-workflows/retained-project.js"
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js"
+/** The step record that a build before the unified catalog recorded in each
+ *  step snapshot of `definition.loaded`: authored step frontmatter plus the
+ *  resolved id and prompt body. No production reader decodes it, because the
+ *  identity migrations read the recorded identity, so this fixture holds the
+ *  shape that it writes. */
+const LegacyStepRecordSchema = Schema.Struct({
+  id: Schema.String,
+  promptBody: Schema.String,
+  name: Schema.String,
+  description: Schema.optionalKey(Schema.String),
+  handoff: Schema.optionalKey(Schema.String),
+  writes: ArtifactContractsFrontmatterSchema.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed([]))),
+  settings: Schema.optionalKey(Schema.Struct({ toolScoping: Schema.optionalKey(ToolScopingSchema) })),
+  agents: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),
+  requiredSkills: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),
+  "inline-output": Schema.optionalKey(Schema.String),
+  "user-invocable": Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(true))),
+  "disable-model-invocation": Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(false))),
+})
+
+export type LegacyStepRecord = typeof LegacyStepRecordSchema.Type
+
 export const WORKFLOW_ID = "implement"
 export const SPEC_CREATE_SKILL_ID = "fly.spec-create"
 export const STEP_IDS = [SPEC_CREATE_SKILL_ID, "fly.spec-review", "fly.implement"] as const
@@ -585,7 +608,7 @@ function reconstructLegacyStepRecord(agent: ResolvedAgent, binding: RetiredBindi
   const procedure = skill
     ? { body: skill.body, name: skill.name, description: skill.trigger, agents: skill.agents, dependencies: skill.dependencies, directOutput: skill.directOutput, userInvocable: true, modelInvocable: skill.modelInvocable }
     : { body: agent.body, name: agent.name, description: agent.description, agents: agent.subagents, dependencies: agent.dependencies, directOutput: undefined, userInvocable: false, modelInvocable: false };
-  return parseLegacyStepRecord({
+  return Schema.decodeUnknownSync(LegacyStepRecordSchema, { onExcessProperty: "error" })({
     id: binding.skill,
     promptBody: procedure.body,
     name: procedure.name,

@@ -2,7 +2,6 @@ import { Schema, SchemaTransformation } from "effect"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import { reachableAgentNames, workflowAgentSubagents } from "../agents/subagent-reachability.js"
 import type { ResolvedAgent } from "../agent-resolution.js"
-import { workflowInputContract } from "../brief.js"
 import { hashContent, hashDefinition, Sha256Schema } from "../definition-hash.js"
 import { canonicalAgentPolicy, canonicalWorkflowRecord, phaseStructure } from "../definition-records.js"
 import { skillClosureIds } from "../skill-closure.js"
@@ -544,7 +543,7 @@ export interface DefinitionIdentityVersionOverride {
  *  input reads. A change to the contract is a graph drift; a change to its
  *  descriptions or examples is not. */
 function graphSha256(workflow: WorkflowDefinition): string {
-  const contract = workflowInputContract(workflow)
+  const contract = workflow.inputContract
   const phases = phaseStructure(workflow.phases)
   return hashDefinition(contract === null ? { phases } : { phases, input: contract.schemaSha256 }).sha256
 }

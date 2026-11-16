@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
 import { loadWorkflowDefinitions } from "../../../helpers/workflow-files.js";
 import { decodeWorkflowFile } from "../../../../src/workflows/workflow-file.js";
-import { workflowBriefs, type LoadedBrief } from "../../../../src/workflows/brief.js";
+import type { LoadedBrief } from "../../../../src/workflows/brief.js";
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";
 
@@ -44,7 +44,7 @@ function load(): ReturnType<typeof loadWorkflowDefinitions> {
 }
 
 function brief(workflow: WorkflowDefinition | undefined, definitionId = "work"): LoadedBrief {
-  const loaded = workflow && workflowBriefs(workflow).get(definitionId);
+  const loaded = workflow && workflow.briefs.get(definitionId);
   if (!loaded) throw new Error(`agent ${definitionId} did not load`);
   return loaded;
 }

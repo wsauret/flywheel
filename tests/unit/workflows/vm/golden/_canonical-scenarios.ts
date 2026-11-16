@@ -1,7 +1,7 @@
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../../src/workflows/workflow-schema.js"
 import type { AttemptRunOutcome } from "../../../../../src/workflows/vm/attempt-runner.js"
 import type { ReassessmentProposal } from "../../../../../src/workflows/vm/events.js"
+import { loadedWorkflow } from "../../../../helpers/workflow-files.js"
 
 interface CanonicalContent {
   readonly [key: string]: unknown
@@ -57,7 +57,7 @@ function scenario(input: Omit<CanonicalScenario, "workflow"> & {
     : { ...entry, phases: entry.phases.map((phase) => record(phase, entry.repeat.reassess)) }
   return {
     ...authored,
-    workflow: Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ id: input.id, name: input.id, phases: phases.map((phase) => record(phase)) }),
+    workflow: loadedWorkflow({ id: input.id, name: input.id, phases: phases.map((phase) => record(phase)) }),
   }
 }
 

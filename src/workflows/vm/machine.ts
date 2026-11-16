@@ -11,9 +11,10 @@ import {
 } from "./attempt-transitions.js";
 import type { FollowUpIdentity } from "./committed-control.js";
 import { reopenFailedNodes } from "./resume-transitions.js";
+import { replayFollowUpRun } from "./follow-up-history.js";
 import type { WorkflowMachineContext } from "./control-types.js";
 import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "./events.js";
-import { buildFollowUpFailedFact, buildFollowUpRequestedFact, buildFollowUpSucceededFact, buildFollowUpTransferredFact, buildWorkflowAbortedFact, buildWorkflowPausedFact, buildWorkflowResumedFact } from "./fact-drafts.js";
+import { buildFollowUpTransferredFact, buildWorkflowAbortedFact, buildWorkflowPausedFact, buildWorkflowResumedFact } from "./fact-drafts.js";
 
 function sameFollowUpIdentity(left: FollowUpIdentity, right: FollowUpIdentity): boolean {
   if (left.kind !== right.kind) return false;
@@ -60,6 +61,9 @@ function eventTransition(context: WorkflowMachineContext, event: DecodedWorkflow
       eventKey: "pause",
     };
     case "RESUME": {
+      // Replay only: a recorded run paused in a follow-up resumed into it.
+      // The host now refuses pending follow-up input before it proposes a
+      // Resume (refer to `replayFollowUpRun`).
       if (context.committed.followUp?.pendingInput) {
         return {
           committed: { ...context.committed, status: "follow_up" },
@@ -82,53 +86,9 @@ function eventTransition(context: WorkflowMachineContext, event: DecodedWorkflow
       facts: [buildWorkflowAbortedFact(event.reason)],
       eventKey: "abort",
     };
-    case "FOLLOW_UP_REQUESTED": {
-      const previous = context.committed.followUp;
-      if (previous && previous.conversationId !== event.conversationId) {
-        throw new Error(`Workflow invariant rejected replacement follow-up conversation "${event.conversationId}"`);
-      }
-      if (previous?.pendingInput) {
-        throw new Error("Workflow invariant rejected a second pending follow-up request");
-      }
-      const requestSequence = (previous?.requestSequence ?? 0) + 1;
-      if (event.requestSequence !== requestSequence) {
-        throw new Error(`Workflow invariant rejected follow-up request sequence ${event.requestSequence}; expected ${requestSequence}`);
-      }
-      return {
-        committed: {
-          ...context.committed,
-          status: "follow_up",
-          followUp: { conversationId: event.conversationId, requestSequence, pendingInput: event.input, identity: event.identity },
-        },
-        nextLifecycle: "follow_up",
-        facts: [buildFollowUpRequestedFact(event, encoding)],
-        eventKey: `follow-up:${event.conversationId}:${requestSequence}`,
-      };
-    }
-    case "FOLLOW_UP_SUCCEEDED": {
-      const followUp = context.committed.followUp;
-      if (!followUp?.pendingInput || followUp.conversationId !== event.conversationId || followUp.requestSequence !== event.requestSequence) {
-        throw new Error(`Workflow invariant rejected follow-up success for "${event.conversationId}" request ${event.requestSequence}`);
-      }
-      return {
-        committed: { ...context.committed, status: "completed", followUp: { ...followUp, pendingInput: null } },
-        nextLifecycle: "completed",
-        facts: [buildFollowUpSucceededFact(event.conversationId, event.requestSequence)],
-        eventKey: `follow-up-succeeded:${event.conversationId}:${followUp.requestSequence}`,
-      };
-    }
-    case "FOLLOW_UP_FAILED": {
-      const followUp = context.committed.followUp;
-      if (!followUp?.pendingInput || followUp.conversationId !== event.conversationId || followUp.requestSequence !== event.requestSequence) {
-        throw new Error("Workflow invariant rejected follow-up failure without its pending request");
-      }
-      return {
-        committed: context.committed,
-        nextLifecycle: "follow_up",
-        facts: [buildFollowUpFailedFact(event.reason, event.conversationId, event.requestSequence)],
-        eventKey: `follow-up-failed:${followUp.conversationId}:${followUp.requestSequence}`,
-      };
-    }
+    case "FOLLOW_UP_REQUESTED":
+    case "FOLLOW_UP_SUCCEEDED":
+    case "FOLLOW_UP_FAILED": return replayFollowUpRun(context.committed, event, encoding);
     case "FOLLOW_UP_TRANSFERRED": {
       const followUp = context.committed.followUp;
       if (!followUp?.pendingInput) {

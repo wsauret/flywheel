@@ -41,11 +41,10 @@ import {
   renderWorkflowFileDiagnostic,
   workflowDiagnosticText,
   workflowPhaseLocations,
-  type AuthoredWorkflowDefinition,
   type WorkflowFileDiagnostic,
 } from "../../workflows/workflow-file.js"
 import { WORKFLOW_FILE_MAX_BYTES } from "../../infra/workflow-yaml.js"
-import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type WorkflowDefinition } from "../../workflows/workflow-schema.js"
+import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type AuthoredWorkflow, type WorkflowDefinition } from "../../workflows/workflow-schema.js"
 import type { WorkflowDefinitionRefusal, WorkflowDefinitionResolution } from "./workflow-admission.js"
 
 /** What a workflow file may grant an agent: the tools and personas of the
@@ -219,7 +218,7 @@ function resolveWorkflowFile(path: string, sessionDir: string, savedContent?: st
 
 /** Problems that make a decoded file depend on a contract outside itself.
  *  Brief loading refuses a `runs` name that this file does not hold. */
-function selfContainmentDiagnostics(file: string, definition: AuthoredWorkflowDefinition): WorkflowFileDiagnostic[] {
+function selfContainmentDiagnostics(file: string, definition: AuthoredWorkflow): WorkflowFileDiagnostic[] {
   const diagnostics: WorkflowFileDiagnostic[] = []
   const at = (keyPath: string, message: string, entry?: string): void => { diagnostics.push({ file, ...(entry === undefined ? {} : { entry }), keyPath, message }) }
   const slugIssue = dotFreeSlugIssue(definition.id)
@@ -243,7 +242,7 @@ function selfContainmentDiagnostics(file: string, definition: AuthoredWorkflowDe
 function countedListWarnings(file: string, workflow: WorkflowDefinition): WorkflowFileDiagnostic[] {
   const locations = workflowPhaseLocations(workflow)
   const records = agentRecords(workflow)
-  return [...workflow.briefs ?? []].flatMap(([definitionId, brief]) => brief.defaultedLists.map((field) => {
+  return [...workflow.briefs].flatMap(([definitionId, brief]) => brief.defaultedLists.map((field) => {
     const place = locations.byRecord.get(definitionId)
     const keys = records.get(definitionId)?.keys
     const at = place?.keyPath ?? "phases"

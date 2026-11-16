@@ -102,14 +102,14 @@ export type WorkflowRuntimeEvent =
   | { readonly type: "workflow.run.completed"; readonly data: { readonly attemptsCompleted: number } }
   | { readonly type: "workflow.run.failed"; readonly data: { readonly reason: string; readonly attemptsCompleted: number } }
 
+/** The finalizers that the disposal of a host runs, in this order, after
+ *  its worker and its commits settle. */
 export interface WorkflowVmHostLifecycle {
-  readonly flushConversation?: () => void | Promise<void>
-  readonly settleBackground?: () => void | Promise<void>
-  readonly drainEventBus?: () => void | Promise<void>
-  readonly drainWriter?: () => void | Promise<void>
-  readonly disposeProjections?: () => void | Promise<void>
-  readonly disposeAdapters?: () => void | Promise<void>
-  readonly disposeRemaining?: () => void | Promise<void>
+  readonly settleBackground: () => void | Promise<void>
+  readonly drainEventBus: () => void | Promise<void>
+  readonly drainWriter: () => void | Promise<void>
+  readonly disposeProjections: () => void | Promise<void>
+  readonly disposeRemaining: () => void | Promise<void>
 }
 
 /** The attempt that a commit settles, and the conversation it ran in. */
@@ -123,8 +123,9 @@ export interface WorkflowVmHostDeps {
   readonly sessionId: string
   readonly reader: AsyncEventStateReadSurface
   readonly writer: AsyncEventWriter
-  /** Production composition commits started member sessions in the same guarded transaction as VM control. */
-  readonly commitBatch?: (events: readonly GuardedEventStoreAppend[]) => Promise<GuardedAppendResult>
+  /** The one commit path of VM control. Production commits started member
+   *  sessions in the same guarded transaction. */
+  readonly commitBatch: (events: readonly GuardedEventStoreAppend[]) => Promise<GuardedAppendResult>
   readonly queueStore: WorkflowViewStore
   readonly contextStore: WorkflowContextStore
   /** Complete immutable definition revision admitted for this run. Its
@@ -135,8 +136,10 @@ export interface WorkflowVmHostDeps {
   readonly workflow: WorkflowDefinition
   readonly attemptRunner: AttemptExecutor
   readonly emit: (event: WorkflowRuntimeEvent) => void | Promise<void>
-  readonly conversationId?: (input?: AttemptExecutionInput) => string
-  readonly preAttemptPolicy?: (input: AttemptExecutionInput) => string | null | Promise<string | null>
+  /** The conversation id of an attempt that starts without one. */
+  readonly conversationId: (input: AttemptExecutionInput) => string
+  /** Why an attempt may not start now, or null when it may. */
+  readonly preAttemptPolicy: (input: AttemptExecutionInput) => string | null | Promise<string | null>
   /** The messages that the attempt read from its parent session, in reading
    *  order, from every generation of its conversation. The commit that
    *  settles the attempt records each one that the workflow context does not
@@ -146,9 +149,8 @@ export interface WorkflowVmHostDeps {
   /** The messages that a sender addressed to agents or phases of this
    *  workflow and that wait in their held cells. Each commit records every
    *  one that the context does not hold yet, and the host retires their
-   *  cells once the commit is published. A host without it, such as a test
-   *  host, holds no addressed message. */
-  readonly addressedMessages?: {
+   *  cells once the commit is published. */
+  readonly addressedMessages: {
     read(): Promise<readonly AddressedAddendum[]>
     retire(keys: readonly string[]): Promise<void>
   }
@@ -157,8 +159,8 @@ export interface WorkflowVmHostDeps {
    *  RECOVER of a crashed run names the attempts whose conversation did, so
    *  their restart count starts over. */
   readonly servedConversations: (since: ReadonlyMap<string, number>) => Promise<ReadonlySet<string>>
-  readonly onPostPreflight?: () => void | Promise<void>
-  readonly lifecycle?: WorkflowVmHostLifecycle
+  readonly onPostPreflight: () => void | Promise<void>
+  readonly lifecycle: WorkflowVmHostLifecycle
   readonly now?: () => number
 }
 

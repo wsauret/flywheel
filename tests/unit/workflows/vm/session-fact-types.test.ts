@@ -11,7 +11,7 @@ import { buildWorkflowControlCommittedFact, committedWorkflowEvent, buildWorkflo
 import { buildAttemptBlockedFact, buildAttemptFailedFact, buildAttemptInsertionRejectedFact, buildAttemptResumeCapExceededFact, buildAttemptResumeRecoveredFact, buildAttemptRetryInsertedFact, buildAttemptRevertedFact, buildAttemptStartedFact, buildAttemptSucceededFact, buildFollowUpFailedFact, buildFollowUpRequestedFact, buildFollowUpSucceededFact, buildFollowUpTransferredFact, buildForExpandedFact, buildForExpansionRejectedFact, buildWorkflowAbortedFact, buildWorkflowCompletedFact, buildAttemptRecoveredFact, buildWorkflowFailedFact, buildWorkflowPausedFact, buildWorkflowReassessedFact, buildWorkflowResumedFact } from "../../../../src/workflows/vm/fact-drafts.js";
 import { controlBeforePhases } from "../../../helpers/control-before-phases.js";
 import { testResolvedAgent, testSkill } from "../../../helpers/skill-fixtures.js";
-import { nonEmpty } from "../../../helpers/non-empty.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const ownership = { _tag: "workflow", workflowDefinitionId: "workflow" } as const;
 
@@ -249,12 +249,11 @@ describe("workflow session facts", () => {
   });
 
   it("admits facts from the existing pure workflow builders", () => {
-    const workflow = {
+    const workflow = loadedWorkflow({
       id: "workflow",
       name: "Workflow",
-      phases: nonEmpty([{ phase: "step", brief: "Do the step work.", name: "step", writes: [] }]),
-      provenance: { layer: "project" as const, filePath: "/definitions/workflow.yaml", id: "workflow" },
-    };
+      phases: [{ phase: "step", brief: "Do the step work.", name: "step", writes: [] }],
+    }, { filePath: "/definitions/workflow.yaml" });
     const skill = testSkill("step", { name: "Step", body: "Do the work." });
     const compilation = buildWorkflowCompilationFacts({
       workflow,

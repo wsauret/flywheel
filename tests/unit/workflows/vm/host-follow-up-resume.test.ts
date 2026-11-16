@@ -96,7 +96,7 @@ describe("workflow VM host historical follow-up", () => {
   // v0.0.12 wrote every commit at version 4, and a candidate build before
   // 2026-10-03 wrote every commit at version 5. Both encode the same events as
   // version 6 with the inert outcome evidence and a version 1 success fact.
-  it("commits every event at version 14 and replays the same history encoded at versions 4 and 5", async () => {
+  it("commits every current event at version 14 and every recorded follow-up run at version 13, and replays the same history encoded at versions 4 and 5", async () => {
     const { store, host } = await completedFollowUp()
     try {
       await recordHistoricalFollowUp(
@@ -106,7 +106,7 @@ describe("workflow VM host historical follow-up", () => {
       )
       const committed = store.events.filter((fact) => fact.type === "workflow.control.committed")
       expect(committed.length).toBeGreaterThan(3)
-      expect(new Set(committed.map((fact) => fact.version))).toEqual(new Set([14]))
+      expect(new Set(committed.map((fact) => fact.version))).toEqual(new Set([13, 14]))
       expect(committed.some((fact) => fact.payload.event !== null && typeof fact.payload.event === "object" && "type" in fact.payload.event && fact.payload.event.type === "ATTEMPT_SUCCEEDED")).toBe(true)
       for (const version of [4, 5]) {
         const earlier = store.events.map((fact) => {

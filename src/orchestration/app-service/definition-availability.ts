@@ -37,7 +37,6 @@ import type { ProjectDefinitionRegistryRevision } from "../../workflows/definiti
 import { grantedSubagentTypes } from "../../workflows/agents/subagent-reachability.js"
 import type { SkillRegistryRevision } from "../../workflows/skill-schema.js"
 import type { WorkflowDefinition } from "../../workflows/workflow-schema.js"
-import { workflowBriefs } from "../../workflows/brief.js"
 import { agentRecords } from "../../workflows/workflow-schema.js"
 import type { CapabilityGrant } from "../config/module-policy.js"
 import type { ModuleState } from "../config/module-descriptor.js"
@@ -464,7 +463,7 @@ interface AgentComposition {
 /** What each inline brief of `workflow` composes, in brief order. */
 export function agentCompositions(workflow: WorkflowDefinition): readonly AgentComposition[] {
   const records = agentRecords(workflow)
-  return [...workflowBriefs(workflow)].map(([briefId, brief]) => {
+  return [...workflow.briefs].map(([briefId, brief]) => {
     const keys = records.get(briefId)?.keys
     const persona = keys?.persona
     return { briefId, dependencies: brief.procedure.dependencies, subagents: brief.procedure.subagents, persona }
@@ -572,7 +571,7 @@ function createRequirementClosure(
     workflow: (workflow) => {
       const parts: Resolution[] = [own(...definitionRequirements.workflows)]
       // A workflow from a module's definition bundle needs that module (ARCH-STRUCTURE-031).
-      if (workflow.provenance?.bundle !== undefined) parts.push(own(...moduleRequirementsForContribution("definitions", workflow.provenance.bundle, modules)))
+      if (workflow.provenance.bundle !== undefined) parts.push(own(...moduleRequirementsForContribution("definitions", workflow.provenance.bundle, modules)))
       for (const composition of agentCompositions(workflow)) parts.push(...agent(composition))
       return { requires: canonicalModuleIds(parts.flatMap((part) => part.requires)), types: sortedUnique(parts.flatMap((part) => part.types)) }
     },

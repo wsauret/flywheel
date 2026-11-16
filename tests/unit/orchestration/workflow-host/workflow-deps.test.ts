@@ -37,7 +37,6 @@ function makeConfig(overrides: Partial<FlywheelConfig> = {}): FlywheelConfig {
 function makeFakeRunnerFactory(): AgentFactory {
   return () => ({
     send: () => {},
-    end: () => {},
     abort: () => {},
     done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
   });

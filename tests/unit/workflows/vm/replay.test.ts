@@ -39,14 +39,15 @@ import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflow
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { testSkill, testSkillRevision, withTestExternalSkills } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** One phase that composes the `work` package. */
 const workPhase = { phase: "work", brief: "Follow the work method.", name: "Work", dependencies: ["work"], writes: [] }
-const workflow: WorkflowDefinition = {
+const workflow = loadedWorkflow({
   id: "workflow",
   name: "Workflow",
   phases: [workPhase],
-}
+})
 const skills = testSkillRevision([testSkill("work", { name: "Work" })])
 const bindings = resolveWorkflowAgents(workflow)
 
@@ -316,7 +317,7 @@ describe("workflow fact replay", () => {
   it("adopts the explorer hash recorded before the workflow lexicon, and keeps any other change as drift", async () => {
     const explorer = repoDefinitions().captureRevision().personas.get("explorer")
     if (!explorer) throw new Error("Expected the bundled explorer")
-    const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
+    const workflowWithExplorer = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] })
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
     const { maxTurns: _budget, ...historical } = beforeLexiconCut(atCapabilityTextBase(explorer))
@@ -340,7 +341,7 @@ describe("workflow fact replay", () => {
   it("adopts the explorer hash recorded over its retired tool-steering clauses, and keeps any other change as drift", async () => {
     const explorer = repoDefinitions().captureRevision().personas.get("explorer")
     if (!explorer) throw new Error("Expected the bundled explorer")
-    const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
+    const workflowWithExplorer = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] })
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
     const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(beforeToolSteeringCut(beforeLexiconCut(atCapabilityTextBase(explorer)))).sha256)
@@ -363,7 +364,7 @@ describe("workflow fact replay", () => {
   it("adopts the explorer hash recorded before 2026-10-14 over its retired prompt switches and tool-steering clauses, and keeps any other change as drift", async () => {
     const explorer = repoDefinitions().captureRevision().personas.get("explorer")
     if (!explorer) throw new Error("Expected the bundled explorer")
-    const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
+    const workflowWithExplorer = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] })
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
     // The explorer as its file read before both cuts: it opted out of project context and the doctrine.
@@ -451,7 +452,7 @@ describe("workflow fact replay", () => {
   it("adopts the reviewer-uat hash recorded before its scratchpad rule, and keeps any other change as drift", async () => {
     const uat = repoDefinitions().captureRevision().personas.get("reviewer-uat")
     if (!uat) throw new Error("Expected the bundled reviewer-uat")
-    const workflowWithUat: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["reviewer-uat"] }] }
+    const workflowWithUat = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: ["reviewer-uat"] }] })
     const personas = new Map<string, AgentDefinition>([["reviewer-uat", uat]])
     const uatSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("uat")])
     const compiled = compileWorkflowControl(workflowWithUat, resolveWorkflowAgents(workflowWithUat), { skills: uatSkills, personas })
@@ -484,7 +485,7 @@ describe("workflow fact replay", () => {
   ] as const)("adopts the %s hash recorded %s on the current personas once, and keeps any other change as drift", async (name, _era, recordedForm) => {
     const persona = repoDefinitions().captureRevision().personas.get(name)
     if (!persona) throw new Error(`Expected the bundled ${name}`)
-    const workflowWithPersona: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: [name] }] }
+    const workflowWithPersona = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: [name] }] })
     const personas = new Map<string, AgentDefinition>([[name, persona]])
     const eraSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("uat"), testSkill("implementation")])
     const compiled = compileWorkflowControl(workflowWithPersona, resolveWorkflowAgents(workflowWithPersona), { skills: eraSkills, personas })
@@ -506,7 +507,7 @@ describe("workflow fact replay", () => {
   it("adopts the explorer hash recorded while its description claimed a cheaper model, and keeps any other change as drift", async () => {
     const explorer = repoDefinitions().captureRevision().personas.get("explorer")
     if (!explorer) throw new Error("Expected the bundled explorer")
-    const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
+    const workflowWithExplorer = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] })
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
     const facts = pausedFacts(compiled, withRecordedExplorer(compiled.definitionIdentity, personaIdentitySha256(beforeExplorerModelClaim(beforeLeanPersonaText(explorer)))))
@@ -525,7 +526,7 @@ describe("workflow fact replay", () => {
   it.each(["explorer", "implementer", "reviewer-mechanism", "reviewer-uat", "general"] as const)("adopts the %s hash recorded before the lean-prompt edit once, and keeps any other change as drift", async (name) => {
     const agent = repoDefinitions().captureRevision().personas.get(name)
     if (!agent) throw new Error(`Expected the built-in ${name}`)
-    const workflowWithAgent: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: [name] }] }
+    const workflowWithAgent = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: [name] }] })
     const personas = new Map<string, AgentDefinition>([[name, agent]])
     const leanSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("uat"), testSkill("implementation"), testSkill("mechanism-verification")])
     const compiled = compileWorkflowControl(workflowWithAgent, resolveWorkflowAgents(workflowWithAgent), { skills: leanSkills, personas })
@@ -547,7 +548,7 @@ describe("workflow fact replay", () => {
   it("drops implementation-planning that a run composed through the bundled implementation skill before the lean-prompt edit once, and keeps it as drift for another implementation", async () => {
     const planning = testSkill("implementation-planning")
     const leanSkills = testSkillRevision([testSkill("work", { name: "Work" }), testSkill("implementation"), planning])
-    const workflowWithImplementation: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, dependencies: ["work", "implementation"] }] }
+    const workflowWithImplementation = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, dependencies: ["work", "implementation"] }] })
     const compiled = compileWorkflowControl(workflowWithImplementation, resolveWorkflowAgents(workflowWithImplementation), { skills: leanSkills })
     expect(compiled.definitionIdentity.skills.map(({ skillId }) => skillId)).not.toContain("implementation-planning")
     const recorded = { ...compiled.definitionIdentity, skills: [...compiled.definitionIdentity.skills, { skillId: "implementation-planning", sha256: "a".repeat(64) }] }
@@ -572,7 +573,7 @@ function withRecordedExplorer(identity: DefinitionIdentity, sha256: string): Def
 }
 
 /** The work phase, able to dispatch the general agent and one project persona. */
-const agentWorkflow: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["general", "helper"] }] }
+const agentWorkflow = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: ["general", "helper"] }] })
 
 /** A paused session whose identity hashed each persona with its turn cap, as
  *  builds before persona identity left the cap out recorded it: the general
@@ -609,7 +610,7 @@ function pausedOverTurnCaps() {
 }
 
 /** The work phase, able to dispatch the general agent, whose `reviewer` grant covers the reviewer family. */
-const generalWorkflow: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["general"] }] }
+const generalWorkflow = loadedWorkflow({ ...workflow, phases: [{ ...workPhase, subagents: ["general"] }] })
 
 /** The general agent and one family reviewer: a project override of reviewer-code-quality that requires a skill, so
  *  a run recorded before family roles pinned neither the reviewer nor its skill. */

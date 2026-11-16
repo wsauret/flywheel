@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
-import { Schema } from "effect"
 import { createSqliteEventInserter } from "../../../../src/infra/sqlite-event-store-core.js"
 import { createSqliteEventReadSurface } from "../../../../src/infra/sqlite-event-read-surface.js"
 import { asAsyncEventReadSurface, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types.js"
 import { commitWorkflowRecovery } from "../../../../src/orchestration/workflow-host/recovery-commit.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { composeWorkflowProposal } from "../../../../src/workflows/vm/proposal-composition.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
@@ -18,6 +16,7 @@ import { testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { createMemoryStore } from "./host-test-support.js"
 import { recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const databases: Database[] = []
 afterEach(() => { for (const db of databases.splice(0)) db.close() })
@@ -29,7 +28,7 @@ const phase = (id: string, extra: { readonly [key: string]: unknown } = {}) => (
 const lister = (id: string) => phase(id, { output: { summary: "The findings.", fields: { findings } } })
 
 const skills = testSkillRevision([])
-const definitionOf = (phases: readonly unknown[]) => Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ id: "recovery", name: "Recovery", phases })
+const definitionOf = (phases: readonly unknown[]) => loadedWorkflow({ id: "recovery", name: "Recovery", phases })
 /** The four phases of the stored history: A completed, B running, C and D
  *  pending. */
 const HISTORY_PHASES = ["work", "review", "fix", "check"].map((id) => phase(id))
