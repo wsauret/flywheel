@@ -12,15 +12,14 @@ import { sessionChangesPromptLabel } from "../../protocol/client/session-changes
 export interface ComposerBorderLayoutDeps {
   signals: ShellSignals
   terminalWidth: Accessor<number>
-  activeModelLabel: Accessor<string | undefined>
   composerStatus?: Accessor<readonly ModuleComposerStatus[]>
   /** The effective chord for a command. The border reads it inside its memo,
    *  so a [keybindings] change that publishes later reaches every hint. */
   chordFor: Keymap["chordFor"]
   /** True while the foreground session offers Resume. */
   resumeOffered: Accessor<boolean>
+  /** How many session tabs are open. */
   activeSessionCount: Accessor<number>
-  sessionCount: Accessor<number>
 }
 
 export interface UpdateBorderStatus extends ComposerBorderUpdate {
@@ -77,7 +76,7 @@ export function createComposerBorderLayout(deps: ComposerBorderLayoutDeps): Comp
   const updateStatus = createDismissibleUpdateStatus(signals.updateStatus)
   const layout = createMemo(() => computeComposerBorderLayout({
     terminalWidth: deps.terminalWidth(),
-    modelLabel: deps.activeModelLabel(),
+    modelLabel: signals.activeModelLabel(),
     update: updateStatus.current(),
     composerStatus: deps.composerStatus?.() ?? [],
     changesLabel: signals.foregroundId() ? sessionChangesPromptLabel(signals.sessionChanges()?.snapshot().summary) : undefined,
@@ -90,7 +89,7 @@ export function createComposerBorderLayout(deps: ComposerBorderLayoutDeps): Comp
       hasPendingQuestion: signals.pendingQuestion() !== undefined,
     }),
     activeSessionCount: deps.activeSessionCount(),
-    sessionCount: deps.sessionCount(),
+    sessionCount: signals.sessionCount(),
     sessionsHint: { key: deps.chordFor("sessions"), label: "sessions" },
     resumeHint: deps.resumeOffered() ? { key: deps.chordFor("resume"), label: "resume" } : undefined,
     newHint: { key: deps.chordFor("new"), label: "new" },

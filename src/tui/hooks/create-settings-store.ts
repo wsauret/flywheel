@@ -6,8 +6,8 @@ import type { CompatibleRenderingMode, DiffColorMode, WebSearchProvider } from "
 import { WriteSyntaxThemeIdSchema, type WriteSyntaxThemeId } from "../../protocol/write-syntax-theme.js"
 import type { getFontStatus, fontInstallSummary, installBundledFont } from "../../orchestration/font-installer.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
-import type { RuntimeConfigMutationResult, RuntimeConfigStatusView, RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
-import { mutateRuntimeConfig, type RuntimeConfigCache } from "./shell-state.js"
+import type { RuntimeConfigMutation, RuntimeConfigMutationResult, RuntimeConfigStatusView, RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
+import type { RuntimeConfigCache } from "./shell-state.js"
 
 type SectionBooleanControl = Extract<ModuleConfigSettingControl, { readonly section: string; readonly control: "config-boolean" }>
 type BooleanControl = ModuleConfigBooleanSettingId | SectionBooleanControl
@@ -71,6 +71,18 @@ export interface SettingsOperations {
   getFontStatus: typeof getFontStatus
   installBundledFont: typeof installBundledFont
   fontInstallSummary: typeof fontInstallSummary
+}
+
+/** Dispatch one config CAS and settle only after its committed value is present in the shared protocol cache. */
+export async function mutateRuntimeConfig(
+  config: RuntimeConfigCache,
+  appService: Pick<RuntimeClient, "dispatch">,
+  command: RuntimeConfigMutation,
+): Promise<RuntimeConfigMutationResult> {
+  const result = await appService.dispatch(command)
+  if (result.kind !== "committed" && result.kind !== "committed-with-durability-warning" && result.kind !== "committed-with-degraded-application") return result
+  if (await config.settlePublication(command, result.revision)) return result
+  return { kind: "disposed", message: "Configuration updates are unavailable." }
 }
 
 function resultOf(result: RuntimeConfigMutationResult): SettingsMutationResult {

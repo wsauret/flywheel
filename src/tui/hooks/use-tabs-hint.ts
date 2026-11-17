@@ -1,6 +1,7 @@
 import type { Accessor } from "solid-js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
-import { mutateRuntimeConfig, type RuntimeConfigCache } from "./shell-state.js"
+import { mutateRuntimeConfig } from "./create-settings-store.js"
+import type { RuntimeConfigCache } from "./shell-state.js"
 
 export interface TabsHint {
   readonly dismissed: Accessor<boolean>
