@@ -1,0 +1,54 @@
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 137-139
+src/orchestration/modules/experiments/projection.ts
+  h_4b47e9e4a8b456 4-5,39-42,45-47,51-52,54,87,89,112,120-122,126-129,146,149,152-154,156-158,161
+src/orchestration/modules/experiments/runtime.ts
+  h_4b47e9e4a8b456 22-28,46,79,88
+src/orchestration/modules/experiments/state-reconstruction.ts
+  h_4b47e9e4a8b456 1,7,19-20,22-24,27,32,40-49,51-62
+src/orchestration/modules/experiments/types.ts
+  h_4b47e9e4a8b456 20-21,34,38-43
+src/orchestration/modules/experiments/upstream-ledger.json
+  h_4b47e9e4a8b456 14,219-225,229
+src/orchestration/modules/mcp/manager.ts
+  h_4b47e9e4a8b456 63-65,74-79
+src/orchestration/modules/mcp/module.ts
+  h_4b47e9e4a8b456 45
+src/orchestration/modules/mcp/registry-owner.ts
+  h_4b47e9e4a8b456 83-84
+src/orchestration/modules/mcp/runtime.ts
+  h_4b47e9e4a8b456 8-11,15,26
+src/orchestration/modules/mcp/service.ts
+  h_4b47e9e4a8b456 111-117,120,123-124,183
+tests/helpers/code-mode-loopback-mcp.ts
+  h_4b47e9e4a8b456 142
+tests/helpers/mcp.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/modules/code-mode/code-mcp.test.ts
+  h_4b47e9e4a8b456 29
+tests/unit/orchestration/modules/experiments/chat-observer.test.ts
+  h_4b47e9e4a8b456 39
+tests/unit/orchestration/modules/experiments/projection.test.ts
+  h_4b47e9e4a8b456 1,6,10-13,15,74-96,150-220
+tests/unit/orchestration/modules/experiments/protocol-projection.test.ts
+  h_4b47e9e4a8b456 340
+tests/unit/orchestration/modules/experiments/state-reconstruction.test.ts
+  h_4b47e9e4a8b456 2-3,5-11,13-19,22,24-25,39-40,42,55-65
+tests/unit/orchestration/modules/experiments/tools/log-experiment.test.ts
+  h_4b47e9e4a8b456 38
+tests/unit/orchestration/modules/experiments/tools/run-experiment.test.ts
+  h_4b47e9e4a8b456 34
+tests/unit/orchestration/modules/mcp/service.test.ts
+  h_4b47e9e4a8b456 14,113-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "10609a4b3a0a20da43d055f9894c3af18fdbd064",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
