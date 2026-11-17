@@ -1,0 +1,46 @@
+src/orchestration/agent-runtime/command-handover.ts
+  h_4b47e9e4a8b456 44,190-191,302,329-331,353
+src/orchestration/agent-runtime/tools/bash-private-copy-pool.ts
+  h_4b47e9e4a8b456 87-90,92-95,104,106-111,120,151,154,158-159
+src/orchestration/agent-runtime/tools/bash-private-copy.ts
+  h_4b47e9e4a8b456 101,106-107,180-181,268,276,434-435,438,452
+src/orchestration/agent-runtime/tools/bash-project-mutation.ts
+  h_4b47e9e4a8b456 37,97-98,101-106,119,139,142,150,161,168,197-199,224,235-236,239,248-250,304,310
+src/orchestration/agent-runtime/tools/shell-runtime.ts
+  h_4b47e9e4a8b456 71,105
+tests/integration/local/_bash-mutation-repository.ts
+  h_4b47e9e4a8b456 11,34,39-40,47,89-91,93,99,105,107,128,136-137
+tests/integration/local/bash-mutations-reuse.test.ts
+  h_4b47e9e4a8b456 38,48-50,57,77,108,144
+tests/unit/orchestration/agent-runtime/tools/_bash-mutations-harness.ts
+  h_4b47e9e4a8b456 24,33-34,37-38,40-41,183,191-193,197-205
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy-pool.test.ts
+  h_4b47e9e4a8b456 113-124
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy-reuse.test.ts
+  h_4b47e9e4a8b456 11,391-392,431,435,473,493,522
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy.test.ts
+  h_4b47e9e4a8b456 8,334
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutation-evidence.test.ts
+  h_4b47e9e4a8b456 1,16,205
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-reuse.test.ts
+  h_4b47e9e4a8b456 31,44,46-47,217-218
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-uncaptured.test.ts
+  h_4b47e9e4a8b456 1,8,24,37,77,98,120
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-worktree.test.ts
+  h_4b47e9e4a8b456 4,10,25,109
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations.test.ts
+  h_4b47e9e4a8b456 5,33-34,44,53,55,180,381,399
+tests/unit/orchestration/app-service/command-keeper.test.ts
+  h_4b47e9e4a8b456 13,197-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e87712bfcd68c060cbfc0c33219b74242fcfd0d0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
