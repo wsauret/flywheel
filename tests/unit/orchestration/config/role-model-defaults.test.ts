@@ -42,6 +42,8 @@ describe("role model defaults", () => {
     expect(selectRoleModelDefault("subagent-summary", bothProviders)).toMatchObject({ model: "gpt-6-luna", effort: "low" });
     expect(selectRoleModelDefault("benchmark-judge", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
     expect(selectRoleModelDefault("chat", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
+    expect(selectRoleModelDefault("lead-chat", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
+    expect(selectRoleModelDefault("lead-chat", anthropicOnly)).toMatchObject({ model: "claude-opus-5.5", effort: "low" });
   });
 
   it("follows the role's own order, so an Anthropic-first role resolves to its Anthropic model when both are listed", () => {

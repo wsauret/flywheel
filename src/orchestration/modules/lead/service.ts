@@ -71,7 +71,7 @@ export interface LeadService extends ModuleServiceInstance {
 
 export const leadService = moduleServiceHandle<LeadService>("lead")
 
-type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled"> & {
+type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled" | "chatProfileChanged"> & {
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read" | "listActive" | "listForIds">
   readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
   readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "findChats" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "onSessionReleased" | "sessionShown" | "liveAgentCards">
@@ -102,6 +102,8 @@ const POST_RECORDS = {
 const joinedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.joined" ? [fact.payload.sessionId] : [])
 const closedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.closed" ? [fact.payload.sessionId] : [])
 const markedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.result.read" || fact.type === "lead.chat.seen" ? [fact.payload.sessionId] : [])
+/** The chats whose lead profile a designation or a dismissal gave or took. */
+const designationChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.designated" || fact.type === "lead.chat.dismissed" ? [fact.payload.sessionId] : [])
 
 /** A chat that became active in a stored batch, and whether the batch created it. */
 interface Activation {
@@ -374,6 +376,8 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     if (applied.length === 0) return
     follow(joinedChats(applied), closedChats(applied))
     for (const sessionId of markedChats(applied)) rows?.refresh(sessionId)
+    // The control part appends the designation, so `role` holds it only from this fold on.
+    for (const sessionId of designationChats(applied)) services.chatProfileChanged(sessionId)
   }
 
   const reconcileJournal = async (): Promise<void> => { applyFacts(await journal.reconcile()) }

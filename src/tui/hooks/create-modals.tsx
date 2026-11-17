@@ -235,6 +235,10 @@ export function createModalModals(deps: ModalsDeps) {
       const row = signals.foregroundSummary()
       return row === null ? undefined : effectiveSessionShortTitle(row.title, row.shortTitle)
     },
+    foregroundSeat: () => {
+      const foregroundId = signals.foregroundId()
+      return foregroundId === undefined ? undefined : signals.roleView(foregroundId)?.serving?.slot
+    },
   })
   const activeModelLabel = createMemo(() => {
     const foregroundId = signals.foregroundId()

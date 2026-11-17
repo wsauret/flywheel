@@ -12,7 +12,7 @@ import type {
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import { observeModelCatalog } from "./observe-model-catalog.js"
-import { defaultRoleSlots, sameSlot, roleSlot } from "../../orchestration/config/role-selection.js"
+import { defaultRoleSlots, sameSlot, roleSlot, slotLabel } from "../../orchestration/config/role-selection.js"
 import { isProfileModelRole } from "../../protocol/brief-role-id.js"
 import { buildModelModalItems, isSelectableItem } from "../modals/model-modal-helpers.js"
 import type { ModelAssignmentItem, ModelModalState, ModelModalView } from "../modals/model-modal-types.js"
@@ -35,6 +35,10 @@ interface ModelModalDeps {
   /** The title of the foreground chat, which Model and effort names when
    *  the chat is the transcript in view (PI-INTERACTION-019). */
   foregroundTitle?: Accessor<string | undefined>
+  /** The seat that serves the foreground chat's requests, once its role
+   *  view is read: Chat, or the role of a chat that a module profiles, such
+   *  as the lead's. */
+  foregroundSeat?: Accessor<ModelSelectionSlot | undefined>
   /** Fires after any successful model/effort save. The shell uses it to
    *  resolve an action-needed provider notice whose offered option was
    *  /model: taking the offered action clears the notice. */
@@ -309,13 +313,16 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
   }
 
   /** The seat a picker opens: an agent's serving seat under the agent's
-   *  name, or the foreground chat's own seat under the chat's title. With no
-   *  chat in front it edits the defaults of the chat role, under its name. */
+   *  name, the foreground chat's Chat seat under the chat's title, or the
+   *  seat of a foreground chat that its own role serves under that role's
+   *  name, such as Lead. With no chat in front it edits the defaults of the
+   *  chat role, under its name. */
   function displayedSeat(target?: ModelPickerTarget): Pick<ModelPickerTarget, "slot" | "label"> {
     if (target !== undefined) return target
-    const slot = roleSlot("chat")
-    const title = deps.foregroundSessionId?.() === undefined ? undefined : deps.foregroundTitle?.()
-    return { slot, label: title ?? state.assignments.find((row) => sameSlot(row.slot, slot))?.label ?? "Chat" }
+    const foreground = deps.foregroundSessionId?.()
+    const slot = (foreground === undefined ? undefined : deps.foregroundSeat?.()) ?? roleSlot("chat")
+    const title = foreground === undefined || slot.roleId !== "chat" ? undefined : deps.foregroundTitle?.()
+    return { slot, label: title ?? state.assignments.find((row) => sameSlot(row.slot, slot))?.label ?? slotLabel(slot) }
   }
 
   /** Opens Model and effort of one session: an agent's serving seat when a

@@ -11,6 +11,7 @@ export const LEARNING_REVIEW_ROLE_ID: RoleId = "learning-review";
 export const TITLE_GENERATION_ROLE_ID: RoleId = "title-generation";
 export const SUBAGENT_SUMMARY_ROLE_ID: RoleId = "subagent-summary";
 const BENCHMARK_JUDGE_ROLE_ID: RoleId = "benchmark-judge";
+const LEAD_ROLE_ID: RoleId = "lead-chat";
 
 type RoleGroupId = "core" | "agents" | "background";
 
@@ -81,6 +82,7 @@ export const DEFAULT_ROLES = {
   [TITLE_GENERATION_ROLE_ID]: { id: TITLE_GENERATION_ROLE_ID, label: "Title Generation", group: "background", order: 1, description: "Generates automatic session titles." },
   [SUBAGENT_SUMMARY_ROLE_ID]: { id: SUBAGENT_SUMMARY_ROLE_ID, label: "Subagent Summary", group: "background", order: 2, description: "Summarizes failed subagent work." },
   [BENCHMARK_JUDGE_ROLE_ID]: { id: BENCHMARK_JUDGE_ROLE_ID, label: "Benchmark Judge", group: "background", moduleOwned: true, order: 3, description: "Evaluates benchmark results." },
+  [LEAD_ROLE_ID]: { id: LEAD_ROLE_ID, label: "Lead", group: "background", moduleOwned: true, order: 4, description: "Replies to you in the lead chat and routes your requests." },
 } as const satisfies RoleMetadataRegistry;
 
 export const AGENT_ROLE_IDS: readonly RoleId[] = Array.from(discoverAgentRoles()).sort((a, b) => {
@@ -89,7 +91,7 @@ export const AGENT_ROLE_IDS: readonly RoleId[] = Array.from(discoverAgentRoles()
   return orderA - orderB || a.localeCompare(b);
 });
 
-export const AUX_ROLE_IDS: readonly RoleId[] = [LEARNING_REVIEW_ROLE_ID, TITLE_GENERATION_ROLE_ID, SUBAGENT_SUMMARY_ROLE_ID, BENCHMARK_JUDGE_ROLE_ID];
+export const AUX_ROLE_IDS: readonly RoleId[] = [LEARNING_REVIEW_ROLE_ID, TITLE_GENERATION_ROLE_ID, SUBAGENT_SUMMARY_ROLE_ID, BENCHMARK_JUDGE_ROLE_ID, LEAD_ROLE_ID];
 
 
 

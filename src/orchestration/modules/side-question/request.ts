@@ -2,6 +2,8 @@ import { OutputProjector } from "../../../infra/output/output-projector.js"
 import { RuntimeEventProjector } from "../../../infra/output/runtime-event-projector.js"
 import { resolveSessionDir } from "../../../infra/paths.js"
 import { mergeAbortSignals } from "../../../infra/abort.js"
+import { NO_MODULE_SERVICES } from "../../../infra/module-service.js"
+import { resolveChatRole } from "../../chat-profile.js"
 import type { ChatModuleHostInput } from "../../chat-module-host.js"
 import { createAgentHost } from "../../runner/host.js"
 import type { SideQuestionRun } from "./host.js"
@@ -14,7 +16,9 @@ export function createChatSideQuestions(input: ChatModuleHostInput) {
     signal: background.signal,
     capture: () => deps.treeWriter.captureRawLiveMessages(),
     run: async (request: SideQuestionRun) => {
-      const role = (await deps.resolveRoles()).get("chat")
+      // The side call runs on the selection of the chat's own role, such as the lead's (`resolveChatRole`).
+      const roleId = resolveChatRole(deps.moduleSelection(), { sessionId: deps.sessionId, modules: deps.moduleServices ?? NO_MODULE_SERVICES })
+      const role = (await deps.resolveRoles()).get(roleId)
       const signal = mergeAbortSignals(background.signal, request.signal)
       const output = new OutputProjector({ executionCwd: deps.executionCwd })
       const fold = new RuntimeEventProjector(output)
@@ -24,7 +28,7 @@ export function createChatSideQuestions(input: ChatModuleHostInput) {
           model: role?.model,
           effort: role?.effort,
           providerOptions: role?.providerOptions,
-          requestSelection: (roles) => ({ roleId: "chat", ...roles.get("chat") }),
+          requestSelection: (roles) => ({ roleId, ...roles.get(roleId) }),
           projectRoot: deps.projectRoot,
           executionCwd: deps.executionCwd,
           userDataRoot: deps.userDataRoot,

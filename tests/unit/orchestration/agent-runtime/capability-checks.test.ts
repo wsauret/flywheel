@@ -188,7 +188,7 @@ describe("capability checks", () => {
       expect([parentCheck("code"), parentCheck("workflow")]).toEqual([false, true])
       expect([childCheck("code"), childCheck("workflow")]).toEqual([true, false])
       // A chat profile limits its own chat and never the child that the chat starts.
-      const profiled = { ...parent, chatProfile: () => ({ prompt: "Profile body.", tools: ["read"] }) }
+      const profiled = { ...parent, chatProfile: () => ({ prompt: "Profile body.", tools: ["read"], role: "chat" }) }
       expect((await planRunCapabilities(runSource(profiled)))("subagent")).toBe(false)
       const profiledChild = await planRunCapabilities(runSource(childRunOptions(profiled, { purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call" }, toolGrant: ["read", "code", "workflow", "handoff"] })))
       expect(terms.filter((term) => profiledChild(term))).toEqual(terms.filter((term) => childCheck(term)))

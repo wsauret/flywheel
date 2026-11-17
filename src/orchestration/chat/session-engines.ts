@@ -41,6 +41,8 @@ export interface SessionEnginesDeps {
   /** Prepares the request of a pre-start as the session's other runs prepare theirs. */
   readonly prepareRequest: RequestPreparer
   readonly resolveRoles: RoleResolver
+  /** The model role whose selection the chat's requests use. */
+  readonly chatRole: () => string
   /** The chat's next send, on `provider`, with a conversation that writes nothing. */
   readonly chatOptions: (provider: ProviderSession) => Promise<ChatPrestart>
   /** The options of one call of the chat tree's shared host on `role`'s selection, on `provider`. */
@@ -258,7 +260,7 @@ export function createSessionEngines(deps: SessionEnginesDeps): SessionEngines {
 
   /** Whether `roles` give the chat and the hosts the selections that the session last planned for. */
   const plannedFor = (roles: ReadonlyMap<string, ResolvedRole>): boolean => {
-    const chatRole = roles.get("chat")
+    const chatRole = roles.get(deps.chatRole())
     if ((chatRole === undefined ? undefined : roleSelection(chatRole)) !== chatSelection) return false
     const keys = new Set([...roles.values()].map(roleSelection))
     return keys.size === hosts.size && [...keys].every((key) => hosts.has(key))
@@ -304,7 +306,7 @@ export function createSessionEngines(deps: SessionEnginesDeps): SessionEngines {
       // Every send and turn end changes the session's metadata, which notices a role change, so only a changed
       // selection plans.
       if (reason === "role-change" && plannedFor(roles)) return
-      const chatRole = roles.get("chat")
+      const chatRole = roles.get(deps.chatRole())
       await contained("plan chat engine", () => planChat(reason, chatRole), chatRole === undefined ? undefined : { model: chatRole.model })
       if (reason !== "turn-end") await planHosts(reason, roles.values())
     })

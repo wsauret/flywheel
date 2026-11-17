@@ -122,6 +122,7 @@ function session(initial: readonly ResolvedRole[]) {
   const prestartOptions = (overrides: Partial<AgentOptions>, providerSession: ProviderSession): AgentOptions & { readonly providerSession: ProviderSession } => ({ ...makeOptions({ agentRegistry: new Map(), agentsMd: "", ...overrides }), providerSession })
   const engines = createSessionEngines({
     sessionId: TREE,
+    chatRole: () => "chat",
     resolveRoles: async (): Promise<ResolvedRoles> => new Map([["chat", { roleId: "chat", model: "gpt-5.5", effort: "medium" }], ...roles.map((role): [string, ResolvedRole] => [role.roleId, role])]),
     prepareRequest: (options, preparation) => prepareRunRequest({
       ...preparation,

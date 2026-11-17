@@ -289,7 +289,7 @@ test("each applied lead fact costs work that grows with neither the listed chats
 test("the service follows the designation that the control part appended, before the lead chat opens here", async () => {
   // The account's open writes a durable chat and opens no shell here. Its designation reaches this service through
   // the store's broadcast, which the state channel forwards to the executor when an account serves the project.
-  const { service, openLead, dispose } = leadHarness(ctx, { control: { projectionReader: asAsyncEventReadSurface(ctx.store), eventWriter: ctx.store, onStored: ctx.store.onStored, openChat: accountOpenChat(ctx) } })
+  const { service, control, openLead, profileChanges, dispose } = leadHarness(ctx, { control: { projectionReader: asAsyncEventReadSurface(ctx.store), eventWriter: ctx.store, onStored: ctx.store.onStored, openChat: accountOpenChat(ctx) } })
   disposeAll.push(dispose)
   const changes: unknown[] = []
   const unsubscribe = ctx.sessionStore.onChange((changed) => { changes.push(changed) })
@@ -300,6 +300,11 @@ test("the service follows the designation that the control part appended, before
     // No read of the service's own: the chat profile reads the role synchronously at the lead's first request.
     expect(service.role(lead)).toBe("lead")
     expect(changes).toEqual([])
+    // The kernel hears each change of the lead's profile once the role holds it, so the views it decides read it again.
+    expect(profileChanges).toEqual([`${lead} lead`])
+    await control.dismiss(lead)
+    await nextTurn()
+    expect(profileChanges).toEqual([`${lead} lead`, `${lead} none`])
   } finally { unsubscribe() }
 })
 

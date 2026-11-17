@@ -31,4 +31,9 @@ describe("published model roles", () => {
       expect(roles.some(({ id }) => id === "subagent-summary")).toBe(true)
     }
   })
+  // PI-LEAD-020
+  test("lists Lead in the background section only while the lead module is on", () => {
+    expect(rolesOf(composeFirstPartyModules(SHIPPED_MODULES)).find(({ id }) => id === "lead-chat")).toMatchObject({ label: "Lead", group: "background" })
+    expect(rolesOf(composeFirstPartyModules(SHIPPED_MODULES, ["lead"])).some(({ id }) => id === "lead-chat")).toBe(false)
+  })
 })

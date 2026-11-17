@@ -6,7 +6,7 @@ import type { AgentOptions, RunnerToolSurfaces } from "../agent-runtime/types.js
 import type { ProviderSession } from "../agent-runtime/provider-runtime-cache.js"
 import type { ResolvedRole } from "../config/roles.js"
 import { SESSION_TITLE_PURPOSE } from "../session/session-title.js"
-import { resolveChatProfile } from "../chat-profile.js"
+import { resolveChatProfile, resolveChatRole } from "../chat-profile.js"
 import { NO_MODULE_SERVICES } from "../../infra/module-service.js"
 import type { ChatSessionDeps } from "./session.js"
 
@@ -26,13 +26,20 @@ interface ChatRequestOptionsInput {
 export function createChatRequestOptions(input: ChatRequestOptionsInput) {
   const { deps, surfaces, applyNestedStoredFact } = input
   const { sessionId, projectRoot, executionCwd, userDataRoot, accountHome } = deps
+  const profileInput = () => ({ sessionId, modules: deps.moduleServices ?? NO_MODULE_SERVICES })
+  /** The model role of the chat's requests under the current module selection, so a selection without the profile's
+   *  module returns the chat to Chat at its next request. */
+  const chatRole = (): string => resolveChatRole(deps.moduleSelection(), profileInput())
 
   function send(selectedModel: ResolvedRole | undefined, provider: ProviderSession) {
     return {
       agentRegistry: deps.personas,
       model: selectedModel?.model,
       effort: selectedModel?.effort,
-      requestSelection: (currentRoles: Awaited<ReturnType<typeof deps.resolveRoles>>) => ({ roleId: "chat", ...currentRoles.get("chat") }),
+      requestSelection: (currentRoles: Awaited<ReturnType<typeof deps.resolveRoles>>) => {
+        const roleId = chatRole()
+        return { roleId, ...currentRoles.get(roleId) }
+      },
       providerOptions: selectedModel?.providerOptions,
       proactiveCompactionThreshold: deps.proactiveCompactionThreshold,
       availableModels: deps.availableModels,
@@ -47,7 +54,7 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
       moduleSelection: deps.moduleSelection,
       // A resolver, not a profile: a parked loop keeps these options, and each request resolves the profile from the
       // module snapshot that its tools and its prompt read, so the profile follows a change of the selection.
-      chatProfile: (modules) => resolveChatProfile(modules, { sessionId, modules: deps.moduleServices ?? NO_MODULE_SERVICES }),
+      chatProfile: (modules) => resolveChatProfile(modules, profileInput()),
       ...(deps.capabilityAccess ? { capabilityAccess: deps.capabilityAccess } : {}),
       purpose: { kind: deps.rootChatCompletion?.unattended ? "unattended-chat" : "interactive-chat" },
       // Read auth at runner-creation time (per turn). With ChatSessionDeps.auth
@@ -71,6 +78,7 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
   }
 
   return {
+    chatRole,
     send,
     /** The chat's next send on `provider`, for its pre-start (`RequestPreparer`), and the read of its history, which
      *  the preparation runs only when it prepares a request. Between turns the history ends with the chat's reply,
@@ -79,7 +87,7 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
     async prestart(provider: ProviderSession) {
       const roles = await deps.resolveRoles()
       const options: AgentOptions & { readonly providerSession: ProviderSession } = {
-        ...send(roles.get("chat"), provider),
+        ...send(roles.get(chatRole()), provider),
         conversation: {
           kind: "durable-tree", sessionId, conversationId: deps.conversationId,
           providerSessionKey: input.providerSessionKey(),

@@ -5,8 +5,10 @@ import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { recordedQuery, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import { useModelModal } from "../../../../src/tui/hooks/use-model-modal.js"
+import type { ModelSelectionSlot } from "../../../../src/protocol/model-assignment-protocol-types.js"
 
-function harness(roleId = "chat") {
+/** `seat` is the foreground chat's serving seat, and `label` the runtime's label of the role's row. */
+function harness(roleId = "chat", seat?: ModelSelectionSlot, label = roleId) {
   const queries: string[] = []
   const saves: FrontendMutation[] = []
   const modals = createModalStack()
@@ -17,7 +19,7 @@ function harness(roleId = "chat") {
       subscriptionSpendConsent: { kind: "available", profileId: "personal", usageGeneration: 0, authorityIncarnation: "test", authorityRevision: 0, accounts: [] },
     } }),
     modelAssignments: async (request) => request.slots.some((slot) => slot.roleId === roleId) ? [{
-      slot: { kind: "role", roleId }, label: roleId, model: "gpt-6-luna", effort: "low",
+      slot: { kind: "role", roleId }, label, model: "gpt-6-luna", effort: "low",
       modelSource: "default", matchesInheritedPair: true, savedModel: "lost-model",
     }] : [],
     modelOptions: async (request) => [{
@@ -41,6 +43,8 @@ function harness(roleId = "chat") {
     showToast: (toast) => toasts.push(toast.message),
     appService: service,
     foregroundSessionId: () => "session-a",
+    foregroundTitle: () => "Lead tab",
+    ...(seat ? { foregroundSeat: () => seat } : {}),
   })
   return { hook, queries, saves, modals, toasts }
 }
@@ -85,6 +89,23 @@ describe("model modal global defaults", () => {
       for (let turn = 0; turn < 20; turn++) await Promise.resolve()
       expect(saves).toEqual([{ type: "model.save_effort", scope: { kind: "session", sessionId: "session-a" }, slot: { kind: "role", roleId }, model: "gpt-6-luna", effort: "low" }])
       expect(toasts.at(-1)).toBe(roleId === "workflow-agent" ? `Updated ${roleId} for this auth profile` : record ? "Updated Plan for this subagent" : "Updated chat for this tab")
+    } finally { dispose() }
+  })
+
+  // PI-LEAD-020: the picker of a chat that its own role serves edits that role for the chat, under the role's name.
+  test("opens the foreground lead's own seat under Lead and saves it for this tab", async () => {
+    let dispose = () => {}
+    const { hook, saves, modals } = createRoot((cleanup) => {
+      dispose = cleanup
+      return harness("lead-chat", { kind: "role", roleId: "lead-chat" }, "Lead")
+    })
+    try {
+      await hook.openActiveModelPicker()
+      for (let turn = 0; turn < 20; turn++) await Promise.resolve()
+      expect(hook.modelModalState().view).toMatchObject({ kind: "models", displayLabel: "Lead" })
+      modals.input({ name: "return" })
+      for (let turn = 0; turn < 20; turn++) await Promise.resolve()
+      expect(saves).toEqual([{ type: "model.save_effort", scope: { kind: "session", sessionId: "session-a" }, slot: { kind: "role", roleId: "lead-chat" }, model: "gpt-6-luna", effort: "low" }])
     } finally { dispose() }
   })
 })

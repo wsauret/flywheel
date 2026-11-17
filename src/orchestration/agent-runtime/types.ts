@@ -56,11 +56,12 @@ import type { SessionMessaging } from "../session/session-messaging.js";
 import type { ExternalSkillChildGrant } from "./tools/skill.js";
 import type { CaptureRuntimeConfig } from "./request-config.js";
 
-/** A chat's own prompt and the logical names of the tools that it has (ARCH-STRUCTURE-045). The prompt is
- *  capability-marked text that renders with the request's capability check. */
+/** A chat's own prompt, the logical names of the tools that it has, and the model role whose setting its requests
+ *  use (ARCH-STRUCTURE-045). The prompt is capability-marked text that renders with the request's capability check. */
 export interface ChatProfile {
   readonly prompt: string;
   readonly tools: readonly string[];
+  readonly role: string;
 }
 
 export type HeadlessPrompt =

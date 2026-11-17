@@ -190,6 +190,19 @@ describe("roles config parsing and resolution", () => {
     });
   });
 
+  // PI-LEAD-020: the Lead setting is module-owned, and the loader keeps it whatever the module selection, so it applies
+  // again once the lead is back on.
+  it("keeps a saved Lead setting without a warning and resolves it", async () => {
+    await withTempDir(async (dir) => {
+      const configPath = join(dir, "flywheel.toml");
+      await writeFile(configPath, `[profiles.personal.roles.lead-chat]\nmodel = "gpt-5.4"\neffort = "low"\n`);
+      const result = loadConfig(configPath, {});
+      expect(result.warnings).toEqual([]);
+      expect(result.config.profiles.personal?.roles["lead-chat"]).toMatchObject({ model: "gpt-5.4", effort: "low" });
+      expect((await resolveRoles(result.config, tierAvailableModels, tierOptions)).get("lead-chat")).toMatchObject({ model: "gpt-5.4", effort: "low" });
+    });
+  });
+
   it("validates overlay role ids while tolerating deleted profile ids", async () => {
     await withTempDir(async (dir) => {
       const configPath = join(dir, "flywheel.toml");

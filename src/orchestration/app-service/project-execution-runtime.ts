@@ -332,10 +332,12 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // can raise: the notify seam reads the live selection, so a module turned
   // off hears nothing and no kernel producer names one (ARCH-RUNTIME-048, ARCH-STRUCTURE-034).
   const transports = scope.own("module-transports", createModuleTransports(), (owner) => owner.dispose())
+  // The chats whose profile a module changed, which the role projection below reads again.
+  const chatProfileListeners = new Set<(sessionId: string) => void>()
   const moduleServices = scope.own("module-services", composeModuleProcessServices(installedModules(), () => moduleSelection().enabledModuleIds, {
     transports, onFrontendEvent: (listener) => { bus.addListener(listener); return () => bus.removeListener(listener) },
     directories: { ...directories, executionCwd }, eventStore: eventReader, projectionReader, eventWriter, onStored: eventStore.onStored, publish: bus.publish, snapshotPosition: bus.snapshotPosition,
-    sessionManager: manager, sessionStore, config: runtimeConfig, launcher: options.launcher,
+    chatProfileChanged: (sessionId) => { for (const listener of chatProfileListeners) listener(sessionId) }, sessionManager: manager, sessionStore, config: runtimeConfig, launcher: options.launcher,
     onSelectionChanged: (listener) => capabilities.onChange(() => {
       void (async () => { await listener() })().catch((error: unknown) => log.warn("module selection application failed", { error: errorMessage(error) }))
     }),
@@ -465,11 +467,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   }), (owner) => owner.disposeCore())
   const subscriptionUsage = authRuntime.subscriptionUsage
   const { subscriptionSpendConsentMaterializer } = composeSubscriptionNotifications(scope, {
-    authRuntime,
-    notify,
-    projectRoot,
-    bus,
-    log,
+    authRuntime, notify, projectRoot, bus, log,
     providerName: (providerId) => accessProviderRegistry(moduleSelection()).selection.shortName(providerId),
   })
   const authLogin = scope.own("auth-login", composeAuthLogin({
@@ -619,7 +617,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   const endServices = beginStage("services")
   const deps = {
     ...projections,
-    roleProjection: composeRoleProtocolProjection(scope, { manager, bus, onProfilesChanged: (onChange) => runtimeConfig.subscribe("profiles", onChange), onStored: eventStore.onStored, publish: bus.publish, reader: projectionReader, userDataRoot, capture: async (sessionId) => (await authRuntime.sessionAuthAdmission.admit(sessionId)).workflowDeps.captureProviderConnection(), definitions: runtimeDefinitions }),
+    roleProjection: composeRoleProtocolProjection(scope, { manager, bus, onProfilesChanged: (onChange) => runtimeConfig.subscribe("profiles", onChange), onStored: eventStore.onStored, publish: bus.publish, reader: projectionReader, userDataRoot, capture: async (sessionId) => (await authRuntime.sessionAuthAdmission.admit(sessionId)).workflowDeps.captureProviderConnection(), definitions: runtimeDefinitions, moduleSelection, moduleServices: moduleServices.services, onChatProfileChanged: (listener) => { chatProfileListeners.add(listener); return () => { chatProfileListeners.delete(listener) } } }),
     projectionReader,
     moduleProtocol,
     projectRoot,

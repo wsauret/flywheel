@@ -135,7 +135,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   // The session's engines live while a client shows it, which the session's owner reports (`ChatRunner.setShown`).
   const engines = createSessionEngines({
     sessionId, prepareRequest: deps.prepareRequest, resolveRoles: deps.resolveRoles,
-    chatOptions: requestOptions.prestart,
+    chatRole: requestOptions.chatRole, chatOptions: requestOptions.prestart,
     hostOptions: requestOptions.host,
   })
   const unsubscribeRoleChanges = deps.subscribeRoleChanges(() => { engines.rolesChanged() })
@@ -194,7 +194,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     }
     const roles = await deps.resolveRoles()
     if (!isLiveTurn(turn)) throw new AgentTurnAborted()
-    const selectedModel = roles.get("chat")
+    const selectedModel = roles.get(requestOptions.chatRole())
     // The session tree IS the model-visible context. Build it after any
     // commitUserTurn has settled so the trailing user message is included;
     // the agent runtime treats that trailing user as the current turn and

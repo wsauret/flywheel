@@ -9,7 +9,7 @@ import { openRequestInputs } from "../../../../../src/orchestration/agent-runtim
 import { resolveRuntimeConversation } from "../../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import type { RunnableAgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import type { WebSearchPort } from "../../../../../src/orchestration/agent-runtime/web-search/types.js"
-import { resolveChatProfile } from "../../../../../src/orchestration/chat-profile.js"
+import { resolveChatProfile, resolveChatRole } from "../../../../../src/orchestration/chat-profile.js"
 import { LEAD_PROMPT, LISTED_CHAT_PROMPT, milestoneMessageUse, STARTED_CHAT_PROMPT } from "../../../../../src/orchestration/modules/lead/prompt.js"
 import { leadService, type LeadRole, type LeadService } from "../../../../../src/orchestration/modules/lead/service.js"
 import { LEAD_TOOLS } from "../../../../../src/orchestration/modules/lead/tools.js"
@@ -150,6 +150,14 @@ describe("the lead's chat profile", () => {
       expect(agent.messageSession).not.toContain(use)
       expect(agent.messageSession).toContain("Do not send acknowledgements, thanks, confirmations, status or progress reports")
     }
+  })
+
+  // PI-LEAD-020: only the lead's requests use the Lead setting.
+  test("the lead's requests use the Lead role, and every other chat, also one that the lead started, uses Chat", () => {
+    const roleOf = (role: LeadRole | undefined) => composeModuleServices([["lead", { role: () => role }]])
+    const cases: readonly (readonly [LeadRole | undefined, string])[] = [["lead", "lead-chat"], ["started", "chat"], ["briefed", "chat"], [undefined, "chat"]]
+    for (const [role, expected] of cases) expect(resolveChatRole(on, { sessionId: "chat-1", modules: roleOf(role) })).toBe(expected)
+    expect(resolveChatRole(off, { sessionId: "chat-1", modules: roleOf("lead") })).toBe("chat")
   })
 
   test("the lead prompt rendered without web has no line that names web", () => {

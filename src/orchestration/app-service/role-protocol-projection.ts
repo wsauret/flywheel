@@ -13,6 +13,9 @@ import type { ProviderConnectionCapture } from "../agent-runtime/factory.js"
 import { installedChildSessionHistory } from "../session/module-session-operations.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
 import type { RuntimeUiBus } from "./runtime-ui-bus.js"
+import { resolveChatRole } from "../chat-profile.js"
+import type { FirstPartyModuleSnapshot } from "../modules.js"
+import type { ModuleServices } from "../../infra/module-service.js"
 
 const log = Log.create({ service: "role-protocol-projection" })
 
@@ -88,6 +91,11 @@ export function composeRoleProtocolProjection(scope: RuntimeOwnership, deps: {
   readonly onStored: (listener: (facts: readonly StoredFact[]) => void) => () => void
   /** Runs `onChange` after each publication that changed the profiles setting. */
   readonly onProfilesChanged: (onChange: () => void) => () => Promise<void>
+  /** The module selection and process services, through which a module names the model role of a chat it profiles. */
+  readonly moduleSelection: FirstPartyModuleSnapshot
+  readonly moduleServices: ModuleServices
+  /** Runs `onChange` with a chat whose profile changed (`ModuleProcessServices.chatProfileChanged`). */
+  readonly onChatProfileChanged: (onChange: (sessionId: string) => void) => () => void
 }): RoleProtocolProjection {
   const runs = workflowRunReader(deps.reader)
   const records = new Map<string, ReturnType<typeof loadRecords>>()
@@ -174,6 +182,7 @@ export function composeRoleProtocolProjection(scope: RuntimeOwnership, deps: {
       }
     },
     capture: deps.capture,
+    chatRole: (sessionId) => resolveChatRole(deps.moduleSelection(), { sessionId, modules: deps.moduleServices }),
   })
   return scope.own("role-projection", createRoleProtocolProjection({
     manager: deps.manager, publish: deps.publish, readRoles,
@@ -187,13 +196,15 @@ export function composeRoleProtocolProjection(scope: RuntimeOwnership, deps: {
       // A profile role edit changes what every runner resolves on its next
       // request, without an auth publication or a stored fact.
       const unsubscribeProfiles = deps.onProfilesChanged(() => refresh())
+      // A chat's profile decides the role that serves it, so a module's change of that profile moves the seat.
+      const unsubscribeChatProfiles = deps.onChatProfileChanged((sessionId) => refresh(sessionId))
       const unsubscribe = deps.onStored((facts) => {
         for (const workflowId of workflowRunOwner().roleChanges(facts)) {
           policies.delete(workflowId)
           for (const sessionId of members.get(workflowId) ?? []) refresh(sessionId)
         }
       })
-      return async () => { deps.bus.removeListener(listener); unsubscribe(); await unsubscribeProfiles() }
+      return async () => { deps.bus.removeListener(listener); unsubscribe(); unsubscribeChatProfiles(); await unsubscribeProfiles() }
     },
   }), (owned) => owned.dispose())
 }

@@ -17,6 +17,8 @@ export function createRoleAssignmentReader(deps: {
   readonly personas: (sessionId: string) => Promise<AgentPersonas>
   readonly childRole: (sessionId: string) => Promise<{ readonly roleId: string; readonly briefScope?: BriefScope } | undefined>
   readonly workflowSeat: (membership: WorkflowMembership) => Promise<{ readonly briefId: string; readonly definitionId: string } | undefined>
+  /** The model role whose setting a root chat's requests use (`resolveChatRole`). */
+  readonly chatRole: (sessionId: string) => string
   readonly userDataRoot: string
 }): (sessionId: string) => Promise<RoleAssignmentView | null> {
   return async (sessionId) => {
@@ -28,7 +30,7 @@ export function createRoleAssignmentReader(deps: {
         await deps.capture(sessionId), deps.userDataRoot, child === undefined ? [] : [child.roleId])
       const seat = session.kind === "subagent"
         ? child === undefined ? { roleId: "chat", selection: undefined } : childServingSeat(child.roleId, roles, child.briefScope)
-        : { roleId: "chat", selection: roles.get("chat") }
+        : { roleId: deps.chatRole(sessionId), selection: roles.get(deps.chatRole(sessionId)) }
       return {
         assignments: projectRoleAssignments(Object.fromEntries(roles)),
         serving: { slot: roleSlot(seat.roleId), ...(seat.selection === undefined ? {} : { selection: { model: seat.selection.model, effort: seat.selection.effort } }) },

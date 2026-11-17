@@ -12,6 +12,7 @@ import { newTestRunner } from "../../../../helpers/agent-runner.js"
 import { asModelClient } from "../../agent-runtime/_model-client.js"
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import { roleCapture } from "../../../../helpers/role-capture.js"
+import { composeModuleServices } from "../../../../../src/infra/module-service.js"
 
 test("an attached side host outlives turns, streams through the shared fold, and stops only its own runner", async () => {
   const started = [Promise.withResolvers<void>(), Promise.withResolvers<void>()]
@@ -72,6 +73,44 @@ test("an attached side host outlives turns, streams through the shared fold, and
   expect(host.snapshot().current?.state).toBe("stopped")
   expect(lifecycle.chatModuleHosts.get(sideQuestionHost)).toBe(host)
   unsubscribe()
+  lifecycle.abortGeneration()
+  await lifecycle.settle()
+  await lifecycle.terminateBackgroundWorks()
+  await bus.dispose()
+})
+
+// PI-LEAD-020: a side question in the lead's tab runs on the Lead setting, as the lead's own turns do.
+test("a side question runs on the model role of its chat's profile", async () => {
+  const started = [Promise.withResolvers<void>(), Promise.withResolvers<void>()]
+  const runners: AgentOptions[] = []
+  const roles = new Map([
+    ["chat", { roleId: "chat", model: "chat-model", effort: "high" }],
+    ["lead-chat", { roleId: "lead-chat", model: "lead-model", effort: "low" }],
+  ])
+  const deps = createTestChatSessionDeps({
+    sessionId: "lead",
+    resolveRoles: async () => roles,
+    moduleServices: composeModuleServices([["lead", { role: () => "lead" }]]),
+    createAgent: (options) => {
+      const done = Promise.withResolvers<AgentRunResult>()
+      runners.push(options)
+      options.lifecycle.signal?.addEventListener("abort", () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), { once: true })
+      started[runners.length - 1]?.resolve()
+      return { send() {}, end() {}, abort: () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), done: done.promise }
+    },
+  })
+  const bus = new EventBus()
+  const lifecycle = createChatRunnerLifecycle({
+    deps, state: new ChatSessionState(undefined, () => {}), eventBus: bus, session: outputSessionStub("lead"), askUser: askUserStub(),
+    setConnectionState() {}, applyNestedStoredFact() {}, awaitDurableFacts: async () => {},
+  })
+  lifecycle.enqueueInput("main task")
+  await started[0]!.promise
+  await lifecycle.chatModuleHosts.get(sideQuestionHost)!.ask("side question")
+  await started[1]!.promise
+  const side = runners[1]!
+  expect([side.model, side.effort]).toEqual(["lead-model", "low"])
+  expect(side.requestSelection?.(roles)).toMatchObject({ roleId: "lead-chat", model: "lead-model" })
   lifecycle.abortGeneration()
   await lifecycle.settle()
   await lifecycle.terminateBackgroundWorks()

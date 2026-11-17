@@ -224,6 +224,7 @@ describe("session assignment settings", () => {
       personas: async () => new Map(),
       childRole: async () => undefined,
       workflowSeat: async () => ({ briefId: "plan", definitionId: "worker" }),
+      chatRole: () => "chat",
       userDataRoot: "/scratch",
     })
     const serving = async () => sessionServingSelection(await reading(id) ?? undefined)
@@ -261,6 +262,7 @@ describe("session assignment settings", () => {
       personas: async () => personas,
       childRole: async () => ({ roleId: "explorer" }),
       workflowSeat: async () => ({ briefId: "plan", definitionId: "worker" }),
+      chatRole: () => "chat",
       userDataRoot: "/scratch",
     })
     const api = controller(manager, id, configPath, profile, models, {}, member?.inheritedRoles, personas)

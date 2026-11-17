@@ -9,7 +9,7 @@ interface ChatProfileInput {
   readonly modules: ModuleServices
 }
 
-/** A module's declaration of the prompt and the tool names of the chats it owns (ARCH-STRUCTURE-045). The module
+/** A module's declaration of the prompt, the tool names, and the model role of the chats it owns (ARCH-STRUCTURE-045). The module
  *  contributes it as `chatProfiles`, and `profile` answers undefined for a chat that the module does not own. */
 export interface ChatProfileContribution {
   readonly profile: (input: ChatProfileInput) => ChatProfile | undefined
@@ -25,4 +25,10 @@ export function resolveChatProfile(composition: FirstPartyModuleComposition, inp
     if (profile) return profile
   }
   return undefined
+}
+
+/** The model role whose setting the requests of one chat use: its profile's role, or the Chat role of every chat that
+ *  no module profiles. */
+export function resolveChatRole(composition: FirstPartyModuleComposition, input: ChatProfileInput): string {
+  return resolveChatProfile(composition, input)?.role ?? "chat"
 }

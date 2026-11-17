@@ -55,6 +55,8 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   // Each message that the service posted between sessions, with how the runtime's delivery answered it.
   const reports: { readonly fromSessionId: string; readonly toSessionId: string; readonly call: string; readonly text: string; readonly status: string }[] = []
   const patches: RuntimeUiPatchInput[] = []
+  // Each chat whose profile the service reported changed, with the lead role that the service held for it then.
+  const profileChanges: string[] = []
   const storeReader = asAsyncEventReadSurface(ctx.store)
   const transcriptCache = createTranscriptProjectionCache({ sessionStore: ctx.sessionStore, reader: storeReader, projectionReader: storeReader, projectRoot: ctx.baseDir })
   // It opens a closed chat again, as the executor does.
@@ -109,6 +111,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     eventWriter: setup.eventWriter ?? ctx.store,
     onStored,
     publish,
+    chatProfileChanged: (sessionId) => { profileChanges.push(`${sessionId} ${service.role(sessionId) ?? "none"}`) },
     sessionManager: ctx.manager,
     sessionStore: ctx.sessionStore,
     executionEnvironment: () => ({
@@ -160,7 +163,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   /** Opens the lead chat through the control part and answers its id, or null while it opens none. */
   const openLead = async (reason: "launch" | "command" = "launch"): Promise<string | null> => (await control.open(reason))?.sessionId ?? null
   return {
-    service, control, openLead, supervisor, sessionEvents, notices, inputs, patches, trace, forwardRoles, reports,
+    service, control, openLead, supervisor, sessionEvents, notices, inputs, patches, trace, forwardRoles, reports, profileChanges,
     /** A person's close that the control placement carries out while execution is paused: the chat turns inactive
      *  and the control placement tells its listeners. */
     async pausedClose(sessionId: string, tabClose: boolean) {

@@ -11,6 +11,9 @@ import { createLeadRuntime, leadRuntime } from "./runtime.js"
 import { createLeadService, leadService } from "./service.js"
 import { chatProgressDeclaration, findChatDeclaration, LEAD_TOOLS, routeRequestDeclaration } from "./tools.js"
 
+/** The model role of the lead chat's requests. Every other chat, also one that the lead started, keeps Chat. */
+const LEAD_MODEL_ROLE = "lead-chat"
+
 /** The lead (PI-LEAD-001 to PI-LEAD-008): one always-on chat for each project
  *  that routes the person's requests to other chats. Its facts, the
  *  designation of the lead chat in its control part (ARCH-STRUCTURE-045),
@@ -33,8 +36,10 @@ export const leadModule = {
   facts: { prefixes: ["lead."] },
   contributions: [
     { domain: "chatProfiles", id: "lead", value: {
-      profile: ({ sessionId, modules }) => modules.get(leadService)?.role(sessionId) === "lead" ? { prompt: LEAD_PROMPT, tools: LEAD_TOOLS } : undefined,
+      profile: ({ sessionId, modules }) => modules.get(leadService)?.role(sessionId) === "lead" ? { prompt: LEAD_PROMPT, tools: LEAD_TOOLS, role: LEAD_MODEL_ROLE } : undefined,
     } },
+    // The lead's own model setting (PI-LEAD-020), which the model settings list only while the module is on.
+    { domain: "modelRoles", id: "lead", value: [LEAD_MODEL_ROLE] },
     { domain: "tools", id: ROUTE_REQUEST_TOOL_NAME, value: { kind: "tool", name: ROUTE_REQUEST_TOOL_NAME, declaration: routeRequestDeclaration } },
     { domain: "tools", id: CHAT_PROGRESS_TOOL_NAME, value: { kind: "tool", name: CHAT_PROGRESS_TOOL_NAME, declaration: chatProgressDeclaration } },
     { domain: "tools", id: FIND_CHAT_TOOL_NAME, value: { kind: "tool", name: FIND_CHAT_TOOL_NAME, declaration: findChatDeclaration } },

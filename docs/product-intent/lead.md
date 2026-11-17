@@ -77,3 +77,7 @@ The lead routes every request in the turn that it arrives in, also a question th
 ## PI-LEAD-019: The lead reads how each chat stands
 
 When the person asks how the chats go, the lead reads each chat in its list and summarizes from what it read, because a list row alone does not tell. For one chat, the lead reads where the chat's checkpoint says it stands and its next step. It also reads the person's messages and the chat's replies, newest first and earlier on request, without tool output. It reads the chat's subagents and workflows that have not finished, with their goal, state, and time, and the chat's newest calls.
+
+## PI-LEAD-020: The lead runs on its own model setting
+
+The lead's requests use their own model role, Lead, which the model settings list in their last section, with Learning Review, Title Generation, and Subagent Summary, only while the lead is on. Every other session, also each session that the lead started, uses Chat. A model set for Lead stays saved while the lead is off and applies again when it is back on. The model picker in the lead's tab edits Lead for that session only, under the name Lead.

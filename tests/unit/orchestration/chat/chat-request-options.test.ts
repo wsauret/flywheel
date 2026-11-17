@@ -10,7 +10,7 @@ import { createChatRequestOptions } from "../../../../src/orchestration/chat/cha
 import type { FirstPartyModule } from "../../../../src/orchestration/modules"
 import { askUserStub, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
 
-const profile: ChatProfile = { prompt: "P", tools: ["read"] }
+const profile: ChatProfile = { prompt: "P", tools: ["read"], role: "owned-role" }
 const owned = moduleServiceHandle<{ readonly sessionId: string }>("owner")
 const owner: FirstPartyModule = {
   id: "owner", dependencies: [], availability: { kind: "available" }, observers: [], transformers: [], gates: [],
@@ -30,6 +30,7 @@ function requestOptions(sessionId: string) {
     sessionId,
     createAgent: () => { throw new Error("createAgent not used") },
     moduleServices: composeModuleServices([["owner", { sessionId: "a" }]]),
+    moduleSelection: () => on,
   })
   const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }))
   const foregroundBashHold = createForegroundBashHoldController(() => {})
@@ -61,5 +62,18 @@ describe("chat request options", () => {
     const { options: prestart } = await options.prestart(provider)
     expect(prestart.chatProfile?.(off)).toBeUndefined()
     expect(prestart.chatProfile?.(on)).toBe(profile)
+  })
+
+  it("select the model role that the chat's profile names, and Chat for a chat without a profile", () => {
+    const roles = new Map([
+      ["chat", { roleId: "chat", model: "chat-model", effort: "medium" }],
+      ["owned-role", { roleId: "owned-role", model: "owned-model", effort: "low" }],
+    ])
+    const a = requestOptions("a")
+    const b = requestOptions("b")
+    expect(a.options.chatRole()).toBe("owned-role")
+    expect(a.options.send(undefined, a.provider).requestSelection(roles)).toMatchObject({ roleId: "owned-role", model: "owned-model", effort: "low" })
+    expect(b.options.chatRole()).toBe("chat")
+    expect(b.options.send(undefined, b.provider).requestSelection(roles)).toMatchObject({ roleId: "chat", model: "chat-model" })
   })
 })

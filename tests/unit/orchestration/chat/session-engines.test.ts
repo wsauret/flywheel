@@ -71,6 +71,7 @@ function harness(initial: readonly (readonly [string, string, string?])[], insta
     sessionId: "session",
     prepareRequest: (prepared, preparation) => counter.reader.prepareRequest(prepared, preparation),
     resolveRoles: () => counter.reader.resolveRoles(),
+    chatRole: () => "chat",
     chatOptions: async (provider) => {
       if (chatFails) throw new Error("the environment probe could not launch git")
       return { options: options(roles.get("chat")?.[0] ?? "", { kind: "interactive-chat" }, provider), readHistory: async () => [] }

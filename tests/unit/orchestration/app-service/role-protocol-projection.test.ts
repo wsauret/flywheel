@@ -7,7 +7,7 @@ import { createWorkflowRunWriter } from "../../../../src/orchestration/modules/w
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestWorkflow } from "../session/_session-manager-fixtures.js"
 import { createRoleAssignmentReader, projectRoleAssignments } from "../../../../src/orchestration/app-service/role-assignment-projection.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
-import type { ReplayedSession } from "../../../../src/orchestration/session/schemas.js"
+import type { ReplayedSession, RoleAssignmentSnapshot } from "../../../../src/orchestration/session/schemas.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { sessionServingLabel } from "../../../../src/protocol/role-protocol-types.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
@@ -15,6 +15,8 @@ import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
 import { authStatusCursor } from "../../../../src/protocol/auth-status-protocol-types.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 
 function chat(model: string): ReplayedSession {
   return {
@@ -100,6 +102,28 @@ describe("role protocol projection", () => {
     await projection.dispose()
     expect(listeners.size).toBe(0)
   })
+  // PI-LEAD-020: a chat that its profile's role serves, such as the lead, names that role as its serving seat, and its
+  // session setting of that role wins over the profile's.
+  test("serves a root chat from the role that its profile names, with its session setting first", async () => {
+    let snapshot: RoleAssignmentSnapshot = { defaults: {}, overrides: {} }
+    const readRoles = createRoleAssignmentReader({
+      readSession: async () => ({ kind: "chat", roleAssignments: snapshot }),
+      childRole: async () => undefined,
+      capture: async () => roleCapture(["chat-model", "lead-model", "edited-model"], {
+        chat: { model: "chat-model", effort: "medium" },
+        "lead-chat": { model: "lead-model", effort: "low" },
+      }),
+      personas: async () => new Map(),
+      inheritedRoles: async () => ({ defaults: {}, overrides: {} }),
+      workflowSeat: async () => undefined,
+      chatRole: (sessionId) => sessionId === "lead-chat" ? "lead-chat" : "chat",
+      userDataRoot: "/scratch",
+    })
+    expect((await readRoles("lead-chat"))?.serving).toEqual({ slot: { kind: "role", roleId: "lead-chat" }, selection: { model: "lead-model", effort: "low" } })
+    expect((await readRoles("other-chat"))?.serving).toEqual({ slot: { kind: "role", roleId: "chat" }, selection: { model: "chat-model", effort: "medium" } })
+    snapshot = { defaults: {}, overrides: { "lead-chat": { model: "edited-model", effort: "high" } } }
+    expect((await readRoles("lead-chat"))?.serving).toEqual({ slot: { kind: "role", roleId: "lead-chat" }, selection: { model: "edited-model", effort: "high" } })
+  })
   test.each(["explorer", "chat"])("publishes the %s child's runner selection and a viewer edit on the same cursor", async (roleId) => {
     let snapshot = { defaults: {}, overrides: {} }
     let listener: ((change: SessionMetadataChange) => void) | undefined
@@ -115,6 +139,7 @@ describe("role protocol projection", () => {
       personas: async () => new Map(),
       inheritedRoles: async () => ({ defaults: {}, overrides: {} }),
       workflowSeat: async () => undefined,
+      chatRole: () => "chat",
       userDataRoot: "/scratch",
     })
     const projection = createRoleProtocolProjection({
@@ -167,6 +192,7 @@ describe("role protocol projection", () => {
         bus: { addListener: () => {}, removeListener: () => {} },
         onStored: (listener) => store.onStored(listener),
         onProfilesChanged: () => async () => {},
+        moduleSelection: () => composeFirstPartyModules(), moduleServices: NO_MODULE_SERVICES, onChatProfileChanged: () => () => {},
       })
       for (const id of ids) await projection.snapshot(id)
       requests.take()
@@ -180,9 +206,10 @@ describe("role protocol projection", () => {
       store.close()
     }
   })
-  test("a profile role edit and an auth publication burst each push every held reading once", async () => {
+  test("a profile role edit and an auth publication burst each push every held reading once, and a chat profile change pushes its chat alone", async () => {
     const ids = ["chat-1", "chat-2", "chat-3"]
     let profiles: (() => void) | undefined
+    let chatProfile: ((sessionId: string) => void) | undefined
     let onPatch: ((event: FrontendEvent) => void) | undefined
     let onChange: ((change: SessionMetadataChange) => void) | undefined
     let published: string[] = []
@@ -202,6 +229,8 @@ describe("role protocol projection", () => {
       bus: { addListener: (listener) => { onPatch = listener }, removeListener: () => {} },
       onStored: () => () => {},
       onProfilesChanged: (changed) => { profiles = changed; return async () => {} },
+      moduleSelection: () => composeFirstPartyModules(), moduleServices: NO_MODULE_SERVICES,
+      onChatProfileChanged: (changed) => { chatProfile = changed; return () => {} },
     })
     // A deletion queues behind every refresh on the same lane, so its patch
     // marks the point after which no refresh push remains.
@@ -215,6 +244,8 @@ describe("role protocol projection", () => {
     }
     for (const id of ids) await projection.snapshot(id)
     expect(await pushes(() => profiles?.())).toEqual(ids)
+    // A module's change of one chat's profile pushes that chat's reading alone.
+    expect(await pushes(() => chatProfile?.("chat-2"))).toEqual(["chat-2"])
     // One unscoped auth publication patches the defaults and then every session.
     expect(await pushes(() => {
       for (const scope of [{ kind: "defaults" } as const, ...ids.map((sessionId) => ({ kind: "session" as const, sessionId }))]) {

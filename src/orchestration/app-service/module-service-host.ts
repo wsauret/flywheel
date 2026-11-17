@@ -108,6 +108,10 @@ export interface ModuleProcessServices {
   readonly onStored: (listener: (facts: readonly StoredFact[]) => void) => () => void
   readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch | undefined
   readonly snapshotPosition: RuntimeUiPatchSequencer["snapshotPosition"]
+  /** Tells the kernel that what a module's `chatProfiles` contribution answers for one chat changed, so every view
+   *  that the profile decides, such as the model role that serves the chat, reads it again. The module calls it once
+   *  the state that its `profile` reads holds the change. */
+  readonly chatProfileChanged: (sessionId: string) => void
   readonly sessionManager: SessionManager
   readonly sessionStore: SessionStore
   /** The runtime's one configuration authority: the live snapshot and its change stream. */

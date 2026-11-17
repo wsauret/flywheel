@@ -18,7 +18,7 @@ function compose(modules: readonly FirstPartyModule[], disabledModuleIds: readon
   return composeModules(modules, { disabledModuleIds })
 }
 
-const profile: ChatProfile = { prompt: "P", tools: ["read"] }
+const profile: ChatProfile = { prompt: "P", tools: ["read"], role: "owned-role" }
 const services = composeModuleServices([["owner", { sessionId: "a" }]])
 const owner = profileModule("owner", (sessionId, modules) => modules.get(owned)?.sessionId === sessionId ? profile : undefined)
 
@@ -35,7 +35,7 @@ describe("resolveChatProfile", () => {
 
   it("answers the first contribution that gives a profile, past one that declines", () => {
     const declines = profileModule("a-declines", () => undefined)
-    const other: ChatProfile = { prompt: "Q", tools: ["search"] }
+    const other: ChatProfile = { prompt: "Q", tools: ["search"], role: "chat" }
     const later = profileModule("z-later", () => other)
     expect(resolveChatProfile(compose([later, owner, declines]), { sessionId: "a", modules: services })).toBe(profile)
     expect(resolveChatProfile(compose([later, owner, declines]), { sessionId: "b", modules: services })).toBe(other)

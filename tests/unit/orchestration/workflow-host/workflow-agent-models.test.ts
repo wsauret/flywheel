@@ -22,6 +22,7 @@ async function publishedRoles(snapshot: RoleAssignmentSnapshot, capture: ReturnT
       capture: async () => capture,
       personas: async () => new Map([["build", { id: "explorer", roles: ["explorer"] }]]),
       workflowSeat: async () => ({ briefId: "demo.build", definitionId: "build" }),
+      chatRole: () => "chat",
       childRole: async () => undefined,
       userDataRoot: "/scratch",
     }),

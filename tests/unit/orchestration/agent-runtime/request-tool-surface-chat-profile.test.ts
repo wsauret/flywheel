@@ -34,7 +34,7 @@ describe("chat profile", () => {
       moduleSelection: () => snapshots[Math.min(request, 1)]!,
       chatProfile: (modules) => {
         asked.push(modules);
-        return asked.length === 1 ? { prompt: "Profile body.", tools: ["read", "ask_user"] } : undefined;
+        return asked.length === 1 ? { prompt: "Profile body.", tools: ["read", "ask_user"], role: "chat" } : undefined;
       },
     };
     const scope = Scope.makeUnsafe("sequential");

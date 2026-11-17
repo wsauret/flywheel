@@ -114,6 +114,7 @@ export function kernelPorts(provided: Partial<KernelPorts> = {}): KernelPorts {
     onStored: refuse("onStored"),
     publish: refuse("publish"),
     snapshotPosition: refuse("snapshotPosition"),
+    chatProfileChanged: refuse("chatProfileChanged"),
     sessionManager: refusingSessionManager,
     sessionStore: refusingSessionStore,
     config: { snapshot: refuse("config.snapshot"), subscribe: refuse("config.subscribe"), mutateSection: refuse("config.mutateSection") },
