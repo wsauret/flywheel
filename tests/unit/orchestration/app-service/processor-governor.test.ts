@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import type { ContainerProcessor } from "../../../../src/infra/container-processor.js"
-import { createProcessorGovernor, type ProcessorClaims, type ProcessorHolds } from "../../../../src/orchestration/app-service/processor-governor.js"
+import { createProcessorGovernor, type ProcessorGovernor } from "../../../../src/orchestration/app-service/processor-governor.js"
+
+type ProcessorHolds = Parameters<Parameters<ProcessorGovernor["join"]>[0]["send"]>[0]
+type ProcessorClaims = Parameters<ReturnType<ProcessorGovernor["join"]>["claim"]>[0]
 
 /** Containers with a set number of runnable threads while they run and none
  *  while held, and a timer the test fires one tick at a time. */

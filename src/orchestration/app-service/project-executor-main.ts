@@ -2,7 +2,7 @@ import { connectInternalProcessChannel, type InternalProcessEndpoint } from "../
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { processLoginShellPath } from "../../infra/login-shell-path.js"
-import { exitAfter, installCrashPolicy, recordFatal, type UncaughtKind } from "../../infra/crash-policy.js"
+import { exitAfter, installCrashPolicy, recordFatal } from "../../infra/crash-policy.js"
 import type { ShutdownSignal } from "../../infra/shutdown-signals.js"
 import { createReattachableProcessEndpoint, type ReattachableProcessEndpoint } from "../../infra/reattachable-process-endpoint.js"
 import { connectOwnedProcessBridge } from "../../infra/owned-process-bridge.js"
@@ -39,27 +39,6 @@ type StopTrigger = "account stop" | "account gone" | `signal ${ShutdownSignal}`
 
 const FATAL_FLUSH_BOUND_MS = 1_000
 
-/** The executor's fatal path (ARCH-RUNTIME-030). It records the failure, flushes the
- *  durable writers of the runtime that `runtime` answers at that moment, so
- *  the facts written before the failure reach the store, closes the log, and
- *  exits 1. The flush is bounded, so a flush that the failure wedged never
- *  holds the exit, and the account restarts the executor. */
-export function projectExecutorFatal(options: {
-  readonly log: Pick<ReturnType<typeof Log.create>, "warn" | "error">
-  readonly runtime: () => Pick<RuntimeComposition, "flushDurableState"> | undefined
-  readonly exit: (code: number) => void
-}): (cause: unknown, kind: UncaughtKind) => Promise<void> {
-  const { log, runtime, exit } = options
-  return (cause, kind) => {
-    recordFatal(log, kind, cause)
-    return exitAfter({
-      log, boundMs: FATAL_FLUSH_BOUND_MS,
-      settle: () => runtime()?.flushDurableState() ?? Promise.resolve(),
-      exit: () => { void Log.closeGlobal().finally(() => { exit(1) }) },
-    })
-  }
-}
-
 /** Composes execution over account-owned state and private IPC, with no public listener. */
 export async function runProjectExecutorMain(): Promise<void> {
   // The command supervisor that launched this process leads its container.
@@ -76,7 +55,21 @@ export async function runProjectExecutorMain(): Promise<void> {
   await Log.init({ dir: init.directories.projectRoot })
   const log = Log.create({ service: "project-executor-main" }).with({ projectId: init.projectId, generation: init.generation })
   let runtime: RuntimeComposition | undefined
-  installCrashPolicy({ role: "project-executor", log, fatal: projectExecutorFatal({ log, runtime: () => runtime, exit: (code) => process.exit(code) }) })
+  // The executor's fatal path (ARCH-RUNTIME-030) flushes the durable writers
+  // of the runtime composed by then, so the facts written before the failure
+  // reach the store. The flush is bounded, so a flush that the failure wedged
+  // never holds the exit, and the account restarts the executor.
+  installCrashPolicy({
+    role: "project-executor", log,
+    fatal: (failure, kind) => {
+      recordFatal(log, kind, failure)
+      return exitAfter({
+        log, boundMs: FATAL_FLUSH_BOUND_MS,
+        settle: () => runtime?.flushDurableState() ?? Promise.resolve(),
+        exit: () => { void Log.closeGlobal().finally(() => { process.exit(1) }) },
+      })
+    },
+  })
   const stopSignals = listenForExecutorStopSignals({ platform: process.platform, log })
   // The executor's own shutdown bound, armed when a stop begins. The account
   // waits this bound and the grace for the answer, so a stop that cannot

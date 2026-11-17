@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
-import { createRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection.js"
-import { projectRoleAssignments } from "../../../../src/orchestration/app-service/role-assignment-projection.js"
+import { composeRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection.js"
+import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime-ownership.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
+import { roleCapture } from "../../../helpers/role-capture.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
 import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
@@ -28,7 +31,11 @@ describe("app-service role protocol", () => {
     const sessionStore = fakeSessionStore(new Map())
     const manager = fakeManager({ read: async (sessionId) => sessionId === "session-1" ? session : null })
     const bus = createRuntimeUiBus()
-    const roleProjection = createRoleProtocolProjection({ manager, publish: bus.publish, readRoles: async () => ({ assignments: projectRoleAssignments(session.roleAssignments?.overrides ?? {}) }) })
+    const roleProjection = composeRoleProtocolProjection(createRuntimeOwnership(() => {}), {
+      manager, publish: bus.publish, bus, reader: asAsyncEventReadSurface(inMemoryEventReader([])), userDataRoot: "/scratch",
+      capture: async () => roleCapture(["gpt-5", "gpt-6"]), definitions: { personas: () => new Map() },
+      onStored: () => () => {}, onProfilesChanged: () => async () => {},
+    })
     const projections = fakeProjections()
     const service = createFlywheelAppService({
       projection: createFrontendProjection({ sessionStore, manager, projectRoot: "/workspace" }),

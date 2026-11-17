@@ -21,11 +21,11 @@ export interface RoleProtocolProjection {
   dispose(): Promise<void>
 }
 
-export function createRoleProtocolProjection(deps: {
+function createRoleProtocolProjection(deps: {
   readonly manager: Pick<SessionManager, "subscribe">
   readonly readRoles: (sessionId: string) => Promise<RoleAssignmentView | null>
   readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch
-  readonly subscribeRefresh?: (refresh: (sessionId?: string) => void) => () => Promise<void>
+  readonly subscribeRefresh: (refresh: (sessionId?: string) => void) => () => Promise<void>
 }): RoleProtocolProjection {
   let disposed = false
   const lane = createBackgroundLane(log, "role-protocol")
@@ -44,7 +44,7 @@ export function createRoleProtocolProjection(deps: {
   let refreshAll = false
   const refreshing = new Set<string>()
   let drainQueued = false
-  const unsubscribeRefresh = deps.subscribeRefresh?.((sessionId) => {
+  const unsubscribeRefresh = deps.subscribeRefresh((sessionId) => {
     if (sessionId === undefined) refreshAll = true
     else refreshing.add(sessionId)
     if (drainQueued) return
@@ -72,7 +72,7 @@ export function createRoleProtocolProjection(deps: {
       }
     })
   })
-  return { snapshot, dispose: async () => { disposed = true; unsubscribe(); await unsubscribeRefresh?.(); await lane.settled() } }
+  return { snapshot, dispose: async () => { disposed = true; unsubscribe(); await unsubscribeRefresh(); await lane.settled() } }
 }
 
 /** Owns the role projection in the runtime scope. Workflow roles resolve the

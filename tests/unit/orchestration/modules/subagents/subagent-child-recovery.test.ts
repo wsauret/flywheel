@@ -5,8 +5,7 @@ import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type FactQuery } from "../../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store"
-import { recoverOrphanedChildRuns } from "../../../../../src/orchestration/app-service/project-state-recovery"
-import { recoverProject } from "../../../../helpers/project-recovery"
+import { openProjectState, recoverProject, type ProjectStateInput } from "../../../../helpers/project-recovery"
 import { buildDurableSubagentCreated, buildSubagentPrompted, buildSubagentResumed } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { loadSubagentRunsFromEvents, SUBAGENT_RUN_FACT_TYPES } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager"
@@ -96,6 +95,14 @@ async function publishRunningChild() {
   return { projectRoot, store, reader, writer, manager }
 }
 
+/** The state Worker's deferred stale-session pass over a new composition:
+ *  how many sessions it paused and child runs it settled. */
+async function recoverStale(input: ProjectStateInput): Promise<number> {
+  const result = await openProjectState(input).sessions.request({ kind: "session.recover-stale" })
+  if (result.kind !== "session.recover-stale.result") throw new Error(`unexpected session result: ${result.kind}`)
+  return result.value
+}
+
 describe("durable subagent child recovery", () => {
   test("reconstructs the same run as crash-paused without executing it", async () => {
     const { projectRoot, store, reader, writer, manager } = await publishRunningChild()
@@ -125,17 +132,17 @@ describe("durable subagent child recovery", () => {
     await recoverProject({ directories: testDirectories(projectRoot), reader, writer }, "ownerless")
     expect(loadSubagentRunsFromEvents(store.read({ aggregateId: "session:child", types: SUBAGENT_RUN_FACT_TYPES })).at(-1)).toMatchObject({ status: "created" })
 
-    expect(await recoverOrphanedChildRuns({ directories: testDirectories(projectRoot), reader, writer, manager })).toBe(1)
+    expect(await recoverStale({ directories: testDirectories(projectRoot), reader, writer })).toBe(1)
     expect(loadSubagentRunsFromEvents(store.read({ aggregateId: "session:child", types: SUBAGENT_RUN_FACT_TYPES })).at(-1)).toMatchObject({
       childRunId: "run", status: "interrupted", interruptionReason: "runtime_restarted",
     })
-    expect(await recoverOrphanedChildRuns({ directories: testDirectories(projectRoot), reader, writer, manager })).toBe(0)
+    expect(await recoverStale({ directories: testDirectories(projectRoot), reader, writer })).toBe(0)
     await writer.append(prepareSessionFactAppend("child", buildSubagentResumed({
       childRunId: "run",
       authorizationId: "explicit:parent-tool",
       continuation: 1,
     })))
-    expect(await recoverOrphanedChildRuns({ directories: testDirectories(projectRoot), reader, writer, manager })).toBe(1)
+    expect(await recoverStale({ directories: testDirectories(projectRoot), reader, writer })).toBe(1)
     expect(loadSubagentRunsFromEvents(store.read({ aggregateId: "session:child", types: SUBAGENT_RUN_FACT_TYPES })).at(-1)).toMatchObject({
       childRunId: "run", status: "interrupted", interruptionReason: "runtime_restarted", continuationCount: 1,
     })
@@ -149,18 +156,22 @@ describe("durable subagent child recovery", () => {
     removeOwnerPid("child", projectRoot)
     await manager.updateLifecycleState("child", "inactive")
 
-    expect(await recoverOrphanedChildRuns({ directories: testDirectories(projectRoot), reader, writer, manager })).toBe(1)
+    expect(await recoverStale({ directories: testDirectories(projectRoot), reader, writer })).toBe(1)
     expect(loadSubagentRunsFromEvents(store.read({ aggregateId: "session:child", types: SUBAGENT_RUN_FACT_TYPES })).at(-1)).toMatchObject({ status: "interrupted" })
     store.close()
   })
 
-  test("leaves an open run alone while its owner is alive or its session is active", async () => {
+  test("leaves an open run alone while its owner is alive, and settles it after the pass pauses its session", async () => {
     const { projectRoot, store, reader, writer, manager } = await publishRunningChild()
-    expect(await recoverOrphanedChildRuns({ directories: testDirectories(projectRoot), reader, writer, manager })).toBe(0)
+    expect(await recoverStale({ directories: testDirectories(projectRoot), reader, writer })).toBe(0)
+    expect(loadSubagentRunsFromEvents(store.read({ aggregateId: "session:child", types: SUBAGENT_RUN_FACT_TYPES })).at(-1)).toMatchObject({ status: "created" })
     removeOwnerPid("child", projectRoot)
     expect(await manager.read("child")).toMatchObject({ lifecycleState: "active" })
-    expect(await recoverOrphanedChildRuns({ directories: testDirectories(projectRoot), reader, writer, manager })).toBe(0)
-    expect(loadSubagentRunsFromEvents(store.read({ aggregateId: "session:child", types: SUBAGENT_RUN_FACT_TYPES })).at(-1)).toMatchObject({ status: "created" })
+    // An active session's run is never settled while the session is active:
+    // the pass pauses the session first, then settles its run.
+    expect(await recoverStale({ directories: testDirectories(projectRoot), reader, writer })).toBe(2)
+    expect(await manager.read("child")).toMatchObject({ lifecycleState: "inactive" })
+    expect(loadSubagentRunsFromEvents(store.read({ aggregateId: "session:child", types: SUBAGENT_RUN_FACT_TYPES })).at(-1)).toMatchObject({ status: "interrupted" })
     store.close()
   })
 })

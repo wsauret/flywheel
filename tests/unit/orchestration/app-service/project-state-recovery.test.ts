@@ -5,8 +5,7 @@ import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type FactQuery } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile, resolveOwnerPidPath } from "../../../../src/infra/paths.js"
 import { createRuntimeEventStore, createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { SESSION_RECOVERY_OWED_IN_FLIGHT_KIND } from "../../../../src/orchestration/app-service/project-state-recovery.js"
-import { openProjectState, recoverProject } from "../../../helpers/project-recovery.js"
+import { openProjectState, owedAtRestart, recoverProject } from "../../../helpers/project-recovery.js"
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
@@ -116,7 +115,7 @@ describe("project execution recovery after a generation closes", () => {
     expect(initial.sessionIds).toEqual([sessionId])
     expect(initial.degraded).toEqual([])
     expect(store.readInFlight(sessionId, "file.mutation")).toEqual([])
-    expect(store.readInFlight(sessionId, SESSION_RECOVERY_OWED_IN_FLIGHT_KIND)).toEqual([])
+    expect(await owedAtRestart({ directories, reader, writer })).toEqual([])
     expect(store.read({ aggregateId: `session:${sessionId}`, types: ["file.mutation.settled"] }).map((fact) => fact.payload)).toEqual([
       { mutationId: first.mutationId, outcome: "indeterminate" },
     ])
@@ -440,7 +439,7 @@ describe("project recovery behind the writer lane", () => {
     const facts = await reader.readSlice({ sessionId: cut.sessionId })
     const positions = (type: string) => facts.facts.flatMap((fact) => !(fact instanceof Error) && fact.type === type ? [fact.position] : [])
     expect(Math.max(...positions("chat.entries.appended"))).toBeLessThan(Math.max(...positions("session.label.updated")))
-    expect(await reader.readInFlight(cut.sessionId, SESSION_RECOVERY_OWED_IN_FLIGHT_KIND)).toEqual([])
+    expect(await owedAtRestart({ directories, reader, writer: store })).toEqual([])
   })
 
   test("a start that ends before a claimed session recovers leaves it owed to the next start, once", async () => {
@@ -631,7 +630,7 @@ describe("project recovery behind the writer lane", () => {
       // The write that reached the parent first lands after its crash record.
       expect(labels).toHaveLength(first === "a write reaches the parent" ? 1 : 0)
       for (const position of labels) expect(position).toBeGreaterThan(crash[0] ?? Infinity)
-      for (const sessionId of [cut.sessionId, child.sessionId]) expect(await reader.readInFlight(sessionId, SESSION_RECOVERY_OWED_IN_FLIGHT_KIND)).toEqual([])
+      expect(await owedAtRestart({ directories, reader, writer: store })).toEqual([])
     })
   }
 

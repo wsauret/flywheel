@@ -41,7 +41,7 @@ import { createProjectStateSessionsService } from "./project-state-sessions.js"
 const log = Log.create({ service: "project-state-recovery" })
 
 /** One per session that a dead owner left and whose recovery has not finished. */
-export const SESSION_RECOVERY_OWED_IN_FLIGHT_KIND = "session.recovery_owed"
+const SESSION_RECOVERY_OWED_IN_FLIGHT_KIND = "session.recovery_owed"
 
 /** The conversations of a workflow's settled attempts. Only the follow-up, or
  *  the attempts in flight before one exists, can hold a turn their dead owner
@@ -406,7 +406,7 @@ async function recoverRetainedDeletions(input: {
  *  stale-session pass after readiness, never on the startup path. One targeted
  *  child-history read finds open runs, then one aggregate metadata read confirms
  *  each candidate. Returns how many runs it settled. */
-export async function recoverOrphanedChildRuns(input: {
+async function recoverOrphanedChildRuns(input: {
   readonly directories: ProjectDirectories
   readonly reader: AsyncEventStateReadSurface
   readonly writer: AsyncEventWriter

@@ -3,7 +3,7 @@ import { createLauncherScope, type GuardianControl, type GuardianLoss, type Owne
 import type { OwnedProcessExit } from "../../../../src/infra/owned-subprocess.js"
 import type { TerminationCause } from "../../../../src/infra/process-container.js"
 import { createProjectExecutorClient } from "../../../../src/orchestration/app-service/project-executor-client.js"
-import type { ProcessorAdmission, ProcessorHolds } from "../../../../src/orchestration/app-service/processor-governor.js"
+import type { ProcessorAdmission } from "../../../../src/orchestration/app-service/processor-governor.js"
 import { decodeProjectExecutorCommand, decodeProjectExecutorInitialization, encodeProjectExecutorCredential } from "../../../../src/orchestration/app-service/project-executor-protocol.js"
 import { createProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
@@ -60,7 +60,7 @@ async function settle(): Promise<void> {
  *  on their far side, and a launcher whose container exits on command. */
 export function fixture(options: {
   earlySupervisorDiagnostic?: ProcessDiagnosticRecord
-  stopDeadlineMs?: number; terminateWaits?: boolean; supervisorCannotRun?: boolean; readyAnswer?: Promise<void>; stopAnswer?: Promise<void>; stopSuccessorRows?: { readonly continuations: number; readonly handovers: number }; heartbeatIntervalMs?: number; blockersFailure?: string; blockersUnanswered?: boolean; handoffFailure?: string; guardianCloses?: OwnershipClosure[]; reattachDeadlineMs?: number; diagnostics?: boolean; rejectState?: boolean; wedged?: boolean; wrongCredential?: boolean; startupFailure?: boolean; executorPid?: number; projectRoot?: string; admission?: Promise<void>; guardianAdmission?: Promise<void>; guardianEntered?: () => void; launched?: () => void; listenerReady?: Promise<void>; chatDefaultStarted?: () => void; chatDefault?: RuntimeChatDefault; loginShellPath?: LoginShellPath; processorAdmission?: ProcessorAdmission } = {}) {
+  stopDeadlineMs?: number; terminateWaits?: boolean; supervisorCannotRun?: boolean; readyAnswer?: Promise<void>; stopAnswer?: Promise<void>; stopSuccessorRows?: { readonly continuations: number; readonly handovers: number }; heartbeatIntervalMs?: number; blockersFailure?: string; blockersUnanswered?: boolean; handoffFailure?: string; guardianCloses?: OwnershipClosure[]; reattachDeadlineMs?: number; diagnostics?: boolean; rejectState?: boolean; wedged?: boolean; wrongCredential?: boolean; startupFailure?: boolean; executorPid?: number; projectRoot?: string; admission?: Promise<void>; guardianAdmission?: Promise<void>; guardianEntered?: () => void; listenerReady?: Promise<void>; chatDefaultStarted?: () => void; chatDefault?: RuntimeChatDefault; loginShellPath?: LoginShellPath; processorAdmission?: ProcessorAdmission } = {}) {
   const clock = manualClock()
   type Connection = { readonly peer: InternalProcessEndpoint<unknown, unknown>; readonly local: InternalProcessEndpoint<unknown, unknown> }
   const servers = new Map<string, () => Connection>()
@@ -70,8 +70,10 @@ export function fixture(options: {
   const observations: string[] = []
   const startDefaults: RuntimeChatDefault[] = []
   const loginShellPaths: string[] = []
-  const processorHolds: ProcessorHolds[] = []
+  const processorHolds: Parameters<Parameters<ProcessorAdmission["join"]>[0]["send"]>[0][] = []
   const blockersRequests: number[] = []
+  const launched = Promise.withResolvers<void>()
+  let launchCommand: readonly string[] | undefined
   let launchCwd: string | undefined
   let launchPriority: string | undefined
   let launchChildrenBreakAway: boolean | undefined
@@ -93,14 +95,15 @@ export function fixture(options: {
     })
     return { ready: options.listenerReady ?? Promise.resolve(), async dispose() { observations.push(`dispose:${input.path}`) } }
   }
-  const scope = createLauncherScope({ adoptOwned: () => Promise.reject(new Error("an executor launch adopts nothing")), spawnOwned: async (_command, launch) => {
+  const scope = createLauncherScope({ adoptOwned: () => Promise.reject(new Error("an executor launch adopts nothing")), spawnOwned: async (argv, launch) => {
+    launchCommand = argv
     launchCwd = launch?.cwd
     launchPriority = launch?.priority
     launchChildrenBreakAway = launch?.childrenBreakAway
     onGuardianLost = launch?.onGuardianLost
     if (options.earlySupervisorDiagnostic !== undefined) launch?.diagnostics?.observe?.(options.earlySupervisorDiagnostic, 42)
     observations.push("launch")
-    options.launched?.()
+    launched.resolve()
     const init = decodeProjectExecutorInitialization(JSON.parse(launch!.env!.FLYWHEEL_PROJECT_EXECUTOR!))
     if (!init) throw new Error("expected valid project executor initialization")
     initialization = init
@@ -198,6 +201,10 @@ export function fixture(options: {
     blockersRequests,
     /** What the launched executor was told in its initialization. */
     initialization: () => initialization,
+    /** Settles once the executor process is launched. */
+    launched: launched.promise,
+    /** The command line the executor was launched with. */
+    command: () => launchCommand,
     launch: () => ({ cwd: launchCwd, priority: launchPriority, ...(launchChildrenBreakAway === undefined ? {} : { childrenBreakAway: launchChildrenBreakAway }) }),
     /** The executor process dies unasked, as a signal or a crash ends it: it
      *  writes its last output, its sockets drop, and it exits without

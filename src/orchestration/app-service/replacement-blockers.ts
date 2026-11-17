@@ -78,7 +78,7 @@ const log = Log.create({ service: "replacement-blockers" })
 /** The part of a session's published status its blocker reads. */
 type SessionStatus = Pick<StatusView, "activity" | "activeForegroundBashToolCallIds" | "activeBackgroundCommands">
 
-export interface ExecutorBlockerDeps {
+interface ExecutorBlockerDeps {
   readonly runningWorkflows: () => readonly string[]
   readonly projectRoot: string
   readonly projectLabel: string
@@ -130,7 +130,7 @@ export interface ExecutorBlockerDeps {
  *  calls. So a call in flight still delays a replacement, a running turn
  *  still keeps the project open, and a project with no live work reads as
  *  idle, which lets the idle reaper close it and a replacement proceed. */
-export async function collectReplacementBlockers(deps: ExecutorBlockerDeps): Promise<ReplacementBlocker[]> {
+async function collectReplacementBlockers(deps: ExecutorBlockerDeps): Promise<ReplacementBlocker[]> {
   const project = { projectRoot: deps.projectRoot, projectLabel: deps.projectLabel }
   const blockers: ReplacementBlocker[] = []
   // Children are not catalog rows (ARCH-PROTOCOL-048). A child blocks only while an
@@ -199,10 +199,9 @@ function sessionReason(status: SessionStatus | undefined): ReplacementBlockerRea
   return isActiveActivity(status?.activity) ? "turn" : undefined
 }
 
-export interface BlockerChangeWatchDeps {
+interface BlockerChangeWatchDeps {
   readonly admission: Pick<CommandAdmission, "onOccupancyChange">
   readonly notify: () => void
-  readonly settleMs?: number
 }
 
 /** Reports, coalesced, every change that can move this executor's delaying
@@ -210,7 +209,7 @@ export interface BlockerChangeWatchDeps {
  *  running command included, delays a replacement, so nothing else is
  *  watched. Only installed while the account holds a replacement, so an
  *  idle service pays nothing for it. */
-export function watchReplacementBlockerChanges(deps: BlockerChangeWatchDeps): () => void {
+function watchReplacementBlockerChanges(deps: BlockerChangeWatchDeps): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined
   let stopped = false
   const schedule = (): void => {
@@ -218,7 +217,7 @@ export function watchReplacementBlockerChanges(deps: BlockerChangeWatchDeps): ()
     timer = setTimeout(() => {
       timer = undefined
       deps.notify()
-    }, deps.settleMs ?? SETTLE_MS)
+    }, SETTLE_MS)
     timer.unref?.()
   }
   const stopOccupancy = deps.admission.onOccupancyChange(schedule)

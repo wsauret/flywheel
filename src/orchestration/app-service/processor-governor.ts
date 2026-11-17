@@ -7,9 +7,9 @@ import { coalesceRepeats } from "../../infra/repeat-coalescer.js"
 import type { ProjectExecutorCommand, ProjectExecutorEvent } from "./project-executor-protocol.js"
 
 /** One executor generation's complete set of shell containers. */
-export type ProcessorClaims = Extract<ProjectExecutorEvent, { kind: "processor_claims" }>["claims"]
+type ProcessorClaims = Extract<ProjectExecutorEvent, { kind: "processor_claims" }>["claims"]
 /** One executor generation's complete set of held containers. */
-export type ProcessorHolds = Extract<ProjectExecutorCommand, { kind: "processor_holds" }>["held"]
+type ProcessorHolds = Extract<ProjectExecutorCommand, { kind: "processor_holds" }>["held"]
 
 /** Short enough that a burst of new heavy work is held within about a second. */
 const TICK_MS = 1_000
