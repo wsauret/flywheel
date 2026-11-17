@@ -1,6 +1,5 @@
 import type { AttachedRuntimeClient, FrontendEvent, RuntimeChatDefault, RuntimeExecutorState, RuntimeServiceState, SessionCatalogError, SessionCatalogRow } from "../../src/protocol/app-service-types.js"
 import { createRuntimeUiPatchSequencer } from "../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { readyCatalogRow as completeCatalogRow } from "../../src/orchestration/session/session-catalog-row.js"
 import type { RuntimeUiSnapshot } from "../../src/protocol/runtime-ui-protocol-types.js"
 import { fakeLanes, LANE_BREAK } from "./fake-lanes.js"
 import { runtimeQuery } from "./runtime-dispatch.js"
@@ -24,10 +23,10 @@ type ReadyCatalogOverrides = Partial<Pick<ReadyCatalogRow, "totalCost" | "totalB
 
 export function readyCatalogRow(id: string, title: string, overrides: ReadyCatalogOverrides = {}): ReadyCatalogRow {
   const { shortTitle, ...totals } = overrides
-  return completeCatalogRow({
+  return {
     ...catalogRow(id, title),
     ...(shortTitle !== undefined ? { shortTitle } : {}),
-  }, {
+    totalsLoading: false,
     totalCost: 1.25,
     totalBilledCost: 0.5,
     priceUnavailable: false,
@@ -36,7 +35,7 @@ export function readyCatalogRow(id: string, title: string, overrides: ReadyCatal
     contextPromptTokens: 300,
     durationMs: 9000,
     ...totals,
-  })
+  }
 }
 
 /** A minimal app-service stand-in: real sequencer for correct positions, a controllable snapshot, a lane open from the start, and a single subscriber whose patches we drive. */

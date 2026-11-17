@@ -2,7 +2,7 @@ import { Schema } from "effect";
 
 export type SessionKind = "workflow-agent" | "chat" | "subagent"
 
-export const SESSION_LIFECYCLE_STATES = ["active", "inactive"] as const;
+const SESSION_LIFECYCLE_STATES = ["active", "inactive"] as const;
 
 // Persisted lifecycle marker: active means the manager has a live runner,
 // inactive means no runner exists. Workflow progress (paused/completed/failed)

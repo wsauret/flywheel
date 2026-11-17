@@ -4,8 +4,10 @@ import { createSessionChangesPublisher } from "../../../../src/orchestration/app
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import type { RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { withStore } from "../session/file-mutation-recovery-fixture.js"
-import type { SessionPlacement, SessionPlacements } from "../../../../src/orchestration/session/session-metadata-store.js"
+import type { SessionPlacements } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { entries, human, mutation, row } from "../session/_session-change-fixtures.js"
+
+type SessionPlacement = NonNullable<Awaited<ReturnType<SessionPlacements["placement"]>>>
 
 function event(type: string, sessionId = "s", aggregateId = `session:${sessionId}`): EventStoreAppend {
   return { type, sessionId, aggregateId, timestamp: 1, version: 1, actor: "flywheel", payload: {} }

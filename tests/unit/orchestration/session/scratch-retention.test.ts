@@ -5,10 +5,15 @@ import { ensureSessionDir, resolveSessionDir } from "../../../../src/infra/paths
 import type { OwnedCommandRunner } from "../../../../src/infra/owned-command";
 import { PRIVATE_COPY_RECORD } from "../../../../src/orchestration/agent-runtime/tools/bash-private-copy-record";
 import { mutationGitDirectoryName, prepareMutationGitEnvironment } from "../../../../src/orchestration/agent-runtime/tools/bash-git-wrapper";
-import { MUTATION_GIT_REMOVALS_PER_SWEEP, SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS, sweepIdleScratch } from "../../../../src/orchestration/session/session-artifacts";
+import { sweepIdleScratch } from "../../../../src/orchestration/session/session-artifacts";
 import { temporaryDirectories } from "../../../helpers/directories";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** The sweep's retention contract: an entry over 100 MiB that nobody wrote to
+ *  for 3 days goes, and one pass removes at most 200 Git shim folders. */
+const SCRATCH_IDLE_DAYS = 3;
+const SCRATCH_ENTRY_LIMIT_BYTES = 100 * 1024 * 1024;
+const MUTATION_GIT_REMOVALS_PER_SWEEP = 200;
 const temporaryDirectory = temporaryDirectories();
 
 /** A sparse file: its size counts toward the limit without writing the bytes. */

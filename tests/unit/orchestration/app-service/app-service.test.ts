@@ -9,14 +9,15 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/ru
 import { runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
 import { chatEntry, fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
 import { durableRow, durableSessionFromCatalogRow, managerWithSessions } from "./_frontend-projection-fixtures.js"
-import { readyCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
 import type { SessionEntry } from "../../../../src/orchestration/session-store/types.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js";
 const noopOutputProjection = { flush: async () => {}, watch: () => {}, dispose: () => {} }
 const awaitProjectionFlush = (): Promise<void> => Bun.sleep(1)
 
 function readyRow(row: SessionCatalogRow, overrides: Partial<Extract<SessionCatalogRow, { readonly totalsLoading: false }>> = {}): Extract<SessionCatalogRow, { readonly totalsLoading: false }> {
-  return readyCatalogRow(row, {
+  return {
+    ...row,
+    totalsLoading: false,
     totalCost: 0,
     totalBilledCost: 0,
     priceUnavailable: false,
@@ -25,7 +26,7 @@ function readyRow(row: SessionCatalogRow, overrides: Partial<Extract<SessionCata
     contextPromptTokens: 0,
     durationMs: 0,
     ...overrides,
-  })
+  }
 }
 
 describe("FlywheelAppService", () => {

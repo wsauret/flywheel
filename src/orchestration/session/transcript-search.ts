@@ -11,7 +11,7 @@ import { buildFtsMatch } from "./conversation-recall.js"
  *  current on the one writer seam. A hit names the session and the entry
  *  that produced its block, so a client can open the transcript there. */
 
-export const TRANSCRIPT_SEARCH_PAGE_SIZE = 20
+const TRANSCRIPT_SEARCH_PAGE_SIZE = 20
 
 export interface TranscriptSearchService {
   search(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>

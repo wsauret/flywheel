@@ -6,7 +6,7 @@ import { publishFileEdits } from "../../../../src/orchestration/file-edits/file-
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
 import { reconstructOriginal } from "../../../../src/orchestration/file-edits/session-file-restoration.js"
 import { getSessionChangeReview } from "../../../../src/orchestration/session/session-change-review.js"
-import { readChangeFact, readPatchContent } from "../../../../src/orchestration/session/session-change-sources.js"
+import { completePatch, readChangeFact, resolveRetainedPatch } from "../../../../src/orchestration/session/session-change-sources.js"
 import { withStore } from "../session/file-mutation-recovery-fixture.js"
 
 type Fixture = Parameters<Parameters<typeof withStore>[0]>[0]
@@ -66,7 +66,7 @@ test.each(["partial", "omitted", "incorrect", "missing", "malformed"] as const)(
     const artifact = fixture.store.read({ sessionId: fixture.sessionId, types: ["file.artifact.recorded"] })[0]!
     const fact = readChangeFact(artifact)
     if (fact.type !== "file.artifact.recorded" || fact.version !== 4 || fact.payload.evidence.patch.kind !== "retained") throw new Error("Missing runtime diff")
-    const patch = await readPatchContent(asAsyncEventReadSurface(fixture.store), fixture.sessionId, fact.payload.evidence.patch.reference)
+    const patch = completePatch(await resolveRetainedPatch(asAsyncEventReadSurface(fixture.store), fixture.sessionId, { kind: "evidence", evidence: fact.payload.evidence }))
     if (patch === undefined) throw new Error("Missing patch bytes")
     const target = { path, change: "modified" as const, unifiedDiff: patch }
     const mutation = kind === "omitted" ? { version: 1 as const, files: [], omissions: [{ path, reason: "sensitive" as const }] }
@@ -122,10 +122,12 @@ test("a complete hash does not make invalid UTF-8 patch bytes usable", async () 
     const bytes = Buffer.from([0xff])
     const reader = asAsyncEventReadSurface(fixture.store)
     reader.readSessionContentRange = async () => ({ kind: "available", offset: 0, base64: bytes.toString("base64"), nextOffset: null })
-    expect(await readPatchContent(reader, fixture.sessionId, {
-      version: 1, root: "0".repeat(64), bytes: 1,
-      sha256: new Bun.CryptoHasher("sha256").update(bytes).digest("hex"),
-    })).toBeUndefined()
+    const reference = { version: 1 as const, root: "0".repeat(64), bytes: 1, sha256: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") }
+    expect(await resolveRetainedPatch(reader, fixture.sessionId, { kind: "evidence", evidence: {
+      version: 1, mutationId: "m", path: "a", displayPath: "a", change: "modified", before: null, after: null,
+      retainedLines: 1, renderedLines: 1, omittedLines: 0, addedLines: 1, removedLines: 0,
+      patch: { kind: "retained", reference }, conflictMarkers: false,
+    } })).toEqual({ kind: "unretained" })
   })
 })
 

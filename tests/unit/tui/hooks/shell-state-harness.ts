@@ -32,7 +32,7 @@ import type { ReplayedSession } from "../../../../src/orchestration/session/sche
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { durableCatalogRowFromSession, readyCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
+import { durableCatalogRowFromSession } from "../../../../src/orchestration/session/session-catalog-row.js"
 import { EventStoreLive, EventStoreService, EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { fakeProjections, runtimeSupervisor } from "../../orchestration/app-service/app-service-doubles.js"
 import { makeWorkflowDeps } from "../../orchestration/workflow-host/_workflow-controller-fixtures.js"
@@ -270,7 +270,7 @@ function liveSummaries(sessionStore: SessionStore): RuntimeSummaryProjection {
       if (!entry) return { totalsLoading: true }
       return {
         totalsLoading: false,
-        row: readyCatalogRow({
+        row: {
           id: sessionId,
           kind: "chat",
           title: entry.description,
@@ -279,8 +279,7 @@ function liveSummaries(sessionStore: SessionStore): RuntimeSummaryProjection {
           notices: entry.notices,
           inputMode: { kind: "chat" },
           lastUpdated: new Date(entry.startedAt).toISOString(),
-          totalsLoading: true,
-        }, {
+          totalsLoading: false,
           totalCost: entry.cost,
           totalBilledCost: entry.billedCost,
           priceUnavailable: entry.priceUnavailable,
@@ -288,7 +287,7 @@ function liveSummaries(sessionStore: SessionStore): RuntimeSummaryProjection {
           contextPercent: entry.contextPercent,
           contextPromptTokens: entry.contextPromptTokens,
           durationMs: entry.accumulatedActiveMs,
-        }),
+        },
       }
     },
     subscribe: () => () => {},

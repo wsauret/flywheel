@@ -11,7 +11,7 @@ import { extractToolContentFact } from "../../../../src/infra/tool-content-extra
 import { childSessionResultFact } from "../../../../src/orchestration/session/child-session-completion.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
-import { projectSessionCatalogRow, readyCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
+import { projectSessionCatalogRow, replaceCatalogTotals } from "../../../../src/orchestration/session/session-catalog-row.js"
 import type { SessionRow } from "../../../../src/protocol/app-service-types.js"
 import type { RuntimeSessionDetailResult, RuntimeSessionDetailView } from "../../../../src/protocol/session-detail-protocol-types.js"
 import type { RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
@@ -28,7 +28,7 @@ import { isInterruptible } from "../../../../src/protocol/client/session-control
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { readyAttempt } from "../../../../src/workflows/vm/frontier.js"
@@ -43,7 +43,7 @@ const RESTING: StatusView = {
 /** The detail the runtime reads for a session titled `title` now, whose
  *  totals are loading unless `totalTokens` says they are ready. */
 function detail(sessionId: string, title: string, totalTokens?: number): RuntimeSessionDetailView {
-  const totals = (row: SessionRow) => totalTokens === undefined ? row : readyCatalogRow(row, { totalTokens, totalCost: 0, totalBilledCost: 0, priceUnavailable: false, contextPercent: 0, contextPromptTokens: 0, durationMs: 0 })
+  const totals = (row: SessionRow) => totalTokens === undefined ? row : replaceCatalogTotals(row, { totalsLoading: false, row: { totalTokens, totalCost: 0, totalBilledCost: 0, priceUnavailable: false, contextPercent: 0, contextPromptTokens: 0, durationMs: 0 } })
   if (sessionId.startsWith("child")) {
     const metadata = durableRow(sessionId, { label: title, conversationId: `conv-${sessionId}` })
     if (metadata.kind !== "chat") throw new Error("Expected chat fixture")
@@ -113,9 +113,9 @@ describe("session detail publisher", () => {
       launchedFrom: await workflowParentBinding(manager, { workflowDefinitionId: "side-by-side" }),
       facts: [buildContextInputSeededFact("side-by-side", "Work"), buildWorkflowControlInitializedFact({ ...control, aggregateSeq: initialQueue.length + 1 }), ...initialQueue],
     })
-    async function commit(event: Parameters<typeof transitionWorkflow>[1]) {
+    async function commit(event: Parameters<typeof transitionDecodedWorkflow>[1]) {
       const before = replayWorkflowControl(store.read({ aggregateId: "workflow:flow" }))
-      const next = composeWorkflowCompanions(transitionWorkflow(replayWorkflow(before), event), {
+      const next = composeWorkflowCompanions(transitionDecodedWorkflow(replayDecodedWorkflow(before), event), {
         queue: flattenWorkflowView(before, phaseBindings(true)), resolvedAgents: phaseBindings(true), timestamp: 1, addenda: [],
       })
       if (next.command.kind !== "commit") throw new Error("Expected commit")

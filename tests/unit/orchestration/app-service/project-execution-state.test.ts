@@ -15,7 +15,7 @@ import { createProjectStateService } from "../../../../src/orchestration/app-ser
 import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { prepareFileMutationOperation } from "../../../../src/orchestration/session/file-mutation-fact-writers.js"
-import { readPatchContent } from "../../../../src/orchestration/session/session-change-sources.js"
+import { completePatch, resolveRetainedPatch } from "../../../../src/orchestration/session/session-change-sources.js"
 
 function fact(payload: { [key: string]: unknown } = {}): EventStoreAppend {
   return { aggregateId: "session:s", sessionId: "s", type: "test.fact", version: 1, timestamp: 1, actor: "test", payload }
@@ -91,11 +91,11 @@ describe("project execution state", () => {
         change: { path: join(f.projectRoot, "created"), displayPath: "created", changeKind: "created", beforeContent: null, afterContent: "new\n" },
         evidence: { beforeSnapshot: null },
       }])
-      const patch = prepared?.evidence?.patch
-      if (patch?.kind !== "retained") throw new Error("Publication evidence was not retained")
-      const text = await readPatchContent(execution.eventStore, "s", patch.reference)
+      const evidence = prepared?.evidence
+      if (evidence?.patch.kind !== "retained") throw new Error("Publication evidence was not retained")
+      const text = completePatch(await resolveRetainedPatch(execution.eventStore, "s", { kind: "evidence", evidence }))
       expect(text).toContain("+new")
-      expect(await execution.eventStore.readSessionContentNode?.("s", patch.reference.root)).toBeTruthy()
+      expect(await execution.eventStore.readSessionContentNode?.("s", evidence.patch.reference.root)).toBeTruthy()
     } finally {
       await execution?.eventStoreRuntime.dispose()
       await f.close()

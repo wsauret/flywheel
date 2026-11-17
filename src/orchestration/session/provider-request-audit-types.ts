@@ -8,7 +8,7 @@ import type { ModelInteractionProfileId } from "../agent-runtime/model-interacti
 /** Profile ids that only recorded requests hold: builds before 2026-10-30 served gpt-6-luna through them. */
 export const RETIRED_INTERACTION_PROFILE_IDS = Object.freeze(["luna-native-v1", "luna-shell-v1"] as const)
 /** The interaction profile a recorded request names: a current id, or a retired one an older build wrote. */
-export type RecordedInteractionProfileId = ModelInteractionProfileId | (typeof RETIRED_INTERACTION_PROFILE_IDS)[number]
+type RecordedInteractionProfileId = ModelInteractionProfileId | (typeof RETIRED_INTERACTION_PROFILE_IDS)[number]
 
 // Shared sub-schemas for the provider-request audit fact payloads
 // (provider-request-audit-events.ts). The projection state

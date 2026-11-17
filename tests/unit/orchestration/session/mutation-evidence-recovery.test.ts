@@ -14,7 +14,7 @@ import { parseFileMutationOperationHeader, readFileMutationOperation } from "../
 import { parseStoredSessionRuntimeFact } from "../../../../src/infra/runtime-fact-parser.js"
 import { parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
 import { parseFileMutationFact } from "../../../../src/orchestration/session/file-mutation-facts.js"
-import { readPatchContent } from "../../../../src/orchestration/session/session-change-sources.js"
+import { completePatch, resolveRetainedPatch } from "../../../../src/orchestration/session/session-change-sources.js"
 import { row, timestamp } from "./_session-change-fixtures.js"
 import { encodeProjectStateResponse } from "../../../../src/orchestration/app-service/project-state-protocol.js"
 import { extractContent } from "../../../../src/infra/tool-content.js"
@@ -173,7 +173,7 @@ describe("state-local mutation evidence recovery", () => {
         if (file?.kind !== "display" || file.file.patch.kind !== "retained") throw new Error("missing patch")
         expect(file.file).not.toHaveProperty("before")
         expect(file.file).not.toHaveProperty("after")
-        expect(await readPatchContent(reader, "s", file.file.patch.reference)).toBe(mutation.files[0]!.unifiedDiff)
+        expect(completePatch(await resolveRetainedPatch(reader, "s", { kind: "evidence", evidence: file.file }))).toBe(mutation.files[0]!.unifiedDiff)
         expect(store.readLatestPayloadByAggregateAndType("session:s", type)).toBe(raw)
         expect(store.currentPosition()).toBe(stored.position)
         expect(store.aggregateSeq("session:s")).toBe(stored.seq)
@@ -213,7 +213,7 @@ describe("state-local mutation evidence recovery", () => {
     if (parsed.type !== "file.artifact.recorded" || parsed.version !== 4) throw new Error("missing artifact")
     expect(parsed.payload.evidence).toMatchObject({ mutationId: "m", path: "/root/a", before: { bytes: 4, sha256: changed.before.sha256 }, after: { bytes: 4, sha256: changed.after.sha256 } })
     if (parsed.payload.evidence.patch.kind !== "retained") throw new Error("missing patch")
-    expect(await readPatchContent(reader, "s", parsed.payload.evidence.patch.reference)).toBe(mutation.files[0]!.unifiedDiff)
+    expect(completePatch(await resolveRetainedPatch(reader, "s", { kind: "evidence", evidence: parsed.payload.evidence }))).toBe(mutation.files[0]!.unifiedDiff)
     expect(store.read({ types: ["file.artifact.recorded"] })[0]).toEqual(old)
   })
 

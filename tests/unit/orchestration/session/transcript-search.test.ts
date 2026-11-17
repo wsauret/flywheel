@@ -5,7 +5,7 @@ import * as path from "node:path"
 
 import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createTranscriptSearch, TRANSCRIPT_SEARCH_PAGE_SIZE, type TranscriptSearchService } from "../../../../src/orchestration/session/transcript-search.js"
+import { createTranscriptSearch, type TranscriptSearchService } from "../../../../src/orchestration/session/transcript-search.js"
 import { acquireConversationSearchIndex, type ConversationSearchIndex } from "../../../../src/infra/conversation-fts.js"
 
 let tmpDir: string
@@ -77,7 +77,7 @@ describe("transcript search for people", () => {
 
     const result = await search.search({ query: "kafka", page: 1 })
     expect(result.total).toBe(2)
-    expect(result.pageSize).toBe(TRANSCRIPT_SEARCH_PAGE_SIZE)
+    expect(result.pageSize).toBe(20)
     expect(result.hits.map((hit) => [hit.sessionId, hit.role, hit.entryId])).toEqual(expect.arrayContaining([["s-alpha", "user", "a1"], ["s-alpha", "assistant", "a2"]]))
     expect(result.hits[0]?.sessionTitle).toBe("Alpha work")
     expect(result.hits.every((hit) => hit.snippet.includes("[kafka]"))).toBe(true)
@@ -87,7 +87,7 @@ describe("transcript search for people", () => {
     append("conv-alpha", [user("a1", null, "kafka here")])
     append("conv-beta", [user("b1", null, "kafka there")])
     expect((await search.search({ query: "kafka", sessionId: "s-beta", page: 1 })).hits.map((hit) => hit.sessionId)).toEqual(["s-beta"])
-    expect(await search.search({ query: "kafka", sessionId: "s-unknown", page: 1 })).toEqual({ hits: [], total: 0, page: 1, pageSize: TRANSCRIPT_SEARCH_PAGE_SIZE })
+    expect(await search.search({ query: "kafka", sessionId: "s-unknown", page: 1 })).toEqual({ hits: [], total: 0, page: 1, pageSize: 20 })
   })
 
   test("a tool result hit names the tool use its block is keyed by", async () => {
@@ -115,7 +115,7 @@ describe("transcript search for people", () => {
     const first = await search.search({ query: "kafka", page: 1 })
     const second = await search.search({ query: "kafka", page: 2 })
     expect(first.total).toBe(25)
-    expect(first.hits.length).toBe(TRANSCRIPT_SEARCH_PAGE_SIZE)
+    expect(first.hits.length).toBe(20)
     expect(second.hits.length).toBe(5)
     expect(new Set([...first.hits, ...second.hits].map((hit) => hit.entryId)).size).toBe(25)
   })

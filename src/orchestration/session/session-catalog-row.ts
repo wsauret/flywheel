@@ -161,7 +161,7 @@ export function replaceCatalogTotals<Row extends SessionRow>(
 }
 
 /** Completes one catalog row with an exact aggregate replacement. */
-export function readyCatalogRow<Row extends SessionRow>(
+function readyCatalogRow<Row extends SessionRow>(
   row: Row,
   totals: CatalogTotals,
 ): Extract<Row, { readonly totalsLoading: false }> {

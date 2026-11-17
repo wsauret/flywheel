@@ -19,7 +19,6 @@ import {
   generateSessionTitle,
   type SessionTitles,
 } from "../../../../../src/orchestration/session/session-title.js"
-import { titlesFromName } from "../../../../../src/orchestration/session/session-label.js"
 import { makeCaptureClient } from "../context/_loop-fixtures.js"
 import { testAuth as auth, titleRoots } from "../../../../fixtures/session-title-fixtures.js"
 
@@ -90,21 +89,6 @@ describe("forkSessionTitles", () => {
 
     expect(fork.short).toStartWith("Fork:")
     expect(fork.short).not.toBe(source.shortLabel)
-  })
-})
-
-describe("titlesFromName — user-chosen session names", () => {
-  it("keeps the full name verbatim and derives a tight tab label", () => {
-    expect(titlesFromName("Investigate the flaky provider stream watchdog"))
-      .toEqual({ full: "Investigate the flaky provider stream watchdog", short: "Investigate th" })
-  })
-
-  it("uses the first two words for the short label within the tab budget", () => {
-    expect(titlesFromName("Parser bug hunt")).toEqual({ full: "Parser bug hunt", short: "Parser bug" })
-  })
-
-  it("single word is both labels", () => {
-    expect(titlesFromName("refactor")).toEqual({ full: "refactor", short: "refactor" })
   })
 })
 

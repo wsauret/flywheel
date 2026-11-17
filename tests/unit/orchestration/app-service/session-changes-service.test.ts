@@ -22,7 +22,7 @@ import { createSessionFactWriter } from "../../../../src/orchestration/session/s
 import { buildSessionChildLinkedFact, buildSessionCreatedFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store.js"
 import type { Session } from "../../../../src/orchestration/session/schemas.js"
-import { readChangeFact, readPatchContent } from "../../../../src/orchestration/session/session-change-sources.js"
+import { readChangeFact } from "../../../../src/orchestration/session/session-change-sources.js"
 import { getSessionChangeReview } from "../../../../src/orchestration/session/session-change-review.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types.js"
 import { withStore } from "../session/file-mutation-recovery-fixture.js"
@@ -246,7 +246,9 @@ test("diff returns the net before-session to now diff, goes stale on revision dr
     expect(ready.diff.change).toBe("modified")
     expect(ready.diff.omittedLines).toBe(0)
     if (ready.diff.patch.kind !== "retained") throw new Error("Expected retained patch")
-    expect(await readPatchContent(asAsyncEventReadSurface(fixture.store), fixture.sessionId, ready.diff.patch.reference)).toContain("-one\n+three")
+    const patch = await asAsyncEventReadSurface(fixture.store).readSessionContentRange?.(fixture.sessionId, ready.diff.patch.reference, 0, ready.diff.patch.reference.bytes)
+    if (patch?.kind !== "available") throw new Error("Expected readable patch bytes")
+    expect(Buffer.from(patch.base64, "base64").toString("utf8")).toContain("-one\n+three")
     expect(await service.diff(query)).toEqual(ready)
     expect(ready.lineCounts).toEqual({ added: 1, removed: 1 })
     expect(await service.diff({ ...query, revision: query.revision + 1 })).toEqual({ status: "stale" })

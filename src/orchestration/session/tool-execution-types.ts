@@ -67,7 +67,11 @@ export interface ToolExecutionState {
   failedCount: number
   validationFailureCount: number
   tools: StringMap<ToolExecutionEntry>
-  /** Internal mutable index. Use activeSubagentIds() for a detached read snapshot. */
+  /** Tool-use ids of in-flight child agents whose only viewport is this session:
+   *  no inline tools, settled entries, or workflow launches, whose persisted
+   *  `childHasOwnViewport` flag gives them their own tab. A non-empty set marks
+   *  the parent busy. The projection mutates this index in place, so a reader
+   *  that hands it on copies it first. */
   activeSubagentToolUseIds: ReadonlySet<string>
   activeSubagentRevision: number
 }

@@ -36,7 +36,7 @@ export function completePatch(retained: RetainedPatch): string | undefined {
 /** Read exact retained bytes in bounded windows. Verify the complete logical hash,
  * length, strict UTF-8, and continuation before accepting any patch text.
  * Missing or corrupt evidence returns undefined; storage-service failures propagate. */
-export async function readPatchContent(reader: AsyncEventStateReadSurface, sessionId: string, reference: SessionContentReference): Promise<string | undefined> {
+async function readPatchContent(reader: AsyncEventStateReadSurface, sessionId: string, reference: SessionContentReference): Promise<string | undefined> {
   if (!reader.readSessionContentRange) return undefined
   const parts: Buffer[] = []
   const hasher = new Bun.CryptoHasher("sha256")

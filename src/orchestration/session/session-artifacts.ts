@@ -85,16 +85,16 @@ export function writeArtifactBreadcrumb(write: ArtifactBreadcrumbWrite): string 
 }
 
 /** One session id that still owns filesystem artifacts, and which trees it owns.
- *  Absence of a tree is a reported fact, so a caller staging whole generations
- *  reads the inventory instead of probing the disk itself. */
-export interface SessionArtifactTrees {
+ *  The breadcrumb and scratch sweeps read these flags instead of probing the
+ *  disk for each tree. */
+interface SessionArtifactTrees {
   readonly sessionId: string
   readonly hasSessionDir: boolean
   readonly hasBreadcrumbDir: boolean
 }
 
 /** Every session id with a session tree, a breadcrumb tree, or both, sorted. */
-export function sessionArtifactInventory(projectRoot: string): readonly SessionArtifactTrees[] {
+function sessionArtifactInventory(projectRoot: string): readonly SessionArtifactTrees[] {
   const sessions = childNames(projectRoot, SESSIONS_DIR)
   const breadcrumbs = childNames(projectRoot, AGENT_OUTPUTS_DIR)
   return [...new Set([...sessions, ...breadcrumbs])].sort().map((sessionId) => ({
@@ -107,9 +107,8 @@ export function sessionArtifactInventory(projectRoot: string): readonly SessionA
 /** Delete every breadcrumb written before the retention window, in every tree of
  *  the project, and remove a tree the sweep emptied. One cutoff for the whole
  *  project: a breadcrumb expires with its age, not with the runner or session
- *  that wrote it. `now` is a parameter so the boundary is testable at a fixed
- *  time. */
-export function sweepBreadcrumbs(projectRoot: string, now: number): void {
+ *  that wrote it. */
+function sweepBreadcrumbs(projectRoot: string, now: number): void {
   const cutoff = now - BREADCRUMB_RETENTION_MS
   for (const entry of sessionArtifactInventory(projectRoot)) {
     if (!entry.hasBreadcrumbDir) continue
@@ -198,10 +197,10 @@ export function createBreadcrumbMaintenance(projectRoot: string): BreadcrumbMain
  *  `SCRATCH_IDLE_DAYS` is removed. Agents copy whole projects, clone
  *  repositories, and build sandbox homes in scratch and leave them; the small
  *  scripts and evidence an audit keeps stay under the limit. */
-export const SCRATCH_ENTRY_LIMIT_BYTES = 100 * 1024 * 1024
+const SCRATCH_ENTRY_LIMIT_BYTES = 100 * 1024 * 1024
 
 /** Long enough that a session resumed after a weekend still finds its clones. */
-export const SCRATCH_IDLE_DAYS = 3
+const SCRATCH_IDLE_DAYS = 3
 
 const SCRATCH_NOTES_NAME = "notes"
 const GIT_TIMEOUT_MS = 30_000
@@ -233,7 +232,7 @@ const ORPHANED_COPY: ScratchRetention = { kind: "orphaned-copy", idleMs: 60 * 60
 const MUTATION_GIT: ScratchRetention = { kind: "mutation-git", idleMs: SCRATCH_IDLE_DAYS * 24 * 60 * 60 * 1000, limitBytes: 0 }
 
 /** Spreads the file events of removing a backlog of shim folders over several passes. */
-export const MUTATION_GIT_REMOVALS_PER_SWEEP = 200
+const MUTATION_GIT_REMOVALS_PER_SWEEP = 200
 
 export interface ScratchSweep {
   readonly removedEntries: number

@@ -207,17 +207,6 @@ export function toolExecutionTimelineFromProjection(state: ToolExecutionState): 
     .sort((a, b) => firstTimestamp(a) - firstTimestamp(b))
 }
 
-/** Tool-use ids of in-flight child agents whose only viewport is this session.
- *  Excludes inline tools, completed/failed entries, and workflow launches
- *  (their persisted `childHasOwnViewport` flag exempts them; the user has a
- *  separate tab). The
- *  set is the projection-derived source of truth for the parent's "busy"
- *  signal: when it is non-empty the parent tab is doing externally invisible
- *  child work. */
-export function activeSubagentIds(state: ToolExecutionState): ReadonlySet<string> {
-  return new Set(state.activeSubagentToolUseIds)
-}
-
 export function loadToolExecutionTimelineFromEvents(events: readonly StoredFact[]): ToolExecutionEntry[] {
   return toolExecutionTimelineFromProjection(reduceEvents(events, {
     initialState,

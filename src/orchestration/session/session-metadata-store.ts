@@ -82,7 +82,7 @@ interface SessionMetadataStore {
 }
 
 /** A session's kind and the parent that launched it. */
-export type SessionPlacement = Pick<ReplayedSession, "kind" | "launchedFrom">
+type SessionPlacement = Pick<ReplayedSession, "kind" | "launchedFrom">
 
 /** Where sessions sit in the tree, for an owner that walks ancestors on every commit. */
 export interface SessionPlacements {

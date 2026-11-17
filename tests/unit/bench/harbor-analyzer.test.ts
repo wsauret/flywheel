@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import type { ProviderRequestAuditFact } from "../../../src/orchestration/session/provider-request-audit-facts.js";
-import type { RecordedInteractionProfileId } from "../../../src/orchestration/session/provider-request-audit-types.js";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION } from "../../../bench/harbor/analyze-tool-outcomes.js";
@@ -13,7 +12,7 @@ import { temporaryDirectories } from "../../helpers/directories.js";
 const temporaryDirectory = temporaryDirectories();
 const evidence = (options?: EvidenceOptions) => trialEvidence(temporaryDirectory("tb-analyzer-"), options);
 /** A profile that an earlier build recorded and the serving-model resolver no longer selects. */
-const retiredProfile = "luna-shell-v1" satisfies RecordedInteractionProfileId;
+const retiredProfile = "luna-shell-v1" satisfies NonNullable<EvidenceOptions["requestProfile"]>;
 
 describe("Harbor tool outcome analyzer", () => {
   const analyze = (root: string) => analyzeToolOutcomes(root, { ...manifest(), source_archive_sha256: sourceDigest });

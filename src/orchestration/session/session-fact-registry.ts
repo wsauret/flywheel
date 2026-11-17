@@ -1,5 +1,4 @@
 import { collectFactSchemas, createFactParser } from "../../infra/event-registry.js"
-import type { FirstPartyModule } from "../modules.js"
 import { installedModules } from "../module-catalog.js"
 import { FileMutationFactSchemas } from "./file-mutation-facts.js"
 import { SessionForkFactSchemas } from "./session-fork-facts.js"
@@ -26,20 +25,15 @@ const FACT_MODULES = [
 ] as const
 
 const KERNEL_FACT_SCHEMAS = collectFactSchemas(FACT_MODULES)
-/** Construct a strict, lazy parser over one installed catalog authority.
- * Disabled owners retain their decoders. Catalog replacement rebuilds the
- * parser, and a failed schema composition never publishes a partial parser. */
-export function createSessionFactParser(readCatalog: () => readonly FirstPartyModule[]): ReturnType<typeof createFactParser> {
-  let catalog: readonly FirstPartyModule[] | undefined
-  let parser: ReturnType<typeof createFactParser> | undefined
-  return (input) => {
-    const installed = readCatalog()
-    if (catalog !== installed || parser === undefined) {
-      parser = createFactParser([...KERNEL_FACT_SCHEMAS, ...installed.flatMap((module) => module.facts?.sessionSchemas?.() ?? [])])
-      catalog = installed
-    }
-    return parser(input)
-  }
-}
+let sessionFactParser: ReturnType<typeof createFactParser> | undefined
 
-export const parseSessionFact = createSessionFactParser(installedModules)
+/** A strict parser over the kernel facts and the facts of every installed
+ * module, whether or not a project enables it, so a disabled owner's facts stay
+ * readable. The first read composes it, because the catalog and the module
+ * schemas load lazily; the installed catalog is one frozen value for the
+ * process, so one composition serves every later read. A failed composition
+ * publishes no partial parser, and the next read tries again. */
+export const parseSessionFact: ReturnType<typeof createFactParser> = (input) => {
+  sessionFactParser ??= createFactParser([...KERNEL_FACT_SCHEMAS, ...installedModules().flatMap((module) => module.facts?.sessionSchemas?.() ?? [])])
+  return sessionFactParser(input)
+}

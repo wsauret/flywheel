@@ -1,7 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { safeParse } from "../../../helpers/schema-assertions.js";
 import {
-  SESSION_LIFECYCLE_STATES,
   SessionLifecycleStateSchema,
   type SessionLifecycleState,
   isValidTransition,
@@ -9,7 +8,7 @@ import {
 } from "../../../../src/orchestration/session/types";
 
 describe("SessionLifecycleStateSchema", () => {
-  const allStates: readonly SessionLifecycleState[] = SESSION_LIFECYCLE_STATES;
+  const allStates: readonly SessionLifecycleState[] = ["active", "inactive"];
 
   for (const state of allStates) {
     it(`accepts '${state}'`, () => {
