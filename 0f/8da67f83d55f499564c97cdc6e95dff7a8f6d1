@@ -1,0 +1,44 @@
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 225
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 11,19,23,31,47
+src/infra/tools/displays/lead.ts
+  h_4b47e9e4a8b456 1,9-15,19-21,32-33
+src/orchestration/app-service/person-entry-forward.ts
+  h_4b47e9e4a8b456 4,21-28,30-33,50,68-79
+src/orchestration/modules/lead/facts.ts
+  h_4b47e9e4a8b456 8-10,28-29,34,37,47
+src/orchestration/modules/lead/journal.ts
+  h_4b47e9e4a8b456 29-39,61-63,91-92,107,110,143
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 8-9,13,23,25-26,63
+src/orchestration/modules/lead/route-request.ts
+  h_4b47e9e4a8b456 1,7-8,15,32-33,36-38,43,46,48,50-52,54-55,73-74,82,90,103,113
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 13,19,434,440,443,445,506-512,514,516,519,521
+src/orchestration/session/conversation/person-entries.ts
+  h_4b47e9e4a8b456 1,15-16,67,77,79-85,89-138
+tests/unit/orchestration/app-service/runtime-supervisor-forward.test.ts
+  h_4b47e9e4a8b456 74-75,128-167
+tests/unit/orchestration/modules/lead/journal.test.ts
+  h_4b47e9e4a8b456 25-41
+tests/unit/orchestration/modules/lead/route-request.test.ts
+  h_4b47e9e4a8b456 8,268-306
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 376
+tests/unit/orchestration/session/conversation/person-entries.test.ts
+  h_4b47e9e4a8b456 89-90,96-98,109,115-116
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 159-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0f8da67f83d55f499564c97cdc6e95dff7a8f6d1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
