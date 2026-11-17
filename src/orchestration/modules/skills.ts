@@ -43,7 +43,6 @@ const skill = {
 export const skillsModule = {
   id: "skills",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "tools", id: "skill", value: { kind: "tool", name: "skill", declaration: skill, associatedPromptRosterIds: ["skills"] } },
     { domain: "promptRosters", id: "skills", value: { definition: "skills", visibility: "model-invocable" } },
@@ -59,6 +58,4 @@ export const skillsModule = {
       },
     } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

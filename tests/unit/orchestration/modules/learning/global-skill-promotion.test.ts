@@ -6,7 +6,7 @@ import { fileTemporaryDirectory } from "../../../../helpers/directories.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/event-store-types.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { createSkillManageTool } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { loadAgentInputProjection } from "../../../../../src/orchestration/session/agent-input-projection.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import type { SkillWriteOrigin } from "../../../../../src/orchestration/modules/learning/skill-store-types.js";
@@ -16,6 +16,7 @@ import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../src/wo
 import { operationIdentity, readOperationManifest } from "../../../../../src/orchestration/modules/learning/skill-operation-manifest.js";
 import { planSkillMutation } from "../../../../../src/orchestration/modules/learning/skill-mutation-plan.js";
 import { publishGlobalSkillMutation } from "../../../../../src/orchestration/modules/learning/global-skill-mutation.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 const TMP = fileTemporaryDirectory("flywheel-global-promotion-test-");
 const CWD = join(TMP, "project");
@@ -59,8 +60,8 @@ function skillManage(origin: SkillWriteOrigin = AGENT) {
   return createSkillManageTool({ origin, registry, userDataRoot: DIRS.userDataRoot, store: asAsyncEventReadSurface(store), sessionId: SESSION });
 }
 
-function context(toolUseId: string): ToolContext {
-  return { executionCwd: CWD, userDataRoot: `${CWD}/.test-account`, projectRoot: CWD, toolUseId, artifactScopeId: SESSION, retrievalSessionId: SESSION, sessionId: SESSION, conversationId: "conv-1", sessionEventWriter: writer };
+function context(toolUseId: string): DispatchedToolContext {
+  return dispatchedToolContext({ executionCwd: CWD, userDataRoot: `${CWD}/.test-account`, projectRoot: CWD, toolUseId, artifactScopeId: SESSION, retrievalSessionId: SESSION, sessionId: SESSION, conversationId: "conv-1", sessionEventWriter: writer });
 }
 
 /** The audit trail of landed writes in this session. */

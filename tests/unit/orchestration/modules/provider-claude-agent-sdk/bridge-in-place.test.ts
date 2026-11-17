@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { MessageParam, TextBlockParam } from "@anthropic-ai/sdk/resources/messages.js";
-import { createClaudeReminders, environmentReminder, type HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { createClaudeReminders, type HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 import {
-  A1, A2, answers, forwardDiagnostics, init, MACOS_ENVIRONMENT, parked, payloads, R1, readsFile, request, REQUEST_STEP, send, settle, turnDone, U1, U2, until, withBridge, type Harness, originsOf,
+  A1, A2, answers, forwardDiagnostics, init, MACOS_ENVIRONMENT, openingEnvironmentReminder, parked, payloads, R1, readsFile, request, REQUEST_STEP, send, settle, turnDone, U1, U2, until, withBridge, type Harness, originsOf,
 } from "./_bridge-harness.js";
 
 forwardDiagnostics();
@@ -15,7 +15,7 @@ const FAILED_R1: MessageParam = { role: "user", content: [{ type: "tool_result",
 /** A step's opening reminders as canonical history holds them: `environment`, the model, and today's date. */
 function openingReminders(environment: HostEnvironment): TextBlockParam[] {
   const [, model, date] = createClaudeReminders("claude-sonnet-5-5", 200_000)([{ kind: "user", origin: "human", content: "Read a." }], environment.workingDirectory, SHELL_CAPABILITIES);
-  return [environmentReminder(environment, SHELL_CAPABILITIES), model?.content, date?.content].map((text) => ({ type: "text", text: typeof text === "string" ? text : "" }));
+  return [openingEnvironmentReminder(environment), model?.content, date?.content].map((text) => ({ type: "text", text: typeof text === "string" ? text : "" }));
 }
 
 /** One idle conversation on one query: U1, a read of `a`, its result through the handler, and "Done.". */

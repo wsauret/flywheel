@@ -11,12 +11,9 @@ const backend = {
 export const webExaModule = {
   id: "web-exa",
   dependencies: ["web"],
-  availability: { kind: "available" },
   contributions: [
     { domain: "webBackends", id: "exa", value: backend },
     { domain: "webAuthProviders", id: "exa", value: { ...EXA_WEB_PROVIDER_DEFINITION, group: "web" } },
     { domain: "settings", id: "web-exa", value: { control: "binary", group: "Web retrieval", label: "Exa web search", description: "Use Exa as a web retrieval backend" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

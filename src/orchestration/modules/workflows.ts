@@ -167,12 +167,12 @@ const models = {
 const workflowBudgetObserver = {
   seam: "workflow",
   observer: (context) => createBudgetAwarenessObserver(context.getBudgetInfo),
-} as const satisfies FirstPartyModule["observers"][number]
+} as const satisfies NonNullable<FirstPartyModule["observers"]>[number]
 
 const workflowContextPressureObserver = {
   seam: "workflow",
   observer: (context) => createContextPressureObserver(context.getContextPercent),
-} as const satisfies FirstPartyModule["observers"][number]
+} as const satisfies NonNullable<FirstPartyModule["observers"]>[number]
 
 const workflowNoun = {
   usage: "Usage: flywheel workflow verify <file> | flywheel workflow verify --workflow <id> | flywheel workflow reducers",
@@ -206,7 +206,6 @@ export const workflowsModule = {
     ? "Workflows in Ask mode requires the Ask User capability. Enable Ask User, or set Workflows to On or Off."
     : undefined,
   dependencies: ["skills"],
-  availability: { kind: "available" },
   producesBackgroundWork: true,
   runtime: { handle: workflowsRuntime, create: createWorkflowsRuntime },
   // The VM control ledger, attempts, lifecycle, context bundles, definition
@@ -319,5 +318,4 @@ export const workflowsModule = {
     { domain: "cli", id: "workflow", value: workflowNoun },
   ],
   observers: [workflowBudgetObserver, workflowContextPressureObserver],
-  gates: [],
 } as const satisfies FirstPartyModule

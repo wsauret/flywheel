@@ -76,10 +76,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const googleVertexModule = {
   id: "provider-google-vertex",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "google_vertex", value: { definition, createClient } },
     { domain: "settings", id: "provider-google-vertex", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Gemini models through a Vertex AI express API key" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

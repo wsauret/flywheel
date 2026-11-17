@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterAll, afterEach, describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import * as path from "node:path"
 
@@ -9,6 +9,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { createCommandKeeper, type CommandKeeper, type KeptOutputChange } from "../../../../src/orchestration/app-service/command-keeper.js"
+import { createPrivateCopyJobs } from "../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js"
 import { privateCopyRemovals, takePrivateProjectCopy } from "../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, commandHandoversOfAsync, keptCommandsOf, type CommandHandoverRow } from "../../../../src/orchestration/session/command-handover.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications.js"
@@ -23,6 +24,8 @@ import { createShippedOutput } from "../../../../src/orchestration/app-service/s
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 
 const temporaryDirectory = temporaryDirectories()
+const jobs = createPrivateCopyJobs()
+afterAll(() => jobs.close())
 const STEP = { sessionId: "workflow-paused", conversationId: "agent-step-1" }
 
 /** Resolves once `check` holds: each step below settles through a few
@@ -184,7 +187,7 @@ describe("the executor's keeper of handed-over commands", () => {
     writeFileSync(path.join(project, "a.txt"), "a\n")
     const home = path.join(project, ".flywheel", "scratch", "edits", "1")
     const notGit = async () => ({ exitCode: 128, stdout: "", stdoutBytes: new Uint8Array(), stderr: "", timedOut: false })
-    const copy = await takePrivateProjectCopy({ projectRoot: project, executionCwd: project, home, runGit: notGit, guard: "none" })
+    const copy = await takePrivateProjectCopy({ projectRoot: project, executionCwd: project, home, runGit: notGit, guard: "none", jobs })
     writeFileSync(path.join(copy.copyRoot, "a.txt"), "mine\n")
     const fixture = await kept({ row: { privateCopyHome: home } })
     await fixture.keep()

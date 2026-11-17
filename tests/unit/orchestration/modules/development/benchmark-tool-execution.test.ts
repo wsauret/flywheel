@@ -22,7 +22,7 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import type { BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
 import { createPersonaStore as createRunStore } from "../../../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import type { RuntimeTool, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { RuntimeTool, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testProviderEligibility } from "../../../../helpers/provider-authority.js";
 import type { Agent, AgentRunResult, AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js";
@@ -229,7 +229,7 @@ async function plannedBenchmarkTool(deps: BenchmarkAdmissionDeps, owner: Backgro
   return tool;
 }
 
-function toolContext(projectRoot: string, owner: BackgroundExecutionOwner): ToolContext {
+function toolContext(projectRoot: string, owner: BackgroundExecutionOwner): DispatchedToolContext {
   return makeContext({
     projectRoot,
     executionCwd: projectRoot,

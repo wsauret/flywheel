@@ -77,13 +77,11 @@ describe("auth attention publisher", () => {
     const journal = {
       id: "journal",
       dependencies: [],
-      availability: { kind: "available" },
       contributions: [],
       observers: [{ seam: "notify", observer: (episode: NotificationEpisodeInput) => {
         if (refusals > 0) throw new Error("notification journal append failed")
         applied.push(episode)
       } }],
-      gates: [],
     } as const satisfies FirstPartyModule
     const modules: readonly FirstPartyModule[] = [journal]
     const composition = composeModules(modules)

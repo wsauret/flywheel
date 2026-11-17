@@ -106,7 +106,7 @@ type ExecutionRuntime = Pick<RuntimeClient, "query" | "dispatch" | "subscribe"> 
   hideSession(sessionId: string): Promise<void>
 }
 
-export const PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS = 64
+const PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS = 64
 // The one bound on events waiting for the account to drain, in bytes. A burst
 // is as large as the catalog: a background hydration publishes one row per
 // session, and a gap here costs every attached client a full re-snapshot of

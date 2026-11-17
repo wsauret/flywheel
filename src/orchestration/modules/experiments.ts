@@ -40,7 +40,6 @@ function declaration(name: string, action: "shell_exec" | "ui_meta", tool: keyof
 export const experimentsModule = {
   id: "experiments",
   dependencies: [],
-  availability: { kind: "available" },
   runtime: { handle: experimentsRuntime, create: createExperimentsRuntime },
   protocol: moduleProtocol({ contract: experimentsProtocol, create: createExperimentsProtocol, background: experimentsBackgroundReaders }),
   facts: { prefixes: ["experiment."], sessionSchemas: () => ExperimentFactSchemas },

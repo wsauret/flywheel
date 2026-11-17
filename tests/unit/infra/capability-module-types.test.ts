@@ -9,7 +9,6 @@ test("ModuleDescriptor preserves owner-defined contribution and hook types", () 
   const module = {
     id: "typed",
     dependencies: [],
-    availability: { kind: "available" },
     contributions: [{ domain: "tools", id: "read", value: { name: "read" } }],
     observers: [{ seam: "turn", observer: (_event: string) => undefined }],
     gates: [{ seam: "execution", gate: (_input: string) => true }],

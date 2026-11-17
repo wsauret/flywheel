@@ -57,7 +57,7 @@ export type HolderState =
 
 /** The kernel facts a holder answer rests on, injected so that every answer
  *  is testable on any host. */
-export interface HolderKernel {
+interface HolderKernel {
   start(pid: number): ProcessStart
   boot(): BootIdentity
 }
@@ -86,7 +86,7 @@ const PID = /^[1-9]\d*$/
 const ALIVE: HolderState = { kind: "alive" }
 const gone = (proof: GoneProof): HolderState => ({ kind: "gone", proof })
 
-export function createProcessHolders(kernel: HolderKernel): ProcessHolders {
+function createProcessHolders(kernel: HolderKernel): ProcessHolders {
   let own: HolderIdentity | undefined
   let ownUnreadableRecorded = false
   let hostBoot: Exclude<BootIdentity, { readonly kind: "unproven" }> | undefined

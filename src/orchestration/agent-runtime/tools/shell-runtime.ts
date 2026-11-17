@@ -111,8 +111,9 @@ export function createShellRuntime(tasks: BackgroundWorkRegistry, dependencies: 
       closed = true;
       abort.abort();
       await Promise.allSettled(active);
-      // A command that lands after this finds the pool closed and discards its copy.
-      privateCopies.close();
+      // A command that lands after this lands on a Worker of its own, and the
+      // closed pool takes no copy back.
+      await privateCopies.close();
     },
   };
 }

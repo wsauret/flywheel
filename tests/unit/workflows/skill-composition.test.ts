@@ -15,9 +15,9 @@ import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.j
 import { buildDefinitionIdentity, definitionIdentityMismatches } from "../../../src/workflows/vm/definition-identity.js";
 import type { WorkflowDefinition } from "../../../src/workflows/workflow-schema.js";
 import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/skill.js";
-import type { ToolContext } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { fileTemporaryDirectory, testDirectories } from "../../helpers/directories.js";
 import { loadedWorkflow } from "../../helpers/workflow-files.js";
+import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";
 
 // The fixture packages are installed under temp roots this suite's own
 // definition owner reads, so the assertions never depend on what the developer
@@ -98,7 +98,7 @@ describe("canonical skill context", () => {
     const revision = owner().skills();
     const tool = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: agents }, revision });
 
-    const context: ToolContext = { ...testDirectories(PROJECT_ROOT), artifactScopeId: "skill-composition", retrievalSessionId: "skill-composition", capabilities: () => true };
+    const context = dispatchedToolContext({ ...testDirectories(PROJECT_ROOT), artifactScopeId: "skill-composition", retrievalSessionId: "skill-composition", capabilities: () => true });
     const loaded = await tool.execute({ action: "load", skill_id: "alpha" }, context);
 
     expect(loaded.content).toBe(renderSkillContext(installed("alpha")));

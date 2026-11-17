@@ -1,28 +1,22 @@
 import { tmpdir } from "node:os"
 import { describe, expect, it } from "bun:test"
-import { Effect, Exit, Scope } from "effect"
 
-import { canonicalDirectory } from "../../../../src/infra/directory-authorities.js"
-import { createTurnDispatcher } from "../../../../src/orchestration/agent-runtime/agent-loop-tools.js"
-import { settleTurn } from "../../../../src/orchestration/agent-runtime/agent-turn-settlement.js"
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
-import type { RuntimeTool, ToolContext, ToolResult } from "../../../../src/orchestration/agent-runtime/tools/types.js"
-import type { LLMClient, ProviderStreamEvent, StreamEvent, StreamOptions, ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { RuntimeTool, ToolResult } from "../../../../src/orchestration/agent-runtime/tools/types.js"
+import type { LLMClient, ProviderStreamEvent, StreamOptions, ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { messageInput } from "../../../../src/infra/agent-loop-events.js"
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
 import { createRequestToolSurface } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js"
 import { asModelClient, fakeAttempt } from "./_model-client.js"
+import { turnDispatchHarnesses } from "./_turn-dispatch.js"
 import { RequestToolMap, testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { budgetCaptureSurface } from "./context/_loop-fixtures.js"
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter.js"
-import { fixedTurnOutputBound, type TurnOutputBound } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js"
-import { temporaryDirectories } from "../../../helpers/directories.js"
 
-// A replaced result writes its breadcrumb under the project root.
-const temporaryDirectory = temporaryDirectories()
+const { harness, makeContext } = turnDispatchHarnesses()
 
 function makeTool(execute: RuntimeTool["execute"], name = "waiter"): RuntimeTool {
   return {
@@ -32,73 +26,6 @@ function makeTool(execute: RuntimeTool["execute"], name = "waiter"): RuntimeTool
     inputSchema: { type: "object" },
     isConcurrencySafe: false,
     execute,
-  }
-}
-
-/** The CLI publishes canonical authorities, so this fixture does too: a
- *  breadcrumb write never follows a link on the project root's own name, and
- *  `/tmp` is a link on this platform. */
-function makeContext(): ToolContext {
-  const root = canonicalDirectory(temporaryDirectory("flywheel-loop-tools-"), "test project root")
-  return {
-    executionCwd: root,
-    artifactScopeId: "test-session", retrievalSessionId: "test-session",
-    userDataRoot: `${root}/.test-account`, projectRoot: root,
-  }
-}
-
-/** Production shape in miniature: the dispatcher owns the fibers, and the
- *  masked coordinator is the only publisher of results. */
-function harness(input: {
-  tools: ReadonlyMap<string, RuntimeTool>
-  signal?: AbortSignal
-  background?: BackgroundExecutionOwner
-  commitAssistant?: () => void
-  toolContext?: ToolContext
-  outputBound?: TurnOutputBound
-}) {
-  const events: StreamEvent[] = []
-  const onEvent = (event: StreamEvent): void => { events.push(event) }
-  const turnScope = Scope.makeUnsafe()
-  const dispatcher = createTurnDispatcher({
-    tools: input.tools,
-    executionAdmission: (toolName) => input.tools.has(toolName)
-      ? { ok: true }
-      : { ok: false, refusal: { content: `Tool '${toolName}' is not registered`, outcome: "error" } },
-    toolContext: input.toolContext ?? makeContext(),
-    signal: input.signal,
-    background: input.background,
-    turnScope,
-    afterToolCall: undefined,
-    onEvent,
-    artifactScopeId: "test-session",
-    outputBound: input.outputBound ?? fixedTurnOutputBound(undefined),
-  })
-  return {
-    events,
-    onToolUse: (tc: ToolCall) => dispatcher.onToolUse(tc),
-    settle: async (calls: readonly ToolCall[]) => {
-      try {
-        const settled = await Effect.runPromise(settleTurn({
-          dispatcher,
-          ...(input.signal ? { turnSignal: input.signal } : {}),
-          stream: () => Promise.resolve(),
-          commitAssistant: () => {
-            input.commitAssistant?.()
-            return calls
-          },
-          commitAssistantBarrier: async () => {},
-          commitResults: async () => {},
-          commitDisplayBarrier: async () => {},
-          onEvent,
-          publishTerminal: () => {},
-          publishSettlement: () => {},
-        }))
-        return settled.batch
-      } finally {
-        await Effect.runPromise(Scope.close(turnScope, Exit.void))
-      }
-    },
   }
 }
 

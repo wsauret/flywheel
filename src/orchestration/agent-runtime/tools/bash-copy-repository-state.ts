@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../infra/owned-command.js";
 import { readRepositoryRefs, readReftableStack } from "./bash-copy-refs.js";
-import { runPrivateCopyJob } from "./bash-private-copy-jobs.js";
+import type { PrivateCopyJobs } from "./bash-private-copy-jobs.js";
 
 export interface StateDigest {
   readonly sha256: string;
@@ -25,21 +25,25 @@ async function inspect(gitDir: string, runGit: OwnedCommandRunner, args: readonl
   return result;
 }
 
-/** Digests the index entries of `gitDir` on the private copy Worker: mode, object, stage, and path, never the stat cache. An incomplete enumeration throws. */
-export async function readIndexDigest(gitDir: string, runGit: OwnedCommandRunner): Promise<StateDigest> {
+/** Digests the index entries of `gitDir` on the private copy Worker of `jobs`: mode, object, stage, and path, never the stat cache. An incomplete enumeration throws. */
+export async function readIndexDigest(gitDir: string, runGit: OwnedCommandRunner, jobs: PrivateCopyJobs): Promise<StateDigest> {
   const index = await inspect(gitDir, runGit, ["ls-files", "--stage", "-z"]);
   if (index.exitCode !== 0) throw new Error("Git could not enumerate the complete index");
-  return runPrivateCopyJob({ kind: "index", bytes: index.stdoutBytes });
+  return jobs.run({ kind: "index", bytes: index.stdoutBytes });
 }
 
 /** Reads the final-state backstop through Git and no-follow metadata reads. Any incomplete enumeration throws, never equals an empty state. */
-export async function readCopyRepositoryState(gitDir: string, runGit: OwnedCommandRunner): Promise<RepositoryState> {
+export async function readCopyRepositoryState(gitDir: string, runGit: OwnedCommandRunner, jobs: PrivateCopyJobs): Promise<RepositoryState> {
   const execute = (args: readonly string[]): Promise<OwnedCommandResult> => inspect(gitDir, runGit, args);
-  const layout = await execute(["rev-parse", "--show-object-format", "--show-ref-format"]);
+  // These reads do not depend on each other, so they run together.
+  const [layout, symbolic, resolved, indexDigest] = await Promise.all([
+    execute(["rev-parse", "--show-object-format", "--show-ref-format"]),
+    execute(["symbolic-ref", "-q", "--no-recurse", "HEAD"]),
+    execute(["rev-parse", "--verify", "-q", "HEAD"]),
+    readIndexDigest(gitDir, runGit, jobs),
+  ]);
   const [objectFormat, refFormat] = layout.stdout.trim().split("\n");
   if (layout.exitCode !== 0 || !["sha1", "sha256"].includes(objectFormat ?? "") || !["files", "reftable"].includes(refFormat ?? "")) throw new Error("Git could not read repository formats");
-  const symbolic = await execute(["symbolic-ref", "-q", "--no-recurse", "HEAD"]);
-  const resolved = await execute(["rev-parse", "--verify", "-q", "HEAD"]);
   const object = resolved.exitCode === 0 ? resolved.stdout.trim() : null;
   if ((resolved.exitCode !== 0 && resolved.exitCode !== 1) || (object !== null && !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(object))) throw new Error("Git could not resolve HEAD");
   let head: RepositoryState["head"];
@@ -51,7 +55,6 @@ export async function readCopyRepositoryState(gitDir: string, runGit: OwnedComma
     if (symbolic.exitCode !== 1 || object === null) throw new Error("Git could not inspect HEAD");
     head = { kind: "direct", object };
   }
-  const indexDigest = await readIndexDigest(gitDir, runGit);
   if (refFormat === "reftable") {
     // Git's porcelain omits dangling symbolic refs. One immutable stack covers all refs and reflogs, even on Git 2.45.
     const stack = digestStateEntries((await readReftableStack(gitDir)).values());

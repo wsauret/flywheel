@@ -72,7 +72,7 @@ export interface ReplacementHandoffStore {
  *  (ARCH-SESSIONS-039): the earliest continue time its executor last
  *  reported. In-flight state, not history: rewritten at each report and
  *  retired when the project reports none. */
-export interface CapacityWake {
+interface CapacityWake {
   readonly projectRoot: string
   readonly at: number
 }

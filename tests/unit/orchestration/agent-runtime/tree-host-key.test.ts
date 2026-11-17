@@ -12,6 +12,7 @@ import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runt
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
+import type { AgentOptionsOverride } from "./_runner-options.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import type { AgentHost } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js"
 import { processAgentHosts, type HostPlace, type HostRegistry } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js"
@@ -138,7 +139,7 @@ interface Kind {
   readonly effort: string
   /** The session identity that names the tree, for an agent with a session of its own; else the side call names it. */
   readonly ownSession?: boolean
-  readonly options?: (surfaces: { readonly background: ReturnType<typeof createBackgroundExecutionOwner> }) => Partial<RunnableAgentOptions>
+  readonly options?: (surfaces: { readonly background: ReturnType<typeof createBackgroundExecutionOwner> }) => AgentOptionsOverride<RunnableAgentOptions>
   readonly conversation: "durable" | "replay" | "context-only" | "ephemeral" | "stateless"
 }
 

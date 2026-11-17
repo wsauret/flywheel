@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { AnyBlockSchema, TOOL_PREVIEW_LINE_LIMIT, type ToolEntry } from "../../../../src/infra/output-blocks.js"
-import { getToolDisplay, resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { highlightShellCommand } from "../../../../src/tui/adapters/shell-command-highlight.js"
@@ -57,7 +57,7 @@ function bash(command: string, fields: Partial<ToolEntry> = {}): ToolEntry {
     kind: "tool",
     id: "reshape",
     name: "bash",
-    presentation: resolveToolPresentation("bash", { command }, "/workspace"),
+    presentation: resolveToolRowPresentation("bash", { command }, "/workspace").presentation,
     action: getToolDisplay("bash").action,
     status: "completed",
     timestamp: 1,

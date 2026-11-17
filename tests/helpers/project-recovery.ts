@@ -25,6 +25,11 @@ export function openProjectState(input: ProjectStateInput) {
   return { ...composition.open(projectionReader, input.writer), projectionReader }
 }
 
+/** The sessions whose recovery the claim of a later process, over a new Worker composition, still finds owed. */
+export async function owedAtRestart(input: ProjectStateInput): Promise<string[]> {
+  return (await openProjectState(input).claim("ownerless")).owed.map(({ sessionId }) => sessionId)
+}
+
 /** One whole recovery pass over a new Worker composition: see `recoverOwedSessions`. */
 export async function recoverProject(input: ProjectStateInput, scope: ProjectRecoveryScope, interruptedSessionIds: readonly string[] = []) {
   return recoverOwedSessions(openProjectState(input), scope, interruptedSessionIds)

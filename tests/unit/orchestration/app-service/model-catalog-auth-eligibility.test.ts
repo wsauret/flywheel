@@ -9,7 +9,7 @@ import { Log } from "../../../../src/infra/log.js";
 import { authDir as profileAuthDirectory } from "../../../../src/infra/paths.js";
 import { createAuthConditionOwner } from "../../../../src/orchestration/auth/auth-condition-owner.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { appendCredentialInstanceWithReceipt, replaceCredentialInstance, replaceCredentialInstanceWithReceipt, rollbackAuthStoreMutation } from "../../../../src/infra/auth/auth-store-mutations.js";
+import { appendCredentialInstanceWithReceipt, replaceCredentialInstance, replaceCredentialInstanceWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js";
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
 import { isCredentialCollection } from "../../../../src/infra/auth/auth-store-types.js";
 import { accessProviderAccountKey, accessProviderCandidateKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
@@ -20,7 +20,7 @@ import { admitModelsDocument } from "../../../../src/infra/llm/models-document.j
 import bundledModelsText from "../../../../src/infra/llm/models-bundled.txt";
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
 import { captureAccountConnection } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js";
-import { loginWithOAuth } from "../../../../src/orchestration/auth/auth-actions.js";
+import { providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js";
 import { chatgptModule } from "../../../../src/orchestration/modules/provider-chatgpt/module.js";
 import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/model-assignment-providers.js";
 import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/provider-model-eligibility.js";
@@ -38,7 +38,7 @@ import { diskAuthObservation } from "../../../helpers/profile-auth-observation.j
 const SECRET = "phase-7-access-token";
 const temporaryDirectory = temporaryDirectories();
 
-type OAuthDefinition = Parameters<typeof loginWithOAuth>[0];
+type OAuthDefinition = AccessProviderDefinition & { readonly auth: { readonly kind: "oauth" } };
 
 /** Model IDs from the models.dev document bundled with Flywheel. */
 function bundledProviderModelIds(providerIds: readonly string[]): readonly string[] {
@@ -469,34 +469,26 @@ describe("catalog auth eligibility", () => {
     };
     const published = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: registry.selection.displayName, allowTrainingRoutes: () => false, persist: async () => "preference-revision-next", persistAllDeselected: async () => "preference-revision-next" });
 
-    const auth = await loginWithOAuth(chatgptDefinition(), {
+    const definition = chatgptDefinition();
+    const start = async () => ({
+      identity: "phase-7-account",
+      credential: {
+        type: "oauth",
+        access: Redacted.make(SECRET),
+        refresh: Redacted.make("phase-7-refresh-token"),
+        expires: Date.now() + 60_000,
+        accountId: "phase-7-account",
+      },
+    } as const);
+    const flow = providerLoginFlow("chatgpt", [{ definition: { ...definition, auth: { ...definition.auth, start } }, usageReader: async () => ({ kind: "fetch-failure" }) }]);
+    if (flow === undefined) throw new Error("expected the ChatGPT login flow");
+
+    const auth = await flow.login({
       authDir,
       profileId: "work",
       resolveKey,
       openBrowser: async () => true,
       launcher: refusingLauncher,
-      settle: async () => {},
-    }, {
-      start: async () => ({
-        identity: "phase-7-account",
-        credential: {
-          type: "oauth",
-          access: Redacted.make(SECRET),
-          refresh: Redacted.make("phase-7-refresh-token"),
-          expires: Date.now() + 60_000,
-          accountId: "phase-7-account",
-        },
-      }),
-      persist: async (providerId, credential, destination, instance, signal) => {
-        const receipt = await appendCredentialInstanceWithReceipt(providerId, { id: instance.id, identity: instance.identity ?? "phase-7-account", credential }, destination, slots, signal);
-        return {
-          instanceId: instance.id,
-          persisted: true,
-          rollback: () => rollbackAuthStoreMutation(receipt, destination, slots),
-        };
-      },
-      resolve: resolveAuthContext,
-      readUsage: async () => ({ kind: "fetch-failure" }),
       settle: async (_providerId, directory) => {
         const settledAuth = await resolveAuthContext({ authDir: directory, resolveKey, credentialProviderIds: installedCredentialProviderIds(), credentialSlotClassifier: slots });
         const liveListingClient = createModelListingClient({

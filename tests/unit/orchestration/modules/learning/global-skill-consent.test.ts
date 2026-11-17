@@ -9,12 +9,13 @@ import { readMutationEvidenceFiles } from "../../../../../src/infra/mutation-evi
 import { MutationEvidenceSchema } from "../../../../../src/infra/mutation-evidence-schema.js";
 import { readSessionContentRange } from "../../../../../src/infra/session-content.js";
 import { createSkillManageTool } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { loadAgentInputProjection } from "../../../../../src/orchestration/session/agent-input-projection.js";
 import type { SkillWriteOrigin } from "../../../../../src/orchestration/modules/learning/skill-store-types.js";
 import { publishSkillRevision, SKILL_FILE } from "../../../../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../src/workflows/skills.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 const TMP = fileTemporaryDirectory("flywheel-global-consent-test-");
 const CWD = join(TMP, "project");
@@ -33,8 +34,8 @@ function registry() {
 function skillManage(origin: SkillWriteOrigin = AGENT) {
   return createSkillManageTool({ origin, registry, userDataRoot: DIRS.userDataRoot, store: asAsyncEventReadSurface(store), sessionId: SESSION });
 }
-function context(toolUseId: string): ToolContext {
-  return { executionCwd: CWD, userDataRoot: `${CWD}/.test-account`, projectRoot: CWD, toolUseId, artifactScopeId: SESSION, retrievalSessionId: SESSION, sessionId: SESSION, conversationId: "conv-1", sessionEventWriter: writer };
+function context(toolUseId: string): DispatchedToolContext {
+  return dispatchedToolContext({ executionCwd: CWD, userDataRoot: `${CWD}/.test-account`, projectRoot: CWD, toolUseId, artifactScopeId: SESSION, retrievalSessionId: SESSION, sessionId: SESSION, conversationId: "conv-1", sessionEventWriter: writer });
 }
 function installGlobalSkill(managed = "flywheel") {
   const dir = join(roots().user, "global-notes");

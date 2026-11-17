@@ -88,7 +88,7 @@ interface HeldIndex {
  *  commands or of the keeper's, and a change of a reply wait. Each change
  *  reads again only the parts of the index it touches, and the owner
  *  publishes each row that changed, whole, or its removal. */
-export function createBackgroundIndexOwner(deps: BackgroundIndexOwnerDeps): BackgroundIndexOwner {
+function createBackgroundIndexOwner(deps: BackgroundIndexOwnerDeps): BackgroundIndexOwner {
   const held = new Map<string, HeldIndex>()
   const childRunFacts = new Set(deps.childRunFactTypes)
   // The live commands each session with any showed last: the store's array,

@@ -1,10 +1,9 @@
 import { tmpdir } from "node:os"
-import { afterEach, describe, expect, test } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createMemoryStore } from "../../workflows/vm/host-test-support.js"
-import { releaseHeldProjections } from "../../../../src/infra/projection-registry.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
 import { composeModuleProtocolRuntimes, type ModuleProtocolServices } from "../../../../src/orchestration/app-service/module-protocol-host.js"
@@ -29,17 +28,11 @@ function view(running: boolean): FrontendExperimentView {
   }
 }
 
-const readers = new Array<ReturnType<typeof inMemoryEventReader>>()
-afterEach(() => {
-  for (const reader of readers.splice(0)) releaseHeldProjections(asAsyncEventReadSurface(reader))
-})
-
 /** The experiments protocol runtime over a store with one live session and no
  *  experiment history, so a live read answers null and never asks the Worker. */
 function experimentsServices(liveIds: string[]) {
   const store = fakeSessionStore(new Map(liveIds.map((id) => [id, chatEntry()])))
   const reader = inMemoryEventReader([])
-  readers.push(reader)
   const calls = { background: new Array<string>() }
   const bus = createRuntimeUiBus()
   const services: ModuleProtocolServices = {

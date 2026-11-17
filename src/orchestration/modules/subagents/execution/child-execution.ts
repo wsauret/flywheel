@@ -3,7 +3,7 @@ import { Log } from "../../../../infra/log.js";
 import { createRuntimeEvent } from "../../../../infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
 import { createHandoffObserver } from "../../../../workflows/shared/handoff-observer.js";
-import type { Agent, AgentRunResult, RunnableAgentOptions } from "../../../agent-runtime/types.js";
+import type { Agent, AgentRunResult, OmitAgentOptions, RunnableAgentOptions } from "../../../agent-runtime/types.js";
 import { deriveChildRuntimeSurfaces } from "../../../agent-runtime/tools/tool-registry.js";
 import { mergeAbortSignals } from "../../../../infra/abort.js";
 import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
@@ -313,7 +313,7 @@ export function createChildExecution(options: {
     if (inFlightToolIds.size > 0 || childBackground.owner.tasks.awaitedTaskCount() > 0) bumpStall();
   }, keepAliveIntervalMs);
 
-  const runnerOptions: Omit<RunnableAgentOptions, "conversation" | "model"> = {
+  const runnerOptions: OmitAgentOptions<RunnableAgentOptions, "conversation" | "model"> = {
     effort: typeof effortForRunner === "string" ? effortForRunner : undefined,
     requestSelection: (currentRoles) => resolveChildRole(agent, currentRoles, deps.briefScope) ?? { roleId: agent.kind === "persona" ? agent.role : "chat" },
     proactiveCompactionThreshold: deps.proactiveCompactionThreshold,

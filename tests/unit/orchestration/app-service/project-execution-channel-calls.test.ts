@@ -1,7 +1,30 @@
 import { describe, expect, test } from "bun:test"
 import { pack } from "msgpackr"
-import { connectProjectExecutionChannel, PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS } from "../../../../src/orchestration/app-service/project-execution-channel.js"
+import { connectProjectExecutionChannel } from "../../../../src/orchestration/app-service/project-execution-channel.js"
 import { deferred, endpointPair, manualClock, markerEvent, markerPosition, requestFrame } from "./project-execution-channel-fixtures.js"
+
+/** How many calls a client sends before it queues the rest, read from a
+ *  burst far larger than that bound. A watch statement bypasses the call
+ *  queue, so it arrives after every request that the client sent before it. */
+async function clientCapacity(): Promise<number> {
+  const burst = 1024
+  const [peer, endpoint] = endpointPair()
+  let sent = 0
+  const flushed = deferred<void>()
+  peer.onMessage((value) => {
+    if (typeof value === "object" && value !== null && "kind" in value && value.kind === "watch") flushed.resolve()
+    else sent += 1
+  })
+  const client = connectProjectExecutionChannel(endpoint, { clock: manualClock().clock })
+  const calls = Array.from({ length: burst }, (_, index) => client.dispatch({ type: "session.close", sessionId: `${index}` }).catch(() => undefined))
+  client.watchOutput([])
+  await flushed.promise
+  await client.close()
+  await Promise.all(calls)
+  expect(sent).toBeGreaterThan(0)
+  expect(sent).toBeLessThan(burst)
+  return sent
+}
 
 describe("project execution call deadlines and capacity", () => {
   test("keeps an expired read correlated until its late reply arrives", async () => {
@@ -39,25 +62,26 @@ describe("project execution call deadlines and capacity", () => {
   })
 
   test("counts timed-out work against client capacity until its reply arrives", async () => {
+    const capacity = await clientCapacity()
     const [peer, clientEndpoint] = endpointPair()
     const requests: Array<{ id: string }> = []
     const capacityReached = deferred<void>()
     const extraRequest = deferred<void>()
     peer.onMessage((value) => {
       requests.push(requestFrame(value))
-      if (requests.length === PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS) capacityReached.resolve()
-      if (requests.length === PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS + 1) extraRequest.resolve()
+      if (requests.length === capacity) capacityReached.resolve()
+      if (requests.length === capacity + 1) extraRequest.resolve()
     })
     const timer = manualClock()
     const client = connectProjectExecutionChannel(clientEndpoint, { clock: timer.clock })
-    const expired = Array.from({ length: PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS }, () =>
+    const expired = Array.from({ length: capacity }, () =>
       client.query({ type: "commandUsageSnapshot" }).catch((cause: unknown) => cause))
     await capacityReached.promise
     timer.expireAll()
     await Promise.all(expired)
 
     const admitted = client.query({ type: "commandUsageSnapshot" })
-    expect(requests).toHaveLength(PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS)
+    expect(requests).toHaveLength(capacity)
 
     const replyProcessed = deferred<void>()
     client.subscribe((event) => {
@@ -71,12 +95,13 @@ describe("project execution call deadlines and capacity", () => {
     await peer.send({ kind: "events", frames: [pack(markerEvent(1))] })
     await replyProcessed.promise
     await extraRequest.promise
-    expect(requests).toHaveLength(PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS + 1)
+    expect(requests).toHaveLength(capacity + 1)
     peer.close()
     await expect(admitted).rejects.toThrow("closed")
   })
 
   test("queues a burst in FIFO order and expires queued reads without sending them", async () => {
+    const capacity = await clientCapacity()
     const [peer, endpoint] = endpointPair()
     const requests: Array<{ id: string }> = []
     const frames: unknown[] = []
@@ -85,27 +110,27 @@ describe("project execution call deadlines and capacity", () => {
     peer.onMessage(value => {
       frames.push(value)
       requests.push(requestFrame(value))
-      if (requests.length === 64) full.resolve()
-      if (requests.length === 66) admitted.resolve()
+      if (requests.length === capacity) full.resolve()
+      if (requests.length === capacity + 2) admitted.resolve()
     })
     const timer = manualClock()
     const client = connectProjectExecutionChannel(endpoint, { clock: timer.clock })
-    const occupying = Array.from({ length: 64 }, (_, index) => client.dispatch({ type: "session.close", sessionId: `${index}` }).catch(() => undefined))
+    const occupying = Array.from({ length: capacity }, (_, index) => client.dispatch({ type: "session.close", sessionId: `${index}` }).catch(() => undefined))
     await full.promise
     const expired = client.query({ type: "commandUsageSnapshot" }).catch(cause => cause)
     timer.expireAll()
     expect(await expired).toMatchObject({ name: "RuntimeCallTimeout" })
     const queued = [client.dispatch({ type: "session.close", sessionId: "first" }), client.query({ type: "commandUsageSnapshot" })]
-    expect(requests).toHaveLength(64)
+    expect(requests).toHaveLength(capacity)
     for (const request of requests.slice(0, 2)) await peer.send({ kind: "result", id: request.id, result: { ok: true } })
     await admitted.promise
-    expect(frames.slice(64)).toMatchObject([
+    expect(frames.slice(capacity)).toMatchObject([
       { kind: "dispatch", mutation: { sessionId: "first" } },
       { kind: "query", query: { type: "commandUsageSnapshot" } },
     ])
     const result = { snapshotPosition: 7, usage: { uses: [] } }
-    await peer.send({ kind: "result", id: requests[64]!.id, result: { ok: true } })
-    await peer.send({ kind: "result", id: requests[65]!.id, result })
+    await peer.send({ kind: "result", id: requests[capacity]!.id, result: { ok: true } })
+    await peer.send({ kind: "result", id: requests[capacity + 1]!.id, result })
     expect(await Promise.all(queued)).toEqual([{ ok: true }, result])
     await client.close()
     await Promise.all(occupying)

@@ -52,13 +52,10 @@ const read = {
 export const fileToolsModule = {
   id: "file-tools",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "tools" as const, id: editDefinition.name, value: { kind: "tool" as const, name: editDefinition.name, declaration: edit } },
     { domain: "tools" as const, id: readDefinition.name, value: { kind: "tool" as const, name: readDefinition.name, declaration: read } },
     { domain: "tools" as const, id: writeDefinition.name, value: { kind: "tool" as const, name: writeDefinition.name, declaration: declaration(writeDefinition, 6) } },
     { domain: "settings", id: "file-tools", value: { control: "binary", group: "Tools", label: "File tools", description: "Disabling File tools removes model file access." } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

@@ -3,8 +3,8 @@ import { retainedExecutionDiagnostics } from "../../../src/orchestration/module-
 import { composeFirstPartyModules, type FirstPartyModule } from "../../../src/orchestration/modules.js"
 
 const diagnosticModule: FirstPartyModule = {
-  id: "development", dependencies: [], availability: { kind: "available" },
-  contributions: [], observers: [], gates: [],
+  id: "development", dependencies: [],
+  contributions: [],
   retainedDiagnostics: {
     attempts: () => ({ attempts: [{ id: "step", name: "Task", definitionId: "task", workflowDefinitionId: "flow", status: "completed", startedAt: 10, completedAt: 20 }], conversationToAttempt: new Map([["conversation", "step"]]) }),
     children: () => [{ runId: "child", status: "completed", modelRequestId: "parent", totalCostUsd: 0.03, completedAt: 18 }],

@@ -10,7 +10,6 @@ import { createSubscriptionUsageService, subscriptionUsageService } from "./serv
 export const subscriptionUsageModule = {
   id: "subscription-usage",
   dependencies: [],
-  availability: { kind: "available" },
   service: { handle: subscriptionUsageService, create: createSubscriptionUsageService },
   protocol: moduleProtocol({ contract: subscriptionUsageProtocol, create: createSubscriptionUsageProtocol }),
   contributions: [
@@ -20,6 +19,4 @@ export const subscriptionUsageModule = {
     { domain: "settings", id: "subscription-usage", value: { control: "binary", group: "Model & spend", label: "Usage", description: "Inspect subscription allowances and request spend" } },
     { domain: "settings", id: "subscription-usage-alert-thresholds", value: { control: "config-number-list", section: subscriptionUsageConfigSection.key, key: "alert_thresholds", defaultValue: DEFAULT_USAGE_ALERT_THRESHOLDS, suffix: "%", group: "Model & spend", label: "Usage alert thresholds", description: "Ascending usage percentages for alerts. Empty disables alerts.", min: 1, max: 100 } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

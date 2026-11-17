@@ -1,11 +1,12 @@
 /** Bash `mutates` commands whose cwd selects the copied tree: the project, or the
  *  Git work tree that contains a cwd outside it, through any path alias. */
 
-import { afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
+import { createPrivateCopyJobs } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
 import { privateCopyRemovals, readPrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -13,6 +14,8 @@ import { mutationSpawnProbe, makeMockOwnedProcess, streamOf } from "./_bash-fixt
 import { bashMutationHarness } from "./_bash-mutations-harness.js";
 
 const createDirectory = temporaryDirectories();
+const jobs = createPrivateCopyJobs();
+afterAll(() => jobs.close());
 
 beforeAll(async () => {
   await loadBashParser();
@@ -93,7 +96,7 @@ describe("bash tool: the tree a mutating command copies", () => {
         expect(options.env!.GIT_DIR).toBeUndefined();
         expect(options.env!.GIT_INDEX_FILE).toBeUndefined();
         expect(fs.readFileSync(privateIndex, "utf8")).toBe(linkedIndex);
-        expect(await readPrivateProjectCopy(home)).toMatchObject({ kind: "recorded", copy: { realRoot: worktree, git: { kind: "repository", gitDir } } });
+        expect(await readPrivateProjectCopy(home, jobs)).toMatchObject({ kind: "recorded", copy: { realRoot: worktree, git: { kind: "repository", gitDir } } });
       }
       return probe.spawnOwned(cmd, options);
     };
@@ -140,7 +143,7 @@ describe("bash tool: the tree a mutating command copies", () => {
       if (options?.cwd) {
         expect(options.env?.GIT_INDEX_FILE).toBeUndefined();
         const privateGitDir = fs.readFileSync(path.join(path.dirname(options.cwd), ".git"), "utf8").trim().slice(8);
-        expect(await readPrivateProjectCopy(path.dirname(privateGitDir))).toMatchObject({
+        expect(await readPrivateProjectCopy(path.dirname(privateGitDir), jobs)).toMatchObject({
           kind: "recorded", copy: { realRoot: root },
         });
       }

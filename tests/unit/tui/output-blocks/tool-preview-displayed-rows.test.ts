@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test"
 import type { ToolEntry } from "../../../../src/infra/output-blocks.js"
-import { resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import { renderToolEntry } from "./_tool-entry-render.js"
 import { writeEntry } from "./_write-entry-fixture.js"
 import { mutationEvidenceFixture } from "./_mutation-evidence-fixture.js"
@@ -48,7 +48,7 @@ it.each(["write", "streaming"] as const)("caps wrapped %s previews and expands w
 it("wraps a collapsed legacy diff line, caps it at the preview rows, and expands it to full text", async () => {
   const result = await renderToolEntry({
     kind: "tool", id: "edit-1", name: "edit", status: "completed", timestamp: 0,
-    presentation: resolveToolPresentation("edit", { path: "example.ts" }, "/workspace"),
+    presentation: resolveToolRowPresentation("edit", { path: "example.ts" }, "/workspace").presentation,
     diff: `--- a/example.ts\n+++ b/example.ts\n@@ -1 +1 @@\n+${"wrapped ".repeat(180)}tail-end`,
   }, { width: 48, height: 96 })
   const lines = () => result.captureCharFrame().split("\n")
@@ -79,7 +79,7 @@ it("states wrapped rows, not a line count, as the hidden content of a collapsed 
   const added = Array.from({ length: 30 }, (_, index) => `+row${index} ${"word ".repeat(10)}`)
   const result = await renderToolEntry({
     kind: "tool", id: "edit-1", name: "edit", status: "completed", timestamp: 0,
-    presentation: resolveToolPresentation("edit", { path: "example.ts" }, "/workspace"),
+    presentation: resolveToolRowPresentation("edit", { path: "example.ts" }, "/workspace").presentation,
     diff: `--- a/example.ts\n+++ b/example.ts\n@@ -1,0 +1,30 @@\n${added.join("\n")}`,
   }, { width: 48, height: 96 })
   try {
@@ -104,7 +104,7 @@ it("wraps each collapsed file to the preview rows and keeps an expansion control
   const fixture = await mutationEvidenceFixture({ version: 1, files, omissions: [] })
   const result = await renderToolEntry({
     kind: "tool", id: "edit-many", name: "edit", status: "completed", timestamp: 0,
-    presentation: resolveToolPresentation("edit", {}, "/workspace"),
+    presentation: resolveToolRowPresentation("edit", {}, "/workspace").presentation,
     fileChangeKind: "patch",
     mutationEvidence: fixture.evidence,
   }, { width: 48, height: 160, evidenceReader: fixture.reader })

@@ -32,7 +32,7 @@ type StartupRecordBase = {
   readonly elapsedMs: number
 }
 
-export type StartupTimelineRecord =
+type StartupTimelineRecord =
   | (StartupRecordBase & { readonly type: "startup.started" })
   | (StartupRecordBase & {
     readonly type: "startup.finished"

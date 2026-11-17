@@ -172,7 +172,7 @@ export const searchDefinition: RuntimeTool = {
           ? formatTailOutput(result.matches, result, context, observationPosition)
           : formatContentOutput(result.matches, result, context, effectiveLimit, skip, rank, observationPosition);
       } else {
-        formatted = formatMatchingFilesOutput(result.matches, result, context, effectiveLimit, rank);
+        formatted = formatMatchingFilesOutput(result.matches, result, context, effectiveLimit, rank.preferTests);
       }
       return withEngineNote(appendSearchDiagnostics(formatted, result, context.executionCwd), engine);
     } catch (err) {
@@ -182,10 +182,7 @@ export const searchDefinition: RuntimeTool = {
   },
 };
 
-// Validation, ranking, formatting, and error handling (formerly
-// search-helpers.ts, split only to satisfy the old 400-line cap; single
-// consumer, merged back). The exported formatters/validator are exercised
-// directly by the ranking unit tests.
+// Validation, ranking, formatting, and error handling of the search tool.
 
 const MAX_MATCHES = 500;
 const DEFAULT_HEAD_LIMIT = 200;
@@ -273,12 +270,12 @@ function resolveMatchPath(executionCwd: string, filePath: string) {
   return { absolute, display: displayRelativePath(absolute, executionCwd) };
 }
 
-export function formatMatchingFilesOutput(
+function formatMatchingFilesOutput(
   matches: GrepMatch[],
   result: GrepResult,
   context: ToolContext,
   limit: number,
-  rank: RankOptions,
+  preferTests: boolean,
 ): ToolResult {
   const executionCwd = context.executionCwd;
   const fileMap = new Map<string, string>();
@@ -290,14 +287,12 @@ export function formatMatchingFilesOutput(
     else if (!fileHasDefinition.has(display)) fileHasDefinition.set(display, false);
   }
   const entries = [...fileMap.entries()].sort((a, b) =>
-    rank.rankingEnabled
-      ? Number(fileHasDefinition.get(b[0]) === true) - Number(fileHasDefinition.get(a[0]) === true) ||
-        pathWeight(a[0], rank.preferTests) - pathWeight(b[0], rank.preferTests) ||
-        getMtime(b[1]) - getMtime(a[1])
-      : getMtime(b[1]) - getMtime(a[1]),
+    Number(fileHasDefinition.get(b[0]) === true) - Number(fileHasDefinition.get(a[0]) === true) ||
+    pathWeight(a[0], preferTests) - pathWeight(b[0], preferTests) ||
+    getMtime(b[1]) - getMtime(a[1]),
   );
   const paths = entries.map(([display]) => display);
-  const bestPath = rank.rankingEnabled ? paths[0] : undefined;
+  const bestPath = paths[0];
   const bestIsDef = bestPath !== undefined && fileHasDefinition.get(bestPath) === true;
 
   const truncated = result.limitReached || matches.length >= limit;
@@ -521,7 +516,7 @@ function searchInputError(content: string): ValidatedSearchInput {
   return { kind: "error", result: { content, outcome: "error" } };
 }
 
-export async function validateSearchInput(input: RuntimeToolInput, context: ToolAdmissionContext): Promise<ValidatedSearchInput> {
+async function validateSearchInput(input: RuntimeToolInput, context: ToolAdmissionContext): Promise<ValidatedSearchInput> {
   const executionCwd = context.executionCwd;
   if (typeof input.pattern !== "string") {
     return searchInputError("search was called without a 'pattern' string. Provide the regex or literal you want to search for as 'pattern'.");
@@ -605,7 +600,7 @@ export async function validateSearchInput(input: RuntimeToolInput, context: Tool
   };
 }
 
-export function handleSearchError(failure: unknown, pattern: string, searchPath: string, executionCwd: string): ToolResult {
+function handleSearchError(failure: unknown, pattern: string, searchPath: string, executionCwd: string): ToolResult {
   if (failure instanceof SearchStoppedError) return { content: searchStoppedMessage("search", failure.stop), outcome: "error" };
   const msg = errorMessage(failure);
   if (msg.includes("regex parse error")) {

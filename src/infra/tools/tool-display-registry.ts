@@ -139,7 +139,7 @@ export function targetSessionField(toolName: string, input: unknown): { readonly
  *  name while pending, completed, failed, blocked, or interrupted. A call whose
  *  input names no operation yet still gets the neutral family name, so every
  *  placed row has one. */
-export function resolveToolPresentation(toolName: string, input: unknown, executionCwd: string, context?: ToolPresentationContext): ToolPresentation {
+function resolveToolPresentation(toolName: string, input: unknown, executionCwd: string, context?: ToolPresentationContext): ToolPresentation {
   const resolved = resolvePresentationIfReady(toolName, input, executionCwd, context);
   return resolved ?? { name: sanitizePresentationText(getToolDisplayName(toolName, isRecord(input) ? input : {})), detail: "" };
 }

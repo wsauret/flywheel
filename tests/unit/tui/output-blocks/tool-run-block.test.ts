@@ -3,7 +3,7 @@ import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import { Schema } from "effect"
 import { AnyBlockSchema, type ToolEntry } from "../../../../src/infra/output-blocks.js"
-import { getToolDisplay, resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import type { ToolRun, ToolRunStatus } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
 import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
 
@@ -30,7 +30,7 @@ function row(
     kind: "tool",
     id: `${name}-${JSON.stringify(input)}`,
     name,
-    presentation: resolveToolPresentation(name, input, CWD),
+    presentation: resolveToolRowPresentation(name, input, CWD).presentation,
     action: getToolDisplay(name).action,
     timestamp: 0,
     status,

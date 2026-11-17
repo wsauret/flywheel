@@ -6,7 +6,7 @@ import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-ru
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js"
 import { createForegroundBashHoldController } from "../../src/orchestration/agent-runtime/foreground-bash-hold.js"
 import { planToolExposure } from "../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js"
-import type { CapabilityAccess, RuntimeTool, ToolContext, ToolResult } from "../../src/orchestration/agent-runtime/tools/types.js"
+import type { CapabilityAccess, DispatchedToolContext, RuntimeTool, ToolResult } from "../../src/orchestration/agent-runtime/tools/types.js"
 import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"
 import { captureRuntimeConfigRequest } from "../../src/orchestration/agent-runtime/request-config.js"
 import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema.js"
@@ -66,7 +66,7 @@ const tools = (await planToolExposure({
   modules: NO_MODULE_RUNTIMES,
   selected,
 })).tools
-const context: ToolContext = {
+const context: DispatchedToolContext = {
   executionCwd: workspace,
   userDataRoot: join(workspace, ".test-account"),
   projectRoot: workspace,
@@ -81,6 +81,8 @@ const context: ToolContext = {
   disposalSignal: background.signal,
   capabilityAccess,
   availableTools: new Set(tools.keys()),
+  toolUseId: "linux-runtime-verification",
+  createNestedToolDispatchBatch: () => { throw new Error("the smoke checks run no nested tool calls") },
 }
 
 let failures = 0

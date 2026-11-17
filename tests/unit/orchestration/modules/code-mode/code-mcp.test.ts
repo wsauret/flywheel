@@ -4,12 +4,12 @@ import { createRequestToolSurface } from "../../../../../src/orchestration/agent
 import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { McpToolHit } from "../../../../../src/orchestration/modules/mcp/connection.js";
 import type { McpPorts } from "../../../../../src/orchestration/modules/mcp/manager.js";
 import { codeModeRuntimeOver, codeModeServices } from "../../../../helpers/code-mode-worker.js";
 import { mcpRuntimeOver } from "../../../../helpers/mcp.js";
 import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 const codeModeService = codeModeServices();
 const hit: McpToolHit = { server: "work", name: "lookup", inputSchema: { type: "object" }, annotations: { readOnlyHint: true } };
@@ -45,11 +45,11 @@ async function execute(mcp: McpPorts) {
   const owner = await createRequestToolSurface(() => plannedRequest(planned), testCapabilityModules, testRuntimeConfigCapture);
   const surface = await owner.resolve();
   const output: string[] = [];
-  const context: ToolContext = {
+  const context = dispatchedToolContext({
     executionCwd: process.cwd(), userDataRoot: "/scratch/test-account", projectRoot: process.cwd(), artifactScopeId: "session", sessionId: "session", toolUseId: "outer",
     retrievalSessionId: "session",
     onExecutionOutput: (value) => output.push(value),
-  };
+  });
   context.createNestedToolDispatchBatch = (options) => createNestedToolDispatchBatch({
     ...options, context, gate: createToolConcurrencyGate(10),
     executionAdmission: surface.executionAdmission,

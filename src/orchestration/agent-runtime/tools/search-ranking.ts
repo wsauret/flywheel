@@ -112,7 +112,7 @@ function startsWithInclude(s: string): boolean {
 
 /** Detect import/use lines - lower value than definitions or usages. Pure
  *  char-level checks, no regex (port of fff grep.rs is_import_line). */
-export function isImportLine(line: string): boolean {
+function isImportLine(line: string): boolean {
   const s = line.trimStart();
   return (
     s.startsWith("import ") ||
@@ -155,7 +155,7 @@ function hasInfix(name: string, infix: string): boolean {
 
 /** Classify a display path by segment (lowercased), never raw substring, so
  *  `src/testing-utils.ts` stays source. Vendor/generated wins over test. */
-export function classifyPath(displayPath: string): PathClass {
+function classifyPath(displayPath: string): PathClass {
   const segments = displayPath.toLowerCase().split("/");
   const fileName = segments[segments.length - 1] ?? "";
   for (const seg of segments) {

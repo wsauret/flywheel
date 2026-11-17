@@ -72,7 +72,8 @@ interface ChannelDetach {
 const RELAYED_SERVICES: ReadonlySet<string> = new Set([...SUPERVISOR_RECORD_SERVICES, "process-supervisor"])
 
 /** Re-enters this build, never an installed launcher that can select a different build. */
-export function projectExecutorCommand(execPath = process.execPath): readonly string[] {
+function projectExecutorCommand(): readonly string[] {
+  const execPath = process.execPath
   return [
     ...(runsThroughBun(execPath)
       ? [execPath, "--conditions=browser", fileURLToPath(new URL("../../../scripts/project-executor.ts", import.meta.url))]
@@ -196,7 +197,7 @@ function ownership(end: ProjectExecutorGenerationEnd): OwnershipClosure {
 
 /** Startup failures carry the joined ownership result, so the account never
  * guesses whether a rejected acquisition left a live container. */
-export class ProjectExecutorStartupError extends Error {
+class ProjectExecutorStartupError extends Error {
   constructor(cause: unknown, readonly closure: OwnershipClosure) {
     super(cause instanceof Error ? cause.message : String(cause), { cause })
     this.name = "ProjectExecutorStartupError"

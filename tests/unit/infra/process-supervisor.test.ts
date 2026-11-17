@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { handoverChannelAddress, writeOutcomeRecord, type CommandHandover } from "../../../src/infra/command-handover.js"
 import type { ControlledContainer } from "../../../src/infra/owned-command-control.js"
 import type { OwnedExitStatus, OwnedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
-import type { OwnedProcess, OwnedProcessExit, OwnershipSettlement } from "../../../src/infra/owned-subprocess.js"
+import type { OwnedProcess, OwnedProcessExit } from "../../../src/infra/owned-subprocess.js"
 import { createLauncherScope, createProcessSupervisor, type GuardianLease, type ProcessSupervisor } from "../../../src/infra/process-supervisor.js"
 import { proveProcessEnded } from "../../../src/infra/prove-process-ended.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
@@ -19,7 +19,7 @@ const adoptOwned: ProcessSupervisor["adoptOwned"] = () => Promise.reject(new Err
  *  release the guardian never answered. Termination joins the first call, the
  *  way a real container's does. */
 interface FakeOwned extends OwnedProcess {
-  settle(ownership: OwnershipSettlement): void
+  settle(ownership: OwnedProcessExit["ownership"]): void
 }
 
 function fakeOwned(pid: number, terminated: number[]): FakeOwned {

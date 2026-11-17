@@ -16,7 +16,7 @@ import { executePathBatch, hasKind, missingPathHint, prepareReadOnlyPathInput, r
 import { listDefinition } from "./list.js";
 import { searchDefinition } from "./search.js";
 import { prepareSearchPathInput } from "./search-paths.js";
-import { type ImageResizeResult, resizeImage } from "./image-resize.js";
+import { resizeImage } from "./image-resize.js";
 import { checkNumericRange } from "./numeric-input.js";
 import { truncateUtf8Prefix } from "../../../infra/output/truncate-output.js";
 import { TOOL_RESULT_MAX_BYTES } from "../compaction/truncation.js";
@@ -25,7 +25,7 @@ import { decodeTextSnapshot, readTextWindows } from "./read-text-windows.js";
 import { formatFileMap, generateFileMap, lookupSymbol } from "./structural-map.js";
 import { renderStructuralSummary, summarizeStructure } from "./structural-summary.js";
 import { detectTreeSitterLanguage } from "./tree-sitter-code.js";
-import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
+import type { DispatchedToolContext, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 
 const log = Log.create({ service: "agent-read" });
@@ -264,13 +264,10 @@ async function pageWindow(window: TextWindow, budget: number, has: CapabilityChe
   return { text: `${lead}${page.text}${page.text.length === 0 ? "" : "\n"}${notice}${cutTrailer}`, shown: page.shown };
 }
 
-interface ReadOperations {
-  readFile(path: string): Promise<{
-    size: number;
-    arrayBuffer(): Promise<ArrayBuffer>;
-    stream(): ReadableStream<Uint8Array>;
-  }>;
-  resizeImage?: (base64: string) => Promise<ImageResizeResult>;
+interface ReadableFile {
+  readonly size: number;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  stream(): ReadableStream<Uint8Array>;
 }
 
 const DEFAULT_LINE_LIMIT = 2000;
@@ -298,21 +295,17 @@ function fileByteStream(path: string): ReadableStream<Uint8Array> {
   });
 }
 
-const defaultReadOperations: ReadOperations = {
-  readFile: (path: string) => {
-    return Promise.resolve({
-      size: statSync(path).size,
-      arrayBuffer: async () => Uint8Array.from(await readFile(path)).buffer,
-      stream: () => fileByteStream(path),
-    });
-  },
-  resizeImage,
-};
+/** Stats the file, so a missing file fails before any content is read. Text
+ *  reads stream unless a structural parse needs the whole snapshot. */
+function openFile(path: string): ReadableFile {
+  return {
+    size: statSync(path).size,
+    arrayBuffer: async () => Uint8Array.from(await readFile(path)).buffer,
+    stream: () => fileByteStream(path),
+  };
+}
 
-async function readImage(
-  filePath: string,
-  ops: ReadOperations,
-): Promise<ToolResult> {
+async function readImage(filePath: string): Promise<ToolResult> {
   const ext = extname(filePath).toLowerCase();
   const mediaType = MIME_MAP[ext];
   if (!mediaType) {
@@ -322,7 +315,7 @@ async function readImage(
     };
   }
 
-  const file = await ops.readFile(filePath);
+  const file = openFile(filePath);
 
   if (file.size > MAX_IMAGE_BYTES) {
     return {
@@ -334,8 +327,7 @@ async function readImage(
   const buffer = await file.arrayBuffer();
   const base64 = Buffer.from(buffer).toString("base64");
 
-  const resize = ops.resizeImage ?? resizeImage;
-  const resized = await resize(base64);
+  const resized = await resizeImage(base64);
 
   if (resized.kind === "decoded") {
     log.debug("image read", { path: filePath, size: file.size, mediaType: resized.mimeType, resized: resized.wasResized });
@@ -443,12 +435,11 @@ async function readText(
   filePath: string,
   offset: number,
   limit: number,
-  ops: ReadOperations,
   record: (sha256: string) => RecordCoverage,
   page: PageOptions,
   options: { map: boolean; symbol: string | undefined; summarize: boolean; signal: AbortSignal | undefined },
 ): Promise<ToolResult> {
-  const file = await ops.readFile(filePath);
+  const file = openFile(filePath);
   const supportsStructure = detectTreeSitterLanguage(filePath) !== null;
   const range = options.symbol
     ? { startLine: 1, endLine: DEFAULT_LINE_LIMIT }
@@ -505,12 +496,11 @@ async function readText(
 async function readTextMultiRange(
   filePath: string,
   ranges: readonly LineRange[],
-  ops: ReadOperations,
   record: (sha256: string) => RecordCoverage,
   page: PageOptions,
   signal: AbortSignal | undefined,
 ): Promise<ToolResult> {
-  const file = await ops.readFile(filePath);
+  const file = openFile(filePath);
   const { windows, totalLines, sha256, binary } = await readTextWindows(file.stream(), ranges, signal);
   const seen = record(sha256);
 
@@ -627,16 +617,13 @@ const READ_DESCRIPTION_TAIL = "Images (PNG, JPG, GIF, WebP) are returned as imag
 const DEFAULT_READ_DESCRIPTION = `Without a suffix or option, a read returns up to ${DEFAULT_LINE_LIMIT} lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read.`;
 
 interface ReadDefinitionOptions {
-  readonly operations?: ReadOperations;
   /** A read without a selector or read option returns a large code file as
    *  its structural summary. False returns the file from its first line, up
    *  to the default line limit. True by default. */
   readonly structuralSummary?: boolean;
 }
 
-/** Create the read tool with file and image operations supplied by its host or tests. */
-export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTool {
-  const ops = options?.operations ?? defaultReadOperations;
+function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTool {
   const structuralSummary = options?.structuralSummary ?? true;
 
   const definition: RuntimeTool = {
@@ -670,7 +657,7 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
         notice: [prepared.repair?.notice, `[Read symbol '${input.symbol}'; ignored ${[offset !== undefined ? "offset" : "", limit !== undefined ? "limit" : ""].filter(Boolean).join(" and ")}.]`].filter(Boolean).join("\n"),
       } };
     },
-    async execute(input: RuntimeToolInput, context: ToolContext) {
+    async execute(input: RuntimeToolInput, context: DispatchedToolContext) {
       if (searchRequested(input)) return searchDefinition.execute(input, context);
       const budget = context.outputByteBudget ?? TOOL_RESULT_MAX_BYTES;
       if (Array.isArray(input.path) && input.path.every((path): path is string => typeof path === "string")) {
@@ -692,9 +679,9 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
       const page: PageOptions = { budget, raw, has: context.capabilities };
 
       try {
-        if (isImageExtension(ext)) return await readImage(resolvedPath, ops);
-        if (multiRanges) return await readTextMultiRange(resolvedPath, multiRanges, ops, record, page, context.signal);
-        return await readText(resolvedPath, offset, limit, ops, record, page, {
+        if (isImageExtension(ext)) return await readImage(resolvedPath);
+        if (multiRanges) return await readTextMultiRange(resolvedPath, multiRanges, record, page, context.signal);
+        return await readText(resolvedPath, offset, limit, record, page, {
           map: hasMap,
           symbol,
           summarize: structuralSummary && summarize,

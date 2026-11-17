@@ -7,7 +7,7 @@ import { MODULE_IDS } from "../../../../src/protocol/module-ids.js";
 import { ConfigWriteError } from "../../../../src/orchestration/config/writer.js";
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { decodeCanonicalConfigText } from "../../../../src/orchestration/config/loader.js";
-import { createModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
 import {
   applyModulePreset,
   migrateCapabilityModules,
@@ -160,13 +160,13 @@ describe("complete and member capability module writes", () => {
       expect(off.warnings).toEqual(['flywheel.toml disabled_modules names "adhoc-workflows", the retired Ad hoc workflows module. Flywheel reads it as "workflows", so Workflows is Off. The next settings change writes "workflows" in its place.']);
       const loaded = decodeCanonicalConfigText(source, {});
       expect(loaded.warnings).toEqual([...off.warnings]);
-      const policy = await createModulePolicy({ configPath: path });
+      const { policy, dispose } = await startModulePolicy({ configPath: path });
       try {
         const admission = await policy.admit({ operation: "skills probe", required: ["skills"] });
         if (!admission.ok) throw new Error(admission.reason);
         expect(admission.grant).not.toHaveProperty("warnings");
       } finally {
-        policy.dispose();
+        await dispose();
       }
       expect(await updateModuleMember("skills", true, false, { configPath: path })).toEqual({ ok: true });
       const rewritten = await readFile(path, "utf8");

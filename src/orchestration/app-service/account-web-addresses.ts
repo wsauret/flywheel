@@ -36,7 +36,7 @@ function projectOpenFailure(error: unknown): string {
  *  starting until the web client its link serves can be served: the hub
  *  redirects to that link, and a redirect before the client's files are
  *  located or built lands on the placeholder page instead of the client. */
-export function hubProject(
+function hubProject(
   record: Awaited<ReturnType<AccountProjectRegistry["list"]>>[number],
   slot: ProjectSlot<Pick<BrowserProject, "browserState">> | undefined,
   assets: ControlUiAssetState,

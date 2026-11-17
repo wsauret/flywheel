@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../../src/infra/output/partial-json.js"
 import { deriveChildRuntimeSurfaces } from "../../../../../src/orchestration/agent-runtime/tools/tool-registry.js"
-import { createStreamingEditValidationService, type StreamingEditValidationService, type StreamingEditValidationWorker } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js"
+import { createStreamingEditValidationService, type StreamingEditValidationService } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js"
 import type { StreamingEditValidationWorkerReply, StreamingEditValidationWorkerRequest } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation-protocol.js"
 
 class ControlledWorker extends EventTarget {
-  onmessage: StreamingEditValidationWorker["onmessage"] = null
+  onmessage: ((event: MessageEvent<StreamingEditValidationWorkerReply>) => void) | null = null
   readonly messages: StreamingEditValidationWorkerRequest[] = []
   terminated = false
 
@@ -30,7 +30,7 @@ describe("streaming edit validation service", () => {
     const worker = new ControlledWorker()
     let starts = 0
     const service = createStreamingEditValidationService({
-      spawnWorker: (): StreamingEditValidationWorker => { starts += 1; return worker },
+      spawnWorker: () => { starts += 1; return worker },
       workerSpecifier: "worker.ts",
     })
     const advice: unknown[] = []

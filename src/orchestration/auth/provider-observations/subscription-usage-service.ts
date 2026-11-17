@@ -20,7 +20,7 @@ import { createOrderedLane } from "../../../infra/ordered-lane.js"
 import { credentialSlotClassifier } from "../credential-slot-classifier.js"
 import type { CredentialSlotClassifier } from "../../../infra/auth/auth-store-types.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
-export const SUBSCRIPTION_USAGE_CHECK_INTERVAL_MS = 5 * 60 * 1_000
+const SUBSCRIPTION_USAGE_CHECK_INTERVAL_MS = 5 * 60 * 1_000
 const SUBSCRIPTION_USAGE_FRESHNESS_MS = 5 * 60 * 1_000
 const SUBSCRIPTION_USAGE_JITTER_FRACTION = 0.25
 /** The time an ordinary check waits before it reads an account again after a

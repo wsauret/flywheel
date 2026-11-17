@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { WorkflowCards } from "../../../../src/tui/modules/workflows/cards.js"
 import { workflowDetail } from "../../../helpers/runtime-views.js"
 import type { ToolEntry, AgentGroupBlock as AgentGroupBlockType } from "../../../../src/infra/output-blocks.js"
-import { getToolDisplay, resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import type { RoleAssignmentView } from "../../../../src/protocol/role-protocol-types.js"
 import { createSignal } from "solid-js"
 import { resolvedTheme, sameColor, spanColor } from "../components/prompt-border-fixtures.js"
@@ -23,7 +23,7 @@ function read(path: string): ToolEntry {
     id: `read-${path}`,
     name: "read",
     action: getToolDisplay("read").action,
-    presentation: resolveToolPresentation("read", { path: `${CWD}/${path}` }, CWD),
+    presentation: resolveToolRowPresentation("read", { path: `${CWD}/${path}` }, CWD).presentation,
     linkUri: `file://${CWD}/${path}`,
     status: "completed",
     timestamp: 0,
@@ -36,7 +36,7 @@ function exec(command: string, content: string): ToolEntry {
     id: `bash-${command}`,
     name: "bash",
     action: getToolDisplay("bash").action,
-    presentation: resolveToolPresentation("bash", { command }, CWD),
+    presentation: resolveToolRowPresentation("bash", { command }, CWD).presentation,
     status: "completed",
     content,
     timestamp: 0,
@@ -51,7 +51,7 @@ async function edit(paths: readonly string[]): Promise<ToolEntry> {
     id: `edit-${paths.join("-")}`,
     name: "edit",
     action: getToolDisplay("edit").action,
-    presentation: resolveToolPresentation("edit", { input }, CWD),
+    presentation: resolveToolRowPresentation("edit", { input }, CWD).presentation,
     status: "completed",
     mutationEvidence: evidence.evidence,
     timestamp: 0,

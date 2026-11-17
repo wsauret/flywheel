@@ -7,10 +7,12 @@ import {
   createPersistentSpool,
   recordSpoolHolders,
   sweepPersistentSpools,
-  type SpoolHolderProbe,
   type SpoolHolders,
+  type SpoolSweepHost,
 } from "../../../src/infra/persistent-spool.js"
 import type { ProcessIdentity } from "../../../src/infra/process-container.js"
+
+type SpoolHolderProbe = NonNullable<SpoolSweepHost["probe"]>
 
 const LAUNCHER = 100
 const WRITER = 200

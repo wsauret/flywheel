@@ -3,7 +3,6 @@ import { pack } from "msgpackr"
 import { createReattachableProcessEndpoint } from "../../../../src/infra/reattachable-process-endpoint.js"
 import {
   connectProjectExecutionChannel,
-  PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS,
   ProjectExecutionStopping,
   serveProjectExecutionChannel,
 } from "../../../../src/orchestration/app-service/project-execution-channel.js"
@@ -464,33 +463,41 @@ describe("project execution channel", () => {
   test("rejects server overflow before runtime execution", async () => {
     const [serverEndpoint, peer] = endpointPair()
     type UsageResult = RuntimeQueryResult<Extract<RuntimeQuery, { readonly type: "commandUsageSnapshot" }>>
+    // Far more calls than the channel serves at once, so the burst crosses its bound.
+    const burst = 1024
     const calls: Array<ReturnType<typeof deferred<UsageResult>>> = []
+    const errors: string[] = []
+    const answered = deferred<void>()
+    const settle = () => { if (calls.length + errors.length === burst) answered.resolve() }
     const query = runtimeQuery({
       commandUsageSnapshot: () => {
         const call = deferred<UsageResult>()
         calls.push(call)
+        settle()
         return call.promise
       },
     })
     const runtime = { ...runtimeHarness().runtime, query }
     const stop = serveProjectExecutionChannel(runtime, serverEndpoint)
-    const responses: Array<{ kind: string; message?: string }> = []
-    const overflow = deferred<void>()
     peer.onMessage((value) => {
-      responses.push(responseFrame(value))
-      if (responses.some((response) => response.kind === "error")) overflow.resolve()
+      const response = responseFrame(value)
+      if (response.kind === "error") errors.push(response.message ?? "")
+      settle()
     })
 
-    for (let index = 0; index <= PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS; index += 1) {
+    for (let index = 0; index < burst; index += 1) {
       await peer.send({
         kind: "query",
         id: `query-${index}`,
         query: { type: "commandUsageSnapshot" },
       })
     }
-    await overflow.promise
-    expect(calls).toHaveLength(PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS)
-    expect(responses).toContainEqual(expect.objectContaining({ kind: "error", message: expect.stringContaining("capacity") }))
+    await answered.promise
+    // Each call past the bound is refused without reaching the runtime, and
+    // the refusal states the bound that the runtime calls filled.
+    expect(calls.length).toBeGreaterThan(0)
+    expect(errors).toHaveLength(burst - calls.length)
+    expect(new Set(errors)).toEqual(new Set([`project execution channel capacity exceeded (${calls.length} outstanding calls)`]))
 
     for (const call of calls) call.resolve({ snapshotPosition: 1, usage: { uses: [] } })
     await stop()

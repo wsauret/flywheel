@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
 import {
-  GUARDIAN_MAX_FRAME_BYTES,
   createGuardianFrameReader,
   decodeGuardianReply,
   decodeGuardianRequest,
@@ -14,6 +13,8 @@ import {
 import { CAPABILITY, GENERATION, adopt, capabilityOf, tokenOf } from "./_guardian-frames.js"
 
 const encoder = new TextEncoder()
+/** The largest frame body, in bytes, that the guardian protocol carries. */
+const GUARDIAN_MAX_FRAME_BYTES = 4_096
 
 describe("guardian frame reader", () => {
   test("refuses a peer that cannot frame within the bound", () => {

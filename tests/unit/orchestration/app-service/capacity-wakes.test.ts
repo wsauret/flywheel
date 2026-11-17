@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 
-import type { CapacityWake, CapacityWakeStore } from "../../../../src/orchestration/app-service/account-project-registry.js"
+import type { CapacityWakeStore } from "../../../../src/orchestration/app-service/account-project-registry.js"
 import { createCapacityWakes } from "../../../../src/orchestration/app-service/capacity-wakes.js"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 
@@ -38,7 +38,7 @@ function captureFired(): () => number {
   return () => count
 }
 
-function memoryStore(initial: readonly CapacityWake[] = []): CapacityWakeStore & { readonly rows: Map<string, number> } {
+function memoryStore(initial: ReturnType<CapacityWakeStore["capacityWakes"]> = []): CapacityWakeStore & { readonly rows: Map<string, number> } {
   const rows = new Map(initial.map(({ projectRoot, at }) => [projectRoot, at]))
   return {
     rows,

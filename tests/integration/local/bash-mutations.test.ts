@@ -8,6 +8,7 @@ import { privateCopyRemovals } from "../../../src/orchestration/agent-runtime/to
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { hostGuard, powerShellWrite, repositoryHarness, type GitState } from "./_bash-mutation-repository.js"
+import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js"
 
 /** A mutation command against a real Git repository, real clones, and a real
  *  shell: the command sees its private copy and the real history, and only
@@ -288,10 +289,10 @@ test("a project below the Git top level sees only its own changes in Git, and th
 
     const result = await createBashDefinition().execute({ mutates: true, command: process.platform === "win32"
       ? `${powerShellWrite("a.txt", "two\n")}; git status --porcelain`
-      : "printf 'two\\n' > a.txt && git status --porcelain" }, {
+      : "printf 'two\\n' > a.txt && git status --porcelain" }, dispatchedToolContext({
       executionCwd: root, userDataRoot: `${root}/.test-account`, projectRoot: root, scratchDir: join(root, ".flywheel", "scratch"),
       availableTools: new Set(["bash", "edit", "write"]), spawnOwned: generation.spawnOwned, artifactScopeId: "bash-mutation", retrievalSessionId: "bash-mutation", sessionId: "bash-mutation", toolUseId: "bash-mutations-1",
-    })
+    }))
     const content = String(result.content)
 
     // The one porcelain line, with Git's leading space, shows nothing outside the project as deleted.

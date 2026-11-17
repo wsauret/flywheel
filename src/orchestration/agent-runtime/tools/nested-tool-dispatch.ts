@@ -19,7 +19,7 @@ import { describeInputRepair } from "./coerce-input.js";
 import type { ExecutionWhitelist } from "./tool-policy.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission, withInputRepairNotice, type ExecutionAdmission, type PreparedToolCall, type ToolExecutionGate } from "./tool-dispatch.js";
 import type { ToolConcurrencyGate } from "./tool-concurrency-gate.js";
-import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
+import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolDispatchContext, ToolResult } from "./types.js";
 import type { ToolCall } from "../llm/types.js";
 import { writeToolLifecycleDiagnostic } from "./tool-lifecycle-diagnostics.js";
 
@@ -54,7 +54,7 @@ export interface NestedToolDispatchBatch {
 
 export interface ToolDispatchExecutionOptions {
   readonly prepared: PreparedToolCall;
-  readonly context: ToolContext;
+  readonly context: ToolDispatchContext;
   readonly gate: ToolConcurrencyGate;
   readonly signal?: AbortSignal;
   readonly executionWhitelist?: ExecutionWhitelist;
@@ -160,7 +160,7 @@ interface NestedEntry {
 
 export function createNestedToolDispatchBatch(options: {
   readonly tools: ReadonlyMap<string, RuntimeTool>;
-  readonly context: ToolContext;
+  readonly context: ToolDispatchContext;
   readonly gate: ToolConcurrencyGate;
   readonly parentToolUseId: string;
   readonly modelRequestId?: string;
@@ -231,7 +231,7 @@ export function createNestedToolDispatchBatch(options: {
       if (prepared.validationResult !== undefined) return yield* refuse(prepared.validationResult);
       yield* publish(options.publisher.input(prepared.call, tool, meta));
       options.onNestedStart?.(`-> ${toolExpression(prepared.call.name)} ${JSON.stringify(redactDeep(prepared.call.input))}`);
-      const context: ToolContext = {
+      const context: ToolDispatchContext = {
         ...options.context,
         signal: mergeAbortSignals(options.context.signal, abort.signal),
         toolUseId: prepared.call.id,

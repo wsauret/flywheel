@@ -218,7 +218,7 @@ test.skipIf(process.platform === "win32")("a reused copy keeps its private Git d
       expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("edited\n")
       expect(await git("status", "--porcelain")).toBe(" M a.txt\n")
     } finally {
-      pool.close()
+      await pool.close()
       await privateCopyRemovals()
     }
   })
@@ -245,7 +245,7 @@ for (const { name, before, move } of moves) {
         expect(await real()).toBe(expected)
         expect(await git("symbolic-ref", "HEAD")).toBe(head)
       } finally {
-        pool.close()
+        await pool.close()
         await privateCopyRemovals()
       }
     })
@@ -270,7 +270,7 @@ for (const write of ["commit -q --allow-empty -m private", "add a.txt", "stash p
         }
         expect(await gitState()).toEqual(before)
       } finally {
-        pool.close()
+        await pool.close()
         await privateCopyRemovals()
       }
     })
@@ -289,7 +289,7 @@ test.skipIf(process.platform === "win32")("an index flag that a command set in i
       expect(second.record).toMatchObject({ copy: "refreshed", reseeded: false })
       expect(second.content).toStartWith("H a.txt\n")
     } finally {
-      pool.close()
+      await pool.close()
       await privateCopyRemovals()
     }
   })
@@ -307,7 +307,7 @@ test.skipIf(process.platform === "win32")("a git config write in a copy lands wi
       expect(second.record).toMatchObject({ copy: "refreshed", reseeded: false })
       expect(second.content).toStartWith("Mutations\n")
     } finally {
-      pool.close()
+      await pool.close()
       await privateCopyRemovals()
     }
   })

@@ -1,7 +1,7 @@
-import type { AgentFactory, AgentOptions, AgentRunResult, RuntimeToolSurfaces } from "../../../agent-runtime/types.js";
+import type { AgentFactory, AgentOptions, AgentRunResult, OmitAgentOptions, RuntimeToolSurfaces } from "../../../agent-runtime/types.js";
 import { createAgentHost } from "../../../runner/host.js";
 
-type BenchmarkAgentOptions = Omit<AgentOptions, "conversation" | "lifecycle" | "runtimeSurfaces">;
+type BenchmarkAgentOptions = OmitAgentOptions<AgentOptions, "conversation" | "lifecycle" | "runtimeSurfaces">;
 
 export interface BenchmarkAgentInvocation {
   readonly createAgent: AgentFactory;

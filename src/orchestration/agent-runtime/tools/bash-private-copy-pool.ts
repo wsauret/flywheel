@@ -5,6 +5,7 @@
  * gives it back only when no process its command started can still write to
  * it. The pool never adopts a copy from disk: a new pool starts empty, and a
  * home no live pool holds is landed by a handover or removed by the sweep.
+ * The pool also owns the one private copy Worker that its copies' jobs run on.
  */
 
 import { mayHaveSurvivingDescendant } from "../../../infra/container-mark.js";
@@ -12,7 +13,7 @@ import { Log } from "../../../infra/log.js";
 import { bunContainerProbe, processStart, type ContainerProbe } from "../../../infra/process-container.js";
 import type { RepositoryState } from "./bash-copy-repository-state.js";
 import { discardPrivateCopy } from "./bash-private-copy.js";
-import type { CopyTreeState } from "./bash-private-copy-tree.js";
+import { createPrivateCopyJobs, type PrivateCopyJobs, type SpawnWorker } from "./bash-private-copy-jobs.js";
 
 const log = Log.create({ service: "bash-private-copy" });
 
@@ -38,9 +39,9 @@ export interface CopyGeometry {
 export interface ReusableCopy {
   readonly home: string;
   readonly geometry: CopyGeometry;
-  /** What the home holds: each mirror's state from the last take, with the
-   *  copy's listings its landing's change scan read (`CopyChanges.listings`). */
-  readonly state: CopyTreeState;
+  /** Whether the home holds a before image of the session folder. The mirror
+   *  state of the home's entries stays with the pool's Worker, by home. */
+  readonly beforeImage: boolean;
   /** In a repository, the real state the last take seeded the private Git
    *  directory from, and the private state that seed produced. A copy comes
    *  back to its pool only after a landing whose own read of the private state
@@ -66,6 +67,8 @@ export interface LaunchStamp {
 export type CopyRelease = "pooled" | "stamp" | "slot" | "survivor";
 
 export interface PrivateCopyPool {
+  /** Runs the private copy jobs of every command of this pool's session. */
+  readonly jobs: PrivateCopyJobs;
   /** Removes and returns the idle copy of `geometry.realRoot`. A copy of
    *  another geometry, or one whose last refresh is older than
    *  `REUSE_IDLE_LIMIT_MS`, is discarded instead. */
@@ -76,15 +79,25 @@ export interface PrivateCopyPool {
    *  finished. Never writes to the home; a copy it refuses is the caller's
    *  to discard. */
   release(copy: ReusableCopy, launch: LaunchStamp | undefined): CopyRelease;
-  /** Discards every idle copy and refuses every later release. */
-  close(): void;
+  /** Runs the landing of a copy this pool's `jobs` took. An open pool runs its
+   *  jobs on the pool's Worker, and `close` waits for it. After `close`, a
+   *  command that ended late still lands, on a Worker of its own that ends with
+   *  the landing. Answers and rejects as `land` does. */
+  landing<T>(land: (jobs: PrivateCopyJobs) => Promise<T>): Promise<T>;
+  /** Discards every idle copy, refuses every later release, waits for the
+   *  landings in flight, then refuses every later job of `jobs` and ends the
+   *  pool's Worker once its jobs in flight settled. Never rejects. */
+  close(): Promise<void>;
 }
 
-/** Creates the pool of one session runner generation. `now` and `probe` are seams for tests. */
-export function createPrivateCopyPool({ now = Date.now, probe = bunContainerProbe }: { readonly now?: () => number; readonly probe?: ContainerProbe } = {}): PrivateCopyPool {
+/** Creates the pool of one session runner generation. `now`, `probe`, and `spawn` are seams for tests. */
+export function createPrivateCopyPool({ now = Date.now, probe = bunContainerProbe, spawn }: { readonly now?: () => number; readonly probe?: ContainerProbe; readonly spawn?: SpawnWorker } = {}): PrivateCopyPool {
   const idle = new Map<string, ReusableCopy>();
+  const jobs = createPrivateCopyJobs(spawn);
+  const landings = new Set<Promise<unknown>>();
   let closed = false;
   return {
+    jobs,
     checkout(geometry) {
       const copy = idle.get(geometry.realRoot);
       if (!copy) return undefined;
@@ -105,11 +118,30 @@ export function createPrivateCopyPool({ now = Date.now, probe = bunContainerProb
       idle.set(copy.geometry.realRoot, copy);
       return "pooled";
     },
-    close() {
+    async landing(land) {
+      if (closed) {
+        const own = createPrivateCopyJobs();
+        try {
+          return await land(own);
+        } finally {
+          await own.close();
+        }
+      }
+      const landed = land(jobs);
+      landings.add(landed);
+      try {
+        return await landed;
+      } finally {
+        landings.delete(landed);
+      }
+    },
+    async close() {
       closed = true;
       for (const copy of idle.values()) discardPrivateCopy(copy);
       if (idle.size > 0) log.info("idle private copies discarded at close", { count: idle.size });
       idle.clear();
+      await Promise.allSettled(landings);
+      await jobs.close();
     },
   };
 }

@@ -1,9 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import {
   modelPowerSortRank,
-  resolveModelForTier,
   resolveModelForTierAcrossFamilies,
+  type TierResolutionOptions,
 } from "../../../../src/orchestration/config/model-tiers.js";
+import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { modelTierForReference } from "../../../../src/protocol/model-tier-reference.js";
 import { fakeModelInfos, makeModelsClient, modelInfo, tierAvailableModels, tierModelIds } from "../../../helpers/model-tier-fixtures.js";
 
@@ -12,20 +13,25 @@ const anthropicAvailable = tierAvailableModels.get("anthropic")!;
 const openaiAvailable = tierAvailableModels.get("openai")!;
 const googleAvailable = tierAvailableModels.get("google")!;
 
-describe("resolveModelForTier", () => {
+/** The model that tier resolution picks when the provider listing names `available` in one family alone. */
+async function resolveInFamily(tier: "powerful" | "mid" | "cheap", family: ModelFamily, available: ReadonlySet<string> | undefined, options: TierResolutionOptions): Promise<string> {
+  return (await resolveModelForTierAcrossFamilies(tier, available === undefined ? undefined : new Map([[family, available]]), options)).model;
+}
+
+describe("tier resolution in one family", () => {
   test("resolves tier aliases through the dynamic catalog", async () => {
     expect(modelTierForReference(undefined)).toBeUndefined();
     expect(modelTierForReference("powerful")).toBe("powerful");
     expect(modelTierForReference("opus")).toBe("powerful");
     expect(modelTierForReference("flash")).toBe("mid");
-    expect(await resolveModelForTier("powerful", "openai", openaiAvailable, tierOptions)).toBe(tierModelIds.openai.powerful);
-    expect(await resolveModelForTier("mid", "google", googleAvailable, tierOptions)).toBe(tierModelIds.google.mid);
-    expect(await resolveModelForTier("cheap", "anthropic", anthropicAvailable, tierOptions)).toBe(tierModelIds.anthropic.cheap);
+    expect(await resolveInFamily("powerful", "openai", openaiAvailable, tierOptions)).toBe(tierModelIds.openai.powerful);
+    expect(await resolveInFamily("mid", "google", googleAvailable, tierOptions)).toBe(tierModelIds.google.mid);
+    expect(await resolveInFamily("cheap", "anthropic", anthropicAvailable, tierOptions)).toBe(tierModelIds.anthropic.cheap);
   });
 
   test("requires provider availability for abstract tier resolution", async () => {
-    await expect(resolveModelForTier("powerful", "anthropic", undefined, tierOptions)).rejects.toThrow("provider listing");
-    await expect(resolveModelForTier("powerful", "anthropic", new Set(), tierOptions)).rejects.toThrow("provider listing");
+    await expect(resolveInFamily("powerful", "anthropic", undefined, tierOptions)).rejects.toThrow("provider listing");
+    await expect(resolveInFamily("powerful", "anthropic", new Set(), tierOptions)).rejects.toThrow("provider listing");
   });
 });
 
@@ -79,8 +85,8 @@ describe("dynamic tier catalog", () => {
   test("resolves unpriced custom models by stable id only after every ranked tier is empty", async () => {
     const custom = new Set(["fixture-model-small", "fixture-model"]);
     for (const tier of ["powerful", "mid", "cheap"] as const) {
-      expect(await resolveModelForTier(tier, "openai", custom, tierOptions)).toBe("fixture-model");
-      expect(await resolveModelForTier(tier, "openai", new Set([...custom, ...openaiAvailable]), tierOptions)).toBe(await resolveModelForTier(tier, "openai", openaiAvailable, tierOptions));
+      expect(await resolveInFamily(tier, "openai", custom, tierOptions)).toBe("fixture-model");
+      expect(await resolveInFamily(tier, "openai", new Set([...custom, ...openaiAvailable]), tierOptions)).toBe(await resolveInFamily(tier, "openai", openaiAvailable, tierOptions));
     }
   });
 
@@ -139,14 +145,14 @@ describe("dynamic tier catalog", () => {
     const options = { ...tierOptions, modelInfos: client.modelInfos };
     // A second catalog entry for the snapshot would rank the stable alias second.
     expect(await modelPowerSortRank("openai", "gpt-5.5", available, options)).toMatchObject({ index: 0 });
-    expect(await resolveModelForTier("powerful", "openai", available, options)).toBe("gpt-5.5");
+    expect(await resolveInFamily("powerful", "openai", available, options)).toBe("gpt-5.5");
   });
 
   test("uses canonical model metadata for a dated snapshot identity", async () => {
     const client = makeModelsClient({
       "gpt-5.5": modelInfo("openai", "gpt-5.5", "gpt", 5, 30, "2026-04-23"),
     });
-    await expect(resolveModelForTier("powerful", "openai", new Set(["gpt-5.5-2026-04-23"]), { ...tierOptions, modelInfos: client.modelInfos }))
+    await expect(resolveInFamily("powerful", "openai", new Set(["gpt-5.5-2026-04-23"]), { ...tierOptions, modelInfos: client.modelInfos }))
       .resolves.toBe("gpt-5.5");
   });
 
@@ -158,9 +164,9 @@ describe("dynamic tier catalog", () => {
       "learnlm-high": modelInfo("google", "learnlm-high", "learnlm", 10, 40, "2026-03-01"),
     });
     const available = new Set(["learnlm-low", "learnlm-cheap-high", "learnlm-mid", "learnlm-high"]);
-    expect(await resolveModelForTier("cheap", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-low");
-    expect(await resolveModelForTier("mid", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-mid");
-    expect(await resolveModelForTier("powerful", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-high");
+    expect(await resolveInFamily("cheap", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-low");
+    expect(await resolveInFamily("mid", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-mid");
+    expect(await resolveInFamily("powerful", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-high");
   });
 
   test("classifies input prices at or above $4 as powerful", async () => {
@@ -170,13 +176,13 @@ describe("dynamic tier catalog", () => {
     });
     const available = new Set(["learnlm-below-powerful", "learnlm-at-powerful"]);
 
-    expect(await resolveModelForTier("mid", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-below-powerful");
-    expect(await resolveModelForTier("powerful", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-at-powerful");
+    expect(await resolveInFamily("mid", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-below-powerful");
+    expect(await resolveInFamily("powerful", "google", available, { ...tierOptions, modelInfos: client.modelInfos })).toBe("learnlm-at-powerful");
   });
 
   test("prefers lower input cost when release dates match", async () => {
     const available = new Set(["gpt-5.5", "gpt-5.5-pro"]);
-    expect(await resolveModelForTier("powerful", "openai", available, tierOptions)).toBe("gpt-5.5");
+    expect(await resolveInFamily("powerful", "openai", available, tierOptions)).toBe("gpt-5.5");
   });
 
   test("catalogs every OpenRouter slash id", async () => {

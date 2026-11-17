@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { ToolEntry as ToolEntryType } from "../../../../src/infra/output-blocks.js"
 import { renderToolEntry } from "./_tool-entry-render.js"
-import { getToolDisplay, resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 
@@ -505,7 +505,7 @@ describe("tool entry execution output", () => {
   it("defines bounded replay-stable Papercut presentation and disclosure content", () => {
     const observation = `  Exact observation with\nintentional spacing ${"x".repeat(120)}  `
     const display = getToolDisplay("papercut_log")
-    const presentation = resolveToolPresentation("papercut_log", { observation }, "/workspace")
+    const presentation = resolveToolRowPresentation("papercut_log", { observation }, "/workspace").presentation
 
     expect(presentation.name).toBe("Papercut")
     expect(presentation.detail.length).toBeLessThanOrEqual(96)

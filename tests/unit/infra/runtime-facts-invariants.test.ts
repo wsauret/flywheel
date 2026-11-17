@@ -6,7 +6,7 @@ import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory"
 import type { RuntimeEvent } from "../../../src/infra/runtime-event-types"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime-fact-mapper"
 import { parseSessionRuntimeFact } from "../../../src/orchestration/session/session-runtime-event-types"
-import { RUNTIME_EVENT_DEFINITIONS, RUNTIME_EVENT_TYPES, runtimeEventActor, runtimeEventDurableMapper } from "../../../src/infra/runtime-event-types"
+import { RUNTIME_EVENT_DEFINITIONS, RUNTIME_EVENT_TYPES } from "../../../src/infra/runtime-event-types"
 import { SESSION_RUNTIME_FACT_DEFINITIONS } from "../../../src/infra/runtime-fact-types"
 import { RETIRED_FACT_TYPES } from "../../../src/orchestration/session/event-store-maintenance.js"
 import { buildMutationDiffEvidence } from "../../../src/infra/mutation-diff-evidence.js"
@@ -51,17 +51,8 @@ describe("tool execution output runtime facts", () => {
 })
 
 describe("runtime definition authority", () => {
-  test("derives event types and indexed actors from each definition", () => {
+  test("derives event types from each definition", () => {
     expect(RUNTIME_EVENT_TYPES).toEqual(RUNTIME_EVENT_DEFINITIONS.map(({ type }) => type))
-    for (const definition of RUNTIME_EVENT_DEFINITIONS) {
-      expect(runtimeEventActor(definition.type)).toBe(definition.actor)
-    }
-  })
-
-  test("indexes each optional durable mapping from its event definition", () => {
-    for (const definition of RUNTIME_EVENT_DEFINITIONS) {
-      expect(runtimeEventDurableMapper(definition.type)).toBe(definition.durable)
-    }
   })
 
   test("classifies current, historical, and non-runtime durable facts", () => {

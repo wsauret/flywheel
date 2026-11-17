@@ -1,11 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { Redacted } from "effect";
 
 import { AuthStoreMutationError } from "../../../../../src/infra/auth/auth-store-mutations.js";
 import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
 import { AllCandidatesExhaustedError, QuotaExhaustedError, RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { assertChatGptAccountUnchanged } from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
-import { normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { normalizeProviderAttemptFailure, ProviderAttemptFailure, ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
 import {
   chain,
@@ -183,18 +181,8 @@ describe("provider authentication stops the request", () => {
     expect(availability.serviceEntryCount()).toBe(0);
   });
 
-  test("a status-less ChatGPT account failure stops without an outage mark", async () => {
-    let authError: unknown;
-    try {
-      assertChatGptAccountUnchanged(
-        { accessToken: Redacted.make("a"), refreshToken: Redacted.make("r-a"), expiresAtMs: 1, accountId: "account-a" },
-        { accessToken: Redacted.make("b"), refreshToken: Redacted.make("r-b"), expiresAtMs: 1, accountId: "account-b" },
-      );
-    } catch (error) {
-      authError = error;
-    }
-    if (!(authError instanceof Error)) throw new Error("expected an account error");
-    const accountError = authError;
+  test("a status-less ChatGPT authentication failure stops without an outage mark", async () => {
+    const accountError = new ProviderAuthenticationError("The ChatGPT access token expired and no refresh token is saved. Run /auth and sign in to ChatGPT again.");
     const built: AccessProviderId[] = [];
     const availability = fakeAvailability({});
     const client = chain({

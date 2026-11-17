@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { createWaitToolPolicy } from "../../../../src/orchestration/agent-runtime/agent-loop-wait.js";
 import type { ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
-import { PROCESS_TOOL_NAME } from "../../../../src/orchestration/agent-runtime/tools/process.js";
+import { processToolDefinition } from "../../../../src/orchestration/agent-runtime/tools/process.js";
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js";
 
+/** The name a model calls the process tool by. */
+const PROCESS_TOOL_NAME = processToolDefinition(false, true).name;
 const waitCall: ToolCall = { id: "t1", name: PROCESS_TOOL_NAME, input: { action: "wait" } };
 
 describe("wait tool policy delivery", () => {

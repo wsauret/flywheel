@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js";
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AuthProfileDisplayNameConflictError, AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
+import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
 import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
 import { heldDirectoryPrototype } from "../../../helpers/contained-directory-spies.js";
@@ -57,7 +57,7 @@ describe("AuthProfileManager", () => {
     await manager.create("Work");
     await manager.create("Personal");
 
-    await expect(manager.create("WORK")).rejects.toBeInstanceOf(AuthProfileDisplayNameConflictError);
+    await expect(manager.create("WORK")).rejects.toMatchObject({ _tag: "AuthProfileDisplayNameConflictError", displayName: "WORK" });
     await expect(manager.rename("personal", "wOrK")).rejects.toThrow('auth profile display name already exists: wOrK');
   });
 

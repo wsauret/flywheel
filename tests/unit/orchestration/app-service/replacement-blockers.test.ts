@@ -1,7 +1,8 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, jest, spyOn, test } from "bun:test"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { Log } from "../../../../src/infra/log.js"
 import { createMutationAdmission } from "../../../../src/orchestration/app-service/mutation-admission.js"
-import { collectReplacementBlockers, delaysReplacement, watchReplacementBlockerChanges, type ExecutorBlockerDeps } from "../../../../src/orchestration/app-service/replacement-blockers.js"
+import { createReplacementReport, delaysReplacement, type ReplacementReportDeps } from "../../../../src/orchestration/app-service/replacement-blockers.js"
 import type { FrontendActivity } from "../../../../src/protocol/app-service-types.js"
 import type { StatusView } from "../../../../src/protocol/status-protocol-types.js"
 import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
@@ -10,6 +11,8 @@ import { makeDepsWithStore } from "../session/_session-manager-fixtures.js"
 import { addSubagentChild } from "../session/_child-session-reconciliation-fixtures.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
+import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
+import { chatEntry } from "./app-service-doubles.js"
 
 const temporary = temporaryDirectories()
 
@@ -20,54 +23,97 @@ function durable(id: string, kind: "chat" | "subagent", label: string, lifecycle
 }
 
 /** The two durable reads the question makes, over one fixed catalog. */
-function catalog(...sessions: DurableSessionCatalogRow[]): Pick<ExecutorBlockerDeps, "listActive" | "listForIds"> {
+function catalog(...sessions: DurableSessionCatalogRow[]): Pick<ReplacementReportDeps, "listActive" | "listForIds"> {
   return {
     listActive: async () => ({ sessions: sessions.filter((session) => session.lifecycleState === "active"), errors: [] }),
     listForIds: async (ids) => ({ sessions: sessions.filter((session) => ids.includes(session.id)), errors: [] }),
   }
 }
 
-interface ActivityBySession {
-  readonly [sessionId: string]: FrontendActivity
+/** The published status of one session: its activity and its running commands. */
+interface Status {
+  readonly activity: FrontendActivity
+  readonly shells?: readonly string[]
+  readonly background?: StatusView["activeBackgroundCommands"]
 }
 
-interface ShellsBySession {
-  readonly [sessionId: string]: readonly string[]
-}
-
-interface BackgroundBySession {
-  readonly [sessionId: string]: StatusView["activeBackgroundCommands"]
-}
-
-function deps(overrides: Partial<ExecutorBlockerDeps> & { readonly activity?: ActivityBySession; readonly shells?: ShellsBySession; readonly background?: BackgroundBySession } = {}): ExecutorBlockerDeps {
-  const { activity = {}, shells = {}, background = {}, ...rest } = overrides
+function statusView({ activity, shells = [], background = [] }: Status): StatusView {
   return {
-    ...PROJECT,
-    ...catalog(),
-    residents: () => new Map(),
-    runningChildren: () => [],
-    runningWorkflows: () => [],
-    keptSessions: () => [],
-    statuses: async (sessionIds) => new Map(sessionIds.map((id) => {
-      const activityOf = activity[id]
-      return [id, activityOf === undefined ? undefined : { activity: activityOf, activeForegroundBashToolCallIds: shells[id] ?? [], activeBackgroundCommands: background[id] ?? [] }]
-    })),
-    inFlightCalls: () => 0,
-    storeHealth: { failed() {}, recovered() {} },
-    ...rest,
+    activity, activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, waitingOnBackgroundWork: false,
+    replyWaits: [], activeBackgroundCommands: background, activeForegroundBashToolCallIds: shells, processorHeldToolCallIds: [],
+    startedAt: 0, streamingStartedAt: null, accumulatedActiveMs: 0, compactionStartedAt: null,
+  }
+}
+
+/** A chat whose runner the executor's session store holds, with `activity` in memory. */
+function residentChat(activity: FrontendActivity) {
+  switch (activity) {
+    case "absent":
+    case "idle":
+    case "awaiting_user": return chatEntry({ runnerState: activity, streamPhase: null })
+    case "executing_tools": return chatEntry({ runnerState: "streaming", streamPhase: "tool_executing" })
+    default: return chatEntry({ runnerState: "streaming", streamPhase: activity })
+  }
+}
+
+/** What one executor holds when the account asks its question. */
+interface Executor extends Partial<Pick<ReplacementReportDeps, "listActive" | "listForIds" | "runningChildren" | "runningWorkflows" | "keptSessions">> {
+  readonly residents?: { readonly [sessionId: string]: FrontendActivity }
+  /** Each session's published status, or a status read that fails. */
+  readonly statuses?: { readonly [sessionId: string]: Status } | "unreadable"
+  /** Admitted calls that have not returned. */
+  readonly inFlightCalls?: number
+}
+
+function executor(held: Executor = {}) {
+  const { residents = {}, statuses = {}, inFlightCalls = 0, ...reads } = held
+  const admission = createMutationAdmission()
+  const returned = Promise.withResolvers<void>()
+  const calls = Array.from({ length: inFlightCalls }, () => admission.admit(() => returned.promise))
+  const entries = new Map(Object.entries(residents).map(([sessionId, activity]) => [sessionId, residentChat(activity)]))
+  const report = createReplacementReport({
+    ...PROJECT, ...catalog(), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [], ...reads,
+    sessionStore: { allIds: () => [...entries.keys()], get: (sessionId) => entries.get(sessionId) },
+    client: {
+      admission,
+      query: runtimeQuery({
+        statusSnapshot: async ({ sessionIds }) => {
+          if (statuses === "unreadable") throw new Error("disk I/O error")
+          return { snapshotPosition: 0, views: sessionIds.map((sessionId) => ({ sessionId, view: statuses[sessionId] === undefined ? null : statusView(statuses[sessionId]) })) }
+        },
+      }),
+    },
+  })
+  return {
+    report, admission,
+    async close() {
+      report.stop()
+      returned.resolve()
+      await Promise.all(calls)
+    },
+  }
+}
+
+/** The blockers one question finds in an executor that holds `held`. */
+async function blockersOf(held: Executor = {}) {
+  const { report, close } = executor(held)
+  try {
+    return await report.blockers()
+  } finally {
+    await close()
   }
 }
 
 describe("executor replacement blockers", () => {
   test("a child blocks only while an owner in this process holds its run; an open record with no owner does not", async () => {
-    const blockers = await collectReplacementBlockers(deps({
+    const blockers = await blockersOf({
       // "child-orphan" stands for a run a process that is gone left open: it
       // is in the catalog but no owner here holds it.
       // "child-settling" is running, but its row no longer states it active,
       // so its label is read by id.
       runningChildren: () => [{ sessionId: "child-live" }, { sessionId: "child-settling" }],
       ...catalog(durable("child-live", "subagent", "Inspect the runtime"), durable("child-orphan", "subagent", "Left open"), durable("child-settling", "subagent", "Settle the run", "inactive")),
-    }))
+    })
     expect(blockers).toEqual([
       { ...PROJECT, sessionId: "child-live", sessionTitle: "Inspect the runtime", reason: "subagent" },
       { ...PROJECT, sessionId: "child-settling", sessionTitle: "Settle the run", reason: "subagent" },
@@ -78,15 +124,15 @@ describe("executor replacement blockers", () => {
     let activeReads = 0
     const idReads: (readonly string[])[] = []
     const rows = catalog(durable("child", "subagent", "Inspect"), durable("chat-turn", "chat", "Streaming"), durable("chat-attached", "chat", "Attached", "inactive"), durable("chat-cold", "chat", "Cold", "inactive"))
-    const resident = { activity: "generating" as const, activeForegroundBashToolCallIds: [], activeBackgroundCommands: [] }
-    const blockers = await collectReplacementBlockers(deps({
+    const generating = { activity: "generating" } as const
+    const blockers = await blockersOf({
       runningChildren: () => [{ sessionId: "child" }],
       // A runner can be attached and start a turn with no lifecycle write.
-      residents: () => new Map([["chat-turn", resident], ["chat-attached", resident]]),
+      residents: { "chat-turn": "generating", "chat-attached": "generating" },
       listActive: async () => { activeReads += 1; return rows.listActive() },
       listForIds: async (ids) => { idReads.push(ids); return rows.listForIds(ids) },
-      activity: { "chat-turn": "generating", "chat-attached": "generating", "chat-cold": "generating" },
-    }))
+      statuses: { "chat-turn": generating, "chat-attached": generating, "chat-cold": generating },
+    })
     expect(blockers).toEqual([
       { ...PROJECT, sessionId: "child", sessionTitle: "Inspect", reason: "subagent" },
       { ...PROJECT, sessionId: "chat-turn", sessionTitle: "Streaming", reason: "turn" },
@@ -116,12 +162,12 @@ describe("executor replacement blockers", () => {
           rows += catalogRead.sessions.length
           return catalogRead
         }
-        const question = () => collectReplacementBlockers(deps({
+        const question = () => blockersOf({
           listActive: counted(manager.listActive), listForIds: counted(manager.listForIds),
           runningChildren: () => [{ sessionId: "child-1" }, { sessionId: "child-2" }],
-          residents: () => new Map([[parent, { activity: "generating", activeForegroundBashToolCallIds: [], activeBackgroundCommands: [] }]]),
-          activity: { [parent]: "generating" },
-        }))
+          residents: { [parent]: "generating" },
+          statuses: { [parent]: { activity: "generating" } },
+        })
         // The first question folds the held projections from their start.
         await question()
         counter.take()
@@ -144,7 +190,7 @@ describe("executor replacement blockers", () => {
   })
 
   test("each active chat reports by what it owns: a question outranks its turn, inactive and idle rows do not block", async () => {
-    const blockers = await collectReplacementBlockers(deps({
+    const blockers = await blockersOf({
       ...catalog(
         durable("chat-turn", "chat", "Streaming"),
         durable("chat-ask", "chat", "Asking"),
@@ -153,8 +199,11 @@ describe("executor replacement blockers", () => {
         // A paused chat keeps its tab and runner, idle.
         durable("chat-paused", "chat", "Paused"),
       ),
-      activity: { "chat-turn": "waiting", "chat-ask": "awaiting_user", "chat-idle": "idle", "chat-cold": "generating", "chat-paused": "absent" },
-    }))
+      statuses: {
+        "chat-turn": { activity: "waiting" }, "chat-ask": { activity: "awaiting_user" }, "chat-idle": { activity: "idle" },
+        "chat-cold": { activity: "generating" }, "chat-paused": { activity: "absent" },
+      },
+    })
     expect(blockers).toEqual([
       { ...PROJECT, sessionId: "chat-turn", sessionTitle: "Streaming", reason: "turn" },
       { ...PROJECT, sessionId: "chat-ask", sessionTitle: "Asking", reason: "question" },
@@ -162,7 +211,7 @@ describe("executor replacement blockers", () => {
   })
 
   test("foreground, background, and kept shell commands outrank other session work and keep the project open, and only a call, an opening project, and a recovering project delay a replacement", async () => {
-    const blockers = await collectReplacementBlockers(deps({
+    const blockers = await blockersOf({
       ...catalog(
         durable("child", "subagent", "Inspect"),
         durable("chat-shell", "chat", "Building"),
@@ -170,15 +219,18 @@ describe("executor replacement blockers", () => {
         durable("chat-turn", "chat", "Streaming"),
         durable("chat-ask", "chat", "Asking"),
       ),
-      activity: { "chat-shell": "executing_tools", "chat-background": "idle", "chat-turn": "generating", "chat-ask": "awaiting_user" },
-      shells: { "chat-shell": ["bash-1"] },
-      background: { "chat-background": [{ id: "bg", description: "sleep", toolUseId: "bash-3", startedAtMs: 0 }] },
+      statuses: {
+        "chat-shell": { activity: "executing_tools", shells: ["bash-1"] },
+        "chat-background": { activity: "idle", background: [{ id: "bg", description: "sleep", toolUseId: "bash-3", startedAtMs: 0 }] },
+        "chat-turn": { activity: "generating" },
+        "chat-ask": { activity: "awaiting_user" },
+      },
       runningChildren: () => [{ sessionId: "child" }],
       // The keeper holds a command of a workflow a person paused, which no
       // active row accounts for, and one of a session a row names already.
       keptSessions: () => ["wf-paused", "chat-shell"],
-      inFlightCalls: () => 1,
-    }))
+      inFlightCalls: 1,
+    })
     expect(blockers).toEqual([
       { ...PROJECT, sessionId: "child", sessionTitle: "Inspect", reason: "subagent" },
       { ...PROJECT, sessionId: "chat-shell", sessionTitle: "Building", reason: "shell" },
@@ -196,8 +248,8 @@ describe("executor replacement blockers", () => {
   })
 
   test("an admitted call that has not returned is a project-level blocker", async () => {
-    expect(await collectReplacementBlockers(deps({ inFlightCalls: () => 2 }))).toEqual([{ ...PROJECT, reason: "call" }])
-    expect(await collectReplacementBlockers(deps())).toEqual([])
+    expect(await blockersOf({ inFlightCalls: 2 })).toEqual([{ ...PROJECT, reason: "call" }])
+    expect(await blockersOf()).toEqual([])
   })
 
   // A project folder deleted while the service holds it open fails every
@@ -206,21 +258,24 @@ describe("executor replacement blockers", () => {
   // whose memory holds no work reads as idle and closes.
   test("a project store that cannot be read reports the work the executor holds in memory, and nothing when it holds none", async () => {
     const unreadable = async (): Promise<never> => { throw new Error("disk I/O error") }
-    const failures: string[] = []
-    const storeHealth = { failed: (error: unknown) => { failures.push(String(error)) }, recovered() {} }
-    for (const failing of [{ listActive: unreadable }, { statuses: unreadable }]) {
-      expect(await collectReplacementBlockers(deps({ ...failing, storeHealth, inFlightCalls: () => 1 }))).toEqual([{ ...PROJECT, reason: "call" }])
-      expect(await collectReplacementBlockers(deps({ ...failing, storeHealth }))).toEqual([])
+    const warn = spyOn(Log.create({ service: "replacement-blockers" }), "warn").mockImplementation(() => {})
+    try {
+      for (const failing of [{ listActive: unreadable }, { statuses: "unreadable" as const }]) {
+        expect(await blockersOf({ ...failing, inFlightCalls: 1 })).toEqual([{ ...PROJECT, reason: "call" }])
+        expect(await blockersOf(failing)).toEqual([])
+      }
+      // Each executor records its own first failure.
+      expect(warn.mock.calls.map(([, fields]) => fields)).toEqual(Array.from({ length: 4 }, () => ({ projectRoot: PROJECT.projectRoot, error: "disk I/O error" })))
+    } finally {
+      warn.mockRestore()
     }
-    expect(failures).toEqual(["Error: disk I/O error", "Error: disk I/O error", "Error: disk I/O error", "Error: disk I/O error"])
 
-    const resident = (activity: FrontendActivity) => ({ activity, activeForegroundBashToolCallIds: [], activeBackgroundCommands: [] })
-    expect(await collectReplacementBlockers(deps({
+    expect(await blockersOf({
       listActive: unreadable,
       runningChildren: () => [{ sessionId: "child" }],
-      residents: () => new Map([["chat-turn", resident("generating")], ["chat-ask", resident("awaiting_user")], ["chat-idle", resident("idle")]]),
+      residents: { "chat-turn": "generating", "chat-ask": "awaiting_user", "chat-idle": "idle" },
       keptSessions: () => ["wf-paused"],
-    }))).toEqual([
+    })).toEqual([
       { ...PROJECT, sessionId: "child", reason: "subagent" },
       { ...PROJECT, sessionId: "chat-turn", reason: "turn" },
       { ...PROJECT, sessionId: "chat-ask", reason: "question" },
@@ -232,27 +287,36 @@ describe("executor replacement blockers", () => {
 describe("executor blocker change watch", () => {
   // No session's work delays a replacement, so only an admitted call going
   // in or out moves the list the account waits on.
-  test("reports admission occupancy, coalesced, and nothing after stop", async () => {
-    const admission = createMutationAdmission()
-    let reports = 0
-    const stop = watchReplacementBlockerChanges({ admission, notify: () => { reports += 1 }, settleMs: 2 })
+  test("reports admission occupancy while a replacement is held, coalesced, and nothing after stop", async () => {
+    // Longer than any settle delay, so each step's report has fired.
+    const settled = () => { jest.advanceTimersByTime(60_000) }
+    jest.useFakeTimers()
+    const { report, admission, close } = executor()
+    try {
+      let reports = 0
+      report.onChange(() => { reports += 1 })
+      report.set({ kind: "requested", blockers: [] })
 
-    const released = Promise.withResolvers<void>()
-    const first = admission.admit(() => released.promise)
-    const second = admission.admit(() => released.promise)
-    await Bun.sleep(6)
-    expect(reports).toBe(1)
-    released.resolve()
-    await Promise.all([first, second])
-    await Bun.sleep(6)
-    expect(reports).toBe(2)
+      const released = Promise.withResolvers<void>()
+      const first = admission.admit(() => released.promise)
+      const second = admission.admit(() => released.promise)
+      settled()
+      expect(reports).toBe(1)
+      released.resolve()
+      await Promise.all([first, second])
+      settled()
+      expect(reports).toBe(2)
 
-    stop()
-    const late = Promise.withResolvers<void>()
-    const call = admission.admit(() => late.promise)
-    late.resolve()
-    await call
-    await Bun.sleep(6)
-    expect(reports).toBe(2)
+      report.stop()
+      const late = Promise.withResolvers<void>()
+      const call = admission.admit(() => late.promise)
+      late.resolve()
+      await call
+      settled()
+      expect(reports).toBe(2)
+    } finally {
+      await close()
+      jest.useRealTimers()
+    }
   })
 })

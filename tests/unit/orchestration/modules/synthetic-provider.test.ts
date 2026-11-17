@@ -50,25 +50,19 @@ const seatDefinition = {
 const probeKeyModule = {
   id: "provider-probe-key",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: keyDefinition.id, value: { definition: keyDefinition, createClient: neverBuilt } },
     { domain: "settings", id: "provider-probe-key", value: { control: "binary", group: "Model providers", label: keyDefinition.displayName, description: "Allow models through Probe" } },
     { domain: "settings", id: `provider-probe-key:${REQUEST_CAP.key}`, value: REQUEST_CAP },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule
 
 const probeSeatModule = {
   id: "provider-probe-seat",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: seatDefinition.id, value: { definition: seatDefinition, createClient: neverBuilt } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule
 
 const composition = composeFirstPartyModules([probeKeyModule, probeSeatModule, anthropicApiModule])
@@ -104,8 +98,9 @@ describe("a synthetic provider under the provider contract", () => {
   })
 
   it("answers the login registry with its declared flow and nothing for an API key", () => {
-    expect(providerLoginFlow("probe_seat", definitions)?.flow).toBe("device-code")
-    expect(providerLoginFlow("probe_key", definitions)).toBeUndefined()
+    const providers = definitions.map((definition) => ({ definition }))
+    expect(providerLoginFlow("probe_seat", providers)?.flow).toBe("device-code")
+    expect(providerLoginFlow("probe_key", providers)).toBeUndefined()
   })
 
   it("declares its numeric setting under its own provider table", () => {

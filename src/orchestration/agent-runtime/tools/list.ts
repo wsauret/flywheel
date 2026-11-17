@@ -10,7 +10,7 @@ import { type ListFilesResult, listFiles, SearchStoppedError } from "./ripgrep.j
 import { PRUNED_DIR_GLOBS, prunedDirectoriesNote } from "./search-paths.js";
 import { SEARCH_CPU_LIMIT_SECONDS, SEARCH_WALL_BACKSTOP_SECONDS, searchStoppedMessage } from "./search-rules.js";
 
-import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
+import type { DispatchedToolContext, RuntimeTool, RuntimeToolInput, ToolResult } from "./types.js";
 
 const log = Log.create({ service: "agent-list" });
 
@@ -89,7 +89,7 @@ export const listDefinition: RuntimeTool = {
       notice: [`Note: include '${input.include}' was read as 'all'.`, prepared.repair?.notice].filter(Boolean).join("\n"),
     } } : prepared;
   },
-  async execute(input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
+  async execute(input: RuntimeToolInput, context: DispatchedToolContext): Promise<ToolResult> {
     if (Array.isArray(input.path) && input.path.every((path): path is string => typeof path === "string")) {
       return executePathBatch(input.path, (path) => listDefinition.execute({ ...input, path }, context));
     }

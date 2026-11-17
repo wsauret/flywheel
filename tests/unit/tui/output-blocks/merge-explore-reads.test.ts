@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { ToolEntry } from "@infra/output-blocks"
-import { getToolDisplay, resolveToolPresentation } from "@infra/tools/tool-display-registry.js"
+import { getToolDisplay, resolveToolRowPresentation } from "@infra/tools/tool-display-registry.js"
 import { mergeExploreReadRuns } from "@tui/output-blocks/tool-entry-helpers.js"
 
 const CWD = "/workspace"
@@ -25,7 +25,7 @@ function entry(
     kind: "tool" as const,
     id: `${name}-${JSON.stringify(input)}`,
     name,
-    presentation: resolveToolPresentation(name, input, CWD),
+    presentation: resolveToolRowPresentation(name, input, CWD).presentation,
     action: getToolDisplay(name).action,
     timestamp: 0,
     ...extra,

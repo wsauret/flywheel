@@ -49,7 +49,6 @@ export function registry(definitions: readonly AccessProviderDefinition[], reade
   const modules: FirstPartyModule[] = definitions.map((provider, index) => ({
     id: `test-provider-${index}`,
     dependencies: [],
-    availability: { kind: "available" },
     contributions: [{
       domain: "providers",
       id: provider.id,
@@ -60,8 +59,6 @@ export function registry(definitions: readonly AccessProviderDefinition[], reade
         ...(resetConsumers.get(provider.id) ? { resetConsumer: resetConsumers.get(provider.id) } : {}),
       },
     }],
-    observers: [],
-    gates: [],
   } satisfies FirstPartyModule))
   const composition = composeModules(modules)
   return accessProviderRegistry(composition)

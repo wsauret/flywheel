@@ -1,7 +1,8 @@
-import { describe, expect, it, jest } from "bun:test";
+import { afterEach, describe, expect, it, jest, setSystemTime } from "bun:test";
 import type { CommandHandover } from "../../../../../src/infra/command-handover.js";
 import type { HandoverAnswer } from "../../../../../src/infra/owned-subprocess.js";
-import { armUnheldDeadline, createProcessorClaims } from "../../../../../src/orchestration/agent-runtime/tools/processor-claims.js";
+import { armUnheldDeadline } from "../../../../../src/orchestration/agent-runtime/tools/processor-claims.js";
+import { freshProcessorClaims } from "../../../../helpers/processor-claims.js";
 import { makeMockOwnedProcess, type OwnedExit } from "./_bash-fixtures.js";
 
 const EXIT: OwnedExit = { code: 0, signal: null, statusOf: "payload", ownership: "surrendered" };
@@ -13,8 +14,12 @@ function running(token: string, handOver?: (request: CommandHandover) => Promise
 }
 
 describe("processor claims", () => {
+  afterEach(() => {
+    setSystemTime();
+  });
+
   it("claims a container until its owned exit", async () => {
-    const claims = createProcessorClaims();
+    const claims = await freshProcessorClaims();
     const { exit, owned } = running("owned:a");
     claims.claim(owned, { order: 5, exempt: false });
     expect(claims.claims()).toEqual([{ token: "owned:a", pid: owned.pid, order: 5, exempt: false }]);
@@ -25,7 +30,7 @@ describe("processor claims", () => {
   });
 
   it("ends a claim when the next build takes the command, and keeps it when the handover is not acknowledged", async () => {
-    const claims = createProcessorClaims();
+    const claims = await freshProcessorClaims();
     let answer: HandoverAnswer = { kind: "unacknowledged" };
     const { owned } = running("owned:a", async () => answer);
     const claimed = claims.claim(owned, { order: 1, exempt: false });
@@ -36,9 +41,9 @@ describe("processor claims", () => {
     expect(claims.claims()).toEqual([]);
   });
 
-  it("lists a session's held tool calls oldest first and tells only the sessions whose holds changed", () => {
-    let nowMs = 1_000;
-    const claims = createProcessorClaims(() => nowMs);
+  it("lists a session's held tool calls oldest first and tells only the sessions whose holds changed", async () => {
+    setSystemTime(1_000);
+    const claims = await freshProcessorClaims();
     const told: string[] = [];
     claims.onHoldsChanged((sessionId) => { told.push(sessionId); });
     claims.claim(running("owned:new").owned, { order: 20, exempt: false, sessionId: "s-1", toolUseId: "toolu_new" });
@@ -55,7 +60,7 @@ describe("processor claims", () => {
     expect(told).toEqual(["s-1"]);
     expect(claims.heldTime("owned:new").hold()).toEqual({ ahead: 0 });
 
-    nowMs += 300;
+    setSystemTime(1_300);
     claims.applyHolds([{ token: "owned:new", ahead: 0 }]);
     expect(told).toEqual(["s-1", "s-1"]);
     expect(claims.heldTime("owned:old").heldMs()).toBe(300);
@@ -63,13 +68,13 @@ describe("processor claims", () => {
     expect(claims.heldTime("owned:unknown").heldMs()).toBe(0);
   });
 
-  it("keeps a container's place and hold when a host takes it from the keeper, with the host's exemption", () => {
-    let nowMs = 0;
-    const claims = createProcessorClaims(() => nowMs);
+  it("keeps a container's place and hold when a host takes it from the keeper, with the host's exemption", async () => {
+    setSystemTime(2_000);
+    const claims = await freshProcessorClaims();
     const { owned } = running("owned:kept");
     claims.claim(owned, { order: 7, exempt: false, sessionId: "s-1", toolUseId: "toolu_kept" });
     claims.applyHolds([{ token: "owned:kept", ahead: 2 }]);
-    nowMs = 50;
+    setSystemTime(2_050);
     claims.claim(owned, { order: 99, exempt: true, sessionId: "s-1", toolUseId: "toolu_kept" });
     expect(claims.claims()).toEqual([{ token: "owned:kept", pid: owned.pid, order: 7, exempt: true }]);
     expect(claims.heldTime("owned:kept").heldMs()).toBe(50);
@@ -83,7 +88,7 @@ describe("a deadline that counts only time not held", () => {
     // release.
     jest.useFakeTimers();
     try {
-      const claims = createProcessorClaims();
+      const claims = await freshProcessorClaims();
       const { owned } = running("owned:a");
       claims.claim(owned, { order: 1, exempt: false });
       claims.applyHolds([{ token: "owned:a", ahead: 0 }]);
@@ -108,9 +113,9 @@ describe("a deadline that counts only time not held", () => {
     }
   });
 
-  it("expires at once when a deadline not held is already past", () => {
+  it("expires at once when a deadline not held is already past", async () => {
     let expired = false;
-    armUnheldDeadline(Date.now() - 1, createProcessorClaims().heldTime("owned:none"), () => { expired = true; });
+    armUnheldDeadline(Date.now() - 1, (await freshProcessorClaims()).heldTime("owned:none"), () => { expired = true; });
     expect(expired).toBe(true);
   });
 });

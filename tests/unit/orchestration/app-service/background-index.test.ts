@@ -1,239 +1,22 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import type { BackgroundCommandRecord } from "../../../../src/infra/runtime-fact-types"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { describe, expect, spyOn, test } from "bun:test"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
-import { createBackgroundIndex } from "../../../../src/orchestration/app-service/background-index"
-import { buildDurableSubagentCreated, buildSubagentCompleted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
-import type { ReplayedSession } from "../../../../src/orchestration/session/schemas"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { backgroundIndexEntries } from "../../../../src/protocol/client/background-index"
-import type { ActiveBackgroundCommandView, ReplyWaitView } from "../../../../src/protocol/status-protocol-types"
-import { temporaryDirectories } from "../../../helpers/directories"
-import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { workflowPlacements, workflowRunWriter } from "../../../../src/orchestration/module-catalog"
+import { workflowRunWriter } from "../../../../src/orchestration/module-catalog"
 import { publishTestWorkflow } from "../session/_session-manager-fixtures"
-import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition"
-import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership"
 import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/bootstrap-validation"
-import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection"
-import { queueFactsForState } from "../../../../src/workflows/view/view-diff"
-import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten"
-import { testResolvedAgent, testResolvedAgents, testSkill } from "../../../helpers/skill-fixtures"
-import { createBackgroundIndexOwner } from "../../../../src/orchestration/app-service/background-index-publisher"
-import { installedChildSessionHistory } from "../../../../src/orchestration/session/module-session-operations"
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact } from "../../../../src/orchestration/session/session-metadata-facts"
-import type { BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types"
-import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types"
 import { countStateRequests } from "../../../helpers/state-requests"
 import { boundedProjectStateSlice, PROJECT_STATE_MAX_BYTES, PROJECT_STATE_MAX_PAGE_ROWS } from "../../../../src/orchestration/app-service/project-state-protocol"
-import { chatEntry } from "./app-service-doubles"
+import { backgroundIndexFixtures, byId } from "./_background-index-fixtures"
 
-const temporaryDirectory = temporaryDirectories()
-
-interface SessionRecord {
-  readonly kind: "chat" | "subagent"
-  readonly createdAtMs: number
-  readonly label: string
-  readonly lifecycleState?: "active" | "inactive"
-  readonly parent?: { readonly sessionId: string; readonly toolUseId: string }
-  readonly children?: readonly string[]
-}
-
-/** A project store and the sessions its index reads. The session records
- *  carry only the fields the index reads; the facts are real. */
-function project() {
-  const stores: LocalSqliteEventStore[] = []
-  const dir = temporaryDirectory("fw-background-index-")
-  const open = () => {
-    const store = createSqliteEventStore(resolveEventStoreDbFile(dir))
-    stores.push(store)
-    return store
-  }
-  const store = open()
-  const manager = createSessionManager({ projectRoot: dir, executionCwd: dir, store })
-  const sessions = new Map<string, SessionRecord>()
-  const live = new Map<string, readonly ActiveBackgroundCommandView[]>()
-  const waits = new Map<string, readonly ReplyWaitView[]>()
-  // Every session the index read in full, in order.
-  const sessionReads: string[] = []
-  // A read of a session named here answers what it read only once its gate opens.
-  const gates = new Map<string, Promise<void>>()
-  const readSession = async (sessionId: string): Promise<ReplayedSession | undefined> => {
-    const read = readRecord(sessionId)
-    await gates.get(sessionId)
-    return await read
-  }
-  const readRecord = async (sessionId: string): Promise<ReplayedSession | undefined> => {
-    sessionReads.push(sessionId)
-    const record = sessions.get(sessionId)
-    if (!record) return await manager.read(sessionId) ?? undefined
-    const createdAt = new Date(record.createdAtMs).toISOString()
-    const shared = {
-      label: record.label,
-      lastUpdated: createdAt,
-      lifecycleState: record.lifecycleState ?? "active",
-      createdAt,
-      childSessionIds: [...(record.children ?? [])],
-      conversationId: `conversation-${sessionId}`,
-    }
-    if (record.kind === "chat") return { ...shared, kind: "chat", command: "chat" }
-    if (!record.parent) throw new Error(`the subagent record ${sessionId} names no parent`)
-    return { ...shared, kind: "subagent", command: "subagent", launchedFrom: { parentSessionId: record.parent.sessionId, toolUseId: record.parent.toolUseId, conversationId: "conversation" } }
-  }
-  const indexOn = (reader: AsyncEventStateReadSurface) => createBackgroundIndex({
-    reader,
-    readSession,
-    liveCommands: (sessionId) => live.get(sessionId) ?? [],
-    replyWaits: async (sessionId) => waits.get(sessionId) ?? [],
-  })
-  const indexOver = (reader: LocalSqliteEventStore) => indexOn(asAsyncEventReadSurface(reader))
-  const facts = (sessionId: string) => createSessionFactWriter({ sessionId, writer: asAsyncEventWriter(store) })
-  return {
-    store, manager, sessions, live, waits, sessionReads, gates, indexOn,
-    async workflow(startMember = false) {
-      await manager.createChat({ id: "chat", conversationId: "conversation", name: "Chat" })
-      await publishTestWorkflow(manager, { id: "workflow", description: "Implement", launchedFrom: { parentSessionId: "chat", conversationId: "conversation", toolUseId: "toolu_workflow" } })
-      let memberId: string | undefined
-      if (startMember) {
-        const advance = async (event: Parameters<typeof transitionWorkflow>[1]) => {
-          const control = replayWorkflowControl(store.read({ aggregateId: "workflow:workflow" }))
-          const proposed = transitionWorkflow(replayWorkflow(control), event)
-          if (proposed.command.kind !== "commit") throw new Error("expected a control commit")
-          const proposal = proposed.command.proposal
-          expect(await manager.commitWorkflow({ workflowId: "workflow", events: proposal.facts.map((fact, index) => ({
-            aggregateId: "workflow:workflow", sessionId: "workflow", timestamp: Date.now(),
-            ...fact, ...(index === 0 ? { expectedSeq: proposal.expectedSeq } : {}),
-          })) })).toMatchObject({ kind: "stored" })
-        }
-        await advance({ type: "START" })
-        const attemptId = replayWorkflowControl(store.read({ aggregateId: "workflow:workflow" })).attempts[0]!.id
-        await advance({ type: "ATTEMPT_STARTED", attemptId, conversationId: "agent-conversation" })
-        const workflowFacts = store.read({ aggregateId: "workflow:workflow" })
-        const skill = testSkill("fixture-step", { name: "Fixture step" })
-        const bindings = testResolvedAgents([testResolvedAgent("fixture-step", skill, { name: skill.name })])
-        const queue = flattenWorkflowView(replayWorkflowControl(workflowFacts), bindings)
-        store.appendBatch(queueFactsForState(loadQueueFromEvents(workflowFacts), queue).map(fact => ({ ...fact, aggregateId: "workflow:workflow", sessionId: "workflow", timestamp: Date.now() })))
-        memberId = (await workflowMembershipReader(asAsyncEventReadSurface(store)).list("workflow"))[0]?.sessionId
-        const parent = sessions.get("chat")
-        if (parent && memberId) sessions.set("chat", { ...parent, children: [...parent.children ?? [], memberId] })
-      }
-      await workflowRunWriter(asAsyncEventReadSurface(store), manager.commitWorkflow).update("workflow", current => ({ ...current, createdAt: new Date(200).toISOString() }))
-      return memberId
-    },
-    index: indexOver(store),
-    /** The index a runtime that started again builds: a new store handle and nothing live. */
-    restarted: () => {
-      live.clear()
-      waits.clear()
-      return indexOver(open())
-    },
-    async command(sessionId: string, record: BackgroundCommandRecord): Promise<void> {
-      const writer = facts(sessionId)
-      await writer.record({ type: "tool.background_command.recorded", version: 1, actor: "flywheel", payload: record })
-      writer.dispose()
-    },
-    async subagentRun(sessionId: string, status?: "completed" | "partial" | "failed"): Promise<void> {
-      const writer = facts(sessionId)
-      await writer.transaction(() => {
-        void writer.record(buildDurableSubagentCreated({
-          childSessionId: sessionId, childRunId: `${sessionId}-run`, conversationId: `conversation-${sessionId}`,
-          parentSessionId: "chat", parentConversationId: "conversation", parentToolCallId: `${sessionId}-run`, modelRequestId: "request",
-          persona: { name: "worker", kind: "persona" },
-          capabilityGrant: { operation: "subagent", required: [], capabilities: [], moduleIds: [], requireWorkflowConfirmation: false, workflowsMode: "off", identity: "grant" },
-          admittedModuleIds: [], skillsRevision: 1, model: "model", effort: "low", tools: [], executionCwd: dir,
-          budget: { maxTurns: 4, maxTokens: 0 }, parentDepth: 0, description: sessionId,
-        }))
-        if (status) void writer.record(buildSubagentCompleted({ childRunId: `${sessionId}-run`, status, isError: status === "failed", content: "done", durationMs: 10 }))
-      })
-      writer.dispose()
-    },
-    close: () => { for (const opened of stores) opened.close() },
-  }
-}
-
-let closing: Array<() => void> = []
-afterEach(() => {
-  for (const close of closing) close()
-  closing = []
-})
-
-/** A chat that ran two commands and started a workflow, whose subagent
- *  started a subagent of its own, and a subagent that finished. */
-async function chatWithWork() {
-  const fixture = project()
-  closing.push(fixture.close)
-  fixture.sessions.set("chat", { kind: "chat", createdAtMs: 0, label: "Chat", children: ["reviewer", "finished"] })
-  fixture.sessions.set("reviewer", { kind: "subagent", createdAtMs: 250, label: "Reviewer", parent: { sessionId: "chat", toolUseId: "toolu_reviewer" }, children: ["explorer"] })
-  await fixture.workflow()
-  fixture.sessions.set("explorer", { kind: "subagent", createdAtMs: 260, label: "Explorer", parent: { sessionId: "reviewer", toolUseId: "toolu_explorer" } })
-  fixture.sessions.set("finished", { kind: "subagent", createdAtMs: 350, label: "Finished", lifecycleState: "inactive", parent: { sessionId: "chat", toolUseId: "toolu_finished" } })
-  await fixture.command("chat", { toolUseId: "toolu_test", processId: "bash-1", description: "bun test", startedAtMs: 100, state: "settled", status: "failed", exitCode: 2, settledAtMs: 400 })
-  await fixture.command("chat", { toolUseId: "toolu_server", processId: "bash-2", description: "bun run dev", startedAtMs: 300, state: "running" })
-  await fixture.subagentRun("reviewer")
-  await fixture.subagentRun("explorer")
-  await fixture.subagentRun("finished", "completed")
-  fixture.live.set("chat", [{ id: "bash-2", description: "bun run dev", toolUseId: "toolu_server", startedAtMs: 300 }])
-  return fixture
-}
-
-const byId = (rows: readonly BackgroundWorkRow[]) => [...rows].sort((left, right) => left.id.localeCompare(right.id))
-
-/** A client that follows the chat's index through an owner over the
- *  fixture's store, with the live-command and reply-wait words in the
- *  test's hand. Its rows are the snapshot with every later patch applied. */
-async function follow(fixture: ReturnType<typeof project>, reader: AsyncEventStateReadSurface = asAsyncEventReadSurface(fixture.store)) {
-  let liveChanged: ((changed: ReadonlySet<string> | undefined) => void) | undefined
-  let waitsChanged: ((sessionId: string) => void) | undefined
-  const patches: RuntimeUiPatchInput[] = []
-  const owner = createBackgroundIndexOwner({
-    index: fixture.indexOn(reader),
-    workflowPlacements: workflowPlacements(asAsyncEventReadSurface(fixture.store)),
-    onStored: fixture.store.onStored,
-    publish: (patch) => { patches.push(patch) },
-    snapshotPosition: () => patches.length,
-    childRunFactTypes: installedChildSessionHistory().factTypes,
-    sessionStore: {
-      onChange: (listener) => { liveChanged = listener; return () => {} },
-      get: (sessionId) => chatEntry({ activeBackgroundCommands: fixture.live.get(sessionId) ?? [] }),
-      allIds: () => [...fixture.live.keys()],
-    },
-    onKeptChange: () => () => {},
-    onReplyWaitsChange: (listener) => { waitsChanged = listener; return () => {} },
-  })
-  closing.push(() => { owner.dispose() })
-  const snapshot = await owner.snapshot("chat")
-  const rows = new Map(snapshot.rows.map((row) => [row.id, row]))
-  let applied = snapshot.snapshotPosition
-  /** Waits until the owner advanced by every change so far. */
-  const settled = async (): Promise<void> => {
-    await Bun.sleep(5)
-    await owner.snapshot("chat")
-  }
-  return {
-    settled,
-    async rows(): Promise<readonly BackgroundWorkRow[]> {
-      await settled()
-      for (const { payload } of patches.slice(applied)) {
-        if (payload.kind === "background.row.updated") rows.set(payload.row.id, payload.row)
-        else if (payload.kind === "background.row.removed") rows.delete(payload.rowId)
-        else throw new Error(`unexpected patch ${payload.kind}`)
-      }
-      applied = patches.length
-      return byId([...rows.values()])
-    },
-    liveChanged(sessionId: string): void { liveChanged?.(new Set([sessionId])) },
-    waitsChanged(sessionId: string): void { waitsChanged?.(sessionId) },
-  }
-}
+const { chatWithWork, closedProject, follow } = backgroundIndexFixtures()
 
 describe("the background index of a chat", () => {
   test("lists a workflow as one row with its progress and no row for its agents or their commands", async () => {
-    const fixture = project()
-    closing.push(fixture.close)
+    const fixture = closedProject()
     fixture.sessions.set("chat", { kind: "chat", createdAtMs: 0, label: "Chat", children: [] })
     const memberId = await fixture.workflow(true)
     if (!memberId) throw new Error("expected a published member")
@@ -299,8 +82,8 @@ describe("the background index of a chat", () => {
     fixture.sessions.set("budget", { kind: "subagent", createdAtMs: 600, label: "Budget", lifecycleState: "inactive", parent: { sessionId: "chat", toolUseId: "toolu_budget" } })
     await fixture.subagentRun("paused")
     await fixture.subagentRun("budget", "partial")
-    fixture.waits.set("reviewer", [{ sessionId: "chat", name: "Chat" }])
-    fixture.waits.set("paused", [{ sessionId: "chat", name: "Chat" }])
+    await fixture.wait("reviewer", { sessionId: "chat", name: "Chat" })
+    await fixture.wait("paused", { sessionId: "chat", name: "Chat" })
 
     const rows = await fixture.index.rows("chat")
 
@@ -324,8 +107,7 @@ describe("the background index of a chat", () => {
   })
 
   test("its top-level Active rows are the live background work of the status after each change, and a reply wait is in neither", async () => {
-    const fixture = project()
-    closing.push(fixture.close)
+    const fixture = closedProject()
     fixture.sessions.set("chat", { kind: "chat", createdAtMs: 0, label: "Chat", children: [] })
     const writes: Promise<void>[] = []
     const registry = createBackgroundWorkRegistry({
@@ -363,8 +145,7 @@ describe("the background index of a chat", () => {
   })
 
   test("reads in full only the children that can be subagents, and the root's launching calls of every workflow in one read", async () => {
-    const fixture = project()
-    closing.push(fixture.close)
+    const fixture = closedProject()
     fixture.sessions.set("chat", { kind: "chat", createdAtMs: 0, label: "Chat", children: [] })
     const memberId = await fixture.workflow(true)
     if (!memberId) throw new Error("expected a published member")
@@ -380,8 +161,7 @@ describe("the background index of a chat", () => {
   })
 
   test("reads the kinds of more children than one state page holds in slices the state Worker serves", async () => {
-    const fixture = project()
-    closing.push(fixture.close)
+    const fixture = closedProject()
     const children = Array.from({ length: PROJECT_STATE_MAX_PAGE_ROWS + 1 }, (_, index) => `child-${index}`)
     const [first, ...rest] = children
     await fixture.manager.createChat({ id: first, conversationId: "conversation-child", name: "Child" })
@@ -420,8 +200,7 @@ describe("the background index a client follows", () => {
     // No host holds the dev server any more, and the explorer waits on its parent.
     fixture.live.set("chat", fixture.live.get("chat")!.filter((command) => command.toolUseId !== "toolu_server"))
     client.liveChanged("chat")
-    fixture.waits.set("explorer", [{ sessionId: "reviewer", name: "Reviewer" }])
-    client.waitsChanged("explorer")
+    await client.wait("explorer", { sessionId: "reviewer", name: "Reviewer" })
     expect(await client.rows()).toEqual(await fresh())
     expect((await client.rows()).filter((row) => row.id === "toolu_server" || row.id === "explorer").map((row) => row.status)).toEqual(["waiting_on_parent", "ended"])
 
@@ -461,8 +240,7 @@ describe("the background index a client follows", () => {
   })
 
   test("a workflow's own change reads its row and never the history of the chat that launched it", async () => {
-    const fixture = project()
-    closing.push(fixture.close)
+    const fixture = closedProject()
     fixture.sessions.set("chat", { kind: "chat", createdAtMs: 0, label: "Chat", children: [] })
     await fixture.workflow()
     const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))
@@ -477,8 +255,7 @@ describe("the background index a client follows", () => {
 
   test.each([2, 12])("the reads of one change do not grow with %i children and their commands", async (members) => {
     const reads = async (count: number) => {
-      const fixture = project()
-      closing.push(fixture.close)
+      const fixture = closedProject()
       const children = Array.from({ length: count }, (_, index) => `child-${index}`)
       fixture.sessions.set("chat", { kind: "chat", createdAtMs: 0, label: "Chat", children })
       for (const [index, childId] of children.entries()) {
@@ -496,8 +273,7 @@ describe("the background index a client follows", () => {
         await client.settled()
         const command = { reads: counter.take().length, rows: comparisons.mock.calls.length }
         comparisons.mockClear()
-        fixture.waits.set("child-0", [{ sessionId: "chat", name: "Chat" }])
-        client.waitsChanged("child-0")
+        await client.wait("child-0", { sessionId: "chat", name: "Chat" })
         await client.settled()
         return { command, child: { reads: counter.take().length, rows: comparisons.mock.calls.length } }
       } finally {

@@ -4,12 +4,13 @@ import { newTestRunner } from "../../../helpers/agent-runner.js";
 import { testDirectories } from "../../../helpers/directories.js";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types";
+import type { AgentOptionsOverride } from "./_runner-options.js";
 import type { ConnectionState } from "../../../../src/infra/output-blocks";
 import type { ModelClient, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types";
 import { asModelClient } from "./_model-client";
 import { pricedUsage } from "../../../helpers/usage-price-fixtures.js";
 
-function makeOptions(overrides?: Partial<AgentOptions>): AgentOptions {
+function makeOptions(overrides?: AgentOptionsOverride): AgentOptions {
   return {
     model: "claude-haiku-4-5-20251001",
     ...testDirectories("/scratch"),

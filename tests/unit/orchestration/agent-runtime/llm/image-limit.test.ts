@@ -1,16 +1,17 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { z } from "zod";
 import { Log } from "../../../../../src/infra/log.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { streamAssistantTurn } from "../../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { asModelClient, fakeAttempt } from "../_model-client.js";
 import { IMAGE_REMOVED } from "../../../../../src/orchestration/agent-runtime/llm/image-limit.js";
-import { prepareOpenAICompletionsRequest } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering, type ProviderHistoryTarget } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { chatCompletionsRequestBody } from "./_wire-fixtures.js";
 
 const UPSTREAM_MODEL_REQUEST = resolve("inspiration/opencode/packages/core/src/session/model-request.ts");
 const NOTE_REPLACEMENT = ["to reduce the request size", "to stay within the model's image limit"] as const;
@@ -85,7 +86,7 @@ describe("replayed images past the model's image limit", () => {
     expect(keptImages(lowerProviderHistory(history, unlimited))).toEqual(range(0, 45));
   });
 
-  test("the DeepSeek V4.1 Flash request carries at most 30 images and leaves the stored history unchanged", () => {
+  test("the DeepSeek V4.1 Flash request carries at most 30 images and leaves the stored history unchanged", async () => {
     const messages = screenshots(40);
     const stored = structuredClone(messages);
     const info: ModelInfo = {
@@ -94,11 +95,12 @@ describe("replayed images past the model's image limit", () => {
       cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" },
       modalities: { input: ["text", "image"], output: ["text"] }, contextLimit: 1_000_000, outputLimit: 4_000,
     };
-    const { params } = prepareOpenAICompletionsRequest({
-      accessProvider: "openrouter", model: "deepseek-v4.1-flash", wireModel: "deepseek/deepseek-v4.1-flash", info,
+    const body = await chatCompletionsRequestBody({
+      accessProvider: "openrouter", model: "deepseek-v4.1-flash", wireModelId: "deepseek/deepseek-v4.1-flash", info,
       options: { messages, tools: [], systemPrompt: stableSystemPrompt("system"), cacheRetention: "none" },
     });
-    const imageParts = params.messages.flatMap((message) => Array.isArray(message.content) ? message.content.filter((part) => part.type === "image_url") : []);
+    const sent = z.object({ messages: z.array(z.object({ content: z.union([z.string(), z.array(z.object({ type: z.string() })), z.null()]).optional() })) }).parse(body);
+    const imageParts = sent.messages.flatMap((message) => Array.isArray(message.content) ? message.content.filter((part) => part.type === "image_url") : []);
     expect(imageParts.length).toBe(24);
     expect(messages).toEqual(stored);
   });

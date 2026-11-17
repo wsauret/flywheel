@@ -16,7 +16,7 @@ import { Redacted } from "effect";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { join } from "node:path";
 import { createModelsClient } from "../../../../../src/infra/llm/models.js";
-import { createAnthropicAdapter, HOSTED_MAX_TOKENS, operationsFromAnthropicClient, prepareAnthropicRequest, type AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
+import { createAnthropicAdapter, operationsFromAnthropicClient, prepareAnthropicRequest, type AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import { supportsAdaptiveThinking } from "../../../../../src/orchestration/agent-runtime/llm/model-compat.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
@@ -26,6 +26,9 @@ import type { LLMClient, ProviderStreamEvent } from "../../../../../src/orchestr
 interface UnknownRecord {
   [key: string]: unknown;
 }
+
+/** The output cap of every request that a shared engine agent host serves. */
+const HOSTED_MAX_TOKENS = 64_000;
 
 const MODEL_INFO: ModelInfo = {
   provider: "anthropic",

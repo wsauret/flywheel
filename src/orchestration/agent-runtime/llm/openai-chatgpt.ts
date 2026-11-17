@@ -117,30 +117,6 @@ export interface EnsureFreshChatGPTTokensOptions extends Omit<ChatGPTRotationOpt
   signal?: AbortSignal;
 }
 
-/** Prevents a long-lived client from sending with credentials for an account
- *  other than the immutable availability binding selected at construction. */
-export function assertChatGptAccountUnchanged(expected: StoredTokens, actual: StoredTokens): void {
-  if (expected.accountId !== undefined && actual.accountId !== undefined) {
-    if (expected.accountId === actual.accountId) return;
-    throw new ProviderAuthenticationError(
-      `The ChatGPT account changed from ${expected.accountId} to ${actual.accountId}. Retry the request so provider routing and quota tracking bind to the new account.`,
-    );
-  }
-  if (expected.accountId === undefined && actual.accountId === undefined
-    && expected.refreshToken !== undefined && actual.refreshToken !== undefined
-    && Redacted.value(expected.refreshToken) === Redacted.value(actual.refreshToken)) return;
-  throw new ProviderAuthenticationError(
-    "The ChatGPT credential identity changed. Retry the request so provider routing and quota tracking bind to the current account.",
-  );
-}
-
-/** Stable diagnostic identity. Refresh coordination is owned by each accessor. */
-export function chatGptRefreshIdentity(tokens: StoredTokens): string {
-  if (tokens.accountId !== undefined) return `account:${tokens.accountId}`;
-  const credential = tokens.refreshToken ?? tokens.accessToken;
-  return `credential:${refreshTokenKey(credential)}`;
-}
-
 function refreshTokenKey(token: Redacted.Redacted<string>): string {
   return createHash("sha256").update(Redacted.value(token)).digest("hex");
 }
