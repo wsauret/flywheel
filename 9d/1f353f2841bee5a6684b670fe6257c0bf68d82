@@ -1,0 +1,60 @@
+src/orchestration/session/provider-request-audit-types.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/session/session-artifacts.ts
+  h_4b47e9e4a8b456 88-90,97,110-111,200,203,235
+src/orchestration/session/session-catalog-row.ts
+  h_4b47e9e4a8b456 164
+src/orchestration/session/session-change-sources.ts
+  h_4b47e9e4a8b456 39
+src/orchestration/session/session-fact-registry.ts
+  h_4b47e9e4a8b456 28,30-39
+src/orchestration/session/session-metadata-store.ts
+  h_4b47e9e4a8b456 85
+src/orchestration/session/tool-execution-types.ts
+  h_4b47e9e4a8b456 70-74
+src/orchestration/session/transcript-search.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/session/types.ts
+  h_4b47e9e4a8b456 5
+tests/helpers/harbor-trial-evidence.ts
+  h_4b47e9e4a8b456 15,17-18
+tests/helpers/session-catalog.ts
+  h_4b47e9e4a8b456 26,29,38
+tests/unit/bench/harbor-analyzer.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/app-service/app-service.test.ts
+  h_4b47e9e4a8b456 18-20,29
+tests/unit/orchestration/app-service/project-execution-state.test.ts
+  h_4b47e9e4a8b456 18,94-96,98
+tests/unit/orchestration/app-service/session-changes-publisher.test.ts
+  h_4b47e9e4a8b456 7,10-11
+tests/unit/orchestration/app-service/session-changes-service.test.ts
+  h_4b47e9e4a8b456 25,249-251
+tests/unit/orchestration/app-service/session-detail-publisher.test.ts
+  h_4b47e9e4a8b456 14,31,46,116,118
+tests/unit/orchestration/file-edits/session-file-restoration.test.ts
+  h_4b47e9e4a8b456 9,69,125-130
+tests/unit/orchestration/session/module-session-facts.test.ts
+  h_4b47e9e4a8b456 3,6-11,13-14,18-19,21,28
+tests/unit/orchestration/session/mutation-evidence-recovery.test.ts
+  h_4b47e9e4a8b456 17,176,216
+tests/unit/orchestration/session/scratch-retention.test.ts
+  h_4b47e9e4a8b456 8,12-16
+tests/unit/orchestration/session/session-state-machine.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 8,80,90,118
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 35,273,282,290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9d1f353f2841bee5a6684b670fe6257c0bf68d82",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
