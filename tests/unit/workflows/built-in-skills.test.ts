@@ -11,6 +11,7 @@ import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
 import { renderSkillClosure } from "../../../src/workflows/skill-render.js";
+import { skillClosureIds } from "../../../src/workflows/skill-closure.js";
 import { publishSkillRevision, type SkillRegistryRevision } from "../../../src/workflows/skill-schema.js";
 import { bodyFor, bundled, bundledLoad, bundleRoots, SKILL_ROOTS } from "./_bundled-skills.js";
 
@@ -77,8 +78,20 @@ const INGREDIENT_IDS = [
   "verification",
 ];
 
-// Every package is one an agent can pick by itself, so the routing-surface
-// limits below apply to all of them.
+// Packages that only a review or a reviewer composes. They stay out of the skill
+// list, so an agent never loads one on its own (PI-AGENT-132).
+const COMPOSED_ONLY_IDS = [
+  "code-review-method",
+  "data-integrity-review-principles",
+  "elegance-review-principles",
+  "mechanism-verification",
+  "performance-review-principles",
+  "security-review-principles",
+  "uat",
+];
+
+// Every package carries a routing trigger, also one that only a review or
+// reviewer composes, so the routing-surface limits below apply to all of them.
 const directlyInvoked = [...bundled.values()];
 
 function renderedSkillCount(rendered: readonly string[], id: string): number {
@@ -447,9 +460,10 @@ describe("deterministic composition", () => {
 
     expect(ingredientIds).toEqual(INGREDIENT_IDS);
     for (const skillId of ingredientIds) {
-      const skill = development.get(skillId);
-      expect(skill?.modelInvocable, skillId).toBe(true);
-      expect(modelInvocableIds.has(skillId), skillId).toBe(true);
+      expect(modelInvocableIds.has(skillId), skillId).toBe(!COMPOSED_ONLY_IDS.includes(skillId));
+      for (const composer of [...development.values()].filter((entry) => entry.dependencies.includes(skillId))) {
+        expect(skillClosureIds([composer.id], developmentRevision, composer.id), `${composer.id}: ${skillId}`).toContain(skillId);
+      }
     }
   });
 
@@ -554,11 +568,12 @@ describe("persona method composition", () => {
     expect(persona("explorer").requiredSkills).toBeUndefined();
   });
 
-  it("keeps every declared package installed and hides the individual review ingredient", () => {
+  it("keeps every declared package installed and lists only the ones an agent may load on its own", () => {
     const roster = new Set(revision.modelInvocable.map((skill) => skill.id));
 
+    for (const id of COMPOSED_ONLY_IDS) expect({ id, installed: bundled.has(id), loadable: roster.has(id) }).toEqual({ id, installed: true, loadable: false });
     for (const ids of Object.values(REQUIRED_SKILLS)) {
-      for (const id of ids) expect({ id, installed: bundled.has(id), loadable: roster.has(id) }).toEqual({ id, installed: true, loadable: id !== "code-review-method" });
+      for (const id of ids) expect({ id, installed: bundled.has(id), loadable: roster.has(id) }).toEqual({ id, installed: true, loadable: !COMPOSED_ONLY_IDS.includes(id) });
     }
   });
 

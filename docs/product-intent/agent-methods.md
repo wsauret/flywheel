@@ -525,3 +525,7 @@ When agent commands need more processor time than the machine has, Flywheel runs
 ## PI-AGENT-131: Rarely used tools show their full instructions on first use
 
 An agent sees every tool that it can use, but a tool that agents of its kind rarely use appears by name and one line. The agent reads that tool's full instructions through a call to the tool, and the transcript shows that call as a read of the tool's contract. Which tools appear this way never changes while the agent runs.
+
+## PI-AGENT-132: Review lenses are composed, not listed
+
+A skill that only adds one lens to a review, or that only a reviewer agent runs, is a dependency of that review or reviewer. It never appears in the skill list that agents choose from, so an agent never loads it on its own.
