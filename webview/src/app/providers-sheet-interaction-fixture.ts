@@ -12,7 +12,7 @@ import { ProvidersSheet } from "./sheets/providers-sheet.js"
 import { ProfilesSheet } from "./sheets/profiles-sheet.js"
 import type { RuntimeAuthProfileDeletionPreview, RuntimeAuthProfileMutationResult } from "../../../src/protocol/auth-profile-selection-protocol-types.js"
 import type { SubscriptionSpendConsentMutationResult, SubscriptionSpendConsentView } from "../../../src/protocol/subscription-spend-consent-protocol-types.js"
-import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
+import { createElement, insert, nodes, textContent, type FixtureEvent } from "./render-ownership-host-fixture.js"
 import { actionOwner } from "./action-owner-fixture.js"
 import { BROWSER_LOGIN_COPY } from "../../../src/protocol/client/provider-account-copy.js"
 
@@ -192,7 +192,7 @@ export function mountProviderBrowserLogin(deviceCode?: { readonly userCode?: str
       if (found === undefined) throw new Error("Missing Finish login button")
       return found
     }
-    const invoke = (node: ReturnType<typeof find>, property: string, event: unknown): void => {
+    const invoke = (node: ReturnType<typeof find>, property: string, event: FixtureEvent): void => {
       const handler = node.properties[property]
       if (typeof handler !== "function") throw new Error(`Missing ${property} handler`)
       handler(event)

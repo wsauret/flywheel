@@ -23,6 +23,7 @@ export function emptyAnthropicUsage(): AnthropicUsageCounters {
 /** The usage event of an attempt's counters so far. The cache-write split names the retention that the attempt's
  *  cache writes hold; unsupported split evidence reports an unknown retention. */
 export function anthropicUsageEvent(usage: AnthropicUsageCounters): Extract<ProviderStreamEvent, { kind: "usage" }> {
+  const retention = cacheRetentionMs(usage);
   return {
     kind: "usage",
     final: usage.final,
@@ -31,12 +32,17 @@ export function anthropicUsageEvent(usage: AnthropicUsageCounters): Extract<Prov
     cacheReadTokens: usage.cacheRead,
     cacheCreateTokens: usage.cacheCreate,
     cacheCreate1hTokens: usage.cacheCreate1h ?? 0,
-    ...(usage.cacheCreate1h === null ? { cacheRetentionMs: null }
-      : usage.cacheCreate1h > 0 ? { cacheRetentionMs: 3_600_000 }
-      : usage.cacheCreate5m === null ? { cacheRetentionMs: null }
-      : usage.cacheCreate5m > 0 ? { cacheRetentionMs: 300_000 } : {}),
+    ...(retention === undefined ? {} : { cacheRetentionMs: retention }),
     reasoningTokens: usage.reasoning,
   };
+}
+
+/** The retention of the attempt's cache writes: null when the split is unsupported, undefined when no write names one. */
+function cacheRetentionMs(usage: AnthropicUsageCounters): number | null | undefined {
+  if (usage.cacheCreate1h === null) return null;
+  if (usage.cacheCreate1h > 0) return 3_600_000;
+  if (usage.cacheCreate5m === null) return null;
+  return usage.cacheCreate5m > 0 ? 300_000 : undefined;
 }
 
 export function foldAnthropicMessageStartUsage(u: Anthropic.Message["usage"], c: AnthropicUsageCounters): void {

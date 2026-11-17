@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { InFlightSwapConflictError } from "../../infra/event-store-types.js"
-import type { AsyncEventStateReadSurface, InFlightWrite } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, InFlightPayload, InFlightRecord, InFlightWrite } from "../../infra/event-store-types.js"
 import type { UsageAuthority } from "../../infra/llm/usage-authority.js"
 import { decodeUsageEntry, migrateUncoveredUsageEntry, UsageEntrySchema } from "../../infra/llm/usage-entry.js"
 import { Log } from "../../infra/log.js"
@@ -93,7 +93,7 @@ interface UsageSettlementReader {
 }
 
 interface UsageSettlementOptions {
-  putInFlight(kind: string, key: string, payload: unknown): Promise<void>
+  putInFlight(kind: string, key: string, payload: InFlightPayload): Promise<void>
   retire(retirement: UsageSettlementRetirement): Promise<void>
   acquireAuthority(profileId: string): Promise<UsageSettlementAuthorityLease>
   /** Atomically publishes idempotent session facts and the supplied retirement. */
@@ -110,7 +110,7 @@ export interface UsageSettlement {
   settle(attemptId: string, outcome: { readonly served: boolean }): Promise<void>
   /** Resumes an already durable record without rerunning provider work. Skips an attempt that is still running in
    *  this process. */
-  recover(payload: unknown): Promise<void>
+  recover(payload: InFlightRecord["payload"]): Promise<void>
 }
 
 interface SessionUsageSettlementOptions {

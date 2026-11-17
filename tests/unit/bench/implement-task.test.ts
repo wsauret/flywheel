@@ -66,6 +66,7 @@ describe("shared implementation task loading", () => {
     await mkdir(join(taskDir, "acceptance"), { recursive: true });
     await Bun.write(join(taskDir, "plan.json"), JSON.stringify(PLAN));
     await Bun.write(join(taskDir, "manifest.json"), JSON.stringify({ traps: [], judgment: [] }));
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a task.json sandbox field that the loader rejects, malformed on purpose
     const rejects = async (sandbox: unknown, message: string) => {
       await Bun.write(join(taskDir, "task.json"), JSON.stringify({ id: "bad-task", stratum: "s", sandbox }));
       await expect(loadImplementTasks(join(taskDir, ".."))).rejects.toThrow(message);

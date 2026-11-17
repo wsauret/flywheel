@@ -233,6 +233,7 @@ describe("Runtime protocol RPC mapping", () => {
     expect(Schema.decodeUnknownSync(WorkflowTreeSchema)(looped.tree)).toEqual(looped.tree)
     const durableQueue = { attempts: [], attemptsStatus: "loaded", state: "completed", tree: { nodes: [] } }
     expect<unknown>(Schema.decodeUnknownSync(workflowDomain.snapshot.result)({ snapshotPosition: 5, view: durableQueue })).toEqual({ snapshotPosition: 5, view: durableQueue })
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a wire patch that the schema decodes, invalid on purpose
     const patch = (workflowView: unknown) => ({ kind: "workflow_view.updated", workflowView })
     const decode = Schema.decodeUnknownSync(workflowDomain.patch)
     expect(() => decode(patch({ attempts: [], attemptsStatus: "loaded" }))).toThrow()

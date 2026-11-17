@@ -1,12 +1,12 @@
 import { Redacted } from "effect";
-import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageReader, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
+import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageReader, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
 import { malformed, prepaidBalance, readerIdentity, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/subscription-usage-reader.js";
 
 const DEEPSEEK_BALANCE_URL = "https://api.deepseek.com/user/balance";
 
 /** DeepSeek states each balance as a decimal string per currency, and
  *  `is_available: false` when the balance cannot pay for a request. */
-function deepseekBalance(raw: unknown) {
+function deepseekBalance(raw: SubscriptionUsageJson) {
   const payload = requiredRecord(raw, "DeepSeek", "response");
   if (typeof payload.is_available !== "boolean") throw malformed("DeepSeek", "is_available is missing or invalid");
   if (!Array.isArray(payload.balance_infos)) throw malformed("DeepSeek", "balance_infos is missing or invalid");

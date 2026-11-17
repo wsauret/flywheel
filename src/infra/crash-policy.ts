@@ -49,7 +49,7 @@ export function installCrashPolicy(options: CrashPolicyOptions): void {
     },
   })
   let failing = false
-  const fail = (failure: unknown, kind: UncaughtKind): void => {
+  const fail = (cause: unknown, kind: UncaughtKind): void => {
     if (failing) {
       exitNow()
       return
@@ -57,7 +57,7 @@ export function installCrashPolicy(options: CrashPolicyOptions): void {
     failing = true
     // The process ends, so the count of repeats in the window is reported now.
     aborts.end()
-    void (async () => { await options.fatal(failure, kind) })().catch(() => { exitNow() })
+    void (async () => { await options.fatal(cause, kind) })().catch(() => { exitNow() })
   }
   process.on("uncaughtException", (error) => { fail(error, "uncaught exception") })
   process.on("unhandledRejection", (reason) => {

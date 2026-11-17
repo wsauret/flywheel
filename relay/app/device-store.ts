@@ -17,6 +17,14 @@ const DB_NAME = "flywheel-remote"
 const DB_VERSION = 1
 const STORE = "state"
 
+/** The value that the store keeps under each key. */
+interface StoredValues {
+  readonly "device-key": CryptoKeyPair
+  readonly "device-label": string
+  readonly runtimes: readonly PairedRuntime[]
+  readonly selection: RemoteSelection | undefined
+}
+
 function request<T>(target: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     target.addEventListener("success", () => resolve(target.result), { once: true })
@@ -71,16 +79,16 @@ export interface PageDeviceStore extends DeviceStore {
  *  so it never replaces a device or what the app changed since. */
 export async function openDeviceStore(carried?: CarriedDevice): Promise<PageDeviceStore> {
   const db = await openDatabase()
-  const read = async <T>(key: string): Promise<T | undefined> => request<T | undefined>(db.transaction(STORE, "readonly").objectStore(STORE).get(key))
+  const read = async <Key extends keyof StoredValues>(key: Key): Promise<StoredValues[Key] | undefined> => request<StoredValues[Key] | undefined>(db.transaction(STORE, "readonly").objectStore(STORE).get(key))
   // Async so that a synchronous IndexedDB throw, such as on a closed
   // connection, becomes a rejection that a caller which does not await can ignore.
-  const write = async (key: string, value: unknown): Promise<void> => {
+  const write = async <Key extends keyof StoredValues>(key: Key, value: StoredValues[Key]): Promise<void> => {
     const transaction = db.transaction(STORE, "readwrite")
     transaction.objectStore(STORE).put(value, key)
     await committed(transaction)
   }
 
-  let keyPair = await read<CryptoKeyPair>("device-key")
+  let keyPair = await read("device-key")
   if (keyPair === undefined && carried !== undefined) {
     // The key goes last: a launch that stops between the writes finds no key
     // and imports the carry again.
@@ -99,7 +107,7 @@ export async function openDeviceStore(carried?: CarriedDevice): Promise<PageDevi
     await write("device-key", keyPair)
   }
   const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey))
-  const storedLabel = await read<string>("device-label")
+  const storedLabel = await read("device-label")
   let label = storedLabel ?? defaultLabel()
   if (storedLabel === undefined) await write("device-label", label)
   const device: DeviceRecord = { keyPair, deviceId: await keyDigest(publicKey), publicKey }
@@ -114,18 +122,18 @@ export async function openDeviceStore(carried?: CarriedDevice): Promise<PageDevi
       await write("device-label", trimmed)
       label = trimmed
     },
-    runtimes: async () => (await read<readonly PairedRuntime[]>("runtimes")) ?? [],
+    runtimes: async () => (await read("runtimes")) ?? [],
     async putRuntime(runtime) {
-      const current = (await read<readonly PairedRuntime[]>("runtimes")) ?? []
+      const current = (await read("runtimes")) ?? []
       await write("runtimes", [...current.filter((existing) => existing.runtimeId !== runtime.runtimeId), runtime])
       const previous = current.find((existing) => existing.runtimeId === runtime.runtimeId)
       for (const listener of runtimeListeners) listener(runtime, previous)
     },
     async removeRuntime(runtimeId) {
-      const current = (await read<readonly PairedRuntime[]>("runtimes")) ?? []
+      const current = (await read("runtimes")) ?? []
       await write("runtimes", current.filter((existing) => existing.runtimeId !== runtimeId))
     },
-    selection: () => read<RemoteSelection>("selection"),
+    selection: () => read("selection"),
     setSelection: (selection) => write("selection", selection),
     onRuntimePut: (listener) => { runtimeListeners.add(listener) },
   }

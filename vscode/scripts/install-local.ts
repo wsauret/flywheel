@@ -17,12 +17,12 @@ import { join, resolve } from "node:path"
 
 const ROOT = resolve(import.meta.dir, "..")
 
-function run(cmd: string[]): void {
+function runOrExit(cmd: string[]): void {
   const result = Bun.spawnSync(cmd, { cwd: ROOT, stdout: "inherit", stderr: "inherit", windowsHide: true })
   if (result.exitCode !== 0) process.exit(result.exitCode ?? 1)
 }
 
-run(["bun", "run", "scripts/package.ts"])
+runOrExit(["bun", "run", "scripts/package.ts"])
 
 const manifest: unknown = await Bun.file(join(ROOT, "package.json")).json()
 if (typeof manifest !== "object" || manifest === null || !("name" in manifest) || typeof manifest.name !== "string" || !("version" in manifest) || typeof manifest.version !== "string") {
@@ -36,6 +36,6 @@ if (!existsSync(join(ROOT, vsix))) {
 
 // `code` from PATH is the user's own VS Code; --force replaces an installed
 // copy of the same version, which a local build always is.
-run(["code", "--install-extension", join(ROOT, vsix), "--force"])
+runOrExit(["code", "--install-extension", join(ROOT, vsix), "--force"])
 
 console.log(`\ninstalled ${vsix}. Reload VS Code windows to pick it up.`)

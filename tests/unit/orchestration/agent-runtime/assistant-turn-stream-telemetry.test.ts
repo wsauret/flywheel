@@ -143,7 +143,7 @@ describe("streamAssistantTurn telemetry", () => {
     let published = false
     const writer = {
       ...recordingAudit().writer,
-      recordStreamEvent(_handle: unknown, event: { kind: string }) {
+      recordStreamEvent(...[, event]: Parameters<ProviderRequestAuditWriter["recordStreamEvent"]>) {
         if (event.kind !== "tool_input_start") return
         telemetryEntered.resolve()
         return release.promise

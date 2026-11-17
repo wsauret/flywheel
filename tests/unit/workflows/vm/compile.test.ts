@@ -178,6 +178,7 @@ describe("workflow VM compiler", () => {
   });
 
   it("sizes a list after an each repeat by every round of the repeat, and refuses one whose rounds have no bound", () => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: authored workflow output fields, invalid on purpose
     const phases = (sourceItems: unknown) => [
       { phase: "source", ...record("source", { output: { summary: "The items.", fields: { items: sourceItems } } }) },
       { repeat: { each: "source.items" }, phases: [{ phase: "work", ...record("work", { output: { summary: "The files.", fields: { files: listField(2) } } }) }] },

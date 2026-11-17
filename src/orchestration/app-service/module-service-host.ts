@@ -120,7 +120,7 @@ export interface AccountModuleService {
   dispose(): Promise<void>
 }
 
-export type AccountModuleRequestServer = (request: AccountModuleRequest, answer: (payload: unknown) => Promise<void>, withdrawn: AbortSignal) => Promise<void>
+export type AccountModuleRequestServer = (request: AccountModuleRequest, answer: (payload: Schema.Json) => Promise<void>, withdrawn: AbortSignal) => Promise<void>
 
 /** The configuration values an account service's constructor reads. */
 export type AccountModuleServiceInputs = Schema.Json
@@ -198,7 +198,7 @@ export function createAccountModuleServiceOwner<Runtime extends { dispose(): Pro
     /** Serves a `module` attach through the request server of `module`'s
      *  live account service. Rejects with the reason the client prints when
      *  the module is off for the account or its service could not start. */
-    async serveRequest(module: string, request: AccountModuleRequest, answer: (payload: unknown) => Promise<void>, withdrawn: AbortSignal): Promise<void> {
+    async serveRequest(module: string, request: AccountModuleRequest, answer: (payload: Schema.Json) => Promise<void>, withdrawn: AbortSignal): Promise<void> {
       const entry = [...entries.values()].find((candidate) => candidate.module === module && (candidate.kind === "failed" || candidate.service.serveRequest !== undefined))
       if (entry?.kind === "failed") throw new Error(`The ${module} module's account service could not start: ${errorMessage(entry.error)}`)
       if (entry?.service.serveRequest === undefined) throw new Error(`The ${module} module is off for this account.`)

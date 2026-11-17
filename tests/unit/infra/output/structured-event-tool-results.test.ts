@@ -22,6 +22,7 @@ function resolveTrackedToolResult(
   toolUseId: string,
   outcome: ToolOutcome,
   rawContent?: LlmToolOutputPart[],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: tool result details, which the resolver receives as unknown
   details?: unknown,
   executionOutputTail?: string,
 ): void {
@@ -79,6 +80,7 @@ describe("resolveTrackedToolResult", () => {
 
   // PI-AGENT-131: the result, never the empty input, says that a call read its tool's contract.
   it("presents a call as a read of its tool's contract only when its ok result states it", () => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: tool result details, which the resolver receives as unknown
     const settle = (toolName: string, outcome: ToolOutcome, details?: unknown) => {
       const builder = new StructuredOutputBuilder();
       builder.pushStandaloneToolEntry({ kind: "tool", id: "call", name: toolName, presentation: { name: "Neutral", detail: "" }, timestamp: Date.now(), status: "pending" });

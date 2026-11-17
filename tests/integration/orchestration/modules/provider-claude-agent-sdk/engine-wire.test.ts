@@ -55,6 +55,7 @@ function wireArray(value: unknown): readonly WireValue[] {
  *  directory named the same in every case. */
 function cachedBytes(request: RecordedRequest, projectRoot: string): string {
   // The directory is matched as JSON writes it, because a Windows path holds backslashes, which JSON escapes.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: each JSON value that JSON.stringify visits
   return JSON.stringify(request.body["messages"], (key, value: unknown) => key === "cache_control" ? undefined : value).replaceAll(JSON.stringify(projectRoot).slice(1, -1), "<project>");
 }
 

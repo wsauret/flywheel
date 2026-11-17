@@ -101,7 +101,7 @@ export function parseBashResultDetails(value: unknown): HistoricalBashResultDeta
  *  attempt whose handoff check reads command evidence. The model copies this id into the
  *  handoff's command records, and the check finds the call by it. Empty for every other call. */
 function handoffCommandCitation(context: ToolContext, details: unknown): string {
-  return context.handoff?.readCommandEvidence && context.toolUseId && parseBashResultDetails(details ?? {}).exitCode !== undefined
+  return context.handoff?.readCommandEvidence && context.toolUseId && details !== undefined && parseBashResultDetails(details).exitCode !== undefined
     ? `\n\n[toolUseId: ${context.toolUseId}]`
     : "";
 }

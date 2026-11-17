@@ -16,7 +16,7 @@ export interface ScrollBoxLayoutHookHandlers {
 
 /** Sets an own property over a method of `scroll`; the returned function puts
  *  back what was there, so patches stacked on one box unwind in turn. */
-function override(scroll: ScrollBoxRenderable, key: "onUpdate" | "add", value: unknown): () => void {
+function override(scroll: ScrollBoxRenderable, key: "onUpdate" | "add", value: ((deltaTime: number) => void) | ScrollBoxRenderable["add"]): () => void {
   const prior = Object.getOwnPropertyDescriptor(scroll, key)
   Reflect.set(scroll, key, value)
   return () => { if (prior) Object.defineProperty(scroll, key, prior); else Reflect.deleteProperty(scroll, key) }

@@ -26,6 +26,7 @@ export function createInternalProcessSubchannel(
   parent: InternalProcessEndpoint<unknown, unknown>,
   channel: InternalProcessSubchannelId,
 ): InternalProcessEndpoint<unknown, unknown> {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a message from the peer process over the shared transport, which each borrower decodes
   const messages = new Set<(message: unknown) => void | Promise<void>>()
   const closes = new Set<(reason: Error) => void>()
   const closed = Promise.withResolvers<void>()

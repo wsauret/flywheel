@@ -71,6 +71,7 @@ describe("conversation checkpoint tools", () => {
   it("saves a design intent without an approval as a draft that no child inherits", async () => {
     const { root, owner, plan } = fixture();
     const tools = (await plan()).tools;
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: model-written tool input, in several shapes on purpose
     const run = (value: unknown) => executePreparedTool(prepareToolCall({ id: "replace", name: "checkpoint_replace", input: { section: "designIntent", value } }, tools, admitEveryTool), makeContext({ executionCwd: root }));
     // A design intent sent as JSON text is read as its object, not saved as that text.
     for (const value of [{ text: "Draft the plan." }, "Draft the plan.", JSON.stringify({ text: "Draft the plan." })]) {

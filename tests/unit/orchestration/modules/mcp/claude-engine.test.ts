@@ -32,6 +32,7 @@ function fakeEngine(behaviors: { readonly [url: string]: ServerBehavior }) {
   let launches = 0;
   let closes = 0;
   let current: { readonly [name: string]: EngineServerConfig } = {};
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the MCP tool arguments that the Claude engine sends
   let answer: (tool: string, args: unknown, signal: AbortSignal | undefined) => Promise<EngineAnswer> = async () => ({ content: [{ type: "text", text: "ok" }] });
   let authenticate: (server: string) => Promise<{ readonly authUrl: string; readonly callbackPort?: number }> = async () => ({ authUrl: "https://identity.example/authorize", callbackPort: 3118 });
   const ended = Promise.withResolvers<void>();

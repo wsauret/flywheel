@@ -382,6 +382,7 @@ describe("subscription usage provider readers", () => {
 
   test("preserves distinct ChatGPT prepaid entitlements without inventing values or consent", async () => {
     const fresh = async (): Promise<StoredTokens> => ({ accessToken: Redacted.make("secret"), refreshToken: undefined, expiresAtMs: Date.now() + 60_000 });
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: ChatGPT usage API fields, in several shapes on purpose
     const read = async (credits: unknown, spendControl?: unknown) => createChatGPTUsageReader(async () => new Response(JSON.stringify({ plan_type: "pro", rate_limit: null, credits, ...(spendControl === undefined ? {} : { spend_control: spendControl }) })), fresh)(context({ providerId: "chatgpt" }));
 
     const empty = await read({ has_credits: false, unlimited: false, balance: null });

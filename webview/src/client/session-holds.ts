@@ -53,6 +53,7 @@ export function createResidentHolds(deps: {
   /** The passive details that visible child cards hold. Their rows stay
    *  current, but no runner of theirs is opened. */
   readonly passiveDetails: () => readonly string[]
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
 }): ResidentHolds {
   const keeper = createOpenSessionKeeper({

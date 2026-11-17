@@ -41,6 +41,7 @@ interface SlashCommand {
 /** What the app can ask the composer to do from outside it. */
 export interface ComposerHandle {
   capture(): ComposerCheckpoint
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a composer checkpoint that a previous page load saved in browser or editor storage
   adopt(checkpoint: unknown): void
   settled(): Promise<void>
   focus(): void

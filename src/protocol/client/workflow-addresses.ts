@@ -148,10 +148,11 @@ export function resolveWorkflowTargets(view: View, targets: readonly string[], c
   const resolved: WorkflowAddress[] = []
   for (const target of targets) {
     const named = addresses.filter((address) => address.target === target)
+    if (named.length === 0) return { ok: false, reason: valid.length === 0 ? "none" : "unknown", target, valid }
     const open = named.filter(({ finished }) => !finished)
     const [match] = open
-    const refusal = valid.length === 0 && named.length === 0 ? "none" : named.length === 0 ? "unknown" : open.length > 1 ? "ambiguous" : match === undefined ? "finished" : undefined
-    if (refusal !== undefined || match === undefined) return { ok: false, reason: refusal ?? "finished", target, valid }
+    if (open.length > 1) return { ok: false, reason: "ambiguous", target, valid }
+    if (match === undefined) return { ok: false, reason: "finished", target, valid }
     if (!resolved.includes(match)) resolved.push(match)
   }
   return { ok: true, addresses: resolved }

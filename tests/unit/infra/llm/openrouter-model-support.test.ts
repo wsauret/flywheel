@@ -49,6 +49,7 @@ describe("OpenRouter catalog resolution", () => {
       supported_parameters: ["tools", "temperature"],
       architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
     };
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a catalog row as the OpenRouter API returns it
     const listable = (row: unknown) => {
       const decoded = canonicalizeOpenRouterCatalogRow(row);
       return decoded !== undefined && isListableRoute({ ...decoded, dataUse: "standard" });

@@ -603,6 +603,7 @@ describe("StreamingToolInputs row derivation", () => {
       const at = typeof value === "number" ? value : 0;
       return at < 0 ? Math.max(0, size + at) : Math.min(at, size);
     };
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the receiver of a spied built-in method
     const meters: { readonly spy: MeteredSpy; readonly cost: (self: unknown, args: readonly unknown[]) => number }[] = [
       { spy: spyOn(String.prototype, "charAt"), cost: () => 1 },
       { spy: spyOn(String.prototype, "charCodeAt"), cost: () => 1 },

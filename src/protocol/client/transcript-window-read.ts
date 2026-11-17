@@ -12,6 +12,7 @@ export async function readTranscriptWindow(options: {
   readonly waitForLane: (lane: number) => Promise<void>
   readonly backoff: BackoffOptions
   readonly maxAttempts: number
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
 }): Promise<{ readonly snapshot: OutputWindowSnapshot } | { readonly failure: TranscriptUnavailable } | undefined> {
   for (let attempt = 0; ; attempt += 1) {

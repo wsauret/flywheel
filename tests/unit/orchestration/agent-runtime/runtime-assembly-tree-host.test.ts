@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { Effect, Exit, Scope } from "effect"
-import type { ConversationMessage, ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import type { ContentBlock, ConversationMessage, ProviderSessionLifetime } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { AgentLoopOptions } from "../../../../src/orchestration/agent-runtime/agent-loop-types.js"
 import { seedAgentLoopTurn } from "../../../../src/orchestration/agent-runtime/agent-loop-history.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
@@ -139,7 +139,7 @@ describe("tree-hosted tool notice", () => {
 
     // The life's echo and reply debt read the task, never the notice that follows it.
     const echoed: unknown[] = []
-    const seed = { seed: first.seed, instruction: null, pushUser: () => undefined, onUserMessage: (content: unknown) => { echoed.push(content) } }
+    const seed = { seed: first.seed, instruction: null, pushUser: () => undefined, onUserMessage: (content: string | ContentBlock[]) => { echoed.push(content) } }
     expect(await seedAgentLoopTurn({ ...seed, messages: seeded(first) })).toBe(false)
     expect(echoed).toEqual(["task"])
     expect(await seedAgentLoopTurn({ ...seed, messages: [{ kind: "user", content: "hello", origin: "human" }, notice.message] })).toBe(true)

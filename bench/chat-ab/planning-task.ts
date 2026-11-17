@@ -55,6 +55,7 @@ const TaskSchema = Schema.Struct({
   sandbox: Schema.Unknown,
 });
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the parsed manifest.json file of a planning task
 function parseManifest(value: unknown, context: string): PlanningManifest {
   const object = objectValue(value, context);
   const unknown = Object.keys(object).filter((key) => key !== "mustAddress" && key !== "falsePremises");

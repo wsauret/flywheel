@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { InFlightRecord, InFlightWrite, StoredFact } from "../../../infra/event-store-types.js"
+import type { InFlightRecord, InFlightWrite, StoredFact, InFlightPayload } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import { createOrderedLane } from "../../../infra/ordered-lane.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
@@ -134,7 +134,7 @@ type ListInFlight = (kinds: readonly string[]) => Promise<readonly InFlightRecor
 
 interface ExperimentOperationDependencies {
   readonly listInFlight: ListInFlight
-  readonly putInFlight: (kind: string, key: string, payload: unknown) => Promise<void>
+  readonly putInFlight: (kind: string, key: string, payload: InFlightPayload) => Promise<void>
   /** The runner's `SessionFactWriter.record`: `null` means nothing was written. */
   readonly record: (fact: ExperimentFact, inFlight?: readonly InFlightWrite[]) => Promise<StoredFact | null>
 }

@@ -148,6 +148,7 @@ describe("the host gate", () => {
     const server = serveHostGate({ serve: (path, body) => { paths.push(path); return host.serve(path, body); } });
     try {
       expect(readFileSync(join(server.pluginPath, "hooks/register.js"), "utf8")).toBe(readFileSync(HOOK_SOURCE, "utf8"));
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the hook input and step that the Claude engine passes to a plugin hook
       type Handler = ($: unknown, e: { readonly turnId: string; readonly index: number; readonly messageCount: number; readonly agentId: string }, send: (step: unknown) => AsyncGenerator<unknown, unknown>) => AsyncGenerator<unknown, unknown>;
       const hooks = new Map<string, Handler>();
       const plugin: { register(on: (event: string, handler: Handler) => { catch(handler: Handler): void }): void } = await import(join(server.pluginPath, "hooks/register.js"));

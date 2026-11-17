@@ -20,7 +20,7 @@ import type { LauncherContext } from "../infra/process-supervisor.js"
 import type { ProjectStateStandby } from "../orchestration/app-service/project-state-standby.js"
 import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/modules.js"
 import type { CliVerbSummary, CommandProcessResources } from "../orchestration/cli-contribution.js"
-import type { AccountModuleRequest } from "../protocol/account-attach.js"
+import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/account-attach.js"
 
 export type SubcommandDispatch = (args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, resources: CommandProcessResources) => void | Promise<void>
 
@@ -250,7 +250,7 @@ function moduleNounDispatch(noun: InstalledCliNoun, catalog: readonly FirstParty
       process.exitCode = 2
       return
     }
-    const accountRequest = async (request: AccountModuleRequest, onAnswer: (answer: unknown) => void): Promise<void> => {
+    const accountRequest = async (request: AccountModuleRequest, onAnswer: AccountModuleAnswerHandler): Promise<void> => {
       const { createAccountRuntimeAttach } = await import("./runtime-attach.js")
       const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
       try {

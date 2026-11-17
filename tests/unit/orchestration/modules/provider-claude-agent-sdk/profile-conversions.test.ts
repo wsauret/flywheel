@@ -30,6 +30,7 @@ interface GlobalConfigExtra {
 
 /** Writes a Claude login of the profile in `authDir`, as the CLI does after Flywheel's login button, and returns its
  *  config directory. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the oauthAccount that the Claude CLI writes, in any shape
 function writeProfileLogin(authDir: string, oauthAccount: unknown, extra: GlobalConfigExtra = {}): string {
   const configDir = join(authDir, LOGIN_ACCOUNTS_DIRECTORY, "a");
   mkdirSync(configDir, { recursive: true });

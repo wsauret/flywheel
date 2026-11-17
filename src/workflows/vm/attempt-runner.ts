@@ -213,6 +213,7 @@ function readReassessment(
   // Each remaining change keeps the place the agent gave it, so an issue of a
   // later pass names the change as the agent sent it.
   let remaining: { readonly change: unknown; readonly sent: number }[] | undefined = Array.isArray(handoff.changes)
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: one change of an agent's delivered handoff, which `decode` reads
     ? handoff.changes.map((change: unknown, sent) => ({ change, sent }))
     : undefined;
   // Each pass leaves out every change that cannot apply. Leaving one out can

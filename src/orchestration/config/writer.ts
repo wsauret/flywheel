@@ -103,7 +103,7 @@ export function retireAuthProfileConfig(profile: string, successorId: string, op
 /** Materialize seeded defaults and migrate exact retired seed values. */
 export function seedConfigDefaults(options: UpdateModelSelectionOptions): ConfigWriteResult {
   return updateConfigText((source) => {
-    const parsed: unknown = source.length > 0 ? Bun.TOML.parse(source) : {};
+    const parsed: ParsedToml = source.length > 0 ? Bun.TOML.parse(source) : {};
     const seededModules = installedConfigSections().reduce((next, section) => (section.seeds ?? []).reduce((text, seed) => {
       const path = [section.key, seed.key];
       const authored = configValueAtPath(parsed, path);
@@ -128,7 +128,7 @@ export function migrateModelAssignments(options: UpdateModelSelectionOptions): C
 
 
 function patchModelMigrations(source: string): string {
-  const parsed: unknown = source.length > 0 ? Bun.TOML.parse(source) : {};
+  const parsed: ParsedToml = source.length > 0 ? Bun.TOML.parse(source) : {};
   if (!isRecord(parsed)) throw new ConfigWriteError("flywheel.toml must contain a TOML table");
   return modelAssignmentPaths(parsed).reduce((next, { path, model }) => {
     const canonical = migrateModelId(model);
@@ -166,7 +166,7 @@ export async function migrateLegacyModelSpellings(options: UpdateModelSelectionO
   if (![...current.values()].some((model) => model !== undefined)) return { ok: true, rewritten: false };
   let rewritten = false;
   const result = await updateConfigTextAwaited((source) => {
-    const parsed: unknown = source.length > 0 ? Bun.TOML.parse(source) : {};
+    const parsed: ParsedToml = source.length > 0 ? Bun.TOML.parse(source) : {};
     if (!isRecord(parsed)) throw new ConfigWriteError("flywheel.toml must contain a TOML table");
     const next = modelAssignmentPaths(parsed).reduce((text, { path, model }) => {
       const target = renamed(model);
@@ -193,7 +193,7 @@ function roleTables(config: UnknownObject): Array<{ readonly path: readonly stri
   return tables;
 }
 
-function hasConfigPath(parsed: unknown, path: readonly string[]): boolean {
+function hasConfigPath(parsed: ParsedToml, path: readonly string[]): boolean {
   let node: unknown = parsed;
   for (const segment of path.slice(0, -1)) {
     if (!isRecord(node)) return false;
@@ -203,8 +203,8 @@ function hasConfigPath(parsed: unknown, path: readonly string[]): boolean {
   return field !== undefined && isRecord(node) && field in node;
 }
 
-function configValueAtPath(config: unknown, path: readonly string[]): TomlValue | undefined {
-  let value = config;
+function configValueAtPath(config: ParsedToml, path: readonly string[]): TomlValue | undefined {
+  let value: unknown = config;
   for (const segment of path) {
     if (!isRecord(value)) return undefined;
     value = value[segment === "disabled_modules" ? "modules" : segment];
@@ -516,7 +516,7 @@ export function patchProfileProviderSetting(source: string, profileId: string, p
  *  The retired root spelling `false` means off, which profiles spell 0. */
 export function migrateRootProviderSettings(profileIds: readonly string[], options: UpdateModelSelectionOptions): ConfigWriteResult {
   return updateConfigText((source) => {
-    const parsed: unknown = source.length === 0 ? {} : Bun.TOML.parse(source);
+    const parsed: ParsedToml = source.length === 0 ? {} : Bun.TOML.parse(source);
     const providers = isRecord(parsed) ? parsed.providers : undefined;
     if (!isRecord(providers)) return source;
     let next = source;
@@ -562,7 +562,7 @@ function patchAuthProjectProfile(source: string, projectRoot: string, expected: 
 
 /** The profile id that `source` binds to `projectRoot`, if any. */
 function projectBinding(source: string, projectRoot: string): string | undefined {
-  const parsed: unknown = source.length === 0 ? {} : Bun.TOML.parse(source);
+  const parsed: ParsedToml = source.length === 0 ? {} : Bun.TOML.parse(source);
   const auth = isRecord(parsed) ? parsed.auth : undefined;
   const bindings = isRecord(auth) ? auth.project_profiles : undefined;
   const bound = isRecord(bindings) ? bindings[projectRoot] : undefined;
@@ -570,7 +570,7 @@ function projectBinding(source: string, projectRoot: string): string | undefined
 }
 
 function patchAuthProjectProfileBindings(source: string, profile: string, successorId: string): string {
-  const parsed: unknown = source.length === 0 ? {} : Bun.TOML.parse(source);
+  const parsed: ParsedToml = source.length === 0 ? {} : Bun.TOML.parse(source);
   const auth = isRecord(parsed) ? parsed.auth : undefined;
   const bindings = isRecord(auth) ? auth.project_profiles : undefined;
   if (!isRecord(bindings)) return source;
@@ -593,6 +593,9 @@ function escapeRegex(value: string): string {
 type TomlScalar = string | number | boolean;
 
 /** Every value these writers publish. Lists stay on one line so repeated setting changes do not move unrelated bytes. */
+/** A TOML document as `Bun.TOML.parse` returns it. */
+type ParsedToml = ReturnType<typeof Bun.TOML.parse>
+
 type TomlValue = TomlScalar | readonly (string | number)[];
 
 function isTomlValue(value: unknown): value is TomlValue {

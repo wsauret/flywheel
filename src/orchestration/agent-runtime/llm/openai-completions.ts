@@ -16,6 +16,7 @@
 
 import OpenAI from "openai";
 import type { ChatCompletionCreateParamsStreaming, ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions.js";
+import type { CompletionUsage } from "openai/resources/completions.js";
 import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
@@ -359,7 +360,7 @@ export async function createOpenAIChatCompletionsAdapter(
     availability?: ProviderAvailability;
     /** Reads the amount in USD that the provider's own usage report states as charged for the request, for a
      *  provider that states one; undefined when the report states none. */
-    reportedChargeUsd?: (usage: unknown) => number | undefined;
+    reportedChargeUsd?: (usage: CompletionUsage) => number | undefined;
   },
 ): Promise<ConnectedClient & { withModelInfo(info: ModelInfo, providerOutputCap?: number): LLMClient }> {
   const accessProvider = overrides?.accessProvider ?? "openai_api";

@@ -109,7 +109,7 @@ describe("usage authority lifecycle", () => {
     })
     const settlement = createSessionUsageSettlement(session.options)
     await settlement.checkpoint(draft)
-    const pending = mode === "settle" ? settlement.settle(entry.attemptId, { served: true }) : createSessionUsageSettlement(session.options).recover(session.cells()[0]?.payload)
+    const pending = mode === "settle" ? settlement.settle(entry.attemptId, { served: true }) : createSessionUsageSettlement(session.options).recover(session.cells()[0]?.payload ?? {})
     try {
       await acquired.promise
       const generation = resident.service.generation()?.generation

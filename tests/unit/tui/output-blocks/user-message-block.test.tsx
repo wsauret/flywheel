@@ -270,6 +270,7 @@ describe("sent image previews", () => {
       const writes: string[] = []
       for (const property of ["maxHeight", "marginBottom", "opacity"] as const) {
         const descriptor = Object.getOwnPropertyDescriptor(Renderable.prototype, property)!
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the value that a Renderable property setter receives
         Object.defineProperty(clip, property, { ...descriptor, get() { return descriptor.get?.call(this) }, set(value: unknown) {
           writes.push(property)
           descriptor.set!.call(this, value)

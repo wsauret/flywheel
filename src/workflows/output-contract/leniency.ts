@@ -40,6 +40,7 @@ function walkRecord(
   fields: FieldMap,
   record: UnknownRecord,
   at: string,
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: one value of an agent's delivered handoff, which `keep` judges against its declared field
   keep: (key: string, field: Field | undefined, value: unknown, path: string) => boolean,
 ): UnknownRecord {
   const result: UnknownRecord = {};

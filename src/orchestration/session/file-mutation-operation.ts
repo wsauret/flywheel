@@ -49,7 +49,7 @@ export interface FileMutationOperationCell {
 }
 
 /** The immutable root is the generation. Exact-header CAS binds progress to its plan. */
-export interface FileMutationOperationHeader {
+export type FileMutationOperationHeader = {
   readonly version: 3
   readonly operationId: string
   readonly plan: SessionContentManifestReference
@@ -57,7 +57,7 @@ export interface FileMutationOperationHeader {
 }
 
 export function parseFileMutationOperationHeader(value: unknown): FileMutationOperationHeader {
-  if (!record(value) || value.version !== 3 || typeof value.operationId !== "string" || !value.operationId
+  if (!isRecord(value) || value.version !== 3 || typeof value.operationId !== "string" || !value.operationId
     || !integer(value.cursor) || "items" in value) throw new Error("Invalid file mutation operation header")
   const plan = Schema.decodeUnknownSync(SessionContentManifestReferenceSchema, { onExcessProperty: "error" })(value.plan)
   if (plan.entries === 0 || value.cursor >= plan.entries) throw new Error("Invalid file mutation operation cursor")
@@ -132,7 +132,7 @@ export function operationCellSwap(
 /** Strict decoder for historical inline operation cells. Call only at the reviewed
  * recovery boundary; malformed or newer cells remain stored unchanged. */
 export function parseFileMutationOperationCell(value: unknown): FileMutationOperationCell {
-  if (!record(value) || (value.version !== 1 && value.version !== 2 && value.version !== 3) || typeof value.operationId !== "string" || value.operationId.length === 0
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2 && value.version !== 3) || typeof value.operationId !== "string" || value.operationId.length === 0
     || !integer(value.cursor) || !Array.isArray(value.items)) {
     throw new Error("Invalid file mutation operation cell")
   }
@@ -144,9 +144,9 @@ export function parseFileMutationOperationCell(value: unknown): FileMutationOper
 }
 
 function parseItem(value: unknown, version: 1 | 2 | 3): FileMutationOperationItem {
-  if (!record(value)) throw new Error("Invalid file mutation operation item")
+  if (!isRecord(value)) throw new Error("Invalid file mutation operation item")
   if (version === 3 && value.mutationDiff !== undefined) throw new Error("Current file mutation cells cannot contain inline evidence")
-  const fact = parseFileMutationFact({ type: "file.mutation.prepared", version: version === 3 ? (record(value.evidence) && "origin" in value.evidence ? 2 : 1) : version, actor: "flywheel", payload: value.evidence })
+  const fact = parseFileMutationFact({ type: "file.mutation.prepared", version: version === 3 ? (isRecord(value.evidence) && "origin" in value.evidence ? 2 : 1) : version, actor: "flywheel", payload: value.evidence })
   if (fact.type !== "file.mutation.prepared") throw new Error("Invalid file mutation evidence")
   const candidateEvidence = value.candidateEvidence === undefined ? undefined
     : Schema.decodeUnknownSync(MutationFileEvidenceSchema, { onExcessProperty: "error" })(value.candidateEvidence)
@@ -166,14 +166,14 @@ function parseItem(value: unknown, version: 1 | 2 | 3): FileMutationOperationIte
 
 function parsePrecondition(value: unknown): FilePreconditionProof | null {
   if (value === null) return null
-  if (record(value) && value.kind === "absent") return { kind: "absent" }
+  if (isRecord(value) && value.kind === "absent") return { kind: "absent" }
   return parseObjectProof(value)
 }
 
 function parsePostcondition(value: unknown): FilePostconditionProof | null {
   if (value === null) return null
-  if (record(value) && value.kind === "absent") return { kind: "absent" }
-  if (!record(value) || !record(value.identity) || value.identity.kind !== "new") {
+  if (isRecord(value) && value.kind === "absent") return { kind: "absent" }
+  if (!isRecord(value) || !isRecord(value.identity) || value.identity.kind !== "new") {
     throw new Error("Invalid file mutation postcondition")
   }
   const replaced = value.identity.replaced
@@ -187,7 +187,7 @@ function parsePostcondition(value: unknown): FilePostconditionProof | null {
 
 
 function parseObjectProof(value: unknown): FileObjectProof {
-  if (!record(value) || typeof value.identity !== "string") throw new Error("Invalid file object proof")
+  if (!isRecord(value) || typeof value.identity !== "string") throw new Error("Invalid file object proof")
   return {
     ...parseFileProof(value),
     identity: value.identity,
@@ -196,7 +196,7 @@ function parseObjectProof(value: unknown): FileObjectProof {
 }
 
 function parseFileProof(value: unknown): Omit<FileObjectProof, "identity" | "access"> {
-  if (!record(value) || value.kind !== "file" || !integer(value.bytes)
+  if (!isRecord(value) || value.kind !== "file" || !integer(value.bytes)
     || typeof value.sha256 !== "string" || value.sha256.length !== 64
     || !integer(value.linkCount) || typeof value.executable !== "boolean") {
     throw new Error("Invalid file object proof")
@@ -240,7 +240,7 @@ export function snapshotToFileObjectProof(snapshot: ContainedFileSnapshot): File
   }
 }
 
-function record(value: unknown): value is { [key: string]: unknown } {
+function isRecord(value: unknown): value is { [key: string]: unknown } {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 

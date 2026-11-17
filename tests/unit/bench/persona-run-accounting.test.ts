@@ -3,7 +3,7 @@ import { composeFirstPartyModules } from "../../../src/orchestration/modules.js"
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js";
-import type { AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
+import type { Agent, AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
 import {
   PersonaTaskFailure,
   runPersonaTask,
@@ -142,7 +142,7 @@ describe("direct persona timeout", () => {
 });
 
 interface FakeRunner {
-  send: (input: unknown) => void;
+  send: Agent["send"];
   abort: () => void;
   done: Promise<Pick<AgentRunResult, "terminal">>;
 }

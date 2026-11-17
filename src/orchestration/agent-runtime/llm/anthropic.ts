@@ -46,7 +46,7 @@ import { anthropicContentRefusal, type PreparedBlockLocation } from "./anthropic
 import type { BlockOrigins } from "./conversions/anthropic-messages.js";
 import { anthropicProviderMetadata } from "./anthropic-provider-metadata.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
-import { STREAM_IDLE_TIMEOUT_PATIENT_MS, throwIfLivenessFailure } from "./stream-liveness.js";
+import { STREAM_IDLE_TIMEOUT_PATIENT_MS, throwIfLivenessFailure, type StreamLivenessOptions } from "./stream-liveness.js";
 import { sendStreamingRequest, timingFetch } from "./request-timing.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
 import { ensureEventLoopLagSampler } from "../../../infra/event-loop-lag.js";
@@ -288,6 +288,8 @@ export async function createAnthropicAdapter(
      *  account holds back every request until its stated reset. An adapter
      *  built outside the composition root records none. */
     availability?: ProviderAvailability;
+    /** The clock of the stream deadline (default: monotonic time and real timers). A deadline test injects a
+     *  controlled clock. */ livenessClock?: StreamLivenessOptions["clock"];
   },
 ): Promise<ConnectedClient> {
   // SDK 1.x sends `apiKey` as `Authorization: Bearer`; OpenCode Go rejects that with a 401, so the key keeps its
@@ -354,6 +356,7 @@ export async function createAnthropicAdapter(
             idleTimeoutMs: STREAM_IDLE_TIMEOUT_PATIENT_MS,
             stallThresholds: ANTHROPIC_STALL_THRESHOLDS,
             timeoutMessage: () => "Anthropic stream idle timeout",
+            ...(overrides?.livenessClock === undefined ? {} : { clock: overrides.livenessClock }),
           });
 
           // Usage state lives above the try so the catch can report what a failed
@@ -364,7 +367,7 @@ export async function createAnthropicAdapter(
           const usageEvent = () => anthropicUsageEvent(usage);
           // The failure that `surfaced` (today's classification of the provider's error) becomes, typed as a content
           // refusal when the provider refused the conversation's content.
-          const failure = (surfaced: Error, body: unknown) => normalizeProviderAttemptFailure(anthropicContentRefusal(surfaced, body, {
+          const failure = (surfaced: Error, cause: unknown) => normalizeProviderAttemptFailure(anthropicContentRefusal(surfaced, cause, {
             wireMessages: descriptor.params.messages, canonicalMessages: options.messages, wireIds: descriptor.wireIds, wireOrigins: descriptor.origins, supportsImages: supportsImageInput(info), preparedBlock: operations.preparedBlock,
           }));
           // The failure for an error that the SDK throws: a context overflow first, then the provider's classification.

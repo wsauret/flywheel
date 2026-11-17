@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type InFlightPayload } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createUsageAuthority, UsageEntryConflictError } from "../../../../src/infra/llm/usage-authority.js"
 import type { MeasuredUsageEntry, UsageEntry } from "../../../../src/infra/llm/usage-entry.js"
@@ -99,7 +99,7 @@ function harness(options: {
   return {
     settlement, calls, opened,
     /** Writes a settlement cell as an earlier process left it. */
-    leaveCell: (payload: unknown) => writer.putInFlight!("usage.settlement", entry.attemptId, payload),
+    leaveCell: (payload: InFlightPayload) => writer.putInFlight!("usage.settlement", entry.attemptId, payload),
     cells: () => store.readInFlight("parent", "usage.settlement").map(({ kind, key, payload }) => ({ kind, key, payload })),
     facts: () => store.read({ sessionId: "parent" }),
   }

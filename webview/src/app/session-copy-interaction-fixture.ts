@@ -3,7 +3,7 @@ import { createComponent, createRoot } from "solid-js"
 import type { SessionSummary } from "../client/view-state.js"
 import { fakeClient, fakeClientActions, fakeClientHost, fakeViewState } from "./client-context-fixture.js"
 import { createCommandPanel } from "./command-panel.js"
-import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
+import { createElement, insert, nodes, textContent, type FixtureEvent } from "./render-ownership-host-fixture.js"
 import { useSessionActions } from "./session-actions.js"
 import { SessionList } from "./session-list.js"
 
@@ -68,7 +68,7 @@ export function mountSessionCopyActions(currentSessionId: string | null = sessio
       if (found === undefined) throw new Error("Missing Copy session ID command")
       return found
     }
-    const invoke = (node: ReturnType<typeof find>, property: string, event: unknown): void => {
+    const invoke = (node: ReturnType<typeof find>, property: string, event: FixtureEvent): void => {
       const handler = node.properties[property]
       if (typeof handler !== "function") throw new Error(`Missing ${property} handler`)
       handler(event)

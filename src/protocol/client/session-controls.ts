@@ -207,8 +207,15 @@ export interface WorkflowCardControls {
  *  still waits. */
 export function workflowCardControls(row: ControlRow | undefined, inFlight: boolean, parked: boolean): WorkflowCardControls {
   const admitted = sessionControls(row)
-  const primary = admitted.restart ? "restart" : parked ? (admitted.resume ? "resume" : undefined) : admitted.interrupt ? "interrupt" : admitted.resume ? "resume" : undefined
+  const primary = workflowPrimaryControl(admitted, parked)
   return { ...(primary === undefined ? {} : { primary }), stop: inFlight || admitted.stop }
+}
+
+/** A parked workflow offers Resume, never Interrupt. */
+function workflowPrimaryControl(admitted: SessionControls, parked: boolean): WorkflowControl | undefined {
+  if (admitted.restart) return "restart"
+  if (!parked && admitted.interrupt) return "interrupt"
+  return admitted.resume ? "resume" : undefined
 }
 
 /** Stop is the parent's termination of the tool call this session answers:

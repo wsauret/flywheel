@@ -15,11 +15,12 @@ import { ClientContext } from "./client-context.js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeRuntimeSession, fakeSessionSummary, fakeViewState } from "./client-context-fixture.js"
 import { fakeRuntimeConnection } from "../client/runtime-connection-fixture.js"
 import type { ComposerHandle } from "./composer.js"
+import type { ComposerCheckpoint } from "../client/input-reload-checkpoint.js"
 import { ConversationBody } from "./conversation-body.js"
 import { PersistentPane } from "./persistent-pane.js"
 import type { WorkflowAgentAddress } from "../../../src/protocol/client/workflow-addresses.js"
 import type { WorkflowAgentModel } from "../../../src/protocol/client/workflow-agent.js"
-import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
+import { createElement, insert, nodes, textContent, type FixtureEvent } from "./render-ownership-host-fixture.js"
 
 const settle = async () => {
   for (let turn = 0; turn < 12; turn += 1) await Promise.resolve()
@@ -245,7 +246,7 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
       if (!node) throw new Error("Composer has no send button")
       return node
     }
-    const dispatch = (node: ReturnType<typeof createElement>, name: string, event: unknown) => {
+    const dispatch = (node: ReturnType<typeof createElement>, name: string, event: FixtureEvent) => {
       const handler = node.properties[name]
       if (typeof handler !== "function") throw new Error(`No ${name} handler`)
       handler(event)
@@ -295,7 +296,7 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
         if (!handle || !("capture" in handle) || typeof handle.capture !== "function") throw new Error("Composer cannot capture owned input")
         return handle.capture()
       },
-      adopt: (checkpoint: unknown) => {
+      adopt: (checkpoint: ComposerCheckpoint) => {
         if (!handle || !("adopt" in handle) || typeof handle.adopt !== "function") throw new Error("Composer cannot adopt owned input")
         handle.adopt(checkpoint)
       },

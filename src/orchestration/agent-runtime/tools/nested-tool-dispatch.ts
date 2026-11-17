@@ -44,6 +44,7 @@ interface NestedToolDispatch {
 }
 
 export interface NestedToolDispatchBatch {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
   execute(name: string, input: unknown): Effect.Effect<NestedToolDispatch, PersistenceWriteRefused>;
   /** The names of the registered calls that have no terminal result yet. */
   unsettled(): ReadonlyArray<string>;

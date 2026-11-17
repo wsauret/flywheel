@@ -12,6 +12,7 @@ import { headlessClient } from "../../../webview/src/client/session-host-loader-
 import { selectionConnection } from "../../../webview/src/client/session-selection-fixture.js"
 import { settle } from "../../../webview/src/client/session-connection-fixture.js"
 import type { ComposerCheckpoint } from "../../../webview/src/client/input-reload-checkpoint.js"
+import type { HistoryEntryState } from "../../../webview/src/app/screen-stack.js"
 
 // The fixture compiles under the web client's JSX project, not the root test project.
 const composerFixture = new URL("../../../webview/src/app/composer-submission-loader-fixture.ts", import.meta.url).href
@@ -135,15 +136,15 @@ describe("local browser session address", () => {
 
 /** One browser tab: its entries with their addresses, and the page that the
  *  local host and the client's workflow navigation share. */
-function memoryTab(initialPath: string, state: unknown = null) {
+function memoryTab(initialPath: string, state: HistoryEntryState | null = null) {
   const entries: { state: unknown; path: string }[] = [{ state, path: initialPath }]
   let index = 0
   const listeners = new Set<(event: { readonly state: unknown }) => void>()
   const at = () => entries[index]!
   const history = {
     get state() { return at().state },
-    pushState(next: unknown, _unused: string, url?: string | URL | null) { const path = typeof url === "string" ? url : at().path; entries.splice(++index, entries.length, { state: next, path }) },
-    replaceState(next: unknown, _unused: string, url?: string | URL | null) { entries[index] = { state: next, path: typeof url === "string" ? url : at().path } },
+    pushState(next: HistoryEntryState, _unused: string, url?: string | URL | null) { const path = typeof url === "string" ? url : at().path; entries.splice(++index, entries.length, { state: next, path }) },
+    replaceState(next: HistoryEntryState, _unused: string, url?: string | URL | null) { entries[index] = { state: next, path: typeof url === "string" ? url : at().path } },
   }
   const port: HistoryPort = {
     get state() { return at().state },

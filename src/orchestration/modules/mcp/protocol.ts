@@ -27,22 +27,22 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
       "mcp.setEnabled": async (mutation) => {
         const current = service()
         if (!current) return { ok: false, error: "MCP servers are off" }
-        return manage(() => current.setEnabled(mutation))
+        return runMcpMutation(() => current.setEnabled(mutation))
       },
       "mcp.setClient": async (mutation) => {
         const current = service()
         if (!current) return { ok: false, error: "MCP servers are off" }
-        return manage(() => current.setClient(mutation))
+        return runMcpMutation(() => current.setClient(mutation))
       },
       "mcp.setClaudeAiConnectors": async ({ enabled }) => {
         const current = service()
         if (!current) return { ok: false, error: "MCP servers are off" }
-        return manage(() => current.setClaudeAiConnectors(enabled))
+        return runMcpMutation(() => current.setClaudeAiConnectors(enabled))
       },
       "mcp.remove": async (mutation) => {
         const current = service()
         if (!current) return { ok: false, error: "MCP servers are off" }
-        return manage(() => current.remove(mutation))
+        return runMcpMutation(() => current.remove(mutation))
       },
       "mcp.authenticate": async (mutation) => {
         const current = service()
@@ -88,7 +88,7 @@ function mcpSignInFailure(error: unknown): string {
   return "MCP authentication failed. Try again."
 }
 
-async function manage(operation: () => Promise<ConfigMutationResult>): Promise<McpManagementResult> {
+async function runMcpMutation(operation: () => Promise<ConfigMutationResult>): Promise<McpManagementResult> {
   try {
     const result = await operation()
     const message = mcpMutationMessage(result)

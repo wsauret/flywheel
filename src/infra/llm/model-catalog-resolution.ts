@@ -197,7 +197,8 @@ export function canonicalizeProviderIdCatalogRow(provider: string, row: unknown)
 
 export interface ModelCatalogContribution {
   readonly limits: CatalogLimits;
-  readonly extractRows: (body: unknown) => readonly unknown[];
+  readonly extractRows: (body: CatalogJsonValue) => readonly unknown[];
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: one row of a provider's model-listing response, as `extractRows` returns it
   readonly canonicalize: (row: unknown) => CatalogSourceRow | undefined;
   /** When present, owns models.dev and discovered wire identity. Returning undefined rejects the row. */
   readonly canonicalizeWireId?: (wireModelId: string) => CatalogWireIdentity | undefined;
@@ -369,34 +370,36 @@ export function validateCanonicalRows(rows: readonly unknown[], limits: CatalogL
   return { kind: "valid", rows: Object.freeze(normalized) };
 }
 
+/** The rows that discovery returned, normalized by the shape the discovery delivered them in. */
+function normalizedDiscovery(discovery: CatalogDiscovery, contribution: ModelCatalogContribution): NormalizedCatalog | undefined {
+  switch (discovery.kind) {
+    case "rows": return normalizeCatalogRows(discovery.rows, contribution);
+    case "decoded-rows": return normalizeResolvedCatalogRows(discovery.rows, contribution.limits, contribution.isFreeWire);
+    case "resolved-rows": return validateCanonicalRows(discovery.rows, contribution.limits);
+    default: return undefined;
+  }
+}
+
+function discoveryOutcome(discovery: CatalogDiscovery, live: NormalizedCatalog | undefined, cachedRows: boolean): CatalogLiveOutcome {
+  switch (discovery.kind) {
+    case "not-attempted": return cachedRows ? "valid" : "discovery-failed";
+    case "auth-invalid": return "authentication-invalid";
+    case "failed": return "discovery-failed";
+    default:
+      if (discovery.rows.length === 0) return "empty";
+      return live?.kind === "valid" && live.rows.length > 0 ? "valid" : "unusable";
+  }
+}
+
 export function resolveModelCatalog(options: ResolveModelCatalogOptions): ResolvedModelCatalog {
   if (!options.authenticated) return { kind: "unavailable", reason: "authentication-absent" };
 
   const cachedFirstParty = options.cachedFirstParty === undefined
     ? undefined
     : validateCanonicalRows(options.cachedFirstParty, options.contribution.limits);
-  const live = cachedFirstParty?.kind === "valid"
-    ? cachedFirstParty
-    : options.live.kind === "rows"
-    ? normalizeCatalogRows(options.live.rows, options.contribution)
-    : options.live.kind === "decoded-rows"
-      ? normalizeResolvedCatalogRows(options.live.rows, options.contribution.limits, options.contribution.isFreeWire)
-      : options.live.kind === "resolved-rows"
-        ? validateCanonicalRows(options.live.rows, options.contribution.limits)
-      : undefined;
-  const liveOutcome: CatalogLiveOutcome = cachedFirstParty?.kind === "valid" && cachedFirstParty.rows.length > 0 && options.live.kind === "not-attempted"
-    ? "valid"
-    : options.live.kind === "auth-invalid"
-    ? "authentication-invalid"
-    : options.live.kind === "failed"
-      ? "discovery-failed"
-      : options.live.kind === "not-attempted"
-        ? "discovery-failed"
-        : (options.live.kind === "rows" || options.live.kind === "decoded-rows" || options.live.kind === "resolved-rows") && options.live.rows.length === 0
-          ? "empty"
-          : live?.kind === "valid" && live.rows.length > 0
-            ? "valid"
-            : "unusable";
+  const live = cachedFirstParty?.kind === "valid" ? cachedFirstParty : normalizedDiscovery(options.live, options.contribution);
+  const cachedRows = cachedFirstParty?.kind === "valid" && cachedFirstParty.rows.length > 0;
+  const liveOutcome = discoveryOutcome(options.live, live, cachedRows);
   if (liveOutcome === "authentication-invalid") return { kind: "unavailable", reason: liveOutcome };
 
   const fallback = options.canonicalFallback === undefined

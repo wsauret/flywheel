@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { contentEvidence, previewText, type ContentEvidence } from "../../infra/content-evidence.js"
-import type { InFlightWrite, StoredFact } from "../../infra/event-store-types.js"
+import type { InFlightWrite, StoredFact, InFlightPayload } from "../../infra/event-store-types.js"
 import type { MutationDiff } from "../../infra/mutation-diff.js"
 import { buildMutationFileEvidence, type MutationFileEvidence } from "../../infra/mutation-evidence.js"
 import type { StageSessionContentNodes } from "../../infra/session-content.js"
@@ -21,7 +21,7 @@ export interface FileMutationFactWriter {
   stageSessionContentNodes?: StageSessionContentNodes
   record(fact: FileMutationFact, contentRows?: undefined, inFlight?: readonly InFlightWrite[]): Promise<StoredFact | null>
   transaction(fn: () => void): Promise<void>
-  swapInFlight?(kind: string, key: string, expectedRaw: string | null, payload: unknown | null): Promise<boolean>
+  swapInFlight?(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
 }
 
 /** The in-flight kind a prepared mutation is held under. */

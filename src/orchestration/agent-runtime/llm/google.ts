@@ -121,8 +121,8 @@ export async function createGoogleAdapter(
         // `abortSignal` is added inside the attempt so its lifetime is explicit.
         const baseConfig: GenerateContentConfig = {
           maxOutputTokens: info.outputLimit,
-          ...(systemPrompt && { systemInstruction: sanitizeSurrogates(systemPrompt) }),
-          ...(options.tools.length > 0 && { tools: convertTools(options.tools, adapter.toolPresentation) }),
+          ...(systemPrompt ? { systemInstruction: sanitizeSurrogates(systemPrompt) } : {}),
+          ...(options.tools.length > 0 ? { tools: convertTools(options.tools, adapter.toolPresentation) } : {}),
           ...(typeof googleOpts?.temperature === "number" ? { temperature: googleOpts.temperature } : {}),
           ...(toolChoice ? { toolConfig: toolChoice } : {}),
         };

@@ -533,7 +533,7 @@ export class OutputToolProjector {
       action: contract.action,
       timestamp,
       status: contract.isOptimistic ? "completed" : "pending",
-      ...(rawPath && { linkUri: toFileUri(rawPath, this.executionCwd) }),
+      ...(rawPath ? { linkUri: toFileUri(rawPath, this.executionCwd) } : {}),
       ...fileProposalFields(contract, input, this.executionCwd),
     };
     this.builder.pushStandaloneToolEntry(tool);

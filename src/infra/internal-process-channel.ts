@@ -42,6 +42,7 @@ export interface InternalProcessChannelLimits {
  *  message. Splitting at this layer is what lets callers send a message of any
  *  size up to `maxMessageBytes` without knowing the wire's frame size. */
 function encodeInternalProcessFrames(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: msgpack encodes any Outgoing message of the endpoint
   message: unknown,
   maxFrameBytes = DEFAULT_MAX_FRAME_BYTES,
   maxMessageBytes = DEFAULT_MAX_MESSAGE_BYTES,

@@ -1,7 +1,9 @@
+import type { JsonValue } from "../auth/bounded-json.js";
+
 type JsonObject = { [key in string]: unknown };
 interface DecodedStringFields { [key: string]: string }
 type ParsedSkippedValue =
-  | { readonly status: "parsed"; readonly value: unknown }
+  | { readonly status: "parsed"; readonly value: JsonValue }
   | { readonly status: "failed" };
 export const MAX_STREAMING_TOOL_INPUT_BYTES = 4 * 1024 * 1024;
 
@@ -348,7 +350,7 @@ export class TopLevelJsonStringDecoder {
     return false;
   }
 
-  private consumeSkippedValue(char: string, complete: (value: unknown) => void): void {
+  private consumeSkippedValue(char: string, complete: (value: JsonValue) => void): void {
     if (this.skipStack.length === 0 && (char === "," || char === "}")) {
       const parsed = this.parseSkippedValue();
       if (parsed.status === "failed") {

@@ -48,7 +48,7 @@ interface Node {
   /** Selects a field's text, as an input that opens for editing asks; records the request under `properties.textSelected`. */
   select(): void
   /** The one DOM method components call on a ref; records the request under `properties.scrolledIntoView`. */
-  scrollIntoView(options: unknown): void
+  scrollIntoView(options?: boolean | ScrollIntoViewOptions): void
   scrollTo(options: { top: number }): void
   remove(): void
   replaceChildren(): void
@@ -63,27 +63,30 @@ interface Node {
   addEventListener(type: string, listener: () => void): void
   removeEventListener(type: string, listener: () => void): void
   /** Calls each listener of `type` with `event`, such as a touch event's `{ touches }`. */
-  dispatch(type: string, event?: unknown): void
+  dispatch(type: string, event?: FixtureEvent): void
 }
 
 let frameId = 0
 const frames = new Map<number, FrameRequestCallback>()
+/** A stand-in DOM event: the fields a test sets, such as a key, a pointer position, or `preventDefault`. */
+export type FixtureEvent = { readonly [field: string]: unknown }
+
 /** Gives hand-built element trees a DOM-style element boundary without parsing markup. */
 export function MemoryElement() {
   // The host assigns this prototype only to element nodes.
 }
 let activeElement: Node | null = null
-const documentListeners = new Map<string, Set<(event: unknown) => void>>()
+const documentListeners = new Map<string, Set<(event: FixtureEvent) => void>>()
 const document = {
   get activeElement() { return activeElement },
   set activeElement(value: Node | null) { activeElement = value },
-  addEventListener(type: string, listener: (event: unknown) => void) {
+  addEventListener(type: string, listener: (event: FixtureEvent) => void) {
     const listeners = documentListeners.get(type) ?? new Set()
     listeners.add(listener)
     documentListeners.set(type, listeners)
   },
-  removeEventListener(type: string, listener: (event: unknown) => void) { documentListeners.get(type)?.delete(listener) },
-  dispatch(type: string, event: unknown) { for (const listener of documentListeners.get(type) ?? []) listener(event) },
+  removeEventListener(type: string, listener: (event: FixtureEvent) => void) { documentListeners.get(type)?.delete(listener) },
+  dispatch(type: string, event: FixtureEvent) { for (const listener of documentListeners.get(type) ?? []) listener(event) },
   /** A canvas whose text is 8 pixels per character, for components that measure text. */
   createElement: (tag: string) => tag === "canvas"
     ? { getContext: () => ({ font: "", measureText: (text: string) => ({ width: [...text].length * 8 }) }) }
@@ -115,7 +118,7 @@ const document = {
 }
 
 function createNode(tag: string | undefined, text?: string): Node {
-  const listeners = new Map<string, Set<(event?: unknown) => void>>()
+  const listeners = new Map<string, Set<(event?: FixtureEvent) => void>>()
   const attributes = new Map<string, string>()
   const created: Node = {
     ownerDocument: document,

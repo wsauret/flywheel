@@ -5,7 +5,7 @@ import { useTheme } from "@tui/context/theme"
 import type { TuiTheme } from "@tui/context/theme/resolve"
 import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
 import { ModalFrame } from "@tui/components/modal-frame"
-import { createEffect, createMemo, createSignal, For, Index, Match, on, onCleanup, Show, Switch, type Accessor } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Index, Match, on, onCleanup, Show, Switch, type Accessor, type JSX } from "solid-js"
 import { ControlledTextField } from "../components/controlled-text-field.js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
 import { filterProviderModelRows, providerModelsCanDeselect, soleAccount, type AuthRow, type AuthView } from "../hooks/auth-modal-options.js"
@@ -139,6 +139,17 @@ function ProviderList(props: { rows: AuthRow[]; cursor: number; maxHeight: numbe
   }
   onCleanup(() => clearTimeout(revealTimer))
   createEffect(on(() => props.cursor, revealSelection))
+  const rowView = (row: AuthRow, index: Accessor<number>): JSX.Element => {
+    switch (row.kind) {
+      case "profile": return <ProfileRow row={row} index={index()} cursor={props.cursor} rowWidth={props.rowWidth} onSelect={props.onSelect} />
+      case "profile-policy": return <ProfilePolicyRow row={row} index={index()} rowWidth={props.rowWidth} onSelect={props.onSelect} />
+      case "file-attention": return <FileAttentionRow row={row} />
+      case "heading": return <HeadingRow label={row.label} first={index() === 0} />
+      case "provider-group": return <ProviderGroupRow row={row} />
+      case "provider": return <ProviderRow row={row} index={index()} cursor={props.cursor} rowWidth={props.rowWidth} onSelect={props.onSelect} />
+      default: return <AccountRow row={row} index={index()} cursor={props.cursor} rowWidth={props.rowWidth} onSelect={props.onSelect} />
+    }
+  }
   return (
     <scrollbox
       ref={(element: ScrollBoxRenderable) => { scroll = element }}
@@ -147,19 +158,7 @@ function ProviderList(props: { rows: AuthRow[]; cursor: number; maxHeight: numbe
       onSizeChange={revealAfterLayout}
     >
       <For each={props.rows}>
-        {(row, index) => row.kind === "profile"
-          ? <ProfileRow row={row} index={index()} cursor={props.cursor} rowWidth={props.rowWidth} onSelect={props.onSelect} />
-          : row.kind === "profile-policy"
-            ? <ProfilePolicyRow row={row} index={index()} rowWidth={props.rowWidth} onSelect={props.onSelect} />
-          : row.kind === "file-attention"
-            ? <FileAttentionRow row={row} />
-          : row.kind === "heading"
-            ? <HeadingRow label={row.label} first={index() === 0} />
-            : row.kind === "provider-group"
-              ? <ProviderGroupRow row={row} />
-              : row.kind === "provider"
-                ? <ProviderRow row={row} index={index()} cursor={props.cursor} rowWidth={props.rowWidth} onSelect={props.onSelect} />
-                : <AccountRow row={row} index={index()} cursor={props.cursor} rowWidth={props.rowWidth} onSelect={props.onSelect} />}
+        {rowView}
       </For>
     </scrollbox>
   )

@@ -20,6 +20,7 @@ type ProjectExecutorLifecycleHandlers = Parameters<typeof serveProjectExecutorLi
 function lifecycleFixture(handlers: Partial<ProjectExecutorLifecycleHandlers> = {}, processor: ProcessorClaims = createProcessorClaims()) {
   const sent: unknown[] = []
   const ended: string[] = []
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a message over the executor internal process channel
   let deliver: ((value: unknown) => void | Promise<void>) | undefined
   const reattached = new Set<() => void>()
   const served = serveProjectExecutorLifecycle({
@@ -41,6 +42,7 @@ function lifecycleFixture(handlers: Partial<ProjectExecutorLifecycleHandlers> = 
   })
   return {
     sent, ended,
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a message over the executor internal process channel
     command: async (value: unknown) => { await deliver?.(value) },
     /** The runtime reports, unasked, that its blockers changed. */
     reportBlockers: () => served.reportBlockers(),

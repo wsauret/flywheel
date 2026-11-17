@@ -145,6 +145,7 @@ describe("success fact versions in strict replay", () => {
     if (!pending) throw new Error("Expected a success proposal");
     return { root, facts: pending.facts, committed: pending.proposedCommitted };
   };
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a stored success fact in a historical shape
   const withSuccess = (facts: readonly { readonly type: string }[], fact: unknown) =>
     facts.map((candidate) => candidate.type === "attempt.succeeded" ? fact : candidate);
 

@@ -144,6 +144,7 @@ function attachBridge(worker: InvocationWorker, signal: AbortSignal | undefined,
     // oxlint-disable-next-line unicorn/require-post-message-target-origin -- boundary: Bun Worker.postMessage has no target origin
     probeLoopUnit("code-mode", "call-result-post", () => worker.postMessage({ type: "call-result", id, reply: answer } satisfies HostMessage))
   }
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
   const call = (id: number, name: string, input: unknown): void => {
     const index = callIndex++
     void Effect.runPromise(batch.execute(name, input)).then(({ result, tool }) => {

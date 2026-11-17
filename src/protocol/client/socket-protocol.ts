@@ -57,6 +57,7 @@ export function socketProtocolLayer(options: SocketProtocolOptions = {}): Layer.
 
     const broadcast = (response: FromServer) => Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response), { discard: true })
 
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a frame that the RPC serialization parser decoded from the runtime socket
     const deliver = (response: unknown): Effect.Effect<void> => {
       // SAFETY: The RPC serialization parser validates the server frame before
       // it returns the decoded protocol message.

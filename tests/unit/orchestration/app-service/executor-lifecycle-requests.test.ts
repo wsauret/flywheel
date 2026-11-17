@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createExecutorLifecycleRequests } from "../../../../src/orchestration/app-service/executor-lifecycle-requests.js"
+import type { ProjectExecutorCommand } from "../../../../src/orchestration/app-service/project-executor-protocol.js"
 
 const never = new Promise<never>(() => {})
 
@@ -7,7 +8,7 @@ describe("account lifecycle requests of one executor generation", () => {
   test("a lost transport fails a capacity continuation in flight, so the wake asks again, and leaves a handoff waiting for its answer", async () => {
     const requests = createExecutorLifecycleRequests(undefined)
     const sent: unknown[] = []
-    const send = async (message: unknown) => { sent.push(message) }
+    const send = async (message: ProjectExecutorCommand) => { sent.push(message) }
     const continuation = requests.continueCapacityWaits(send, never)
     const handoff = requests.handoff(send, "continue_after_replacement", "h1", never)
     await Bun.sleep(0)
@@ -31,7 +32,7 @@ describe("account lifecycle requests of one executor generation", () => {
       recorded.push(at)
     })
     const answers: unknown[] = []
-    const send = async (message: unknown) => { answers.push(message) }
+    const send = async (message: ProjectExecutorCommand) => { answers.push(message) }
     requests.hear({ kind: "capacity_wake", id: 1, at: 1_000 }, send)
     requests.hear({ kind: "capacity_wake", id: 2, at: 2_000 }, send)
     await Bun.sleep(0)

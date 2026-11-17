@@ -129,19 +129,19 @@ export function createMutationEvidenceRecovery(reader: AsyncEventStateReadSurfac
     const oldChat = event.type === "chat.entries.appended" && event.version < 7 && Array.isArray(p.entries)
       && p.entries.some(entry => asRecord(asRecord(entry)?.message)?.reviewMutations !== undefined)
     const oldSystem = event.type === "agent.system_message.recorded" && event.version === 1 && p.reviewMutations !== undefined
-    const ownsEvidence = event.type === "tool.result.recorded"
-      ? hasMutationFields(details) || details?.mutationEvidence !== undefined
-      : event.type === "tool.execution_output.recorded"
-        ? hasMutationFields(p) || p.mutationEvidence !== undefined
-        : event.type === "file.artifact.recorded"
-          ? p.artifactKind === "mutation_diff" || p.mutation !== undefined || p.evidence !== undefined
-          : event.type === "chat.entries.appended"
-            ? Array.isArray(p.entries) && p.entries.some(entry => {
-              const message = asRecord(asRecord(entry)?.message)
-              return message?.reviewMutations !== undefined || message?.mutationEvidence !== undefined
-            })
-            : p.reviewMutations !== undefined || p.mutationEvidence !== undefined
-    if (!ownsEvidence) return event
+    const ownsEvidence = (): boolean => {
+      switch (event.type) {
+        case "tool.result.recorded": return hasMutationFields(details) || details?.mutationEvidence !== undefined
+        case "tool.execution_output.recorded": return hasMutationFields(p) || p.mutationEvidence !== undefined
+        case "file.artifact.recorded": return p.artifactKind === "mutation_diff" || p.mutation !== undefined || p.evidence !== undefined
+        case "chat.entries.appended": return Array.isArray(p.entries) && p.entries.some(entry => {
+          const message = asRecord(asRecord(entry)?.message)
+          return message?.reviewMutations !== undefined || message?.mutationEvidence !== undefined
+        })
+        default: return p.reviewMutations !== undefined || p.mutationEvidence !== undefined
+      }
+    }
+    if (!ownsEvidence()) return event
     const envelope = { type: event.type, version: event.version, actor: event.actor, payload: p }
     try {
       if (event.type === "tool.result.recorded" || event.type === "tool.execution_output.recorded") parseStoredSessionRuntimeFact(envelope)

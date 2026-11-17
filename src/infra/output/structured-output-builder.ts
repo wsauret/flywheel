@@ -370,10 +370,10 @@ export class StructuredOutputBuilder {
     return this.pushStandaloneToolEntry({
       kind: "tool", id: this.mintId(), name, presentation, timestamp,
       status: streaming ? "streaming" : "pending",
-      ...(linkUri && { linkUri }),
-      ...(diff && { diff }),
-      ...(content && { content }),
-      ...(filetype && { filetype }),
+      ...(linkUri ? { linkUri } : {}),
+      ...(diff ? { diff } : {}),
+      ...(content ? { content } : {}),
+      ...(filetype ? { filetype } : {}),
     });
   }
   pushStandaloneToolEntry(tool: ToolEntry): number {

@@ -5,10 +5,10 @@ import { InvariantViolation } from "./invariant.js"
 interface OperationFields { [key: string]: unknown }
 
 export interface OperationLogger {
-  debug(message?: unknown, extra?: OperationFields): void
-  info(message?: unknown, extra?: OperationFields): void
-  warn(message?: unknown, extra?: OperationFields): void
-  error(message?: unknown, extra?: OperationFields): void
+  debug(message?: string | Error, extra?: OperationFields): void
+  info(message?: string | Error, extra?: OperationFields): void
+  warn(message?: string | Error, extra?: OperationFields): void
+  error(message?: string | Error, extra?: OperationFields): void
 }
 
 /** How loud the completion record is. `level` fixes it: "info" for a

@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 import { Log } from "./log.js"
 import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "./private-temporary-root.js"
-import { decodeStopHold, hasExactKeys, objectFields } from "./process-guardian-protocol.js"
+import { decodeStopHold, hasExactKeys, asObjectFields } from "./process-guardian-protocol.js"
 import { decodeHolderFields, processHolders, type GoneProof } from "./process-holder.js"
 import type { StopHold } from "./stop-hold.js"
 
@@ -88,12 +88,12 @@ interface LeaseRecord extends LedgerLease {
  *  It reads by hand with exact keys, as the guardian protocol reads its
  *  frames, so the guardian loads no schema library for one small record. */
 function decodeRecord(value: unknown): LeaseRecord | undefined {
-  const record = objectFields(value)
+  const record = asObjectFields(value)
   if (!record || record.v !== 1 || !hasExactKeys(record, ["v", "token", "pid", "identity", "stopHold", "guardian"])) return undefined
   const { token, pid, identity } = record
   const stopHold = decodeStopHold(record.stopHold)
   if (typeof token !== "string" || !isPid(pid) || typeof identity !== "string" || stopHold === undefined) return undefined
-  const guardian = objectFields(record.guardian)
+  const guardian = asObjectFields(record.guardian)
   if (!guardian || guardian.v !== 1 || !isPid(guardian.pid) || typeof guardian.start !== "string") return undefined
   const { boot } = guardian
   if (boot !== undefined && typeof boot !== "string") return undefined

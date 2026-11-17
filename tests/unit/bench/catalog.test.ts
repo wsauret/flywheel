@@ -277,6 +277,7 @@ describe("real-review fixtures", () => {
     const dedicatedDir = join(fixturesDir, "structure");
     await cp(fixtureDir, dedicatedDir, { recursive: true });
     const manifest = { title: "Structure", review_prompt_hint: "", defects: [] };
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the fixture manifest field that the catalog decodes
     const writeReviewers = (reviewers: unknown) => Bun.write(join(dedicatedDir, "manifest.json"), JSON.stringify({ ...manifest, reviewers }));
     await writeReviewers(["reviewer-code-elegance", "reviewer-mechanism"]);
     const ids = async (persona: string) => (await reviewCatalog.reviewTasks(persona)).map((task) => task.id);

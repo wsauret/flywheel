@@ -106,6 +106,7 @@ type ToolGroup = { [segment: string]: CodeModeTool | ToolGroup }
 
 /** Builds the Code Mode `tools` trie from descriptors whose paths
  *  `describeCodeModeTools` already proved free of prefix collisions. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
 export function toolTrie(descriptors: readonly CodeModeToolDescriptor[], execute: (descriptor: CodeModeToolDescriptor, input: unknown) => Effect.Effect<CodeToolResult, ToolError | ToolRuntimeError>): Tools {
   const root: ToolGroup = {}
   for (const descriptor of descriptors) {

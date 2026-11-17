@@ -118,6 +118,7 @@ describe("authored workflow verification", () => {
     // runs; a quorum that needs two valid votes over the kept list passes.
     const findings = { type: "list", description: "The findings.", max: 3, unique: "site", of: { type: "object", fields: { site: { type: "string", description: "The site." }, score: { type: "number", description: "The score." } } } };
     const vote = { type: "enum", values: ["valid", "refuted", "abstain"], description: "The vote." };
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: an authored join, invalid on purpose
     const named = (join: unknown) => ({ phase: "review", agents: ["a", "b"].map((agent) => ({ agent, ...phase(agent), output: { fields: { findings, vote } } })), join });
     const input = { input: listOutput("areas").output };
     const finds = phase("finds", { over: "input.areas", output: { fields: { findings } }, join: { reducer: "dedupe", with: { items: "findings", by: "site" } } });

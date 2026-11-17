@@ -67,7 +67,7 @@ export interface TuiUatApp extends TmuxApp {
   activateSelectedRow(expectedText: string, timeoutMs?: number): Promise<PollOutcome>
 }
 
-async function run(command: string[], cwd?: string): Promise<string> {
+async function captureCommandOutput(command: string[], cwd?: string): Promise<string> {
   const child = Bun.spawn(command, { cwd, stdout: "pipe", stderr: "pipe", windowsHide: true })
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(child.stdout).text(),
@@ -189,9 +189,9 @@ export async function prepareTuiUatSandbox(options: TuiUatOptions): Promise<TuiU
       mkdir(project, { recursive: true, mode: 0o700 }),
       mkdir(evidence, { recursive: true, mode: 0o700 }),
     ])
-    await run(["git", "init", "--quiet"], project)
+    await captureCommandOutput(["git", "init", "--quiet"], project)
     const canonicalProject = await realpath(project)
-    const gitRoot = await realpath(await run(["git", "rev-parse", "--show-toplevel"], project))
+    const gitRoot = await realpath(await captureCommandOutput(["git", "rev-parse", "--show-toplevel"], project))
     if (gitRoot !== canonicalProject) throw new Error(`isolated git root mismatch: expected ${canonicalProject}, got ${gitRoot}`)
     const userDataRoot = join(home, ".flywheel")
     await mkdir(userDataRoot, { recursive: true, mode: 0o700 })
@@ -276,7 +276,7 @@ function decorateApp(app: TmuxApp, sandbox: TuiUatSandbox, sessionName: string, 
 export async function startTuiUat(options: TuiUatOptions): Promise<TuiUatApp> {
   requireTmuxPlatform()
   const idleTimeoutMs = Schema.decodeUnknownSync(idleTimeoutSchema)(options.idleTimeoutMs ?? 20 * 60_000)
-  await run(["tmux", "-V"])
+  await captureCommandOutput(["tmux", "-V"])
   const sandbox = await prepareTuiUatSandbox(options)
   let app: TmuxApp | undefined
   let sessionName: string | undefined

@@ -94,7 +94,7 @@ describe("chat input — auth guard", () => {
 
   it("sends a message made before the provider list is known once a provider is known", async () => {
     const [setup, setSetup] = createSignal<ProviderSetup>("loading")
-    const sendMessage = mock(async (_sessionId: string, _input: unknown) => {})
+    const sendMessage = mock(async (_sessionId: string) => {})
     const { handleComposerSubmit } = createHarness({ sendMessage, providerSetup: setup })
 
     const result = handleComposerSubmit("hello there")
@@ -110,7 +110,7 @@ describe("chat input — auth guard", () => {
   it("sends a message made before the provider list is known when the list does not arrive within the auth read deadline", async () => {
     jest.useFakeTimers()
     try {
-      const sendMessage = mock(async (_sessionId: string, _input: unknown) => {})
+      const sendMessage = mock(async (_sessionId: string) => {})
       const { handleComposerSubmit } = createHarness({ sendMessage, providerSetup: () => "loading" })
 
       const result = handleComposerSubmit("hello there")

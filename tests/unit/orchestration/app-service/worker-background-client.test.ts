@@ -36,6 +36,7 @@ class InThreadServerWorker extends EventTarget {
         const adapted = listeners.get(listener)
         if (adapted) this.#self.removeEventListener(type, adapted)
       },
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a structured-clone message that a Worker posts
       postMessage: (message: unknown) => { deliver(this, message) },
     }
     const unused = () => Effect.die(new Error("not used in this fixture"))
@@ -66,6 +67,7 @@ class InThreadServerWorker extends EventTarget {
     void this.server.context()
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a structured-clone message that a Worker posts
   postMessage(message: unknown): void {
     deliver(this.#self, message)
   }
@@ -75,6 +77,7 @@ class InThreadServerWorker extends EventTarget {
   }
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a structured-clone message that a Worker posts
 function deliver(target: EventTarget, message: unknown): void {
   const data: unknown = structuredClone(message)
   setTimeout(() => { target.dispatchEvent(new MessageEvent("message", { data })) }, 0)

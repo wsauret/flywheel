@@ -56,11 +56,14 @@ function renderCompactionOpening(input: {
   const recall = input.recallAvailable ? [RECALL_HINT] : [];
   const restore = input.checkpoint && input.checkpoint.relevantSkills.length > 0 && input.capabilities("skill")
     ? [...recall, SKILL_RELOAD_HINT] : recall;
-  const recovery = input.checkpoint && input.saved ? [...restore, "Continue the task from the checkpoint above."]
-    : input.checkpoint ? ["This reset came before a checkpoint save, so the checkpoint above may not include the latest work.", ...restore, "Then continue the task."]
-    : input.brief ? [...recall, "Continue the task from the brief above."]
-    : input.recallAvailable ? ["Use the read-only `recall` tool to recover the latest user request and the work done for it from recorded history, then continue the task."]
-    : ["Ask the person what to continue."];
+  const recoveryLines = (): string[] => {
+    if (input.checkpoint && input.saved) return [...restore, "Continue the task from the checkpoint above."];
+    if (input.checkpoint) return ["This reset came before a checkpoint save, so the checkpoint above may not include the latest work.", ...restore, "Then continue the task."];
+    if (input.brief) return [...recall, "Continue the task from the brief above."];
+    if (input.recallAvailable) return ["Use the read-only `recall` tool to recover the latest user request and the work done for it from recorded history, then continue the task."];
+    return ["Ask the person what to continue."];
+  };
+  const recovery = recoveryLines();
   return [
     input.checkpoint ? renderConversationCheckpoint(input.checkpoint, input.capabilities) : "No checkpoint has been saved.",
     ...(input.brief ? [`# Brief\n\n${input.brief}`] : []),

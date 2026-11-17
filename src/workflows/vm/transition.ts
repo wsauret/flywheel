@@ -3,6 +3,7 @@ import {
   initialTransition,
   transition,
   types,
+  type StateValue,
 } from "xstate";
 import { parseCommittedWorkflowControl, type CommittedWorkflowControl } from "./committed-control.js";
 import {
@@ -276,11 +277,11 @@ function commandFromActions(actions: readonly { readonly args: readonly unknown[
   return parseWorkflowCommand(actions[0]?.args[0]);
 }
 
-function stateFromSnapshot(snapshot: { readonly value: unknown; readonly context: WorkflowMachineContext }): WorkflowMachineState {
+function stateFromSnapshot(snapshot: { readonly value: StateValue; readonly context: WorkflowMachineContext }): WorkflowMachineState {
   return { lifecycle: workflowLifecycle(snapshot.value), context: snapshot.context };
 }
 
-function workflowLifecycle(value: unknown): VmLifecycle {
+function workflowLifecycle(value: StateValue): VmLifecycle {
   switch (value) {
     case "bootstrapping": return "bootstrapping";
     case "ready": return "ready";

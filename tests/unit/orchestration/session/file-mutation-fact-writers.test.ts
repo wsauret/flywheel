@@ -15,6 +15,8 @@ import { settleFileMutationArtifact, takeFileMutationAttribution } from "../../.
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { readFileMutationOperation, snapshotToFileObjectProof } from "../../../../src/orchestration/session/file-mutation-operation.js"
 import { mutationSnapshot } from "./file-mutation-proof-fixture.js"
+import type { InFlightPayload, InFlightWrite } from "../../../../src/infra/event-store-types.js"
+import type { SessionFact } from "../../../../src/orchestration/session/session-fact-writer.js"
 
 describe("file mutation operation evidence", () => {
   it.each(["string", "bytes"] as const)("redacts full %s previews before normalization and truncation without changing byte evidence", async kind => {
@@ -82,7 +84,7 @@ describe("file mutation operation evidence", () => {
       stageSessionContentNodes: async () => {},
       record: async () => null,
       transaction: async (run: () => void) => { run() },
-      swapInFlight: async (_kind: string, _key: string, _expected: string | null, payload: unknown) => {
+      swapInFlight: async (_kind: string, _key: string, _expected: string | null, payload: InFlightPayload) => {
         prepared.push(payload)
         return true
       },
@@ -117,7 +119,7 @@ describe("file mutation operation evidence", () => {
       stageSessionContentNodes: async () => {},
       record: async () => null,
       transaction: async (run: () => void) => { run() },
-      swapInFlight: async (_kind: string, _key: string, _expected: string | null, payload: unknown) => {
+      swapInFlight: async (_kind: string, _key: string, _expected: string | null, payload: InFlightPayload) => {
         prepared.push(payload)
         return true
       },
@@ -158,7 +160,7 @@ describe("batch mutation preparation", () => {
     let active: unknown[] = []
     const writer = {
       stageSessionContentNodes: content.writer.stageSessionContentNodes,
-      record: async (fact: unknown, _rows?: undefined, inFlight?: readonly unknown[]) => { active.push({ fact, inFlight }); return null },
+      record: async (fact: SessionFact, _rows?: undefined, inFlight?: readonly InFlightWrite[]) => { active.push({ fact, inFlight }); return null },
       transaction: async (run: () => void) => { active = []; run(); transactions.push(active) },
       swapInFlight: async () => true,
     }
@@ -197,7 +199,7 @@ describe("batch mutation preparation", () => {
       stageSessionContentNodes: async () => {},
       record: async () => null,
       transaction: async (run: () => void) => { run() },
-      swapInFlight: async (_kind: string, _key: string, expected: string | null, payload: unknown) => {
+      swapInFlight: async (_kind: string, _key: string, expected: string | null, payload: InFlightPayload) => {
         swaps.push({ expected, payload })
         return true
       },
@@ -369,7 +371,7 @@ describe("not-applied mutation retirement", () => {
     let stages = 0
     const writer = {
       stageSessionContentNodes: async () => { stages++ },
-      record: async (fact: unknown, _contentRows?: undefined, inFlight?: readonly unknown[]) => { facts.push(fact); if (inFlight) swaps.push(...inFlight); return null },
+      record: async (fact: SessionFact, _contentRows?: undefined, inFlight?: readonly InFlightWrite[]) => { facts.push(fact); if (inFlight) swaps.push(...inFlight); return null },
       transaction: async (run: () => void) => { run() },
       swapInFlight: async () => true,
     }

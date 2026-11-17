@@ -343,7 +343,7 @@ function open(dbFile: string) {
       const stated = statedProtocolVersion(opened);
       requireCompatibleProtocol(stated);
       applySqliteDurabilityPragmas(opened, BUSY_TIMEOUT_MS);
-      if (stated === undefined) initialize(opened);
+      if (stated === undefined) initializeAuthorityTable(opened);
       updateDirectory.requireSamePathAs(authorityDir);
       return { db: opened, updateDirectory };
     } catch (error) {
@@ -457,7 +457,7 @@ function validateExistingSchema(opened: Database, objects: readonly { readonly n
  *  publish between the read-only preflight and this transaction, so the
  *  locked inspection is the authority and refuses foreign or incompatible
  *  state before this process writes anything. */
-function initialize(opened: Database): void {
+function initializeAuthorityTable(opened: Database): void {
   opened.transaction((): void => {
     const stated = statedProtocolVersion(opened);
     requireCompatibleProtocol(stated);

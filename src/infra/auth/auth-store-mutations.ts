@@ -141,6 +141,7 @@ function persistedLoginReplacement(
 type PersistedAuthEntry = PersistedAuthStore[string];
 const STRICT_SCHEMA_OPTIONS = { onExcessProperty: "error" as const };
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: an entry of the auth store file, which another process can rewrite
 function decodePersistedAuthEntry(providerId: CredentialProviderId, value: unknown): PersistedAuthEntry | undefined {
   const decoded = Schema.decodeUnknownResult(PersistedAuthStoreSchema, STRICT_SCHEMA_OPTIONS)({ [providerId]: value });
   return Result.isSuccess(decoded) ? decoded.success[providerId] : undefined;

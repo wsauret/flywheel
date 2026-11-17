@@ -40,7 +40,7 @@ function installedHandlers(options: Parameters<typeof installCrashPolicy>[0]) {
 /** A policy whose fatal function and immediate exit only record their calls.
  *  The fatal function never settles unless a case says so, as a real one
  *  that ends its process never returns. */
-function recordedPolicy(options: { readonly fatal?: (failure: unknown, kind: UncaughtKind) => Promise<void> } = {}) {
+function recordedPolicy(options: { readonly fatal?: (cause: unknown, kind: UncaughtKind) => Promise<void> } = {}) {
   const { log, records } = recordingLog()
   const fatals: { readonly error: unknown; readonly kind: UncaughtKind }[] = []
   let exits = 0

@@ -504,6 +504,7 @@ function applyToolResultMetaEvents(
  *  edits a shell command landed before it failed, since a timed-out `mutates`
  *  command still publishes its changes. A failed direct edit published
  *  nothing, so its details carry no mutation, conflict markers, or refused changes. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the recorded tool_result details of a stored fact, which `extractDisplayMeta` decodes
 function failedResultEvidence(details: unknown, identity: ToolResultIdentity): ToolResultDisplayMeta {
   const { agentFailure, mutationEvidence } = extractDisplayMeta(details, identity)
   return {

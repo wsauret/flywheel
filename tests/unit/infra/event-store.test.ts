@@ -442,6 +442,7 @@ describe("staged session content", () => {
   test("refuses missing and wrong-length evidence atomically without discarding staged nodes", async () => {
     const nodes: SessionContentNodeRow[] = []
     const reference = await buildSessionContent("retained patch", async rows => { nodes.push(...rows) })
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: stored artifact evidence, malformed on purpose
     const makeFact = (evidence: unknown): EventStoreAppend => ({
       ...batchFact(0), sessionId: "evidence", aggregateId: "session:evidence",
       type: "file.artifact.recorded", payload: { artifactKind: "mutation_diff", evidence },

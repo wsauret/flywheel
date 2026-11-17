@@ -15,7 +15,12 @@ import {
   type ProjectStateRequest,
   type ProjectStateResponse,
   type ProjectStateResponseFrame,
+  type ProjectStateSessionChange,
+  type ProjectStateStored,
 } from "./project-state-protocol.js"
+
+/** What the account sends a peer: an encoded response, or a broadcast. */
+type ProjectStateChannelMessage = Uint8Array | ProjectStateStored | ProjectStateSessionChange
 
 /** Who a served state channel answers. An executor generation's writes are
  *  fenced to its generation, and it hears every committed fact and session
@@ -46,7 +51,7 @@ export function serveProjectStateChannel(
   // a message in flight when the transport went away is the transport's story:
   // the facade reports the detach and waits for the executor, or the executor
   // has stopped and the generation ends behind it.
-  const send = (message: unknown): void => {
+  const send = (message: ProjectStateChannelMessage): void => {
     if (!accepting) return
     const pending = endpoint.send(message)
     sends.add(pending)
@@ -196,7 +201,7 @@ async function serveRequest(
   state: ProjectStateClient,
   request: ProjectStateRequest,
   peer: ProjectStatePeer,
-  send: (message: unknown) => void,
+  send: (message: ProjectStateChannelMessage) => void,
 ): Promise<void> {
   // A relayed answer is the Worker's frame, head included, which the peer
   // reads; an answer the account makes itself has no head, because the

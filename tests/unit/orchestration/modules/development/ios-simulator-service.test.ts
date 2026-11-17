@@ -55,6 +55,7 @@ function simulator(server: FakeServer) {
         stdout.close()
         exited.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" })
       }
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the JSON-RPC id that the client under test sent
       const reply = (id: unknown, outcome: { result: unknown } | { error: { code: number; message: string } }): void => {
         if (running) stdout.enqueue(encoder.encode(`${JSON.stringify({ jsonrpc: "2.0", id, ...outcome })}\n`))
       }

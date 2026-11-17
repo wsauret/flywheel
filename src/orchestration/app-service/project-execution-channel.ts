@@ -85,6 +85,8 @@ const HideEnvelopeSchema = Schema.Struct({
 const RequestEnvelopeSchema = Schema.Union([QueryEnvelopeSchema, DispatchEnvelopeSchema, WatchEnvelopeSchema, HideEnvelopeSchema])
 const ResponseEnvelopeSchema = Schema.Union([ResultEnvelopeSchema, ErrorEnvelopeSchema, RefusedEnvelopeSchema, EventsEnvelopeSchema, GapEnvelopeSchema])
 type RequestEnvelope = typeof RequestEnvelopeSchema.Type
+type EncodedRequest = typeof RequestEnvelopeSchema.Encoded
+type EncodedResponse = typeof ResponseEnvelopeSchema.Encoded
 type ResponseEnvelope = typeof ResponseEnvelopeSchema.Type
 
 const decodeRequest = Schema.decodeUnknownSync(RequestEnvelopeSchema, Strict)
@@ -167,7 +169,7 @@ export function serveProjectExecutionChannel(
   options: { readonly admits?: () => boolean } = {},
 ): (() => Promise<void>) & { drain(): Promise<void> } {
   const calls = new Set<Promise<void>>()
-  const replies: Array<{ message: unknown; resolve: () => void }> = []
+  const replies: Array<{ message: EncodedResponse; resolve: () => void }> = []
   const events: Uint8Array[] = []
   let eventBytes = 0
   let ready = 0
@@ -177,7 +179,7 @@ export function serveProjectExecutionChannel(
   let accepting = true
   let lost = false
 
-  const send = (message: unknown): Promise<void> => {
+  const send = (message: EncodedResponse): Promise<void> => {
     const completion = Promise.withResolvers<void>()
     replies.push({ message, resolve: completion.resolve })
     pump()
@@ -334,7 +336,7 @@ type CallEnvelope = Exclude<RequestEnvelope, { readonly kind: "watch" }>
 
 // Each call reaches the runtime in the turn that read it, so the runtime takes
 // a hide before a call that the account sent after it.
-async function serveCall(runtime: ExecutionRuntime, request: CallEnvelope, send: (message: unknown) => Promise<void>): Promise<void> {
+async function serveCall(runtime: ExecutionRuntime, request: CallEnvelope, send: (message: EncodedResponse) => Promise<void>): Promise<void> {
   const end = trackLoopSpan(`executor-${request.kind}`, request.kind === "query" ? request.query.type : request.kind === "dispatch" ? request.mutation.type : "session")
   try {
     const result = request.kind === "query"
@@ -355,6 +357,7 @@ async function serveCall(runtime: ExecutionRuntime, request: CallEnvelope, send:
 }
 
 interface PendingCall {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the call result from the executor process, which the call's decoder reads
   readonly resolve: (value: unknown) => void
   readonly reject: (reason: Error) => void
   readonly timer?: ReturnType<typeof setTimeout>
@@ -545,7 +548,7 @@ export function connectProjectExecutionChannel(
     }
   }
 
-  function request<Result>(id: string, message: unknown, decode: (value: unknown) => Result, deadlineMs?: number): Promise<Result> {
+  function request<Result>(id: string, message: EncodedRequest, decode: (value: unknown) => Result, deadlineMs?: number): Promise<Result> {
     if (closed) return Promise.reject(new Error("project execution channel closed"))
     return new Promise((resolve, reject) => {
       const timer = deadlineMs === undefined

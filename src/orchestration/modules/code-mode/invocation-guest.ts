@@ -118,6 +118,7 @@ export function runGuest(port: GuestPort): () => void {
 
   const run = async (start: Extract<HostMessage, { type: "start" }>, current: Invocation): Promise<void> => {
     const logs = createLogStream(port)
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
     const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, ToolError | ToolRuntimeError>((resume) => {
       const id = nextCallId++
       current.pending.set(id, (reply) => resume(replyEffect(name, reply)))

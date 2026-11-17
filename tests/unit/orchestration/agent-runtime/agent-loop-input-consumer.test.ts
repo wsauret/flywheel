@@ -315,7 +315,7 @@ describe("agent loop input wait reservations", () => {
     const sink = {
       clearRequestContext: () => { effects.cleared += 1 },
       logicalTurnStarted: (origin: "user" | "background") => { effects.origins.push(origin) },
-      pushUser: (_content: unknown, humanTyped: boolean) => { effects.visible.push(humanTyped) },
+      pushUser: (_content: string, humanTyped: boolean) => { effects.visible.push(humanTyped) },
       admit: () => {},
       visibleReplyRequired: () => { effects.replies += 1 },
     }

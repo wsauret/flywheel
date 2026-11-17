@@ -61,7 +61,7 @@ function harness(options: Omit<RuntimeHandlerOptions, "version"> = {}) {
   const stub = stubService()
   const warnings: Array<{ message: unknown; fields: unknown }> = []
   const infos: Array<{ message: unknown; fields: unknown }> = []
-  const log = { debug: () => {}, info: (message: unknown, fields?: unknown) => { infos.push({ message, fields }) }, error: () => {}, warn: (message: unknown, fields?: unknown) => { warnings.push({ message, fields }) } }
+  const log = { debug: () => {}, info: (message: string, fields?: { readonly [key: string]: unknown }) => { infos.push({ message, fields }) }, error: () => {}, warn: (message: string, fields?: { readonly [key: string]: unknown }) => { warnings.push({ message, fields }) } }
   const layer = runtimeHandlers({ client: stub.service, outputWatches: createOutputWatches({ onUnionChange: () => {} }) }, log, { version: VERSION, ...options })
   return { stub, layer, warnings, infos }
 }
@@ -175,7 +175,7 @@ describe("RuntimeEvents client identity", () => {
 describe("RuntimeEvents bounded per-connection queue", () => {
   test.each([0, 5000])("gracefully stops admission and drains %s queued events without waiting for heartbeat", async (count) => {
     const { stub, infos } = harness()
-    const log = { debug: () => {}, info: (message: unknown, fields?: unknown) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
+    const log = { debug: () => {}, info: (message: string, fields?: { readonly [key: string]: unknown }) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
     const received: RuntimeEventFrame[] = []
     await Effect.runPromise(Effect.gen(function*() {
       const blocked = yield* Deferred.make<void>()
@@ -236,7 +236,7 @@ describe("RuntimeEvents bounded per-connection queue", () => {
   test("a blocked delivery consumer admits a bounded newest batch before recovery and unsubscribes on interruption", async () => {
     const { stub, infos } = harness()
     const subscribed = Promise.withResolvers<void>()
-    const log = { debug: () => {}, info: (message: unknown, fields?: unknown) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
+    const log = { debug: () => {}, info: (message: string, fields?: { readonly [key: string]: unknown }) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
     const received: RuntimeEventFrame[] = []
     await Effect.runPromise(Effect.gen(function*() {
       const blocked = yield* Deferred.make<void>()

@@ -127,6 +127,7 @@ function recoverAuthoredEntries(node: DocumentNode) {
  *  repeat otherwise reads as a phase with unknown keys and no id. */
 function nestedRepeats(file: string, index: number, entry: unknown, diagnostics: readonly WorkflowFileDiagnostic[]): readonly WorkflowFileDiagnostic[] {
   const body = isNode(entry) && Array.isArray(entry.phases) ? entry.phases : [];
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: one phase of an authored workflow file
   const nested = body.flatMap((child: unknown, at: number) => authoredPhaseOrRepeatKind(child) === "repeat" ? [`phases.${index}.phases.${at}`] : []);
   if (nested.length === 0) return diagnostics;
   return [

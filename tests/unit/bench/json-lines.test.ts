@@ -11,6 +11,7 @@ const temporaryDirectory = temporaryDirectories()
 const spies: Array<{ mockRestore(): void }> = []
 
 /** Appends one record through the typed ledger that every benchmark log writes with. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: any record, for a ledger that decodes with Schema.Unknown
 async function appendRecord(path: string, value: unknown): Promise<void> {
   await createJsonLinesLedger(async () => path, Schema.Unknown, "reject").append(value)
 }

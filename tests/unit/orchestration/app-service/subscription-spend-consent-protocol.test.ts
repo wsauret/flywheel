@@ -38,6 +38,7 @@ describe("subscription spend consent protocol", () => {
   test("rejects impossible available and unavailable consent variants", () => {
     const decode = Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" });
     const auth = { providers: [], warnings: [], profile: { id: "work", displayName: "Work", source: "default", availableProfiles: [] } } as const;
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a wire patch that the schema decodes, invalid on purpose
     const patch = (subscriptionSpendConsent: unknown) => ({ cursor: { scope: "workspace", domain: "auth" }, position: 8, prevPosition: 7, payload: { kind: "auth.changed", auth: { ...auth, subscriptionSpendConsent } } });
 
     expect(() => decode(patch({ kind: "available", profileId: "work", rows: [] }))).toThrow();

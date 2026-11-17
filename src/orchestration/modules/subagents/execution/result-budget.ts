@@ -121,13 +121,13 @@ function boundFields(handoff: HandoffContent, cap: number, location: SavedLocati
   const keys = Object.keys(handoff).filter((key) => key !== MARKER);
   const cut = new Set(keys.length < Object.keys(handoff).length ? [MARKER] : []);
   // Reserve the marker as if every field were cut, so the cut fields always fit.
-  const markerSize = entrySize(MARKER, { fields: [...cut, ...keys], ...location });
+  const markerSize = entrySize({ [MARKER]: { fields: [...cut, ...keys], ...location } });
   // "{\n" and "\n}", plus ",\n" between the fields and the marker.
   let remaining = cap - (4 + 2 * keys.length) - markerSize;
 
   const bounded = new Map<string, unknown>();
   const waiting: Array<{ key: string; size: number; value: string }> = [];
-  const bySize = keys.map((key) => ({ key, size: entrySize(key, handoff[key]) })).sort((a, b) => a.size - b.size);
+  const bySize = keys.map((key) => ({ key, size: entrySize({ [key]: handoff[key] }) })).sort((a, b) => a.size - b.size);
   for (const [index, field] of bySize.entries()) {
     const value = handoff[field.key];
     const share = Math.floor(remaining / (bySize.length - index + waiting.length));
@@ -141,14 +141,14 @@ function boundFields(handoff: HandoffContent, cap: number, location: SavedLocati
       cut.add(field.key);
     }
     bounded.set(field.key, kept);
-    remaining -= entrySize(field.key, kept);
+    remaining -= entrySize({ [field.key]: kept });
   }
   for (const [index, { key, size, value }] of waiting.entries()) {
     const share = Math.floor(remaining / (waiting.length - index));
     const kept = size <= share ? value : cutString(key, value, share) ?? omittedNote(value);
     if (kept !== value) cut.add(key);
     bounded.set(key, kept);
-    remaining -= entrySize(key, kept);
+    remaining -= entrySize({ [key]: kept });
   }
 
   const marker = { fields: [...cut].sort((a, b) => keys.indexOf(a) - keys.indexOf(b)), ...location };
@@ -161,20 +161,20 @@ function boundFields(handoff: HandoffContent, cap: number, location: SavedLocati
  *  than half the cap. */
 function boundToSummary(handoff: HandoffContent, cap: number, location: SavedLocation): string {
   const keys = Object.keys(handoff);
-  const named = entrySize(MARKER, { fields: keys, ...location }) <= cap / 2;
+  const named = entrySize({ [MARKER]: { fields: keys, ...location } }) <= cap / 2;
   const marker = (cut: string[]) => named ? { fields: cut, ...location } : { field_count: cut.length, ...location };
   // "{\n", ",\n", and "\n}" around the summary and the marker.
-  const room = cap - 6 - entrySize(MARKER, marker(keys));
+  const room = cap - 6 - entrySize({ [MARKER]: marker(keys) });
   const summary = handoff.summary;
-  const kept = typeof summary !== "string" ? undefined : entrySize("summary", summary) <= room ? summary : cutString("summary", summary, room);
+  const kept = typeof summary !== "string" ? undefined : entrySize({ summary }) <= room ? summary : cutString("summary", summary, room);
   if (kept === undefined) return JSON.stringify({ [MARKER]: marker(keys) }, null, 2);
   const cut = keys.filter((key) => key !== "summary" || kept !== summary);
   return JSON.stringify({ summary: kept, [MARKER]: marker(cut) }, null, 2);
 }
 
-/** Characters one field occupies in the pretty JSON, from its indent to its value's end. */
-function entrySize(key: string, value: unknown): number {
-  return JSON.stringify({ [key]: value }, null, 2).length - 4;
+/** Characters the one field of `entry` occupies in the pretty JSON, from its indent to its value's end. */
+function entrySize(entry: HandoffContent): number {
+  return JSON.stringify(entry, null, 2).length - 4;
 }
 
 function omittedNote(value: unknown): string {
@@ -184,13 +184,13 @@ function omittedNote(value: unknown): string {
 /** The head and tail of `value` whose entry under `key` fits `share`
  *  characters, or undefined when no head and tail fit. */
 function cutString(key: string, value: string, share: number): string | undefined {
-  const room = share - entrySize(key, "");
+  const room = share - entrySize({ [key]: "" });
   // Scale the raw target by the escape ratio, then shrink it by any overshoot
   // that the head and tail still carry in escapes and the omission marker.
   let target = Math.floor(room * value.length / (JSON.stringify(value).length - 2));
   while (target > 0) {
     const kept = truncateHeadTail(value, target).text;
-    const overshoot = entrySize(key, kept) - share;
+    const overshoot = entrySize({ [key]: kept }) - share;
     if (overshoot <= 0) return kept;
     target -= overshoot;
   }

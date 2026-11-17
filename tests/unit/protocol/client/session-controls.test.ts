@@ -188,8 +188,8 @@ describe("dispatchInterrupt", () => {
     return {
       dispatched,
       dispatch: runtimeDispatch({
-        ...(answers.session && { "chat.interrupt": recorded(answers.session), "subagent.interrupt": recorded(answers.session) }),
-        ...(answers.workflow && { "workflow.interrupt": recorded(answers.workflow) }),
+        ...(answers.session ? { "chat.interrupt": recorded(answers.session), "subagent.interrupt": recorded(answers.session) } : {}),
+        ...(answers.workflow ? { "workflow.interrupt": recorded(answers.workflow) } : {}),
       }),
     }
   }

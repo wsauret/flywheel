@@ -1,5 +1,5 @@
 import { errorDetail, errorMessage } from "./error-message.js"
-import { InFlightSwapConflictError, PersistenceWriteRefused, type EventStoreAppend, type EventStoreWriteItem, type GuardedAppendResult, type GuardedEventStoreAppend, type InFlightSwap, type InFlightWrite, type StoredFact } from "./event-store-types.js"
+import { InFlightSwapConflictError, PersistenceWriteRefused, type EventStoreAppend, type EventStoreWriteItem, type GuardedAppendResult, type GuardedEventStoreAppend, type InFlightSwap, type InFlightWrite, type StoredFact, type InFlightPayload } from "./event-store-types.js"
 import { Log } from "./log.js"
 import { isSqliteBusyError } from "./sqlite-durability.js"
 import { durationMs, logCompletion } from "./operation-log.js"
@@ -293,7 +293,7 @@ export function createEventStoreWriterLane(
     throw new Error(`event writer lane append attempts exhausted under queue pressure (${MAX_APPEND_ATTEMPTS} attempts)`)
   }
 
-  async function putInFlight(sessionId: string, kind: string, key: string, payload: unknown): Promise<void> {
+  async function putInFlight(sessionId: string, kind: string, key: string, payload: InFlightPayload): Promise<void> {
     const result = await appendItem([], [{ op: "put", kind, key, payload }], sessionId)
     if (result.kind === "conflict") throw new Error("unguarded in-flight write produced an aggregate sequence conflict")
   }
@@ -308,7 +308,7 @@ export function createEventStoreWriterLane(
     kind: string,
     key: string,
     expectedRaw: string | null,
-    payload: unknown | null,
+    payload: InFlightPayload | null,
   ): Promise<boolean> {
     return swapInFlightBatch(sessionId, [{ op: "swap", kind, key, expectedRaw, payload }])
   }

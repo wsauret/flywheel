@@ -13,10 +13,7 @@ interface BrowserTokenLocation {
   hash: string
 }
 
-interface BrowserTokenHistory {
-  readonly state: unknown
-  replaceState(data: unknown, unused: string, url?: string | URL | null): void
-}
+type BrowserTokenHistory = Pick<History, "state" | "replaceState">
 
 function normalizeOptionalString(value: unknown): string | undefined {
   if (typeof value !== "string") {

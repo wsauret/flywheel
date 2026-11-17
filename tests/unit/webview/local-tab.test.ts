@@ -5,6 +5,7 @@ import { applyTabIdentity, reloadWhenRestoredFromCache } from "../../../webview/
 
 const ICON_PREFIX = "data:image/svg+xml;utf8,"
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a partial stand-in for a Document, which bun test cannot build
 function memoryDocument(value: unknown): Document {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: applyTabIdentity paints a Document, and bun test has no DOM to build one.
   return value as Document

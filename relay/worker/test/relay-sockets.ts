@@ -60,6 +60,7 @@ function stringsOf(value: unknown, action: string): string[] {
 }
 
 /** One reader per action, each checking the answer it returns. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the decoded answer of a relay socket route, which each reader checks
 type TestRouteReaders = { readonly [A in keyof TestRouteAnswers]: (value: unknown) => TestRouteAnswers[A] }
 
 const TEST_ROUTE_ANSWERS: TestRouteReaders = {

@@ -35,7 +35,7 @@ import type { SessionFactWriter } from "../../../../src/orchestration/session/se
 
 interface AssistantWrite { readonly content: ContentBlock[]; readonly incomplete?: true }
 function recordAssistant(pushed: AssistantWrite[]) {
-  return (content: ContentBlock[], _provenance?: unknown, incomplete?: true) => { pushed.push({ content, ...(incomplete ? { incomplete } : {}) }); };
+  return (content: ContentBlock[], _provenance?: undefined, incomplete?: true) => { pushed.push({ content, ...(incomplete ? { incomplete } : {}) }); };
 }
 
 const turns: ReturnType<typeof openStandaloneTurn>[] = [];

@@ -94,7 +94,7 @@ export function decodeModuleSelection(parsed: ParsedHarnessConfig): DecodedModul
   if (hasFeatures && Object.hasOwn(parsed, "enabled_modules")) return invalidDescriptor(identityInput, requireWorkflowConfirmation, 'flywheel.toml cannot state both "enabled_modules" and legacy "features"');
 
   // The key the person wrote, so an error names what they can find in the file.
-  const statedField = hasFeatures ? "features" : hasDisabled ? "disabled_modules" : Object.hasOwn(parsed, "enabled_modules") ? "enabled_modules" : Object.hasOwn(parsed, "capability_modules") ? "capability_modules" : "modules"; // retired spellings
+  const statedField = hasFeatures ? "features" : (["disabled_modules", "enabled_modules", "capability_modules"] as const).find((key) => Object.hasOwn(parsed, key)) ?? "modules"; // retired spellings
   const normalized = hasFeatures ? migrateLegacyCapabilityModules(parsed.features) : moduleSelectionFromConfig(parsed);
   if (!normalized.ok) return invalidDescriptor(identityInput, requireWorkflowConfirmation, selectionError(statedField, normalized.error));
   const conflict = selectionPolicyError(normalized.moduleIds, { requireWorkflowConfirmation });

@@ -3,6 +3,7 @@ import { pack } from "msgpackr"
 import { decodeProjectStateRequest, decodeProjectStateResponse, decodeProjectStateStartupStep, decodeProjectStateStored, encodeProjectStateResponse, encodeProjectStateStartupStep } from "../../../../src/orchestration/app-service/project-state-protocol.js"
 
 /** A response frame built by hand, for bodies that typed code cannot encode. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a msgpack body that typed code cannot encode
 function responseFrame(id: number, body: unknown): Uint8Array {
   return new Uint8Array(Buffer.concat([pack(id), pack(body)]))
 }

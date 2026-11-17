@@ -230,7 +230,7 @@ describe("subscription usage binding", () => {
     let admitted = false;
     const seen: unknown[] = [];
     const owner = {
-      forCandidates: (_profileId: string, _candidates: unknown, resolver?: unknown) => {
+      forCandidates: (_profileId: string, _candidates: readonly AccessProviderCandidate[], resolver?: undefined) => {
         if (resolver !== undefined) expect(admitted).toBeTrue();
         return fakeAvailability({}).availability;
       },

@@ -3,6 +3,7 @@ import { test } from "node:test"
 import { createRoot } from "solid-js"
 import { scrollEdges } from "./scroll-edges.js"
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a partial stand-in for an element, which bun test cannot build
 function memoryViewport(value: unknown): HTMLElement {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: scrollEdges passes the element and its children to ResizeObserver.observe, which requires a full Element, and bun test has no DOM to build one.
   return value as HTMLElement
@@ -27,12 +28,12 @@ function memoryPage() {
     resize(target: Element) { this.deliver([{ target }]) }
   }
   const document = {
-    addEventListener(type: string, listener: EventListener, options: unknown) {
+    addEventListener(type: string, listener: EventListener, options: AddEventListenerOptions) {
       assert.equal(type, "scroll")
       assert.deepEqual(options, { capture: true, passive: true })
       listeners.add(listener)
     },
-    removeEventListener(type: string, listener: EventListener, capture: unknown) {
+    removeEventListener(type: string, listener: EventListener, capture: boolean) {
       removed.push([type, capture])
       assert.ok(listeners.delete(listener))
     },

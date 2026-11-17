@@ -4,7 +4,7 @@ import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 
 interface UnknownFields { readonly [key: string]: unknown }
 
-function record(value: unknown): value is UnknownFields {
+function isRecord(value: unknown): value is UnknownFields {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -35,14 +35,14 @@ export function canonicalizeBasetenWireId(wireModelId: string): CatalogWireIdent
 
 /** Normalizes Baseten's model list, whose prices are per token and whose feature list owns tool eligibility. */
 export function canonicalizeBasetenCatalogRow(row: unknown): CatalogSourceRow | undefined {
-  if (!record(row) || typeof row.id !== "string" || row.id.length === 0) return undefined;
+  if (!isRecord(row) || typeof row.id !== "string" || row.id.length === 0) return undefined;
   const identity = canonicalizeBasetenWireId(row.id);
   const features = stringArray(row.supported_features) ?? [];
   const contextLimit = positiveSafeInteger(row.context_length);
   const outputLimit = positiveSafeInteger(row.max_completion_tokens);
   const inputModalities = stringArray(row.input_modalities);
   const outputModalities = stringArray(row.output_modalities);
-  const pricing = record(row.pricing) ? row.pricing : undefined;
+  const pricing = isRecord(row.pricing) ? row.pricing : undefined;
   const input = finiteNonNegative(pricing?.prompt);
   const output = finiteNonNegative(pricing?.completion);
   const cacheRead = finiteNonNegative(pricing?.input_cache_read);

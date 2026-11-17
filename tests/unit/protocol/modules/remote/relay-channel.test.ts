@@ -75,7 +75,7 @@ class HalfOpenSocket extends EventTarget {
   bufferedAmount = 0
   readonly sent: unknown[] = []
   readonly closes: { code: number | undefined; reason: string | undefined }[] = []
-  send(data: unknown): void { this.sent.push(data) }
+  send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void { this.sent.push(data) }
   close(code?: number, reason?: string): void {
     this.closes.push({ code, reason })
     this.readyState = WebSocket.CLOSING

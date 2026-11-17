@@ -15,7 +15,7 @@ test("the phone replaces a subscription for another VAPID key, records its owner
     unsubscribe: async () => { unsubscribed++; return true },
   })
   let current = subscription(new Uint8Array([4, 5, 6]))
-  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { serviceWorker: { register: async () => { registrations++; return { pushManager: { getSubscription: async () => current, subscribe: async (options: unknown) => { requested.push(options); current = subscription(new Uint8Array([1, 2, 3])); return current } } } } } } })
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { serviceWorker: { register: async () => { registrations++; return { pushManager: { getSubscription: async () => current, subscribe: async (options: PushSubscriptionOptionsInit) => { requested.push(options); current = subscription(new Uint8Array([1, 2, 3])); return current } } } } } } })
   Object.defineProperty(globalThis, "window", { configurable: true, value: { PushManager: {}, Notification: {} } })
   Object.defineProperty(globalThis, "Notification", { configurable: true, value: { get permission() { return permission }, requestPermission: async () => { prompts++; permission = "granted"; return permission } } })
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) } })

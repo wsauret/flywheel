@@ -373,6 +373,7 @@ describe("presentation readiness", () => {
   const executionCwd = "/home/user/project";
 
   it("names the neutral family only while the input names no operation", () => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a model-written tool input, which resolveToolRowPresentation reads as unknown
     const row = (toolName: string, input: unknown) => resolveToolRowPresentation(toolName, input, executionCwd).presentation;
     expect(row("skill", {})).toEqual({ name: "Read Skill", detail: "" });
     expect(row("skill", { action: "lo" })).toEqual({ name: "Read Skill", detail: "" });

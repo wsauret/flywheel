@@ -112,6 +112,7 @@ function toolCallDelta(id: string, name: string, args: SseData, content?: string
 }
 
 /** How the fixture answers each task's requests. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the JSON body of a provider request that the replacement provider receives
 type TaskHandlers = { readonly [key in TaskKey]?: (request: Request, body: unknown, text: string, task: TaskTrace, continued: boolean) => Response }
 
 interface TaskTrace {

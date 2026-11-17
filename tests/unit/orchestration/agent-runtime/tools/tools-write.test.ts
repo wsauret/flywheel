@@ -13,6 +13,7 @@ import { testBaseTools, admitEveryTool } from "../../../../helpers/request-tool-
 import { MAX_FILE_EDIT_BYTES } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
+import type { InFlightPayload } from "../../../../../src/infra/event-store-types.js";
 
 // Compose prepare + execute exactly as the agent loop's dispatcher does.
 const runTool = (
@@ -94,7 +95,7 @@ describe("write tool", () => {
         ...recorder.writer,
         // Preparation is in-flight state, so the ordering runs through both
         // channels: the point of the test is that it lands before any bytes.
-        swapInFlight: (kind: string, key: string, expectedRaw: string | null, payload: unknown | null) => {
+        swapInFlight: (kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null) => {
           order.push(`prepared:${fs.existsSync(target)}`);
           return recorder.writer.swapInFlight!(kind, key, expectedRaw, payload);
         },

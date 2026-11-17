@@ -290,6 +290,7 @@ export interface RuntimeSessionOptions {
    *  open that fails says why in the pane. The reload never shows another
    *  session on its way back. */
   readonly initialSessionId?: string
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
   /** The browser's notification surface. The page's own browser when absent. */
   readonly notifier?: DesktopNotifier
