@@ -1,0 +1,16 @@
+src/agent-skills/root-cause-analysis/SKILL.md
+  h_4b47e9e4a8b456 2,11,17
+src/agent-skills/systematic-debugging/SKILL.md
+  h_4b47e9e4a8b456 11,15,19-20,22-25,29,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "331b11e879decb90cc336e1add50482645c21911",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
