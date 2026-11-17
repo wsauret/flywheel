@@ -1,0 +1,16 @@
+src/infra/auth/auth-profile-retirements.ts
+  h_4b47e9e4a8b456 1,42
+tests/unit/infra/auth/auth-profile-store.test.ts
+  h_4b47e9e4a8b456 4,28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d03a24372547c66841bd5cce2255e53edd2860a6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
