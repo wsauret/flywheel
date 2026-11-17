@@ -98,12 +98,13 @@ export async function takePrivateProjectCopy(input: { readonly projectRoot: stri
   let prepared: Promise<void> | undefined;
   /** The home whose entries the Worker holds until the take records them. */
   let unrecorded: string | undefined;
+  const { pool } = input;
   // Runs once the geometry is known: selects the home, resets a reused one,
   // and starts the private Git directory in it unless the reused one holds one.
   const prepare = (geometry: CopyGeometry, format: string | undefined): Promise<void> => {
     prepared = (async () => {
-      const idle = input.pool?.checkout(geometry);
-      if (idle && await intactHome(idle)) {
+      const idle = pool?.checkout(geometry);
+      if (pool && idle && await intactHome(idle, pool)) {
         reused = idle;
         if (await resetHome(idle)) held = idle.git;
       }
@@ -176,8 +177,8 @@ export async function takePrivateProjectCopy(input: { readonly projectRoot: stri
     // checked-out copy is retired only once that preparation settled.
     await prepared?.catch(() => undefined);
     if (unrecorded !== undefined) void input.jobs.run({ kind: "forget", home: unrecorded }).catch(() => undefined);
-    if (!reused) throw error;
-    discardPrivateCopy(reused);
+    if (!reused || !pool) throw error;
+    void pool.discard(reused);
     if (error instanceof PrivateCopyStateDropped) log.info("private copy state was dropped; taking a new copy");
     else log.warn("private copy refresh failed; taking a new copy", { kind: error instanceof Error ? error.name : typeof error });
     return takePrivateProjectCopy({ ...input, pool: undefined });
@@ -264,7 +265,7 @@ function geometryOf(realRoot: string, topLevel: string | undefined): CopyGeometr
  *  the home's chain (`homeChain`), the chain from `tree` to the copy root, the
  *  base, and the session image. A copy that fails is retired here, before
  *  anything is written into it. */
-async function intactHome(copy: ReusableCopy): Promise<boolean> {
+async function intactHome(copy: ReusableCopy, pool: PrivateCopyPool): Promise<boolean> {
   const { home, geometry } = copy;
   const tree = join(home, "tree");
   const chain = homeChain(home);
@@ -272,7 +273,7 @@ async function intactHome(copy: ReusableCopy): Promise<boolean> {
   const replaced = firstReplaced([...chain, ...inside]);
   if (!replaced) return true;
   log.warn("private copy directory was replaced; taking a new copy", { kind: replaced.kind });
-  const removal = discardPrivateCopy(copy);
+  const removal = pool.discard(copy);
   // The new copy's home goes below the same scratch directory, so a replaced
   // entry of the chain must be gone first. Its removal removes only that entry.
   if (chain.includes(replaced.path)) await removal;
@@ -422,8 +423,6 @@ export function rewriteProjectRoot(copy: PrivateProjectCopy, command: string): s
   return command.replace(rootAtPathBoundary(copy.realRoot), () => copy.copyRoot);
 }
 
-const removals = new Set<Promise<void>>();
-
 /** Deletes the copy off the command's critical path. Links are removed, never
  *  followed. The record goes first: a home without one is a copy no landing
  *  can read, which the idle scratch sweep removes within an hour, so a copy
@@ -432,10 +431,11 @@ const removals = new Set<Promise<void>>();
  *  removal the home's chain (`homeChain`) is checked: an entry of it that is
  *  no longer a real directory is removed itself, never joined through, and
  *  the removal ends there. The returned promise settles when the removal
- *  ended; it never rejects. */
+ *  ended; it never rejects. Only the pool that owns the copy calls this
+ *  (`PrivateCopyPool.discard`), so its close waits for the removal. */
 export function discardPrivateCopy(copy: Pick<PrivateProjectCopy, "home">): Promise<void> {
   const { home } = copy;
-  const removal: Promise<void> = (async () => {
+  return (async () => {
     for (const path of [join(home, PRIVATE_COPY_RECORD), home]) {
       const replaced = firstReplaced(homeChain(home));
       if (replaced?.kind === "missing") return;
@@ -449,15 +449,7 @@ export function discardPrivateCopy(copy: Pick<PrivateProjectCopy, "home">): Prom
   })()
     .catch((error: unknown) => {
       log.warn("private copy removal failed; the scratch sweep retries it", { home: copy.home, error: error instanceof Error ? error.message : String(error) });
-    })
-    .finally(() => removals.delete(removal));
-  removals.add(removal);
-  return removal;
-}
-
-/** Resolves once every copy removal started before the call has finished. */
-export async function privateCopyRemovals(): Promise<void> {
-  await Promise.all(removals);
+    });
 }
 
 /** Whether `projectRoot` or a directory above it holds a `.git` entry. Git's

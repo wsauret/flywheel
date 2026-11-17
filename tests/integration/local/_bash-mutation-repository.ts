@@ -8,8 +8,7 @@ import { createForegroundBashHoldController } from "../../../src/orchestration/a
 import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash.js"
 import { hostMutationGuard } from "../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js"
 import { handedOverPrivateCopy, runInPrivateCopy } from "../../../src/orchestration/agent-runtime/tools/bash-project-mutation.js"
-import { privateCopyRemovals } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
-import type { PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js"
+import { createPrivateCopyPool, type PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js"
 import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js"
 import { createShellRuntime } from "../../../src/orchestration/agent-runtime/tools/shell-runtime.js"
 import type { ShellRuntime } from "../../../src/orchestration/agent-runtime/tools/shell-runtime-types.js"
@@ -32,18 +31,20 @@ export const hostGuard = await (async () => {
 
 /** Runs before each process the mutation command's landing launches, with that process's arguments. */
 export type BeforeLaunch = (command: readonly string[]) => Promise<void>
-/** Runs one mutating command in a private copy through `/bin/sh`. With `pool`, the copy is taken from and given back to it. */
+/** Runs one mutating command in a private copy through `/bin/sh`. With `pool`, the copy is taken from and given back to it; without one, the command runs on a pool of its own, which closes once it landed. */
 export type CopyCommand = (command: string, options?: { readonly beforeLand?: () => Promise<void>; readonly handover?: boolean; readonly legacy?: 2 | 3; readonly interrupted?: boolean; readonly pool?: PrivateCopyPool }) => Promise<string>
 export type GitState = { readonly head: string; readonly headTarget: string; readonly refs: string; readonly index: Buffer; readonly objects: string }
 /** One mutating command of a session, with the copy home and working directory it ran in, read from the directory it printed last. */
 export type SessionCommand = (command: string) => Promise<{ readonly content: string; readonly home: string; readonly cwd: string }>
+/** A session's commands and the close of its shell runtime, which waits for every copy removal the session started. */
+export type Session = { readonly command: SessionCommand; readonly close: () => Promise<void> }
 
 /** Returns `inRepository` for one test file. Call it once at the top level of
  *  the file, because the temporary directories it creates belong to that file. */
 export function repositoryHarness() {
   const createDirectory = temporaryDirectories()
   /** A committed repository with an ignored node_modules, and one mutation command run in it. */
-  async function inRepository(body: (repository: { readonly root: string; readonly realGit: string; readonly mutation: (command: string, beforeLaunch?: BeforeLaunch) => Promise<ToolResult>; readonly copyCommand: CopyCommand; readonly git: (...args: string[]) => Promise<string>; readonly gitState: () => Promise<GitState>; readonly run: (...args: string[]) => ReturnType<typeof runOwnedCommand>; readonly session: () => SessionCommand }) => Promise<void>, format: readonly string[] = []): Promise<void> {
+  async function inRepository(body: (repository: { readonly root: string; readonly realGit: string; readonly mutation: (command: string, beforeLaunch?: BeforeLaunch) => Promise<ToolResult>; readonly copyCommand: CopyCommand; readonly git: (...args: string[]) => Promise<string>; readonly gitState: () => Promise<GitState>; readonly run: (...args: string[]) => ReturnType<typeof runOwnedCommand>; readonly session: () => Session }) => Promise<void>, format: readonly string[] = []): Promise<void> {
     const root = realpathSync(createDirectory("bash-mutations-"))
     const realGit = Bun.which("git")
     if (!realGit) throw new Error("Git is required for mutation integration tests")
@@ -85,24 +86,25 @@ export function repositoryHarness() {
         await runtime.close()
       }
     }
-    const session = (): SessionCommand => {
-      const { bash } = sessionBash()
-      return async command => {
+    const session = (): Session => {
+      const { runtime, bash } = sessionBash()
+      const command: SessionCommand = async text => {
         const printRoot = process.platform === "win32" ? "\n(Get-Location).Path" : "\npwd"
-        const result = await bash.execute({ mutates: true, command: command + printRoot }, dispatchedToolContext({ ...bashContext, spawnOwned: generation.spawnOwned }))
-        await privateCopyRemovals()
+        const result = await bash.execute({ mutates: true, command: text + printRoot }, dispatchedToolContext({ ...bashContext, spawnOwned: generation.spawnOwned }))
         const content = String(result.content)
         const printed = [...content.matchAll(/^(.*[\\/]mutations[\\/][0-9a-f-]{36})[\\/]tree[\\/].*$/gm)].at(-1)
         if (!printed?.[1]) throw new Error(`the command did not run in a private copy:\n${content}`)
         return { content, home: printed[1], cwd: printed[0] }
       }
+      return { command, close: () => runtime.close() }
     }
     const copyCommand: CopyCommand = async (command, options = {}) => {
       const scratchDir = join(root, ".flywheel", "scratch")
       const newHome = join(scratchDir, crypto.randomUUID())
       const context = { executionCwd: root, userDataRoot: `${root}/.test-account`, projectRoot: root, scratchDir, sessionId: "bash-mutation", artifactScopeId: "bash-mutation", retrievalSessionId: "bash-mutation", toolUseId: crypto.randomUUID() }
+      const pool = options.pool ?? createPrivateCopyPool()
       const result = await runInPrivateCopy({
-        context, spawnOwned: generation.spawnOwned, command, env: process.env, home: newHome, scratchDir, ...(options.pool ? { pool: options.pool } : {}),
+        context, spawnOwned: generation.spawnOwned, command, env: process.env, home: newHome, scratchDir, pool,
         run: async isolated => {
           expect(isolated).toBeDefined()
           if (!isolated || !("privateCopy" in isolated)) throw new Error("the test requires a private copy")
@@ -123,7 +125,7 @@ export function repositoryHarness() {
           }
           const recordBeforeLanding = readFileSync(join(home, "copy.json"))
           const aBeforeLanding = readFileSync(join(isolated.context.executionCwd, "a.txt"))
-          const landing = options.handover || options.legacy ? handedOverPrivateCopy({ home, context, spawnOwned: generation.spawnOwned }) : isolated.privateCopy
+          const landing = options.handover || options.legacy ? handedOverPrivateCopy({ home, context, spawnOwned: generation.spawnOwned, pool }) : isolated.privateCopy
           const landed = await landing.land({ interrupted: options.interrupted ?? false, signal: undefined, output: executed.stdout + executed.stderr })
           if (landed.report.includes("None of the command's changes were applied")) {
             expect(readFileSync(join(home, "copy.json"))).toEqual(recordBeforeLanding)
@@ -131,6 +133,8 @@ export function repositoryHarness() {
           }
           return { content: executed.stdout + executed.stderr + "\n" + landed.report, outcome: "ok" }
         },
+      }).finally(async () => {
+        if (!options.pool) await pool.close()
       })
       expect(result.outcome).not.toBe("error")
       return String(result.content)
@@ -152,7 +156,6 @@ export function repositoryHarness() {
       await body({ root, realGit, mutation, copyCommand, git, gitState, run, session })
     } finally {
       for (const runtime of runtimes) await runtime.close()
-      await privateCopyRemovals()
       await launcher.dispose()
     }
   }

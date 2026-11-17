@@ -110,6 +110,18 @@ describe("the private copy Worker of a pool", () => {
     await pool.close();
   });
 
+  it("A pool that discards a copy and then closes has removed the copy's home before close() settles", async () => {
+    const pool = createPrivateCopyPool();
+    const home = path.join(fs.realpathSync(createDirectory("bash-private-copy-pool-discard-")), "mutations", "copy");
+    fs.mkdirSync(path.join(home, "tree"), { recursive: true });
+    for (let i = 0; i < 50; i++) fs.writeFileSync(path.join(home, "tree", `file-${i}.ts`), "source\n");
+
+    void pool.discard({ home });
+    await pool.close();
+
+    expect(fs.existsSync(home)).toBe(false);
+  });
+
   it("ends its Worker when the pool is disposed, and refuses a later take", async () => {
     const { pool, workers, take } = countedPool();
     await take();

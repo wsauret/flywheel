@@ -84,9 +84,15 @@ export interface PrivateCopyPool {
    *  command that ended late still lands, on a Worker of its own that ends with
    *  the landing. Answers and rejects as `land` does. */
   landing<T>(land: (jobs: PrivateCopyJobs) => Promise<T>): Promise<T>;
+  /** Removes a copy of this pool's commands off the command's critical path
+   *  (`discardPrivateCopy`), and `close` waits for the removal. The returned
+   *  promise settles when the removal ended; it never rejects. */
+  discard(copy: Pick<ReusableCopy, "home">): Promise<void>;
   /** Discards every idle copy, refuses every later release, waits for the
-   *  landings in flight, then refuses every later job of `jobs` and ends the
-   *  pool's Worker once its jobs in flight settled. Never rejects. */
+   *  landings in flight and then for every removal started until then, then
+   *  refuses every later job of `jobs` and ends the pool's Worker once its
+   *  jobs in flight settled. A command that lands after `close` discards its
+   *  copy too, and nothing waits for that removal. Never rejects. */
   close(): Promise<void>;
 }
 
@@ -95,7 +101,14 @@ export function createPrivateCopyPool({ now = Date.now, probe = bunContainerProb
   const idle = new Map<string, ReusableCopy>();
   const jobs = createPrivateCopyJobs(spawn);
   const landings = new Set<Promise<unknown>>();
+  const removals = new Set<Promise<void>>();
   let closed = false;
+  const discard = (copy: Pick<ReusableCopy, "home">): Promise<void> => {
+    const removal = discardPrivateCopy(copy);
+    removals.add(removal);
+    void removal.then(() => removals.delete(removal));
+    return removal;
+  };
   return {
     jobs,
     checkout(geometry) {
@@ -104,7 +117,7 @@ export function createPrivateCopyPool({ now = Date.now, probe = bunContainerProb
       idle.delete(geometry.realRoot);
       const same = copy.geometry.treeName === geometry.treeName && copy.geometry.projectInTree === geometry.projectInTree && copy.geometry.repository === geometry.repository;
       if (same && now() - copy.refreshedAt <= REUSE_IDLE_LIMIT_MS) return copy;
-      discardPrivateCopy(copy);
+      void discard(copy);
       return undefined;
     },
     launchStamp(pid, pidNamespace) {
@@ -135,12 +148,15 @@ export function createPrivateCopyPool({ now = Date.now, probe = bunContainerProb
         landings.delete(landed);
       }
     },
+    discard,
     async close() {
       closed = true;
-      for (const copy of idle.values()) discardPrivateCopy(copy);
+      for (const copy of idle.values()) void discard(copy);
       if (idle.size > 0) log.info("idle private copies discarded at close", { count: idle.size });
       idle.clear();
       await Promise.allSettled(landings);
+      // A landing discards its copy as it ends, so its removal is in the set by now.
+      await Promise.all(removals);
       await jobs.close();
     },
   };

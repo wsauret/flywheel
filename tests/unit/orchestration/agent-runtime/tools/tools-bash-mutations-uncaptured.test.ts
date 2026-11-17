@@ -1,11 +1,11 @@
-import { afterEach, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { beforeAll, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import * as mutationGuard from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
-import { privateCopyRemovals } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
+import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { bashExecution, mutationSpawnProbe, makeMockOps } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
@@ -21,8 +21,7 @@ beforeAll(async () => {
 });
 
 describe("bash tool: mutation capture failures", () => {
-  afterEach(privateCopyRemovals);
-  const { project, runMutation, caseShell } = bashMutationHarness(createDirectory);
+  const { project, runMutation, caseShell, closeShells } = bashMutationHarness(createDirectory);
 
   it("keeps the wrapper outside captured-copy cleanup", async () => {
     const root = project([["a.txt", "old\n"]]);
@@ -35,7 +34,7 @@ describe("bash tool: mutation capture failures", () => {
     const env = launch?.env ?? {};
     const pathKey = process.platform === "win32" ? Object.keys(env).find((key) => key.toUpperCase() === "PATH") ?? "PATH" : "PATH";
     const wrapper = env[pathKey]?.split(path.delimiter)[0] ?? "";
-    await privateCopyRemovals();
+    await closeShells();
     expect(fs.existsSync(launch?.cwd ?? "")).toBe(false);
     expect(fs.existsSync(path.join(wrapper, process.platform === "win32" ? "git.exe" : "git"))).toBe(true);
     expect(fs.readFileSync(path.join(root, "a.txt"), "utf8")).toBe("new\n");
@@ -75,7 +74,7 @@ describe("bash tool: mutation capture failures", () => {
       expect(continuations).toEqual([]);
       expect(messages).toEqual([`Local persistence limit exceeded. Flywheel could not save this operation: its encoded request is 129 bytes; the limit is 128 bytes. ${stage === "preparation" ? "No file changes were applied." : "A file change may already be applied. Its durable settlement is unresolved; Flywheel will inspect it during recovery."}`]);
       expect(fs.readFileSync(path.join(root, "a.txt"), "utf8")).toBe(stage === "preparation" ? "old\n" : "new\n");
-      await privateCopyRemovals();
+      await closeShells();
       expect(fs.existsSync(changedCopy)).toBe(stage === "publication");
     } finally {
       await registry.terminateAll();
@@ -96,7 +95,7 @@ describe("bash tool: mutation capture failures", () => {
     const guard = unavailable ? spyOn(mutationGuard, "hostMutationGuard").mockResolvedValue({ kind: "none", pidNamespace: false }) : undefined;
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
     try {
-      const result = await createBashDefinition({ ...bashExecution(registry), operations: makeMockOps({ ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); } }) })
+      const result = await createBashDefinition({ shell: caseShell(registry), foregroundBashHold: createForegroundBashHoldController(() => {}), operations: makeMockOps({ ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); } }) })
         .execute({ command: "reshape", mutates: true, background: mode === "background" }, makeContext({
           projectRoot: root, executionCwd: root, scratchDir, spawnOwned: spawn.spawnOwned, toolUseId: "bash-1", sessionEventWriter: store.writer,
           capabilityAccess: capabilityAccessHolding(["background-commands"]),
@@ -118,7 +117,7 @@ describe("bash tool: mutation capture failures", () => {
       expect(record.mock.calls.map(([input]) => input).filter((input) => input.type === "agent.bash.mutation.uncaptured")).toEqual([
         expect.objectContaining({ payload: expect.objectContaining({ toolUseId: "bash-1" }) }),
       ]);
-      await privateCopyRemovals();
+      await closeShells();
       const mutation = path.join(scratchDir, "mutations");
       expect(fs.existsSync(mutation) ? fs.readdirSync(mutation) : []).toEqual([]);
     } finally {

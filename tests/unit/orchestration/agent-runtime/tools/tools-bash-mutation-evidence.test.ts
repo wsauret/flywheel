@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, expect, it } from "bun:test";
+import { beforeAll, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
@@ -6,7 +6,6 @@ import { readMutationEvidenceFiles } from "../../../../../src/infra/mutation-evi
 import { MutationEvidenceSchema } from "../../../../../src/infra/mutation-evidence-schema.js";
 import { asRecord } from "../../../../../src/infra/record.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
-import { privateCopyRemovals } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { bashMutationHarness, settled } from "./_bash-mutations-harness.js";
 import { createRecordingFileMutationStore } from "./_fixtures.js";
@@ -14,9 +13,8 @@ import { makeMockOwnedProcess, type OwnedExit } from "./_bash-fixtures.js";
 import { readSessionContentRange } from "../../../../../src/infra/session-content.js";
 
 const createDirectory = temporaryDirectories();
-const { project, runMutation, runManagedMutation, runHandedOverMutation } = bashMutationHarness(createDirectory);
+const { project, runMutation, runManagedMutation, runHandedOverMutation, closeShells } = bashMutationHarness(createDirectory);
 beforeAll(loadBashParser);
-afterEach(privateCopyRemovals);
 const mutationOf = (details: unknown) => Schema.decodeUnknownSync(MutationEvidenceSchema)(asRecord(details)?.mutationEvidence);
 const TERMINATED: OwnedExit = { code: 143, signal: null, statusOf: "payload", ownership: "surrendered" };
 
@@ -204,7 +202,7 @@ it("discards an interrupted foreground command's project mutation and removes it
   if (page.kind !== "available") throw new Error("session-folder evidence unavailable");
   expect(page.files).toMatchObject([{ kind: "applied", file: { displayPath: path.join(".flywheel", "sessions", "session-1", "scratch", "note.md"), change: "modified" } }]);
   expect(fs.readFileSync(path.join(root, ".flywheel/sessions/session-1/scratch/note.md"), "utf8")).toBe("before\nafter\n");
-  await privateCopyRemovals();
+  await closeShells();
   expect(fs.readdirSync(path.join(root, ".flywheel/sessions/session-1/scratch/mutations"))).toEqual([]);
 });
 

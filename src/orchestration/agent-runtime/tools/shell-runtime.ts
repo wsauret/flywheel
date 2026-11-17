@@ -68,7 +68,7 @@ export function createShellRuntime(tasks: BackgroundWorkRegistry, dependencies: 
    *  one it launched, before its registry tracks it. Its claim keeps the
    *  command's launch time as its place in the processor queue. */
   const startHandedOver = (host: CommandHandoverScope, row: CommandHandoverRow, adopted: OwnedProcess): ManagedCommand => {
-    const input = handedOverCommandInput(host, row);
+    const input = handedOverCommandInput(host, row, privateCopies);
     const { toolUseId } = row;
     const owned = claims.claim(adopted, { order: row.startedAtMs, exempt, sessionId: row.sessionId, ...(toolUseId === undefined ? {} : { toolUseId }) });
     return startManagedCommand({
@@ -102,6 +102,7 @@ export function createShellRuntime(tasks: BackgroundWorkRegistry, dependencies: 
     // command that settles from now on is the handover's to account for.
     handOver: (host) => handOverCommands(host, tasks.handoverCandidates()),
     adopt: (host, quiet) => adoptHandedOverCommands(host, {
+      privateCopies,
       stream: (toolUseId, text) => tasks.streamExecutionOutput(toolUseId, text),
       start: (row, owned) => startHandedOver(host, row, owned),
       holds: (processId) => tasks.processCommand(processId) !== undefined,

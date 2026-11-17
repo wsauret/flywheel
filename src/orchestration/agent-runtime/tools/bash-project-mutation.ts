@@ -34,7 +34,7 @@ import { prepareMutationGitEnvironment } from "./bash-git-wrapper.js";
 import { createPrivateCopyJobs, type PrivateCopyJobs } from "./bash-private-copy-jobs.js";
 import type { SessionFolderSnapshot } from "./bash-session-observation.js";
 import type { RuntimePlatform } from "./bash-script.js";
-import { detectCopyChanges, discardPrivateCopy, inspectPrivateCopyTopology, NoContainingWorkTreeError, pathInCopy, readPrivateProjectCopy, rewriteProjectRoot, takePrivateProjectCopy, type CopyRefresh, type LandableCopy, type LandableCopyRead, type PrivateProjectCopy } from "./bash-private-copy.js";
+import { detectCopyChanges, inspectPrivateCopyTopology, NoContainingWorkTreeError, pathInCopy, readPrivateProjectCopy, rewriteProjectRoot, takePrivateProjectCopy, type CopyRefresh, type LandableCopy, type LandableCopyRead, type PrivateProjectCopy } from "./bash-private-copy.js";
 import type { CopyRelease, LaunchStamp, PrivateCopyPool } from "./bash-private-copy-pool.js";
 import type { CopyChange, RemovedDirectory, ScannedChanges, UnsupportedChange } from "./bash-private-copy-tree.js";
 import { boundedMutationReport, publicationEvidence, publishToolFileEditOutcome, settledMutationEvidence } from "./file-edit-tool-adapter.js";
@@ -94,17 +94,16 @@ export type MutationExecution = IsolatedExecution | Pick<IsolatedExecution, "env
  *  gets the command's change merged into its current content (see
  *  `rebaseChange`); a change that cannot merge leaves the file as it is. An
  *  interrupted current-policy command publishes no project files. Session-folder writes
- *  already landed and remain observable. With a `pool`, the session's shell
- *  runtime's, the take refreshes the session's idle copy in place, and a copy
+ *  already landed and remain observable. The take refreshes the session's
+ *  idle copy of `pool`, the session's shell runtime's, in place, and a copy
  *  whose landing ran to its end with its changes published or none to publish
  *  goes back to the pool when the pool proves that no process the command
- *  started still runs and holds no other copy of the project. Every other copy
- *  is deleted in the background once it lands, or when the launch fails: one
- *  of an interrupted command, of a landing that threw anywhere (evidence
- *  staging included), of a launch whose start stamp is unproven, or with no
- *  pool. The copy's jobs run on the pool's Worker; without a pool, on one
- *  that this command starts at its first job and ends once its landing
- *  settled. Rejected and unverifiable copies stay available
+ *  started still runs and holds no other copy of the project. The pool
+ *  deletes every other copy in the background once it lands, or when the
+ *  launch fails: one of an interrupted command, of a landing that threw
+ *  anywhere (evidence staging included), or of a launch whose start stamp is
+ *  unproven. The copy's jobs run on the pool's Worker. Rejected and
+ *  unverifiable copies stay available
  *  with their records, including Git-backed legacy copies that were interrupted. A command a planned replacement
  *  handed to a later build lands there instead (`handedOverPrivateCopy`), so
  *  this build neither lands nor deletes its copy, and a copy whose home a
@@ -117,15 +116,11 @@ export async function runInPrivateCopy(input: Omit<IsolatedExecution, "privateCo
   readonly scratchDir: string;
   readonly platform?: RuntimePlatform;
   readonly execPath?: string;
-  readonly pool?: PrivateCopyPool;
+  readonly pool: PrivateCopyPool;
   /** Launches the command; with no isolated execution, in the real project. */
   readonly run: (execution?: MutationExecution) => Promise<ToolResult>;
 }): Promise<ToolResult> {
   const { context, spawnOwned, pool } = input;
-  const jobs = pool?.jobs ?? createPrivateCopyJobs();
-  const endOwnJobs = (): void => {
-    if (!pool) void jobs.close();
-  };
   let env: ShellEnvironment;
   try {
     env = prepareMutationGitEnvironment({ env: input.env, scratchDir: input.scratchDir, cwd: context.executionCwd, platform: input.platform ?? process.platform, execPath: input.execPath ?? process.execPath });
@@ -141,11 +136,10 @@ export async function runInPrivateCopy(input: Omit<IsolatedExecution, "privateCo
     if (guard.kind === "none" && process.platform !== "win32") throw new Error("the host's mutation guard is unavailable");
     // A model-supplied cwd can name the tree through a link or another letter case; the project root is already physical.
     executionCwd = realpathSync.native(context.executionCwd);
-    copy = await takePrivateProjectCopy({ projectRoot: context.projectRoot, executionCwd, home: input.home, scratchDir: context.scratchDir, runGit: runCommand, guard: guard.kind, jobs, pool });
+    copy = await takePrivateProjectCopy({ projectRoot: context.projectRoot, executionCwd, home: input.home, scratchDir: context.scratchDir, runGit: runCommand, guard: guard.kind, jobs: pool.jobs, pool });
     guarded = guardedArgv(guard, copy);
   } catch (error) {
-    endOwnJobs();
-    discardPrivateCopy({ home: input.home });
+    void pool.discard({ home: input.home });
     if (error instanceof NoContainingWorkTreeError) return { content: `Error: ${error.message}`, outcome: "error" };
     return await runUncaptured(input, guard.kind, error, env);
   }
@@ -153,8 +147,7 @@ export async function runInPrivateCopy(input: Omit<IsolatedExecution, "privateCo
   let launch: LaunchStamp | undefined;
   let withheld = false;
   const land: PrivateCopy["land"] = (settlement) => {
-    const landWith = (landingJobs: PrivateCopyJobs) => landPrivateCopy(context, copy, settlement, runCommand, landingJobs, { refresh: copy.refresh, release: pool && (() => withheld ? "handover" : pool.release(copy.reuse, launch)) });
-    landing ??= pool ? pool.landing(landWith) : landWith(jobs).finally(endOwnJobs);
+    landing ??= pool.landing(landingJobs => landPrivateCopy(context, copy, settlement, runCommand, landingJobs, pool, { refresh: copy.refresh, release: () => withheld ? "handover" : pool.release(copy.reuse, launch) }));
     return landing;
   };
   try {
@@ -165,17 +158,14 @@ export async function runInPrivateCopy(input: Omit<IsolatedExecution, "privateCo
       spawnOwned: async (argv, options) => {
         const owned = await spawnOwned(guarded(argv), options);
         // The supervisor lives until its container settles, so its stamp is readable now.
-        launch = pool?.launchStamp(owned.pid, guard.pidNamespace);
+        launch = pool.launchStamp(owned.pid, guard.pidNamespace);
         return owned;
       },
       privateCopy: { home: copy.home, land, withhold: () => { withheld = true; } },
     });
   } catch (error) {
     // A runner throws only before its command launched or after it landed, so no later landing can still need the copy.
-    if (!landing) {
-      discardPrivateCopy(copy);
-      endOwnJobs();
-    }
+    if (!landing) void pool.discard(copy);
     throw error;
   }
 }
@@ -204,8 +194,9 @@ async function runUncaptured(input: Parameters<typeof runInPrivateCopy>[0], guar
  *  call under `context`. The copy lands once in this process, whichever of its
  *  consumers meets the command's end first. A copy whose record is missing or
  *  unreadable lands nothing: its report names the copy, which stays, and the
- *  reason is recorded once. */
-export function handedOverPrivateCopy(input: { readonly home: string; readonly context: MutationLandingContext; readonly spawnOwned: NonNullable<ToolContext["spawnOwned"]> }): PrivateCopy {
+ *  reason is recorded once. `pool`, the shell runtime's of the adopting
+ *  host, deletes a copy that landed. */
+export function handedOverPrivateCopy(input: { readonly home: string; readonly context: MutationLandingContext; readonly spawnOwned: NonNullable<ToolContext["spawnOwned"]>; readonly pool: PrivateCopyPool }): PrivateCopy {
   const { home } = input;
   return {
     home,
@@ -230,7 +221,7 @@ async function landRecordedCopy(input: Parameters<typeof handedOverPrivateCopy>[
     } catch {
       read = { kind: "unreadable", reason: "could not be read" };
     }
-    if (read.kind === "recorded") return await landPrivateCopy(context, read.copy, settlement, ownedCommandRunner({ spawnOwned: input.spawnOwned }), jobs);
+    if (read.kind === "recorded") return await landPrivateCopy(context, read.copy, settlement, ownedCommandRunner({ spawnOwned: input.spawnOwned }), jobs, input.pool);
     const reason = read.kind === "missing" ? "is missing" : read.reason;
     recordMutation(context, { ...emptyFilesSummary("record_unavailable"), startedAt }, { fate: "retained" });
     return await mergeSessionEvidence(context, jobs, home, undefined, unlandableCopy(context, home, { kind: read.kind, reason }));
@@ -241,11 +232,11 @@ async function landRecordedCopy(input: Parameters<typeof handedOverPrivateCopy>[
 
 /** A copy this build took for a live command on the Worker of the landing's
  *  `jobs`, which holds the take's mirror state: whether the take refreshed an
- *  idle copy, and the step that gives it back to its session's pool, absent
- *  without a pool. A copy a previous build handed over has none of these. */
+ *  idle copy, and the step that gives it back to its session's pool. A copy a
+ *  previous build handed over has none of these. */
 interface TakenCopy {
   readonly refresh: CopyRefresh | undefined;
-  readonly release: (() => "pooled" | CopyRetirement) | undefined;
+  readonly release: () => "pooled" | CopyRetirement;
 }
 
 /** Why a copy that could have gone back to its pool was discarded: the pool
@@ -254,8 +245,9 @@ interface TakenCopy {
 type CopyRetirement = Exclude<CopyRelease, "pooled"> | "handover";
 
 /** Checks eligibility before preparing file edits. Rejected copies retain their original record for recovery.
- *  A taken copy goes back to its pool only when the whole landing returned, evidence staging included. */
-async function landPrivateCopy(context: MutationLandingContext, copy: LandableCopy, settlement: ProjectMutationSettlement, runGit: OwnedCommandRunner, jobs: PrivateCopyJobs, taken?: TakenCopy): Promise<ProjectMutationLanding> {
+ *  A taken copy goes back to its pool only when the whole landing returned, evidence staging included; `pool`
+ *  deletes every other copy that is not retained. */
+async function landPrivateCopy(context: MutationLandingContext, copy: LandableCopy, settlement: ProjectMutationSettlement, runGit: OwnedCommandRunner, jobs: PrivateCopyJobs, pool: PrivateCopyPool, taken?: TakenCopy): Promise<ProjectMutationLanding> {
   let retainCopy = false;
   let landed = false;
   const startedAt = performance.now();
@@ -309,13 +301,13 @@ async function landPrivateCopy(context: MutationLandingContext, copy: LandableCo
     throw error;
   } finally {
     // A completed or unchanged landing scanned the copy, so the Worker holds the listings that scan read.
-    const release = taken && landed && (summary.status === "completed" || summary.status === "unchanged") ? taken.release?.() : undefined;
+    const release = taken && landed && (summary.status === "completed" || summary.status === "unchanged") ? taken.release() : undefined;
     recordMutation(context, { ...summary, guard: copy.guard, startedAt }, {
       ...(taken ? { copy: taken.refresh ? "refreshed" : "taken", ...taken.refresh } : {}),
       fate: retainCopy ? "retained" : release === "pooled" ? "pooled" : "discarded",
       ...(release && release !== "pooled" ? { retire: release } : {}),
     });
-    if (!retainCopy && release !== "pooled") discardPrivateCopy(copy);
+    if (!retainCopy && release !== "pooled") void pool.discard(copy);
   }
 }
 

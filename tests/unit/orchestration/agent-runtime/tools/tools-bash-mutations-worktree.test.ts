@@ -1,13 +1,13 @@
 /** Bash `mutates` commands whose cwd selects the copied tree: the project, or the
  *  Git work tree that contains a cwd outside it, through any path alias. */
 
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { createPrivateCopyJobs } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
-import { privateCopyRemovals, readPrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
+import { readPrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { mutationSpawnProbe, makeMockOwnedProcess, streamOf } from "./_bash-fixtures.js";
@@ -22,9 +22,7 @@ beforeAll(async () => {
 });
 
 describe("bash tool: the tree a mutating command copies", () => {
-  afterEach(privateCopyRemovals);
-
-  const { project, runMutation } = bashMutationHarness(createDirectory);
+  const { project, runMutation, closeShells } = bashMutationHarness(createDirectory);
 
   it.each(["file-only", "changed-index", "unverified-index"] as const)("keeps linked-index ownership through a cwd alias for a %s copy", async state => {
     const parent = project([]);
@@ -108,6 +106,7 @@ describe("bash tool: the tree a mutating command copies", () => {
     } else {
       const home = path.dirname(path.dirname(privateIndex));
       expect(result.content).toContain(`${state === "changed-index" ? "A Git command changed the repository inside this mutating command" : "Flywheel could not verify the private copy's repository state"}. None of the command's changes were applied to the project. The changed files remain in the copy at ${home}. Run Git commands as separate calls without mutates. Inspect the copy and apply the file changes you need.`);
+      await closeShells();
       expect(fs.existsSync(path.join(home, "copy.json"))).toBe(true);
       expect(store.facts).toEqual([]);
     }

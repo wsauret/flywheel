@@ -21,8 +21,7 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { commandHandoversOfAsync } from "../../../../../src/orchestration/session/command-handover.js";
 import type { OutcomeRecordRead } from "../../../../../src/infra/command-handover.js";
 import { fakeContainer, handoverAuthority } from "../_command-handover-fixtures.js";
-import { privateCopyRemovals } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
-import { createPrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
+import { createPrivateCopyPool, type PrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
 import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
 import type { ContainerProbe } from "../../../../../src/infra/process-container.js";
 
@@ -31,13 +30,15 @@ import type { ContainerProbe } from "../../../../../src/infra/process-container.
 export type BashCallOverrides = Partial<ToolContext> & { readonly shell?: ShellRuntimeClient };
 
 /** A call without a session shell runs on a shell runtime of its own, which
- *  closes after the case; a case that reuses copies runs on
- *  `bashMutationSession`. */
+ *  closes after the case or at `closeShells`; a case that reuses copies runs
+ *  on `bashMutationSession`. */
 export function bashMutationHarness(createDirectory: (prefix: string) => string) {
   const runtimes: ShellRuntime[] = [];
-  afterEach(async () => {
+  /** Closes the shell runtime of every call so far, whose pool waits for each copy removal it started. */
+  async function closeShells(): Promise<void> {
     for (const runtime of runtimes.splice(0)) await runtime.close();
-  });
+  }
+  afterEach(closeShells);
   function caseShell(registry: BackgroundWorkRegistry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })): ShellRuntimeClient {
     const runtime = createShellRuntime(registry, { privateCopies: createPrivateCopyPool({ probe: processTableProbe(new Map()) }) });
     runtimes.push(runtime);
@@ -150,7 +151,6 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
     // The end of a container that was handed over reaches no owner of this build.
     launched.end(0);
     await Bun.sleep(20);
-    await privateCopyRemovals();
     const beforeAdoption = { files: fs.readdirSync(root).toSorted(), facts: store.read({ sessionId: conversation.sessionId, types: ["file.changed"] }).length, copy: fs.existsSync(home) };
     options.crossing?.(home);
 
@@ -175,13 +175,12 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
     adopted.end(0);
     await settled(registry);
     await adopting.close();
-    await privateCopyRemovals();
     const fileChanges = store.read({ sessionId: conversation.sessionId, types: ["file.changed"] }).map((fact) => fact.payload);
     store.close();
     return { beforeAdoption, launchingPool: launching.shell.privateCopies, order, notifications, recorded, fileChanges };
   }
 
-  return { project, runMutation, runManagedMutation, runHandedOverMutation, caseShell };
+  return { project, runMutation, runManagedMutation, runHandedOverMutation, caseShell, closeShells };
 }
 
 /** One simulated session: a shell runtime on its own registry, whose pool
@@ -189,12 +188,21 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
  *  containers' pid as started at the launch, so it proves that no process of
  *  a command survives until a case adds one; the real table knows nothing of
  *  that fake pid and would retire every copy. Pass `context` as the
- *  overrides of each command of the session. */
+ *  overrides of each command of the session. `removed` resolves once every
+ *  removal its commands asked the pool for has ended, while the pool still
+ *  holds its idle copy, which its close would discard. */
 export function bashMutationSession() {
   const processes: ProcessTable = new Map([[makeMockOwnedProcess().pid, { start: "100", ppid: 2 }]]);
   const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
-  const runtime = createShellRuntime(registry, { privateCopies: createPrivateCopyPool({ probe: processTableProbe(processes) }) });
-  return { processes, registry, runtime, context: { shell: runtime.client } satisfies BashCallOverrides };
+  const pool = createPrivateCopyPool({ probe: processTableProbe(processes) });
+  const removals: Promise<void>[] = [];
+  const privateCopies: PrivateCopyPool = { ...pool, discard: (copy) => {
+    const removal = pool.discard(copy);
+    removals.push(removal);
+    return removal;
+  } };
+  const runtime = createShellRuntime(registry, { privateCopies });
+  return { processes, registry, runtime, removed: async () => { await Promise.all(removals); }, context: { shell: runtime.client } satisfies BashCallOverrides };
 }
 
 type ProcessTable = Map<number, { readonly start: string; readonly ppid: number }>;

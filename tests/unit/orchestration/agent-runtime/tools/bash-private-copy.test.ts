@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
 import { guardedArgv } from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
-import { detectCopyChanges, inspectPrivateCopyTopology, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
+import { detectCopyChanges, discardPrivateCopy, inspectPrivateCopyTopology, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import { copyProjectTree, scanCopyChanges } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-tree.js";
 import { readCopyRepositoryState } from "../../../../../src/orchestration/agent-runtime/tools/bash-copy-repository-state.js";
 import { readRepositoryRefs, readReftableStack } from "../../../../../src/orchestration/agent-runtime/tools/bash-copy-refs.js";
@@ -331,7 +331,7 @@ describe("private project copy", () => {
     fs.writeFileSync(path.join(root, "src", "a.ts"), "two\n");
     fs.writeFileSync(path.join(root, "src", "c.ts"), "sea\n");
     const idle: ReusableCopy[] = [first.reuse];
-    const pool: PrivateCopyPool = { checkout: () => idle.pop(), launchStamp: () => undefined, release: () => "slot", jobs, landing: land => land(jobs), close: async () => undefined };
+    const pool: PrivateCopyPool = { checkout: () => idle.pop(), launchStamp: () => undefined, release: () => "slot", jobs, landing: land => land(jobs), discard: discardPrivateCopy, close: async () => undefined };
 
     const second = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "two"), runGit: notGit, guard: "none", jobs, pool });
 

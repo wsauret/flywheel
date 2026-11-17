@@ -8,7 +8,7 @@ import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/
 import type { ContainerProbe } from "../../../../../src/infra/process-container.js";
 import { createPrivateCopyJobs } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
 import { createPrivateCopyPool, type LaunchStamp, type PrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
-import { detectCopyChanges, privateCopyRemovals, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
+import { detectCopyChanges, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import { readPrivateCopyRecord } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-record.js";
 import { observeCopyTopology } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-tree.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -168,7 +168,6 @@ describe("reusing a private copy", () => {
     // The topology binds Git registrations only, so only a new one moves it off the take's baseline.
     expect(topology === undefined || !isDeepStrictEqual(topology, copy.execution.baseline.topology)).toBe(registers);
     await pool.close();
-    await privateCopyRemovals();
   });
 
   it.each(["", "app"])("records a topology baseline equal to a fresh observation of the copy, fresh and reused (prefix %j)", async (prefix) => {
@@ -199,7 +198,6 @@ describe("reusing a private copy", () => {
     expect(second.execution).toMatchObject({ baseline: { topology: { count: 4 } } });
     expect(second.execution.kind === "file-only-v4" && second.execution.baseline.topology).toEqual(observed(second));
     await pool.close();
-    await privateCopyRemovals();
   });
 
   it("refreshes a released copy in its own home, keeps its private Git directory, and has no record while it runs", async () => {
@@ -236,7 +234,6 @@ describe("reusing a private copy", () => {
     expect(fs.readFileSync(path.join(second.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(second.home, "git")}\n`);
     expect(recordedFiles(second.home)).toEqual(firstFiles);
     await pool.close();
-    await privateCopyRemovals();
   });
 
   /** What a command can leave in its copy's private Git directory, its home, and beside its copy root. */
@@ -282,7 +279,6 @@ describe("reusing a private copy", () => {
     expect(fs.readdirSync(treeRoot).sort()).toEqual([".git", "pkg"]);
     expect(fs.readFileSync(path.join(treeRoot, ".git"), "utf8")).toBe(`gitdir: ${git}\n`);
     await pool.close();
-    await privateCopyRemovals();
   });
 
   it("takes a new copy without a warning when the pool's Worker ended after the idle copy was taken, because the new Worker holds no state of it", async () => {
@@ -314,7 +310,6 @@ describe("reusing a private copy", () => {
     expect(second.refresh).toBeUndefined();
     expect(fs.readFileSync(path.join(second.copyRoot, "src", "a.ts"), "utf8")).toBe("source\n");
     await pool.close();
-    await privateCopyRemovals();
     expect(fs.existsSync(first.home)).toBe(false);
   });
 
@@ -341,7 +336,6 @@ describe("reusing a private copy", () => {
     expect(fs.readFileSync(path.join(git, "config"), "utf8")).not.toContain("[user]");
     expect(second.reuse.git?.fingerprint).not.toBe(first.reuse.git?.fingerprint);
     await pool.close();
-    await privateCopyRemovals();
   });
 
   it("seeds a reftable repository again when a ref moved after its seed copied the stack", async () => {
@@ -366,7 +360,6 @@ describe("reusing a private copy", () => {
     expect(second.refresh?.reseeded).toBe(true);
     expect(fs.readdirSync(path.join(second.home, "git", "reftable")).sort()).toEqual(["t1.ref", "t2.ref", "tables.list"]);
     await pool.close();
-    await privateCopyRemovals();
   });
 
   it.each([
@@ -392,16 +385,14 @@ describe("reusing a private copy", () => {
     expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
 
     const second = await fixture.take(pool);
-    await privateCopyRemovals();
 
     expect(second.home).not.toBe(first.home);
     expect(second.refresh).toBeUndefined();
+    expect(fs.readFileSync(path.join(second.copyRoot, "src", "a.ts"), "utf8")).toBe("source\n");
+    await pool.close();
     expect(contents(outside)).toEqual(referent);
     expect(fs.lstatSync(fixture.mutations).isDirectory()).toBe(true);
     expect(fs.existsSync(first.home)).toBe(false);
-    expect(fs.readFileSync(path.join(second.copyRoot, "src", "a.ts"), "utf8")).toBe("source\n");
-    await pool.close();
-    await privateCopyRemovals();
   });
 
   it("refreshes a copy whose mutations directory sits in a linked parent, and leaves the person's link in place when the copy is removed", async () => {
@@ -419,7 +410,6 @@ describe("reusing a private copy", () => {
     expect(second.refresh).toBeDefined();
     expect(pool.release(second.reuse, LAUNCH)).toBe("pooled");
     await pool.close();
-    await privateCopyRemovals();
 
     expect(fs.lstatSync(fixture.scratchDir).isSymbolicLink()).toBe(true);
     expect(fs.readFileSync(path.join(linked, "note.md"), "utf8")).toBe("note\n");
@@ -438,17 +428,14 @@ describe("reusing a private copy", () => {
     fs.rmSync(first.home, { recursive: true });
     fs.symlinkSync(outside, first.home, "junction");
 
-    if (retirement === "closes") await pool.close();
-    else {
+    if (retirement === "expires") {
       offset = REUSE_IDLE_LIMIT_MS + HOUR_MS;
       expect((await fixture.take(pool)).home).not.toBe(first.home);
     }
-    await privateCopyRemovals();
+    await pool.close();
 
     expect(contents(outside)).toEqual(new Map([["copy.json", "not a record"], ["tree", "directory"]]));
     expect(fs.existsSync(first.home)).toBe(false);
-    await pool.close();
-    await privateCopyRemovals();
   });
 
   it.each(["exclude", "git", "objects", "objects info", ".git pointer"] as const)("writes nothing through %s replaced by a link to a file outside the home", async replaced => {
@@ -472,7 +459,6 @@ describe("reusing a private copy", () => {
     expect(fs.lstatSync(target).isSymbolicLink()).toBe(false);
     expect(fs.readFileSync(path.join(second.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(second.home, "git")}\n`);
     await pool.close();
-    await privateCopyRemovals();
   });
 
   it("discards the idle copy when the project became a repository", async () => {
@@ -484,13 +470,11 @@ describe("reusing a private copy", () => {
     fixture.addRepository();
 
     const second = await fixture.take(pool);
-    await privateCopyRemovals();
+    await pool.close();
 
     expect(second.home).not.toBe(first.home);
     expect(second.git.kind).toBe("repository");
     expect(fs.existsSync(first.home)).toBe(false);
-    await pool.close();
-    await privateCopyRemovals();
   });
 
   // Windows has no POSIX write permission, and root removes entries whatever the mode, so neither makes the refresh fail this way.
@@ -506,7 +490,7 @@ describe("reusing a private copy", () => {
     expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
     try {
       const second = await fixture.take(pool);
-      await privateCopyRemovals();
+      await pool.close();
 
       expect(second.home).toBe(path.join(fixture.mutations, "h2"));
       expect(second.refresh).toBeUndefined();
@@ -515,8 +499,6 @@ describe("reusing a private copy", () => {
     } finally {
       fs.chmodSync(stuck, 0o755);
     }
-    await pool.close();
-    await privateCopyRemovals();
   });
 
   it("refreshes a copy only within the idle limit of its last refresh, however long it was checked out", async () => {
@@ -528,9 +510,7 @@ describe("reusing a private copy", () => {
     expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
     offset = REUSE_IDLE_LIMIT_MS + 0.1 * HOUR_MS;
     const expired = await fixture.take(pool);
-    await privateCopyRemovals();
     expect(expired.home).not.toBe(first.home);
-    expect(fs.existsSync(first.home)).toBe(false);
 
     offset = 0;
     const third = await fixture.take(pool);
@@ -539,7 +519,7 @@ describe("reusing a private copy", () => {
     offset = 21 * HOUR_MS;
     expect((await fixture.take(pool)).home).toBe(third.home);
     await pool.close();
-    await privateCopyRemovals();
+    expect(fs.existsSync(first.home)).toBe(false);
   });
 
   it("on Linux takes a copy back only from a launch that ran in its own process namespace", async () => {
@@ -573,7 +553,6 @@ describe("reusing a private copy", () => {
     expect(fs.existsSync(first.home)).toBe(true);
 
     await pool.close();
-    await privateCopyRemovals();
     expect(fs.existsSync(first.home)).toBe(false);
     expect(fs.existsSync(second.home)).toBe(true);
     expect(pool.release(second.reuse, LAUNCH)).toBe("slot");

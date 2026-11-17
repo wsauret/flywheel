@@ -13,7 +13,6 @@ import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { asRecord } from "../../../../../src/infra/record.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
-import { privateCopyRemovals } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { handoverAuthority } from "../_command-handover-fixtures.js";
 import { makeMockOwnedProcess, type OwnedExit } from "./_bash-fixtures.js";
@@ -29,11 +28,10 @@ beforeAll(async () => {
 const TERMINATED: OwnedExit = { code: 143, signal: null, statusOf: "payload", ownership: "surrendered" };
 
 describe("bash tool: a session's mutating commands reuse its private copy", () => {
-  const { project, runMutation, runManagedMutation, runHandedOverMutation } = bashMutationHarness(createDirectory);
+  const { project, runMutation, runManagedMutation, runHandedOverMutation, closeShells } = bashMutationHarness(createDirectory);
   const sessions: Array<ReturnType<typeof bashMutationSession>> = [];
   afterEach(async () => {
     for (const opened of sessions.splice(0)) await opened.runtime.close();
-    await privateCopyRemovals();
   });
 
   function session() {
@@ -43,8 +41,10 @@ describe("bash tool: a session's mutating commands reuse its private copy", () =
   }
 
   const mutations = (root: string) => path.join(root, ".flywheel", "sessions", "session-1", "scratch", "mutations");
+  /** The copy homes left once every removal of a case's calls ended: the case shells close, and each session keeps its idle copy. */
   async function remainingCopies(root: string): Promise<string[]> {
-    await privateCopyRemovals();
+    await closeShells();
+    for (const opened of sessions) await opened.removed();
     return fs.readdirSync(mutations(root));
   }
   /** The home of the copy a command ran in: its working directory is the copy root, `<home>/tree/<name>`. */
@@ -214,6 +214,8 @@ describe("bash tool: a session's mutating commands reuse its private copy", () =
     const second = await runMutation(root, () => {}, {}, { ...s.context, toolUseId: "bash-2" });
 
     expect(homeOf(second.launches)).not.toBe(homeOf(first.launches));
+    // The close discards only the idle copy of the second command; the retained one stays.
+    await s.runtime.close();
     expect(fs.existsSync(path.join(homeOf(first.launches), "copy.json"))).toBe(true);
     expect(fs.readFileSync(path.join(root, "a.txt"), "utf8")).toBe("a\n");
   });

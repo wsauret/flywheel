@@ -2,7 +2,7 @@
  *  through the shared publisher, conflicts, managed landing, attribution, and
  *  copy removal. The integration tier runs the real shell and Git. */
 
-import { afterEach, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { beforeAll, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -14,7 +14,6 @@ import type { OwnedProcess } from "../../../../../src/infra/owned-subprocess.js"
 import { asRecord } from "../../../../../src/infra/record.js";
 import { parseBashResultDetails } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
-import { privateCopyRemovals } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import type { ToolAttributionIdentity } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { GitAiAttributionService } from "../../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -31,8 +30,8 @@ import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { emitToolExecutionOutputRecorded } from "../../../../../src/orchestration/agent-runtime/emit.js";
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../../src/infra/runtime-fact-mapper.js";
 
-// Registered at file scope, so it removes the projects only after each case's
-// own hook below has waited for the copies inside them to be removed.
+// Registered at file scope, so it removes the projects only after the harness's
+// hook has closed each case's shell runtime, which waits for the copies inside them to be removed.
 const createDirectory = temporaryDirectories();
 
 beforeAll(async () => {
@@ -42,8 +41,7 @@ beforeAll(async () => {
 const TERMINATED: OwnedExit = { code: 143, signal: null, statusOf: "payload", ownership: "surrendered" };
 
 describe("bash tool: mutation commands", () => {
-  const { project, runMutation, runManagedMutation, runHandedOverMutation } = bashMutationHarness(createDirectory);
-  afterEach(privateCopyRemovals);
+  const { project, runMutation, runManagedMutation, runHandedOverMutation, closeShells } = bashMutationHarness(createDirectory);
 
   const mutationOf = (details: unknown): MutationEvidence => Schema.decodeUnknownSync(MutationEvidenceSchema)(asRecord(details)?.mutationEvidence);
   async function entriesOf(details: unknown, read: ReadSessionContentNode) {
@@ -52,9 +50,9 @@ describe("bash tool: mutation commands", () => {
     return page.files;
   }
 
-  /** The copy homes still present once every started removal has finished. */
+  /** The copy homes still present once the shell runtime of every call closed, which waits for the removals it started. */
   async function remainingCopies(root: string): Promise<string[]> {
-    await privateCopyRemovals();
+    await closeShells();
     return fs.readdirSync(path.join(root, ".flywheel", "sessions", "session-1", "scratch", "mutations"));
   }
 
@@ -179,7 +177,7 @@ describe("bash tool: mutation commands", () => {
         fs.writeFileSync(path.join(cwd, "c.txt"), "mine\n");
         fs.writeFileSync(file, "theirs\n");
       }, {}, { sessionEventWriter: fixture.writer }, { mergeFile });
-      await privateCopyRemovals();
+      await closeShells();
       expect(mutationOf(result.details).conflictMarkers).toBe(1);
       // The per-file settlement owns Undo evidence even when no final tool result was saved.
 
@@ -380,6 +378,7 @@ describe("bash tool: mutation commands", () => {
     expect(fs.existsSync(path.join(root, "nested"))).toBe(false);
     expect(fs.readFileSync(path.join(copyRoot, "nested", name, "HEAD"), "utf8")).toBe("ref: refs/heads/main\n");
     expect(fs.readFileSync(path.join(copyRoot, "nested", "adjacent.txt"), "utf8")).toBe("nested edit\n");
+    await closeShells();
     expect(fs.existsSync(path.join(home, "copy.json"))).toBe(true);
   });
 
@@ -397,6 +396,7 @@ describe("bash tool: mutation commands", () => {
     expect(result.content).not.toContain("A Git command changed");
     expect(fs.readFileSync(path.join(root, "a.txt"), "utf8")).toBe("a\n");
     expect(store.facts).toEqual([]);
+    await closeShells();
     expect(fs.existsSync(path.join(home, "copy.json"))).toBe(true);
   });
 

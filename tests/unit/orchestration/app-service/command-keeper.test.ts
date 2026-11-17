@@ -10,7 +10,7 @@ import { createBackgroundExecutionOwner } from "../../../../src/orchestration/ag
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { createCommandKeeper, type CommandKeeper, type KeptOutputChange } from "../../../../src/orchestration/app-service/command-keeper.js"
 import { createPrivateCopyJobs } from "../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js"
-import { privateCopyRemovals, takePrivateProjectCopy } from "../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
+import { takePrivateProjectCopy } from "../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, commandHandoversOfAsync, keptCommandsOf, type CommandHandoverRow } from "../../../../src/orchestration/session/command-handover.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
@@ -194,7 +194,8 @@ describe("the executor's keeper of handed-over commands", () => {
 
     fixture.container.end(0)
     await until(() => fixture.held().length > 0)
-    await privateCopyRemovals()
+    // The keeper's close waits for the removal of the landed copy, which its adopting host started.
+    await fixture.keeper.close()
 
     expect(readFileSync(path.join(project, "a.txt"), "utf8")).toBe("mine\n")
     const store = fixture.authority.reader

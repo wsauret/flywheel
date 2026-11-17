@@ -7,7 +7,6 @@ import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-r
 import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
 import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash.js"
 import { createShellRuntime } from "../../../src/orchestration/agent-runtime/tools/shell-runtime.js"
-import { privateCopyRemovals } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { hostGuard, powerShellWrite, repositoryHarness, type GitState } from "./_bash-mutation-repository.js"
@@ -305,7 +304,6 @@ test("a project below the Git top level sees only its own changes in Git, and th
     expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("two\n")
     expect(readFileSync(join(top, ".git", "index"))).toEqual(realIndex)
   } finally {
-    await privateCopyRemovals()
     await launcher.dispose()
   }
 }, 60_000)

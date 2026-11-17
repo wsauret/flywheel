@@ -6,7 +6,6 @@ import type { ContainerProbe } from "../../../src/infra/process-container.js"
 import { asRecord } from "../../../src/infra/record.js"
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
 import { createPrivateCopyPool, type PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js"
-import { privateCopyRemovals } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
 import { hostGuard, powerShellWrite, repositoryHarness, type CopyCommand } from "./_bash-mutation-repository.js"
 
 /** A session's consecutive mutating commands against a real Git repository,
@@ -36,24 +35,26 @@ const reuseAttempts = provesNoSurvivor ? 1 : process.platform === "darwin" ? 5 :
 
 test("a session's next mutating command reuses its copy where the platform proves no survivor, and sees the project's clean state", async () => {
   await inRepository(async ({ session }) => {
-    const command = session()
+    const { command, close } = session()
     const homes = [(await command("git status --porcelain")).home]
     for (let attempt = 0; attempt < Math.max(reuseAttempts, 1); attempt++) {
       const next = await command("git status --porcelain")
       expect(next.content).not.toMatch(/^( M|\?\?| D) /m)
       if (next.home === homes.at(-1)) break
-      expect(existsSync(homes.at(-1)!)).toBe(false)
       homes.push(next.home)
     }
     if (reuseAttempts === 0) expect(homes).toHaveLength(2)
     else expect(homes.length).toBeLessThanOrEqual(reuseAttempts)
+    // A copy that was not reused was discarded, and the close discards the idle one: none is left behind.
+    await close()
+    for (const home of homes) expect(existsSync(home)).toBe(false)
   })
 }, 60_000)
 
 for (const racy of [false, true]) {
   test(`a same-size project write with its mtime restored reaches the next command's copy (${racy ? "inside" : "outside"} the racy window)`, async () => {
     await inRepository(async ({ root, session }) => {
-      const command = session()
+      const { command } = session()
       const file = join(root, "a.txt")
       // A file changed within two seconds of the take is pinned by hash; an older one is trusted by its fingerprint.
       if (racy) writeFileSync(file, "one\n")
@@ -73,7 +74,7 @@ for (const racy of [false, true]) {
 
 test("a file whose landing was refused never reaches the session's next command", async () => {
   await inRepository(async ({ root, session }) => {
-    const command = session()
+    const { command } = session()
     const running = command(shell([
       "mkdir sub && printf 'left\\n' > sub/left.txt",
       "touch node_modules/started",
@@ -104,7 +105,7 @@ test("a file whose landing was refused never reaches the session's next command"
 
 test("the session's next command sees a new commit, a changed tracked file, and a new wholly ignored directory, and its edit lands", async () => {
   await inRepository(async ({ root, session, git }) => {
-    const command = session()
+    const { command } = session()
     const first = await command(shell("true", "$null"))
     writeFileSync(join(root, ".gitignore"), "node_modules/\n.flywheel/\n.cache/\nout/\n")
     mkdirSync(join(root, "out"))
@@ -140,7 +141,7 @@ const detachedWriters = process.platform === "darwin" ? [
 for (const [index, writer] of detachedWriters.entries()) {
   test(`a process a command left running never writes into a later command's copy or the project (writer ${index + 1})`, async () => {
     await inRepository(async ({ root, session }) => {
-      const command = session()
+      const { command } = session()
       const absent = shell("test ! -e late.txt && echo absent", "if (-not (Test-Path -LiteralPath 'late.txt')) { 'absent' }")
       const first = await command(writer)
       const second = await command(absent)
@@ -219,7 +220,6 @@ test.skipIf(process.platform === "win32")("a reused copy keeps its private Git d
       expect(await git("status", "--porcelain")).toBe(" M a.txt\n")
     } finally {
       await pool.close()
-      await privateCopyRemovals()
     }
   })
 }, 60_000)
@@ -246,7 +246,6 @@ for (const { name, before, move } of moves) {
         expect(await git("symbolic-ref", "HEAD")).toBe(head)
       } finally {
         await pool.close()
-        await privateCopyRemovals()
       }
     })
   }, 60_000)
@@ -271,7 +270,6 @@ for (const write of ["commit -q --allow-empty -m private", "add a.txt", "stash p
         expect(await gitState()).toEqual(before)
       } finally {
         await pool.close()
-        await privateCopyRemovals()
       }
     })
   }, 60_000)
@@ -290,7 +288,6 @@ test.skipIf(process.platform === "win32")("an index flag that a command set in i
       expect(second.content).toStartWith("H a.txt\n")
     } finally {
       await pool.close()
-      await privateCopyRemovals()
     }
   })
 }, 60_000)
@@ -308,7 +305,6 @@ test.skipIf(process.platform === "win32")("a git config write in a copy lands wi
       expect(second.content).toStartWith("Mutations\n")
     } finally {
       await pool.close()
-      await privateCopyRemovals()
     }
   })
 }, 60_000)

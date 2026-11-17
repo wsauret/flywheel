@@ -41,6 +41,7 @@ import { createSessionFactWriter } from "../session/session-fact-writer.js"
 import type { BackgroundWorkResult } from "./background-work.js"
 import { formatStandaloneNotification } from "./background-work-notifications.js"
 import { handedOverPrivateCopy } from "./tools/bash-project-mutation.js"
+import type { PrivateCopyPool } from "./tools/bash-private-copy-pool.js"
 import { startManagedCommand, type ManagedCommand, type ManagedCommandEnd } from "./tools/managed-command.js"
 
 const log = Log.create({ service: "command-handover" })
@@ -186,6 +187,8 @@ function completionOf(command: ManagedCommand, result: BackgroundWorkResult): Co
  *  project edits, and the outcome of a command this host settled from its
  *  supervisor's record, as a command it tracked records them at its end. */
 interface AdoptingRegistry {
+  /** The adopting shell runtime's pool, which deletes each copy a handed-over command's landing ends with. */
+  readonly privateCopies: PrivateCopyPool
   stream(toolUseId: string, text: string): void
   start(row: CommandHandoverRow, owned: OwnedProcess): ManagedCommand
   holds(processId: string): boolean
@@ -296,7 +299,7 @@ async function adoptRow(host: CommandHandoverHost, stored: StoredCommandHandover
 async function settleRow(host: CommandHandoverHost, stored: StoredCommandHandover, record: Exclude<OutcomeRecordRead, { kind: "unreadable" }>, registry: AdoptingRegistry): Promise<boolean> {
   const { row } = stored
   const command = startManagedCommand({
-    ...handedOverCommandInput(host, row),
+    ...handedOverCommandInput(host, row, registry.privateCopies),
     source: { observed: Promise.resolve(recordedEnd(record)) },
     // The command has ended: nothing streams, and no stderr pipe remains.
     executionOutputThrottleMs: 0,
@@ -323,8 +326,9 @@ export async function settleCommandHandover(writer: AsyncEventWriter, stored: St
 /** What a row says of its command, in the shape a managed command's presence
  *  takes, so an adoption and a settlement read one row alike. A command that
  *  runs in a private project copy lands that copy when it ends here, from the
- *  copy's record, as mutations of its tool call in its session. */
-export function handedOverCommandInput(host: CommandHandoverScope, row: CommandHandoverRow) {
+ *  copy's record, as mutations of its tool call in its session, and `pool`,
+ *  the adopting shell runtime's, deletes the copy once it landed. */
+export function handedOverCommandInput(host: CommandHandoverScope, row: CommandHandoverRow, pool: PrivateCopyPool) {
   const { authority } = host
   const identity = {
     ...(row.parentToolUseId ? { parentToolUseId: row.parentToolUseId } : {}),
@@ -346,6 +350,7 @@ export function handedOverCommandInput(host: CommandHandoverScope, row: CommandH
           sessionEventWriter: createSessionFactWriter({ sessionId: row.sessionId, writer: authority.writer }),
         },
         spawnOwned: authority.launcher.spawnOwned,
+        pool,
       }),
     }),
     identity: { ...(row.toolUseId ? { toolUseId: row.toolUseId } : {}), ...identity },
