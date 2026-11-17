@@ -225,6 +225,34 @@ def claude_engine_record(engine: dict, lock: bytes, cache: Path = WHEEL_CACHE) -
     return {**engine, "wheel": wheel}
 
 
+def _process_exists(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _runtime_build_directory() -> tempfile.TemporaryDirectory:
+    """A new build tree under the system temp folder's `flywheel-runtime-builds`, named by this process id.
+
+    A build that is killed before it removes its tree (about 3.7 GB), or whose
+    removal is cut off, leaves the tree behind. Each build first removes the
+    trees whose process no longer exists. Windows keeps them, because
+    `os.kill(pid, 0)` ends a Windows process instead of testing it.
+    """
+    parent = Path(tempfile.gettempdir()) / "flywheel-runtime-builds"
+    parent.mkdir(exist_ok=True)
+    if os.name == "posix":
+        for leftover in parent.iterdir():
+            owner = leftover.name.split("-", 1)[0]
+            if owner.isdigit() and not _process_exists(int(owner)):
+                shutil.rmtree(leftover, ignore_errors=True)
+    return tempfile.TemporaryDirectory(prefix=f"{os.getpid()}-", dir=parent)
+
+
 def build_runtime(repository: Path, commit: str, archive: Path, analyzer: Path) -> dict:
     """Build the runtime of `commit`: its executable archive at `archive` and its store analysis bundle at `analyzer`.
 
@@ -232,7 +260,7 @@ def build_runtime(repository: Path, commit: str, archive: Path, analyzer: Path) 
     `bun.lock`, as a release build of that commit makes them. Returns the
     Claude engine that the commit runs (`read_engine_manifest`).
     """
-    with tempfile.TemporaryDirectory(prefix="flywheel-runtime-build-") as directory:
+    with _runtime_build_directory() as directory:
         tree = Path(directory)
         _commit_tree(repository, commit, tree)
         subprocess.run(["bun", "install", "--frozen-lockfile"], cwd=tree, check=True, stdin=subprocess.DEVNULL, stdout=sys.stderr)

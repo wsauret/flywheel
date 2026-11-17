@@ -265,6 +265,19 @@ class StoppedBuildTest(unittest.TestCase):
             build.stdout.close()
             self.assertFalse(tree.exists())
 
+    def test_a_build_removes_the_trees_of_builds_whose_process_is_gone(self) -> None:
+        ended = subprocess.Popen([sys.executable, "-c", "pass"])
+        ended.wait()
+        with tempfile.TemporaryDirectory() as temporary, patch.object(tempfile, "tempdir", temporary):
+            builds = Path(temporary) / "flywheel-runtime-builds"
+            killed, running = builds / f"{ended.pid}-killed", builds / f"{os.getpid()}-running"
+            for tree in (killed, running):
+                (tree / "node_modules").mkdir(parents=True)
+            with package._runtime_build_directory() as directory:
+                self.assertEqual(Path(directory).parent, builds)
+            self.assertFalse(killed.exists())
+            self.assertTrue(running.exists())
+
 
 class PublicationTargetTest(unittest.TestCase):
     def test_only_a_released_build_goes_to_main(self) -> None:
