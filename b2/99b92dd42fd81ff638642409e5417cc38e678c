@@ -1,0 +1,80 @@
+src/infra/review-notice.ts
+  h_4b47e9e4a8b456 29
+src/infra/runtime-event-types.ts
+  h_4b47e9e4a8b456 5
+src/infra/tools/tool-display-registry.ts
+  h_4b47e9e4a8b456 142
+src/infra/tree-sitter-parser.ts
+  h_4b47e9e4a8b456 14
+src/infra/update/archive-entry.ts
+  h_4b47e9e4a8b456 20
+src/infra/update/build-identity.ts
+  h_4b47e9e4a8b456 51
+src/infra/web-push.ts
+  h_4b47e9e4a8b456 39,43,73-75,77-78,81,83,87-88,94,102,105,132
+tests/unit/infra/mutation-evidence-contracts.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/infra/projection-registry.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/review-notice.test.ts
+  h_4b47e9e4a8b456 3,7
+tests/unit/infra/runtime-facts-invariants.test.ts
+  h_4b47e9e4a8b456 9,54
+tests/unit/infra/tools/output-formatter.test.ts
+  h_4b47e9e4a8b456 2,31,48
+tests/unit/infra/tools/tool-contracts-registry.test.ts
+  h_4b47e9e4a8b456 2,104,144,171-172,236,241,243,245,250-251,254-255,257,264-268,272,284-285,289,296,298,302,308,319-321,325,330,337,346-349,354-355,366-367,394,400,412,417
+tests/unit/infra/tree-sitter-parser.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/infra/update/archive-entry.test.ts
+  h_4b47e9e4a8b456 2-4,23,56-57,61,65
+tests/unit/infra/update/build-identity.test.ts
+  h_4b47e9e4a8b456 24,78,83-84,104-105,162
+tests/unit/infra/web-push.test.ts
+  h_4b47e9e4a8b456 4,6-35,38-40,50,53,59,64-75,77-81,85-90,96-99,104-105,108-110
+tests/unit/orchestration/app-service/app-service-experiment-view.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/modules/experiments/projection.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/orchestration/modules/experiments/protocol-projection.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/modules/learning/tools/skill-manage-tool.test.ts
+  h_4b47e9e4a8b456 9,11,66,184
+tests/unit/tui/output-blocks/_write-entry-fixture.ts
+  h_4b47e9e4a8b456 2,10
+tests/unit/tui/output-blocks/agent-group-read-runs.test.ts
+  h_4b47e9e4a8b456 5,26,39,54
+tests/unit/tui/output-blocks/bash-output-row.test.ts
+  h_4b47e9e4a8b456 6,17,180
+tests/unit/tui/output-blocks/merge-explore-reads.test.ts
+  h_4b47e9e4a8b456 3,28
+tests/unit/tui/output-blocks/tool-entry-execution-output.test.ts
+  h_4b47e9e4a8b456 4,508
+tests/unit/tui/output-blocks/tool-entry-multi-file-disclosure.test.ts
+  h_4b47e9e4a8b456 3,29,138
+tests/unit/tui/output-blocks/tool-entry-mutation-rendering.test.ts
+  h_4b47e9e4a8b456 4,62,86,291,468,488-489,491,493
+tests/unit/tui/output-blocks/tool-entry-preview-state.test.ts
+  h_4b47e9e4a8b456 4,30,54,75
+tests/unit/tui/output-blocks/tool-entry-proposed-diff.test.ts
+  h_4b47e9e4a8b456 4,15
+tests/unit/tui/output-blocks/tool-entry-shell-mutations.test.ts
+  h_4b47e9e4a8b456 4,60
+tests/unit/tui/output-blocks/tool-preview-displayed-rows.test.ts
+  h_4b47e9e4a8b456 3,51,82,107
+tests/unit/tui/output-blocks/tool-run-block.test.ts
+  h_4b47e9e4a8b456 6,33
+tests/unit/tui/output-window-budgeted-mount.test.tsx
+  h_4b47e9e4a8b456 22,483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b299b92dd42fd81ff638642409e5417cc38e678c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
