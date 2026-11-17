@@ -6,7 +6,6 @@ import { useHeaderToggle } from "@tui/hooks/use-body-toggle.js"
 import { bindStyledTextContent } from "@tui/utils/reactive-text.js"
 import { createMemo, Index, Show, type JSX } from "solid-js"
 import { formatStartTime } from "../../protocol/client/format.js"
-import { Divider } from "./system-block.js"
 import type { PresentedTerminalRow, TerminalCallStretch } from "./visible-output-blocks.js"
 
 interface CallStretchBlockProps {
@@ -34,14 +33,7 @@ export function CallStretchBlock(props: CallStretchBlockProps) {
       </box>
       <Show when={props.block.open}>
         <box flexDirection="column" paddingLeft={2}>
-          <Index each={props.block.rows}>
-            {(row, index) => (
-              <>
-                <Show when={props.block.boundaryBefore[index]}><Divider /></Show>
-                {props.row(row())}
-              </>
-            )}
-          </Index>
+          <Index each={props.block.rows}>{(row) => <>{props.row(row())}</>}</Index>
         </box>
       </Show>
     </box>

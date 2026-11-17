@@ -38,13 +38,13 @@ export function createCallStretchProjector(presentation: CallStretchPresentation
     return run
   }
 
-  const heading = (stretch: CallStretch<PresentedTerminalRow>, boundaryBefore: readonly boolean[]): HeadingRow => {
+  const heading = (stretch: CallStretch<PresentedTerminalRow>): HeadingRow => {
     const { label, failed } = turnFoldSummary(stretch, undefined, presentation.phrases)
     const cached = headings.get(stretch.id)
-    if (cached && cached.open === stretch.open && cached.timestamp === stretch.timestamp && cached.label === label && cached.failed === failed && sameItems(cached.rows, stretch.rows) && sameItems(cached.boundaryBefore, boundaryBefore)) return cached
+    if (cached && cached.open === stretch.open && cached.timestamp === stretch.timestamp && cached.label === label && cached.failed === failed && sameItems(cached.rows, stretch.rows)) return cached
     // SAFETY: the marker records admission through this presenter and adds no runtime fields.
     // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: only presentation admits rows to the renderer.
-    const row = { kind: "callStretch", id: stretch.id, open: stretch.open, timestamp: stretch.timestamp, label, failed, rows: stretch.rows, boundaryBefore } as HeadingRow
+    const row = { kind: "callStretch", id: stretch.id, open: stretch.open, timestamp: stretch.timestamp, label, failed, rows: stretch.rows } as HeadingRow
     headings.set(stretch.id, row)
     return row
   }
@@ -53,7 +53,6 @@ export function createCallStretchProjector(presentation: CallStretchPresentation
     const rows: PresentedTerminalRow[] = []
     const boundaries: boolean[] = []
     const indexOf = new Map<PresentedTerminalRow, number>()
-    const boundaryOf = new Map<PresentedTerminalRow, boolean>()
     const zeroHeight = [...projection.zeroHeightBlockIndices]
     for (const [i, row] of projection.timelineBlocks.entries()) {
       // SAFETY: the projection's arrays are parallel by construction.
@@ -64,21 +63,21 @@ export function createCallStretchProjector(presentation: CallStretchPresentation
       rows.push(visible)
       boundaries.push(boundary)
       indexOf.set(visible, index)
-      boundaryOf.set(visible, boundary)
     }
     const gathered = gatherCallStretches({ rows, boundaryBefore: boundaries }, running, choice)
     const timelineBlocks: TimelineRow[] = []
     const hasBoundaryBefore: boolean[] = []
     const timelineBlockIndices: number[] = []
-    for (const [i, row] of gathered.rows.entries()) {
-      hasBoundaryBefore.push(gathered.boundaryBefore[i] ?? false)
+    for (const row of gathered.rows) {
+      // The headings already part the lead's words from its calls, so no divider repeats that (PI-LEAD-017).
+      hasBoundaryBefore.push(false)
       if (row.kind !== "callStretch") {
         timelineBlocks.push(row)
         // SAFETY: every row the rule passes on came from the input rows, each indexed above.
         timelineBlockIndices.push(indexOf.get(row)!)
         continue
       }
-      timelineBlocks.push(heading(row, row.rows.map((member) => boundaryOf.get(member) ?? false)))
+      timelineBlocks.push(heading(row))
       // SAFETY: a stretch holds input rows only, each indexed above.
       const indices = row.rows.map((member) => indexOf.get(member)!)
       // SAFETY: a stretch holds at least one row.

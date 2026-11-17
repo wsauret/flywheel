@@ -40,7 +40,6 @@ export interface TerminalCallStretch {
   readonly label: string
   readonly failed: number
   readonly rows: readonly PresentedTerminalRow[]
-  readonly boundaryBefore: readonly boolean[]
 }
 
 /** The renderer's row vocabulary: every durable block plus the display fold. */

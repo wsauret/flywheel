@@ -112,6 +112,8 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       expect(closed.indexOf(line)).toBeLessThan(closed.indexOf("A new chat investigates it"))
       expect(closed).toContain("Look into the flaky test")
       for (const hidden of ["Chat progress", "Route to new chat", "Checkpoint"]) expect(closed).not.toContain(hidden)
+      // The heading parts the lead's words from its calls, so no divider repeats that.
+      expect(closed).not.toContain("───")
       const theme = resolveTheme(flywheelTheme, "dark")
       const span = tab.result.captureSpans().lines.flatMap((row) => row.spans).find((candidate) => candidate.text.includes("Worked"))
       expect(span?.fg.equals(theme.textMuted)).toBe(true)
@@ -123,6 +125,7 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       expect(opened).toContain(`▾ ${formatStartTime(progress.timestamp)} · ${line}`)
       for (const shown of ["No chat works on this yet", "Chat progress", "Route to new chat", "A new chat investigates it"]) expect(opened).toContain(shown)
       expect(opened).not.toContain("Checkpoint")
+      expect(opened).not.toContain("───")
       // The calls' run sits two columns in from the heading.
       const openedRows = opened.split("\n")
       const headingColumn = openedRows.find((row) => row.includes(line))!.indexOf("▾")
@@ -275,6 +278,8 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       const frame = await tab.frame()
       expect(frame).not.toContain("Worked")
       for (const shown of ["No chat works on this yet", "Chat progress", "Route to new chat", "Checkpoint"]) expect(frame).toContain(shown)
+      // An ordinary chat keeps the divider before narration that resumes after tool work (PI-INTERACTION-158).
+      expect(frame).toContain("───")
     } finally { tab.dispose() }
   })
 })

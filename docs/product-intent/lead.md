@@ -68,7 +68,7 @@ The x key on a selected row of the lead's list closes the chat. A click on the c
 
 ## PI-LEAD-017: The lead's calls gather under headings
 
-In the terminal, the lead's words never fold. Its calls between one message and the next gather, indented, under one muted heading with the time, the duration, and what it did with its chats. While the calls run, the heading is open and says the lead is working. It closes once a message follows or the turn ends, and a click opens or closes it. Bookkeeping calls never show.
+In the terminal, the lead's words never fold. Its calls between one message and the next gather, indented, under one muted heading with the time, the duration, and what it did with its chats. While the calls run, the heading is open and says the lead is working. It closes once a message follows or the turn ends, and a click opens or closes it. Bookkeeping calls never show, and no divider line separates its words from its calls.
 
 ## PI-LEAD-018: The lead never leaves a request unrouted
 
