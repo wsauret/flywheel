@@ -3,7 +3,7 @@ import { buildSystemPrompt as buildSystemPromptTiers } from "../../../../src/orc
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { testBaseTools } from "../../../helpers/request-tool-surface.js";
-import { bashToolSurface, SHELL_OUTPUT_GUIDANCE } from "../../../../src/orchestration/agent-runtime/tools/bash-guidance.js";
+import { bashToolSurface } from "../../../../src/orchestration/agent-runtime/tools/bash-guidance.js";
 import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines } from "../../../../src/orchestration/agent-runtime/global-guidelines.js";
 import { loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { testDirectories } from "../../../helpers/directories.js";
@@ -223,7 +223,7 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     // per-tool guideline list keeps only behavior contracts the description
     // cannot state.
     for (const name of ["read", "search", "list", "edit", "write"]) expect(BASE.get(name)!.promptGuidelines).toBeUndefined();
-    expect(BASE.get("bash")!.promptGuidelines).toEqual([SHELL_OUTPUT_GUIDANCE, expect.stringContaining("equal routes")]);
+    expect(BASE.get("bash")!.promptGuidelines).toEqual([expect.stringContaining("Preserve live command output"), expect.stringContaining("equal routes")]);
     const searchSchema = JSON.stringify(BASE.get("search")!.inputSchema);
     expect(searchSchema).toContain("definitions and source files first");
     expect(searchSchema).toContain("exact match counts per file");

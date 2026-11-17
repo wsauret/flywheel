@@ -73,89 +73,85 @@ const APPLY_PATCH_PROMPT_EXAMPLES = `The whole input is one patch envelope. Each
 *** Delete File: old/stale.txt
 *** End Patch`;
 
-/** Builds the patch tool; scoped callers validate and resolve parsed targets before admission. */
-export function createApplyPatchDefinition(resolveTargets?: (patch: PreparedPatch, executionCwd: string) => PreparedPatch): RuntimeTool {
-  return {
-    name: "apply_patch",
-    action: "file_edit",
-    description: "The `apply_patch` tool can be used to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON. The result carries the diff hunks that landed; do not re-read a file after a successful patch.",
-    promptGuidelines: [
-      "Apply a patch through this tool; never run `applypatch` or `apply-patch` in the shell.",
-      "Do not re-read files after a successful apply_patch; the call fails loudly when it did not apply.",
-    ],
-    promptExamples: APPLY_PATCH_PROMPT_EXAMPLES,
-    inputSchema: APPLY_PATCH_SCHEMA,
-    // The description above is the upstream FREEFORM text, true only on the custom wire. A route that sends the
-    // tool as a JSON function sends this description instead. The system-prompt snippet and example stay
-    // wire-neutral, because one request's failover chain can mix both wires.
-    wire: {
-      kind: "custom",
-      grammar: { syntax: "lark", definition: APPLY_PATCH_LARK_GRAMMAR },
-      functionDescription: "The `apply_patch` tool can be used to edit files. Put the whole patch envelope, from *** Begin Patch through *** End Patch, in the `input` string. The result carries the diff hunks that landed; do not re-read a file after a successful patch.",
-    },
-    validatesOwnInput: true,
-    isConcurrencySafe: false,
-    prepareAdmission: async (input, context) => {
-      const { executionCwd } = context;
-      const patch = patchText(input);
-      if (patch === undefined) throw new Error("apply_patch expects a patch string");
-      const parsed = preparePatch(patch);
-      const preparedPatch = resolveTargets ? resolveTargets(parsed, executionCwd) : parsed;
-      const notices: string[] = [];
-      if (parsed.ignoredEmptyHunks) notices.push(`Note: ignored ${parsed.ignoredEmptyHunks} empty update hunk(s).`);
-      if (parsed.ignoredEmptyUpdates?.length) notices.push(`Note: ignored empty update sections: ${parsed.ignoredEmptyUpdates.join(", ")}.`);
-      for (const path of preparedPatch.paths) {
-        if (!path.startsWith("~")) continue;
-        const expanded = sessionPathInput({ path }, context, "new-file");
-        if (expanded.repair) notices.push(expanded.repair.notice);
-      }
-      const normalized = notices.length === 0 ? input : { ...input };
-      preparedPatches.set(normalized, preparedPatch);
-      return {
-        reservedPaths: preparedPatch.paths.map(path => canonicalMutationPath(resolveToolPath(executionCwd, path))),
-        ...(notices.length === 0 ? {} : { repair: { input: normalized, notice: notices.join("\n") } }),
-      };
-    },
-    async execute(input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
-      const preparedPatch = preparedPatches.get(input);
-      if (preparedPatch === undefined) return { content: "apply_patch was not prepared for execution", outcome: "error" };
-      if (preparedPatch.operations.length === 0) return { content: "Note: patch contains no changes.", outcome: "ok" };
-      let admittedSnapshotBytes = 0;
-      let unchanged: readonly string[] = [];
-      const result = await publishToolFileEdits(context, {
-        label: "Patch",
-        paths: preparedPatch.paths,
-        admit: resolvedPath => {
-          const authority = RetainedFileEditAuthority.admitWritable(resolvedPath);
-          if (authority.snapshot && authority.text === undefined) {
-            authority.close();
-            throw new Error(`${resolvedPath} is not valid UTF-8`);
-          }
-          const snapshotBytes = authority.snapshot?.content.byteLength ?? 0;
-          if (snapshotBytes > MAX_FILE_EDIT_BYTES - admittedSnapshotBytes) {
-            authority.close();
-            throw new Error(`patch target snapshots exceed the ${MAX_FILE_EDIT_BYTES}-byte operation limit`);
-          }
-          admittedSnapshotBytes += snapshotBytes;
-          return authority;
-        },
-        plan: admitted => {
-          rejectAliasedTargets(admitted);
-          const byAuthoredPath = new Map(admitted.map(entry => [entry.path, entry] as const));
-          const plans = planPreparedPatch(preparedPatch, admitted.map(entry => ({ path: entry.path, content: entry.authority.text })));
-          const publications = compilePlans(preparedPatch.operations, plans, byAuthoredPath);
-          const changed = new Set(publications.map(publication => publication.admitted.path));
-          unchanged = admitted.filter(entry => !changed.has(entry.path)).map(entry => entry.path);
-          return publications;
-        },
-      });
-      return unchanged.length === 0 ? result : {
-        ...result,
-        content: boundedMutationReport(`Note: unchanged files: ${unchanged.join(", ")}.\n${result.content}`.trimEnd()),
-      };
-    },
-  };
-}
+export const applyPatchDefinition: RuntimeTool = {
+  name: "apply_patch",
+  action: "file_edit",
+  description: "The `apply_patch` tool can be used to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON. The result carries the diff hunks that landed; do not re-read a file after a successful patch.",
+  promptGuidelines: [
+    "Apply a patch through this tool; never run `applypatch` or `apply-patch` in the shell.",
+    "Do not re-read files after a successful apply_patch; the call fails loudly when it did not apply.",
+  ],
+  promptExamples: APPLY_PATCH_PROMPT_EXAMPLES,
+  inputSchema: APPLY_PATCH_SCHEMA,
+  // The description above is the upstream FREEFORM text, true only on the custom wire. A route that sends the
+  // tool as a JSON function sends this description instead. The system-prompt snippet and example stay
+  // wire-neutral, because one request's failover chain can mix both wires.
+  wire: {
+    kind: "custom",
+    grammar: { syntax: "lark", definition: APPLY_PATCH_LARK_GRAMMAR },
+    functionDescription: "The `apply_patch` tool can be used to edit files. Put the whole patch envelope, from *** Begin Patch through *** End Patch, in the `input` string. The result carries the diff hunks that landed; do not re-read a file after a successful patch.",
+  },
+  validatesOwnInput: true,
+  isConcurrencySafe: false,
+  prepareAdmission: async (input, context) => {
+    const { executionCwd } = context;
+    const patch = patchText(input);
+    if (patch === undefined) throw new Error("apply_patch expects a patch string");
+    const preparedPatch = preparePatch(patch);
+    const notices: string[] = [];
+    if (preparedPatch.ignoredEmptyHunks) notices.push(`Note: ignored ${preparedPatch.ignoredEmptyHunks} empty update hunk(s).`);
+    if (preparedPatch.ignoredEmptyUpdates?.length) notices.push(`Note: ignored empty update sections: ${preparedPatch.ignoredEmptyUpdates.join(", ")}.`);
+    for (const path of preparedPatch.paths) {
+      if (!path.startsWith("~")) continue;
+      const expanded = sessionPathInput({ path }, context, "new-file");
+      if (expanded.repair) notices.push(expanded.repair.notice);
+    }
+    const normalized = notices.length === 0 ? input : { ...input };
+    preparedPatches.set(normalized, preparedPatch);
+    return {
+      reservedPaths: preparedPatch.paths.map(path => canonicalMutationPath(resolveToolPath(executionCwd, path))),
+      ...(notices.length === 0 ? {} : { repair: { input: normalized, notice: notices.join("\n") } }),
+    };
+  },
+  async execute(input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
+    const preparedPatch = preparedPatches.get(input);
+    if (preparedPatch === undefined) return { content: "apply_patch was not prepared for execution", outcome: "error" };
+    if (preparedPatch.operations.length === 0) return { content: "Note: patch contains no changes.", outcome: "ok" };
+    let admittedSnapshotBytes = 0;
+    let unchanged: readonly string[] = [];
+    const result = await publishToolFileEdits(context, {
+      label: "Patch",
+      paths: preparedPatch.paths,
+      admit: resolvedPath => {
+        const authority = RetainedFileEditAuthority.admitWritable(resolvedPath);
+        if (authority.snapshot && authority.text === undefined) {
+          authority.close();
+          throw new Error(`${resolvedPath} is not valid UTF-8`);
+        }
+        const snapshotBytes = authority.snapshot?.content.byteLength ?? 0;
+        if (snapshotBytes > MAX_FILE_EDIT_BYTES - admittedSnapshotBytes) {
+          authority.close();
+          throw new Error(`patch target snapshots exceed the ${MAX_FILE_EDIT_BYTES}-byte operation limit`);
+        }
+        admittedSnapshotBytes += snapshotBytes;
+        return authority;
+      },
+      plan: admitted => {
+        rejectAliasedTargets(admitted);
+        const byAuthoredPath = new Map(admitted.map(entry => [entry.path, entry] as const));
+        const plans = planPreparedPatch(preparedPatch, admitted.map(entry => ({ path: entry.path, content: entry.authority.text })));
+        const publications = compilePlans(preparedPatch.operations, plans, byAuthoredPath);
+        const changed = new Set(publications.map(publication => publication.admitted.path));
+        unchanged = admitted.filter(entry => !changed.has(entry.path)).map(entry => entry.path);
+        return publications;
+      },
+    });
+    return unchanged.length === 0 ? result : {
+      ...result,
+      content: boundedMutationReport(`Note: unchanged files: ${unchanged.join(", ")}.\n${result.content}`.trimEnd()),
+    };
+  },
+};
 
 function requiredAdmission(paths: ReadonlyMap<string, AdmittedFileEdit>, path: string): AdmittedFileEdit {
   const admitted = paths.get(path);
@@ -376,5 +372,3 @@ function sameVirtualFile(left: VirtualPatchFile | undefined, right: VirtualPatch
     && left.content === right.content
     && left.metadata === right.metadata);
 }
-
-export const applyPatchDefinition = createApplyPatchDefinition();

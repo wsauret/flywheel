@@ -1,15 +1,17 @@
 /** The shared harness of the bash `mutates` unit tests: a physical project
  *  directory and one `mutates: true` call over injected operations. */
 
+import { afterEach } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type { OwnedProcess } from "../../../../../src/infra/owned-subprocess.js";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { mutationSpawnProbe, makeMockOps, makeMockOwnedProcess, type MergeFileFake, type OwnedExit } from "./_bash-fixtures.js";
+import type { ShellRuntime, ShellRuntimeClient } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime-types.js";
+import { commandOutputOps, mutationSpawnProbe, makeMockOps, makeMockOwnedProcess, type MergeFileFake, type OwnedExit } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
-import { createBackgroundWorkRegistry, type SettledProjectMutation } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry, type BackgroundWorkRegistry, type SettledProjectMutation } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { backgroundLogPath } from "../../../../helpers/background-log-path.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
@@ -24,7 +26,24 @@ import { createPrivateCopyPool } from "../../../../../src/orchestration/agent-ru
 import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
 import type { ContainerProbe } from "../../../../../src/infra/process-container.js";
 
+/** A call's context overrides. `shell` is the session shell runtime that runs
+ *  the call; without one, the call runs on a runtime of its own. */
+export type BashCallOverrides = Partial<ToolContext> & { readonly shell?: ShellRuntimeClient };
+
+/** A call without a session shell runs on a shell runtime of its own, which
+ *  closes after the case; a case that reuses copies runs on
+ *  `bashMutationSession`. */
 export function bashMutationHarness(createDirectory: (prefix: string) => string) {
+  const runtimes: ShellRuntime[] = [];
+  afterEach(async () => {
+    for (const runtime of runtimes.splice(0)) await runtime.close();
+  });
+  function caseShell(registry: BackgroundWorkRegistry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })): ShellRuntimeClient {
+    const runtime = createShellRuntime(registry, { privateCopies: createPrivateCopyPool({ probe: processTableProbe(new Map()) }) });
+    runtimes.push(runtime);
+    return runtime.client;
+  }
+
   function project(files: ReadonlyArray<readonly [string, string | Uint8Array]>) {
     const root = fs.realpathSync(createDirectory("agent-bash-mutations-"));
     for (const [name, content] of files) {
@@ -34,17 +53,19 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
     return root;
   }
 
-  async function runMutation(root: string, mutate: (cwd: string) => void, input: { readonly command?: string; readonly cwd?: string; readonly background?: boolean; readonly persist_after_exit?: boolean; readonly timeout?: number } = {}, overrides: Partial<ToolContext> = {}, launch: { readonly make?: () => OwnedProcess; readonly mergeFile?: MergeFileFake } = {}) {
+  async function runMutation(root: string, mutate: (cwd: string) => void, input: { readonly command?: string; readonly cwd?: string; readonly background?: boolean; readonly persist_after_exit?: boolean; readonly timeout?: number } = {}, overrides: BashCallOverrides = {}, launch: { readonly make?: () => OwnedProcess; readonly mergeFile?: MergeFileFake } = {}) {
+    const { shell = caseShell(), ...context } = overrides;
     const scripts: string[] = [];
     const store = createRecordingFileMutationStore();
     const spawn = mutationSpawnProbe(mutate, launch.make, launch.mergeFile);
-    const def = createBashDefinition({ operations: makeMockOps({
+    // The command prints `mock output` to its log, which managed execution reads as its output.
+    const def = createBashDefinition({ shell, foregroundBashHold: createForegroundBashHoldController(() => {}), operations: commandOutputOps("mock output\n", {
       ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); },
       async writeScript(_path, content) { scripts.push(content); return content.length; },
     }) });
     const result = await def.execute({ command: "reshape", mutates: true, ...input }, makeContext({
       projectRoot: root, executionCwd: root, scratchDir: path.join(root, ".flywheel", "sessions", "session-1", "scratch"),
-      spawnOwned: spawn.spawnOwned, toolUseId: "bash-1", sessionEventWriter: store.writer, ...overrides,
+      spawnOwned: spawn.spawnOwned, toolUseId: "bash-1", sessionEventWriter: store.writer, ...context,
     }));
     return { result, scripts, store, launches: spawn.launches };
   }
@@ -52,7 +73,7 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
   /** Runs a mutating command through the managed path: `background` launches it
    *  there, and a held `exit` lets the 5 ms runtime cap transfer it. A
    *  function in place of `exit` makes the command's container. */
-  async function runManagedMutation(root: string, mutate: (cwd: string) => void, input: { readonly background?: boolean }, exit?: Promise<OwnedExit> | (() => OwnedProcess), overrides: Partial<ToolContext> = {}, mergeFile?: MergeFileFake) {
+  async function runManagedMutation(root: string, mutate: (cwd: string) => void, input: { readonly background?: boolean }, exit?: Promise<OwnedExit> | (() => OwnedProcess), overrides: BashCallOverrides = {}, mergeFile?: MergeFileFake) {
     const order: string[] = [];
     const notifications: string[] = [];
     const recorded: Array<{ readonly toolUseId: string; readonly output: string; readonly mutation: SettledProjectMutation }> = [];
@@ -61,9 +82,12 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
       enqueueNotification: (text) => { order.push("notified"); notifications.push(text); },
       onExecutionOutputRecorded: (toolUseId, output, _identity, mutation) => { order.push("recorded"); recorded.push({ toolUseId, output, mutation }); },
     });
+    const { shell = caseShell(registry), ...context } = overrides;
     const store = createRecordingFileMutationStore();
     const spawn = mutationSpawnProbe(mutate, typeof exit === "function" ? exit : exit ? () => makeMockOwnedProcess({ exited: exit }) : undefined, mergeFile);
     const def = createBashDefinition({
+      shell,
+      foregroundBashHold: createForegroundBashHoldController(() => {}),
       totalYieldMs: 5,
       operations: makeMockOps({
         ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); },
@@ -77,9 +101,8 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
     const result = await def.execute({ command: "reshape", mutates: true, ...input }, makeContext({
       projectRoot: root, executionCwd: root, scratchDir: path.join(root, ".flywheel", "sessions", "session-1", "scratch"),
       spawnOwned: spawn.spawnOwned, toolUseId: "bash-1", sessionEventWriter: store.writer,
-      capabilityAccess: capabilityAccessHolding(["background-commands"]), backgroundTasks: registry,
-      foregroundBashHold: createForegroundBashHoldController(() => {}),
-      ...overrides,
+      capabilityAccess: capabilityAccessHolding(["background-commands"]),
+      ...context,
     }));
     return { result, registry, order, notifications, recorded, store };
   }
@@ -104,6 +127,8 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
       authority: handoverAuthority({ reader: store, writer, stopping: true }),
     });
     await createBashDefinition({
+      shell: launching.shell,
+      foregroundBashHold: createForegroundBashHoldController(() => {}),
       operations: makeMockOps({
         ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); },
         async writeScript(_path, content) {
@@ -116,7 +141,7 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
       projectRoot: root, executionCwd: root, scratchDir: path.join(root, ".flywheel", "sessions", "session-1", "scratch"), toolUseId: "bash-1", sessionId: conversation.sessionId,
       // The mutation guard's probe names no working directory and ends at once; the command's launch is the container handed over.
       spawnOwned: (cmd, spawnOptions) => spawnOptions?.cwd === undefined && cmd[0] !== "git" ? Promise.resolve(makeMockOwnedProcess()) : launch.spawnOwned(cmd, spawnOptions),
-      capabilityAccess: capabilityAccessHolding(["background-commands"]), backgroundTasks: launching.tasks, shell: launching.shell,
+      capabilityAccess: capabilityAccessHolding(["background-commands"]),
     }));
     await launching.close();
     if ((await commandHandoversOfAsync(asAsyncEventReadSurface(store), conversation.sessionId, conversation.conversationId)).length !== 1) throw new Error("the command was not handed over");
@@ -156,7 +181,7 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
     return { beforeAdoption, launchingPool: launching.shell.privateCopies, order, notifications, recorded, fileChanges };
   }
 
-  return { project, runMutation, runManagedMutation, runHandedOverMutation };
+  return { project, runMutation, runManagedMutation, runHandedOverMutation, caseShell };
 }
 
 /** One simulated session: a shell runtime on its own registry, whose pool
@@ -166,9 +191,18 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
  *  that fake pid and would retire every copy. Pass `context` as the
  *  overrides of each command of the session. */
 export function bashMutationSession() {
-  const processes = new Map<number, { readonly start: string; readonly ppid: number }>([[makeMockOwnedProcess().pid, { start: "100", ppid: 2 }]]);
+  const processes: ProcessTable = new Map([[makeMockOwnedProcess().pid, { start: "100", ppid: 2 }]]);
+  const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
+  const runtime = createShellRuntime(registry, { privateCopies: createPrivateCopyPool({ probe: processTableProbe(processes) }) });
+  return { processes, registry, runtime, context: { shell: runtime.client } satisfies BashCallOverrides };
+}
+
+type ProcessTable = Map<number, { readonly start: string; readonly ppid: number }>;
+
+/** A process probe that reads `processes` as the host's process table. */
+function processTableProbe(processes: ProcessTable): ContainerProbe {
   const pids = () => [...processes.keys()];
-  const probe: ContainerProbe = {
+  return {
     signal: () => undefined,
     groupExists: () => false,
     libproc: {
@@ -187,9 +221,6 @@ export function bashMutationSession() {
       runnableThreads: () => undefined,
     },
   };
-  const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
-  const runtime = createShellRuntime(registry, { privateCopies: createPrivateCopyPool({ probe }) });
-  return { processes, registry, runtime, context: { shell: runtime.client } satisfies Partial<ToolContext> };
 }
 
 export async function settled(registry: { activeTaskCount(): number }): Promise<void> {

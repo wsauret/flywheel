@@ -13,7 +13,7 @@ interface FileMutationArtifactInput {
   readonly afterContent: string | Uint8Array
 }
 
-export interface SettledFileMutationArtifact {
+interface SettledFileMutationArtifact {
   readonly path: string
   readonly beforeContent: string
   readonly afterContent: string
@@ -45,7 +45,7 @@ export function settleFileMutationArtifact(
 }
 
 /** Takes one immutable exact settled prefix. Each tool call can be taken once. */
-export function takeFileMutationAttribution(
+function takeFileMutationAttribution(
   context: FileMutationArtifactContext,
 ): { readonly identity: ToolAttributionIdentity; readonly files: readonly SettledFileMutationArtifact[] } | undefined {
   const service = context.gitAiAttribution

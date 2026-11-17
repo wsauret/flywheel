@@ -16,10 +16,10 @@ const CONFIG_PATTERN = "^(alias\\.|diff\\..*\\.textconv$)"
  * inherit the helper's cwd, environment, and existing command container.
  * Refused commands are never delegated. Probe or launch failures reject.
  * No command or configuration content is logged. */
-export async function runMutationGit(
+async function runMutationGit(
   argv: readonly string[],
   realGit: string,
-  run: typeof runInheritedCommand = runInheritedCommand,
+  run: typeof runInheritedCommand,
 ): Promise<MutationGitResult> {
   const refused = { kind: "refused", exitCode: 97, message: GIT_MUTATION_REFUSAL } as const
   if (!isAbsolute(realGit)) return refused
@@ -73,11 +73,12 @@ export async function runMutationGit(
 /** Hidden executable role for the native and POSIX PATH forwarders.
  * FLYWHEEL_MUTATION_GIT_REAL holds the captured absolute Git executable.
  * Runtime/source selection belongs to the forwarder, never PATH resolution.
- * Every failure emits the fixed refusal sentence without command content. */
-export async function runMutationGitMain(): Promise<void> {
+ * Every failure emits the fixed refusal sentence without command content.
+ * `run` launches each Git probe and the delegated command. */
+export async function runMutationGitMain(run: typeof runInheritedCommand = runInheritedCommand): Promise<void> {
   try {
     const delimiter = process.argv.indexOf("--")
-    const result = await runMutationGit(delimiter < 0 ? [] : process.argv.slice(delimiter + 1), process.env.FLYWHEEL_MUTATION_GIT_REAL ?? "")
+    const result = await runMutationGit(delimiter < 0 ? [] : process.argv.slice(delimiter + 1), process.env.FLYWHEEL_MUTATION_GIT_REAL ?? "", run)
     if (result.kind === "refused") process.stderr.write(`${result.message}\n`)
     else if (result.signalCode !== null) process.kill(process.pid, result.signalCode)
     process.exitCode = result.exitCode

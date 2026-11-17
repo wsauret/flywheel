@@ -11,7 +11,7 @@ import { withStore, mutationFacts, context as mutationContext } from "./file-mut
 import type { ContainedFileSnapshot } from "../../../../src/infra/descriptor-directory-contract.js"
 import { prepareFileMutationOperation, retireFileMutationNotApplied, settleFileMutation } from "../../../../src/orchestration/session/file-mutation-fact-writers.js"
 import { createGitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
-import { settleFileMutationArtifact, takeFileMutationAttribution } from "../../../../src/orchestration/agent-runtime/tools/file-mutation-artifact.js"
+import { publishFileMutationAttribution, settleFileMutationArtifact } from "../../../../src/orchestration/agent-runtime/tools/file-mutation-artifact.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { readFileMutationOperation, snapshotToFileObjectProof } from "../../../../src/orchestration/session/file-mutation-operation.js"
 import { mutationSnapshot } from "./file-mutation-proof-fixture.js"
@@ -31,9 +31,9 @@ describe("file mutation operation evidence", () => {
       origin: { kind: "tool_call" as const, toolUseId: "secret-preview" },
       sessionEventWriter: {
         ...store.writer,
-        swapInFlight: async (...args: Parameters<NonNullable<typeof store.writer.swapInFlight>>) => {
+        swapInFlight: async (...args: Parameters<typeof store.writer.swapInFlight>) => {
           rawCell = JSON.stringify(args[3])
-          return store.writer.swapInFlight!(...args)
+          return store.writer.swapInFlight(...args)
         },
       },
     }
@@ -253,19 +253,19 @@ describe("publication-owned mutation evidence", () => {
     })
   })
 
-  it.each(["missing", "failed"] as const)("refuses %s evidence staging before changing any file or recovery cell", async failure => {
+  it("refuses failed evidence staging before changing any file or recovery cell", async () => {
     await withStore(async ({ root, store, writer, sessionId }) => {
       const path = join(root, "target.txt")
       writeFileSync(path, "before")
       const sessionEventWriter = {
         ...writer,
-        stageSessionContentNodes: failure === "missing" ? undefined : async () => { throw new Error("staging failed") },
+        stageSessionContentNodes: async () => { throw new Error("staging failed") },
       }
       await expect(publishFileEdits({ ...mutationContext(sessionEventWriter), executionCwd: root }, {
         paths: ["target.txt"],
         admit: target => RetainedFileEditAuthority.admit(target),
         plan: admitted => admitted.map(entry => ({ admitted: entry, after: "after" })),
-      })).rejects.toThrow(failure === "missing" ? "staging is unavailable" : "staging failed")
+      })).rejects.toThrow("staging failed")
       expect(readFileSync(path, "utf8")).toBe("before")
       expect(store.readInFlight(sessionId, "file.mutation")).toEqual([])
       expect(mutationFacts(store, sessionId)).toEqual([])
@@ -412,11 +412,13 @@ describe("direct mutation attribution", () => {
     }
     const registration = service.registerRequest({ requestId: "request-1", model: "model-1", conversationId: "conversation-1", transcriptBytes: 0, transcript: () => ({ messages: [] }) })!
     const identity = Object.freeze({ ...registration, service, repositoryRoot: "/repo", profileId: "work", enabled: true as const })
+    const offered: Array<Parameters<typeof service.direct>[0]> = []
+    const direct: typeof service.direct = (operation) => { offered.push(operation) }
     const context = {
       sessionEventWriter: writer,
       toolUseId: "tool-1",
       origin: { kind: "tool_call" as const, toolUseId: "tool-1" },
-      gitAiAttribution: service,
+      gitAiAttribution: { ...service, direct },
       attributionIdentity: identity,
     }
     const [first] = await prepareFileMutationOperation(context, [
@@ -424,15 +426,17 @@ describe("direct mutation attribution", () => {
       { change: { path: "/repo/b.ts", displayPath: "b.ts", changeKind: "modified", beforeContent: "a", afterContent: "b" }, evidence: { beforeSnapshot: mutationSnapshot("a") } },
     ])
     if (!first) throw new Error("expected first mutation")
-    expect(takeFileMutationAttribution(context)).toBeUndefined()
+    publishFileMutationAttribution(context)
+    expect(offered).toEqual([])
     await settleFileMutation(context, first, snapshotToFileObjectProof(mutationSnapshot("b")))
     settleFileMutationArtifact(context, { path: "/repo/a.ts", beforeContent: "", afterContent: "b" })
 
-    expect(takeFileMutationAttribution(context)).toEqual({
+    publishFileMutationAttribution(context)
+    publishFileMutationAttribution(context)
+    expect(offered).toEqual([{
       identity,
       files: [{ path: "/repo/a.ts", beforeContent: "", afterContent: "b" }],
-    })
-    expect(takeFileMutationAttribution(context)).toBeUndefined()
+    }])
     await service.dispose()
   })
 })

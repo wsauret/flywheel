@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createApplyPatchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/apply-patch.js";
+import { applyPatchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/apply-patch.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { MAX_FILE_EDIT_BYTES } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
@@ -16,15 +16,13 @@ describe("apply_patch tool", () => {
   afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
 
   async function apply(input: string) {
-    const tool = createApplyPatchDefinition();
-    const prepared = prepareToolCall({ id: "patch-1", name: "apply_patch", input: { input } }, new Map([[tool.name, tool]]), admitEveryTool);
+    const prepared = prepareToolCall({ id: "patch-1", name: "apply_patch", input: { input } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool);
     return executePreparedTool(prepared, makeContext({ executionCwd: tmpDir }));
   }
 
   it("prepares once before path admission and updates the captured file", async () => {
     fs.writeFileSync(path.join(tmpDir, "a.txt"), "old\n");
-    const tool = createApplyPatchDefinition();
-    const prepared = prepareToolCall({ id: "patch-1", name: "apply_patch", input: { input: "*** Begin Patch\n*** Update File: a.txt\n@@\n-old\n+new\n*** End Patch" } }, new Map([[tool.name, tool]]), admitEveryTool);
+    const prepared = prepareToolCall({ id: "patch-1", name: "apply_patch", input: { input: "*** Begin Patch\n*** Update File: a.txt\n@@\n-old\n+new\n*** End Patch" } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool);
     expect(await preparedToolAdmission(prepared, { executionCwd: tmpDir })).toMatchObject({ kind: "paths" });
     expect((await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir }))).outcome).toBe("ok");
     expect(fs.readFileSync(path.join(tmpDir, "a.txt"), "utf8")).toBe("new\n");
@@ -45,10 +43,9 @@ describe("apply_patch tool", () => {
   it("applies changing files and reports unchanged add and update targets without recording mutations for them", async () => {
     fs.writeFileSync(path.join(tmpDir, "same.txt"), "same\n");
     fs.writeFileSync(path.join(tmpDir, "old.txt"), "old\n");
-    const tool = createApplyPatchDefinition();
     const recorder = createRecordingFileMutationStore();
     const patch = "*** Begin Patch\n*** Update File: same.txt\n@@\n-same\n+same\n*** Add File: same.txt\n+same\n*** Update File: old.txt\n@@\n-old\n+new\n*** End Patch";
-    const result = await executePreparedTool(prepareToolCall({ id: "mixed", name: tool.name, input: { input: patch } }, new Map([[tool.name, tool]]), admitEveryTool), makeContext({ executionCwd: tmpDir, toolUseId: "mixed", sessionEventWriter: recorder.writer }));
+    const result = await executePreparedTool(prepareToolCall({ id: "mixed", name: applyPatchDefinition.name, input: { input: patch } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool), makeContext({ executionCwd: tmpDir, toolUseId: "mixed", sessionEventWriter: recorder.writer }));
     expect(result.outcome).toBe("ok");
     expect(String(result.content)).toStartWith("Note: unchanged files: same.txt.");
     expect(fs.readFileSync(path.join(tmpDir, "same.txt"), "utf8")).toBe("same\n");
@@ -126,8 +123,7 @@ describe("apply_patch tool", () => {
       settlements += 1;
       if (settlements === 1 && recording.changes.at(-1)?.displayPath === "a.txt") fs.writeFileSync(destination, "raced\n");
     };
-    const tool = createApplyPatchDefinition();
-    const prepared = prepareToolCall({ id: "sequential-move", name: "apply_patch", input: { input: "*** Begin Patch\n*** Update File: a.txt\n@@\n-old\n+middle\n*** Update File: a.txt\n*** Move to: b.txt\n@@\n-middle\n+new\n*** End Patch" } }, new Map([[tool.name, tool]]), admitEveryTool);
+    const prepared = prepareToolCall({ id: "sequential-move", name: "apply_patch", input: { input: "*** Begin Patch\n*** Update File: a.txt\n@@\n-old\n+middle\n*** Update File: a.txt\n*** Move to: b.txt\n@@\n-middle\n+new\n*** End Patch" } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool);
 
     const result = await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir, toolUseId: "sequential-move", sessionEventWriter: recording.writer }));
     expect(result.outcome).toBe("ok");
@@ -166,8 +162,7 @@ describe("apply_patch tool", () => {
       settlements += 1;
       if (settlements === 1) fs.writeFileSync(source, "raced\n");
     };
-    const tool = createApplyPatchDefinition();
-    const prepared = prepareToolCall({ id: "move-race", name: "apply_patch", input: { input: "*** Begin Patch\n*** Update File: a-source.txt\n*** Move to: z-destination.txt\n@@\n-old\n+new\n*** Add File: untouched.txt\n+later\n*** End Patch" } }, new Map([[tool.name, tool]]), admitEveryTool);
+    const prepared = prepareToolCall({ id: "move-race", name: "apply_patch", input: { input: "*** Begin Patch\n*** Update File: a-source.txt\n*** Move to: z-destination.txt\n@@\n-old\n+new\n*** Add File: untouched.txt\n+later\n*** End Patch" } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool);
     const result = await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir, toolUseId: "move-race", sessionEventWriter: recording.writer }));
     expect(result).toMatchObject({ outcome: "error", details: {
       changedFiles: { total: 1, samples: ["z-destination.txt"] }, indeterminateFiles: { total: 0, samples: [] }, remainingFiles: { total: 1, samples: ["untouched.txt"] },
@@ -186,11 +181,10 @@ describe("apply_patch tool", () => {
   it("reports cancellation and checkpoint retirement failure without claiming the file may have changed", async () => {
     const recording = createRecordingFileMutationStore();
     const controller = new AbortController();
-    const swap = recording.writer.swapInFlight!;
+    const swap = recording.writer.swapInFlight;
     recording.writer.swapInFlight = async (...args) => { const stored = await swap(...args); controller.abort(); return stored; };
     recording.writer.transaction = async () => { throw new Error("retirement storage failed"); };
-    const tool = createApplyPatchDefinition();
-    const prepared = prepareToolCall({ id: "retirement-failure", name: "apply_patch", input: { input: "*** Begin Patch\n*** Add File: first.txt\n+first\n*** Add File: second.txt\n+second\n*** End Patch" } }, new Map([[tool.name, tool]]), admitEveryTool);
+    const prepared = prepareToolCall({ id: "retirement-failure", name: "apply_patch", input: { input: "*** Begin Patch\n*** Add File: first.txt\n+first\n*** Add File: second.txt\n+second\n*** End Patch" } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool);
     const result = await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir, toolUseId: "retirement-failure", signal: controller.signal, sessionEventWriter: recording.writer }));
     expect(result).toMatchObject({ outcome: "error", details: {
       changedFiles: { total: 0, samples: [] }, indeterminateFiles: { total: 0, samples: [] }, remainingFiles: { total: 1, samples: ["second.txt"] },
@@ -212,8 +206,7 @@ describe("apply_patch tool", () => {
       if (++settlements === 2) throw new Error("settlement storage failed");
       await transaction(run);
     };
-    const tool = createApplyPatchDefinition();
-    const prepared = prepareToolCall({ id: "settlement-failure", name: "apply_patch", input: { input: "*** Begin Patch\n*** Add File: first.txt\n+first\n*** Add File: second.txt\n+second\n*** Add File: third.txt\n+third\n*** End Patch" } }, new Map([[tool.name, tool]]), admitEveryTool);
+    const prepared = prepareToolCall({ id: "settlement-failure", name: "apply_patch", input: { input: "*** Begin Patch\n*** Add File: first.txt\n+first\n*** Add File: second.txt\n+second\n*** Add File: third.txt\n+third\n*** End Patch" } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool);
     const result = await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir, toolUseId: "settlement-failure", sessionEventWriter: recording.writer }));
     expect(result).toMatchObject({ outcome: "error", details: {
       changedFiles: { total: 1, samples: ["first.txt"] }, indeterminateFiles: { total: 0, samples: [] }, remainingFiles: { total: 1, samples: ["third.txt"] },
@@ -263,8 +256,7 @@ describe("apply_patch tool", () => {
     expect(malformed.outcome).toBe("error");
     const controller = new AbortController();
     controller.abort();
-    const tool = createApplyPatchDefinition();
-    const prepared = prepareToolCall({ id: "cancel", name: "apply_patch", input: { input: "*** Begin Patch\n*** Add File: a.txt\n+x\n*** End Patch" } }, new Map([[tool.name, tool]]), admitEveryTool);
+    const prepared = prepareToolCall({ id: "cancel", name: "apply_patch", input: { input: "*** Begin Patch\n*** Add File: a.txt\n+x\n*** End Patch" } }, new Map([[applyPatchDefinition.name, applyPatchDefinition]]), admitEveryTool);
     const cancelled = await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir, signal: controller.signal }));
     expect(cancelled.outcome).toBe("interrupted");
     expect(fs.readdirSync(tmpDir)).toEqual([]);

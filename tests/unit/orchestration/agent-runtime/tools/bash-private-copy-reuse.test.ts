@@ -7,7 +7,7 @@ import { Log } from "../../../../../src/infra/log.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
 import type { ContainerProbe } from "../../../../../src/infra/process-container.js";
 import { createPrivateCopyJobs } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
-import { createPrivateCopyPool, REUSE_IDLE_LIMIT_MS, type LaunchStamp, type PrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
+import { createPrivateCopyPool, type LaunchStamp, type PrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
 import { detectCopyChanges, privateCopyRemovals, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import { readPrivateCopyRecord } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-record.js";
 import { observeCopyTopology } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-tree.js";
@@ -17,6 +17,8 @@ const createDirectory = temporaryDirectories();
 const jobs = createPrivateCopyJobs();
 afterAll(() => jobs.close());
 const HOUR_MS = 60 * 60 * 1000;
+/** The pool refreshes an idle copy for one day after its last refresh. */
+const REUSE_IDLE_LIMIT_MS = 24 * HOUR_MS;
 
 function answered(stdout: string): OwnedCommandResult {
   return { exitCode: 0, stdout, stdoutBytes: new TextEncoder().encode(stdout), stderr: "", timedOut: false };

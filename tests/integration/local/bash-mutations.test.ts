@@ -3,7 +3,10 @@ import { chmodSync, readFileSync, existsSync, mkdirSync, realpathSync, rmSync, s
 import { join } from "node:path"
 import { createCliLauncher } from "../../../src/cli/runtime-launch.js"
 import { runOwnedCommand } from "../../../src/infra/owned-command.js"
+import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js"
+import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
 import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash.js"
+import { createShellRuntime } from "../../../src/orchestration/agent-runtime/tools/shell-runtime.js"
 import { privateCopyRemovals } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
@@ -287,12 +290,13 @@ test("a project below the Git top level sees only its own changes in Git, and th
     await git("commit", "-qm", "init")
     const realIndex = readFileSync(join(top, ".git", "index"))
 
-    const result = await createBashDefinition().execute({ mutates: true, command: process.platform === "win32"
+    const shell = createShellRuntime(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }))
+    const result = await createBashDefinition({ shell: shell.client, foregroundBashHold: createForegroundBashHoldController(() => {}) }).execute({ mutates: true, command: process.platform === "win32"
       ? `${powerShellWrite("a.txt", "two\n")}; git status --porcelain`
       : "printf 'two\\n' > a.txt && git status --porcelain" }, dispatchedToolContext({
       executionCwd: root, userDataRoot: `${root}/.test-account`, projectRoot: root, scratchDir: join(root, ".flywheel", "scratch"),
       availableTools: new Set(["bash", "edit", "write"]), spawnOwned: generation.spawnOwned, artifactScopeId: "bash-mutation", retrievalSessionId: "bash-mutation", sessionId: "bash-mutation", toolUseId: "bash-mutations-1",
-    }))
+    })).finally(() => shell.close())
     const content = String(result.content)
 
     // The one porcelain line, with Git's leading space, shows nothing outside the project as deleted.

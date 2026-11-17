@@ -311,27 +311,23 @@ describe("bash tool: mutation commands", () => {
     expect(mutationOf(result.details).samples).toContainEqual({ kind: "not_applied", path: path.join("sub", "b.txt"), reason: "it is no longer a regular file" });
   });
 
-  it.each(["direct", "held", "background"] as const)("reports no change once in settled %s output and adds no mutation when the command changes nothing", async (route) => {
+  it.each(["held", "background"] as const)("reports no change once in settled %s output and adds no mutation when the command changes nothing", async (route) => {
     const root = project([["a.txt", "a\n"]]);
-    const streamed: string[] = [];
-    const run = route === "direct"
-      ? await runMutation(root, () => {}, {}, { onExecutionOutput: (text) => streamed.push(text) })
-      : await runManagedMutation(root, () => {}, { background: route === "background" });
-    if ("registry" in run) await settled(run.registry);
+    const run = await runManagedMutation(root, () => {}, { background: route === "background" });
+    await settled(run.registry);
     const { result, store } = run;
     const report = "No project files changed.";
 
-    if (route === "background" && "recorded" in run) {
+    if (route === "background") {
       expect(run.recorded.map(({ output }) => output)).toEqual([report]);
       expect(result.content).not.toContain(report);
       expect(run.notifications[0]?.split(report)).toHaveLength(2);
     } else {
       if (typeof result.content !== "string") throw new Error("Bash returned non-text content");
       expect(result.content.split(report)).toHaveLength(2);
-      expect(result.executionOutputTail).toBe(route === "direct" ? `mock output\n\n${report}` : report);
+      expect(result.executionOutputTail).toBe(report);
       expect(result.details).toEqual({ background: false, exitCode: 0, durationMs: expect.any(Number) });
     }
-    if (route === "direct") expect(streamed.at(-1)).toBe(`mock output\n\n${report}`);
     expect(store.facts).toEqual([]);
   });
 

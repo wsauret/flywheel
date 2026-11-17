@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { createHash } from "node:crypto";
 
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
-import { seatbeltProfile } from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
+import { guardedArgv } from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
 import { detectCopyChanges, inspectPrivateCopyTopology, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import { copyProjectTree, scanCopyChanges } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-tree.js";
 import { readCopyRepositoryState } from "../../../../../src/orchestration/agent-runtime/tools/bash-copy-repository-state.js";
@@ -141,7 +141,7 @@ describe("private project copy", () => {
     expect(fs.readdirSync(path.join(copy.home, "git", "hooks"))).toEqual(["pre-commit"]);
     expect(copy.git).toMatchObject({ kind: "repository", gitDir, privateGitDir: path.join(copy.home, "git"), workTrees: [root] });
     // The guard resolves each tree it protects, so a deleted tree must not reach it.
-    expect(() => seatbeltProfile(copy)).not.toThrow();
+    expect(() => guardedArgv({ kind: "seatbelt", pidNamespace: false }, copy)).not.toThrow();
     // The deleted tree still holds its branch, so the private Git directory registers it: the worktrees directory, one tree directory, and its four files.
     expect(copy.execution).toMatchObject({ kind: "file-only-v4", baseline: { repository: { head: { kind: "symbolic", target: "refs/heads/main", object: "1".repeat(40) }, index: { count: 1 }, refs: { count: 1 } }, topology: { count: 7 } } });
     expect(await readPrivateProjectCopy(copy.home, jobs)).toMatchObject({ kind: "recorded", copy: { git: { kind: "repository", gitDir } } });

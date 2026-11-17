@@ -4,8 +4,9 @@ import { expect } from "bun:test"
 import { createCliLauncher } from "../../../src/cli/runtime-launch.js"
 import { ownedCommandRunner, runOwnedCommand } from "../../../src/infra/owned-command.js"
 import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js"
+import { createForegroundBashHoldController } from "../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
 import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash.js"
-import { probeMutationGuard } from "../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js"
+import { hostMutationGuard } from "../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js"
 import { handedOverPrivateCopy, runInPrivateCopy } from "../../../src/orchestration/agent-runtime/tools/bash-project-mutation.js"
 import { privateCopyRemovals } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
 import type { PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js"
@@ -23,7 +24,7 @@ import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js"
 export const hostGuard = await (async () => {
   const launcher = await createCliLauncher()
   try {
-    return await probeMutationGuard(ownedCommandRunner(launcher.scope.open()), process.platform)
+    return await hostMutationGuard(ownedCommandRunner(launcher.scope.open()))
   } finally {
     await launcher.dispose()
   }
@@ -65,18 +66,30 @@ export function repositoryHarness() {
       executionCwd: root, userDataRoot: `${root}/.test-account`, projectRoot: root, scratchDir: join(root, ".flywheel", "scratch"),
       availableTools: new Set(["bash", "edit", "write"]), artifactScopeId: "bash-mutation", retrievalSessionId: "bash-mutation", sessionId: "bash-mutation", toolUseId: "bash-mutations-1",
     }
-    const mutation = (command: string, beforeLaunch?: BeforeLaunch) => createBashDefinition().execute({ mutates: true, command }, dispatchedToolContext({
-      ...bashContext,
-      spawnOwned: beforeLaunch ? async (cmd, options) => { await beforeLaunch(cmd); return await generation.spawnOwned(cmd, options) } : generation.spawnOwned,
-    }))
     // Each session owns one shell runtime, whose real pool and real process table decide reuse.
     const runtimes: ShellRuntime[] = []
-    const session = (): SessionCommand => {
+    const sessionBash = () => {
       const runtime = createShellRuntime(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }))
       runtimes.push(runtime)
+      return { runtime, bash: createBashDefinition({ shell: runtime.client, foregroundBashHold: createForegroundBashHoldController(() => {}) }) }
+    }
+    // A single command runs in a session of its own, whose close discards the copy it pooled.
+    const mutation = async (command: string, beforeLaunch?: BeforeLaunch) => {
+      const { runtime, bash } = sessionBash()
+      try {
+        return await bash.execute({ mutates: true, command }, dispatchedToolContext({
+          ...bashContext,
+          spawnOwned: beforeLaunch ? async (cmd, options) => { await beforeLaunch(cmd); return await generation.spawnOwned(cmd, options) } : generation.spawnOwned,
+        }))
+      } finally {
+        await runtime.close()
+      }
+    }
+    const session = (): SessionCommand => {
+      const { bash } = sessionBash()
       return async command => {
         const printRoot = process.platform === "win32" ? "\n(Get-Location).Path" : "\npwd"
-        const result = await createBashDefinition().execute({ mutates: true, command: command + printRoot }, dispatchedToolContext({ ...bashContext, spawnOwned: generation.spawnOwned, shell: runtime.client }))
+        const result = await bash.execute({ mutates: true, command: command + printRoot }, dispatchedToolContext({ ...bashContext, spawnOwned: generation.spawnOwned }))
         await privateCopyRemovals()
         const content = String(result.content)
         const printed = [...content.matchAll(/^(.*[\\/]mutations[\\/][0-9a-f-]{36})[\\/]tree[\\/].*$/gm)].at(-1)

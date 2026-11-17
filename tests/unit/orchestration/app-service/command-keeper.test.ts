@@ -64,7 +64,7 @@ describe("the executor's keeper of handed-over commands", () => {
     const row: CommandHandoverRow = handedOverRow(dir, STEP, options.row)
     await Bun.write(row.logPath, "server ready\n")
     await Bun.write(row.recordPath, JSON.stringify({ version: 1, handedOverAtMs: 1 }))
-    await writer.putInFlight?.(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row)
+    await writer.putInFlight(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row)
     closing.push(async () => {
       container.end(0)
       await keeper.close()
@@ -99,7 +99,7 @@ describe("the executor's keeper of handed-over commands", () => {
 
   test("settles a row that a keeper that crashed left kept, and the change it reports shows the command no more", async () => {
     const fixture = await kept({ adopt: () => ({ kind: "ended", record: { kind: "absent" } }) })
-    await fixture.authority.writer.putInFlight?.(STEP.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, fixture.row.processId, { ...fixture.row, kept: true })
+    await fixture.authority.writer.putInFlight(STEP.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, fixture.row.processId, { ...fixture.row, kept: true })
     expect(await fixture.shown()).toHaveLength(1)
     const shownAtChange: Promise<number>[] = []
     fixture.keeper.onChange(() => { shownAtChange.push(fixture.shown().then((shown) => shown.length)) })

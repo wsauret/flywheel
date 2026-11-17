@@ -1,11 +1,8 @@
 /**
- * Output kernel shared by the bash tool's foreground stdout stream and
- * background log tailer: display-tail slicing, byte/line bounding for the
- * durable execution-output tail, background log reading, and the result of a
- * command that settled in its tool call.
+ * Output kernel of the bash tool's managed commands: display-tail slicing,
+ * byte/line bounding for the durable execution-output tail, background log
+ * reading, and the result of a command that settled in its tool call.
  */
-
-import { open } from "node:fs/promises";
 
 import { createStreamingSanitizer } from "../../../infra/control-characters.js";
 import { formatDuration } from "../../../protocol/client/format.js";
@@ -14,7 +11,7 @@ import { renderShellLines, type ShellGap, type ShellLines } from "./bash-compres
 import { silentFailureStderr } from "./shell-stderr.js";
 import type { RetainedFullContent, ToolResult } from "./types.js";
 
-export const EXECUTION_OUTPUT_TAIL_CHARS = 50 * 1024;
+const EXECUTION_OUTPUT_TAIL_CHARS = 50 * 1024;
 const EXECUTION_OUTPUT_TAIL_LINES = 1000;
 const EXECUTION_OUTPUT_TAIL_MAX_BYTES = 256 * 1024;
 const BG_LOG_TAIL_CHARS = 4 * 1024;
@@ -34,28 +31,6 @@ interface SpoolSlice {
 export interface RandomAccessSpool {
   readonly size: number;
   slice(start: number, end: number): SpoolSlice | Uint8Array | Promise<SpoolSlice | Uint8Array>;
-}
-
-export interface ForegroundSpool {
-  write(bytes: Uint8Array): Promise<void>;
-  close(): Promise<void>;
-}
-
-/** Open the exclusive 0600 spool file that captures foreground stdout bytes.
- *  Writes loop until every byte lands, and close releases the one handle. */
-export async function openForegroundSpool(path: string): Promise<ForegroundSpool> {
-  const handle = await open(path, "wx+", 0o600);
-  return {
-    async write(bytes) {
-      let offset = 0;
-      while (offset < bytes.byteLength) {
-        const result = await handle.write(bytes, offset, bytes.byteLength - offset);
-        if (result.bytesWritten === 0) throw new Error(`Could not write foreground Bash output spool: ${path}`);
-        offset += result.bytesWritten;
-      }
-    },
-    close: () => handle.close(),
-  };
 }
 
 type OpenSpool = (path: string) => RandomAccessSpool;
@@ -469,14 +444,6 @@ export function settledForegroundResult(input: {
   };
 }
 
-async function readSanitizedTail(file: RandomAccessSpool, tailChars: number): Promise<string> {
-  let tail = "";
-  await scanSanitizedSpool(file, (text) => {
-    tail = (tail + text.slice(-tailChars)).slice(-tailChars);
-  });
-  return tail;
-}
-
 /** Reads one bounded growth interval while preserving decoder and sanitizer state between 64 KiB reads. */
 export async function readSpoolGrowth(file: RandomAccessSpool, start: number, accept: (bytes: Uint8Array) => void): Promise<number> {
   const size = file.size;
@@ -489,22 +456,6 @@ export async function readSpoolGrowth(file: RandomAccessSpool, start: number, ac
     accept(bytes);
   }
   return offset;
-}
-
-// The log belongs to a detached process; it may be missing or half-flushed
-// when the exit races the last write, so absence reads as empty.
-export async function readBackgroundLog(logPath: string, openSpool: OpenSpool = openBunSpool): Promise<{ notificationTail: string; executionOutputTail: string }> {
-  try {
-    const file = openSpool(logPath);
-    const tail = await readSanitizedTail(file, EXECUTION_OUTPUT_TAIL_MAX_BYTES);
-    return {
-      notificationTail: tail.slice(-BG_LOG_TAIL_CHARS).trim(),
-      executionOutputTail: boundedExecutionOutputTail(tail),
-    };
-  } catch (error) {
-    if (isMissingSpool(error)) return { notificationTail: "", executionOutputTail: "" };
-    throw error;
-  }
 }
 
 /** Emits already-sanitized accumulated live output and suppresses unchanged payloads. */

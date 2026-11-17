@@ -57,7 +57,7 @@ export function hostMutationGuard(run: OwnedCommandRunner): Promise<MutationGuar
  *  is selected only when that exits 0; a launcher that is missing, refused, or
  *  failing selects `none`. On Linux the guard with its own process namespace
  *  is tried first, then the plain guard. Never throws. */
-export async function probeMutationGuard(run: OwnedCommandRunner, platform: NodeJS.Platform): Promise<MutationGuard> {
+async function probeMutationGuard(run: OwnedCommandRunner, platform: NodeJS.Platform): Promise<MutationGuard> {
   const probes = platform === "darwin"
     ? [{ kind: "seatbelt", pidNamespace: false, argv: [SANDBOX_EXEC, "-p", "(version 1)(allow default)", "/usr/bin/true"] }] as const
     : platform === "linux" ? [
@@ -112,7 +112,7 @@ export function guardedArgv(guard: MutationGuard, copy: GuardedCopy): (argv: rea
 /** Allows everything except writes under the repository's trees and Git directories.
  *  Shared entries, scratch, and the copy home remain writable. Seatbelt matches
  *  resolved paths, and the last matching rule wins. */
-export function seatbeltProfile(copy: GuardedCopy): string {
+function seatbeltProfile(copy: GuardedCopy): string {
   const allowed = copy.shared.map(path => join(copy.realRoot, path));
   const roots = [...protectedRoots(copy)].flatMap(([path, requirement]) => {
     try {

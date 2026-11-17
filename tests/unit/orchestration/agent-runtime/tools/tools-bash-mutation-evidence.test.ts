@@ -273,7 +273,7 @@ it.each(["interrupted", "uncertain"] as const)("retains only the settled prefix 
   };
   const { result } = await runMutation(root, cwd => {
     for (const name of ["a", "b", "c"]) fs.writeFileSync(path.join(cwd, `${name}.txt`), `new ${name}\n`);
-  }, {}, { sessionEventWriter: writer, signal: controller.signal });
+  }, {}, { sessionEventWriter: writer, backgroundSignal: controller.signal });
   expect(mutationOf(result.details)).toMatchObject({ applied: 1, notApplied: state === "interrupted" ? 2 : 1 });
   const page = await readMutationEvidenceFiles(mutationOf(result.details), 0, 100, store.readContentNode);
   if (page.kind !== "available") throw new Error("evidence unavailable");

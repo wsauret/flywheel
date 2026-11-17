@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { createStreamingSanitizer } from "../../../../../src/infra/control-characters.js";
-import { createShellOutputAccumulator, readBackgroundLog, readBackgroundProcessOutput, readBoundedSpoolTail, readSpoolGrowth, shellObservation } from "../../../../../src/orchestration/agent-runtime/tools/bash-output-tail.js";
+import { createShellOutputAccumulator, readBackgroundProcessOutput, readBoundedSpoolTail, readSpoolGrowth, shellObservation } from "../../../../../src/orchestration/agent-runtime/tools/bash-output-tail.js";
 
 const CHUNK_BYTES = 64 * 1024;
 
@@ -259,34 +259,5 @@ describe("background Bash spool scan", () => {
     const exactly200 = settle(`${short.join("\n")}\n${"y".repeat(1_100_000)}\n`);
     expect(exactly200).toMatchObject({ kind: "bounded", tail: "", gap: { unit: "lines", count: 1 } });
     expect(shellObservation("cat", exactly200, false).text).toBe([...short, "[... 1 line omitted ...]"].join("\n"));
-  });
-
-  it("settles background tails without a full-spool text read", async () => {
-    const spool = syntheticSpool(`${"old\n".repeat(500_000)}\u001b[32mfinal\u001b[0m`);
-    const result = await readBackgroundLog("synthetic.log", spool.open);
-
-    expect(result.notificationTail).toContain("final");
-    expect(result.executionOutputTail).toContain("final");
-    expect(spool.reads.reduce((bytes, read) => bytes + read.end - read.start, 0)).toBe(spool.size);
-    expect(Math.max(...spool.reads.map((read) => read.end - read.start))).toBeLessThanOrEqual(CHUNK_BYTES);
-  });
-
-  it("does not expose a DCS payload that spans the retained background suffix", async () => {
-    const spool = syntheticSpool(`safe\u001bP${"forged".repeat(190_000)}\u001b\\tail`);
-    const result = await readBackgroundLog("synthetic.log", spool.open);
-
-    expect(result.notificationTail).toBe("safetail");
-    expect(result.executionOutputTail).toBe("safetail");
-    expect(Math.max(...spool.reads.map((read) => read.end - read.start))).toBeLessThanOrEqual(CHUNK_BYTES);
-  });
-
-  it("treats a missing settlement spool as empty", async () => {
-    const missing = () => {
-      const error = new Error("missing");
-      Object.assign(error, { code: "ENOENT" });
-      throw error;
-    };
-
-    expect(await readBackgroundLog("missing.log", missing)).toEqual({ notificationTail: "", executionOutputTail: "" });
   });
 });

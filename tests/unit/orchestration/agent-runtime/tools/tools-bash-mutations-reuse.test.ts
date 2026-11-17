@@ -244,9 +244,8 @@ describe("bash tool: a session's mutating commands reuse its private copy", () =
     const s = session();
     const exits = [Promise.withResolvers<OwnedExit>(), Promise.withResolvers<OwnedExit>()];
     const homes: string[] = [];
-    const background = { ...s.context, backgroundTasks: s.registry };
-    await runManagedMutation(root, cwd => { homes.push(path.dirname(path.dirname(cwd))); fs.writeFileSync(path.join(cwd, "a.txt"), "mine a\n"); }, { background: true }, exits[0]!.promise, background);
-    await runManagedMutation(root, cwd => { homes.push(path.dirname(path.dirname(cwd))); fs.writeFileSync(path.join(cwd, "b.txt"), "mine b\n"); }, { background: true }, exits[1]!.promise, { ...background, toolUseId: "bash-2" });
+    await runManagedMutation(root, cwd => { homes.push(path.dirname(path.dirname(cwd))); fs.writeFileSync(path.join(cwd, "a.txt"), "mine a\n"); }, { background: true }, exits[0]!.promise, s.context);
+    await runManagedMutation(root, cwd => { homes.push(path.dirname(path.dirname(cwd))); fs.writeFileSync(path.join(cwd, "b.txt"), "mine b\n"); }, { background: true }, exits[1]!.promise, { ...s.context, toolUseId: "bash-2" });
     expect(new Set(homes).size).toBe(2);
     for (const exit of exits) exit.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" });
     await settled(s.registry);
@@ -283,7 +282,7 @@ describe("bash tool: a session's mutating commands reuse its private copy", () =
       // The first command probes the host's mutation guard, which a held container would never answer, and leaves the copy the next one reuses.
       await runMutation(root, () => {}, {}, s.context);
       const records = await appliedRecords(async () => {
-        await runManagedMutation(root, cwd => fs.writeFileSync(path.join(cwd, "a.txt"), "mine\n"), { background: true }, container, { ...s.context, backgroundTasks: s.registry, toolUseId: "bash-2" });
+        await runManagedMutation(root, cwd => fs.writeFileSync(path.join(cwd, "a.txt"), "mine\n"), { background: true }, container, { ...s.context, toolUseId: "bash-2" });
         await s.runtime.handOver({ authority: handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }), sessionId: "session-1", conversationId: "conversation-1", holder: "conversation", deliver: async () => {} });
       });
 

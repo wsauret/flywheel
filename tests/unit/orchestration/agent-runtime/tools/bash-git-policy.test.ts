@@ -1,7 +1,7 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 
 import { classifyGitArgv } from "../../../../../src/orchestration/agent-runtime/tools/bash-git-policy.js";
-import { runMutationGit } from "../../../../../src/orchestration/agent-runtime/tools/bash-git-main.js";
+import { runMutationGitMain } from "../../../../../src/orchestration/agent-runtime/tools/bash-git-main.js";
 import { splitGitAlias } from "../../../../../src/orchestration/agent-runtime/tools/bash-git-alias.js";
 import { join } from "node:path";
 import type { runInheritedCommand } from "../../../../../src/infra/inherited-command.js";
@@ -9,6 +9,25 @@ import type { runInheritedCommand } from "../../../../../src/infra/inherited-com
 const MESSAGE = "Git repository writes are not allowed in a mutating command. Rerun this git command as a separate call without mutates.";
 
 const REAL_GIT = join(process.cwd(), "real-git");
+const REFUSED = { exitCode: 97, stderr: `${MESSAGE}\n` };
+
+/** Runs the hidden Git executable role on `argv` and answers its exit code and what it wrote to stderr. */
+async function mutationGit(argv: readonly string[], run: typeof runInheritedCommand): Promise<{ readonly exitCode: number; readonly stderr: string }> {
+  const saved = { argv: process.argv, realGit: process.env.FLYWHEEL_MUTATION_GIT_REAL, exitCode: process.exitCode };
+  const stderr = spyOn(process.stderr, "write").mockImplementation(() => true);
+  process.argv = [process.argv[0]!, "flywheel", "--", ...argv];
+  process.env.FLYWHEEL_MUTATION_GIT_REAL = REAL_GIT;
+  try {
+    await runMutationGitMain(run);
+    return { exitCode: Number(process.exitCode), stderr: stderr.mock.calls.map(([chunk]) => String(chunk)).join("") };
+  } finally {
+    stderr.mockRestore();
+    process.argv = saved.argv;
+    if (saved.realGit === undefined) delete process.env.FLYWHEEL_MUTATION_GIT_REAL;
+    else process.env.FLYWHEEL_MUTATION_GIT_REAL = saved.realGit;
+    process.exitCode = saved.exitCode ?? 0;
+  }
+}
 
 function gitRunner(config = "", builtins = "status\nhelp\n", overrides: Partial<Awaited<ReturnType<typeof runInheritedCommand>>> = {}) {
   const calls: { command: readonly string[]; options: Parameters<typeof runInheritedCommand>[1] }[] = [];
@@ -26,14 +45,14 @@ function gitRunner(config = "", builtins = "status\nhelp\n", overrides: Partial<
 describe("mutation Git helper", () => {
   it("refuses write modes without any Git invocation", async () => {
     const fake = gitRunner();
-    expect(await runMutationGit(["add", "secret file"], REAL_GIT, fake.run)).toEqual({ kind: "refused", exitCode: 97, message: MESSAGE });
+    expect(await mutationGit(["add", "secret file"], fake.run)).toEqual(REFUSED);
     expect(fake.calls).toEqual([]);
   });
 
   it("resolves effective configuration in the selected context and puts trusted overrides last", async () => {
     const fake = gitRunner("diff.driver with spaces.textconv\ncat\0diff.driver with spaces.textconv\ncat\0");
     const context = ["-C", "repository with spaces", "-c", "core.fsmonitor=bad", "--config-env=diff.driver with spaces.cachetextconv=USER_CACHE"];
-    expect(await runMutationGit([...context, "show", "HEAD:a b"], REAL_GIT, fake.run)).toEqual({ kind: "delegated", exitCode: 0, signalCode: null });
+    expect(await mutationGit([...context, "show", "HEAD:a b"], fake.run)).toEqual({ exitCode: 0, stderr: "" });
     expect(fake.calls[0]).toEqual({
       command: [REAL_GIT, ...context, "--no-optional-locks", "-c", "core.fsmonitor=false", "config", "--null", "--get-regexp", "^(alias\\.|diff\\..*\\.textconv$)"],
       options: { output: "capture", stdin: "ignore" },
@@ -46,8 +65,7 @@ describe("mutation Git helper", () => {
 
   it("recursively classifies ordinary aliases and keeps exact quoted arguments", async () => {
     const fake = gitRunner(["alias.outer\n-c core.fsmonitor=bad inner 'a b'", "alias.inner\n" + String.raw`log --format="%H \"x\""`, ""].join("\0"));
-    const result = await runMutationGit(["-C", "repo", "outer", "--", "trailing path"], REAL_GIT, fake.run);
-    expect(result.kind).toBe("delegated");
+    expect(await mutationGit(["-C", "repo", "outer", "--", "trailing path"], fake.run)).toEqual({ exitCode: 0, stderr: "" });
     expect(fake.calls.at(-1)?.command).toEqual([
       REAL_GIT, "-C", "repo", "-c", "core.fsmonitor=bad", "--no-optional-locks", "-c", "core.fsmonitor=false",
       "log", '--format=%H "x"', "a b", "--", "trailing path",
@@ -65,8 +83,7 @@ describe("mutation Git helper", () => {
     ["", "external-extension"],
   ])("does not execute uncertified aliases or override builtins (%s)", async (config, command) => {
     const fake = gitRunner(config);
-    const result = await runMutationGit([command], REAL_GIT, fake.run);
-    expect(result.kind).toBe(command === "status" ? "delegated" : "refused");
+    expect(await mutationGit([command], fake.run)).toEqual(command === "status" ? { exitCode: 0, stderr: "" } : REFUSED);
     expect(fake.calls.filter((call) => call.options.output === "inherit").length).toBe(command === "status" ? 1 : 0);
   });
 
@@ -74,13 +91,13 @@ describe("mutation Git helper", () => {
     { exitCode: 128 }, { stdoutTruncated: true }, { stderrTruncated: true }, { signalCode: "SIGTERM" as const },
   ])("refuses when configuration cannot be completely read (%j)", async (failure) => {
     const fake = gitRunner("", "", failure);
-    expect(await runMutationGit(["status"], REAL_GIT, fake.run)).toEqual({ kind: "refused", exitCode: 97, message: MESSAGE });
+    expect(await mutationGit(["status"], fake.run)).toEqual(REFUSED);
     expect(fake.calls).toHaveLength(1);
   });
 
   it("allows absent configuration and preserves delegated exit metadata", async () => {
     const fake = gitRunner("", "", { exitCode: 1 });
-    expect(await runMutationGit(["status"], REAL_GIT, fake.run)).toEqual({ kind: "delegated", exitCode: 1, signalCode: null });
+    expect(await mutationGit(["status"], fake.run)).toEqual({ exitCode: 1, stderr: "" });
   });
 });
 

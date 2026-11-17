@@ -3,7 +3,7 @@ import type { RuntimePlatform } from "./bash-script.js";
 import { SEARCH_CPU_LIMIT_SECONDS, SHELL_SEARCH_PROGRAMS, SHELL_SEARCH_RULES, type ShellSearchProgram } from "./search-rules.js";
 import type { RuntimeTool } from "./types.js";
 
-export const SHELL_OUTPUT_GUIDANCE = "Preserve live command output: the runtime captures stdout and stderr. Never redirect, suppress, filter, or capture diagnostic output with `>`, `>>`, `2>`, `2>&1`, `&>`, `/dev/null`, or log-filtering pipes. Redirect stdout only when stdout is the requested file artifact. Read the output of a command in managed execution with process read_output or its completion notification.";
+const SHELL_OUTPUT_GUIDANCE = "Preserve live command output: the runtime captures stdout and stderr. Never redirect, suppress, filter, or capture diagnostic output with `>`, `>>`, `2>`, `2>&1`, `&>`, `/dev/null`, or log-filtering pipes. Redirect stdout only when stdout is the requested file artifact. Read the output of a command in managed execution with process read_output or its completion notification.";
 
 const mutationGuidance = (recordedLike: string, has: CapabilityCheck): string => {
   const scripts = has("write") ? " Create files to run, such as scratch scripts, with the write tool; bash only runs them." : "";

@@ -21,7 +21,7 @@ const log = Log.create({ service: "bash-private-copy" });
  *  refreshed. A refresh is the copy's last write, and the scratch sweep can
  *  select a recorded home only after three idle days, so the pool never
  *  refreshes a home the sweep may be removing. */
-export const REUSE_IDLE_LIMIT_MS = 24 * 60 * 60 * 1000;
+const REUSE_IDLE_LIMIT_MS = 24 * 60 * 60 * 1000;
 
 /** What a copy's home layout depends on. The private Git directory is kept or
  *  seeded again by the real repository's state (`ReusableCopy.git`), so the Git

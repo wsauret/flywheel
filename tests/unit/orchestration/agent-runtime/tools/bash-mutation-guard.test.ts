@@ -3,10 +3,29 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
-import { deniedWriteNote, guardedArgv, probeMutationGuard, seatbeltProfile } from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
+import { deniedWriteNote, guardedArgv } from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
+import type * as GuardModule from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const createDirectory = temporaryDirectories();
+
+let processes = 0;
+/** The guard that a new process on `platform` selects. The host probes once
+ *  per process, so each call loads a fresh instance of the guard module and
+ *  reports `platform` while the probe starts. */
+async function probeMutationGuard(run: OwnedCommandRunner, platform: NodeJS.Platform): Promise<GuardModule.MutationGuard> {
+  const { hostMutationGuard }: typeof GuardModule = await import(`../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js?process=${++processes}`);
+  const host = Object.getOwnPropertyDescriptor(process, "platform")!;
+  Object.defineProperty(process, "platform", { ...host, value: platform });
+  try {
+    return hostMutationGuard(run);
+  } finally {
+    Object.defineProperty(process, "platform", host);
+  }
+}
+
+/** The Seatbelt profile that a guarded launch for `copy` gives sandbox-exec. */
+const seatbeltProfile = (copy: Parameters<typeof guardedArgv>[1]): string => guardedArgv({ kind: "seatbelt", pidNamespace: false }, copy)(["true"])[2]!;
 
 function exited(exitCode: number): OwnedCommandResult {
   return { exitCode, stdout: "", stdoutBytes: new Uint8Array(), stderr: "", timedOut: false };

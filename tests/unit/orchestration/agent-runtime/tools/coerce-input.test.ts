@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ToolInputRepair } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { coerceToolCallInput, coerceToolInput } from "../../../../../src/orchestration/agent-runtime/tools/coerce-input.js";
-import { createEditDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
+import { editDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
 
 describe("coerceToolCallInput", () => {
@@ -200,7 +200,7 @@ describe("coerceToolInput", () => {
       expect(repairsOf(unparsed, schema)).toEqual({ output: unparsed, repairs: [] });
       // A model that writes a list of edits as JSON text often leaves raw line breaks and
       // regex backslashes unescaped in it; the text reads with the tool-argument repair tier.
-      const editInput = coerceToolInput({ path: "a.ts", edits: "[{\"old_string\": \"a\n\tb\", \"new_string\": \"\\d+\"}]" }, createEditDefinition().inputSchema);
+      const editInput = coerceToolInput({ path: "a.ts", edits: "[{\"old_string\": \"a\n\tb\", \"new_string\": \"\\d+\"}]" }, editDefinition.inputSchema);
       expect(editInput).toEqual({ path: "a.ts", edits: [{ old_string: "a\n\tb", new_string: "\\d+" }] });
     });
 
@@ -208,7 +208,7 @@ describe("coerceToolInput", () => {
     // entry, old_string follows raw, and new_string follows as one JSON string with no closing `}]`.
     test("reads a one-entry list whose first value is raw text in mixed parameter syntax, and records it", () => {
       const edits = "[{\"old_string\">  // hyperprior (improper in the flat sense, proper enough given the data)\n  target += -2.5 * log(alpha + beta);, \"new_string\": \"  // hyperprior p(alpha, beta) proportional to (alpha + beta)^(-5/2)\\n  target += -2.5 * log(alpha + beta);\"";
-      const schema = createEditDefinition().inputSchema;
+      const schema = editDefinition.inputSchema;
       expect(repairsOf({ path: "/app/hierarchical_model.stan", edits }, schema)).toEqual({
         output: {
           path: "/app/hierarchical_model.stan",

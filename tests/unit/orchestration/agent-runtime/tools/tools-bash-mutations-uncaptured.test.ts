@@ -7,13 +7,12 @@ import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/t
 import * as mutationGuard from "../../../../../src/orchestration/agent-runtime/tools/bash-mutation-guard.js";
 import { privateCopyRemovals } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { mutationSpawnProbe, makeMockOps } from "./_bash-fixtures.js";
+import { bashExecution, mutationSpawnProbe, makeMockOps } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
 import { bashMutationHarness } from "./_bash-mutations-harness.js";
 import { PersistenceWriteRefused } from "../../../../../src/infra/event-store-types.js";
 import { runAgentTurn } from "../../../../../src/orchestration/runner/agent-turn.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 
 const createDirectory = temporaryDirectories();
 
@@ -23,7 +22,7 @@ beforeAll(async () => {
 
 describe("bash tool: mutation capture failures", () => {
   afterEach(privateCopyRemovals);
-  const { project, runMutation } = bashMutationHarness(createDirectory);
+  const { project, runMutation, caseShell } = bashMutationHarness(createDirectory);
 
   it("keeps the wrapper outside captured-copy cleanup", async () => {
     const root = project([["a.txt", "old\n"]]);
@@ -42,10 +41,7 @@ describe("bash tool: mutation capture failures", () => {
     expect(fs.readFileSync(path.join(root, "a.txt"), "utf8")).toBe("new\n");
   });
 
-  it.each([
-    ["foreground", "preparation"], ["foreground", "publication"],
-    ["held", "preparation"], ["held", "publication"],
-  ] as const)("ends a %s turn on a %s refusal without losing the changed copy or continuing", async (mode, stage) => {
+  it.each(["preparation", "publication"] as const)("ends a turn on a %s refusal without losing the changed copy or continuing", async (stage) => {
     const root = project([["a.txt", "old\n"]]);
     const store = createRecordingFileMutationStore();
     const error = new PersistenceWriteRefused(129, 128);
@@ -68,10 +64,7 @@ describe("bash tool: mutation capture failures", () => {
             await runMutation(root, (cwd) => {
               changedCopy = cwd;
               fs.writeFileSync(path.join(cwd, "a.txt"), "new\n");
-            }, {}, {
-              sessionEventWriter: writer,
-              ...(mode === "held" ? { backgroundTasks: registry, capabilityAccess: capabilityAccessHolding(["background-commands"]), foregroundBashHold: createForegroundBashHoldController(() => {}) } : {}),
-            });
+            }, {}, { sessionEventWriter: writer, shell: caseShell(registry), capabilityAccess: capabilityAccessHolding(["background-commands"]) });
             continuations.push("next tool or model request");
             return { servedRequests: 0, durationMs: 0, terminal: { kind: "completed" as const } };
           })(),
@@ -89,7 +82,7 @@ describe("bash tool: mutation capture failures", () => {
     }
   });
 
-  it.each((["foreground", "held", "background"] as const).flatMap((mode) =>
+  it.each((["foreground", "background"] as const).flatMap((mode) =>
     (process.platform === "win32" ? [false] : [false, true]).map((unavailable) => [mode, unavailable] as const),
   ))("guards uncaptured %s commands and counts the miss (guard unavailable: %s)", async (mode, unavailable) => {
     const root = fs.realpathSync(createDirectory("agent-bash-mutations-uncaptured-"));
@@ -103,12 +96,10 @@ describe("bash tool: mutation capture failures", () => {
     const guard = unavailable ? spyOn(mutationGuard, "hostMutationGuard").mockResolvedValue({ kind: "none", pidNamespace: false }) : undefined;
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
     try {
-      const result = await createBashDefinition({ operations: makeMockOps({ ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); } }) })
+      const result = await createBashDefinition({ ...bashExecution(registry), operations: makeMockOps({ ensureDir: (dir) => { fs.mkdirSync(dir, { recursive: true }); } }) })
         .execute({ command: "reshape", mutates: true, background: mode === "background" }, makeContext({
           projectRoot: root, executionCwd: root, scratchDir, spawnOwned: spawn.spawnOwned, toolUseId: "bash-1", sessionEventWriter: store.writer,
           capabilityAccess: capabilityAccessHolding(["background-commands"]),
-          ...(mode !== "foreground" ? { backgroundTasks: registry } : {}),
-          ...(mode === "held" ? { foregroundBashHold: createForegroundBashHoldController(() => {}) } : {}),
         }));
 
       // The host's guard probe can launch first and names no directory; the command ran in the project.
@@ -143,6 +134,7 @@ describe("bash tool: mutation capture failures", () => {
     if (failure === "unwritable wrapper") fs.writeFileSync(scratchDir, "not a directory");
     const spawn = mutationSpawnProbe(() => { throw new Error("must not launch"); });
     const result = await createBashDefinition({
+      ...bashExecution(),
       operations: makeMockOps(),
       ...(failure === "missing git" ? { loginShellPath: () => path.join(root, "absent-bin") } : {}),
     }).execute({ command: "reshape", mutates: true }, makeContext({

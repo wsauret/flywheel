@@ -55,46 +55,42 @@ function singleEditAsEntry(input: Readonly<RuntimeToolInput>): { readonly input:
   return { input: { ...rest, edits: [entry] }, notice: [...repairs.map(describeInputRepair), lifted].join("\n") };
 }
 
-export function createEditDefinition(): RuntimeTool {
-  return {
-    name: "edit",
-    action: "file_edit",
-    description: "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
-    inputSchema: EDIT_INPUT_SCHEMA,
-    isConcurrencySafe: false,
-    prepareAdmission: async (input, context) => {
-      const lifted = singleEditAsEntry(input);
-      const { repair } = sessionPathInput(lifted?.input ?? input, context, "file");
-      if (lifted === undefined) return repair ? { repair } : {};
-      return { repair: repair ? { input: repair.input, notice: `${lifted.notice}\n${repair.notice}` } : lifted };
-    },
-    reservedPaths: (input, executionCwd) => typeof input.path === "string" ? [canonicalMutationPath(resolveToolPath(executionCwd, input.path))] : [],
-    async execute(input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
-      const path = input.path;
-      const edits = parseStringEdits(input.edits);
-      if (typeof path !== "string" || edits === undefined) {
-        return { content: "Invalid input: edit expects { path, edits: [{ old_string, new_string, replace_all? }, ...] } with at least one entry, string text fields, and an optional boolean.", outcome: "error" };
-      }
-      const unchanged = edits.every((edit) => edit.oldString === edit.newString);
-      const result = await publishToolFileEdits(context, {
-        label: "Edit",
-        paths: [path],
-        admit: RetainedFileEditAuthority.admit,
-        plan: ([admitted]) => {
-          if (!admitted) throw new Error(`${path} was not admitted`);
-          const before = admitted.authority.text;
-          if (before === undefined) throw new Error(`${path} is not valid UTF-8`);
-          const plan = planStringEdits(before, edits);
-          if (unchanged) return [];
-          const changedLines = lineRangeOfByteSpans(admitted.authority.encode(before), plan.spans);
-          return [changedLines ? { admitted, after: plan.content, changedLines } : { admitted, after: plan.content }];
-        },
-      });
-      return unchanged && result.outcome === "ok"
-        ? { ...result, content: `Note: every old_string equals its new_string; ${path} is unchanged.` }
-        : result;
-    },
-  };
-}
-
-export const editDefinition = createEditDefinition();
+export const editDefinition: RuntimeTool = {
+  name: "edit",
+  action: "file_edit",
+  description: "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
+  inputSchema: EDIT_INPUT_SCHEMA,
+  isConcurrencySafe: false,
+  prepareAdmission: async (input, context) => {
+    const lifted = singleEditAsEntry(input);
+    const { repair } = sessionPathInput(lifted?.input ?? input, context, "file");
+    if (lifted === undefined) return repair ? { repair } : {};
+    return { repair: repair ? { input: repair.input, notice: `${lifted.notice}\n${repair.notice}` } : lifted };
+  },
+  reservedPaths: (input, executionCwd) => typeof input.path === "string" ? [canonicalMutationPath(resolveToolPath(executionCwd, input.path))] : [],
+  async execute(input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
+    const path = input.path;
+    const edits = parseStringEdits(input.edits);
+    if (typeof path !== "string" || edits === undefined) {
+      return { content: "Invalid input: edit expects { path, edits: [{ old_string, new_string, replace_all? }, ...] } with at least one entry, string text fields, and an optional boolean.", outcome: "error" };
+    }
+    const unchanged = edits.every((edit) => edit.oldString === edit.newString);
+    const result = await publishToolFileEdits(context, {
+      label: "Edit",
+      paths: [path],
+      admit: RetainedFileEditAuthority.admit,
+      plan: ([admitted]) => {
+        if (!admitted) throw new Error(`${path} was not admitted`);
+        const before = admitted.authority.text;
+        if (before === undefined) throw new Error(`${path} is not valid UTF-8`);
+        const plan = planStringEdits(before, edits);
+        if (unchanged) return [];
+        const changedLines = lineRangeOfByteSpans(admitted.authority.encode(before), plan.spans);
+        return [changedLines ? { admitted, after: plan.content, changedLines } : { admitted, after: plan.content }];
+      },
+    });
+    return unchanged && result.outcome === "ok"
+      ? { ...result, content: `Note: every old_string equals its new_string; ${path} is unchanged.` }
+      : result;
+  },
+};
