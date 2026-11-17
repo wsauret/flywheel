@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import { continueCapacityWaits } from "../../../../src/orchestration/app-service/capacity-wait-continuation.js"
+import { capacityContinuer } from "../../../../src/orchestration/app-service/capacity-wait-continuation.js"
 import { capacityWaitAuthority, registerCapacityWaits } from "../../../../src/orchestration/session/capacity-wait.js"
 import { authorizePlannedSessionContinuation, readPlannedSessionContinuationAsync, type PlannedContinuationTarget } from "../../../../src/orchestration/session/planned-session-continuation.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, resumeDispatch, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
@@ -115,7 +115,7 @@ describe("capacity waits", () => {
     await live?.arm(AT)
 
     const steps: string[] = []
-    const continued = await continueCapacityWaits({
+    const continued = await capacityContinuer({
       projectionReader: reader(), liveStore: reader(), ledger: waits, lanes: ctx.continuationLanes,
       manager: sessions(new Map([
         ["chat-ok", { kind: "chat" }], ["chat-later", { kind: "chat" }], ["chat-latest", { kind: "chat" }], ["chat-refused", { kind: "chat" }], ["chat-failed", { kind: "chat" }],
@@ -141,7 +141,7 @@ describe("capacity waits", () => {
         },
       },
       settled: () => {},
-    })
+    })()
 
     expect(steps.sort()).toEqual([
       "chat.resume chat-failed", "chat.resume chat-ok", "chat.resume chat-refused",
@@ -150,7 +150,7 @@ describe("capacity waits", () => {
       "workflow workflow-2 agent-parent-conversation",
       "workflow workflow-stopped stopped-parent-conversation",
     ])
-    expect(continued).toEqual({ pending: 2, next: later })
+    expect(continued).toMatchObject({ pending: 2, next: later })
     // A continuation that started keeps its row for its run, which withdraws it as it ends.
     for (const id of ["chat-ok", "agent-a", "agent-b", "child-of-agent", "grandchild"]) expect(waits.held(id)).toBe(true)
     expect(await row("chat-ok")).toMatchObject({ continuesAt: AT })
@@ -174,7 +174,7 @@ describe("capacity waits", () => {
     const interrupting = ctx.continuationLanes.run("chat-withdrawn", () => interrupt.promise)
 
     const steps: string[] = []
-    const continuing = continueCapacityWaits({
+    const continuing = capacityContinuer({
       projectionReader: reader(), liveStore: reader(), ledger: waits, lanes: ctx.continuationLanes,
       manager: {
         read: async (id) => {
@@ -196,10 +196,10 @@ describe("capacity waits", () => {
         resumeWorkflow: async (workflowId) => ({ kind: "resumed", sessionId: workflowId, continued: new Set(["agent-a-conversation"]) }),
       },
       settled: () => {},
-    })
+    })()
     await interrupting
 
-    expect(await continuing).toEqual({ pending: 2, next: null })
+    expect(await continuing).toMatchObject({ pending: 2, next: null })
     expect(steps).toEqual([])
     expect(waits.held("agent-a")).toBe(true)
     for (const id of ["agent-b", "agent-unread"]) {

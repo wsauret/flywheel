@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test"
 
 import { reloadLaunchdRegistration } from "../../../../src/orchestration/app-service/account-service-installation.js"
-import { systemdUnitPath } from "../../../../src/orchestration/app-service/account-service-systemd.js"
 import { registrationFingerprint, type RegistrationReloadRecord, SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
-import { ok, unanswered, eio, launchdAbsent, plistPath, service, print, helperPrint, printDisabled, printedDisabled, bootstrap, removeHelper, submitHelper, OLD_PLIST, OLD_UNIT, UNIT_BEFORE_OOM_POLICY, printedJob, fixture, currentPlist, currentUnit, daemonReload, type Response } from "./_account-service-fixtures.js"
+import { ok, unanswered, eio, launchdAbsent, plistPath, unitPath, service, print, helperPrint, printDisabled, printedDisabled, bootstrap, removeHelper, submitHelper, OLD_PLIST, OLD_UNIT, UNIT_BEFORE_OOM_POLICY, printedJob, fixture, currentPlist, currentUnit, daemonReload, type Response } from "./_account-service-fixtures.js"
 
 describe("launchd re-registration", () => {
   const launchd = (setup: ReturnType<typeof fixture>) => {
@@ -294,7 +293,6 @@ describe("launchd re-registration", () => {
 
 describe("systemd unit refresh", () => {
   const show = ["systemctl", "--user", "show", "-p", "NeedDaemonReload", SERVICE_NAMES.installed.systemdUnit]
-  const unitPath = systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })
   const systemd = (setup: ReturnType<typeof fixture>) => {
     const control = setup.control.systemd
     if (control === undefined) throw new Error("expected the systemd registration control")

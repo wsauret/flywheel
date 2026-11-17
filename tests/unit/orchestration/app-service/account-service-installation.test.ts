@@ -2,10 +2,9 @@ import { describe, expect, test } from "bun:test"
 
 import { createAccountServiceInstallation, currentLoginHome, isLoginHome, serviceCommandLaunch } from "../../../../src/orchestration/app-service/account-service-installation.js"
 import { osAccount } from "../../../../src/infra/os-account.js"
-import { systemdUnitPath } from "../../../../src/orchestration/app-service/account-service-systemd.js"
 import { registrationFingerprint, SERVICE_NAMES, SERVICE_STOP_TIMEOUT_SECONDS } from "../../../../src/orchestration/app-service/account-service-registration.js"
 import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
-import { retired, ok, missing, unanswered, eio, launchdAbsent, launcher, plistPath, service, print, printDisabled, bootstrap, removeHelper, submitHelper, taskXmlPath, OLD_PLIST, OLD_UNIT, OLD_TASK_QUERY, printedJob, printedDisabled, listedTask, listedTasks, textOf, bytesOf, fixture, currentPlist, currentUnit, currentTaskXml, isActive, isEnabled, daemonReload, systemctlCommands, taskQuery, taskStatus, taskList, taskUserQuery, type Response } from "./_account-service-fixtures.js"
+import { retired, ok, missing, unanswered, eio, launchdAbsent, launcher, plistPath, unitPath, service, print, printDisabled, bootstrap, removeHelper, submitHelper, taskXmlPath, OLD_PLIST, OLD_UNIT, OLD_TASK_QUERY, printedJob, printedDisabled, listedTask, listedTasks, textOf, bytesOf, fixture, currentPlist, currentUnit, currentTaskXml, isActive, isEnabled, daemonReload, systemctlCommands, taskQuery, taskStatus, taskList, taskUserQuery, type Response } from "./_account-service-fixtures.js"
 
 describe("account service registration text", () => {
   test("every manager waits for a stop longer than the account's own drain bound", () => {
@@ -220,7 +219,7 @@ describe("account service start", () => {
 
   test("asks systemd to start an enabled unit", async () => {
     const enabled = ["systemctl", "--user", "is-enabled", SERVICE_NAMES.installed.systemdUnit]
-    const setup = fixture("linux", new Map([[enabled.join("\0"), ok("enabled")]]), new Map([[systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed }), "[Unit]"]]))
+    const setup = fixture("linux", new Map([[enabled.join("\0"), ok("enabled")]]), new Map([[unitPath, "[Unit]"]]))
 
     expect(await setup.installation.start()).toBe(true)
 
@@ -229,7 +228,7 @@ describe("account service start", () => {
 
   test.each(["disabled", "masked", "masked-runtime", "linked", "linked-runtime", "not-found", "bad"])("starts nothing for a unit systemd names %s", async (answer) => {
     const enabled = ["systemctl", "--user", "is-enabled", SERVICE_NAMES.installed.systemdUnit]
-    const setup = fixture("linux", new Map([[enabled.join("\0"), { exitCode: 1, stdout: `${answer}\n`, stderr: "" }]]), new Map([[systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed }), "[Unit]"]]))
+    const setup = fixture("linux", new Map([[enabled.join("\0"), { exitCode: 1, stdout: `${answer}\n`, stderr: "" }]]), new Map([[unitPath, "[Unit]"]]))
 
     expect(await setup.installation.start()).toBe(false)
 
@@ -238,7 +237,7 @@ describe("account service start", () => {
 
   test("fails a start when the user bus does not answer while the unit file exists", async () => {
     const enabled = ["systemctl", "--user", "is-enabled", SERVICE_NAMES.installed.systemdUnit]
-    const setup = fixture("linux", new Map([[enabled.join("\0"), { exitCode: 1, stdout: "", stderr: "Failed to connect to bus: No medium found" }]]), new Map([[systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed }), "[Unit]"]]))
+    const setup = fixture("linux", new Map([[enabled.join("\0"), { exitCode: 1, stdout: "", stderr: "Failed to connect to bus: No medium found" }]]), new Map([[unitPath, "[Unit]"]]))
 
     await expect(setup.installation.start()).rejects.toThrow("systemctl is-enabled failed (exit 1): Failed to connect to bus: No medium found")
   })
@@ -407,7 +406,7 @@ describe("account service installation", () => {
 
     await setup.installation.install()
 
-    expect(setup.files.has(systemdUnitPath(setup.platform))).toBe(true)
+    expect(setup.files.has(unitPath)).toBe(true)
     expect(systemctlCommands(setup.commands)).toEqual([
       isActive,
       isEnabled,
@@ -419,7 +418,7 @@ describe("account service installation", () => {
   })
 
   test("starts stopped systemd registration without enabling it again", async () => {
-    const setup = fixture("linux", new Map([[isActive.join("\0"), missing], [isEnabled.join("\0"), ok()]]), new Map([[systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed }), await currentUnit()]]))
+    const setup = fixture("linux", new Map([[isActive.join("\0"), missing], [isEnabled.join("\0"), ok()]]), new Map([[unitPath, await currentUnit()]]))
 
     await setup.installation.install()
 
@@ -428,7 +427,7 @@ describe("account service installation", () => {
   })
 
   test("does not restart a running systemd service", async () => {
-    const setup = fixture("linux", new Map([[isActive.join("\0"), ok()]]), new Map([[systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed }), await currentUnit()]]))
+    const setup = fixture("linux", new Map([[isActive.join("\0"), ok()]]), new Map([[unitPath, await currentUnit()]]))
 
     await setup.installation.install()
 
@@ -441,7 +440,6 @@ describe("account service installation", () => {
     // and that build's exit 0 on retirement would then leave nothing running.
     // A unit written now would get the same reload from any other program, so
     // only the service of the new build writes it.
-    const unitPath = systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })
     const setup = fixture("linux", new Map([[isActive.join("\0"), ok()]]), new Map([[unitPath, OLD_UNIT]]))
 
     await setup.installation.install()
@@ -456,7 +454,6 @@ describe("account service installation", () => {
   })
 
   test("enables a disabled running systemd service without restarting it, writing its unit, or reloading the manager", async () => {
-    const unitPath = systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })
     const setup = fixture("linux", new Map([[isActive.join("\0"), ok()], [isEnabled.join("\0"), missing]]), new Map([[unitPath, OLD_UNIT]]))
 
     await setup.installation.install()
@@ -615,7 +612,7 @@ describe("account service installation", () => {
       [isEnabled.join("\0"), missing],
       [enable.join("\0"), { ...missing, stderr: "manager unavailable" }],
     ]))
-    const retiredPath = systemdUnitPath(setup.platform).replace(SERVICE_NAMES.installed.systemdUnit, retired.systemdUnit)
+    const retiredPath = unitPath.replace(SERVICE_NAMES.installed.systemdUnit, retired.systemdUnit)
     setup.files.set(retiredPath, "old")
 
     await expect(setup.installation.install()).rejects.toThrow("manager unavailable")
@@ -689,7 +686,6 @@ describe("Process initiation off", () => {
   test("Linux disables the unit without a reload, removes its file, and leaves the stop and the reload to a transient unit outside the service's control group", async () => {
     // The stop goes before the reload, so the stop still runs under the
     // unit's own KillMode and TimeoutStopSec.
-    const unitPath = systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })
     const setup = fixture("linux", new Map(), new Map([[unitPath, await currentUnit()]]))
     const { installation, onDisk } = tracing(setup, unitPath)
 
@@ -700,7 +696,6 @@ describe("Process initiation off", () => {
   })
 
   test("Linux fails an Off whose transient unit systemd refuses, with the unit file already gone", async () => {
-    const unitPath = systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })
     const setup = fixture("linux", new Map([[transientStop.join("\0"), { exitCode: 1, stdout: "", stderr: "Failed to connect to bus" }]]), new Map([[unitPath, await currentUnit()]]))
 
     await expect(setup.installation.uninstall()).rejects.toThrow("systemd-run failed (exit 1): Failed to connect to bus")
@@ -724,7 +719,6 @@ describe("an update's registration refresh", () => {
   // Only a full task list that does not name the task proves a failed query's
   // task absent.
   const otherTasks = ok(listedTasks("\\Microsoft\\Windows\\Defrag\\ScheduledDefrag"))
-  const unitPath = systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })
 
   test.each([
     ["a launchd registration file", true, "darwin", [plistPath, "<plist/>"], new Map(), []],

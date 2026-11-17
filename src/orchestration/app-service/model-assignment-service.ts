@@ -77,7 +77,7 @@ interface RuntimeModelAssignmentServiceDeps {
 /** Only persona roles have a complete pruning authority. Workflow files can use any brief id.
  *  A user or project persona file that failed to load hides the role it declares, so its
  *  path makes the authority incomplete; the registry already warned about the file. */
-export function modelConfigValidity(
+function modelConfigValidity(
   revision: Pick<PersonaRegistryRevision, "personas" | "resolutions">,
 ): ConfigValidity {
   return {
