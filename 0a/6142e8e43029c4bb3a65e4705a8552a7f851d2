@@ -1,0 +1,20 @@
+src/orchestration/session/child-execution-resources.ts
+  h_4b47e9e4a8b456 13,77-78,122-124,180
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 99-101,273
+src/orchestration/workflow-host/factory.ts
+  h_4b47e9e4a8b456 139-146,148-155,158-161,242
+tests/unit/orchestration/workflow-host/workflow-runner.test.ts
+  h_4b47e9e4a8b456 334-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0a6142e8e43029c4bb3a65e4705a8552a7f851d2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
