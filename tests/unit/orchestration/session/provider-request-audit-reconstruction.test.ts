@@ -10,7 +10,7 @@ import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestratio
 import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context"
 import { reconstructProviderRequestPrompt } from "../../../../src/orchestration/session/provider-request-audit-reconstruction"
-import { maskStaleToolResults } from "../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker"
+import { createStaleToolResultMasker } from "../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker"
 import { lowerToolHistoryById } from "../../../../src/orchestration/agent-runtime/llm/tool-history-projection"
 import { applyHistoryLowering, planHistoryLowering } from "../../../../src/orchestration/agent-runtime/llm/provider-history"
 import { openAIResponsesTarget } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers"
@@ -102,8 +102,8 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const context = buildSessionContext(await tree.getBranch())
     await tree.getStorage().dispose()
 
-    // Mask exactly what the agent loop would have sent, and record the mask.
-    const masked = maskStaleToolResults(context.messages, 3)
+    // Mask exactly what the agent loop of a conversation restored at cutoff 3 sends, and record the mask.
+    const masked = createStaleToolResultMasker({ cutoffIndex: 3, zone: 0 }).mask(context.messages, 0.3)
     expect(masked).not.toBeNull()
 
     appendProviderRequestFacts(store, sessionId, {

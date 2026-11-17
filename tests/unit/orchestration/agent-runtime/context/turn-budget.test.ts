@@ -7,11 +7,9 @@ import {
   type TurnBudgetEntry,
 } from "../../../../../src/orchestration/agent-runtime/compaction/truncation.js";
 import {
-  CHARS_PER_TOKEN,
   createContextAdmission,
   effectiveProactiveTrigger,
   proactiveCompactionTriggers,
-  SAVE_ROUND_RESERVE_TOKENS,
   turnBudgetChars,
 } from "../../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
 
@@ -21,6 +19,12 @@ import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runti
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
+
+/** The characters-per-token ratio of every context budget. */
+const CHARS_PER_TOKEN = 4;
+/** The context that a planned save round keeps free: one full checkpoint read and one full rewrite of 24,576 bytes
+ *  each, at the budget's ratio. */
+const SAVE_ROUND_RESERVE_TOKENS = 12_288;
 
 function entry(id: string, chars: number, overrides: Partial<TurnBudgetEntry> = {}): TurnBudgetEntry {
   return {

@@ -5,12 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
 import { prepareAnthropicRequest, type AnthropicOperations } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { environmentReminder } from "../../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { FUNCTION_TOOL_PRESENTATION, trailingRuntimeNotices, type ConversationMessage, type ProviderDemand, type StreamOptions, type ToolPresentation } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { TOOL_MCP_PREFIX } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { cliView } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { createToolGate } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/tool-gate.js";
-import { originsOf } from "../_bridge-harness.js";
+import { openingEnvironmentReminder, originsOf } from "../_bridge-harness.js";
 import type { BridgeRequest } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { createHostedAgent, type HostedAgentConfig } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.js";
 import { agentFilePath } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.js";
@@ -24,7 +23,6 @@ import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/shared-tree.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
 import { silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
-import { SHELL_CAPABILITIES } from "../../../../../helpers/prompt-capabilities.js";
 
 const directory = temporaryDirectories();
 // A case that leases from the hosts of this process leaves no host there.
@@ -43,7 +41,7 @@ const AgentFileRow = Schema.Struct({
 
 /** The environment reminder that canonical history holds for an agent in `cwd`. */
 function environment(cwd: string): string {
-  return environmentReminder({ kind: "environment", workingDirectory: cwd, isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" }, SHELL_CAPABILITIES);
+  return openingEnvironmentReminder({ kind: "environment", workingDirectory: cwd, isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" });
 }
 
 const unused = (): never => { throw new Error("the bridge stops at the host it leased"); };

@@ -28,10 +28,10 @@ export function effectiveProactiveTrigger(contextLimit: number, configuredTokens
 
 /** The one characters-per-token ratio of every context budget. Code-heavy
  *  output is denser, so a budget built on it is an estimate. */
-export const CHARS_PER_TOKEN = 4;
+const CHARS_PER_TOKEN = 4;
 /** The context that a planned save round needs after the request that
  *  triggers it: one full checkpoint read and one full rewrite. */
-export const SAVE_ROUND_RESERVE_TOKENS = (2 * CHECKPOINT_LIMIT_BYTES) / CHARS_PER_TOKEN;
+const SAVE_ROUND_RESERVE_TOKENS = (2 * CHECKPOINT_LIMIT_BYTES) / CHARS_PER_TOKEN;
 
 const DEFAULT_TURN_BUDGET_CHARS = 200_000;
 const MIN_TURN_BUDGET_CHARS = 16_000;

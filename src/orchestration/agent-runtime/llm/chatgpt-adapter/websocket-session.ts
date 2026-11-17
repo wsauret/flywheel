@@ -14,7 +14,7 @@ interface StringRecord {
 	[key: string]: string;
 }
 
-export interface WebSocketEvent {
+interface WebSocketEvent {
 	readonly data?: string | ArrayBuffer | ArrayBufferView | Blob;
 	readonly message?: string;
 	readonly error?: Error | { readonly message?: string };
@@ -23,7 +23,7 @@ export interface WebSocketEvent {
 	readonly wasClean?: boolean;
 }
 
-export interface WebSocketOptions {
+interface WebSocketOptions {
 	readonly headers?: StringRecord;
 	readonly proxy?: string;
 }

@@ -145,32 +145,6 @@ export class ProviderAttemptFailure extends Error {
   }
 }
 
-export function isRetryableFailure(failure: ProviderFailure): boolean {
-  switch (failure._tag) {
-    case "RateLimitFailure":
-    case "TransientNetworkFailure":
-    case "UnknownProviderFailure":
-      return true;
-    case "OverloadedFailure":
-    case "AuthFailure":
-    case "InvalidRequestFailure":
-    case "ContextOverflowFailure":
-    case "OutputOverflowFailure":
-    case "ModelAccessFailure":
-    case "RouteUnavailableFailure":
-    case "QuotaExhaustedFailure":
-    case "QuotaCoordinationFailure":
-    case "AuthConditionFailure":
-    case "RequestAbortedFailure":
-    case "DegenerateRepetitionFailure":
-      return false;
-    default: {
-      const exhaustive: never = failure;
-      return exhaustive;
-    }
-  }
-}
-
 /** What a later run can do after a request failed with `failure`, which is the
  *  normalized classification of its attempt. A rejected request, a rejected
  *  credential, and a model the account does not grant need a person; every

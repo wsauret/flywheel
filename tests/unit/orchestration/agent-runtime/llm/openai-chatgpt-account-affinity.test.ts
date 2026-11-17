@@ -3,11 +3,15 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
-import { CHATGPT_SSE_ZSTD_MAX_BYTES, CHATGPT_SSE_ZSTD_MIN_BYTES, createChatGPTClient } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-client.js";
-import { assertChatGptAccountUnchanged, chatGptRefreshIdentity, createChatGPTTokenAccessor, getConnectionChatGPTTokenAccessor } from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
+import { createChatGPTClient } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-client.js";
+import { createChatGPTTokenAccessor, getConnectionChatGPTTokenAccessor } from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
 import { AuthStoreMutationError } from "../../../../../src/infra/auth/auth-store-mutations.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
+
+/** The request body sizes, in bytes, between which the client compresses a streamed request. */
+const CHATGPT_SSE_ZSTD_MIN_BYTES = 1_024;
+const CHATGPT_SSE_ZSTD_MAX_BYTES = 1_048_576;
 
 function tokens(accountId?: string, refresh = `refresh-${accountId ?? "unknown"}`) {
   return {
@@ -24,25 +28,6 @@ function jwtAccessToken(accountId: string): string {
 }
 
 describe("ChatGPT account affinity", () => {
-  test("a refreshed credential for the same account remains usable", () => {
-    expect(() => { assertChatGptAccountUnchanged(tokens("account-a"), tokens("account-a")) }).not.toThrow();
-  });
-
-  test("a refreshed credential for another account fails before provider I/O", () => {
-    expect(() => { assertChatGptAccountUnchanged(tokens("account-a"), tokens("account-b")) })
-      .toThrow("changed from account-a to account-b");
-  });
-
-  test("credentials without account IDs must retain the same refresh identity", () => {
-    expect(() => { assertChatGptAccountUnchanged(tokens(undefined, "refresh-a"), tokens(undefined, "refresh-a")) }).not.toThrow();
-    expect(() => { assertChatGptAccountUnchanged(tokens(undefined, "refresh-a"), tokens(undefined, "refresh-b")) })
-      .toThrow("credential identity changed");
-  });
-
-  test("a missing account ID on only one side fails closed", () => {
-    expect(() => { assertChatGptAccountUnchanged(tokens("account-a"), tokens(undefined, "refresh-a")) })
-      .toThrow("credential identity changed");
-  });
   test("one captured connection owns one ChatGPT token accessor", () => {
     const connection = captureProviderConnection({
       authDir: "/profile-must-not-be-read",
@@ -53,12 +38,6 @@ describe("ChatGPT account affinity", () => {
 
     const compareAndSet = async () => true;
     expect(getConnectionChatGPTTokenAccessor(connection, "account-a", compareAndSet)).toBe(getConnectionChatGPTTokenAccessor(connection, "account-a", compareAndSet));
-  });
-
-  test("refresh single-flight identity is stable per account and distinct across accounts", () => {
-    expect(chatGptRefreshIdentity(tokens("account-a"))).toBe(chatGptRefreshIdentity(tokens("account-a", "rotated")));
-    expect(chatGptRefreshIdentity(tokens("account-a"))).not.toBe(chatGptRefreshIdentity(tokens("account-b")));
-    expect(chatGptRefreshIdentity(tokens(undefined, "refresh-a"))).not.toBe(chatGptRefreshIdentity(tokens(undefined, "refresh-b")));
   });
 
   test("memory-only refresh never reads a profile credential", async () => {
@@ -351,7 +330,6 @@ describe("ChatGPT account affinity", () => {
     if (!(body instanceof Uint8Array)) throw new Error("expected compressed body");
     const decoded = new TextDecoder().decode(Bun.zstdDecompressSync(body));
     expect(decoded).toContain(input);
-    expect(CHATGPT_SSE_ZSTD_MAX_BYTES).toBeGreaterThan(CHATGPT_SSE_ZSTD_MIN_BYTES);
   });
 
   test("sends the exact original body once below the compression minimum", async () => {

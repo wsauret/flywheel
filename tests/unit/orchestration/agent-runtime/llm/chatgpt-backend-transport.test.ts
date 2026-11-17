@@ -3,9 +3,13 @@ import assert from "node:assert/strict";
 import { Redacted } from "effect";
 import type { ResponseCreateParamsStreaming, ResponseInput } from "openai/resources/responses/responses.js";
 import { tryChatGptAdapterTransport } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/transport.js";
-import { isWebSocketSseFallbackActive, retainWebSocketSession, type WebSocketEvent, type WebSocketOptions } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.js";
+import { isWebSocketSseFallbackActive, retainWebSocketSession } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.js";
 import { createChatGPTTokenAccessor } from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
 import * as websocket from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket.js";
+
+/** The event and option shapes that a fake socket shares with the runtime WebSocket. */
+interface WebSocketEvent { readonly data?: string; readonly message?: string; readonly code?: number; readonly reason?: string; readonly wasClean?: boolean }
+interface WebSocketOptions { readonly headers?: { [name: string]: string } }
 
 class ConnectingWebSocket {
   readonly listeners = new Map<string, Set<(event: WebSocketEvent) => void>>();

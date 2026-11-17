@@ -1,11 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import Anthropic from "@anthropic-ai/sdk";
+import { Redacted } from "effect";
+import type { ModelInfo } from "../../../../src/infra/llm/models.js";
 
 import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream";
 import { ProviderRequestValidationError, QuotaExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors";
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit";
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ModelClient, type ProviderStreamEvent, type ServingAttempt, type StreamOptions, type StreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types";
-import { handleAnthropicDelta } from "../../../../src/orchestration/agent-runtime/llm/anthropic";
+import { createAnthropicAdapter, operationsFromAnthropicClient } from "../../../../src/orchestration/agent-runtime/llm/anthropic";
+import { wireResponse } from "./llm/_wire-fixtures.js";
 import { asModelClient, ownHistoryTarget, withRequestAdmission } from "./_model-client";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { pricedUsage } from "../../../helpers/usage-price-fixtures.js";
@@ -180,56 +184,66 @@ describe("streamAssistantTurn usage attribution stamping", () => {
   });
 });
 
-describe("Anthropic block identity minting", () => {
-  test("the same provider index under different runIds produces distinct blockKeys", () => {
-    const first = [...handleAnthropicDelta(
-      { index: 0, delta: { type: "text_delta", text: "first" } },
-      new Map(),
-      new Map(),
-      "run-a",
-    )];
-    const second = [...handleAnthropicDelta(
-      { index: 0, delta: { type: "text_delta", text: "second" } },
-      new Map(),
-      new Map(),
-      "run-b",
-    )];
+const ANTHROPIC_MODEL: ModelInfo = {
+  provider: "anthropic", family: "anthropic", id: "claude-opus-4-8", name: "Claude Opus 4.8", reasoning: true, toolCall: true, attachment: false,
+  temperature: true, openWeights: false, cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" },
+  modalities: { input: ["text"], output: ["text"] }, contextLimit: 200_000, outputLimit: 64_000,
+};
 
-    expect(first[0]).toMatchObject({ kind: "text_delta", blockKey: "run-a:0" });
-    expect(second[0]).toMatchObject({ kind: "text_delta", blockKey: "run-b:0" });
-    if (first[0]?.kind !== "text_delta" || second[0]?.kind !== "text_delta") throw new Error("expected text deltas");
-    expect(first[0].blockKey).not.toBe(second[0].blockKey);
+/** The events that the Anthropic adapter yields for one response that holds the content block frames `blocks`. */
+async function anthropicEvents(blocks: ReadonlyArray<{ [key: string]: unknown }>): Promise<ProviderStreamEvent[]> {
+  const frames = [
+    { type: "message_start", message: { id: "msg_test", usage: { input_tokens: 1, output_tokens: 0 } } },
+    ...blocks,
+    { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 1 } },
+    { type: "message_stop" },
+  ];
+  const operations = operationsFromAnthropicClient(new Anthropic({ apiKey: "test-key", maxRetries: 0, fetch: async () => wireResponse(frames) }));
+  const client = await createAnthropicAdapter(Redacted.make("test-key"), "claude-opus-4-8", ANTHROPIC_MODEL, { operations });
+  const events: ProviderStreamEvent[] = [];
+  for await (const event of client.streamWithTools({ messages: [{ kind: "user", content: "hi" }], systemPrompt: stableSystemPrompt("system"), tools: [], reasoningEffort: "off" })) events.push(event);
+  return events;
+}
+
+/** A thinking block at index 0 whose one delta is `delta`. */
+const thinkingBlock = (delta: { [key: string]: unknown }) => [
+  { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "", signature: "" } },
+  { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", ...delta } },
+  { type: "content_block_stop", index: 0 },
+];
+
+describe("Anthropic block identity minting", () => {
+  test("the same provider index in different responses produces distinct blockKeys", async () => {
+    const textBlock = (text: string) => [
+      { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+      { type: "content_block_delta", index: 0, delta: { type: "text_delta", text } },
+      { type: "content_block_stop", index: 0 },
+    ];
+    const [first, second] = await Promise.all([anthropicEvents(textBlock("first")), anthropicEvents(textBlock("second"))]);
+    const firstText = first.find((event) => event.kind === "text_delta");
+    const secondText = second.find((event) => event.kind === "text_delta");
+    if (firstText?.kind !== "text_delta" || secondText?.kind !== "text_delta") throw new Error("expected text deltas");
+    expect(firstText).toMatchObject({ text: "first", blockKey: expect.stringMatching(/:0$/) });
+    expect(secondText).toMatchObject({ text: "second", blockKey: expect.stringMatching(/:0$/) });
+    expect(firstText.blockKey).not.toBe(secondText.blockKey);
   });
 });
 
 describe("Anthropic redacted-thinking token estimates", () => {
-  test("thinking_delta with estimated_tokens and no text yields estimatedTokens", () => {
-    const thinkingBuffers = new Map<number, { thinking: string; signature: string }>();
-    thinkingBuffers.set(0, { thinking: "", signature: "" });
-    const delta = { type: "thinking_delta" as const, thinking: "", estimated_tokens: 128 };
-    const events = [...handleAnthropicDelta(
-      { index: 0, delta },
-      new Map(),
-      thinkingBuffers,
-      "run-a",
-    )];
-
-    expect(events[0]).toEqual({ kind: "thinking_delta", text: "", blockKey: "run-a:0", estimatedTokens: 128 });
-    expect(thinkingBuffers.get(0)?.thinking).toBe("");
+  test("thinking_delta with estimated_tokens and no text yields estimatedTokens", async () => {
+    const events = await anthropicEvents(thinkingBlock({ thinking: "", estimated_tokens: 128 }));
+    const deltas = events.filter((event) => event.kind === "thinking_delta");
+    expect(deltas).toEqual([
+      { kind: "thinking_delta", text: "", blockKey: expect.stringMatching(/:0$/) },
+      { kind: "thinking_delta", text: "", blockKey: expect.stringMatching(/:0$/), estimatedTokens: 128 },
+    ]);
+    expect(events.find((event) => event.kind === "thinking_complete")).toMatchObject({ thinking: "" });
   });
 
-  test("thinking_delta with visible text carries no estimatedTokens and accumulates", () => {
-    const thinkingBuffers = new Map<number, { thinking: string; signature: string }>();
-    thinkingBuffers.set(0, { thinking: "", signature: "" });
-    const events = [...handleAnthropicDelta(
-      { index: 0, delta: { type: "thinking_delta", thinking: "deep thought" } },
-      new Map(),
-      thinkingBuffers,
-      "run-a",
-    )];
-
-    expect(events[0]).toEqual({ kind: "thinking_delta", text: "deep thought", blockKey: "run-a:0" });
-    expect(thinkingBuffers.get(0)?.thinking).toBe("deep thought");
+  test("thinking_delta with visible text carries no estimatedTokens and accumulates", async () => {
+    const events = await anthropicEvents(thinkingBlock({ thinking: "deep thought" }));
+    expect(events.filter((event) => event.kind === "thinking_delta").at(-1)).toEqual({ kind: "thinking_delta", text: "deep thought", blockKey: expect.stringMatching(/:0$/) });
+    expect(events.find((event) => event.kind === "thinking_complete")).toMatchObject({ thinking: "deep thought" });
   });
 });
 

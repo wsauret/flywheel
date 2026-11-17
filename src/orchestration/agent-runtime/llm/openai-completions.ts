@@ -47,7 +47,7 @@ const log = Log.create({ service: "llm-openai-completions" });
 interface UnknownFields { [key: string]: unknown }
 interface StringFields { [key: string]: string }
 
-export type PreparedOpenAICompletionsRequest = PreparedProviderRequest<"openai-completions", ChatCompletionCreateParamsStreaming>;
+type PreparedOpenAICompletionsRequest = PreparedProviderRequest<"openai-completions", ChatCompletionCreateParamsStreaming>;
 
 function readReasoningDelta(delta: UnknownFields): { field: string; text: string } | undefined {
   for (const field of CHAT_COMPLETIONS_REASONING_FIELDS) {
@@ -242,7 +242,7 @@ function chatCompletionsTarget(accessProvider: AccessProviderId, model: string):
   return { accessProvider, provider: "openai", api: "openai-responses", model, sharedHost: false };
 }
 
-export function prepareOpenAICompletionsRequest(input: {
+function prepareOpenAICompletionsRequest(input: {
   accessProvider: AccessProviderId;
   model: string;
   wireModel: string;

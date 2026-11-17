@@ -188,12 +188,6 @@ function environmentBody(facts: HostEnvironment, has: CapabilityCheck): string {
   ].join("\n");
 }
 
-/** The tagged content of the reminder that states `facts` when a context opens for an agent with the capabilities
- *  `has`, as history holds it. */
-export function environmentReminder(facts: HostEnvironment, has: CapabilityCheck): string {
-  return tagged(environmentBody(facts, has), false);
-}
-
 function dateText(date: string, changed: boolean): string {
   return changed
     ? `The local date is now ${date}. The user's clock already shows it, so use the new date without remarking on the change.`

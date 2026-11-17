@@ -19,7 +19,7 @@ import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
 import { createGoogleAdapter } from "../../../../../src/orchestration/agent-runtime/llm/google.js";
 import type { ConversationMessage, LLMClient, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { isFailoverFailure, isRetryableFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { isFailoverFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { ContentRefusedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 
 interface UnknownRecord {
@@ -193,7 +193,6 @@ describe("Google failure signals", () => {
     expect(error).toBeInstanceOf(ProviderAttemptFailure);
     if (!(error instanceof ProviderAttemptFailure)) return;
     expect(error.failure._tag).toBe("InvalidRequestFailure");
-    expect(isRetryableFailure(error.failure)).toBe(false);
     expect(isFailoverFailure(error.failure)).toBe(false);
     expect(error.cause).toBeInstanceOf(ContentRefusedError);
     if (!(error.cause instanceof ContentRefusedError)) return;

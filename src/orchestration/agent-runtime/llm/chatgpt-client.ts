@@ -20,8 +20,8 @@ interface ChatGptBackendError { readonly response: Response; readonly quotaExhau
 type ChatGPTAuth = Extract<OpenAIAuth, { kind: "chatgpt" }>;
 type FetchLike = (url: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-export const CHATGPT_SSE_ZSTD_MIN_BYTES = 1_024;
-export const CHATGPT_SSE_ZSTD_MAX_BYTES = 1_048_576;
+const CHATGPT_SSE_ZSTD_MIN_BYTES = 1_024;
+const CHATGPT_SSE_ZSTD_MAX_BYTES = 1_048_576;
 
 /** Builds the ChatGPT backend client. `availability` is the account binding
  *  every usage header and terminal error on this transport is folded into.

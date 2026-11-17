@@ -120,7 +120,7 @@ const CONTEXT_SAFETY_TOKENS = 4_096;
  *  difference belongs in `HOST_SPLIT_EXCEPTIONS` (provider-claude-agent-sdk/agent-host/host-registry.ts) with its
  *  reason. A hosted request near the context window keeps this cap: the API stops the output at the window
  *  (`model_context_window_exceeded`), and the loop recovers from the overflow as on every route. */
-export const HOSTED_MAX_TOKENS = 64_000;
+const HOSTED_MAX_TOKENS = 64_000;
 
 interface AnthropicRequestInput {
   accessProvider: AccessProviderId;
@@ -592,7 +592,6 @@ function throwIfAnthropicStreamAborted(attempt: StreamAttempt, callerSignal: Abo
 
 // Request building and stream-event mapping (formerly anthropic-helpers.ts;
 // single consumer, merged back per this file's cohesion note).
-// handleAnthropicDelta stays exported for the assistant-turn-stream unit tests.
 
 /** Map the canonical Flywheel ToolChoice shape to Anthropic's wire form.
  *  pi `anthropic.ts:981-988`. */
@@ -690,7 +689,7 @@ function resolveAnthropicStopReason(raw: string): AnthropicStopResolution {
   return { stopReason: "unknown" };
 }
 
-export function* handleAnthropicDelta(
+function* handleAnthropicDelta(
   event: { index: number; delta: RawContentBlockDelta },
   toolInputBuffers: Map<number, ToolInputBuffer>,
   thinkingBuffers: Map<number, { thinking: string; signature: string; redacted?: boolean }>,
